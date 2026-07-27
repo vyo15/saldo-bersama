@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Hosting, framework, and local runtime output
+.vercel/
+.sites-runtime/
+.vinext/
+.wrangler/
+.vite/
+.cache/
+.next/
+.nuxt/
+.output/
+.firebase/
+.turbo/
+.parcel-cache/
+
+# Temporary and local state
+temp/
+tmp/
+cache/
+logs/
+*.tmp
+*.temp
+*.bak
+*.local.json
+*.log
+*.zip
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+.clasp.json
+
+# Operating system files
+.DS_Store
+Thumbs.db

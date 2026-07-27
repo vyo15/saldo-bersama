@@ -1,0 +1,31 @@
+{
+  "name": "saldo-bersama",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aplikasi web pencatatan keuangan pribadi dan bersama.",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace saldo-bersama-frontend",
+    "dev:full": "vercel dev",
+    "build": "npm run build --workspace saldo-bersama-frontend",
+    "lint": "npm run lint --workspace saldo-bersama-frontend && node scripts/check-node-syntax.mjs",
+    "test": "npm run test --workspace saldo-bersama-frontend && node --test api/test/*.test.js",
+    "check": "npm run validate:source && npm run lint && npm run test && npm run build",
+    "validate:source": "node scripts/validate-source-tree.mjs",
+    "zip": "node scripts/create-clean-archive.mjs",
+    "package:source": "node scripts/create-clean-archive.mjs"
+  },
+  "workspaces": [
+    "frontend"
+  ],
+  "dependencies": {
+    "web-push": "^3.6.7"
+  },
+  "type": "module",
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}
