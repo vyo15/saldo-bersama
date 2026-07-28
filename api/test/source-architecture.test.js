@@ -72,16 +72,23 @@ test("write kritis memakai lock, idempotency, row version, formula guard, dan re
   assert.match(source, /constantTimeEqual_/);
 });
 
-test("restore canonical memakai preview, maintenance, safety backup, rollback, dan integrity verification", async () => {
+test("restore canonical fail closed dan memiliki recovery manual", async () => {
   const source = await readAppsScriptSource();
   assert.match(source, /restore-preview:/);
-  assert.match(source, /expiresInSeconds:\s*600/);
-  assert.match(source, /maintenance_mode/);
-  assert.match(source, /pre-restore/);
-  assert.match(source, /RESTORE_INTEGRITY_FAILED/);
-  assert.match(source, /applySpreadsheetSnapshot_\(safety\.fileId\)/);
-  assert.match(source, /integrityIssues_/);
+  assert.match(source, /BACKUP_CHANGED_AFTER_PREVIEW/);
+  assert.match(source, /rollbackToSafetyOrFailClosed_/);
+  assert.match(source, /RECOVERY_REQUIRED/);
+  assert.match(source, /recoverFromSafetyBackup/);
+  assert.match(source, /spreadsheetSnapshotChecksum_/);
   assert.match(source, /RESTORE SALDO BERSAMA/);
+});
+
+test("Apps Script memiliki test perilaku Node, bukan hanya source matching", async () => {
+  const behaviorTest = await readFile(new URL("./apps-script-behavior.test.js", import.meta.url), "utf8");
+  assert.match(behaviorTest, /createTransaction_/);
+  assert.match(behaviorTest, /restoreApply_/);
+  assert.match(behaviorTest, /closePeriod_/);
+  assert.match(behaviorTest, /getIdempotentResult_/);
 });
 
 test("frontend, API, dan Apps Script memakai action contract yang selaras", async () => {

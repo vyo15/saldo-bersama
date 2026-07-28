@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { callAppsScript } from "./_lib/appsScript.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
-import { assertAllowedOrigin, authorizeAction, createInternalEnvelope, enforceBestEffortRateLimit, readSession } from "./_lib/security.js";
+import { assertAllowedOrigin, authorizeAction, createInternalEnvelope, enforceBestEffortRateLimit, readSession, requiresIdempotencyKey } from "./_lib/security.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") return methodNotAllowed(response, ["POST"]);
@@ -13,6 +13,7 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     if (!body.action || typeof body.action !== "string") return fail(response, 400, "ACTION_REQUIRED", "Action wajib diisi.");
     if (!authorizeAction(session, body.action)) return fail(response, 403, "FORBIDDEN", "Role tidak diizinkan menjalankan action ini.");
+    if (requiresIdempotencyKey(body.action) && !body.idempotencyKey) return fail(response, 400, "IDEMPOTENCY_REQUIRED", "Idempotency key wajib untuk operasi perubahan data.");
     const requestId = String(request.headers["x-request-id"] || crypto.randomUUID()).slice(0, 120);
     const envelope = createInternalEnvelope({
       actor: { uid: session.uid, email: session.email, name: session.name, role: session.role },

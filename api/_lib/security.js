@@ -4,11 +4,27 @@ const SESSION_COOKIE = "sb_session";
 const encoder = (value) => Buffer.from(value).toString("base64url");
 const decoder = (value) => Buffer.from(value, "base64url").toString("utf8");
 
+const ALLOWED_ROLES = new Set(["owner", "member"]);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const parseAllowedUsers = (raw = process.env.ALLOWED_USERS_JSON || "[]") => {
   let users;
   try { users = JSON.parse(raw); } catch { throw new Error("ALLOWED_USERS_JSON tidak valid."); }
   if (!Array.isArray(users)) throw new Error("ALLOWED_USERS_JSON harus berupa array.");
-  return users.map((item) => ({ email: String(item.email || "").trim().toLowerCase(), role: item.role === "owner" ? "owner" : "member" })).filter((item) => item.email);
+
+  const uniqueUsers = new Map();
+  users.forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} harus berupa object.`);
+    const email = String(item.email || "").trim().toLowerCase();
+    const role = String(item.role || "").trim();
+    if (!EMAIL_PATTERN.test(email)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki email tidak valid.`);
+    if (!ALLOWED_ROLES.has(role)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki role tidak valid.`);
+
+    const existing = uniqueUsers.get(email);
+    if (existing && existing.role !== role) throw new Error(`ALLOWED_USERS_JSON memiliki role konflik untuk ${email}.`);
+    if (!existing) uniqueUsers.set(email, { email, role });
+  });
+  return [...uniqueUsers.values()];
 };
 
 export const findAllowedUser = (email) => parseAllowedUsers().find((item) => item.email === String(email || "").toLowerCase()) || null;
@@ -71,21 +87,36 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "categories.list", "categories.create", "categories.update", "categories.archive",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
-    "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence",
-    "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "reports.monthly",
+    "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
+    "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "goals.reverseMovement", "reports.monthly",
     "reconciliations.create", "periods.close", "periods.reopen", "calendar.sync",
     "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
   ]),
   member: new Set([
     "system.health", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
-    "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence",
-    "budgets.list", "goals.list", "goals.move", "reports.monthly", "reconciliations.create",
+    "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment",
+    "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create",
     "notifications.register", "notifications.unregister",
   ]),
 });
 
 export const authorizeAction = (session, action) => Boolean(session && ACTION_PERMISSIONS[session.role]?.has(action));
+
+export const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
+  "system.initialize", "users.upsert", "users.deactivate",
+  "accounts.create", "accounts.update", "accounts.archive",
+  "categories.create", "categories.update", "categories.archive",
+  "transactions.create", "transactions.update", "transactions.cancel",
+  "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
+  "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
+  "budgets.upsert", "goals.create", "goals.move", "goals.reverseMovement", "reconciliations.create",
+  "periods.close", "periods.reopen", "calendar.sync",
+  "notifications.register", "notifications.unregister", "backup.create", "export.create",
+  "import.apply", "restore.apply"
+]);
+
+export const requiresIdempotencyKey = (action) => IDEMPOTENCY_REQUIRED_ACTIONS.has(action);
 
 const buckets = new Map();
 export const enforceBestEffortRateLimit = (key, { limit = 80, windowMs = 60_000 } = {}) => {
@@ -115,6 +146,8 @@ export const createInternalEnvelope = ({ actor, action, payload, requestId, idem
   return { message, signature: crypto.createHmac("sha256", secret).update(message).digest("hex") };
 };
 
+const pushNonces = new Map();
+
 export const verifyInternalPushSignature = (body) => {
   const secret = process.env.INTERNAL_SHARED_SECRET;
   if (!secret || !body?.message || !body?.signature) return null;
@@ -124,5 +157,9 @@ export const verifyInternalPushSignature = (body) => {
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   const message = JSON.parse(body.message);
   if (Math.abs(Date.now() - Number(message.timestamp || 0)) > 120_000) return null;
+  if (!message.nonce || pushNonces.has(message.nonce)) return null;
+  const now = Date.now();
+  pushNonces.set(message.nonce, now + 180_000);
+  for (const [nonce, expiresAt] of pushNonces.entries()) if (expiresAt <= now) pushNonces.delete(nonce);
   return message;
 };

@@ -15,9 +15,10 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { apiClient } from "../../services/api/client.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { currentMonthInJakarta } from "../../domain/dates.js";
 
 const ReportsPage = () => {
-  const period = new Date().toISOString().slice(0, 7);
+  const period = currentMonthInJakarta();
   const resource = useApiResource("reports.monthly", { period });
   const { bootstrap, refresh } = useFinance();
   const { user } = useAuth();

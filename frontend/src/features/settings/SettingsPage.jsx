@@ -10,6 +10,7 @@ import { enablePushNotifications } from "../../services/notifications.js";
 import { readTransactionImportFile } from "../../services/importer.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { currentMonthInJakarta } from "../../domain/dates.js";
 
 const SettingsPage = () => {
   const { user, demoMode } = useAuth();
@@ -25,7 +26,7 @@ const SettingsPage = () => {
   const [restorePreview, setRestorePreview] = useState(null);
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [memberForm, setMemberForm] = useState({ email: "", name: "", role: "member" });
-  const [periodForm, setPeriodForm] = useState({ period_key: new Date().toISOString().slice(0, 7), reason: "Review dan rekonsiliasi selesai" });
+  const [periodForm, setPeriodForm] = useState({ period_key: currentMonthInJakarta(), reason: "Review dan rekonsiliasi selesai" });
 
   const run = async (action, payload = {}) => {
     setResult({ status: "loading", text: "Memproses..." });

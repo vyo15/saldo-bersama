@@ -102,3 +102,18 @@ Pastikan preview dan production mempunyai value terpisah.
 - Tampilan desktop dan mobile diperiksa.
 
 Sampai seluruh gate lulus, gunakan data uji.
+
+## 9. Timeout dan ambiguous completion
+
+Gateway Vercel diberi `maxDuration` 60 detik dan menghentikan call Apps Script setelah 55 detik. Semua retry write wajib memakai idempotency key yang sama. Pesan `UPSTREAM_TIMEOUT` berarti status commit belum dapat dipastikan; jangan membuat key baru.
+
+Rate limiter Vercel berbasis memory hanya best-effort per instance. Jangan mengandalkannya sebagai pembatas global.
+
+## 10. Recovery operasional
+
+Sebelum production, lakukan dua drill di DEV:
+
+1. restore utama gagal tetapi rollback safety berhasil;
+2. simulasi rollback gagal dan pemulihan dengan `recoverFromSafetyBackup()`.
+
+Ikuti `docs/RECOVERY_RUNBOOK.md`. Jangan membuka maintenance secara manual sebelum verifikasi selesai.

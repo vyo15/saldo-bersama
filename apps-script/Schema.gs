@@ -29,9 +29,34 @@ const SB_SCHEMA = Object.freeze({
 function setupSaldoBersama() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   if (!spreadsheet) throw new Error("Buka Apps Script dari spreadsheet Saldo Bersama.");
-  PropertiesService.getScriptProperties().setProperty("SPREADSHEET_ID", spreadsheet.getId());
-  initializeSchema_();
-  return { spreadsheetId: spreadsheet.getId(), schemaVersion: SB_SCHEMA_VERSION };
+  const spreadsheetId = spreadsheet.getId();
+  const properties = PropertiesService.getScriptProperties();
+  const configuredSpreadsheetId = properties.getProperty("SPREADSHEET_ID");
+  if (configuredSpreadsheetId && configuredSpreadsheetId !== spreadsheetId) {
+    throw sbError_("SPREADSHEET_MISMATCH", "Project Apps Script sudah terikat ke spreadsheet lain.", 409);
+  }
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw sbError_("LOCK_TIMEOUT", "Setup gagal memperoleh lock. Coba lagi setelah proses lain selesai.", 409);
+  try {
+    properties.setProperties({ SPREADSHEET_ID: spreadsheetId, SETUP_STATUS: "running", SETUP_DETAILS: "" });
+    initializeSchema_();
+    SpreadsheetApp.flush();
+    const issues = validateSchema_();
+    if (issues.length) throw sbError_("SCHEMA_MISMATCH", "Setup selesai sebagian dan belum lolos validasi schema.", 503, issues);
+    properties.setProperties({ SETUP_STATUS: "ready", SETUP_DETAILS: "", SETUP_VERIFIED_AT: new Date().toISOString() });
+    return { spreadsheetId: spreadsheetId, schemaVersion: SB_SCHEMA_VERSION, verified: true };
+  } catch (error) {
+    try {
+      properties.setProperties({
+        SETUP_STATUS: "failed",
+        SETUP_DETAILS: JSON.stringify({ code: error.code || "SETUP_FAILED", message: String(error.message || "Setup gagal.").slice(0, 500) })
+      });
+    } catch (_propertyError) {}
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function initializeSchema_() {
@@ -52,7 +77,10 @@ function initializeSchema_() {
   upsertConfig_("schema_version", SB_SCHEMA_VERSION);
   upsertConfig_("timezone", SB_TIMEZONE);
   upsertConfig_("currency", SB_CURRENCY);
-  upsertConfig_("maintenance_mode", "false");
+  if (!getConfig_("maintenance_mode")) upsertConfig_("maintenance_mode", "false");
+  if (!getConfig_("recovery_required")) upsertConfig_("recovery_required", "false");
+  if (!getConfig_("recovery_status")) upsertConfig_("recovery_status", "");
+  if (!getConfig_("recovery_details")) upsertConfig_("recovery_details", "");
   protectSystemSheets_();
 }
 

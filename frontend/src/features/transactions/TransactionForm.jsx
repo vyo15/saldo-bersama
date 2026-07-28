@@ -6,13 +6,14 @@ import Button from "../../components/common/Button.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
 import { apiClient } from "../../services/api/client.js";
 
 const emptyForm = () => ({
   transaction_type: TRANSACTION_TYPES.EXPENSE,
-  transaction_date: new Date().toISOString().slice(0, 10),
+  transaction_date: todayInJakarta(),
   amount: "",
   source_account_id: "",
   destination_account_id: "",

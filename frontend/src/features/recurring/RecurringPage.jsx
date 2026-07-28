@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiCalendar, FiCheckCircle, FiPlus } from "react-icons/fi";
+import { FiCalendar, FiCheckCircle, FiPlus, FiRotateCcw } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -12,11 +12,12 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { apiClient } from "../../services/api/client.js";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayInJakarta;
 
 const RecurringPage = () => {
   const resource = useApiResource("recurring.list");
@@ -44,6 +45,19 @@ const RecurringPage = () => {
   const openPayment = (item) => {
     setPayment({ item, account_id: item.default_account_id || "", amount: String(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""), transaction_date: today() });
     setPaymentState({ status: "idle", error: null });
+  };
+
+  const reversePayment = async (item) => {
+    const transactionIds = String(item.transaction_ids || "").split(",").map((value) => value.trim()).filter(Boolean);
+    const transactionId = transactionIds.at(-1);
+    if (!transactionId) return;
+    const reason = window.prompt("Alasan pembatalan pembayaran/penerimaan (wajib):");
+    if (!reason?.trim()) return;
+    try {
+      await apiClient.request("recurring.reversePayment", { occurrence_id: item.occurrence_id, transaction_id: transactionId, row_version: item.row_version, reason: reason.trim() }, { rowVersion: item.row_version, idempotencyKey: createIdempotencyKey() });
+      setMessage({ type: "success", text: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." });
+      await Promise.all([resource.reload(), refresh()]);
+    } catch (error) { setMessage({ type: "danger", text: error.message }); }
   };
 
   const completeOccurrence = async (event) => {
@@ -76,7 +90,10 @@ const RecurringPage = () => {
       <div className="schedule-item__date"><FiCalendar /><time>{item.due_date}</time></div>
       <div><h3>{item.name}</h3><p>Rencana <Money value={item.expected_amount} />{item.actual_amount ? <> · aktual <Money value={item.actual_amount} /></> : null}</p></div>
       <StatusBadge status={item.status} />
-      {item.status === "paid" || item.status === "received" ? <FiCheckCircle className="schedule-item__done" aria-label="Selesai" /> : <Button onClick={() => openPayment(item)}>Catat aktual</Button>}
+      <div className="button-group">
+        {item.status === "paid" || item.status === "received" ? <FiCheckCircle className="schedule-item__done" aria-label="Selesai" /> : <Button onClick={() => openPayment(item)}>Catat aktual</Button>}
+        {item.transaction_ids ? <Button icon={FiRotateCcw} onClick={() => reversePayment(item)}>Batalkan aktual terakhir</Button> : null}
+      </div>
     </article>
   ));
 

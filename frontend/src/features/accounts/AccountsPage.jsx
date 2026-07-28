@@ -12,10 +12,11 @@ import { apiClient } from "../../services/api/client.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { todayInJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
 
 const ICONS = { bank: FiCreditCard, cash: FiDollarSign, ewallet: FiSmartphone, emergency_fund: FiShield };
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayInJakarta;
 
 const AccountsPage = () => {
   const accountsResource = useApiResource("accounts.list");

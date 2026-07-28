@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { apiClient } from "../services/api/client.js";
 import { useAuth } from "../features/auth/AuthContext.jsx";
+import { createIdempotencyKey } from "../domain/security.js";
 
 const FinanceContext = createContext(null);
 
@@ -19,7 +20,7 @@ export const FinanceProvider = ({ children }) => {
         nextBootstrap = await apiClient.request("bootstrap.get");
       } catch (bootstrapError) {
         if (user?.role !== "owner" || !["ACCOUNT_NOT_ALLOWED", "SCHEMA_MISSING"].includes(bootstrapError.code)) throw bootstrapError;
-        await apiClient.request("system.initialize", {}, { idempotencyKey: crypto.randomUUID() });
+        await apiClient.request("system.initialize", {}, { idempotencyKey: createIdempotencyKey() });
         nextBootstrap = await apiClient.request("bootstrap.get");
       }
       const nextOverview = await apiClient.request("dashboard.overview");

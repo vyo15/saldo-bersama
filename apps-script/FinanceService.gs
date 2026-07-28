@@ -10,6 +10,11 @@ function activeAccount_(id) {
   return row;
 }
 
+function assertAccountAccess_(context, account) {
+  if (!account || context.actor.role === "owner" || account.owner_scope !== "personal") return;
+  if (String(account.owner_user_id) !== String(context.actor.user_id)) throw sbError_("FORBIDDEN_ACCOUNT", "Rekening pribadi ini bukan milik pengguna aktif.", 403);
+}
+
 function activeCategory_(id, type) {
   if (!id) return null;
   const row = findBy_("Categories", "category_id", id);
@@ -46,6 +51,13 @@ function accountBalance_(accountId, transactions) {
   return (transactions || rows_("Transactions")).reduce(function(total, transaction) { return total + transactionBalanceImpact_(accountId, transaction); }, Number(account.initial_balance || 0));
 }
 
+function assertSufficientBalanceForCandidate_(source, candidate, transactions) {
+  if (!source || source.allow_negative === true || String(source.allow_negative).toLowerCase() === "true") return;
+  const currentBalance = accountBalance_(source.account_id, transactions);
+  const balanceAfter = currentBalance + transactionBalanceImpact_(source.account_id, Object.assign({ status: "active" }, candidate));
+  if (balanceAfter < 0) throw sbError_("INSUFFICIENT_BALANCE", "Saldo rekening tidak mencukupi.", 409, { currentBalance: currentBalance, balanceAfter: balanceAfter });
+}
+
 function duplicateTransaction_(payload, excludeTransactionId) {
   return rows_("Transactions").find(function(row) {
     return row.status === "active"
@@ -64,26 +76,29 @@ function envelopeUsage_(period, transactions) {
   return Object.assign(publicRow_(period), { used_amount: used, remaining_amount: Number(period.allocated_amount || 0) - Number(period.reserved_amount || 0) - used });
 }
 
-function validateEnvelopeForExpense_(payload, amount) {
+function validateEnvelopeForExpense_(payload, amount, transactions, context) {
   if (!payload.envelope_period_id) return null;
   const period = findBy_("Envelope_Periods", "envelope_period_id", payload.envelope_period_id);
   if (!period || period.status !== "active") throw sbError_("INVALID_ENVELOPE", "Kantong tidak aktif atau tidak ditemukan.", 400);
+  const rule = findBy_("Envelope_Rules", "envelope_rule_id", period.envelope_rule_id);
+  if (context && context.actor.role !== "owner" && rule && rule.scope === "personal" && String(rule.owner_user_id) !== String(context.actor.user_id)) throw sbError_("FORBIDDEN_ENVELOPE", "Kantong pribadi ini bukan milik pengguna aktif.", 403);
   if (payload.transaction_date < period.period_start || payload.transaction_date > period.period_end) throw sbError_("ENVELOPE_PERIOD_MISMATCH", "Tanggal transaksi tidak termasuk periode jatah.", 400);
-  const usage = envelopeUsage_(period);
+  const usage = envelopeUsage_(period, transactions);
   if (amount > usage.remaining_amount && !payload.overspend_reason) throw sbError_("OVER_BUDGET_CONFIRMATION_REQUIRED", "Pengeluaran melebihi sisa kantong. Alasan over-budget wajib diisi.", 409, { remainingAmount: usage.remaining_amount });
   return period;
 }
 
-function createTransaction_(context, forcedPayload) {
+function createTransaction_(context, forcedPayload, options) {
   const payload = Object.assign({}, forcedPayload || context.payload);
+  const settings = options || {};
   const type = String(payload.transaction_type || "");
   if (!["income", "expense", "transfer", "refund", "adjustment"].includes(type)) throw sbError_("INVALID_TRANSACTION_TYPE", "Jenis transaksi tidak valid.", 400);
   const date = validateDate_(payload.transaction_date);
   assertPeriodOpen_(date);
   const amount = intAmount_(payload.amount);
   let source = null; let destination = null;
-  if (type !== "income" && type !== "refund") source = activeAccount_(payload.source_account_id);
-  if (["income", "refund", "transfer"].includes(type)) destination = activeAccount_(payload.destination_account_id);
+  if (type !== "income" && type !== "refund") { source = activeAccount_(payload.source_account_id); assertAccountAccess_(context, source); }
+  if (["income", "refund", "transfer"].includes(type)) { destination = activeAccount_(payload.destination_account_id); assertAccountAccess_(context, destination); }
   if (type === "transfer" && source.account_id === destination.account_id) throw sbError_("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
   payload.source_account_id = source ? source.account_id : "";
   payload.destination_account_id = destination ? destination.account_id : "";
@@ -92,13 +107,15 @@ function createTransaction_(context, forcedPayload) {
   if (["income", "expense", "refund"].includes(type) && !payload.category_id) throw sbError_("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
   activeCategory_(payload.category_id, type === "income" ? "income" : type === "expense" ? "expense" : type);
   payload.overspend_reason = sanitizeText_(payload.overspend_reason, 180);
-  if (type === "expense") validateEnvelopeForExpense_(payload, amount);
-  if (source && source.allow_negative !== true && String(source.allow_negative).toLowerCase() !== "true") {
-    const balanceAfter = accountBalance_(source.account_id) - amount;
-    if (balanceAfter < 0) throw sbError_("INSUFFICIENT_BALANCE", "Saldo rekening tidak mencukupi.", 409, { currentBalance: accountBalance_(source.account_id), balanceAfter: balanceAfter });
-  }
+  if (type === "expense") validateEnvelopeForExpense_(payload, amount, undefined, context);
+  const candidate = {
+    status: "active", transaction_type: type, source_account_id: payload.source_account_id || "",
+    destination_account_id: payload.destination_account_id || "", amount: amount
+  };
+  assertSufficientBalanceForCandidate_(source, candidate);
   const duplicate = duplicateTransaction_(payload);
   if (duplicate && !payload.confirm_duplicate) throw sbError_("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
+  if (payload.scope !== undefined && ["personal", "shared"].indexOf(payload.scope) === -1) throw sbError_("INVALID_SCOPE", "Scope transaksi harus personal atau shared.", 400);
   const record = {
     transaction_id: uuid_(), transaction_date: date, transaction_type: type,
     source_account_id: payload.source_account_id || "", destination_account_id: payload.destination_account_id || "",
@@ -110,8 +127,8 @@ function createTransaction_(context, forcedPayload) {
     idempotency_key: context.idempotencyKey || "", created_by: context.actor.user_id, created_at: nowIso_(),
     updated_by: context.actor.user_id, updated_at: nowIso_(), cancelled_by: "", cancelled_at: "", cancellation_reason: ""
   };
-  appendRow_("Transactions", record);
-  appendAudit_(context, "transactions.create", "transaction", record.transaction_id, null, publicRow_(record));
+  if (settings.skipAudit === true) appendRow_("Transactions", record);
+  else appendAuditedRow_("Transactions", "transaction_id", record, context, "transactions.create", "transaction", null, publicRow_(record));
   return publicRow_(record);
 }
 
@@ -120,11 +137,17 @@ function assertCanModifyTransaction_(context, transaction) {
   if (String(transaction.created_by) !== String(context.actor.user_id)) throw sbError_("FORBIDDEN", "Member hanya dapat mengubah transaksi yang dibuat sendiri.", 403);
 }
 
+function assertGenericTransactionMutationAllowed_(transaction) {
+  if (transaction.recurring_occurrence_id) throw sbError_("LINKED_RECURRING_TRANSACTION", "Transaksi ini terhubung ke tagihan/pemasukan rutin. Koreksi melalui menu Tagihan agar status jadwal tetap sinkron.", 409, { occurrenceId: transaction.recurring_occurrence_id });
+  if (transaction.goal_id) throw sbError_("LINKED_GOAL_TRANSACTION", "Transaksi ini terhubung ke target tabungan. Koreksi melalui menu Target agar progress tetap sinkron.", 409, { goalId: transaction.goal_id });
+}
+
 function updateTransaction_(context) {
   const payload = context.payload;
   const current = findBy_("Transactions", "transaction_id", payload.transaction_id);
   if (!current || current.status !== "active") throw sbError_("NOT_FOUND", "Transaksi aktif tidak ditemukan.", 404);
   assertCanModifyTransaction_(context, current);
+  assertGenericTransactionMutationAllowed_(current);
   assertVersion_(current, context.rowVersion || payload.row_version);
   const previous = publicRow_(current);
   const type = String(payload.transaction_type === undefined ? current.transaction_type : payload.transaction_type);
@@ -137,8 +160,8 @@ function updateTransaction_(context) {
   const categoryId = payload.category_id === undefined ? current.category_id : payload.category_id;
   const envelopePeriodId = payload.envelope_period_id === undefined ? current.envelope_period_id : payload.envelope_period_id;
   let source = null; let destination = null;
-  if (type !== "income" && type !== "refund") source = activeAccount_(sourceAccountId);
-  if (["income", "refund", "transfer"].includes(type)) destination = activeAccount_(destinationAccountId);
+  if (type !== "income" && type !== "refund") { source = activeAccount_(sourceAccountId); assertAccountAccess_(context, source); }
+  if (["income", "refund", "transfer"].includes(type)) { destination = activeAccount_(destinationAccountId); assertAccountAccess_(context, destination); }
   if (type === "transfer" && source.account_id === destination.account_id) throw sbError_("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
   const normalizedSourceAccountId = source ? source.account_id : "";
   const normalizedDestinationAccountId = destination ? destination.account_id : "";
@@ -153,16 +176,15 @@ function updateTransaction_(context) {
     envelope_period_id: normalizedEnvelopePeriodId || "", amount: amount,
     description: sanitizeText_(payload.description === undefined ? current.description : payload.description, 250),
     overspend_reason: overspendReason,
-    merchant: sanitizeText_(payload.merchant === undefined ? current.merchant : payload.merchant, 120)
+    merchant: sanitizeText_(payload.merchant === undefined ? current.merchant : payload.merchant, 120),
+    status: "active"
   };
-  if (type === "expense") validateEnvelopeForExpense_(normalized, amount);
-  if (source && source.allow_negative !== true && String(source.allow_negative).toLowerCase() !== "true") {
-    const otherTransactions = rows_("Transactions").filter(function(row) { return row.transaction_id !== current.transaction_id; });
-    const balanceAfter = accountBalance_(source.account_id, otherTransactions) - amount;
-    if (balanceAfter < 0) throw sbError_("INSUFFICIENT_BALANCE", "Saldo rekening tidak mencukupi.", 409, { currentBalance: accountBalance_(source.account_id, otherTransactions), balanceAfter: balanceAfter });
-  }
+  const otherTransactions = rows_("Transactions").filter(function(row) { return row.transaction_id !== current.transaction_id; });
+  if (type === "expense") validateEnvelopeForExpense_(normalized, amount, otherTransactions, context);
+  assertSufficientBalanceForCandidate_(source, normalized, otherTransactions);
   const duplicate = duplicateTransaction_(normalized, current.transaction_id);
   if (duplicate && !payload.confirm_duplicate) throw sbError_("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
+  if (payload.scope !== undefined && ["personal", "shared"].indexOf(payload.scope) === -1) throw sbError_("INVALID_SCOPE", "Scope transaksi harus personal atau shared.", 400);
   const updated = Object.assign({}, current, normalized, {
     recurring_occurrence_id: current.recurring_occurrence_id || "", goal_id: current.goal_id || "",
     payment_method: sanitizeText_(payload.payment_method === undefined ? current.payment_method : payload.payment_method, 40),
@@ -170,8 +192,7 @@ function updateTransaction_(context) {
     owner_user_id: context.actor.role === "owner" && payload.owner_user_id ? payload.owner_user_id : current.owner_user_id,
     row_version: rowVersion_(current) + 1, updated_by: context.actor.user_id, updated_at: nowIso_()
   });
-  updateRow_("Transactions", current.__row, updated);
-  appendAudit_(context, "transactions.update", "transaction", updated.transaction_id, previous, publicRow_(updated));
+  updateAuditedRow_("Transactions", current, updated, context, "transactions.update", "transaction", updated.transaction_id, previous, publicRow_(updated));
   return publicRow_(updated);
 }
 
@@ -180,14 +201,16 @@ function cancelTransaction_(context) {
   const current = findBy_("Transactions", "transaction_id", payload.transactionId || payload.transaction_id);
   if (!current || current.status !== "active") throw sbError_("NOT_FOUND", "Transaksi aktif tidak ditemukan.", 404);
   assertCanModifyTransaction_(context, current);
+  assertGenericTransactionMutationAllowed_(current);
   assertVersion_(current, context.rowVersion || payload.rowVersion || payload.row_version);
   assertPeriodOpen_(current.transaction_date);
   const reason = sanitizeText_(payload.reason, 200);
   if (!reason) throw sbError_("REASON_REQUIRED", "Alasan pembatalan wajib diisi.", 400);
   const previous = publicRow_(current);
-  current.status = "cancelled"; current.cancelled_by = context.actor.user_id; current.cancelled_at = nowIso_(); current.cancellation_reason = reason;
-  current.row_version = rowVersion_(current) + 1; current.updated_by = context.actor.user_id; current.updated_at = nowIso_();
-  updateRow_("Transactions", current.__row, current);
-  appendAudit_(context, "transactions.cancel", "transaction", current.transaction_id, previous, publicRow_(current));
-  return publicRow_(current);
+  const updated = Object.assign({}, current, {
+    status: "cancelled", cancelled_by: context.actor.user_id, cancelled_at: nowIso_(), cancellation_reason: reason,
+    row_version: rowVersion_(current) + 1, updated_by: context.actor.user_id, updated_at: nowIso_()
+  });
+  updateAuditedRow_("Transactions", current, updated, context, "transactions.cancel", "transaction", updated.transaction_id, previous, publicRow_(updated));
+  return publicRow_(updated);
 }

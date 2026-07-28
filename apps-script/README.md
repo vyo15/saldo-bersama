@@ -13,17 +13,21 @@ Endpoint tetap dilindungi karena seluruh request aplikasi wajib membawa HMAC, ti
 
 1. Buat spreadsheet DEV dan PROD terpisah.
 2. Buka **Extensions → Apps Script** dari spreadsheet.
-3. Salin seluruh file `.gs` dan `appsscript.json`.
-4. Jalankan `setupSaldoBersama()` satu kali sebagai owner.
-5. Isi Script Properties:
+3. Jalankan `node scripts/check-apps-script-syntax.mjs` pada source lokal. Gate wajib lulus untuk boot urutan alfabet dan terbalik.
+4. Salin seluruh file `.gs` dan `appsscript.json`, simpan, lalu refresh editor. Pastikan dropdown menampilkan `setupSaldoBersama`; jika project gagal boot, jangan deploy.
+5. Isi Script Property `INTERNAL_SHARED_SECRET` lebih dahulu dengan nilai yang sama persis seperti Vercel.
+6. Jalankan `setupSaldoBersama()` sebagai owner. Setup memakai lock, menolak spreadsheet yang tidak cocok, dan baru dinyatakan berhasil setelah schema tervalidasi.
+7. Pastikan Script Properties menunjukkan `SETUP_STATUS=ready` dan `SETUP_VERIFIED_AT`, lalu verifikasi seluruh 21 sheet canonical.
+8. Script Properties yang digunakan:
    - `SPREADSHEET_ID` — otomatis setelah setup;
    - `INTERNAL_SHARED_SECRET` — sama dengan Vercel, minimal 32 karakter;
+   - `SETUP_STATUS`, `SETUP_DETAILS`, `SETUP_VERIFIED_AT` — dikelola otomatis oleh setup;
    - `CALENDAR_ID` — ID kalender bersama;
    - `PUSH_ENDPOINT_URL` — endpoint production `/api/push`, opsional;
    - `BACKUP_FOLDER_ID` — folder Drive khusus backup, opsional.
-6. Jalankan `setupScheduledTriggers()` untuk membuat trigger notifikasi harian dan backup harian.
-7. Deploy Web App dan isi URL pada `APPS_SCRIPT_WEB_APP_URL` di Vercel.
-8. Login owner dan jalankan health/integrity check dari aplikasi.
+9. Jalankan `setupScheduledTriggers()` untuk membuat trigger notifikasi harian dan backup harian setelah integrasi DEV lulus.
+10. Deploy Web App dan isi URL pada `APPS_SCRIPT_WEB_APP_URL` di Vercel.
+11. Login owner dan jalankan health/integrity check dari aplikasi.
 
 ## Bootstrap pengguna
 
@@ -48,3 +52,14 @@ Email dan role pada sheet `Users` harus sama dengan `ALLOWED_USERS_JSON`. Ketida
 - Restore/import rollback bila integrity check gagal.
 
 Jangan mengubah nama sheet/kolom tanpa approval, migration, backup, dan rollback plan.
+
+## Recovery dan compensation
+
+- Restore/import bersifat fail-closed dan memakai safety backup terverifikasi.
+- Preview restore terikat pada checksum isi dan email owner aktif di backup.
+- Ketika schema aktif rusak, restore API tidak bergantung pada sheet `Idempotency`; idempotency recovery disimpan sementara pada Script Properties.
+- Pembayaran recurring, mutasi target, dan pemindahan envelope memakai compensation. Jika compensation gagal, aplikasi masuk `recovery_required`.
+- Koreksi transaksi recurring/goal dilakukan melalui `recurring.reversePayment` atau `goals.reverseMovement`, bukan edit/cancel ledger umum.
+- Prosedur manual tersedia di `docs/RECOVERY_RUNBOOK.md`.
+
+Rate limit Apps Script Cache dan Vercel memory bersifat best-effort. LockService dan idempotency tetap menjadi guard integritas utama.

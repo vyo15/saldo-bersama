@@ -1,3 +1,12 @@
+const SB_ACCOUNT_TYPES = ["bank", "cash", "ewallet", "savings", "emergency_fund", "sinking_fund"];
+const SB_CATEGORY_NATURES = ["fixed", "variable", "unexpected", "discretionary", "emergency"];
+
+function activeUser_(userId) {
+  const user = findBy_("Users", "user_id", userId);
+  if (!user || user.status !== "active") throw sbError_("INVALID_USER", "Pemilik pribadi tidak ditemukan atau tidak aktif.", 400);
+  return user;
+}
+
 function listAccounts_() {
   const transactions = rows_("Transactions");
   return rows_("Accounts").map(function(row) {
@@ -13,15 +22,20 @@ function createAccount_(context) {
   if (!name) throw sbError_("NAME_REQUIRED", "Nama rekening wajib diisi.", 400);
   const initialBalance = Number(payload.initial_balance || 0);
   if (!Number.isSafeInteger(initialBalance) || Math.abs(initialBalance) > 100000000000) throw sbError_("INVALID_AMOUNT", "Saldo awal harus integer rupiah.", 400);
+  if (payload.owner_scope !== undefined && ["personal", "shared"].indexOf(payload.owner_scope) === -1) throw sbError_("INVALID_OWNER_SCOPE", "Scope rekening harus personal atau shared.", 400);
+  const scope = payload.owner_scope === "personal" ? "personal" : "shared";
+  const ownerUserId = context.actor.role === "owner" && payload.owner_user_id ? payload.owner_user_id : context.actor.user_id;
+  const accountType = sanitizeText_(payload.account_type || "bank", 40);
+  if (SB_ACCOUNT_TYPES.indexOf(accountType) === -1) throw sbError_("INVALID_ACCOUNT_TYPE", "Jenis rekening tidak valid.", 400);
+  if (scope === "personal") activeUser_(ownerUserId);
   const record = {
-    account_id: uuid_(), name: name, account_type: sanitizeText_(payload.account_type || "bank", 40),
-    owner_scope: payload.owner_scope === "personal" ? "personal" : "shared", owner_user_id: payload.owner_user_id || context.actor.user_id,
+    account_id: uuid_(), name: name, account_type: accountType,
+    owner_scope: scope, owner_user_id: scope === "personal" ? ownerUserId : "",
     initial_balance: initialBalance, initial_balance_date: validateDate_(payload.initial_balance_date || today_()),
-    allow_negative: Boolean(payload.allow_negative), status: "active", row_version: 1,
+    allow_negative: strictBoolean_(payload.allow_negative, "allow_negative", false), status: "active", row_version: 1,
     created_by: context.actor.user_id, created_at: nowIso_(), updated_by: context.actor.user_id, updated_at: nowIso_()
   };
-  appendRow_("Accounts", record);
-  appendAudit_(context, "accounts.create", "account", record.account_id, null, publicRow_(record));
+  appendAuditedRow_("Accounts", "account_id", record, context, "accounts.create", "account", null, publicRow_(record));
   return publicRow_(record);
 }
 
@@ -30,25 +44,40 @@ function updateAccount_(context) {
   const current = findBy_("Accounts", "account_id", payload.account_id);
   if (!current) throw sbError_("NOT_FOUND", "Rekening tidak ditemukan.", 404);
   assertVersion_(current, context.rowVersion || payload.row_version);
-  const previous = publicRow_(current);
-  current.name = sanitizeText_(payload.name === undefined ? current.name : payload.name, 100);
-  current.owner_scope = payload.owner_scope === undefined ? current.owner_scope : payload.owner_scope;
-  current.allow_negative = payload.allow_negative === undefined ? current.allow_negative : Boolean(payload.allow_negative);
-  current.row_version = rowVersion_(current) + 1; current.updated_by = context.actor.user_id; current.updated_at = nowIso_();
-  updateRow_("Accounts", current.__row, current);
-  appendAudit_(context, "accounts.update", "account", current.account_id, previous, publicRow_(current));
-  return publicRow_(current);
+  const updated = Object.assign({}, current);
+  updated.name = sanitizeText_(payload.name === undefined ? current.name : payload.name, 100);
+  if (!updated.name) throw sbError_("NAME_REQUIRED", "Nama rekening wajib diisi.", 400);
+  if (payload.owner_scope !== undefined && ["personal", "shared"].indexOf(payload.owner_scope) === -1) throw sbError_("INVALID_OWNER_SCOPE", "Scope rekening harus personal atau shared.", 400);
+  updated.owner_scope = payload.owner_scope === undefined ? current.owner_scope : payload.owner_scope;
+  if (updated.owner_scope === "shared") updated.owner_user_id = "";
+  else if (context.actor.role === "owner" && payload.owner_user_id) updated.owner_user_id = payload.owner_user_id;
+  else if (!updated.owner_user_id) updated.owner_user_id = context.actor.user_id;
+  if (updated.owner_scope === "personal") activeUser_(updated.owner_user_id);
+  updated.allow_negative = payload.allow_negative === undefined ? current.allow_negative : strictBoolean_(payload.allow_negative, "allow_negative", current.allow_negative);
+  updated.row_version = rowVersion_(current) + 1; updated.updated_by = context.actor.user_id; updated.updated_at = nowIso_();
+  updateAuditedRow_("Accounts", current, updated, context, "accounts.update", "account", updated.account_id);
+  return publicRow_(updated);
+}
+
+function accountArchiveDependencies_(accountId) {
+  const dependencies = [];
+  const balance = accountBalance_(accountId);
+  if (balance !== 0) dependencies.push({ type: "non_zero_balance", balance: balance });
+  if (rows_("Recurring_Rules").some(function(row) { return row.status === "active" && String(row.default_account_id) === String(accountId); })) dependencies.push({ type: "active_recurring_rule" });
+  if (rows_("Envelope_Rules").some(function(row) { return row.status === "active" && String(row.source_account_id) === String(accountId); })) dependencies.push({ type: "active_envelope_rule" });
+  if (rows_("Savings_Goals").some(function(row) { return row.status === "active" && String(row.account_id) === String(accountId); })) dependencies.push({ type: "active_savings_goal" });
+  return dependencies;
 }
 
 function archiveAccount_(context) {
   const current = findBy_("Accounts", "account_id", context.payload.account_id);
   if (!current || current.status !== "active") throw sbError_("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
   assertVersion_(current, context.rowVersion || context.payload.row_version);
-  const previous = publicRow_(current);
-  current.status = "archived"; current.row_version = rowVersion_(current) + 1; current.updated_by = context.actor.user_id; current.updated_at = nowIso_();
-  updateRow_("Accounts", current.__row, current);
-  appendAudit_(context, "accounts.archive", "account", current.account_id, previous, publicRow_(current));
-  return publicRow_(current);
+  const dependencies = accountArchiveDependencies_(current.account_id);
+  if (dependencies.length) throw sbError_("ACCOUNT_HAS_DEPENDENCIES", "Rekening belum dapat diarsipkan karena saldo atau referensi aktif masih ada.", 409, dependencies);
+  const updated = Object.assign({}, current, { status: "archived", row_version: rowVersion_(current) + 1, updated_by: context.actor.user_id, updated_at: nowIso_() });
+  updateAuditedRow_("Accounts", current, updated, context, "accounts.archive", "account", updated.account_id);
+  return publicRow_(updated);
 }
 
 function listCategories_() { return rows_("Categories").map(publicRow_); }
@@ -58,16 +87,17 @@ function createCategory_(context) {
   const name = sanitizeText_(payload.name, 80);
   if (!name) throw sbError_("NAME_REQUIRED", "Nama kategori wajib diisi.", 400);
   if (!["income", "expense"].includes(payload.transaction_type)) throw sbError_("INVALID_TYPE", "Jenis kategori tidak valid.", 400);
+  const nature = sanitizeText_(payload.nature || "variable", 40);
+  if (SB_CATEGORY_NATURES.indexOf(nature) === -1) throw sbError_("INVALID_CATEGORY_NATURE", "Sifat kategori tidak valid.", 400);
   const duplicate = rows_("Categories").find(function(row) { return row.status === "active" && String(row.name).toLowerCase() === name.toLowerCase() && row.transaction_type === payload.transaction_type; });
   if (duplicate) throw sbError_("DUPLICATE_CATEGORY", "Kategori aktif dengan nama tersebut sudah ada.", 409);
   const record = {
     category_id: uuid_(), name: name, transaction_type: payload.transaction_type,
-    nature: sanitizeText_(payload.nature || "variable", 40), icon: sanitizeText_(payload.icon || "", 40),
+    nature: nature, icon: sanitizeText_(payload.icon || "", 40),
     status: "active", row_version: 1, created_by: context.actor.user_id, created_at: nowIso_(),
     updated_by: context.actor.user_id, updated_at: nowIso_()
   };
-  appendRow_("Categories", record);
-  appendAudit_(context, "categories.create", "category", record.category_id, null, publicRow_(record));
+  appendAuditedRow_("Categories", "category_id", record, context, "categories.create", "category", null, publicRow_(record));
   return publicRow_(record);
 }
 
@@ -76,25 +106,40 @@ function updateCategory_(context) {
   const current = findBy_("Categories", "category_id", payload.category_id);
   if (!current) throw sbError_("NOT_FOUND", "Kategori tidak ditemukan.", 404);
   assertVersion_(current, context.rowVersion || payload.row_version);
-  const previous = publicRow_(current);
-  current.name = sanitizeText_(payload.name === undefined ? current.name : payload.name, 80);
-  current.nature = sanitizeText_(payload.nature === undefined ? current.nature : payload.nature, 40);
-  current.icon = sanitizeText_(payload.icon === undefined ? current.icon : payload.icon, 40);
-  current.row_version = rowVersion_(current) + 1; current.updated_by = context.actor.user_id; current.updated_at = nowIso_();
-  updateRow_("Categories", current.__row, current);
-  appendAudit_(context, "categories.update", "category", current.category_id, previous, publicRow_(current));
-  return publicRow_(current);
+  const nextName = sanitizeText_(payload.name === undefined ? current.name : payload.name, 80);
+  const nextNature = sanitizeText_(payload.nature === undefined ? current.nature : payload.nature, 40);
+  if (!nextName) throw sbError_("NAME_REQUIRED", "Nama kategori wajib diisi.", 400);
+  if (SB_CATEGORY_NATURES.indexOf(nextNature) === -1) throw sbError_("INVALID_CATEGORY_NATURE", "Sifat kategori tidak valid.", 400);
+  const duplicate = rows_("Categories").find(function(row) { return row.category_id !== current.category_id && row.status === "active" && String(row.name).toLowerCase() === nextName.toLowerCase() && row.transaction_type === current.transaction_type; });
+  if (duplicate) throw sbError_("DUPLICATE_CATEGORY", "Kategori aktif dengan nama tersebut sudah ada.", 409);
+  const updated = Object.assign({}, current, {
+    name: nextName,
+    nature: nextNature,
+    icon: sanitizeText_(payload.icon === undefined ? current.icon : payload.icon, 40),
+    row_version: rowVersion_(current) + 1,
+    updated_by: context.actor.user_id,
+    updated_at: nowIso_()
+  });
+  updateAuditedRow_("Categories", current, updated, context, "categories.update", "category", updated.category_id);
+  return publicRow_(updated);
+}
+
+function categoryArchiveDependencies_(categoryId) {
+  const dependencies = [];
+  if (rows_("Recurring_Rules").some(function(row) { return row.status === "active" && String(row.category_id) === String(categoryId); })) dependencies.push({ type: "active_recurring_rule" });
+  if (rows_("Budgets").some(function(row) { return row.status === "active" && String(row.category_id) === String(categoryId); })) dependencies.push({ type: "active_budget" });
+  return dependencies;
 }
 
 function archiveCategory_(context) {
   const current = findBy_("Categories", "category_id", context.payload.category_id);
   if (!current || current.status !== "active") throw sbError_("NOT_FOUND", "Kategori aktif tidak ditemukan.", 404);
   assertVersion_(current, context.rowVersion || context.payload.row_version);
-  const previous = publicRow_(current);
-  current.status = "archived"; current.row_version = rowVersion_(current) + 1; current.updated_by = context.actor.user_id; current.updated_at = nowIso_();
-  updateRow_("Categories", current.__row, current);
-  appendAudit_(context, "categories.archive", "category", current.category_id, previous, publicRow_(current));
-  return publicRow_(current);
+  const dependencies = categoryArchiveDependencies_(current.category_id);
+  if (dependencies.length) throw sbError_("CATEGORY_HAS_DEPENDENCIES", "Kategori belum dapat diarsipkan karena masih digunakan aturan atau budget aktif.", 409, dependencies);
+  const updated = Object.assign({}, current, { status: "archived", row_version: rowVersion_(current) + 1, updated_by: context.actor.user_id, updated_at: nowIso_() });
+  updateAuditedRow_("Categories", current, updated, context, "categories.archive", "category", updated.category_id);
+  return publicRow_(updated);
 }
 
 function listUsers_(context) {
@@ -111,25 +156,31 @@ function upsertUser_(context) {
   const payload = context.payload;
   const email = String(payload.email || "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw sbError_("INVALID_EMAIL", "Email anggota tidak valid.", 400);
-  const role = payload.role === "owner" ? "owner" : "member";
+  if (["owner", "member"].indexOf(payload.role) === -1) throw sbError_("INVALID_ROLE", "Role anggota harus owner atau member.", 400);
+  const role = payload.role;
   const current = findBy_("Users", "email", email);
   if (current) {
     assertVersion_(current, context.rowVersion || payload.row_version);
     if (current.role === "owner" && role !== "owner" && activeOwnerCount_() <= 1) throw sbError_("LAST_OWNER", "Owner terakhir tidak dapat diturunkan menjadi member.", 409);
-    const previous = publicRow_(current);
-    current.name = sanitizeText_(payload.name || current.name || email, 120);
-    current.role = role;
-    current.status = "active";
-    current.row_version = rowVersion_(current) + 1;
-    current.updated_at = nowIso_();
-    updateRow_("Users", current.__row, current);
-    appendAudit_(context, "users.upsert", "user", current.user_id, previous, { email: current.email, name: current.name, role: current.role, status: current.status, row_version: current.row_version });
-    return { user_id: current.user_id, email: current.email, name: current.name, role: current.role, status: current.status, row_version: current.row_version };
+    const updated = Object.assign({}, current, {
+      name: sanitizeText_(payload.name || current.name || email, 120), role: role, status: "active",
+      row_version: rowVersion_(current) + 1, updated_at: nowIso_()
+    });
+    updateAuditedRow_("Users", current, updated, context, "users.upsert", "user", updated.user_id,
+      { email: current.email, name: current.name, role: current.role, status: current.status, row_version: current.row_version },
+      { email: updated.email, name: updated.name, role: updated.role, status: updated.status, row_version: updated.row_version });
+    return { user_id: updated.user_id, email: updated.email, name: updated.name, role: updated.role, status: updated.status, row_version: updated.row_version };
   }
   const record = { user_id: uuid_(), firebase_uid: "", email: email, name: sanitizeText_(payload.name || email, 120), role: role, status: "active", row_version: 1, created_at: nowIso_(), updated_at: nowIso_() };
-  appendRow_("Users", record);
-  appendAudit_(context, "users.upsert", "user", record.user_id, null, { email: record.email, name: record.name, role: record.role, status: record.status, row_version: record.row_version });
+  appendAuditedRow_("Users", "user_id", record, context, "users.upsert", "user", null, { email: record.email, name: record.name, role: record.role, status: record.status, row_version: record.row_version });
   return { user_id: record.user_id, email: record.email, name: record.name, role: record.role, status: record.status, row_version: record.row_version };
+}
+
+function userDeactivateDependencies_(userId) {
+  const dependencies = [];
+  if (rows_("Accounts").some(function(row) { return row.status === "active" && row.owner_scope === "personal" && String(row.owner_user_id) === String(userId); })) dependencies.push({ type: "active_personal_account" });
+  if (rows_("Envelope_Rules").some(function(row) { return row.status === "active" && row.scope === "personal" && String(row.owner_user_id) === String(userId); })) dependencies.push({ type: "active_personal_envelope" });
+  return dependencies;
 }
 
 function deactivateUser_(context) {
@@ -138,11 +189,11 @@ function deactivateUser_(context) {
   if (current.user_id === context.actor.user_id) throw sbError_("SELF_DEACTIVATION_DENIED", "Akun sendiri tidak dapat dinonaktifkan dari aplikasi.", 409);
   assertVersion_(current, context.rowVersion || context.payload.row_version);
   if (current.role === "owner" && activeOwnerCount_() <= 1) throw sbError_("LAST_OWNER", "Owner terakhir tidak dapat dinonaktifkan.", 409);
-  const previous = publicRow_(current);
-  current.status = "inactive";
-  current.row_version = rowVersion_(current) + 1;
-  current.updated_at = nowIso_();
-  updateRow_("Users", current.__row, current);
-  appendAudit_(context, "users.deactivate", "user", current.user_id, previous, { email: current.email, role: current.role, status: current.status, row_version: current.row_version });
-  return { user_id: current.user_id, email: current.email, role: current.role, status: current.status, row_version: current.row_version };
+  const dependencies = userDeactivateDependencies_(current.user_id);
+  if (dependencies.length) throw sbError_("USER_HAS_DEPENDENCIES", "Anggota belum dapat dinonaktifkan karena masih memiliki rekening atau kantong personal aktif.", 409, dependencies);
+  const updated = Object.assign({}, current, { status: "inactive", row_version: rowVersion_(current) + 1, updated_at: nowIso_() });
+  updateAuditedRow_("Users", current, updated, context, "users.deactivate", "user", updated.user_id,
+    { email: current.email, role: current.role, status: current.status, row_version: current.row_version },
+    { email: updated.email, role: updated.role, status: updated.status, row_version: updated.row_version });
+  return { user_id: updated.user_id, email: updated.email, role: updated.role, status: updated.status, row_version: updated.row_version };
 }

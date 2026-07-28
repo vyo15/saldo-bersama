@@ -1,17 +1,15 @@
+import { currentMonthBoundsInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { calculateAccountBalance, calculateCashFlow, calculateEnvelopeUsage, calculateSafeToSpend } from "../../domain/finance.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { validateTransactionInput } from "../../domain/validation.js";
 
 const STORAGE_KEY = "saldo-bersama.demo.v2";
 const nowIso = () => new Date().toISOString();
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayInJakarta;
 const monthKey = () => today().slice(0, 7);
 const clone = (value) => structuredClone(value);
 const uuid = () => crypto.randomUUID();
-const endOfMonth = () => {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-};
+const endOfMonth = () => currentMonthBoundsInJakarta().end;
 
 const seed = () => ({
   user: { userId: "demo-owner", email: "demo@saldo-bersama.local", name: "Demo Owner", role: "owner" },
@@ -85,8 +83,8 @@ const overview = (state) => {
   const allocatedRemaining = envelopes.reduce((sum, item) => sum + Math.max(0, Number(item.remaining_amount || 0)), 0);
   const allocatableBalance = accounts.filter((item) => !["emergency_fund", "savings", "sinking_fund"].includes(item.account_type)).reduce((sum, item) => sum + Math.max(0, Number(item.balance || 0)), 0);
   const safeToSpend = calculateSafeToSpend({ accountBalances: accounts.filter((item) => !["emergency_fund", "savings", "sinking_fund"].includes(item.account_type)), reservedBills, emergencyFund: 0 });
-  const current = new Date();
-  const daysRemaining = Math.max(1, new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate() - current.getDate() + 1);
+  const monthBounds = currentMonthBoundsInJakarta();
+  const daysRemaining = Math.max(1, Number(monthBounds.end.slice(-2)) - Number(today().slice(-2)) + 1);
   return {
     periodKey: monthKey(), accountBalances: accounts,
     totalBalance: accounts.reduce((sum, item) => sum + item.balance, 0),

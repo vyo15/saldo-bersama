@@ -1,5 +1,6 @@
 import { env } from "../config/env.js";
 import { apiClient } from "./api/client.js";
+import { createIdempotencyKey } from "../domain/security.js";
 
 const urlBase64ToUint8Array = (value) => {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -32,6 +33,6 @@ export const enablePushNotifications = async () => {
     endpoint: json.endpoint,
     keys: json.keys,
     userAgent: navigator.userAgent.slice(0, 250),
-  });
+  }, { idempotencyKey: createIdempotencyKey() });
   return subscription;
 };

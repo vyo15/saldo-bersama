@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiArrowDown, FiArrowUp, FiPlus, FiShield, FiTarget } from "react-icons/fi";
+import { FiArrowDown, FiArrowUp, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -15,8 +15,9 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { apiClient } from "../../services/api/client.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { todayInJakarta } from "../../domain/dates.js";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayInJakarta;
 
 const GoalsPage = () => {
   const resource = useApiResource("goals.list");
@@ -80,6 +81,17 @@ const GoalsPage = () => {
     } catch (error) { setMovementState({ status: "error", error }); }
   };
 
+  const reverseLastMovement = async (goal) => {
+    if (!goal.last_movement_id) return;
+    const reason = window.prompt("Alasan pembatalan mutasi target terakhir (wajib):");
+    if (!reason?.trim()) return;
+    try {
+      await apiClient.request("goals.reverseMovement", { goal_movement_id: goal.last_movement_id, reason: reason.trim() }, { idempotencyKey: createIdempotencyKey() });
+      setMessage({ type: "success", text: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan." });
+      await Promise.all([resource.reload(), refresh()]);
+    } catch (error) { setMessage({ type: "danger", text: error.message }); }
+  };
+
   if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
@@ -95,7 +107,7 @@ const GoalsPage = () => {
             <Money value={goal.current_amount} />
             <ProgressBar value={goal.current_amount} max={goal.target_amount} label={goal.name} />
             <div className="goal-card__footer"><span>Target <Money value={goal.target_amount} /></span><span>{goal.target_date}</span></div>
-            <div className="goal-card__actions"><Button icon={FiArrowUp} onClick={() => openMovement(goal, "contribution")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdraw")}>Tarik</Button></div>
+            <div className="goal-card__actions"><Button icon={FiArrowUp} onClick={() => openMovement(goal, "contribution")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdraw")}>Tarik</Button>{goal.last_movement_id ? <Button icon={FiRotateCcw} onClick={() => reverseLastMovement(goal)}>Batalkan terakhir</Button> : null}</div>
           </Card>
         ))}
       </section>

@@ -10,6 +10,8 @@ cp .env.example .env.local
 npm run dev
 ```
 
+`.env.example` hanya template nama variable dan tidak berisi secret nyata. File `.env`, `.env.local`, serta nilai secret tidak boleh di-commit atau dikirim melalui chat.
+
 `npm run dev` hanya menjalankan frontend. Untuk frontend dan Vercel Functions sekaligus:
 
 ```bash
@@ -54,22 +56,43 @@ Urutan aman menambah pasangan:
 4. Tambahkan pengguna dengan email dan role yang sama.
 5. Minta pasangan login.
 
-Jangan menurunkan atau menonaktifkan owner terakhir. Role yang berbeda antara Vercel dan Sheets akan menghasilkan `ROLE_MISMATCH` dan akses ditolak.
+Jangan menurunkan atau menonaktifkan owner terakhir. Role hanya boleh persis `owner` atau `member`. Email invalid, role invalid, dan email duplikat dengan role berbeda membuat konfigurasi ditolak; tidak ada fallback diam-diam ke `member`. Role yang berbeda antara Vercel dan Sheets akan menghasilkan `ROLE_MISMATCH` dan akses ditolak.
 
 ## 4. Google Sheets dan Apps Script
 
 1. Buat spreadsheet DEV dan PROD terpisah.
-2. Buka **Extensions → Apps Script** dari spreadsheet.
-3. Salin isi folder `apps-script/`.
-4. Jalankan `setupSaldoBersama()` satu kali dari editor Apps Script.
-5. Isi Script Properties:
-   - `SPREADSHEET_ID` — otomatis oleh setup;
-   - `INTERNAL_SHARED_SECRET` — sama dengan Vercel, minimal 32 karakter;
+2. Buka **Extensions → Apps Script** dari spreadsheet yang benar.
+3. Buat/salin file berikut dengan nama yang sama:
+
+```text
+Code.gs
+DataStore.gs
+FinanceService.gs
+MasterDataService.gs
+NotificationWorker.gs
+PlanningService.gs
+RecoveryService.gs
+ReportsAndIntegrations.gs
+Router.gs
+Schema.gs
+Security.gs
+appsscript.json
+```
+
+4. Sebelum menyalin ke editor, jalankan `node scripts/check-apps-script-syntax.mjs`. Gate ini memeriksa syntax dan memastikan seluruh project dapat boot dalam urutan file alfabet maupun terbalik.
+5. Aktifkan tampilan manifest dari **Project Settings**, lalu ganti isi `appsscript.json` dengan file canonical source.
+6. Simpan seluruh file dan refresh editor. Dropdown fungsi wajib menampilkan `setupSaldoBersama`. Jika hanya `doGet`/`doPost` yang terlihat atau muncul error saat project dimuat, berhenti dan jangan deploy.
+7. Isi Script Property `INTERNAL_SHARED_SECRET` dengan nilai yang sama persis seperti Vercel. Jangan memasukkan `SESSION_SECRET` ke Apps Script.
+8. Jalankan `setupSaldoBersama()` dari editor Apps Script. Fungsi memakai `LockService`, menolak project yang sudah terikat ke spreadsheet lain, otomatis menyimpan `SPREADSHEET_ID`, membuat 21 sheet, header, config, proteksi dasar, lalu memvalidasi hasilnya.
+9. Setelah eksekusi selesai, pastikan Script Properties berisi `SETUP_STATUS=ready` dan `SETUP_VERIFIED_AT`, lalu refresh spreadsheet dan verifikasi 21 sheet canonical. Jika `SETUP_STATUS=failed`, jangan deploy dan jangan membuat/mengubah header manual; periksa `SETUP_DETAILS` serta log eksekusi.
+10. Isi property opsional setelah resource-nya siap:
    - `CALENDAR_ID` — ID kalender bersama;
-   - `PUSH_ENDPOINT_URL` — URL production `/api/push`, opsional;
+   - `PUSH_ENDPOINT_URL` — URL production `/api/push`;
    - `BACKUP_FOLDER_ID` — folder Drive khusus backup, opsional tetapi direkomendasikan.
-6. Jalankan `setupScheduledTriggers()` setelah properties siap.
-7. Deploy sebagai Web App dan simpan URL deployment pada `APPS_SCRIPT_WEB_APP_URL` di Vercel.
+11. Deploy sebagai Web App: execute as pemilik, access **Anyone**, lalu simpan URL `/exec` pada `APPS_SCRIPT_WEB_APP_URL` di Vercel.
+12. Jalankan `setupScheduledTriggers()` hanya setelah Calendar, backup, dan notifikasi telah diuji di DEV.
+
+Jangan membuat sheet/header manual dan jangan mengisi `SPREADSHEET_ID` manual sebelum setup.
 
 Trigger yang dibuat:
 
@@ -86,17 +109,25 @@ Isi seluruh Environment Variables sesuai `.env.example`. Secret dapat dibuat den
 openssl rand -hex 32
 ```
 
-Minimal:
+Variable browser yang wajib:
 
-- `SESSION_SECRET`;
-- `INTERNAL_SHARED_SECRET`;
-- `APPS_SCRIPT_WEB_APP_URL`;
+- `VITE_GOOGLE_CLIENT_ID`;
+- `VITE_FIREBASE_API_KEY`;
+- `VITE_APP_NAME`;
+- `VITE_DEMO_MODE=false`.
+
+Variable server Vercel yang wajib:
+
+- `FIREBASE_WEB_API_KEY`;
 - `ALLOWED_USERS_JSON`;
 - `ALLOWED_ORIGINS`;
-- Firebase key;
-- VAPID key bila Web Push digunakan.
+- `SESSION_SECRET`;
+- `INTERNAL_SHARED_SECRET`;
+- `APPS_SCRIPT_WEB_APP_URL` setelah Web App Apps Script tersedia.
 
-`ALLOWED_ORIGINS` harus berisi origin yang tepat. Request POST tanpa `Origin` atau dari origin yang tidak terdaftar ditolak.
+Web Push bersifat opsional dan memakai `VITE_VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, serta `VAPID_PRIVATE_KEY`. `SESSION_SECRET` dan `INTERNAL_SHARED_SECRET` harus dibuat terpisah, minimal 32 karakter, dan tidak boleh memakai nilai yang sama. `INTERNAL_SHARED_SECRET` wajib disalin ke Script Properties Apps Script dengan nilai persis sama.
+
+`ALLOWED_ORIGINS` harus berisi origin yang tepat, tanpa wildcard dan tanpa slash akhir. Gunakan origin lokal pada `.env.local`; pada Vercel Production gunakan origin production yang benar. Request POST tanpa `Origin` atau dari origin yang tidak terdaftar ditolak.
 
 Deploy dari repository GitHub private. Output frontend telah diatur ke `frontend/dist` melalui `vercel.json`.
 
@@ -120,7 +151,13 @@ npx web-push generate-vapid-keys
 
 Setiap browser/perangkat harus mengaktifkan izin sendiri. iPhone/iPad memerlukan aplikasi ditambahkan ke Home Screen. Kegagalan push tidak boleh menggagalkan transaksi keuangan.
 
-## 8. Verifikasi sebelum production
+## 8. Recovery dan maintenance darurat
+
+Restore/import menyalakan `maintenance_mode` pada sheet dan guard emergency pada Script Properties. Jika operasi utama gagal, safety backup dipulihkan dan diverifikasi ulang. Jika rollback juga gagal, maintenance tetap aktif dan API mengembalikan `RECOVERY_REQUIRED` dan tetap fail-closed.
+
+Jangan menghapus property emergency secara manual. Setelah recovery manual selesai, jalankan `releaseEmergencyMaintenanceMode` dari editor Apps Script. Fungsi itu hanya melepas maintenance jika schema dan integrity check lulus.
+
+## 9. Verifikasi sebelum production
 
 ```bash
 npm run check

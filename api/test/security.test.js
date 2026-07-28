@@ -14,6 +14,14 @@ test("allowlist memetakan role secara deny by default", () => withEnv({ ALLOWED_
   assert.equal(authorizeAction({ role: "owner" }, "backup.create"), true);
 }));
 
+
+test("allowlist menolak role, email, dan konflik duplikat yang invalid", () => {
+  assert.throws(() => parseAllowedUsers('[{"email":"user@gmail.com","role":"admin"}]'), /role tidak valid/);
+  assert.throws(() => parseAllowedUsers('[{"email":"bukan-email","role":"member"}]'), /email tidak valid/);
+  assert.throws(() => parseAllowedUsers('[{"email":"user@gmail.com","role":"owner"},{"email":"USER@gmail.com","role":"member"}]'), /role konflik/);
+  assert.deepEqual(parseAllowedUsers('[{"email":"user@gmail.com","role":"member"},{"email":"USER@gmail.com","role":"member"}]'), [{ email: "user@gmail.com", role: "member" }]);
+});
+
 test("session cookie ditandatangani dan dapat diverifikasi", () => withEnv({
   ALLOWED_USERS_JSON: '[{"email":"owner@gmail.com","role":"owner"}]',
   SESSION_SECRET: "12345678901234567890123456789012",

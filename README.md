@@ -58,6 +58,7 @@ Hasil default dibuat satu tingkat di atas folder project dengan nama `saldo-bers
 - `docs/GOOGLE_SHEETS_SCHEMA.md`
 - `docs/SETUP.md`
 - `docs/QA_CHECKLIST.md`
+- `docs/RECOVERY_RUNBOOK.md`
 - `docs/GIT_WORKFLOW.md`
 - `apps-script/README.md`
 

@@ -13,8 +13,8 @@
 | 8 — Buffer & target | Buffer bertingkat, sinking fund, tabungan, dana darurat, kontribusi sebagai transfer | Selesai |
 | 9 — Dashboard & laporan | Saldo aman, KPI, pertumbuhan keuangan, kategori, pengeluaran kecil | Selesai |
 | 10 — Calendar & notifikasi | Calendar sync guard, PWA receiver, izin perangkat, preferensi per jenis, quiet hours Jakarta tanpa menghabiskan retry | Connector selesai; VAPID perlu kredensial |
-| 11 — Backup & recovery | Backup Drive, preview restore bertoken, maintenance, safety backup, integrity verification, rollback otomatis, audit kritis | Selesai di source; restore drill wajib di DEV |
-| 12 — Hardening | Formula guard, saldo minus, duplicate/high amount confirmation, conflict, accessibility | Selesai dan diuji |
+| 11 — Backup & recovery | Backup Drive, checksum isi, owner binding, preview bertoken, maintenance, safety backup, fail-closed rollback, recovery manual, audit kritis | Selesai di source dan behavior test; restore drill nyata wajib di DEV |
+| 12 — Hardening | Formula/export guard, saldo, duplicate, conflict, compensation, idempotency fingerprint/expiry, linked-ledger reversal, integrity lintas sheet | Selesai di source dan test lokal; lint/build serta connector nyata tetap wajib |
 | 13 — Uji berdua | Checklist simulasi dan restore drill | Menunggu akun/resource DEV pengguna |
 
 ## Batas yang disengaja

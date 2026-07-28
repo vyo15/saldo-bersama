@@ -1,3 +1,54 @@
+function exportFields_() {
+  return Object.freeze({
+    Users: ["user_id", "email", "name", "role", "status", "created_at", "updated_at"],
+    Accounts: SB_SCHEMA.Accounts,
+    Categories: SB_SCHEMA.Categories,
+    Transactions: SB_SCHEMA.Transactions.filter(function(field) { return field !== "idempotency_key"; }),
+    Recurring_Rules: SB_SCHEMA.Recurring_Rules,
+    Recurring_Occurrences: SB_SCHEMA.Recurring_Occurrences.filter(function(field) { return field !== "calendar_event_id"; }),
+    Budgets: SB_SCHEMA.Budgets,
+    Envelope_Rules: SB_SCHEMA.Envelope_Rules,
+    Envelope_Periods: SB_SCHEMA.Envelope_Periods,
+    Envelope_Movements: SB_SCHEMA.Envelope_Movements,
+    Savings_Goals: SB_SCHEMA.Savings_Goals,
+    Goal_Movements: SB_SCHEMA.Goal_Movements,
+    Reconciliations: SB_SCHEMA.Reconciliations,
+    Period_Closures: ["closure_id", "period_key", "scope", "status", "reason", "row_version", "closed_by", "closed_at", "reopened_by", "reopened_at"],
+    Audit_Log: ["audit_id", "request_id", "timestamp", "actor_email", "action", "entity_type", "entity_id", "result"]
+  });
+}
+
+function canonicalSnapshotCell_(value) {
+  if (value instanceof Date) return Utilities.formatDate(value, SB_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+  if (value === null || value === undefined) return "";
+  return value;
+}
+
+function spreadsheetSnapshotPayload_(spreadsheet) {
+  const volatileConfigKeys = new Set(["maintenance_mode", "recovery_required", "recovery_status", "recovery_details"]);
+  return Object.keys(SB_SCHEMA).map(function(name) {
+    const sheet = spreadsheet.getSheetByName(name);
+    if (!sheet) throw sbError_("SCHEMA_MISSING", "Sheet tidak ditemukan saat membuat checksum: " + name, 503);
+    const width = SB_SCHEMA[name].length;
+    const rowCount = Math.max(1, sheet.getLastRow());
+    const range = sheet.getRange(1, 1, rowCount, width);
+    let values = range.getValues().map(function(row) { return row.map(canonicalSnapshotCell_); });
+    let formulas = range.getFormulas();
+    if (name === "System_Config") {
+      const keepIndexes = values.map(function(row, index) { return index === 0 || !volatileConfigKeys.has(String(row[0] || "")); })
+        .map(function(keep, index) { return keep ? index : -1; })
+        .filter(function(index) { return index >= 0; });
+      values = keepIndexes.map(function(index) { return values[index]; });
+      formulas = keepIndexes.map(function(index) { return formulas[index]; });
+    }
+    return { name: name, values: values, formulas: formulas };
+  });
+}
+
+function spreadsheetSnapshotChecksum_(spreadsheet) {
+  return sha256Hex_(canonicalJson_(spreadsheetSnapshotPayload_(spreadsheet)));
+}
+
 function validateBackupSpreadsheet_(fileId) {
   let source;
   try { source = SpreadsheetApp.openById(fileId); } catch (error) { throw sbError_("BACKUP_NOT_ACCESSIBLE", "File backup tidak dapat dibuka.", 404); }
@@ -9,6 +60,9 @@ function validateBackupSpreadsheet_(fileId) {
     if (sheet.getLastColumn() !== expected.length) { issues.push("Jumlah kolom tidak sesuai: " + name); return; }
     const actual = sheet.getRange(1, 1, 1, expected.length).getValues()[0];
     if (JSON.stringify(actual) !== JSON.stringify(expected)) issues.push("Header tidak sesuai: " + name);
+    const rowCount = Math.max(1, sheet.getLastRow());
+    const formulas = sheet.getRange(1, 1, rowCount, expected.length).getFormulas();
+    if (formulas.some(function(row) { return row.some(Boolean); })) issues.push("Formula tidak diizinkan pada backup database: " + name);
   });
   const config = source.getSheetByName("System_Config");
   let version = "";
@@ -18,22 +72,47 @@ function validateBackupSpreadsheet_(fileId) {
     version = match ? String(match[1]) : "";
   }
   if (version !== SB_SCHEMA_VERSION) issues.push("Schema version backup tidak didukung: " + version);
-  return { source: source, issues: issues, schemaVersion: version };
+  return { source: source, issues: issues, schemaVersion: version, checksum: issues.length ? "" : spreadsheetSnapshotChecksum_(source) };
+}
+
+
+function backupOwnerByEmail_(spreadsheet, email) {
+  const sheet = spreadsheet.getSheetByName("Users");
+  if (!sheet) return null;
+  const headers = SB_SCHEMA.Users;
+  const rowCount = Math.max(0, sheet.getLastRow() - 1);
+  const values = rowCount ? sheet.getRange(2, 1, rowCount, headers.length).getValues() : [];
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const emailIndex = headers.indexOf("email");
+  const roleIndex = headers.indexOf("role");
+  const statusIndex = headers.indexOf("status");
+  const row = values.find(function(item) {
+    return String(item[emailIndex] || "").trim().toLowerCase() === normalizedEmail && item[roleIndex] === "owner" && item[statusIndex] === "active";
+  });
+  if (!row) return null;
+  return headers.reduce(function(result, field, index) { result[field] = row[index]; return result; }, {});
+}
+
+function assertBackupOwner_(spreadsheet, actorEmail) {
+  const owner = backupOwnerByEmail_(spreadsheet, actorEmail);
+  if (!owner) throw sbError_("BACKUP_OWNER_MISMATCH", "Backup tidak mencatat akun aktif ini sebagai owner.", 403);
+  return owner;
 }
 
 function backupPreview_(context) {
   const fileId = String(context.payload.backupFileId || "");
   const validation = validateBackupSpreadsheet_(fileId);
   if (validation.issues.length) throw sbError_("INVALID_BACKUP", "Backup gagal divalidasi.", 400, validation.issues);
+  assertBackupOwner_(validation.source, context.actor.email);
   const summary = {};
   Object.keys(SB_SCHEMA).forEach(function(name) {
     const sourceSheet = validation.source.getSheetByName(name);
-    const currentSheet = getSheet_(name);
-    summary[name] = { backupRows: Math.max(0, sourceSheet.getLastRow() - 1), currentRows: Math.max(0, currentSheet.getLastRow() - 1) };
+    const currentSheet = getSpreadsheet_().getSheetByName(name);
+    summary[name] = { backupRows: Math.max(0, sourceSheet.getLastRow() - 1), currentRows: currentSheet ? Math.max(0, currentSheet.getLastRow() - 1) : 0, currentSheetMissing: !currentSheet };
   });
   const token = uuid_();
-  CacheService.getScriptCache().put("restore-preview:" + token, JSON.stringify({ fileId: fileId, actorId: context.actor.user_id }), 600);
-  return { backupFileId: fileId, schemaVersion: validation.schemaVersion, summary: summary, previewToken: token, expiresInSeconds: 600 };
+  CacheService.getScriptCache().put("restore-preview:" + token, JSON.stringify({ fileId: fileId, actorId: context.actor.user_id, checksum: validation.checksum }), 600);
+  return { backupFileId: fileId, schemaVersion: validation.schemaVersion, checksum: validation.checksum, summary: summary, previewToken: token, expiresInSeconds: 600 };
 }
 
 function replaceSheetData_(targetSpreadsheet, sourceSpreadsheet, name) {
@@ -41,6 +120,7 @@ function replaceSheetData_(targetSpreadsheet, sourceSpreadsheet, name) {
   const source = sourceSpreadsheet.getSheetByName(name);
   const width = SB_SCHEMA[name].length;
   const rowCount = source.getLastRow();
+  if (!target || !source) throw sbError_("SCHEMA_MISSING", "Sheet snapshot tidak lengkap: " + name, 503);
   if (target.getMaxRows() < Math.max(2, rowCount)) target.insertRowsAfter(target.getMaxRows(), Math.max(2, rowCount) - target.getMaxRows());
   if (target.getLastRow() > 1) target.getRange(2, 1, target.getLastRow() - 1, width).clearContent();
   if (rowCount > 1) target.getRange(2, 1, rowCount - 1, width).setValues(source.getRange(2, 1, rowCount - 1, width).getValues());
@@ -53,6 +133,45 @@ function applySpreadsheetSnapshot_(sourceId) {
   SpreadsheetApp.flush();
 }
 
+function snapshotVerificationIssues_(expectedChecksum) {
+  const schema = validateSchema_().map(function(message) { return { code: "SCHEMA", message: message }; });
+  const integrity = schema.length ? [] : integrityIssues_();
+  const checksum = schema.length ? "" : spreadsheetSnapshotChecksum_(getSpreadsheet_());
+  const checksumIssues = expectedChecksum && checksum !== expectedChecksum ? [{ code: "CHECKSUM_MISMATCH", expected: expectedChecksum, actual: checksum }] : [];
+  return { issues: schema.concat(integrity).concat(checksumIssues), checksum: checksum };
+}
+
+function setRecoveryOperationState_(status, safety, details) {
+  const payload = Object.assign({}, details || {}, { safetyBackupFileId: safety && safety.fileId || "", safetyBackupChecksum: safety && safety.checksum || "" });
+  setRecoveryRequired_(status, payload);
+  upsertConfig_("maintenance_mode", "true");
+}
+
+function rollbackToSafetyOrFailClosed_(operation, safety, originalError, context) {
+  try {
+    applySpreadsheetSnapshot_(safety.fileId);
+    upsertConfig_("maintenance_mode", "true");
+    const verification = snapshotVerificationIssues_(safety.checksum);
+    if (verification.issues.length) throw sbError_("ROLLBACK_VERIFICATION_FAILED", "Safety backup tidak lolos verifikasi setelah rollback.", 503, verification.issues);
+    appendAudit_(context, operation + ".rollback", operation, safety.fileId, null, {
+      safetyBackupFileId: safety.fileId,
+      rollbackChecksum: verification.checksum,
+      cause: originalError.code || originalError.message
+    });
+    clearRecoveryState_();
+    upsertConfig_("maintenance_mode", "false");
+    return { rolledBack: true, checksum: verification.checksum };
+  } catch (rollbackError) {
+    setRecoveryOperationState_(operation + "_recovery_required", safety, {
+      operation: operation,
+      originalError: originalError.code || originalError.message,
+      rollbackError: rollbackError.code || rollbackError.message,
+      rollbackDetails: rollbackError.details || null
+    });
+    throw sbError_("RECOVERY_REQUIRED", "Pemulihan otomatis gagal. Aplikasi tetap terkunci. Gunakan safety backup untuk pemulihan manual.", 503, recoveryDetails_());
+  }
+}
+
 function restoreApply_(context) {
   const payload = context.payload;
   const cached = CacheService.getScriptCache().get("restore-preview:" + payload.previewToken);
@@ -62,25 +181,57 @@ function restoreApply_(context) {
   if (payload.confirmation !== "RESTORE SALDO BERSAMA") throw sbError_("CONFIRMATION_REQUIRED", "Ketik RESTORE SALDO BERSAMA untuk melanjutkan.", 400);
   const validation = validateBackupSpreadsheet_(payload.backupFileId);
   if (validation.issues.length) throw sbError_("INVALID_BACKUP", "Backup tidak valid.", 400, validation.issues);
+  assertBackupOwner_(validation.source, context.actor.email);
+  if (validation.checksum !== preview.checksum) throw sbError_("BACKUP_CHANGED_AFTER_PREVIEW", "Isi backup berubah setelah preview. Jalankan preview kembali.", 409, { previewChecksum: preview.checksum, currentChecksum: validation.checksum });
   const safety = createBackup_({ actor: context.actor, action: "backup.create", payload: { type: "pre-restore" }, requestId: context.requestId });
-  upsertConfig_("maintenance_mode", "true");
+  setRecoveryOperationState_("restore_applying", safety, { operation: "restore", sourceFileId: payload.backupFileId, sourceChecksum: validation.checksum });
   try {
     applySpreadsheetSnapshot_(payload.backupFileId);
     upsertConfig_("maintenance_mode", "true");
-    const issues = validateSchema_().map(function(message) { return { code: "SCHEMA", message: message }; }).concat(integrityIssues_());
-    if (issues.length) {
-      applySpreadsheetSnapshot_(safety.fileId);
-      upsertConfig_("maintenance_mode", "false");
-      throw sbError_("RESTORE_INTEGRITY_FAILED", "Restore dibatalkan dan safety backup dipulihkan.", 409, issues);
-    }
-    upsertConfig_("maintenance_mode", "false");
-    appendAudit_(context, "restore.apply", "restore", payload.backupFileId, null, { safetyBackupFileId: safety.fileId, integrity: "passed" });
+    const verification = snapshotVerificationIssues_(validation.checksum);
+    if (verification.issues.length) throw sbError_("RESTORE_INTEGRITY_FAILED", "Restore tidak lolos verifikasi.", 409, verification.issues);
+    appendAudit_(context, "restore.apply", "restore", payload.backupFileId, null, { safetyBackupFileId: safety.fileId, sourceChecksum: validation.checksum, integrity: "passed" });
     CacheService.getScriptCache().remove("restore-preview:" + payload.previewToken);
-    return { restored: true, sourceFileId: payload.backupFileId, safetyBackup: safety, verifiedAt: nowIso_() };
-  } catch (error) {
+    clearRecoveryState_();
     upsertConfig_("maintenance_mode", "false");
-    throw error;
+    return { restored: true, sourceFileId: payload.backupFileId, sourceChecksum: validation.checksum, safetyBackup: safety, verifiedAt: nowIso_() };
+  } catch (error) {
+    const rollback = rollbackToSafetyOrFailClosed_("restore", safety, error, context);
+    throw sbError_("RESTORE_ROLLED_BACK", "Restore gagal dan data berhasil dipulihkan dari safety backup.", 409, { cause: error.code || "RESTORE_FAILED", details: error.details || null, safetyBackupFileId: safety.fileId, rollbackChecksum: rollback.checksum });
   }
+}
+
+function exportRows_(sheetName) {
+  const fields = exportFields_()[sheetName];
+  return rows_(sheetName).map(function(row) {
+    const result = {};
+    fields.forEach(function(field) { result[field] = row[field] === undefined ? "" : row[field]; });
+    return result;
+  });
+}
+
+function safeExportCell_(value) {
+  if (typeof value !== "string") return value === undefined || value === null ? "" : value;
+  return /^[=+\-@]/.test(value) ? "'" + value : value;
+}
+
+function csvEscape_(value) { return '"' + String(safeExportCell_(value)).replace(/"/g, '""') + '"'; }
+
+function createSanitizedExportSpreadsheet_(name) {
+  const temp = SpreadsheetApp.create(name);
+  const defaultSheet = temp.getSheets()[0];
+  let first = true;
+  Object.keys(exportFields_()).forEach(function(sheetName) {
+    const sheet = first ? defaultSheet.setName(sheetName) : temp.insertSheet(sheetName);
+    first = false;
+    const fields = exportFields_()[sheetName];
+    const data = exportRows_(sheetName);
+    sheet.getRange(1, 1, 1, fields.length).setValues([fields]);
+    if (data.length) sheet.getRange(2, 1, data.length, fields.length).setValues(data.map(function(row) { return fields.map(function(field) { return safeExportCell_(row[field]); }); }));
+    sheet.setFrozenRows(1);
+  });
+  SpreadsheetApp.flush();
+  return temp;
 }
 
 function createExport_(context) {
@@ -89,28 +240,49 @@ function createExport_(context) {
   const timestamp = Utilities.formatDate(new Date(), SB_TIMEZONE, "yyyyMMdd-HHmmss");
   let blob;
   let fileName;
-  if (format === "xlsx") {
-    fileName = "saldo-bersama-full-" + timestamp + ".xlsx";
-    const exportUrl = "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(getSpreadsheet_().getId()) + "/export?mimeType=" + encodeURIComponent("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    const response = UrlFetchApp.fetch(exportUrl, { headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
-    if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw sbError_("EXPORT_FAILED", "Export Excel gagal.", 502);
-    blob = response.getBlob().setName(fileName);
-  } else if (format === "csv") {
-    const headers = SB_SCHEMA.Transactions;
-    const lines = [headers.join(",")].concat(rows_("Transactions").map(function(row) {
-      return headers.map(function(header) { return '"' + String(row[header] === undefined ? "" : row[header]).replace(/"/g, '""') + '"'; }).join(",");
-    }));
-    fileName = "saldo-bersama-transaksi-" + timestamp + ".csv";
-    blob = Utilities.newBlob(lines.join("\n"), "text/csv", fileName);
-  } else {
-    const data = {};
-    Object.keys(SB_SCHEMA).filter(function(name) { return name !== "Push_Subscriptions"; }).forEach(function(name) { data[name] = rows_(name).map(publicRow_); });
-    fileName = "saldo-bersama-export-" + timestamp + ".json";
-    blob = Utilities.newBlob(JSON.stringify({ schemaVersion: SB_SCHEMA_VERSION, exportedAt: nowIso_(), data: data }, null, 2), "application/json", fileName);
+  let outputFile = null;
+  let temporarySpreadsheet = null;
+  let operationError = null;
+  try {
+    if (format === "xlsx") {
+      fileName = "saldo-bersama-data-" + timestamp + ".xlsx";
+      temporarySpreadsheet = createSanitizedExportSpreadsheet_("saldo-bersama-export-temp-" + timestamp);
+      const exportUrl = "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(temporarySpreadsheet.getId()) + "/export?mimeType=" + encodeURIComponent("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      const response = UrlFetchApp.fetch(exportUrl, { headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+      if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw sbError_("EXPORT_FAILED", "Export Excel gagal.", 502);
+      blob = response.getBlob().setName(fileName);
+    } else if (format === "csv") {
+      const fields = exportFields_().Transactions;
+      const lines = [fields.map(csvEscape_).join(",")].concat(exportRows_("Transactions").map(function(row) { return fields.map(function(field) { return csvEscape_(row[field]); }).join(","); }));
+      fileName = "saldo-bersama-transaksi-" + timestamp + ".csv";
+      blob = Utilities.newBlob(lines.join("\n"), "text/csv", fileName);
+    } else {
+      const data = {};
+      Object.keys(exportFields_()).forEach(function(name) { data[name] = exportRows_(name); });
+      fileName = "saldo-bersama-export-" + timestamp + ".json";
+      blob = Utilities.newBlob(JSON.stringify({ schemaVersion: SB_SCHEMA_VERSION, exportedAt: nowIso_(), data: data }, null, 2), "application/json", fileName);
+    }
+    outputFile = DriveApp.createFile(blob);
+    appendAudit_(context, "export.create", "export", outputFile.getId(), null, { format: format, fileName: fileName, sanitized: true });
+    return { fileId: outputFile.getId(), fileName: fileName, format: format, createdAt: nowIso_() };
+  } catch (error) {
+    operationError = error;
+    if (outputFile) {
+      try { outputFile.setTrashed(true); }
+      catch (cleanupError) {
+        recordExternalCleanupRequired_("drive_export_file", { fileId: outputFile.getId(), cause: error.code || error.message, cleanupError: cleanupError.message });
+      }
+    }
+    throw error;
+  } finally {
+    if (temporarySpreadsheet) {
+      try { DriveApp.getFileById(temporarySpreadsheet.getId()).setTrashed(true); }
+      catch (cleanupError) {
+        const cleanup = recordExternalCleanupRequired_("drive_export_temp", { temporarySpreadsheetId: temporarySpreadsheet.getId(), cleanupError: cleanupError.message, operationError: operationError && (operationError.code || operationError.message) });
+        if (!operationError) throw sbError_("DRIVE_CLEANUP_REQUIRED", "Export selesai tetapi spreadsheet sementara tidak dapat dibersihkan.", 503, cleanup);
+      }
+    }
   }
-  const file = DriveApp.createFile(blob);
-  appendAudit_(context, "export.create", "export", file.getId(), null, { format: format, fileName: fileName });
-  return { fileId: file.getId(), fileName: fileName, format: format, createdAt: nowIso_() };
 }
 
 function importPreview_(context) {
@@ -130,20 +302,22 @@ function importPreview_(context) {
       candidate.description = sanitizeText_(candidate.description, 250);
       candidate.merchant = sanitizeText_(candidate.merchant, 120);
       candidate.overspend_reason = sanitizeText_(candidate.overspend_reason, 180);
-      if (type !== "income" && type !== "refund") activeAccount_(candidate.source_account_id);
-      if (["income", "refund", "transfer"].indexOf(type) !== -1) activeAccount_(candidate.destination_account_id);
+      if (type !== "income" && type !== "refund") { const source = activeAccount_(candidate.source_account_id); assertAccountAccess_(context, source); }
+      if (["income", "refund", "transfer"].indexOf(type) !== -1) { const destination = activeAccount_(candidate.destination_account_id); assertAccountAccess_(context, destination); }
       if (type === "transfer" && String(candidate.source_account_id) === String(candidate.destination_account_id)) throw sbError_("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
       if (["income", "expense", "refund"].indexOf(type) !== -1 && !candidate.category_id) throw sbError_("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
       activeCategory_(candidate.category_id, type === "income" ? "income" : type === "expense" ? "expense" : type);
-      if (type === "expense") validateEnvelopeForExpense_(candidate, candidate.amount);
-      const fingerprint = [candidate.transaction_date, type, candidate.source_account_id || "", candidate.destination_account_id || "", candidate.amount, String(candidate.description || "").toLowerCase()].join("|");
+      if (type === "expense") validateEnvelopeForExpense_(candidate, candidate.amount, undefined, context);
+      const fingerprint = sha256Hex_(canonicalJson_([candidate.transaction_date, type, candidate.source_account_id || "", candidate.destination_account_id || "", candidate.amount, String(candidate.description || "").toLowerCase()]));
       if (batchFingerprints.has(fingerprint) || duplicateTransaction_(candidate)) duplicates.push({ index: index, record: candidate });
       else { batchFingerprints.add(fingerprint); valid.push({ index: index, record: candidate }); }
     } catch (error) { invalid.push({ index: index, code: error.code || "INVALID_RECORD", message: error.message }); }
   });
   const token = uuid_();
-  CacheService.getScriptCache().put("import-preview:" + token, JSON.stringify({ actorId: context.actor.user_id, records: valid.map(function(item) { return item.record; }) }), 600);
-  return { previewToken: token, validCount: valid.length, invalid: invalid, duplicates: duplicates, expiresInSeconds: 600 };
+  const previewPayload = { actorId: context.actor.user_id, records: valid.map(function(item) { return item.record; }) };
+  previewPayload.fingerprint = sha256Hex_(canonicalJson_(previewPayload.records));
+  CacheService.getScriptCache().put("import-preview:" + token, JSON.stringify(previewPayload), 600);
+  return { previewToken: token, validCount: valid.length, invalid: invalid, duplicates: duplicates, fingerprint: previewPayload.fingerprint, expiresInSeconds: 600 };
 }
 
 function importApply_(context) {
@@ -151,9 +325,10 @@ function importApply_(context) {
   if (!cached) throw sbError_("PREVIEW_EXPIRED", "Preview import sudah kedaluwarsa.", 409);
   const preview = JSON.parse(cached);
   if (preview.actorId !== context.actor.user_id) throw sbError_("PREVIEW_MISMATCH", "Preview import bukan milik actor ini.", 403);
+  if (sha256Hex_(canonicalJson_(preview.records)) !== preview.fingerprint) throw sbError_("PREVIEW_CORRUPT", "Data preview import tidak konsisten.", 409);
   if (context.payload.confirmation !== "IMPORT TRANSAKSI") throw sbError_("CONFIRMATION_REQUIRED", "Ketik IMPORT TRANSAKSI untuk melanjutkan.", 400);
   const safety = createBackup_({ actor: context.actor, action: "backup.create", payload: { type: "pre-import" }, requestId: context.requestId });
-  upsertConfig_("maintenance_mode", "true");
+  setRecoveryOperationState_("import_applying", safety, { operation: "import", previewToken: context.payload.previewToken, recordCount: preview.records.length });
   try {
     const created = preview.records.map(function(record) {
       const childContext = Object.assign({}, context, { payload: Object.assign({}, record, { confirm_duplicate: false }), idempotencyKey: uuid_(), action: "transactions.create" });
@@ -161,13 +336,46 @@ function importApply_(context) {
     });
     const issues = integrityIssues_();
     if (issues.length) throw sbError_("IMPORT_INTEGRITY_FAILED", "Import menghasilkan masalah integritas.", 409, issues);
-    CacheService.getScriptCache().remove("import-preview:" + context.payload.previewToken);
-    upsertConfig_("maintenance_mode", "false");
     appendAudit_(context, "import.apply", "import", context.requestId, null, { createdCount: created.length, safetyBackupFileId: safety.fileId, integrity: "passed" });
+    CacheService.getScriptCache().remove("import-preview:" + context.payload.previewToken);
+    clearRecoveryState_();
+    upsertConfig_("maintenance_mode", "false");
     return { imported: created.length, safetyBackup: safety, verifiedAt: nowIso_() };
   } catch (error) {
-    applySpreadsheetSnapshot_(safety.fileId);
-    upsertConfig_("maintenance_mode", "false");
-    throw sbError_("IMPORT_ROLLED_BACK", "Import gagal dan data telah dipulihkan dari safety backup.", 409, { cause: error.code || "IMPORT_FAILED", details: error.details || null });
+    const rollback = rollbackToSafetyOrFailClosed_("import", safety, error, context);
+    throw sbError_("IMPORT_ROLLED_BACK", "Import gagal dan data berhasil dipulihkan dari safety backup.", 409, { cause: error.code || "IMPORT_FAILED", details: error.details || null, safetyBackupFileId: safety.fileId, rollbackChecksum: rollback.checksum });
   }
+}
+
+function manualRecoveryActorFromBackup_(spreadsheet) {
+  const email = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase();
+  const owner = backupOwnerByEmail_(spreadsheet, email);
+  if (!owner) throw sbError_("FORBIDDEN", "Pemulihan manual hanya boleh dijalankan owner aktif yang tercatat pada safety backup.", 403);
+  return owner;
+}
+
+function recoverFromSafetyBackup(safetyFileId, confirmation) {
+  if (confirmation !== "RECOVER SALDO BERSAMA") throw sbError_("CONFIRMATION_REQUIRED", "Ketik RECOVER SALDO BERSAMA untuk pemulihan manual.", 400);
+  const recovery = recoveryDetails_();
+  const expectedFileId = recovery.details && recovery.details.safetyBackupFileId;
+  if (!recovery.recoveryRequired || !expectedFileId || String(expectedFileId) !== String(safetyFileId)) throw sbError_("RECOVERY_FILE_MISMATCH", "Safety backup tidak sesuai state recovery aktif.", 409, recovery);
+  const validation = validateBackupSpreadsheet_(safetyFileId);
+  if (validation.issues.length) throw sbError_("INVALID_BACKUP", "Safety backup tidak valid.", 400, validation.issues);
+  const actor = manualRecoveryActorFromBackup_(validation.source);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) throw sbError_("LOCK_TIMEOUT", "Pemulihan manual gagal memperoleh lock.", 409);
+  try {
+    applySpreadsheetSnapshot_(safetyFileId);
+    upsertConfig_("maintenance_mode", "true");
+    const verification = snapshotVerificationIssues_(validation.checksum);
+    if (verification.issues.length) throw sbError_("RECOVERY_VERIFICATION_FAILED", "Pemulihan manual belum lolos verifikasi.", 503, verification.issues);
+    appendAudit_({ actor: actor, requestId: "manual-recovery:" + uuid_() }, "recovery.manual", "restore", safetyFileId, null, { checksum: verification.checksum, previousRecoveryStatus: recovery.status });
+    clearRecoveryState_();
+    upsertConfig_("maintenance_mode", "false");
+    SpreadsheetApp.flush();
+    return { recovered: true, safetyFileId: safetyFileId, checksum: verification.checksum, verifiedAt: nowIso_() };
+  } catch (error) {
+    setRecoveryOperationState_("manual_recovery_required", { fileId: safetyFileId, checksum: validation.checksum }, { cause: error.code || error.message, details: error.details || null });
+    throw error;
+  } finally { lock.releaseLock(); }
 }

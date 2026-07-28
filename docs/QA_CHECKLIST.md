@@ -8,6 +8,11 @@ npm run check
 
 Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyatakan build/lint/test berhasil tanpa eksekusi nyata.
 
+- [ ] `check-apps-script-syntax.mjs` memuat seluruh file dalam shared runtime pada urutan alfabet dan terbalik.
+- [ ] Setelah seluruh source ditempel, dropdown editor menampilkan `setupSaldoBersama`, `doGet`, dan `doPost` tanpa startup error.
+- [ ] Setup memperoleh lock, menghasilkan `SETUP_STATUS=ready`, dan hanya selesai setelah schema tervalidasi.
+- [ ] Setup parsial menghasilkan `SETUP_STATUS=failed`; deployment dihentikan sampai root cause selesai.
+
 ## Ledger dan integritas
 
 - [ ] Nominal nol, negatif, desimal, NaN, Infinity, dan terlalu besar ditolak.
@@ -43,6 +48,7 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 ## Auth dan security
 
 - [ ] Hanya akun allowlist dapat membuat session.
+- [ ] `ALLOWED_USERS_JSON` menolak email invalid, role selain `owner`/`member`, dan duplikat email dengan role konflik.
 - [ ] Email belum terverifikasi ditolak.
 - [ ] Role Vercel dan sheet `Users` yang berbeda ditolak.
 - [ ] Owner terakhir tidak dapat dinonaktifkan atau diturunkan tanpa pengganti.
@@ -65,6 +71,15 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Draft offline tidak mengubah saldo maupun sisa kantong.
 - [ ] Tombol simpan disabled selama request.
 - [ ] Retry timeout memakai idempotency key yang sama.
+
+## Environment dan secret
+
+- [ ] `.env.example` hanya berisi placeholder; tidak ada `.env`, token, client secret, private key, atau secret nyata di Git/ZIP.
+- [ ] `VITE_` hanya digunakan untuk konfigurasi browser yang memang publik.
+- [ ] `SESSION_SECRET` dan `INTERNAL_SHARED_SECRET` berbeda dan minimal 32 karakter.
+- [ ] `INTERNAL_SHARED_SECRET` pada Vercel sama persis dengan Script Properties Apps Script.
+- [ ] `ALLOWED_ORIGINS` berisi origin exact tanpa wildcard atau slash akhir.
+- [ ] `APPS_SCRIPT_WEB_APP_URL` memakai deployment `/exec`, bukan `/dev` atau URL editor.
 
 ## Integrasi dan recovery
 
@@ -89,3 +104,17 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Grafik memiliki ringkasan teks.
 - [ ] Status tidak dibedakan hanya melalui warna.
 - [ ] Data sensitif tidak muncul di URL, metadata, title, push, atau Calendar.
+
+## Hardening behavior tests
+
+- [ ] Restore preview tetap berjalan ketika sheet aktif hilang.
+- [ ] Backup dari household/owner lain ditolak.
+- [ ] Restore schema-rusak memakai idempotency Script Properties dan key yang sama.
+- [ ] Apply utama gagal selalu mencoba rollback safety.
+- [ ] Rollback gagal mempertahankan maintenance dan `recovery_required`.
+- [ ] Audit gagal mengompensasi create/update; compensation gagal mengunci aplikasi.
+- [ ] Pembayaran recurring/mutasi goal tidak meninggalkan audit sukses prematur saat rollback.
+- [ ] Linked transaction hanya dapat dibatalkan melalui modul asal.
+- [ ] Export CSV/XLSX menetralkan formula dan tidak menyertakan token/subscription/idempotency internal.
+- [ ] Integrity check memeriksa seluruh referensi lintas sheet dan over-allocation per rekening.
+- [ ] Notification `no_subscription`/`failed` dapat diantrekan ulang setelah kondisi membaik.

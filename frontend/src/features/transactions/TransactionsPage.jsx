@@ -11,6 +11,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { apiClient } from "../../services/api/client.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
+import { createIdempotencyKey } from "../../domain/security.js";
 
 const TransactionsPage = () => {
   const resource = useApiResource("transactions.list", { period: "current", limit: 100 });
@@ -34,7 +35,7 @@ const TransactionsPage = () => {
   const cancelTransaction = async (item) => {
     const reason = window.prompt("Alasan pembatalan transaksi (wajib):");
     if (!reason?.trim()) return;
-    await apiClient.request("transactions.cancel", { transactionId: item.transaction_id, rowVersion: item.row_version, reason: reason.trim() }, { rowVersion: item.row_version });
+    await apiClient.request("transactions.cancel", { transactionId: item.transaction_id, rowVersion: item.row_version, reason: reason.trim() }, { rowVersion: item.row_version, idempotencyKey: createIdempotencyKey() });
     await Promise.all([resource.reload(), refresh()]);
   };
 
@@ -54,7 +55,9 @@ const TransactionsPage = () => {
         <div className="data-table-wrap">
           <table className="data-table">
             <thead><tr><th>Tanggal</th><th>Transaksi</th><th>Rekening</th><th>Kategori</th><th>Status</th><th className="align-right">Nominal</th><th><span className="sr-only">Aksi</span></th></tr></thead>
-            <tbody>{items.map((item) => (
+            <tbody>{items.map((item) => {
+              const linkedModule = item.recurring_occurrence_id ? "Tagihan" : item.goal_id ? "Target" : "";
+              return (
               <tr key={item.transaction_id}>
                 <td><time>{item.transaction_date}</time></td>
                 <td><strong>{item.description || item.merchant || "Tanpa keterangan"}</strong><small>{item.transaction_type}</small></td>
@@ -62,9 +65,10 @@ const TransactionsPage = () => {
                 <td>{categoryLookup[item.category_id] || (item.transaction_type === "transfer" ? "Transfer internal" : "Belum dialokasikan")}</td>
                 <td><StatusBadge status={item.status} /></td>
                 <td className="align-right"><Money value={item.amount} tone={item.transaction_type === "expense" ? "negative" : item.transaction_type === "income" ? "positive" : "default"} /></td>
-                <td>{item.status === "active" ? <div className="button-group"><button type="button" className="icon-button" onClick={() => { setEditingTransaction(item); setFormOpen(true); }} aria-label={`Edit ${item.description || "transaksi"}`}><FiEdit2 /></button><button type="button" className="icon-button icon-button--danger" onClick={() => cancelTransaction(item)} aria-label={`Batalkan ${item.description || "transaksi"}`}><FiTrash2 /></button></div> : null}</td>
+                <td>{item.status === "active" ? linkedModule ? <small>Kelola dari menu {linkedModule}</small> : <div className="button-group"><button type="button" className="icon-button" onClick={() => { setEditingTransaction(item); setFormOpen(true); }} aria-label={`Edit ${item.description || "transaksi"}`}><FiEdit2 /></button><button type="button" className="icon-button icon-button--danger" onClick={() => cancelTransaction(item)} aria-label={`Batalkan ${item.description || "transaksi"}`}><FiTrash2 /></button></div> : null}</td>
               </tr>
-            ))}</tbody>
+              );
+            })}</tbody>
           </table>
         </div>
       ) : null}

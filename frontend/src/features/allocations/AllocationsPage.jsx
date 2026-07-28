@@ -14,6 +14,7 @@ import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { currentMonthBoundsInJakarta } from "../../domain/dates.js";
 
 const AllocationsPage = () => {
   const resource = useApiResource("envelopes.list");
@@ -21,9 +22,7 @@ const AllocationsPage = () => {
   const { user } = useAuth();
   const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
   const [message, setMessage] = useState(null);
-  const now = new Date();
-  const periodStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const { start: periodStart, end: periodEnd } = currentMonthBoundsInJakarta();
   const [createForm, setCreateForm] = useState({ name: "", default_amount: "", period_type: "monthly", period_start: periodStart, period_end: periodEnd, rollover_policy: "unallocated", overspend_policy: "confirm" });
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const lookup = useMemo(() => Object.fromEntries(items.map((item) => [item.envelope_period_id, item])), [items]);
@@ -52,7 +51,7 @@ const AllocationsPage = () => {
       if (!move.fromEnvelopePeriodId || !move.toEnvelopePeriodId) throw new Error("Kantong sumber dan tujuan wajib dipilih.");
       if (move.fromEnvelopePeriodId === move.toEnvelopePeriodId) throw new Error("Kantong sumber dan tujuan harus berbeda.");
       if (amount > Number(lookup[move.fromEnvelopePeriodId]?.remaining_amount || 0)) throw new Error("Nominal melebihi sisa kantong sumber.");
-      await apiClient.request("envelopes.move", { ...move, amount });
+      await apiClient.request("envelopes.move", { ...move, amount }, { idempotencyKey: createIdempotencyKey() });
       setMove({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
       setMessage({ type: "success", text: "Alokasi berhasil dipindahkan tanpa mengubah total saldo." });
       await Promise.all([resource.reload(), refresh()]);

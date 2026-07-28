@@ -33,11 +33,13 @@ function routeAction_(context) {
     case "recurring.createRule": return createRecurringRule_(context);
     case "recurring.updateRule": return updateRecurringRule_(context);
     case "recurring.payOccurrence": return payOccurrence_(context);
+    case "recurring.reversePayment": return reverseOccurrencePayment_(context);
     case "budgets.list": return { items: listBudgets_(context) };
     case "budgets.upsert": return upsertBudget_(context);
     case "goals.list": return { items: listGoals_() };
     case "goals.create": return createGoal_(context);
     case "goals.move": return moveGoal_(context);
+    case "goals.reverseMovement": return reverseGoalMovement_(context);
     case "reports.monthly": return monthlyReport_(context);
     case "reconciliations.create": return createReconciliation_(context);
     case "periods.close": return closePeriod_(context);

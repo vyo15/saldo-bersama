@@ -46,3 +46,18 @@
 10. Rollover membuat mutasi alokasi.
 11. Tutup buku menolak transaksi periode lama.
 12. Backup, restore DEV, dan integrity check lulus.
+
+## Behavioral Apps Script di Node VM
+
+Test otomatis benar-benar mengeksekusi service `.gs` menggunakan fake kecil untuk Spreadsheet/Lock/Cache/Properties. Cakupan minimum:
+
+- adjustment positif dan envelope update exclude-current;
+- close → reopen → close;
+- idempotency payload mismatch, expiry, dan commit failure;
+- restore apply failure, rollback failure, owner backup, schema missing, dan recovery idempotency;
+- audit compensation;
+- recurring/goal reverse dan linked-ledger guard;
+- push `sent=0`, backup retention, external cleanup;
+- checksum isi dan strict boolean/enumeration.
+
+Source matching tetap dipakai hanya untuk boundary/action parity, bukan sebagai pengganti test perilaku.

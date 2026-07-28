@@ -1,5 +1,6 @@
 import { env } from "../../config/env.js";
 import { demoRepository } from "../demo/repository.js";
+import { createSecureRandomId } from "../../domain/security.js";
 
 export class ApiError extends Error {
   constructor(message, { code = "UNKNOWN", status = 500, details } = {}) {
@@ -58,7 +59,7 @@ export const apiClient = {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "X-Request-ID": options.requestId || crypto.randomUUID(),
+        "X-Request-ID": options.requestId || createSecureRandomId(),
       },
       body: JSON.stringify({
         action,
