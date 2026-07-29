@@ -10,13 +10,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-`.env.example` hanya template nama variable dan tidak berisi secret nyata. File `.env`, `.env.local`, serta nilai secret tidak boleh di-commit atau dikirim melalui chat.
+`.env.example` hanya template nama variable dan tidak berisi secret nyata. File `.env`, `.env.local`, serta nilai secret tidak boleh di-commit atau dikirim melalui chat. Gunakan satu file root `.env.local`; file `frontend/.env.local` tidak digunakan.
 
-`npm run dev` hanya menjalankan frontend. Untuk frontend dan Vercel Functions sekaligus:
-
-```bash
-npx vercel dev
-```
+`npm run dev` menjalankan Vite dan handler Node canonical pada folder `api/` dalam satu proses di `http://localhost:5173`. Development tidak menjalankan Vercel CLI dan tidak memakai rewrite atau Content Security Policy production, sehingga route HMR Vite dan React Refresh tidak terblokir. Endpoint `/api/session`, `/api/gateway`, `/api/health`, dan `/api/push` tetap memakai source handler yang sama dengan deployment Vercel. Selalu buka `http://localhost:5173`, bukan `127.0.0.1:5173`, agar OAuth origin dan cookie konsisten.
 
 Demo lokal dapat diaktifkan dengan `VITE_DEMO_MODE=true`. Pastikan nilainya `false` pada Preview dan Production.
 
@@ -161,7 +157,7 @@ Jangan menghapus property emergency secara manual. Setelah recovery manual seles
 
 ```bash
 npm run check
-npx vercel dev
+npm run dev
 ```
 
 Lakukan smoke test login, create/edit/cancel transaksi, transfer, alokasi, tagihan, rekonsiliasi, Calendar, notifikasi, backup, import preview, dan restore drill pada DEV. Production baru digunakan setelah integrity check lulus.

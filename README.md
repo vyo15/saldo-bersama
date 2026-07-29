@@ -30,11 +30,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-`npm run dev` menjalankan frontend. Untuk menguji Vercel Functions secara lokal gunakan Vercel CLI:
+`npm run dev` menjalankan frontend Vite dan handler Node pada folder `api/` dalam satu proses di `http://localhost:5173`. Login, cookie session, gateway, health check, dan push endpoint dapat diuji tanpa menjalankan `vercel dev`, sehingga tidak ada recursive invocation, rewrite production yang menangkap route HMR, atau CSP production yang memblokir React Refresh. Konfigurasi deployment production tetap berada di `vercel.json`.
 
-```bash
-npx vercel dev
-```
+Development membaca konfigurasi browser dan server dari satu file root `.env.local`. Hanya variable berawalan `VITE_` yang masuk ke bundle browser; secret server tetap hanya tersedia pada proses Node lokal. Gunakan hostname `localhost`, bukan `127.0.0.1`, agar origin Google OAuth dan `ALLOWED_ORIGINS` konsisten.
 
 Demo UI lokal dapat diaktifkan hanya untuk development dengan `VITE_DEMO_MODE=true`. Demo mode tidak boleh diaktifkan pada production.
 

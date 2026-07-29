@@ -11,6 +11,12 @@ const urlBase64ToUint8Array = (value) => {
 
 export const registerServiceWorker = async () => {
   if (!("serviceWorker" in navigator)) return null;
+  if (import.meta.env.DEV) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+    if ("caches" in window) await caches.delete("saldo-bersama-static-v1");
+    return null;
+  }
   return navigator.serviceWorker.register("/sw.js");
 };
 

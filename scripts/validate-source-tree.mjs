@@ -32,6 +32,20 @@ const ignoredSegments = new Set([
   "logs",
 ]);
 
+const ignoredLocalFilePatterns = [
+  /^\.env$/i,
+  /^\.env\.(?!example$).+/i,
+  /^\.clasp\.json$/i,
+  /^(?:npm-debug|yarn-error|pnpm-debug|firebase-debug)\.log$/i,
+  /\.(?:log|tmp|temp|bak|zip|rar|7z)$/i,
+];
+
+const isIgnoredLocalFile = (file) => {
+  const name = path.posix.basename(file);
+  return name !== ".env.example"
+    && ignoredLocalFilePatterns.some((pattern) => pattern.test(name));
+};
+
 const allowedRootEntries = new Set([
   ".env.example",
   ".gitattributes",
@@ -46,6 +60,7 @@ const allowedRootEntries = new Set([
   "package-lock.json",
   "package.json",
   "scripts",
+  "vercel.dev.json",
   "vercel.json",
 ]);
 
@@ -90,7 +105,7 @@ const walk = async (directory = root, relative = "") => {
     const rel = path.posix.join(relative, entry.name);
     if (entry.isDirectory()) {
       if (!ignoredSegments.has(entry.name)) files.push(...await walk(path.join(directory, entry.name), rel));
-    } else if (entry.isFile()) {
+    } else if (entry.isFile() && !isIgnoredLocalFile(rel)) {
       files.push(rel);
     }
   }
@@ -116,10 +131,12 @@ const getTracked = () => {
 const rootEntries = await readdir(root);
 const unexpectedRootEntries = rootEntries
   .filter((entry) => !ignoredSegments.has(entry))
+  .filter((entry) => !isIgnoredLocalFile(entry))
   .filter((entry) => !allowedRootEntries.has(entry));
 
-const files = getTracked() || await walk();
-const pathViolations = files.filter((file) => {
+const trackedFiles = getTracked() || [];
+const files = await walk();
+const pathViolations = [...new Set([...files, ...trackedFiles])].filter((file) => {
   const firstSegment = file.split("/")[0];
   const hasGeneratedSegment = file.split("/").some((segment) => ignoredSegments.has(segment));
   return retiredRootEntries.has(firstSegment)

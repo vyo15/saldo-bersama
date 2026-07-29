@@ -14,7 +14,7 @@ const readAppsScriptSource = async () => {
 };
 
 test("source hanya menyimpan arsitektur runtime canonical", async () => {
-  for (const path of ["api/", "apps-script/", "docs/", "frontend/", "scripts/", "vercel.json"]) {
+  for (const path of ["api/", "apps-script/", "docs/", "frontend/", "scripts/", "vercel.dev.json", "vercel.json"]) {
     await access(new URL(path, projectRoot));
   }
 
@@ -104,4 +104,39 @@ test("frontend, API, dan Apps Script memakai action contract yang selaras", asyn
     assert.match(frontendPermissions, new RegExp(`"${action.replaceAll(".", "\\.")}"`), `frontend permission: ${action}`);
     assert.match(apiPermissions, new RegExp(`"${action.replaceAll(".", "\\.")}"`), `API permission: ${action}`);
   }
+});
+
+test("development lokal memakai satu command, satu origin, dan API Node lokal", async () => {
+  const [packageJson, productionVercelConfig, developmentVercelConfig, viteConfig, devLauncher, notifications, validator] = await Promise.all([
+    readFile(new URL("../../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
+    readFile(new URL("../../vercel.dev.json", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/vite.config.js", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/start-vite-dev.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/src/services/notifications.js", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/validate-source-tree.mjs", import.meta.url), "utf8"),
+  ]);
+
+  const packageConfig = JSON.parse(packageJson);
+  const productionVercel = JSON.parse(productionVercelConfig);
+  const developmentVercel = JSON.parse(developmentVercelConfig);
+  assert.equal(packageConfig.scripts.dev, "node scripts/start-vite-dev.mjs");
+  assert.equal(packageConfig.scripts["dev:frontend"], undefined);
+  assert.equal(packageConfig.scripts["dev:full"], undefined);
+  assert.equal(productionVercel.devCommand, undefined);
+  assert.equal(developmentVercel.devCommand, undefined);
+  assert.equal(developmentVercel.headers, undefined);
+  assert.equal(developmentVercel.rewrites, undefined);
+  assert.ok(productionVercel.rewrites.some((rewrite) => rewrite.destination === "/index.html"));
+  assert.match(viteConfig, /envDir:\s*projectRoot/);
+  assert.match(devLauncher, /createServer:\s*createViteServer/);
+  assert.match(devLauncher, /middlewareMode:\s*true/);
+  assert.match(devLauncher, /"\/api\/session"/);
+  assert.match(devLauncher, /"\/api\/gateway"/);
+  assert.match(devLauncher, /loadEnv\("development", projectRoot, ""\)/);
+  assert.match(devLauncher, /process\.env\.VERCEL_ENV \|\|= "development"/);
+  assert.doesNotMatch(devLauncher, /vercel\s+dev|npx.*vercel/i);
+  assert.match(notifications, /import\.meta\.env\.DEV/);
+  assert.match(notifications, /registration\.unregister\(\)/);
+  assert.match(validator, /ignoredLocalFilePatterns/);
 });
