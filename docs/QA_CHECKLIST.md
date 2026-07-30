@@ -12,6 +12,9 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Setelah seluruh source ditempel, dropdown editor menampilkan `setupSaldoBersama`, `doGet`, dan `doPost` tanpa startup error.
 - [ ] Setup memperoleh lock, menghasilkan `SETUP_STATUS=ready`, dan hanya selesai setelah schema tervalidasi.
 - [ ] Setup parsial menghasilkan `SETUP_STATUS=failed`; deployment dihentikan sampai root cause selesai.
+- [ ] Spreadsheet baru menghasilkan schema version 2 dan menghapus `Sheet1` hanya bila kosong setelah validasi.
+- [ ] Spreadsheet v1 menjalankan preview migration dan semua nilai `ambiguous` harus nol.
+- [ ] Migration memakai confirmation property sementara, safety backup tervalidasi, maintenance, integrity check, dan rollback fail-closed.
 
 ## Ledger dan integritas
 
@@ -21,6 +24,11 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Transfer sumber=tujuan ditolak.
 - [ ] Transfer tidak masuk income/expense total.
 - [ ] Saldo frontend dan backend konsisten untuk income, expense, transfer, refund, dan adjustment.
+- [ ] Adjustment hanya dapat dibuat owner, mempunyai alasan, dan tipe tidak dapat diubah ke/dari adjustment.
+- [ ] `goal_id`, `recurring_occurrence_id`, scope, ownership, dan metadata pembuat dari client ditolak.
+- [ ] Transaksi masa depan tidak memengaruhi saldo hari ini.
+- [ ] Dashboard, rekonsiliasi, dan period close historis memakai cutoff akhir periode.
+- [ ] Transaksi sebelum `initial_balance_date` rekening ditolak.
 - [ ] Pembatalan menghitung ulang saldo dan sisa kantong.
 - [ ] Rekening/kategori arsip tidak dapat dipakai untuk transaksi baru.
 - [ ] Formula `= + - @` dinetralkan.
@@ -28,6 +36,9 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Deteksi transaksi mirip tidak diam-diam membuat duplikat.
 - [ ] Edit versi lama ditolak dengan conflict.
 - [ ] Member hanya dapat edit/cancel transaksi miliknya sesuai policy.
+- [ ] Member tidak dapat membaca rekening, transaksi, recurring, budget, goal, notification, atau laporan personal pengguna lain.
+- [ ] Transfer lintas shared/personal atau personal owner berbeda ditolak.
+- [ ] Scope transaksi diturunkan dari rekening dan kontradiksi client ditolak.
 - [ ] Dua write bersamaan diserialisasi LockService.
 - [ ] Periode tertutup menolak perubahan.
 - [ ] Pengeluaran tanpa kantong masuk antrean review.
@@ -41,6 +52,10 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Sisa/rollover tidak dihitung sebagai pemasukan.
 - [ ] Mutasi kantong tidak mengubah total kekayaan.
 - [ ] Over-budget memerlukan alasan sesuai policy.
+- [ ] Kebijakan overspend `deny`, `confirm`, `warn`, dan `owner_approval` benar-benar ditegakkan backend.
+- [ ] Pembuatan rule+period envelope atomik dan tidak meninggalkan rule yatim.
+- [ ] Rollover `none`, `carry`, dan `unallocated` memberi hasil yang benar.
+- [ ] `recurring.list` tidak menulis data; generation action/worker memperoleh lock dan audit.
 - [ ] Daily, weekly, biweekly, monthly, bimonthly, quarterly, semiannual, dan annual menghasilkan occurrence yang benar.
 - [ ] Occurrence overdue dihitung dari tanggal aktual, bukan status stale.
 - [ ] Pembayaran sebagian dan pelunasan terhubung ke transaksi aktual.
@@ -53,6 +68,9 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Role Vercel dan sheet `Users` yang berbeda ditolak.
 - [ ] Owner terakhir tidak dapat dinonaktifkan atau diturunkan tanpa pengganti.
 - [ ] Member tidak dapat menjalankan action owner.
+- [ ] Owner melihat semua; member hanya melihat shared dan rekening personal miliknya.
+- [ ] Transaksi, dashboard, report, envelope, goal, recurring, dan notifikasi tidak membocorkan agregat personal user lain.
+- [ ] Bootstrap owner hanya berjalan pada sistem kosong; UID binding dan initialize berada dalam lock yang sama.
 - [ ] Request POST tanpa Origin ditolak.
 - [ ] Origin asing ditolak.
 - [ ] Cookie HttpOnly, SameSite=Strict, dan Secure pada non-development.
@@ -84,17 +102,23 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 ## Integrasi dan recovery
 
 - [ ] Calendar event tidak duplikat dan hanya event aplikasi yang diubah.
+- [ ] Calendar bersama hanya berisi recurring shared; data personal tidak disinkronkan.
 - [ ] Calendar gagal tidak membatalkan transaksi.
 - [ ] Push tidak menampilkan nominal/rincian sensitif.
 - [ ] Push gagal tidak membatalkan pencatatan.
 - [ ] Subscription invalid dapat dinonaktifkan/dibersihkan.
+- [ ] Seluruh scheduled worker berhenti tanpa mutation selama maintenance/recovery.
 - [ ] Backup harian dijalankan oleh trigger dan nama file unik.
 - [ ] Backup berstatus verified hanya setelah schema tervalidasi.
 - [ ] Import preview menampilkan invalid, duplicate, referensi hilang, dan dampak data.
-- [ ] Import gagal melakukan rollback safety backup.
-- [ ] Restore membutuhkan preview token, frasa konfirmasi, safety backup, maintenance, dan integrity check.
+- [ ] Import preview dan apply memakai validasi period lock, reserved field, serta projected sequential balance/envelope yang sama.
+- [ ] Import gagal melakukan rollback verified pre-import backup.
+- [ ] Restore membutuhkan preview token, frasa konfirmasi, raw emergency snapshot, maintenance, dan integrity check.
+- [ ] Restore tetap berhasil ketika `Backup_Log`, sheet lain, atau header aktif hilang/rusak.
+- [ ] UI memperlakukan hasil integrity `{ok:false}` sebagai gagal dan menampilkan issue.
 - [ ] Restore drill dilakukan pada DEV sebelum production.
 - [ ] Retensi backup tidak menghapus backup manual.
+- [ ] Retensi backup tidak menghapus backup `pre-migration`.
 
 ## UX, responsive, dan accessibility
 
@@ -104,6 +128,8 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Grafik memiliki ringkasan teks.
 - [ ] Status tidak dibedakan hanya melalui warna.
 - [ ] Data sensitif tidak muncul di URL, metadata, title, push, atau Calendar.
+- [ ] Request asset JavaScript offline tidak pernah menerima fallback HTML.
+- [ ] Session 401/transient error dapat kembali ke login/retry tanpa layar buntu dan destination awal dipertahankan.
 
 ## Hardening behavior tests
 

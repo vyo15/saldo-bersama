@@ -1,6 +1,6 @@
 # Recovery Runbook Saldo Bersama
 
-Dokumen ini dipakai ketika import, restore, audit compensation, atau commit idempotency gagal. Prinsip utama: **fail closed**. Jangan membuka `maintenance_mode` secara manual sebelum data lolos verifikasi.
+Dokumen ini dipakai ketika migration, import, restore, audit compensation, atau commit idempotency gagal. Prinsip utama: **fail closed**. Jangan membuka `maintenance_mode` secara manual sebelum data lolos verifikasi.
 
 ## Status recovery
 
@@ -18,16 +18,16 @@ State canonical disimpan di Apps Script Properties dan dicerminkan ke `System_Co
 Sistem:
 
 1. tetap menahan maintenance selama apply dan verifikasi;
-2. menerapkan safety backup;
+2. menerapkan emergency raw snapshot;
 3. memverifikasi schema, checksum SHA-256 canonical, dan integrity check;
 4. baru membuka maintenance;
 5. mengembalikan error `RESTORE_ROLLED_BACK` atau `IMPORT_ROLLED_BACK`.
 
-Data utama sudah kembali ke safety backup. Periksa audit, jalankan integrity check, lalu buat preview baru sebelum mencoba lagi.
+Data utama sudah kembali ke raw snapshot sebelum operasi. Periksa audit, jalankan integrity check, lalu buat preview baru sebelum mencoba lagi.
 
 ## Rollback otomatis gagal
 
-Sistem mengembalikan `RECOVERY_REQUIRED`, menyimpan `safetyBackupFileId`, dan membiarkan aplikasi terkunci.
+Sistem mengembalikan `RECOVERY_REQUIRED`, menyimpan `safetyBackupFileId` dari emergency raw snapshot, dan membiarkan aplikasi terkunci.
 
 Jangan:
 
@@ -52,11 +52,23 @@ recoverFromSafetyBackup("SAFETY_FILE_ID", "RECOVER SALDO BERSAMA");
 7. Jalankan `integrity.run` sekali lagi dari aplikasi.
 8. Buat backup manual baru.
 
+## Migration v1 ke v2 gagal
+
+Status migration berada pada Script Properties `MIGRATION_STATUS`, `MIGRATION_SAFETY_FILE_ID`, dan kode error terkait.
+
+- `failed_before_backup`: tidak ada write migration; perbaiki source/reference lalu preview ulang.
+- `rolled_back`: snapshot v1 sudah diterapkan kembali dan schema v1 diverifikasi. Jangan menjalankan aplikasi source v2 terhadap spreadsheet ini sebelum root cause diperbaiki dan migration diulang.
+- `recovery_required`: migration dan rollback sama-sama gagal. Aplikasi tetap terkunci.
+
+Untuk `recovery_required`, gunakan file pada `MIGRATION_SAFETY_FILE_ID`/recovery details. Safety backup tersebut harus tetap schema v1 dan tidak boleh terkena retensi otomatis. Pulihkan melalui editor menggunakan prosedur recovery manual, verifikasi schema v1, lalu ulangi preview/migration dengan source yang sudah diperbaiki. Jangan mengubah `schema_version` atau header secara manual.
+
 ## Schema aktif rusak
 
 `restore.preview` tidak bergantung pada keberadaan seluruh sheet aktif. Request recovery memakai actor owner yang sudah ditandatangani Vercel dan backup wajib mencatat email actor tersebut sebagai owner aktif.
 
-`restore.apply` memakai idempotency berbasis Apps Script Properties ketika sheet `Idempotency` aktif tidak dapat dipercaya. Retry wajib memakai idempotency key yang sama.
+`restore.apply` membuat raw snapshot seluruh sheet aktif tanpa membaca schema atau menulis `Backup_Log`. Snapshot ini mencatat nama sheet, header/data mentah, dan checksum raw sehingga missing sheet/header dapat dipulihkan. Verified normal backup dan emergency raw snapshot adalah dua jenis artefak berbeda.
+
+Restore memakai state dan idempotency berbasis Apps Script Properties ketika `System_Config`/`Idempotency` aktif tidak dapat dipercaya. Retry wajib memakai idempotency key yang sama.
 
 Jika sheet `Users` dan jalur API tidak dapat digunakan sama sekali, gunakan `recoverFromSafetyBackup()` dari editor Apps Script.
 

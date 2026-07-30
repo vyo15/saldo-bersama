@@ -57,13 +57,15 @@ const createRuntime = ({
     UrlFetchApp: {},
     ScriptApp: {},
     SB_SCHEMA: RECOVERY_SCHEMA,
+    SB_TIMEZONE: "Asia/Jakarta",
   };
   vm.createContext(sandbox);
   vm.runInContext(recoverySource, sandbox, { filename: "RecoveryService.gs" });
 
   sandbox.validateBackupSpreadsheet_ = () => ({ issues: [], schemaVersion: "1", checksum: "source-checksum", source: {} });
   sandbox.assertBackupOwner_ = () => ({ user_id: "owner-1", email: "owner@example.com", role: "owner", status: "active" });
-  sandbox.createBackup_ = () => ({ fileId: "safety-file", fileName: "safety", checksum: "safety-checksum" });
+  sandbox.createBackup_ = () => ({ fileId: "safety-file", fileName: "safety", checksum: "safety-checksum", raw: false });
+  sandbox.createEmergencySafetySnapshot_ = () => ({ fileId: "safety-file", fileName: "safety", checksum: "safety-checksum", raw: false });
   sandbox.validateSchema_ = validateSchema;
   sandbox.integrityIssues_ = integrityIssues;
   sandbox.snapshotVerificationIssues_ = (expectedChecksum) => {
@@ -79,7 +81,13 @@ const createRuntime = ({
   sandbox.getSpreadsheet_ = () => ({});
   sandbox.canonicalJson_ = JSON.stringify;
   sandbox.sha256Hex_ = () => "preview-fingerprint";
-  sandbox.setRecoveryRequired_ = (status, details) => { recoveryState = { recoveryRequired: true, status, details }; };
+  sandbox.setRecoveryRequired_ = (status, details) => {
+    recoveryState = { recoveryRequired: true, status, details };
+    if (!maintenance) {
+      maintenance = true;
+      calls.maintenance.push(true);
+    }
+  };
   sandbox.clearRecoveryState_ = () => { recoveryState = { recoveryRequired: false, status: "", details: {} }; };
   sandbox.recoveryDetails_ = () => recoveryState;
   sandbox.upsertConfig_ = (key, value) => {
@@ -179,7 +187,7 @@ test("import gagal juga memakai rollback terverifikasi dan fail-safe maintenance
   };
   const { runtime, calls } = createRuntime({
     cacheEntries: {
-      "import-preview:import-preview": JSON.stringify({ actorId: "owner-1", records: [{ amount: 1000 }], fingerprint: "preview-fingerprint" }),
+      "import-preview:import-preview": JSON.stringify({ actorId: "owner-1", records: [{ amount: 1000 }], fingerprint: "preview-fingerprint", acceptable: true }),
     },
     createTransaction: () => { throw codedError("IMPORT_WRITE_FAILED"); },
   });

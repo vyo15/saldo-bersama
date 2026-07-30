@@ -1,4 +1,5 @@
 function doGet() {
+  resetRequestCache_();
   let schemaIssues = [];
   try { schemaIssues = validateSchema_(); } catch (error) { schemaIssues = [error.code || error.message]; }
   return ContentService.createTextOutput(JSON.stringify({
@@ -13,15 +14,9 @@ function doGet() {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
-function isSchemaRecoveryAction_(action) {
-  return ["system.health", "restore.preview", "restore.apply", "integrity.run"].indexOf(action) !== -1;
-}
-
 function isRecoveryAllowedAction_(action) {
   return ["system.health", "restore.preview", "restore.apply", "integrity.run"].indexOf(action) !== -1;
 }
-
-
 
 function usesRecoveryIdempotency_(action, schemaIssues) {
   return action === "restore.apply" && ((schemaIssues && schemaIssues.length) || isRecoveryRequired_());
@@ -72,7 +67,7 @@ function isIdempotencyRequired_(action) {
     "accounts.create", "accounts.update", "accounts.archive",
     "categories.create", "categories.update", "categories.archive",
     "transactions.create", "transactions.update", "transactions.cancel",
-    "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
+    "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
     "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.upsert", "goals.create", "goals.move", "goals.reverseMovement", "reconciliations.create",
     "periods.close", "periods.reopen", "calendar.sync", "notifications.register", "notifications.unregister",
@@ -93,58 +88,109 @@ function entityIdFromResult_(data) {
   return "";
 }
 
+function requestSchemaIssues_(action) {
+  if (action === "system.initialize") return [];
+  try { return validateSchema_(); }
+  catch (schemaError) { return [schemaError.code || schemaError.message]; }
+}
+
+function assertRequestSchema_(action, schemaIssues) {
+  if (!schemaIssues.length || isRecoveryAllowedAction_(action)) return;
+  const missing = isSchemaUninitialized_();
+  throw sbError_(
+    missing ? "SCHEMA_MISSING" : "SCHEMA_INVALID",
+    missing ? "Schema database belum dibuat." : "Schema database rusak. Hanya jalur recovery owner yang tetap dibuka.",
+    503,
+    schemaIssues
+  );
+}
+
+function resolveRequestActor_(signed, schemaIssues) {
+  return schemaIssues.length
+    ? resolveRecoveryActor_(signed.actor, signed.action)
+    : resolveActor_(signed.actor, signed.action);
+}
+
+function assertRuntimeAvailability_(action, schemaIssues) {
+  if (isRecoveryRequired_() && !isRecoveryAllowedAction_(action)) {
+    throw sbError_("RECOVERY_REQUIRED", "Aplikasi dikunci karena pemulihan data belum selesai.", 503, recoveryDetails_());
+  }
+  let maintenanceMode = false;
+  try { maintenanceMode = getConfig_("maintenance_mode") === "true"; }
+  catch (error) {
+    if (!(schemaIssues && schemaIssues.length && isRecoveryAllowedAction_(action))) throw error;
+  }
+  if (maintenanceMode && isMutatingAction_(action) && ["restore.apply", "integrity.run"].indexOf(action) === -1) {
+    throw sbError_("MAINTENANCE_MODE", "Aplikasi sedang dalam maintenance. Perubahan sementara ditolak.", 503, recoveryDetails_());
+  }
+}
+
+function contextFromSigned_(signed, actor) {
+  return {
+    actor: actor,
+    action: signed.action,
+    payload: signed.payload || {},
+    requestId: signed.requestId || "",
+    idempotencyKey: signed.idempotencyKey || "",
+    rowVersion: signed.rowVersion
+  };
+}
+
 function doPost(e) {
+  resetRequestCache_();
   try {
     const body = JSON.parse(e && e.postData && e.postData.contents || "{}");
     const signed = verifyEnvelope_(body);
     enforceAppsScriptRateLimit_(signed.actor, signed.action);
-    if (signed.action === "system.initialize") initializeSchema_();
-
-    let schemaIssues = [];
-    if (signed.action !== "system.initialize") {
-      try { schemaIssues = validateSchema_(); }
-      catch (schemaError) { schemaIssues = [schemaError.code || schemaError.message]; }
-    }
-    if (schemaIssues.length && !isSchemaRecoveryAction_(signed.action)) {
-      const missing = isSchemaUninitialized_();
-      throw sbError_(missing ? "SCHEMA_MISSING" : "SCHEMA_INVALID", missing ? "Schema database belum dibuat." : "Schema database rusak. Hanya jalur recovery owner yang tetap dibuka.", 503, schemaIssues);
+    if (signed.action === "system.initialize") assertInitializationActor_(signed.actor);
+    if (isIdempotencyRequired_(signed.action) && !signed.idempotencyKey) {
+      throw sbError_("IDEMPOTENCY_REQUIRED", "Idempotency key wajib untuk operasi perubahan data.", 400);
     }
 
-    const actor = schemaIssues.length ? resolveRecoveryActor_(signed.actor, signed.action) : resolveActor_(signed.actor, signed.action);
-    if (isRecoveryRequired_() && !isRecoveryAllowedAction_(signed.action)) throw sbError_("RECOVERY_REQUIRED", "Aplikasi dikunci karena pemulihan data belum selesai.", 503, recoveryDetails_());
-
-    const maintenanceMode = getConfig_("maintenance_mode") === "true";
-    if (maintenanceMode && isMutatingAction_(signed.action) && ["restore.apply", "integrity.run"].indexOf(signed.action) === -1) throw sbError_("MAINTENANCE_MODE", "Aplikasi sedang dalam maintenance. Perubahan sementara ditolak.", 503, recoveryDetails_());
-
-    const context = {
-      actor: actor,
-      action: signed.action,
-      payload: signed.payload || {},
-      requestId: signed.requestId || "",
-      idempotencyKey: signed.idempotencyKey || "",
-      rowVersion: signed.rowVersion
-    };
-    const mutating = isMutatingAction_(context.action);
-    if (isIdempotencyRequired_(context.action) && !context.idempotencyKey) throw sbError_("IDEMPOTENCY_REQUIRED", "Idempotency key wajib untuk operasi perubahan data.", 400);
+    const mutating = isMutatingAction_(signed.action);
     let data;
+
     if (mutating) {
       const lock = LockService.getScriptLock();
       if (!lock.tryLock(15000)) throw sbError_("LOCK_TIMEOUT", "Data sedang diperbarui pengguna lain. Coba kembali.", 409);
       try {
+        resetRequestCache_();
+        let schemaIssues = requestSchemaIssues_(signed.action);
+        if (signed.action === "system.initialize") {
+          initializeSchema_();
+          SpreadsheetApp.flush();
+          resetRequestCache_();
+          schemaIssues = validateSchema_();
+          if (schemaIssues.length) throw sbError_("SCHEMA_INVALID", "Inisialisasi schema belum lolos validasi.", 503, schemaIssues);
+        } else {
+          assertRequestSchema_(signed.action, schemaIssues);
+        }
+
+        assertRuntimeAvailability_(signed.action, schemaIssues);
+        const actor = resolveRequestActor_(signed, schemaIssues);
+        const context = contextFromSigned_(signed, actor);
         const recoveryIdempotency = usesRecoveryIdempotency_(context.action, schemaIssues);
         const previous = recoveryIdempotency ? getRecoveryIdempotentResult_(context) : getIdempotentResult_(context);
-        if (previous) data = previous;
-        else {
+        if (previous) {
+          data = previous;
+        } else {
           data = routeAction_(context);
           SpreadsheetApp.flush();
           if (recoveryIdempotency) saveRecoveryIdempotentResult_(context, data);
           else saveIdempotentResult_(context, entityIdFromResult_(data), data);
           SpreadsheetApp.flush();
         }
-      } finally { lock.releaseLock(); }
+      } finally {
+        lock.releaseLock();
+      }
     } else {
-      data = routeAction_(context);
+      const schemaIssues = requestSchemaIssues_(signed.action);
+      assertRequestSchema_(signed.action, schemaIssues);
+      assertRuntimeAvailability_(signed.action, schemaIssues);
+      const actor = resolveRequestActor_(signed, schemaIssues);
+      data = routeAction_(contextFromSigned_(signed, actor));
     }
+
     return jsonOutput_({ ok: true, data: data });
   } catch (error) {
     return jsonOutput_({ ok: false, error: { code: error.code || "INTERNAL_ERROR", message: error.code ? error.message : "Apps Script gagal memproses request.", status: error.status || 500, details: error.details || null } });
@@ -156,5 +202,5 @@ function jsonOutput_(payload) {
 }
 
 function isMutatingAction_(action) {
-  return !["system.health", "bootstrap.get", "users.list", "audit.list", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly", "restore.preview", "import.preview"].includes(action);
+  return !["system.health", "users.list", "audit.list", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly", "periods.list", "restore.preview", "import.preview"].includes(action);
 }

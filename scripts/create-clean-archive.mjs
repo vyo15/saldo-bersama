@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { access, cp, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -69,6 +69,25 @@ const shouldCopy = (source) => {
   return path.resolve(source) !== output;
 };
 
+const auditStaging = async (directory, relative = "") => {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const rel = path.posix.join(relative, entry.name);
+    if (entry.isDirectory()) {
+      if (ignoredSegments.has(entry.name)) {
+        throw new Error(`Packaging menyertakan folder terlarang: ${rel}`);
+      }
+      files.push(...await auditStaging(path.join(directory, entry.name), rel));
+    } else if (entry.isFile()) {
+      if (entry.name !== ".env.example" && forbiddenFilePatterns.some((pattern) => pattern.test(entry.name))) {
+        throw new Error(`Packaging menyertakan file terlarang: ${rel}`);
+      }
+      files.push(rel);
+    }
+  }
+  return files;
+};
+
 run(process.execPath, [path.join(root, "scripts", "validate-source-tree.mjs")]);
 
 await mkdir(path.dirname(output), { recursive: true });
@@ -82,6 +101,10 @@ try {
     recursive: true,
     filter: shouldCopy,
   });
+  const stagedFiles = await auditStaging(project);
+  if (!stagedFiles.includes(".env.example")) {
+    throw new Error("Packaging wajib menyertakan .env.example.");
+  }
 
   run("git", ["init", "-q"], { cwd: project });
   run("git", ["add", "-A"], { cwd: project });
@@ -98,6 +121,13 @@ try {
     ],
     { cwd: project },
   );
+  const committedFiles = execFileSync("git", ["ls-tree", "-r", "--name-only", "HEAD"], {
+    cwd: project,
+    encoding: "utf8",
+  }).split(/\r?\n/).filter(Boolean);
+  if (!committedFiles.includes(".env.example")) {
+    throw new Error("Commit packaging untuk ZIP wajib menyertakan .env.example.");
+  }
   run(
     "git",
     [

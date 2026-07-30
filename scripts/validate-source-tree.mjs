@@ -60,7 +60,6 @@ const allowedRootEntries = new Set([
   "package-lock.json",
   "package.json",
   "scripts",
-  "vercel.dev.json",
   "vercel.json",
 ]);
 
@@ -129,6 +128,8 @@ const getTracked = () => {
 };
 
 const rootEntries = await readdir(root);
+const requiredRootEntries = [".env.example", "README.md", "package.json", "package-lock.json"];
+const missingRootEntries = requiredRootEntries.filter((entry) => !rootEntries.includes(entry));
 const unexpectedRootEntries = rootEntries
   .filter((entry) => !ignoredSegments.has(entry))
   .filter((entry) => !isIgnoredLocalFile(entry))
@@ -150,8 +151,9 @@ for (const file of files.filter((item) => !["scripts/validate-source-tree.mjs", 
   if (forbiddenLegacyContent.some((pattern) => pattern.test(content))) legacyViolations.push(file);
 }
 
-if (unexpectedRootEntries.length || pathViolations.length || legacyViolations.length) {
+if (missingRootEntries.length || unexpectedRootEntries.length || pathViolations.length || legacyViolations.length) {
   console.error("Source tree belum bersih.");
+  missingRootEntries.forEach((entry) => console.error(`Root entry wajib tidak ditemukan: ${entry}`));
   unexpectedRootEntries.forEach((entry) => console.error(`Root entry tidak dikenal: ${entry}`));
   pathViolations.forEach((file) => console.error(`Path generated, retired, atau sensitif: ${file}`));
   legacyViolations.forEach((file) => console.error(`Referensi legacy: ${file}`));

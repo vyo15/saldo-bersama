@@ -1,15 +1,50 @@
-function allocationAvailability_(sourceAccountId) {
+function canAccessEnvelopeRule_(context, rule) {
+  if (!rule || !canAccessOwnedScope_(context, rule.scope, rule.owner_user_id)) return false;
+  if (!rule.source_account_id) return true;
+  return canAccessAccount_(context, findBy_("Accounts", "account_id", rule.source_account_id));
+}
+
+function canAccessRecurringRule_(context, rule) {
+  if (!rule || !canAccessOwnedScope_(context, rule.scope, rule.owner_user_id)) return false;
+  return canAccessAccount_(context, findBy_("Accounts", "account_id", rule.default_account_id));
+}
+
+function canAccessBudget_(context, budget) {
+  if (!budget || !canAccessOwnedScope_(context, budget.scope, budget.owner_user_id)) return false;
+  if (!budget.envelope_rule_id) return true;
+  return canAccessEnvelopeRule_(context, findBy_("Envelope_Rules", "envelope_rule_id", budget.envelope_rule_id));
+}
+
+function canAccessGoal_(context, goal) {
+  if (!goal || !canAccessOwnedScope_(context, goal.scope, goal.owner_user_id)) return false;
+  return canAccessAccount_(context, findBy_("Accounts", "account_id", goal.account_id));
+}
+
+function assertRecurringRuleAccess_(context, rule) {
+  if (!canAccessRecurringRule_(context, rule)) throw sbError_("FORBIDDEN_RECURRING", "Jadwal pribadi ini bukan milik pengguna aktif.", 403);
+}
+
+function assertGoalAccess_(context, goal) {
+  if (!canAccessGoal_(context, goal)) throw sbError_("FORBIDDEN_GOAL", "Target pribadi ini bukan milik pengguna aktif.", 403);
+}
+
+
+function allocationAvailability_(sourceAccountId, context) {
+  const transactions = visibleTransactions_(context);
   const protectedTypes = ["emergency_fund", "savings", "sinking_fund"];
-  const accounts = listAccounts_().filter(function(account) {
+  const accounts = listAccounts_(context).filter(function(account) {
     return account.status === "active" && protectedTypes.indexOf(String(account.account_type)) === -1 && (!sourceAccountId || account.account_id === sourceAccountId);
   });
   const availableBalance = accounts.reduce(function(sum, account) { return sum + Math.max(0, Number(account.balance || 0)); }, 0);
-  const rules = Object.fromEntries(rows_("Envelope_Rules").map(function(rule) { return [rule.envelope_rule_id, rule]; }));
+  const rules = Object.fromEntries(rows_("Envelope_Rules").filter(function(rule) {
+    return canAccessEnvelopeRule_(context, rule);
+  }).map(function(rule) { return [rule.envelope_rule_id, rule]; }));
   const allocatedRemaining = rows_("Envelope_Periods").filter(function(period) {
     if (period.status !== "active") return false;
-    const rule = rules[period.envelope_rule_id] || {};
+    const rule = rules[period.envelope_rule_id];
+    if (!rule) return false;
     return !sourceAccountId || String(rule.source_account_id || "") === String(sourceAccountId);
-  }).reduce(function(sum, period) { return sum + Math.max(0, Number(envelopeUsage_(period).remaining_amount || 0)); }, 0);
+  }).reduce(function(sum, period) { return sum + Math.max(0, Number(envelopeUsage_(period, transactions).remaining_amount || 0)); }, 0);
   return { availableBalance: availableBalance, allocatedRemaining: allocatedRemaining, unallocatedAmount: Math.max(0, availableBalance - allocatedRemaining) };
 }
 
@@ -22,22 +57,33 @@ function monthBounds_(periodKey) {
 }
 
 function listEnvelopes_(context) {
-  const period = context.payload.period || monthKey_();
+  const period = periodKey_(context.payload.period);
   const bounds = monthBounds_(period);
-  const transactions = rows_("Transactions");
-  return rows_("Envelope_Periods").filter(function(row) { return row.period_start <= bounds.end && row.period_end >= bounds.start; }).map(function(row) { return envelopeUsage_(row, transactions); });
+  const transactions = visibleTransactions_(context);
+  const rules = Object.fromEntries(rows_("Envelope_Rules").filter(function(rule) {
+    return canAccessEnvelopeRule_(context, rule);
+  }).map(function(rule) { return [rule.envelope_rule_id, rule]; }));
+  return rows_("Envelope_Periods").filter(function(row) {
+    return rules[row.envelope_rule_id] && row.period_start <= bounds.end && row.period_end >= bounds.start;
+  }).map(function(row) {
+    const rule = rules[row.envelope_rule_id];
+    return Object.assign(envelopeUsage_(row, transactions), {
+      scope: rule.scope || "shared",
+      owner_user_id: rule.owner_user_id || "",
+      source_account_id: rule.source_account_id || ""
+    });
+  });
 }
 
 function createEnvelopeRule_(context) {
   const payload = context.payload;
-  if (payload.scope !== undefined && ["personal", "shared"].indexOf(payload.scope) === -1) throw sbError_("INVALID_SCOPE", "Scope kantong harus personal atau shared.", 400);
-  const scope = payload.scope === "personal" ? "personal" : "shared";
-  const ownerUserId = context.actor.role === "owner" && payload.owner_user_id ? payload.owner_user_id : context.actor.user_id;
-  if (scope === "personal") activeUser_(ownerUserId);
+  let source = null;
   if (payload.source_account_id) {
-    const source = activeAccount_(payload.source_account_id);
+    source = activeAccount_(payload.source_account_id);
     assertAccountAccess_(context, source);
   }
+  const owned = normalizeOwnedScope_(context, payload, source ? ownedScopeFromAccount_(source) : { scope: "shared", owner_user_id: "" });
+  if (source && source.owner_scope === "personal" && (owned.scope !== "personal" || String(owned.owner_user_id) !== String(source.owner_user_id))) throw sbError_("SCOPE_ACCOUNT_MISMATCH", "Scope kantong harus sama dengan rekening pribadi sumber.", 400);
   const periodType = sanitizeText_(payload.period_type || "monthly", 30);
   const rolloverPolicy = sanitizeText_(payload.rollover_policy || "unallocated", 40);
   const overspendPolicy = sanitizeText_(payload.overspend_policy || "confirm", 40);
@@ -46,8 +92,8 @@ function createEnvelopeRule_(context) {
   if (["warn", "confirm", "owner_approval", "deny"].indexOf(overspendPolicy) === -1) throw sbError_("INVALID_OVERSPEND_POLICY", "Kebijakan overspend tidak valid.", 400);
   const record = {
     envelope_rule_id: uuid_(), name: sanitizeText_(payload.name, 100), period_type: periodType,
-    scope: scope, owner_user_id: scope === "personal" ? ownerUserId : "",
-    default_amount: intAmount_(payload.default_amount), source_account_id: payload.source_account_id || "",
+    scope: owned.scope, owner_user_id: owned.owner_user_id,
+    default_amount: intAmount_(payload.default_amount), source_account_id: source ? source.account_id : "",
     rollover_policy: rolloverPolicy, overspend_policy: overspendPolicy,
     status: "active", row_version: 1, created_by: context.actor.user_id, created_at: nowIso_(), updated_by: context.actor.user_id, updated_at: nowIso_()
   };
@@ -60,7 +106,7 @@ function createEnvelopePeriod_(context) {
   const payload = context.payload;
   const rule = findBy_("Envelope_Rules", "envelope_rule_id", payload.envelope_rule_id);
   if (!rule || rule.status !== "active") throw sbError_("INVALID_ENVELOPE_RULE", "Aturan kantong tidak aktif.", 400);
-  if (context.actor.role !== "owner" && rule.scope === "personal" && String(rule.owner_user_id) !== String(context.actor.user_id)) throw sbError_("FORBIDDEN_ENVELOPE", "Aturan kantong pribadi ini bukan milik pengguna aktif.", 403);
+  if (!canAccessEnvelopeRule_(context, rule)) throw sbError_("FORBIDDEN_ENVELOPE", "Aturan kantong pribadi ini bukan milik pengguna aktif.", 403);
   const start = validateDate_(payload.period_start);
   const end = validateDate_(payload.period_end);
   if (start > end) throw sbError_("INVALID_PERIOD", "Tanggal mulai periode tidak boleh setelah tanggal akhir.", 400);
@@ -69,7 +115,7 @@ function createEnvelopePeriod_(context) {
   const allocatedAmount = intAmount_(payload.allocated_amount || rule.default_amount);
   const reservedAmount = Number(payload.reserved_amount || 0);
   if (!Number.isSafeInteger(reservedAmount) || reservedAmount < 0 || reservedAmount > allocatedAmount) throw sbError_("INVALID_RESERVED_AMOUNT", "Dana dipesan harus integer antara nol dan alokasi.", 400);
-  const availability = allocationAvailability_(rule.source_account_id || "");
+  const availability = allocationAvailability_(rule.source_account_id || "", context);
   if (allocatedAmount > availability.unallocatedAmount) throw sbError_("INSUFFICIENT_UNALLOCATED_FUNDS", "Alokasi melebihi dana yang belum dialokasikan.", 409, availability);
   const record = {
     envelope_period_id: uuid_(), envelope_rule_id: rule.envelope_rule_id, name: rule.name, period_start: start, period_end: end,
@@ -78,7 +124,42 @@ function createEnvelopePeriod_(context) {
     updated_at: nowIso_(), closed_by: "", closed_at: ""
   };
   appendAuditedRow_("Envelope_Periods", "envelope_period_id", record, context, "envelopes.createPeriod", "envelope_period", null, publicRow_(record));
-  return envelopeUsage_(record);
+  return envelopeUsage_(record, visibleTransactions_(context));
+}
+
+function createEnvelope_(context) {
+  let rule = null;
+  let period = null;
+  try {
+    rule = createEnvelopeRule_(context, context.payload, { skipAudit: true });
+    period = createEnvelopePeriod_(context, {
+      envelope_rule_id: rule.envelope_rule_id,
+      period_start: context.payload.period_start,
+      period_end: context.payload.period_end,
+      allocated_amount: context.payload.allocated_amount || context.payload.default_amount,
+      reserved_amount: context.payload.reserved_amount || 0
+    }, { skipAudit: true });
+    appendAudit_(context, "envelopes.create", "envelope", rule.envelope_rule_id, null, { rule: rule, period: period });
+    return { rule: rule, period: period };
+  } catch (error) {
+    if (!rule && !period) throw error;
+    compensateOrFailClosed_("envelope_create_compensation_required", {
+      action: "envelopes.create",
+      envelopeRuleId: rule && rule.envelope_rule_id,
+      envelopePeriodId: period && period.envelope_period_id,
+      cause: error.code || error.message
+    }, function() {
+      if (period) {
+        const periodRow = findBy_("Envelope_Periods", "envelope_period_id", period.envelope_period_id);
+        if (periodRow) deleteRow_("Envelope_Periods", periodRow.__row);
+      }
+      if (rule) {
+        const ruleRow = findBy_("Envelope_Rules", "envelope_rule_id", rule.envelope_rule_id);
+        if (ruleRow) deleteRow_("Envelope_Rules", ruleRow.__row);
+      }
+    });
+    throw sbError_("ENVELOPE_CREATE_ROLLED_BACK", "Pembuatan kantong gagal dan seluruh perubahan telah dibatalkan.", 503, { cause: error.code || error.message });
+  }
 }
 
 function moveEnvelope_(context) {
@@ -87,12 +168,15 @@ function moveEnvelope_(context) {
   const to = findBy_("Envelope_Periods", "envelope_period_id", payload.toEnvelopePeriodId);
   if (!from || !to || from.status !== "active" || to.status !== "active") throw sbError_("INVALID_ENVELOPE", "Kantong sumber atau tujuan tidak aktif.", 400);
   if (from.envelope_period_id === to.envelope_period_id) throw sbError_("SAME_ENVELOPE", "Kantong sumber dan tujuan harus berbeda.", 400);
-  [from, to].forEach(function(period) {
-    const rule = findBy_("Envelope_Rules", "envelope_rule_id", period.envelope_rule_id);
-    if (context.actor.role !== "owner" && rule && rule.scope === "personal" && String(rule.owner_user_id) !== String(context.actor.user_id)) throw sbError_("FORBIDDEN_ENVELOPE", "Kantong pribadi ini bukan milik pengguna aktif.", 403);
-  });
+  const fromRule = findBy_("Envelope_Rules", "envelope_rule_id", from.envelope_rule_id);
+  const toRule = findBy_("Envelope_Rules", "envelope_rule_id", to.envelope_rule_id);
+  if (!canAccessEnvelopeRule_(context, fromRule) || !canAccessEnvelopeRule_(context, toRule)) throw sbError_("FORBIDDEN_ENVELOPE", "Kantong pribadi ini bukan milik pengguna aktif.", 403);
+  if (String(fromRule.scope || "shared") !== String(toRule.scope || "shared") || String(fromRule.owner_user_id || "") !== String(toRule.owner_user_id || "")) {
+    throw sbError_("ENVELOPE_SCOPE_MISMATCH", "Alokasi hanya dapat dipindahkan antar kantong dengan kepemilikan yang sama.", 400);
+  }
   const amount = intAmount_(payload.amount);
-  const available = envelopeUsage_(from).remaining_amount;
+  const visibleTransactions = visibleTransactions_(context);
+  const available = envelopeUsage_(from, visibleTransactions).remaining_amount;
   if (amount > available) throw sbError_("INSUFFICIENT_ALLOCATION", "Alokasi melebihi sisa kantong sumber.", 409, { available: available });
   const previousFrom = Object.assign({}, from);
   const previousTo = Object.assign({}, to);
@@ -113,7 +197,7 @@ function moveEnvelope_(context) {
     });
     throw sbError_("ENVELOPE_MOVE_ROLLED_BACK", "Pemindahan alokasi gagal dan seluruh perubahan telah dibatalkan.", 503, { cause: error.code || error.message });
   }
-  return { movement: publicRow_(movement), from: envelopeUsage_(updatedFrom), to: envelopeUsage_(updatedTo) };
+  return { movement: publicRow_(movement), from: envelopeUsage_(updatedFrom, visibleTransactions), to: envelopeUsage_(updatedTo, visibleTransactions) };
 }
 
 function closeEnvelope_(context) {
@@ -121,12 +205,16 @@ function closeEnvelope_(context) {
   if (!current || current.status !== "active") throw sbError_("NOT_FOUND", "Periode kantong aktif tidak ditemukan.", 404);
   assertVersion_(current, context.rowVersion || context.payload.row_version);
   const rule = findBy_("Envelope_Rules", "envelope_rule_id", current.envelope_rule_id);
-  if (context.actor.role !== "owner" && rule && rule.scope === "personal" && String(rule.owner_user_id) !== String(context.actor.user_id)) throw sbError_("FORBIDDEN_ENVELOPE", "Kantong pribadi ini bukan milik pengguna aktif.", 403);
-  const unallocated = rows_("Transactions").filter(function(row) { return row.status === "active" && row.transaction_type === "expense" && !row.envelope_period_id && row.transaction_date >= current.period_start && row.transaction_date <= current.period_end; });
+  if (!rule || !canAccessEnvelopeRule_(context, rule)) throw sbError_("FORBIDDEN_ENVELOPE", "Kantong pribadi ini bukan milik pengguna aktif.", 403);
+  const unallocated = visibleTransactions_(context).filter(function(row) {
+    if (row.status !== "active" || row.transaction_type !== "expense" || row.envelope_period_id || row.transaction_date < current.period_start || row.transaction_date > current.period_end) return false;
+    if (String(row.scope || "shared") !== String(rule.scope || "shared")) return false;
+    return rule.scope !== "personal" || String(row.owner_user_id || "") === String(rule.owner_user_id || "");
+  });
   if (unallocated.length) throw sbError_("UNALLOCATED_EXPENSES", "Periode belum dapat ditutup karena ada pengeluaran belum dialokasikan.", 409, { count: unallocated.length });
   const updated = Object.assign({}, current, { status: "closed", closed_by: context.actor.user_id, closed_at: nowIso_(), row_version: rowVersion_(current) + 1, updated_at: nowIso_(), updated_by: context.actor.user_id });
   updateAuditedRow_("Envelope_Periods", current, updated, context, "envelopes.close", "envelope_period", updated.envelope_period_id);
-  return envelopeUsage_(updated);
+  return envelopeUsage_(updated, visibleTransactions_(context));
 }
 
 function recurringDueDates_(rule, periodKey) {
@@ -196,14 +284,32 @@ function ensureRecurringOccurrences_(periodKey) {
 }
 
 function listRecurring_(context) {
-  const period = context.payload.period || monthKey_();
-  ensureRecurringOccurrences_(period);
-  const rules = Object.fromEntries(rows_("Recurring_Rules").map(function(row) { return [row.recurring_rule_id, row]; }));
+  const period = periodKey_(context.payload.period);
+  const rules = Object.fromEntries(rows_("Recurring_Rules").filter(function(rule) {
+    return rule.status === "active" && canAccessRecurringRule_(context, rule);
+  }).map(function(row) { return [row.recurring_rule_id, row]; }));
   return rows_("Recurring_Occurrences").filter(function(row) { return row.period_key === period; }).map(function(row) {
-    const rule = rules[row.recurring_rule_id] || {};
+    const rule = rules[row.recurring_rule_id];
+    if (!rule) return null;
     const derivedStatus = !["paid", "received", "partial", "cancelled"].includes(row.status) && row.due_date < today_() ? (rule.kind === "income" ? "late" : "overdue") : row.status;
-    return Object.assign(publicRow_(row), { status: derivedStatus, name: rule.name || "Jadwal", kind: rule.kind || "expense", category_id: rule.category_id || "", default_account_id: rule.default_account_id || "", frequency: rule.frequency || "monthly" });
-  });
+    return Object.assign(publicRow_(row), {
+      status: derivedStatus,
+      name: rule.name || "Jadwal",
+      kind: rule.kind || "expense",
+      category_id: rule.category_id || "",
+      default_account_id: rule.default_account_id || "",
+      frequency: rule.frequency || "monthly",
+      payment_method: rule.payment_method || "transfer",
+      auto_debit: rule.auto_debit,
+      start_date: rule.start_date || "",
+      end_date: rule.end_date || "",
+      priority: rule.priority || "normal",
+      rule_status: rule.status || "active",
+      rule_row_version: rule.row_version,
+      scope: rule.scope || "shared",
+      owner_user_id: rule.owner_user_id || ""
+    });
+  }).filter(Boolean);
 }
 
 function createRecurringRule_(context) {
@@ -223,14 +329,18 @@ function createRecurringRule_(context) {
   if (endDate && endDate < startDate) throw sbError_("INVALID_DATE_RANGE", "Tanggal akhir jadwal tidak boleh sebelum tanggal mulai.", 400);
   const account = activeAccount_(payload.default_account_id);
   assertAccountAccess_(context, account);
+  const owned = normalizeOwnedScope_(context, payload, ownedScopeFromAccount_(account));
+  if (owned.scope === "shared" && account.owner_scope === "personal") throw sbError_("SCOPE_ACCOUNT_MISMATCH", "Jadwal bersama tidak boleh memakai rekening pribadi.", 400);
+  if (owned.scope === "personal" && account.owner_scope === "personal" && String(owned.owner_user_id) !== String(account.owner_user_id)) throw sbError_("SCOPE_OWNER_MISMATCH", "Owner jadwal dan rekening pribadi harus sama.", 400);
   const record = {
     recurring_rule_id: uuid_(), name: name, kind: kind,
     category_id: payload.category_id || "", expected_amount: amount, frequency: frequency,
-    due_day: dueDay, default_account_id: payload.default_account_id || "",
+    due_day: dueDay, default_account_id: account.account_id,
     payment_method: sanitizeText_(payload.payment_method || "transfer", 40), auto_debit: strictBoolean_(payload.auto_debit, "auto_debit", false),
     start_date: startDate, end_date: endDate,
     priority: sanitizeText_(payload.priority || "normal", 20), status: "active", row_version: 1,
-    created_by: context.actor.user_id, created_at: nowIso_(), updated_by: context.actor.user_id, updated_at: nowIso_()
+    created_by: context.actor.user_id, created_at: nowIso_(), updated_by: context.actor.user_id, updated_at: nowIso_(),
+    scope: owned.scope, owner_user_id: owned.owner_user_id
   };
   appendAuditedRow_("Recurring_Rules", "recurring_rule_id", record, context, "recurring.createRule", "recurring_rule", null, publicRow_(record));
   return publicRow_(record);
@@ -241,7 +351,9 @@ function updateRecurringRule_(context) {
   if (!current) throw sbError_("NOT_FOUND", "Aturan rutin tidak ditemukan.", 404);
   assertVersion_(current, context.rowVersion || context.payload.row_version);
   const updated = Object.assign({}, current);
-  ["name", "category_id", "frequency", "default_account_id", "payment_method", "priority", "status"].forEach(function(key) { if (context.payload[key] !== undefined) updated[key] = sanitizeText_(context.payload[key], 100); });
+  ["name", "category_id", "frequency", "default_account_id", "payment_method", "priority", "status"].forEach(function(key) {
+    if (context.payload[key] !== undefined) updated[key] = sanitizeText_(context.payload[key], 100);
+  });
   if (!updated.name) throw sbError_("NAME_REQUIRED", "Nama jadwal wajib diisi.", 400);
   if (!["daily", "weekly", "biweekly", "monthly", "bimonthly", "quarterly", "semiannual", "annual"].includes(updated.frequency)) throw sbError_("INVALID_FREQUENCY", "Frekuensi jadwal tidak valid.", 400);
   if (!["active", "archived"].includes(updated.status)) throw sbError_("INVALID_STATUS", "Status jadwal tidak valid.", 400);
@@ -255,7 +367,14 @@ function updateRecurringRule_(context) {
   activeCategory_(updated.category_id, updated.kind);
   const account = activeAccount_(updated.default_account_id);
   assertAccountAccess_(context, account);
-  updated.row_version = rowVersion_(current) + 1; updated.updated_by = context.actor.user_id; updated.updated_at = nowIso_();
+  const owned = normalizeOwnedScope_(context, context.payload, { scope: current.scope || "shared", owner_user_id: current.owner_user_id || "" });
+  if (owned.scope === "shared" && account.owner_scope === "personal") throw sbError_("SCOPE_ACCOUNT_MISMATCH", "Jadwal bersama tidak boleh memakai rekening pribadi.", 400);
+  if (owned.scope === "personal" && account.owner_scope === "personal" && String(owned.owner_user_id) !== String(account.owner_user_id)) throw sbError_("SCOPE_OWNER_MISMATCH", "Owner jadwal dan rekening pribadi harus sama.", 400);
+  updated.scope = owned.scope;
+  updated.owner_user_id = owned.owner_user_id;
+  updated.row_version = rowVersion_(current) + 1;
+  updated.updated_by = context.actor.user_id;
+  updated.updated_at = nowIso_();
   updateAuditedRow_("Recurring_Rules", current, updated, context, "recurring.updateRule", "recurring_rule", updated.recurring_rule_id);
   return publicRow_(updated);
 }
@@ -265,7 +384,8 @@ function payOccurrence_(context) {
   if (!occurrence || ["paid", "received", "cancelled"].includes(occurrence.status)) throw sbError_("INVALID_OCCURRENCE", "Jadwal tidak ditemukan atau sudah selesai.", 409);
   assertVersion_(occurrence, context.rowVersion || context.payload.row_version);
   const rule = findBy_("Recurring_Rules", "recurring_rule_id", occurrence.recurring_rule_id);
-  if (!rule) throw sbError_("INVALID_RECURRING_RULE", "Aturan rutin tidak ditemukan.", 400);
+  if (!rule || rule.status !== "active") throw sbError_("INVALID_RECURRING_RULE", "Aturan rutin tidak ditemukan atau tidak aktif.", 400);
+  assertRecurringRuleAccess_(context, rule);
   let transaction = null;
   const previousOccurrence = Object.assign({}, occurrence);
   try {
@@ -275,7 +395,7 @@ function payOccurrence_(context) {
       destination_account_id: rule.kind === "income" ? (context.payload.account_id || rule.default_account_id) : "",
       category_id: rule.category_id, recurring_occurrence_id: occurrence.occurrence_id,
       amount: context.payload.amount || occurrence.expected_amount, description: rule.name,
-      payment_method: rule.payment_method, scope: "shared", confirm_duplicate: true
+      payment_method: rule.payment_method, scope: rule.scope || "shared", owner_user_id: rule.owner_user_id || "", confirm_duplicate: true
     }, { skipAudit: true });
     const updatedOccurrence = Object.assign({}, occurrence, {
       actual_amount: Number(occurrence.actual_amount || 0) + Number(transaction.amount),
@@ -306,6 +426,7 @@ function reverseOccurrencePayment_(context) {
   assertVersion_(occurrence, context.rowVersion || payload.row_version);
   const rule = findBy_("Recurring_Rules", "recurring_rule_id", occurrence.recurring_rule_id);
   if (!rule) throw sbError_("INVALID_RECURRING_RULE", "Aturan rutin tidak ditemukan.", 400);
+  assertRecurringRuleAccess_(context, rule);
   const transaction = findBy_("Transactions", "transaction_id", payload.transaction_id);
   if (!transaction || transaction.status !== "active" || transaction.recurring_occurrence_id !== occurrence.occurrence_id) throw sbError_("INVALID_LINKED_TRANSACTION", "Transaksi pembayaran aktif tidak ditemukan pada jadwal ini.", 409);
   assertCanModifyTransaction_(context, transaction);
@@ -339,10 +460,19 @@ function reverseOccurrencePayment_(context) {
 }
 
 function listBudgets_(context) {
-  const period = context.payload.period || monthKey_();
-  const transactions = rows_("Transactions").filter(function(row) { return row.status === "active" && row.transaction_type === "expense" && String(row.transaction_date).slice(0, 7) === period; });
-  return rows_("Budgets").filter(function(row) { return row.period_key === period && row.status === "active"; }).map(function(row) {
-    const used = transactions.filter(function(transaction) { return transaction.category_id === row.category_id; }).reduce(function(sum, item) { return sum + Number(item.amount || 0); }, 0);
+  const period = periodKey_(context.payload.period);
+  const transactions = visibleTransactions_(context).filter(function(row) {
+    return row.status === "active" && row.transaction_type === "expense" && String(row.transaction_date).slice(0, 7) === period;
+  });
+  return rows_("Budgets").filter(function(row) {
+    return row.period_key === period && row.status === "active" && canAccessBudget_(context, row);
+  }).map(function(row) {
+    const used = transactions.filter(function(transaction) {
+      if (transaction.category_id !== row.category_id) return false;
+      if (String(row.scope || "shared") !== String(transaction.scope || "shared")) return false;
+      if (row.scope === "personal" && String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) return false;
+      return true;
+    }).reduce(function(sum, item) { return sum + Number(item.amount || 0); }, 0);
     return Object.assign(publicRow_(row), { used_amount: used });
   });
 }
@@ -353,35 +483,84 @@ function upsertBudget_(context) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) throw sbError_("INVALID_PERIOD", "Periode budget harus menggunakan format YYYY-MM.", 400);
   const warningThreshold = Number(payload.warning_threshold === undefined ? 80 : payload.warning_threshold);
   if (!Number.isInteger(warningThreshold) || warningThreshold < 1 || warningThreshold > 100) throw sbError_("INVALID_WARNING_THRESHOLD", "Ambang peringatan budget harus integer 1-100.", 400);
-  const current = rows_("Budgets").find(function(row) { return row.period_key === period && row.category_id === payload.category_id; });
+  const category = activeCategory_(payload.category_id, "expense");
+  let envelopeRule = null;
+  if (payload.envelope_rule_id) {
+    envelopeRule = findBy_("Envelope_Rules", "envelope_rule_id", payload.envelope_rule_id);
+    if (!envelopeRule || envelopeRule.status !== "active") throw sbError_("INVALID_ENVELOPE_RULE", "Aturan kantong budget tidak aktif.", 400);
+    if (!canAccessEnvelopeRule_(context, envelopeRule)) throw sbError_("FORBIDDEN_ENVELOPE", "Aturan kantong budget tidak dapat diakses.", 403);
+  }
+  const fallback = envelopeRule
+    ? { scope: envelopeRule.scope || "shared", owner_user_id: envelopeRule.owner_user_id || "" }
+    : { scope: "shared", owner_user_id: "" };
+  const owned = normalizeOwnedScope_(context, payload, fallback);
+  if (envelopeRule && (String(owned.scope) !== String(envelopeRule.scope || "shared") || String(owned.owner_user_id || "") !== String(envelopeRule.owner_user_id || ""))) {
+    throw sbError_("BUDGET_SCOPE_MISMATCH", "Scope budget harus sama dengan aturan kantong terkait.", 400);
+  }
+  const current = rows_("Budgets").find(function(row) {
+    return row.period_key === period
+      && row.category_id === category.category_id
+      && String(row.scope || "shared") === owned.scope
+      && String(row.owner_user_id || "") === owned.owner_user_id;
+  });
   if (current) {
     assertVersion_(current, context.rowVersion || payload.row_version);
     const updated = Object.assign({}, current, {
-      amount: intAmount_(payload.amount), warning_threshold: warningThreshold,
-      row_version: rowVersion_(current) + 1, updated_by: context.actor.user_id, updated_at: nowIso_()
+      envelope_rule_id: envelopeRule ? envelopeRule.envelope_rule_id : "",
+      amount: intAmount_(payload.amount),
+      warning_threshold: warningThreshold,
+      scope: owned.scope,
+      owner_user_id: owned.owner_user_id,
+      row_version: rowVersion_(current) + 1,
+      updated_by: context.actor.user_id,
+      updated_at: nowIso_()
     });
     updateAuditedRow_("Budgets", current, updated, context, "budgets.upsert", "budget", updated.budget_id);
     return publicRow_(updated);
   }
-  const category = activeCategory_(payload.category_id, "expense");
-  const record = { budget_id: uuid_(), period_key: period, category_id: category.category_id, envelope_rule_id: payload.envelope_rule_id || "", name: category.name, amount: intAmount_(payload.amount), warning_threshold: warningThreshold, status: "active", row_version: 1, created_by: context.actor.user_id, created_at: nowIso_(), updated_by: context.actor.user_id, updated_at: nowIso_() };
+  const record = {
+    budget_id: uuid_(), period_key: period, category_id: category.category_id,
+    envelope_rule_id: envelopeRule ? envelopeRule.envelope_rule_id : "", name: category.name,
+    amount: intAmount_(payload.amount), warning_threshold: warningThreshold,
+    status: "active", row_version: 1, created_by: context.actor.user_id, created_at: nowIso_(),
+    updated_by: context.actor.user_id, updated_at: nowIso_(),
+    scope: owned.scope, owner_user_id: owned.owner_user_id
+  };
   appendAuditedRow_("Budgets", "budget_id", record, context, "budgets.upsert", "budget", null, publicRow_(record));
   return publicRow_(record);
 }
 
-function goalCurrentAmount_(goalId) {
-  return rows_("Goal_Movements").filter(function(row) { return row.goal_id === goalId && row.status === "active"; }).reduce(function(sum, row) { return sum + (row.movement_type === "withdraw" ? -Number(row.amount || 0) : Number(row.amount || 0)); }, 0);
+function goalMovementsAsOf_(goalId, cutoffDate) {
+  const cutoff = String(cutoffDate || today_());
+  const transactionById = Object.fromEntries(rows_("Transactions").map(function(row) { return [String(row.transaction_id), row]; }));
+  return rows_("Goal_Movements").filter(function(row) {
+    if (row.goal_id !== goalId || row.status !== "active") return false;
+    if (!row.transaction_id) return String(row.created_at || "").slice(0, 10) <= cutoff;
+    const transaction = transactionById[String(row.transaction_id)];
+    return Boolean(transaction && transaction.status === "active" && String(transaction.transaction_date || "") <= cutoff);
+  });
 }
 
-function listGoals_() {
-  const movements = rows_("Goal_Movements").filter(function(item) { return item.status === "active"; });
-  return rows_("Savings_Goals").map(function(row) {
-    const latest = movements.filter(function(item) { return item.goal_id === row.goal_id; }).sort(function(a, b) { return String(b.created_at).localeCompare(String(a.created_at)); })[0] || null;
+function goalCurrentAmount_(goalId, cutoffDate) {
+  return goalMovementsAsOf_(goalId, cutoffDate).reduce(function(sum, row) { return sum + (row.movement_type === "withdraw" ? -Number(row.amount || 0) : Number(row.amount || 0)); }, 0);
+}
+
+function listGoals_(context) {
+  const period = context && context.payload && context.payload.period;
+  const periodEnd = period && /^\d{4}-(0[1-9]|1[0-2])$/.test(period) ? monthBounds_(period).end : today_();
+  const cutoffDate = periodEnd < today_() ? periodEnd : today_();
+  return rows_("Savings_Goals").filter(function(row) {
+    return canAccessGoal_(context, row);
+  }).map(function(row) {
+    const movements = goalMovementsAsOf_(row.goal_id, cutoffDate);
+    const latest = movements.slice().sort(function(a, b) { return String(b.created_at).localeCompare(String(a.created_at)); })[0] || null;
     return Object.assign(publicRow_(row), {
-      current_amount: goalCurrentAmount_(row.goal_id),
+      current_amount: goalCurrentAmount_(row.goal_id, cutoffDate),
       last_movement_id: latest ? latest.goal_movement_id : "",
       last_transaction_id: latest ? latest.transaction_id : "",
-      last_movement_type: latest ? latest.movement_type : ""
+      last_movement_type: latest ? latest.movement_type : "",
+      can_move: row.status === "active",
+      can_reverse: Boolean(latest && (context.actor.role === "owner" || String(latest.created_by) === String(context.actor.user_id)))
     });
   });
 }
@@ -393,7 +572,17 @@ function createGoal_(context) {
   if (!payload.account_id) throw sbError_("ACCOUNT_REQUIRED", "Target wajib terhubung ke rekening tujuan.", 400);
   const account = activeAccount_(payload.account_id);
   assertAccountAccess_(context, account);
-  const record = { goal_id: uuid_(), name: sanitizeText_(payload.name, 100), goal_type: goalType, target_amount: intAmount_(payload.target_amount), target_date: validateDate_(payload.target_date), account_id: account.account_id, priority: sanitizeText_(payload.priority || "normal", 20), status: "active", row_version: 1, created_by: context.actor.user_id, created_at: nowIso_(), updated_by: context.actor.user_id, updated_at: nowIso_() };
+  const owned = normalizeOwnedScope_(context, payload, ownedScopeFromAccount_(account));
+  if (owned.scope === "shared" && account.owner_scope === "personal") throw sbError_("SCOPE_ACCOUNT_MISMATCH", "Target bersama tidak boleh memakai rekening pribadi.", 400);
+  if (owned.scope === "personal" && account.owner_scope === "personal" && String(owned.owner_user_id) !== String(account.owner_user_id)) throw sbError_("SCOPE_OWNER_MISMATCH", "Owner target dan rekening pribadi harus sama.", 400);
+  const record = {
+    goal_id: uuid_(), name: sanitizeText_(payload.name, 100), goal_type: goalType,
+    target_amount: intAmount_(payload.target_amount), target_date: validateDate_(payload.target_date),
+    account_id: account.account_id, priority: sanitizeText_(payload.priority || "normal", 20),
+    status: "active", row_version: 1, created_by: context.actor.user_id, created_at: nowIso_(),
+    updated_by: context.actor.user_id, updated_at: nowIso_(),
+    scope: owned.scope, owner_user_id: owned.owner_user_id
+  };
   if (!record.name) throw sbError_("NAME_REQUIRED", "Nama target wajib diisi.", 400);
   appendAuditedRow_("Savings_Goals", "goal_id", record, context, "goals.create", "goal", null, publicRow_(record));
   return Object.assign(publicRow_(record), { current_amount: 0 });
@@ -403,6 +592,7 @@ function moveGoal_(context) {
   const payload = context.payload;
   const goal = findBy_("Savings_Goals", "goal_id", payload.goal_id);
   if (!goal || goal.status !== "active") throw sbError_("INVALID_GOAL", "Target tidak aktif.", 400);
+  assertGoalAccess_(context, goal);
   const amount = intAmount_(payload.amount);
   if (["contribution", "withdraw"].indexOf(payload.movement_type) === -1) throw sbError_("INVALID_MOVEMENT_TYPE", "Jenis mutasi target harus contribution atau withdraw.", 400);
   const movementType = payload.movement_type;
@@ -418,7 +608,7 @@ function moveGoal_(context) {
   let transaction = null;
   const movement = { goal_movement_id: uuid_(), goal_id: goal.goal_id, transaction_id: "", movement_type: movementType, amount: amount, reason: sanitizeText_(payload.reason, 180), status: "active", created_by: context.actor.user_id, created_at: nowIso_() };
   try {
-    transaction = createTransaction_(context, { transaction_date: payload.transaction_date || today_(), transaction_type: "transfer", source_account_id: sourceAccount.account_id, destination_account_id: destinationAccount.account_id, amount: amount, goal_id: goal.goal_id, description: goal.name, scope: "shared", confirm_duplicate: true }, { skipAudit: true });
+    transaction = createTransaction_(context, { transaction_date: payload.transaction_date || today_(), transaction_type: "transfer", source_account_id: sourceAccount.account_id, destination_account_id: destinationAccount.account_id, amount: amount, goal_id: goal.goal_id, description: goal.name, scope: goal.scope || "shared", owner_user_id: goal.owner_user_id || "", confirm_duplicate: true }, { skipAudit: true });
     movement.transaction_id = transaction.transaction_id;
     appendRow_("Goal_Movements", movement);
     appendAudit_(context, "goals.move", "goal_movement", movement.goal_movement_id, null, { movement: publicRow_(movement), transaction: transaction });
@@ -440,6 +630,9 @@ function reverseGoalMovement_(context) {
   const payload = context.payload;
   const movement = findBy_("Goal_Movements", "goal_movement_id", payload.goal_movement_id);
   if (!movement || movement.status !== "active") throw sbError_("NOT_FOUND", "Mutasi target aktif tidak ditemukan.", 404);
+  const goalRecord = findBy_("Savings_Goals", "goal_id", movement.goal_id);
+  if (!goalRecord) throw sbError_("INVALID_GOAL", "Target mutasi tidak ditemukan.", 409);
+  assertGoalAccess_(context, goalRecord);
   if (context.actor.role !== "owner" && String(movement.created_by) !== String(context.actor.user_id)) throw sbError_("FORBIDDEN", "Member hanya dapat membatalkan mutasi target yang dibuat sendiri.", 403);
   const transaction = movement.transaction_id ? findBy_("Transactions", "transaction_id", movement.transaction_id) : null;
   if (movement.transaction_id && (!transaction || transaction.status !== "active" || transaction.goal_id !== movement.goal_id)) throw sbError_("INVALID_LINKED_TRANSACTION", "Transaksi target aktif tidak ditemukan atau tidak konsisten.", 409);
@@ -461,6 +654,5 @@ function reverseGoalMovement_(context) {
     });
     throw sbError_("GOAL_REVERSE_ROLLED_BACK", "Pembatalan mutasi target gagal dan seluruh perubahan telah dibatalkan.", 503, { cause: error.code || error.message });
   }
-  const goal = findBy_("Savings_Goals", "goal_id", movement.goal_id);
-  return { movement: publicRow_(updatedMovement), transaction: updatedTransaction ? publicRow_(updatedTransaction) : null, goal: goal ? Object.assign(publicRow_(goal), { current_amount: goalCurrentAmount_(goal.goal_id) }) : null };
+  return { movement: publicRow_(updatedMovement), transaction: updatedTransaction ? publicRow_(updatedTransaction) : null, goal: Object.assign(publicRow_(goalRecord), { current_amount: goalCurrentAmount_(goalRecord.goal_id) }) };
 }

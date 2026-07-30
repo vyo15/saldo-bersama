@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { env, getPublicConfigErrors } from "../../config/env.js";
+import { getPublicConfigErrors } from "../../config/env.js";
 import { apiClient } from "../../services/api/client.js";
 
 const AuthContext = createContext(null);
@@ -29,6 +29,15 @@ export const AuthProvider = ({ children }) => {
   }, [configErrors]);
 
   useEffect(() => { refreshSession(); }, [refreshSession]);
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+      setStatus("anonymous");
+      setError(new Error("Sesi sudah berakhir. Silakan login kembali."));
+    };
+    window.addEventListener("saldo-bersama:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("saldo-bersama:unauthorized", handleUnauthorized);
+  }, []);
 
   const loginWithFirebaseToken = useCallback(async (firebaseIdToken) => {
     setStatus("loading");
@@ -45,9 +54,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(async () => {
-    await apiClient.logout();
-    setUser(null);
-    setStatus("anonymous");
+    try {
+      await apiClient.logout();
+      setUser(null);
+      setStatus("anonymous");
+      setError(null);
+    } catch (logoutError) {
+      setError(logoutError);
+      setStatus("authenticated");
+      throw logoutError;
+    }
   }, []);
 
   const value = useMemo(() => ({
@@ -55,7 +71,6 @@ export const AuthProvider = ({ children }) => {
     status,
     error,
     configErrors,
-    demoMode: env.demoMode,
     loginWithFirebaseToken,
     logout,
     refreshSession,

@@ -1,8 +1,6 @@
-import { env } from "../../config/env.js";
-import { demoRepository } from "../demo/repository.js";
 import { createSecureRandomId } from "../../domain/security.js";
 
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(message, { code = "UNKNOWN", status = 500, details } = {}) {
     super(message);
     this.name = "ApiError";
@@ -15,9 +13,12 @@ export class ApiError extends Error {
 const parseResponse = async (response) => {
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.ok === false) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("saldo-bersama:unauthorized"));
+    }
     throw new ApiError(body.error?.message || "Permintaan tidak dapat diproses.", {
       code: body.error?.code,
-      status: response.status,
+      status: body.error?.status || response.status,
       details: body.error?.details,
     });
   }
@@ -26,14 +27,12 @@ const parseResponse = async (response) => {
 
 export const apiClient = {
   async session() {
-    if (env.demoMode) return demoRepository.session();
     const response = await fetch("/api/session", { credentials: "include" });
     if (response.status === 401) return null;
     return parseResponse(response);
   },
 
   async createSession(firebaseIdToken) {
-    if (env.demoMode) return demoRepository.session();
     return parseResponse(await fetch("/api/session", {
       method: "POST",
       credentials: "include",
@@ -43,7 +42,6 @@ export const apiClient = {
   },
 
   async logout() {
-    if (env.demoMode) return demoRepository.logout();
     return parseResponse(await fetch("/api/session", {
       method: "POST",
       credentials: "include",
@@ -53,7 +51,6 @@ export const apiClient = {
   },
 
   async request(action, payload = {}, options = {}) {
-    if (env.demoMode) return demoRepository.request(action, payload, options);
     const response = await fetch("/api/gateway", {
       method: "POST",
       credentials: "include",

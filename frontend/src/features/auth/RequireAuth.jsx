@@ -6,7 +6,7 @@ const RequireAuth = () => {
   const { status } = useAuth();
   const location = useLocation();
   if (status === "loading") return <LoadingScreen label="Memeriksa sesi aman..." />;
-  if (status !== "authenticated") return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (status !== "authenticated") return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}${location.hash}` }} />;
   return <Outlet />;
 };
 

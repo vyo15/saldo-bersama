@@ -1,119 +1,105 @@
-# Deployment dan aktivasi produksi
+# Deployment dan aktivasi production
 
-## 1. Siapkan lingkungan terpisah
+## Resource terpisah
 
-Buat resource terpisah:
+Gunakan Firebase, spreadsheet, Apps Script deployment, Calendar, folder backup, dan env terpisah antara DEV dan PROD.
 
-- `Saldo Bersama - DEV`
-- `Saldo Bersama - PROD`
+## Gate source
 
-Masing-masing memakai Firebase project, spreadsheet, Calendar ID, Apps Script
-deployment, folder backup, dan environment variable yang berbeda.
-
-## 2. Firebase Google login
-
-1. Buat project Firebase.
-2. Aktifkan Authentication → Google provider.
-3. Tambahkan domain deployment pada Authorized domains.
-4. Simpan konfigurasi browser pada `VITE_GOOGLE_CLIENT_ID` dan `VITE_FIREBASE_API_KEY`.
-5. Simpan `FIREBASE_WEB_API_KEY` pada environment server untuk verifikasi ID token.
-
-Firebase config frontend bukan secret. Private key/service account tidak boleh
-masuk repository.
-
-## 3. Google Sheets dan Apps Script
-
-1. Buat spreadsheet kosong.
-2. Buka Extensions → Apps Script.
-3. Salin seluruh file `apps-script/*.gs` dan `apps-script/appsscript.json` ke project Apps Script yang sama.
-4. Isi Script Properties:
-
-   - `SPREADSHEET_ID`
-   - `INTERNAL_SHARED_SECRET` (acak, panjang minimal 32 byte)
-   - `CALENDAR_ID`
-   - `BACKUP_FOLDER_ID`
-   - `PUSH_ENDPOINT_URL` — URL production `/api/push`, opsional sampai Web Push diaktifkan
-
-5. Jalankan `setupSaldoBersama()` sekali dari editor dan setujui izin.
-6. Deploy sebagai Web App, execute as pemilik script.
-7. Simpan URL deployment ke `APPS_SCRIPT_WEB_APP_URL` pada Vercel.
-8. Login menggunakan owner pertama dari `ALLOWED_USERS_JSON`, jalankan `system.initialize`, lalu jalankan integrity check.
-9. Jalankan `setupScheduledTriggers()` hanya setelah Calendar, backup, dan Web Push DEV selesai diuji.
-
-Apps Script Web App dapat menerima request publik karena autentikasi internal
-menggunakan HMAC, timestamp, nonce, dan allowlist. Jangan memanggil endpoint itu
-langsung dari browser.
-
-## 4. Google Calendar bersama
-
-1. Buat kalender bernama `Saldo Bersama`.
-2. Bagikan kepada pasangan menggunakan alamat Google yang benar.
-3. Berikan izin yang sesuai; jangan gunakan kalender utama.
-4. Salin Calendar ID ke Script Properties `CALENDAR_ID`.
-5. Jalankan sinkronisasi uji di DEV.
-
-Event tidak boleh berisi saldo, nominal, nomor rekening, atau catatan sensitif.
-
-## 5. Web Push
-
-1. Buat VAPID key pair dan simpan hanya di environment server.
-2. Isi `VITE_VAPID_PUBLIC_KEY` untuk subscription browser.
-3. Isi `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, dan `VAPID_SUBJECT` pada server.
-4. Isi URL route production `/api/push` sebagai `PUSH_ENDPOINT_URL`; signature memakai `INTERNAL_SHARED_SECRET` yang sama.
-5. Jalankan `setupScheduledTriggers()` untuk membuat trigger notifikasi dan backup terjadwal.
-6. Uji register, revoke, deduplikasi, quiet hours, endpoint kedaluwarsa, dan
-   retry maksimal tiga kali.
-
-## 6. Google Drive backup
-
-Buat satu folder backup. Gunakan subfolder operasional:
-
-```text
-daily/
-monthly/
-manual/
-safety/
+```bash
+npm ci
+npm run check
+npm run zip
 ```
 
-Trigger Apps Script harian menjalankan backup DEV/PROD sesuai jadwal. Uji restore
-harus dilakukan pada spreadsheet DEV, bukan langsung pada PROD.
+Hanya push source yang lulus gate. GitHub harus private. Jangan mengunggah ZIP manual yang berisi `.env`, `.git`, `node_modules`, atau `dist`.
 
-Restore menggunakan dua action Owner-only: `restore.preview` dengan `backupFileId`,
-kemudian `restore.apply` dengan `previewToken`, file yang sama, dan frasa
-`RESTORE SALDO BERSAMA`. Eksekusi otomatis mengaktifkan maintenance, membuat
-safety backup, memvalidasi hasil, dan rollback ke safety backup bila gagal.
+## Firebase/OAuth
 
-## 7. Environment deployment
+- Google provider aktif.
+- Domain production ada pada Firebase Authorized domains.
+- Origin production exact ada pada OAuth Authorized JavaScript origins.
+- `VITE_GOOGLE_CLIENT_ID`, `VITE_FIREBASE_API_KEY`, dan `FIREBASE_WEB_API_KEY` benar.
+- OAuth client secret tidak digunakan frontend.
 
-Salin `.env.example` ke penyimpanan environment platform. Jangan commit `.env`.
-Pastikan preview dan production mempunyai value terpisah.
+## Apps Script PROD
 
-## 8. Gate sebelum data nyata
+### Spreadsheet baru
 
-- API status menunjukkan `connected`.
-- Login akun di luar allowlist ditolak.
-- Owner dan member mendapat batas aksi berbeda.
-- Create expense/income/transfer lulus.
-- Double submit hanya menghasilkan satu transaksi.
-- Transfer total kekayaan tidak berubah.
-- Calendar gagal tidak menggagalkan transaksi.
-- Backup dan integrity check berhasil.
-- Restore drill berhasil pada DEV.
-- Tampilan desktop dan mobile diperiksa.
+- Salin seluruh source Apps Script terbaru.
+- Set `INTERNAL_SHARED_SECRET`.
+- Jalankan `setupSaldoBersama()`.
+- Verifikasi `SETUP_STATUS=ready`, schema v2, dan 21 sheet.
 
-Sampai seluruh gate lulus, gunakan data uji.
+### Spreadsheet v1
 
-## 9. Timeout dan ambiguous completion
+- Buat backup manual tambahan.
+- Jalankan preview migration.
+- Pastikan `ambiguous=0`.
+- Set `MIGRATION_CONFIRMATION=MIGRATE_V2`.
+- Jalankan `runSchemaMigrationV2()`.
+- Verifikasi `MIGRATION_STATUS=ready`, schema v2, integrity bersih, dan safety backup tercatat sebagai `pre-migration`.
 
-Gateway Vercel diberi `maxDuration` 60 detik dan menghentikan call Apps Script setelah 55 detik. Semua retry write wajib memakai idempotency key yang sama. Pesan `UPSTREAM_TIMEOUT` berarti status commit belum dapat dipastikan; jangan membuat key baru.
+Deploy Web App sebagai pemilik dengan access **Anyone**. Gunakan URL `/exec`, bukan `/dev` atau URL editor.
 
-Rate limiter Vercel berbasis memory hanya best-effort per instance. Jangan mengandalkannya sebagai pembatas global.
+## Environment Vercel
 
-## 10. Recovery operasional
+Wajib production:
 
-Sebelum production, lakukan dua drill di DEV:
+```text
+VITE_APP_NAME
+VITE_GOOGLE_CLIENT_ID
+VITE_FIREBASE_API_KEY
+FIREBASE_WEB_API_KEY
+ALLOWED_USERS_JSON
+ALLOWED_ORIGINS
+SESSION_SECRET
+INTERNAL_SHARED_SECRET
+APPS_SCRIPT_WEB_APP_URL
+```
 
-1. restore utama gagal tetapi rollback safety berhasil;
-2. simulasi rollback gagal dan pemulihan dengan `recoverFromSafetyBackup()`.
+Opsional Web Push:
 
-Ikuti `docs/RECOVERY_RUNBOOK.md`. Jangan membuka maintenance secara manual sebelum verifikasi selesai.
+```text
+VITE_VAPID_PUBLIC_KEY
+VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY
+VAPID_SUBJECT
+```
+
+Aturan:
+
+- `ALLOWED_ORIGINS` berisi origin exact tanpa wildcard/slash akhir.
+- `SESSION_SECRET` berbeda dari `INTERNAL_SHARED_SECRET`.
+- `INTERNAL_SHARED_SECRET` sama persis dengan Script Property.
+- Secret yang pernah muncul di chat/ZIP/log harus dirotasi sebelum data nyata.
+- Setelah env berubah, redeploy production.
+
+## Aktivasi owner/member
+
+1. Login owner pertama.
+2. Pastikan session berhasil dan `system.initialize` hanya sekali.
+3. Verifikasi row owner aktif di `Users`.
+4. Tambahkan/sinkronkan member dengan role yang sama di Vercel dan Apps Script.
+5. Uji akun di luar allowlist harus ditolak.
+
+## Gate fungsi
+
+- `/api/health` connector `ok`.
+- Owner dan member mempunyai permission berbeda.
+- Member tidak melihat personal user lain.
+- Transfer lintas ownership ditolak.
+- Income/expense/transfer/edit/cancel/reconciliation lulus.
+- Double submit tidak menggandakan transaksi.
+- Dashboard/report hanya memakai data visible dan kategori sebulan penuh.
+- Calendar hanya menyinkronkan item shared.
+- Backup verified dan integrity check lulus.
+- Restore drill serta migration drill dilakukan di DEV.
+
+## Calendar, Push, dan trigger
+
+Calendar bersama tidak boleh memuat nominal, saldo, rekening, atau data personal. Push tidak boleh memuat rincian finansial sensitif. `setupScheduledTriggers()` baru dijalankan setelah integrasi diuji.
+
+## Timeout dan recovery
+
+Gateway timeout dapat berarti hasil commit belum diketahui. Retry write harus memakai idempotency key yang sama. Jangan membuka maintenance atau mengedit sheet manual ketika recovery/migration gagal. Ikuti `docs/RECOVERY_RUNBOOK.md`.

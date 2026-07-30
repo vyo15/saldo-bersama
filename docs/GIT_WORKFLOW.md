@@ -8,7 +8,7 @@ Gunakan branch terpisah untuk perubahan besar. Jangan langsung menimpa `main` ta
 git checkout main
 git pull --rebase origin main
 git checkout -b refactor/saldo-bersama-foundation
-npm install
+npm ci
 ```
 
 Jika branch sudah ada:
@@ -16,7 +16,7 @@ Jika branch sudah ada:
 ```bash
 git checkout refactor/saldo-bersama-foundation
 git pull --rebase origin refactor/saldo-bersama-foundation
-npm install
+npm ci
 ```
 
 ## Sebelum commit
@@ -49,7 +49,7 @@ Sebelum mulai di perangkat mana pun:
 ```bash
 git status --short
 git pull --rebase
-npm install
+npm ci
 ```
 
 Setelah selesai:

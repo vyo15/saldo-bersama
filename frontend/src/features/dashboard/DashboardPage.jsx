@@ -13,22 +13,13 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "../transactions/TransactionForm.jsx";
 
 const DashboardPage = () => {
-  const { overview, status, error, refresh, bootstrap } = useFinance();
+  const { overview, status, error, refresh } = useFinance();
   const [formOpen, setFormOpen] = useState(false);
   if (status === "loading" || status === "idle") return <LoadingScreen />;
   if (status === "error") return <ErrorState error={error} onRetry={refresh} />;
   if (!overview) return null;
 
-  const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item.name]));
-  const expenseByCategory = overview.recentTransactions
-    .filter((item) => item.transaction_type === "expense" && item.status === "active")
-    .reduce((items, item) => {
-      const name = categoryLookup[item.category_id] || "Belum dikategorikan";
-      const found = items.find((entry) => entry.name === name);
-      if (found) found.amount += Number(item.amount || 0);
-      else items.push({ name, amount: Number(item.amount || 0) });
-      return items;
-    }, []);
+  const expenseByCategory = overview.categoryExpenses || [];
 
   return (
     <div className="page-stack">
@@ -77,8 +68,8 @@ const DashboardPage = () => {
         </Card>
 
         <Card className="panel panel--wide">
-          <div className="panel__header"><div><p className="eyebrow">Kebocoran kecil</p><h2>Pengeluaran terbaru per kategori</h2></div></div>
-          {expenseByCategory.length ? <BarChart data={expenseByCategory} label="Pengeluaran terbaru berdasarkan kategori" /> : <p>Belum ada pengeluaran aktif.</p>}
+          <div className="panel__header"><div><p className="eyebrow">Kebocoran kecil</p><h2>Pengeluaran bulan ini per kategori</h2></div></div>
+          {expenseByCategory.length ? <BarChart data={expenseByCategory} label="Pengeluaran bulan berjalan berdasarkan kategori" /> : <p>Belum ada pengeluaran aktif.</p>}
         </Card>
 
         <Card className="panel">

@@ -9,6 +9,7 @@ import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
+import { filterByOwnership, hasSameOwnership, ownershipLabel } from "../../domain/ownership.js";
 import { apiClient } from "../../services/api/client.js";
 
 const emptyForm = () => ({
@@ -19,7 +20,6 @@ const emptyForm = () => ({
   destination_account_id: "",
   category_id: "",
   envelope_period_id: "",
-  scope: "shared",
   payment_method: "transfer",
   merchant: "",
   description: "",
@@ -38,12 +38,19 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
 
   useEffect(() => {
     if (open) {
-      setForm(transaction ? {
-        ...emptyForm(),
-        ...transaction,
-        amount: String(transaction.amount || ""),
-        overspend_reason: transaction.overspend_reason || "",
-      } : { ...emptyForm(), transaction_type: initialType });
+      if (transaction) {
+        const editable = { ...transaction };
+        delete editable.scope;
+        delete editable.owner_user_id;
+        setForm({
+          ...emptyForm(),
+          ...editable,
+          amount: String(transaction.amount || ""),
+          overspend_reason: transaction.overspend_reason || "",
+        });
+      } else {
+        setForm({ ...emptyForm(), transaction_type: initialType });
+      }
       setErrors({});
       setConfirmation(null);
       setSubmitState({ status: "idle", error: null });
@@ -79,9 +86,16 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
   };
   const isIncome = form.transaction_type === TRANSACTION_TYPES.INCOME || form.transaction_type === TRANSACTION_TYPES.REFUND;
   const isTransfer = form.transaction_type === TRANSACTION_TYPES.TRANSFER;
+  const sourceAccount = accounts.find((item) => item.account_id === form.source_account_id) || null;
+  const compatibleDestinationAccounts = isTransfer && sourceAccount
+    ? filterByOwnership(accounts, sourceAccount).filter((account) => account.account_id !== sourceAccount.account_id)
+    : accounts;
+  const compatibleEnvelopes = sourceAccount
+    ? filterByOwnership(envelopes, sourceAccount)
+    : envelopes;
 
   const impact = useMemo(() => {
-    let amount = 0;
+    let amount;
     try { amount = parseRupiah(form.amount); } catch { return null; }
     const source = accountBalances.find((item) => item.account_id === form.source_account_id);
     const destination = accountBalances.find((item) => item.account_id === form.destination_account_id);
@@ -173,11 +187,26 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
         <label className="field" htmlFor="transaction-date"><span>Tanggal *</span><input id="transaction-date" type="date" value={form.transaction_date} onChange={(event) => update("transaction_date", event.target.value)} aria-invalid={Boolean(errors.transaction_date)} />{errors.transaction_date ? <small className="field__error">{errors.transaction_date}</small> : null}</label>
 
         {!isIncome ? (
-          <label className="field" htmlFor="source-account"><span>Rekening sumber *</span><select id="source-account" value={form.source_account_id} onChange={(event) => update("source_account_id", event.target.value)} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name}</option>)}</select>{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>
+          <label className="field" htmlFor="source-account"><span>Rekening sumber *</span><select id="source-account" value={form.source_account_id} onChange={(event) => {
+            const nextId = event.target.value;
+            const nextAccount = accounts.find((item) => item.account_id === nextId) || null;
+            setConfirmation(null);
+            setSubmitState({ status: "idle", error: null });
+            setForm((current) => {
+              const destination = accounts.find((item) => item.account_id === current.destination_account_id) || null;
+              const envelope = envelopes.find((item) => item.envelope_period_id === current.envelope_period_id) || null;
+              return {
+                ...current,
+                source_account_id: nextId,
+                destination_account_id: isTransfer && destination && !hasSameOwnership(destination, nextAccount) ? "" : current.destination_account_id,
+                envelope_period_id: envelope && !hasSameOwnership(envelope, nextAccount) ? "" : current.envelope_period_id,
+              };
+            });
+          }} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name} · {ownershipLabel(item)}</option>)}</select>{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>
         ) : null}
 
         {(isIncome || isTransfer) ? (
-          <label className="field" htmlFor="destination-account"><span>Rekening tujuan *</span><select id="destination-account" value={form.destination_account_id} onChange={(event) => update("destination_account_id", event.target.value)} aria-invalid={Boolean(errors.destination_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name}</option>)}</select>{errors.destination_account_id ? <small className="field__error">{errors.destination_account_id}</small> : null}</label>
+          <label className="field" htmlFor="destination-account"><span>Rekening tujuan *</span><select id="destination-account" value={form.destination_account_id} onChange={(event) => update("destination_account_id", event.target.value)} aria-invalid={Boolean(errors.destination_account_id)}><option value="">Pilih rekening</option>{compatibleDestinationAccounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name} · {ownershipLabel(item)}</option>)}</select>{errors.destination_account_id ? <small className="field__error">{errors.destination_account_id}</small> : null}</label>
         ) : null}
 
         {!isTransfer ? (
@@ -186,12 +215,12 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
 
         {form.transaction_type === TRANSACTION_TYPES.EXPENSE ? (
           <>
-            <label className="field" htmlFor="envelope"><span>Kantong/jatah</span><select id="envelope" value={form.envelope_period_id} onChange={(event) => update("envelope_period_id", event.target.value)}><option value="">Belum dialokasikan</option>{envelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} — sisa {formatRupiah(item.remaining_amount)}</option>)}</select><small>Pengeluaran tanpa kantong masuk antrean review.</small></label>
+            <label className="field" htmlFor="envelope"><span>Kantong/jatah</span><select id="envelope" value={form.envelope_period_id} onChange={(event) => update("envelope_period_id", event.target.value)}><option value="">Belum dialokasikan</option>{compatibleEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} — sisa {formatRupiah(item.remaining_amount)}</option>)}</select><small>Pengeluaran tanpa kantong masuk antrean review.</small></label>
             <label className="field" htmlFor="overspend-reason"><span>Alasan jika melebihi jatah</span><input id="overspend-reason" maxLength="180" value={form.overspend_reason} onChange={(event) => update("overspend_reason", event.target.value)} aria-invalid={Boolean(errors.overspend_reason)} placeholder="Wajib hanya jika sisa jatah tidak cukup" />{errors.overspend_reason ? <small className="field__error">{errors.overspend_reason}</small> : null}</label>
           </>
         ) : null}
 
-        <label className="field" htmlFor="scope"><span>Ruang transaksi</span><select id="scope" value={form.scope} onChange={(event) => update("scope", event.target.value)}><option value="shared">Bersama</option><option value="personal">Pribadi</option></select></label>
+        <div className="notice notice--info form-grid__full"><span>Ruang transaksi ditentukan otomatis dari kepemilikan rekening. Transfer lintas ruang ditolak agar saldo bersama tetap konsisten.</span></div>
         <label className="field" htmlFor="payment-method"><span>Metode pembayaran</span><select id="payment-method" value={form.payment_method} onChange={(event) => update("payment_method", event.target.value)}><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="debit">Kartu debit</option><option value="ewallet">E-wallet</option><option value="autodebit">Auto-debit</option></select></label>
         <label className="field" htmlFor="merchant"><span>Merchant/penerima</span><input id="merchant" maxLength="120" value={form.merchant} onChange={(event) => update("merchant", event.target.value)} /></label>
         <label className="field form-grid__full" htmlFor="description"><span>Keterangan</span><textarea id="description" rows="3" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>

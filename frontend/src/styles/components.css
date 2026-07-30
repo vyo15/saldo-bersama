@@ -3,6 +3,8 @@
 .button:disabled { opacity: .6; cursor: wait; }
 .button--primary { background: var(--primary); border-color: var(--primary); color: white; }
 .button--primary:hover:not(:disabled) { background: var(--primary-hover); }
+.button--danger { background: var(--negative); border-color: var(--negative); color: white; }
+.button--danger:hover:not(:disabled) { filter: brightness(.92); border-color: var(--negative); }
 .button--wide { width: 100%; }
 .icon-button { width: 42px; height: 42px; padding: 0; display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; }
 .icon-button:hover { border-color: var(--primary); color: var(--primary); }
@@ -17,10 +19,11 @@
 .money--positive { color: var(--positive); }
 .money--negative { color: var(--negative); }
 .status-badge { width: fit-content; padding: 5px 9px; border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: 11px; font-weight: 800; text-transform: capitalize; }
-.status-badge--active, .status-badge--paid, .status-badge--received { background: var(--positive-soft); color: var(--positive); }
-.status-badge--scheduled { background: var(--info-soft); color: var(--info); }
-.status-badge--overdue, .status-badge--cancelled { background: var(--negative-soft); color: var(--negative); }
+.status-badge--active { background: var(--positive-soft); color: var(--positive); }
+.status-badge--info { background: var(--info-soft); color: var(--info); }
+.status-badge--danger { background: var(--negative-soft); color: var(--negative); }
 .status-badge--warning { background: var(--warning-soft); color: var(--warning); }
+.status-badge--neutral { background: var(--surface-strong); color: var(--text-soft); }
 .progress { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; color: var(--muted); font-size: 11px; font-weight: 800; }
 .progress__track { height: 8px; overflow: hidden; border-radius: var(--radius-pill); background: var(--surface-strong); }
 .progress__track span { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
@@ -73,3 +76,6 @@
 .quick-amounts { display: flex; flex-wrap: wrap; gap: 6px; }
 .quick-amounts button { min-height: 32px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: 11px; font-weight: 750; cursor: pointer; }
 .quick-amounts button:hover, .quick-amounts button:focus-visible { border-color: var(--primary); color: var(--primary-strong); background: var(--primary-soft); }
+
+.pagination-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.pagination-bar > span { color: var(--text-muted); font-size: var(--font-size-sm); }

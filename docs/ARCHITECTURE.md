@@ -3,54 +3,73 @@
 ## Alur utama
 
 ```text
-React/Vite PWA di Vercel
-  -> HttpOnly signed session cookie
+React/Vite
+  -> Google Identity Services
+  -> Firebase ID token
 Vercel Functions
-  -> verifikasi Firebase ID token saat login
-  -> allowlist dan role deny-by-default
+  -> verifikasi token, email_verified, allowlist, role
+  -> HttpOnly signed session cookie
   -> HMAC + timestamp + nonce
 Google Apps Script
-  -> role check dari sheet Users
-  -> schema guard, LockService, idempotency, row_version, audit
+  -> role check dari Users
+  -> schema/maintenance guard
+  -> LockService, idempotency, row_version, audit
 Google Sheets
   -> ledger dan master data
 Google Calendar / Drive
-  -> pengingat dan backup
+  -> integrasi non-blocking dan backup/recovery
 ```
 
-Browser tidak pernah menulis langsung ke Google Sheets. Firebase config dan VAPID public key boleh berada di frontend; secret hanya di Vercel Environment Variables atau Apps Script Properties.
+Browser tidak pernah menulis langsung ke Sheets dan tidak dipercaya untuk actor, role, email, timestamp, audit field, scope, owner, atau saldo.
 
-## Sumber kebenaran
+## Boundary source
 
-`Transactions` adalah ledger. Saldo berjalan, sisa kantong, penggunaan budget, dan progress laporan dihitung dari data aktif. Transfer internal tidak masuk pemasukan/pengeluaran total. Tabungan dan dana darurat menggunakan transfer + target, bukan expense palsu.
+- `frontend/src/domain` — helper domain murni, termasuk ownership UI.
+- `frontend/src/services` — session, API, PWA/notification.
+- `api` — internet-facing authentication, authorization, origin/rate/payload guard, dan gateway.
+- `apps-script` — authorization kedua, business logic, data integrity, audit, migration, dan recovery.
+- `docs` — kontrak operasional dan release gate.
 
-## Boundary
+Tidak ada demo storage atau service bisnis kedua.
 
-- `frontend/src/domain`: perhitungan dan validasi tanpa UI.
-- `frontend/src/services`: session/API, demo development, PWA.
-- `api`: internet-facing guard dan forwarder.
-- `apps-script`: business logic dan storage guard.
-- `docs`: setup, schema, QA, dan SOP.
+## Ledger dan saldo
 
-## Atomicity, compensation, dan fail-closed
+`Transactions` adalah ledger. Saldo rekening dihitung dari saldo awal dan transaksi aktif. Transfer tidak masuk total pemasukan/pengeluaran. Alokasi kantong bukan expense. Target menggunakan transfer yang terhubung ke goal movement.
 
-Google Sheets tidak menyediakan transaction lintas beberapa sheet, Calendar, dan Drive. Karena itu write majemuk memakai pola berikut:
+## Model kepemilikan
 
-1. `LockService` dan baca ulang data terbaru;
-2. validasi referensi, saldo, periode, dan `row_version`;
+Ownership canonical:
+
+```text
+shared                -> terlihat owner dan member
+personal:<user_id>    -> terlihat pemilik dan owner administratif
+```
+
+Owner memiliki visibilitas administratif seluruh data untuk audit, backup, migration, dan recovery. Member hanya melihat shared serta personal miliknya sendiri. Filter diterapkan server-side pada rekening, transaksi, dashboard, laporan, envelope, recurring, budget, goal, notification, dan Calendar sync.
+
+Transfer lintas ownership ditolak. Scope transaksi diturunkan dari rekening. Envelope, recurring payment, dan goal movement wajib satu ownership dengan rekening terkait. Calendar bersama hanya menerima item shared.
+
+## Schema
+
+Schema current adalah version 2. Version 2 menambahkan `scope` dan `owner_user_id` pada `Recurring_Rules`, `Budgets`, dan `Savings_Goals`. Spreadsheet baru dibuat langsung sebagai v2; data v1 memakai migration guarded.
+
+## Atomicity dan fail-closed
+
+Sheets tidak menyediakan transaction lintas banyak sheet/Drive/Calendar. Write majemuk memakai:
+
+1. lock dan baca ulang state terbaru;
+2. validasi referensi, ownership, saldo, periode, dan versi;
 3. mutasi terarah;
-4. satu audit sukses untuk state final;
+4. audit state final;
 5. compensation bila langkah berikutnya gagal;
-6. `recovery_required` bila compensation juga gagal.
+6. `recovery_required` bila compensation gagal.
 
-Pembayaran recurring dan mutasi target membuat transaksi ledger tanpa audit sukses prematur. Audit final baru ditulis setelah occurrence/movement terkait berhasil. Transaksi linked tidak dapat diedit atau dibatalkan dari ledger umum; koreksi dilakukan melalui action reverse modul asal.
+Restore/import/migration memakai safety backup dan hanya membuka maintenance setelah schema serta integrity check lulus. Timeout/hasil ambigu tidak boleh di-retry dengan idempotency key baru.
 
-Restore/import mengikat preview ke checksum SHA-256 canonical. Maintenance baru dibuka setelah apply atau rollback lolos schema, checksum, dan integrity check. Ketika schema aktif rusak, restore memakai actor owner bertanda tangan dan idempotency Script Properties agar tidak bergantung pada sheet `Users`/`Idempotency` yang rusak.
+## Read performance
 
-## Idempotency
-
-Key diikat ke action, actor, payload canonical, dan `row_version`. Record kedaluwarsa dibersihkan. Kegagalan menyimpan hasil setelah mutasi mengunci aplikasi untuk mencegah retry dengan key baru.
+Apps Script menggunakan cache row request-scoped agar sheet yang sama tidak dibaca berulang dalam satu request. Cache diinvalidasi setelah append/update/delete. List transaksi difilter dan dipaginasi server-side serta mengembalikan total sebelum pagination.
 
 ## Rate limiting
 
-`Map` pada Vercel hanya best-effort per warm instance dan bukan security boundary global. Backstop utama adalah HMAC, nonce/timestamp, Apps Script Cache rate guard, LockService, idempotency, payload limit, dan kuota Google. Rate limit global membutuhkan shared storage tambahan dan belum menjadi dependency project.
+Rate limiting Vercel dan Apps Script bersifat best-effort. Security boundary utama tetap token verification, allowlist, HMAC, replay guard, payload limit, LockService, idempotency, dan quota platform.

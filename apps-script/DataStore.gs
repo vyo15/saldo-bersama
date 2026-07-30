@@ -1,43 +1,79 @@
+let SB_REQUEST_CACHE = null;
+
+function resetRequestCache_() {
+  SB_REQUEST_CACHE = { spreadsheet: null, sheets: {}, rows: {} };
+}
+
+function requestCache_() {
+  if (!SB_REQUEST_CACHE) resetRequestCache_();
+  return SB_REQUEST_CACHE;
+}
+
+function invalidateSheetCache_(name) {
+  const cache = requestCache_();
+  delete cache.rows[name];
+  delete cache.sheets[name];
+}
+
+function cloneRows_(items) {
+  return items.map(function(row) { return Object.assign({}, row); });
+}
+
 function getSpreadsheet_() {
+  const cache = requestCache_();
+  if (cache.spreadsheet) return cache.spreadsheet;
   const id = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
   if (!id) throw sbError_("CONFIG_MISSING", "SPREADSHEET_ID belum diatur. Jalankan setupSaldoBersama().", 503);
-  return SpreadsheetApp.openById(id);
+  cache.spreadsheet = SpreadsheetApp.openById(id);
+  return cache.spreadsheet;
 }
 
 function getSheet_(name) {
+  const cache = requestCache_();
+  if (cache.sheets[name]) return cache.sheets[name];
   const sheet = getSpreadsheet_().getSheetByName(name);
   if (!sheet) throw sbError_("SCHEMA_MISSING", "Sheet tidak ditemukan: " + name, 503);
+  cache.sheets[name] = sheet;
   return sheet;
 }
 
 function headers_(name) { return SB_SCHEMA[name]; }
 
 function rows_(name) {
+  const cache = requestCache_();
+  if (cache.rows[name]) return cloneRows_(cache.rows[name]);
   const sheet = getSheet_(name);
-  if (sheet.getLastRow() < 2) return [];
+  if (sheet.getLastRow() < 2) {
+    cache.rows[name] = [];
+    return [];
+  }
   const headers = headers_(name);
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues().map(function(values, index) {
+  cache.rows[name] = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues().map(function(values, index) {
     const row = { __row: index + 2 };
     headers.forEach(function(header, column) { row[header] = values[column]; });
     return row;
   });
+  return cloneRows_(cache.rows[name]);
 }
 
 function appendRow_(name, record) {
   const headers = headers_(name);
   getSheet_(name).appendRow(headers.map(function(header) { return record[header] === undefined ? "" : record[header]; }));
+  invalidateSheetCache_(name);
   return record;
 }
 
 function updateRow_(name, rowNumber, record) {
   const headers = headers_(name);
   getSheet_(name).getRange(rowNumber, 1, 1, headers.length).setValues([headers.map(function(header) { return record[header] === undefined ? "" : record[header]; })]);
+  invalidateSheetCache_(name);
   return record;
 }
 
 function deleteRow_(name, rowNumber) {
   if (!rowNumber || rowNumber < 2) throw sbError_("INVALID_ROW", "Baris data tidak valid untuk dihapus.", 500);
   getSheet_(name).deleteRow(rowNumber);
+  invalidateSheetCache_(name);
 }
 
 function deleteRowsDescending_(name, rowNumbers) {
@@ -50,6 +86,18 @@ function filterBy_(name, predicate) { return rows_(name).filter(predicate); }
 function nowIso_() { return Utilities.formatDate(new Date(), SB_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX"); }
 function today_() { return Utilities.formatDate(new Date(), SB_TIMEZONE, "yyyy-MM-dd"); }
 function monthKey_(date) { return Utilities.formatDate(date || new Date(), SB_TIMEZONE, "yyyy-MM"); }
+function periodKey_(value) {
+  const period = !value || value === "current" ? monthKey_() : String(value);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) throw sbError_("INVALID_PERIOD", "Periode harus menggunakan format YYYY-MM.", 400);
+  return period;
+}
+function boundedInteger_(value, fallback, minimum, maximum, field) {
+  const parsed = value === undefined || value === null || value === "" ? fallback : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw sbError_("INVALID_PAGINATION", (field || "Nilai") + " harus berupa integer " + minimum + "-" + maximum + ".", 400);
+  }
+  return parsed;
+}
 function uuid_() { return Utilities.getUuid(); }
 
 function sanitizeText_(value, maxLength) {
@@ -302,6 +350,10 @@ function getIdempotentResult_(context) {
   return parsed.result;
 }
 
+function isIdempotencyConflict_(error) {
+  return error && ["IDEMPOTENCY_MISMATCH", "IDEMPOTENCY_DUPLICATE"].indexOf(error.code) !== -1;
+}
+
 function saveIdempotentResult_(context, entityId, result) {
   if (!context.idempotencyKey) return;
   const fingerprint = idempotencyFingerprint_(context);
@@ -310,7 +362,7 @@ function saveIdempotentResult_(context, entityId, result) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const current = rows_("Idempotency").filter(function(row) { return String(row.idempotency_key) === String(context.idempotencyKey); });
-      if (current.length > 1) throw sbError_("IDEMPOTENCY_DUPLICATE", "Idempotency key tersimpan lebih dari satu kali.", 503);
+      if (current.length > 1) throw sbError_("IDEMPOTENCY_DUPLICATE", "Idempotency key tersimpan lebih dari satu kali.", 409);
       if (current.length === 1) {
         const existing = parseIdempotencyResponse_(current[0]);
         if (existing.fingerprint !== fingerprint) throw sbError_("IDEMPOTENCY_MISMATCH", "Idempotency key telah digunakan dengan payload berbeda.", 409);
@@ -328,8 +380,12 @@ function saveIdempotentResult_(context, entityId, result) {
       if (saved.fingerprint !== fingerprint) throw sbError_("IDEMPOTENCY_VERIFY_FAILED", "Fingerprint idempotency tidak sesuai.", 503);
       return;
     } catch (error) {
+      if (isIdempotencyConflict_(error)) {
+        lastError = error;
+        break;
+      }
       lastError = error;
-      Utilities.sleep(Math.pow(2, attempt) * 100);
+      if (attempt < 2) Utilities.sleep(Math.pow(2, attempt) * 100);
     }
   }
   setRecoveryRequired_("idempotency_commit_required", {

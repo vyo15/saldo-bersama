@@ -20,7 +20,16 @@ export default async function handler(request, response) {
       notificationId: String(message.notification?.notificationId || "").slice(0, 120),
     };
     const results = await Promise.allSettled((message.subscriptions || []).map((subscription) => webpush.sendNotification(subscription, JSON.stringify(notification), { TTL: 3600 })));
-    return ok(response, { sent: results.filter((item) => item.status === "fulfilled").length, failed: results.filter((item) => item.status === "rejected").length });
+    const deliveries = results.map((item, index) => ({
+      index,
+      delivered: item.status === "fulfilled",
+      statusCode: item.status === "rejected" ? Number(item.reason?.statusCode || 0) : Number(item.value?.statusCode || 201),
+    }));
+    return ok(response, {
+      sent: deliveries.filter((item) => item.delivered).length,
+      failed: deliveries.filter((item) => !item.delivered).length,
+      deliveries,
+    });
   } catch (error) {
     return fail(response, 500, "PUSH_ERROR", "Notifikasi tidak dapat dikirim.");
   }

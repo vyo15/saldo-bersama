@@ -1,63 +1,72 @@
 # Schema Google Sheets
 
-Schema canonical berada di `apps-script/Schema.gs`. Jangan mengubah nama sheet, urutan header, atau tipe makna kolom secara manual.
-
-Versi awal:
+Schema canonical berada di `apps-script/Schema.gs`.
 
 ```text
-schema_version = 1
+schema_version = 2
 timezone = Asia/Jakarta
 currency = IDR
 ```
 
-## Kelompok sheet
+Jumlah sheet canonical tetap 21:
 
-- Identitas: `Users`.
-- Ledger: `Accounts`, `Categories`, `Transactions`.
-- Jadwal: `Recurring_Rules`, `Recurring_Occurrences`.
-- Alokasi: `Envelope_Rules`, `Envelope_Periods`, `Envelope_Movements`, `Budgets`.
+- Identitas/config: `System_Config`, `Users`.
+- Ledger/master: `Accounts`, `Categories`, `Transactions`.
+- Rutin: `Recurring_Rules`, `Recurring_Occurrences`.
+- Alokasi: `Budgets`, `Envelope_Rules`, `Envelope_Periods`, `Envelope_Movements`.
 - Target: `Savings_Goals`, `Goal_Movements`.
-- Penutupan: `Reconciliations`, `Period_Closures`.
+- Closing: `Reconciliations`, `Period_Closures`.
 - Integrasi: `Calendar_Sync`, `Notification_Queue`, `Push_Subscriptions`.
-- Guard: `System_Config`, `Audit_Log`, `Idempotency`, `Backup_Log`.
+- Guard: `Audit_Log`, `Idempotency`, `Backup_Log`.
 
-## Aturan data utama
+## Perubahan version 2
 
-- Nominal rupiah disimpan sebagai integer positif pada transaksi normal.
-- ID memakai UUID stabil; nomor baris tidak boleh menjadi ID.
-- Entity editable menggunakan `row_version`.
-- Transaksi normal dibatalkan melalui status serta metadata pembatalan, bukan menghapus baris.
-- `Transactions.overspend_reason` menyimpan alasan ketika kebijakan kantong mengizinkan pengeluaran melewati alokasi.
-- Saldo berjalan, sisa kantong, budget terpakai, dan progress target dihitung dari ledger; nilai tersebut bukan angka bebas edit.
-- Transfer internal tidak masuk total pemasukan/pengeluaran.
-- Alokasi dan mutasi kantong tidak sama dengan pengeluaran.
-- Input teks dinetralkan untuk mencegah formula injection.
+Version 2 menambahkan dua kolom pada:
 
-## Guard struktur
+- `Recurring_Rules`: `scope`, `owner_user_id`.
+- `Budgets`: `scope`, `owner_user_id`.
+- `Savings_Goals`: `scope`, `owner_user_id`.
 
-Saat request masuk, backend memeriksa:
+Kolom ditambahkan melalui migration, bukan edit header manual.
 
-1. seluruh sheet wajib tersedia;
-2. jumlah kolom harus sama persis;
-3. urutan header harus sama persis;
-4. `schema_version` harus didukung;
-5. user, account, category, envelope, recurring occurrence, dan goal yang direferensikan harus valid;
-6. ID kritis tidak boleh duplikat;
-7. minimal satu owner aktif harus tersedia.
+## Aturan ownership
 
-Schema yang belum pernah dibuat dapat diinisialisasi oleh owner. Schema yang sudah ada tetapi rusak tidak boleh diperbaiki otomatis; aplikasi masuk mode baca saja sampai dilakukan recovery yang terkontrol.
+- `scope=shared` wajib memiliki `owner_user_id` kosong.
+- `scope=personal` wajib memiliki owner aktif.
+- Account memakai `owner_scope` dan `owner_user_id`.
+- Transaction scope/owner diturunkan dari rekening; client tidak boleh menentukan nilai bebas.
+- Transfer hanya di antara rekening dengan ownership sama.
+- Envelope, recurring, budget, dan goal harus konsisten dengan rekening/rule referensinya.
+- Owner adalah administrator; member hanya dapat membaca shared dan personal miliknya.
 
-Header seluruh sheet dilindungi. Sheet sistem seperti `System_Config`, `Audit_Log`, `Idempotency`, dan `Backup_Log` dilindungi secara penuh bila permission API memungkinkan.
+## Aturan data
 
-## Perubahan schema
+- Rupiah integer; tidak ada float.
+- ID UUID stabil; row number bukan ID.
+- Entity editable memakai `row_version`.
+- Transaksi normal memakai soft cancel.
+- Formula-like input `= + - @` dinetralkan.
+- Saldo, budget usage, envelope remaining, dan goal progress dihitung dari ledger aktif.
+- Transfer bukan income/expense.
+- Header dan sheet sistem diproteksi.
 
-Perubahan schema wajib memiliki:
+## Setup baru
 
-1. approval eksplisit;
-2. backup production yang tervalidasi;
-3. versi schema baru;
-4. migration idempotent;
-5. preview dampak;
-6. integrity check;
-7. rollback plan;
-8. dokumentasi kompatibilitas frontend, API, Apps Script, import/export, dan backup lama.
+`setupSaldoBersama()` memakai LockService, menyimpan `SPREADSHEET_ID` otomatis, membuat schema v2, memvalidasi header/version, melindungi sheet, lalu menandai `SETUP_STATUS=ready`. Sheet bawaan kosong dapat dihapus setelah validasi.
+
+## Migration version 1 ke 2
+
+1. Jalankan `previewSchemaMigrationV2()` sebagai owner aktif.
+2. Preview wajib memiliki `ambiguous=0` untuk recurring, budget, dan goal.
+3. Set Script Property sementara `MIGRATION_CONFIRMATION=MIGRATE_V2`.
+4. Jalankan `runSchemaMigrationV2()`.
+5. Safety backup v1 diverifikasi sebelum write.
+6. Apply memakai maintenance + LockService.
+7. Schema v2 dan integrity diperiksa sebelum sukses.
+8. Gagal apply memicu rollback terverifikasi; gagal rollback memicu recovery lock.
+
+Data dianggap ambigu bila rekening referensi hilang, rekening personal tidak memiliki owner, atau budget tidak memiliki envelope rule valid. Migration tidak akan mengubah data ambigu menjadi shared secara diam-diam.
+
+## Larangan
+
+Jangan mengubah nama sheet, urutan header, schema version, atau ID secara manual. Perubahan schema berikutnya wajib approval, backup tervalidasi, version baru, preview, migration, rollback, integrity check, dan compatibility test.

@@ -20,3 +20,11 @@ test("sisa kantong dihitung dari transaksi aktif", () => {
   assert.equal(usage.used_amount, 100_000);
   assert.equal(usage.remaining_amount, 350_000);
 });
+
+test("perhitungan as-of mengecualikan transaksi masa depan", () => {
+  const futureTransactions = transactions.concat([
+    { status: "active", transaction_date: "2026-08-01", transaction_type: "expense", source_account_id: "a1", amount: 1_000_000, envelope_period_id: "e1" },
+  ]);
+  assert.equal(calculateAccountBalance(account, futureTransactions, "2026-07-31"), 1_150_000);
+  assert.equal(calculateEnvelopeUsage({ envelope_period_id: "e1", allocated_amount: 1_500_000, reserved_amount: 0 }, futureTransactions, "2026-07-31").used_amount, 100_000);
+});

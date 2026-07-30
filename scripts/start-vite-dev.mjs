@@ -86,6 +86,12 @@ const httpServer = http.createServer(async (request, response) => {
     }
   }
 
+  // Cegah respons 304 menggabungkan HTML Vite dengan header CSP lama dari
+  // server development sebelumnya. CSP production memblokir React Refresh sebelum
+  // aplikasi sempat membersihkan cache dan service worker development.
+  delete request.headers["if-none-match"];
+  delete request.headers["if-modified-since"];
+
   return viteServer.middlewares(request, response, (error) => {
     if (error) {
       viteServer.ssrFixStacktrace(error);
@@ -107,6 +113,9 @@ viteServer = await createViteServer({
   server: {
     middlewareMode: true,
     hmr: { server: httpServer },
+    headers: {
+      "Cache-Control": "no-store",
+    },
   },
 });
 

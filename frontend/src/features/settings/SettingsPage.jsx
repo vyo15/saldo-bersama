@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FiBell, FiCalendar, FiCheckCircle, FiDatabase, FiDownloadCloud, FiFileText, FiLock, FiShield, FiUploadCloud, FiUserMinus, FiUsers } from "react-icons/fi";
+import { FiBell, FiCalendar, FiCheckCircle, FiDatabase, FiDownloadCloud, FiFileText, FiLock, FiShield, FiUploadCloud, FiUnlock, FiUserMinus, FiUsers } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Card from "../../components/common/Card.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -13,11 +14,13 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 
 const SettingsPage = () => {
-  const { user, demoMode } = useAuth();
+  const { user } = useAuth();
   const { bootstrap, refresh } = useFinance();
   const ownerMode = user?.role === "owner";
   const usersResource = useApiResource("users.list", {}, { enabled: ownerMode });
   const auditResource = useApiResource("audit.list", { limit: 50 }, { enabled: ownerMode });
+  const healthResource = useApiResource("system.health");
+  const periodsResource = useApiResource("periods.list", {}, { enabled: ownerMode });
   const [result, setResult] = useState(null);
   const [importFile, setImportFile] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
@@ -27,6 +30,19 @@ const SettingsPage = () => {
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [memberForm, setMemberForm] = useState({ email: "", name: "", role: "member" });
   const [periodForm, setPeriodForm] = useState({ period_key: currentMonthInJakarta(), reason: "Review dan rekonsiliasi selesai" });
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [deactivateState, setDeactivateState] = useState({ status: "idle", error: null });
+  const [reopenTarget, setReopenTarget] = useState(null);
+  const [reopenState, setReopenState] = useState({ status: "idle", error: null });
+  const backendStatus = healthResource.status === "error"
+    ? { label: "Tidak tersedia", tone: "danger" }
+    : healthResource.status !== "ready"
+      ? { label: "Memeriksa", tone: "info" }
+      : healthResource.data?.recoveryRequired
+        ? { label: "Recovery", tone: "danger" }
+        : healthResource.data?.maintenanceMode
+          ? { label: "Maintenance", tone: "danger" }
+          : { label: "Siap", tone: "active" };
 
   const run = async (action, payload = {}) => {
     setResult({ status: "loading", text: "Memproses..." });
@@ -76,17 +92,38 @@ const SettingsPage = () => {
     await usersResource.reload();
   };
 
-  const deactivateMember = async (member) => {
-    const confirmed = window.confirm(`Nonaktifkan akses ${member.email}? Login tetap ditolak setelah allowlist Vercel juga diperbarui.`);
-    if (!confirmed) return;
-    const result = await run("users.deactivate", { user_id: member.user_id, row_version: member.row_version });
-    if (result) await usersResource.reload();
+  const deactivateMember = async () => {
+    if (!deactivateTarget) return;
+    setDeactivateState({ status: "submitting", error: null });
+    try {
+      const data = await apiClient.request("users.deactivate", { user_id: deactivateTarget.user_id, row_version: deactivateTarget.row_version }, { rowVersion: deactivateTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      if (data) await usersResource.reload();
+      setDeactivateTarget(null);
+      setDeactivateState({ status: "idle", error: null });
+      setResult({ status: "success", text: "Anggota dinonaktifkan. Sinkronkan ALLOWED_USERS_JSON di Vercel sebelum deployment berikutnya." });
+    } catch (error) {
+      setDeactivateState({ status: "error", error });
+    }
   };
 
   const closePeriod = async (event) => {
     event.preventDefault();
     const closed = await run("periods.close", periodForm);
-    if (closed) await Promise.all([refresh(), auditResource.reload()]);
+    if (closed) await Promise.all([refresh(), auditResource.reload(), periodsResource.reload()]);
+  };
+
+  const reopenPeriod = async (reason) => {
+    if (!reopenTarget) return;
+    setReopenState({ status: "submitting", error: null });
+    try {
+      await apiClient.request("periods.reopen", { closure_id: reopenTarget.closure_id, row_version: reopenTarget.row_version, reason }, { rowVersion: reopenTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      setReopenTarget(null);
+      setReopenState({ status: "idle", error: null });
+      setResult({ status: "success", text: `Periode ${reopenTarget.period_key} berhasil dibuka kembali dan tercatat di audit.` });
+      await Promise.all([refresh(), auditResource.reload(), periodsResource.reload()]);
+    } catch (error) {
+      setReopenState({ status: "error", error });
+    }
   };
 
   return (
@@ -95,11 +132,11 @@ const SettingsPage = () => {
       {result ? <div className={`notice notice--${result.status}`} role="status"><span>{result.text}</span>{result.fileLink ? <a href={result.fileLink} target="_blank" rel="noopener">Buka file di Google Drive</a> : null}</div> : null}
       <section className="settings-grid">
         <Card className="settings-card"><FiShield /><div><h2>Akses aplikasi</h2><p>{user?.email} · role {user?.role}</p></div><span className="status-badge status-badge--active">Diizinkan</span></Card>
-        <Card className="settings-card"><FiDatabase /><div><h2>Schema database</h2><p>Versi {bootstrap?.config?.schemaVersion || "-"} · {bootstrap?.config?.timezone || "Asia/Jakarta"}</p></div><Button onClick={() => run("integrity.run")}>Periksa integritas</Button></Card>
-        <Card className="settings-card"><FiCalendar /><div><h2>Google Calendar</h2><p>Satu kalender Saldo Bersama untuk pengingat kedua akun.</p></div><Button onClick={() => run("calendar.sync")}>Sinkronkan</Button></Card>
+        <Card className="settings-card"><FiDatabase /><div><h2>Schema database</h2><p>Versi {bootstrap?.config?.schemaVersion || "-"} · {bootstrap?.config?.timezone || "Asia/Jakarta"}</p></div>{ownerMode ? <Button onClick={() => run("integrity.run")}>Periksa integritas</Button> : <span className="status-badge">Owner</span>}</Card>
+        <Card className="settings-card"><FiCalendar /><div><h2>Google Calendar</h2><p>Satu kalender Saldo Bersama untuk pengingat kedua akun.</p></div>{ownerMode ? <Button onClick={() => run("calendar.sync")}>Sinkronkan</Button> : <span className="status-badge">Owner</span>}</Card>
         <Card className="settings-card"><FiBell /><div><h2>Notifikasi perangkat</h2><p>Push tidak menampilkan nominal sensitif pada layar terkunci.</p></div><Button onClick={() => run("notifications.enable")}>Aktifkan</Button></Card>
-        <Card className="settings-card"><FiDownloadCloud /><div><h2>Backup</h2><p>Backup sebelum migration, import besar, dan restore.</p></div><Button onClick={() => run("backup.create", { type: "manual" })}>Buat backup</Button></Card>
-        <Card className="settings-card"><FiCheckCircle /><div><h2>Mode aplikasi</h2><p>{demoMode ? "Demo development" : "Production guarded"}</p></div><span className={`status-badge status-badge--${demoMode ? "warning" : "active"}`}>{demoMode ? "Demo" : "Aman"}</span></Card>
+        <Card className="settings-card"><FiDownloadCloud /><div><h2>Backup</h2><p>Backup sebelum migration, import besar, dan restore.</p></div>{ownerMode ? <Button onClick={() => run("backup.create", { type: "manual" })}>Buat backup</Button> : <span className="status-badge">Owner</span>}</Card>
+        <Card className="settings-card"><FiCheckCircle /><div><h2>Status backend</h2><p>Setup {healthResource.data?.setupStatus || "-"} · migration {healthResource.data?.migrationStatus || "-"}</p></div><span className={`status-badge status-badge--${backendStatus.tone}`}>{backendStatus.label}</span></Card>
       </section>
 
       {ownerMode ? (
@@ -112,7 +149,7 @@ const SettingsPage = () => {
               <label className="field"><span>Role</span><select value={memberForm.role} onChange={(event) => setMemberForm((current) => ({ ...current, role: event.target.value }))}><option value="member">Member</option><option value="owner">Owner</option></select></label>
               <div className="form-grid__full form-actions"><Button variant="primary" type="submit">Simpan anggota</Button></div>
             </form>
-            <div className="compact-list compact-list--stacked">{(usersResource.data?.items || []).map((member) => <div key={member.user_id}><span><strong>{member.name || member.email}</strong><small>{member.email} · {member.role} · {member.status}</small></span>{member.status === "active" && !member.is_current ? <button className="icon-button icon-button--danger" type="button" onClick={() => deactivateMember(member)} aria-label={`Nonaktifkan ${member.email}`}><FiUserMinus /></button> : null}</div>)}</div>
+            <div className="compact-list compact-list--stacked">{(usersResource.data?.items || []).map((member) => <div key={member.user_id}><span><strong>{member.name || member.email}</strong><small>{member.email} · {member.role} · {member.status}</small></span>{member.status === "active" && !member.is_current ? <button className="icon-button icon-button--danger" type="button" onClick={() => { setDeactivateTarget(member); setDeactivateState({ status: "idle", error: null }); }} aria-label={`Nonaktifkan ${member.email}`}><FiUserMinus /></button> : null}</div>)}</div>
           </Card>
 
           <Card className="panel">
@@ -122,6 +159,7 @@ const SettingsPage = () => {
               <label className="field form-grid__full"><span>Catatan penutupan</span><input required maxLength="200" value={periodForm.reason} onChange={(event) => setPeriodForm((current) => ({ ...current, reason: event.target.value }))} /></label>
               <div className="form-grid__full form-actions"><Button variant="primary" type="submit">Validasi dan tutup periode</Button></div>
             </form>
+            <div className="compact-list compact-list--stacked">{(periodsResource.data?.items || []).slice(0, 6).map((period) => <div key={period.closure_id}><span><strong>{period.period_key}</strong><small>{period.status} · {period.reason || "Tanpa catatan"}</small></span>{period.status === "closed" ? <button type="button" className="icon-button" onClick={() => { setReopenTarget(period); setReopenState({ status: "idle", error: null }); }} aria-label={`Buka kembali periode ${period.period_key}`}><FiUnlock /></button> : null}</div>)}</div>
           </Card>
 
           <Card className="panel">
@@ -155,6 +193,31 @@ const SettingsPage = () => {
           </Card>
         </section>
       ) : null}
+
+      <ConfirmationModal
+        open={Boolean(deactivateTarget)}
+        title="Nonaktifkan anggota?"
+        description={deactivateTarget ? `${deactivateTarget.email} tidak lagi dapat memakai data setelah database dan ALLOWED_USERS_JSON Vercel disinkronkan.` : ""}
+        confirmLabel="Nonaktifkan anggota"
+        busy={deactivateState.status === "submitting"}
+        error={deactivateState.error}
+        onCancel={() => deactivateState.status !== "submitting" && setDeactivateTarget(null)}
+        onConfirm={deactivateMember}
+      />
+
+      <ConfirmationModal
+        open={Boolean(reopenTarget)}
+        title="Buka kembali periode?"
+        description={reopenTarget ? `Periode ${reopenTarget.period_key} akan menerima perubahan lagi. Snapshot lama tetap berada di audit.` : ""}
+        confirmLabel="Buka periode"
+        reasonLabel="Alasan membuka kembali"
+        requireReason
+        tone="primary"
+        busy={reopenState.status === "submitting"}
+        error={reopenState.error}
+        onCancel={() => reopenState.status !== "submitting" && setReopenTarget(null)}
+        onConfirm={reopenPeriod}
+      />
     </div>
   );
 };

@@ -1,13 +1,13 @@
 function dashboardOverview_(context) {
-  const period = context.payload.period || monthKey_();
-  ensureRecurringOccurrences_(period);
-  const accounts = listAccounts_().filter(function(row) { return row.status === "active"; });
-  const transactions = rows_("Transactions");
+  const period = periodKey_(context.payload.period);
+  const accounts = listAccounts_(context).filter(function(row) { return row.status === "active"; });
+  const transactions = visibleTransactions_(context);
   const periodTransactions = transactions.filter(function(row) { return row.status === "active" && String(row.transaction_date).slice(0, 7) === period; });
   const income = periodTransactions.filter(function(row) { return row.transaction_type === "income"; }).reduce(function(sum, row) { return sum + Number(row.amount || 0); }, 0);
   const expense = periodTransactions.filter(function(row) { return row.transaction_type === "expense"; }).reduce(function(sum, row) { return sum + Number(row.amount || 0); }, 0);
   const refund = periodTransactions.filter(function(row) { return row.transaction_type === "refund"; }).reduce(function(sum, row) { return sum + Number(row.amount || 0); }, 0);
-  const recurring = listRecurring_({ payload: { period: period } });
+  const scopedContext = Object.assign({}, context, { payload: { period: period } });
+  const recurring = listRecurring_(scopedContext);
   const reservedBills = recurring.filter(function(row) { return row.kind === "expense" && !["paid", "cancelled"].includes(row.status); }).reduce(function(sum, row) { return sum + Number(row.expected_amount || 0) - Number(row.actual_amount || 0); }, 0);
   const totalBalance = accounts.reduce(function(sum, row) { return sum + Number(row.balance || 0); }, 0);
   const protectedTypes = ["emergency_fund", "savings", "sinking_fund"];
@@ -22,13 +22,21 @@ function dashboardOverview_(context) {
   const currentDay = isCurrentPeriod ? Number(Utilities.formatDate(today, SB_TIMEZONE, "dd")) : 1;
   const daysRemaining = Math.max(1, lastDay - currentDay + 1);
   const dailySafeToSpend = Math.floor(safeToSpend / daysRemaining);
-  const allocation = allocationAvailability_("");
+  const allocation = allocationAvailability_("", context);
+  const categoryNames = Object.fromEntries(rows_("Categories").map(function(row) { return [row.category_id, row.name]; }));
+  const categoryTotals = {};
+  periodTransactions.filter(function(row) { return row.transaction_type === "expense"; }).forEach(function(row) {
+    const name = categoryNames[row.category_id] || "Belum dikategorikan";
+    categoryTotals[name] = Number(categoryTotals[name] || 0) + Number(row.amount || 0);
+  });
+  const categoryExpenses = Object.keys(categoryTotals).map(function(name) { return { name: name, amount: categoryTotals[name] }; }).sort(function(a, b) { return b.amount - a.amount; });
   return {
     periodKey: period, accountBalances: accounts, totalBalance: totalBalance, liquidBalance: liquidBalance,
     safeToSpend: safeToSpend, dailySafeToSpend: dailySafeToSpend, daysRemaining: daysRemaining, emergencyBalance: emergencyBalance, protectedBalance: protectedBalance,
     cashFlow: { income: income, expense: expense, refund: refund, net: income + refund - expense },
-    envelopes: listEnvelopes_({ payload: { period: period } }), recurring: recurring, goals: listGoals_(),
+    envelopes: listEnvelopes_(scopedContext), recurring: recurring, goals: listGoals_(context),
     recentTransactions: periodTransactions.sort(function(a, b) { return String(b.created_at).localeCompare(String(a.created_at)); }).slice(0, 12).map(publicRow_),
+    categoryExpenses: categoryExpenses,
     unallocatedCount: periodTransactions.filter(function(row) { return row.transaction_type === "expense" && !row.envelope_period_id; }).length,
     unallocatedFunds: allocation.unallocatedAmount, allocatedRemaining: allocation.allocatedRemaining,
     reservedBills: reservedBills, lastSyncedAt: nowIso_()
@@ -36,15 +44,10 @@ function dashboardOverview_(context) {
 }
 
 function monthlyReport_(context) {
-  const period = context.payload.period || monthKey_();
-  const overview = dashboardOverview_({ payload: { period: period } });
-  const categories = Object.fromEntries(rows_("Categories").map(function(row) { return [row.category_id, row.name]; }));
-  const categoryMap = {};
-  rows_("Transactions").filter(function(row) { return row.status === "active" && row.transaction_type === "expense" && String(row.transaction_date).slice(0, 7) === period; }).forEach(function(row) {
-    const name = categories[row.category_id] || "Belum dikategorikan";
-    categoryMap[name] = Number(categoryMap[name] || 0) + Number(row.amount || 0);
-  });
-  return { overview: overview, budgets: listBudgets_({ payload: { period: period } }), categoryExpenses: Object.keys(categoryMap).map(function(name) { return { name: name, amount: categoryMap[name] }; }) };
+  const period = periodKey_(context.payload.period);
+  const scopedContext = Object.assign({}, context, { payload: { period: period } });
+  const overview = dashboardOverview_(scopedContext);
+  return { overview: overview, budgets: listBudgets_(scopedContext), categoryExpenses: overview.categoryExpenses || [] };
 }
 
 function createReconciliation_(context) {
@@ -59,8 +62,8 @@ function createReconciliation_(context) {
   return publicRow_(record);
 }
 
-function compactPeriodSnapshot_(periodKey) {
-  const report = monthlyReport_({ payload: { period: periodKey } });
+function compactPeriodSnapshot_(periodKey, context) {
+  const report = monthlyReport_(Object.assign({}, context, { payload: { period: periodKey } }));
   const overview = report.overview;
   return {
     schemaVersion: SB_SCHEMA_VERSION,
@@ -87,8 +90,7 @@ function compactPeriodSnapshot_(periodKey) {
 }
 
 function closePeriod_(context) {
-  const periodKey = String(context.payload.period_key || monthKey_());
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(periodKey)) throw sbError_("INVALID_PERIOD", "Periode harus menggunakan format YYYY-MM.", 400);
+  const periodKey = periodKey_(context.payload.period_key);
   const records = rows_("Period_Closures").filter(function(row) { return String(row.period_key) === periodKey; });
   const closed = records.find(function(row) { return row.status === "closed"; });
   if (closed) throw sbError_("PERIOD_ALREADY_CLOSED", "Periode sudah ditutup.", 409, { closureId: closed.closure_id });
@@ -97,7 +99,7 @@ function closePeriod_(context) {
   const unallocated = rows_("Transactions").filter(function(row) { return row.status === "active" && row.transaction_type === "expense" && !row.envelope_period_id && String(row.transaction_date).slice(0, 7) === periodKey; });
   if (unallocated.length) issues.push({ code: "UNALLOCATED_EXPENSE", count: unallocated.length, periodKey: periodKey });
   if (issues.length) throw sbError_("PERIOD_INTEGRITY_FAILED", "Periode belum dapat ditutup karena integrity check gagal.", 409, issues);
-  const snapshot = compactPeriodSnapshot_(periodKey);
+  const snapshot = compactPeriodSnapshot_(periodKey, context);
   const snapshotJson = canonicalJson_(snapshot);
   if (snapshotJson.length > 45000) throw sbError_("SNAPSHOT_TOO_LARGE", "Snapshot tutup buku terlalu besar. Ringkas data sebelum menutup periode.", 409, { length: snapshotJson.length });
   if (reopened) {
@@ -115,6 +117,12 @@ function closePeriod_(context) {
   appendAuditedRow_("Period_Closures", "closure_id", record, context, "periods.close", "period_closure", null,
     { closure_id: record.closure_id, period_key: record.period_key, status: record.status, row_version: record.row_version, snapshot_checksum: sha256Hex_(snapshotJson), snapshot_length: snapshotJson.length });
   return publicRow_(record);
+}
+
+function listPeriodClosures_() {
+  return rows_("Period_Closures").sort(function(a, b) {
+    return String(b.period_key).localeCompare(String(a.period_key)) || String(b.closed_at).localeCompare(String(a.closed_at));
+  }).map(publicRow_);
 }
 
 function reopenPeriod_(context) {
@@ -143,8 +151,10 @@ function syncCalendar_(context) {
   if (!calendarId) throw sbError_("CONFIG_MISSING", "CALENDAR_ID belum diatur di Script Properties.", 503);
   const calendar = CalendarApp.getCalendarById(calendarId);
   if (!calendar) throw sbError_("CALENDAR_NOT_FOUND", "Kalender Saldo Bersama tidak ditemukan.", 404);
-  const period = context.payload.period || monthKey_();
-  const items = listRecurring_({ payload: { period: period } });
+  const period = periodKey_(context.payload.period);
+  const allItems = listRecurring_({ actor: context.actor, payload: { period: period } });
+  const items = allItems.filter(function(item) { return String(item.scope || "shared") === "shared"; });
+  const skippedPersonal = allItems.length - items.length;
   let synced = 0;
   items.forEach(function(item) {
     const sync = rows_("Calendar_Sync").find(function(row) { return row.entity_type === "recurring_occurrence" && row.entity_id === item.occurrence_id; });
@@ -176,8 +186,8 @@ function syncCalendar_(context) {
       throw error;
     }
   });
-  appendAudit_(context, "calendar.sync", "calendar", calendarId, null, { synced: synced });
-  return { synced: synced, calendarId: calendarId };
+  appendAudit_(context, "calendar.sync", "calendar", calendarId, null, { synced: synced, skippedPersonal: skippedPersonal });
+  return { synced: synced, skippedPersonal: skippedPersonal, calendarId: calendarId };
 }
 
 function registerPush_(context) {
@@ -295,9 +305,28 @@ function integrityIssues_() {
     if (row.recurring_occurrence_id && !occurrenceIds.has(row.recurring_occurrence_id)) issues.push({ code: "MISSING_RECURRING_OCCURRENCE", entityId: row.transaction_id });
     if (row.goal_id && !goalIds.has(row.goal_id)) issues.push({ code: "MISSING_GOAL", entityId: row.transaction_id });
     if (row.scope === "personal" && !userIds.has(row.owner_user_id)) issues.push({ code: "MISSING_PERSONAL_OWNER", entityId: row.transaction_id, userId: row.owner_user_id });
+    const involvedAccounts = [row.source_account_id, row.destination_account_id].filter(Boolean).map(function(accountId) { return accountById[accountId]; }).filter(Boolean);
+    const ownershipKeys = Array.from(new Set(involvedAccounts.map(accountOwnershipKey_)));
+    if (ownershipKeys.length > 1) issues.push({ code: "TRANSACTION_ACCOUNT_SCOPE_MISMATCH", entityId: row.transaction_id });
+    else if (ownershipKeys.length === 1) {
+      const expectedKey = ownershipKeys[0];
+      const expectedScope = expectedKey.indexOf("personal:") === 0 ? "personal" : "shared";
+      const expectedOwner = expectedScope === "personal" ? expectedKey.slice("personal:".length) : "";
+      if (String(row.scope || "shared") !== expectedScope || String(row.owner_user_id || "") !== expectedOwner) issues.push({ code: "TRANSACTION_OWNERSHIP_MISMATCH", entityId: row.transaction_id, expectedScope: expectedScope, expectedOwner: expectedOwner });
+    }
+    if (row.envelope_period_id) {
+      const envelopePeriod = envelopeRows.find(function(item) { return item.envelope_period_id === row.envelope_period_id; });
+      const envelopeRule = envelopePeriod && envelopeRuleRows.find(function(item) { return item.envelope_rule_id === envelopePeriod.envelope_rule_id; });
+      if (envelopeRule && (String(row.scope || "shared") !== String(envelopeRule.scope || "shared") || String(row.owner_user_id || "") !== String(envelopeRule.owner_user_id || ""))) issues.push({ code: "TRANSACTION_ENVELOPE_SCOPE_MISMATCH", entityId: row.transaction_id, envelopePeriodId: row.envelope_period_id });
+    }
   });
+  const recurringRuleById = Object.fromEntries(recurringRuleRows.map(function(rule) { return [rule.recurring_rule_id, rule]; }));
   occurrenceRows.forEach(function(occurrence) {
     const linked = allTransactions.filter(function(transaction) { return transaction.status === "active" && transaction.recurring_occurrence_id === occurrence.occurrence_id; });
+    const linkedRule = recurringRuleById[occurrence.recurring_rule_id];
+    if (linkedRule) linked.forEach(function(transaction) {
+      if (String(transaction.scope || "shared") !== String(linkedRule.scope || "shared") || String(transaction.owner_user_id || "") !== String(linkedRule.owner_user_id || "")) issues.push({ code: "RECURRING_TRANSACTION_SCOPE_MISMATCH", entityId: occurrence.occurrence_id, transactionId: transaction.transaction_id });
+    });
     const actual = linked.reduce(function(sum, transaction) { return sum + Number(transaction.amount || 0); }, 0);
     if (actual !== Number(occurrence.actual_amount || 0)) issues.push({ code: "RECURRING_ACTUAL_MISMATCH", entityId: occurrence.occurrence_id, expected: actual, actual: Number(occurrence.actual_amount || 0) });
     const expectedIds = linked.map(function(transaction) { return transaction.transaction_id; }).sort().join(",");
@@ -310,6 +339,8 @@ function integrityIssues_() {
     else {
       if (transaction.goal_id !== movement.goal_id) issues.push({ code: "GOAL_TRANSACTION_LINK_MISMATCH", entityId: movement.goal_movement_id, transactionId: movement.transaction_id });
       if (transaction.transaction_type !== "transfer" || Number(transaction.amount || 0) !== Number(movement.amount || 0)) issues.push({ code: "GOAL_TRANSACTION_AMOUNT_MISMATCH", entityId: movement.goal_movement_id, transactionId: movement.transaction_id });
+      const goal = goalRows.find(function(item) { return item.goal_id === movement.goal_id; });
+      if (goal && (String(transaction.scope || "shared") !== String(goal.scope || "shared") || String(transaction.owner_user_id || "") !== String(goal.owner_user_id || ""))) issues.push({ code: "GOAL_TRANSACTION_SCOPE_MISMATCH", entityId: movement.goal_movement_id, transactionId: movement.transaction_id });
     }
   });
   accountRows.forEach(function(account) {
@@ -328,9 +359,17 @@ function integrityIssues_() {
     if (!envelopeIds.has(movement.from_envelope_period_id) || !envelopeIds.has(movement.to_envelope_period_id)) issues.push({ code: "ENVELOPE_MOVEMENT_REFERENCE_MISSING", entityId: movement.movement_id });
     if (!Number.isSafeInteger(Number(movement.amount)) || Number(movement.amount) <= 0) issues.push({ code: "INVALID_ENVELOPE_MOVEMENT_AMOUNT", entityId: movement.movement_id });
   });
+  const validateOwnedEntity = function(entity, entityType, entityId) {
+    if (["shared", "personal"].indexOf(entity.scope) === -1) issues.push({ code: "INVALID_OWNED_SCOPE", entityType: entityType, entityId: entityId, scope: entity.scope });
+    if (entity.scope === "personal" && !userIds.has(entity.owner_user_id)) issues.push({ code: "OWNED_ENTITY_OWNER_MISSING", entityType: entityType, entityId: entityId, userId: entity.owner_user_id });
+    if (entity.scope === "shared" && entity.owner_user_id) issues.push({ code: "SHARED_ENTITY_HAS_OWNER", entityType: entityType, entityId: entityId, userId: entity.owner_user_id });
+  };
   recurringRuleRows.forEach(function(rule) {
     if (!categoryIds.has(rule.category_id)) issues.push({ code: "RECURRING_CATEGORY_MISSING", entityId: rule.recurring_rule_id, categoryId: rule.category_id });
     if (!accountIds.has(rule.default_account_id)) issues.push({ code: "RECURRING_ACCOUNT_MISSING", entityId: rule.recurring_rule_id, accountId: rule.default_account_id });
+    validateOwnedEntity(rule, "recurring_rule", rule.recurring_rule_id);
+    const account = accountById[rule.default_account_id];
+    if (account && account.owner_scope === "personal" && (rule.scope !== "personal" || String(rule.owner_user_id) !== String(account.owner_user_id))) issues.push({ code: "RECURRING_SCOPE_ACCOUNT_MISMATCH", entityId: rule.recurring_rule_id, accountId: account.account_id });
   });
   occurrenceRows.forEach(function(occurrence) {
     if (!recurringRuleIds.has(occurrence.recurring_rule_id)) issues.push({ code: "RECURRING_RULE_MISSING", entityId: occurrence.occurrence_id, ruleId: occurrence.recurring_rule_id });
@@ -338,9 +377,15 @@ function integrityIssues_() {
   rows_("Budgets").forEach(function(budget) {
     if (!categoryIds.has(budget.category_id)) issues.push({ code: "BUDGET_CATEGORY_MISSING", entityId: budget.budget_id, categoryId: budget.category_id });
     if (budget.envelope_rule_id && !envelopeRuleIds.has(budget.envelope_rule_id)) issues.push({ code: "BUDGET_ENVELOPE_RULE_MISSING", entityId: budget.budget_id, ruleId: budget.envelope_rule_id });
+    validateOwnedEntity(budget, "budget", budget.budget_id);
+    const envelopeRule = envelopeRuleRows.find(function(rule) { return rule.envelope_rule_id === budget.envelope_rule_id; });
+    if (envelopeRule && (String(envelopeRule.scope || "shared") !== String(budget.scope || "shared") || String(envelopeRule.owner_user_id || "") !== String(budget.owner_user_id || ""))) issues.push({ code: "BUDGET_SCOPE_ENVELOPE_MISMATCH", entityId: budget.budget_id, ruleId: budget.envelope_rule_id });
   });
   goalRows.forEach(function(goal) {
     if (!accountIds.has(goal.account_id)) issues.push({ code: "GOAL_ACCOUNT_MISSING", entityId: goal.goal_id, accountId: goal.account_id });
+    validateOwnedEntity(goal, "goal", goal.goal_id);
+    const account = accountById[goal.account_id];
+    if (account && account.owner_scope === "personal" && (goal.scope !== "personal" || String(goal.owner_user_id) !== String(account.owner_user_id))) issues.push({ code: "GOAL_SCOPE_ACCOUNT_MISMATCH", entityId: goal.goal_id, accountId: account.account_id });
   });
   rows_("Goal_Movements").forEach(function(movement) {
     if (!goalIds.has(movement.goal_id)) issues.push({ code: "GOAL_REFERENCE_MISSING", entityId: movement.goal_movement_id, goalId: movement.goal_id });

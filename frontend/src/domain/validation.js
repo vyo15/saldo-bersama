@@ -35,16 +35,31 @@ export const validateTransactionInput = (input) => {
   if (type === TRANSACTION_TYPES.TRANSFER && input.source_account_id === input.destination_account_id) {
     errors.destination_account_id = "Rekening sumber dan tujuan harus berbeda.";
   }
-  if (type === TRANSACTION_TYPES.EXPENSE && !input.category_id) errors.category_id = "Kategori pengeluaran wajib dipilih.";
+  if (![TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.ADJUSTMENT].includes(type) && !input.category_id) {
+    errors.category_id = "Kategori transaksi wajib dipilih.";
+  }
+  if (type === TRANSACTION_TYPES.ADJUSTMENT && !String(input.description || "").trim()) {
+    errors.description = "Alasan koreksi saldo wajib diisi.";
+  }
 
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
     value: {
-      ...input,
+      transaction_id: input.transaction_id || undefined,
+      row_version: input.row_version,
+      transaction_type: type,
+      transaction_date: input.transaction_date,
       amount,
+      source_account_id: input.source_account_id || "",
+      destination_account_id: input.destination_account_id || "",
+      category_id: input.category_id || "",
+      envelope_period_id: input.envelope_period_id || "",
+      payment_method: String(input.payment_method || "").slice(0, 50),
       description: neutralizeSpreadsheetFormula(input.description).slice(0, 250),
       merchant: neutralizeSpreadsheetFormula(input.merchant).slice(0, 120),
+      overspend_reason: neutralizeSpreadsheetFormula(input.overspend_reason).slice(0, 180),
+      confirm_duplicate: Boolean(input.confirm_duplicate),
     },
   };
 };

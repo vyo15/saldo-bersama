@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiBell, FiLogOut, FiMenu, FiPlus } from "react-icons/fi";
+import { FiLogOut, FiMenu, FiPlus } from "react-icons/fi";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import SideNavigation from "../components/navigation/SideNavigation.jsx";
@@ -8,13 +8,19 @@ import TransactionForm from "../features/transactions/TransactionForm.jsx";
 import Brand from "../components/common/Brand.jsx";
 import Modal from "../components/common/Modal.jsx";
 import Button from "../components/common/Button.jsx";
-import { PRIMARY_NAVIGATION } from "../config/navigation.js";
+import { MOBILE_SECONDARY_NAVIGATION } from "../config/navigation.js";
 
 const AppShell = () => {
-  const { user, logout, demoMode } = useAuth();
+  const { user, logout } = useAuth();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const secondaryNavigation = PRIMARY_NAVIGATION.slice(3);
+  const [logoutError, setLogoutError] = useState("");
+  const secondaryNavigation = MOBILE_SECONDARY_NAVIGATION;
+  const handleLogout = async () => {
+    setLogoutError("");
+    try { await logout(); }
+    catch (error) { setLogoutError(error.message || "Logout belum berhasil."); }
+  };
 
   return (
     <div className="app-shell">
@@ -24,14 +30,12 @@ const AppShell = () => {
           <button type="button" className="icon-button topbar__menu" aria-label="Buka menu lainnya" onClick={() => setMobileMenuOpen(true)}><FiMenu /></button>
           <Brand compact />
           <div className="topbar__actions">
-            {demoMode ? <span className="demo-badge">Demo</span> : null}
-            <button type="button" className="icon-button" aria-label="Notifikasi"><FiBell /></button>
             <div className="user-chip"><span>{user?.name || user?.email}</span><small>{user?.role}</small></div>
-            <button type="button" className="icon-button" aria-label="Keluar" onClick={logout}><FiLogOut /></button>
+            <button type="button" className="icon-button" aria-label="Keluar" onClick={handleLogout}><FiLogOut /></button>
           </div>
         </header>
 
-        <main className="app-content"><Outlet /></main>
+        <main className="app-content">{logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}<Outlet /></main>
       </div>
       <button type="button" className="floating-add" onClick={() => setQuickAddOpen(true)} aria-label="Tambah transaksi"><FiPlus /></button>
       <MobileNavigation onQuickAdd={() => setQuickAddOpen(true)} onMore={() => setMobileMenuOpen(true)} moreOpen={mobileMenuOpen} />

@@ -22,16 +22,18 @@ export const readTransactionImportFile = async (file) => {
   if (!file) throw new Error("Pilih file import terlebih dahulu.");
   if (file.size > 1_000_000) throw new Error("Ukuran file import maksimal 1 MB untuk preview browser.");
   const text = await file.text();
+  let records;
   if (file.name.toLowerCase().endsWith(".json")) {
     const parsed = JSON.parse(text);
-    const records = Array.isArray(parsed) ? parsed : parsed.records || parsed.data?.Transactions;
+    records = Array.isArray(parsed) ? parsed : parsed.records || parsed.data?.Transactions;
     if (!Array.isArray(records)) throw new Error("JSON harus berisi array transaksi.");
-    return records;
-  }
-  if (file.name.toLowerCase().endsWith(".csv")) {
+  } else if (file.name.toLowerCase().endsWith(".csv")) {
     const [headers, ...rows] = parseCsvRows(text);
     if (!headers?.length) throw new Error("Header CSV tidak ditemukan.");
-    return rows.filter((row) => row.some(Boolean)).map((row) => Object.fromEntries(headers.map((header, index) => [header.trim(), row[index] ?? ""])));
+    records = rows.filter((row) => row.some(Boolean)).map((row) => Object.fromEntries(headers.map((header, index) => [header.trim(), row[index] ?? ""])));
+  } else {
+    throw new Error("Format import yang didukung saat ini adalah JSON dan CSV.");
   }
-  throw new Error("Format import yang didukung saat ini adalah JSON dan CSV.");
+  if (!records.length || records.length > 500) throw new Error("Import harus berisi 1-500 transaksi.");
+  return records;
 };

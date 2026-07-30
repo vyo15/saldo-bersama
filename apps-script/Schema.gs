@@ -1,8 +1,9 @@
-const SB_SCHEMA_VERSION = "1";
+const SB_SCHEMA_VERSION = "2";
+const SB_PREVIOUS_SCHEMA_VERSION = "1";
 const SB_TIMEZONE = "Asia/Jakarta";
 const SB_CURRENCY = "IDR";
 
-const SB_SCHEMA = Object.freeze({
+const SB_SCHEMA_V1 = Object.freeze({
   System_Config: ["key", "value", "updated_at"],
   Users: ["user_id", "firebase_uid", "email", "name", "role", "status", "row_version", "created_at", "updated_at"],
   Accounts: ["account_id", "name", "account_type", "owner_scope", "owner_user_id", "initial_balance", "initial_balance_date", "allow_negative", "status", "row_version", "created_by", "created_at", "updated_by", "updated_at"],
@@ -26,7 +27,15 @@ const SB_SCHEMA = Object.freeze({
   Backup_Log: ["backup_id", "backup_type", "file_id", "file_name", "schema_version", "status", "checksum", "created_by", "created_at", "verified_at"]
 });
 
+const SB_SCHEMA = Object.freeze(Object.assign({}, SB_SCHEMA_V1, {
+  Recurring_Rules: SB_SCHEMA_V1.Recurring_Rules.concat(["scope", "owner_user_id"]),
+  Budgets: SB_SCHEMA_V1.Budgets.concat(["scope", "owner_user_id"]),
+  Savings_Goals: SB_SCHEMA_V1.Savings_Goals.concat(["scope", "owner_user_id"])
+}));
+
+
 function setupSaldoBersama() {
+  resetRequestCache_();
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   if (!spreadsheet) throw new Error("Buka Apps Script dari spreadsheet Saldo Bersama.");
   const spreadsheetId = spreadsheet.getId();
@@ -42,8 +51,10 @@ function setupSaldoBersama() {
     properties.setProperties({ SPREADSHEET_ID: spreadsheetId, SETUP_STATUS: "running", SETUP_DETAILS: "" });
     initializeSchema_();
     SpreadsheetApp.flush();
+    resetRequestCache_();
     const issues = validateSchema_();
     if (issues.length) throw sbError_("SCHEMA_MISMATCH", "Setup selesai sebagian dan belum lolos validasi schema.", 503, issues);
+    removeUnusedDefaultSheet_(spreadsheet);
     properties.setProperties({ SETUP_STATUS: "ready", SETUP_DETAILS: "", SETUP_VERIFIED_AT: new Date().toISOString() });
     return { spreadsheetId: spreadsheetId, schemaVersion: SB_SCHEMA_VERSION, verified: true };
   } catch (error) {
@@ -59,6 +70,18 @@ function setupSaldoBersama() {
   }
 }
 
+
+function removeUnusedDefaultSheet_(spreadsheet) {
+  if (!spreadsheet || typeof spreadsheet.getSheets !== "function" || typeof spreadsheet.deleteSheet !== "function") return false;
+  const defaultNames = ["Sheet1", "Sheet 1"];
+  const candidate = spreadsheet.getSheets().find(function(sheet) {
+    return defaultNames.indexOf(sheet.getName()) !== -1 && !SB_SCHEMA[sheet.getName()] && sheet.getLastRow() === 0;
+  });
+  if (!candidate || spreadsheet.getSheets().length <= 1) return false;
+  spreadsheet.deleteSheet(candidate);
+  return true;
+}
+
 function initializeSchema_() {
   const spreadsheet = getSpreadsheet_();
   Object.keys(SB_SCHEMA).forEach(function(name) {
@@ -69,7 +92,10 @@ function initializeSchema_() {
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       sheet.setFrozenRows(1);
     } else {
-      if (sheet.getLastColumn() !== headers.length) throw sbError_("SCHEMA_MISMATCH", "Jumlah kolom sheet " + name + " tidak sesuai schema.", 503);
+      if (sheet.getLastColumn() !== headers.length) {
+        const migrationHint = getConfig_("schema_version") === SB_PREVIOUS_SCHEMA_VERSION ? " Jalankan previewSchemaMigrationV2() lalu applySchemaMigrationV2()." : "";
+        throw sbError_("SCHEMA_MISMATCH", "Jumlah kolom sheet " + name + " tidak sesuai schema." + migrationHint, 503);
+      }
       const actual = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
       if (JSON.stringify(actual) !== JSON.stringify(headers)) throw sbError_("SCHEMA_MISMATCH", "Header sheet " + name + " tidak sesuai schema.", 503);
     }
@@ -120,14 +146,21 @@ function lockProtectionToOwner_(protection) {
   }
 }
 
-function protectSystemSheets_() {
+function protectSystemSheets_(schema) {
+  const definition = schema || SB_SCHEMA;
   const spreadsheet = getSpreadsheet_();
-  Object.keys(SB_SCHEMA).forEach(function(name) {
+  Object.keys(definition).forEach(function(name) {
     const sheet = spreadsheet.getSheetByName(name);
     if (!sheet) return;
     const headerDescription = "Saldo Bersama protected header: " + name;
-    const headerExists = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).some(function(item) { return item.getDescription() === headerDescription; });
-    if (!headerExists) lockProtectionToOwner_(sheet.getRange(1, 1, 1, SB_SCHEMA[name].length).protect().setDescription(headerDescription));
+    const expectedHeaderRange = sheet.getRange(1, 1, 1, definition[name].length);
+    const headerProtection = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).find(function(item) { return item.getDescription() === headerDescription; });
+    if (headerProtection) {
+      try { headerProtection.setRange(expectedHeaderRange); } catch (ignored) {}
+      lockProtectionToOwner_(headerProtection);
+    } else {
+      lockProtectionToOwner_(expectedHeaderRange.protect().setDescription(headerDescription));
+    }
   });
   ["System_Config", "Audit_Log", "Idempotency", "Backup_Log"].forEach(function(name) {
     const sheet = spreadsheet.getSheetByName(name);

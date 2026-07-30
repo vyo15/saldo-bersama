@@ -86,10 +86,10 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "accounts.list", "accounts.create", "accounts.update", "accounts.archive",
     "categories.list", "categories.create", "categories.update", "categories.archive",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
-    "envelopes.list", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
+    "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
     "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "goals.reverseMovement", "reports.monthly",
-    "reconciliations.create", "periods.close", "periods.reopen", "calendar.sync",
+    "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync",
     "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
   ]),
   member: new Set([
@@ -103,12 +103,54 @@ export const ACTION_PERMISSIONS = Object.freeze({
 
 export const authorizeAction = (session, action) => Boolean(session && ACTION_PERMISSIONS[session.role]?.has(action));
 
+const RESERVED_TRANSACTION_FIELDS = new Set([
+  "recurring_occurrence_id",
+  "goal_id",
+  "scope",
+  "owner_user_id",
+  "idempotency_key",
+  "created_by",
+  "created_at",
+  "updated_by",
+  "updated_at",
+  "cancelled_by",
+  "cancelled_at",
+  "cancellation_reason",
+  "status",
+]);
+
+const assertNoReservedTransactionFields = (payload) => {
+  const field = Object.keys(payload || {}).find((key) => RESERVED_TRANSACTION_FIELDS.has(key));
+  if (field) {
+    throw Object.assign(new Error(`Field internal transaksi tidak boleh dikirim: ${field}.`), {
+      status: 400,
+      code: "RESERVED_TRANSACTION_FIELD",
+      details: { field },
+    });
+  }
+};
+
+export const assertPayloadAuthorization = (session, action, payload = {}) => {
+  if (action === "transactions.create" || action === "transactions.update") {
+    assertNoReservedTransactionFields(payload);
+    if (session?.role !== "owner" && payload.transaction_type === "adjustment") {
+      throw Object.assign(new Error("Penyesuaian saldo hanya dapat dibuat owner."), {
+        status: 403,
+        code: "ADJUSTMENT_OWNER_ONLY",
+      });
+    }
+  }
+  if (action === "import.preview" && Array.isArray(payload.records)) {
+    payload.records.forEach(assertNoReservedTransactionFields);
+  }
+};
+
 export const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
   "system.initialize", "users.upsert", "users.deactivate",
   "accounts.create", "accounts.update", "accounts.archive",
   "categories.create", "categories.update", "categories.archive",
   "transactions.create", "transactions.update", "transactions.cancel",
-  "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
+  "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
   "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
   "budgets.upsert", "goals.create", "goals.move", "goals.reverseMovement", "reconciliations.create",
   "periods.close", "periods.reopen", "calendar.sync",
@@ -119,20 +161,59 @@ export const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
 export const requiresIdempotencyKey = (action) => IDEMPOTENCY_REQUIRED_ACTIONS.has(action);
 
 const buckets = new Map();
+const MAX_RATE_LIMIT_BUCKETS = 5_000;
+
+const pruneRateLimitBuckets = (now) => {
+  if (buckets.size < 1_000) return;
+  for (const [bucketKey, bucket] of buckets.entries()) {
+    if (bucket.resetAt <= now) buckets.delete(bucketKey);
+  }
+  while (buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+    buckets.delete(buckets.keys().next().value);
+  }
+};
+
+export const clientRateLimitKey = (request, scope) => {
+  const headers = request?.headers || {};
+  const forwarded = headers["x-vercel-forwarded-for"]
+    ?? headers["x-forwarded-for"]
+    ?? headers["x-real-ip"]
+    ?? request?.socket?.remoteAddress
+    ?? "unknown";
+  const firstAddress = String(Array.isArray(forwarded) ? forwarded[0] : forwarded)
+    .split(",")[0]
+    .trim()
+    .slice(0, 200) || "unknown";
+  const digest = crypto.createHash("sha256").update(firstAddress).digest("base64url");
+  return `${scope}:${digest}`;
+};
+
 export const enforceBestEffortRateLimit = (key, { limit = 80, windowMs = 60_000 } = {}) => {
   const now = Date.now();
   const current = buckets.get(key);
   if (!current || current.resetAt <= now) {
+    pruneRateLimitBuckets(now);
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return;
   }
   current.count += 1;
-  if (current.count > limit) throw Object.assign(new Error("Terlalu banyak request. Coba lagi sebentar."), { status: 429, code: "RATE_LIMITED" });
+  if (current.count > limit) {
+    throw Object.assign(new Error("Terlalu banyak request. Coba lagi sebentar."), {
+      status: 429,
+      code: "RATE_LIMITED",
+      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
+    });
+  }
+};
+
+export const identityRateLimitKey = (scope, identity) => {
+  const digest = crypto.createHash("sha256").update(String(identity || "unknown")).digest("base64url");
+  return `${scope}:${digest}`;
 };
 
 export const createInternalEnvelope = ({ actor, action, payload, requestId, idempotencyKey, rowVersion }) => {
   const secret = process.env.INTERNAL_SHARED_SECRET;
-  if (!secret || secret.length < 32) throw new Error("INTERNAL_SHARED_SECRET minimal 32 karakter.");
+  if (!secret || secret.length < 32) throw Object.assign(new Error("Koneksi internal Google Apps Script belum dikonfigurasi."), { status: 503, code: "CONNECTOR_NOT_CONFIGURED" });
   const message = JSON.stringify({
     timestamp: Date.now(),
     nonce: crypto.randomUUID(),

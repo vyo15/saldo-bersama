@@ -1,10 +1,13 @@
 import { ACTIVE_STATUS, TRANSACTION_TYPES } from "./constants.js";
 
-const activeTransactions = (transactions) => transactions.filter((item) => item.status === ACTIVE_STATUS);
+const activeTransactions = (transactions, cutoffDate) => transactions.filter((item) => item.status === ACTIVE_STATUS)
+  .filter((item) => !cutoffDate || !item.transaction_date || item.transaction_date <= cutoffDate);
 
-export const calculateAccountBalance = (account, transactions) => {
+export const calculateAccountBalance = (account, transactions, cutoffDate) => {
   const initial = Number(account.initial_balance || 0);
-  return activeTransactions(transactions).reduce((balance, transaction) => {
+  return activeTransactions(transactions, cutoffDate)
+    .filter((transaction) => !account.initial_balance_date || !transaction.transaction_date || transaction.transaction_date >= account.initial_balance_date)
+    .reduce((balance, transaction) => {
     const amount = Number(transaction.amount || 0);
     switch (transaction.transaction_type) {
       case TRANSACTION_TYPES.INCOME:
@@ -24,7 +27,7 @@ export const calculateAccountBalance = (account, transactions) => {
   }, initial);
 };
 
-export const calculateCashFlow = (transactions) => activeTransactions(transactions).reduce((summary, transaction) => {
+export const calculateCashFlow = (transactions, cutoffDate) => activeTransactions(transactions, cutoffDate).reduce((summary, transaction) => {
   const amount = Number(transaction.amount || 0);
   if (transaction.transaction_type === TRANSACTION_TYPES.INCOME) summary.income += amount;
   if (transaction.transaction_type === TRANSACTION_TYPES.EXPENSE) summary.expense += amount;
@@ -32,8 +35,8 @@ export const calculateCashFlow = (transactions) => activeTransactions(transactio
   return summary;
 }, { income: 0, expense: 0, refund: 0 });
 
-export const calculateEnvelopeUsage = (envelopePeriod, transactions) => {
-  const used = activeTransactions(transactions)
+export const calculateEnvelopeUsage = (envelopePeriod, transactions, cutoffDate) => {
+  const used = activeTransactions(transactions, cutoffDate)
     .filter((transaction) => transaction.envelope_period_id === envelopePeriod.envelope_period_id)
     .filter((transaction) => transaction.transaction_type === TRANSACTION_TYPES.EXPENSE)
     .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
@@ -49,10 +52,4 @@ export const calculateEnvelopeUsage = (envelopePeriod, transactions) => {
 export const calculateSafeToSpend = ({ accountBalances, reservedBills = 0, protectedGoals = 0, emergencyFund = 0 }) => {
   const liquid = accountBalances.reduce((total, item) => total + Number(item.balance || 0), 0);
   return Math.max(0, liquid - Number(reservedBills) - Number(protectedGoals) - Number(emergencyFund));
-};
-
-export const monthlyPeriodKey = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
 };

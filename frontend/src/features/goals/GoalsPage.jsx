@@ -3,6 +3,7 @@ import { FiArrowDown, FiArrowUp, FiPlus, FiRotateCcw, FiShield, FiTarget } from 
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -16,8 +17,8 @@ import { apiClient } from "../../services/api/client.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
+import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
 
-const today = todayInJakarta;
 
 const GoalsPage = () => {
   const resource = useApiResource("goals.list");
@@ -25,9 +26,13 @@ const GoalsPage = () => {
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
-  const [movement, setMovement] = useState({ goal: null, movement_type: "contribution", amount: "", source_account_id: "", destination_account_id: "", transaction_date: today(), reason: "" });
+  const [movement, setMovement] = useState({ goal: null, movement_type: "contribution", amount: "", source_account_id: "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "" });
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
+  const [reverseTarget, setReverseTarget] = useState(null);
+  const [reverseState, setReverseState] = useState({ status: "idle", error: null });
   const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
+  const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
+  const compatibleMovementAccounts = filterByOwnership(accounts, goalAccount);
 
   const createGoal = async (event) => {
     event.preventDefault();
@@ -46,7 +51,7 @@ const GoalsPage = () => {
       amount: "",
       source_account_id: movementType === "withdraw" ? goal.account_id || "" : "",
       destination_account_id: movementType === "withdraw" ? "" : goal.account_id || "",
-      transaction_date: today(),
+      transaction_date: todayInJakarta(),
       reason: movementType === "withdraw" ? "Penggunaan dana target" : "Kontribusi target",
     });
     setMovementState({ status: "idle", error: null });
@@ -81,15 +86,16 @@ const GoalsPage = () => {
     } catch (error) { setMovementState({ status: "error", error }); }
   };
 
-  const reverseLastMovement = async (goal) => {
-    if (!goal.last_movement_id) return;
-    const reason = window.prompt("Alasan pembatalan mutasi target terakhir (wajib):");
-    if (!reason?.trim()) return;
+  const reverseLastMovement = async (reason) => {
+    if (!reverseTarget?.last_movement_id) return;
+    setReverseState({ status: "submitting", error: null });
     try {
-      await apiClient.request("goals.reverseMovement", { goal_movement_id: goal.last_movement_id, reason: reason.trim() }, { idempotencyKey: createIdempotencyKey() });
+      await apiClient.request("goals.reverseMovement", { goal_movement_id: reverseTarget.last_movement_id, reason }, { idempotencyKey: createIdempotencyKey() });
+      setReverseTarget(null);
+      setReverseState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan." });
       await Promise.all([resource.reload(), refresh()]);
-    } catch (error) { setMessage({ type: "danger", text: error.message }); }
+    } catch (error) { setReverseState({ status: "error", error }); }
   };
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
@@ -100,16 +106,16 @@ const GoalsPage = () => {
       <PageHeader title="Tabungan & target" description="Kontribusi target dicatat sebagai transfer, bukan pengeluaran." />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="goal-grid">
-        {(resource.data?.items || []).map((goal) => (
+        {(resource.data?.items || []).length ? (resource.data.items.map((goal) => (
           <Card className="goal-card" key={goal.goal_id}>
             <div className="goal-card__icon">{goal.goal_type === "emergency_fund" ? <FiShield /> : <FiTarget />}</div>
             <div><p className="eyebrow">{goal.goal_type === "emergency_fund" ? "Dana darurat" : goal.goal_type === "sinking_fund" ? "Dana berkala" : "Tujuan tabungan"}</p><h2>{goal.name}</h2></div>
             <Money value={goal.current_amount} />
             <ProgressBar value={goal.current_amount} max={goal.target_amount} label={goal.name} />
             <div className="goal-card__footer"><span>Target <Money value={goal.target_amount} /></span><span>{goal.target_date}</span></div>
-            <div className="goal-card__actions"><Button icon={FiArrowUp} onClick={() => openMovement(goal, "contribution")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdraw")}>Tarik</Button>{goal.last_movement_id ? <Button icon={FiRotateCcw} onClick={() => reverseLastMovement(goal)}>Batalkan terakhir</Button> : null}</div>
+            <div className="goal-card__actions"><Button icon={FiArrowUp} onClick={() => openMovement(goal, "contribution")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdraw")}>Tarik</Button>{goal.last_movement_id ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(goal); setReverseState({ status: "idle", error: null }); }}>Batalkan terakhir</Button> : null}</div>
           </Card>
-        ))}
+        ))) : <Card className="panel"><p>Belum ada target keuangan. Buat target setelah rekening tujuan tersedia.</p></Card>}
       </section>
 
       {user?.role === "owner" ? (
@@ -120,7 +126,7 @@ const GoalsPage = () => {
             <label className="field"><span>Jenis</span><select value={form.goal_type} onChange={(event) => setForm((current) => ({ ...current, goal_type: event.target.value }))}><option value="savings">Tabungan tujuan</option><option value="emergency_fund">Dana darurat</option><option value="sinking_fund">Dana berkala</option></select></label>
             <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
             <label className="field"><span>Tanggal target</span><input required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
-            <label className="field"><span>Rekening tujuan</span><select required value={form.account_id} onChange={(event) => setForm((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name}</option>)}</select></label>
+            <label className="field"><span>Rekening tujuan</span><select required value={form.account_id} onChange={(event) => setForm((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select></label>
             <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit">Buat target</Button></div>
           </form>
         </Card>
@@ -135,13 +141,26 @@ const GoalsPage = () => {
       >
         <form id="goal-movement-form" className="form-grid" onSubmit={submitMovement}>
           <MoneyInput id="goal-movement-amount" label="Nominal" value={movement.amount} onChange={(value) => setMovement((current) => ({ ...current, amount: value }))} />
-          <label className="field"><span>Rekening sumber *</span><select required value={movement.source_account_id} onChange={(event) => setMovement((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name}</option>)}</select></label>
-          <label className="field"><span>Rekening tujuan *</span><select required value={movement.destination_account_id} onChange={(event) => setMovement((current) => ({ ...current, destination_account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name}</option>)}</select></label>
+          <label className="field"><span>Rekening sumber *</span><select required value={movement.source_account_id} onChange={(event) => setMovement((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Pilih rekening</option>{compatibleMovementAccounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select></label>
+          <label className="field"><span>Rekening tujuan *</span><select required value={movement.destination_account_id} onChange={(event) => setMovement((current) => ({ ...current, destination_account_id: event.target.value }))}><option value="">Pilih rekening</option>{compatibleMovementAccounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select></label>
           <label className="field"><span>Tanggal *</span><input required type="date" value={movement.transaction_date} onChange={(event) => setMovement((current) => ({ ...current, transaction_date: event.target.value }))} /></label>
           <label className="field form-grid__full"><span>Alasan *</span><input required maxLength="180" value={movement.reason} onChange={(event) => setMovement((current) => ({ ...current, reason: event.target.value }))} /></label>
           {movementState.error ? <div className="notice notice--danger form-grid__full" role="alert">{movementState.error.message}</div> : null}
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(reverseTarget)}
+        title="Batalkan mutasi target terakhir?"
+        description={reverseTarget ? `${reverseTarget.name} · transfer terkait juga akan dibatalkan tanpa menghapus audit.` : ""}
+        confirmLabel="Batalkan mutasi"
+        reasonLabel="Alasan pembatalan"
+        requireReason
+        busy={reverseState.status === "submitting"}
+        error={reverseState.error}
+        onCancel={() => reverseState.status !== "submitting" && setReverseTarget(null)}
+        onConfirm={reverseLastMovement}
+      />
     </div>
   );
 };

@@ -1,65 +1,75 @@
 # Google Apps Script API
 
-Folder ini adalah backend Google Apps Script untuk Google Sheets, Google Calendar, trigger terjadwal, audit, backup, import, restore, dan integrity check.
+Folder ini adalah backend canonical untuk Google Sheets, Calendar, notification worker, audit, backup, import/restore, migration, dan integrity check.
 
-Deploy Web App dengan:
+## File wajib
+
+Salin seluruh file berikut ke satu project Apps Script yang terikat pada spreadsheet:
+
+- `Code.gs`
+- `DataStore.gs`
+- `FinanceService.gs`
+- `MasterDataService.gs`
+- `Migration.gs`
+- `NotificationWorker.gs`
+- `PlanningService.gs`
+- `RecoveryService.gs`
+- `ReportsAndIntegrations.gs`
+- `Router.gs`
+- `Schema.gs`
+- `Security.gs`
+- `appsscript.json`
+
+Jangan menyalin `README.md` ke editor.
+
+## Spreadsheet baru
+
+1. Isi Script Property `INTERNAL_SHARED_SECRET` dengan nilai yang sama persis seperti Vercel, minimal 32 karakter.
+2. Jalankan `setupSaldoBersama()` dari editor.
+3. Pastikan eksekusi selesai, `SETUP_STATUS=ready`, `SETUP_VERIFIED_AT` terisi, schema version `2`, dan 21 sheet canonical tersedia.
+4. `SPREADSHEET_ID` disimpan otomatis. Jangan mengisinya manual.
+5. Sheet bawaan `Sheet1` hanya dihapus otomatis bila benar-benar kosong dan schema sudah lolos validasi.
+6. Login owner pertama melalui aplikasi untuk menjalankan `system.initialize` dan membuat row owner pertama di `Users`.
+
+## Spreadsheet schema version 1
+
+Jangan menjalankan `setupSaldoBersama()` di atas schema v1.
+
+1. Pastikan akun editor adalah owner aktif pada sheet `Users`.
+2. Jalankan `previewSchemaMigrationV2()`.
+3. Hentikan bila preview menunjukkan `ambiguous > 0`; perbaiki referensi rekening/envelope/owner secara terkontrol sebelum melanjutkan.
+4. Isi Script Property sementara `MIGRATION_CONFIRMATION=MIGRATE_V2`.
+5. Jalankan `runSchemaMigrationV2()`; property konfirmasi langsung dihapus sebelum apply.
+6. Migration membuat dan memverifikasi safety backup, mengaktifkan maintenance, menambah ownership pada recurring/budget/goal, memvalidasi schema dan integrity, lalu membuka maintenance.
+7. Bila apply gagal, rollback ke safety backup diverifikasi. Bila rollback gagal, aplikasi tetap terkunci dengan `RECOVERY_REQUIRED`.
+
+## Script Properties
+
+- `SPREADSHEET_ID` — otomatis setelah setup.
+- `INTERNAL_SHARED_SECRET` — wajib, sama dengan Vercel.
+- `SETUP_STATUS`, `SETUP_DETAILS`, `SETUP_VERIFIED_AT` — otomatis.
+- `MIGRATION_*` — otomatis; `MIGRATION_CONFIRMATION` hanya sementara saat migration.
+- `CALENDAR_ID` — opsional sampai Calendar aktif.
+- `BACKUP_FOLDER_ID` — direkomendasikan untuk backup/migration.
+- `PUSH_ENDPOINT_URL` — opsional sampai Web Push aktif.
+
+## Web App
+
+Deploy sebagai Web App:
 
 - Execute as: **Me / user deploying**.
 - Who has access: **Anyone**.
 
-Endpoint tetap dilindungi karena seluruh request aplikasi wajib membawa HMAC, timestamp, nonce, actor terverifikasi, action allowlist, dan role yang konsisten. URL Web App bukan secret.
-
-## Setup
-
-1. Buat spreadsheet DEV dan PROD terpisah.
-2. Buka **Extensions → Apps Script** dari spreadsheet.
-3. Jalankan `node scripts/check-apps-script-syntax.mjs` pada source lokal. Gate wajib lulus untuk boot urutan alfabet dan terbalik.
-4. Salin seluruh file `.gs` dan `appsscript.json`, simpan, lalu refresh editor. Pastikan dropdown menampilkan `setupSaldoBersama`; jika project gagal boot, jangan deploy.
-5. Isi Script Property `INTERNAL_SHARED_SECRET` lebih dahulu dengan nilai yang sama persis seperti Vercel.
-6. Jalankan `setupSaldoBersama()` sebagai owner. Setup memakai lock, menolak spreadsheet yang tidak cocok, dan baru dinyatakan berhasil setelah schema tervalidasi.
-7. Pastikan Script Properties menunjukkan `SETUP_STATUS=ready` dan `SETUP_VERIFIED_AT`, lalu verifikasi seluruh 21 sheet canonical.
-8. Script Properties yang digunakan:
-   - `SPREADSHEET_ID` — otomatis setelah setup;
-   - `INTERNAL_SHARED_SECRET` — sama dengan Vercel, minimal 32 karakter;
-   - `SETUP_STATUS`, `SETUP_DETAILS`, `SETUP_VERIFIED_AT` — dikelola otomatis oleh setup;
-   - `CALENDAR_ID` — ID kalender bersama;
-   - `PUSH_ENDPOINT_URL` — endpoint production `/api/push`, opsional;
-   - `BACKUP_FOLDER_ID` — folder Drive khusus backup, opsional.
-9. Jalankan `setupScheduledTriggers()` untuk membuat trigger notifikasi harian dan backup harian setelah integrasi DEV lulus.
-10. Deploy Web App dan isi URL pada `APPS_SCRIPT_WEB_APP_URL` di Vercel.
-11. Login owner dan jalankan health/integrity check dari aplikasi.
-
-## Bootstrap pengguna
-
-Action `system.initialize` hanya boleh dijalankan oleh role owner dari allowlist Vercel. Saat database baru, owner pertama dibuat pada sheet `Users`. Pengguna berikutnya dikelola melalui action owner:
-
-- `users.list`;
-- `users.upsert`;
-- `users.deactivate`.
-
-Email dan role pada sheet `Users` harus sama dengan `ALLOWED_USERS_JSON`. Ketidaksesuaian menghasilkan `ROLE_MISMATCH`.
+Simpan URL yang berakhir `/exec` sebagai `APPS_SCRIPT_WEB_APP_URL`. Endpoint publik tetap dilindungi HMAC, timestamp, nonce, actor/role server-side, action allowlist, dan replay guard.
 
 ## Guard utama
 
-- HMAC SHA-256, timestamp, nonce, dan role server-side.
-- Schema/header validation dan read-only failure untuk schema rusak.
-- LockService pada write kritis.
-- Idempotency dan optimistic concurrency `row_version`.
-- Integer rupiah, tanggal kalender nyata, referential integrity, dan formula neutralization.
-- Soft delete transaksi dan audit append-only.
-- Periode tertutup, ownership transaksi, duplicate detection, serta overspend reason.
-- Backup Drive sebelum import/restore dan operasi berisiko.
-- Restore/import rollback bila integrity check gagal.
+- Schema/header/version validation dan fail-closed.
+- Ownership `shared`/`personal` pada semua read/write terkait.
+- LockService, idempotency, `row_version`, audit append-only.
+- Integer rupiah, tanggal nyata, referential integrity, formula neutralization.
+- Soft delete dan period closure.
+- Request-scoped read cache dengan invalidation setelah write.
+- Safety backup, checksum, maintenance, rollback, dan recovery manual.
 
-Jangan mengubah nama sheet/kolom tanpa approval, migration, backup, dan rollback plan.
-
-## Recovery dan compensation
-
-- Restore/import bersifat fail-closed dan memakai safety backup terverifikasi.
-- Preview restore terikat pada checksum isi dan email owner aktif di backup.
-- Ketika schema aktif rusak, restore API tidak bergantung pada sheet `Idempotency`; idempotency recovery disimpan sementara pada Script Properties.
-- Pembayaran recurring, mutasi target, dan pemindahan envelope memakai compensation. Jika compensation gagal, aplikasi masuk `recovery_required`.
-- Koreksi transaksi recurring/goal dilakukan melalui `recurring.reversePayment` atau `goals.reverseMovement`, bukan edit/cancel ledger umum.
-- Prosedur manual tersedia di `docs/RECOVERY_RUNBOOK.md`.
-
-Rate limit Apps Script Cache dan Vercel memory bersifat best-effort. LockService dan idempotency tetap menjadi guard integritas utama.
+Jangan mengubah schema, secret, deploy identity, atau spreadsheet binding tanpa approval, backup, migration, rollback plan, dan test DEV.

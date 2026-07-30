@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertAllowedOrigin, authorizeAction, createSessionCookie, parseAllowedUsers, readSession } from "../_lib/security.js";
+import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, clientRateLimitKey, createSessionCookie, enforceBestEffortRateLimit, parseAllowedUsers, readSession } from "../_lib/security.js";
 
 const withEnv = (values, fn) => {
   const previous = Object.fromEntries(Object.keys(values).map((key) => [key, process.env[key]]));
@@ -42,3 +42,35 @@ test("origin wajib ada dan harus termasuk allowlist", () => withEnv({
   assert.throws(() => assertAllowedOrigin({ headers: {} }), (error) => error.code === "ORIGIN_REQUIRED");
   assert.throws(() => assertAllowedOrigin({ headers: { origin: "https://evil.example" } }), (error) => error.code === "ORIGIN_DENIED");
 }));
+
+test("rate limit login memakai IP Vercel yang di-hash dan menolak request berlebih", () => {
+  const request = {
+    headers: {
+      "x-vercel-forwarded-for": "203.0.113.10",
+      "x-forwarded-for": "198.51.100.20",
+    },
+  };
+  const key = clientRateLimitKey(request, `session:test:${Date.now()}`);
+  assert.match(key, /^session:test:\d+:[A-Za-z0-9_-]+$/);
+  assert.doesNotMatch(key, /203\.0\.113\.10/);
+  assert.doesNotThrow(() => enforceBestEffortRateLimit(key, { limit: 1 }));
+  assert.throws(
+    () => enforceBestEffortRateLimit(key, { limit: 1 }),
+    (error) => error.code === "RATE_LIMITED" && error.status === 429,
+  );
+});
+
+test("gateway menolak adjustment member dan field transaksi internal", () => {
+  assert.throws(
+    () => assertPayloadAuthorization({ role: "member" }, "transactions.create", { transaction_type: "adjustment" }),
+    (error) => error.code === "ADJUSTMENT_OWNER_ONLY" && error.status === 403,
+  );
+  assert.throws(
+    () => assertPayloadAuthorization({ role: "owner" }, "transactions.create", { transaction_type: "expense", recurring_occurrence_id: "forged" }),
+    (error) => error.code === "RESERVED_TRANSACTION_FIELD" && error.details.field === "recurring_occurrence_id",
+  );
+  assert.throws(
+    () => assertPayloadAuthorization({ role: "owner" }, "import.preview", { records: [{ transaction_type: "expense", scope: "personal" }] }),
+    (error) => error.code === "RESERVED_TRANSACTION_FIELD" && error.details.field === "scope",
+  );
+});

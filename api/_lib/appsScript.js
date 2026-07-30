@@ -1,6 +1,38 @@
+const connectorError = (code, message, status, cause) => Object.assign(new Error(message), {
+  code,
+  status,
+  cause,
+});
+
+const appsScriptUrl = () => {
+  const raw = String(process.env.APPS_SCRIPT_WEB_APP_URL || "").trim();
+  if (!raw) throw connectorError("CONNECTOR_NOT_CONFIGURED", "Koneksi Google Apps Script belum dikonfigurasi.", 503);
+  let parsed;
+  try { parsed = new URL(raw); } catch {
+    throw connectorError("CONNECTOR_NOT_CONFIGURED", "URL Google Apps Script tidak valid.", 503);
+  }
+  if (parsed.protocol !== "https:" || parsed.hostname !== "script.google.com" || !parsed.pathname.endsWith("/exec")) {
+    throw connectorError("CONNECTOR_NOT_CONFIGURED", "Gunakan URL deployment Google Apps Script yang berakhir /exec.", 503);
+  }
+  return parsed.toString();
+};
+
+export const connectorConfiguration = () => {
+  let appsScriptUrlConfigured = false;
+  try {
+    appsScriptUrl();
+    appsScriptUrlConfigured = true;
+  } catch {
+    appsScriptUrlConfigured = false;
+  }
+  return {
+    appsScriptUrlConfigured,
+    sharedSecretConfigured: String(process.env.INTERNAL_SHARED_SECRET || "").length >= 32,
+  };
+};
+
 export const callAppsScript = async (envelope) => {
-  const url = process.env.APPS_SCRIPT_WEB_APP_URL;
-  if (!url) throw new Error("APPS_SCRIPT_WEB_APP_URL belum diatur.");
+  const url = appsScriptUrl();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 55_000);
   try {
@@ -12,10 +44,20 @@ export const callAppsScript = async (envelope) => {
       signal: controller.signal,
     });
     const body = await response.json().catch(() => null);
-    if (!response.ok || !body) throw Object.assign(new Error("Apps Script tidak mengembalikan respons valid."), { status: 502, code: "UPSTREAM_INVALID" });
+    if (!response.ok) {
+      throw connectorError("APPS_SCRIPT_UNREACHABLE", "Google Apps Script menolak atau tidak dapat menerima request.", 502);
+    }
+    if (!body || typeof body !== "object" || typeof body.ok !== "boolean") {
+      throw connectorError("APPS_SCRIPT_INVALID_RESPONSE", "Google Apps Script mengembalikan respons yang tidak valid.", 502);
+    }
     return body;
   } catch (error) {
-    if (error.name === "AbortError") throw Object.assign(new Error("Apps Script timeout. Status commit belum dapat dipastikan; jangan ulangi dengan idempotency key baru."), { status: 504, code: "UPSTREAM_TIMEOUT" });
-    throw error;
-  } finally { clearTimeout(timer); }
+    if (error.name === "AbortError") {
+      throw connectorError("UPSTREAM_TIMEOUT", "Google Apps Script timeout. Jangan ulangi operasi perubahan dengan idempotency key baru.", 504, error);
+    }
+    if (error.code && error.status) throw error;
+    throw connectorError("APPS_SCRIPT_UNREACHABLE", "Google Apps Script belum dapat dihubungi.", 502, error);
+  } finally {
+    clearTimeout(timer);
+  }
 };

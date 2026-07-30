@@ -15,17 +15,21 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthBoundsInJakarta } from "../../domain/dates.js";
+import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
 
 const AllocationsPage = () => {
   const resource = useApiResource("envelopes.list");
-  const { refresh } = useFinance();
+  const { refresh, bootstrap } = useFinance();
   const { user } = useAuth();
   const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
   const [message, setMessage] = useState(null);
   const { start: periodStart, end: periodEnd } = currentMonthBoundsInJakarta();
-  const [createForm, setCreateForm] = useState({ name: "", default_amount: "", period_type: "monthly", period_start: periodStart, period_end: periodEnd, rollover_policy: "unallocated", overspend_policy: "confirm" });
+  const [createForm, setCreateForm] = useState({ name: "", default_amount: "", source_account_id: "", period_type: "monthly", period_start: periodStart, period_end: periodEnd, rollover_policy: "unallocated", overspend_policy: "confirm" });
+  const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const lookup = useMemo(() => Object.fromEntries(items.map((item) => [item.envelope_period_id, item])), [items]);
+  const selectedSourceEnvelope = lookup[move.fromEnvelopePeriodId] || null;
+  const compatibleDestinationEnvelopes = filterByOwnership(items, selectedSourceEnvelope).filter((item) => item.envelope_period_id !== move.fromEnvelopePeriodId);
 
 
   const createEnvelope = async (event) => {
@@ -33,8 +37,7 @@ const AllocationsPage = () => {
     setMessage(null);
     try {
       const amount = assertPositiveRupiah(createForm.default_amount);
-      const rule = await apiClient.request("envelopes.createRule", { ...createForm, default_amount: amount, scope: "shared" }, { idempotencyKey: createIdempotencyKey() });
-      await apiClient.request("envelopes.createPeriod", { envelope_rule_id: rule.envelope_rule_id, period_start: createForm.period_start, period_end: createForm.period_end, allocated_amount: amount }, { idempotencyKey: createIdempotencyKey() });
+      await apiClient.request("envelopes.create", { ...createForm, default_amount: amount, allocated_amount: amount }, { idempotencyKey: createIdempotencyKey() });
       setCreateForm((current) => ({ ...current, name: "", default_amount: "" }));
       setMessage({ type: "success", text: "Kantong dan periode aktif berhasil dibuat." });
       await Promise.all([resource.reload(), refresh()]);
@@ -68,13 +71,13 @@ const AllocationsPage = () => {
       <PageHeader title="Alokasi dana" description="Setiap rupiah diberi tujuan. Alokasi tidak mengubah saldo sampai terjadi pengeluaran atau transfer nyata." actions={<Button icon={FiRefreshCw} onClick={resource.reload}>Muat ulang</Button>} />
 
       <section className="allocation-grid">
-        {items.map((item) => (
+        {items.length ? items.map((item) => (
           <Card className="allocation-card" key={item.envelope_period_id}>
             <div className="allocation-card__header"><div><h2>{item.name}</h2><small>{item.period_start} – {item.period_end}</small></div><Money value={item.remaining_amount} /></div>
             <ProgressBar value={item.used_amount + Number(item.reserved_amount || 0)} max={item.allocated_amount} label={item.name} />
             <dl><div><dt>Alokasi</dt><dd><Money value={item.allocated_amount} /></dd></div><div><dt>Terpakai</dt><dd><Money value={item.used_amount} /></dd></div><div><dt>Dipesan</dt><dd><Money value={item.reserved_amount} /></dd></div></dl>
           </Card>
-        ))}
+        )) : <Card className="panel"><p>Belum ada kantong aktif untuk periode ini.</p></Card>}
       </section>
 
       {user?.role === "owner" ? (
@@ -83,7 +86,8 @@ const AllocationsPage = () => {
           <form className="form-grid" onSubmit={createEnvelope}>
             <label className="field form-grid__full"><span>Nama kantong *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Jatah makan bulanan" /></label>
             <MoneyInput id="envelope-default" label="Nominal alokasi" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} />
-            <label className="field"><span>Periode jatah</span><select value={createForm.period_type} onChange={(event) => setCreateForm((current) => ({ ...current, period_type: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="pay_cycle">Periode gajian</option><option value="custom">Khusus</option></select></label>
+            <label className="field"><span>Rekening sumber</span><select value={createForm.source_account_id} onChange={(event) => setCreateForm((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Gabungan rekening bersama</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select><small>Rekening pribadi otomatis membuat kantong pribadi.</small></label>
+            <label className="field"><span>Periode jatah</span><select value={createForm.period_type} onChange={(event) => setCreateForm((current) => ({ ...current, period_type: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="paycycle">Periode gajian</option><option value="custom">Khusus</option></select></label>
             <label className="field"><span>Rollover</span><select value={createForm.rollover_policy} onChange={(event) => setCreateForm((current) => ({ ...current, rollover_policy: event.target.value }))}><option value="unallocated">Kembali ke belum dialokasikan</option><option value="carry">Bawa ke periode berikutnya</option><option value="buffer">Pindah ke buffer</option><option value="savings">Pindah ke tabungan</option></select></label>
             <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
             <label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
@@ -95,8 +99,8 @@ const AllocationsPage = () => {
       <Card className="panel">
         <div className="panel__header"><div><p className="eyebrow">Mutasi alokasi</p><h2>Pindahkan sisa ke kantong lain</h2><p>Mutasi ini bukan pemasukan atau pengeluaran dan wajib masuk audit.</p></div></div>
         <form className="form-grid" onSubmit={submitMove}>
-          <label className="field"><span>Dari kantong</span><select value={move.fromEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, fromEnvelopePeriodId: event.target.value }))}><option value="">Pilih sumber</option>{items.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} — sisa {item.remaining_amount}</option>)}</select></label>
-          <label className="field"><span>Ke kantong</span><select value={move.toEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, toEnvelopePeriodId: event.target.value }))}><option value="">Pilih tujuan</option>{items.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name}</option>)}</select></label>
+          <label className="field"><span>Dari kantong</span><select value={move.fromEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, fromEnvelopePeriodId: event.target.value, toEnvelopePeriodId: "" }))}><option value="">Pilih sumber</option>{items.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} — sisa {item.remaining_amount}</option>)}</select></label>
+          <label className="field"><span>Ke kantong</span><select value={move.toEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, toEnvelopePeriodId: event.target.value }))}><option value="">Pilih tujuan</option>{compatibleDestinationEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name}</option>)}</select></label>
           <MoneyInput id="move-amount" label="Nominal dipindahkan" value={move.amount} onChange={(amount) => setMove((current) => ({ ...current, amount }))} />
           <label className="field"><span>Alasan</span><input value={move.reason} maxLength="160" onChange={(event) => setMove((current) => ({ ...current, reason: event.target.value }))} placeholder="Contoh: sisa jatah mingguan" /></label>
           {message ? <div className={`notice notice--${message.type} form-grid__full`} role="status">{message.text}</div> : null}

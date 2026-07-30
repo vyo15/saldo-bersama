@@ -49,6 +49,53 @@ function spreadsheetSnapshotChecksum_(spreadsheet) {
   return sha256Hex_(canonicalJson_(spreadsheetSnapshotPayload_(spreadsheet)));
 }
 
+function rawSpreadsheetSnapshotPayload_(spreadsheet) {
+  return spreadsheet.getSheets().map(function(sheet) {
+    const rows = Math.max(1, sheet.getLastRow());
+    const columns = Math.max(1, sheet.getLastColumn());
+    const range = sheet.getRange(1, 1, rows, columns);
+    return {
+      name: sheet.getName(),
+      values: range.getValues().map(function(row) { return row.map(canonicalSnapshotCell_); }),
+      formulas: range.getFormulas()
+    };
+  }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name)); });
+}
+
+function rawSpreadsheetSnapshotChecksum_(spreadsheet) {
+  return sha256Hex_(canonicalJson_(rawSpreadsheetSnapshotPayload_(spreadsheet)));
+}
+
+function createEmergencySafetySnapshot_(context, type) {
+  const spreadsheet = getSpreadsheet_();
+  const timestamp = Utilities.formatDate(new Date(), SB_TIMEZONE, "yyyyMMdd-HHmmss");
+  const safeType = sanitizeText_(type || "raw-safety", 30);
+  const baseName = "saldo-bersama-" + timestamp + "-" + safeType;
+  const folderId = PropertiesService.getScriptProperties().getProperty("BACKUP_FOLDER_ID");
+  const folder = folderId ? DriveApp.getFolderById(folderId) : null;
+  const sourceChecksum = rawSpreadsheetSnapshotChecksum_(spreadsheet);
+  const copy = folder ? DriveApp.getFileById(spreadsheet.getId()).makeCopy(baseName, folder) : DriveApp.getFileById(spreadsheet.getId()).makeCopy(baseName);
+  try {
+    const copySpreadsheet = SpreadsheetApp.openById(copy.getId());
+    const copyChecksum = rawSpreadsheetSnapshotChecksum_(copySpreadsheet);
+    if (copyChecksum !== sourceChecksum) throw sbError_("RAW_SAFETY_CHECKSUM_MISMATCH", "Checksum safety snapshot mentah berbeda dari sumber.", 503, { sourceChecksum: sourceChecksum, copyChecksum: copyChecksum });
+    return {
+      fileId: copy.getId(),
+      fileName: copy.getName(),
+      checksum: copyChecksum,
+      raw: true,
+      createdAt: nowIso_(),
+      createdBy: context.actor.user_id
+    };
+  } catch (error) {
+    try { copy.setTrashed(true); }
+    catch (cleanupError) {
+      recordExternalCleanupRequired_("drive_raw_safety_copy", { fileId: copy.getId(), cause: error.code || error.message, cleanupError: cleanupError.message });
+    }
+    throw error;
+  }
+}
+
 function validateBackupSpreadsheet_(fileId) {
   let source;
   try { source = SpreadsheetApp.openById(fileId); } catch (error) { throw sbError_("BACKUP_NOT_ACCESSIBLE", "File backup tidak dapat dibuka.", 404); }
@@ -108,28 +155,57 @@ function backupPreview_(context) {
   Object.keys(SB_SCHEMA).forEach(function(name) {
     const sourceSheet = validation.source.getSheetByName(name);
     const currentSheet = getSpreadsheet_().getSheetByName(name);
-    summary[name] = { backupRows: Math.max(0, sourceSheet.getLastRow() - 1), currentRows: currentSheet ? Math.max(0, currentSheet.getLastRow() - 1) : 0, currentSheetMissing: !currentSheet };
+    const backupRows = Math.max(0, sourceSheet.getLastRow() - 1);
+    const currentRows = currentSheet ? Math.max(0, currentSheet.getLastRow() - 1) : 0;
+    summary[name] = {
+      backupRows: backupRows,
+      currentRows: currentRows,
+      deltaRows: backupRows - currentRows,
+      replacedOrRemovedRows: Math.max(0, currentRows - backupRows),
+      currentSheetMissing: !currentSheet
+    };
   });
   const token = uuid_();
   CacheService.getScriptCache().put("restore-preview:" + token, JSON.stringify({ fileId: fileId, actorId: context.actor.user_id, checksum: validation.checksum }), 600);
-  return { backupFileId: fileId, schemaVersion: validation.schemaVersion, checksum: validation.checksum, summary: summary, previewToken: token, expiresInSeconds: 600 };
+  return { backupFileId: fileId, schemaVersion: validation.schemaVersion, checksum: validation.checksum, summary: summary, acceptable: true, previewToken: token, expiresInSeconds: 600 };
 }
 
 function replaceSheetData_(targetSpreadsheet, sourceSpreadsheet, name) {
-  const target = targetSpreadsheet.getSheetByName(name);
+  let target = targetSpreadsheet.getSheetByName(name);
   const source = sourceSpreadsheet.getSheetByName(name);
-  const width = SB_SCHEMA[name].length;
-  const rowCount = source.getLastRow();
-  if (!target || !source) throw sbError_("SCHEMA_MISSING", "Sheet snapshot tidak lengkap: " + name, 503);
-  if (target.getMaxRows() < Math.max(2, rowCount)) target.insertRowsAfter(target.getMaxRows(), Math.max(2, rowCount) - target.getMaxRows());
-  if (target.getLastRow() > 1) target.getRange(2, 1, target.getLastRow() - 1, width).clearContent();
-  if (rowCount > 1) target.getRange(2, 1, rowCount - 1, width).setValues(source.getRange(2, 1, rowCount - 1, width).getValues());
+  if (!source) throw sbError_("SCHEMA_MISSING", "Sheet snapshot tidak lengkap: " + name, 503);
+  if (!target) target = targetSpreadsheet.insertSheet(name);
+  const rowCount = Math.max(1, source.getLastRow());
+  const columnCount = Math.max(1, source.getLastColumn());
+  if (target.getMaxRows() < rowCount) target.insertRowsAfter(target.getMaxRows(), rowCount - target.getMaxRows());
+  if (target.getMaxColumns() < columnCount) target.insertColumnsAfter(target.getMaxColumns(), columnCount - target.getMaxColumns());
+  const clearRows = Math.max(1, target.getLastRow());
+  const clearColumns = Math.max(1, target.getLastColumn());
+  target.getRange(1, 1, clearRows, clearColumns).clearContent();
+  const sourceRange = source.getRange(1, 1, rowCount, columnCount);
+  const values = sourceRange.getValues();
+  const formulas = sourceRange.getFormulas();
+  const cells = values.map(function(row, rowIndex) {
+    return row.map(function(value, columnIndex) { return formulas[rowIndex][columnIndex] || value; });
+  });
+  target.getRange(1, 1, rowCount, columnCount).setValues(cells);
+  target.setFrozenRows(source.getFrozenRows());
 }
 
 function applySpreadsheetSnapshot_(sourceId) {
   const source = SpreadsheetApp.openById(sourceId);
   const target = getSpreadsheet_();
   Object.keys(SB_SCHEMA).forEach(function(name) { replaceSheetData_(target, source, name); });
+  protectSystemSheets_();
+  SpreadsheetApp.flush();
+}
+
+function applyRawSpreadsheetSnapshot_(sourceId) {
+  const source = SpreadsheetApp.openById(sourceId);
+  const target = getSpreadsheet_();
+  const sourceNames = new Set(source.getSheets().map(function(sheet) { return sheet.getName(); }));
+  source.getSheets().forEach(function(sheet) { replaceSheetData_(target, source, sheet.getName()); });
+  target.getSheets().filter(function(sheet) { return !sourceNames.has(sheet.getName()); }).forEach(function(sheet) { target.deleteSheet(sheet); });
   SpreadsheetApp.flush();
 }
 
@@ -142,17 +218,32 @@ function snapshotVerificationIssues_(expectedChecksum) {
 }
 
 function setRecoveryOperationState_(status, safety, details) {
-  const payload = Object.assign({}, details || {}, { safetyBackupFileId: safety && safety.fileId || "", safetyBackupChecksum: safety && safety.checksum || "" });
+  const payload = Object.assign({}, details || {}, {
+    safetyBackupFileId: safety && safety.fileId || "",
+    safetyBackupChecksum: safety && safety.checksum || "",
+    safetyBackupRaw: Boolean(safety && safety.raw)
+  });
   setRecoveryRequired_(status, payload);
-  upsertConfig_("maintenance_mode", "true");
 }
 
 function rollbackToSafetyOrFailClosed_(operation, safety, originalError, context) {
   try {
-    applySpreadsheetSnapshot_(safety.fileId);
-    upsertConfig_("maintenance_mode", "true");
-    const verification = snapshotVerificationIssues_(safety.checksum);
+    if (safety.raw) applyRawSpreadsheetSnapshot_(safety.fileId);
+    else applySpreadsheetSnapshot_(safety.fileId);
+    let verification;
+    if (safety.raw) {
+      const rawChecksum = rawSpreadsheetSnapshotChecksum_(getSpreadsheet_());
+      const rawIssues = rawChecksum === safety.checksum ? [] : [{ code: "RAW_CHECKSUM_MISMATCH", expected: safety.checksum, actual: rawChecksum }];
+      let schemaIssues = [];
+      try { schemaIssues = validateSchema_().map(function(message) { return { code: "SCHEMA", message: message }; }); }
+      catch (schemaError) { schemaIssues = [{ code: schemaError.code || "SCHEMA", message: schemaError.message }]; }
+      const integrity = schemaIssues.length ? [] : integrityIssues_();
+      verification = { issues: rawIssues.concat(schemaIssues).concat(integrity), checksum: rawChecksum };
+    } else {
+      verification = snapshotVerificationIssues_(safety.checksum);
+    }
     if (verification.issues.length) throw sbError_("ROLLBACK_VERIFICATION_FAILED", "Safety backup tidak lolos verifikasi setelah rollback.", 503, verification.issues);
+    upsertConfig_("maintenance_mode", "true");
     appendAudit_(context, operation + ".rollback", operation, safety.fileId, null, {
       safetyBackupFileId: safety.fileId,
       rollbackChecksum: verification.checksum,
@@ -183,14 +274,14 @@ function restoreApply_(context) {
   if (validation.issues.length) throw sbError_("INVALID_BACKUP", "Backup tidak valid.", 400, validation.issues);
   assertBackupOwner_(validation.source, context.actor.email);
   if (validation.checksum !== preview.checksum) throw sbError_("BACKUP_CHANGED_AFTER_PREVIEW", "Isi backup berubah setelah preview. Jalankan preview kembali.", 409, { previewChecksum: preview.checksum, currentChecksum: validation.checksum });
-  const safety = createBackup_({ actor: context.actor, action: "backup.create", payload: { type: "pre-restore" }, requestId: context.requestId });
-  setRecoveryOperationState_("restore_applying", safety, { operation: "restore", sourceFileId: payload.backupFileId, sourceChecksum: validation.checksum });
+  const safety = createEmergencySafetySnapshot_(context, "raw-pre-restore");
+  setRecoveryOperationState_("restore_applying", safety, { operation: "restore", sourceFileId: payload.backupFileId, sourceChecksum: validation.checksum, actorEmail: context.actor.email });
   try {
     applySpreadsheetSnapshot_(payload.backupFileId);
     upsertConfig_("maintenance_mode", "true");
     const verification = snapshotVerificationIssues_(validation.checksum);
     if (verification.issues.length) throw sbError_("RESTORE_INTEGRITY_FAILED", "Restore tidak lolos verifikasi.", 409, verification.issues);
-    appendAudit_(context, "restore.apply", "restore", payload.backupFileId, null, { safetyBackupFileId: safety.fileId, sourceChecksum: validation.checksum, integrity: "passed" });
+    appendAudit_(context, "restore.apply", "restore", payload.backupFileId, null, { safetyBackupFileId: safety.fileId, safetyBackupRaw: true, sourceChecksum: validation.checksum, integrity: "passed" });
     CacheService.getScriptCache().remove("restore-preview:" + payload.previewToken);
     clearRecoveryState_();
     upsertConfig_("maintenance_mode", "false");
@@ -285,6 +376,46 @@ function createExport_(context) {
   }
 }
 
+function normalizeImportTransaction_(context, record, projectedTransactions) {
+  const candidate = Object.assign({}, record);
+  assertNoReservedTransactionFields_(candidate);
+  const type = String(candidate.transaction_type || "");
+  if (["income", "expense", "transfer", "refund", "adjustment"].indexOf(type) === -1) throw sbError_("INVALID_TRANSACTION_TYPE", "Jenis transaksi tidak valid.", 400);
+  candidate.transaction_type = type;
+  candidate.transaction_date = validateDate_(candidate.transaction_date);
+  assertPeriodOpen_(candidate.transaction_date);
+  candidate.amount = intAmount_(candidate.amount);
+  candidate.description = sanitizeText_(candidate.description, 250);
+  candidate.merchant = sanitizeText_(candidate.merchant, 120);
+  candidate.overspend_reason = sanitizeText_(candidate.overspend_reason, 180);
+  candidate.payment_method = sanitizeText_(candidate.payment_method || "", 40);
+  assertAdjustmentAuthorized_(context, type, candidate.description);
+  let source = null;
+  let destination = null;
+  if (type !== "income" && type !== "refund") {
+    source = activeAccount_(candidate.source_account_id);
+    assertAccountAccess_(context, source);
+    assertAccountDate_(source, candidate.transaction_date);
+  }
+  if (["income", "refund", "transfer"].indexOf(type) !== -1) {
+    destination = activeAccount_(candidate.destination_account_id);
+    assertAccountAccess_(context, destination);
+    assertAccountDate_(destination, candidate.transaction_date);
+  }
+  if (type === "transfer" && String(source.account_id) === String(destination.account_id)) throw sbError_("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
+  candidate.source_account_id = source ? source.account_id : "";
+  candidate.destination_account_id = destination ? destination.account_id : "";
+  candidate.envelope_period_id = type === "expense" ? String(candidate.envelope_period_id || "") : "";
+  candidate.category_id = ["transfer", "adjustment"].indexOf(type) !== -1 ? "" : String(candidate.category_id || "");
+  if (["income", "expense", "refund"].indexOf(type) !== -1 && !candidate.category_id) throw sbError_("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
+  activeCategory_(candidate.category_id, type === "income" ? "income" : type === "expense" ? "expense" : type);
+  if (type === "expense") validateEnvelopeForExpense_(candidate, candidate.amount, projectedTransactions, context);
+  const ownership = transactionOwnershipFromAccounts_(source, destination);
+  const projected = Object.assign({}, candidate, { status: "active", scope: ownership.scope, owner_user_id: ownership.ownerUserId });
+  assertSufficientBalanceForCandidate_(source, projected, projectedTransactions);
+  return projected;
+}
+
 function importPreview_(context) {
   const records = context.payload.records;
   if (!Array.isArray(records) || !records.length || records.length > 500) throw sbError_("INVALID_IMPORT", "Import harus berisi 1-500 record transaksi.", 400);
@@ -292,32 +423,28 @@ function importPreview_(context) {
   const invalid = [];
   const duplicates = [];
   const batchFingerprints = new Set();
+  const projectedTransactions = rows_("Transactions").map(function(row) { return Object.assign({}, row); });
   records.forEach(function(record, index) {
     try {
-      const candidate = Object.assign({}, record);
-      const type = String(candidate.transaction_type || "");
-      if (["income", "expense", "transfer", "refund", "adjustment"].indexOf(type) === -1) throw sbError_("INVALID_TRANSACTION_TYPE", "Jenis transaksi tidak valid.", 400);
-      candidate.transaction_date = validateDate_(candidate.transaction_date);
-      candidate.amount = intAmount_(candidate.amount);
-      candidate.description = sanitizeText_(candidate.description, 250);
-      candidate.merchant = sanitizeText_(candidate.merchant, 120);
-      candidate.overspend_reason = sanitizeText_(candidate.overspend_reason, 180);
-      if (type !== "income" && type !== "refund") { const source = activeAccount_(candidate.source_account_id); assertAccountAccess_(context, source); }
-      if (["income", "refund", "transfer"].indexOf(type) !== -1) { const destination = activeAccount_(candidate.destination_account_id); assertAccountAccess_(context, destination); }
-      if (type === "transfer" && String(candidate.source_account_id) === String(candidate.destination_account_id)) throw sbError_("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
-      if (["income", "expense", "refund"].indexOf(type) !== -1 && !candidate.category_id) throw sbError_("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
-      activeCategory_(candidate.category_id, type === "income" ? "income" : type === "expense" ? "expense" : type);
-      if (type === "expense") validateEnvelopeForExpense_(candidate, candidate.amount, undefined, context);
+      const candidate = normalizeImportTransaction_(context, record, projectedTransactions);
+      const type = candidate.transaction_type;
       const fingerprint = sha256Hex_(canonicalJson_([candidate.transaction_date, type, candidate.source_account_id || "", candidate.destination_account_id || "", candidate.amount, String(candidate.description || "").toLowerCase()]));
       if (batchFingerprints.has(fingerprint) || duplicateTransaction_(candidate)) duplicates.push({ index: index, record: candidate });
-      else { batchFingerprints.add(fingerprint); valid.push({ index: index, record: candidate }); }
-    } catch (error) { invalid.push({ index: index, code: error.code || "INVALID_RECORD", message: error.message }); }
+      else {
+        batchFingerprints.add(fingerprint);
+        const applyRecord = Object.assign({}, candidate);
+        ["status", "scope", "owner_user_id"].forEach(function(field) { delete applyRecord[field]; });
+        valid.push({ index: index, record: applyRecord });
+        projectedTransactions.push(Object.assign({ transaction_id: "preview:" + index, created_at: nowIso_() }, candidate));
+      }
+    } catch (error) { invalid.push({ index: index, code: error.code || "INVALID_RECORD", message: error.message, details: error.details || null }); }
   });
   const token = uuid_();
-  const previewPayload = { actorId: context.actor.user_id, records: valid.map(function(item) { return item.record; }) };
+  const acceptable = valid.length > 0 && invalid.length === 0 && duplicates.length === 0;
+  const previewPayload = { actorId: context.actor.user_id, records: valid.map(function(item) { return item.record; }), acceptable: acceptable };
   previewPayload.fingerprint = sha256Hex_(canonicalJson_(previewPayload.records));
   CacheService.getScriptCache().put("import-preview:" + token, JSON.stringify(previewPayload), 600);
-  return { previewToken: token, validCount: valid.length, invalid: invalid, duplicates: duplicates, fingerprint: previewPayload.fingerprint, expiresInSeconds: 600 };
+  return { previewToken: token, validCount: valid.length, invalid: invalid, duplicates: duplicates, acceptable: acceptable, fingerprint: previewPayload.fingerprint, expiresInSeconds: 600 };
 }
 
 function importApply_(context) {
@@ -326,6 +453,7 @@ function importApply_(context) {
   const preview = JSON.parse(cached);
   if (preview.actorId !== context.actor.user_id) throw sbError_("PREVIEW_MISMATCH", "Preview import bukan milik actor ini.", 403);
   if (sha256Hex_(canonicalJson_(preview.records)) !== preview.fingerprint) throw sbError_("PREVIEW_CORRUPT", "Data preview import tidak konsisten.", 409);
+  if (!preview.acceptable) throw sbError_("IMPORT_PREVIEW_HAS_ISSUES", "Import belum dapat diterapkan karena preview masih memiliki record invalid atau duplikat.", 409);
   if (context.payload.confirmation !== "IMPORT TRANSAKSI") throw sbError_("CONFIRMATION_REQUIRED", "Ketik IMPORT TRANSAKSI untuk melanjutkan.", 400);
   const safety = createBackup_({ actor: context.actor, action: "backup.create", payload: { type: "pre-import" }, requestId: context.requestId });
   setRecoveryOperationState_("import_applying", safety, { operation: "import", previewToken: context.payload.previewToken, recordCount: preview.records.length });
@@ -355,19 +483,41 @@ function manualRecoveryActorFromBackup_(spreadsheet) {
 }
 
 function recoverFromSafetyBackup(safetyFileId, confirmation) {
+  resetRequestCache_();
   if (confirmation !== "RECOVER SALDO BERSAMA") throw sbError_("CONFIRMATION_REQUIRED", "Ketik RECOVER SALDO BERSAMA untuk pemulihan manual.", 400);
   const recovery = recoveryDetails_();
   const expectedFileId = recovery.details && recovery.details.safetyBackupFileId;
   if (!recovery.recoveryRequired || !expectedFileId || String(expectedFileId) !== String(safetyFileId)) throw sbError_("RECOVERY_FILE_MISMATCH", "Safety backup tidak sesuai state recovery aktif.", 409, recovery);
-  const validation = validateBackupSpreadsheet_(safetyFileId);
-  if (validation.issues.length) throw sbError_("INVALID_BACKUP", "Safety backup tidak valid.", 400, validation.issues);
-  const actor = manualRecoveryActorFromBackup_(validation.source);
+  const rawSafety = Boolean(recovery.details && recovery.details.safetyBackupRaw);
+  let validation;
+  let actor;
+  if (rawSafety) {
+    const source = SpreadsheetApp.openById(safetyFileId);
+    const effectiveEmail = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase();
+    const expectedEmail = String(recovery.details && recovery.details.actorEmail || "").trim().toLowerCase();
+    if (!effectiveEmail || !expectedEmail || effectiveEmail !== expectedEmail) throw sbError_("FORBIDDEN", "Editor Apps Script tidak sesuai owner yang memulai operasi recovery.", 403);
+    actor = backupOwnerByEmail_(source, effectiveEmail) || { user_id: "recovery:" + effectiveEmail, email: effectiveEmail, role: "owner", status: "active" };
+    validation = { source: source, issues: [], checksum: rawSpreadsheetSnapshotChecksum_(source), raw: true };
+  } else {
+    validation = validateBackupSpreadsheet_(safetyFileId);
+    if (validation.issues.length) throw sbError_("INVALID_BACKUP", "Safety backup tidak valid.", 400, validation.issues);
+    actor = manualRecoveryActorFromBackup_(validation.source);
+  }
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) throw sbError_("LOCK_TIMEOUT", "Pemulihan manual gagal memperoleh lock.", 409);
   try {
-    applySpreadsheetSnapshot_(safetyFileId);
+    if (rawSafety) applyRawSpreadsheetSnapshot_(safetyFileId);
+    else applySpreadsheetSnapshot_(safetyFileId);
     upsertConfig_("maintenance_mode", "true");
-    const verification = snapshotVerificationIssues_(validation.checksum);
+    const verification = rawSafety
+      ? (function() {
+        const checksum = rawSpreadsheetSnapshotChecksum_(getSpreadsheet_());
+        const schema = validateSchema_().map(function(message) { return { code: "SCHEMA", message: message }; });
+        const integrity = schema.length ? [] : integrityIssues_();
+        const checksumIssues = checksum === validation.checksum ? [] : [{ code: "RAW_CHECKSUM_MISMATCH", expected: validation.checksum, actual: checksum }];
+        return { issues: checksumIssues.concat(schema).concat(integrity), checksum: checksum };
+      })()
+      : snapshotVerificationIssues_(validation.checksum);
     if (verification.issues.length) throw sbError_("RECOVERY_VERIFICATION_FAILED", "Pemulihan manual belum lolos verifikasi.", 503, verification.issues);
     appendAudit_({ actor: actor, requestId: "manual-recovery:" + uuid_() }, "recovery.manual", "restore", safetyFileId, null, { checksum: verification.checksum, previousRecoveryStatus: recovery.status });
     clearRecoveryState_();
@@ -375,7 +525,7 @@ function recoverFromSafetyBackup(safetyFileId, confirmation) {
     SpreadsheetApp.flush();
     return { recovered: true, safetyFileId: safetyFileId, checksum: verification.checksum, verifiedAt: nowIso_() };
   } catch (error) {
-    setRecoveryOperationState_("manual_recovery_required", { fileId: safetyFileId, checksum: validation.checksum }, { cause: error.code || error.message, details: error.details || null });
+    setRecoveryOperationState_("manual_recovery_required", { fileId: safetyFileId, checksum: validation.checksum, raw: rawSafety }, { cause: error.code || error.message, details: error.details || null, actorEmail: recovery.details && recovery.details.actorEmail });
     throw error;
   } finally { lock.releaseLock(); }
 }

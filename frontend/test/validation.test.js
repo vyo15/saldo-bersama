@@ -34,6 +34,37 @@ test("refund hanya membutuhkan rekening tujuan", () => {
   assert.equal(result.ok, true);
 });
 
+test("refund tetap membutuhkan kategori", () => {
+  const result = validateTransactionInput({
+    transaction_type: "refund",
+    transaction_date: "2026-07-27",
+    amount: 50000,
+    destination_account_id: "acc-bank",
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.category_id);
+});
+
+test("validator hanya meneruskan field transaksi yang boleh dikirim client", () => {
+  const result = validateTransactionInput({
+    transaction_type: "expense",
+    transaction_date: "2026-07-27",
+    amount: 50000,
+    source_account_id: "acc-bank",
+    category_id: "cat-expense",
+    description: "Belanja",
+    scope: "personal",
+    owner_user_id: "other-user",
+    goal_id: "goal-forged",
+    status: "cancelled",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(Object.hasOwn(result.value, "scope"), false);
+  assert.equal(Object.hasOwn(result.value, "owner_user_id"), false);
+  assert.equal(Object.hasOwn(result.value, "goal_id"), false);
+  assert.equal(Object.hasOwn(result.value, "status"), false);
+});
+
 test("tanggal kalender yang tidak nyata ditolak", () => {
   const result = validateTransactionInput({
     transaction_type: "expense",

@@ -14,8 +14,7 @@
     "test": "npm run test --workspace saldo-bersama-frontend && node --test api/test/*.test.js",
     "check": "npm run validate:source && npm run lint && npm run test && npm run build",
     "validate:source": "node scripts/validate-source-tree.mjs",
-    "zip": "node scripts/create-clean-archive.mjs",
-    "package:source": "node scripts/create-clean-archive.mjs"
+    "zip": "node scripts/create-clean-archive.mjs"
   },
   "workspaces": [
     "frontend"

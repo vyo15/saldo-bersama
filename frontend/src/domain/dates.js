@@ -20,6 +20,12 @@ export const currentMonthInJakarta = () => {
   return `${year}-${month}`;
 };
 
+export const previousMonthInJakarta = () => {
+  const { year, month } = dateParts();
+  const previous = new Date(Date.UTC(Number(year), Number(month) - 2, 1));
+  return `${previous.getUTCFullYear()}-${String(previous.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
 export const currentMonthBoundsInJakarta = () => {
   const { year, month } = dateParts();
   const lastDay = new Date(Number(year), Number(month), 0).getDate();

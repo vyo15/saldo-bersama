@@ -2,15 +2,16 @@ export const json = (response, status, payload, extraHeaders = {}) => {
   response.statusCode = status;
   response.setHeader("Content-Type", "application/json; charset=utf-8");
   response.setHeader("Cache-Control", "no-store");
+  response.setHeader("X-Content-Type-Options", "nosniff");
   for (const [key, value] of Object.entries(extraHeaders)) response.setHeader(key, value);
   response.end(JSON.stringify(payload));
 };
 
 export const ok = (response, data, status = 200) => json(response, status, { ok: true, data });
-export const fail = (response, status, code, message, details) => json(response, status, {
+export const fail = (response, status, code, message, details, extraHeaders = {}) => json(response, status, {
   ok: false,
   error: { code, message, ...(details ? { details } : {}) },
-});
+}, extraHeaders);
 
 export const readJsonBody = async (request, maxBytes = 100_000) => {
   const chunks = [];

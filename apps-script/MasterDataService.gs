@@ -7,9 +7,13 @@ function activeUser_(userId) {
   return user;
 }
 
-function listAccounts_() {
-  const transactions = rows_("Transactions");
-  return rows_("Accounts").map(function(row) {
+function visibleAccountRows_(context) {
+  return rows_("Accounts").filter(function(account) { return canAccessAccount_(context, account); });
+}
+
+function listAccounts_(context) {
+  const transactions = visibleTransactions_(context);
+  return visibleAccountRows_(context).map(function(row) {
     const account = publicRow_(row);
     account.balance = accountBalance_(account.account_id, transactions);
     return account;
@@ -53,6 +57,14 @@ function updateAccount_(context) {
   else if (context.actor.role === "owner" && payload.owner_user_id) updated.owner_user_id = payload.owner_user_id;
   else if (!updated.owner_user_id) updated.owner_user_id = context.actor.user_id;
   if (updated.owner_scope === "personal") activeUser_(updated.owner_user_id);
+  const ownershipChanged = String(updated.owner_scope) !== String(current.owner_scope) || String(updated.owner_user_id || "") !== String(current.owner_user_id || "");
+  if (ownershipChanged) {
+    const hasTransactions = rows_("Transactions").some(function(row) {
+      return String(row.source_account_id || "") === String(current.account_id) || String(row.destination_account_id || "") === String(current.account_id);
+    });
+    const dependencies = accountArchiveDependencies_(current.account_id).filter(function(item) { return item.type !== "non_zero_balance"; });
+    if (hasTransactions || dependencies.length) throw sbError_("ACCOUNT_OWNERSHIP_LOCKED", "Kepemilikan rekening tidak dapat diubah setelah rekening dipakai transaksi atau referensi aktif.", 409, dependencies);
+  }
   updated.allow_negative = payload.allow_negative === undefined ? current.allow_negative : strictBoolean_(payload.allow_negative, "allow_negative", current.allow_negative);
   updated.row_version = rowVersion_(current) + 1; updated.updated_by = context.actor.user_id; updated.updated_at = nowIso_();
   updateAuditedRow_("Accounts", current, updated, context, "accounts.update", "account", updated.account_id);
@@ -178,8 +190,16 @@ function upsertUser_(context) {
 
 function userDeactivateDependencies_(userId) {
   const dependencies = [];
+  const ownsActivePersonal = function(sheetName) {
+    return rows_(sheetName).some(function(row) {
+      return row.status === "active" && row.scope === "personal" && String(row.owner_user_id) === String(userId);
+    });
+  };
   if (rows_("Accounts").some(function(row) { return row.status === "active" && row.owner_scope === "personal" && String(row.owner_user_id) === String(userId); })) dependencies.push({ type: "active_personal_account" });
-  if (rows_("Envelope_Rules").some(function(row) { return row.status === "active" && row.scope === "personal" && String(row.owner_user_id) === String(userId); })) dependencies.push({ type: "active_personal_envelope" });
+  if (ownsActivePersonal("Envelope_Rules")) dependencies.push({ type: "active_personal_envelope" });
+  if (ownsActivePersonal("Recurring_Rules")) dependencies.push({ type: "active_personal_recurring_rule" });
+  if (ownsActivePersonal("Budgets")) dependencies.push({ type: "active_personal_budget" });
+  if (ownsActivePersonal("Savings_Goals")) dependencies.push({ type: "active_personal_goal" });
   return dependencies;
 }
 
