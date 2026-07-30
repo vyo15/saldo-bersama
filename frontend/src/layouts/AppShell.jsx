@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiLogOut, FiMenu, FiPlus } from "react-icons/fi";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet } from "react-router";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import SideNavigation from "../components/navigation/SideNavigation.jsx";
 import MobileNavigation from "../components/navigation/MobileNavigation.jsx";

@@ -1,5 +1,5 @@
 import { FiGrid, FiPlus } from "react-icons/fi";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { MOBILE_PRIMARY_NAVIGATION } from "../../config/navigation.js";
 
 const MobileNavigation = ({ onQuickAdd, onMore, moreOpen = false }) => (

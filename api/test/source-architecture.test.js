@@ -292,16 +292,40 @@ test("service worker tidak pernah memakai fallback HTML untuk asset", async () =
   assert.equal(source.indexOf('caches.match("/")', navigationReturn), -1);
 });
 
-test("React Router dikunci pada patch deklaratif tanpa API Framework atau RSC", async () => {
-  const [packageJson, mainSource, appSource] = await Promise.all([
+test("React Router v8 dikunci pada mode deklaratif tanpa package kompatibilitas, Framework, atau RSC", async () => {
+  const frontendRoot = new URL("../../frontend/src/", import.meta.url);
+  const sources = [];
+  const collect = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const url = new URL(entry.name + (entry.isDirectory() ? "/" : ""), directory);
+      if (entry.isDirectory()) await collect(url);
+      else if (/\.(?:js|jsx)$/.test(entry.name)) sources.push(await readFile(url, "utf8"));
+    }
+  };
+  await collect(frontendRoot);
+
+  const [frontendPackageJson, rootPackageJson, workflow, mainSource, appSource] = await Promise.all([
     readFile(new URL("../../frontend/package.json", import.meta.url), "utf8"),
+    readFile(new URL("../../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/quality.yml", import.meta.url), "utf8"),
     readFile(new URL("../../frontend/src/main.jsx", import.meta.url), "utf8"),
     readFile(new URL("../../frontend/src/app/App.jsx", import.meta.url), "utf8"),
   ]);
-  const packageConfig = JSON.parse(packageJson);
-  assert.equal(packageConfig.dependencies["react-router-dom"], "7.18.2");
+  const frontendPackage = JSON.parse(frontendPackageJson);
+  const rootPackage = JSON.parse(rootPackageJson);
+  const frontendSource = sources.join("\n");
+
+  assert.equal(frontendPackage.dependencies["react-router"], "8.3.0");
+  assert.equal(frontendPackage.dependencies["react-router-dom"], undefined);
+  assert.equal(frontendPackage.dependencies.react, "19.2.8");
+  assert.equal(frontendPackage.dependencies["react-dom"], "19.2.8");
+  assert.equal(rootPackage.engines.node, "24.x");
+  assert.match(workflow, /node-version:\s*24/);
+  assert.match(workflow, /- run: npm ci/);
+  assert.match(mainSource, /from "react-router"/);
   assert.match(mainSource, /\bBrowserRouter\b/);
   assert.match(appSource, /\bRoutes\b/);
   assert.match(appSource, /\bRoute\b/);
-  assert.doesNotMatch(`${mainSource}\n${appSource}`, /\b(?:createBrowserRouter|RouterProvider|unstable_[A-Za-z0-9_]+)\b/);
+  assert.doesNotMatch(frontendSource, /react-router-dom/);
+  assert.doesNotMatch(frontendSource, /\b(?:createBrowserRouter|RouterProvider|HydratedRouter|ServerRouter|routeRSCServerRequest|matchRSCServerRequest|unstable_[A-Za-z0-9_]+)\b/);
 });

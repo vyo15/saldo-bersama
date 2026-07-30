@@ -4,6 +4,12 @@
 
 Gunakan Firebase, spreadsheet, Apps Script deployment, Calendar, folder backup, dan env terpisah antara DEV dan PROD.
 
+## Runtime production
+
+- Atur Vercel **Node.js Version** ke `24.x`.
+- GitHub Actions juga memakai Node 24 dan `npm ci`.
+- Jangan deploy dengan Node 20/22 lama karena baseline React Router v8 memerlukan Node 22.22 atau lebih baru dan project mengunci Node 24 LTS.
+
 ## Gate source
 
 ```bash

@@ -11,15 +11,15 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "react-icons": "^5.5.0",
-    "react-router-dom": "7.18.2"
+    "react-router": "8.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",

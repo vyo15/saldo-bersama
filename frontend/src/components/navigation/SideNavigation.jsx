@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { PRIMARY_NAVIGATION } from "../../config/navigation.js";
 import Brand from "../common/Brand.jsx";
 

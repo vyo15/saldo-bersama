@@ -25,6 +25,8 @@ Tidak ada demo repository atau business logic paralel. Satu fungsi harus memilik
 
 ## Instalasi lokal
 
+Gunakan Node.js 24 LTS. Project mengunci React 19.2.8 dan React Router 8.3.0; `react-router-dom` tidak digunakan lagi.
+
 ```bash
 npm install
 cp .env.example .env.local

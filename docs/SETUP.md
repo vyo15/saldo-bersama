@@ -4,6 +4,8 @@ Gunakan resource DEV dan PROD terpisah. Jangan menjalankan migration, import, re
 
 ## 1. Instalasi lokal
 
+Prasyarat: Node.js 24 LTS dan npm 10 atau lebih baru. React Router v8 bersifat ESM-only dan source menggunakan package canonical `react-router`, bukan `react-router-dom`.
+
 ```bash
 npm install
 cp .env.example .env.local

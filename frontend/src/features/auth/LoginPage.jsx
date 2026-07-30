@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiShield } from "react-icons/fi";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router";
 import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
 import { useAuth } from "./AuthContext.jsx";
 

@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useAuth } from "./AuthContext.jsx";
 
