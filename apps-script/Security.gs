@@ -19,8 +19,8 @@ function appsScriptLog_(level, event, fields) {
 }
 
 const SB_ROLE_ACTIONS = Object.freeze({
-  owner: ["system.initialize", "system.health", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview", "accounts.list", "accounts.create", "accounts.update", "accounts.archive", "categories.list", "categories.create", "categories.update", "categories.archive", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync", "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run"],
-  member: ["system.health", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "notifications.register", "notifications.unregister"]
+  owner: ["system.initialize", "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview", "accounts.list", "accounts.create", "accounts.update", "accounts.archive", "categories.list", "categories.create", "categories.update", "categories.archive", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync", "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run"],
+  member: ["system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "notifications.register", "notifications.unregister"]
 });
 
 function sbError_(code, message, status, details) {
@@ -126,7 +126,7 @@ function enforceAppsScriptRateLimit_(signedActor, action) {
   const cache = CacheService.getScriptCache();
   const count = Number(cache.get(key) || 0) + 1;
   cache.put(key, String(count), 90);
-  const limit = action === "transactions.list" || action === "dashboard.overview" ? 180 : 100;
+  const limit = ["app.initialState", "transactions.list", "dashboard.overview"].indexOf(action) !== -1 ? 180 : 100;
   if (count > limit) throw sbError_("RATE_LIMITED", "Terlalu banyak request. Coba lagi sebentar.", 429);
 }
 

@@ -11,8 +11,8 @@ function visibleAccountRows_(context) {
   return rows_("Accounts").filter(function(account) { return canAccessAccount_(context, account); });
 }
 
-function listAccounts_(context) {
-  const transactions = visibleTransactions_(context);
+function listAccounts_(context, transactionSnapshot) {
+  const transactions = transactionSnapshot || visibleTransactions_(context);
   return visibleAccountRows_(context).map(function(row) {
     const account = publicRow_(row);
     account.balance = accountBalance_(account.account_id, transactions);

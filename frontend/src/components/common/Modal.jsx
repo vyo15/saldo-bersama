@@ -3,12 +3,12 @@ import { createPortal } from "react-dom";
 import { FiX } from "react-icons/fi";
 import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 
-const Modal = ({ open, title, description, onClose, children, footer, size = "md" }) => {
+const Modal = ({ open, title, description, onClose, children, footer, size = "md", initialFocusRef }) => {
   const containerRef = useRef(null);
   const closeRef = useRef(null);
   const titleId = useId();
   const descriptionId = useId();
-  useFocusTrap({ open, containerRef, initialFocusRef: closeRef, onEscape: onClose, bodyClassName: "modal-open" });
+  useFocusTrap({ open, containerRef, initialFocusRef: initialFocusRef || closeRef, onEscape: onClose, bodyClassName: "modal-open" });
   if (!open) return null;
   return createPortal(
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>

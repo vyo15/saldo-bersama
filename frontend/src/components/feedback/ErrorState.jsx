@@ -20,4 +20,14 @@ const ErrorState = ({ error, onRetry }) => {
   );
 };
 
+export const RefreshWarning = ({ error, onRetry }) => {
+  if (!error) return null;
+  return (
+    <div className="notice notice--warning refresh-notice" role="status" aria-live="polite">
+      <span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span>
+      {onRetry ? <Button icon={FiRefreshCw} onClick={onRetry}>Coba lagi</Button> : null}
+    </div>
+  );
+};
+
 export default ErrorState;

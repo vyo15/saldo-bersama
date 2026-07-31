@@ -6,7 +6,7 @@ import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
-import ErrorState from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { apiClient } from "../../services/api/client.js";
@@ -19,7 +19,7 @@ import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
 
 const AllocationsPage = () => {
   const resource = useApiResource("envelopes.list");
-  const { refresh, bootstrap } = useFinance();
+  const { refreshOverview, invalidate, bootstrap } = useFinance();
   const { user } = useAuth();
   const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
   const [message, setMessage] = useState(null);
@@ -40,7 +40,8 @@ const AllocationsPage = () => {
       await apiClient.request("envelopes.create", { ...createForm, default_amount: amount, allocated_amount: amount }, { idempotencyKey: createIdempotencyKey() });
       setCreateForm((current) => ({ ...current, name: "", default_amount: "" }));
       setMessage({ type: "success", text: "Kantong dan periode aktif berhasil dibuat." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["envelopes.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) {
       setMessage({ type: "danger", text: error.message });
     }
@@ -57,7 +58,8 @@ const AllocationsPage = () => {
       await apiClient.request("envelopes.move", { ...move, amount }, { idempotencyKey: createIdempotencyKey() });
       setMove({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
       setMessage({ type: "success", text: "Alokasi berhasil dipindahkan tanpa mengubah total saldo." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["envelopes.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) {
       setMessage({ type: "danger", text: error.message });
     }
@@ -68,6 +70,7 @@ const AllocationsPage = () => {
 
   return (
     <div className="page-stack">
+      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <PageHeader title="Alokasi dana" description="Setiap rupiah diberi tujuan. Alokasi tidak mengubah saldo sampai terjadi pengeluaran atau transfer nyata." actions={<Button icon={FiRefreshCw} onClick={resource.reload}>Muat ulang</Button>} />
 
       <section className="allocation-grid">

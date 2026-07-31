@@ -29,10 +29,10 @@ function assertGoalAccess_(context, goal) {
 }
 
 
-function allocationAvailability_(sourceAccountId, context) {
-  const transactions = visibleTransactions_(context);
+function allocationAvailability_(sourceAccountId, context, snapshots) {
+  const transactions = snapshots && snapshots.transactions || visibleTransactions_(context);
   const protectedTypes = ["emergency_fund", "savings", "sinking_fund"];
-  const accounts = listAccounts_(context).filter(function(account) {
+  const accounts = (snapshots && snapshots.accounts || listAccounts_(context, transactions)).filter(function(account) {
     return account.status === "active" && protectedTypes.indexOf(String(account.account_type)) === -1 && (!sourceAccountId || account.account_id === sourceAccountId);
   });
   const availableBalance = accounts.reduce(function(sum, account) { return sum + Math.max(0, Number(account.balance || 0)); }, 0);
@@ -56,10 +56,10 @@ function monthBounds_(periodKey) {
   return { start: periodKey + "-01", end: periodKey + "-" + String(endDay).padStart(2, "0") };
 }
 
-function listEnvelopes_(context) {
+function listEnvelopes_(context, transactionSnapshot) {
   const period = periodKey_(context.payload.period);
   const bounds = monthBounds_(period);
-  const transactions = visibleTransactions_(context);
+  const transactions = transactionSnapshot || visibleTransactions_(context);
   const rules = Object.fromEntries(rows_("Envelope_Rules").filter(function(rule) {
     return canAccessEnvelopeRule_(context, rule);
   }).map(function(rule) { return [rule.envelope_rule_id, rule]; }));

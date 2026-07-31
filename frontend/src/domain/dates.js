@@ -34,3 +34,17 @@ export const currentMonthBoundsInJakarta = () => {
     end: `${year}-${month}-${String(lastDay).padStart(2, "0")}`,
   };
 };
+
+export const formatDateLongIndonesia = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return "";
+  const parsed = new Date(`${value}T00:00:00+07:00`);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const normalized = dateParts(parsed);
+  if (`${normalized.year}-${normalized.month}-${normalized.day}` !== value) return "";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: TIMEZONE,
+  }).format(parsed);
+};

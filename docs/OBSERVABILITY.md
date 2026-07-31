@@ -109,3 +109,17 @@ Buka **Executions**, pilih eksekusi yang waktunya sesuai, lalu cari `requestId` 
 - `UPSTREAM_TIMEOUT` — hasil write mungkin belum diketahui; retry wajib memakai idempotency key yang sama.
 
 Jangan menambah stack trace, path internal, token, secret, atau payload bisnis ke respons browser.
+
+## Timing performa
+
+Log Apps Script `request.completed` dan `request.failed` memuat `stageTimings` aman untuk tahap:
+
+- `verifyEnvelope`
+- `preflight`
+- `schemaValidation`
+- `resolveActor`
+- `routeAction`
+
+Gunakan timing tersebut untuk membedakan cold start, validasi schema, actor resolution, dan business read. API juga mencatat `gateway.request.coalesced` ketika read identik pada warm instance memakai panggilan upstream yang sama. Field `upstreamRequestId` menunjuk request yang benar-benar dikirim ke Apps Script, sedangkan setiap respons browser tetap mempunyai `X-Request-ID` sendiri.
+
+Target awal setelah warm-up bukan SLA platform: initial state satu request, tidak ada duplikasi Strict Mode, dan refresh route yang sama menggunakan cache privat atau satu in-flight request. Apps Script tetap dapat mengalami cold start dan variasi latency platform.

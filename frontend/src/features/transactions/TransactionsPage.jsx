@@ -6,7 +6,7 @@ import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
-import ErrorState from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { apiClient } from "../../services/api/client.js";
@@ -17,7 +17,7 @@ import { createIdempotencyKey } from "../../domain/security.js";
 const PAGE_SIZE = 100;
 
 const TransactionsPage = () => {
-  const { bootstrap, refresh } = useFinance();
+  const { bootstrap, refreshOverview, invalidate } = useFinance();
   const [draftQuery, setDraftQuery] = useState("");
   const [filters, setFilters] = useState({ query: "", type: "all", allocation: "all", offset: 0 });
   const [formOpen, setFormOpen] = useState(false);
@@ -54,7 +54,8 @@ const TransactionsPage = () => {
       }, { rowVersion: cancelTarget.row_version, idempotencyKey: createIdempotencyKey() });
       setCancelTarget(null);
       setCancelState({ status: "idle", error: null });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["transactions.list", "envelopes.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) {
       setCancelState({ status: "error", error });
     }
@@ -62,6 +63,7 @@ const TransactionsPage = () => {
 
   return (
     <div className="page-stack">
+      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <PageHeader title="Transaksi" description="Pemasukan, pengeluaran, transfer, dan koreksi tercatat dalam satu ledger." actions={<Button variant="primary" icon={FiPlus} onClick={() => { setEditingTransaction(null); setFormOpen(true); }}>Tambah transaksi</Button>} />
       <form className="toolbar" aria-label="Filter transaksi" onSubmit={submitSearch}>
         <label className="search-field"><FiSearch aria-hidden="true" /><input value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari keterangan atau kategori" /><span className="sr-only">Cari transaksi</span></label>

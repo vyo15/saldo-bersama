@@ -82,7 +82,7 @@ export const assertAllowedOrigin = (request) => {
 
 export const ACTION_PERMISSIONS = Object.freeze({
   owner: new Set([
-    "system.initialize", "system.health", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview",
+    "system.initialize", "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview",
     "accounts.list", "accounts.create", "accounts.update", "accounts.archive",
     "categories.list", "categories.create", "categories.update", "categories.archive",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
@@ -93,7 +93,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
   ]),
   member: new Set([
-    "system.health", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
+    "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create",

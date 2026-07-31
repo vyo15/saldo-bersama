@@ -1,7 +1,7 @@
-function dashboardOverview_(context) {
+function dashboardOverview_(context, snapshots) {
   const period = periodKey_(context.payload.period);
-  const accounts = listAccounts_(context).filter(function(row) { return row.status === "active"; });
-  const transactions = visibleTransactions_(context);
+  const transactions = snapshots && snapshots.transactions || visibleTransactions_(context);
+  const accounts = (snapshots && snapshots.accounts || listAccounts_(context, transactions)).filter(function(row) { return row.status === "active"; });
   const periodTransactions = transactions.filter(function(row) { return row.status === "active" && String(row.transaction_date).slice(0, 7) === period; });
   const income = periodTransactions.filter(function(row) { return row.transaction_type === "income"; }).reduce(function(sum, row) { return sum + Number(row.amount || 0); }, 0);
   const expense = periodTransactions.filter(function(row) { return row.transaction_type === "expense"; }).reduce(function(sum, row) { return sum + Number(row.amount || 0); }, 0);
@@ -22,8 +22,9 @@ function dashboardOverview_(context) {
   const currentDay = isCurrentPeriod ? Number(Utilities.formatDate(today, SB_TIMEZONE, "dd")) : 1;
   const daysRemaining = Math.max(1, lastDay - currentDay + 1);
   const dailySafeToSpend = Math.floor(safeToSpend / daysRemaining);
-  const allocation = allocationAvailability_("", context);
-  const categoryNames = Object.fromEntries(rows_("Categories").map(function(row) { return [row.category_id, row.name]; }));
+  const allocation = allocationAvailability_("", context, { transactions: transactions, accounts: accounts });
+  const categoryRows = snapshots && snapshots.categories || rows_("Categories");
+  const categoryNames = Object.fromEntries(categoryRows.map(function(row) { return [row.category_id, row.name]; }));
   const categoryTotals = {};
   periodTransactions.filter(function(row) { return row.transaction_type === "expense"; }).forEach(function(row) {
     const name = categoryNames[row.category_id] || "Belum dikategorikan";
@@ -34,7 +35,7 @@ function dashboardOverview_(context) {
     periodKey: period, accountBalances: accounts, totalBalance: totalBalance, liquidBalance: liquidBalance,
     safeToSpend: safeToSpend, dailySafeToSpend: dailySafeToSpend, daysRemaining: daysRemaining, emergencyBalance: emergencyBalance, protectedBalance: protectedBalance,
     cashFlow: { income: income, expense: expense, refund: refund, net: income + refund - expense },
-    envelopes: listEnvelopes_(scopedContext), recurring: recurring, goals: listGoals_(context),
+    envelopes: listEnvelopes_(scopedContext, transactions), recurring: recurring, goals: listGoals_(context),
     recentTransactions: periodTransactions.sort(function(a, b) { return String(b.created_at).localeCompare(String(a.created_at)); }).slice(0, 12).map(publicRow_),
     categoryExpenses: categoryExpenses,
     unallocatedCount: periodTransactions.filter(function(row) { return row.transaction_type === "expense" && !row.envelope_period_id; }).length,

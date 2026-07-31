@@ -73,3 +73,25 @@ Apps Script menggunakan cache row request-scoped agar sheet yang sama tidak diba
 ## Rate limiting
 
 Rate limiting Vercel dan Apps Script bersifat best-effort. Security boundary utama tetap token verification, allowlist, HMAC, replay guard, payload limit, LockService, idempotency, dan quota platform.
+
+## Read coordination dan initial state
+
+Frontend menggunakan coordinator in-memory privat untuk read API. Coordinator mempunyai tiga tanggung jawab:
+
+1. request identik yang masih berjalan memakai Promise yang sama;
+2. hasil read berumur pendek dapat digunakan kembali selama sesi pengguna yang sama;
+3. invalidasi dilakukan berdasarkan action setelah server mengonfirmasi write berhasil.
+
+Cache tidak memakai `localStorage`, service worker, CDN, atau public response cache. Scope cache mengandung identitas sesi dan seluruh cache dibersihkan ketika sesi berubah atau logout. Abort satu komponen tidak boleh membatalkan request identik yang masih dipakai komponen lain.
+
+Initial load memakai action `app.initialState`, yang mengembalikan bootstrap master data dan overview dari satu eksekusi Apps Script serta satu snapshot transaksi. `bootstrap.get` dan `dashboard.overview` tetap dipertahankan untuk refresh terarah dan kompatibilitas operasional.
+
+Setelah write:
+
+- transaksi menginvalidasi ledger, envelope/report terkait, dan overview;
+- perubahan rekening/kategori menginvalidasi master data dan initial state;
+- write tidak pernah dilayani dari cache dan hasil UI tidak dianggap sukses sebelum respons server berhasil.
+
+## Schema read guard
+
+Read action yang allowlisted dapat menggunakan cache positif validasi schema selama maksimal 30 detik. Hanya hasil valid yang dicache. Hasil rusak, exception, recovery, restore, integrity, dan seluruh write tetap melalui jalur fail-closed yang sesuai. Cache schema diinvalidasi saat inisialisasi atau perubahan struktur terkontrol.

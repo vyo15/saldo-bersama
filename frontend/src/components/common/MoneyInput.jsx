@@ -1,11 +1,13 @@
+import { forwardRef } from "react";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 
-const MoneyInput = ({ value, onChange, id, label = "Nominal", error, required = false }) => {
+const MoneyInput = forwardRef(({ value, onChange, id, label = "Nominal", error, required = false }, ref) => {
   const numericValue = value === "" ? "" : Number(value || 0);
   return (
     <label className="field" htmlFor={id}>
       <span>{label}{required ? " *" : ""}</span>
       <input
+        ref={ref}
         id={id}
         inputMode="numeric"
         autoComplete="off"
@@ -22,6 +24,8 @@ const MoneyInput = ({ value, onChange, id, label = "Nominal", error, required = 
       {error ? <small className="field__error" id={`${id}-error`}>{error}</small> : null}
     </label>
   );
-};
+});
+
+MoneyInput.displayName = "MoneyInput";
 
 export default MoneyInput;

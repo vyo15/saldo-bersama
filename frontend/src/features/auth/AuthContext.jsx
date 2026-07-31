@@ -18,10 +18,12 @@ export const AuthProvider = ({ children }) => {
     setStatus("loading");
     try {
       const session = await apiClient.session();
+      apiClient.setSessionScope(session?.uid || session?.email || "anonymous");
       setUser(session);
       setStatus(session ? "authenticated" : "anonymous");
       setError(null);
     } catch (sessionError) {
+      apiClient.setSessionScope("anonymous");
       setUser(null);
       setStatus("error");
       setError(sessionError);
@@ -31,6 +33,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => { refreshSession(); }, [refreshSession]);
   useEffect(() => {
     const handleUnauthorized = () => {
+      apiClient.setSessionScope("anonymous");
       setUser(null);
       setStatus("anonymous");
       setError(new Error("Sesi sudah berakhir. Silakan login kembali."));

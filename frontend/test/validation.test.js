@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { neutralizeSpreadsheetFormula } from "../src/domain/security.js";
 import { validateTransactionInput } from "../src/domain/validation.js";
+import { formatDateLongIndonesia } from "../src/domain/dates.js";
 
  test("formula injection dinetralkan", () => {
   assert.equal(neutralizeSpreadsheetFormula("=IMPORTXML(...)"), "'=IMPORTXML(...)");
@@ -78,4 +79,10 @@ test("tanggal kalender yang tidak nyata ditolak", () => {
   });
   assert.equal(result.ok, false);
   assert.ok(result.errors.transaction_date);
+});
+
+
+test("helper tanggal Indonesia menolak tanggal semu", () => {
+  assert.equal(formatDateLongIndonesia("2026-07-31"), "31 Juli 2026");
+  assert.equal(formatDateLongIndonesia("2026-02-31"), "");
 });

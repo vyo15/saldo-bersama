@@ -158,3 +158,21 @@ npm run diagnose
 Saat UI menampilkan error, catat **Kode** dan **Referensi**. Cocokkan referensi tersebut pada terminal lokal/Vercel Logs dan Apps Script Executions. Detail lengkap ada di `docs/OBSERVABILITY.md`.
 
 `REQUEST_EXPIRED` yang sudah lolos signature dapat dikalibrasi dan di-retry tepat satu kali oleh API. Replay tolerance tetap 120 detik; jangan memperbesar toleransi. Perbaiki NTP Windows bila `npm run diagnose` menunjukkan clock skew besar.
+
+## Runtime dan sinkronisasi waktu workstation
+
+Gunakan Node.js 24.x sesuai `package.json`. Setelah upgrade, verifikasi:
+
+```bash
+node --version
+npm --version
+npm run check
+```
+
+PC domain dapat melaporkan `w32tm /resync` berhasil tetapi tetap mengikuti NTP internal yang meleset. Bandingkan dengan:
+
+```bash
+npm run diagnose
+```
+
+Jika `Google - PC` melebihi 120 detik, perbaiki hierarchy waktu domain/NTP bersama administrator. Clock calibration aplikasi hanya fallback satu kali dan tidak menggantikan waktu workstation/server yang benar. Jangan memperbesar replay tolerance.

@@ -4,6 +4,7 @@ import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Card from "../../components/common/Card.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { apiClient } from "../../services/api/client.js";
@@ -15,7 +16,7 @@ import { currentMonthInJakarta } from "../../domain/dates.js";
 
 const SettingsPage = () => {
   const { user } = useAuth();
-  const { bootstrap, refresh } = useFinance();
+  const { bootstrap, refreshAll } = useFinance();
   const ownerMode = user?.role === "owner";
   const usersResource = useApiResource("users.list", {}, { enabled: ownerMode });
   const auditResource = useApiResource("audit.list", { limit: 50 }, { enabled: ownerMode });
@@ -69,7 +70,7 @@ const SettingsPage = () => {
     if (!importPreview) return;
     const applied = await run("import.apply", { previewToken: importPreview.previewToken, confirmation: importConfirmation });
     if (!applied) return;
-    setImportPreview(null); setImportConfirmation(""); setImportFile(null); await refresh();
+    setImportPreview(null); setImportConfirmation(""); setImportFile(null); await refreshAll();
   };
 
   const previewRestore = async () => {
@@ -81,7 +82,7 @@ const SettingsPage = () => {
     if (!restorePreview) return;
     const applied = await run("restore.apply", { backupFileId: restoreFileId.trim(), previewToken: restorePreview.previewToken, confirmation: restoreConfirmation });
     if (!applied) return;
-    setRestorePreview(null); setRestoreConfirmation(""); await refresh();
+    setRestorePreview(null); setRestoreConfirmation(""); await refreshAll();
   };
 
   const saveMember = async (event) => {
@@ -109,7 +110,7 @@ const SettingsPage = () => {
   const closePeriod = async (event) => {
     event.preventDefault();
     const closed = await run("periods.close", periodForm);
-    if (closed) await Promise.all([refresh(), auditResource.reload(), periodsResource.reload()]);
+    if (closed) await Promise.all([refreshAll(), auditResource.reload(), periodsResource.reload()]);
   };
 
   const reopenPeriod = async (reason) => {
@@ -120,7 +121,7 @@ const SettingsPage = () => {
       setReopenTarget(null);
       setReopenState({ status: "idle", error: null });
       setResult({ status: "success", text: `Periode ${reopenTarget.period_key} berhasil dibuka kembali dan tercatat di audit.` });
-      await Promise.all([refresh(), auditResource.reload(), periodsResource.reload()]);
+      await Promise.all([refreshAll(), auditResource.reload(), periodsResource.reload()]);
     } catch (error) {
       setReopenState({ status: "error", error });
     }
@@ -128,6 +129,7 @@ const SettingsPage = () => {
 
   return (
     <div className="page-stack">
+      <RefreshWarning error={usersResource.refreshError || auditResource.refreshError || healthResource.refreshError || periodsResource.refreshError} onRetry={() => Promise.all([usersResource.reload(), auditResource.reload(), healthResource.reload(), periodsResource.reload()])} />
       <PageHeader title="Pengaturan" description="Konfigurasi sensitif hanya dapat diubah oleh owner dan tetap diverifikasi di server." />
       {result ? <div className={`notice notice--${result.status}`} role="status"><span>{result.text}</span>{result.fileLink ? <a href={result.fileLink} target="_blank" rel="noopener">Buka file di Google Drive</a> : null}</div> : null}
       <section className="settings-grid">

@@ -8,7 +8,7 @@ import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
-import ErrorState from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
@@ -22,7 +22,7 @@ import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
 
 const GoalsPage = () => {
   const resource = useApiResource("goals.list");
-  const { bootstrap, refresh } = useFinance();
+  const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
@@ -40,7 +40,8 @@ const GoalsPage = () => {
       await apiClient.request("goals.create", { ...form, target_amount: assertPositiveRupiah(form.target_amount) }, { idempotencyKey: createIdempotencyKey() });
       setForm({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
       setMessage({ type: "success", text: "Target keuangan berhasil dibuat." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setMessage({ type: "danger", text: error.message }); }
   };
 
@@ -82,7 +83,8 @@ const GoalsPage = () => {
       setMovement((current) => ({ ...current, goal: null }));
       setMovementState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Mutasi target dan transfer rekening berhasil dicatat." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setMovementState({ status: "error", error }); }
   };
 
@@ -94,7 +96,8 @@ const GoalsPage = () => {
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setReverseState({ status: "error", error }); }
   };
 
@@ -103,6 +106,7 @@ const GoalsPage = () => {
 
   return (
     <div className="page-stack">
+      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <PageHeader title="Tabungan & target" description="Kontribusi target dicatat sebagai transfer, bukan pengeluaran." />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="goal-grid">

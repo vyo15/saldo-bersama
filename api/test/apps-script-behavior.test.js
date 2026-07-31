@@ -1157,3 +1157,50 @@ test("verifyEnvelope memberi detail clock skew aman dan menerima timestamp dalam
   });
   assert.equal(context.verifyEnvelope_({ message: acceptedMessage, signature: sign(acceptedMessage) }).requestId, "req-clock-ok");
 });
+
+test("schema read cache hanya menyimpan hasil valid dan dapat diinvalidasi", async () => {
+  const context = createBaseContext();
+  context.PropertiesService.getScriptProperties().setProperty("SPREADSHEET_ID", "sheet-cache-test");
+  await loadAppsScript(context, ["Schema.gs"]);
+  let scans = 0;
+  context.validateSchema_ = () => { scans += 1; return []; };
+  assert.deepEqual(Array.from(context.validateSchemaCached_()), []);
+  assert.deepEqual(Array.from(context.validateSchemaCached_()), []);
+  assert.equal(scans, 1);
+  context.invalidateSchemaValidationCache_();
+  assert.deepEqual(Array.from(context.validateSchemaCached_()), []);
+  assert.equal(scans, 2);
+
+  context.invalidateSchemaValidationCache_();
+  context.validateSchema_ = () => { scans += 1; return ["rusak"]; };
+  assert.deepEqual(Array.from(context.validateSchemaCached_()), ["rusak"]);
+  assert.deepEqual(Array.from(context.validateSchemaCached_()), ["rusak"]);
+  assert.equal(scans, 4, "hasil schema rusak tidak boleh dicache");
+
+  context.CacheService.getScriptCache = () => { throw new Error("cache unavailable"); };
+  context.validateSchema_ = () => { scans += 1; return []; };
+  assert.deepEqual(Array.from(context.validateSchemaCached_()), []);
+  assert.equal(scans, 5, "kegagalan cache tidak boleh menggagalkan validasi schema utama");
+});
+
+test("initial state memakai satu snapshot transaksi untuk bootstrap dan dashboard", async () => {
+  const context = createBaseContext();
+  await loadAppsScript(context, ["Router.gs"]);
+  const transactions = [{ transaction_id: "t1" }];
+  const categories = [{ category_id: "c1", status: "active" }];
+  const accounts = [{ account_id: "a1", status: "active" }];
+  let accountCalls = 0;
+  context.visibleTransactions_ = () => transactions;
+  context.rows_ = (name) => name === "Categories" ? categories : [];
+  context.listAccounts_ = (_requestContext, snapshot) => {
+    accountCalls += 1;
+    assert.equal(snapshot, transactions);
+    return accounts;
+  };
+  context.bootstrapData_ = (_requestContext, snapshots) => ({ accounts: snapshots.accounts, categories: snapshots.categories });
+  context.dashboardOverview_ = (_requestContext, snapshots) => ({ transactionCount: snapshots.transactions.length });
+  const result = context.appInitialState_({ actor: { role: "owner" }, payload: {} });
+  assert.equal(accountCalls, 1);
+  assert.deepEqual(result.bootstrap.accounts, accounts);
+  assert.equal(result.overview.transactionCount, 1);
+});

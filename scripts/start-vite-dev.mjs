@@ -38,6 +38,28 @@ const routeModules = Object.freeze({
 });
 const routeHandlers = new Map();
 
+const DEV_STORAGE_RESET_COOKIE = "sb_dev_storage_reset=v1";
+
+const hasDevStorageResetCookie = (request) => String(request.headers.cookie || "")
+  .split(";")
+  .map((value) => value.trim())
+  .includes(DEV_STORAGE_RESET_COOKIE);
+
+const isHtmlNavigationRequest = (request) => {
+  if (!['GET', 'HEAD'].includes(request.method || 'GET')) return false;
+  const accept = String(request.headers.accept || '');
+  return request.headers['sec-fetch-mode'] === 'navigate' || accept.includes('text/html');
+};
+
+const sendDevStorageReset = (response, targetUrl) => {
+  response.statusCode = 200;
+  response.setHeader("Content-Type", "text/html; charset=utf-8");
+  response.setHeader("Cache-Control", "no-store");
+  response.setHeader("Clear-Site-Data", '"cache", "storage"');
+  response.setHeader("Set-Cookie", `${DEV_STORAGE_RESET_COOKIE}; Path=/; SameSite=Lax`);
+  response.end(`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Menyiapkan Saldo Bersama</title></head><body><p>Membersihkan cache development lama…</p><script>location.replace(${JSON.stringify(targetUrl)});</script></body></html>`);
+};
+
 const loadRouteHandler = async (pathname) => {
   if (routeHandlers.has(pathname)) return routeHandlers.get(pathname);
   const modulePath = routeModules[pathname];
@@ -74,6 +96,10 @@ const httpServer = http.createServer(async (request, response) => {
   }
 
   const requestUrl = new URL(request.url || "/", `http://localhost:${port}`);
+  if (isHtmlNavigationRequest(request) && !hasDevStorageResetCookie(request)) {
+    return sendDevStorageReset(response, `${requestUrl.pathname}${requestUrl.search}`);
+  }
+
   if (request.headers.host?.startsWith("127.0.0.1:") && ["GET", "HEAD"].includes(request.method || "GET")) {
     response.statusCode = 307;
     response.setHeader("Location", `http://localhost:${port}${requestUrl.pathname}${requestUrl.search}`);

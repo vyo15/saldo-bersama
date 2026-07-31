@@ -90,7 +90,7 @@ function entityIdFromResult_(data) {
 
 function requestSchemaIssues_(action) {
   if (action === "system.initialize") return [];
-  try { return validateSchema_(); }
+  try { return canUseCachedSchemaValidation_(action) ? validateSchemaCached_() : validateSchema_(); }
   catch (schemaError) { return [schemaError.code || schemaError.message]; }
 }
 
@@ -136,13 +136,21 @@ function contextFromSigned_(signed, actor) {
   };
 }
 
+function recordStageTiming_(timings, name, startedAt) {
+  timings[name] = Date.now() - startedAt;
+  return Date.now();
+}
+
 function doPost(e) {
   resetRequestCache_();
   const startedAt = Date.now();
+  const stageTimings = {};
+  let stageStartedAt = startedAt;
   let signed = null;
   try {
     const body = JSON.parse(e && e.postData && e.postData.contents || "{}");
     signed = verifyEnvelope_(body);
+    stageStartedAt = recordStageTiming_(stageTimings, "verifyEnvelope", stageStartedAt);
     appsScriptLog_("info", "request.started", {
       requestId: String(signed.requestId || "").slice(0, 120),
       action: String(signed.action || "unknown").slice(0, 120),
@@ -154,6 +162,7 @@ function doPost(e) {
     if (isIdempotencyRequired_(signed.action) && !signed.idempotencyKey) {
       throw sbError_("IDEMPOTENCY_REQUIRED", "Idempotency key wajib untuk operasi perubahan data.", 400);
     }
+    stageStartedAt = recordStageTiming_(stageTimings, "preflight", stageStartedAt);
 
     const mutating = isMutatingAction_(signed.action);
     let data;
@@ -164,6 +173,7 @@ function doPost(e) {
       try {
         resetRequestCache_();
         let schemaIssues = requestSchemaIssues_(signed.action);
+        stageStartedAt = recordStageTiming_(stageTimings, "schemaValidation", stageStartedAt);
         if (signed.action === "system.initialize") {
           initializeSchema_();
           SpreadsheetApp.flush();
@@ -176,13 +186,16 @@ function doPost(e) {
 
         assertRuntimeAvailability_(signed.action, schemaIssues);
         const actor = resolveRequestActor_(signed, schemaIssues);
+        stageStartedAt = recordStageTiming_(stageTimings, "resolveActor", stageStartedAt);
         const context = contextFromSigned_(signed, actor);
         const recoveryIdempotency = usesRecoveryIdempotency_(context.action, schemaIssues);
         const previous = recoveryIdempotency ? getRecoveryIdempotentResult_(context) : getIdempotentResult_(context);
         if (previous) {
           data = previous;
         } else {
+          const routeStartedAt = Date.now();
           data = routeAction_(context);
+          stageTimings.routeAction = Date.now() - routeStartedAt;
           SpreadsheetApp.flush();
           if (recoveryIdempotency) saveRecoveryIdempotentResult_(context, data);
           else saveIdempotentResult_(context, entityIdFromResult_(data), data);
@@ -193,10 +206,14 @@ function doPost(e) {
       }
     } else {
       const schemaIssues = requestSchemaIssues_(signed.action);
+      stageStartedAt = recordStageTiming_(stageTimings, "schemaValidation", stageStartedAt);
       assertRequestSchema_(signed.action, schemaIssues);
       assertRuntimeAvailability_(signed.action, schemaIssues);
       const actor = resolveRequestActor_(signed, schemaIssues);
+      stageStartedAt = recordStageTiming_(stageTimings, "resolveActor", stageStartedAt);
+      const routeStartedAt = Date.now();
       data = routeAction_(contextFromSigned_(signed, actor));
+      stageTimings.routeAction = Date.now() - routeStartedAt;
     }
 
     appsScriptLog_("info", "request.completed", {
@@ -205,7 +222,8 @@ function doPost(e) {
       role: String(signed && signed.actor && signed.actor.role || "unknown").slice(0, 32),
       status: 200,
       durationMs: Date.now() - startedAt,
-      mutating: signed ? isMutatingAction_(signed.action) : null
+      mutating: signed ? isMutatingAction_(signed.action) : null,
+      stageTimings: stageTimings
     });
     return jsonOutput_({ ok: true, data: data });
   } catch (error) {
@@ -216,7 +234,8 @@ function doPost(e) {
       status: error.status || 500,
       code: error.code || "INTERNAL_ERROR",
       durationMs: Date.now() - startedAt,
-      mutating: signed ? isMutatingAction_(signed.action) : null
+      mutating: signed ? isMutatingAction_(signed.action) : null,
+      stageTimings: stageTimings
     });
     return jsonOutput_({ ok: false, error: { code: error.code || "INTERNAL_ERROR", message: error.code ? error.message : "Apps Script gagal memproses request.", status: error.status || 500, details: error.details || null } });
   }
@@ -227,5 +246,5 @@ function jsonOutput_(payload) {
 }
 
 function isMutatingAction_(action) {
-  return !["system.health", "users.list", "audit.list", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly", "periods.list", "restore.preview", "import.preview"].includes(action);
+  return !["system.health", "app.initialState", "users.list", "audit.list", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly", "periods.list", "restore.preview", "import.preview"].includes(action);
 }

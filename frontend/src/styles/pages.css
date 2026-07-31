@@ -3,8 +3,8 @@
 .metric-card > span:first-child { color: var(--text-soft); font-size: 13px; font-weight: 750; }
 .metric-card .money { font-size: clamp(22px, 2.4vw, 31px); }
 .metric-card small { display: flex; align-items: center; gap: 5px; color: var(--muted); }
-.metric-card--primary { background: var(--primary); color: white; border-color: var(--primary); }
-.metric-card--primary > span, .metric-card--primary small { color: rgba(255,255,255,.78) !important; }
+.metric-card--primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.metric-card--primary > span, .metric-card--primary small { color: color-mix(in srgb, var(--on-primary) 78%, transparent) !important; }
 .dashboard-grid, .two-column-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .panel { padding: 20px; min-width: 0; }
 .panel--wide { grid-column: span 2; }
@@ -249,3 +249,25 @@
 .premium-detail-empty { position: relative; z-index: 1; min-height: 330px; display: grid; place-items: center; align-content: center; gap: 9px; text-align: center; }
 .premium-detail-empty svg { width: 32px; height: 32px; }
 .premium-detail-empty span { color: rgba(255,255,255,.72); font-size: 10px; }
+
+/* 2026 dashboard polish: softer hierarchy and denser master-detail */
+.premium-dashboard { gap: 16px; }
+.premium-dashboard__header { padding: 8px 8px 12px; align-items: center; }
+.premium-dashboard__header h1 { font-weight: 820; }
+.premium-dashboard__actions .button { min-height: 42px; border-radius: 13px; }
+.premium-metric-card {
+  min-height: 184px;
+  border-color: color-mix(in srgb, var(--border) 76%, transparent);
+  background: linear-gradient(155deg, var(--surface) 0%, color-mix(in srgb, var(--surface-soft) 68%, var(--surface)) 100%);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--text) 7%, transparent);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.premium-metric-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 24%, var(--border)); box-shadow: 0 16px 38px color-mix(in srgb, var(--text) 10%, transparent); }
+.premium-metric-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; opacity: .7; background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+.premium-filterbar { border-color: color-mix(in srgb, var(--border) 76%, transparent); box-shadow: 0 9px 28px color-mix(in srgb, var(--text) 6%, transparent); }
+.premium-transaction-workspace { min-height: 390px; padding: 12px; border-radius: 24px; box-shadow: 0 22px 54px color-mix(in srgb, var(--desktop-panel) 30%, transparent); }
+.premium-transaction-row { transition: background .16s ease, transform .16s ease, box-shadow .16s ease; }
+.premium-transaction-row:hover { transform: translateX(2px); }
+.premium-detail-panel { background: radial-gradient(circle at 96% 0%, rgba(255,255,255,.13), transparent 34%), linear-gradient(140deg, color-mix(in srgb, var(--primary) 92%, #092531), color-mix(in srgb, var(--primary-deep) 76%, var(--secondary))); }
+.premium-detail-empty { min-height: 280px; }
+.mobile-finance-section .empty-state { min-height: 150px; padding: 20px 16px; border-radius: 18px; }

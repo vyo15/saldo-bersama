@@ -1,3 +1,31 @@
+function bootstrapData_(context, snapshots) {
+  const transactions = snapshots && snapshots.transactions;
+  const accounts = snapshots && snapshots.accounts || listAccounts_(context, transactions);
+  const categories = snapshots && snapshots.categories || listCategories_();
+  return {
+    user: context.actor,
+    accounts: accounts.filter(function(row) { return row.status === "active"; }),
+    categories: categories.filter(function(row) { return row.status === "active"; }),
+    config: {
+      schemaVersion: Number(getConfig_("schema_version")),
+      timezone: getConfig_("timezone"),
+      currency: getConfig_("currency"),
+      maintenanceMode: getConfig_("maintenance_mode") === "true"
+    }
+  };
+}
+
+function appInitialState_(context) {
+  const transactions = visibleTransactions_(context);
+  const categories = rows_("Categories");
+  const accounts = listAccounts_(context, transactions);
+  const snapshots = { transactions: transactions, categories: categories, accounts: accounts };
+  return {
+    bootstrap: bootstrapData_(context, snapshots),
+    overview: dashboardOverview_(context, snapshots)
+  };
+}
+
 function routeAction_(context) {
   switch (context.action) {
     case "system.initialize": return { initialized: true, schemaVersion: SB_SCHEMA_VERSION };
@@ -13,7 +41,8 @@ function routeAction_(context) {
         timestamp: nowIso_()
       };
     }
-    case "bootstrap.get": return { user: context.actor, accounts: visibleAccountRows_(context).map(publicRow_), categories: rows_("Categories").map(publicRow_), config: { schemaVersion: Number(getConfig_("schema_version")), timezone: getConfig_("timezone"), currency: getConfig_("currency"), maintenanceMode: getConfig_("maintenance_mode") === "true" } };
+    case "app.initialState": return appInitialState_(context);
+    case "bootstrap.get": return bootstrapData_(context);
     case "users.list": return { items: listUsers_(context) };
     case "users.upsert": return upsertUser_(context);
     case "users.deactivate": return deactivateUser_(context);

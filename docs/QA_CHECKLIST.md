@@ -156,3 +156,33 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Retry clock calibration mempertahankan request ID, payload, dan idempotency key, tetapi memakai nonce/signature baru.
 - [ ] `/api/health` menampilkan commit/deployment runtime tanpa menyatakan data bisnis sehat.
 - [ ] Vercel Logs dan Apps Script Executions dapat dikorelasikan menggunakan referensi UI.
+
+## Performance dan cache privat
+
+- [ ] Initial load memakai maksimal satu action `app.initialState` setelah session tersedia.
+- [ ] React Strict Mode tidak menggandakan `session.read`, initial state, atau route list secara network.
+- [ ] Dua caller dengan action/payload/sesi sama memakai satu in-flight request.
+- [ ] Abort satu subscriber tidak membatalkan request yang masih dipakai subscriber lain.
+- [ ] Logout atau pergantian sesi membersihkan seluruh read cache memory.
+- [ ] Cache owner/member tidak pernah berbagi key atau data.
+- [ ] Read cache tidak memakai `localStorage`, service worker, CDN, atau cache publik.
+- [ ] Write selalu menuju server dan invalidasi baru dilakukan setelah write berhasil.
+- [ ] Perubahan transaksi hanya refresh ledger/overview terkait, bukan seluruh bootstrap.
+- [ ] Perubahan rekening/kategori menginvalidasi bootstrap dan overview.
+- [ ] Data lama tetap terlihat selama refresh; kegagalan refresh tampil non-blocking.
+- [ ] Request lama dibatalkan/diabaikan ketika filter atau route berubah.
+- [ ] Schema valid boleh memakai cache positif singkat; schema rusak dan write tetap fail closed.
+- [ ] `stageTimings` tersedia tanpa payload finansial.
+
+## Theme, modal, dan accessibility
+
+- [ ] Light/dark diuji pada 360, 390, 768, 900, 1280, dan 1440 px.
+- [ ] Canvas, surface, modal, input, hover, selected, dan border mempunyai hierarki yang jelas.
+- [ ] Teal hanya menjadi accent; positive/error tidak disamakan dengan warna brand.
+- [ ] Label minimal 14 px, navigasi desktop terbaca, dan tap target utama minimal 44 px.
+- [ ] Form transaksi menampilkan field inti lebih dahulu dan detail tambahan melalui kontrol `aria-expanded`.
+- [ ] Error field di bagian tambahan otomatis membuka bagian tersebut.
+- [ ] Modal mempertahankan focus trap, Escape, body lock, initial focus, dan focus return.
+- [ ] Footer modal tetap dapat dijangkau pada viewport pendek dan scrollbar tidak dominan.
+- [ ] `prefers-reduced-motion` dihormati dan focus-visible terlihat pada keyboard.
+- [ ] Native date input tetap dipakai dan bantuan tanggal Indonesia ditampilkan.

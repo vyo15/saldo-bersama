@@ -25,7 +25,6 @@ import { Link } from "react-router";
 import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
 import Button from "../../components/common/Button.jsx";
-import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import ErrorState from "../../components/feedback/ErrorState.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
@@ -77,7 +76,7 @@ const transactionSign = (type) => type === "expense" ? "−" : ["income", "refun
 const absoluteAmount = (value) => Math.abs(Number(value || 0));
 
 const DashboardPage = () => {
-  const { overview, bootstrap, status, error, refresh } = useFinance();
+  const { overview, bootstrap, status, error, refreshOverview, refreshAll } = useFinance();
   const { user } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
@@ -132,7 +131,7 @@ const DashboardPage = () => {
   );
 
   if (status === "loading" || status === "idle") return <LoadingScreen />;
-  if (status === "error") return <ErrorState error={error} onRetry={refresh} />;
+  if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />;
   if (!overview) return null;
 
   const expenseByCategory = overview.categoryExpenses || [];
@@ -195,8 +194,7 @@ const DashboardPage = () => {
               <small>{overview.accountBalances.length} rekening aktif · periode {overview.periodKey}</small>
             </div>
             <div className="mobile-finance-hero__actions">
-              <button type="button" className="mobile-hero-button" onClick={refresh} aria-label="Sinkronkan data" title="Sinkronkan data"><FiRefreshCw aria-hidden="true" /></button>
-              <ThemeToggle tone="hero" />
+              <button type="button" className="mobile-hero-button" onClick={refreshOverview} aria-label="Sinkronkan data" title="Sinkronkan data"><FiRefreshCw aria-hidden="true" /></button>
               <button
                 type="button"
                 className="mobile-hero-button"
@@ -282,7 +280,7 @@ const DashboardPage = () => {
             <p>Pantau saldo, arus kas, alokasi, dan transaksi dari satu sumber data.</p>
           </div>
           <div className="premium-dashboard__actions">
-            <button type="button" className="button button--secondary" onClick={refresh}><FiRefreshCw aria-hidden="true" /><span>Sinkronkan</span></button>
+            <button type="button" className="button button--secondary" onClick={refreshOverview}><FiRefreshCw aria-hidden="true" /><span>Sinkronkan</span></button>
             <button type="button" className="button button--primary" onClick={() => setFormOpen(true)}><FiCreditCard aria-hidden="true" /><span>Tambah transaksi</span></button>
           </div>
         </header>

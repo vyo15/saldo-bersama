@@ -85,6 +85,7 @@ function removeUnusedDefaultSheet_(spreadsheet) {
 }
 
 function initializeSchema_() {
+  invalidateSchemaValidationCache_();
   const spreadsheet = getSpreadsheet_();
   Object.keys(SB_SCHEMA).forEach(function(name) {
     let sheet = spreadsheet.getSheetByName(name);
@@ -171,4 +172,37 @@ function protectSystemSheets_(schema) {
     const existing = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).find(function(item) { return item.getDescription() === description; });
     if (!existing) lockProtectionToOwner_(sheet.protect().setDescription(description));
   });
+}
+
+const SB_SCHEMA_VALIDATION_CACHE_SECONDS = 30;
+
+function schemaValidationCacheKey_() {
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID") || "unconfigured";
+  return "schema-valid:" + spreadsheetId + ":v" + SB_SCHEMA_VERSION;
+}
+
+function invalidateSchemaValidationCache_() {
+  try { CacheService.getScriptCache().remove(schemaValidationCacheKey_()); } catch (ignored) {}
+}
+
+function canUseCachedSchemaValidation_(action) {
+  return [
+    "app.initialState", "bootstrap.get", "users.list", "audit.list", "dashboard.overview",
+    "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list",
+    "budgets.list", "goals.list", "reports.monthly", "periods.list"
+  ].indexOf(action) !== -1;
+}
+
+function validateSchemaCached_() {
+  const key = schemaValidationCacheKey_();
+  let cache = null;
+  try {
+    cache = CacheService.getScriptCache();
+    if (cache.get(key) === "ok") return [];
+  } catch (ignored) { cache = null; }
+  const issues = validateSchema_();
+  if (!issues.length && cache) {
+    try { cache.put(key, "ok", SB_SCHEMA_VALIDATION_CACHE_SECONDS); } catch (ignored) {}
+  }
+  return issues;
 }

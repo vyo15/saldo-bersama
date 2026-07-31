@@ -7,7 +7,7 @@ import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import BarChart from "../../components/charts/BarChart.jsx";
 import LineChart from "../../components/charts/LineChart.jsx";
-import ErrorState from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
@@ -20,7 +20,7 @@ import { currentMonthInJakarta } from "../../domain/dates.js";
 const ReportsPage = () => {
   const period = currentMonthInJakarta();
   const resource = useApiResource("reports.monthly", { period });
-  const { bootstrap, refresh } = useFinance();
+  const { bootstrap, invalidate } = useFinance();
   const { user } = useAuth();
   const [budgetForm, setBudgetForm] = useState({ category_id: "", amount: "", warning_threshold: 80 });
   const [message, setMessage] = useState(null);
@@ -31,7 +31,8 @@ const ReportsPage = () => {
       await apiClient.request("budgets.upsert", { ...budgetForm, period_key: period, amount: assertPositiveRupiah(budgetForm.amount) }, { idempotencyKey: createIdempotencyKey() });
       setBudgetForm({ category_id: "", amount: "", warning_threshold: 80 });
       setMessage({ type: "success", text: "Budget periode berhasil disimpan." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["reports.monthly"]);
+      await resource.reload();
     } catch (error) { setMessage({ type: "danger", text: error.message }); }
   };
 
@@ -44,6 +45,7 @@ const ReportsPage = () => {
   ];
   return (
     <div className="page-stack">
+      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <PageHeader title="Laporan" description="Data aktual dan prediksi selalu dibedakan. Transfer internal tidak masuk arus kas." />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="metric-grid">

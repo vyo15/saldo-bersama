@@ -8,7 +8,7 @@ import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
-import ErrorState from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { apiClient } from "../../services/api/client.js";
@@ -25,7 +25,7 @@ const emptyCategoryForm = { name: "", transaction_type: "expense", nature: "vari
 const AccountsPage = () => {
   const accountsResource = useApiResource("accounts.list");
   const categoriesResource = useApiResource("categories.list");
-  const { refresh } = useFinance();
+  const { refreshAll, invalidate } = useFinance();
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
@@ -37,7 +37,10 @@ const AccountsPage = () => {
   const [dialogState, setDialogState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
 
-  const reloadMasters = async () => Promise.all([accountsResource.reload(), categoriesResource.reload(), refresh()]);
+  const reloadMasters = async () => {
+    invalidate(["accounts.list", "categories.list", "transactions.list", "reports.monthly", "app.initialState"]);
+    return Promise.all([accountsResource.reload(), categoriesResource.reload(), refreshAll()]);
+  };
 
   const createAccount = async (event) => {
     event.preventDefault();
@@ -140,6 +143,7 @@ const AccountsPage = () => {
 
   return (
     <div className="page-stack">
+      <RefreshWarning error={accountsResource.refreshError || categoriesResource.refreshError} onRetry={reloadMasters} />
       <PageHeader title="Rekening & kategori" description="Saldo berjalan dihitung dari saldo awal dan transaksi aktif; tidak dapat diedit bebas." />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="account-grid">

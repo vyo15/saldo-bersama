@@ -8,7 +8,7 @@ import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
-import ErrorState from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { apiClient } from "../../services/api/client.js";
@@ -22,7 +22,7 @@ import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
 
 const RecurringPage = () => {
   const resource = useApiResource("recurring.list");
-  const { bootstrap, refresh } = useFinance();
+  const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState({ name: "", kind: "expense", expected_amount: "", due_day: 20, category_id: "", default_account_id: "", payment_method: "transfer", frequency: "monthly", start_date: todayInJakarta(), auto_debit: false });
@@ -46,7 +46,8 @@ const RecurringPage = () => {
       await apiClient.request("recurring.createRule", { ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, { idempotencyKey: createIdempotencyKey() });
       setForm((current) => ({ ...current, name: "", expected_amount: "" }));
       setMessage({ type: "success", text: "Jadwal rutin berhasil dibuat." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setMessage({ type: "danger", text: error.message }); }
   };
 
@@ -81,7 +82,8 @@ const RecurringPage = () => {
       setEditRule(null);
       setEditState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Aturan rutin berhasil diperbarui." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setEditState({ status: "error", error }); }
   };
 
@@ -97,7 +99,8 @@ const RecurringPage = () => {
       setArchiveRuleTarget(null);
       setEditState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Aturan rutin berhasil diarsipkan. Transaksi historis tetap tersimpan." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setEditState({ status: "error", error }); }
   };
 
@@ -117,7 +120,8 @@ const RecurringPage = () => {
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setReverseState({ status: "error", error }); }
   };
 
@@ -136,7 +140,8 @@ const RecurringPage = () => {
       setPayment({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
       setPaymentState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." });
-      await Promise.all([resource.reload(), refresh()]);
+      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) { setPaymentState({ status: "error", error }); }
   };
 
@@ -162,6 +167,7 @@ const RecurringPage = () => {
 
   return (
     <div className="page-stack">
+      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <PageHeader title="Tagihan & jadwal" description="Rencana kewajiban dan pemasukan dipisahkan dari transaksi aktual agar statusnya dapat diverifikasi." />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="two-column-grid">

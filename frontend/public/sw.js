@@ -26,6 +26,9 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  // Service worker production tidak boleh mengintersep development lokal.
+  // Ini mencegah module Vite lama tersimpan dan memicu respons 504 Outdated Request.
+  if (["localhost", "127.0.0.1", "::1"].includes(url.hostname)) return;
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then((response) => {
       const copy = response.clone();

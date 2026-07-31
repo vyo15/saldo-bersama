@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { FiLogOut, FiMenu, FiPlus, FiSettings } from "react-icons/fi";
+import { useState } from "react";
+import { FiLogOut, FiPlus, FiRefreshCw, FiSettings } from "react-icons/fi";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import SideNavigation from "../components/navigation/SideNavigation.jsx";
@@ -9,23 +9,18 @@ import Brand from "../components/common/Brand.jsx";
 import Modal from "../components/common/Modal.jsx";
 import Button from "../components/common/Button.jsx";
 import ThemeToggle from "../components/common/ThemeToggle.jsx";
+import UserAvatar from "../components/common/UserAvatar.jsx";
 import { MOBILE_SECONDARY_NAVIGATION } from "../config/navigation.js";
-
-const initialsFor = (user) => {
-  const source = String(user?.name || user?.email || "SB").trim();
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length > 1) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  return source.slice(0, 2).toUpperCase();
-};
+import { useFinance } from "../app/FinanceContext.jsx";
 
 const AppShell = () => {
   const { user, logout } = useAuth();
+  const { isRefreshing, refreshError, refreshAll } = useFinance();
   const location = useLocation();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const dashboardRoute = location.pathname === "/";
-  const userInitials = useMemo(() => initialsFor(user), [user]);
 
   const handleLogout = async () => {
     setLogoutError("");
@@ -39,30 +34,29 @@ const AppShell = () => {
         <Brand />
         <SideNavigation />
         <div className="desktop-app-header__actions">
+          <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
+            {isRefreshing ? <><FiRefreshCw aria-hidden="true" /><span>Memperbarui</span></> : <span className="sr-only">Data siap</span>}
+          </div>
           <ThemeToggle />
           <NavLink className="desktop-settings-button" to="/pengaturan" aria-label="Buka pengaturan" title="Pengaturan">
             <FiSettings aria-hidden="true" />
           </NavLink>
-          <div className="desktop-user-avatar" aria-label={user?.name || user?.email || "Pengguna"} title={user?.name || user?.email || "Pengguna"}>
-            {userInitials}
-          </div>
+          <UserAvatar user={user} className="desktop-user-avatar" />
           <button type="button" className="icon-button desktop-logout-button" aria-label="Keluar" onClick={handleLogout}><FiLogOut aria-hidden="true" /></button>
         </div>
       </header>
 
       <div className="app-shell__main">
         <header className="topbar">
-          <button type="button" className="icon-button topbar__menu" aria-label="Buka menu lainnya" onClick={() => setMobileMenuOpen(true)}><FiMenu aria-hidden="true" /></button>
           <Brand compact />
           <div className="topbar__actions">
-            <div className="user-chip"><span>{user?.name || user?.email}</span><small>{user?.role}</small></div>
             <ThemeToggle />
-            <button type="button" className="icon-button topbar__logout" aria-label="Keluar" onClick={handleLogout}><FiLogOut aria-hidden="true" /></button>
           </div>
         </header>
 
         <main className="app-content">
           {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
+          {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
           <Outlet />
         </main>
       </div>

@@ -70,3 +70,26 @@ Mencakup:
 - Import dan restore tidak dinyatakan sukses sebelum checksum/schema/integrity lulus.
 
 Catat command, environment, exit code, dan bukti manual. Jangan menyatakan lulus untuk test yang tidak dijalankan.
+
+## Regression performance
+
+1. Render provider dalam React Strict Mode; verifikasi satu `session.read` dan satu `app.initialState` di Network.
+2. Jalankan dua read identik bersamaan; verifikasi satu fetch dan hasil sama.
+3. Batalkan satu subscriber; subscriber lain tetap memperoleh hasil.
+4. Ulangi route read dalam TTL; verifikasi memory cache dan tidak ada persistence browser.
+5. Invalidasi action; request berikutnya wajib menuju server.
+6. Ganti session scope owner ke member; cache lama tidak boleh terbaca.
+7. Simpan transaksi; ledger dan overview berubah tanpa reload bootstrap.
+8. Ubah rekening/kategori; master, overview, dan page resources konsisten.
+9. Simulasikan refresh gagal setelah data tersedia; data lama tetap tampil dengan warning.
+10. Rusakkan header pada DEV; cache positif berakhir dan `SCHEMA_INVALID` muncul, sedangkan write tidak pernah memakai cache schema read.
+11. Cari request ID di API dan Apps Script; bandingkan `stageTimings` untuk schema/route.
+
+## Regression theme dan modal
+
+1. Bandingkan light/dark pada semua breakpoint target.
+2. Uji keyboard-only: buka modal, isi field, buka detail tambahan, submit, tutup, dan pastikan fokus kembali.
+3. Uji overspend error membuka detail tambahan secara otomatis.
+4. Uji modal pada tinggi viewport pendek; header/footer dan tombol submit tetap dapat diakses.
+5. Uji reduced motion, focus-visible, contrast teks/helper/border, dan zoom 200%.
+6. Uji input tanggal dengan locale browser berbeda; nilai ISO tetap benar dan helper Indonesia sesuai.

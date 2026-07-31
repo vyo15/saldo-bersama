@@ -96,7 +96,7 @@ test("login dibatasi per IP sebelum Firebase dan initialize memeriksa owner sebe
   assert.ok(initializationGuard >= 0 && mutationLock > initializationGuard && schemaInitialization > mutationLock, "Owner dan lock wajib diverifikasi sebelum inisialisasi schema.");
   assert.equal((codeSource.match(/initializeSchema_\(\)/g) || []).length, 1, "Request API hanya boleh memiliki satu titik inisialisasi schema.");
   assert.match(codeSource, /assertRuntimeAvailability_\(signed\.action, schemaIssues\)[\s\S]*resolveRequestActor_/);
-  assert.match(codeSource, /return !\["system\.health", "users\.list"/);
+  assert.match(codeSource, /return !\["system\.health", "app\.initialState", "users\.list"/);
   assert.doesNotMatch(codeSource, /return !\["system\.health", "bootstrap\.get"/);
   assert.doesNotMatch(codeSource, /isSchemaRecoveryAction_/, "Helper recovery identik tidak boleh diduplikasi.");
 });
@@ -184,6 +184,8 @@ test("development lokal memakai satu command, satu origin, dan API Node lokal", 
   assert.match(devLauncher, /delete request\.headers\["if-none-match"\]/);
   assert.match(devLauncher, /delete request\.headers\["if-modified-since"\]/);
   assert.match(devLauncher, /"Cache-Control": "no-store"/);
+  assert.match(devLauncher, /Clear-Site-Data/);
+  assert.match(devLauncher, /sb_dev_storage_reset=v1/);
   assert.doesNotMatch(devLauncher, /vercel\s+dev|npx.*vercel/i);
   assert.match(notifications, /import\.meta\.env\.DEV/);
   assert.match(notifications, /registration\.unregister\(\)/);
@@ -289,6 +291,7 @@ test("service worker tidak pernah memakai fallback HTML untuk asset", async () =
   const assetBranch = source.indexOf("event.respondWith(caches.match(request)", navigationReturn);
   assert.ok(navigationBranch >= 0 && htmlFallback > navigationBranch && htmlFallback < navigationReturn);
   assert.ok(assetBranch > navigationReturn);
+  assert.match(source, /\["localhost", "127\.0\.0\.1", "::1"\]/);
   assert.equal(source.indexOf('caches.match("/")', navigationReturn), -1);
 });
 
