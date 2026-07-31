@@ -139,3 +139,10 @@ npm run zip
 ```
 
 Jangan gunakan data nyata sebelum login owner/member, personal isolation, transaksi, conflict/idempotency, backup, restore drill, migration drill bila relevan, dan integrity check lulus pada DEV.
+
+## Troubleshooting konektor Apps Script
+
+- `UNAUTHENTICATED` berarti cookie sesi aplikasi tidak ada atau sudah kedaluwarsa; login ulang diperlukan.
+- `CONNECTOR_AUTH_FAILED` berarti sesi pengguna masih valid, tetapi `INTERNAL_SHARED_SECRET` pada API/Vercel tidak sama dengan Script Properties Apps Script. Sinkronkan nilainya, restart server lokal atau redeploy Vercel, lalu coba lagi.
+- `CONNECTOR_NOT_CONFIGURED` berarti URL `/exec` atau secret konektor belum lengkap.
+- Jangan menyimpan `SETUP_DETAILS` dengan nilai kosong. Setup yang berhasil menghapus properti tersebut; properti hanya dibuat ketika setup gagal.

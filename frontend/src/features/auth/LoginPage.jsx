@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiShield } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
+import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
 import { useAuth } from "./AuthContext.jsx";
 
@@ -28,6 +29,7 @@ const LoginPage = () => {
 
   return (
     <main className="login-page">
+      <ThemeToggle className="login-theme-toggle" />
       <section className="login-card" aria-labelledby="login-title">
         <div className="brand-lockup brand-lockup--centered">
           <span className="brand-mark" aria-hidden="true">SB</span>

@@ -48,7 +48,7 @@
 .notice--success { background: var(--positive-soft); color: var(--positive); }
 .notice--loading { background: var(--surface-soft); color: var(--text-soft); }
 .modal-open { overflow: hidden; }
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 18px; background: rgba(5, 15, 13, .62); display: grid; place-items: center; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 18px; background: var(--overlay); display: grid; place-items: center; }
 .modal { width: min(100%, 640px); max-height: min(90vh, 900px); overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow-md); }
 .modal--lg { width: min(100%, 800px); }
 .modal__header, .modal__footer { padding: 18px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); }
@@ -79,3 +79,12 @@
 
 .pagination-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .pagination-bar > span { color: var(--text-muted); font-size: var(--font-size-sm); }
+
+.theme-toggle { width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); cursor: pointer; transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease; }
+.theme-toggle:hover { border-color: var(--primary); color: var(--primary); }
+.theme-toggle:active { transform: scale(.96); }
+.theme-toggle svg { width: 19px; height: 19px; }
+.theme-toggle--labeled { width: 100%; min-height: 48px; height: auto; padding: 0 14px; justify-content: flex-start; font-weight: 750; }
+.theme-toggle--hero { border-color: var(--glass-border); background: var(--glass-surface); color: var(--on-primary); backdrop-filter: blur(10px); }
+.theme-toggle--hero:hover { border-color: rgba(255,255,255,.32); color: var(--on-primary); background: rgba(255,255,255,.14); }
+.mobile-menu-theme { border-radius: var(--radius-md); }

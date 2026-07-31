@@ -64,6 +64,7 @@ test("setup memakai lock dan baru menandai ready setelah validasi schema", async
   assert.equal(properties.get("SPREADSHEET_ID"), "sheet-1");
   assert.equal(properties.get("SETUP_STATUS"), "ready");
   assert.ok(properties.get("SETUP_VERIFIED_AT"));
+  assert.equal(properties.has("SETUP_DETAILS"), false);
   assert.deepEqual(calls, { initialize: 1, validate: 1, release: 1, flush: 1 });
 });
 

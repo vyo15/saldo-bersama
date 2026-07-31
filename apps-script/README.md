@@ -73,3 +73,7 @@ Simpan URL yang berakhir `/exec` sebagai `APPS_SCRIPT_WEB_APP_URL`. Endpoint pub
 - Safety backup, checksum, maintenance, rollback, dan recovery manual.
 
 Jangan mengubah schema, secret, deploy identity, atau spreadsheet binding tanpa approval, backup, migration, rollback plan, dan test DEV.
+
+### Catatan Script Properties
+
+`SETUP_DETAILS` hanya ada ketika setup gagal. Setup yang berhasil menghapus properti tersebut agar halaman Script Properties tetap dapat diedit tanpa validasi nilai kosong. Error `CONNECTOR_AUTH_FAILED` dari frontend menunjukkan `INTERNAL_SHARED_SECRET` API dan Apps Script berbeda; jangan menjalankan setup ulang untuk memperbaikinya.

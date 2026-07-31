@@ -33,23 +33,47 @@ const exchangeGoogleCredentialForFirebaseToken = async (googleCredential) => {
   return body.idToken;
 };
 
-export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onError }) => {
-  if (!element) return () => {};
-  const identity = await waitForGoogleIdentity();
+const googleIdentityState = () => {
+  const key = "__saldoBersamaGoogleIdentity";
+  if (!window[key]) window[key] = { clientId: null, callbacks: null, initialized: false };
+  return window[key];
+};
+
+const initializeGoogleIdentityOnce = (identity) => {
+  const state = googleIdentityState();
+  if (state.initialized) {
+    if (state.clientId !== env.googleClientId) {
+      throw new Error("Google Client ID berubah. Muat ulang halaman sebelum login.");
+    }
+    return state;
+  }
   identity.initialize({
     client_id: env.googleClientId,
     auto_select: false,
     cancel_on_tap_outside: true,
     callback: async ({ credential }) => {
+      const callbacks = googleIdentityState().callbacks;
+      if (!callbacks) return;
       try {
         if (!credential) throw new Error("Google tidak mengembalikan credential login.");
         const firebaseIdToken = await exchangeGoogleCredentialForFirebaseToken(credential);
-        await onFirebaseToken(firebaseIdToken);
+        await callbacks.onFirebaseToken(firebaseIdToken);
       } catch (error) {
-        onError(error);
+        callbacks.onError(error);
       }
     },
   });
+  state.clientId = env.googleClientId;
+  state.initialized = true;
+  return state;
+};
+
+export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onError }) => {
+  if (!element) return () => {};
+  const identity = await waitForGoogleIdentity();
+  const state = initializeGoogleIdentityOnce(identity);
+  const callbacks = { onFirebaseToken, onError };
+  state.callbacks = callbacks;
   element.replaceChildren();
   identity.renderButton(element, {
     type: "standard",
@@ -60,5 +84,8 @@ export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onErro
     width: Math.min(360, element.clientWidth || 320),
     locale: "id",
   });
-  return () => element.replaceChildren();
+  return () => {
+    element.replaceChildren();
+    if (state.callbacks === callbacks) state.callbacks = null;
+  };
 };

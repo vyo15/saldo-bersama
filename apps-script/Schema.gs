@@ -48,14 +48,16 @@ function setupSaldoBersama() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) throw sbError_("LOCK_TIMEOUT", "Setup gagal memperoleh lock. Coba lagi setelah proses lain selesai.", 409);
   try {
-    properties.setProperties({ SPREADSHEET_ID: spreadsheetId, SETUP_STATUS: "running", SETUP_DETAILS: "" });
+    properties.setProperties({ SPREADSHEET_ID: spreadsheetId, SETUP_STATUS: "running" });
+    properties.deleteProperty("SETUP_DETAILS");
     initializeSchema_();
     SpreadsheetApp.flush();
     resetRequestCache_();
     const issues = validateSchema_();
     if (issues.length) throw sbError_("SCHEMA_MISMATCH", "Setup selesai sebagian dan belum lolos validasi schema.", 503, issues);
     removeUnusedDefaultSheet_(spreadsheet);
-    properties.setProperties({ SETUP_STATUS: "ready", SETUP_DETAILS: "", SETUP_VERIFIED_AT: new Date().toISOString() });
+    properties.setProperties({ SETUP_STATUS: "ready", SETUP_VERIFIED_AT: new Date().toISOString() });
+    properties.deleteProperty("SETUP_DETAILS");
     return { spreadsheetId: spreadsheetId, schemaVersion: SB_SCHEMA_VERSION, verified: true };
   } catch (error) {
     try {

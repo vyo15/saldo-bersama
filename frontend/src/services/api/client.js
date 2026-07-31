@@ -10,14 +10,19 @@ class ApiError extends Error {
   }
 }
 
+export const shouldInvalidateSession = (responseStatus, errorCode) => (
+  responseStatus === 401 && errorCode === "UNAUTHENTICATED"
+);
+
 const parseResponse = async (response) => {
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.ok === false) {
-    if (response.status === 401 && typeof window !== "undefined") {
+    const errorCode = body.error?.code || "UNKNOWN";
+    if (shouldInvalidateSession(response.status, errorCode) && typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("saldo-bersama:unauthorized"));
     }
     throw new ApiError(body.error?.message || "Permintaan tidak dapat diproses.", {
-      code: body.error?.code,
+      code: errorCode,
       status: body.error?.status || response.status,
       details: body.error?.details,
     });

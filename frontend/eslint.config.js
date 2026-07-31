@@ -29,7 +29,7 @@ export default [
     }
   },
   {
-    files: ["src/app/FinanceContext.jsx", "src/features/auth/AuthContext.jsx"],
+    files: ["src/app/FinanceContext.jsx", "src/app/ThemeContext.jsx", "src/features/auth/AuthContext.jsx"],
     rules: { "react-refresh/only-export-components": "off" }
   },
   {
