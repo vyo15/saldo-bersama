@@ -1,12 +1,13 @@
 import { createSecureRandomId } from "../../domain/security.js";
 
-class ApiError extends Error {
-  constructor(message, { code = "UNKNOWN", status = 500, details } = {}) {
+export class ApiError extends Error {
+  constructor(message, { code = "UNKNOWN", status = 500, details, requestId } = {}) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.details = details;
+    this.requestId = requestId || details?.requestId || "";
   }
 }
 
@@ -14,7 +15,7 @@ export const shouldInvalidateSession = (responseStatus, errorCode) => (
   responseStatus === 401 && errorCode === "UNAUTHENTICATED"
 );
 
-const parseResponse = async (response) => {
+export const parseResponse = async (response) => {
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.ok === false) {
     const errorCode = body.error?.code || "UNKNOWN";
@@ -25,6 +26,7 @@ const parseResponse = async (response) => {
       code: errorCode,
       status: body.error?.status || response.status,
       details: body.error?.details,
+      requestId: response.headers?.get?.("x-request-id") || body.error?.details?.requestId,
     });
   }
   return body.data;

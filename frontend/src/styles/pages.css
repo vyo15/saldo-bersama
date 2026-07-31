@@ -175,7 +175,7 @@
 .premium-account-strip button { min-width: 0; padding: 8px 7px; border: 0; border-right: 1px solid var(--border); display: grid; place-items: center; align-content: center; gap: 5px; background: var(--surface-soft); color: var(--text-soft); cursor: pointer; }
 .premium-account-strip button:last-child { border-right: 0; }
 .premium-account-strip button:hover { background: var(--primary-soft); color: var(--primary); }
-.premium-account-strip button.active { color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 76%, #b9aeff), var(--primary-strong)); }
+.premium-account-strip button.active { color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--secondary) 38%, var(--primary)), var(--primary-strong)); }
 .premium-account-strip strong { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
 .premium-account-strip .money { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 8px; }
 
@@ -201,13 +201,13 @@
 .premium-transaction-tabs button { min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--radius-pill); color: var(--desktop-panel-muted); background: transparent; font-size: 8px; font-weight: 850; cursor: pointer; white-space: nowrap; }
 .premium-transaction-tabs button:hover { color: var(--desktop-panel-text); background: rgba(255,255,255,.06); }
 .premium-transaction-tabs button.active { color: var(--text); background: #fff; }
-.premium-transaction-tabs button.active.premium { color: #fff; background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 78%, #b6aaff), var(--primary)); }
+.premium-transaction-tabs button.active.premium { color: #fff; background: linear-gradient(135deg, color-mix(in srgb, var(--secondary) 34%, var(--primary)), var(--primary)); }
 
 .premium-transaction-list { min-height: 0; max-height: 330px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
 .premium-transaction-row { width: 100%; min-height: 64px; padding: 8px 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.07); display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; color: var(--desktop-panel-text); background: transparent; text-align: left; cursor: pointer; transition: background .16s ease, box-shadow .16s ease, border-radius .16s ease; }
 .premium-transaction-row:hover,
 .premium-transaction-row.active { border-radius: 13px; background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 44%, transparent), color-mix(in srgb, var(--primary) 15%, transparent)); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary) 62%, #fff); }
-.premium-transaction-avatar { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(145deg, #9a8dff, #5140c9); }
+.premium-transaction-avatar { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(145deg, var(--secondary), var(--primary-deep)); }
 .premium-transaction-avatar--income,
 .premium-transaction-avatar--refund { background: linear-gradient(145deg, #56d2a5, #1b7b5d); }
 .premium-transaction-avatar--expense { background: linear-gradient(145deg, #ff8b95, #b83b49); }
@@ -225,7 +225,7 @@
 .premium-transaction-empty strong { color: var(--desktop-panel-text); font-size: 12px; }
 .premium-transaction-empty span { max-width: 260px; font-size: 9px; line-height: 1.5; }
 
-.premium-transaction-detail { position: relative; min-width: 0; padding: 18px; overflow: hidden; border-radius: 18px; color: #fff; background: radial-gradient(circle at 96% -10%, rgba(255,255,255,.18), transparent 36%), linear-gradient(135deg, color-mix(in srgb, var(--primary) 90%, #9e91ff) 0%, var(--primary) 48%, var(--primary-deep) 100%); }
+.premium-transaction-detail { position: relative; min-width: 0; padding: 18px; overflow: hidden; border-radius: 18px; color: #fff; background: radial-gradient(circle at 96% -10%, rgba(255,255,255,.18), transparent 36%), linear-gradient(135deg, color-mix(in srgb, var(--secondary) 28%, var(--primary)) 0%, var(--primary) 48%, var(--primary-deep) 100%); }
 .premium-transaction-detail::after { content: ""; position: absolute; right: -100px; bottom: -110px; width: 270px; height: 270px; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; box-shadow: 0 0 0 32px rgba(255,255,255,.025), 0 0 0 66px rgba(255,255,255,.018); }
 .premium-detail-heading { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, .78fr) minmax(145px, .85fr); gap: 18px; }
 .premium-detail-heading > div > span,

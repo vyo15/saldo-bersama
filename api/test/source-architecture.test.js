@@ -329,3 +329,41 @@ test("React Router v8 dikunci pada mode deklaratif tanpa package kompatibilitas,
   assert.doesNotMatch(frontendSource, /react-router-dom/);
   assert.doesNotMatch(frontendSource, /\b(?:createBrowserRouter|RouterProvider|HydratedRouter|ServerRouter|routeRSCServerRequest|matchRSCServerRequest|unstable_[A-Za-z0-9_]+)\b/);
 });
+
+test("observability memakai structured log, request reference, redaction, dan clock calibration aman", async () => {
+  const [packageJson, logger, connector, gateway, session, health, devLauncher, diagnose, appsSecurity, appsCode, apiClient, errorState] = await Promise.all([
+    readFile(new URL("../../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../_lib/observability.js", import.meta.url), "utf8"),
+    readFile(new URL("../_lib/appsScript.js", import.meta.url), "utf8"),
+    readFile(new URL("../gateway.js", import.meta.url), "utf8"),
+    readFile(new URL("../session.js", import.meta.url), "utf8"),
+    readFile(new URL("../health.js", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/start-vite-dev.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/diagnose-runtime.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../apps-script/Security.gs", import.meta.url), "utf8"),
+    readFile(new URL("../../apps-script/Code.gs", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/src/services/api/client.js", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/src/components/feedback/ErrorState.jsx", import.meta.url), "utf8"),
+  ]);
+  const pkg = JSON.parse(packageJson);
+  assert.equal(pkg.scripts.diagnose, "node scripts/diagnose-runtime.mjs");
+  assert.match(logger, /SENSITIVE_KEY/);
+  assert.match(logger, /\[REDACTED\]/);
+  assert.match(logger, /X-Request-ID/);
+  assert.doesNotMatch(logger, /console\.log\([^)]*(?:secret|token|payload|email)/i);
+  assert.match(connector, /connector\.clock\.calibrated/);
+  assert.match(connector, /refreshInternalEnvelope/);
+  assert.match(connector, /attempt <= 2/);
+  assert.match(connector, /MAX_CALIBRATED_SKEW_MS/);
+  assert.match(gateway, /attachRequestId/);
+  assert.match(session, /attachRequestId/);
+  assert.match(health, /runtimeBuildInfo/);
+  assert.match(devLauncher, /npm run diagnose/);
+  assert.match(diagnose, /Clock check/);
+  assert.match(appsSecurity, /serverEpochMs/);
+  assert.match(appsSecurity, /requestEpochMs/);
+  assert.match(appsSecurity, /skewMs/);
+  assert.match(appsCode, /request\.completed/);
+  assert.match(apiClient, /x-request-id/);
+  assert.match(errorState, /Referensi:/);
+});

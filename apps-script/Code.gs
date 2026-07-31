@@ -138,9 +138,17 @@ function contextFromSigned_(signed, actor) {
 
 function doPost(e) {
   resetRequestCache_();
+  const startedAt = Date.now();
+  let signed = null;
   try {
     const body = JSON.parse(e && e.postData && e.postData.contents || "{}");
-    const signed = verifyEnvelope_(body);
+    signed = verifyEnvelope_(body);
+    appsScriptLog_("info", "request.started", {
+      requestId: String(signed.requestId || "").slice(0, 120),
+      action: String(signed.action || "unknown").slice(0, 120),
+      role: String(signed.actor && signed.actor.role || "unknown").slice(0, 32),
+      mutating: isMutatingAction_(signed.action)
+    });
     enforceAppsScriptRateLimit_(signed.actor, signed.action);
     if (signed.action === "system.initialize") assertInitializationActor_(signed.actor);
     if (isIdempotencyRequired_(signed.action) && !signed.idempotencyKey) {
@@ -191,8 +199,25 @@ function doPost(e) {
       data = routeAction_(contextFromSigned_(signed, actor));
     }
 
+    appsScriptLog_("info", "request.completed", {
+      requestId: String(signed && signed.requestId || "").slice(0, 120),
+      action: String(signed && signed.action || "unknown").slice(0, 120),
+      role: String(signed && signed.actor && signed.actor.role || "unknown").slice(0, 32),
+      status: 200,
+      durationMs: Date.now() - startedAt,
+      mutating: signed ? isMutatingAction_(signed.action) : null
+    });
     return jsonOutput_({ ok: true, data: data });
   } catch (error) {
+    appsScriptLog_("error", "request.failed", {
+      requestId: String(signed && signed.requestId || "").slice(0, 120),
+      action: String(signed && signed.action || "unknown").slice(0, 120),
+      role: String(signed && signed.actor && signed.actor.role || "unknown").slice(0, 32),
+      status: error.status || 500,
+      code: error.code || "INTERNAL_ERROR",
+      durationMs: Date.now() - startedAt,
+      mutating: signed ? isMutatingAction_(signed.action) : null
+    });
     return jsonOutput_({ ok: false, error: { code: error.code || "INTERNAL_ERROR", message: error.code ? error.message : "Apps Script gagal memproses request.", status: error.status || 500, details: error.details || null } });
   }
 }

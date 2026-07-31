@@ -63,3 +63,13 @@ Hasil default: `../saldo-bersama-clean.zip`. `.env*`, secret, `.git`, `.vercel`,
 ## Deployment
 
 GitHub harus private. Vercel menjalankan frontend/API. Firebase hanya menangani Authentication. Google Apps Script menangani authorization kedua, business logic, Sheets, Calendar, backup, migration, restore, dan integrity check.
+
+## Diagnostik dan observability
+
+```bash
+npm run diagnose
+```
+
+Perintah tersebut memeriksa nama environment variable, validitas URL Apps Script, status schema, waktu respons, dan selisih waktu Google tanpa menampilkan secret. Runtime API dan Apps Script memakai structured log dengan `requestId` yang sama. UI menampilkan kode error dan referensi request agar log lokal, Vercel, dan Apps Script dapat dicocokkan tanpa membuka data keuangan.
+
+Lihat `docs/OBSERVABILITY.md` untuk format log, lokasi pemeriksaan, serta prosedur troubleshooting.

@@ -1,6 +1,14 @@
-const STATIC_CACHE = "saldo-bersama-static-v2";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v2";
-const STATIC_ASSETS = ["/", "/site.webmanifest", "/icons/icon-192.png"];
+const STATIC_CACHE = "saldo-bersama-static-v4";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v4";
+const STATIC_ASSETS = [
+  "/",
+  "/site.webmanifest",
+  "/brand/saldo-bersama-mark.png",
+  "/icons/favicon-32.png?v=4",
+  "/icons/favicon-64.png?v=4",
+  "/icons/icon-192.png?v=4",
+  "/icons/icon-512.png?v=4",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));
@@ -41,8 +49,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Saldo Bersama";
   const options = {
     body: payload.body || "Ada pembaruan yang perlu diperiksa.",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/favicon-64.png",
+    icon: "/icons/icon-192.png?v=4",
+    badge: "/icons/favicon-64.png?v=4",
     tag: payload.notificationId || undefined,
     renotify: false,
     data: { targetPath: payload.targetPath || "/" },

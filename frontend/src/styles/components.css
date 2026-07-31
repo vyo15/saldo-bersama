@@ -88,3 +88,5 @@
 .theme-toggle--hero { border-color: var(--glass-border); background: var(--glass-surface); color: var(--on-primary); backdrop-filter: blur(10px); }
 .theme-toggle--hero:hover { border-color: rgba(255,255,255,.32); color: var(--on-primary); background: rgba(255,255,255,.14); }
 .mobile-menu-theme { border-radius: var(--radius-md); }
+.error-state__diagnostic { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; max-width: 100%; color: var(--text-soft); font-size: 12px; }
+.error-state__diagnostic code { padding: 2px 6px; border-radius: 6px; background: var(--surface-strong); color: var(--text); font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }

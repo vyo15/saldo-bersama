@@ -1,8 +1,8 @@
 const Brand = ({ compact = false }) => (
   <div className={`brand-lockup${compact ? " brand-lockup--compact" : ""}`} aria-label="Saldo Bersama">
-    <span className="brand-mark" aria-hidden="true">SB</span>
+    <img className="brand-mark" src="/brand/saldo-bersama-mark.png" alt="" aria-hidden="true" />
     <span className="brand-copy">
-      <strong className="brand-wordmark">Saldo Bersama</strong>
+      <strong className="brand-wordmark"><span>Saldo</span> <span>Bersama</span></strong>
       <small>Keuangan pribadi dan bersama</small>
     </span>
   </div>

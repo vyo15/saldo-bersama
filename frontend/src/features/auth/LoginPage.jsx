@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiShield } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
+import Brand from "../../components/common/Brand.jsx";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
 import { useAuth } from "./AuthContext.jsx";
@@ -31,10 +32,7 @@ const LoginPage = () => {
     <main className="login-page">
       <ThemeToggle className="login-theme-toggle" />
       <section className="login-card" aria-labelledby="login-title">
-        <div className="brand-lockup brand-lockup--centered">
-          <span className="brand-mark" aria-hidden="true">SB</span>
-          <span>Saldo Bersama</span>
-        </div>
+        <div className="brand-lockup--centered"><Brand /></div>
         <div className="login-card__icon"><FiShield aria-hidden="true" /></div>
         <h1 id="login-title">Keuangan rapi, transparan, dan terlacak</h1>
         <p>Masuk dengan akun Google yang telah diizinkan. Akun lain tetap ditolak oleh server.</p>

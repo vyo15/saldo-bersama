@@ -144,3 +144,15 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Export CSV/XLSX menetralkan formula dan tidak menyertakan token/subscription/idempotency internal.
 - [ ] Integrity check memeriksa seluruh referensi lintas sheet dan over-allocation per rekening.
 - [ ] Notification `no_subscription`/`failed` dapat diantrekan ulang setelah kondisi membaik.
+
+## Observability dan diagnosability
+
+- [ ] Setiap respons API memiliki `X-Request-ID`.
+- [ ] UI menampilkan kode error dan referensi request tanpa stack trace.
+- [ ] API dan Apps Script mencatat request ID/action/status/durasi tanpa payload finansial atau identitas lengkap.
+- [ ] Logger meredaksi token, secret, signature, cookie, email, UID, payload, nominal, dan subscription.
+- [ ] `npm run diagnose` tidak menampilkan nilai secret dan mendeteksi URL `/exec`, schema status, latency, serta clock skew.
+- [ ] `REQUEST_EXPIRED` mengembalikan detail waktu aman dan hanya boleh retry satu kali sebelum route/mutasi.
+- [ ] Retry clock calibration mempertahankan request ID, payload, dan idempotency key, tetapi memakai nonce/signature baru.
+- [ ] `/api/health` menampilkan commit/deployment runtime tanpa menyatakan data bisnis sehat.
+- [ ] Vercel Logs dan Apps Script Executions dapat dikorelasikan menggunakan referensi UI.

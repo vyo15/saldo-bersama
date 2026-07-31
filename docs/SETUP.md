@@ -146,3 +146,15 @@ Jangan gunakan data nyata sebelum login owner/member, personal isolation, transa
 - `CONNECTOR_AUTH_FAILED` berarti sesi pengguna masih valid, tetapi `INTERNAL_SHARED_SECRET` pada API/Vercel tidak sama dengan Script Properties Apps Script. Sinkronkan nilainya, restart server lokal atau redeploy Vercel, lalu coba lagi.
 - `CONNECTOR_NOT_CONFIGURED` berarti URL `/exec` atau secret konektor belum lengkap.
 - Jangan menyimpan `SETUP_DETAILS` dengan nilai kosong. Setup yang berhasil menghapus properti tersebut; properti hanya dibuat ketika setup gagal.
+
+## Troubleshooting terstruktur
+
+Sebelum mengubah secret atau deployment secara berulang, jalankan:
+
+```bash
+npm run diagnose
+```
+
+Saat UI menampilkan error, catat **Kode** dan **Referensi**. Cocokkan referensi tersebut pada terminal lokal/Vercel Logs dan Apps Script Executions. Detail lengkap ada di `docs/OBSERVABILITY.md`.
+
+`REQUEST_EXPIRED` yang sudah lolos signature dapat dikalibrasi dan di-retry tepat satu kali oleh API. Replay tolerance tetap 120 detik; jangan memperbesar toleransi. Perbaiki NTP Windows bila `npm run diagnose` menunjukkan clock skew besar.

@@ -109,3 +109,15 @@ Calendar bersama tidak boleh memuat nominal, saldo, rekening, atau data personal
 ## Timeout dan recovery
 
 Gateway timeout dapat berarti hasil commit belum diketahui. Retry write harus memakai idempotency key yang sama. Jangan membuka maintenance atau mengedit sheet manual ketika recovery/migration gagal. Ikuti `docs/RECOVERY_RUNBOOK.md`.
+
+## Verifikasi deployment dan log
+
+Setelah setiap perubahan environment variable atau source:
+
+1. Redeploy production.
+2. Buka `/api/health` dan catat `build.commitSha`, `build.deploymentId`, serta status connector.
+3. Pastikan commit SHA sesuai source yang baru dipush.
+4. Uji login dan bootstrap; simpan `requestId` bila gagal.
+5. Cari request ID yang sama di Vercel Logs dan Apps Script Executions.
+
+Jangan menyimpulkan environment sudah aktif hanya karena variable terlihat di Settings; deployment lama tidak otomatis memakai nilai baru.

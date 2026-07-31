@@ -1,3 +1,23 @@
+const SB_REQUEST_TOLERANCE_MS = 120000;
+const SB_LOG_FIELDS = Object.freeze(["requestId", "action", "role", "status", "code", "durationMs", "skewMs", "toleranceMs", "mutating", "stage"]);
+
+function appsScriptLog_(level, event, fields) {
+  const record = {
+    timestamp: new Date().toISOString(),
+    level: ["debug", "info", "warn", "error"].indexOf(level) === -1 ? "info" : level,
+    service: "saldo-bersama-apps-script",
+    event: String(event || "unknown")
+  };
+  const source = fields || {};
+  SB_LOG_FIELDS.forEach(function(key) {
+    if (source[key] !== undefined && source[key] !== null && source[key] !== "") record[key] = source[key];
+  });
+  const output = JSON.stringify(record);
+  if (record.level === "error") console.error(output);
+  else if (record.level === "warn") console.warn(output);
+  else console.log(output);
+}
+
 const SB_ROLE_ACTIONS = Object.freeze({
   owner: ["system.initialize", "system.health", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview", "accounts.list", "accounts.create", "accounts.update", "accounts.archive", "categories.list", "categories.create", "categories.update", "categories.archive", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync", "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run"],
   member: ["system.health", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "notifications.register", "notifications.unregister"]
@@ -18,7 +38,26 @@ function verifyEnvelope_(body) {
   if (!constantTimeEqual_(expected, String(body.signature))) throw sbError_("INVALID_SIGNATURE", "Signature internal tidak valid.", 401);
   let message;
   try { message = JSON.parse(body.message); } catch (error) { throw sbError_("INVALID_JSON", "Message internal tidak valid.", 400); }
-  if (Math.abs(Date.now() - Number(message.timestamp || 0)) > 120000) throw sbError_("REQUEST_EXPIRED", "Request sudah kedaluwarsa.", 401);
+  const requestEpochMs = Number(message.timestamp || 0);
+  const serverEpochMs = Date.now();
+  const skewMs = serverEpochMs - requestEpochMs;
+  if (!Number.isFinite(requestEpochMs) || Math.abs(skewMs) > SB_REQUEST_TOLERANCE_MS) {
+    appsScriptLog_("warn", "request.rejected.clock_skew", {
+      requestId: String(message.requestId || "").slice(0, 120),
+      action: String(message.action || "unknown").slice(0, 120),
+      role: String(message.actor && message.actor.role || "unknown").slice(0, 32),
+      code: "REQUEST_EXPIRED",
+      skewMs: skewMs,
+      toleranceMs: SB_REQUEST_TOLERANCE_MS,
+      stage: "verify_envelope"
+    });
+    throw sbError_("REQUEST_EXPIRED", "Request sudah kedaluwarsa.", 401, {
+      serverEpochMs: serverEpochMs,
+      requestEpochMs: requestEpochMs,
+      skewMs: skewMs,
+      toleranceMs: SB_REQUEST_TOLERANCE_MS
+    });
+  }
   const cache = CacheService.getScriptCache();
   if (cache.get("nonce:" + message.nonce)) throw sbError_("REPLAY_DETECTED", "Request pernah diproses.", 409);
   cache.put("nonce:" + message.nonce, "1", 180);

@@ -211,11 +211,15 @@ export const identityRateLimitKey = (scope, identity) => {
   return `${scope}:${digest}`;
 };
 
-export const createInternalEnvelope = ({ actor, action, payload, requestId, idempotencyKey, rowVersion }) => {
+const signInternalMessage = (message) => {
   const secret = process.env.INTERNAL_SHARED_SECRET;
   if (!secret || secret.length < 32) throw Object.assign(new Error("Koneksi internal Google Apps Script belum dikonfigurasi."), { status: 503, code: "CONNECTOR_NOT_CONFIGURED" });
+  return crypto.createHmac("sha256", secret).update(message).digest("hex");
+};
+
+export const createInternalEnvelope = ({ actor, action, payload, requestId, idempotencyKey, rowVersion, timestampMs = Date.now() }) => {
   const message = JSON.stringify({
-    timestamp: Date.now(),
+    timestamp: timestampMs,
     nonce: crypto.randomUUID(),
     actor,
     action,
@@ -224,7 +228,19 @@ export const createInternalEnvelope = ({ actor, action, payload, requestId, idem
     idempotencyKey: idempotencyKey || null,
     rowVersion: rowVersion ?? null,
   });
-  return { message, signature: crypto.createHmac("sha256", secret).update(message).digest("hex") };
+  return { message, signature: signInternalMessage(message) };
+};
+
+export const refreshInternalEnvelope = (envelope, timestampMs) => {
+  let parsed;
+  try { parsed = JSON.parse(String(envelope?.message || "")); }
+  catch { throw Object.assign(new Error("Envelope internal tidak dapat dikalibrasi."), { status: 500, code: "CONNECTOR_ENVELOPE_INVALID" }); }
+  const message = JSON.stringify({
+    ...parsed,
+    timestamp: Number(timestampMs),
+    nonce: crypto.randomUUID(),
+  });
+  return { message, signature: signInternalMessage(message) };
 };
 
 const pushNonces = new Map();

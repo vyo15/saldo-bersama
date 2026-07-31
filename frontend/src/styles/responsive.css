@@ -22,7 +22,7 @@
   .app-shell { width: min(calc(100% - 20px), 1540px); margin: 10px auto; }
   .desktop-app-header { padding-inline: 12px; grid-template-columns: auto minmax(0, 1fr) auto; }
   .desktop-app-header .brand-wordmark { display: none; }
-  .desktop-app-header .brand-mark { width: 36px; height: 36px; border-radius: 11px; font-size: 10px; }
+  .desktop-app-header .brand-mark { width: 36px; height: 36px; }
   .desktop-primary-navigation a { padding-inline: 8px; font-size: 9px; }
   .desktop-user-avatar, .desktop-logout-button { display: none; }
   .premium-detail-heading { grid-template-columns: 1fr 1fr; }

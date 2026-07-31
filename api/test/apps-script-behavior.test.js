@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import test from "node:test";
 import { createBaseContext, loadAllAppsScript, loadAppsScript } from "./helpers/apps-script-vm.js";
 
@@ -1120,4 +1121,39 @@ test("transaksi backdated ditolak bila membuat saldo negatif pada tanggal setela
     () => runtime.createTransaction_({ actor: { user_id: "u1", role: "owner" }, payload: { transaction_type: "expense", transaction_date: "2026-07-10", source_account_id: "a1", category_id: "c1", amount: 200, description: "Backdated" }, idempotencyKey: "k4" }),
     (error) => error.code === "INSUFFICIENT_BALANCE" && error.details.offendingDate === "2026-07-20",
   );
+});
+
+
+test("verifyEnvelope memberi detail clock skew aman dan menerima timestamp dalam toleransi", async () => {
+  const secret = "a".repeat(64);
+  const context = createBaseContext();
+  context.PropertiesService.getScriptProperties().setProperty("INTERNAL_SHARED_SECRET", secret);
+  await loadAppsScript(context, ["Security.gs"]);
+
+  const sign = (message) => crypto.createHmac("sha256", secret).update(message).digest("hex");
+  const expiredMessage = JSON.stringify({
+    timestamp: Date.now() - 300_000,
+    nonce: "expired-nonce",
+    requestId: "req-clock-expired",
+    action: "bootstrap.get",
+    actor: { role: "owner" },
+  });
+  assert.throws(
+    () => context.verifyEnvelope_({ message: expiredMessage, signature: sign(expiredMessage) }),
+    (error) => error.code === "REQUEST_EXPIRED"
+      && error.status === 401
+      && Number.isFinite(error.details.serverEpochMs)
+      && Number.isFinite(error.details.requestEpochMs)
+      && error.details.skewMs > 120_000
+      && error.details.toleranceMs === 120_000,
+  );
+
+  const acceptedMessage = JSON.stringify({
+    timestamp: Date.now() - 1_000,
+    nonce: "accepted-nonce",
+    requestId: "req-clock-ok",
+    action: "bootstrap.get",
+    actor: { role: "owner" },
+  });
+  assert.equal(context.verifyEnvelope_({ message: acceptedMessage, signature: sign(acceptedMessage) }).requestId, "req-clock-ok");
 });

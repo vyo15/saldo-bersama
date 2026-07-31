@@ -25,6 +25,11 @@ for (const [key, value] of Object.entries(localEnvironment)) {
 process.env.NODE_ENV ||= "development";
 process.env.VERCEL_ENV ||= "development";
 
+const [{ logEvent, runtimeBuildInfo }, { connectorConfiguration }] = await Promise.all([
+  import(new URL("../api/_lib/observability.js", import.meta.url)),
+  import(new URL("../api/_lib/appsScript.js", import.meta.url)),
+]);
+
 const routeModules = Object.freeze({
   "/api/session": "../api/session.js",
   "/api/gateway": "../api/gateway.js",
@@ -81,7 +86,12 @@ const httpServer = http.createServer(async (request, response) => {
       if (!handler) return sendJsonError(response, 404, "API_NOT_FOUND", "Endpoint API tidak ditemukan.");
       return await handler(request, response);
     } catch (error) {
-      console.error(`[local-api] ${requestUrl.pathname}: ${error?.message || "unknown error"}`);
+      logEvent("error", "local.api.unhandled", {
+        route: requestUrl.pathname,
+        method: request.method,
+        code: error?.code || "LOCAL_API_ERROR",
+        status: error?.status || 500,
+      });
       return sendJsonError(response, 500, "LOCAL_API_ERROR", "API lokal tidak dapat memproses permintaan.");
     }
   }
@@ -124,13 +134,23 @@ await new Promise((resolve, reject) => {
   httpServer.listen(port, host, resolve);
 });
 
+const connector = connectorConfiguration();
 console.log(`\n  Saldo Bersama DEV siap di http://localhost:${port}`);
-console.log("  Frontend dan /api berjalan dalam satu proses. Tekan Ctrl+C untuk berhenti.\n");
+console.log("  Frontend dan /api berjalan dalam satu proses. Tekan Ctrl+C untuk berhenti.");
+console.log(`  Connector URL: ${connector.appsScriptUrlConfigured ? "set" : "MISSING"}; shared secret: ${connector.sharedSecretConfigured ? "set" : "MISSING"}`);
+console.log("  Diagnostik aman: npm run diagnose\n");
+logEvent("info", "local.server.started", {
+  port,
+  host,
+  connector,
+  build: runtimeBuildInfo(),
+});
 
 let closing = false;
 const closeServer = async () => {
   if (closing) return;
   closing = true;
+  logEvent("info", "local.server.stopping", { port, host });
   await Promise.allSettled([
     viteServer.close(),
     new Promise((resolve) => httpServer.close(resolve)),
