@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const targets = ["api", "scripts"];
+const targets = ["api", "scripts", "test"];
 const walk = async (directory) => {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
