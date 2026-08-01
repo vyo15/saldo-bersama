@@ -145,7 +145,7 @@ export const assertPayloadAuthorization = (session, action, payload = {}) => {
   }
 };
 
-export const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
+const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
   "system.initialize", "users.upsert", "users.deactivate",
   "accounts.create", "accounts.update", "accounts.archive",
   "categories.create", "categories.update", "categories.archive",

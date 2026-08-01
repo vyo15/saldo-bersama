@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-
 export const REQUIRED_RUNTIME_ENV_KEYS = Object.freeze([
   "VITE_GOOGLE_CLIENT_ID",
   "VITE_FIREBASE_API_KEY",
@@ -42,13 +40,4 @@ export const environmentStatus = (values = {}) => {
 export const sanitizePulledEnvironment = (source = "") => {
   const lines = String(source).split(/\r?\n/).filter((line) => !/^\s*VERCEL_OIDC_TOKEN\s*=/.test(line));
   return `${lines.join("\n").replace(/\n+$/g, "")}\n`;
-};
-
-export const loadEnvironmentFile = async (filePath) => {
-  try {
-    return parseEnvironmentText(await readFile(filePath, "utf8"));
-  } catch (error) {
-    if (error?.code === "ENOENT") return {};
-    throw error;
-  }
 };

@@ -77,6 +77,13 @@ const retiredRootEntries = new Set([
   "worker",
 ]);
 
+// Saldo, arus kas, dan pemakaian kantong dihitung oleh Apps Script/API.
+// Menyimpan kalkulator kedua di frontend berisiko menghasilkan angka berbeda.
+const retiredClientFinanceFiles = new Set([
+  "frontend/src/domain/finance.js",
+  "frontend/test/finance.test.js",
+]);
+
 const forbiddenNames = [
   /(^|\/)\.env(?:\.|$)/,
   /(^|\/)\.clasp\.json$/i,
@@ -162,6 +169,7 @@ const pathViolations = [...new Set([...files, ...trackedFiles])].filter((file) =
   const firstSegment = file.split("/")[0];
   const hasGeneratedSegment = file.split("/").some((segment) => ignoredSegments.has(segment));
   return retiredRootEntries.has(firstSegment)
+    || retiredClientFinanceFiles.has(file)
     || hasGeneratedSegment
     || (forbiddenNames.some((pattern) => pattern.test(file)) && file !== ".env.example");
 });

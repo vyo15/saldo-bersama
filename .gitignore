@@ -44,8 +44,3 @@ logs/
 # Operating system files
 .DS_Store
 Thumbs.db
-.vercel
-.env*
-
-# Safe environment template must remain packageable
-!.env.example

@@ -60,6 +60,20 @@ test("source hanya menyimpan arsitektur runtime canonical", async () => {
   }
 });
 
+test("frontend tidak memiliki kalkulator saldo kedua", async () => {
+  await assert.rejects(access(new URL("../../frontend/src/domain/finance.js", import.meta.url)));
+  await assert.rejects(access(new URL("../../frontend/test/finance.test.js", import.meta.url)));
+
+  const [validator, financeService, reports] = await Promise.all([
+    readFile(new URL("../../scripts/validate-source-tree.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../apps-script/FinanceService.gs", import.meta.url), "utf8"),
+    readFile(new URL("../../apps-script/ReportsAndIntegrations.gs", import.meta.url), "utf8"),
+  ]);
+  assert.match(validator, /retiredClientFinanceFiles/);
+  assert.match(financeService, /function accountBalanceAsOf_/);
+  assert.match(reports, /function dashboardOverview_/);
+});
+
 test("namespace api hanya mengekspos Vercel Functions canonical", async () => {
   const apiRoot = new URL("../../api/", import.meta.url);
   const candidates = await collectVercelFunctionCandidates(apiRoot);
