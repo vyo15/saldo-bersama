@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FiBell, FiCalendar, FiCheckCircle, FiDatabase, FiDownloadCloud, FiFileText, FiLock, FiShield, FiUploadCloud, FiUnlock, FiUserMinus, FiUsers } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -8,11 +8,11 @@ import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { apiClient } from "../../services/api/client.js";
-import { enablePushNotifications } from "../../services/notifications.js";
+import { disablePushNotifications, enablePushNotifications, getPushNotificationState } from "../../services/notifications.js";
 import { readTransactionImportFile } from "../../services/importer.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { currentMonthInJakarta } from "../../domain/dates.js";
+import { currentMonthInJakarta, previousMonthInJakarta } from "../../domain/dates.js";
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -30,11 +30,23 @@ const SettingsPage = () => {
   const [restorePreview, setRestorePreview] = useState(null);
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [memberForm, setMemberForm] = useState({ email: "", name: "", role: "member" });
-  const [periodForm, setPeriodForm] = useState({ period_key: currentMonthInJakarta(), reason: "Review dan rekonsiliasi selesai" });
+  const [periodForm, setPeriodForm] = useState({ period_key: previousMonthInJakarta(), reason: "Review dan rekonsiliasi selesai" });
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivateState, setDeactivateState] = useState({ status: "idle", error: null });
   const [reopenTarget, setReopenTarget] = useState(null);
   const [reopenState, setReopenState] = useState({ status: "idle", error: null });
+  const [pushState, setPushState] = useState({ status: "loading", supported: true, permission: "default", enabled: false });
+  const refreshPushState = useCallback(async () => {
+    try {
+      const next = await getPushNotificationState();
+      setPushState({ status: "ready", ...next });
+      return next;
+    } catch (error) {
+      setPushState({ status: "error", supported: false, permission: "unknown", enabled: false, error });
+      return null;
+    }
+  }, []);
+  useEffect(() => { refreshPushState(); }, [refreshPushState]);
   const backendStatus = healthResource.status === "error"
     ? { label: "Tidak tersedia", tone: "danger" }
     : healthResource.status !== "ready"
@@ -48,7 +60,11 @@ const SettingsPage = () => {
   const run = async (action, payload = {}) => {
     setResult({ status: "loading", text: "Memproses..." });
     try {
-      const data = action === "notifications.enable" ? await enablePushNotifications() : await apiClient.request(action, payload, { idempotencyKey: createIdempotencyKey() });
+      let data;
+      if (action === "notifications.enable") data = await enablePushNotifications();
+      else if (action === "notifications.disable") data = await disablePushNotifications();
+      else data = await apiClient.request(action, payload, { idempotencyKey: createIdempotencyKey() });
+      if (action === "notifications.enable" || action === "notifications.disable") await refreshPushState();
       const fileLink = data?.fileId ? `https://drive.google.com/open?id=${encodeURIComponent(data.fileId)}` : null;
       setResult({ status: "success", text: action === "backup.create" ? `Backup terverifikasi: ${data.fileName}` : "Operasi berhasil diverifikasi.", fileLink });
       return data;
@@ -136,9 +152,9 @@ const SettingsPage = () => {
         <Card className="settings-card"><FiShield /><div><h2>Akses aplikasi</h2><p>{user?.email} · role {user?.role}</p></div><span className="status-badge status-badge--active">Diizinkan</span></Card>
         <Card className="settings-card"><FiDatabase /><div><h2>Schema database</h2><p>Versi {bootstrap?.config?.schemaVersion || "-"} · {bootstrap?.config?.timezone || "Asia/Jakarta"}</p></div>{ownerMode ? <Button onClick={() => run("integrity.run")}>Periksa integritas</Button> : <span className="status-badge">Owner</span>}</Card>
         <Card className="settings-card"><FiCalendar /><div><h2>Google Calendar</h2><p>Satu kalender Saldo Bersama untuk pengingat kedua akun.</p></div>{ownerMode ? <Button onClick={() => run("calendar.sync")}>Sinkronkan</Button> : <span className="status-badge">Owner</span>}</Card>
-        <Card className="settings-card"><FiBell /><div><h2>Notifikasi perangkat</h2><p>Push tidak menampilkan nominal sensitif pada layar terkunci.</p></div><Button onClick={() => run("notifications.enable")}>Aktifkan</Button></Card>
+        <Card className="settings-card"><FiBell /><div><h2>Notifikasi perangkat</h2><p>{pushState.enabled ? "Aktif pada browser ini. Dinonaktifkan otomatis saat logout." : pushState.supported ? "Belum aktif pada browser ini." : "Browser ini tidak mendukung Web Push."}</p></div>{pushState.enabled ? <Button onClick={() => run("notifications.disable")}>Nonaktifkan</Button> : <Button disabled={!pushState.supported || pushState.status === "loading"} onClick={() => run("notifications.enable")}>Aktifkan</Button>}</Card>
         <Card className="settings-card"><FiDownloadCloud /><div><h2>Backup</h2><p>Backup sebelum migration, import besar, dan restore.</p></div>{ownerMode ? <Button onClick={() => run("backup.create", { type: "manual" })}>Buat backup</Button> : <span className="status-badge">Owner</span>}</Card>
-        <Card className="settings-card"><FiCheckCircle /><div><h2>Status backend</h2><p>Setup {healthResource.data?.setupStatus || "-"} · migration {healthResource.data?.migrationStatus || "-"}</p></div><span className={`status-badge status-badge--${backendStatus.tone}`}>{backendStatus.label}</span></Card>
+        <Card className="settings-card"><FiCheckCircle /><div><h2>Status backend</h2><p>Setup {healthResource.data?.setupStatus || "-"} · migration {healthResource.data?.migrationStatus || "-"} · trigger {healthResource.data?.triggers?.ready ? "siap" : "belum lengkap"}</p></div><span className={`status-badge status-badge--${backendStatus.tone}`}>{backendStatus.label}</span></Card>
       </section>
 
       {ownerMode ? (
@@ -157,7 +173,7 @@ const SettingsPage = () => {
           <Card className="panel">
             <div className="panel__header"><div><p className="eyebrow">Tutup buku</p><h2>Kunci periode bulanan</h2><p>Periode hanya ditutup setelah transaksi teralokasi dan integrity check lulus.</p></div><FiLock /></div>
             <form className="form-grid" onSubmit={closePeriod}>
-              <label className="field"><span>Periode</span><input type="month" value={periodForm.period_key} onChange={(event) => setPeriodForm((current) => ({ ...current, period_key: event.target.value }))} /></label>
+              <label className="field"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={periodForm.period_key} onChange={(event) => setPeriodForm((current) => ({ ...current, period_key: event.target.value }))} /></label>
               <label className="field form-grid__full"><span>Catatan penutupan</span><input required maxLength="200" value={periodForm.reason} onChange={(event) => setPeriodForm((current) => ({ ...current, reason: event.target.value }))} /></label>
               <div className="form-grid__full form-actions"><Button variant="primary" type="submit">Validasi dan tutup periode</Button></div>
             </form>
@@ -170,7 +186,7 @@ const SettingsPage = () => {
           </Card>
 
           <Card className="panel">
-            <div className="panel__header"><div><p className="eyebrow">Import transaksi</p><h2>Preview sebelum apply</h2><p>File JSON/CSV maksimal 500 transaksi per batch.</p></div><FiUploadCloud /></div>
+            <div className="panel__header"><div><p className="eyebrow">Import transaksi</p><h2>Preview sebelum apply</h2><p>File JSON/CSV maksimal 200 transaksi per batch.</p></div><FiUploadCloud /></div>
             <div className="stack-form">
               <input type="file" accept=".json,.csv,application/json,text/csv" onChange={(event) => { setImportFile(event.target.files?.[0] || null); setImportPreview(null); }} />
               <Button onClick={previewImport} disabled={!importFile}>Preview import</Button>

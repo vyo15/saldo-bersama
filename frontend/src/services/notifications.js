@@ -23,17 +23,34 @@ export const registerServiceWorker = async () => {
   return navigator.serviceWorker.register("/sw.js");
 };
 
+const currentPushSubscription = async () => {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+  const registration = await navigator.serviceWorker.getRegistration("/")
+    || await navigator.serviceWorker.getRegistration();
+  return registration ? registration.pushManager.getSubscription() : null;
+};
+
+export const getPushNotificationState = async () => {
+  const supported = "Notification" in window && "PushManager" in window && "serviceWorker" in navigator;
+  if (!supported) return { supported: false, permission: "unsupported", enabled: false };
+  const subscription = await currentPushSubscription();
+  return { supported: true, permission: Notification.permission, enabled: Boolean(subscription) };
+};
+
 export const enablePushNotifications = async () => {
   if (!("Notification" in window) || !("PushManager" in window)) {
     throw new Error("Browser ini belum mendukung Web Push.");
   }
+  if (import.meta.env.DEV) throw new Error("Web Push hanya dapat diuji pada deployment HTTPS, bukan server development lokal.");
   if (!env.vapidPublicKey) throw new Error("VAPID public key belum dikonfigurasi.");
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Izin notifikasi belum diberikan.");
 
   const registration = await registerServiceWorker();
-  const subscription = await registration.pushManager.subscribe({
+  if (!registration) throw new Error("Service worker notifikasi belum tersedia.");
+  const existing = await registration.pushManager.getSubscription();
+  const subscription = existing || await registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(env.vapidPublicKey),
   });
@@ -44,4 +61,23 @@ export const enablePushNotifications = async () => {
     userAgent: navigator.userAgent.slice(0, 250),
   }, { idempotencyKey: createIdempotencyKey() });
   return subscription;
+};
+
+export const disablePushNotifications = async ({ bestEffort = false, localOnly = false } = {}) => {
+  try {
+    const subscription = await currentPushSubscription();
+    if (!subscription) return { disabled: true, hadSubscription: false };
+    if (!localOnly) {
+      try {
+        await apiClient.request("notifications.unregister", { endpoint: subscription.endpoint }, { idempotencyKey: createIdempotencyKey() });
+      } catch (error) {
+        if (error?.code !== "NOT_FOUND" && !bestEffort) throw error;
+      }
+    }
+    const unsubscribed = await subscription.unsubscribe();
+    return { disabled: true, hadSubscription: true, unsubscribed };
+  } catch (error) {
+    if (bestEffort) return { disabled: false, errorCode: error?.code || "PUSH_DISABLE_FAILED" };
+    throw error;
+  }
 };

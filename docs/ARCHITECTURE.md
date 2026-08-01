@@ -68,7 +68,9 @@ Restore/import/migration memakai safety backup dan hanya membuka maintenance set
 
 ## Read performance
 
-Apps Script menggunakan cache row request-scoped agar sheet yang sama tidak dibaca berulang dalam satu request. Cache diinvalidasi setelah append/update/delete. List transaksi difilter dan dipaginasi server-side serta mengembalikan total sebelum pagination.
+Apps Script menggunakan cache row request-scoped agar sheet yang sama tidak dibaca berulang dalam satu request. `ReadModel.gs` membangun index transaksi per rekening, periode, kategori, envelope, dan ID; saldo seluruh rekening, penggunaan envelope, budget, goal, dan ringkasan report memakai snapshot/index yang sama alih-alih memfilter seluruh ledger berulang kali. Cache diinvalidasi setelah append/update/delete. List transaksi difilter dan dipaginasi server-side serta mengembalikan total sebelum pagination.
+
+Initial state tetap membaca source-of-truth Sheets pada request baru; tidak ada cache lintas pengguna yang dapat mencampur data owner/member. Log aman mencatat jumlah row yang discan, cache hit request-scoped, timing per sheet, dan timing tahap request tanpa payload finansial.
 
 ## Rate limiting
 
@@ -84,7 +86,9 @@ Frontend menggunakan coordinator in-memory privat untuk read API. Coordinator me
 
 Cache tidak memakai `localStorage`, service worker, CDN, atau public response cache. Scope cache mengandung identitas sesi dan seluruh cache dibersihkan ketika sesi berubah atau logout. Abort satu komponen tidak boleh membatalkan request identik yang masih dipakai komponen lain.
 
-Initial load memakai action `app.initialState`, yang mengembalikan bootstrap master data dan overview dari satu eksekusi Apps Script serta satu snapshot transaksi. `bootstrap.get` dan `dashboard.overview` tetap dipertahankan untuk refresh terarah dan kompatibilitas operasional.
+Initial load memakai action `app.initialState`, yang mengembalikan bootstrap master data dan overview dari satu eksekusi Apps Script serta satu snapshot transaksi. `bootstrap.get` dan `dashboard.overview` tetap dipertahankan untuk refresh terarah dan kompatibilitas operasional. `bootstrap.get` **bukan** read yang boleh dikoaleskan karena pada login pertama action tersebut dapat mengikat Firebase UID melalui mutation lock; read-only `reconciliations.list` dapat dikoaleskan dan dicache privat per sesi.
+
+Bootstrap hanya memuat master data aktif untuk input cepat. Halaman manajemen rekening/kategori tidak di-seed dari bootstrap agar daftar archived tidak tertutup oleh cache aktif-only; halaman tersebut selalu memakai action list canonical.
 
 Setelah write:
 
@@ -94,4 +98,10 @@ Setelah write:
 
 ## Schema read guard
 
-Read action yang allowlisted dapat menggunakan cache positif validasi schema selama maksimal 30 detik. Hanya hasil valid yang dicache. Hasil rusak, exception, recovery, restore, integrity, dan seluruh write tetap melalui jalur fail-closed yang sesuai. Cache schema diinvalidasi saat inisialisasi atau perubahan struktur terkontrol.
+Read action yang allowlisted dapat menggunakan cache positif validasi schema selama maksimal 300 detik. Hanya hasil valid yang dicache. Hasil rusak, exception, recovery, restore, integrity, dan seluruh write tetap melalui jalur fail-closed yang sesuai. Cache schema diinvalidasi saat inisialisasi atau perubahan struktur terkontrol.
+
+## Period closure dan histori
+
+Closure bulanan bersifat household-global (`scope=shared`). Menutup suatu bulan mengunci seluruh transaksi pada bulan tersebut dan bulan sebelumnya karena saldo akhir bersifat kumulatif. Reopen wajib dilakukan dari closure paling akhir menuju bulan yang lebih lama. Laporan historis dan snapshot closure memakai cutoff akhir bulan, bukan saldo hari ini.
+
+Snapshot closure mempunyai fingerprint atas total finansial, saldo per rekening, pengeluaran kategori, budget, envelope, recurring occurrence, dan progress goal. Integrity check membandingkan ulang state finansial tertutup serta tetap kompatibel dengan snapshot legacy yang belum memiliki dimensi baru. Ledger tetap mempertahankan transaksi `cancelled` untuk histori/audit, sedangkan saldo, report, budget, envelope, dan agregasi hanya memakai transaksi `active`. Integrity check juga menolak entity aktif yang masih bergantung pada rekening, kategori, atau envelope rule yang sudah diarsipkan.

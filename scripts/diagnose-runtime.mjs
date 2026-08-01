@@ -1,6 +1,7 @@
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { environmentStatus, REQUIRED_RUNTIME_ENV_KEYS } from "./runtime-environment.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = path.join(root, ".env.local");
@@ -8,19 +9,9 @@ try { process.loadEnvFile(envPath); } catch (error) {
   if (error.code !== "ENOENT") throw error;
 }
 
-const required = [
-  "VITE_GOOGLE_CLIENT_ID",
-  "VITE_FIREBASE_API_KEY",
-  "FIREBASE_WEB_API_KEY",
-  "ALLOWED_USERS_JSON",
-  "ALLOWED_ORIGINS",
-  "SESSION_SECRET",
-  "INTERNAL_SHARED_SECRET",
-  "APPS_SCRIPT_WEB_APP_URL",
-];
-
+const required = REQUIRED_RUNTIME_ENV_KEYS;
 const status = Object.fromEntries(required.map((key) => [key, Boolean(String(process.env[key] || "").trim())]));
-const missing = required.filter((key) => !status[key]);
+const { missing } = environmentStatus(process.env);
 
 console.log("Saldo Bersama runtime diagnostic");
 console.log(`Node: ${process.version}`);
@@ -50,8 +41,8 @@ if (url) {
     const body = await response.json().catch(() => null);
     console.log(`Apps Script GET: HTTP ${response.status}, ${completedAt - startedAt} ms`);
     console.log(`Apps Script service: ${body?.data?.service || "respons tidak dikenali"}`);
-    console.log(`Apps Script status: ${body?.data?.status || "unknown"}`);
-    console.log(`Schema version: ${body?.data?.schemaVersion || "unknown"}`);
+    console.log(`Apps Script status publik: ${body?.data?.status || "unknown"}`);
+    console.log("Detail schema, trigger, dan recovery hanya tersedia melalui signed action system.health.");
     if (skewMs === null) console.warn("Clock check: header Date tidak tersedia");
     else {
       const label = Math.abs(skewMs) > 120_000 ? "WARNING" : "OK";

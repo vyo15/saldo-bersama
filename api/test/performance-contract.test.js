@@ -16,7 +16,11 @@ test("initial state, read dedupe, dan cache tetap privat per sesi", async () => 
   assert.match(client, /clearReadState\(\)/);
   assert.doesNotMatch(client, /localStorage|sessionStorage|caches\.open/);
   assert.match(finance, /apiClient\.request\("app\.initialState"/);
-  assert.doesNotMatch(finance, /await apiClient\.request\("bootstrap\.get"[\s\S]*await apiClient\.request\("dashboard\.overview"/);
+  assert.match(finance, /initialError\.code === "IDENTITY_BIND_REQUIRED"[\s\S]*apiClient\.request\("bootstrap\.get"[\s\S]*apiClient\.request\("app\.initialState"/);
+  assert.match(finance, /apiClient\.seed\("dashboard\.overview"/);
+  assert.doesNotMatch(finance, /Promise\.all\(\[[\s\S]*apiClient\.request\("bootstrap\.get"[\s\S]*apiClient\.request\("dashboard\.overview"/);
+  assert.doesNotMatch(gateway, /COALESCED_READ_ACTIONS[\s\S]{0,500}"bootstrap\.get"/);
+  assert.match(gateway, /"reconciliations\.list"/);
   assert.match(gateway, /session\.uid, session\.role, action/);
   assert.match(gateway, /gateway\.request\.coalesced/);
 });
@@ -26,7 +30,8 @@ test("schema cache hanya positif dan write tetap melalui mutating guard", async 
     source("apps-script/Schema.gs"),
     source("apps-script/Code.gs"),
   ]);
-  assert.match(schema, /SB_SCHEMA_VALIDATION_CACHE_SECONDS = 30/);
+  assert.match(schema, /SB_SCHEMA_VALIDATION_CACHE_SECONDS = 300;/);
+  assert.match(schema, /"reconciliations\.list"/);
   assert.match(schema, /if \(!issues\.length && cache\)[\s\S]*cache\.put/);
   assert.match(schema, /invalidateSchemaValidationCache_/);
   assert.match(code, /canUseCachedSchemaValidation_\(action\) \? validateSchemaCached_\(\) : validateSchema_\(\)/);

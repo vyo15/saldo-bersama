@@ -18,6 +18,9 @@ Mencakup:
 - transfer/envelope ownership consistency;
 - pagination/total server-side dan request cache;
 - recurring/goal reversal dan compensation;
+- recurring pay dan goal move dengan implementasi `createTransaction_` aktual serta linkage internal;
+- period lock kumulatif, reopen latest-first, historical as-of, dan snapshot fingerprint;
+- mixed global/account envelope availability serta duplicate/reactivation budget;
 - import/restore rollback/fail-closed;
 - migration v2 safety/confirmation/rollback guard;
 - production build.
@@ -49,6 +52,8 @@ Mencakup:
 10. Goal move/reverse.
 11. Offline/error/unauthorized/conflict/maintenance state.
 12. Responsive, keyboard, focus, labels, contrast, chart summary.
+13. Tutup dua bulan berurutan; buka bulan lama lebih dahulu harus ditolak, lalu buka dari bulan paling akhir.
+14. Bandingkan laporan historis, snapshot closure, recurring overdue, dan progress goal terhadap ledger manual.
 
 ## Migration DEV
 
@@ -84,6 +89,7 @@ Catat command, environment, exit code, dan bukti manual. Jangan menyatakan lulus
 9. Simulasikan refresh gagal setelah data tersedia; data lama tetap tampil dengan warning.
 10. Rusakkan header pada DEV; cache positif berakhir dan `SCHEMA_INVALID` muncul, sedangkan write tidak pernah memakai cache schema read.
 11. Cari request ID di API dan Apps Script; bandingkan `stageTimings` untuk schema/route.
+12. Catat `sheetMetrics` dan benchmark dataset DEV 1.000, 5.000, dan 10.000 transaksi untuk `app.initialState`, `transactions.list`, `reports.monthly`, `envelopes.list`, dan `integrity.run`.
 
 ## Regression theme dan modal
 

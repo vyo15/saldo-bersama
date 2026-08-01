@@ -1,3 +1,6 @@
+const SB_IMPORT_MAX_RECORDS = 200;
+const SB_IMPORT_PREVIEW_MAX_BYTES = 80000;
+
 function exportFields_() {
   return Object.freeze({
     Users: ["user_id", "email", "name", "role", "status", "created_at", "updated_at"],
@@ -383,7 +386,7 @@ function normalizeImportTransaction_(context, record, projectedTransactions) {
   if (["income", "expense", "transfer", "refund", "adjustment"].indexOf(type) === -1) throw sbError_("INVALID_TRANSACTION_TYPE", "Jenis transaksi tidak valid.", 400);
   candidate.transaction_type = type;
   candidate.transaction_date = validateDate_(candidate.transaction_date);
-  assertPeriodOpen_(candidate.transaction_date);
+  assertTransactionDateUnlocked_(candidate.transaction_date);
   candidate.amount = intAmount_(candidate.amount);
   candidate.description = sanitizeText_(candidate.description, 250);
   candidate.merchant = sanitizeText_(candidate.merchant, 120);
@@ -410,15 +413,15 @@ function normalizeImportTransaction_(context, record, projectedTransactions) {
   if (["income", "expense", "refund"].indexOf(type) !== -1 && !candidate.category_id) throw sbError_("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
   activeCategory_(candidate.category_id, type === "income" ? "income" : type === "expense" ? "expense" : type);
   if (type === "expense") validateEnvelopeForExpense_(candidate, candidate.amount, projectedTransactions, context);
-  const ownership = transactionOwnershipFromAccounts_(source, destination);
-  const projected = Object.assign({}, candidate, { status: "active", scope: ownership.scope, owner_user_id: ownership.ownerUserId });
+  const ownership = transactionOwnedScope_(source, destination);
+  const projected = Object.assign({}, candidate, { status: "active", scope: ownership.scope, owner_user_id: ownership.owner_user_id });
   assertSufficientBalanceForCandidate_(source, projected, projectedTransactions);
   return projected;
 }
 
 function importPreview_(context) {
   const records = context.payload.records;
-  if (!Array.isArray(records) || !records.length || records.length > 500) throw sbError_("INVALID_IMPORT", "Import harus berisi 1-500 record transaksi.", 400);
+  if (!Array.isArray(records) || !records.length || records.length > SB_IMPORT_MAX_RECORDS) throw sbError_("INVALID_IMPORT", "Import harus berisi 1-" + SB_IMPORT_MAX_RECORDS + " record transaksi.", 400);
   const valid = [];
   const invalid = [];
   const duplicates = [];
@@ -429,7 +432,7 @@ function importPreview_(context) {
       const candidate = normalizeImportTransaction_(context, record, projectedTransactions);
       const type = candidate.transaction_type;
       const fingerprint = sha256Hex_(canonicalJson_([candidate.transaction_date, type, candidate.source_account_id || "", candidate.destination_account_id || "", candidate.amount, String(candidate.description || "").toLowerCase()]));
-      if (batchFingerprints.has(fingerprint) || duplicateTransaction_(candidate)) duplicates.push({ index: index, record: candidate });
+      if (batchFingerprints.has(fingerprint) || duplicateTransaction_(candidate, null, projectedTransactions)) duplicates.push({ index: index, record: candidate });
       else {
         batchFingerprints.add(fingerprint);
         const applyRecord = Object.assign({}, candidate);
@@ -443,8 +446,11 @@ function importPreview_(context) {
   const acceptable = valid.length > 0 && invalid.length === 0 && duplicates.length === 0;
   const previewPayload = { actorId: context.actor.user_id, records: valid.map(function(item) { return item.record; }), acceptable: acceptable };
   previewPayload.fingerprint = sha256Hex_(canonicalJson_(previewPayload.records));
-  CacheService.getScriptCache().put("import-preview:" + token, JSON.stringify(previewPayload), 600);
-  return { previewToken: token, validCount: valid.length, invalid: invalid, duplicates: duplicates, acceptable: acceptable, fingerprint: previewPayload.fingerprint, expiresInSeconds: 600 };
+  const serializedPreview = JSON.stringify(previewPayload);
+  const serializedBytes = Utilities.newBlob(serializedPreview, "application/json").getBytes().length;
+  if (serializedBytes > SB_IMPORT_PREVIEW_MAX_BYTES) throw sbError_("IMPORT_PREVIEW_TOO_LARGE", "Preview import terlalu besar untuk diproses aman. Pecah file menjadi batch yang lebih kecil.", 413, { maxBytes: SB_IMPORT_PREVIEW_MAX_BYTES, actualBytes: serializedBytes });
+  CacheService.getScriptCache().put("import-preview:" + token, serializedPreview, 600);
+  return { previewToken: token, validCount: valid.length, invalid: invalid, duplicates: duplicates, acceptable: acceptable, fingerprint: previewPayload.fingerprint, expiresInSeconds: 600, maxRecords: SB_IMPORT_MAX_RECORDS };
 }
 
 function importApply_(context) {
@@ -454,17 +460,29 @@ function importApply_(context) {
   if (preview.actorId !== context.actor.user_id) throw sbError_("PREVIEW_MISMATCH", "Preview import bukan milik actor ini.", 403);
   if (sha256Hex_(canonicalJson_(preview.records)) !== preview.fingerprint) throw sbError_("PREVIEW_CORRUPT", "Data preview import tidak konsisten.", 409);
   if (!preview.acceptable) throw sbError_("IMPORT_PREVIEW_HAS_ISSUES", "Import belum dapat diterapkan karena preview masih memiliki record invalid atau duplikat.", 409);
+  if (!Array.isArray(preview.records) || !preview.records.length || preview.records.length > SB_IMPORT_MAX_RECORDS) throw sbError_("INVALID_IMPORT", "Jumlah record import di luar batas aman.", 400);
   if (context.payload.confirmation !== "IMPORT TRANSAKSI") throw sbError_("CONFIRMATION_REQUIRED", "Ketik IMPORT TRANSAKSI untuk melanjutkan.", 400);
   const safety = createBackup_({ actor: context.actor, action: "backup.create", payload: { type: "pre-import" }, requestId: context.requestId });
   setRecoveryOperationState_("import_applying", safety, { operation: "import", previewToken: context.payload.previewToken, recordCount: preview.records.length });
   try {
-    const created = preview.records.map(function(record) {
-      const childContext = Object.assign({}, context, { payload: Object.assign({}, record, { confirm_duplicate: false }), idempotencyKey: uuid_(), action: "transactions.create" });
-      return createTransaction_(childContext);
+    const projectedTransactions = rows_("Transactions").map(function(row) { return Object.assign({}, row); });
+    const created = preview.records.map(function(record, index) {
+      const childContext = Object.assign({}, context, {
+        payload: Object.assign({}, record, { confirm_duplicate: false }),
+        idempotencyKey: String(context.idempotencyKey || context.requestId || "import") + ":" + index,
+        action: "transactions.create"
+      });
+      const prepared = createTransaction_(childContext, childContext.payload, { deferWrite: true, transactionSnapshot: projectedTransactions });
+      projectedTransactions.push(Object.assign({}, prepared));
+      return prepared;
     });
-    const issues = integrityIssues_();
+    appendRows_("Transactions", created);
+    appendRows_("Audit_Log", created.map(function(record) {
+      return auditRecord_(context, "transactions.create", "transaction", record.transaction_id, null, record);
+    }));
+    const issues = integrityIssues_(context);
     if (issues.length) throw sbError_("IMPORT_INTEGRITY_FAILED", "Import menghasilkan masalah integritas.", 409, issues);
-    appendAudit_(context, "import.apply", "import", context.requestId, null, { createdCount: created.length, safetyBackupFileId: safety.fileId, integrity: "passed" });
+    appendAudit_(context, "import.apply", "import", context.requestId, null, { createdCount: created.length, transactionIds: created.map(function(record) { return record.transaction_id; }), safetyBackupFileId: safety.fileId, integrity: "passed" });
     CacheService.getScriptCache().remove("import-preview:" + context.payload.previewToken);
     clearRecoveryState_();
     upsertConfig_("maintenance_mode", "false");

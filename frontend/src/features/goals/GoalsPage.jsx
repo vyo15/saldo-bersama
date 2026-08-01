@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiArrowDown, FiArrowUp, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
+import { FiArchive, FiArrowDown, FiArrowUp, FiEdit2, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -30,6 +30,10 @@ const GoalsPage = () => {
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
   const [reverseTarget, setReverseTarget] = useState(null);
   const [reverseState, setReverseState] = useState({ status: "idle", error: null });
+  const [editGoal, setEditGoal] = useState(null);
+  const [editState, setEditState] = useState({ status: "idle", error: null });
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
   const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
   const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
   const compatibleMovementAccounts = filterByOwnership(accounts, goalAccount);
@@ -88,6 +92,49 @@ const GoalsPage = () => {
     } catch (error) { setMovementState({ status: "error", error }); }
   };
 
+  const saveGoal = async (event) => {
+    event.preventDefault();
+    if (!editGoal) return;
+    setEditState({ status: "submitting", error: null });
+    try {
+      await apiClient.request("goals.update", {
+        goal_id: editGoal.goal_id,
+        row_version: editGoal.row_version,
+        name: editGoal.name,
+        target_amount: assertPositiveRupiah(editGoal.target_amount),
+        target_date: editGoal.target_date,
+        priority: editGoal.priority || "normal",
+        status: editGoal.status || "active",
+      }, { idempotencyKey: createIdempotencyKey(), rowVersion: editGoal.row_version });
+      setEditGoal(null);
+      setEditState({ status: "idle", error: null });
+      setMessage({ type: "success", text: "Target berhasil diperbarui." });
+      invalidate(["goals.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
+    } catch (error) {
+      setEditState({ status: "error", error });
+    }
+  };
+
+  const archiveGoal = async () => {
+    if (!archiveTarget) return;
+    setArchiveState({ status: "submitting", error: null });
+    try {
+      await apiClient.request("goals.update", {
+        goal_id: archiveTarget.goal_id,
+        row_version: archiveTarget.row_version,
+        status: "archived",
+      }, { idempotencyKey: createIdempotencyKey(), rowVersion: archiveTarget.row_version });
+      setArchiveTarget(null);
+      setArchiveState({ status: "idle", error: null });
+      setMessage({ type: "success", text: "Target berhasil diarsipkan. Riwayat mutasi dan transaksi tetap tersimpan." });
+      invalidate(["goals.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
+    } catch (error) {
+      setArchiveState({ status: "error", error });
+    }
+  };
+
   const reverseLastMovement = async (reason) => {
     if (!reverseTarget?.last_movement_id) return;
     setReverseState({ status: "submitting", error: null });
@@ -117,7 +164,12 @@ const GoalsPage = () => {
             <Money value={goal.current_amount} />
             <ProgressBar value={goal.current_amount} max={goal.target_amount} label={goal.name} />
             <div className="goal-card__footer"><span>Target <Money value={goal.target_amount} /></span><span>{goal.target_date}</span></div>
-            <div className="goal-card__actions"><Button icon={FiArrowUp} onClick={() => openMovement(goal, "contribution")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdraw")}>Tarik</Button>{goal.last_movement_id ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(goal); setReverseState({ status: "idle", error: null }); }}>Batalkan terakhir</Button> : null}</div>
+            <div className="goal-card__actions">
+              {goal.can_move ? <><Button icon={FiArrowUp} onClick={() => openMovement(goal, "contribution")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdraw")}>Tarik</Button></> : null}
+              {goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(goal); setReverseState({ status: "idle", error: null }); }}>Batalkan terakhir</Button> : null}
+              {goal.can_update ? <Button icon={FiEdit2} onClick={() => { setEditGoal({ ...goal }); setEditState({ status: "idle", error: null }); }}>Edit</Button> : null}
+              {goal.can_archive ? <Button icon={FiArchive} onClick={() => { setArchiveTarget(goal); setArchiveState({ status: "idle", error: null }); }}>Arsipkan</Button> : null}
+            </div>
           </Card>
         ))) : <Card className="panel"><p>Belum ada target keuangan. Buat target setelah rekening tujuan tersedia.</p></Card>}
       </section>
@@ -135,6 +187,23 @@ const GoalsPage = () => {
           </form>
         </Card>
       ) : null}
+
+      <Modal
+        open={Boolean(editGoal)}
+        onClose={() => editState.status !== "submitting" && setEditGoal(null)}
+        title="Edit target"
+        description="Rekening dan jenis target dipertahankan agar riwayat tetap konsisten."
+        footer={<><Button type="button" disabled={editState.status === "submitting"} onClick={() => setEditGoal(null)}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}
+      >
+        <form id="goal-edit-form" className="form-grid" onSubmit={saveGoal}>
+          <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={editGoal?.name || ""} onChange={(event) => setEditGoal((current) => ({ ...current, name: event.target.value }))} /></label>
+          <MoneyInput id="goal-edit-target" label="Target nominal" value={editGoal?.target_amount || ""} onChange={(value) => setEditGoal((current) => ({ ...current, target_amount: value }))} />
+          <label className="field"><span>Tanggal target</span><input required type="date" value={editGoal?.target_date || ""} onChange={(event) => setEditGoal((current) => ({ ...current, target_date: event.target.value }))} /></label>
+          <label className="field"><span>Prioritas</span><select value={editGoal?.priority || "normal"} onChange={(event) => setEditGoal((current) => ({ ...current, priority: event.target.value }))}><option value="low">Rendah</option><option value="normal">Normal</option><option value="high">Tinggi</option></select></label>
+          <label className="field"><span>Status</span><select value={editGoal?.status || "active"} onChange={(event) => setEditGoal((current) => ({ ...current, status: event.target.value }))}><option value="active">Aktif</option><option value="completed">Selesai</option></select><small>Status selesai hanya diterima jika nominal target sudah tercapai.</small></label>
+          {editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}
+        </form>
+      </Modal>
 
       <Modal
         open={Boolean(movement.goal)}
@@ -164,6 +233,17 @@ const GoalsPage = () => {
         error={reverseState.error}
         onCancel={() => reverseState.status !== "submitting" && setReverseTarget(null)}
         onConfirm={reverseLastMovement}
+      />
+
+      <ConfirmationModal
+        open={Boolean(archiveTarget)}
+        title="Arsipkan target?"
+        description={archiveTarget ? `${archiveTarget.name} tidak lagi menerima mutasi baru. Riwayat dan transaksi tidak dihapus.` : ""}
+        confirmLabel="Arsipkan target"
+        busy={archiveState.status === "submitting"}
+        error={archiveState.error}
+        onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)}
+        onConfirm={archiveGoal}
       />
     </div>
   );

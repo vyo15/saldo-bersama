@@ -33,20 +33,21 @@ export const parseResponse = async (response) => {
 };
 
 const READ_CACHE_TTL_MS = Object.freeze({
-  "app.initialState": 8_000,
-  "bootstrap.get": 60_000,
-  "dashboard.overview": 8_000,
+  "app.initialState": 30_000,
+  "bootstrap.get": 120_000,
+  "dashboard.overview": 30_000,
   "system.health": 5_000,
-  "accounts.list": 30_000,
-  "categories.list": 30_000,
-  "transactions.list": 8_000,
-  "envelopes.list": 8_000,
-  "recurring.list": 8_000,
-  "budgets.list": 8_000,
-  "goals.list": 8_000,
-  "reports.monthly": 8_000,
-  "periods.list": 8_000,
-  "users.list": 8_000,
+  "accounts.list": 120_000,
+  "categories.list": 120_000,
+  "transactions.list": 30_000,
+  "envelopes.list": 30_000,
+  "recurring.list": 30_000,
+  "budgets.list": 30_000,
+  "goals.list": 30_000,
+  "reports.monthly": 60_000,
+  "periods.list": 60_000,
+  "reconciliations.list": 60_000,
+  "users.list": 30_000,
   "audit.list": 5_000,
   "restore.preview": 0,
   "import.preview": 0,
@@ -229,6 +230,13 @@ export const apiClient = {
 
   invalidate(actions) {
     invalidateActions(Array.isArray(actions) ? actions : [actions]);
+  },
+
+  seed(action, payload = {}, data, { ttl } = {}) {
+    if (!Object.prototype.hasOwnProperty.call(READ_CACHE_TTL_MS, action) || data === undefined) return;
+    const effectiveTtl = Number.isFinite(ttl) ? Math.max(0, Number(ttl)) : READ_CACHE_TTL_MS[action];
+    if (effectiveTtl <= 0) return;
+    readCache.set(stableQueryKey(action, payload), { action, data, expiresAt: Date.now() + effectiveTtl });
   },
 
   clearCache() {

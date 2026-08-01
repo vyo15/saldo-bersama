@@ -8,11 +8,22 @@ Prasyarat: Node.js 24 LTS dan npm 10 atau lebih baru. React Router v8 bersifat E
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
 `npm run dev` menjalankan frontend dan handler `api/` dalam satu proses di `http://localhost:5173`. Gunakan hostname `localhost`.
+
+Pada perangkat baru, command tersebut otomatis:
+
+1. memeriksa `.env.local` tanpa menampilkan nilainya;
+2. menjalankan login Vercel interaktif bila credential lokal belum ada;
+3. menghubungkan folder ke project existing berdasarkan repository Git;
+4. menarik hanya environment **Development** ke file sementara;
+5. membuang `VERCEL_OIDC_TOKEN`;
+6. menolak hasil pull yang tidak lengkap tanpa merusak env lama;
+7. mengganti `.env.local` secara atomik lalu memulai server.
+
+Login browser tetap diperlukan satu kali per perangkat. Token login Vercel dan `.env.local` tidak boleh masuk Git. Bila Vercel Development Environment belum lengkap, lengkapi Project Settings atau buat `.env.local` manual berdasarkan `.env.example`.
 
 Isi root `.env.local`:
 
@@ -58,7 +69,7 @@ Hasil normal sebelum login adalah `401 UNAUTHENTICATED`.
 
 1. Buat spreadsheet kosong DEV.
 2. Buka **Extensions → Apps Script**.
-3. Salin 12 file `.gs` dari `apps-script/`, termasuk `Migration.gs`, serta `appsscript.json`.
+3. Salin 13 file `.gs` dari `apps-script/`, termasuk `ReadModel.gs` dan `Migration.gs`, serta `appsscript.json`.
 4. Pastikan source lokal lulus:
 
 ```bash

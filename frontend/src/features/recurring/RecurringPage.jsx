@@ -13,7 +13,7 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { apiClient } from "../../services/api/client.js";
 import { createIdempotencyKey } from "../../domain/security.js";
-import { todayInJakarta } from "../../domain/dates.js";
+import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -21,7 +21,8 @@ import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
 
 
 const RecurringPage = () => {
-  const resource = useApiResource("recurring.list");
+  const [period, setPeriod] = useState(currentMonthInJakarta());
+  const resource = useApiResource("recurring.list", { period });
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
@@ -157,10 +158,10 @@ const RecurringPage = () => {
       <div><h3>{item.name}</h3><p>Rencana <Money value={item.expected_amount} />{item.actual_amount ? <> · aktual <Money value={item.actual_amount} /></> : null}</p></div>
       <StatusBadge status={item.status} />
       <div className="button-group">
-        {item.status === "paid" || item.status === "received" ? <FiCheckCircle className="schedule-item__done" aria-label="Selesai" /> : <Button onClick={() => openPayment(item)}>Catat aktual</Button>}
-        {item.transaction_ids ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); }}>Batalkan aktual terakhir</Button> : null}
-        {user?.role === "owner" ? <button type="button" className="icon-button" onClick={() => openRuleEditor(item)} aria-label={`Edit aturan ${item.name}`}><FiEdit2 /></button> : null}
-        {user?.role === "owner" ? <button type="button" className="icon-button icon-button--danger" onClick={() => { setArchiveRuleTarget(item); setEditState({ status: "idle", error: null }); }} aria-label={`Arsipkan aturan ${item.name}`}><FiArchive /></button> : null}
+        {item.status === "paid" || item.status === "received" ? <FiCheckCircle className="schedule-item__done" aria-label="Selesai" /> : item.can_pay ? <Button onClick={() => openPayment(item)}>Catat aktual</Button> : null}
+        {item.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); }}>Batalkan aktual terakhir</Button> : null}
+        {item.can_edit_rule ? <button type="button" className="icon-button" onClick={() => openRuleEditor(item)} aria-label={`Edit aturan ${item.name}`}><FiEdit2 /></button> : null}
+        {item.can_archive_rule ? <button type="button" className="icon-button icon-button--danger" onClick={() => { setArchiveRuleTarget(item); setEditState({ status: "idle", error: null }); }} aria-label={`Arsipkan aturan ${item.name}`}><FiArchive /></button> : null}
       </div>
     </article>
   ));
@@ -168,7 +169,7 @@ const RecurringPage = () => {
   return (
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      <PageHeader title="Tagihan & jadwal" description="Rencana kewajiban dan pemasukan dipisahkan dari transaksi aktual agar statusnya dapat diverifikasi." />
+      <PageHeader title="Tagihan & jadwal" description="Rencana kewajiban dan pemasukan dipisahkan dari transaksi aktual agar statusnya dapat diverifikasi." actions={<label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label>} />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="two-column-grid">
         <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Pengeluaran tetap</p><h2>Tagihan periode ini</h2></div></div><div className="schedule-list">{expenses.length ? renderItems(expenses) : <p>Belum ada tagihan aktif pada periode ini.</p>}</div></Card>

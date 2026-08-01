@@ -95,6 +95,7 @@ test("setup parsial fail closed dan mencatat status failed", async () => {
 });
 
 const financeRuntime = async (tables) => {
+  let uuidSequence = 0;
   const context = createBaseContext({
     SB_TIMEZONE: "Asia/Jakarta",
     sbError_: errorFactory,
@@ -108,7 +109,21 @@ const financeRuntime = async (tables) => {
     sanitizeText_: (value) => String(value ?? "").trim(),
     nowIso_: () => "2026-07-28T10:00:00+07:00",
     today_: () => "2026-07-28",
-    uuid_: () => "uuid-1",
+    uuid_: () => `uuid-${++uuidSequence}`,
+    appendRow_: (name, record) => {
+      if (!tables[name]) tables[name] = [];
+      const stored = { ...record, __row: tables[name].length + 2 };
+      tables[name].push(stored);
+      return record;
+    },
+    updateRow_: (name, rowNumber, updated) => {
+      const index = Number(rowNumber) - 2;
+      tables[name][index] = { ...updated, __row: rowNumber };
+      return updated;
+    },
+    deleteRow_: (name, rowNumber) => { tables[name].splice(Number(rowNumber) - 2, 1); },
+    appendAudit_: () => {},
+    compensateOrFailClosed_: (_status, _details, compensate) => compensate(),
     appendAuditedRow_: (name, _idField, record) => { tables[name].push({ ...record, __row: tables[name].length + 2 }); },
     updateAuditedRow_: (name, current, updated) => { tables[name][current.__row - 2] = { ...updated, __row: current.__row }; },
   });
@@ -153,6 +168,9 @@ test("close period dapat dijalankan lagi setelah reopen dengan update row yang s
     appendAuditedRow_: () => { throw new Error("tidak boleh insert row baru"); },
   });
   await loadAppsScript(context, ["ReportsAndIntegrations.gs"]);
+  context.today_ = () => "2026-08-01";
+  context.monthKey_ = () => "2026-08";
+  context.periodEndDate_ = () => "2026-07-31";
   context.integrityIssues_ = () => [];
   context.compactPeriodSnapshot_ = () => ({ periodKey: "2026-07" });
   context.canonicalJson_ = JSON.stringify;
@@ -422,7 +440,7 @@ test("reverse recurring payment membatalkan transaksi dan menghitung ulang occur
     findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
     rows_: (name) => tables[name] || [], publicRow_: publicRow, rowVersion_: (row) => Number(row.row_version || 0),
     assertVersion_: (row, expected) => { if (Number(expected) !== Number(row.row_version || 0)) throw errorFactory("CONFLICT", "conflict", 409); },
-    assertCanModifyTransaction_: () => {}, assertPeriodOpen_: () => {}, sanitizeText_: (value) => String(value || "").trim(), nowIso_: () => "now",
+    assertCanModifyTransaction_: () => {}, assertTransactionDateUnlocked_: () => {}, sanitizeText_: (value) => String(value || "").trim(), nowIso_: () => "now",
     updateRow_: (name, _row, record) => { tables[name][0] = { ...record, __row: 2 }; }, appendAudit_: () => {},
     compensateOrFailClosed_: (_status, _details, compensate) => compensate(),
   });
@@ -433,6 +451,26 @@ test("reverse recurring payment membatalkan transaksi dan menghitung ulang occur
   assert.equal(result.occurrence.status, "scheduled");
 });
 
+test("reverse recurring pemasukan tanpa transaksi tersisa kembali menjadi expected", async () => {
+  const occurrence = { __row: 2, occurrence_id: "o-income", recurring_rule_id: "r-income", expected_amount: 500, actual_amount: 500, transaction_ids: "t-income", status: "received", row_version: 1 };
+  const transaction = { __row: 2, transaction_id: "t-income", recurring_occurrence_id: "o-income", transaction_date: "2026-07-20", amount: 500, status: "active", row_version: 1, created_by: "u1" };
+  const tables = { Recurring_Occurrences: [occurrence], Recurring_Rules: [{ recurring_rule_id: "r-income", kind: "income", default_account_id: "a1", scope: "shared", owner_user_id: "" }], Accounts: [{ account_id: "a1", owner_scope: "shared" }], Transactions: [transaction], Period_Closures: [] };
+  const context = createBaseContext({
+    SB_TIMEZONE: "Asia/Jakarta", sbError_: errorFactory,
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    rows_: (name) => tables[name] || [], publicRow_: publicRow, rowVersion_: (row) => Number(row.row_version || 0),
+    assertVersion_: (row, expected) => { if (Number(expected) !== Number(row.row_version || 0)) throw errorFactory("CONFLICT", "conflict", 409); },
+    assertCanModifyTransaction_: () => {}, assertTransactionDateUnlocked_: () => {}, sanitizeText_: (value) => String(value || "").trim(), nowIso_: () => "now",
+    updateRow_: (name, _row, record) => { tables[name][0] = { ...record, __row: 2 }; }, appendAudit_: () => {},
+    compensateOrFailClosed_: (_status, _details, compensate) => compensate(),
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  const result = context.reverseOccurrencePayment_({ actor: { user_id: "u1", role: "owner" }, payload: { occurrence_id: "o-income", transaction_id: "t-income", row_version: 1, reason: "salah" }, rowVersion: 1 });
+  assert.equal(result.transaction.status, "cancelled");
+  assert.equal(result.occurrence.actual_amount, 0);
+  assert.equal(result.occurrence.status, "expected");
+});
+
 test("reverse goal movement membatalkan transfer dan mengurangi progress target", async () => {
   const movement = { __row: 2, goal_movement_id: "m1", goal_id: "g1", transaction_id: "t1", movement_type: "contribution", amount: 100, status: "active", created_by: "u1", created_at: "now" };
   const transaction = { __row: 2, transaction_id: "t1", goal_id: "g1", transaction_date: "2026-07-20", transaction_type: "transfer", amount: 100, status: "active", row_version: 1 };
@@ -441,7 +479,7 @@ test("reverse goal movement membatalkan transfer dan mengurangi progress target"
     SB_TIMEZONE: "Asia/Jakarta", sbError_: errorFactory,
     findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
     rows_: (name) => tables[name] || [], publicRow_: publicRow, rowVersion_: (row) => Number(row.row_version || 0),
-    assertPeriodOpen_: () => {}, sanitizeText_: (value) => String(value || "").trim(), nowIso_: () => "now",
+    assertTransactionDateUnlocked_: () => {}, sanitizeText_: (value) => String(value || "").trim(), nowIso_: () => "now",
     updateRow_: (name, _row, record) => { tables[name][0] = { ...record, __row: 2 }; }, appendAudit_: () => {},
     compensateOrFailClosed_: (_status, _details, compensate) => compensate(),
     today_: () => "2026-07-29",
@@ -561,8 +599,9 @@ test("member hanya melihat data shared dan personal miliknya di rekening serta d
     monthKey_: () => "2026-07",
     today_: () => "2026-07-29",
     nowIso_: () => "2026-07-29T12:00:00+07:00",
+    requestCache_: () => ({ readModels: {} }),
   });
-  await loadAppsScript(context, ["Security.gs", "FinanceService.gs", "MasterDataService.gs", "PlanningService.gs", "ReportsAndIntegrations.gs"]);
+  await loadAppsScript(context, ["Security.gs", "FinanceService.gs", "ReadModel.gs", "MasterDataService.gs", "PlanningService.gs", "ReportsAndIntegrations.gs"]);
 
   const memberContext = { actor: { user_id: "member", role: "member" }, payload: { period: "2026-07" } };
   const ownerContext = { actor: { user_id: "owner", role: "owner" }, payload: { period: "2026-07" } };
@@ -665,6 +704,10 @@ test("member tidak melihat jadwal, budget, dan target personal pengguna lain", a
   });
   await loadAppsScript(context, ["Security.gs", "PlanningService.gs"]);
   context.ensureRecurringOccurrences_ = () => {};
+  context.buildTransactionReadModel_ = () => ({ transactions: [], activeTransactions: [], transactionsByPeriod: { "2026-07": [] }, activeTransactionsByPeriod: { "2026-07": [] }, transactionById: {} });
+  context.periodCutoffDate_ = () => "2026-07-29";
+  context.isTransactionDateLocked_ = () => false;
+  context.goalMovementReadModelAsOf_ = () => ({ totals: {}, latestByGoal: {} });
   const memberContext = { actor: { user_id: "member", role: "member" }, payload: { period: "2026-07" } };
   assert.deepEqual(Array.from(context.listRecurring_(memberContext), (item) => item.recurring_rule_id), ["shared-rule", "member-rule"]);
   assert.deepEqual(Array.from(context.listBudgets_(memberContext), (item) => item.budget_id), ["shared-budget", "member-budget"]);
@@ -690,11 +733,34 @@ test("transactions.list mengembalikan total sebelum pagination dan filter server
     publicRow_: publicRow,
   });
   await loadAppsScript(context, ["Router.gs"]);
+  context.buildTransactionReadModel_ = () => ({ transactionsByPeriod: { "2026-07": transactions } });
+  context.transactionCapabilities_ = () => ({ can_edit: true, can_cancel: true });
+  context.isTransactionDateLocked_ = () => false;
   const result = context.routeAction_({ action: "transactions.list", payload: { period: "2026-07", limit: 20, offset: 2, transaction_type: "expense", allocation: "allocated", query: "belanja" } });
   assert.equal(result.total, 4);
   assert.equal(result.offset, 2);
   assert.equal(result.items.length, 2);
   assert.equal(result.hasMore, false);
+});
+
+test("read model mempertahankan transaksi cancelled untuk ledger tetapi mengecualikannya dari agregasi", async () => {
+  const tables = {
+    Accounts: [{ account_id: "a1", owner_scope: "shared", owner_user_id: "", status: "active" }],
+    Transactions: [
+      { transaction_id: "active", transaction_date: "2026-07-20", transaction_type: "expense", source_account_id: "a1", amount: 100, status: "active", scope: "shared", owner_user_id: "" },
+      { transaction_id: "cancelled", transaction_date: "2026-07-21", transaction_type: "expense", source_account_id: "a1", amount: 50, status: "cancelled", scope: "shared", owner_user_id: "" },
+    ],
+  };
+  const context = createBaseContext({
+    rows_: (name) => tables[name] || [],
+    canAccessOwnedScope_: () => true,
+    canAccessAccount_: () => true,
+    requestCache_: () => ({ readModels: {} }),
+  });
+  await loadAppsScript(context, ["ReadModel.gs"]);
+  const model = context.buildTransactionReadModel_({ actor: { user_id: "owner", role: "owner" } });
+  assert.deepEqual(Array.from(model.transactionsByPeriod["2026-07"], (item) => item.transaction_id), ["active", "cancelled"]);
+  assert.deepEqual(Array.from(model.activeTransactionsByPeriod["2026-07"], (item) => item.transaction_id), ["active"]);
 });
 
 test("request cache membaca sheet sekali dan diinvalidasi setelah write", async () => {
@@ -720,6 +786,26 @@ test("request cache membaca sheet sekali dan diinvalidasi setelah write", async 
   context.appendRow_("Accounts", { account_id: "a2", name: "Baru" });
   context.rows_("Accounts");
   assert.equal(reads, 2);
+});
+
+test("pembacaan sheet menormalkan sel Date menjadi tanggal dan timestamp Jakarta", async () => {
+  const sheet = {
+    getLastRow: () => 2,
+    getRange: () => ({
+      getValues: () => [[new Date("2026-07-31T05:00:00.000Z"), new Date("2026-07-31T06:02:03.000Z")]],
+      setValues: () => {},
+    }),
+  };
+  const context = createBaseContext({
+    SB_TIMEZONE: "Asia/Jakarta",
+    SB_SCHEMA: { Transactions: ["transaction_date", "created_at"] },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => "sheet-1" }) },
+    SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }) },
+  });
+  await loadAppsScript(context, ["DataStore.gs"]);
+  const row = context.rows_("Transactions")[0];
+  assert.equal(row.transaction_date, "2026-07-31");
+  assert.match(row.created_at, /^2026-07-31T/);
 });
 
 test("transfer lintas kepemilikan ditolak dan scope transaksi diturunkan dari rekening", async () => {
@@ -1039,7 +1125,7 @@ test("pembuatan kantong komposit menghapus rule bila period gagal", async () => 
   context.compensateOrFailClosed_ = (_status, _details, compensate) => compensate();
   assert.throws(
     () => context.createEnvelope_({ actor: { user_id: "u1", role: "owner" }, payload: {} }),
-    (error) => error.code === "ENVELOPE_CREATE_ROLLED_BACK",
+    (error) => error.code === "INSUFFICIENT_UNALLOCATED_FUNDS" && error.status === 409,
   );
   assert.equal(rules.length, 0);
 });
@@ -1062,9 +1148,12 @@ test("progress target hari ini tidak memasukkan transfer goal bertanggal masa de
     findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
     publicRow_: publicRow,
     today_: () => "2026-07-29",
+    monthKey_: () => "2026-07",
+    periodKey_: (value) => value || "2026-07",
     canAccessAccount_: () => true,
+    isTransactionDateLocked_: () => false,
   });
-  await loadAppsScript(context, ["PlanningService.gs"]);
+  await loadAppsScript(context, ["ReadModel.gs", "PlanningService.gs"]);
   const goal = context.listGoals_({ actor: { user_id: "u1", role: "owner" }, payload: {} })[0];
   assert.equal(goal.current_amount, 100);
   assert.equal(goal.last_movement_id, "m1");
@@ -1077,6 +1166,9 @@ test("read recurring tidak pernah membuat occurrence atau meminta mutation lock"
     sbError_: errorFactory,
     rows_: () => [],
     monthKey_: () => "2026-07",
+    periodCutoffDate_: () => "2026-07-29",
+    isTransactionDateLocked_: () => false,
+    buildTransactionReadModel_: () => ({ transactions: [], activeTransactions: [], transactionsByPeriod: { "2026-07": [] }, transactionById: {} }),
     today_: () => "2026-07-29",
     appendRow_: () => { writes += 1; },
     LockService: {
@@ -1183,24 +1275,629 @@ test("schema read cache hanya menyimpan hasil valid dan dapat diinvalidasi", asy
   assert.equal(scans, 5, "kegagalan cache tidak boleh menggagalkan validasi schema utama");
 });
 
+test("bootstrap.get tetap melalui mutation lock karena dapat mengikat UID pertama", async () => {
+  const context = createBaseContext();
+  await loadAppsScript(context, ["Code.gs"]);
+  assert.equal(context.isMutatingAction_("bootstrap.get"), true);
+  assert.equal(context.isMutatingAction_("app.initialState"), false);
+});
+
 test("initial state memakai satu snapshot transaksi untuk bootstrap dan dashboard", async () => {
   const context = createBaseContext();
   await loadAppsScript(context, ["Router.gs"]);
   const transactions = [{ transaction_id: "t1" }];
+  const model = { transactions, transactionsByPeriod: { "2026-07": transactions } };
   const categories = [{ category_id: "c1", status: "active" }];
   const accounts = [{ account_id: "a1", status: "active" }];
   let accountCalls = 0;
-  context.visibleTransactions_ = () => transactions;
+  context.periodKey_ = () => "2026-07";
+  context.periodCutoffDate_ = () => "2026-07-31";
+  context.buildTransactionReadModel_ = () => model;
   context.rows_ = (name) => name === "Categories" ? categories : [];
   context.listAccounts_ = (_requestContext, snapshot) => {
     accountCalls += 1;
-    assert.equal(snapshot, transactions);
+    assert.equal(snapshot, model);
     return accounts;
   };
   context.bootstrapData_ = (_requestContext, snapshots) => ({ accounts: snapshots.accounts, categories: snapshots.categories });
-  context.dashboardOverview_ = (_requestContext, snapshots) => ({ transactionCount: snapshots.transactions.length });
+  context.dashboardOverview_ = (_requestContext, snapshots) => ({ transactionCount: snapshots.model.transactions.length });
   const result = context.appInitialState_({ actor: { role: "owner" }, payload: {} });
   assert.equal(accountCalls, 1);
   assert.deepEqual(result.bootstrap.accounts, accounts);
   assert.equal(result.overview.transactionCount, 1);
+});
+
+test("composite envelope membuat rule dan period dengan satu audit final", async () => {
+  const tables = { Accounts: [{ __row: 2, account_id: "a1", owner_scope: "shared", owner_user_id: "", status: "active" }], Envelope_Rules: [], Envelope_Periods: [], Transactions: [] };
+  const audits = [];
+  let sequence = 0;
+  const context = createBaseContext({
+    sbError_: errorFactory,
+    rows_: (name) => tables[name] || [],
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    appendRow_: (name, record) => { const row = { ...record, __row: (tables[name] || []).length + 2 }; (tables[name] ||= []).push(row); return row; },
+    deleteRow_: (name, rowNumber) => { const index = (tables[name] || []).findIndex((row) => row.__row === rowNumber); if (index >= 0) tables[name].splice(index, 1); },
+    appendAudit_: (_request, action, entityType, entityId, before, after) => audits.push({ action, entityType, entityId, before, after }),
+    compensateOrFailClosed_: (_reason, _details, compensate) => compensate(),
+    activeAccount_: (id) => tables.Accounts.find((row) => row.account_id === id),
+    assertAccountAccess_: () => {},
+    normalizeOwnedScope_: () => ({ scope: "shared", owner_user_id: "" }),
+    ownedScopeFromAccount_: () => ({ scope: "shared", owner_user_id: "" }),
+    intAmount_: (value) => { const amount = Number(value); if (!Number.isSafeInteger(amount) || amount <= 0) throw errorFactory("INVALID_AMOUNT", "invalid", 400); return amount; },
+    validateDate_: (value) => String(value),
+    periodCutoffDate_: () => "2026-07-31",
+    assertPeriodRangeOpen_: () => {},
+    visibleTransactions_: () => [],
+    envelopeUsage_: (record) => ({ ...publicRow(record), used_amount: 0, remaining_amount: Number(record.allocated_amount || 0) - Number(record.reserved_amount || 0) }),
+    nowIso_: () => "2026-07-01T10:00:00+07:00",
+    uuid_: () => `id-${++sequence}`,
+    publicRow_: publicRow,
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  context.allocationAvailability_ = () => ({ availableBalance: 1_000_000, allocatedRemaining: 0, unallocatedAmount: 1_000_000 });
+  context.compensateOrFailClosed_ = (_reason, _details, compensate) => compensate();
+  const result = context.createEnvelope_({ actor: { user_id: "owner", role: "owner" }, payload: { name: "Belanja", source_account_id: "a1", period_type: "monthly", default_amount: 100_000, allocated_amount: 100_000, period_start: "2026-07-01", period_end: "2026-07-31", rollover_policy: "unallocated", overspend_policy: "confirm" } });
+  assert.equal(tables.Envelope_Rules.length, 1);
+  assert.equal(tables.Envelope_Periods.length, 1);
+  assert.equal(result.period.envelope_rule_id, result.rule.envelope_rule_id);
+  assert.deepEqual(audits.map((entry) => entry.action), ["envelopes.create"]);
+});
+
+test("composite envelope menghapus seluruh row saat audit final gagal", async () => {
+  const tables = { Accounts: [{ __row: 2, account_id: "a1", owner_scope: "shared", owner_user_id: "", status: "active" }], Envelope_Rules: [], Envelope_Periods: [], Transactions: [] };
+  let sequence = 0;
+  const context = createBaseContext({
+    sbError_: errorFactory,
+    rows_: (name) => tables[name] || [],
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    appendRow_: (name, record) => { const row = { ...record, __row: (tables[name] || []).length + 2 }; (tables[name] ||= []).push(row); return row; },
+    deleteRow_: (name, rowNumber) => { const index = (tables[name] || []).findIndex((row) => row.__row === rowNumber); if (index >= 0) tables[name].splice(index, 1); },
+    appendAudit_: () => { throw errorFactory("AUDIT_FAILED", "audit", 503); },
+    activeAccount_: (id) => tables.Accounts.find((row) => row.account_id === id),
+    assertAccountAccess_: () => {}, normalizeOwnedScope_: () => ({ scope: "shared", owner_user_id: "" }), ownedScopeFromAccount_: () => ({ scope: "shared", owner_user_id: "" }),
+    intAmount_: (value) => Number(value), validateDate_: String, periodCutoffDate_: () => "2026-07-31", assertPeriodRangeOpen_: () => {}, visibleTransactions_: () => [],
+    envelopeUsage_: (record) => ({ ...publicRow(record), used_amount: 0, remaining_amount: Number(record.allocated_amount || 0) }),
+    nowIso_: () => "now", uuid_: () => `id-${++sequence}`, publicRow_: publicRow,
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  context.allocationAvailability_ = () => ({ availableBalance: 1_000_000, allocatedRemaining: 0, unallocatedAmount: 1_000_000 });
+  context.compensateOrFailClosed_ = (_reason, _details, compensate) => compensate();
+  assert.throws(() => context.createEnvelope_({ actor: { user_id: "owner", role: "owner" }, payload: { name: "Belanja", source_account_id: "a1", default_amount: 100_000, period_start: "2026-07-01", period_end: "2026-07-31" } }), (error) => error.code === "ENVELOPE_CREATE_ROLLED_BACK");
+  assert.equal(tables.Envelope_Rules.length, 0);
+  assert.equal(tables.Envelope_Periods.length, 0);
+});
+
+
+const envelopeCloseRuntime = async (tables, { failAudit = false } = {}) => {
+  let sequence = 0;
+  const audits = [];
+  const normalizeRows = (name) => {
+    (tables[name] ||= []).forEach((row, index) => { row.__row = index + 2; });
+  };
+  const context = createBaseContext({
+    SB_TIMEZONE: "Asia/Jakarta",
+    sbError_: errorFactory,
+    rows_: (name) => (tables[name] || []).map((row) => ({ ...row })),
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    appendRow_: (name, record) => {
+      const stored = { ...record, __row: (tables[name] || []).length + 2 };
+      (tables[name] ||= []).push(stored);
+      return record;
+    },
+    updateRow_: (name, rowNumber, record) => {
+      const index = (tables[name] || []).findIndex((row) => Number(row.__row) === Number(rowNumber));
+      if (index < 0) throw new Error(`row ${name}:${rowNumber} tidak ditemukan`);
+      tables[name][index] = { ...record, __row: Number(rowNumber) };
+      return record;
+    },
+    deleteRow_: (name, rowNumber) => {
+      const index = (tables[name] || []).findIndex((row) => Number(row.__row) === Number(rowNumber));
+      if (index >= 0) tables[name].splice(index, 1);
+      normalizeRows(name);
+    },
+    rowVersion_: (row) => Number(row.row_version || 0),
+    assertVersion_: (row, expected) => {
+      if (Number(expected) !== Number(row.row_version || 0)) throw errorFactory("CONFLICT", "conflict", 409);
+    },
+    validateDate_: (value) => String(value),
+    intAmount_: (value) => {
+      const amount = Number(value);
+      if (!Number.isSafeInteger(amount) || amount <= 0) throw errorFactory("INVALID_AMOUNT", "invalid", 400);
+      return amount;
+    },
+    periodCutoffDate_: (period) => `${period}-28`,
+    assertPeriodRangeOpen_: () => {},
+    visibleTransactions_: () => tables.Transactions || [],
+    envelopeUsage_: (record, transactions) => {
+      const used = (transactions || []).filter((row) => row.status === "active" && row.transaction_type === "expense" && row.envelope_period_id === record.envelope_period_id)
+        .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      return { ...publicRow(record), used_amount: used, remaining_amount: Number(record.allocated_amount || 0) - Number(record.reserved_amount || 0) - used };
+    },
+    nowIso_: () => "2026-08-01T10:00:00+07:00",
+    uuid_: () => `env-${++sequence}`,
+    publicRow_: publicRow,
+    appendAudit_: (_request, action, entityType, entityId, before, after) => {
+      if (failAudit) throw errorFactory("AUDIT_FAILED", "audit", 503);
+      audits.push({ action, entityType, entityId, before, after });
+    },
+    compensateOrFailClosed_: (_reason, _details, compensate) => compensate(),
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  context.allocationAvailability_ = () => ({ availableBalance: 1_000_000, allocatedRemaining: 0, unallocatedAmount: 1_000_000 });
+  context.compensateOrFailClosed_ = (_reason, _details, compensate) => compensate();
+  return { context, audits };
+};
+
+test("rollover carry menutup periode, memindahkan sisa, dan membuat periode berikutnya tanpa arus kas palsu", async () => {
+  const tables = {
+    Envelope_Rules: [{ __row: 2, envelope_rule_id: "r1", name: "Belanja", period_type: "monthly", scope: "shared", owner_user_id: "", source_account_id: "", rollover_policy: "carry", status: "active" }],
+    Envelope_Periods: [{ __row: 2, envelope_period_id: "p1", envelope_rule_id: "r1", name: "Belanja", period_start: "2026-07-01", period_end: "2026-07-31", allocated_amount: 100, reserved_amount: 0, status: "active", row_version: 1 }],
+    Envelope_Movements: [],
+    Transactions: [{ transaction_id: "t1", transaction_type: "expense", transaction_date: "2026-07-10", envelope_period_id: "p1", amount: 20, status: "active", scope: "shared", owner_user_id: "" }],
+  };
+  const { context, audits } = await envelopeCloseRuntime(tables);
+  const result = context.closeEnvelope_({ actor: { user_id: "owner", role: "owner" }, payload: { envelope_period_id: "p1", row_version: 1 }, rowVersion: 1 });
+  assert.equal(tables.Envelope_Periods[0].status, "closed");
+  assert.equal(tables.Envelope_Periods.length, 2);
+  assert.equal(tables.Envelope_Periods[1].period_start, "2026-08-01");
+  assert.equal(tables.Envelope_Periods[1].period_end, "2026-08-31");
+  assert.equal(tables.Envelope_Periods[1].allocated_amount, 80);
+  assert.equal(tables.Envelope_Movements.length, 1);
+  assert.equal(tables.Envelope_Movements[0].movement_type, "rollover");
+  assert.equal(tables.Envelope_Movements[0].amount, 80);
+  assert.equal(result.rollover.amount, 80);
+  assert.deepEqual(audits.map((entry) => entry.action), ["envelopes.close"]);
+});
+
+test("rollover carry menambah periode berikutnya yang sudah ada tanpa membuat periode duplikat", async () => {
+  const tables = {
+    Envelope_Rules: [{ __row: 2, envelope_rule_id: "r1", name: "Belanja", period_type: "monthly", scope: "shared", owner_user_id: "", source_account_id: "", rollover_policy: "carry", status: "active" }],
+    Envelope_Periods: [
+      { __row: 2, envelope_period_id: "p1", envelope_rule_id: "r1", name: "Belanja", period_start: "2026-07-01", period_end: "2026-07-31", allocated_amount: 100, reserved_amount: 0, status: "active", row_version: 1 },
+      { __row: 3, envelope_period_id: "p2", envelope_rule_id: "r1", name: "Belanja", period_start: "2026-08-01", period_end: "2026-08-31", allocated_amount: 200, reserved_amount: 0, status: "active", row_version: 1 },
+    ],
+    Envelope_Movements: [], Transactions: [],
+  };
+  const { context } = await envelopeCloseRuntime(tables);
+  context.closeEnvelope_({ actor: { user_id: "owner", role: "owner" }, payload: { envelope_period_id: "p1", row_version: 1 }, rowVersion: 1 });
+  assert.equal(tables.Envelope_Periods.length, 2);
+  assert.equal(tables.Envelope_Periods.find((row) => row.envelope_period_id === "p2").allocated_amount, 300);
+  assert.equal(tables.Envelope_Periods.find((row) => row.envelope_period_id === "p2").row_version, 2);
+});
+
+test("rollover bertujuan yang belum memiliki target ditolak sebelum mutasi", async () => {
+  const tables = {
+    Envelope_Rules: [{ __row: 2, envelope_rule_id: "r1", name: "Belanja", period_type: "monthly", scope: "shared", owner_user_id: "", source_account_id: "", rollover_policy: "savings", status: "active" }],
+    Envelope_Periods: [{ __row: 2, envelope_period_id: "p1", envelope_rule_id: "r1", name: "Belanja", period_start: "2026-07-01", period_end: "2026-07-31", allocated_amount: 100, reserved_amount: 0, status: "active", row_version: 1 }],
+    Envelope_Movements: [], Transactions: [],
+  };
+  const { context, audits } = await envelopeCloseRuntime(tables);
+  assert.throws(() => context.closeEnvelope_({ actor: { user_id: "owner", role: "owner" }, payload: { envelope_period_id: "p1", row_version: 1 }, rowVersion: 1 }), (error) => error.code === "ROLLOVER_DESTINATION_REQUIRED");
+  assert.equal(tables.Envelope_Periods[0].status, "active");
+  assert.equal(tables.Envelope_Movements.length, 0);
+  assert.equal(audits.length, 0);
+});
+
+test("kegagalan audit penutupan rollover memulihkan periode dan menghapus mutasi sementara", async () => {
+  const tables = {
+    Envelope_Rules: [{ __row: 2, envelope_rule_id: "r1", name: "Belanja", period_type: "monthly", scope: "shared", owner_user_id: "", source_account_id: "", rollover_policy: "carry", status: "active" }],
+    Envelope_Periods: [{ __row: 2, envelope_period_id: "p1", envelope_rule_id: "r1", name: "Belanja", period_start: "2026-07-01", period_end: "2026-07-31", allocated_amount: 100, reserved_amount: 0, status: "active", row_version: 1 }],
+    Envelope_Movements: [], Transactions: [],
+  };
+  const { context } = await envelopeCloseRuntime(tables, { failAudit: true });
+  assert.throws(() => context.closeEnvelope_({ actor: { user_id: "owner", role: "owner" }, payload: { envelope_period_id: "p1", row_version: 1 }, rowVersion: 1 }), (error) => error.code === "ENVELOPE_CLOSE_ROLLED_BACK");
+  assert.equal(tables.Envelope_Periods.length, 1);
+  assert.equal(tables.Envelope_Periods[0].envelope_period_id, "p1");
+  assert.equal(tables.Envelope_Periods[0].status, "active");
+  assert.equal(tables.Envelope_Periods[0].row_version, 1);
+  assert.equal(tables.Envelope_Movements.length, 0);
+});
+
+test("transaksi dari periode tertutup tidak dapat dipindahkan ke periode terbuka", async () => {
+  const current = { __row: 2, transaction_id: "t1", transaction_date: "2026-07-31", transaction_type: "expense", source_account_id: "a1", destination_account_id: "", category_id: "c1", envelope_period_id: "", amount: 10, description: "lama", overspend_reason: "", merchant: "", payment_method: "cash", scope: "shared", owner_user_id: "", status: "active", row_version: 1, created_by: "owner", recurring_occurrence_id: "", goal_id: "" };
+  const tables = {
+    Accounts: [{ __row: 2, account_id: "a1", initial_balance: 1000, initial_balance_date: "2026-01-01", allow_negative: false, status: "active", owner_scope: "shared" }],
+    Categories: [{ __row: 2, category_id: "c1", transaction_type: "expense", status: "active" }],
+    Transactions: [current], Envelope_Periods: [], Envelope_Rules: [],
+    Period_Closures: [{ __row: 2, closure_id: "p1", period_key: "2026-07", scope: "shared", status: "closed", row_version: 1 }],
+  };
+  const runtime = await financeRuntime(tables);
+  assert.throws(() => runtime.updateTransaction_({ actor: { user_id: "owner", role: "owner" }, payload: { transaction_id: "t1", transaction_date: "2026-08-01", row_version: 1 }, rowVersion: 1 }), (error) => error.code === "PERIOD_CLOSED");
+  assert.equal(tables.Transactions[0].transaction_date, "2026-07-31");
+});
+
+test("dashboard historis menghitung saldo as-of akhir periode, bukan saldo hari ini", async () => {
+  const tables = {
+    Accounts: [{ __row: 2, account_id: "a1", name: "Utama", account_type: "bank", owner_scope: "shared", owner_user_id: "", initial_balance: 100, initial_balance_date: "2026-07-01", status: "active" }],
+    Categories: [{ __row: 2, category_id: "c1", name: "Gaji", transaction_type: "income", status: "active" }, { __row: 3, category_id: "c2", name: "Belanja", transaction_type: "expense", status: "active" }],
+    Transactions: [
+      { __row: 2, transaction_id: "jul", transaction_date: "2026-07-10", transaction_type: "income", destination_account_id: "a1", source_account_id: "", category_id: "c1", amount: 50, status: "active", scope: "shared", owner_user_id: "" },
+      { __row: 3, transaction_id: "aug", transaction_date: "2026-08-05", transaction_type: "expense", source_account_id: "a1", destination_account_id: "", category_id: "c2", amount: 20, status: "active", scope: "shared", owner_user_id: "" },
+    ],
+    Recurring_Rules: [], Recurring_Occurrences: [], Envelope_Rules: [], Envelope_Periods: [], Savings_Goals: [], Goal_Movements: [], Period_Closures: [],
+  };
+  const requestCache = { readModels: {}, rows: {}, metrics: { sheets: {}, cacheHits: 0, rowsScanned: 0 } };
+  const context = createBaseContext({
+    SB_TIMEZONE: "Asia/Jakarta", sbError_: errorFactory,
+    rows_: (name) => tables[name] || [], findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    requestCache_: () => requestCache, publicRow_: publicRow,
+    canAccessOwnedScope_: () => true, canAccessAccount_: () => true,
+    today_: () => "2026-08-15", monthKey_: () => "2026-08", nowIso_: () => "now",
+  });
+  await loadAppsScript(context, ["FinanceService.gs", "ReadModel.gs", "MasterDataService.gs", "PlanningService.gs", "ReportsAndIntegrations.gs"]);
+  context.listRecurring_ = () => [];
+  context.listEnvelopes_ = () => [];
+  context.listGoals_ = () => [];
+  context.allocationAvailability_ = () => ({ availableBalance: 0, allocatedRemaining: 0, unallocatedAmount: 0 });
+  const result = context.dashboardOverview_({ actor: { user_id: "owner", role: "owner" }, payload: { period: "2026-07" } });
+  assert.equal(result.cutoffDate, "2026-07-31");
+  assert.equal(result.totalBalance, 150);
+  assert.equal(result.openingBalance, 0);
+  assert.equal(result.balanceChange, 150);
+});
+
+test("recurring rule baru langsung menghasilkan occurrence periode berjalan", async () => {
+  const tables = { Recurring_Rules: [], Recurring_Occurrences: [], Transactions: [], Accounts: [{ account_id: "a1", status: "active", owner_scope: "shared" }], Categories: [{ category_id: "c1", status: "active", transaction_type: "expense" }] };
+  let sequence = 0;
+  const audits = [];
+  const context = createBaseContext({
+    SB_TIMEZONE: "Asia/Jakarta", sbError_: errorFactory,
+    rows_: (name) => tables[name] || [], findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    appendRow_: (name, record) => { const row = { ...record, __row: (tables[name] || []).length + 2 }; (tables[name] ||= []).push(row); return row; },
+    deleteRowsDescending_: (name, rowNumbers) => { const set = new Set(rowNumbers); tables[name] = (tables[name] || []).filter((row) => !set.has(row.__row)); },
+    deleteRow_: (name, rowNumber) => { tables[name] = (tables[name] || []).filter((row) => row.__row !== rowNumber); },
+    activeCategory_: (id, type) => { const row = tables.Categories.find((item) => item.category_id === id && item.transaction_type === type); if (!row) throw errorFactory("INVALID_CATEGORY", "invalid"); return row; },
+    activeAccount_: (id) => tables.Accounts.find((row) => row.account_id === id), assertAccountAccess_: () => {},
+    normalizeOwnedScope_: () => ({ scope: "shared", owner_user_id: "" }), ownedScopeFromAccount_: () => ({ scope: "shared", owner_user_id: "" }),
+    validateDate_: (value) => String(value), intAmount_: Number, strictBoolean_: (value, _name, fallback) => value === undefined ? fallback : Boolean(value),
+    sanitizeText_: (value) => String(value || ""), nowIso_: () => "2026-07-01T10:00:00+07:00", today_: () => "2026-07-01", monthKey_: () => "2026-07", uuid_: () => `r-${++sequence}`,
+    appendAudit_: (_request, action, _type, _id, _before, after) => audits.push({ action, after }), publicRow_: publicRow,
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  context.compensateOrFailClosed_ = (_reason, _details, compensate) => compensate();
+  const result = context.createRecurringRule_({ actor: { user_id: "owner", role: "owner" }, payload: { name: "Internet", kind: "expense", category_id: "c1", expected_amount: 400000, frequency: "monthly", due_day: 15, default_account_id: "a1", start_date: "2026-07-01", end_date: "", auto_debit: false } });
+  assert.equal(result.generated_occurrences, 1);
+  assert.equal(tables.Recurring_Occurrences.length, 1);
+  assert.equal(tables.Recurring_Occurrences[0].due_date, "2026-07-15");
+  assert.deepEqual(audits.map((entry) => entry.action), ["recurring.createRule"]);
+});
+
+test("recurring dengan transaksi terkait mengunci perubahan rekening dan kategori", async () => {
+  const current = { __row: 2, recurring_rule_id: "r1", name: "Internet", kind: "expense", category_id: "c1", expected_amount: 400000, frequency: "monthly", due_day: 15, default_account_id: "a1", payment_method: "transfer", auto_debit: false, start_date: "2026-01-01", end_date: "", priority: "normal", status: "active", scope: "shared", owner_user_id: "", row_version: 1 };
+  const tables = {
+    Recurring_Rules: [current],
+    Recurring_Occurrences: [{ __row: 2, occurrence_id: "o1", recurring_rule_id: "r1", period_key: "2026-07", due_date: "2026-07-15", status: "paid", transaction_ids: "t1" }],
+    Transactions: [{ __row: 2, transaction_id: "t1", recurring_occurrence_id: "o1", transaction_date: "2026-07-15", status: "active" }],
+    Accounts: [{ account_id: "a1", status: "active", owner_scope: "shared", owner_user_id: "" }, { account_id: "a2", status: "active", owner_scope: "shared", owner_user_id: "" }],
+    Categories: [{ category_id: "c1", status: "active", transaction_type: "expense" }, { category_id: "c2", status: "active", transaction_type: "expense" }],
+    Period_Closures: [],
+  };
+  let writes = 0;
+  const context = createBaseContext({
+    SB_TIMEZONE: "Asia/Jakarta", sbError_: errorFactory,
+    rows_: (name) => tables[name] || [],
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    activeCategory_: (id, type) => { const row = tables.Categories.find((item) => item.category_id === id && item.transaction_type === type && item.status === "active"); if (!row) throw errorFactory("INVALID_CATEGORY", "invalid", 400); return row; },
+    activeAccount_: (id) => { const row = tables.Accounts.find((item) => item.account_id === id && item.status === "active"); if (!row) throw errorFactory("INVALID_ACCOUNT", "invalid", 400); return row; },
+    assertAccountAccess_: () => {}, assertRecurringRuleAccess_: () => {}, assertVersion_: () => {},
+    normalizeOwnedScope_: (_request, payload, fallback) => ({ scope: payload.scope === undefined ? fallback.scope : payload.scope, owner_user_id: payload.owner_user_id === undefined ? fallback.owner_user_id : payload.owner_user_id }),
+    validateDate_: (value) => String(value), sanitizeText_: (value) => String(value || ""), intAmount_: Number, strictBoolean_: (value, _name, fallback) => value === undefined ? fallback : Boolean(value),
+    rowVersion_: (row) => Number(row.row_version || 0), today_: () => "2026-08-01", monthKey_: () => "2026-08",
+    isTransactionDateLocked_: () => false, updateRow_: () => { writes += 1; }, appendAudit_: () => {},
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  assert.throws(
+    () => context.updateRecurringRule_({ actor: { user_id: "owner", role: "owner" }, payload: { recurring_rule_id: "r1", row_version: 1, default_account_id: "a2", category_id: "c2" }, rowVersion: 1 }),
+    (error) => error.code === "RECURRING_RULE_LINKED_IDENTITY_LOCKED" && error.status === 409,
+  );
+  assert.equal(writes, 0);
+});
+
+test("public doGet hanya mengembalikan status minimal", async () => {
+  const context = createBaseContext({
+    ContentService: { MimeType: { JSON: "json" }, createTextOutput: (value) => ({ value, setMimeType() { return this; } }) },
+  });
+  await loadAppsScript(context, ["Code.gs"]);
+  const payload = JSON.parse(context.doGet().value);
+  assert.deepEqual(Object.keys(payload.data).sort(), ["service", "status"]);
+  assert.equal(payload.data.status, "ok");
+  assert.equal("schemaVersion" in payload.data, false);
+  assert.equal("recovery" in payload.data, false);
+});
+
+test("logger Apps Script menyimpan timing numerik aman tanpa payload sensitif", async () => {
+  const output = [];
+  const context = createBaseContext({ console: { log: (value) => output.push(value), warn: (value) => output.push(value), error: (value) => output.push(value) } });
+  await loadAppsScript(context, ["Security.gs"]);
+  context.appsScriptLog_("info", "request.completed", { requestId: "r1", stageTimings: { routeAction: 120, nested: { read: 30 }, email: "owner@gmail.com" }, sheetMetrics: { Transactions: { durationMs: 50, rows: 100, payload: "secret" } }, payload: { amount: 1 } });
+  const record = JSON.parse(output[0]);
+  assert.equal(record.stageTimings.routeAction, 120);
+  assert.equal(record.stageTimings.nested.read, 30);
+  assert.equal(record.stageTimings.email, undefined);
+  assert.equal(record.sheetMetrics.Transactions.rows, 100);
+  assert.equal(record.sheetMetrics.Transactions.payload, undefined);
+  assert.equal(record.payload, undefined);
+});
+
+test("goal selesai ditolak sebelum target nominal tercapai", async () => {
+  const goal = { __row: 2, goal_id: "g1", name: "Dana", goal_type: "savings", target_amount: 1000, target_date: "2026-12-31", priority: "normal", status: "active", row_version: 1, account_id: "a1", scope: "shared", owner_user_id: "" };
+  const context = createBaseContext({
+    sbError_: errorFactory, findBy_: () => goal, assertGoalAccess_: () => {}, assertVersion_: () => {}, sanitizeText_: (value) => String(value || ""), intAmount_: Number, validateDate_: String,
+    goalCurrentAmount_: () => 500, rowVersion_: (row) => row.row_version, nowIso_: () => "now", updateAuditedRow_: () => { throw new Error("tidak boleh update"); }, publicRow_: publicRow,
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  context.goalCurrentAmount_ = () => 500;
+  assert.throws(() => context.updateGoal_({ actor: { user_id: "owner", role: "owner" }, payload: { goal_id: "g1", row_version: 1, status: "completed" }, rowVersion: 1 }), (error) => error.code === "GOAL_NOT_REACHED");
+});
+
+test("pembayaran recurring memakai jalur transaksi internal dan menyimpan linkage occurrence", async () => {
+  const tables = {
+    Accounts: [{ __row: 2, account_id: "a1", initial_balance: 1000, initial_balance_date: "2026-01-01", allow_negative: false, status: "active", owner_scope: "shared", owner_user_id: "" }],
+    Categories: [{ __row: 2, category_id: "c1", transaction_type: "expense", status: "active" }],
+    Transactions: [], Period_Closures: [], Envelope_Periods: [], Envelope_Rules: [],
+    Recurring_Rules: [{ __row: 2, recurring_rule_id: "r1", name: "Internet", kind: "expense", category_id: "c1", default_account_id: "a1", payment_method: "transfer", scope: "shared", owner_user_id: "", status: "active" }],
+    Recurring_Occurrences: [{ __row: 2, occurrence_id: "o1", recurring_rule_id: "r1", period_key: "2026-07", due_date: "2026-07-28", expected_amount: 100, actual_amount: 0, transaction_ids: "", status: "scheduled", row_version: 1 }],
+  };
+  const runtime = await financeRuntime(tables);
+  await loadAppsScript(runtime, ["ReadModel.gs", "PlanningService.gs"]);
+
+  const result = runtime.payOccurrence_({
+    actor: { user_id: "u1", role: "owner" },
+    payload: { occurrence_id: "o1", row_version: 1, transaction_date: "2026-07-28", amount: 100 },
+    rowVersion: 1,
+    idempotencyKey: "pay-o1",
+  });
+
+  assert.equal(tables.Transactions.length, 1);
+  assert.equal(tables.Transactions[0].recurring_occurrence_id, "o1");
+  assert.equal(tables.Transactions[0].scope, "shared");
+  assert.equal(result.occurrence.status, "paid");
+  assert.equal(result.occurrence.transaction_ids, result.transaction.transaction_id);
+});
+
+test("mutasi goal memakai jalur transaksi internal dan menyimpan linkage goal", async () => {
+  const tables = {
+    Accounts: [
+      { __row: 2, account_id: "source", initial_balance: 1000, initial_balance_date: "2026-01-01", allow_negative: false, status: "active", owner_scope: "shared", owner_user_id: "" },
+      { __row: 3, account_id: "goal", initial_balance: 0, initial_balance_date: "2026-01-01", allow_negative: false, status: "active", owner_scope: "shared", owner_user_id: "" },
+    ],
+    Categories: [], Transactions: [], Period_Closures: [], Envelope_Periods: [], Envelope_Rules: [],
+    Savings_Goals: [{ __row: 2, goal_id: "g1", name: "Dana darurat", account_id: "goal", status: "active", scope: "shared", owner_user_id: "" }],
+    Goal_Movements: [],
+  };
+  const runtime = await financeRuntime(tables);
+  await loadAppsScript(runtime, ["ReadModel.gs", "PlanningService.gs"]);
+
+  const result = runtime.moveGoal_({
+    actor: { user_id: "u1", role: "owner" },
+    payload: { goal_id: "g1", movement_type: "contribution", source_account_id: "source", destination_account_id: "goal", amount: 250, transaction_date: "2026-07-28" },
+    idempotencyKey: "goal-g1-1",
+  });
+
+  assert.equal(tables.Transactions.length, 1);
+  assert.equal(tables.Transactions[0].goal_id, "g1");
+  assert.equal(tables.Transactions[0].transaction_type, "transfer");
+  assert.equal(tables.Goal_Movements.length, 1);
+  assert.equal(tables.Goal_Movements[0].transaction_id, tables.Transactions[0].transaction_id);
+  assert.equal(result.goal.current_amount, 250);
+});
+
+test("alokasi rekening tidak dapat melampaui sisa global setelah kantong lain", async () => {
+  const context = createBaseContext();
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  context.allocationAvailabilitySummary_ = () => ({
+    availableBalance: 1000,
+    allocatedRemaining: 980,
+    unallocatedAmount: 20,
+    availableByAccount: { a1: 500 },
+    allocatedByAccount: { a1: 100 },
+  });
+  const result = context.allocationAvailability_("a1", { actor: { user_id: "u1", role: "owner" }, payload: {} });
+  assert.equal(result.availableBalance, 500);
+  assert.equal(result.allocatedRemaining, 100);
+  assert.equal(result.unallocatedAmount, 20);
+});
+
+test("periode lama harus dibuka dari closure paling akhir", async () => {
+  const tables = {
+    Period_Closures: [
+      { __row: 2, closure_id: "jul", period_key: "2026-07", status: "closed", row_version: 1 },
+      { __row: 3, closure_id: "agu", period_key: "2026-08", status: "closed", row_version: 1 },
+    ],
+  };
+  const context = createBaseContext({
+    sbError_: errorFactory,
+    rows_: (name) => tables[name] || [],
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    assertVersion_: () => {},
+    sanitizeText_: (value) => String(value || ""),
+  });
+  await loadAppsScript(context, ["ReportsAndIntegrations.gs"]);
+  assert.throws(
+    () => context.reopenPeriod_({ actor: { user_id: "owner", role: "owner" }, payload: { closure_id: "jul", row_version: 1, reason: "koreksi" }, rowVersion: 1 }),
+    (error) => error.code === "LATER_PERIOD_CLOSED" && error.details.latestClosedPeriod === "2026-08",
+  );
+});
+
+test("jatuh tempo pada hari terakhir periode historis ditandai overdue", async () => {
+  const tables = {
+    Accounts: [{ account_id: "a1", status: "active", owner_scope: "shared" }],
+    Recurring_Rules: [{ recurring_rule_id: "r1", name: "Tagihan", kind: "expense", category_id: "c1", default_account_id: "a1", payment_method: "transfer", frequency: "monthly", status: "active", scope: "shared", owner_user_id: "" }],
+    Recurring_Occurrences: [{ occurrence_id: "o1", recurring_rule_id: "r1", period_key: "2026-07", due_date: "2026-07-31", expected_amount: 100, actual_amount: 0, transaction_ids: "", status: "scheduled", row_version: 1 }],
+    Transactions: [], Period_Closures: [],
+  };
+  const context = createBaseContext({
+    rows_: (name) => tables[name] || [],
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    periodKey_: (value) => value || "2026-07",
+    monthKey_: () => "2026-08",
+    periodCutoffDate_: () => "2026-07-31",
+    canAccessRecurringRule_: () => true,
+    buildTransactionReadModel_: () => ({ transactions: [], transactionById: {} }),
+    isTransactionDateLocked_: () => false,
+    publicRow_: publicRow,
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  const item = context.listRecurring_({ actor: { user_id: "owner", role: "owner" }, payload: { period: "2026-07" } })[0];
+  assert.equal(item.status, "overdue");
+});
+
+test("upsert budget mengaktifkan kembali row archived yang sama", async () => {
+  const tables = {
+    Budgets: [{ __row: 2, budget_id: "b1", period_key: "2026-07", category_id: "c1", envelope_rule_id: "", amount: 100, warning_threshold: 80, scope: "shared", owner_user_id: "", status: "archived", row_version: 2, created_at: "old" }],
+  };
+  const context = createBaseContext({
+    sbError_: errorFactory,
+    rows_: (name) => tables[name] || [],
+    activeCategory_: () => ({ category_id: "c1", name: "Makan", transaction_type: "expense", status: "active" }),
+    normalizeOwnedScope_: () => ({ scope: "shared", owner_user_id: "" }),
+    assertPeriodOpen_: () => {},
+    assertVersion_: () => {},
+    intAmount_: Number,
+    rowVersion_: (row) => Number(row.row_version || 0),
+    nowIso_: () => "new",
+    publicRow_: publicRow,
+    updateAuditedRow_: (name, current, updated) => { tables[name][current.__row - 2] = { ...updated, __row: current.__row }; },
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  const result = context.upsertBudget_({ actor: { user_id: "owner", role: "owner" }, payload: { period_key: "2026-07", category_id: "c1", amount: 200, warning_threshold: 90, row_version: 2 }, rowVersion: 2 });
+  assert.equal(tables.Budgets.length, 1);
+  assert.equal(result.budget_id, "b1");
+  assert.equal(result.status, "active");
+  assert.equal(result.amount, 200);
+});
+
+test("capability goal menolak rekening archived dan reverse transaksi periode terkunci", async () => {
+  const tables = {
+    Accounts: [{ account_id: "a1", status: "archived", owner_scope: "shared" }],
+    Savings_Goals: [{ goal_id: "g1", account_id: "a1", status: "active", scope: "shared", owner_user_id: "", created_at: "2026-01-01" }],
+  };
+  const context = createBaseContext({
+    rows_: (name) => tables[name] || [],
+    findBy_: (name, field, value) => (tables[name] || []).find((row) => String(row[field]) === String(value)) || null,
+    periodCutoffDate_: () => "2026-07-31",
+    canAccessGoal_: () => true,
+    isTransactionDateLocked_: () => true,
+    goalMovementReadModelAsOf_: () => ({
+      totals: { g1: 100 },
+      latestByGoal: { g1: { goal_movement_id: "m1", transaction_id: "t1", movement_type: "contribution", created_by: "owner" } },
+      transactionById: { t1: { transaction_id: "t1", transaction_date: "2026-07-20", status: "active" } },
+    }),
+    publicRow_: publicRow,
+  });
+  await loadAppsScript(context, ["PlanningService.gs"]);
+  const goal = context.listGoals_({ actor: { user_id: "owner", role: "owner" }, payload: { period: "2026-07" } })[0];
+  assert.equal(goal.can_move, false);
+  assert.equal(goal.can_reverse, false);
+});
+
+test("import preview memakai ownership transaksi aktual, menetralkan formula, dan menerima batch valid", async () => {
+  const tables = {
+    Accounts: [{ __row: 2, account_id: "a1", initial_balance: 1000, initial_balance_date: "2026-01-01", allow_negative: false, status: "active", owner_scope: "shared", owner_user_id: "" }],
+    Categories: [{ __row: 2, category_id: "c1", transaction_type: "expense", status: "active" }],
+    Transactions: [], Period_Closures: [], Envelope_Periods: [], Envelope_Rules: [],
+  };
+  const runtime = await financeRuntime(tables);
+  await loadAppsScript(runtime, ["RecoveryService.gs"]);
+  runtime.sanitizeText_ = (value, maxLength = 250) => {
+    const text = String(value ?? "").trim().slice(0, maxLength);
+    return /^[=+\-@]/.test(text) ? `'${text}` : text;
+  };
+  const result = runtime.importPreview_({
+    actor: { user_id: "owner", role: "owner" },
+    payload: { records: [{ transaction_type: "expense", transaction_date: "2026-07-28", source_account_id: "a1", category_id: "c1", amount: 25, description: "=HYPERLINK(\"x\")" }] },
+  });
+  assert.equal(result.acceptable, true);
+  assert.equal(result.validCount, 1);
+  const cached = JSON.parse(runtime.CacheService.getScriptCache().get(`import-preview:${result.previewToken}`));
+  assert.equal(cached.records[0].description.startsWith("'="), true);
+  assert.equal(Object.hasOwn(cached.records[0], "scope"), false);
+  assert.equal(Object.hasOwn(cached.records[0], "owner_user_id"), false);
+});
+
+test("import preview menolak transaksi yang dikunci closure bulan setelahnya", async () => {
+  const tables = {
+    Accounts: [{ __row: 2, account_id: "a1", initial_balance: 1000, initial_balance_date: "2026-01-01", allow_negative: false, status: "active", owner_scope: "shared", owner_user_id: "" }],
+    Categories: [{ __row: 2, category_id: "c1", transaction_type: "expense", status: "active" }],
+    Transactions: [], Envelope_Periods: [], Envelope_Rules: [],
+    Period_Closures: [{ __row: 2, closure_id: "aug", period_key: "2026-08", status: "closed" }],
+  };
+  const runtime = await financeRuntime(tables);
+  await loadAppsScript(runtime, ["RecoveryService.gs"]);
+  const result = runtime.importPreview_({
+    actor: { user_id: "owner", role: "owner" },
+    payload: { records: [{ transaction_type: "expense", transaction_date: "2026-07-28", source_account_id: "a1", category_id: "c1", amount: 25, description: "Makan" }] },
+  });
+  assert.equal(result.acceptable, false);
+  assert.equal(result.invalid[0].code, "PERIOD_CLOSED");
+});
+
+test("integrity scanner mendeteksi formula tanpa membocorkan isi formula", async () => {
+  const context = createBaseContext({
+    SB_SCHEMA: { Transactions: ["transaction_id", "description"] },
+    getSheet_: () => ({
+      getLastRow: () => 3,
+      getRange: () => ({ getFormulas: () => [["", "=SUM(1,1)"], ["", ""]] }),
+    }),
+  });
+  await loadAppsScript(context, ["ReportsAndIntegrations.gs"]);
+  const issues = context.formulaIntegrityIssues_();
+  assert.deepEqual(Array.from(issues, (issue) => issue.code), ["FORMULA_CELL_DETECTED"]);
+  assert.equal(issues[0].count, 1);
+  assert.equal(issues[0].firstCell, "R2C2");
+  assert.equal(JSON.stringify(issues).includes("SUM"), false);
+});
+
+test("fingerprint closure mencakup progress goal tetapi kompatibel dengan snapshot legacy", async () => {
+  const context = createBaseContext();
+  await loadAppsScript(context, ["ReportsAndIntegrations.gs"]);
+  const base = { schemaVersion: "2", periodKey: "2026-07", totals: {}, accountBalances: [], categoryExpenses: [], budgets: [], envelopes: [], recurring: [], goals: [{ goal_id: "g1", current_amount: 100 }] };
+  const changed = { ...base, goals: [{ goal_id: "g1", current_amount: 200 }] };
+  assert.notEqual(context.periodSnapshotFingerprint_(base), context.periodSnapshotFingerprint_(changed));
+  const legacy = { schemaVersion: "2", periodKey: "2026-07", totals: {}, accountBalances: [], categoryExpenses: [], budgets: [], envelopes: [], recurring: [] };
+  assert.equal(
+    context.periodSnapshotComparableFingerprint_(base, legacy),
+    context.periodSnapshotComparableFingerprint_(changed, legacy),
+  );
+});
+
+test("integrity menolak entity aktif yang bergantung pada master data terarsip", async () => {
+  const tables = {
+    Users: [{ user_id: "u1", email: "owner@gmail.com", role: "owner", status: "active" }],
+    Accounts: [{ account_id: "a-archived", owner_scope: "shared", owner_user_id: "", status: "archived" }],
+    Categories: [{ category_id: "c-archived", transaction_type: "expense", status: "archived" }],
+    Transactions: [],
+    Envelope_Rules: [
+      { envelope_rule_id: "er-active", source_account_id: "a-archived", scope: "shared", owner_user_id: "", status: "active" },
+      { envelope_rule_id: "er-archived", source_account_id: "", scope: "shared", owner_user_id: "", status: "archived" },
+    ],
+    Envelope_Periods: [], Envelope_Movements: [],
+    Recurring_Rules: [{ recurring_rule_id: "rr1", category_id: "c-archived", default_account_id: "a-archived", scope: "shared", owner_user_id: "", status: "active" }],
+    Recurring_Occurrences: [],
+    Budgets: [{ budget_id: "b1", period_key: "2026-07", category_id: "c-archived", envelope_rule_id: "er-archived", scope: "shared", owner_user_id: "", status: "active" }],
+    Savings_Goals: [{ goal_id: "g1", account_id: "a-archived", scope: "shared", owner_user_id: "", status: "active" }],
+    Goal_Movements: [], Reconciliations: [], Period_Closures: [], Calendar_Sync: [], Notification_Queue: [], Push_Subscriptions: [], Backup_Log: [], Idempotency: [], Audit_Log: [],
+  };
+  const context = createBaseContext({
+    SB_SCHEMA: {}, SB_SCHEMA_VERSION: "2",
+    rows_: (name) => tables[name] || [],
+    groupRowsByField_: (rows, field) => rows.reduce((grouped, row) => {
+      const key = String(row[field] || "");
+      (grouped[key] ||= []).push(row);
+      return grouped;
+    }, {}),
+    accountOwnershipKey_: () => "shared:",
+    allocationAvailabilitySummary_: () => ({ availableBalance: 0, allocatedRemaining: 0, availableByAccount: {}, allocatedByAccount: {} }),
+  });
+  await loadAppsScript(context, ["ReportsAndIntegrations.gs"]);
+  context.allocationAvailabilitySummary_ = () => ({ availableBalance: 0, allocatedRemaining: 0, availableByAccount: {}, allocatedByAccount: {} });
+  const codes = new Set(Array.from(context.integrityIssues_({ actor: { user_id: "u1", role: "owner" }, payload: {} }), (issue) => issue.code));
+  [
+    "ACTIVE_ENVELOPE_ARCHIVED_ACCOUNT",
+    "ACTIVE_RECURRING_ARCHIVED_ACCOUNT",
+    "ACTIVE_RECURRING_ARCHIVED_CATEGORY",
+    "ACTIVE_BUDGET_ARCHIVED_CATEGORY",
+    "ACTIVE_BUDGET_ARCHIVED_ENVELOPE",
+    "ACTIVE_GOAL_ARCHIVED_ACCOUNT",
+  ].forEach((code) => assert.equal(codes.has(code), true, `${code} harus terdeteksi`));
 });

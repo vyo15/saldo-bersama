@@ -88,15 +88,15 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
     "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
-    "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "goals.reverseMovement", "reports.monthly",
-    "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync",
+    "budgets.list", "budgets.upsert", "budgets.archive", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly",
+    "reconciliations.list", "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync",
     "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
   ]),
   member: new Set([
     "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment",
-    "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create",
+    "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",
     "notifications.register", "notifications.unregister",
   ]),
 });
@@ -152,7 +152,7 @@ export const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
   "transactions.create", "transactions.update", "transactions.cancel",
   "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
   "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
-  "budgets.upsert", "goals.create", "goals.move", "goals.reverseMovement", "reconciliations.create",
+  "budgets.upsert", "budgets.archive", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reconciliations.create",
   "periods.close", "periods.reopen", "calendar.sync",
   "notifications.register", "notifications.unregister", "backup.create", "export.create",
   "import.apply", "restore.apply"

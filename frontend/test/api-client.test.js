@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parseResponse, shouldInvalidateSession } from "../src/services/api/client.js";
 
@@ -95,4 +96,19 @@ test("abort satu subscriber tidak membatalkan read identik yang masih dipakai su
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("FinanceContext tidak men-seed daftar master aktif sebagai daftar manajemen lengkap", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("../src/app/FinanceContext.jsx", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /apiClient\.seed\("accounts\.list"/);
+  assert.doesNotMatch(source, /apiClient\.seed\("categories\.list"/);
+});
+
+
+test("FinanceContext mengikat UID baru melalui bootstrap lock sebelum retry initial state", async () => {
+  const source = await readFile(new URL("../src/app/FinanceContext.jsx", import.meta.url), "utf8");
+  assert.match(source, /IDENTITY_BIND_REQUIRED/);
+  assert.match(source, /apiClient\.request\("bootstrap\.get", \{\}, \{ force: true \}\)/);
+  assert.match(source, /apiClient\.request\("app\.initialState", \{\}, \{ force: true \}\)/);
 });

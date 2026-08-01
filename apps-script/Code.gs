@@ -1,15 +1,9 @@
 function doGet() {
-  resetRequestCache_();
-  let schemaIssues = [];
-  try { schemaIssues = validateSchema_(); } catch (error) { schemaIssues = [error.code || error.message]; }
   return ContentService.createTextOutput(JSON.stringify({
     ok: true,
     data: {
       service: "saldo-bersama-apps-script",
-      status: schemaIssues.length ? "degraded" : (isRecoveryRequired_() ? "recovery_required" : "ok"),
-      schemaVersion: SB_SCHEMA_VERSION,
-      schemaIssues: schemaIssues,
-      recovery: recoveryDetails_()
+      status: "ok"
     }
   })).setMimeType(ContentService.MimeType.JSON);
 }
@@ -69,7 +63,7 @@ function isIdempotencyRequired_(action) {
     "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
     "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
-    "budgets.upsert", "goals.create", "goals.move", "goals.reverseMovement", "reconciliations.create",
+    "budgets.upsert", "budgets.archive", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reconciliations.create",
     "periods.close", "periods.reopen", "calendar.sync", "notifications.register", "notifications.unregister",
     "backup.create", "export.create", "import.apply", "restore.apply"
   ].indexOf(action) !== -1;
@@ -216,6 +210,7 @@ function doPost(e) {
       stageTimings.routeAction = Date.now() - routeStartedAt;
     }
 
+    const readMetrics = requestReadMetrics_();
     appsScriptLog_("info", "request.completed", {
       requestId: String(signed && signed.requestId || "").slice(0, 120),
       action: String(signed && signed.action || "unknown").slice(0, 120),
@@ -223,10 +218,14 @@ function doPost(e) {
       status: 200,
       durationMs: Date.now() - startedAt,
       mutating: signed ? isMutatingAction_(signed.action) : null,
-      stageTimings: stageTimings
+      stageTimings: stageTimings,
+      sheetMetrics: readMetrics.sheets,
+      rowsScanned: readMetrics.rowsScanned,
+      cacheHits: readMetrics.cacheHits
     });
     return jsonOutput_({ ok: true, data: data });
   } catch (error) {
+    const readMetrics = requestReadMetrics_();
     appsScriptLog_("error", "request.failed", {
       requestId: String(signed && signed.requestId || "").slice(0, 120),
       action: String(signed && signed.action || "unknown").slice(0, 120),
@@ -235,7 +234,10 @@ function doPost(e) {
       code: error.code || "INTERNAL_ERROR",
       durationMs: Date.now() - startedAt,
       mutating: signed ? isMutatingAction_(signed.action) : null,
-      stageTimings: stageTimings
+      stageTimings: stageTimings,
+      sheetMetrics: readMetrics.sheets,
+      rowsScanned: readMetrics.rowsScanned,
+      cacheHits: readMetrics.cacheHits
     });
     return jsonOutput_({ ok: false, error: { code: error.code || "INTERNAL_ERROR", message: error.code ? error.message : "Apps Script gagal memproses request.", status: error.status || 500, details: error.details || null } });
   }
@@ -246,5 +248,5 @@ function jsonOutput_(payload) {
 }
 
 function isMutatingAction_(action) {
-  return !["system.health", "app.initialState", "users.list", "audit.list", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly", "periods.list", "restore.preview", "import.preview"].includes(action);
+  return !["system.health", "app.initialState", "users.list", "audit.list", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly", "reconciliations.list", "periods.list", "restore.preview", "import.preview"].includes(action);
 }

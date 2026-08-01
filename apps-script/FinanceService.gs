@@ -1,7 +1,54 @@
+function isPeriodClosed_(dateString) {
+  const periodKey = String(dateString || "").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(periodKey)) return false;
+  return rows_("Period_Closures").some(function(row) {
+    return String(row.period_key) === periodKey && row.status === "closed";
+  });
+}
+
 function assertPeriodOpen_(dateString) {
   const periodKey = String(dateString).slice(0, 7);
-  const closure = filterBy_("Period_Closures", function(row) { return row.period_key === periodKey && row.status === "closed"; })[0];
-  if (closure) throw sbError_("PERIOD_CLOSED", "Periode " + periodKey + " sudah ditutup.", 409);
+  if (isPeriodClosed_(dateString)) throw sbError_("PERIOD_CLOSED", "Periode " + periodKey + " sudah ditutup.", 409);
+}
+
+function transactionLockingClosure_(dateString) {
+  const period = String(dateString || "").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(period)) return null;
+  return rows_("Period_Closures").filter(function(row) {
+    return row.status === "closed" && String(row.period_key || "") >= period;
+  }).sort(function(left, right) {
+    return String(left.period_key || "").localeCompare(String(right.period_key || ""));
+  })[0] || null;
+}
+
+function isTransactionDateLocked_(dateString) {
+  return Boolean(transactionLockingClosure_(dateString));
+}
+
+function assertTransactionDateUnlocked_(dateString) {
+  const period = String(dateString || "").slice(0, 7);
+  const closure = transactionLockingClosure_(dateString);
+  if (!closure) return;
+  throw sbError_("PERIOD_CLOSED", "Transaksi periode " + period + " dikunci karena periode " + closure.period_key + " sudah ditutup.", 409, {
+    transactionPeriod: period,
+    lockingPeriod: closure.period_key,
+    closureId: closure.closure_id
+  });
+}
+
+function assertPeriodRangeOpen_(startDate, endDate) {
+  const startPeriod = periodKey_(String(startDate).slice(0, 7));
+  const endPeriod = periodKey_(String(endDate).slice(0, 7));
+  let cursor = startPeriod;
+  let checked = 0;
+  while (cursor <= endPeriod && checked < 120) {
+    if (isPeriodClosed_(cursor + "-01")) throw sbError_("PERIOD_CLOSED", "Periode " + cursor + " sudah ditutup.", 409);
+    const parts = cursor.split("-").map(Number);
+    const next = new Date(parts[0], parts[1], 1);
+    cursor = String(next.getFullYear()) + "-" + String(next.getMonth() + 1).padStart(2, "0");
+    checked += 1;
+  }
+  if (checked >= 120 && cursor <= endPeriod) throw sbError_("INVALID_PERIOD_RANGE", "Rentang periode terlalu panjang.", 400);
 }
 
 function activeAccount_(id) {
@@ -134,18 +181,15 @@ function firstNegativeAccountBalance_(account, transactions, reportFromDate) {
   }).sort(function(left, right) {
     return String(left.transaction_date || "").localeCompare(String(right.transaction_date || ""));
   });
-  const dates = Array.from(new Set(ledger.map(function(transaction) {
-    return String(transaction.transaction_date || "");
-  })));
-  for (let index = 0; index < dates.length; index += 1) {
-    const date = dates[index];
-    ledger.filter(function(transaction) {
-      return String(transaction.transaction_date || "") === date;
-    }).forEach(function(transaction) {
-      balance += transactionBalanceImpact_(account.account_id, transaction);
-    });
-    if (balance < 0 && date >= reportFrom) return { date: date, balance: balance };
+  let activeDate = "";
+  for (let index = 0; index < ledger.length; index += 1) {
+    const transaction = ledger[index];
+    const date = String(transaction.transaction_date || "");
+    if (activeDate && date !== activeDate && balance < 0 && activeDate >= reportFrom) return { date: activeDate, balance: balance };
+    activeDate = date;
+    balance += transactionBalanceImpact_(account.account_id, transaction);
   }
+  if (activeDate && balance < 0 && activeDate >= reportFrom) return { date: activeDate, balance: balance };
   return null;
 }
 
@@ -175,8 +219,8 @@ function assertSufficientBalanceForCandidate_(source, candidate, transactions) {
   }
 }
 
-function duplicateTransaction_(payload, excludeTransactionId) {
-  return rows_("Transactions").find(function(row) {
+function duplicateTransaction_(payload, excludeTransactionId, transactions) {
+  return (transactions || rows_("Transactions")).find(function(row) {
     return row.status === "active"
       && row.transaction_id !== excludeTransactionId
       && row.transaction_date === payload.transaction_date
@@ -219,7 +263,7 @@ function createTransaction_(context, forcedPayload, options) {
   if (!["income", "expense", "transfer", "refund", "adjustment"].includes(type)) throw sbError_("INVALID_TRANSACTION_TYPE", "Jenis transaksi tidak valid.", 400);
   assertAdjustmentAuthorized_(context, type, payload.description);
   const date = validateDate_(payload.transaction_date);
-  assertPeriodOpen_(date);
+  assertTransactionDateUnlocked_(date);
   const amount = intAmount_(payload.amount);
   let source = null; let destination = null;
   if (type !== "income" && type !== "refund") { source = activeAccount_(payload.source_account_id); assertAccountAccess_(context, source); }
@@ -238,13 +282,13 @@ function createTransaction_(context, forcedPayload, options) {
   if (["income", "expense", "refund"].includes(type) && !payload.category_id) throw sbError_("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
   activeCategory_(payload.category_id, type === "income" ? "income" : type === "expense" ? "expense" : type);
   payload.overspend_reason = sanitizeText_(payload.overspend_reason, 180);
-  if (type === "expense") validateEnvelopeForExpense_(payload, amount, undefined, context);
+  if (type === "expense") validateEnvelopeForExpense_(payload, amount, settings.transactionSnapshot, context);
   const candidate = {
     status: "active", transaction_date: date, transaction_type: type, source_account_id: payload.source_account_id || "",
     destination_account_id: payload.destination_account_id || "", amount: amount
   };
-  assertSufficientBalanceForCandidate_(source, candidate);
-  const duplicate = duplicateTransaction_(payload);
+  assertSufficientBalanceForCandidate_(source, candidate, settings.transactionSnapshot);
+  const duplicate = duplicateTransaction_(payload, null, settings.transactionSnapshot);
   if (duplicate && !payload.confirm_duplicate) throw sbError_("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
   const record = {
     transaction_id: uuid_(), transaction_date: date, transaction_type: type,
@@ -258,6 +302,7 @@ function createTransaction_(context, forcedPayload, options) {
     idempotency_key: context.idempotencyKey || "", created_by: context.actor.user_id, created_at: nowIso_(),
     updated_by: context.actor.user_id, updated_at: nowIso_(), cancelled_by: "", cancelled_at: "", cancellation_reason: ""
   };
+  if (settings.deferWrite === true) return publicRow_(record);
   if (settings.skipAudit === true) appendRow_("Transactions", record);
   else appendAuditedRow_("Transactions", "transaction_id", record, context, "transactions.create", "transaction", null, publicRow_(record));
   return publicRow_(record);
@@ -274,9 +319,11 @@ function transactionCapabilities_(context, transaction) {
   const linked = Boolean(transaction && (transaction.recurring_occurrence_id || transaction.goal_id));
   const ownerOrCreator = context.actor.role === "owner" || String(transaction.created_by) === String(context.actor.user_id);
   const adjustmentAllowed = transaction.transaction_type !== "adjustment" || context.actor.role === "owner";
+  const periodOpen = transaction ? !isTransactionDateLocked_(transaction.transaction_date) : false;
   return {
-    can_edit: Boolean(active && !linked && ownerOrCreator && adjustmentAllowed),
-    can_cancel: Boolean(active && !linked && ownerOrCreator && adjustmentAllowed),
+    can_edit: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
+    can_cancel: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
+    period_closed: Boolean(active && !periodOpen),
     managed_by: transaction.recurring_occurrence_id ? "recurring" : transaction.goal_id ? "goal" : ""
   };
 }
@@ -300,7 +347,8 @@ function updateTransaction_(context) {
   if (type !== current.transaction_type && (type === "adjustment" || current.transaction_type === "adjustment")) throw sbError_("ADJUSTMENT_TYPE_IMMUTABLE", "Jenis adjustment tidak dapat diubah ke atau dari jenis transaksi lain. Batalkan lalu buat transaksi koreksi baru.", 409);
   assertAdjustmentAuthorized_(context, type, payload.description === undefined ? current.description : payload.description);
   const date = validateDate_(payload.transaction_date === undefined ? current.transaction_date : payload.transaction_date);
-  assertPeriodOpen_(date);
+  assertTransactionDateUnlocked_(current.transaction_date);
+  assertTransactionDateUnlocked_(date);
   const amount = intAmount_(payload.amount === undefined ? current.amount : payload.amount);
   const sourceAccountId = payload.source_account_id === undefined ? current.source_account_id : payload.source_account_id;
   const destinationAccountId = payload.destination_account_id === undefined ? current.destination_account_id : payload.destination_account_id;
@@ -354,7 +402,7 @@ function cancelTransaction_(context) {
   assertCanModifyTransaction_(context, current);
   assertGenericTransactionMutationAllowed_(current);
   assertVersion_(current, context.rowVersion || payload.rowVersion || payload.row_version);
-  assertPeriodOpen_(current.transaction_date);
+  assertTransactionDateUnlocked_(current.transaction_date);
   const reason = sanitizeText_(payload.reason, 200);
   if (!reason) throw sbError_("REASON_REQUIRED", "Alasan pembatalan wajib diisi.", 400);
   const previous = publicRow_(current);

@@ -2,8 +2,10 @@ import http from "node:http";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { ensureDevelopmentEnvironment } from "./bootstrap-development-env.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+await ensureDevelopmentEnvironment({ projectRoot });
 const frontendRoot = path.join(projectRoot, "frontend");
 const rawPort = String(process.env.PORT || "5173").trim();
 const port = Number(rawPort);

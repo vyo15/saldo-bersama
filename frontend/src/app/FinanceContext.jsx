@@ -39,12 +39,28 @@ export const FinanceProvider = ({ children }) => {
       try {
         initial = await apiClient.request("app.initialState", {}, { force });
       } catch (initialError) {
-        if (user.role !== "owner" || !["ACCOUNT_NOT_ALLOWED", "SCHEMA_MISSING"].includes(initialError.code)) throw initialError;
-        await apiClient.request("system.initialize", {}, { idempotencyKey: createIdempotencyKey() });
-        apiClient.invalidate(INITIAL_ACTIONS);
-        initial = await apiClient.request("app.initialState", {}, { force: true });
+        if (initialError.code === "IDENTITY_BIND_REQUIRED") {
+          // Pengguna baru diikat ke Firebase UID melalui bootstrap.get yang
+          // berjalan di jalur mutation lock Apps Script, lalu initial state
+          // dibaca ulang. Jalur ini hanya terjadi sekali per akun.
+          await apiClient.request("bootstrap.get", {}, { force: true });
+          apiClient.invalidate(INITIAL_ACTIONS);
+          initial = await apiClient.request("app.initialState", {}, { force: true });
+        } else {
+          if (user.role !== "owner" || !["ACCOUNT_NOT_ALLOWED", "SCHEMA_MISSING"].includes(initialError.code)) throw initialError;
+          await apiClient.request("system.initialize", {}, { idempotencyKey: createIdempotencyKey() });
+          apiClient.invalidate(INITIAL_ACTIONS);
+          initial = await apiClient.request("app.initialState", {}, { force: true });
+        }
       }
       if (requestSequence.current !== sequence) return initial;
+      apiClient.seed("bootstrap.get", {}, initial.bootstrap);
+      apiClient.seed("dashboard.overview", {}, initial.overview);
+      apiClient.seed("envelopes.list", {}, { items: initial.overview?.envelopes || [] });
+      apiClient.seed("envelopes.list", { period: initial.overview?.periodKey || "current" }, { items: initial.overview?.envelopes || [] });
+      apiClient.seed("recurring.list", {}, { items: initial.overview?.recurring || [] });
+      apiClient.seed("recurring.list", { period: initial.overview?.periodKey || "current" }, { items: initial.overview?.recurring || [] });
+      apiClient.seed("goals.list", {}, { items: initial.overview?.goals || [] });
       bootstrapRef.current = initial.bootstrap;
       overviewRef.current = initial.overview;
       setBootstrap(initial.bootstrap);
@@ -73,6 +89,10 @@ export const FinanceProvider = ({ children }) => {
     try {
       const nextOverview = await apiClient.request("dashboard.overview", {}, { force: true });
       if (requestSequence.current !== sequence) return nextOverview;
+      apiClient.seed("dashboard.overview", {}, nextOverview);
+      apiClient.seed("envelopes.list", {}, { items: nextOverview?.envelopes || [] });
+      apiClient.seed("recurring.list", {}, { items: nextOverview?.recurring || [] });
+      apiClient.seed("goals.list", {}, { items: nextOverview?.goals || [] });
       overviewRef.current = nextOverview;
       setOverview(nextOverview);
       setState({ status: "ready", error: null, refreshError: null });
@@ -95,6 +115,7 @@ export const FinanceProvider = ({ children }) => {
     try {
       const nextBootstrap = await apiClient.request("bootstrap.get", {}, { force: true });
       if (requestSequence.current !== sequence) return nextBootstrap;
+      apiClient.seed("bootstrap.get", {}, nextBootstrap);
       bootstrapRef.current = nextBootstrap;
       setBootstrap(nextBootstrap);
       setState({ status: "ready", error: null, refreshError: null });

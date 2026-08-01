@@ -16,13 +16,14 @@ function bootstrapData_(context, snapshots) {
 }
 
 function appInitialState_(context) {
-  const transactions = visibleTransactions_(context);
+  const period = periodKey_(context.payload && context.payload.period);
+  const model = buildTransactionReadModel_(context);
   const categories = rows_("Categories");
-  const accounts = listAccounts_(context, transactions);
-  const snapshots = { transactions: transactions, categories: categories, accounts: accounts };
+  const accounts = listAccounts_(context, model, periodCutoffDate_(period));
+  const snapshots = { model: model, transactions: model.transactions, categories: categories, accounts: accounts };
   return {
     bootstrap: bootstrapData_(context, snapshots),
-    overview: dashboardOverview_(context, snapshots)
+    overview: dashboardOverview_(Object.assign({}, context, { payload: { period: period } }), snapshots)
   };
 }
 
@@ -38,6 +39,7 @@ function routeAction_(context) {
         migrationStatus: properties.getProperty("MIGRATION_STATUS") || "not_required",
         maintenanceMode: getConfig_("maintenance_mode") === "true",
         recoveryRequired: isRecoveryRequired_(),
+        triggers: scheduledTriggerHealth_(),
         timestamp: nowIso_()
       };
     }
@@ -67,8 +69,8 @@ function routeAction_(context) {
       if (["all", "income", "expense", "transfer", "refund", "adjustment"].indexOf(type) === -1) throw sbError_("INVALID_TRANSACTION_TYPE", "Filter jenis transaksi tidak valid.", 400);
       if (["all", "allocated", "unallocated"].indexOf(allocation) === -1) throw sbError_("INVALID_ALLOCATION_FILTER", "Filter alokasi tidak valid.", 400);
       const categories = Object.fromEntries(rows_("Categories").map(function(row) { return [row.category_id, row.name]; }));
-      const filtered = visibleTransactions_(context).filter(function(row) {
-        if (String(row.transaction_date).slice(0, 7) !== period) return false;
+      const model = buildTransactionReadModel_(context);
+      const filtered = (model.transactionsByPeriod[period] || []).filter(function(row) {
         if (type !== "all" && row.transaction_type !== type) return false;
         if (allocation === "unallocated" && !(row.transaction_type === "expense" && !row.envelope_period_id)) return false;
         if (allocation === "allocated" && row.transaction_type === "expense" && !row.envelope_period_id) return false;
@@ -82,7 +84,15 @@ function routeAction_(context) {
       const items = filtered.slice(offset, offset + limit).map(function(row) {
         return Object.assign(publicRow_(row), transactionCapabilities_(context, row));
       });
-      return { items: items, total: filtered.length, offset: offset, limit: limit, hasMore: offset + items.length < filtered.length, nextOffset: offset + items.length };
+      return {
+        items: items,
+        total: filtered.length,
+        offset: offset,
+        limit: limit,
+        hasMore: offset + items.length < filtered.length,
+        nextOffset: offset + items.length,
+        periodLocked: isTransactionDateLocked_(period + "-01")
+      };
     }
     case "transactions.create": return createTransaction_(context);
     case "transactions.update": return updateTransaction_(context);
@@ -100,11 +110,14 @@ function routeAction_(context) {
     case "recurring.reversePayment": return reverseOccurrencePayment_(context);
     case "budgets.list": return { items: listBudgets_(context) };
     case "budgets.upsert": return upsertBudget_(context);
+    case "budgets.archive": return archiveBudget_(context);
     case "goals.list": return { items: listGoals_(context) };
     case "goals.create": return createGoal_(context);
+    case "goals.update": return updateGoal_(context);
     case "goals.move": return moveGoal_(context);
     case "goals.reverseMovement": return reverseGoalMovement_(context);
     case "reports.monthly": return monthlyReport_(context);
+    case "reconciliations.list": return { items: listReconciliations_(context) };
     case "reconciliations.create": return createReconciliation_(context);
     case "periods.list": return { items: listPeriodClosures_(context) };
     case "periods.close": return closePeriod_(context);

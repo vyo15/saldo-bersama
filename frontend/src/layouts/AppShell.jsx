@@ -30,9 +30,10 @@ const AppShell = () => {
 
   return (
     <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}`}>
+      <SideNavigation />
+
       <header className="desktop-app-header">
         <Brand />
-        <SideNavigation />
         <div className="desktop-app-header__actions">
           <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
             {isRefreshing ? <><FiRefreshCw aria-hidden="true" /><span>Memperbarui</span></> : <span className="sr-only">Data siap</span>}

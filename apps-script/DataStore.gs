@@ -1,7 +1,13 @@
 let SB_REQUEST_CACHE = null;
 
 function resetRequestCache_() {
-  SB_REQUEST_CACHE = { spreadsheet: null, sheets: {}, rows: {} };
+  SB_REQUEST_CACHE = {
+    spreadsheet: null,
+    sheets: {},
+    rows: {},
+    readModels: {},
+    metrics: { cacheHits: 0, rowsScanned: 0, sheets: {} }
+  };
 }
 
 function requestCache_() {
@@ -13,6 +19,7 @@ function invalidateSheetCache_(name) {
   const cache = requestCache_();
   delete cache.rows[name];
   delete cache.sheets[name];
+  cache.readModels = {};
 }
 
 function cloneRows_(items) {
@@ -39,27 +46,66 @@ function getSheet_(name) {
 
 function headers_(name) { return SB_SCHEMA[name]; }
 
+function normalizeSheetValue_(header, value) {
+  if (!(value instanceof Date)) return value;
+  const field = String(header || "");
+  if (field === "period_key") return Utilities.formatDate(value, SB_TIMEZONE, "yyyy-MM");
+  if (/_date$/.test(field) || ["period_start", "period_end", "due_date", "target_date", "start_date", "end_date"].indexOf(field) !== -1) {
+    return Utilities.formatDate(value, SB_TIMEZONE, "yyyy-MM-dd");
+  }
+  return Utilities.formatDate(value, SB_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+}
+
 function rows_(name) {
   const cache = requestCache_();
-  if (cache.rows[name]) return cloneRows_(cache.rows[name]);
+  if (cache.rows[name]) {
+    cache.metrics.cacheHits += 1;
+    return cloneRows_(cache.rows[name]);
+  }
+  const startedAt = Date.now();
   const sheet = getSheet_(name);
-  if (sheet.getLastRow() < 2) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
     cache.rows[name] = [];
+    cache.metrics.sheets[name] = { durationMs: Date.now() - startedAt, rowCount: 0, reads: 1 };
     return [];
   }
   const headers = headers_(name);
-  cache.rows[name] = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues().map(function(values, index) {
+  const rowCount = lastRow - 1;
+  cache.rows[name] = sheet.getRange(2, 1, rowCount, headers.length).getValues().map(function(values, index) {
     const row = { __row: index + 2 };
-    headers.forEach(function(header, column) { row[header] = values[column]; });
+    headers.forEach(function(header, column) { row[header] = normalizeSheetValue_(header, values[column]); });
     return row;
   });
+  cache.metrics.rowsScanned += rowCount;
+  cache.metrics.sheets[name] = { durationMs: Date.now() - startedAt, rowCount: rowCount, reads: 1 };
   return cloneRows_(cache.rows[name]);
 }
 
-function appendRow_(name, record) {
+function requestReadMetrics_() {
+  const metrics = requestCache_().metrics || { cacheHits: 0, rowsScanned: 0, sheets: {} };
+  return {
+    cacheHits: Number(metrics.cacheHits || 0),
+    rowsScanned: Number(metrics.rowsScanned || 0),
+    sheets: Object.assign({}, metrics.sheets || {})
+  };
+}
+
+function appendRows_(name, records) {
+  const items = records || [];
+  if (!items.length) return [];
   const headers = headers_(name);
-  getSheet_(name).appendRow(headers.map(function(header) { return record[header] === undefined ? "" : record[header]; }));
+  const sheet = getSheet_(name);
+  const values = items.map(function(record) {
+    return headers.map(function(header) { return record[header] === undefined ? "" : record[header]; });
+  });
+  sheet.getRange(sheet.getLastRow() + 1, 1, values.length, headers.length).setValues(values);
   invalidateSheetCache_(name);
+  return items;
+}
+
+function appendRow_(name, record) {
+  appendRows_(name, [record]);
   return record;
 }
 
@@ -156,12 +202,16 @@ function sha256Hex_(value) {
   }).join("");
 }
 
-function appendAudit_(context, action, entityType, entityId, previousValue, newValue, result) {
-  appendRow_("Audit_Log", {
+function auditRecord_(context, action, entityType, entityId, previousValue, newValue, result) {
+  return {
     audit_id: uuid_(), request_id: context.requestId || "", timestamp: nowIso_(), actor_id: context.actor.user_id,
     actor_email: context.actor.email, action: action, entity_type: entityType, entity_id: entityId || "",
     previous_value: previousValue ? canonicalJson_(previousValue) : "", new_value: newValue ? canonicalJson_(newValue) : "", result: result || "success"
-  });
+  };
+}
+
+function appendAudit_(context, action, entityType, entityId, previousValue, newValue, result) {
+  appendRow_("Audit_Log", auditRecord_(context, action, entityType, entityId, previousValue, newValue, result));
 }
 
 function appendAuditedRow_(sheetName, idField, record, context, action, entityType, auditPrevious, auditNew) {

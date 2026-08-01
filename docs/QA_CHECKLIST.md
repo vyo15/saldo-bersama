@@ -40,13 +40,16 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Transfer lintas shared/personal atau personal owner berbeda ditolak.
 - [ ] Scope transaksi diturunkan dari rekening dan kontradiksi client ditolak.
 - [ ] Dua write bersamaan diserialisasi LockService.
-- [ ] Periode tertutup menolak perubahan.
+- [ ] Periode tertutup dan seluruh bulan sebelumnya menolak perubahan ledger karena saldo akhir bersifat kumulatif.
+- [ ] Reopen wajib dimulai dari closure paling akhir; bulan lebih lama ditolak selama closure yang lebih baru masih aktif.
+- [ ] Snapshot closure mendeteksi drift saldo, cash flow, budget, envelope, recurring, dan progress goal.
 - [ ] Pengeluaran tanpa kantong masuk antrean review.
 - [ ] Integrity check mendeteksi ID duplikat, referensi hilang, owner hilang, dan over-allocation.
 
 ## Alokasi, budget, dan recurring
 
 - [ ] Alokasi tidak melebihi dana belum dialokasikan.
+- [ ] Kantong rekening tertentu tidak dapat memakai sisa yang sudah dikonsumsi kantong global/rumah tangga.
 - [ ] Periode aturan yang sama tidak boleh overlap.
 - [ ] Harian, mingguan, dua mingguan, bulanan, periode gajian, dan custom menghasilkan rentang benar.
 - [ ] Sisa/rollover tidak dihitung sebagai pemasukan.
@@ -59,6 +62,10 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Daily, weekly, biweekly, monthly, bimonthly, quarterly, semiannual, dan annual menghasilkan occurrence yang benar.
 - [ ] Occurrence overdue dihitung dari tanggal aktual, bukan status stale.
 - [ ] Pembayaran sebagian dan pelunasan terhubung ke transaksi aktual.
+- [ ] Linked transaction recurring dibuat melalui jalur internal yang mengisi `recurring_occurrence_id`, tetapi field tersebut tetap ditolak dari client umum.
+- [ ] Jatuh tempo pada hari terakhir bulan historis ditandai overdue/late bila belum selesai.
+- [ ] Budget archived dapat diaktifkan kembali pada row yang sama dan duplicate budget aktif dideteksi.
+- [ ] Goal pada rekening archived tidak dapat menerima movement baru; reverse ditolak bila transaksi linkage berada pada periode terkunci.
 
 ## Auth dan security
 
@@ -112,6 +119,7 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Backup berstatus verified hanya setelah schema tervalidasi.
 - [ ] Import preview menampilkan invalid, duplicate, referensi hilang, dan dampak data.
 - [ ] Import preview dan apply memakai validasi period lock, reserved field, serta projected sequential balance/envelope yang sama.
+- [ ] Import maksimum 200 row per batch dan preview oversized ditolak sebelum cache/write.
 - [ ] Import gagal melakukan rollback verified pre-import backup.
 - [ ] Restore membutuhkan preview token, frasa konfirmasi, raw emergency snapshot, maintenance, dan integrity check.
 - [ ] Restore tetap berhasil ketika `Backup_Log`, sheet lain, atau header aktif hilang/rusak.
@@ -143,6 +151,8 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Linked transaction hanya dapat dibatalkan melalui modul asal.
 - [ ] Export CSV/XLSX menetralkan formula dan tidak menyertakan token/subscription/idempotency internal.
 - [ ] Integrity check memeriksa seluruh referensi lintas sheet dan over-allocation per rekening.
+- [ ] Integrity check mendeteksi formula aktif tanpa menampilkan isi formula.
+- [ ] Transaksi goal aktif wajib mempunyai tepat satu movement aktif dan linkage dua arah konsisten.
 - [ ] Notification `no_subscription`/`failed` dapat diantrekan ulang setelah kondisi membaik.
 
 ## Observability dan diagnosability
@@ -173,6 +183,8 @@ Catat command, exit code, dan bagian yang belum dapat dijalankan. Jangan menyata
 - [ ] Request lama dibatalkan/diabaikan ketika filter atau route berubah.
 - [ ] Schema valid boleh memakai cache positif singkat; schema rusak dan write tetap fail closed.
 - [ ] `stageTimings` tersedia tanpa payload finansial.
+- [ ] `sheetMetrics` mencatat hanya nama sheet, durasi, row count, dan read count; tidak ada nilai sel.
+- [ ] Halaman manajemen rekening/kategori tetap melihat archived item dan tidak memakai seed bootstrap aktif-only.
 
 ## Theme, modal, dan accessibility
 

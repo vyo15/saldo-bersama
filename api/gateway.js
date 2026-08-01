@@ -5,9 +5,10 @@ import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/
 import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, createInternalEnvelope, enforceBestEffortRateLimit, readSession, requiresIdempotencyKey } from "./_lib/security.js";
 
 const COALESCED_READ_ACTIONS = new Set([
-  "app.initialState", "bootstrap.get", "system.health", "users.list", "audit.list",
+  "app.initialState", "system.health", "users.list", "audit.list",
   "dashboard.overview", "accounts.list", "categories.list", "transactions.list",
-  "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly", "periods.list"
+  "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly",
+  "reconciliations.list", "periods.list"
 ]);
 const inFlightReads = new Map();
 

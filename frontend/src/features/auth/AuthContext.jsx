@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getPublicConfigErrors } from "../../config/env.js";
 import { apiClient } from "../../services/api/client.js";
+import { disablePushNotifications } from "../../services/notifications.js";
 
 const AuthContext = createContext(null);
 
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }) => {
       setUser(session);
       setStatus(session ? "authenticated" : "anonymous");
       setError(null);
+      if (!session) await disablePushNotifications({ bestEffort: true, localOnly: true });
     } catch (sessionError) {
       apiClient.setSessionScope("anonymous");
       setUser(null);
@@ -37,6 +39,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setStatus("anonymous");
       setError(new Error("Sesi sudah berakhir. Silakan login kembali."));
+      disablePushNotifications({ bestEffort: true, localOnly: true }).catch(() => {});
     };
     window.addEventListener("saldo-bersama:unauthorized", handleUnauthorized);
     return () => window.removeEventListener("saldo-bersama:unauthorized", handleUnauthorized);
@@ -58,6 +61,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
+      await disablePushNotifications({ bestEffort: true });
       await apiClient.logout();
       setUser(null);
       setStatus("anonymous");

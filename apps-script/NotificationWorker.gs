@@ -175,11 +175,23 @@ function runScheduledBackup() {
   } finally { lock.releaseLock(); }
 }
 
+function scheduledTriggerHealth_() {
+  const required = ["scheduleDailyFinanceNotifications", "runScheduledBackup", "runScheduledMaintenance"];
+  let handlers = [];
+  try { handlers = ScriptApp.getProjectTriggers().map(function(trigger) { return trigger.getHandlerFunction(); }); }
+  catch (error) { return { ready: false, handlers: {}, error: "TRIGGER_READ_FAILED" }; }
+  const result = {};
+  required.forEach(function(handler) { result[handler] = handlers.indexOf(handler) !== -1; });
+  return { ready: required.every(function(handler) { return result[handler]; }), handlers: result };
+}
+
 function setupScheduledTriggers() {
   resetRequestCache_();
   const handlers = ScriptApp.getProjectTriggers().map(function(trigger) { return trigger.getHandlerFunction(); });
   if (handlers.indexOf("scheduleDailyFinanceNotifications") === -1) ScriptApp.newTrigger("scheduleDailyFinanceNotifications").timeBased().everyDays(1).atHour(8).create();
   if (handlers.indexOf("runScheduledBackup") === -1) ScriptApp.newTrigger("runScheduledBackup").timeBased().everyDays(1).atHour(2).create();
   if (handlers.indexOf("runScheduledMaintenance") === -1) ScriptApp.newTrigger("runScheduledMaintenance").timeBased().everyDays(1).atHour(3).create();
-  return { notificationTrigger: true, backupTrigger: true, maintenanceTrigger: true };
+  const health = scheduledTriggerHealth_();
+  if (!health.ready) throw sbError_("TRIGGER_SETUP_FAILED", "Trigger terjadwal belum lengkap setelah setup.", 503, health);
+  return health;
 }

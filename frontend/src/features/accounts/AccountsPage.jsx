@@ -25,6 +25,8 @@ const emptyCategoryForm = { name: "", transaction_type: "expense", nature: "vari
 const AccountsPage = () => {
   const accountsResource = useApiResource("accounts.list");
   const categoriesResource = useApiResource("categories.list");
+  const [showReconciliations, setShowReconciliations] = useState(false);
+  const reconciliationsResource = useApiResource("reconciliations.list", { limit: 30 }, { enabled: showReconciliations });
   const { refreshAll, invalidate } = useFinance();
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -38,7 +40,7 @@ const AccountsPage = () => {
   const [archiveTarget, setArchiveTarget] = useState(null);
 
   const reloadMasters = async () => {
-    invalidate(["accounts.list", "categories.list", "transactions.list", "reports.monthly", "app.initialState"]);
+    invalidate(["accounts.list", "categories.list", "transactions.list", "reports.monthly", "reconciliations.list", "app.initialState"]);
     return Promise.all([accountsResource.reload(), categoriesResource.reload(), refreshAll()]);
   };
 
@@ -84,6 +86,8 @@ const AccountsPage = () => {
       setReconciliation({ account: null, actual_balance: "", notes: "Cocokkan dengan mutasi bank/tunai" });
       setDialogState({ status: "idle", error: null });
       setMessage({ type: result.difference === 0 ? "success" : "warning", text: result.difference === 0 ? "Saldo cocok dan rekonsiliasi tercatat." : `Ada selisih ${result.difference}. Cari transaksi tertinggal atau buat penyesuaian beralasan.` });
+      invalidate(["reconciliations.list"]);
+      if (showReconciliations) await reconciliationsResource.reload();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
 
@@ -194,6 +198,20 @@ const AccountsPage = () => {
       ) : null}
 
       <div className="notice notice--info"><strong>Rekonsiliasi disarankan setiap bulan.</strong><span>Jika saldo bank berbeda, cari transaksi yang tertinggal atau buat penyesuaian dengan alasan dan audit.</span></div>
+
+      <Card className="panel">
+        <div className="panel__header">
+          <div><p className="eyebrow">Riwayat rekonsiliasi</p><h2>Perbandingan saldo sistem dan saldo aktual</h2><p>Riwayat dimuat hanya saat dibuka agar halaman rekening tetap ringan.</p></div>
+          <Button onClick={() => setShowReconciliations((current) => !current)}>{showReconciliations ? "Tutup riwayat" : "Muat riwayat"}</Button>
+        </div>
+        {showReconciliations ? (
+          reconciliationsResource.status === "loading"
+            ? <p>Memuat riwayat rekonsiliasi...</p>
+            : reconciliationsResource.status === "error"
+              ? <ErrorState error={reconciliationsResource.error} onRetry={reconciliationsResource.reload} />
+              : <div className="data-table-wrap"><table className="data-table"><thead><tr><th>Waktu</th><th>Rekening</th><th className="align-right">Sistem</th><th className="align-right">Aktual</th><th className="align-right">Selisih</th><th>Status</th></tr></thead><tbody>{(reconciliationsResource.data?.items || []).map((item) => <tr key={item.reconciliation_id}><td>{item.reconciled_at}</td><td>{item.account_name || item.account_id}</td><td className="align-right"><Money value={item.system_balance} /></td><td className="align-right"><Money value={item.actual_balance} /></td><td className="align-right"><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody></table>{(reconciliationsResource.data?.items || []).length ? null : <p>Belum ada rekonsiliasi.</p>}</div>
+        ) : null}
+      </Card>
 
       <Modal open={Boolean(reconciliation.account)} onClose={() => dialogState.status !== "submitting" && setReconciliation((current) => ({ ...current, account: null }))} title="Rekonsiliasi rekening" description={reconciliation.account ? `${reconciliation.account.name} · saldo sistem ${reconciliation.account.balance}` : ""} footer={<><Button onClick={() => setReconciliation((current) => ({ ...current, account: null }))} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="reconciliation-form" disabled={dialogState.status === "submitting"}>{dialogState.status === "submitting" ? "Menyimpan..." : "Simpan rekonsiliasi"}</Button></>}>
         <form id="reconciliation-form" className="form-grid" onSubmit={saveReconciliation}>

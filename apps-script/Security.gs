@@ -1,5 +1,21 @@
 const SB_REQUEST_TOLERANCE_MS = 120000;
-const SB_LOG_FIELDS = Object.freeze(["requestId", "action", "role", "status", "code", "durationMs", "skewMs", "toleranceMs", "mutating", "stage"]);
+const SB_LOG_FIELDS = Object.freeze(["requestId", "action", "role", "status", "code", "durationMs", "skewMs", "toleranceMs", "mutating", "stage", "rowsScanned", "cacheHits"]);
+const SB_LOG_OBJECT_FIELDS = Object.freeze(["stageTimings", "sheetMetrics"]);
+
+function safeMetricObject_(value, depth) {
+  if (!value || typeof value !== "object" || (depth || 0) > 3) return null;
+  const result = {};
+  Object.keys(value).slice(0, 40).forEach(function(key) {
+    if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(key)) return;
+    const item = value[key];
+    if (typeof item === "number" && Number.isFinite(item) && item >= 0) result[key] = Math.round(item);
+    else if (item && typeof item === "object") {
+      const nested = safeMetricObject_(item, (depth || 0) + 1);
+      if (nested && Object.keys(nested).length) result[key] = nested;
+    }
+  });
+  return result;
+}
 
 function appsScriptLog_(level, event, fields) {
   const record = {
@@ -12,6 +28,10 @@ function appsScriptLog_(level, event, fields) {
   SB_LOG_FIELDS.forEach(function(key) {
     if (source[key] !== undefined && source[key] !== null && source[key] !== "") record[key] = source[key];
   });
+  SB_LOG_OBJECT_FIELDS.forEach(function(key) {
+    const safe = safeMetricObject_(source[key], 0);
+    if (safe && Object.keys(safe).length) record[key] = safe;
+  });
   const output = JSON.stringify(record);
   if (record.level === "error") console.error(output);
   else if (record.level === "warn") console.warn(output);
@@ -19,8 +39,8 @@ function appsScriptLog_(level, event, fields) {
 }
 
 const SB_ROLE_ACTIONS = Object.freeze({
-  owner: ["system.initialize", "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview", "accounts.list", "accounts.create", "accounts.update", "accounts.archive", "categories.list", "categories.create", "categories.update", "categories.archive", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync", "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run"],
-  member: ["system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.create", "notifications.register", "notifications.unregister"]
+  owner: ["system.initialize", "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview", "accounts.list", "accounts.create", "accounts.update", "accounts.archive", "categories.list", "categories.create", "categories.update", "categories.archive", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "budgets.upsert", "budgets.archive", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync", "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run"],
+  member: ["system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list", "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment", "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create", "notifications.register", "notifications.unregister"]
 });
 
 function sbError_(code, message, status, details) {

@@ -29,13 +29,12 @@ Gunakan Node.js 24 LTS. Project mengunci React 19.2.8 dan React Router 8.3.0; `r
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-`npm run dev` menjalankan Vite dan handler canonical pada `api/` dalam satu proses di `http://localhost:5173`. Gunakan `localhost`, bukan `127.0.0.1`, agar OAuth origin dan cookie konsisten.
+`npm run dev` memeriksa `.env.local` terlebih dahulu. Pada perangkat baru, terminal interaktif akan meminta login Vercel satu kali, menghubungkan repository ke project existing bila perlu, menarik **Development Environment**, membuang `VERCEL_OIDC_TOKEN`, memvalidasi variable wajib, lalu menjalankan Vite dan handler canonical pada `api/` dalam satu proses di `http://localhost:5173`. Gunakan `localhost`, bukan `127.0.0.1`, agar OAuth origin dan cookie konsisten.
 
-Konfigurasi browser dan server lokal dibaca dari satu file root `.env.local`. Hanya variable `VITE_*` yang masuk bundle browser. Jangan commit atau kirim file tersebut.
+Konfigurasi browser dan server lokal dibaca dari satu file root `.env.local`. Hanya variable `VITE_*` yang masuk bundle browser. Bila Vercel Development Environment belum disiapkan, buat `.env.local` manual dari `.env.example`. Jangan commit atau kirim file tersebut.
 
 ## Quality gate
 

@@ -13,19 +13,20 @@ import { apiClient } from "../../services/api/client.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { currentMonthInJakarta } from "../../domain/dates.js";
 
 const PAGE_SIZE = 100;
 
 const TransactionsPage = () => {
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const [draftQuery, setDraftQuery] = useState("");
-  const [filters, setFilters] = useState({ query: "", type: "all", allocation: "all", offset: 0 });
+  const [filters, setFilters] = useState({ period: currentMonthInJakarta(), query: "", type: "all", allocation: "all", offset: 0 });
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelState, setCancelState] = useState({ status: "idle", error: null });
   const resource = useApiResource("transactions.list", {
-    period: "current",
+    period: filters.period,
     limit: PAGE_SIZE,
     offset: filters.offset,
     query: filters.query,
@@ -68,9 +69,11 @@ const TransactionsPage = () => {
       <form className="toolbar" aria-label="Filter transaksi" onSubmit={submitSearch}>
         <label className="search-field"><FiSearch aria-hidden="true" /><input value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari keterangan atau kategori" /><span className="sr-only">Cari transaksi</span></label>
         <Button type="submit">Cari</Button>
+        <label className="field field--compact"><span className="sr-only">Periode transaksi</span><input type="month" max={currentMonthInJakarta()} value={filters.period} onChange={(event) => updateFilter("period", event.target.value)} aria-label="Periode transaksi" /></label>
         <select value={filters.type} onChange={(event) => updateFilter("type", event.target.value)} aria-label="Filter jenis transaksi"><option value="all">Semua jenis</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="transfer">Transfer</option><option value="refund">Refund</option><option value="adjustment">Penyesuaian</option></select>
         <select value={filters.allocation} onChange={(event) => updateFilter("allocation", event.target.value)} aria-label="Filter alokasi"><option value="all">Semua alokasi</option><option value="unallocated">Belum dialokasikan</option><option value="allocated">Sudah dialokasikan</option></select>
       </form>
+      {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Owner harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
 
       {resource.status === "loading" ? <LoadingScreen label="Memuat transaksi..." /> : null}
       {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}

@@ -47,7 +47,13 @@ export const createBaseContext = (overrides = {}) => {
       sleep: () => {},
       computeDigest: (_algorithm, value) => [...crypto.createHash("sha256").update(String(value)).digest()].map((byte) => byte > 127 ? byte - 256 : byte),
       computeHmacSha256Signature: (value, secret) => [...crypto.createHmac("sha256", secret).update(String(value)).digest()].map((byte) => byte > 127 ? byte - 256 : byte),
-      newBlob: (content, type, name) => ({ content, type, name, setName(next) { this.name = next; return this; } }),
+      newBlob: (content, type, name) => ({
+        content,
+        type,
+        name,
+        getBytes() { return [...Buffer.from(String(content ?? ""), "utf8")]; },
+        setName(next) { this.name = next; return this; },
+      }),
     },
     CacheService: {
       getScriptCache: () => ({

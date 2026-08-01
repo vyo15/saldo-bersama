@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { FiArrowRight, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { FiArchive, FiArrowRight, FiPlus, FiRefreshCw } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -23,6 +24,8 @@ const AllocationsPage = () => {
   const { user } = useAuth();
   const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
   const [message, setMessage] = useState(null);
+  const [closeTarget, setCloseTarget] = useState(null);
+  const [closeState, setCloseState] = useState({ status: "idle", error: null });
   const { start: periodStart, end: periodEnd } = currentMonthBoundsInJakarta();
   const [createForm, setCreateForm] = useState({ name: "", default_amount: "", source_account_id: "", period_type: "monthly", period_start: periodStart, period_end: periodEnd, rollover_policy: "unallocated", overspend_policy: "confirm" });
   const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
@@ -44,6 +47,30 @@ const AllocationsPage = () => {
       await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) {
       setMessage({ type: "danger", text: error.message });
+    }
+  };
+
+  const closeEnvelope = async () => {
+    if (!closeTarget) return;
+    setCloseState({ status: "submitting", error: null });
+    try {
+      const result = await apiClient.request("envelopes.close", {
+        envelope_period_id: closeTarget.envelope_period_id,
+        row_version: closeTarget.row_version,
+      }, { idempotencyKey: createIdempotencyKey(), rowVersion: closeTarget.row_version });
+      setCloseTarget(null);
+      setCloseState({ status: "idle", error: null });
+      const rolloverAmount = Number(result?.rollover?.amount || 0);
+      setMessage({
+        type: "success",
+        text: rolloverAmount > 0
+          ? `Periode berhasil ditutup. Sisa Rp ${rolloverAmount.toLocaleString("id-ID")} dibawa ke periode berikutnya.`
+          : "Periode kantong berhasil ditutup. Sisa alokasi kembali menjadi dana belum dialokasikan.",
+      });
+      invalidate(["envelopes.list", "reports.monthly", "app.initialState"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
+    } catch (error) {
+      setCloseState({ status: "error", error });
     }
   };
 
@@ -79,6 +106,7 @@ const AllocationsPage = () => {
             <div className="allocation-card__header"><div><h2>{item.name}</h2><small>{item.period_start} – {item.period_end}</small></div><Money value={item.remaining_amount} /></div>
             <ProgressBar value={item.used_amount + Number(item.reserved_amount || 0)} max={item.allocated_amount} label={item.name} />
             <dl><div><dt>Alokasi</dt><dd><Money value={item.allocated_amount} /></dd></div><div><dt>Terpakai</dt><dd><Money value={item.used_amount} /></dd></div><div><dt>Dipesan</dt><dd><Money value={item.reserved_amount} /></dd></div></dl>
+            {item.can_close ? <div className="form-actions"><Button icon={FiArchive} onClick={() => { setCloseTarget(item); setCloseState({ status: "idle", error: null }); }}>Tutup periode</Button></div> : null}
           </Card>
         )) : <Card className="panel"><p>Belum ada kantong aktif untuk periode ini.</p></Card>}
       </section>
@@ -91,7 +119,7 @@ const AllocationsPage = () => {
             <MoneyInput id="envelope-default" label="Nominal alokasi" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} />
             <label className="field"><span>Rekening sumber</span><select value={createForm.source_account_id} onChange={(event) => setCreateForm((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Gabungan rekening bersama</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select><small>Rekening pribadi otomatis membuat kantong pribadi.</small></label>
             <label className="field"><span>Periode jatah</span><select value={createForm.period_type} onChange={(event) => setCreateForm((current) => ({ ...current, period_type: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="paycycle">Periode gajian</option><option value="custom">Khusus</option></select></label>
-            <label className="field"><span>Rollover</span><select value={createForm.rollover_policy} onChange={(event) => setCreateForm((current) => ({ ...current, rollover_policy: event.target.value }))}><option value="unallocated">Kembali ke belum dialokasikan</option><option value="carry">Bawa ke periode berikutnya</option><option value="buffer">Pindah ke buffer</option><option value="savings">Pindah ke tabungan</option></select></label>
+            <label className="field"><span>Rollover</span><select value={createForm.rollover_policy} onChange={(event) => setCreateForm((current) => ({ ...current, rollover_policy: event.target.value }))}><option value="unallocated">Kembali ke belum dialokasikan</option><option value="carry">Bawa sisa ke periode berikutnya</option></select><small>Rollover hanya memindahkan sisa alokasi dan tidak dihitung sebagai pemasukan.</small></label>
             <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
             <label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
             <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit">Buat kantong</Button></div>
@@ -110,6 +138,17 @@ const AllocationsPage = () => {
           <div className="form-grid__full form-actions"><Button variant="primary" icon={FiArrowRight} type="submit">Pindahkan alokasi</Button></div>
         </form>
       </Card>
+
+      <ConfirmationModal
+        open={Boolean(closeTarget)}
+        title="Tutup periode kantong?"
+        description={closeTarget ? `${closeTarget.name} (${closeTarget.period_start}–${closeTarget.period_end}) akan dikunci. ${closeTarget.rollover_policy === "carry" ? "Sisa alokasi akan dibawa ke periode berikutnya." : "Sisa alokasi akan kembali menjadi dana belum dialokasikan."}` : ""}
+        confirmLabel="Tutup periode"
+        busy={closeState.status === "submitting"}
+        error={closeState.error}
+        onCancel={() => closeState.status !== "submitting" && setCloseTarget(null)}
+        onConfirm={closeEnvelope}
+      />
     </div>
   );
 };

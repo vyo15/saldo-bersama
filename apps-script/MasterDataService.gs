@@ -11,11 +11,14 @@ function visibleAccountRows_(context) {
   return rows_("Accounts").filter(function(account) { return canAccessAccount_(context, account); });
 }
 
-function listAccounts_(context, transactionSnapshot) {
-  const transactions = transactionSnapshot || visibleTransactions_(context);
+function listAccounts_(context, transactionSnapshot, cutoffDate) {
+  const model = transactionSnapshot && transactionSnapshot.activeTransactions
+    ? transactionSnapshot
+    : buildTransactionReadModel_(context, transactionSnapshot || null);
+  const balances = accountBalancesAsOfFromModel_(model, cutoffDate || today_());
   return visibleAccountRows_(context).map(function(row) {
     const account = publicRow_(row);
-    account.balance = accountBalance_(account.account_id, transactions);
+    account.balance = Number(balances[String(account.account_id)] || 0);
     return account;
   });
 }

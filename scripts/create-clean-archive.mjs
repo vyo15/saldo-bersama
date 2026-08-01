@@ -108,6 +108,9 @@ try {
 
   run("git", ["init", "-q"], { cwd: project });
   run("git", ["add", "-A"], { cwd: project });
+  // Vercel CLI dapat menambahkan aturan `.env*` ke .gitignore. Template aman ini
+  // tetap wajib masuk commit staging tanpa melonggarkan guard untuk file env lain.
+  run("git", ["add", "-f", "--", ".env.example"], { cwd: project });
   run(
     "git",
     [

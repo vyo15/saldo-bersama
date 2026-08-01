@@ -174,7 +174,7 @@ function protectSystemSheets_(schema) {
   });
 }
 
-const SB_SCHEMA_VALIDATION_CACHE_SECONDS = 30;
+const SB_SCHEMA_VALIDATION_CACHE_SECONDS = 300;
 
 function schemaValidationCacheKey_() {
   const spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID") || "unconfigured";
@@ -189,7 +189,7 @@ function canUseCachedSchemaValidation_(action) {
   return [
     "app.initialState", "bootstrap.get", "users.list", "audit.list", "dashboard.overview",
     "accounts.list", "categories.list", "transactions.list", "envelopes.list", "recurring.list",
-    "budgets.list", "goals.list", "reports.monthly", "periods.list"
+    "budgets.list", "goals.list", "reports.monthly", "reconciliations.list", "periods.list"
   ].indexOf(action) !== -1;
 }
 

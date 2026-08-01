@@ -37,7 +37,7 @@ Buka **Apps Script → Executions**, pilih eksekusi, lalu cari `requestId`. Even
 - `request.failed`
 - `request.rejected.clock_skew`
 
-Apps Script hanya mencatat metadata aman: request ID, action, role, status, code, durasi, dan clock skew.
+Apps Script hanya mencatat metadata aman: request ID, action, role, status, code, durasi, clock skew, `stageTimings`, jumlah row yang discan, cache hit request-scoped, serta timing/jumlah row per sheet. Isi row, nominal, merchant, deskripsi, email, token, dan payload tidak dicatat.
 
 ## Clock calibration
 
@@ -119,6 +119,8 @@ Log Apps Script `request.completed` dan `request.failed` memuat `stageTimings` a
 - `schemaValidation`
 - `resolveActor`
 - `routeAction`
+
+Field `sheetMetrics` membantu membedakan cold start/platform latency dari full-sheet scan. Metrik hanya berisi nama sheet canonical, durasi baca, jumlah row, dan jumlah read. Gunakan jumlah row untuk menentukan kapan histori memerlukan strategi snapshot/arsip terkontrol; jangan menambahkan nilai sel ke log.
 
 Gunakan timing tersebut untuk membedakan cold start, validasi schema, actor resolution, dan business read. API juga mencatat `gateway.request.coalesced` ketika read identik pada warm instance memakai panggilan upstream yang sama. Field `upstreamRequestId` menunjuk request yang benar-benar dikirim ke Apps Script, sedangkan setiap respons browser tetap mempunyai `X-Request-ID` sendiri.
 

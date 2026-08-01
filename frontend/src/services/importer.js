@@ -34,6 +34,6 @@ export const readTransactionImportFile = async (file) => {
   } else {
     throw new Error("Format import yang didukung saat ini adalah JSON dan CSV.");
   }
-  if (!records.length || records.length > 500) throw new Error("Import harus berisi 1-500 transaksi.");
+  if (!records.length || records.length > 200) throw new Error("Import harus berisi 1-200 transaksi.");
   return records;
 };

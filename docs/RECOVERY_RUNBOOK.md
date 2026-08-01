@@ -11,7 +11,7 @@ State canonical disimpan di Apps Script Properties dan dicerminkan ke `System_Co
 - `RECOVERY_DETAILS_JSON`
 - `RECOVERY_UPDATED_AT`
 
-`doGet()` dan `system.health` menampilkan status recovery. Selama recovery aktif, action normal ditolak. Jalur yang tetap tersedia hanya health, restore preview/apply, dan integrity check.
+Public `doGet()` hanya menampilkan status service minimal dan tidak mengungkap schema/recovery. Detail recovery hanya tersedia melalui signed action `system.health` dan error terkontrol untuk owner. Selama recovery aktif, action normal ditolak. Jalur yang tetap tersedia hanya health, restore preview/apply, dan integrity check.
 
 ## Restore/import gagal tetapi rollback berhasil
 
@@ -88,6 +88,10 @@ Kegagalan menghapus file export sementara, file backup gagal, atau event Calenda
 - Nilai occurrence sesuai transaksi aktif terkait.
 - Goal movement sesuai transfer aktif terkait.
 - Tidak ada periode closed ganda.
+- Closure dibuka kembali dari bulan paling akhir; tidak ada periode reopened yang berada sebelum closure aktif yang lebih baru.
 - Saldo dan alokasi tidak overallocated.
+- Tidak ada duplicate budget aktif untuk kombinasi periode, kategori, scope, dan owner yang sama.
+- Tidak ada formula aktif pada data row sheet canonical.
+- Transaksi recurring/goal mempunyai linkage dua arah yang konsisten.
 - Audit recovery tersedia.
 - Backup baru berstatus `verified`.
