@@ -19,7 +19,7 @@ const forbidden = [
 
 let source;
 try { source = await readFile(envPath, "utf8"); }
-catch (error) {
+catch {
   console.error(`Environment tidak ditemukan: ${envPath}`);
   process.exit(1);
 }

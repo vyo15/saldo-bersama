@@ -1,6 +1,6 @@
 import { listBudgets, listEnvelopes, listGoals, listRecurring } from "../planning/index.js";
 import { accountBalanceAsOf, categoryExpenseTotals, visibleAccounts, visibleTransactions } from "../readModels.js";
-import { monthBounds, periodKey, publicRow, todayJakarta } from "../core.js";
+import { monthBounds, nowIso, periodKey, publicRow, todayJakarta } from "../core.js";
 import { dateBefore } from "./shared.js";
 export const bootstrapData = async (db, context) => {
   const [accounts, categories, configRows] = await Promise.all([visibleAccounts(db, context.actor), db.all("SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE"), db.all("SELECT key,value FROM system_config WHERE key IN ('schema_version','timezone','currency','maintenance_mode')")]);
@@ -8,7 +8,7 @@ export const bootstrapData = async (db, context) => {
   return {
     user: publicRow(context.actor),
     accounts,
-    categories: categories.map(publicRow),
+    categories: categories.map((row) => publicRow(row)),
     config: {
       schemaVersion: Number(config.schema_version || 0),
       timezone: config.timezone || "Asia/Jakarta",

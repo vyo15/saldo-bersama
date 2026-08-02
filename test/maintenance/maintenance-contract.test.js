@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
-const source = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 const maintenanceSource = async () => {
   const directory = new URL("../../api/_lib/services/maintenance/", import.meta.url);
   const preferredOrder = ["shared.js", "backup.js", "restore.js", "import.js", "integrity.js", "index.js"];

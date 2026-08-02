@@ -22,6 +22,8 @@ test("quality workflow menjalankan check, browser smoke, dan verifikasi clean ar
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /Browser smoke[\s\S]*timeout-minutes:\s*2/);
   assert.match(workflow, /npm ci/);
+  assert.match(workflow, /VITE_GOOGLE_CLIENT_ID:\s*ci-browser-smoke\.apps\.googleusercontent\.com/);
+  assert.match(workflow, /VITE_FIREBASE_API_KEY:\s*ci-browser-smoke-public-key/);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:browser/);
   assert.match(workflow, /npm run zip --/);
@@ -30,6 +32,8 @@ test("quality workflow menjalankan check, browser smoke, dan verifikasi clean ar
   assert.match(browserSmoke, /detached:\s*process\.platform !== "win32"/);
   assert.match(browserSmoke, /stdio:\s*"ignore"/);
   assert.match(browserSmoke, /terminateChromiumTree/);
+  assert.match(browserSmoke, /Network\.setBlockedURLs/);
+  assert.match(browserSmoke, /accounts\.google\.com\/gsi\/client/);
   assert.ok(
     browserSmoke.indexOf("await chromium?.close()") < browserSmoke.indexOf("await page?.close()"),
     "Chromium process tree harus ditutup sebelum koneksi CDP agar tidak meninggalkan handle pada runner.",
@@ -42,7 +46,13 @@ test("tooling kualitas dan lifecycle dokumentasi terhubung dari package canonica
   assert.equal(packageJson.scripts["clean:dry-run"], "node scripts/clean-generated-artifacts.mjs --dry-run");
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
   assert.equal(packageJson.scripts["test:browser"], "node --test test/browser/*.test.mjs");
+  assert.equal(packageJson.scripts["lint:backend"], "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js");
+  assert.match(packageJson.scripts.lint, /npm run lint:backend/);
   assert.match(packageJson.scripts.check, /build:budget/);
+
+  const backendLint = await source("eslint.backend.config.js");
+  assert.match(backendLint, /"no-undef": "error"/);
+  assert.match(backendLint, /"no-unused-vars"/);
 
   const lifecycle = await source("docs/DOCUMENT_LIFECYCLE.md");
   for (const label of ["Canonical", "Snapshot", "Runbook", "Historical", "Template"]) {

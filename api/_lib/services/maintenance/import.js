@@ -1,7 +1,8 @@
+import { appendAudit } from "../audit.js";
 import { createTransactionInternal, normalizeTransaction } from "../finance.js";
-import { appError, assertOwner, canonicalJson, nowIso, sanitizeText, uuid } from "../core.js";
+import { appError, assertOwner, canonicalJson, nowIso, uuid } from "../core.js";
 import { createTechnicalBackup } from "./backup.js";
-import { expiry } from "./shared.js";
+import { digest, expiry } from "./shared.js";
 export const previewImport = async (db, context) => {
   assertOwner(context.actor);
   const records = context.payload?.records;
@@ -83,6 +84,7 @@ export const applyImport = async (db, context) => {
       action: "import.apply",
       idempotencyKey: `import:${preview.preview_id}:${index}`
     }, records[index], {
+      allowInternalLinks: true,
       audit: false
     }));
     const result = {

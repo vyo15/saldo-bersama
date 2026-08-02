@@ -195,6 +195,7 @@ const openPage = async (debuggingPort, url, { width = 390, height = 844 } = {}) 
     session.send("Page.enable"),
     session.send("Runtime.enable"),
     session.send("Accessibility.enable"),
+    session.send("Network.enable"),
     session.send("Emulation.setDeviceMetricsOverride", {
       width,
       height,
@@ -204,6 +205,12 @@ const openPage = async (debuggingPort, url, { width = 390, height = 844 } = {}) 
       screenHeight: height,
     }),
   ]);
+  // Browser smoke harus deterministik dan tidak boleh bergantung pada jaringan
+  // accounts.google.com. Mock di bawah menguji kontrak integrasi aplikasi,
+  // sedangkan request provider asli diblokir agar tidak menimpa window.google.
+  await session.send("Network.setBlockedURLs", {
+    urls: ["*://accounts.google.com/gsi/client*"],
+  });
   await session.send("Page.addScriptToEvaluateOnNewDocument", {
     source: `
       Object.defineProperty(window, "google", {
@@ -211,6 +218,7 @@ const openPage = async (debuggingPort, url, { width = 390, height = 844 } = {}) 
         value: {
           accounts: {
             id: {
+              __saldoBersamaSmokeMock: true,
               initialize() {},
               renderButton(element) {
                 const button = document.createElement("button");
@@ -255,9 +263,24 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
       () => page.evaluate("location.pathname === '/login'"),
       { description: "redirect unauthenticated ke /login" },
     );
+    const configurationError = await page.evaluate(`(() => {
+      const alerts = [...document.querySelectorAll("[role='alert']")];
+      const alert = alerts.find((element) => /Konfigurasi belum lengkap/i.test(element.textContent || ""));
+      return alert?.textContent?.replace(/\s+/g, " ").trim() || "";
+    })()`);
+    assert.equal(
+      configurationError,
+      "",
+      `Build browser smoke harus menyediakan public test env VITE_GOOGLE_CLIENT_ID dan VITE_FIREBASE_API_KEY: ${configurationError}`,
+    );
+    assert.equal(
+      await page.evaluate("window.google?.accounts?.id?.__saldoBersamaSmokeMock === true"),
+      true,
+      "Browser smoke harus memakai mock Google Identity lokal, bukan script provider eksternal.",
+    );
     await waitFor(
       () => page.evaluate("Boolean(document.querySelector('.google-login-button button, .google-login-button iframe'))"),
-      { description: "widget login Google selesai dirender" },
+      { timeoutMs: 5_000, description: "widget login Google mock selesai dirender" },
     );
 
     const result = await page.evaluate(`(() => {

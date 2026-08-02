@@ -1,5 +1,5 @@
 import { runIntegrity } from "../reporting/index.js";
-import { assertOwner } from "../core.js";
+import { assertOwner, nowIso } from "../core.js";
 
 export const integrityWithMaintenanceRecovery = async (db, context) => {
   assertOwner(context.actor);

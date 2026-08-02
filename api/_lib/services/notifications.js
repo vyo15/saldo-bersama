@@ -39,4 +39,4 @@ export const queueNotification = async (db, { userId, type, title, body, targetP
   return { notificationId: existing.notification_id, created: false };
 };
 
-export const listSubscriptionsForUser = async (db, userId) => (await db.all("SELECT endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=? AND status='active'", [userId])).map(publicRow);
+export const listSubscriptionsForUser = async (db, userId) => (await db.all("SELECT endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=? AND status='active'", [userId])).map((row) => publicRow(row));

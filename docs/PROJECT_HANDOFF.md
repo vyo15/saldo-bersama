@@ -1,15 +1,23 @@
 # Project Handoff
 
 **Updated:** 2026-08-02
-**Task:** Project structure, artifact hygiene, and maintainability hardening
-**Status:** Patch implemented and unit/static validation passed; final Node 24 build/browser smoke must run after applying the patch locally.
+**Task:** Production gateway hotfix after backend service split
+**Status:** Hotfix implemented; full Node 24 check, browser smoke, Preview login, and production deployment verification remain required.
 
 ## Source yang divalidasi
 
-- Arsip penuh: `saldo-bersama(6).zip`
+- Arsip penuh terbaru: `saldo-bersama(8).zip`
 - Root: `saldo-bersama/`
 - Canonical boundaries: `frontend/`, `api/`, `database/`, `apps-script/`, `scripts/`, `test/`, `docs/`.
 - Source runtime reachability diperiksa; tidak ada source frontend/API canonical atau asset yang dihapus secara spekulatif.
+
+## Root cause dan hotfix
+
+1. `reporting/dashboard.js` memakai `nowIso` tanpa import sehingga `app.initialState` berubah menjadi `GATEWAY_ERROR`.
+2. Budget, recurring, import, restore, dan integrity recovery memiliki dependency lain yang tertinggal setelah file monolit dipecah.
+3. Backend sebelumnya hanya menjalankan `node --check`, sehingga identifier tidak terdefinisi tidak terdeteksi.
+4. Hotfix memulihkan import, menambahkan backend lint, dan mengeksekusi handler kritis pada SQLite in-memory.
+5. Ditemukan serta diperbaiki callback `categories.map(publicRow)` dan import apply yang memakai record hasil normalisasi server.
 
 ## Perubahan utama
 

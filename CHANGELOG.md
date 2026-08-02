@@ -1,9 +1,17 @@
+
+- Browser smoke GitHub Actions kini memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga CI tidak timeout karena perilaku jaringan/provider.
+- Workflow Quality membangun fixture browser smoke dengan public dummy Google Client ID dan Firebase API key agar guard konfigurasi tidak menghentikan render mock login pada runner tanpa `.env.local`.
 # Changelog
 
 Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi production harus menunjuk commit SHA yang sudah diuji.
 
 ## [Unreleased]
 
+- Hotfix backend memulihkan import dependency yang tertinggal setelah pemecahan service reporting, planning, dan maintenance.
+- Backend lint kini menolak identifier tidak terdefinisi dan import/variabel tidak terpakai sebelum deployment.
+- Regression test authenticated menjalankan initial state, budget, recurring, import, restore, dan integrity recovery pada SQLite in-memory.
+- Callback `publicRow` pada list kategori, rekonsiliasi, dan push subscription dibuat eksplisit agar index `Array.map` tidak salah dianggap sebagai daftar field boolean.
+- Import apply sekarang mengizinkan hanya field internal hasil normalisasi preview server, bukan field internal dari input client.
 - Browser smoke CI sekarang menutup seluruh process tree Chromium dan koneksi CDP secara deterministik, memakai timeout workflow, serta tidak lagi menahan GitHub Actions setelah assertion selesai.
 - GitHub Actions resmi diperbarui ke `actions/checkout@v5` dan `actions/setup-node@v5` agar memakai runtime Node 24.
 

@@ -5,6 +5,7 @@
 ```bash
 npm run validate:source
 npm run lint
+npm run lint:backend
 npm run test
 npm run build
 npm run build:budget
@@ -16,6 +17,8 @@ npm run zip
 Cakupan wajib:
 
 - schema STRICT, FK, integer Rupiah, ownership, bentuk transaksi, cancellation metadata, dan saldo awal negatif;
+- backend `no-undef` dan `no-unused-vars` untuk mencegah import dependency hilang saat service dipecah;
+- authenticated `app.initialState`, budget, recurring create/update/pay/reverse, import apply, restore apply, dan integrity maintenance recovery dijalankan pada SQLite in-memory;
 - income/expense/transfer/refund/adjustment;
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
 - row-version conflict dan idempotency replay;
@@ -28,6 +31,8 @@ Cakupan wajib:
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output;
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
+- browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
+- workflow CI membangun frontend browser smoke dengan nilai public dummy untuk `VITE_GOOGLE_CLIENT_ID` dan `VITE_FIREBASE_API_KEY`; nilai ini bukan secret dan hanya mencegah guard konfigurasi menghentikan render mock login;
 - gzip bundle dan source archive tetap di bawah budget.
 
 ## Manual
