@@ -12,16 +12,22 @@
     "diagnose": "node scripts/diagnose-runtime.mjs",
     "build": "npm run build --workspace saldo-bersama-frontend",
     "lint": "npm run lint --workspace saldo-bersama-frontend && node scripts/check-node-syntax.mjs && node scripts/check-apps-script-syntax.mjs",
-    "test": "npm run test --workspace saldo-bersama-frontend && node --test test/api/*.test.js",
-    "check": "npm run validate:source && npm run lint && npm run test && npm run build",
+    "test": "npm run test --workspace saldo-bersama-frontend && node scripts/run-backend-tests.mjs",
+    "check": "npm run validate:source && npm run lint && npm run test && npm run build && npm run build:budget",
     "validate:source": "node scripts/validate-source-tree.mjs",
     "zip": "node scripts/create-clean-archive.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:integrity": "node scripts/db-integrity.mjs",
     "db:import-legacy": "node scripts/migrate-legacy-json.mjs",
     "env:check": "node scripts/check-environment.mjs",
+    "env:push:development": "node scripts/push-vercel-development-env.mjs",
     "env:push:production": "node scripts/push-vercel-production-env.mjs",
-    "env:clean": "node scripts/clean-local-environment.mjs"
+    "env:clean": "node scripts/clean-local-environment.mjs",
+    "clean": "node scripts/clean-generated-artifacts.mjs",
+    "clean:dry-run": "node scripts/clean-generated-artifacts.mjs --dry-run",
+    "clean:dependencies": "node scripts/clean-development-dependencies.mjs",
+    "build:budget": "node scripts/check-build-budget.mjs",
+    "test:browser": "node --test test/browser/*.test.mjs"
   },
   "workspaces": [
     "frontend"

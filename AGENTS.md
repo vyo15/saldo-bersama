@@ -24,6 +24,7 @@ Percakapan lama, screenshot, memory, dan dokumentasi bukan pengganti source. Bil
 | Dispatch action | `api/_lib/actionDispatcher.js` |
 | Business rules | `api/_lib/services/*.js` |
 | Route UI | `frontend/src/app/App.jsx` |
+| UI/design system | `docs/UI_DESIGN_SYSTEM.md` + `frontend/src/styles/tokens.css` + shared components |
 | Environment | `.env.example` + `docs/ENVIRONMENT_VARIABLES.md` |
 | Status project | `docs/PROJECT_STATUS.md` |
 | Handoff task | `docs/PROJECT_HANDOFF.md` |

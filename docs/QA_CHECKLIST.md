@@ -2,8 +2,8 @@
 
 - [ ] Source terbaru dan migration version diverifikasi.
 - [ ] Node/npm sesuai engines.
-- [ ] Tidak ada secret, dump, `.env`, backup, atau token dalam source/ZIP.
-- [ ] Build, lint, frontend test, backend test lulus.
+- [ ] `npm run clean:dry-run` ditinjau; tidak ada secret, dump, `.env`, backup, token, dependency, atau generated output dalam clean ZIP.
+- [ ] Build, build budget, lint, frontend test, backend test, dan browser smoke lulus.
 - [ ] Owner/member/unauthorized diuji.
 - [ ] Seluruh nominal integer dan timezone Asia/Jakarta.
 - [ ] Transfer tidak masuk income/expense.
@@ -16,3 +16,6 @@
 - [ ] Offline write ditolak.
 - [ ] PWA iOS/Android, push, safe area, focus, contrast, tap target diuji.
 - [ ] Monitoring health/integration queue tidak membocorkan secret.
+
+- [ ] Action registry/policy, authorization map, dan API docs tetap sinkron.
+- [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.

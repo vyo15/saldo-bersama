@@ -230,10 +230,6 @@
 
 .topbar { display: none; }
 .topbar__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-.topbar__menu { display: none !important; }
-.user-chip { display: grid; gap: 1px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 12px; }
-.user-chip span { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 750; }
-.user-chip small { color: var(--muted); text-transform: capitalize; }
 
 .app-content {
   width: 100%;
@@ -263,7 +259,6 @@
 
 .floating-add svg { width: 25px; height: 25px; }
 .mobile-navigation { display: none; }
-.mobile-drawer { position: fixed; inset: var(--topbar-height) 12px auto; z-index: 30; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-md); }
 
 .brand-lockup {
   min-width: max-content;

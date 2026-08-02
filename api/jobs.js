@@ -5,7 +5,7 @@ import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
 import { verifyScheduledJobSignature } from "./_lib/security.js";
 import { callGoogleBridge, markIntegrationResult } from "./_lib/services/integrations.js";
-import { createTechnicalBackup } from "./_lib/services/maintenance.js";
+import { createTechnicalBackup } from "./_lib/services/maintenance/index.js";
 import { queueNotification } from "./_lib/services/notifications.js";
 import { nowIso, safeSpreadsheetText, todayJakarta, uuid } from "./_lib/services/core.js";
 

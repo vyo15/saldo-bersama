@@ -1,3 +1,5 @@
+import styles from "./StatusBadge.module.css";
+
 const STATUS_META = Object.freeze({
   active: { label: "Aktif", tone: "active" },
   archived: { label: "Diarsipkan", tone: "neutral" },
@@ -20,10 +22,27 @@ const STATUS_META = Object.freeze({
   expired: { label: "Kedaluwarsa", tone: "neutral" },
 });
 
+const TONE_STYLES = Object.freeze({
+  active: styles.active,
+  info: styles.info,
+  danger: styles.danger,
+  warning: styles.warning,
+  neutral: styles.neutral,
+});
+
 const StatusBadge = ({ status }) => {
   const normalized = String(status || "unknown").toLowerCase();
   const meta = STATUS_META[normalized] || { label: normalized.replaceAll("_", " "), tone: "neutral" };
-  return <span className={`status-badge status-badge--${meta.tone}`}>{meta.label}</span>;
+  const toneStyle = TONE_STYLES[meta.tone] || styles.neutral;
+  return (
+    <span
+      className={`${styles.badge} ${toneStyle} status-badge status-badge--${meta.tone}`}
+      data-ui="status-badge"
+      data-tone={meta.tone}
+    >
+      {meta.label}
+    </span>
+  );
 };
 
 export default StatusBadge;

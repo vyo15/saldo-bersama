@@ -88,18 +88,23 @@ test("Google bridge memakai deployment server-to-server dan scheduler nonce pers
 });
 
 test("maintenance mode tetap menyediakan read-only UI dan hanya memblokir write biasa", async () => {
-  const dispatcher = await source("api/_lib/actionDispatcher.js");
-  assert.match(dispatcher, /!READ_ACTIONS\.has\(action\) && !MAINTENANCE_ALLOWED\.has\(action\)/);
+  const [dispatcher, policy] = await Promise.all([
+    source("api/_lib/actionDispatcher.js"),
+    source("api/_lib/actions/policy.js"),
+  ]);
+  assert.match(dispatcher, /!isReadAction\(action\) && !isMaintenanceAllowedAction\(action\)/);
   assert.match(dispatcher, /Data tetap dapat dibaca/);
-  assert.match(dispatcher, /"restore\.apply"/);
+  assert.match(policy, /"restore\.apply"[\s\S]*maintenanceAllowed: true/);
+  assert.match(policy, /"app\.initialState"[\s\S]*read\(\)/);
 });
 
 
 test("export Excel memakai POST agar origin guard konsisten pada browser", async () => {
-  const [endpoint, client] = await Promise.all([source("api/export.js"), source("frontend/src/services/api/client.js")]);
+  const [endpoint, transport] = await Promise.all([source("api/export.js"), source("frontend/src/services/api/transport.js")]);
   assert.match(endpoint, /request\.method !== "POST"/);
   assert.match(endpoint, /assertAllowedOrigin\(request\)/);
-  assert.match(client, /fetch\("\/api\/export", \{ method: "POST"/);
+  assert.match(transport, /fetch\("\/api\/export"/);
+  assert.match(transport, /method: "POST"/);
 });
 
 test("action internal kantong tidak diekspos dan health publik tidak membocorkan aktivitas integrasi", async () => {
@@ -120,9 +125,13 @@ test("environment template hanya memakai daftar canonical tanpa duplikasi legacy
 });
 
 test("packager dan source validator menolak env, secret, archive, serta local database dump", async () => {
-  const [packager, validator] = await Promise.all([source("scripts/create-clean-archive.mjs"), source("scripts/validate-source-tree.mjs")]);
-  assert.match(packager, /db\|sqlite\|sqlite3\|dump\|gz/);
-  assert.match(packager, /service-account/);
+  const [packager, validator, policy] = await Promise.all([
+    source("scripts/create-clean-archive.mjs"),
+    source("scripts/validate-source-tree.mjs"),
+    source("scripts/artifact-policy.mjs"),
+  ]);
+  assert.match(policy, /db\|sqlite\|sqlite3\|dump\|gz/);
+  assert.match(policy, /service-account/);
   assert.match(packager, /\.env\.example/);
   assert.match(validator, /database/);
   assert.match(validator, /"jobs\.js"/);
@@ -158,7 +167,7 @@ test("runtime memakai satu Firebase public key dan tidak menduplikasi resource I
     source("api/_lib/firebase.js"),
     source("api/jobs.js"),
     source("api/_lib/services/integrations.js"),
-    source("api/_lib/services/maintenance.js"),
+    Promise.all(["shared.js", "backup.js", "restore.js", "import.js", "integrity.js"].map((name) => source(`api/_lib/services/maintenance/${name}`))).then((parts) => parts.join("\n")),
     source("docs/ENVIRONMENT_VARIABLES.md"),
   ]);
   assert.match(firebase, /process\.env\.VITE_FIREBASE_API_KEY/);
@@ -168,7 +177,8 @@ test("runtime memakai satu Firebase public key dan tidak menduplikasi resource I
   for (const sourceText of [jobs, integrations, maintenance]) {
     assert.doesNotMatch(sourceText, /process\.env\.(MIRROR_SPREADSHEET_ID|GOOGLE_CALENDAR_ID|BACKUP_FOLDER_ID|JOBS_ENDPOINT_URL)/);
   }
-  assert.match(environmentDoc, /scope \*\*Production\*\*/i);
-  assert.match(environmentDoc, /Preview dan Development/);
+  assert.match(environmentDoc, /Scope Production canonical/i);
+  assert.match(environmentDoc, /Scope Development canonical/i);
+  assert.match(environmentDoc, /Preview.*kosong/i);
   assert.doesNotMatch(environmentDoc, /Development \+ Production|Production \+ Development/);
 });

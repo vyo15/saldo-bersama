@@ -1,0 +1,54 @@
+.toggle {
+  width: var(--control-height-md);
+  height: var(--control-height-md);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-control);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--motion-fast) var(--motion-easing),
+    border-color var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+
+.toggle:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.toggle:active { transform: scale(0.96); }
+.toggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.toggle svg { width: 1.2rem; height: 1.2rem; }
+
+.labeled {
+  width: 100%;
+  min-height: var(--control-height-lg);
+  height: auto;
+  padding-inline: var(--space-4);
+  justify-content: flex-start;
+  font-weight: var(--font-weight-semibold);
+}
+
+.hero {
+  border-color: var(--glass-border);
+  background: var(--glass-surface);
+  color: var(--on-primary);
+  box-shadow: none;
+  backdrop-filter: blur(10px);
+}
+
+.hero:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--on-primary);
+}

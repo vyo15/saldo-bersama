@@ -41,6 +41,9 @@ Jangan bekerja langsung di `main`.
 
 ```bash
 npm run check
+npm run test:browser
+npm run clean:dry-run
+npm run zip
 git status --short
 git diff --check
 git diff --stat
@@ -49,7 +52,7 @@ git diff --cached --check
 git diff --cached --stat
 ```
 
-Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, build output, credential, token, dump, backup, atau export berisi data nyata.
+Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, build output, credential, token, dump, backup, atau export berisi data nyata. Gunakan `npm run clean` untuk generated output; jangan menghapus `.git`, `.vercel`, atau `.env.local`.
 
 ## Commit dan pull request
 

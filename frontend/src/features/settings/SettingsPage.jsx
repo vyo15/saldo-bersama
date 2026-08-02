@@ -10,7 +10,7 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
-import { apiClient } from "../../services/api/client.js";
+import { deactivateUser, downloadFinanceExcel, reopenPeriod as requestReopenPeriod, runSettingsAction } from "./settings.api.js";
 import { disablePushNotifications, enablePushNotifications, getPushNotificationState } from "../../services/notifications.js";
 import { readTransactionImportFile } from "../../services/importer.js";
 import { createIdempotencyKey } from "../../domain/security.js";
@@ -76,7 +76,7 @@ const SettingsPage = () => {
       let data;
       if (action === "notifications.enable") data = await enablePushNotifications();
       else if (action === "notifications.disable") data = await disablePushNotifications();
-      else data = await apiClient.request(action, payload, { idempotencyKey: createIdempotencyKey(), ...options });
+      else data = await runSettingsAction(action, payload, { idempotencyKey: createIdempotencyKey(), ...options });
       if (action.startsWith("notifications.")) await refreshPushState();
       if (["calendar.sync", "mirror.sync", "mirror.rebuild", "backup.create"].includes(action)) await integrationResource.reload();
       const fileLink = data?.fileId ? `https://drive.google.com/open?id=${encodeURIComponent(data.fileId)}` : null;
@@ -99,7 +99,7 @@ const SettingsPage = () => {
     setExporting(true);
     setResult({ status: "loading", text: "Menyiapkan Excel..." });
     try {
-      const data = await apiClient.downloadExcel();
+      const data = await downloadFinanceExcel();
       setResult({ status: "success", text: `${data.fileName} berhasil diunduh.` });
     } catch (error) { setResult({ status: "danger", text: error.message }); }
     finally { setExporting(false); }
@@ -140,7 +140,7 @@ const SettingsPage = () => {
     if (!deactivateTarget) return;
     setDeactivateState({ status: "submitting", error: null });
     try {
-      await apiClient.request("users.deactivate", { user_id: deactivateTarget.user_id, row_version: deactivateTarget.row_version }, { rowVersion: deactivateTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      await deactivateUser({ user_id: deactivateTarget.user_id, row_version: deactivateTarget.row_version }, { rowVersion: deactivateTarget.row_version, idempotencyKey: createIdempotencyKey() });
       await usersResource.reload();
       setDeactivateTarget(null);
       setDeactivateState({ status: "idle", error: null });
@@ -155,7 +155,7 @@ const SettingsPage = () => {
     if (!reopenTarget) return;
     setReopenState({ status: "submitting", error: null });
     try {
-      await apiClient.request("periods.reopen", { closure_id: reopenTarget.closure_id, row_version: reopenTarget.row_version, reason }, { rowVersion: reopenTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      await requestReopenPeriod({ closure_id: reopenTarget.closure_id, row_version: reopenTarget.row_version, reason }, { rowVersion: reopenTarget.row_version, idempotencyKey: createIdempotencyKey() });
       const periodKey = reopenTarget.period_key;
       setReopenTarget(null); setReopenState({ status: "idle", error: null });
       setResult({ status: "success", text: `Periode ${periodKey} berhasil dibuka kembali dan tercatat di audit.` });
@@ -168,7 +168,7 @@ const SettingsPage = () => {
   const calendar = providerSummary(integrations, "calendar");
 
   return (
-    <div className="page-stack">
+    <div className="page-stack settings-page">
       <RefreshWarning error={usersResource.refreshError || auditResource.refreshError || healthResource.refreshError || integrationResource.refreshError || periodsResource.refreshError} onRetry={() => Promise.all([usersResource.reload(), auditResource.reload(), healthResource.reload(), integrationResource.reload(), periodsResource.reload()])} />
       <PageHeader title="Pengaturan" description="Turso menyimpan data resmi. Sheets, Calendar, Drive, dan notifikasi berjalan sebagai integrasi terpisah." />
       {result ? <div className={`notice notice--${result.status}`} role="status"><span>{result.text}</span>{result.fileLink ? <a href={result.fileLink} target="_blank" rel="noopener">Buka backup di Google Drive</a> : null}</div> : null}
@@ -183,7 +183,13 @@ const SettingsPage = () => {
       </section>
 
       {ownerMode ? (
-        <section className="two-column-grid">
+        <>
+          <section className="settings-section" aria-labelledby="collaboration-settings-title">
+            <div className="settings-section__heading">
+              <div><p className="eyebrow">Kolaborasi</p><h2 id="collaboration-settings-title">Anggota dan integrasi</h2></div>
+              <p>Kelola akses dua pengguna dan layanan Google yang terhubung.</p>
+            </div>
+            <div className="two-column-grid">
           <Card className="panel">
             <div className="panel__header"><div><p className="eyebrow">Anggota</p><h2>Owner dan pasangan</h2><p>Email dan role wajib sama dengan ALLOWED_USERS_JSON di Vercel.</p></div><FiUsers /></div>
             <form className="form-grid" onSubmit={saveMember}>
@@ -202,7 +208,15 @@ const SettingsPage = () => {
               <div><span><strong>Calendar shared</strong><small>{calendar.lastUpdatedAt || "Belum pernah diproses"} · pending {calendar.pending}</small></span><Button disabled={!integrations.configured?.calendar} onClick={() => run("calendar.sync")}>Rekonsiliasi</Button></div>
             </div>
           </Card>
+            </div>
+          </section>
 
+          <details className="owner-admin-section">
+            <summary>
+              <span>Administrasi owner</span>
+              <small>Export, backup, tutup periode, import, restore, dan audit.</small>
+            </summary>
+            <div className="two-column-grid owner-admin-grid">
           <Card className="panel">
             <div className="panel__header"><div><p className="eyebrow">Export</p><h2>Unduh Excel lengkap</h2><p>Excel adalah salinan baca dan bukan file restore.</p></div><FiDownload /></div>
             <Button variant="primary" icon={FiDownload} loading={exporting} onClick={downloadExcel}>Unduh Excel lengkap</Button>
@@ -245,9 +259,24 @@ const SettingsPage = () => {
 
           <Card className="panel panel--wide">
             <div className="panel__header"><div><p className="eyebrow">Audit append-only</p><h2>Aktivitas penting terbaru</h2><p>Actor dan perubahan penting dicatat backend. Audit tidak dapat diedit atau dihapus.</p></div><FiShield /></div>
-            <div className="data-table-wrap"><table className="data-table"><thead><tr><th>Waktu</th><th>Actor</th><th>Aksi</th><th>Entity</th><th>Hasil</th></tr></thead><tbody>{(auditResource.data?.items || []).map((entry) => <tr key={entry.audit_id}><td>{entry.timestamp}</td><td>{entry.actor_email}</td><td>{entry.action}</td><td>{entry.entity_type}</td><td>{entry.result}</td></tr>)}</tbody></table></div>
+            {(auditResource.data?.items || []).length ? (
+              <>
+                <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Waktu</th><th>Actor</th><th>Aksi</th><th>Entity</th><th>Hasil</th></tr></thead><tbody>{(auditResource.data?.items || []).map((entry) => <tr key={entry.audit_id}><td>{entry.timestamp}</td><td>{entry.actor_email}</td><td>{entry.action}</td><td>{entry.entity_type}</td><td>{entry.result}</td></tr>)}</tbody></table></div>
+                <div className="mobile-data-list audit-mobile-list" aria-label="Aktivitas audit terbaru">
+                  {(auditResource.data?.items || []).map((entry) => (
+                    <article className="mobile-data-card audit-mobile-card" key={entry.audit_id}>
+                      <div><strong>{entry.action}</strong><span className={`status-badge status-badge--${entry.result === "success" ? "active" : "warning"}`}>{entry.result}</span></div>
+                      <small>{entry.timestamp}</small>
+                      <dl><div><dt>Actor</dt><dd>{entry.actor_email}</dd></div><div><dt>Entity</dt><dd>{entry.entity_type}</dd></div></dl>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : <p className="empty-inline-message">Belum ada aktivitas audit untuk ditampilkan.</p>}
           </Card>
-        </section>
+            </div>
+          </details>
+        </>
       ) : null}
 
       <ConfirmationModal open={Boolean(deactivateTarget)} title="Nonaktifkan anggota?" description={deactivateTarget ? `${deactivateTarget.email} tidak lagi dapat memakai data setelah database dan ALLOWED_USERS_JSON Vercel diselaraskan.` : ""} confirmLabel="Nonaktifkan anggota" busy={deactivateState.status === "submitting"} error={deactivateState.error} onCancel={() => deactivateState.status !== "submitting" && setDeactivateTarget(null)} onConfirm={deactivateMember} />

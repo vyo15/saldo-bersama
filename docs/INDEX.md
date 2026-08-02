@@ -5,6 +5,7 @@
 - `../AGENTS.md` — instruksi untuk AI/coding agent.
 - `PROJECT_STATUS.md` — status terbaru dan risiko terbuka.
 - `PROJECT_HANDOFF.md` — handoff task terakhir.
+- `DOCUMENT_LIFECYCLE.md` — status canonical/snapshot/runbook/historical/template.
 - `../CONTRIBUTING.md` — kebijakan kontribusi.
 - `ARCHITECTURE.md` — arsitektur runtime.
 - `product/PRODUCT_REQUIREMENTS.md` — kebutuhan produk.
@@ -53,3 +54,4 @@
 - `QA_CHECKLIST.md`
 - `GOOGLE_INTEGRATIONS.md`
 - `IMPLEMENTATION_MATRIX.md`
+- `UI_DESIGN_SYSTEM.md` — kontrak UI, CSS Modules, semantic HTML, mobile, dan kebijakan toolkit.

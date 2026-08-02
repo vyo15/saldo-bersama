@@ -10,7 +10,7 @@ import ProgressBar from "../../components/common/ProgressBar.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { apiClient } from "../../services/api/client.js";
+import { closeEnvelope as requestCloseEnvelope, createEnvelope as requestCreateEnvelope, moveEnvelope as requestMoveEnvelope } from "./allocations.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -40,7 +40,7 @@ const AllocationsPage = () => {
     setMessage(null);
     try {
       const amount = assertPositiveRupiah(createForm.default_amount);
-      await apiClient.request("envelopes.create", { ...createForm, default_amount: amount, allocated_amount: amount }, { idempotencyKey: createIdempotencyKey() });
+      await requestCreateEnvelope({ ...createForm, default_amount: amount, allocated_amount: amount }, { idempotencyKey: createIdempotencyKey() });
       setCreateForm((current) => ({ ...current, name: "", default_amount: "" }));
       setMessage({ type: "success", text: "Kantong dan periode aktif berhasil dibuat." });
       invalidate(["envelopes.list", "reports.monthly", "app.initialState"]);
@@ -54,7 +54,7 @@ const AllocationsPage = () => {
     if (!closeTarget) return;
     setCloseState({ status: "submitting", error: null });
     try {
-      const result = await apiClient.request("envelopes.close", {
+      const result = await requestCloseEnvelope({
         envelope_period_id: closeTarget.envelope_period_id,
         row_version: closeTarget.row_version,
       }, { idempotencyKey: createIdempotencyKey(), rowVersion: closeTarget.row_version });
@@ -82,7 +82,7 @@ const AllocationsPage = () => {
       if (!move.fromEnvelopePeriodId || !move.toEnvelopePeriodId) throw new Error("Kantong sumber dan tujuan wajib dipilih.");
       if (move.fromEnvelopePeriodId === move.toEnvelopePeriodId) throw new Error("Kantong sumber dan tujuan harus berbeda.");
       if (amount > Number(lookup[move.fromEnvelopePeriodId]?.remaining_amount || 0)) throw new Error("Nominal melebihi sisa kantong sumber.");
-      await apiClient.request("envelopes.move", {
+      await requestMoveEnvelope({
         ...move,
         amount,
         from_row_version: lookup[move.fromEnvelopePeriodId]?.row_version,

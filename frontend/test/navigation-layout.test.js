@@ -43,9 +43,9 @@ test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti 
 test("navigasi mobile memakai safe area dan menyisakan ruang scroll untuk konten terakhir", async () => {
   const responsiveCss = await read("src/styles/responsive.css");
 
-  assert.match(responsiveCss, /--mobile-navigation-height:\s*72px;/);
-  assert.match(responsiveCss, /html \{ scroll-padding-bottom:\s*calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ 16px\); \}/);
-  assert.match(responsiveCss, /\.app-content \{[^}]*padding:\s*22px 14px calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ var\(--mobile-navigation-content-gap\)\);/);
+  assert.match(responsiveCss, /--mobile-navigation-height:\s*68px;/);
+  assert.match(responsiveCss, /html \{ scroll-padding-bottom:\s*calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ 12px\); \}/);
+  assert.match(responsiveCss, /\.app-content \{[^}]*padding:\s*16px var\(--mobile-page-gutter\) calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ var\(--mobile-navigation-content-gap\)\);/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*position:\s*fixed;[^}]*inset-inline:\s*0;[^}]*bottom:\s*0;/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*safe-area-inset-left/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*safe-area-inset-right/);
@@ -95,4 +95,16 @@ test("asset rail light dan dark mempertahankan path organik IMS", async () => {
   assert.match(dark, /width="92" height="480"/);
   assert.ok(light.includes(organicPath));
   assert.ok(dark.includes(organicPath));
+});
+
+test("layout mobile compact mempertahankan safe area dan target sentuh", async () => {
+  const responsiveCss = await read("src/styles/responsive.css");
+
+  assert.match(responsiveCss, /--mobile-navigation-height:\s*68px;/);
+  assert.match(responsiveCss, /\.mobile-navigation a,\s*\n\s*\.mobile-navigation__more \{[^}]*min-height:\s*50px;/);
+  assert.match(responsiveCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero \.theme-toggle \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.doesNotMatch(responsiveCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
+  assert.match(responsiveCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
+  assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*flex; \}/);
+  assert.match(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*none; \}/);
 });

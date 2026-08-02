@@ -1,13 +1,17 @@
 import { forwardRef } from "react";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
+import styles from "./MoneyInput.module.css";
 
 const MoneyInput = forwardRef(({ value, onChange, id, label = "Nominal", error, required = false }, ref) => {
   const numericValue = value === "" ? "" : Number(value || 0);
+  const describedBy = error ? `${id}-preview ${id}-error` : `${id}-preview`;
+
   return (
-    <label className="field" htmlFor={id}>
-      <span>{label}{required ? " *" : ""}</span>
+    <label className={`${styles.field} field`} htmlFor={id} data-ui="money-input">
+      <span className={styles.label}>{label}{required ? " *" : ""}</span>
       <input
         ref={ref}
+        className={styles.input}
         id={id}
         inputMode="numeric"
         autoComplete="off"
@@ -18,10 +22,12 @@ const MoneyInput = forwardRef(({ value, onChange, id, label = "Nominal", error, 
           try { onChange(parseRupiah(raw)); } catch { onChange(raw.replace(/[^0-9]/g, "")); }
         }}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id}-error` : `${id}-preview`}
+        aria-describedby={describedBy}
       />
-      <small id={`${id}-preview`}>{numericValue === "" ? "Masukkan nominal rupiah" : formatRupiah(numericValue)}</small>
-      {error ? <small className="field__error" id={`${id}-error`}>{error}</small> : null}
+      <small className={styles.hint} id={`${id}-preview`}>
+        {numericValue === "" ? "Masukkan nominal rupiah" : formatRupiah(numericValue)}
+      </small>
+      {error ? <small className={`${styles.error} field__error`} id={`${id}-error`}>{error}</small> : null}
     </label>
   );
 });

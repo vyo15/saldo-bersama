@@ -1,0 +1,273 @@
+import { appendAudit } from "../audit.js";
+import { accountBalanceAsOf, envelopeItems } from "../readModels.js";
+import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
+import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
+const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
+const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
+const OVERSPEND_POLICIES = new Set(["block", "confirm", "allow"]);
+const nextEnvelopeBounds = period => {
+  const type = period.period_type;
+  if (type === "daily") return {
+    start: addDays(period.period_end, 1),
+    end: addDays(period.period_end, 1)
+  };
+  if (type === "weekly") return {
+    start: addDays(period.period_end, 1),
+    end: addDays(period.period_end, 7)
+  };
+  if (type === "biweekly") return {
+    start: addDays(period.period_end, 1),
+    end: addDays(period.period_end, 14)
+  };
+  if (["monthly", "paycycle"].includes(type)) {
+    const start = addDays(period.period_end, 1);
+    return {
+      start,
+      end: addDays(addMonths(start, 1), -1)
+    };
+  }
+  const length = Math.max(1, Math.round((new Date(`${period.period_end}T00:00:00Z`) - new Date(`${period.period_start}T00:00:00Z`)) / 86400000) + 1);
+  return {
+    start: addDays(period.period_end, 1),
+    end: addDays(period.period_end, length)
+  };
+};
+const assertAllocationAvailable = async (db, sourceAccount, amount, excludePeriodId = null) => {
+  if (!sourceAccount) return;
+  const balance = await accountBalanceAsOf(db, sourceAccount, todayJakarta());
+  const allocated = await db.one(`SELECT COALESCE(SUM(p.allocated_amount - p.reserved_amount - COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0)),0) AS total
+    FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+    WHERE p.status='active' AND r.status='active' AND r.source_account_id=? ${excludePeriodId ? "AND p.envelope_period_id<>?" : ""}`, [sourceAccount.account_id, ...(excludePeriodId ? [excludePeriodId] : [])]);
+  const available = balance - Number(allocated?.total || 0);
+  if (amount > available) throw appError("ALLOCATION_EXCEEDS_AVAILABLE", "Alokasi melebihi dana rekening yang belum dialokasikan.", 409, {
+    availableAmount: available,
+    accountBalance: balance
+  });
+};
+export const listEnvelopes = async (db, context) => {
+  const items = await envelopeItems(db, context.actor, {
+    includeClosed: true
+  });
+  return {
+    items: items.map(item => ({
+      ...item,
+      can_close: context.actor.role === "owner" && item.status === "active"
+    }))
+  };
+};
+export const createEnvelopeRule = async (db, context, payload = context.payload || {}) => {
+  assertOwner(context.actor);
+  const name = sanitizeText(payload.name, 100);
+  const periodType = String(payload.period_type || "monthly");
+  const rollover = String(payload.rollover_policy || "unallocated");
+  const overspend = String(payload.overspend_policy || "confirm");
+  if (!name) throw appError("NAME_REQUIRED", "Nama kantong wajib diisi.", 400);
+  if (!PERIOD_TYPES.has(periodType) || !ROLLOVER_POLICIES.has(rollover) || !OVERSPEND_POLICIES.has(overspend)) throw appError("INVALID_ENVELOPE_RULE", "Aturan kantong tidak valid.", 400);
+  const account = await accountWithAccess(db, context.actor, payload.source_account_id, {
+    optional: true
+  });
+  const owned = ruleScopeFromAccount(account);
+  const amount = positiveInteger(payload.default_amount, "Nominal alokasi");
+  const timestamp = nowIso();
+  const record = {
+    envelope_rule_id: uuid(),
+    name,
+    period_type: periodType,
+    scope: owned.scope,
+    owner_user_id: owned.owner_user_id,
+    default_amount: amount,
+    source_account_id: account?.account_id || null,
+    rollover_policy: rollover,
+    overspend_policy: overspend,
+    status: "active",
+    row_version: 1,
+    created_by: context.actor.user_id,
+    created_at: timestamp,
+    updated_by: context.actor.user_id,
+    updated_at: timestamp
+  };
+  await db.execute(`INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  return record;
+};
+export const createEnvelopePeriod = async (db, context, payload = context.payload || {}) => {
+  assertOwner(context.actor);
+  const rule = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
+  if (!rule) throw appError("INVALID_ENVELOPE_RULE", "Aturan kantong tidak ditemukan.", 404);
+  const start = dateValue(payload.period_start, "Tanggal mulai kantong");
+  const end = dateValue(payload.period_end, "Tanggal akhir kantong");
+  if (start > end) throw appError("INVALID_PERIOD_RANGE", "Tanggal akhir harus setelah tanggal mulai.", 400);
+  const amount = positiveInteger(payload.allocated_amount ?? rule.default_amount, "Nominal alokasi");
+  const source = rule.source_account_id ? await accountWithAccess(db, context.actor, rule.source_account_id) : null;
+  await assertAllocationAvailable(db, source, amount);
+  const duplicate = await db.one("SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=? AND period_start=? AND period_end=?", [rule.envelope_rule_id, start, end]);
+  if (duplicate) throw appError("DUPLICATE_ENVELOPE_PERIOD", "Periode kantong yang sama sudah ada.", 409);
+  const timestamp = nowIso();
+  const record = {
+    envelope_period_id: uuid(),
+    envelope_rule_id: rule.envelope_rule_id,
+    name: sanitizeText(payload.name || rule.name, 100),
+    period_start: start,
+    period_end: end,
+    allocated_amount: amount,
+    reserved_amount: 0,
+    status: "active",
+    row_version: 1,
+    created_by: context.actor.user_id,
+    created_at: timestamp,
+    updated_by: context.actor.user_id,
+    updated_at: timestamp,
+    closed_by: null,
+    closed_at: null
+  };
+  await db.execute(`INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  return record;
+};
+export const createEnvelope = async (db, context) => {
+  const rule = await createEnvelopeRule(db, context, context.payload || {});
+  const period = await createEnvelopePeriod(db, context, {
+    ...context.payload,
+    envelope_rule_id: rule.envelope_rule_id,
+    name: rule.name
+  });
+  const result = {
+    rule: publicRow(rule),
+    period: publicRow(period)
+  };
+  await appendAudit(db, context, {
+    entityType: "envelope",
+    entityId: period.envelope_period_id,
+    next: result
+  });
+  await context.enqueueMirror?.(db, "envelope", period.envelope_period_id);
+  return result;
+};
+export const moveEnvelope = async (db, context) => {
+  const payload = context.payload || {};
+  const fromId = payload.fromEnvelopePeriodId || payload.from_envelope_period_id;
+  const toId = payload.toEnvelopePeriodId || payload.to_envelope_period_id;
+  if (!fromId || !toId || fromId === toId) throw appError("INVALID_ENVELOPE_MOVE", "Kantong sumber dan tujuan harus berbeda.", 400);
+  const [from, to] = await Promise.all([db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [fromId]), db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [toId])]);
+  if (!from || !to) throw appError("INVALID_ENVELOPE", "Kantong aktif tidak ditemukan.", 404);
+  assertOwnedAccess(context.actor, from);
+  assertOwnedAccess(context.actor, to);
+  assertVersion(from, payload.from_row_version);
+  assertVersion(to, payload.to_row_version);
+  if (from.scope !== to.scope || String(from.owner_user_id || "") !== String(to.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Alokasi hanya dapat dipindahkan antar kantong dengan kepemilikan sama.", 409);
+  const amount = positiveInteger(payload.amount, "Nominal realokasi");
+  const usage = await db.one("SELECT COALESCE(SUM(amount),0) AS used FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id=?", [fromId]);
+  const remaining = Number(from.allocated_amount) - Number(from.reserved_amount) - Number(usage?.used || 0);
+  if (amount > remaining) throw appError("INSUFFICIENT_ENVELOPE", "Nominal melebihi sisa kantong sumber.", 409, {
+    remainingAmount: remaining
+  });
+  const reason = sanitizeText(payload.reason, 180);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan realokasi wajib diisi.", 400);
+  const timestamp = nowIso();
+  const movement = {
+    movement_id: uuid(),
+    from_envelope_period_id: fromId,
+    to_envelope_period_id: toId,
+    amount,
+    movement_type: "reallocation",
+    reason,
+    status: "active",
+    row_version: 1,
+    created_by: context.actor.user_id,
+    created_at: timestamp
+  };
+  const fromUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount-?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [amount, context.actor.user_id, timestamp, fromId, from.row_version]);
+  if (fromUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong sumber berubah di perangkat lain.", 409);
+  const toUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount+?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [amount, context.actor.user_id, timestamp, toId, to.row_version]);
+  if (toUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong tujuan berubah di perangkat lain.", 409);
+  await db.execute("INSERT INTO envelope_movements(movement_id,from_envelope_period_id,to_envelope_period_id,amount,movement_type,reason,status,row_version,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", Object.values(movement));
+  await appendAudit(db, context, {
+    entityType: "envelope_movement",
+    entityId: movement.movement_id,
+    next: publicRow(movement)
+  });
+  await context.enqueueMirror?.(db, "envelope", fromId);
+  return publicRow(movement);
+};
+export const closeEnvelope = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const period = await db.one(`SELECT p.*,r.name AS rule_name,r.period_type,r.rollover_policy,r.scope,r.owner_user_id,r.source_account_id,r.default_amount
+    FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [payload.envelope_period_id]);
+  if (!period) throw appError("NOT_FOUND", "Periode kantong aktif tidak ditemukan.", 404);
+  assertVersion(period, context.rowVersion ?? payload.row_version);
+  const usage = await db.one("SELECT COALESCE(SUM(amount),0) AS used FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id=?", [period.envelope_period_id]);
+  const remaining = Math.max(0, Number(period.allocated_amount) - Number(period.reserved_amount) - Number(usage?.used || 0));
+  let rollover = null;
+  if (period.rollover_policy === "carry" && remaining > 0) {
+    const bounds = nextEnvelopeBounds(period);
+    let next = await db.one("SELECT * FROM envelope_periods WHERE envelope_rule_id=? AND period_start=? AND period_end=?", [period.envelope_rule_id, bounds.start, bounds.end]);
+    if (next) {
+      const nextUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount+?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [remaining, context.actor.user_id, nowIso(), next.envelope_period_id, next.row_version]);
+      if (nextUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong rollover berubah di perangkat lain.", 409);
+      next = {
+        ...next,
+        allocated_amount: Number(next.allocated_amount) + remaining,
+        row_version: Number(next.row_version) + 1
+      };
+    } else {
+      const timestamp = nowIso();
+      next = {
+        envelope_period_id: uuid(),
+        envelope_rule_id: period.envelope_rule_id,
+        name: period.rule_name,
+        period_start: bounds.start,
+        period_end: bounds.end,
+        allocated_amount: remaining,
+        reserved_amount: 0,
+        status: "active",
+        row_version: 1,
+        created_by: context.actor.user_id,
+        created_at: timestamp,
+        updated_by: context.actor.user_id,
+        updated_at: timestamp,
+        closed_by: null,
+        closed_at: null
+      };
+      await db.execute(`INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(next));
+    }
+    const movement = {
+      movement_id: uuid(),
+      from_envelope_period_id: period.envelope_period_id,
+      to_envelope_period_id: next.envelope_period_id,
+      amount: remaining,
+      movement_type: "rollover",
+      reason: "Rollover sisa periode",
+      status: "active",
+      row_version: 1,
+      created_by: context.actor.user_id,
+      created_at: nowIso()
+    };
+    await db.execute("INSERT INTO envelope_movements(movement_id,from_envelope_period_id,to_envelope_period_id,amount,movement_type,reason,status,row_version,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", Object.values(movement));
+    rollover = {
+      amount: remaining,
+      to_envelope_period_id: next.envelope_period_id
+    };
+  }
+  const next = {
+    ...period,
+    status: "closed",
+    closed_by: context.actor.user_id,
+    closed_at: nowIso(),
+    row_version: Number(period.row_version) + 1,
+    updated_by: context.actor.user_id,
+    updated_at: nowIso()
+  };
+  const result = await db.execute("UPDATE envelope_periods SET status='closed',closed_by=?,closed_at=?,row_version=?,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [next.closed_by, next.closed_at, next.row_version, next.updated_by, next.updated_at, period.envelope_period_id, period.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Periode kantong berubah di perangkat lain.", 409);
+  const response = {
+    period: publicRow(next),
+    rollover
+  };
+  await appendAudit(db, context, {
+    entityType: "envelope_period",
+    entityId: period.envelope_period_id,
+    previous: publicRow(period),
+    next: response
+  });
+  await context.enqueueMirror?.(db, "envelope", period.envelope_period_id);
+  return response;
+};

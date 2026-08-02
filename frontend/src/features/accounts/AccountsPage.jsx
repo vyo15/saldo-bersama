@@ -11,7 +11,7 @@ import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { apiClient } from "../../services/api/client.js";
+import { archiveAccount, archiveCategory, createAccount as requestCreateAccount, createCategory as requestCreateCategory, createReconciliation, updateAccount as requestUpdateAccount, updateCategory as requestUpdateCategory } from "./accounts.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
@@ -47,7 +47,7 @@ const AccountsPage = () => {
   const createAccount = async (event) => {
     event.preventDefault();
     try {
-      await apiClient.request("accounts.create", { ...accountForm, initial_balance: Number(accountForm.initial_balance || 0) }, { idempotencyKey: createIdempotencyKey() });
+      await requestCreateAccount({ ...accountForm, initial_balance: Number(accountForm.initial_balance || 0) }, { idempotencyKey: createIdempotencyKey() });
       setAccountForm(emptyAccountForm());
       setMessage({ type: "success", text: "Rekening berhasil dibuat." });
       await reloadMasters();
@@ -59,7 +59,7 @@ const AccountsPage = () => {
     if (!editAccount) return;
     setDialogState({ status: "submitting", error: null });
     try {
-      await apiClient.request("accounts.update", {
+      await requestUpdateAccount({
         account_id: editAccount.account_id,
         name: editAccount.name,
         owner_scope: editAccount.owner_scope,
@@ -78,7 +78,7 @@ const AccountsPage = () => {
     if (!reconciliation.account) return;
     setDialogState({ status: "submitting", error: null });
     try {
-      const result = await apiClient.request("reconciliations.create", {
+      const result = await createReconciliation({
         account_id: reconciliation.account.account_id,
         actual_balance: parseRupiah(reconciliation.actual_balance),
         notes: reconciliation.notes,
@@ -94,7 +94,7 @@ const AccountsPage = () => {
   const createCategory = async (event) => {
     event.preventDefault();
     try {
-      await apiClient.request("categories.create", categoryForm, { idempotencyKey: createIdempotencyKey() });
+      await requestCreateCategory( categoryForm, { idempotencyKey: createIdempotencyKey() });
       setCategoryForm(emptyCategoryForm);
       setMessage({ type: "success", text: "Kategori berhasil dibuat." });
       await reloadMasters();
@@ -106,7 +106,7 @@ const AccountsPage = () => {
     if (!editCategory) return;
     setDialogState({ status: "submitting", error: null });
     try {
-      await apiClient.request("categories.update", {
+      await requestUpdateCategory({
         category_id: editCategory.category_id,
         name: editCategory.name,
         nature: editCategory.nature,
@@ -124,7 +124,8 @@ const AccountsPage = () => {
     setDialogState({ status: "submitting", error: null });
     const account = archiveTarget.kind === "account";
     try {
-      await apiClient.request(account ? "accounts.archive" : "categories.archive", account ? {
+      const archiveRequest = account ? archiveAccount : archiveCategory;
+      await archiveRequest(account ? {
         account_id: archiveTarget.item.account_id,
         row_version: archiveTarget.item.row_version,
       } : {
@@ -209,7 +210,23 @@ const AccountsPage = () => {
             ? <p>Memuat riwayat rekonsiliasi...</p>
             : reconciliationsResource.status === "error"
               ? <ErrorState error={reconciliationsResource.error} onRetry={reconciliationsResource.reload} />
-              : <div className="data-table-wrap"><table className="data-table"><thead><tr><th>Waktu</th><th>Rekening</th><th className="align-right">Sistem</th><th className="align-right">Aktual</th><th className="align-right">Selisih</th><th>Status</th></tr></thead><tbody>{(reconciliationsResource.data?.items || []).map((item) => <tr key={item.reconciliation_id}><td>{item.reconciled_at}</td><td>{item.account_name || item.account_id}</td><td className="align-right"><Money value={item.system_balance} /></td><td className="align-right"><Money value={item.actual_balance} /></td><td className="align-right"><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody></table>{(reconciliationsResource.data?.items || []).length ? null : <p>Belum ada rekonsiliasi.</p>}</div>
+              : (reconciliationsResource.data?.items || []).length ? (
+                <>
+                  <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Waktu</th><th>Rekening</th><th className="align-right">Sistem</th><th className="align-right">Aktual</th><th className="align-right">Selisih</th><th>Status</th></tr></thead><tbody>{(reconciliationsResource.data?.items || []).map((item) => <tr key={item.reconciliation_id}><td>{item.reconciled_at}</td><td>{item.account_name || item.account_id}</td><td className="align-right"><Money value={item.system_balance} /></td><td className="align-right"><Money value={item.actual_balance} /></td><td className="align-right"><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody></table></div>
+                  <div className="mobile-data-list reconciliation-mobile-list" aria-label="Riwayat rekonsiliasi">
+                    {(reconciliationsResource.data?.items || []).map((item) => (
+                      <article className="mobile-data-card reconciliation-mobile-card" key={item.reconciliation_id}>
+                        <div className="reconciliation-mobile-card__header"><div><strong>{item.account_name || item.account_id}</strong><small>{item.reconciled_at}</small></div><StatusBadge status={item.status} /></div>
+                        <dl>
+                          <div><dt>Saldo sistem</dt><dd><Money value={item.system_balance} /></dd></div>
+                          <div><dt>Saldo aktual</dt><dd><Money value={item.actual_balance} /></dd></div>
+                          <div><dt>Selisih</dt><dd><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></dd></div>
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              ) : <p className="empty-inline-message">Belum ada rekonsiliasi.</p>
         ) : null}
       </Card>
 

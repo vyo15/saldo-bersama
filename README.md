@@ -41,22 +41,38 @@ Jangan menggunakan chat/memory sebagai source of truth ketika repository tersedi
 
 Persyaratan canonical: Node.js 24.x dan npm 10 atau lebih baru.
 
+Pada clone baru cukup jalankan:
+
 ```bash
-npm install
+git clone <repository-url>
+cd saldo-bersama
 npm run dev
 ```
 
-`npm run dev` hanya memakai `.env.local` dan akan fail closed bila file tersebut tidak ada atau belum lengkap. Salin `.env.example` menjadi `.env.local`, isi nilainya melalui penyimpanan rahasia yang disetujui, lalu verifikasi. Vercel hanya memakai scope **Production**; Preview dan Vercel Development sengaja dibiarkan kosong.
+`npm run dev` melakukan preflight terjaga:
+
+1. bila dependency workspace belum tersedia, menjalankan `npm ci`;
+2. bila `.env.local` lengkap, langsung memakainya tanpa menghubungi Vercel;
+3. bila `.env.local` hilang/tidak lengkap, memeriksa login Vercel, menghubungkan project `saldo-bersama`, lalu menarik **Development Environment** ke file sementara;
+4. membuang `VERCEL_OIDC_TOKEN`/key legacy, memvalidasi delapan key core, lalu mengganti `.env.local` secara atomik;
+5. menjalankan frontend dan lima endpoint API lokal.
+
+Vercel Development harus di-seed satu kali dari komputer tepercaya yang masih memiliki `.env.local` lengkap:
 
 ```bash
 npm run env:check
-# Kirim 8 key core + 1 key logging dari .env.local ke Vercel Production
+npm run env:push:development
+```
+
+Production tetap disinkronkan secara eksplisit dan terpisah:
+
+```bash
 npm run env:push:production
 npm run diagnose
 npm run db:integrity
 ```
 
-Jangan commit `.env.local`, token Turso, session secret, VAPID private key, atau Google bridge secret.
+Preview tetap kosong. Jangan commit `.env.local`, `.vercel`, token Turso, session secret, VAPID private key, atau Google bridge secret. Akses ke project Vercel Development berarti akses untuk menarik secret development.
 
 ## Quality gate
 
@@ -65,7 +81,12 @@ npm run validate:source
 npm run lint
 npm run test
 npm run build
+npm run build:budget
 npm run check
+npm run test:browser
+# Windows: Chrome, Edge, dan Brave dideteksi otomatis. Gunakan CHROMIUM_BIN hanya untuk lokasi khusus.
+npm run clean:dry-run
+npm run clean
 npm run zip
 ```
 
@@ -77,6 +98,8 @@ npm run db:integrity
 npm run db:import-legacy -- path/to/legacy-export.json
 npm run db:import-legacy -- path/to/legacy-export.json --apply --confirm=MIGRATE_LEGACY_TO_TURSO
 ```
+
+`npm run clean` hanya menghapus output generated yang aman. Penghapusan dependency harus eksplisit melalui `npm run clean:dependencies -- --force`. `npm run zip` memvalidasi source, menolak secret/generated file, dan membatasi ukuran archive.
 
 `db:import-legacy` hanya dipakai dalam workflow migrasi terkontrol. Jalankan preview/parity dan backup sebelum cutover production.
 
