@@ -18,6 +18,7 @@ Cakupan wajib:
 
 - schema STRICT, FK, integer Rupiah, ownership, bentuk transaksi, cancellation metadata, dan saldo awal negatif;
 - backend `no-undef` dan `no-unused-vars` untuk mencegah import dependency hilang saat service dipecah;
+- transport session login/logout wajib menunggu objek `Response`, mempertahankan `credentials: include` dan payload action, serta meneruskan API error terstruktur tanpa raw parser `TypeError`;
 - authenticated `app.initialState`, budget, recurring create/update/pay/reverse, import apply, restore apply, dan integrity maintenance recovery dijalankan pada SQLite in-memory;
 - income/expense/transfer/refund/adjustment;
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
@@ -39,7 +40,7 @@ Cakupan wajib:
 
 Uji dua browser/perangkat dengan owner dan member:
 
-1. Login/logout dan redirect route.
+1. Login/logout dan redirect route; uji dari sesi bersih, pastikan login/logout berhasil tanpa reload dan tidak muncul error parser seperti `i.json is not a function`.
 2. Edit record yang sama untuk memastikan 409 conflict jelas.
 3. Double-click/retry menggunakan idempotency yang sama.
 4. Putus jaringan sebelum write; UI harus menolak tanpa menyatakan sukses.
@@ -56,3 +57,20 @@ Tidak boleh mengklaim production-ready hanya berdasarkan unit test; real resourc
 ## Browser smoke cleanup guard
 
 Browser smoke wajib menutup process tree Chromium dan koneksi Chrome DevTools Protocol pada semua jalur sukses maupun gagal. Workflow memberi batas waktu dua menit pada langkah browser agar runner tidak menggantung bila executable browser atau proses turunannya bermasalah.
+
+## Product-control alignment
+
+Perubahan sistem pengendali uang bersama wajib mencakup skenario berikut:
+
+- filter transaksi berdasarkan rekening, kategori, dan pencatat tetap mengikuti projection personal/shared backend;
+- laporan tren 3, 6, dan 12 bulan tidak menghitung transfer sebagai pemasukan atau pengeluaran;
+- breakdown per pencatat diberi label aktivitas pencatatan, bukan kontribusi finansial;
+- breakdown rekening, kategori, dan nature hanya memakai transaksi aktif yang terlihat oleh actor;
+- peringatan budget dan kantong muncul pada threshold, tidak menggandakan notifikasi, dan tidak membocorkan scope personal;
+- target dengan tanggal selesai menghitung sisa, kebutuhan setoran bulanan, dan status pace secara deterministik;
+- rekonsiliasi berbeda atau terlalu lama menghasilkan peringatan tanpa membuat adjustment otomatis;
+- notification queue memakai dedupe key stabil dan retry tidak menghasilkan push ganda;
+- setiap `REQ-*` dalam product requirements tercatat pada implementation matrix;
+- setiap gap yang membutuhkan schema baru memiliki RFC `Proposed` sebelum migration atau API baru dibuat.
+
+Fitur planned seperti receipt, utang/piutang, contribution split, category hierarchy, goal stages, privacy granular, dan Partner role tidak boleh dianggap implemented hanya karena RFC tersedia.

@@ -22,14 +22,14 @@ export const readSession = async () => {
   return response.status === 401 ? null : parseResponse(response);
 };
 
-export const createServerSession = (firebaseIdToken) => parseResponse(fetch("/api/session", {
+export const createServerSession = async (firebaseIdToken) => parseResponse(await fetch("/api/session", {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ action: "login", firebaseIdToken }),
 }));
 
-export const destroyServerSession = () => parseResponse(fetch("/api/session", {
+export const destroyServerSession = async () => parseResponse(await fetch("/api/session", {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json" },

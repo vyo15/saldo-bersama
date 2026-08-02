@@ -1,11 +1,24 @@
-
-- Browser smoke GitHub Actions kini memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga CI tidak timeout karena perilaku jaringan/provider.
-- Workflow Quality membangun fixture browser smoke dengan public dummy Google Client ID dan Firebase API key agar guard konfigurasi tidak menghentikan render mock login pada runner tanpa `.env.local`.
 # Changelog
 
 Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi production harus menunjuk commit SHA yang sudah diuji.
 
 ## [Unreleased]
+
+- Memperbaiki transport login/logout frontend agar menunggu `Response` dari `fetch` sebelum parsing, mencegah error minified `i.json is not a function` dan inkonsistensi status sesi.
+- Menambahkan regression test kontrak request sesi, structured API error, serta guard source agar `Promise<Response>` tidak kembali diberikan langsung kepada `parseResponse`.
+- Membersihkan import test financial insights yang tidak digunakan agar backend lint dan Quality gate kembali hijau.
+
+- Menggabungkan patch product-control dengan hotfix browser-smoke CI tanpa menimpa perubahan salah satu patch.
+- Browser smoke GitHub Actions memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik agar CI tidak bergantung pada jaringan/provider.
+- Workflow Quality membangun fixture browser smoke dengan public dummy `VITE_GOOGLE_CLIENT_ID` dan `VITE_FIREBASE_API_KEY`; nilai hanya untuk CI dan bukan secret.
+
+- Menjadikan 17 area kebutuhan sistem pengendali uang bersama sebagai requirement canonical dan implementation traceability.
+- Menambahkan filter transaksi server-side/UI berdasarkan rekening, kategori, dan pencatat dengan option yang scope-filtered.
+- Menambahkan tren laporan 3/6/12 bulan, total saldo bulanan, breakdown rekening/nature/pencatat, target projection, serta dashboard/report alerts.
+- Memperluas scheduled notification queue untuk budget, kantong, target, dan transaksi belum dialokasikan secara idempotent.
+- Menambahkan RFC Proposed untuk transaction lifecycle/receipt, debt, contribution split, category hierarchy/goal stages, granular privacy, dan partner planning permissions tanpa mengubah schema v3.
+- Memperbaiki bootstrap/sinkronisasi Vercel Development agar `VERCEL_OIDC_TOKEN` dibersihkan otomatis pada jalur sukses/gagal dan `env:push:development` idempotent.
+- Menegakkan traceability seluruh `REQ-*` ke implementation matrix serta keberadaan enam RFC schema/authorization Proposed melalui governance test.
 
 - Hotfix backend memulihkan import dependency yang tertinggal setelah pemecahan service reporting, planning, dan maintenance.
 - Backend lint kini menolak identifier tidak terdefinisi dan import/variabel tidak terpakai sebelum deployment.

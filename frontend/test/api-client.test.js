@@ -1,7 +1,89 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { parseResponse, shouldInvalidateSession } from "../src/services/api/client.js";
+import { ApiError, parseResponse, shouldInvalidateSession } from "../src/services/api/client.js";
+import { createServerSession, destroyServerSession } from "../src/services/api/transport.js";
+
+const successfulResponse = (data, requestId = "") => ({
+  ok: true,
+  status: 200,
+  headers: { get: (name) => name.toLowerCase() === "x-request-id" ? requestId : null },
+  json: async () => ({ ok: true, data }),
+});
+
+test("createServerSession menunggu Response dan mempertahankan kontrak login", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  let resolveFetch;
+  globalThis.fetch = (url, options) => {
+    request = { url, options };
+    return new Promise((resolve) => { resolveFetch = resolve; });
+  };
+  try {
+    const pending = createServerSession("firebase-token-test");
+    assert.equal(request.url, "/api/session");
+    assert.equal(request.options.method, "POST");
+    assert.equal(request.options.credentials, "include");
+    assert.equal(request.options.headers["Content-Type"], "application/json");
+    assert.deepEqual(JSON.parse(request.options.body), {
+      action: "login",
+      firebaseIdToken: "firebase-token-test",
+    });
+    resolveFetch(successfulResponse({ uid: "firebase-owner", email: "owner@example.com" }));
+    assert.deepEqual(await pending, { uid: "firebase-owner", email: "owner@example.com" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("destroyServerSession menunggu Response dan mempertahankan kontrak logout", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  let resolveFetch;
+  globalThis.fetch = (url, options) => {
+    request = { url, options };
+    return new Promise((resolve) => { resolveFetch = resolve; });
+  };
+  try {
+    const pending = destroyServerSession();
+    assert.equal(request.url, "/api/session");
+    assert.equal(request.options.method, "POST");
+    assert.equal(request.options.credentials, "include");
+    assert.deepEqual(JSON.parse(request.options.body), { action: "logout" });
+    resolveFetch(successfulResponse({ loggedOut: true }));
+    assert.deepEqual(await pending, { loggedOut: true });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("transport sesi meneruskan error API terstruktur, bukan TypeError parser", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 503,
+    headers: { get: (name) => name.toLowerCase() === "x-request-id" ? "req-session-503" : null },
+    json: async () => ({ ok: false, error: { code: "SESSION_UNAVAILABLE", message: "Sesi sementara tidak tersedia." } }),
+  });
+  try {
+    await assert.rejects(
+      () => createServerSession("firebase-token-test"),
+      (error) => error instanceof ApiError
+        && error.code === "SESSION_UNAVAILABLE"
+        && error.status === 503
+        && error.requestId === "req-session-503",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("transport API tidak memberikan Promise fetch langsung kepada parseResponse", async () => {
+  const source = await readFile(new URL("../src/services/api/transport.js", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /parseResponse\s*\(\s*fetch\s*\(/);
+  assert.match(source, /createServerSession\s*=\s*async[\s\S]*parseResponse\(await fetch\("\/api\/session"/);
+  assert.match(source, /destroyServerSession\s*=\s*async[\s\S]*parseResponse\(await fetch\("\/api\/session"/);
+});
 
 test("frontend hanya mengakhiri sesi untuk UNAUTHENTICATED dari API sendiri", () => {
   assert.equal(shouldInvalidateSession(401, "UNAUTHENTICATED"), true);
@@ -99,7 +181,6 @@ test("abort satu subscriber tidak membatalkan read identik yang masih dipakai su
 });
 
 test("FinanceContext tidak men-seed daftar master aktif sebagai daftar manajemen lengkap", async () => {
-  const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("../src/app/FinanceContext.jsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /apiClient\.seed\("accounts\.list"/);
   assert.doesNotMatch(source, /apiClient\.seed\("categories\.list"/);
