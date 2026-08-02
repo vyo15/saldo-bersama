@@ -1,4 +1,5 @@
-export const REQUIRED_RUNTIME_ENV_KEYS = Object.freeze([
+export const CORE_RUNTIME_ENV_KEYS = Object.freeze([
+  "VITE_APP_NAME",
   "VITE_GOOGLE_CLIENT_ID",
   "VITE_FIREBASE_API_KEY",
   "ALLOWED_USERS_JSON",
@@ -7,6 +8,30 @@ export const REQUIRED_RUNTIME_ENV_KEYS = Object.freeze([
   "TURSO_DATABASE_URL",
   "TURSO_AUTH_TOKEN",
 ]);
+
+export const OPTIONAL_LOGGING_ENV_KEYS = Object.freeze([
+  "LOG_LEVEL",
+]);
+
+export const GOOGLE_BRIDGE_ENV_KEYS = Object.freeze([
+  "GOOGLE_BRIDGE_WEB_APP_URL",
+  "GOOGLE_BRIDGE_SHARED_SECRET",
+  "JOBS_SHARED_SECRET",
+]);
+
+export const WEB_PUSH_ENV_KEYS = Object.freeze([
+  "VITE_VAPID_PUBLIC_KEY",
+  "VAPID_PRIVATE_KEY",
+  "VAPID_SUBJECT",
+]);
+
+export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
+  ...CORE_RUNTIME_ENV_KEYS,
+  ...OPTIONAL_LOGGING_ENV_KEYS,
+]);
+
+// Backward-compatible alias for existing bootstrap/diagnostic imports.
+export const REQUIRED_RUNTIME_ENV_KEYS = CORE_RUNTIME_ENV_KEYS;
 
 const unquote = (value) => {
   const trimmed = String(value ?? "").trim();
@@ -30,7 +55,6 @@ export const parseEnvironmentText = (source = "") => {
 };
 
 export const environmentStatus = (values = {}) => {
-  const missing = REQUIRED_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
+  const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
   return { complete: missing.length === 0, missing };
 };
-

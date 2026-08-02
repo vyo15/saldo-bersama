@@ -43,36 +43,37 @@ const AppShell = () => {
 
       <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}`}>
         <header className="desktop-app-header">
-        <Brand />
-        <div className="desktop-app-header__actions">
-          <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
-            {isRefreshing ? <><FiRefreshCw aria-hidden="true" /><span>Memperbarui</span></> : <span className="sr-only">Data siap</span>}
-          </div>
-          <ThemeToggle />
-          <NavLink className="desktop-settings-button" to="/pengaturan" aria-label="Buka pengaturan" title="Pengaturan">
-            <FiSettings aria-hidden="true" />
-          </NavLink>
-          <UserAvatar user={user} className="desktop-user-avatar" />
-          <button type="button" className="icon-button desktop-logout-button" aria-label="Keluar" onClick={handleLogout}><FiLogOut aria-hidden="true" /></button>
-        </div>
-      </header>
-
-      <div className="app-shell__main">
-        <header className="topbar">
-          <Brand compact />
-          <div className="topbar__actions">
+          <Brand />
+          <div className="desktop-app-header__actions">
+            <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
+              {isRefreshing ? <><FiRefreshCw aria-hidden="true" /><span>Memperbarui</span></> : <span className="sr-only">Data siap</span>}
+            </div>
             <ThemeToggle />
+            <NavLink className="desktop-settings-button" to="/pengaturan" aria-label="Buka pengaturan" title="Pengaturan">
+              <FiSettings aria-hidden="true" />
+            </NavLink>
+            <UserAvatar user={user} className="desktop-user-avatar" />
+            <button type="button" className="icon-button desktop-logout-button" aria-label="Keluar" onClick={handleLogout}><FiLogOut aria-hidden="true" /></button>
           </div>
         </header>
 
-        <main className="app-content">
-          {offline ? <OfflineBanner /> : null}
-          {serviceWorkerUpdate.updateAvailable ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} /> : null}
-          <InstallAppCard {...installPrompt} onInstall={installPrompt.install} />
-          {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
-          {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
-          <Outlet />
-        </main>
+        <div className="app-shell__main">
+          <header className="topbar">
+            <Brand compact />
+            <div className="topbar__actions">
+              <ThemeToggle />
+            </div>
+          </header>
+
+          <main className="app-content">
+            {offline ? <OfflineBanner /> : null}
+            {serviceWorkerUpdate.updateAvailable ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} /> : null}
+            <InstallAppCard {...installPrompt} onInstall={installPrompt.install} />
+            {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
+            {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
+            <Outlet />
+          </main>
+        </div>
       </div>
 
       {!dashboardRoute ? <button type="button" className="floating-add" disabled={offline} onClick={() => setQuickAddOpen(true)} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
@@ -97,7 +98,6 @@ const AppShell = () => {
           <Button icon={FiLogOut} type="button" onClick={handleLogout}>Keluar</Button>
         </div>
       </Modal>
-      </div>
     </>
   );
 };

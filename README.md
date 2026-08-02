@@ -50,7 +50,7 @@ npm run dev
 
 ```bash
 npm run env:check
-# Kirim 9 key canonical dari .env.local ke Vercel Production
+# Kirim 8 key core + 1 key logging dari .env.local ke Vercel Production
 npm run env:push:production
 npm run diagnose
 npm run db:integrity
@@ -96,6 +96,6 @@ Urutan aman:
 2. Jalankan migration/integrity hanya secara eksplisit.
 3. Konfigurasi Firebase, allowlist, Apps Script bridge, mirror, Calendar, dan Drive.
 4. Uji migration/parity, backup/restore drill, owner/member, dan smoke test.
-5. Cutover mengikuti `docs/DATA_MIGRATION.md` dan `docs/RELEASE_CHECKLIST.md`.
+5. Cutover mengikuti `docs/LEGACY_SHEETS_TO_TURSO_CUTOVER.md` dan `docs/RELEASE_CHECKLIST.md`.
 
 > Mirror Google Sheets hanya memuat data `shared`. Data personal tidak pernah dikirim ke spreadsheet bersama.

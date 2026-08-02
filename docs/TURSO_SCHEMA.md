@@ -29,6 +29,7 @@ Schema canonical berada di `database/migrations/001_initial_schema.sql` dan dica
 
 - `audit_log`
 - `idempotency_keys`
+- `request_nonces` — nonce persisten untuk mencegah replay request scheduler/bridge bertanda tangan.
 - `integration_outbox`
 - `integration_links`
 - `notification_queue`

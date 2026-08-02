@@ -3,14 +3,14 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { TursoHttpClient } from "../api/_lib/db/httpClient.js";
 import { readSchemaStatus } from "../api/_lib/db/schema.js";
-import { environmentStatus, REQUIRED_RUNTIME_ENV_KEYS } from "./runtime-environment.mjs";
+import { CORE_RUNTIME_ENV_KEYS, environmentStatus } from "./runtime-environment.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 try { process.loadEnvFile(path.join(root, ".env.local")); } catch (error) { if (error.code !== "ENOENT") throw error; }
 const { missing } = environmentStatus(process.env);
 console.log("Saldo Bersama runtime diagnostic");
 console.log(`Node: ${process.version}`);
-for (const key of REQUIRED_RUNTIME_ENV_KEYS) console.log(`- ${key}: ${String(process.env[key] || "").trim() ? "set" : "MISSING"}`);
+for (const key of CORE_RUNTIME_ENV_KEYS) console.log(`- ${key}: ${String(process.env[key] || "").trim() ? "set" : "MISSING"}`);
 
 if (!missing.includes("TURSO_DATABASE_URL") && !missing.includes("TURSO_AUTH_TOKEN")) {
   try {

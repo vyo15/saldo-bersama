@@ -5,10 +5,12 @@
 - `../AGENTS.md` — instruksi untuk AI/coding agent.
 - `PROJECT_STATUS.md` — status terbaru dan risiko terbuka.
 - `PROJECT_HANDOFF.md` — handoff task terakhir.
-- `../CONTRIBUTING.md` — alur kontribusi.
+- `../CONTRIBUTING.md` — kebijakan kontribusi.
 - `ARCHITECTURE.md` — arsitektur runtime.
 - `product/PRODUCT_REQUIREMENTS.md` — kebutuhan produk.
 - `product/GLOSSARY.md` — istilah canonical.
+- `product/OUT_OF_SCOPE.md` — batas fitur yang tidak dikerjakan.
+- `product/ROADMAP.md` — urutan pengembangan produk.
 
 ## Contract
 
@@ -17,16 +19,18 @@
 - `ENVIRONMENT_VARIABLES.md`
 - `TURSO_SCHEMA.md`
 - `DATA_DICTIONARY.md`
-- `DATABASE_MIGRATION_POLICY.md`
+- `DATABASE_MIGRATION_POLICY.md` — kebijakan perubahan schema Turso jangka panjang.
+- `LEGACY_SHEETS_TO_TURSO_CUTOVER.md` — prosedur one-time cutover dari database Google Sheets lama.
 
 ## Delivery dan governance
 
 - `TEAM_OWNERSHIP.md`
 - `DEFINITION_OF_READY.md`
 - `DEFINITION_OF_DONE.md`
-- `GIT_WORKFLOW.md`
-- `rfc/README.md`
-- `adr/README.md`
+- `GIT_WORKFLOW.md` — command dan alur Git canonical.
+- `templates/TASK_HANDOFF_TEMPLATE.md`
+- `rfc/README.md` — index RFC; template berada di `rfc/RFC_TEMPLATE.md`.
+- `adr/README.md` — index ADR.
 - `RELEASE_CHECKLIST.md`
 - `ROLLBACK_RUNBOOK.md`
 
@@ -48,5 +52,4 @@
 - `TEST_PLAN.md`
 - `QA_CHECKLIST.md`
 - `GOOGLE_INTEGRATIONS.md`
-- `DATA_MIGRATION.md`
 - `IMPLEMENTATION_MATRIX.md`

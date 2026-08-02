@@ -1,63 +1,85 @@
 # Project Handoff
 
-**Updated:** 2026-08-02  
-**Task:** Production-only Environment Synchronization  
-**Status:** Implemented in source; lihat hasil test pada bagian Validasi.
+**Updated:** 2026-08-02
+**Task:** Documentation governance and source-drift hardening
+**Status:** Implemented in source; lihat hasil validasi di bawah.
 
 ## Tujuan task
 
-Menyelaraskan source, test, onboarding, dan dokumentasi dengan keputusan operasional terbaru:
+Menutup mismatch konkret antara source, schema, environment, index dokumentasi, workflow Git, dan governance tests. Task ini juga menetapkan bahwa setiap perubahan project harus meninggalkan jejak pada status, handoff, changelog, dan dokumen contract/runbook yang relevan.
 
-- Vercel hanya memakai scope Production;
-- Vercel Preview dan Development sengaja kosong;
-- runtime lokal hanya membaca `.env.local`;
-- runtime lokal dan Vercel Production mengakses satu database Turso yang sama;
-- tidak ada bootstrap otomatis yang menarik secret dari Vercel.
+## Source yang divalidasi
+
+- Arsip: `saldo-bersama-clean(75).zip`
+- Root project: `saldo-bersama/`
+- Schema canonical: `database/migrations/001_initial_schema.sql`
+- Path utama:
+  - `docs/TURSO_SCHEMA.md`
+  - `docs/DATA_DICTIONARY.md`
+  - `docs/ENVIRONMENT_VARIABLES.md`
+  - `docs/INDEX.md`
+  - `CONTRIBUTING.md`
+  - `docs/GIT_WORKFLOW.md`
+  - `scripts/runtime-environment.mjs`
+  - `scripts/check-environment.mjs`
+  - `scripts/push-vercel-production-env.mjs`
+  - `test/api/governance-docs.test.js`
 
 ## Perubahan utama
 
-- `.env.example`, README, setup, deployment, architecture, status, ADR, migration, recovery, QA, dan test plan diselaraskan ke kebijakan Production-only.
-- `scripts/bootstrap-development-env.mjs` disederhanakan menjadi local-only guard yang fail closed bila `.env.local` hilang atau tidak lengkap.
-- Logic login/link/pull Vercel Development dan pembersihan OIDC sementara dihapus karena tidak lagi digunakan.
-- `sanitizePulledEnvironment` yang tidak lagi dipakai dihapus.
-- Contract test baru mencegah kebijakan `Development + Production` atau `vercel env pull` kembali tanpa review.
-- Restore/migration drill tetap wajib memakai salinan terisolasi sementara, bukan database aktif dan bukan database Development permanen.
+- `request_nonces` ditambahkan ke ringkasan `TURSO_SCHEMA.md` dan dijelaskan sebagai anti-replay persisten.
+- Environment memiliki satu sumber daftar canonical:
+  - 8 core wajib;
+  - 1 logging opsional (`LOG_LEVEL`);
+  - grup Google bridge;
+  - grup Web Push;
+  - 9 key Production sync.
+- `VITE_APP_NAME` sekarang diperiksa konsisten oleh bootstrap, environment checker, diagnostic, dan production sync.
+- `docs/INDEX.md` sekarang memuat out-of-scope, roadmap, handoff template, serta membedakan cutover legacy dari policy schema.
+- `CONTRIBUTING.md` menjadi kebijakan kontribusi; `docs/GIT_WORKFLOW.md` menjadi sumber command Git canonical. Keduanya saling merujuk.
+- `docs/DATA_MIGRATION.md` di-rename menjadi `docs/LEGACY_SHEETS_TO_TURSO_CUTOVER.md` agar tidak tertukar dengan `DATABASE_MIGRATION_POLICY.md`.
+- Implementation matrix memisahkan status source dari activation/real-resource verification.
+- Governance tests sekarang menjaga required reading, local Markdown reference, index coverage, dua dokumentasi schema, cross-reference Git, serta klasifikasi environment.
+- Changelog dan project status diperbarui untuk merekam perubahan terdahulu yang masih aktif pada source.
 
 ## Guarded area
 
 Task ini tidak mengubah:
 
 - schema atau data Turso;
-- auth, role, session, dan authorization runtime;
-- action/API contract;
-- saldo, transfer, audit, idempotency, dan `row_version`;
-- backup/restore implementation;
-- dependency;
-- nilai environment atau secret pengguna.
+- auth, role, session, atau authorization;
+- API bisnis;
+- saldo, transfer, audit, idempotency, atau `row_version`;
+- import/export, backup/restore implementation;
+- secret, nilai environment, atau deployment resource;
+- dependency.
 
 ## Validasi
 
-Hasil aktual pada patch sinkronisasi environment:
+Command yang berhasil dijalankan pada source patch:
 
 ```text
-Runtime pemeriksaan: Node 22.16.0 / npm 10.9.2
-Project canonical: Node 24.x / npm >=10
-
-npm run validate:source: LULUS — 218 file; 5/12 Vercel Functions canonical
-npm run test: LULUS — frontend 27/27; API/database/governance 66/66
-node scripts/check-node-syntax.mjs: LULUS — 50 file
-node scripts/check-apps-script-syntax.mjs: LULUS — 6 file/2 load order
-npm run lint: BELUM TERVERIFIKASI — archive bersih tidak membawa node_modules/eslint
-npm run build: BELUM TERVERIFIKASI — archive bersih tidak membawa dependency Vite/Rollup
+npm run validate:source: PASS — 222 file; 5/12 Vercel Functions canonical
+npm test: PASS — frontend 29/29; backend/database/governance 78/78; total 107/107
+node scripts/check-node-syntax.mjs: PASS — 54 file
+node scripts/check-apps-script-syntax.mjs: PASS — 6 file, 2 urutan load
 ```
 
-## Unresolved
+Quality gate yang belum dapat dijalankan pada sandbox archive bersih:
 
-- Sembilan environment core masih perlu dipastikan terpasang pada Vercel Production dan diverifikasi melalui deployment baru.
-- Google bridge dan Web Push tetap opsional serta belum dikonfigurasi penuh.
-- GitHub ruleset/branch protection harus diverifikasi di dashboard.
-- Runtime lokal dan Vercel Production memakai satu Turso database; data dummy dan destructive testing dilarang.
+```text
+npm run lint: BELUM TERVERIFIKASI — eslint tidak tersedia karena node_modules tidak dibawa ZIP
+npm run build: BELUM TERVERIFIKASI — vite tidak tersedia karena node_modules tidak dibawa ZIP
+```
+
+Lint dan build wajib diulang pada komputer project dengan Node 24 dan dependency terpasang.
+
+## Risiko dan unresolved
+
+- ZIP tidak membawa `.git`; histori bahwa setiap perubahan lama selalu terdokumentasi tidak dapat dibuktikan. Patch ini menguatkan enforcement mulai source sekarang.
+- Status integrasi source dan activation production tetap harus dibedakan; Google bridge, Web Push, dan restore drill memerlukan verifikasi resource nyata.
+- Link validation saat ini menjaga README, AGENTS, dan INDEX sebagai entry point; dokumen lain tetap perlu review saat diubah.
 
 ## Next safe step
 
-Terapkan patch, jalankan quality gate pada Node 24, sinkronkan `.env.local` ke Vercel Production tanpa Preview/Development, deploy ulang, lalu verifikasi `/api/health`, login, dan `POST /api/gateway`.
+Jalankan full quality gate pada Node 24, commit patch dokumentasi, lalu lanjutkan prioritas operasional di `PROJECT_STATUS.md` tanpa mengubah area guarded sebelum approval baru.

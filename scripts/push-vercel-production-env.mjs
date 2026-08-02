@@ -3,7 +3,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { parseEnvironmentText } from "./runtime-environment.mjs";
+import {
+  CORE_RUNTIME_ENV_KEYS,
+  OPTIONAL_LOGGING_ENV_KEYS,
+  PRODUCTION_SYNC_ENV_KEYS,
+  parseEnvironmentText,
+} from "./runtime-environment.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -12,20 +17,14 @@ export const PUBLIC_PRODUCTION_KEYS = Object.freeze([
   "VITE_GOOGLE_CLIENT_ID",
   "VITE_FIREBASE_API_KEY",
   "ALLOWED_ORIGINS",
-  "LOG_LEVEL",
+  ...OPTIONAL_LOGGING_ENV_KEYS,
 ]);
 
-export const SENSITIVE_PRODUCTION_KEYS = Object.freeze([
-  "ALLOWED_USERS_JSON",
-  "SESSION_SECRET",
-  "TURSO_DATABASE_URL",
-  "TURSO_AUTH_TOKEN",
-]);
+export const SENSITIVE_PRODUCTION_KEYS = Object.freeze(
+  CORE_RUNTIME_ENV_KEYS.filter((key) => !PUBLIC_PRODUCTION_KEYS.includes(key)),
+);
 
-export const PRODUCTION_ENV_KEYS = Object.freeze([
-  ...PUBLIC_PRODUCTION_KEYS,
-  ...SENSITIVE_PRODUCTION_KEYS,
-]);
+export const PRODUCTION_ENV_KEYS = PRODUCTION_SYNC_ENV_KEYS;
 
 const forbiddenKeys = Object.freeze([
   "INTERNAL_SHARED_SECRET",
@@ -37,7 +36,7 @@ const forbiddenKeys = Object.freeze([
 ]);
 
 export const validateProductionEnvironment = (values = {}) => {
-  const missing = PRODUCTION_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
+  const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
   const forbidden = forbiddenKeys.filter((key) => Object.hasOwn(values, key));
   return { valid: missing.length === 0 && forbidden.length === 0, missing, forbidden };
 };
@@ -123,15 +122,16 @@ export const pushProductionEnvironment = async ({
 
   await projectRunner({ cwd });
 
-  for (const key of PRODUCTION_ENV_KEYS) {
+  const keysToSync = PRODUCTION_ENV_KEYS.filter((key) => String(values[key] ?? "").trim());
+  for (const key of keysToSync) {
     const sensitive = SENSITIVE_PRODUCTION_KEYS.includes(key);
     console.log(`Sinkronisasi ${key} → Vercel Production${sensitive ? " (sensitive)" : ""}`);
     await runner({ cwd, key, value: values[key], sensitive });
   }
 
-  console.log(`Selesai: ${PRODUCTION_ENV_KEYS.length} environment canonical tersinkron ke Production.`);
+  console.log(`Selesai: ${keysToSync.length} environment canonical tersinkron ke Production.`);
   console.log("Jalankan deployment Production baru agar nilai terbaru dipakai.");
-  return { synced: [...PRODUCTION_ENV_KEYS] };
+  return { synced: [...keysToSync] };
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

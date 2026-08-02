@@ -29,6 +29,30 @@ test("dock dirender sebagai sibling shell agar fixed tetap mengikuti viewport", 
   assert.ok(actionsIndex > headerIndex, "header tetap memiliki action area");
 });
 
+test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti viewport", async () => {
+  const source = await read("src/layouts/AppShell.jsx");
+  const shellIndex = source.indexOf('<div className={`app-shell');
+  const shellEndIndex = source.indexOf("\n      </div>\n\n      {!dashboardRoute");
+  const mobileNavigationIndex = source.indexOf("<MobileNavigation ");
+
+  assert.ok(shellIndex >= 0, "shell aplikasi harus dirender");
+  assert.ok(shellEndIndex > shellIndex, "shell harus ditutup sebelum kontrol fixed viewport");
+  assert.ok(mobileNavigationIndex > shellEndIndex, "navigasi mobile harus menjadi sibling shell, bukan child dari backdrop-filter");
+});
+
+test("navigasi mobile memakai safe area dan menyisakan ruang scroll untuk konten terakhir", async () => {
+  const responsiveCss = await read("src/styles/responsive.css");
+
+  assert.match(responsiveCss, /--mobile-navigation-height:\s*72px;/);
+  assert.match(responsiveCss, /html \{ scroll-padding-bottom:\s*calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ 16px\); \}/);
+  assert.match(responsiveCss, /\.app-content \{[^}]*padding:\s*22px 14px calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ var\(--mobile-navigation-content-gap\)\);/);
+  assert.match(responsiveCss, /\.mobile-navigation \{[^}]*position:\s*fixed;[^}]*inset-inline:\s*0;[^}]*bottom:\s*0;/);
+  assert.match(responsiveCss, /\.mobile-navigation \{[^}]*safe-area-inset-left/);
+  assert.match(responsiveCss, /\.mobile-navigation \{[^}]*safe-area-inset-right/);
+  assert.match(responsiveCss, /\.mobile-navigation \{[^}]*safe-area-inset-bottom/);
+  assert.match(responsiveCss, /\.app-shell--dashboard \.app-content \{[^}]*safe-area-inset-bottom/);
+});
+
 
 test("desktop memakai shell full-bleed tanpa gap viewport", async () => {
   const [appCss, responsiveCss] = await Promise.all([

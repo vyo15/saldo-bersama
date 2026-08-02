@@ -1,4 +1,6 @@
-# Migrasi Google Sheets ke Turso
+# Legacy Google Sheets to Turso Cutover
+
+Dokumen ini hanya untuk one-time cutover database Google Sheets lama ke Turso. Kebijakan perubahan schema Turso setelah cutover berada di `DATABASE_MIGRATION_POLICY.md`.
 
 ## Tujuan
 

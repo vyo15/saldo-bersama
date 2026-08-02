@@ -34,6 +34,7 @@ test("bootstrap melaporkan key wajib yang belum lengkap", async () => withTempRo
     ensureDevelopmentEnvironment({ projectRoot: root }),
     (error) => error.code === "LOCAL_ENV_INCOMPLETE"
       && error.missing.includes("TURSO_DATABASE_URL")
-      && error.missing.includes("SESSION_SECRET"),
+      && error.missing.includes("SESSION_SECRET")
+      && error.missing.includes("VITE_APP_NAME"),
   );
 }));

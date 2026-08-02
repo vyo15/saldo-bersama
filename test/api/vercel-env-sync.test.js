@@ -11,6 +11,11 @@ import {
   pushProductionEnvironment,
   validateProductionEnvironment,
 } from "../../scripts/push-vercel-production-env.mjs";
+import {
+  CORE_RUNTIME_ENV_KEYS,
+  OPTIONAL_LOGGING_ENV_KEYS,
+  PRODUCTION_SYNC_ENV_KEYS,
+} from "../../scripts/runtime-environment.mjs";
 
 const canonicalValues = () => Object.fromEntries(PRODUCTION_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
 const serialize = (values) => `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n")}\n`;
@@ -24,7 +29,10 @@ const withTempProject = async (callback) => {
   }
 };
 
-test("sinkronisasi Vercel hanya memakai sembilan key canonical Production", () => {
+test("sinkronisasi Vercel memakai delapan core dan satu logging canonical Production", () => {
+  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 8);
+  assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
+  assert.deepEqual(PRODUCTION_ENV_KEYS, PRODUCTION_SYNC_ENV_KEYS);
   assert.equal(PRODUCTION_ENV_KEYS.length, 9);
   assert.deepEqual(new Set([...PUBLIC_PRODUCTION_KEYS, ...SENSITIVE_PRODUCTION_KEYS]), new Set(PRODUCTION_ENV_KEYS));
   assert.equal(validateProductionEnvironment(canonicalValues()).valid, true);
@@ -39,6 +47,22 @@ test("sinkronisasi menolak key legacy dan environment core yang tidak lengkap", 
   assert.deepEqual(status.missing, ["TURSO_AUTH_TOKEN"]);
   assert.deepEqual(status.forbidden, ["APPS_SCRIPT_WEB_APP_URL"]);
 });
+
+
+test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi delapan core", async () => withTempProject(async (root) => {
+  const values = canonicalValues();
+  delete values.LOG_LEVEL;
+  assert.equal(validateProductionEnvironment(values).valid, true);
+  await writeFile(path.join(root, ".env.local"), serialize(values));
+  const calls = [];
+  const result = await pushProductionEnvironment({
+    cwd: root,
+    projectRunner: async () => {},
+    runner: async (request) => calls.push(request),
+  });
+  assert.equal(result.synced.length, 8);
+  assert.equal(calls.some(({ key }) => key === "LOG_LEVEL"), false);
+}));
 
 test("sinkronisasi mengirim nilai via runner tanpa mengekspos secret ke argumen lain", async () => withTempProject(async (root) => {
   const values = canonicalValues();

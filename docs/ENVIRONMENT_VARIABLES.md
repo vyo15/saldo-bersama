@@ -122,7 +122,7 @@ Setelah `.env.local` lulus `npm run env:check`, pastikan Vercel CLI dapat mengen
 npm run env:push:production
 ```
 
-Command hanya mengirim sembilan key core canonical ke scope Production, menandai secret sebagai Sensitive, tidak mengisi Preview/Development, dan tidak mencetak nilai ke terminal. Validasi project dilakukan melalui Vercel CLI, bukan dengan mewajibkan file `.vercel/project.json`, karena project yang sudah terhubung lewat Git tetap valid. Setelah selesai, jalankan deployment Production baru.
+Command hanya mengirim sembilan key canonical ke scope Production: delapan key core wajib dan satu key logging opsional (`LOG_LEVEL`); secret ditandai sebagai Sensitive, tidak mengisi Preview/Development, dan tidak mencetak nilai ke terminal. Validasi project dilakukan melalui Vercel CLI, bukan dengan mewajibkan file `.vercel/project.json`, karena project yang sudah terhubung lewat Git tetap valid. Setelah selesai, jalankan deployment Production baru.
 
 ## Reset dan sinkronisasi Vercel Production
 

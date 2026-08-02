@@ -1,69 +1,36 @@
 # Contributing
 
-## Mulai
+Dokumen ini berisi kebijakan kontribusi. Command branch, sync, commit, push, dan pull request yang canonical berada di `docs/GIT_WORKFLOW.md`; jangan menduplikasi workflow operasional di dokumen lain.
+
+## Sebelum mulai
 
 1. Baca `AGENTS.md`.
 2. Baca `docs/PROJECT_STATUS.md` dan `docs/PROJECT_HANDOFF.md`.
-3. Pastikan Node 24.x dan npm 10+.
-4. Jalankan `npm ci`, `npm run env:check`, lalu `npm run check`.
-5. Buat branch baru dari `main`.
+3. Pastikan task memenuhi `docs/DEFINITION_OF_READY.md`.
+4. Untuk perubahan guarded atau lintas arsitektur, siapkan RFC/approval sebelum coding.
+5. Ikuti `docs/GIT_WORKFLOW.md` untuk branch dan command quality gate.
 
-## Branch
+## Prinsip kontribusi
 
-Gunakan:
+- Satu branch dan pull request memiliki scope jelas.
+- Commit kecil, dapat direview, dan tidak mencampur refactor tidak terkait.
+- Source aktual lebih tinggi prioritasnya daripada chat, screenshot, atau dokumentasi lama.
+- Setiap perubahan implementasi harus memperbarui dokumentasi yang terdampak pada patch yang sama.
+- Jangan mengubah schema, auth/role, API contract, saldo, audit, migration, backup/restore, secret, atau deployment tanpa approval eksplisit.
 
-```text
-feat/nama-fitur
-fix/nama-bug
-security/nama-perbaikan
-perf/nama-optimasi
-docs/nama-dokumen
-test/nama-pengujian
-chore/nama-pekerjaan
-```
-
-Jangan push langsung ke `main`.
-
-## Commit
-
-Gunakan format konsisten:
-
-```text
-feat: ...
-fix: ...
-security: ...
-docs: ...
-refactor: ...
-perf: ...
-test: ...
-build: ...
-ci: ...
-chore: ...
-```
-
-Commit harus kecil, dapat direview, dan tidak mencampur refactor tidak terkait.
-
-## Kapan membuat RFC atau ADR
+## RFC dan ADR
 
 Buat RFC sebelum implementasi bila perubahan menyentuh database, auth/role, API contract, saldo, offline mode, backup/restore, integrasi baru, dependency utama, atau deployment. Setelah keputusan diterima, catat hasilnya sebagai ADR.
 
 ## Pull request
 
-PR wajib menjelaskan tujuan, scope, file utama, dampak data/saldo/security, migration/env change, hasil test aktual, manual test, docs, dan rollback. Gunakan template repository.
+PR wajib menjelaskan tujuan, scope, file utama, dampak data/saldo/security, migration atau environment change, hasil test aktual, manual test, dokumentasi, risiko, dan rollback. Gunakan template repository dan tunggu approval code owner.
 
-## Definition of Ready dan Done
+## Definition of Done
 
-Pekerjaan hanya dimulai setelah memenuhi `docs/DEFINITION_OF_READY.md` dan baru selesai setelah memenuhi `docs/DEFINITION_OF_DONE.md`.
+Pekerjaan baru selesai setelah memenuhi `docs/DEFINITION_OF_DONE.md`, termasuk:
 
-## Quality gate
-
-```bash
-npm run validate:source
-npm run lint
-npm run test
-npm run build
-npm run check
-git diff --check
-```
-
-Jangan commit `.env.local`, `.vercel`, `node_modules`, build output, database dump, backup, export berisi data nyata, token, atau credential.
+- quality gate aktual;
+- dokumentasi/handoff/changelog;
+- tidak ada secret atau data nyata di Git/ZIP/log;
+- rollback atau forward-fix plan untuk perubahan berisiko.
