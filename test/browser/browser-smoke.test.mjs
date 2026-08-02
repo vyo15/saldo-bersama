@@ -263,6 +263,16 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
       () => page.evaluate("location.pathname === '/login'"),
       { description: "redirect unauthenticated ke /login" },
     );
+    const configurationError = await page.evaluate(`(() => {
+      const alerts = [...document.querySelectorAll("[role='alert']")];
+      const alert = alerts.find((element) => /Konfigurasi belum lengkap/i.test(element.textContent || ""));
+      return alert?.textContent?.replace(/\s+/g, " ").trim() || "";
+    })()`);
+    assert.equal(
+      configurationError,
+      "",
+      `Build browser smoke harus menyediakan public test env VITE_GOOGLE_CLIENT_ID dan VITE_FIREBASE_API_KEY: ${configurationError}`,
+    );
     assert.equal(
       await page.evaluate("window.google?.accounts?.id?.__saldoBersamaSmokeMock === true"),
       true,

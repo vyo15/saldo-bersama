@@ -22,6 +22,8 @@ test("quality workflow menjalankan check, browser smoke, dan verifikasi clean ar
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /Browser smoke[\s\S]*timeout-minutes:\s*2/);
   assert.match(workflow, /npm ci/);
+  assert.match(workflow, /VITE_GOOGLE_CLIENT_ID:\s*ci-browser-smoke\.apps\.googleusercontent\.com/);
+  assert.match(workflow, /VITE_FIREBASE_API_KEY:\s*ci-browser-smoke-public-key/);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:browser/);
   assert.match(workflow, /npm run zip --/);

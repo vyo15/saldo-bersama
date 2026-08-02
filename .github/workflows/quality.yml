@@ -19,7 +19,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run check
+      - name: Run project checks
+        env:
+          VITE_GOOGLE_CLIENT_ID: ci-browser-smoke.apps.googleusercontent.com
+          VITE_FIREBASE_API_KEY: ci-browser-smoke-public-key
+        run: npm run check
       - name: Browser smoke
         timeout-minutes: 2
         run: npm run test:browser

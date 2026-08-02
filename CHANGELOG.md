@@ -1,5 +1,6 @@
 
 - Browser smoke GitHub Actions kini memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga CI tidak timeout karena perilaku jaringan/provider.
+- Workflow Quality membangun fixture browser smoke dengan public dummy Google Client ID dan Firebase API key agar guard konfigurasi tidak menghentikan render mock login pada runner tanpa `.env.local`.
 # Changelog
 
 Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi production harus menunjuk commit SHA yang sudah diuji.
