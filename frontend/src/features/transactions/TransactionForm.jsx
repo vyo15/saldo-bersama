@@ -225,7 +225,7 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
         ) : null}
 
         {!isTransfer ? (
-          <label className="field" htmlFor="category"><span>Kategori{form.transaction_type === "expense" ? " *" : ""}</span><select id="category" value={form.category_id} onChange={(event) => update("category_id", event.target.value)} aria-invalid={Boolean(errors.category_id)}><option value="">Pilih kategori</option>{visibleCategories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select>{errors.category_id ? <small className="field__error">{errors.category_id}</small> : null}</label>
+          <label className="field" htmlFor="category"><span>Kategori{![TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.ADJUSTMENT].includes(form.transaction_type) ? " *" : ""}</span><select id="category" value={form.category_id} onChange={(event) => update("category_id", event.target.value)} aria-invalid={Boolean(errors.category_id)}><option value="">Pilih kategori</option>{visibleCategories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select>{errors.category_id ? <small className="field__error">{errors.category_id}</small> : null}</label>
         ) : null}
 
         {form.transaction_type === TRANSACTION_TYPES.EXPENSE ? (

@@ -15,7 +15,10 @@
     "test": "npm run test --workspace saldo-bersama-frontend && node --test test/api/*.test.js",
     "check": "npm run validate:source && npm run lint && npm run test && npm run build",
     "validate:source": "node scripts/validate-source-tree.mjs",
-    "zip": "node scripts/create-clean-archive.mjs"
+    "zip": "node scripts/create-clean-archive.mjs",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:integrity": "node scripts/db-integrity.mjs",
+    "db:import-legacy": "node scripts/migrate-legacy-json.mjs"
   },
   "workspaces": [
     "frontend"

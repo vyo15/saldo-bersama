@@ -118,3 +118,9 @@
   .mobile-navigation__more { min-height: 54px; padding-top: 5px; }
   .mobile-navigation__add { box-shadow: 0 12px 30px color-mix(in srgb, var(--primary) 34%, transparent); }
 }
+
+@media (max-width: 680px) {
+  .pwa-banner, .install-app-card { align-items: stretch; flex-direction: column; }
+  .pwa-banner .button, .install-app-card .button { width: 100%; }
+  .install-app-card__hint { white-space: normal; }
+}

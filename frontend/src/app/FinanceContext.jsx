@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "../services/api/client.js";
 import { useAuth } from "../features/auth/AuthContext.jsx";
-import { createIdempotencyKey } from "../domain/security.js";
 
 const FinanceContext = createContext(null);
 const INITIAL_ACTIONS = ["app.initialState", "bootstrap.get", "dashboard.overview"];
@@ -35,24 +34,7 @@ export const FinanceProvider = ({ children }) => {
       refreshError: null,
     });
     try {
-      let initial;
-      try {
-        initial = await apiClient.request("app.initialState", {}, { force });
-      } catch (initialError) {
-        if (initialError.code === "IDENTITY_BIND_REQUIRED") {
-          // Pengguna baru diikat ke Firebase UID melalui bootstrap.get yang
-          // berjalan di jalur mutation lock Apps Script, lalu initial state
-          // dibaca ulang. Jalur ini hanya terjadi sekali per akun.
-          await apiClient.request("bootstrap.get", {}, { force: true });
-          apiClient.invalidate(INITIAL_ACTIONS);
-          initial = await apiClient.request("app.initialState", {}, { force: true });
-        } else {
-          if (user.role !== "owner" || !["ACCOUNT_NOT_ALLOWED", "SCHEMA_MISSING"].includes(initialError.code)) throw initialError;
-          await apiClient.request("system.initialize", {}, { idempotencyKey: createIdempotencyKey() });
-          apiClient.invalidate(INITIAL_ACTIONS);
-          initial = await apiClient.request("app.initialState", {}, { force: true });
-        }
-      }
+      const initial = await apiClient.request("app.initialState", {}, { force });
       if (requestSequence.current !== sequence) return initial;
       apiClient.seed("bootstrap.get", {}, initial.bootstrap);
       apiClient.seed("dashboard.overview", {}, initial.overview);

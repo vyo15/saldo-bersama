@@ -26,7 +26,7 @@ const GoalsPage = () => {
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
-  const [movement, setMovement] = useState({ goal: null, movement_type: "contribution", amount: "", source_account_id: "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "" });
+  const [movement, setMovement] = useState({ goal: null, movement_type: "deposit", amount: "", source_account_id: "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "" });
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
   const [reverseTarget, setReverseTarget] = useState(null);
   const [reverseState, setReverseState] = useState({ status: "idle", error: null });
@@ -54,10 +54,10 @@ const GoalsPage = () => {
       goal,
       movement_type: movementType,
       amount: "",
-      source_account_id: movementType === "withdraw" ? goal.account_id || "" : "",
-      destination_account_id: movementType === "withdraw" ? "" : goal.account_id || "",
+      source_account_id: movementType === "withdrawal" ? goal.account_id || "" : "",
+      destination_account_id: movementType === "withdrawal" ? "" : goal.account_id || "",
       transaction_date: todayInJakarta(),
-      reason: movementType === "withdraw" ? "Penggunaan dana target" : "Kontribusi target",
+      reason: movementType === "withdrawal" ? "Penggunaan dana target" : "Kontribusi target",
     });
     setMovementState({ status: "idle", error: null });
   };
@@ -165,7 +165,7 @@ const GoalsPage = () => {
             <ProgressBar value={goal.current_amount} max={goal.target_amount} label={goal.name} />
             <div className="goal-card__footer"><span>Target <Money value={goal.target_amount} /></span><span>{goal.target_date}</span></div>
             <div className="goal-card__actions">
-              {goal.can_move ? <><Button icon={FiArrowUp} onClick={() => openMovement(goal, "contribution")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdraw")}>Tarik</Button></> : null}
+              {goal.can_move ? <><Button icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik</Button></> : null}
               {goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(goal); setReverseState({ status: "idle", error: null }); }}>Batalkan terakhir</Button> : null}
               {goal.can_update ? <Button icon={FiEdit2} onClick={() => { setEditGoal({ ...goal }); setEditState({ status: "idle", error: null }); }}>Edit</Button> : null}
               {goal.can_archive ? <Button icon={FiArchive} onClick={() => { setArchiveTarget(goal); setArchiveState({ status: "idle", error: null }); }}>Arsipkan</Button> : null}
@@ -208,7 +208,7 @@ const GoalsPage = () => {
       <Modal
         open={Boolean(movement.goal)}
         onClose={() => movementState.status !== "submitting" && setMovement((current) => ({ ...current, goal: null }))}
-        title={movement.movement_type === "withdraw" ? "Tarik dana target" : "Tambah kontribusi"}
+        title={movement.movement_type === "withdrawal" ? "Tarik dana target" : "Tambah kontribusi"}
         description={movement.goal ? `${movement.goal.name} · saldo target saat ini tercatat ${movement.goal.current_amount}` : ""}
         footer={<><Button type="button" disabled={movementState.status === "submitting"} onClick={() => setMovement((current) => ({ ...current, goal: null }))}>Batal</Button><Button type="submit" form="goal-movement-form" variant="primary" disabled={movementState.status === "submitting"}>{movementState.status === "submitting" ? "Menyimpan..." : "Simpan transfer"}</Button></>}
       >

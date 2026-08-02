@@ -114,6 +114,12 @@ const subscribeToRead = (entry, signal) => {
   });
 };
 
+
+const fileNameFromDisposition = (value, fallback) => {
+  const match = String(value || "").match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  return match ? decodeURIComponent(match[1].replace(/^"|"$/g, "")) : fallback;
+};
+
 const gatewayFetch = async (action, payload, options, signal) => parseResponse(await fetch("/api/gateway", {
   method: "POST",
   credentials: "include",
@@ -244,9 +250,32 @@ export const apiClient = {
   },
 
   async request(action, payload = {}, options = {}) {
-    if (Object.prototype.hasOwnProperty.call(READ_CACHE_TTL_MS, action) && !options.idempotencyKey) {
+    const isRead = Object.prototype.hasOwnProperty.call(READ_CACHE_TTL_MS, action) && !options.idempotencyKey;
+    if (!isRead && typeof navigator !== "undefined" && navigator.onLine === false) throw new ApiError("Perubahan tidak dapat disimpan saat perangkat offline.", { code: "OFFLINE", status: 503 });
+    if (isRead) {
       return readRequest(action, payload, options);
     }
     return gatewayFetch(action, payload, options, options.signal);
+  },
+
+  async downloadExcel() {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) throw new ApiError("Export membutuhkan koneksi internet.", { code: "OFFLINE", status: 503 });
+    const response = await fetch("/api/export", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "X-Request-ID": createSecureRandomId() }, body: "{}" });
+    if (!response.ok) return parseResponse(response);
+    const blob = await response.blob();
+    const fileName = fileNameFromDisposition(response.headers.get("content-disposition"), "saldo-bersama.xlsx");
+    const url = URL.createObjectURL(blob);
+    try {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+    return { downloaded: true, fileName, size: blob.size };
   },
 };

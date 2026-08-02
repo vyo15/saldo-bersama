@@ -30,8 +30,14 @@ const ReportsPage = () => {
 
   const saveBudget = async (event) => {
     event.preventDefault();
+    const existingBudget = (resource.data?.budgets || []).find((item) => item.category_id === budgetForm.category_id && item.scope === "shared") || null;
     try {
-      await apiClient.request("budgets.upsert", { ...budgetForm, period_key: period, amount: assertPositiveRupiah(budgetForm.amount) }, { idempotencyKey: createIdempotencyKey() });
+      await apiClient.request("budgets.upsert", {
+        ...budgetForm,
+        period_key: period,
+        amount: assertPositiveRupiah(budgetForm.amount),
+        row_version: existingBudget?.row_version,
+      }, { idempotencyKey: createIdempotencyKey(), rowVersion: existingBudget?.row_version });
       setBudgetForm({ category_id: "", amount: "", warning_threshold: 80 });
       setMessage({ type: "success", text: "Budget periode berhasil disimpan." });
       invalidate(["reports.monthly"]);

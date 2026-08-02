@@ -12,6 +12,12 @@ import ThemeToggle from "../components/common/ThemeToggle.jsx";
 import UserAvatar from "../components/common/UserAvatar.jsx";
 import { MOBILE_SECONDARY_NAVIGATION } from "../config/navigation.js";
 import { useFinance } from "../app/FinanceContext.jsx";
+import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
+import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
+import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
+import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
+import OfflineBanner from "../components/pwa/OfflineBanner.jsx";
+import UpdateAvailableNotice from "../components/pwa/UpdateAvailableNotice.jsx";
 
 const AppShell = () => {
   const { user, logout } = useAuth();
@@ -21,6 +27,9 @@ const AppShell = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const dashboardRoute = location.pathname === "/";
+  const { offline } = useNetworkStatus();
+  const installPrompt = useInstallPrompt();
+  const serviceWorkerUpdate = useServiceWorkerUpdate();
 
   const handleLogout = async () => {
     setLogoutError("");
@@ -29,10 +38,11 @@ const AppShell = () => {
   };
 
   return (
-    <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}`}>
+    <>
       <SideNavigation />
 
-      <header className="desktop-app-header">
+      <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}`}>
+        <header className="desktop-app-header">
         <Brand />
         <div className="desktop-app-header__actions">
           <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
@@ -56,14 +66,17 @@ const AppShell = () => {
         </header>
 
         <main className="app-content">
+          {offline ? <OfflineBanner /> : null}
+          {serviceWorkerUpdate.updateAvailable ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} /> : null}
+          <InstallAppCard {...installPrompt} onInstall={installPrompt.install} />
           {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
           {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
           <Outlet />
         </main>
       </div>
 
-      {!dashboardRoute ? <button type="button" className="floating-add" onClick={() => setQuickAddOpen(true)} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
-      <MobileNavigation onQuickAdd={() => setQuickAddOpen(true)} onMore={() => setMobileMenuOpen(true)} moreOpen={mobileMenuOpen} />
+      {!dashboardRoute ? <button type="button" className="floating-add" disabled={offline} onClick={() => setQuickAddOpen(true)} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
+      <MobileNavigation onQuickAdd={() => setQuickAddOpen(true)} onMore={() => setMobileMenuOpen(true)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
       <TransactionForm open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
 
       <Modal
@@ -74,7 +87,7 @@ const AppShell = () => {
         size="sm"
       >
         <div className="mobile-menu-list">
-          <Button variant="primary" icon={FiPlus} type="button" onClick={() => { setMobileMenuOpen(false); setQuickAddOpen(true); }}>Tambah transaksi</Button>
+          <Button variant="primary" icon={FiPlus} type="button" disabled={offline} onClick={() => { setMobileMenuOpen(false); setQuickAddOpen(true); }}>Tambah transaksi</Button>
           {MOBILE_SECONDARY_NAVIGATION.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>
               <Icon aria-hidden="true" /><span>{label}</span>
@@ -84,7 +97,8 @@ const AppShell = () => {
           <Button icon={FiLogOut} type="button" onClick={handleLogout}>Keluar</Button>
         </div>
       </Modal>
-    </div>
+      </div>
+    </>
   );
 };
 

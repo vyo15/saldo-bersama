@@ -1,189 +1,39 @@
-# Setup Saldo Bersama
+# Setup
 
-Gunakan resource DEV dan PROD terpisah. Jangan menjalankan migration, import, restore, atau purge pertama kali pada data production.
+## 1. Runtime
 
-## 1. Instalasi lokal
+Gunakan Node 24.x dan npm 10+. Jalankan `npm install` dari root workspace.
 
-Prasyarat: Node.js 24 LTS dan npm 10 atau lebih baru. React Router v8 bersifat ESM-only dan source menggunakan package canonical `react-router`, bukan `react-router-dom`.
+## 2. Environment
+
+Salin `.env.example` ke `.env.local` untuk development. Isi Firebase, allowlist dua Gmail, session secret, Turso, Google bridge, jobs, dan VAPID bila dipakai. Jangan commit file tersebut.
+
+## 3. Database
 
 ```bash
-npm install
+npm run db:migrate
+npm run db:integrity
+```
+
+Owner pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta role signed allowlist adalah owner.
+
+## 4. Integrasi Google
+
+Deploy Apps Script bridge, isi Script Properties, buat spreadsheet mirror, Calendar, dan folder backup. Verifikasi `integration.health` sebelum menyalakan scheduler.
+
+## 5. PWA
+
+- iOS: buka domain HTTPS melalui Safari, Share, Add to Home Screen.
+- Android/desktop: gunakan prompt Pasang Saldo Bersama.
+- Push permission hanya diminta setelah aksi pengguna.
+
+## 6. Development
+
+```bash
 npm run dev
 ```
 
-`npm run dev` menjalankan frontend dan handler `api/` dalam satu proses di `http://localhost:5173`. Gunakan hostname `localhost`.
+API lokal tetap membutuhkan server environment yang lengkap. `frontend` tidak boleh menerima Turso token atau bridge secret.
 
-Pada perangkat baru, command tersebut otomatis:
 
-1. memeriksa `.env.local` tanpa menampilkan nilainya;
-2. menjalankan login Vercel interaktif bila credential lokal belum ada;
-3. menghubungkan folder ke project existing berdasarkan repository Git;
-4. menarik hanya environment **Development** ke file sementara;
-5. membuang `VERCEL_OIDC_TOKEN`;
-6. menolak hasil pull yang tidak lengkap tanpa merusak env lama;
-7. mengganti `.env.local` secara atomik lalu memulai server.
-
-Login browser tetap diperlukan satu kali per perangkat. Token login Vercel dan `.env.local` tidak boleh masuk Git. Bila Vercel Development Environment belum lengkap, lengkapi Project Settings atau buat `.env.local` manual berdasarkan `.env.example`.
-
-Isi root `.env.local`:
-
-```env
-VITE_APP_NAME=Saldo Bersama
-VITE_GOOGLE_CLIENT_ID=
-VITE_FIREBASE_API_KEY=
-VITE_VAPID_PUBLIC_KEY=
-
-FIREBASE_WEB_API_KEY=
-ALLOWED_USERS_JSON=[{"email":"owner@gmail.com","role":"owner"},{"email":"pasangan@gmail.com","role":"member"}]
-ALLOWED_ORIGINS=http://localhost:5173
-SESSION_SECRET=
-INTERNAL_SHARED_SECRET=
-APPS_SCRIPT_WEB_APP_URL=
-```
-
-- `VITE_FIREBASE_API_KEY` dan `FIREBASE_WEB_API_KEY` memakai Firebase Web API key yang sama.
-- `SESSION_SECRET` dan `INTERNAL_SHARED_SECRET` wajib berbeda dan minimal 32 karakter.
-- Jangan memasukkan client secret OAuth atau service-account JSON.
-- `.env.local` tidak boleh di-commit atau dikirim dalam ZIP.
-
-Tes API sebelum login:
-
-```bash
-curl -i http://localhost:5173/api/session
-```
-
-Hasil normal sebelum login adalah `401 UNAUTHENTICATED`.
-
-## 2. Firebase dan Google OAuth
-
-1. Aktifkan Firebase Authentication → Google.
-2. Buat/gunakan OAuth Web Client yang terkait project Firebase.
-3. Tambahkan origin exact:
-   - `http://localhost:5173`
-   - domain production, misalnya `https://saldo-bersama.vercel.app`
-4. Tambahkan hostname production ke Firebase Authorized domains.
-5. Isi `VITE_GOOGLE_CLIENT_ID`, `VITE_FIREBASE_API_KEY`, dan `FIREBASE_WEB_API_KEY`.
-6. Isi allowlist owner/member server-side pada `ALLOWED_USERS_JSON`.
-
-## 3. Spreadsheet baru dan Apps Script
-
-1. Buat spreadsheet kosong DEV.
-2. Buka **Extensions → Apps Script**.
-3. Salin 13 file `.gs` dari `apps-script/`, termasuk `ReadModel.gs` dan `Migration.gs`, serta `appsscript.json`.
-4. Pastikan source lokal lulus:
-
-```bash
-node scripts/check-apps-script-syntax.mjs
-```
-
-5. Isi Script Property `INTERNAL_SHARED_SECRET` dengan nilai persis sama seperti `.env.local`/Vercel.
-6. Jalankan `setupSaldoBersama()`.
-7. Pastikan:
-   - log eksekusi selesai;
-   - `SETUP_STATUS=ready`;
-   - `SETUP_VERIFIED_AT` terisi;
-   - `SPREADSHEET_ID` terisi otomatis;
-   - schema version `2`;
-   - 21 sheet canonical tersedia.
-8. Jangan membuat sheet/header atau mengisi `SPREADSHEET_ID` manual.
-
-## 4. Spreadsheet existing schema version 1
-
-Jangan menjalankan `setupSaldoBersama()` pada schema v1.
-
-1. Tempel seluruh source Apps Script terbaru.
-2. Pastikan editor Google yang menjalankan fungsi adalah owner aktif pada sheet `Users`.
-3. Jalankan `previewSchemaMigrationV2()`.
-4. Pastikan semua nilai `ambiguous` adalah `0`.
-5. Buat/cek `BACKUP_FOLDER_ID` bila ingin safety backup masuk folder khusus.
-6. Tambahkan Script Property sementara:
-
-```text
-MIGRATION_CONFIRMATION = MIGRATE_V2
-```
-
-7. Jalankan `runSchemaMigrationV2()`.
-8. Property konfirmasi akan dihapus sebelum apply.
-9. Pastikan `MIGRATION_STATUS=ready`, schema version `2`, maintenance `false`, dan integrity check bersih.
-10. Bila status `rolled_back` atau `recovery_required`, jangan melanjutkan transaksi; ikuti `docs/RECOVERY_RUNBOOK.md`.
-
-Migration berhenti sebelum backup bila ownership legacy ambigu. Jangan memaksa nilai tersebut menjadi shared; perbaiki referensi data secara terkontrol dahulu.
-
-## 5. Deploy Apps Script Web App
-
-1. Deploy → New deployment → Web App.
-2. Execute as: **Me**.
-3. Access: **Anyone**.
-4. Salin URL yang berakhir `/exec`.
-5. Isi `APPS_SCRIPT_WEB_APP_URL` pada `.env.local` dan Vercel.
-6. Restart `npm run dev` setelah env berubah.
-7. Buka `/api/health`; connector harus `ok`.
-
-## 6. Bootstrap owner
-
-Pada database baru, login dengan email owner yang ada pada `ALLOWED_USERS_JSON`. Frontend memanggil `system.initialize`. Apps Script memverifikasi signed role owner sebelum schema/user write, memperoleh LockService, dan hanya membuat owner pertama sekali.
-
-Email dan role pada `Users` harus konsisten dengan allowlist Vercel. Mismatch ditolak.
-
-## 7. Integrasi opsional
-
-Script Properties tambahan:
-
-- `CALENDAR_ID` — kalender bersama; hanya item shared disinkronkan.
-- `BACKUP_FOLDER_ID` — folder backup/migration.
-- `PUSH_ENDPOINT_URL` — URL production `/api/push`.
-
-Environment Web Push:
-
-- `VITE_VAPID_PUBLIC_KEY`
-- `VAPID_PUBLIC_KEY`
-- `VAPID_PRIVATE_KEY`
-- `VAPID_SUBJECT`
-
-Jalankan `setupScheduledTriggers()` hanya setelah Calendar, backup, dan push lolos test DEV.
-
-## 8. Quality gate
-
-```bash
-npm run check
-npm run zip
-```
-
-Jangan gunakan data nyata sebelum login owner/member, personal isolation, transaksi, conflict/idempotency, backup, restore drill, migration drill bila relevan, dan integrity check lulus pada DEV.
-
-## Troubleshooting konektor Apps Script
-
-- `UNAUTHENTICATED` berarti cookie sesi aplikasi tidak ada atau sudah kedaluwarsa; login ulang diperlukan.
-- `CONNECTOR_AUTH_FAILED` berarti sesi pengguna masih valid, tetapi `INTERNAL_SHARED_SECRET` pada API/Vercel tidak sama dengan Script Properties Apps Script. Sinkronkan nilainya, restart server lokal atau redeploy Vercel, lalu coba lagi.
-- `CONNECTOR_NOT_CONFIGURED` berarti URL `/exec` atau secret konektor belum lengkap.
-- Jangan menyimpan `SETUP_DETAILS` dengan nilai kosong. Setup yang berhasil menghapus properti tersebut; properti hanya dibuat ketika setup gagal.
-
-## Troubleshooting terstruktur
-
-Sebelum mengubah secret atau deployment secara berulang, jalankan:
-
-```bash
-npm run diagnose
-```
-
-Saat UI menampilkan error, catat **Kode** dan **Referensi**. Cocokkan referensi tersebut pada terminal lokal/Vercel Logs dan Apps Script Executions. Detail lengkap ada di `docs/OBSERVABILITY.md`.
-
-`REQUEST_EXPIRED` yang sudah lolos signature dapat dikalibrasi dan di-retry tepat satu kali oleh API. Replay tolerance tetap 120 detik; jangan memperbesar toleransi. Perbaiki NTP Windows bila `npm run diagnose` menunjukkan clock skew besar.
-
-## Runtime dan sinkronisasi waktu workstation
-
-Gunakan Node.js 24.x sesuai `package.json`. Setelah upgrade, verifikasi:
-
-```bash
-node --version
-npm --version
-npm run check
-```
-
-PC domain dapat melaporkan `w32tm /resync` berhasil tetapi tetap mengikuti NTP internal yang meleset. Bandingkan dengan:
-
-```bash
-npm run diagnose
-```
-
-Jika `Google - PC` melebihi 120 detik, perbaiki hierarchy waktu domain/NTP bersama administrator. Clock calibration aplikasi hanya fallback satu kali dan tidak menggantikan waktu workstation/server yang benar. Jangan memperbesar replay tolerance.
+Saat deploy Apps Script Web App, pilih **Execute as me/deployer** dan **Anyone/anonymous**. Keamanan akses berasal dari HMAC + timestamp + nonce, bukan sesi browser Google.

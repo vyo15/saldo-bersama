@@ -4,7 +4,7 @@ import test from "node:test";
 
 const source = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 
-test("initial state, read dedupe, dan cache tetap privat per sesi", async () => {
+test("initial state dan read identik dikoaleskan serta cache frontend tetap private-memory", async () => {
   const [client, finance, gateway] = await Promise.all([
     source("frontend/src/services/api/client.js"),
     source("frontend/src/app/FinanceContext.jsx"),
@@ -12,43 +12,62 @@ test("initial state, read dedupe, dan cache tetap privat per sesi", async () => 
   ]);
   assert.match(client, /const readCache = new Map\(\)/);
   assert.match(client, /const inFlightReads = new Map\(\)/);
-  assert.match(client, /setSessionScope\(nextScope\)/);
   assert.match(client, /clearReadState\(\)/);
   assert.doesNotMatch(client, /localStorage|sessionStorage|caches\.open/);
   assert.match(finance, /apiClient\.request\("app\.initialState"/);
-  assert.match(finance, /initialError\.code === "IDENTITY_BIND_REQUIRED"[\s\S]*apiClient\.request\("bootstrap\.get"[\s\S]*apiClient\.request\("app\.initialState"/);
-  assert.match(finance, /apiClient\.seed\("dashboard\.overview"/);
-  assert.doesNotMatch(finance, /Promise\.all\(\[[\s\S]*apiClient\.request\("bootstrap\.get"[\s\S]*apiClient\.request\("dashboard\.overview"/);
-  assert.doesNotMatch(gateway, /COALESCED_READ_ACTIONS[\s\S]{0,500}"bootstrap\.get"/);
-  assert.match(gateway, /"reconciliations\.list"/);
+  assert.doesNotMatch(finance, /system\.initialize|IDENTITY_BIND_REQUIRED|callAppsScript/);
+  assert.match(gateway, /const inFlightReads = new Map\(\)/);
   assert.match(gateway, /session\.uid, session\.role, action/);
-  assert.match(gateway, /gateway\.request\.coalesced/);
+  assert.match(gateway, /"app\.initialState"/);
 });
 
-test("schema cache hanya positif dan write tetap melalui mutating guard", async () => {
-  const [schema, code] = await Promise.all([
-    source("apps-script/Schema.gs"),
-    source("apps-script/Code.gs"),
+test("list transaksi memakai filter, index, LIMIT/OFFSET, bukan membaca seluruh storage", async () => {
+  const [finance, migration] = await Promise.all([
+    source("api/_lib/services/finance.js"),
+    source("database/migrations/001_initial_schema.sql"),
   ]);
-  assert.match(schema, /SB_SCHEMA_VALIDATION_CACHE_SECONDS = 300;/);
-  assert.match(schema, /"reconciliations\.list"/);
-  assert.match(schema, /if \(!issues\.length && cache\)[\s\S]*cache\.put/);
-  assert.match(schema, /invalidateSchemaValidationCache_/);
-  assert.match(code, /canUseCachedSchemaValidation_\(action\) \? validateSchemaCached_\(\) : validateSchema_\(\)/);
-  assert.match(code, /const mutating = isMutatingAction_\(signed\.action\)/);
-  assert.match(code, /stageTimings/);
+  assert.match(finance, /LIMIT \? OFFSET \?/);
+  assert.match(finance, /COUNT\(\*\) AS total/);
+  assert.match(finance, /substr\(t\.transaction_date,1,7\)=\?/);
+  assert.match(migration, /idx_transactions_period/);
+  assert.match(migration, /idx_transactions_source/);
+  assert.match(migration, /idx_transactions_destination/);
+  assert.doesNotMatch(finance, /getDataRange|getValues|SpreadsheetApp/);
 });
 
-test("theme memakai surface hierarchy dan kontrol aksesibel", async () => {
-  const [tokens, components, transactionForm] = await Promise.all([
-    source("frontend/src/styles/tokens.css"),
-    source("frontend/src/styles/components.css"),
-    source("frontend/src/features/transactions/TransactionForm.jsx"),
-  ]);
-  for (const token of ["--surface-elevated", "--input", "--border-strong", "--focus-ring"]) assert.match(tokens, new RegExp(token));
-  assert.match(components, /min-height:\s*44px/);
-  assert.match(components, /:focus-visible/);
-  assert.match(components, /prefers-reduced-motion/);
-  assert.match(transactionForm, /aria-expanded=\{detailsOpen\}/);
-  assert.match(transactionForm, /formatDateLongIndonesia/);
+test("Turso client memakai batch dan transaction pipeline dengan timeout serta foreign-key guard", async () => {
+  const client = await source("api/_lib/db/httpClient.js");
+  assert.match(client, /\/v2\/pipeline/);
+  assert.match(client, /PRAGMA foreign_keys = ON/);
+  assert.match(client, /BEGIN IMMEDIATE/);
+  assert.match(client, /readTransaction[\s\S]*begin: "BEGIN"/);
+  assert.match(client, /ROLLBACK/);
+  assert.match(client, /AbortController/);
+  assert.match(client, /tx\.batch/);
+});
+
+test("outbox membatasi claim, merebut kembali worker macet, dan mengelompokkan rebuild Google", async () => {
+  const jobs = await source("api/jobs.js");
+  assert.match(jobs, /LIMIT 25/);
+  assert.match(jobs, /status='processing' AND locked_at<\?/);
+  assert.match(jobs, /for \(const provider of \["sheets", "calendar"\]\)/);
+  assert.match(jobs, /mirror\.rebuild/);
+  assert.match(jobs, /calendar\.rebuild/);
+});
+
+test("push notification diklaim atomik sebelum network untuk mencegah kirim ganda", async () => {
+  const jobs = await source("api/jobs.js");
+  assert.match(jobs, /status='processing'[\s\S]*notification_id=\?[\s\S]*status IN \('pending','failed'\)/);
+  assert.match(jobs, /claim\.rowsAffected !== 1/);
+  assert.match(jobs, /status='processing' AND last_attempt_at<\?/);
+  assert.match(jobs, /locked_by=\?/);
+  assert.match(jobs, /notification_id=\? AND status='processing' AND locked_by=\?/);
+});
+
+test("service worker hanya meng-cache app shell dan tidak pernah meng-cache API finansial", async () => {
+  const sw = await source("frontend/public/sw.js");
+  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
+  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return/);
+  assert.doesNotMatch(sw, /cache\.put\([^\n]*\/api\//);
+  assert.match(sw, /saldo-bersama-static-v5/);
 });

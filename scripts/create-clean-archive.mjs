@@ -45,7 +45,7 @@ const forbiddenFilePatterns = [
   /client[_-]secret.*\.json$/i,
   /private-key/i,
   /\.(?:pem|p12|pfx|key|crt|cer)$/i,
-  /\.(?:log|tmp|temp|bak|zip|rar|7z)$/i,
+  /\.(?:log|tmp|temp|bak|zip|rar|7z|db|sqlite|sqlite3|dump|gz)$/i,
 ];
 
 const run = (command, args, options = {}) =>

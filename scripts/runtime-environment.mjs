@@ -5,15 +5,13 @@ export const REQUIRED_RUNTIME_ENV_KEYS = Object.freeze([
   "ALLOWED_USERS_JSON",
   "ALLOWED_ORIGINS",
   "SESSION_SECRET",
-  "INTERNAL_SHARED_SECRET",
-  "APPS_SCRIPT_WEB_APP_URL",
+  "TURSO_DATABASE_URL",
+  "TURSO_AUTH_TOKEN",
 ]);
 
 const unquote = (value) => {
   const trimmed = String(value ?? "").trim();
-  if (trimmed.length >= 2 && ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'")))) {
-    return trimmed.slice(1, -1);
-  }
+  if (trimmed.length >= 2 && ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'")))) return trimmed.slice(1, -1);
   return trimmed;
 };
 

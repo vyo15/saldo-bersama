@@ -55,6 +55,7 @@ const allowedRootEntries = new Set([
   "README.md",
   "api",
   "apps-script",
+  "database",
   "docs",
   "frontend",
   "package-lock.json",
@@ -77,7 +78,7 @@ const retiredRootEntries = new Set([
   "worker",
 ]);
 
-// Saldo, arus kas, dan pemakaian kantong dihitung oleh Apps Script/API.
+// Saldo, arus kas, dan pemakaian kantong dihitung oleh Turso/API.
 // Menyimpan kalkulator kedua di frontend berisiko menghasilkan angka berbeda.
 const retiredClientFinanceFiles = new Set([
   "frontend/src/domain/finance.js",
@@ -111,8 +112,9 @@ const VERCEL_FUNCTION_LIMIT = 12;
 const VERCEL_FUNCTION_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts"]);
 const CANONICAL_API_ENDPOINTS = new Set([
   "gateway.js",
+  "export.js",
   "health.js",
-  "push.js",
+  "jobs.js",
   "session.js",
 ]);
 const ALLOWED_API_PRIVATE_DIRECTORIES = new Set(["_lib"]);

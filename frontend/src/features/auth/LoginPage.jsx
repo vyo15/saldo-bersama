@@ -57,7 +57,7 @@ const LoginPage = () => {
         ) : null}
         <div className="google-login-button" ref={buttonRef} aria-label="Masuk menggunakan Google" />
 
-        <small>Data keuangan tidak disimpan di Vercel atau browser sebagai sumber kebenaran. Semua write production melalui API dan Google Apps Script.</small>
+        <small>Data keuangan tidak disimpan di Vercel atau browser sebagai sumber kebenaran. Semua perubahan production melalui API aman dan database Turso. Google Sheets dan Calendar hanya integrasi pendamping.</small>
       </section>
     </main>
   );

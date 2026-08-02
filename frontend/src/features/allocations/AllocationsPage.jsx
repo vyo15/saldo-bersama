@@ -82,7 +82,12 @@ const AllocationsPage = () => {
       if (!move.fromEnvelopePeriodId || !move.toEnvelopePeriodId) throw new Error("Kantong sumber dan tujuan wajib dipilih.");
       if (move.fromEnvelopePeriodId === move.toEnvelopePeriodId) throw new Error("Kantong sumber dan tujuan harus berbeda.");
       if (amount > Number(lookup[move.fromEnvelopePeriodId]?.remaining_amount || 0)) throw new Error("Nominal melebihi sisa kantong sumber.");
-      await apiClient.request("envelopes.move", { ...move, amount }, { idempotencyKey: createIdempotencyKey() });
+      await apiClient.request("envelopes.move", {
+        ...move,
+        amount,
+        from_row_version: lookup[move.fromEnvelopePeriodId]?.row_version,
+        to_row_version: lookup[move.toEnvelopePeriodId]?.row_version,
+      }, { idempotencyKey: createIdempotencyKey() });
       setMove({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
       setMessage({ type: "success", text: "Alokasi berhasil dipindahkan tanpa mengubah total saldo." });
       invalidate(["envelopes.list", "reports.monthly", "app.initialState"]);

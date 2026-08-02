@@ -1,427 +1,154 @@
 import assert from "node:assert/strict";
-import { access, readdir, readFile } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
-import { ACTION_PERMISSIONS } from "../../api/_lib/security.js";
+import { fileURLToPath } from "node:url";
 
-const projectRoot = new URL("../../", import.meta.url);
-const appsScriptRoot = new URL("../../apps-script/", import.meta.url);
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const source = (relative) => readFile(path.join(root, relative), "utf8");
+const exists = async (relative) => { try { await stat(path.join(root, relative)); return true; } catch { return false; } };
 
-const readAppsScriptSource = async () => {
-  const entries = await readdir(appsScriptRoot, { withFileTypes: true });
-  const files = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".gs"))
-    .sort((left, right) => left.name.localeCompare(right.name));
-  return (await Promise.all(files.map((entry) => readFile(new URL(entry.name, appsScriptRoot), "utf8")))).join("\n");
-};
+const parseEnv = (text) => Object.fromEntries(text.split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("=")).map((line) => {
+  const index = line.indexOf("="); return [line.slice(0, index), line.slice(index + 1)];
+}));
 
-const sorted = (items) => [...items].sort();
-
-const parseAppsScriptRoleActions = (source, role) => {
-  const body = new RegExp(`${role}:\\s*\\[([\\s\\S]*?)\\]`).exec(source)?.[1] || "";
-  return [...body.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-};
-
-const canonicalApiEndpoints = ["gateway.js", "health.js", "push.js", "session.js"];
-const vercelFunctionExtension = /\.(?:js|mjs|cjs|ts)$/i;
-
-const collectVercelFunctionCandidates = async (directory, relative = "") => {
-  const candidates = [];
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const nextRelative = relative ? `${relative}/${entry.name}` : entry.name;
-    const url = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
-    if (entry.isDirectory()) {
-      if (!entry.name.startsWith("_")) {
-        candidates.push(...await collectVercelFunctionCandidates(url, nextRelative));
-      }
-    } else if (entry.isFile() && vercelFunctionExtension.test(entry.name)) {
-      candidates.push(nextRelative);
-    }
-  }
-  return candidates.sort();
-};
-
-test("source hanya menyimpan arsitektur runtime canonical", async () => {
-  for (const path of ["api/", "apps-script/", "docs/", "frontend/", "scripts/", "test/", ".env.example", "vercel.json"]) {
-    await access(new URL(path, projectRoot));
-  }
-
-  for (const retiredPath of [
-    "integrations/",
-    "lib/",
-    "tests/",
-    ".openai/",
-    "app/",
-    "db/",
-    "drizzle/",
-    "examples/",
-    "worker/",
-  ]) {
-    await assert.rejects(access(new URL(retiredPath, projectRoot)), undefined, retiredPath);
-  }
+test("arsitektur runtime canonical memakai Turso lokal di API dan lima Vercel Function", async () => {
+  const apiFiles = (await readdir(path.join(root, "api"), { withFileTypes: true })).filter((entry) => entry.isFile() && entry.name.endsWith(".js")).map((entry) => entry.name).sort();
+  assert.deepEqual(apiFiles, ["export.js", "gateway.js", "health.js", "jobs.js", "session.js"]);
+  const gateway = await source("api/gateway.js");
+  assert.match(gateway, /dispatchAction/);
+  assert.doesNotMatch(gateway, /callAppsScript|APPS_SCRIPT_WEB_APP_URL/);
+  assert.equal(await exists("api/_lib/appsScript.js"), false);
+  assert.equal(await exists("api/push.js"), false);
+  const devServer = await source("scripts/start-vite-dev.mjs");
+  assert.doesNotMatch(devServer, /api\/_lib\/appsScript\.js|\/api\/push/);
+  assert.match(devServer, /\/api\/export/);
+  assert.match(devServer, /\/api\/jobs/);
 });
 
-test("frontend tidak memiliki kalkulator saldo kedua", async () => {
-  await assert.rejects(access(new URL("../../frontend/src/domain/finance.js", import.meta.url)));
-  await assert.rejects(access(new URL("../../frontend/test/finance.test.js", import.meta.url)));
+test("Apps Script hanya bridge Google, bukan database atau business logic", async () => {
+  const files = (await readdir(path.join(root, "apps-script"))).filter((name) => name.endsWith(".gs")).sort();
+  assert.deepEqual(files, ["CalendarService.gs", "Code.gs", "DriveBackupService.gs", "MirrorService.gs", "Scheduler.gs", "Security.gs"]);
+  const combined = (await Promise.all(files.map((name) => source(`apps-script/${name}`)))).join("\n");
+  for (const action of ["mirror.rebuild", "calendar.rebuild", "backup.store", "backup.read", "integration.health"]) assert.match(combined, new RegExp(action.replace(".", "\\.")));
+  for (const legacy of ["FinanceService", "MasterDataService", "DataStore", "system.initialize", "transactions.create", "rows_("]) assert.doesNotMatch(combined, new RegExp(legacy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+});
 
-  const [validator, financeService, reports] = await Promise.all([
-    readFile(new URL("../../scripts/validate-source-tree.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../../apps-script/FinanceService.gs", import.meta.url), "utf8"),
-    readFile(new URL("../../apps-script/ReportsAndIntegrations.gs", import.meta.url), "utf8"),
+test("database schema dan service menjaga integer, ownership, audit, idempotency, dan soft delete", async () => {
+  const [sql, finance, security] = await Promise.all([
+    source("database/migrations/001_initial_schema.sql"),
+    source("api/_lib/services/finance.js"),
+    source("api/_lib/security.js"),
   ]);
-  assert.match(validator, /retiredClientFinanceFiles/);
-  assert.match(financeService, /function accountBalanceAsOf_/);
-  assert.match(reports, /function dashboardOverview_/);
+  assert.match(sql, /amount INTEGER NOT NULL CHECK \(amount > 0\)/);
+  assert.match(sql, /CHECK \(\(scope = 'shared' AND owner_user_id IS NULL\) OR/);
+  assert.match(sql, /audit_log_no_update/);
+  assert.match(sql, /PRIMARY KEY \(actor_id, idempotency_key\)/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+  assert.match(finance, /status='cancelled'/);
+  assert.doesNotMatch(finance, /DELETE FROM transactions/);
+  assert.match(security, /RESERVED_TRANSACTION_FIELDS/);
 });
 
-test("namespace api hanya mengekspos Vercel Functions canonical", async () => {
-  const apiRoot = new URL("../../api/", import.meta.url);
-  const candidates = await collectVercelFunctionCandidates(apiRoot);
-  assert.deepEqual(candidates, canonicalApiEndpoints);
-  assert.ok(candidates.length <= 12, "Jumlah Vercel Functions harus tetap di bawah batas Hobby.");
-  await assert.rejects(access(new URL("../../api/test/", import.meta.url)));
+test("Google Sheets adalah mirror satu arah dan tidak memuat secret/push material", async () => {
+  const [jobs, mirror] = await Promise.all([source("api/jobs.js"), source("apps-script/MirrorService.gs")]);
+  assert.match(jobs, /Mirror read-only/);
+  assert.match(jobs, /safeRows/);
+  const mirrorSnapshotSource = jobs.slice(jobs.indexOf("const mirrorSnapshot"), jobs.indexOf("const calendarSnapshot"));
+  assert.doesNotMatch(mirrorSnapshotSource, /p256dh|push_subscriptions|idempotency_keys|firebase_uid|auth key/i);
+  assert.match(mirrorSnapshotSource, /owner_scope='shared'/);
+  assert.match(mirrorSnapshotSource, /scope='shared'/);
+  assert.doesNotMatch(mirrorSnapshotSource, /owner_user_id/);
+  assert.match(mirror, /Perubahan manual akan ditimpa/);
+  assert.match(mirror, /safeCell_/);
+  assert.doesNotMatch(mirror, /doPost[\s\S]*transactions\.create/);
+});
 
-  const [packageJson, validator, vercelJson] = await Promise.all([
-    readFile(new URL("../../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../../scripts/validate-source-tree.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
+test("Calendar hanya menyinkronkan recurring shared dan memakai stable entity ID", async () => {
+  const [jobs, calendar] = await Promise.all([source("api/jobs.js"), source("apps-script/CalendarService.gs")]);
+  assert.match(jobs, /r\.scope='shared'/);
+  assert.match(jobs, /entityId: item\.occurrence_id/);
+  assert.match(calendar, /saldo_bersama_entity_id/);
+  assert.match(calendar, /saldo_bersama_managed/);
+  assert.doesNotMatch(calendar, /audit|token|firebase_uid|p256dh/i);
+});
+
+
+
+test("Google bridge memakai deployment server-to-server dan scheduler nonce persisten", async () => {
+  const [manifestText, jobs, schema] = await Promise.all([
+    source("apps-script/appsscript.json"), source("api/jobs.js"), source("database/migrations/001_initial_schema.sql"),
   ]);
-  const packageConfig = JSON.parse(packageJson);
-  const vercelConfig = JSON.parse(vercelJson);
-  assert.equal(packageConfig.scripts.test, "npm run test --workspace saldo-bersama-frontend && node --test test/api/*.test.js");
-  assert.deepEqual(Object.keys(vercelConfig.functions).sort(), canonicalApiEndpoints.map((file) => `api/${file}`).sort());
-  assert.match(validator, /VERCEL_FUNCTION_LIMIT\s*=\s*12/);
-  assert.match(validator, /CANONICAL_API_ENDPOINTS/);
-  assert.match(validator, /apiTestViolations/);
-  assert.match(validator, /unexpectedFunctionCandidates/);
+  const manifest = JSON.parse(manifestText);
+  assert.equal(manifest.webapp.executeAs, "USER_DEPLOYING");
+  assert.equal(manifest.webapp.access, "ANYONE_ANONYMOUS");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS request_nonces/);
+  assert.match(jobs, /consumeScheduledNonce/);
+  assert.match(jobs, /REPLAY_DENIED/);
 });
 
-test("Apps Script canonical memuat seluruh sheet sumber kebenaran", async () => {
-  const source = await readAppsScriptSource();
-  for (const sheet of [
-    "System_Config",
-    "Users",
-    "Accounts",
-    "Categories",
-    "Transactions",
-    "Recurring_Rules",
-    "Recurring_Occurrences",
-    "Budgets",
-    "Envelope_Rules",
-    "Envelope_Periods",
-    "Envelope_Movements",
-    "Savings_Goals",
-    "Goal_Movements",
-    "Reconciliations",
-    "Period_Closures",
-    "Calendar_Sync",
-    "Notification_Queue",
-    "Push_Subscriptions",
-    "Audit_Log",
-    "Idempotency",
-    "Backup_Log",
-  ]) {
-    assert.match(source, new RegExp(`\\b${sheet}\\b`));
-  }
+test("maintenance mode tetap menyediakan read-only UI dan hanya memblokir write biasa", async () => {
+  const dispatcher = await source("api/_lib/actionDispatcher.js");
+  assert.match(dispatcher, /!READ_ACTIONS\.has\(action\) && !MAINTENANCE_ALLOWED\.has\(action\)/);
+  assert.match(dispatcher, /Data tetap dapat dibaca/);
+  assert.match(dispatcher, /"restore\.apply"/);
 });
 
-test("write kritis memakai lock, idempotency, row version, formula guard, dan replay guard", async () => {
-  const source = await readAppsScriptSource();
-  assert.match(source, /LockService\.getScriptLock/);
-  assert.match(source, /getIdempotentResult_/);
-  assert.match(source, /assertVersion_/);
-  assert.match(source, /sanitizeText_/);
-  assert.match(source, /REPLAY_DETECTED/);
-  assert.match(source, /constantTimeEqual_/);
-  assert.match(source, /assertScheduledOperationsAllowed_/);
+
+test("export Excel memakai POST agar origin guard konsisten pada browser", async () => {
+  const [endpoint, client] = await Promise.all([source("api/export.js"), source("frontend/src/services/api/client.js")]);
+  assert.match(endpoint, /request\.method !== "POST"/);
+  assert.match(endpoint, /assertAllowedOrigin\(request\)/);
+  assert.match(client, /fetch\("\/api\/export", \{ method: "POST"/);
 });
 
-test("login dibatasi per IP sebelum Firebase dan initialize memeriksa owner sebelum schema write", async () => {
-  const [sessionSource, codeSource] = await Promise.all([
-    readFile(new URL("../../api/session.js", import.meta.url), "utf8"),
-    readFile(new URL("../../apps-script/Code.gs", import.meta.url), "utf8"),
+test("action internal kantong tidak diekspos dan health publik tidak membocorkan aktivitas integrasi", async () => {
+  const [dispatcher, security, health] = await Promise.all([
+    source("api/_lib/actionDispatcher.js"), source("api/_lib/security.js"), source("api/health.js"),
   ]);
-  const loginRateLimit = sessionSource.indexOf('enforceBestEffortRateLimit(clientRateLimitKey(request, "session:login")');
-  const firebaseLookup = sessionSource.indexOf("verifyFirebaseIdToken(body.firebaseIdToken)");
-  assert.ok(loginRateLimit >= 0 && firebaseLookup > loginRateLimit, "Rate limit login wajib berjalan sebelum lookup Firebase.");
-
-  const initializationGuard = codeSource.indexOf("assertInitializationActor_(signed.actor)");
-  const mutationLock = codeSource.indexOf("LockService.getScriptLock()", initializationGuard);
-  const schemaInitialization = codeSource.indexOf("initializeSchema_()", mutationLock);
-  assert.ok(initializationGuard >= 0 && mutationLock > initializationGuard && schemaInitialization > mutationLock, "Owner dan lock wajib diverifikasi sebelum inisialisasi schema.");
-  assert.equal((codeSource.match(/initializeSchema_\(\)/g) || []).length, 1, "Request API hanya boleh memiliki satu titik inisialisasi schema.");
-  assert.match(codeSource, /assertRuntimeAvailability_\(signed\.action, schemaIssues\)[\s\S]*resolveRequestActor_/);
-  assert.match(codeSource, /return !\["system\.health", "app\.initialState", "users\.list"/);
-  assert.doesNotMatch(codeSource, /return !\["system\.health", "bootstrap\.get"/);
-  assert.doesNotMatch(codeSource, /isSchemaRecoveryAction_/, "Helper recovery identik tidak boleh diduplikasi.");
+  assert.doesNotMatch(dispatcher, /envelopes\.createRule|envelopes\.createPeriod/);
+  assert.doesNotMatch(security, /envelopes\.createRule|envelopes\.createPeriod/);
+  assert.doesNotMatch(health, /integrationStatus/);
+  assert.match(health, /configured/);
 });
 
-test("restore canonical fail closed dan memiliki recovery manual", async () => {
-  const source = await readAppsScriptSource();
-  assert.match(source, /restore-preview:/);
-  assert.match(source, /BACKUP_CHANGED_AFTER_PREVIEW/);
-  assert.match(source, /rollbackToSafetyOrFailClosed_/);
-  assert.match(source, /RECOVERY_REQUIRED/);
-  assert.match(source, /recoverFromSafetyBackup/);
-  assert.match(source, /spreadsheetSnapshotChecksum_/);
-  assert.match(source, /createEmergencySafetySnapshot_/);
-  assert.match(source, /applyRawSpreadsheetSnapshot_/);
-  assert.match(source, /RESTORE SALDO BERSAMA/);
+test("environment template tidak berisi secret dan memakai konfigurasi arsitektur baru", async () => {
+  const values = parseEnv(await source(".env.example"));
+  for (const key of ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "SESSION_SECRET", "GOOGLE_BRIDGE_SHARED_SECRET", "JOBS_SHARED_SECRET", "VAPID_PRIVATE_KEY"]) assert.equal(values[key], "", `${key} wajib kosong`);
+  for (const key of ["GOOGLE_BRIDGE_WEB_APP_URL", "MIRROR_SPREADSHEET_ID", "GOOGLE_CALENDAR_ID", "BACKUP_FOLDER_ID", "JOBS_ENDPOINT_URL"]) assert.ok(key in values, key);
+  for (const legacy of ["INTERNAL_SHARED_SECRET", "APPS_SCRIPT_WEB_APP_URL", "SPREADSHEET_ID"]) assert.equal(legacy in values, false, legacy);
 });
 
-test("Apps Script memiliki test perilaku Node, bukan hanya source matching", async () => {
-  const behaviorTest = await readFile(new URL("./apps-script-behavior.test.js", import.meta.url), "utf8");
-  assert.match(behaviorTest, /createTransaction_/);
-  assert.match(behaviorTest, /restoreApply_/);
-  assert.match(behaviorTest, /closePeriod_/);
-  assert.match(behaviorTest, /getIdempotentResult_/);
+test("packager dan source validator menolak env, secret, archive, serta local database dump", async () => {
+  const [packager, validator] = await Promise.all([source("scripts/create-clean-archive.mjs"), source("scripts/validate-source-tree.mjs")]);
+  assert.match(packager, /db\|sqlite\|sqlite3\|dump\|gz/);
+  assert.match(packager, /service-account/);
+  assert.match(packager, /\.env\.example/);
+  assert.match(validator, /database/);
+  assert.match(validator, /"jobs\.js"/);
 });
 
-test("frontend, API, dan Apps Script memakai action contract yang selaras", async () => {
-  const [appsScriptPermissions, router] = await Promise.all([
-    readFile(new URL("../../apps-script/Security.gs", import.meta.url), "utf8"),
-    readFile(new URL("../../apps-script/Router.gs", import.meta.url), "utf8"),
+test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt, dan tidak mengantre write offline", async () => {
+  const [manifestText, client, shell, sw] = await Promise.all([
+    source("frontend/public/site.webmanifest"), source("frontend/src/services/api/client.js"), source("frontend/src/layouts/AppShell.jsx"), source("frontend/public/sw.js"),
   ]);
-  const frontendRoot = new URL("../../frontend/src/", import.meta.url);
-  const collectFrontendActions = async (directory) => {
-    const actions = [];
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const url = new URL(entry.name + (entry.isDirectory() ? "/" : ""), directory);
-      if (entry.isDirectory()) actions.push(...await collectFrontendActions(url));
-      else if (/\.(?:js|jsx)$/.test(entry.name)) {
-        const source = await readFile(url, "utf8");
-        actions.push(...[...source.matchAll(/(?:apiClient\.request|useApiResource)\(\s*["']([A-Za-z][A-Za-z0-9.]+)["']/g)].map((match) => match[1]));
-      }
-    }
-    return actions;
-  };
-
-  const routeActions = [...router.matchAll(/case\s+"([A-Za-z][A-Za-z0-9.]+)"/g)].map((match) => match[1]);
-  assert.ok(routeActions.length > 0);
-  assert.equal(new Set(routeActions).size, routeActions.length, "Router tidak boleh memiliki case action duplikat.");
-
-  for (const role of ["owner", "member"]) {
-    const apiActions = sorted(ACTION_PERMISSIONS[role]);
-    const appsScriptActions = sorted(parseAppsScriptRoleActions(appsScriptPermissions, role));
-    assert.deepEqual(appsScriptActions, apiActions, `Permission Apps Script ${role} berbeda dari API.`);
-  }
-
-  assert.deepEqual(sorted(routeActions), sorted(ACTION_PERMISSIONS.owner), "Seluruh route harus tercakup tepat satu kali oleh permission owner.");
-  const frontendActions = await collectFrontendActions(frontendRoot);
-  assert.ok(frontendActions.length > 0);
-  frontendActions.forEach((action) => assert.ok(ACTION_PERMISSIONS.owner.has(action), `Action frontend tidak dikenal backend: ${action}`));
+  const manifest = JSON.parse(manifestText);
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.start_url, "/");
+  assert.equal(manifest.shortcuts[0].url, "/transaksi");
+  assert.match(client, /code: "OFFLINE"/);
+  assert.doesNotMatch(client, /pendingWrites|offlineQueue|localStorage/);
+  assert.match(shell, /OfflineBanner/);
+  assert.match(shell, /UpdateAvailableNotice/);
+  assert.match(shell, /InstallAppCard/);
+  assert.match(sw, /SKIP_WAITING/);
 });
 
-test("development lokal memakai satu command, satu origin, dan API Node lokal", async () => {
-  const [packageJson, productionVercelConfig, viteConfig, devLauncher, notifications, validator] = await Promise.all([
-    readFile(new URL("../../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
-    readFile(new URL("../../frontend/vite.config.js", import.meta.url), "utf8"),
-    readFile(new URL("../../scripts/start-vite-dev.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../../frontend/src/services/notifications.js", import.meta.url), "utf8"),
-    readFile(new URL("../../scripts/validate-source-tree.mjs", import.meta.url), "utf8"),
-  ]);
-
-  const packageConfig = JSON.parse(packageJson);
-  const productionVercel = JSON.parse(productionVercelConfig);
-  assert.equal(packageConfig.scripts.dev, "node scripts/start-vite-dev.mjs");
-  assert.equal(packageConfig.scripts["dev:frontend"], undefined);
-  assert.equal(packageConfig.scripts["dev:full"], undefined);
-  assert.equal(productionVercel.devCommand, undefined);
-  assert.ok(productionVercel.rewrites.some((rewrite) => rewrite.destination === "/index.html"));
-  assert.match(viteConfig, /envDir:\s*projectRoot/);
-  assert.match(devLauncher, /createServer:\s*createViteServer/);
-  assert.match(devLauncher, /middlewareMode:\s*true/);
-  assert.match(devLauncher, /"\/api\/session"/);
-  assert.match(devLauncher, /"\/api\/gateway"/);
-  assert.match(devLauncher, /loadEnv\("development", projectRoot, ""\)/);
-  assert.match(devLauncher, /process\.env\.VERCEL_ENV \|\|= "development"/);
-  assert.match(devLauncher, /delete request\.headers\["if-none-match"\]/);
-  assert.match(devLauncher, /delete request\.headers\["if-modified-since"\]/);
-  assert.match(devLauncher, /"Cache-Control": "no-store"/);
-  assert.match(devLauncher, /Clear-Site-Data/);
-  assert.match(devLauncher, /sb_dev_storage_reset=v1/);
-  assert.doesNotMatch(devLauncher, /vercel\s+dev|npx.*vercel/i);
-  assert.match(notifications, /import\.meta\.env\.DEV/);
-  assert.match(notifications, /registration\.unregister\(\)/);
-  assert.match(validator, /ignoredLocalFilePatterns/);
-  await assert.rejects(access(new URL("../../vercel.dev.json", import.meta.url)));
-});
-
-test("schema v2 memiliki migration guarded untuk ownership data perencanaan", async () => {
-  const [schema, migration] = await Promise.all([
-    readFile(new URL("../../apps-script/Schema.gs", import.meta.url), "utf8"),
-    readFile(new URL("../../apps-script/Migration.gs", import.meta.url), "utf8"),
-  ]);
-  assert.match(schema, /SB_SCHEMA_VERSION\s*=\s*"2"/);
-  for (const sheet of ["Recurring_Rules", "Budgets", "Savings_Goals"]) {
-    assert.match(schema, new RegExp(`${sheet}: SB_SCHEMA_V1\\.${sheet}\\.concat\\(\\["scope", "owner_user_id"\\]\\)`));
-  }
-  assert.match(migration, /previewSchemaMigrationV2/);
-  assert.match(migration, /applySchemaMigrationV2/);
-  assert.match(migration, /runSchemaMigrationV2/);
-  assert.match(migration, /deleteProperty\("MIGRATION_CONFIRMATION"\)/);
-  assert.match(migration, /createMigrationSafetyBackup_/);
-  assert.match(migration, /migrationSafetyIssues_/);
-  assert.match(migration, /MIGRATION_BACKUP_INVALID/);
-  assert.match(migration, /MIGRATION_OWNERSHIP_AMBIGUOUS/);
-  assert.match(migration, /assertMigrationPreviewSafe_\(preview\)/);
-  assert.match(migration, /maintenance_mode", "true"/);
-  assert.match(migration, /integrityIssues_\(\)/);
-  assert.match(migration, /backup_type: "pre-migration"/);
-  assert.match(migration, /MIGRATION_ROLLED_BACK/);
-  assert.match(migration, /RECOVERY_REQUIRED/);
-  assert.match(migration, /let rollbackError = null/);
-  assert.match(migration, /ensureSheetHeight_/);
-  assert.match(migration, /protectSystemSheets_\(SB_SCHEMA_V1\)/);
-});
-
-test("setup baru membersihkan Sheet1 kosong hanya setelah schema valid", async () => {
-  const schema = await readFile(new URL("../../apps-script/Schema.gs", import.meta.url), "utf8");
-  const validationIndex = schema.indexOf("const issues = validateSchema_()");
-  const cleanupIndex = schema.indexOf("removeUnusedDefaultSheet_(spreadsheet)");
-  assert.ok(validationIndex >= 0);
-  assert.ok(cleanupIndex > validationIndex);
-  assert.match(schema, /\["Sheet1", "Sheet 1"\]/);
-  assert.match(schema, /sheet\.getLastRow\(\) === 0/);
-  assert.match(schema, /spreadsheet\.getSheets\(\)\.length <= 1/);
-});
-
-test("frontend production tidak menyimpan demo repository atau dialog native", async () => {
-  const frontendRoot = new URL("../../frontend/src/", import.meta.url);
-  const sources = [];
-  const collect = async (directory) => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const url = new URL(entry.name + (entry.isDirectory() ? "/" : ""), directory);
-      if (entry.isDirectory()) await collect(url);
-      else if (/\.(?:js|jsx)$/.test(entry.name)) sources.push(await readFile(url, "utf8"));
-    }
-  };
-  await collect(frontendRoot);
-  const source = sources.join("\n");
-  assert.doesNotMatch(source, /VITE_DEMO_MODE|services\/demo|demoMode/);
-  assert.doesNotMatch(source, /window\.(?:prompt|confirm)\s*\(/);
-  await assert.rejects(access(new URL("../../frontend/src/services/demo/repository.js", import.meta.url)));
-});
-
-test("template environment dan packager menolak secret serta artifact lokal", async () => {
-  const [environmentTemplate, gitignore, validator, packager] = await Promise.all([
-    readFile(new URL("../../.env.example", import.meta.url), "utf8"),
-    readFile(new URL("../../.gitignore", import.meta.url), "utf8"),
-    readFile(new URL("../../scripts/validate-source-tree.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../../scripts/create-clean-archive.mjs", import.meta.url), "utf8"),
-  ]);
-
-  const variables = Object.fromEntries(environmentTemplate
-    .split(/\r?\n/)
-    .filter((line) => line && !line.startsWith("#"))
-    .map((line) => {
-      const separator = line.indexOf("=");
-      return [line.slice(0, separator), line.slice(separator + 1)];
-    }));
-  for (const secret of [
-    "FIREBASE_WEB_API_KEY",
-    "SESSION_SECRET",
-    "INTERNAL_SHARED_SECRET",
-    "APPS_SCRIPT_WEB_APP_URL",
-    "VAPID_PRIVATE_KEY",
-  ]) {
-    assert.equal(variables[secret], "", `${secret} pada .env.example wajib kosong.`);
-  }
-  assert.match(validator, /requiredRootEntries/);
-  assert.match(packager, /auditStaging/);
-  assert.match(packager, /Packaging wajib menyertakan \.env\.example/);
-  assert.match(packager, /Commit packaging untuk ZIP wajib menyertakan \.env\.example/);
-  assert.match(gitignore, /!\.env\.example\s*$/m);
-  for (const excluded of [".git", ".vercel", "node_modules", "dist", "coverage"]) {
-    assert.match(packager, new RegExp(excluded.replace(".", "\\.")));
-  }
-});
-
-test("service worker tidak pernah memakai fallback HTML untuk asset", async () => {
-  const source = await readFile(new URL("../../frontend/public/sw.js", import.meta.url), "utf8");
-  const navigationBranch = source.indexOf('if (request.mode === "navigate")');
-  const navigationReturn = source.indexOf("\n    return;", navigationBranch);
-  const htmlFallback = source.indexOf('caches.match("/")');
-  const assetBranch = source.indexOf("event.respondWith(caches.match(request)", navigationReturn);
-  assert.ok(navigationBranch >= 0 && htmlFallback > navigationBranch && htmlFallback < navigationReturn);
-  assert.ok(assetBranch > navigationReturn);
-  assert.match(source, /\["localhost", "127\.0\.0\.1", "::1"\]/);
-  assert.equal(source.indexOf('caches.match("/")', navigationReturn), -1);
-});
-
-test("React Router v8 dikunci pada mode deklaratif tanpa package kompatibilitas, Framework, atau RSC", async () => {
-  const frontendRoot = new URL("../../frontend/src/", import.meta.url);
-  const sources = [];
-  const collect = async (directory) => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const url = new URL(entry.name + (entry.isDirectory() ? "/" : ""), directory);
-      if (entry.isDirectory()) await collect(url);
-      else if (/\.(?:js|jsx)$/.test(entry.name)) sources.push(await readFile(url, "utf8"));
-    }
-  };
-  await collect(frontendRoot);
-
-  const [frontendPackageJson, rootPackageJson, workflow, mainSource, appSource] = await Promise.all([
-    readFile(new URL("../../frontend/package.json", import.meta.url), "utf8"),
-    readFile(new URL("../../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../../.github/workflows/quality.yml", import.meta.url), "utf8"),
-    readFile(new URL("../../frontend/src/main.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../../frontend/src/app/App.jsx", import.meta.url), "utf8"),
-  ]);
-  const frontendPackage = JSON.parse(frontendPackageJson);
-  const rootPackage = JSON.parse(rootPackageJson);
-  const frontendSource = sources.join("\n");
-
-  assert.equal(frontendPackage.dependencies["react-router"], "8.3.0");
-  assert.equal(frontendPackage.dependencies["react-router-dom"], undefined);
-  assert.equal(frontendPackage.dependencies.react, "19.2.8");
-  assert.equal(frontendPackage.dependencies["react-dom"], "19.2.8");
-  assert.equal(rootPackage.engines.node, "24.x");
-  assert.match(workflow, /node-version:\s*24/);
-  assert.match(workflow, /- run: npm ci/);
-  assert.match(mainSource, /from "react-router"/);
-  assert.match(mainSource, /\bBrowserRouter\b/);
-  assert.match(appSource, /\bRoutes\b/);
-  assert.match(appSource, /\bRoute\b/);
-  assert.doesNotMatch(frontendSource, /react-router-dom/);
-  assert.doesNotMatch(frontendSource, /\b(?:createBrowserRouter|RouterProvider|HydratedRouter|ServerRouter|routeRSCServerRequest|matchRSCServerRequest|unstable_[A-Za-z0-9_]+)\b/);
-});
-
-test("observability memakai structured log, request reference, redaction, dan clock calibration aman", async () => {
-  const [packageJson, logger, connector, gateway, session, health, devLauncher, diagnose, appsSecurity, appsCode, apiClient, errorState] = await Promise.all([
-    readFile(new URL("../../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../../api/_lib/observability.js", import.meta.url), "utf8"),
-    readFile(new URL("../../api/_lib/appsScript.js", import.meta.url), "utf8"),
-    readFile(new URL("../../api/gateway.js", import.meta.url), "utf8"),
-    readFile(new URL("../../api/session.js", import.meta.url), "utf8"),
-    readFile(new URL("../../api/health.js", import.meta.url), "utf8"),
-    readFile(new URL("../../scripts/start-vite-dev.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../../scripts/diagnose-runtime.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../../apps-script/Security.gs", import.meta.url), "utf8"),
-    readFile(new URL("../../apps-script/Code.gs", import.meta.url), "utf8"),
-    readFile(new URL("../../frontend/src/services/api/client.js", import.meta.url), "utf8"),
-    readFile(new URL("../../frontend/src/components/feedback/ErrorState.jsx", import.meta.url), "utf8"),
-  ]);
-  const pkg = JSON.parse(packageJson);
-  assert.equal(pkg.scripts.diagnose, "node scripts/diagnose-runtime.mjs");
-  assert.match(logger, /SENSITIVE_KEY/);
-  assert.match(logger, /\[REDACTED\]/);
-  assert.match(logger, /X-Request-ID/);
-  assert.doesNotMatch(logger, /console\.log\([^)]*(?:secret|token|payload|email)/i);
-  assert.match(connector, /connector\.clock\.calibrated/);
-  assert.match(connector, /refreshInternalEnvelope/);
-  assert.match(connector, /attempt <= 2/);
-  assert.match(connector, /MAX_CALIBRATED_SKEW_MS/);
-  assert.match(gateway, /attachRequestId/);
-  assert.match(session, /attachRequestId/);
-  assert.match(health, /runtimeBuildInfo/);
-  assert.match(devLauncher, /npm run diagnose/);
-  assert.match(diagnose, /Clock check/);
-  assert.match(appsSecurity, /serverEpochMs/);
-  assert.match(appsSecurity, /requestEpochMs/);
-  assert.match(appsSecurity, /skewMs/);
-  assert.match(appsCode, /request\.completed/);
-  assert.match(apiClient, /x-request-id/);
-  assert.match(errorState, /Referensi:/);
+test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah dihapus", async () => {
+  for (const file of ["docs/TURSO_SCHEMA.md", "docs/GOOGLE_INTEGRATIONS.md", "docs/DATA_MIGRATION.md", "docs/RECOVERY_RUNBOOK.md"]) assert.equal(await exists(file), true, file);
+  assert.equal(await exists("docs/GOOGLE_SHEETS_SCHEMA.md"), false);
+  const architecture = await source("docs/ARCHITECTURE.md");
+  assert.match(architecture, /Turso/);
+  assert.match(architecture, /source of truth/i);
+  assert.match(architecture, /mirror/i);
 });

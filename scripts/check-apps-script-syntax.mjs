@@ -15,8 +15,37 @@ for (const file of files) {
   }
 }
 
+const utilities = {
+  Charset: { UTF_8: "UTF-8" },
+  base64EncodeWebSafe: () => "signature",
+  computeHmacSha256Signature: () => [1, 2, 3],
+  newBlob: () => ({ getBytes: () => [] }),
+  sleep: () => {},
+};
+const service = () => new Proxy({}, { get: () => () => service() });
+const createContext = () => vm.createContext({
+  console,
+  JSON,
+  Date,
+  Math,
+  Utilities: utilities,
+  ContentService: { MimeType: { JSON: "application/json" }, createTextOutput: () => ({ setMimeType() { return this; } }) },
+  PropertiesService: { getScriptProperties: () => ({ getProperty: () => "test", setProperty: () => {}, deleteProperty: () => {} }) },
+  CacheService: { getScriptCache: () => ({ get: () => null, put: () => {} }) },
+  LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
+  SpreadsheetApp: service(),
+  CalendarApp: service(),
+  DriveApp: service(),
+  ScriptApp: service(),
+  UrlFetchApp: { fetch: () => ({ getResponseCode: () => 200, getContentText: () => "{}" }) },
+  Session: service(),
+});
+
+const REQUIRED_PUBLIC_FUNCTIONS = ["doGet", "doPost", "installScheduledTrigger", "runScheduledJobs"];
+const RETIRED_PUBLIC_FUNCTIONS = ["setupSaldoBersama", "routeAction_", "rows_", "createTransaction_"];
+
 const assertProjectBoots = (order, label) => {
-  const context = vm.createContext({ console });
+  const context = createContext();
   for (const file of order) {
     try { new vm.Script(sources.get(file), { filename: file }).runInContext(context); }
     catch (error) {
@@ -25,13 +54,17 @@ const assertProjectBoots = (order, label) => {
     }
   }
 
-  for (const name of ["doGet", "doPost", "setupSaldoBersama"]) {
+  for (const name of REQUIRED_PUBLIC_FUNCTIONS) {
     const available = vm.runInContext(`typeof ${name} === "function"`, context);
     if (!available) throw new Error(`${label}: fungsi publik ${name} tidak tersedia setelah project dimuat.`);
+  }
+  for (const name of RETIRED_PUBLIC_FUNCTIONS) {
+    const available = vm.runInContext(`typeof ${name} === "function"`, context);
+    if (available) throw new Error(`${label}: fungsi database legacy ${name} masih tersedia.`);
   }
 };
 
 assertProjectBoots(files, "Apps Script boot urutan alfabet");
 assertProjectBoots([...files].reverse(), "Apps Script boot urutan terbalik");
 
-console.log(`Syntax dan boot Apps Script valid: ${files.length} file, 2 urutan load.`);
+console.log(`Syntax dan boot Apps Script integration bridge valid: ${files.length} file, 2 urutan load.`);

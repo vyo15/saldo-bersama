@@ -82,25 +82,25 @@ export const assertAllowedOrigin = (request) => {
 
 export const ACTION_PERMISSIONS = Object.freeze({
   owner: new Set([
-    "system.initialize", "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview",
+    "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "audit.list", "dashboard.overview",
     "accounts.list", "accounts.create", "accounts.update", "accounts.archive",
     "categories.list", "categories.create", "categories.update", "categories.archive",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
-    "envelopes.list", "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
+    "envelopes.list", "envelopes.create", "envelopes.move", "envelopes.close",
     "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "budgets.upsert", "budgets.archive", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly",
-    "reconciliations.list", "reconciliations.create", "periods.list", "periods.close", "periods.reopen", "calendar.sync",
-    "notifications.register", "notifications.unregister", "backup.create", "export.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
+    "reconciliations.list", "reconciliations.create", "periods.list", "periods.close", "periods.reopen",
+    "calendar.sync", "mirror.sync", "mirror.rebuild", "integrations.status",
+    "notifications.register", "notifications.unregister", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
   ]),
   member: new Set([
     "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",
-    "notifications.register", "notifications.unregister",
+    "notifications.register", "notifications.unregister", "integrations.status",
   ]),
 });
-
 export const authorizeAction = (session, action) => Boolean(session && ACTION_PERMISSIONS[session.role]?.has(action));
 
 const RESERVED_TRANSACTION_FIELDS = new Set([
@@ -146,18 +146,16 @@ export const assertPayloadAuthorization = (session, action, payload = {}) => {
 };
 
 const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
-  "system.initialize", "users.upsert", "users.deactivate",
+  "users.upsert", "users.deactivate",
   "accounts.create", "accounts.update", "accounts.archive",
   "categories.create", "categories.update", "categories.archive",
   "transactions.create", "transactions.update", "transactions.cancel",
-  "envelopes.create", "envelopes.createRule", "envelopes.createPeriod", "envelopes.move", "envelopes.close",
+  "envelopes.create", "envelopes.move", "envelopes.close",
   "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
   "budgets.upsert", "budgets.archive", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reconciliations.create",
-  "periods.close", "periods.reopen", "calendar.sync",
-  "notifications.register", "notifications.unregister", "backup.create", "export.create",
-  "import.apply", "restore.apply"
+  "periods.close", "periods.reopen", "calendar.sync", "mirror.sync", "mirror.rebuild",
+  "notifications.register", "notifications.unregister", "backup.create", "import.apply", "restore.apply"
 ]);
-
 export const requiresIdempotencyKey = (action) => IDEMPOTENCY_REQUIRED_ACTIONS.has(action);
 
 const buckets = new Map();
@@ -211,52 +209,16 @@ export const identityRateLimitKey = (scope, identity) => {
   return `${scope}:${digest}`;
 };
 
-const signInternalMessage = (message) => {
-  const secret = process.env.INTERNAL_SHARED_SECRET;
-  if (!secret || secret.length < 32) throw Object.assign(new Error("Koneksi internal Google Apps Script belum dikonfigurasi."), { status: 503, code: "CONNECTOR_NOT_CONFIGURED" });
-  return crypto.createHmac("sha256", secret).update(message).digest("hex");
-};
 
-export const createInternalEnvelope = ({ actor, action, payload, requestId, idempotencyKey, rowVersion, timestampMs = Date.now() }) => {
-  const message = JSON.stringify({
-    timestamp: timestampMs,
-    nonce: crypto.randomUUID(),
-    actor,
-    action,
-    payload: payload || {},
-    requestId,
-    idempotencyKey: idempotencyKey || null,
-    rowVersion: rowVersion ?? null,
-  });
-  return { message, signature: signInternalMessage(message) };
-};
-
-export const refreshInternalEnvelope = (envelope, timestampMs) => {
-  let parsed;
-  try { parsed = JSON.parse(String(envelope?.message || "")); }
-  catch { throw Object.assign(new Error("Envelope internal tidak dapat dikalibrasi."), { status: 500, code: "CONNECTOR_ENVELOPE_INVALID" }); }
-  const message = JSON.stringify({
-    ...parsed,
-    timestamp: Number(timestampMs),
-    nonce: crypto.randomUUID(),
-  });
-  return { message, signature: signInternalMessage(message) };
-};
-
-const pushNonces = new Map();
-
-export const verifyInternalPushSignature = (body) => {
-  const secret = process.env.INTERNAL_SHARED_SECRET;
-  if (!secret || !body?.message || !body?.signature) return null;
-  const expected = crypto.createHmac("sha256", secret).update(body.message).digest("hex");
-  const a = Buffer.from(expected);
-  const b = Buffer.from(String(body.signature));
+export const verifyScheduledJobSignature = (body, { now = Date.now() } = {}) => {
+  const secret = String(process.env.JOBS_SHARED_SECRET || "");
+  if (secret.length < 32 || !body?.message || !body?.signature) return null;
+  const expected = crypto.createHmac("sha256", secret).update(String(body.message)).digest("hex");
+  const actual = String(body.signature);
+  const a = Buffer.from(expected); const b = Buffer.from(actual);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-  const message = JSON.parse(body.message);
-  if (Math.abs(Date.now() - Number(message.timestamp || 0)) > 120_000) return null;
-  if (!message.nonce || pushNonces.has(message.nonce)) return null;
-  const now = Date.now();
-  pushNonces.set(message.nonce, now + 180_000);
-  for (const [nonce, expiresAt] of pushNonces.entries()) if (expiresAt <= now) pushNonces.delete(nonce);
+  let message;
+  try { message = JSON.parse(body.message); } catch { return null; }
+  if (Math.abs(now - Number(message.timestamp || 0)) > 120_000 || !message.nonce) return null;
   return message;
 };

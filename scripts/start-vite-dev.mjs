@@ -27,16 +27,14 @@ for (const [key, value] of Object.entries(localEnvironment)) {
 process.env.NODE_ENV ||= "development";
 process.env.VERCEL_ENV ||= "development";
 
-const [{ logEvent, runtimeBuildInfo }, { connectorConfiguration }] = await Promise.all([
-  import(new URL("../api/_lib/observability.js", import.meta.url)),
-  import(new URL("../api/_lib/appsScript.js", import.meta.url)),
-]);
+const { logEvent, runtimeBuildInfo } = await import(new URL("../api/_lib/observability.js", import.meta.url));
 
 const routeModules = Object.freeze({
   "/api/session": "../api/session.js",
   "/api/gateway": "../api/gateway.js",
   "/api/health": "../api/health.js",
-  "/api/push": "../api/push.js",
+  "/api/export": "../api/export.js",
+  "/api/jobs": "../api/jobs.js",
 });
 const routeHandlers = new Map();
 
@@ -162,15 +160,19 @@ await new Promise((resolve, reject) => {
   httpServer.listen(port, host, resolve);
 });
 
-const connector = connectorConfiguration();
+const runtimeConfiguration = Object.freeze({
+  databaseConfigured: Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
+  googleBridgeConfigured: Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET),
+  scheduledJobsConfigured: Boolean(process.env.JOBS_ENDPOINT_URL && process.env.JOBS_SHARED_SECRET),
+});
 console.log(`\n  Saldo Bersama DEV siap di http://localhost:${port}`);
-console.log("  Frontend dan /api berjalan dalam satu proses. Tekan Ctrl+C untuk berhenti.");
-console.log(`  Connector URL: ${connector.appsScriptUrlConfigured ? "set" : "MISSING"}; shared secret: ${connector.sharedSecretConfigured ? "set" : "MISSING"}`);
+console.log("  Frontend dan lima endpoint /api berjalan dalam satu proses. Tekan Ctrl+C untuk berhenti.");
+console.log(`  Turso: ${runtimeConfiguration.databaseConfigured ? "set" : "MISSING"}; Google bridge: ${runtimeConfiguration.googleBridgeConfigured ? "set/optional" : "not configured"}`);
 console.log("  Diagnostik aman: npm run diagnose\n");
 logEvent("info", "local.server.started", {
   port,
   host,
-  connector,
+  runtimeConfiguration,
   build: runtimeBuildInfo(),
 });
 

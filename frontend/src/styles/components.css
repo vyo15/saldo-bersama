@@ -179,3 +179,38 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* PWA install, connectivity, and safe update states */
+.pwa-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+.pwa-banner > svg { flex: 0 0 auto; width: 20px; height: 20px; }
+.pwa-banner > span { flex: 1; line-height: 1.45; }
+.pwa-banner--offline { border-color: color-mix(in srgb, var(--warning) 50%, var(--border)); background: color-mix(in srgb, var(--warning) 10%, var(--surface)); }
+.pwa-banner--offline > svg { color: var(--warning); }
+.pwa-banner--update { border-color: color-mix(in srgb, var(--primary) 42%, var(--border)); background: var(--primary-soft); }
+.install-app-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  background: linear-gradient(135deg, var(--surface), var(--primary-soft));
+}
+.install-app-card > div { display: grid; gap: 5px; }
+.install-app-card h2, .install-app-card p { margin: 0; }
+.install-app-card p:last-child { color: var(--text-soft); line-height: 1.5; }
+.install-app-card__hint { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-soft); font-weight: 750; white-space: nowrap; }
+.install-app-card__hint svg { width: 18px; height: 18px; color: var(--primary); }
+.floating-add:disabled, .mobile-navigation__add:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }

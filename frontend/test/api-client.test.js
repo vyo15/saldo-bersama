@@ -106,9 +106,8 @@ test("FinanceContext tidak men-seed daftar master aktif sebagai daftar manajemen
 });
 
 
-test("FinanceContext mengikat UID baru melalui bootstrap lock sebelum retry initial state", async () => {
+test("FinanceContext memakai initial state Turso tanpa bootstrap Apps Script legacy", async () => {
   const source = await readFile(new URL("../src/app/FinanceContext.jsx", import.meta.url), "utf8");
-  assert.match(source, /IDENTITY_BIND_REQUIRED/);
-  assert.match(source, /apiClient\.request\("bootstrap\.get", \{\}, \{ force: true \}\)/);
-  assert.match(source, /apiClient\.request\("app\.initialState", \{\}, \{ force: true \}\)/);
+  assert.match(source, /apiClient\.request\("app\.initialState", \{\}, \{ force \}\)/);
+  assert.doesNotMatch(source, /IDENTITY_BIND_REQUIRED|system\.initialize|Apps Script/);
 });
