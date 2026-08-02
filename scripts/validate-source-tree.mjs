@@ -30,6 +30,7 @@ const allowedRootEntries = new Set([
   "apps-script",
   "database",
   "docs",
+  "eslint.backend.config.js",
   "frontend",
   "package-lock.json",
   "package.json",

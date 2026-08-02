@@ -2,7 +2,7 @@ import { appendAudit } from "./audit.js";
 import { firstNegativeBalance } from "./readModels.js";
 import {
   appError, assertVersion, boundedInteger, dateValue, nowIso, periodKey, positiveInteger, publicRow,
-  sanitizeText, scopeFromAccountPair, todayJakarta, uuid, visibleScopeSql,
+  sanitizeText, scopeFromAccountPair, uuid, visibleScopeSql,
 } from "./core.js";
 
 const TRANSACTION_TYPES = new Set(["income", "expense", "transfer", "refund", "adjustment"]);

@@ -6,7 +6,7 @@ export const listReconciliations = async (db, context) => {
   const access = visibleAccountSql(context.actor, "a");
   const limit = Math.max(1, Math.min(100, Number(context.payload?.limit || 30)));
   const rows = await db.all(`SELECT r.*,a.name AS account_name FROM reconciliations r JOIN accounts a ON a.account_id=r.account_id WHERE ${access.sql} ORDER BY r.reconciled_at DESC LIMIT ?`, [...access.args, limit]);
-  return { items: rows.map(publicRow) };
+  return { items: rows.map((row) => publicRow(row)) };
 };
 
 export const createReconciliation = async (db, context) => {

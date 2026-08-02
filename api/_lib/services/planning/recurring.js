@@ -1,7 +1,7 @@
 import { appendAudit } from "../audit.js";
-import { cancelTransactionInternal, createTransactionInternal, assertTransactionDateUnlocked } from "../finance.js";
-import { addDays, appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleAccountSql, visibleScopeSql } from "../core.js";
-import { addMonths, accountWithAccess, dueDayValue, ruleScopeFromAccount } from "./shared.js";
+import { cancelTransactionInternal, createTransactionInternal } from "../finance.js";
+import { addDays, appError, assertOwner, assertVersion, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
+import { addMonths, accountWithAccess, assertOwnedAccess, dueDayValue, ruleScopeFromAccount } from "./shared.js";
 const FREQUENCIES = new Set(["daily", "weekly", "biweekly", "monthly", "bimonthly", "quarterly", "semiannual", "annual"]);
 const frequencyMonthStep = {
   monthly: 1,

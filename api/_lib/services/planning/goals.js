@@ -1,7 +1,7 @@
 import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal, assertTransactionDateUnlocked } from "../finance.js";
 import { goalProgress } from "../readModels.js";
-import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, todayJakarta, uuid, visibleAccountSql, visibleScopeSql } from "../core.js";
+import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 export const listGoals = async (db, context) => {
   const access = visibleScopeSql(context.actor, "g");

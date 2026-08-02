@@ -70,6 +70,7 @@ test("bootstrap otomatis login, link, pull Development, sanitasi OIDC, dan menul
   assert.equal(calls.some(({ args }) => args[0] === "login"), true);
   assert.equal(calls.some(({ args }) => args[0] === "link" && args.includes("saldo-bersama")), true);
   assert.equal(calls.some(({ args }) => args[0] === "env" && args[1] === "pull"), true);
+  assert.equal(projectChecks, 1);
 }));
 
 test("bootstrap mempertahankan .env.local lama bila pull Development gagal", async () => withTempRoot(async (root) => {

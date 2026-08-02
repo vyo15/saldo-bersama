@@ -5,6 +5,7 @@
 ```bash
 npm run validate:source
 npm run lint
+npm run lint:backend
 npm run test
 npm run build
 npm run build:budget
@@ -16,6 +17,8 @@ npm run zip
 Cakupan wajib:
 
 - schema STRICT, FK, integer Rupiah, ownership, bentuk transaksi, cancellation metadata, dan saldo awal negatif;
+- backend `no-undef` dan `no-unused-vars` untuk mencegah import dependency hilang saat service dipecah;
+- authenticated `app.initialState`, budget, recurring create/update/pay/reverse, import apply, restore apply, dan integrity maintenance recovery dijalankan pada SQLite in-memory;
 - income/expense/transfer/refund/adjustment;
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
 - row-version conflict dan idempotency replay;

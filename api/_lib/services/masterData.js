@@ -1,6 +1,6 @@
 import { appendAudit } from "./audit.js";
 import { accountBalanceAsOf, firstNegativeBalance, visibleAccounts } from "./readModels.js";
-import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid, visibleAccountSql } from "./core.js";
+import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "./core.js";
 
 const ACCOUNT_TYPES = new Set(["cash", "bank", "ewallet", "savings", "emergency_fund", "sinking_fund", "investment", "other"]);
 const CATEGORY_TYPES = new Set(["income", "expense", "refund"]);

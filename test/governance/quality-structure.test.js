@@ -42,7 +42,13 @@ test("tooling kualitas dan lifecycle dokumentasi terhubung dari package canonica
   assert.equal(packageJson.scripts["clean:dry-run"], "node scripts/clean-generated-artifacts.mjs --dry-run");
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
   assert.equal(packageJson.scripts["test:browser"], "node --test test/browser/*.test.mjs");
+  assert.equal(packageJson.scripts["lint:backend"], "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js");
+  assert.match(packageJson.scripts.lint, /npm run lint:backend/);
   assert.match(packageJson.scripts.check, /build:budget/);
+
+  const backendLint = await source("eslint.backend.config.js");
+  assert.match(backendLint, /"no-undef": "error"/);
+  assert.match(backendLint, /"no-unused-vars"/);
 
   const lifecycle = await source("docs/DOCUMENT_LIFECYCLE.md");
   for (const label of ["Canonical", "Snapshot", "Runbook", "Historical", "Template"]) {

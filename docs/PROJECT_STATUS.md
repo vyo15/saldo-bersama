@@ -2,7 +2,7 @@
 
 **Last source verification:** 2026-08-02
 **Repository:** `vyo15/saldo-bersama`
-**Branch baseline:** `main`
+**Branch baseline:** hotfix source `saldo-bersama(8).zip` on `fix/ci-browser-smoke-cleanup`
 **Schema:** version 3, migration `database/migrations/001_initial_schema.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
@@ -29,6 +29,14 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 - Artifact policy, safe cleanup, clean ZIP verification, serta build budget tersedia.
 - Browser smoke berbasis Chromium/CDP tersedia untuk redirect login, viewport mobile, overflow, target sentuh, landmark, accessible name, dan accessibility tree tanpa dependency browser-test tambahan.
 - Integrasi axe penuh dan visual-regression baseline masih belum tersedia karena dependency tersebut belum menjadi bagian lockfile.
+
+
+## Hotfix runtime backend 2026-08-02
+
+- Refactor service sebelumnya meninggalkan import dependency pada reporting, budget, recurring, import, restore, dan integrity recovery. Import tersebut sudah dipulihkan tanpa mengubah schema atau kontrak API.
+- `app.initialState` sekarang diuji melalui dispatcher authenticated dan database SQLite in-memory, sehingga error `GATEWAY_ERROR` akibat `ReferenceError` tidak dapat lolos hanya dengan syntax check.
+- Backend ESLint `no-undef` dan `no-unused-vars` menjadi bagian `npm run lint`.
+- Import/restore/integrity regression test menjalankan jalur apply dan maintenance recovery dengan Google bridge stub lokal.
 
 ## Status implementasi dan aktivasi
 
