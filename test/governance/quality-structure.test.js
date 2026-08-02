@@ -17,11 +17,23 @@ const exists = async (relative) => {
 
 test("quality workflow menjalankan check, browser smoke, dan verifikasi clean archive", async () => {
   const workflow = await source(".github/workflows/quality.yml");
+  assert.match(workflow, /actions\/checkout@v5/);
+  assert.match(workflow, /actions\/setup-node@v5/);
   assert.match(workflow, /node-version:\s*24/);
+  assert.match(workflow, /Browser smoke[\s\S]*timeout-minutes:\s*2/);
   assert.match(workflow, /npm ci/);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:browser/);
   assert.match(workflow, /npm run zip --/);
+
+  const browserSmoke = await source("test/browser/browser-smoke.test.mjs");
+  assert.match(browserSmoke, /detached:\s*process\.platform !== "win32"/);
+  assert.match(browserSmoke, /stdio:\s*"ignore"/);
+  assert.match(browserSmoke, /terminateChromiumTree/);
+  assert.ok(
+    browserSmoke.indexOf("await chromium?.close()") < browserSmoke.indexOf("await page?.close()"),
+    "Chromium process tree harus ditutup sebelum koneksi CDP agar tidak meninggalkan handle pada runner.",
+  );
 });
 
 test("tooling kualitas dan lifecycle dokumentasi terhubung dari package canonical", async () => {

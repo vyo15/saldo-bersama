@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -87,6 +87,46 @@ const startAppServer = async () => {
   };
 };
 
+const waitForChildExit = (child, timeoutMs) => new Promise((resolveExit) => {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    resolveExit(true);
+    return;
+  }
+  let timer;
+  const cleanup = () => {
+    child.off("exit", onExit);
+    if (timer) clearTimeout(timer);
+  };
+  const onExit = () => {
+    cleanup();
+    resolveExit(true);
+  };
+  child.once("exit", onExit);
+  timer = setTimeout(() => {
+    cleanup();
+    resolveExit(false);
+  }, timeoutMs);
+  timer.unref?.();
+});
+
+const terminateChromiumTree = (child, { force = false } = {}) => {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === "win32") {
+    if (force) {
+      spawnSync("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      child.kill("SIGTERM");
+    }
+    return;
+  }
+  const signal = force ? "SIGKILL" : "SIGTERM";
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    child.kill(signal);
+  }
+};
+
 const startChromium = async () => {
   if (!chromiumBinary) {
     throw new Error("Browser Chromium tidak ditemukan. Instal Google Chrome, Microsoft Edge, atau Brave; atau atur CHROMIUM_BIN ke executable browser.");
@@ -108,35 +148,42 @@ const startChromium = async () => {
     `--remote-debugging-port=${debuggingPort}`,
     `--user-data-dir=${userDataDir}`,
     "about:blank",
-  ], { stdio: ["ignore", "ignore", "pipe"] });
-  let stderr = "";
-  child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
-  child.once("error", (error) => { stderr += error.message; });
+  ], {
+    detached: process.platform !== "win32",
+    stdio: "ignore",
+  });
+  let spawnError = null;
+  child.once("error", (error) => { spawnError = error; });
 
-  const version = await waitFor(async () => {
-    if (child.exitCode !== null) throw new Error(`Chromium berhenti (${child.exitCode}): ${stderr.slice(-800)}`);
-    const response = await fetch(`http://127.0.0.1:${debuggingPort}/json/version`).catch(() => null);
-    return response?.ok ? response.json() : null;
-  }, { timeoutMs: 15_000, description: "Chromium DevTools" });
+  try {
+    const version = await waitFor(async () => {
+      if (spawnError) throw spawnError;
+      if (child.exitCode !== null) throw new Error(`Chromium berhenti (${child.exitCode}).`);
+      const response = await fetch(`http://127.0.0.1:${debuggingPort}/json/version`).catch(() => null);
+      return response?.ok ? response.json() : null;
+    }, { timeoutMs: 15_000, description: "Chromium DevTools" });
 
-  return {
-    debuggingPort,
-    browserWebSocketUrl: version.webSocketDebuggerUrl,
-    close: async () => {
-      if (child.exitCode === null) child.kill("SIGTERM");
-      await new Promise((resolveExit) => {
-        if (child.exitCode !== null) resolveExit();
-        else {
-          child.once("exit", resolveExit);
-          setTimeout(() => {
-            if (child.exitCode === null) child.kill("SIGKILL");
-            resolveExit();
-          }, 3_000).unref();
+    return {
+      debuggingPort,
+      browserWebSocketUrl: version.webSocketDebuggerUrl,
+      close: async () => {
+        terminateChromiumTree(child);
+        const exited = await waitForChildExit(child, 2_000);
+        if (!exited) {
+          terminateChromiumTree(child, { force: true });
+          await waitForChildExit(child, 2_000);
         }
-      });
-      await rm(userDataDir, { recursive: true, force: true });
-    },
-  };
+        child.unref();
+        await rm(userDataDir, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    terminateChromiumTree(child, { force: true });
+    await waitForChildExit(child, 2_000);
+    child.unref();
+    await rm(userDataDir, { recursive: true, force: true });
+    throw error;
+  }
 };
 
 const openPage = async (debuggingPort, url, { width = 390, height = 844 } = {}) => {
@@ -278,8 +325,8 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
     assert.ok(snapshot.some((node) => node.role === "heading" && node.name === result.title), "Heading utama harus terbaca di accessibility tree.");
     assert.ok(snapshot.some((node) => node.role === "button" && /Google/i.test(node.name)), "Tombol login Google harus terbaca di accessibility tree.");
   } finally {
-    await page?.close();
     await chromium?.close();
+    await page?.close();
     await appServer?.close();
   }
 });
