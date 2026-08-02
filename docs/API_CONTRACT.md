@@ -118,6 +118,49 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `restore.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
 | `integrity.run` | Ya | Tidak | Write/operation | Tidak | `api/_lib/services/maintenance/` |
 
+## Read payload dan response penting
+
+### `transactions.list`
+
+Payload opsional:
+
+```json
+{
+  "period": "YYYY-MM",
+  "query": "teks pencarian",
+  "transaction_type": "all|income|expense|transfer|refund|adjustment",
+  "allocation": "all|allocated|unallocated",
+  "account_id": "all atau account_id",
+  "category_id": "all atau category_id",
+  "created_by": "all|me|user_id",
+  "limit": 100,
+  "offset": 0
+}
+```
+
+Response bersifat scope-filtered dan memuat `items`, pagination, `periodLocked`, serta `filterOptions.accounts`, `filterOptions.categories`, dan `filterOptions.creators`. Filter pencatat hanya menyaring transaksi yang memang terlihat oleh actor; tidak mengubah authorization.
+
+### `reports.monthly`
+
+Payload:
+
+```json
+{
+  "period": "YYYY-MM",
+  "trend_months": 3
+}
+```
+
+`trend_months` hanya menerima 3, 6, atau 12 dan default-nya 6. Response menambah:
+
+- `trend.items`: income, expense, refund, net, dan totalBalance per bulan;
+- `accountExpenses`: expense menurut rekening sumber;
+- `creatorExpenses`: expense menurut actor pencatat, **bukan** kontribusi/penanggung biaya;
+- `natureExpenses`: expense menurut `categories.nature`;
+- `overview.alerts`: peringatan actionable dari budget, kantong, recurring, target, transaksi belum dialokasikan, dan rekonsiliasi.
+
+Field tambahan tersebut backward-compatible; transfer internal tetap tidak masuk income/expense/net.
+
 ## Version/conflict
 
 `rowVersion` atau `payload.row_version` wajib untuk update/cancel/reverse yang memodifikasi record versionable. Mismatch menghasilkan HTTP 409; client wajib reload dan tidak boleh overwrite diam-diam.

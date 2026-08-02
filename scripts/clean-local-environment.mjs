@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -78,13 +78,42 @@ export const cleanEnvironmentText = (source = "") => {
   };
 };
 
-export const cleanLocalEnvironment = async ({ file = envPath } = {}) => {
+export const writeEnvironmentFileAtomic = async (file, text) => {
+  const temporary = path.join(
+    path.dirname(file),
+    `.${path.basename(file)}.clean-${process.pid}-${Date.now()}.tmp`,
+  );
+  try {
+    await writeFile(temporary, text, { encoding: "utf8", mode: 0o600 });
+    await chmod(temporary, 0o600).catch(() => undefined);
+    try {
+      await rename(temporary, file);
+    } catch (error) {
+      if (!(["EEXIST", "EPERM"].includes(error?.code))) throw error;
+      await rm(file, { force: true });
+      await rename(temporary, file);
+    }
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+};
+
+export const cleanEnvironmentFile = async ({ file = envPath, allowMissing = false } = {}) => {
   const source = await readFile(file, "utf8").catch((error) => {
+    if (error?.code === "ENOENT" && allowMissing) return null;
     if (error?.code === "ENOENT") throw Object.assign(new Error(`Environment lokal tidak ditemukan: ${file}`), { code: "LOCAL_ENV_NOT_FOUND" });
     throw error;
   });
+  if (source === null) return { exists: false, text: "", removed: [], duplicates: [], changed: false };
+
   const result = cleanEnvironmentText(source);
-  await writeFile(file, result.text, "utf8");
+  const changed = result.text !== source;
+  if (changed) await writeEnvironmentFileAtomic(file, result.text);
+  return { exists: true, changed, ...result };
+};
+
+export const cleanLocalEnvironment = async ({ file = envPath } = {}) => {
+  const result = await cleanEnvironmentFile({ file });
   console.log(`Environment dibersihkan: ${file}`);
   console.log(`Dihapus: ${result.removed.length ? result.removed.join(", ") : "tidak ada"}`);
   console.log(`Duplikat dibuang: ${result.duplicates.length ? result.duplicates.join(", ") : "tidak ada"}`);

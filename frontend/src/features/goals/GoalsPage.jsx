@@ -20,6 +20,14 @@ import { todayInJakarta } from "../../domain/dates.js";
 import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
 
 
+const GOAL_PACE_LABELS = Object.freeze({
+  completed: "Tercapai",
+  on_track: "Sesuai rencana",
+  behind: "Tertinggal",
+  overdue: "Melewati target",
+  no_target_date: "Tanpa tanggal target",
+});
+
 const GoalsPage = () => {
   const resource = useApiResource("goals.list");
   const { bootstrap, refreshOverview, invalidate } = useFinance();
@@ -163,7 +171,12 @@ const GoalsPage = () => {
             <div><p className="eyebrow">{goal.goal_type === "emergency_fund" ? "Dana darurat" : goal.goal_type === "sinking_fund" ? "Dana berkala" : "Tujuan tabungan"}</p><h2>{goal.name}</h2></div>
             <Money value={goal.current_amount} />
             <ProgressBar value={goal.current_amount} max={goal.target_amount} label={goal.name} />
-            <div className="goal-card__footer"><span>Target <Money value={goal.target_amount} /></span><span>{goal.target_date}</span></div>
+            <div className="goal-card__footer"><span>Target <Money value={goal.target_amount} /></span><span>{goal.target_date || "Tanpa tanggal"}</span></div>
+            <dl className="goal-card__projection">
+              <div><dt>Sisa</dt><dd><Money value={goal.remaining_amount || 0} /></dd></div>
+              <div><dt>Estimasi/bulan</dt><dd>{goal.pace_status === "no_target_date" ? "Tetapkan tanggal" : <Money value={goal.required_monthly_amount || 0} />}</dd></div>
+              <div><dt>Proyeksi</dt><dd data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</dd></div>
+            </dl>
             <div className="goal-card__actions">
               {goal.can_move ? <><Button icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Kontribusi</Button><Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik</Button></> : null}
               {goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(goal); setReverseState({ status: "idle", error: null }); }}>Batalkan terakhir</Button> : null}

@@ -74,7 +74,7 @@ test("design tokens expose shared control, motion, and layer contracts", async (
   ]) assert.match(tokens, new RegExp(`${token}:`));
 });
 
-test("halaman data utama memiliki representasi card mobile tanpa mengganti kontrak API", async () => {
+test("halaman data utama memiliki representasi card mobile dan filter transaksi canonical", async () => {
   const [transactions, reports, accounts, settings] = await Promise.all([
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/reports/ReportsPage.jsx"),
@@ -88,8 +88,9 @@ test("halaman data utama memiliki representasi card mobile tanpa mengganti kontr
   assert.match(accounts, /reconciliation-mobile-list/);
   assert.match(settings, /audit-mobile-list/);
   assert.match(settings, /owner-admin-section/);
-  assert.doesNotMatch(transactions, /account_id:\s*filters\./);
-  assert.doesNotMatch(transactions, /category_id:\s*filters\./);
+  assert.match(transactions, /account_id:\s*filters\.account/);
+  assert.match(transactions, /category_id:\s*filters\.category/);
+  assert.match(transactions, /created_by:\s*filters\.creator/);
 });
 
 test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", async () => {

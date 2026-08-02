@@ -99,6 +99,23 @@ const DesktopFinanceDashboard = ({
       </article>
     </section>
 
+    {overview.alerts?.length ? (
+      <section className="premium-alert-panel" aria-labelledby="dashboard-alerts-title">
+        <div className="premium-alert-panel__heading">
+          <div><p className="premium-dashboard__eyebrow">Perlu perhatian</p><h2 id="dashboard-alerts-title">Peringatan keuangan</h2></div>
+          <Link to="/laporan">Lihat laporan</Link>
+        </div>
+        <ul className="financial-alert-list financial-alert-list--dashboard">
+          {overview.alerts.slice(0, 5).map((alert) => (
+            <li key={alert.id} data-severity={alert.severity}>
+              <div><strong>{alert.title}</strong><span>{alert.message}</span></div>
+              <Link to={alert.targetPath || "/"}>Tinjau</Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
+
     <section className="premium-filterbar" aria-label="Filter transaksi terbaru">
       <div className="premium-filterbar__label"><FiSliders aria-hidden="true" /><span>Filter aktif</span><strong>{activeFilterCount}</strong></div>
       <label className="premium-select"><span className="sr-only">Filter rekening</span><select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}><option value="all">Semua rekening</option>{overview.accountBalances.map((item) => <option key={item.account_id} value={item.account_id}>{item.name}</option>)}</select><FiChevronDown aria-hidden="true" /></label>

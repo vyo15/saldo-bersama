@@ -27,6 +27,21 @@ test("bootstrap memakai .env.local lengkap tanpa menghubungi Vercel", async () =
   assert.equal(calls, 0);
 }));
 
+test("bootstrap membersihkan OIDC dari .env.local lengkap tanpa menghubungi Vercel", async () => withTempRoot(async (root) => {
+  const envPath = path.join(root, ".env.local");
+  await writeFile(envPath, `${completeEnvironment()}VERCEL_OIDC_TOKEN=temporary\n`);
+  let calls = 0;
+  const result = await ensureDevelopmentEnvironment({
+    projectRoot: root,
+    runner: async () => { calls += 1; return { code: 0 }; },
+  });
+  const source = await readFile(envPath, "utf8");
+  assert.equal(result.source, "local");
+  assert.equal(calls, 0);
+  assert.doesNotMatch(source, /VERCEL_OIDC_TOKEN/);
+  assert.ok(result.removed.includes("VERCEL_OIDC_TOKEN"));
+}));
+
 test("bootstrap fail closed tanpa terminal interaktif ketika .env.local tidak tersedia", async () => withTempRoot(async (root) => {
   await assert.rejects(
     ensureDevelopmentEnvironment({ projectRoot: root, interactive: false }),
@@ -80,7 +95,10 @@ test("bootstrap mempertahankan .env.local lama bila pull Development gagal", asy
 
   const runner = async ({ args }) => {
     if (args[0] === "whoami") return { code: 0 };
-    if (args[0] === "link") return { code: 0 };
+    if (args[0] === "link") {
+      await writeFile(envPath, `${original}VERCEL_OIDC_TOKEN=temporary\n`);
+      return { code: 0 };
+    }
     if (args[0] === "env" && args[1] === "ls") return { code: 0 };
     if (args[0] === "env" && args[1] === "pull") return { code: 1 };
     return { code: 1 };

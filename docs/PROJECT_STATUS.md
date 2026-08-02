@@ -2,7 +2,7 @@
 
 **Last source verification:** 2026-08-02
 **Repository:** `vyo15/saldo-bersama`
-**Branch baseline:** hotfix source `saldo-bersama(8).zip` on `fix/ci-browser-smoke-cleanup`
+**Source baseline:** hasil merge `saldo-bersama-clean(89).zip` + patch product-control + patch CI browser public environment
 **Schema:** version 3, migration `database/migrations/001_initial_schema.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
@@ -31,6 +31,23 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 - Integrasi axe penuh dan visual-regression baseline masih belum tersedia karena dependency tersebut belum menjadi bagian lockfile.
 
 
+## CI browser-smoke hardening 2026-08-02
+
+- Workflow Quality menyediakan public dummy `VITE_GOOGLE_CLIENT_ID` dan `VITE_FIREBASE_API_KEY` hanya saat build/check CI.
+- Browser smoke memblokir Google Identity Services eksternal dan memakai mock lokal deterministik, sehingga tidak menunggu jaringan/provider.
+- Governance test menjaga fixture public CI tetap tersedia dan tidak mengubah environment Production.
+
+## Product-control alignment 2026-08-02
+
+- Dokumen kebutuhan 17 area kini menjadi requirement canonical dengan status Implemented/Partial/Planned.
+- `transactions.list` mendukung filter rekening, kategori, dan pencatat serta mengembalikan filter option yang sudah scope-filtered.
+- `reports.monthly` menambah tren 3/6/12 bulan, total saldo lintas bulan, breakdown rekening, category nature, dan aktivitas pencatatan.
+- Dashboard/laporan menampilkan alert budget, kantong, recurring, target, transaksi belum dialokasikan, serta rekonsiliasi.
+- Goal read model menambah sisa target, proyeksi pace, dan kebutuhan setoran bulanan tanpa menyimpan angka turunan.
+- Scheduled notification queue menambah budget/kantong threshold, goal behind, dan unallocated expense dengan dedupe key.
+- Fitur yang memerlukan schema/authorization baru tidak dipaksakan; enam RFC Proposed mencakup transaction lifecycle/receipt, debt, contribution, hierarchy/stages, privacy, dan partner permission.
+- Bootstrap dan sinkronisasi Vercel Development kini membersihkan `VERCEL_OIDC_TOKEN` secara otomatis sebelum memakai env dan setelah `vercel link`, termasuk jalur gagal; `env:push:development` dapat dijalankan ulang tanpa `env:clean` manual.
+
 ## Hotfix runtime backend 2026-08-02
 
 - Refactor service sebelumnya meninggalkan import dependency pada reporting, budget, recurring, import, restore, dan integrity recovery. Import tersebut sudah dipulihkan tanpa mengubah schema atau kontrak API.
@@ -57,27 +74,28 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 6. Mantine tetap staged dependency dan hanya boleh dipakai melalui wrapper shared.
 7. ZIP manual penuh pernah memuat `.env.local`; `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` harus dirotasi sebelum deployment berikutnya.
 
-## Validasi terakhir pada patch struktur
+## Validasi terakhir pada patch product-control
 
 ```text
-npm run lint: PASS
-frontend unit/static tests: 39/39 PASS
-backend/database/security/tooling tests: 90/90 PASS
-Node syntax: 85 file PASS
+Source validation: 291 file PASS
+Frontend unit/static tests: 42/42 PASS
+Backend/database/security/tooling/governance tests: 104/104 PASS
+Total automated tests: 146/146 PASS
+Node syntax: 88 file PASS
 Apps Script syntax/boot: 6 file, 2 urutan load PASS
-npm run build pada sandbox: belum dapat diulang karena registry sandbox tidak menyediakan vite/Rollup Linux; build Node 24 pada komputer project tetap wajib
-browser smoke: source tersedia; jalankan setelah build dengan npm run test:browser
+npm ci/lint/build pada sandbox: belum dapat dijalankan karena registry internal tidak menyediakan vite-7.3.6.tgz dan runtime sandbox Node 22.16.0; Node 24 check pada komputer project wajib
+browser smoke: belum dijalankan pada sandbox karena build/dependency tidak tersedia
 ```
 
 ## Prioritas berikutnya
 
-1. Terapkan patch pada repository, hapus path lama yang tercantum di manifest, lalu jalankan `npm ci` dan `npm run check` pada Node 24.
-2. Jalankan `npm run test:browser` dengan Chrome, Edge, Brave, atau Chromium lokal.
+1. Jalankan `npm ci`, `npm run check`, dan `npm run test:browser` pada Node 24 setelah menerapkan patch.
+2. Uji filter transaksi, tren laporan, dashboard alert, target projection, dan push queue pada dua akun nyata.
 3. Rotasi secret yang pernah ikut ZIP manual dan sinkronkan Development/Production secara guarded.
-4. Terapkan branch protection/ruleset dan required `Quality` check.
-5. Jalankan migration parity serta backup/restore real-resource drill.
-6. Tambahkan axe/visual regression hanya melalui dependency + lockfile yang tervalidasi.
-7. Lengkapi observability eksternal dan alerting melalui RFC/approval.
+4. Putuskan RFC-0016 sebelum mengubah hak planning member; RFC schema lain tetap Proposed.
+5. Terapkan branch protection/ruleset dan required `Quality` check.
+6. Jalankan migration parity serta backup/restore real-resource drill.
+7. Lengkapi axe/visual regression dan observability eksternal melalui dependency/RFC yang disetujui.
 
 ## Cara melanjutkan
 

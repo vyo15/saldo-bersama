@@ -9,6 +9,7 @@ import {
   WEB_PUSH_ENV_KEYS,
   parseEnvironmentText,
 } from "./runtime-environment.mjs";
+import { cleanEnvironmentFile, cleanEnvironmentText, writeEnvironmentFileAtomic } from "./clean-local-environment.mjs";
 import { buildVercelInvocation } from "./push-vercel-production-env.mjs";
 import {
   DEFAULT_VERCEL_PROJECT,
@@ -108,7 +109,9 @@ export const pushDevelopmentEnvironment = async ({
     }
     throw error;
   });
-  const values = parseEnvironmentText(source);
+  const cleanedSource = cleanEnvironmentText(source);
+  if (cleanedSource.text !== source) await writeEnvironmentFileAtomic(envPath, cleanedSource.text);
+  const values = parseEnvironmentText(cleanedSource.text);
   const status = validateDevelopmentEnvironment(values);
   if (!status.valid) {
     const messages = [];
@@ -122,11 +125,15 @@ export const pushDevelopmentEnvironment = async ({
     );
   }
 
-  await projectRunner({ cwd });
   const keysToSync = DEVELOPMENT_ENV_KEYS.filter((key) => String(values[key] ?? "").trim());
-  for (const key of keysToSync) {
-    console.log(`Sinkronisasi ${key} → Vercel Development`);
-    await runner({ cwd, key, value: values[key] });
+  try {
+    await projectRunner({ cwd });
+    for (const key of keysToSync) {
+      console.log(`Sinkronisasi ${key} → Vercel Development`);
+      await runner({ cwd, key, value: values[key] });
+    }
+  } finally {
+    await cleanEnvironmentFile({ file: envPath, allowMissing: true });
   }
 
   console.log(`Selesai: ${keysToSync.length} environment canonical tersinkron ke Development.`);

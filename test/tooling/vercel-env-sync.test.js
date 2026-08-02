@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -131,6 +131,46 @@ test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap
   assert.deepEqual(result.synced, [...DEVELOPMENT_ENV_KEYS]);
   assert.deepEqual(calls.map(({ key }) => key), [...DEVELOPMENT_ENV_KEYS]);
   assert.equal(calls.find(({ key }) => key === "TURSO_AUTH_TOKEN").value, values.TURSO_AUTH_TOKEN);
+}));
+
+test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idempotent", async () => withTempProject(async (root) => {
+  const values = Object.fromEntries(DEVELOPMENT_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
+  const envPath = path.join(root, ".env.local");
+  await writeFile(envPath, serialize(values));
+  let projectRuns = 0;
+  const projectRunner = async () => {
+    projectRuns += 1;
+    await writeFile(envPath, `${await readFile(envPath, "utf8")}VERCEL_OIDC_TOKEN=temporary-${projectRuns}\n`);
+  };
+  const calls = [];
+
+  await pushDevelopmentEnvironment({ cwd: root, envPath, projectRunner, runner: async (request) => calls.push(request) });
+  assert.doesNotMatch(await readFile(envPath, "utf8"), /VERCEL_OIDC_TOKEN/);
+  await pushDevelopmentEnvironment({ cwd: root, envPath, projectRunner, runner: async (request) => calls.push(request) });
+
+  assert.equal(projectRuns, 2);
+  assert.equal(calls.length, DEVELOPMENT_ENV_KEYS.length * 2);
+  assert.doesNotMatch(await readFile(envPath, "utf8"), /VERCEL_OIDC_TOKEN/);
+}));
+
+test("sinkronisasi Development membersihkan OIDC ketika pemeriksaan project gagal", async () => withTempProject(async (root) => {
+  const values = Object.fromEntries(DEVELOPMENT_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
+  const envPath = path.join(root, ".env.local");
+  await writeFile(envPath, serialize(values));
+
+  await assert.rejects(
+    pushDevelopmentEnvironment({
+      cwd: root,
+      envPath,
+      projectRunner: async () => {
+        await writeFile(envPath, `${await readFile(envPath, "utf8")}VERCEL_OIDC_TOKEN=temporary\n`);
+        throw Object.assign(new Error("link failed"), { code: "VERCEL_LINK_FAILED" });
+      },
+      runner: async () => {},
+    }),
+    (error) => error.code === "VERCEL_LINK_FAILED",
+  );
+  assert.doesNotMatch(await readFile(envPath, "utf8"), /VERCEL_OIDC_TOKEN/);
 }));
 
 test("sinkronisasi Development menolak grup opsional parsial dan key OIDC", () => {

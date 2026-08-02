@@ -54,3 +54,25 @@ Schema column-level canonical berada di `database/migrations/001_initial_schema.
 - `transactions.status` menentukan dampak saldo; cancelled/archived tidak dihitung.
 - `owner_scope`/`scope`: `shared` atau `personal`.
 - `created_by`, `updated_by`, cancellation/reversal actor: server canonical.
+
+
+## Data turunan tanpa kolom baru
+
+Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
+
+- `balance`, `safeToSpend`, `unallocatedFunds`;
+- `progress_percent`, `remaining_amount`, `required_monthly_amount`, `pace_status` target;
+- tren 3/6/12 bulan dan breakdown laporan;
+- budget/kantong threshold serta alert rekonsiliasi.
+
+## Model planned — belum ada di schema v3
+
+Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
+
+- transaction lifecycle, `used_by`, receipt reference, draft/planned: RFC-0011;
+- obligation/debt/receivable/settlement: RFC-0012;
+- contribution, payer, beneficiary, cost split: RFC-0013;
+- category parent dan goal stage: RFC-0014;
+- account visibility policy/backend projection: RFC-0015.
+
+Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.

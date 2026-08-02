@@ -1,26 +1,49 @@
 # Implementation Matrix
 
-Kolom **Source** menjelaskan apakah implementasi tersedia pada repository. Kolom **Deployment/verification** menjelaskan apakah fitur sudah dikonfigurasi dan dibuktikan pada resource nyata. “Implemented” tidak otomatis berarti aktif di production.
+Status **Implemented** berarti source tersedia; bukan bukti deployment production. **Partial** berarti subset aman tersedia dan gap dinyatakan. **Planned** berarti belum ada schema/API runtime dan tidak boleh dianggap selesai.
 
-| Area | Source of truth / implementation | Source | Deployment/verification |
-|---|---|---|---|
-| Authentication | Firebase Google + signed HttpOnly session | Implemented | Production smoke test required after env/deploy changes |
-| Authorization | Vercel allowlist + Turso users + backend scope guard | Implemented | Owner/member real-account test required |
-| Database | Turso schema v3 | Implemented | Active; integrity check required after migration |
-| Transactions/saldo | Vercel service + Turso transaction | Implemented | Core tests pass; real-data parity still guarded |
-| Idempotency | `idempotency_keys` | Implemented | Covered by database/service tests |
-| Conflict control | `row_version` conditional update | Implemented | Service tests pass; authenticated browser conflict E2E pending |
-| Audit | append-only `audit_log` | Implemented | Covered by schema/service tests |
-| Sheets mirror | one-way shared-only bridge | Implemented | Not configured or real-resource verified unless bridge env is complete |
-| Calendar | shared recurring bridge | Implemented | Not configured or shared-calendar verified unless bridge env is complete |
-| Excel | direct backend XLSX | Implemented | Generator tests pass; production download smoke test required |
-| Backup/restore | Drive technical backup + guarded restore | Implemented | Real-resource restore drill required |
-| PWA | manifest, service worker, install/offline/update UI | Implemented | iPhone/Android device smoke test required |
-| Web Push | backend queue + VAPID | Implemented | Disabled until VAPID group is complete; device test required |
-| Legacy Sheets DB | removed from runtime | Completed | Legacy spreadsheet remains archival/read-only until retention approval |
-| Production migration | controlled cutover | Implemented tooling | Pending real-data parity/cutover evidence |
-| Governance/handoff | AGENTS, status, handoff, CODEOWNERS, templates | Implemented | Drift tests cover required docs, links, schema, env, and index |
-| Team contracts | API, authorization, data, security, release/runbook docs | Implemented | Machine-readable payload schema pending |
-| Browser E2E/accessibility automation | Chromium/CDP smoke + accessibility tree | Implemented | Login redirect/mobile smoke available; full axe and authenticated journeys pending |
-| Build/archive performance guard | gzip bundle budget + clean ZIP size/content guard | Implemented | Enforced by `npm run check` and tooling tests |
-| External alerting | Vercel/log drain/approved provider | Not implemented | Pending |
+| Requirement | Area | Status source | Bukti utama | Gap / verification |
+|---|---|---|---|---|
+| `REQ-FIN-001` | Integer Rupiah | Implemented | migration constraints, validation, tests | Real-data parity wajib |
+| `REQ-FIN-002` | Saldo dari ledger aktif | Implemented | balance projection, finance tests | Real bank reconciliation wajib |
+| `REQ-FIN-003` | Transfer netral income/expense | Implemented | finance service/report tests | Production smoke wajib |
+| `REQ-FIN-004` | Soft cancel/archive | Implemented | transaction status, audit, tests | Retention policy operation |
+| `REQ-FIN-005` | Idempotency + audit append-only | Implemented | idempotency/audit services + triggers | Operational audit review |
+| `REQ-FIN-006` | Optimistic row version | Implemented | version guards/conflict tests | Multi-device smoke |
+| `REQ-SEC-001`–`REQ-SEC-002` | Auth/authorization | Implemented | `security.js`, session, ownership query | Real owner/member smoke |
+| `REQ-DATA-001`–`REQ-DATA-002` | Turso/recovery | Implemented | migration, maintenance services | Restore drill nyata |
+| `REQ-OFFLINE-001` | Offline write deny | Implemented | service worker/front-end guards | Device smoke |
+| `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
+| `REQ-UX-001` | UI states | Implemented | feedback components/pages | Authenticated E2E |
+| `REQ-A11Y-001` | Accessibility baseline | Partial | semantic tests/browser smoke | axe penuh pending |
+| `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard | Granular privacy pending RFC-0015 |
+| `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
+| `REQ-PROD-03` | Kategori | Partial | categories + `nature` | hierarchy pending RFC-0014 |
+| `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods | Real-device UX verification |
+| `REQ-PROD-05` | Anggaran multi-cadence | Partial | envelope cadence + monthly budgets + alerts | recurring budget rules belum ada |
+| `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection | split/stages pending RFC-0013/0014 |
+| `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences | assignee/receipt pending RFC-0011/0013 |
+| `REQ-PROD-08` | Kalender keuangan | Partial | shared recurring Calendar bridge | internal multi-event calendar belum ada |
+| `REQ-PROD-09` | Dashboard pasangan | Implemented | dashboard overview/mobile/desktop alerts | Production smoke |
+| `REQ-PROD-10` | Kontribusi/split | Planned | hanya aktivitas pencatatan | RFC-0013 |
+| `REQ-PROD-11` | Quick/draft transaction | Partial | quick form, duplicate guard, unallocated alerts | draft/template pending RFC-0011 |
+| `REQ-PROD-12` | Utang/piutang | Planned | tidak ada runtime table/action | RFC-0012 |
+| `REQ-PROD-13` | Laporan | Partial | monthly report + 3/6/12 trend + breakdown | contribution/debt model pending |
+| `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts | Cadence configurable belum ada |
+| `REQ-PROD-15` | Privasi | Partial | shared/personal backend scope | projection granular pending RFC-0015 |
+| `REQ-PROD-16` | Notifikasi | Partial | queue/push actionable | VAPID/device verification, more policies pending |
+| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/idempotency/version/backup/export | external alerting + operational drills |
+
+## Infrastruktur dan deployment
+
+| Area | Source | Deployment/verification |
+|---|---|---|
+| Firebase Google auth | Implemented | Production smoke after env/deploy changes |
+| Turso schema v3 | Implemented | Active; parity/integrity evidence pending |
+| Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
+| Calendar recurring shared | Implemented | Requires shared-calendar test |
+| XLSX | Implemented | Generator tests; production download smoke |
+| Backup/restore | Implemented | Real-resource restore drill required |
+| PWA/Web Push | Implemented | Device install/push test required |
+| Browser smoke/build budget | Implemented | Enforced after successful local/CI install |
+| External alerting | Not implemented | RFC/approved provider pending |

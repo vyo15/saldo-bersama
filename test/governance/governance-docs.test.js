@@ -52,6 +52,12 @@ const requiredFiles = [
   "docs/adr/README.md",
   "docs/rfc/README.md",
   "docs/rfc/RFC_TEMPLATE.md",
+  "docs/rfc/0011-transaction-lifecycle-receipts-and-usage.md",
+  "docs/rfc/0012-debt-receivable-ledger.md",
+  "docs/rfc/0013-contribution-and-cost-sharing.md",
+  "docs/rfc/0014-category-hierarchy-and-goal-stages.md",
+  "docs/rfc/0015-granular-personal-privacy.md",
+  "docs/rfc/0016-partner-planning-permissions.md",
   "docs/templates/TASK_HANDOFF_TEMPLATE.md",
 ];
 
@@ -173,4 +179,41 @@ test("project status records active schema version and guarded shared database d
   const status = read("docs/PROJECT_STATUS.md");
   assert.match(status, /Schema:\*\* version 3/);
   assert.match(status, /Runtime lokal dan Vercel Production memakai satu database Turso/);
+});
+
+
+test("every canonical product requirement is tracked in the implementation matrix", () => {
+  const requirements = read("docs/product/PRODUCT_REQUIREMENTS.md");
+  const implementationMatrix = read("docs/IMPLEMENTATION_MATRIX.md");
+  const requirementIds = [...new Set(requirements.match(/\bREQ-[A-Z]+-\d{2,3}\b/g) ?? [])].sort();
+
+  assert.ok(requirementIds.length >= 17, "Canonical product requirement IDs were not found");
+  requirementIds.forEach((requirementId) => {
+    assert.ok(
+      implementationMatrix.includes(`\`${requirementId}\``),
+      `Requirement missing from implementation matrix: ${requirementId}`,
+    );
+  });
+});
+
+test("planned schema-changing product gaps are represented by proposed RFCs", () => {
+  const roadmap = read("docs/product/ROADMAP.md");
+  const rfcIndex = read("docs/rfc/README.md");
+  const rfcFiles = [
+    "0011-transaction-lifecycle-receipts-and-usage.md",
+    "0012-debt-receivable-ledger.md",
+    "0013-contribution-and-cost-sharing.md",
+    "0014-category-hierarchy-and-goal-stages.md",
+    "0015-granular-personal-privacy.md",
+    "0016-partner-planning-permissions.md",
+  ];
+
+  rfcFiles.forEach((relative) => {
+    const rfcId = `RFC-${relative.slice(0, 4)}`;
+    const rfcSource = read(`docs/rfc/${relative}`);
+    assert.match(rfcIndex, new RegExp(escapeRegExp(relative)));
+    assert.match(roadmap, new RegExp(escapeRegExp(rfcId)));
+    assert.match(rfcSource, new RegExp(`^# ${escapeRegExp(rfcId)}\\b`, "m"));
+    assert.match(rfcSource, /Status:\*{0,2}\s*Proposed/i);
+  });
 });

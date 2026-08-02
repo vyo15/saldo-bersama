@@ -22,7 +22,7 @@ Alur `npm run dev`:
 
 1. Memeriksa `vite`, `react`, dan `@mantine/core` dari workspace frontend.
 2. Menjalankan `npm ci` hanya bila dependency tersebut belum tersedia.
-3. Memakai `.env.local` langsung bila delapan key core lengkap.
+3. Membersihkan token OIDC sementara/key legacy lalu memakai `.env.local` langsung bila delapan key core lengkap.
 4. Bila file hilang/tidak lengkap dan terminal interaktif, menjalankan Vercel CLI melalui `npx --yes`.
 5. Meminta login Vercel hanya bila sesi belum ada.
 6. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
@@ -31,7 +31,7 @@ Alur `npm run dev`:
 9. Memvalidasi delapan key core sebelum mengganti `.env.local` secara atomik.
 10. Menjalankan server lokal setelah dependency dan environment valid.
 
-File `.env.local` lama tidak diubah bila login, link, pull, sanitasi, atau validasi gagal. Terminal non-interaktif fail closed dan tidak membuka prompt.
+Nilai canonical `.env.local` lama dipertahankan bila login, link, pull, atau validasi gagal; token OIDC sementara/key legacy tetap dibersihkan. Terminal non-interaktif fail closed dan tidak membuka prompt.
 
 ## 4. Seed Vercel Development satu kali
 
@@ -43,7 +43,7 @@ npm run env:check
 npm run env:push:development
 ```
 
-Command tersebut mengirim key canonical ke scope **Development**, bukan Production. Nilai Development harus dapat dibaca kembali oleh collaborator Vercel yang berwenang karena dipakai oleh `vercel env pull`.
+Command tersebut mengirim key canonical ke scope **Development**, bukan Production. Sebelum validasi dan setelah `vercel link`, script membersihkan `VERCEL_OIDC_TOKEN` secara otomatis sehingga command aman dijalankan ulang. Nilai Development harus dapat dibaca kembali oleh collaborator Vercel yang berwenang karena dipakai oleh `vercel env pull`.
 
 Production tetap terpisah:
 
