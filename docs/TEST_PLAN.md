@@ -107,3 +107,14 @@ Viewport regression minimum:
 ```
 
 Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile serta kontrol sesi desktop. Pada setiap ukuran, setidaknya satu jalur logout harus tersedia melalui header desktop atau menu mobile.
+
+## Rekening dan kategori — responsive financial card
+
+- Owner mobile dan desktop melihat aksi `Tambah rekening atau kategori`.
+- Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive owner.
+- Dialog tambah memiliki dua tab semantik dan memakai form yang sama pada desktop/mobile.
+- Template BCA, BNI, BTN, Mandiri, dan Permata terdeteksi dari nama rekening; rekening bank lain dan non-bank memakai fallback.
+- Tidak ada nomor kartu, PIN, CVV, masa berlaku, atau data sensitif pada asset/DOM.
+- Setelah create/update/archive rekening atau kategori, daftar aktif dan dashboard diperbarui tanpa refresh manual.
+- Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
+- Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.

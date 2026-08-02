@@ -4,6 +4,7 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Mendesain ulang halaman Rekening menjadi list-first dengan kartu finansial responsif BCA/BNI/BTN/Mandiri/Permata, fallback non-bank, satu dialog tambah Rekening/Kategori, owner action mobile, category listing untuk member, serta refresh dashboard setelah rekonsiliasi.
 - Memperbaiki browser parity follow-up: selector privacy desktop kini mengikuti class runtime `.dashboard-desktop`, `useApiResource` tidak lagi merender konten semu pada status awal `idle`, dan route journey menolak loading screen serta memverifikasi heading stabil dua kali.
 - Memperbaiki race pada authenticated Chromium route journey: helper kini menunggu dokumen selesai dan heading route yang tepat, sehingga DOM route sebelumnya atau loading state tidak lagi menghasilkan kegagalan palsu pada `/rekening`.
 - Menyamakan capability dashboard desktop/mobile melalui shared view model, filter, transaction detail, alerts, account/category insights, daily safe spend, unallocated funds, dan privacy nominal tanpa menduplikasi business form.

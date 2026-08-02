@@ -126,6 +126,17 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       await navigateAndAssert(page, appServer.origin, pathname, heading, { mobile: true });
     }
 
+    await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening & kategori", { mobile: true });
+    assert.equal(await page.evaluate(visibleExpression('button[aria-label="Tambah rekening atau kategori"]')), true, "Owner mobile harus memiliki tombol tambah master data.");
+    await page.evaluate("document.querySelector('button[aria-label=\"Tambah rekening atau kategori\"]')?.click()");
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Tambah data'"),
+      { description: "dialog tambah rekening/kategori" },
+    );
+    assert.equal(await page.evaluate("document.querySelectorAll('[role=dialog] [role=tab]').length"), 2, "Dialog tambah harus memuat tab Rekening dan Kategori.");
+    await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "dialog tambah ditutup" });
+
     await setViewport(page, 1440, 900);
     await navigateAndAssert(page, appServer.origin, "/", "Ringkasan Keuangan", { mobile: false });
     assert.equal(await page.evaluate(visibleExpression(".desktop-logout-button")), true, "Logout desktop harus terlihat.");
@@ -152,6 +163,8 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
     for (const [pathname, heading] of routeCases) {
       await navigateAndAssert(page, appServer.origin, pathname, heading, { mobile: true });
     }
+    await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening & kategori", { mobile: true });
+    assert.equal(await page.evaluate("Boolean(document.querySelector('button[aria-label=\"Tambah rekening atau kategori\"]'))"), false, "Member tidak boleh memperoleh aksi master data owner.");
   } finally {
     await page?.close();
     await chromium?.close();

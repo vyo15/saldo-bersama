@@ -1,5 +1,69 @@
 # Project Handoff
 
+## Current task — Financial account-card UI and unified master creation
+
+**Updated:** 2026-08-03  
+**Source:** `saldo-bersama-clean(98).zip`  
+**Scope:** halaman Rekening & kategori, asset visual bank, responsive owner action, category listing, dan refresh setelah mutation.
+
+### Implementasi
+
+1. Lima asset kartu transparan BCA, BNI, BTN, Mandiri, dan Permata dioptimasi ke WebP dan disimpan di `frontend/src/assets/bank-cards/`.
+2. `AccountFinancialCard` menampilkan rekening seperti kartu finansial pada web/mobile, memakai overlay teks aksesibel dan fallback untuk tunai/e-wallet/bank lain.
+3. Form inline desktop dihapus. Satu tombol `Tambah` owner membuka dialog/bottom sheet dengan tab Rekening dan Kategori.
+4. Pemilihan template bank menambahkan suffix nama bank secara deterministik agar template tetap dapat dideteksi tanpa perubahan schema.
+5. Kategori ditampilkan list-first untuk owner/member; mutation master tetap owner-only.
+6. Rekonsiliasi menyegarkan `dashboard.overview` dan initial state sehingga alert tidak tertinggal.
+7. Selector CSS global `account-card`/`account-grid` lama dibersihkan; feature baru memakai CSS Modules.
+
+### Files changed
+
+```text
+frontend/src/assets/bank-cards/{bca,bni,btn,mandiri,permata}.webp
+frontend/src/features/accounts/AccountsPage.jsx
+frontend/src/features/accounts/AccountsPage.module.css
+frontend/src/features/accounts/accountPresentation.js
+frontend/src/features/accounts/components/AccountFinancialCard.jsx
+frontend/src/features/accounts/components/AccountFinancialCard.module.css
+frontend/src/styles/pages.css
+frontend/src/styles/responsive.css
+frontend/test/accounts-ui.test.js
+frontend/test/ui-foundation.test.js
+test/browser/authenticated-app.test.mjs
+docs/UI_DESIGN_SYSTEM.md
+docs/IMPLEMENTATION_MATRIX.md
+docs/PROJECT_STATUS.md
+docs/PROJECT_HANDOFF.md
+docs/TEST_PLAN.md
+CHANGELOG.md
+```
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration Turso, API action/contract, role/authorization, saldo/transfer, audit, idempotency, row version, auth, environment, backup/restore, dependency, atau deployment.
+
+### Test aktual
+
+- `npm run validate:source`: PASS — 306 file.
+- Frontend unit/static test: PASS — 54/54.
+- Backend/database/security/governance test: PASS — 104/104.
+- Total automated test: PASS — 158/158.
+- `npm ci`: GAGAL di sandbox karena registry internal tidak menyediakan `vite-7.3.6.tgz`; runtime sandbox Node 22.16.0, project menetapkan Node 24.x.
+- Lint, build, build budget, dan browser journey final wajib diulang pada komputer project Node 24.
+
+### Next safe step
+
+```bash
+npm ci
+npm run check
+npm run test:browser
+npm run zip
+```
+
+Lakukan smoke visual owner/member pada mobile dan desktop. Verifikasi kartu BCA/BNI/BTN/Mandiri/Permata, fallback rekening non-bank, dialog tab, keyboard/focus, dark/light, dan tidak ada horizontal overflow.
+
+---
+
 ## Current task — Browser parity stability follow-up
 
 **Source:** `saldo-bersama-clean(95).zip`  

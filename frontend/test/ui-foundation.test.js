@@ -129,6 +129,8 @@ test("stylesheet global tidak menghidupkan kembali selector legacy tanpa pemilik
     ".chip-list",
     ".premium-detail-panel",
     ".progress__track",
+    ".account-card",
+    ".account-grid",
   ]) {
     assert.equal(source.includes(selector), false, `${selector} harus tetap terhapus sampai memiliki pemilik runtime`);
   }

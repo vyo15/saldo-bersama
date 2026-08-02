@@ -1,0 +1,200 @@
+.accountSection {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.sectionHeading h2 {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-heading-sm);
+}
+
+.sectionHeading > span {
+  color: var(--text-muted);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.accountGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-5);
+}
+
+.emptyPanel {
+  min-height: 12rem;
+  padding: var(--space-6);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.emptyPanel p {
+  max-width: 32rem;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+.categoryPanel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.categoryGroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-5);
+}
+
+.categoryGroup {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.categoryGroup h3 {
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.categoryList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.categoryItem {
+  min-width: 0;
+  min-height: 4rem;
+  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--surface-soft);
+}
+
+.categoryItem > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.categoryItem strong,
+.categoryItem small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoryItem small {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.categoryActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.reconciliationNotice {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.35fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  line-height: 1.65;
+}
+
+.createTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--surface-soft);
+}
+
+.createTabs button {
+  min-height: var(--control-height-md);
+  border: 0;
+  border-radius: calc(var(--control-radius) - 3px);
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.createTabs button:hover {
+  color: var(--text);
+  background: var(--surface-strong);
+}
+
+.createTabs .activeTab {
+  background: var(--surface-elevated);
+  color: var(--primary);
+  box-shadow: var(--shadow-control);
+}
+
+.createTabs button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.createAccountLayout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.9fr) minmax(18rem, 1.1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .accountGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mobile-section-gap);
+  }
+
+  .categoryGroups,
+  .createAccountLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .createAccountLayout {
+    gap: var(--space-4);
+  }
+
+  .reconciliationNotice {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+}
+
+@media (max-width: 580px) {
+  .sectionHeading {
+    align-items: start;
+  }
+
+  .categoryItem {
+    align-items: flex-start;
+  }
+
+  .categoryActions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

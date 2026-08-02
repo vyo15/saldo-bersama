@@ -1,8 +1,8 @@
 # Project Status
 
-**Last source verification:** 2026-08-02
+**Last source verification:** 2026-08-03
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(95).zip` + browser parity stability hotfix
+**Source baseline:** `saldo-bersama-clean(98).zip` + financial account-card UI patch
 **Schema:** version 3, migration `database/migrations/001_initial_schema.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
@@ -30,6 +30,16 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 - Browser smoke berbasis Chromium/CDP tersedia untuk redirect login, viewport mobile, overflow, target sentuh, landmark, accessible name, dan accessibility tree tanpa dependency browser-test tambahan.
 - Integrasi axe penuh dan visual-regression baseline masih belum tersedia karena dependency tersebut belum menjadi bagian lockfile.
 
+
+## Financial account-card UI 2026-08-03
+
+- Halaman Rekening memakai pola list-first: rekening dan kategori ditampilkan lebih dahulu, sedangkan form tambah dibuka on-demand.
+- Owner memiliki satu aksi `Tambah` yang tersedia di desktop dan mobile; dialog yang sama berisi tab Rekening/Kategori dan menjadi bottom sheet melalui primitive Modal pada viewport kecil.
+- Rekening bank BCA, BNI, BTN, Mandiri, dan Permata memakai asset kartu transparan teroptimasi; rekening lain memakai fallback card berbasis token project.
+- Template bank ditentukan dari nama rekening yang memuat nama bank. Tidak ada schema, nomor kartu, PIN, CVV, atau masa berlaku baru.
+- Kategori sekarang tetap dapat dilihat oleh member, sedangkan create/edit/archive tetap owner-only sesuai authorization backend.
+- Create rekening/kategori tetap menunggu konfirmasi server lalu me-reload master data dan overview; rekonsiliasi juga menyegarkan alert/dashboard.
+- Static regression test menjaga lima asset, deteksi template, unified dialog, CSS Modules, dan ketiadaan selector account-card legacy.
 
 ## Browser parity stability follow-up 2026-08-02
 

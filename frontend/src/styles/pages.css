@@ -26,11 +26,11 @@
 .data-table td small { margin-top: 3px; color: var(--muted); }
 .data-table tr:last-child td { border-bottom: 0; }
 .align-right { text-align: right !important; }
-.allocation-grid, .goal-grid, .account-grid, .settings-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.allocation-card, .goal-card, .account-card, .settings-card { padding: 20px; display: grid; gap: 16px; }
+.allocation-grid, .goal-grid, .settings-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.allocation-card, .goal-card, .settings-card { padding: 20px; display: grid; gap: 16px; }
 .allocation-card__header { display: flex; justify-content: space-between; gap: 14px; }
-.allocation-card h2, .goal-card h2, .account-card h2, .settings-card h2 { font-size: 17px; }
-.allocation-card small, .goal-card small, .account-card small, .settings-card p { color: var(--muted); }
+.allocation-card h2, .goal-card h2, .settings-card h2 { font-size: 17px; }
+.allocation-card small, .goal-card small, .settings-card p { color: var(--muted); }
 .allocation-card dl { display: grid; gap: 8px; }
 .allocation-card dl > div { display: flex; justify-content: space-between; gap: 12px; }
 .allocation-card dt { color: var(--muted); }
@@ -40,11 +40,9 @@
 .schedule-item__date { display: grid; gap: 5px; color: var(--primary); font-size: 12px; }
 .schedule-item p { margin-top: 5px; color: var(--muted); }
 .schedule-item__done { color: var(--positive); }
-.goal-card__icon, .account-card > svg, .settings-card > svg { width: 42px; height: 42px; padding: 10px; border-radius: 13px; background: var(--primary-soft); color: var(--primary); }
+.goal-card__icon, .settings-card > svg { width: 42px; height: 42px; padding: 10px; border-radius: 13px; background: var(--primary-soft); color: var(--primary); }
 .goal-card > .money { font-size: 26px; }
 .goal-card__footer { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; }
-.account-card { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
-.account-card > .money { grid-column: 1 / -1; font-size: 24px; }
 .settings-card { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
 .bar-chart { display: grid; gap: 14px; }
 .bar-chart__item { display: grid; gap: 6px; }

@@ -84,6 +84,16 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Error form terhubung melalui `aria-describedby` dan `aria-invalid`.
 - Keyboard dan screen reader harus dapat menyelesaikan alur transaksi utama.
 
+## Pola kartu rekening
+
+- Daftar rekening memakai komponen domain `AccountFinancialCard`, bukan card generik yang ditata ulang di page.
+- Rekening bank yang namanya memuat BCA, BNI, BTN, Mandiri, atau Permata dapat memakai asset template transparan. Asset hanya dekoratif; nama rekening, saldo, status, scope, dan aksi tetap teks/komponen HTML di atasnya.
+- Nomor kartu, PIN, CVV, masa berlaku, dan nomor rekening penuh tidak boleh ditambahkan untuk kebutuhan dekorasi.
+- Bank yang tidak dikenali serta rekening non-bank wajib memiliki fallback berbasis design token agar tidak bergantung pada asset pihak ketiga.
+- Rekening ditampilkan grid pada desktop dan satu kolom pada mobile. Aksi Rekonsiliasi/Edit/Arsip harus tetap terjangkau pada keduanya.
+- Form master mengikuti pola list-first dan form-on-demand: satu aksi Tambah membuka dialog desktop atau bottom sheet mobile dengan tab Rekening/Kategori.
+- Template visual tidak boleh mengubah schema atau business rule. Pada schema v3, deteksi template bersifat presentational dari nama bank pada nama rekening.
+
 ## Mobile dan PWA
 
 - Mobile adalah layout aplikasi, bukan desktop yang diperkecil.

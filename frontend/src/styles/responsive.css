@@ -7,7 +7,7 @@
 
 @media (max-width: 1100px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .allocation-grid, .goal-grid, .account-grid, .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .allocation-grid, .goal-grid, .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .premium-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .premium-filterbar { grid-template-columns: auto repeat(2, minmax(135px, 1fr)); }
   .premium-search { grid-column: span 2; }
@@ -59,7 +59,7 @@
 }
 
 @media (max-width: 580px) {
-  .metric-grid, .allocation-grid, .goal-grid, .account-grid, .settings-grid { grid-template-columns: 1fr; }
+  .metric-grid, .allocation-grid, .goal-grid, .settings-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid__full { grid-column: auto; }
   .segmented-control { grid-template-columns: repeat(2, 1fr); }
@@ -117,7 +117,6 @@
   .metric-card,
   .allocation-card,
   .goal-card,
-  .account-card,
   .settings-card { padding: var(--mobile-card-padding); border-radius: var(--mobile-card-radius); box-shadow: none; }
   .panel__header { gap: 12px; margin-bottom: 14px; }
   .panel__header h2 { font-size: 17px; }
@@ -230,13 +229,6 @@
   .budget-mobile-card__metrics .money { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
   .budget-performance-panel .empty-state { min-height: 180px; padding: 20px 14px; }
 
-  .account-grid { gap: 10px; }
-  .account-card { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; }
-  .account-card > svg { width: 38px; height: 38px; padding: 9px; border-radius: 12px; }
-  .account-card > .money { grid-column: 2 / -1; font-size: 21px; }
-  .account-card > .status-badge { grid-column: 1 / 2; }
-  .account-card > .button-group { grid-column: 2 / -1; justify-content: flex-end; }
-  .account-card > .button-group .button { flex: 1 1 auto; }
   .reconciliation-mobile-card { display: grid; gap: 12px; }
   .reconciliation-mobile-card dl { padding-top: 10px; border-top: 1px solid var(--border); }
 
