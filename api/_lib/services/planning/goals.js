@@ -3,6 +3,49 @@ import { cancelTransactionInternal, createTransactionInternal, assertTransaction
 import { goalProgress } from "../readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
+
+export const goalProjection = (row, currentAmount) => {
+  const targetAmount = Number(row.target_amount || 0);
+  const current = Number(currentAmount || 0);
+  const remaining = Math.max(0, targetAmount - current);
+  const progress = targetAmount > 0 ? Math.min(100, Math.round((current / targetAmount) * 100)) : 0;
+  if (!row.target_date) {
+    return {
+      progress_percent: progress,
+      remaining_amount: remaining,
+      days_remaining: null,
+      months_remaining: null,
+      required_monthly_amount: 0,
+      pace_status: row.status === "completed" ? "completed" : "no_target_date",
+    };
+  }
+  const today = todayJakarta();
+  const targetTime = new Date(`${row.target_date}T00:00:00+07:00`).getTime();
+  const todayTime = new Date(`${today}T00:00:00+07:00`).getTime();
+  const createdDate = String(row.created_at || today).slice(0, 10);
+  const createdTime = new Date(`${createdDate}T00:00:00+07:00`).getTime();
+  const daysRemaining = Math.ceil((targetTime - todayTime) / 86_400_000);
+  const monthsRemaining = Math.max(0, Math.ceil(daysRemaining / 30));
+  const requiredMonthly = remaining > 0 ? Math.ceil(remaining / Math.max(1, monthsRemaining)) : 0;
+  const totalDuration = Math.max(1, targetTime - createdTime);
+  const elapsed = Math.min(totalDuration, Math.max(0, todayTime - createdTime));
+  const expectedAmount = Math.floor(targetAmount * (elapsed / totalDuration));
+  const paceStatus = row.status === "completed" || remaining === 0
+    ? "completed"
+    : daysRemaining < 0
+      ? "overdue"
+      : current + Math.max(1, Math.floor(targetAmount * 0.05)) < expectedAmount
+        ? "behind"
+        : "on_track";
+  return {
+    progress_percent: progress,
+    remaining_amount: remaining,
+    days_remaining: daysRemaining,
+    months_remaining: monthsRemaining,
+    required_monthly_amount: requiredMonthly,
+    pace_status: paceStatus,
+  };
+};
 export const listGoals = async (db, context) => {
   const access = visibleScopeSql(context.actor, "g");
   const rows = await db.all(`SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`, access.args);
@@ -15,6 +58,7 @@ export const listGoals = async (db, context) => {
     items.push({
       ...publicRow(row),
       current_amount: current,
+      ...goalProjection(row, current),
       last_movement_id: last?.goal_movement_id || "",
       can_move: row.status === "active" && row.account_status === "active",
       can_reverse: Boolean(last) && !locked,

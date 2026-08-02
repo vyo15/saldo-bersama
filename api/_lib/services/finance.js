@@ -221,20 +221,72 @@ export const listTransactions = async (db, context) => {
   const query = sanitizeText(payload.query, 100).toLowerCase();
   const type = String(payload.transaction_type || "all");
   const allocation = String(payload.allocation || "all");
-  if (!["all",...TRANSACTION_TYPES].includes(type)) throw appError("INVALID_TRANSACTION_TYPE","Filter jenis transaksi tidak valid.",400);
-  if (!["all","allocated","unallocated"].includes(allocation)) throw appError("INVALID_ALLOCATION_FILTER","Filter alokasi tidak valid.",400);
-  const access = visibleScopeSql(context.actor,"t");
-  const conditions = ["substr(t.transaction_date,1,7)=?", access.sql];
-  const args = [period,...access.args];
-  if (type !== "all") { conditions.push("t.transaction_type=?"); args.push(type); }
+  const accountId = sanitizeText(payload.account_id, 100);
+  const categoryId = sanitizeText(payload.category_id, 100);
+  const createdBy = sanitizeText(payload.created_by, 100);
+
+  if (!["all", ...TRANSACTION_TYPES].includes(type)) throw appError("INVALID_TRANSACTION_TYPE", "Filter jenis transaksi tidak valid.", 400);
+  if (!["all", "allocated", "unallocated"].includes(allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter alokasi tidak valid.", 400);
+
+  const access = visibleScopeSql(context.actor, "t");
+  const baseConditions = ["substr(t.transaction_date,1,7)=?", access.sql];
+  const baseArgs = [period, ...access.args];
+  const conditions = [...baseConditions];
+  const args = [...baseArgs];
+
+  if (type !== "all") {
+    conditions.push("t.transaction_type=?");
+    args.push(type);
+  }
   if (allocation === "allocated") conditions.push("(t.transaction_type<>'expense' OR t.envelope_period_id IS NOT NULL)");
   if (allocation === "unallocated") conditions.push("t.transaction_type='expense' AND t.envelope_period_id IS NULL");
-  if (query) { conditions.push("(lower(t.description) LIKE ? OR lower(t.merchant) LIKE ? OR lower(COALESCE(c.name,'')) LIKE ?)"); args.push(`%${query}%`,`%${query}%`,`%${query}%`); }
-  const count = await db.one(`SELECT COUNT(*) AS total FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}`, args);
-  const rows = await db.all(`SELECT t.* FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}
-    ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT ? OFFSET ?`, [...args,limit,offset]);
-  const items=[];
-  for (const row of rows) items.push({ ...publicRow(row), ...(await transactionCapabilities(db,context,row)) });
-  const total=Number(count?.total||0);
-  return { items,total,offset,limit,hasMore:offset+items.length<total,nextOffset:offset+items.length,periodLocked:await isTransactionDateLocked(db,`${period}-01`) };
+  if (accountId && accountId !== "all") {
+    conditions.push("(t.source_account_id=? OR t.destination_account_id=?)");
+    args.push(accountId, accountId);
+  }
+  if (categoryId && categoryId !== "all") {
+    conditions.push("t.category_id=?");
+    args.push(categoryId);
+  }
+  if (createdBy && createdBy !== "all") {
+    conditions.push("t.created_by=?");
+    args.push(createdBy === "me" ? context.actor.user_id : createdBy);
+  }
+  if (query) {
+    conditions.push("(lower(t.description) LIKE ? OR lower(t.merchant) LIKE ? OR lower(COALESCE(c.name,'')) LIKE ?)");
+    args.push(`%${query}%`, `%${query}%`, `%${query}%`);
+  }
+
+  const [count, rows, filterAccounts, filterCategories, filterCreators] = await Promise.all([
+    db.one(`SELECT COUNT(*) AS total FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}`, args),
+    db.all(`SELECT t.* FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}
+      ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT ? OFFSET ?`, [...args, limit, offset]),
+    db.all(`SELECT DISTINCT a.account_id,a.name
+      FROM accounts a JOIN transactions t ON t.source_account_id=a.account_id OR t.destination_account_id=a.account_id
+      WHERE ${baseConditions.join(" AND ")} ORDER BY a.name COLLATE NOCASE`, baseArgs),
+    db.all(`SELECT DISTINCT c.category_id,c.name
+      FROM categories c JOIN transactions t ON t.category_id=c.category_id
+      WHERE ${baseConditions.join(" AND ")} ORDER BY c.name COLLATE NOCASE`, baseArgs),
+    db.all(`SELECT DISTINCT u.user_id,u.name
+      FROM users u JOIN transactions t ON t.created_by=u.user_id
+      WHERE ${baseConditions.join(" AND ")} ORDER BY u.name COLLATE NOCASE`, baseArgs),
+  ]);
+
+  const items = [];
+  for (const row of rows) items.push({ ...publicRow(row), ...(await transactionCapabilities(db, context, row)) });
+  const total = Number(count?.total || 0);
+  return {
+    items,
+    total,
+    offset,
+    limit,
+    hasMore: offset + items.length < total,
+    nextOffset: offset + items.length,
+    periodLocked: await isTransactionDateLocked(db, `${period}-01`),
+    filterOptions: {
+      accounts: filterAccounts.map((row) => publicRow(row)),
+      categories: filterCategories.map((row) => publicRow(row)),
+      creators: filterCreators.map((row) => publicRow(row)),
+    },
+  };
 };

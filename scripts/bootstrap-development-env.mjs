@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { cleanEnvironmentText } from "./clean-local-environment.mjs";
+import { cleanEnvironmentFile, cleanEnvironmentText } from "./clean-local-environment.mjs";
 import { buildVercelInvocation } from "./push-vercel-production-env.mjs";
 import {
   environmentStatus,
@@ -12,14 +12,10 @@ import {
 export const DEFAULT_VERCEL_PROJECT = "saldo-bersama";
 
 const localEnvironmentState = async (envPath) => {
-  try {
-    const source = await readFile(envPath, "utf8");
-    const status = environmentStatus(parseEnvironmentText(source));
-    return { exists: true, source, ...status };
-  } catch (error) {
-    if (error?.code === "ENOENT") return { exists: false, source: "", complete: false, missing: [] };
-    throw error;
-  }
+  const cleaned = await cleanEnvironmentFile({ file: envPath, allowMissing: true });
+  if (!cleaned.exists) return { exists: false, source: "", complete: false, missing: [], removed: [] };
+  const status = environmentStatus(parseEnvironmentText(cleaned.text));
+  return { exists: true, source: cleaned.text, removed: cleaned.removed, ...status };
 };
 
 export const runVercelCommand = ({ cwd, args, stdio = "pipe" }) => new Promise((resolve, reject) => {
@@ -103,7 +99,7 @@ export const ensureDevelopmentEnvironment = async ({
 
   const envPath = path.join(projectRoot, ".env.local");
   const local = await localEnvironmentState(envPath);
-  if (local.complete) return { source: "local", envPath, missing: [] };
+  if (local.complete) return { source: "local", envPath, missing: [], removed: local.removed };
 
   const localCode = local.exists ? "LOCAL_ENV_INCOMPLETE" : "LOCAL_ENV_NOT_FOUND";
   const localMessage = local.exists
@@ -143,5 +139,9 @@ export const ensureDevelopmentEnvironment = async ({
     return { source: "vercel-development", envPath, missing: [], removed: cleaned.removed };
   } finally {
     await rm(temporaryPath, { force: true }).catch(() => undefined);
+    const cleanedLocal = await cleanEnvironmentFile({ file: envPath, allowMissing: true });
+    if (!local.exists && cleanedLocal.exists && !Object.keys(parseEnvironmentText(cleanedLocal.text)).length) {
+      await rm(envPath, { force: true }).catch(() => undefined);
+    }
   }
 };

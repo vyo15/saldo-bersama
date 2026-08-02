@@ -19,3 +19,14 @@
 
 - [ ] Action registry/policy, authorization map, dan API docs tetap sinkron.
 - [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.
+
+## Product-control alignment
+
+- [ ] Filter transaksi rekening/kategori/pencatat diuji untuk owner dan member.
+- [ ] Tren laporan 3/6/12 bulan serta breakdown rekening/kategori/nature/pencatat tervalidasi.
+- [ ] Label pencatat tidak disalahartikan sebagai kontribusi atau penanggung biaya.
+- [ ] Peringatan budget, kantong, recurring, target, transaksi tanpa alokasi, dan rekonsiliasi diuji.
+- [ ] Proyeksi target tidak membagi dengan nol dan menangani tanpa tanggal, lewat jatuh tempo, serta target selesai.
+- [ ] Notification dedupe mencegah antrean ganda pada job retry.
+- [ ] Semua `REQ-*` terlacak pada implementation matrix.
+- [ ] Fitur yang membutuhkan schema hanya memiliki RFC Proposed dan belum mengubah migration v3 tanpa approval terpisah.

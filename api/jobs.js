@@ -6,7 +6,7 @@ import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/
 import { verifyScheduledJobSignature } from "./_lib/security.js";
 import { callGoogleBridge, markIntegrationResult } from "./_lib/services/integrations.js";
 import { createTechnicalBackup } from "./_lib/services/maintenance/index.js";
-import { queueNotification } from "./_lib/services/notifications.js";
+import { queueActionableNotifications } from "./_lib/services/notifications.js";
 import { nowIso, safeSpreadsheetText, todayJakarta, uuid } from "./_lib/services/core.js";
 
 const monthBoundary = (monthOffset, endOfMonth = false) => {
@@ -106,23 +106,7 @@ const processIntegrations = async (db) => {
   return summary;
 };
 
-const queueDueNotifications = async (db) => {
-  const end = new Date(`${todayJakarta()}T00:00:00+07:00`); end.setUTCDate(end.getUTCDate() + 3);
-  const endDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(end);
-  const rows = await db.all(`SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,r.name,r.kind,r.scope,r.owner_user_id
-    FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
-    WHERE r.status='active' AND o.status NOT IN ('paid','cancelled') AND o.due_date BETWEEN ? AND ?`, [todayJakarta(), endDate]);
-  const users = await db.all("SELECT user_id FROM users WHERE status='active'");
-  let queued = 0;
-  for (const item of rows) {
-    const recipients = item.scope === "personal" ? users.filter((user) => user.user_id === item.owner_user_id) : users;
-    for (const user of recipients) {
-      const queuedNotification = await queueNotification(db, { userId: user.user_id, type: "recurring_due", title: item.kind === "income" ? "Pemasukan terjadwal" : "Tagihan mendekati jatuh tempo", body: `${item.name} · ${item.due_date}`, targetPath: "/recurring", scheduledAt: nowIso(), dedupeKey: `recurring:${item.occurrence_id}:${user.user_id}:${item.due_date}` });
-      if (queuedNotification.created) queued += 1;
-    }
-  }
-  return queued;
-};
+const queueDueNotifications = queueActionableNotifications;
 
 const processPush = async (db) => {
   const publicKey = process.env.VITE_VAPID_PUBLIC_KEY; const privateKey = process.env.VAPID_PRIVATE_KEY; const subject = process.env.VAPID_SUBJECT;

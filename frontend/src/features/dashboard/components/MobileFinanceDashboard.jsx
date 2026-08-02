@@ -70,6 +70,23 @@ const MobileFinanceDashboard = ({
         ))}
       </nav>
 
+      {overview.alerts?.length ? (
+        <section className="mobile-finance-section mobile-alert-section" aria-labelledby="mobile-alerts-title">
+          <div className="mobile-section-heading">
+            <h2 id="mobile-alerts-title">Perlu perhatian</h2>
+            <span>{overview.alerts.length} item</span>
+          </div>
+          <ul className="financial-alert-list financial-alert-list--mobile">
+            {overview.alerts.slice(0, 4).map((alert) => (
+              <li key={alert.id} data-severity={alert.severity}>
+                <div><strong>{alert.title}</strong><span>{alert.message}</span></div>
+                <Link to={alert.targetPath || "/"}>Tinjau</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="mobile-finance-section" aria-labelledby="recent-transactions-title">
         <div className="mobile-section-heading">
           <h2 id="recent-transactions-title">Transaksi terakhir</h2>

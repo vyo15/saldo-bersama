@@ -30,7 +30,7 @@
 - `DEFINITION_OF_DONE.md`
 - `GIT_WORKFLOW.md` — command dan alur Git canonical.
 - `templates/TASK_HANDOFF_TEMPLATE.md`
-- `rfc/README.md` — index RFC; template berada di `rfc/RFC_TEMPLATE.md`.
+- `rfc/README.md` — index RFC Proposed untuk transaction lifecycle, debt, contribution, hierarchy, privacy, dan partner permission; template berada di `rfc/RFC_TEMPLATE.md`.
 - `adr/README.md` — index ADR.
 - `RELEASE_CHECKLIST.md`
 - `ROLLBACK_RUNBOOK.md`

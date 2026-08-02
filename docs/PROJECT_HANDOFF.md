@@ -1,82 +1,79 @@
 # Project Handoff
 
-**Updated:** 2026-08-02
-**Task:** Production gateway hotfix after backend service split
-**Status:** Hotfix implemented; full Node 24 check, browser smoke, Preview login, and production deployment verification remain required.
+**Updated:** 2026-08-02  
+**Task:** Merge patch product-control dan CI browser public environment  
+**Status:** Kedua patch sudah tergabung tanpa konflik; validasi source/test dijalankan pada hasil merge, sedangkan full Node 24 lint/build/browser smoke tetap wajib di komputer project.
 
 ## Source yang divalidasi
 
-- Arsip penuh terbaru: `saldo-bersama(8).zip`
+- Baseline utama: `saldo-bersama-clean(89).zip`
+- Patch digabung: `saldo-bersama-clean-87-product-control(1).zip` dan `saldo-bersama-ci-browser-public-env-fix-87(1).zip`
 - Root: `saldo-bersama/`
-- Canonical boundaries: `frontend/`, `api/`, `database/`, `apps-script/`, `scripts/`, `test/`, `docs/`.
-- Source runtime reachability diperiksa; tidak ada source frontend/API canonical atau asset yang dihapus secara spekulatif.
+- Stack terkait: React/Vite PWA, Vercel Functions, Turso schema v3, Firebase session, Apps Script bridge.
+- Path utama: `finance.js`, reporting/planning services, `notifications.js`, `jobs.js`, transaction/report/dashboard/goal UI, product/API/data docs, RFC, dan tests.
 
-## Root cause dan hotfix
+## Hasil merge
 
-1. `reporting/dashboard.js` memakai `nowIso` tanpa import sehingga `app.initialState` berubah menjadi `GATEWAY_ERROR`.
-2. Budget, recurring, import, restore, dan integrity recovery memiliki dependency lain yang tertinggal setelah file monolit dipecah.
-3. Backend sebelumnya hanya menjalankan `node --check`, sehingga identifier tidak terdefinisi tidak terdeteksi.
-4. Hotfix memulihkan import, menambahkan backend lint, dan mengeksekusi handler kritis pada SQLite in-memory.
-5. Ditemukan serta diperbaiki callback `categories.map(publicRow)` dan import apply yang memakai record hasil normalisasi server.
+- Seluruh perubahan product-control, requirement traceability, filter/laporan/alert/notifikasi, enam RFC Proposed, dan perbaikan OIDC tetap terbawa.
+- Hotfix GitHub Actions untuk public Vite fixture, deterministic Google Identity Services mock, fail-fast browser smoke, serta governance guard tetap terbawa.
+- Konflik dokumentasi pada `CHANGELOG.md` dan `docs/TEST_PLAN.md` digabung manual agar kedua riwayat tidak saling menimpa.
+- Tidak ada file root `PATCH_SUMMARY.md` dari patch parsial yang dimasukkan ke source canonical.
 
-## Perubahan utama
+## Implementasi runtime
 
-1. Artifact policy tunggal, cleanup generated yang fail closed, cleanup dependency eksplisit, archive size guard, dan test ZIP bersih.
-2. Backend `planning`, `reporting`, dan `maintenance` dipecah per domain dengan facade kompatibel.
-3. Action handler/operational metadata menjadi registry/policy canonical tanpa mengubah permission map authorization.
-4. Frontend API dipecah menjadi transport, cache, error, client facade, dan facade per feature.
-5. Dashboard menjadi orchestration page kecil dengan komponen mobile/desktop dan presentation helper bersama.
-6. Selector CSS global yang tidak memiliki pemilik runtime dihapus dan dijaga regression test.
-7. Test backend dipindahkan dari folder generik `test/api` ke domain test yang tepat.
-8. Build budget, browser smoke Chromium/CDP, docs lifecycle, CODEOWNERS, CI, dan PR checklist diperbarui.
+1. Filter transaksi server-side dan UI: rekening, kategori, pencatat, jenis, alokasi, query, periode, pagination.
+2. Filter options berasal dari transaksi yang lolos scope backend; tidak mengandalkan option frontend untuk authorization.
+3. Laporan menambah tren 3/6/12 bulan, cash-flow net, total saldo bulanan, expense per rekening/nature/pencatat.
+4. Aktivitas pencatatan diberi label eksplisit bukan kontribusi atau penanggung biaya.
+5. Dashboard dan laporan menampilkan alert actionable: budget, kantong, recurring, target, unallocated expense, reconciliation difference/stale.
+6. Target menampilkan progress, sisa, kebutuhan setoran bulanan, dan pace status yang dihitung saat read.
+7. Scheduled notification queue menambah budget/kantong threshold, goal behind/overdue, dan unallocated expense dengan dedupe idempotent.
+8. Bootstrap/sinkronisasi Vercel Development membersihkan token OIDC sementara secara otomatis dan tetap idempotent setelah `vercel link`.
+
+## Dokumentasi dan governance
+
+- 17 kelompok kebutuhan canonical dimasukkan ke `PRODUCT_REQUIREMENTS.md` dan `IMPLEMENTATION_MATRIX.md`.
+- API read payload/response, authorization limitation, data turunan, roadmap, status, dan changelog diperbarui.
+- RFC-0011 sampai RFC-0016 dibuat sebagai **Proposed**, bukan fitur runtime atau approval schema.
+- Governance test menuntut setiap requirement ID terlacak pada implementation matrix.
 
 ## Guarded area
 
 Tidak ada perubahan pada:
 
-- schema/migration Turso;
-- action name atau request/response contract;
-- Firebase auth, allowlist, role, ownership, atau authorization;
-- perhitungan saldo, transfer, soft cancel, audit, idempotency, dan row version;
-- backup/restore/import semantics;
-- Apps Script endpoint, HMAC, resource ID, environment value, atau deployment production.
+- migration/schema Turso;
+- action name atau role permission;
+- saldo/transfer/soft-cancel/idempotency/row-version semantics;
+- Firebase auth, nilai secret, dan deployment; script lifecycle environment hanya diperkuat untuk sanitasi OIDC tanpa mengubah daftar key atau scope;
+- import/export/backup/restore contract;
+- Apps Script bridge contract.
 
-## Validasi yang sudah dijalankan
+## Test yang dijalankan pada patch
 
 ```text
-npm run lint: PASS
-frontend tests: 39/39 PASS
-backend/database/security/tooling tests: 90/90 PASS
-Node syntax: 85 file PASS
-Apps Script syntax/boot: 6 file, 2 urutan load PASS
-artifact clean/archive tests: PASS
+node scripts/validate-source-tree.mjs: PASS — 291 file
+node scripts/check-node-syntax.mjs: PASS — 88 file
+node scripts/check-apps-script-syntax.mjs: PASS — 6 file, 2 urutan load
+npm run test --workspace saldo-bersama-frontend: PASS — 42/42
+node scripts/run-backend-tests.mjs: PASS — 104/104
+Total automated tests: PASS — 146/146
 ```
 
-Sandbox memakai Node 22.16.0 dan registry internal tidak menyediakan `vite-7.3.6.tgz`, Rollup Linux, Playwright, atau axe packages. Karena itu production build terbaru dan browser smoke belum dapat dijalankan ulang di sandbox. Komputer project sebelumnya membuktikan build baseline pada Node 24; patch final tetap wajib menjalankan command di bawah setelah diterapkan.
+Sandbox memakai Node 22.16.0, sedangkan project menetapkan Node 24.x. `npm ci` sandbox gagal karena registry internal tidak menyediakan tarball `vite-7.3.6.tgz`; lint, build, build budget, dan browser smoke harus diulang pada komputer project.
 
-## Apply dan validasi lokal
+## Risiko dan keputusan tertunda
 
-```bash
-npm ci
-npm run check
-npm run test:browser
-npm run clean:dry-run
-npm run clean
-npm run zip
-```
+- `created_by` tidak boleh dipakai sebagai kontribusi; model split menunggu RFC-0013.
+- Draft/receipt/used-by menunggu RFC-0011; utang/piutang menunggu RFC-0012.
+- Category hierarchy/goal stage menunggu RFC-0014.
+- Privacy granular menunggu RFC-0015 dan wajib backend projection.
+- Hak member mengelola planning menunggu keputusan RFC-0016.
+- Alert yang baru perlu device/push cadence test agar tidak terasa ramai.
+- Secret yang pernah ikut ZIP manual tetap harus dirotasi.
 
-Pada Windows, browser smoke mencari Google Chrome, Microsoft Edge, dan Brave secara otomatis. Bila browser Chromium berada di lokasi khusus:
+## Next safe step
 
-```bash
-CHROMIUM_BIN="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" npm run test:browser
-```
-
-## Delete/move yang harus tercermin di Git
-
-Folder lama `test/api/` telah diganti oleh folder test berbasis domain. Saat patch changed-files-only diterapkan manual, hapus folder lama dengan command yang disediakan pada laporan patch. Jangan menghapus source lain, `.git`, `.vercel`, atau `.env.local`.
-
-## Risiko dan tindak lanjut
-
-- Rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` karena ZIP manual pernah memuat `.env.local`.
-- Full axe scan dan visual regression belum ditambahkan karena dependency tidak tersedia/terverifikasi dalam lockfile saat patch dibuat.
-- Real-resource Google integration, push, migration parity, dan restore drill tetap harus dilakukan terpisah.
+1. Jalankan `npm ci && npm run check && npm run test:browser` pada Node 24.
+2. Smoke test owner/member: filters, reports, alerts, goals, notifications.
+3. Review dan putuskan RFC-0016 terlebih dahulu bila pasangan perlu membuat budget/target/rule.
+4. Jangan mengimplementasikan RFC schema lain sebelum plan migration/rollback disetujui.

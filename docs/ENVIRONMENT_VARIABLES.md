@@ -69,6 +69,7 @@ Secret/token Production harus diperlakukan sebagai secret deployment. `npm run e
 
 ```text
 .env.local lengkap
+  → bersihkan OIDC/key legacy secara lokal
   → gunakan lokal, tanpa network Vercel
 
 .env.local hilang/tidak lengkap + terminal interaktif
@@ -97,7 +98,7 @@ npm run env:check
 npm run env:push:development
 ```
 
-Command mengirim core, `LOG_LEVEL`, dan grup opsional lengkap ke Development tanpa mencetak nilai. Jalankan kembali hanya setelah perubahan environment lokal memang disetujui.
+Command mengirim core, `LOG_LEVEL`, dan grup opsional lengkap ke Development tanpa mencetak nilai. `vercel link` dapat menambahkan `VERCEL_OIDC_TOKEN`; script membersihkannya pada jalur sukses maupun gagal sehingga sinkronisasi tetap idempotent. Jalankan kembali hanya setelah perubahan environment lokal memang disetujui.
 
 ## Sinkronisasi Production
 

@@ -79,3 +79,13 @@
 - Export lengkap owner-only melalui `/api/export`.
 - Data `shared` dapat digunakan dua actor sesuai action permission.
 - Setiap query/read model wajib menerapkan filter ownership; jangan mengandalkan filtering frontend.
+
+## Keputusan role pasangan
+
+Runtime canonical tetap memakai role `member`. Dokumen produk tidak boleh menganggap member dapat membuat/mengubah master planning bila permission source masih owner-only. Perubahan `envelopes.create`, `budgets.upsert`, `goals.create/update`, atau recurring rule management memerlukan RFC-0016, review backend/frontend, dan test authorization.
+
+## Privasi data turunan
+
+- Filter dan laporan hanya boleh dibangun dari transaksi/rekening yang lolos scope backend.
+- `creatorExpenses` adalah aktivitas pencatatan, bukan kontribusi biaya.
+- Mode balance-only/contribution-only/private penuh belum ada; jangan menyembunyikan detail hanya di frontend. Rencana berada pada RFC-0015.
