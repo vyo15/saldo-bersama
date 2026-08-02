@@ -11,7 +11,7 @@ import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { apiClient } from "../../services/api/client.js";
+import { createRecurringRule, payRecurringOccurrence, reverseRecurringPayment, updateRecurringRule } from "./recurring.api.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
@@ -44,7 +44,7 @@ const RecurringPage = () => {
     event.preventDefault();
     setMessage(null);
     try {
-      await apiClient.request("recurring.createRule", { ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, { idempotencyKey: createIdempotencyKey() });
+      await createRecurringRule({ ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, { idempotencyKey: createIdempotencyKey() });
       setForm((current) => ({ ...current, name: "", expected_amount: "" }));
       setMessage({ type: "success", text: "Jadwal rutin berhasil dibuat." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
@@ -79,7 +79,7 @@ const RecurringPage = () => {
     if (!editRule) return;
     setEditState({ status: "submitting", error: null });
     try {
-      await apiClient.request("recurring.updateRule", { ...editRule, expected_amount: assertPositiveRupiah(editRule.expected_amount) }, { rowVersion: editRule.row_version, idempotencyKey: createIdempotencyKey() });
+      await updateRecurringRule({ ...editRule, expected_amount: assertPositiveRupiah(editRule.expected_amount) }, { rowVersion: editRule.row_version, idempotencyKey: createIdempotencyKey() });
       setEditRule(null);
       setEditState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Aturan rutin berhasil diperbarui." });
@@ -92,7 +92,7 @@ const RecurringPage = () => {
     if (!archiveRuleTarget) return;
     setEditState({ status: "submitting", error: null });
     try {
-      await apiClient.request("recurring.updateRule", {
+      await updateRecurringRule({
         recurring_rule_id: archiveRuleTarget.recurring_rule_id,
         row_version: archiveRuleTarget.rule_row_version,
         status: "archived",
@@ -117,7 +117,7 @@ const RecurringPage = () => {
     if (!transactionId) return;
     setReverseState({ status: "submitting", error: null });
     try {
-      await apiClient.request("recurring.reversePayment", { occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version, idempotencyKey: createIdempotencyKey() });
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." });
@@ -131,7 +131,7 @@ const RecurringPage = () => {
     if (!payment.item) return;
     setPaymentState({ status: "submitting", error: null });
     try {
-      await apiClient.request("recurring.payOccurrence", {
+      await payRecurringOccurrence({
         occurrence_id: payment.item.occurrence_id,
         row_version: payment.item.row_version,
         account_id: payment.account_id,

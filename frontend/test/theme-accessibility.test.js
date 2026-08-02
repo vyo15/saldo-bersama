@@ -48,3 +48,18 @@ test("komponen memakai semantic foreground dan reduced motion", () => {
   assert.match(componentSource, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(componentSource, /:focus-visible/);
 });
+
+test("density mobile memakai token readable dan tidak mengecilkan kontrol pada layar sempit", async () => {
+  const [tokens, responsive, pages] = await Promise.all([
+    readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(tokens, /--font-size-xs:\s*11px;/);
+  assert.match(tokens, /--mobile-control-height:\s*44px;/);
+  assert.match(responsive, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
+  assert.match(responsive, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
+  assert.match(pages, /Keep desktop information readable instead of simulating density with 7–10px text/);
+  assert.match(pages, /\.google-login-button \{ min-height:\s*46px;/);
+});

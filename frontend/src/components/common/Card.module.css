@@ -1,0 +1,26 @@
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color var(--motion-normal) var(--motion-easing),
+    box-shadow var(--motion-normal) var(--motion-easing),
+    transform var(--motion-normal) var(--motion-easing);
+}
+
+.card:focus-within {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+}
+
+@media (hover: hover) {
+  .card[data-interactive="true"]:hover {
+    border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+}

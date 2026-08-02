@@ -1,52 +1,16 @@
 import { execFileSync } from "node:child_process";
-import { access, cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ARCHIVE_IGNORED_SEGMENTS, FORBIDDEN_ARCHIVE_FILE_PATTERNS, MAX_SOURCE_ARCHIVE_BYTES } from "./artifact-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(root, process.argv[2] || "../saldo-bersama-clean.zip");
 const archivePrefix = "saldo-bersama/";
 
-const ignoredSegments = new Set([
-  ".git",
-  ".vercel",
-  ".sites-runtime",
-  ".vinext",
-  ".wrangler",
-  ".vite",
-  ".cache",
-  ".next",
-  ".nuxt",
-  ".output",
-  ".firebase",
-  ".turbo",
-  ".parcel-cache",
-  "node_modules",
-  "dist",
-  "build",
-  "coverage",
-  "playwright-report",
-  "test-results",
-  "blob-report",
-  "temp",
-  "tmp",
-  "cache",
-  "logs",
-]);
-
-const forbiddenFilePatterns = [
-  /^\.env$/i,
-  /^\.env\..+/i,
-  /^\.clasp\.json$/i,
-  /firebase-adminsdk-.*\.json$/i,
-  /service-account.*\.json$/i,
-  /credentials.*\.json$/i,
-  /client[_-]secret.*\.json$/i,
-  /private-key/i,
-  /\.(?:pem|p12|pfx|key|crt|cer)$/i,
-  /\.(?:log|tmp|temp|bak|zip|rar|7z|db|sqlite|sqlite3|dump|gz)$/i,
-];
+const ignoredSegments = ARCHIVE_IGNORED_SEGMENTS;
+const forbiddenFilePatterns = FORBIDDEN_ARCHIVE_FILE_PATTERNS;
 
 const run = (command, args, options = {}) =>
   execFileSync(command, args, {
@@ -95,6 +59,7 @@ await rm(output, { force: true });
 
 const staging = await mkdtemp(path.join(os.tmpdir(), "saldo-bersama-source-"));
 const project = path.join(staging, "saldo-bersama");
+let stagedFileCount = 0;
 
 try {
   await cp(root, project, {
@@ -102,15 +67,16 @@ try {
     filter: shouldCopy,
   });
   const stagedFiles = await auditStaging(project);
+  stagedFileCount = stagedFiles.length;
   if (!stagedFiles.includes(".env.example")) {
     throw new Error("Packaging wajib menyertakan .env.example.");
   }
 
   run("git", ["init", "-q"], { cwd: project });
-  run("git", ["add", "-A"], { cwd: project });
+  run("git", ["-c", "core.safecrlf=false", "add", "-A"], { cwd: project });
   // Vercel CLI dapat menambahkan aturan `.env*` ke .gitignore. Template aman ini
   // tetap wajib masuk commit staging tanpa melonggarkan guard untuk file env lain.
-  run("git", ["add", "-f", "--", ".env.example"], { cwd: project });
+  run("git", ["-c", "core.safecrlf=false", "add", "-f", "--", ".env.example"], { cwd: project });
   run(
     "git",
     [
@@ -147,4 +113,10 @@ try {
 }
 
 await access(output);
+const outputStat = await stat(output);
+if (outputStat.size > MAX_SOURCE_ARCHIVE_BYTES) {
+  await rm(output, { force: true });
+  throw new Error(`Source ZIP melebihi batas ${MAX_SOURCE_ARCHIVE_BYTES} byte: ${outputStat.size} byte.`);
+}
 console.log(`Source ZIP bersih dibuat: ${output}`);
+console.log(`Isi canonical: ${stagedFileCount} file; ukuran ZIP: ${outputStat.size} byte.`);

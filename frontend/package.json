@@ -11,6 +11,8 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@mantine/core": "^9.5.0",
+    "@mantine/hooks": "^9.5.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-icons": "^5.5.0",

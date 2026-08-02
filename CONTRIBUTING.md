@@ -7,8 +7,9 @@ Dokumen ini berisi kebijakan kontribusi. Command branch, sync, commit, push, dan
 1. Baca `AGENTS.md`.
 2. Baca `docs/PROJECT_STATUS.md` dan `docs/PROJECT_HANDOFF.md`.
 3. Pastikan task memenuhi `docs/DEFINITION_OF_READY.md`.
-4. Untuk perubahan guarded atau lintas arsitektur, siapkan RFC/approval sebelum coding.
-5. Ikuti `docs/GIT_WORKFLOW.md` untuk branch dan command quality gate.
+4. Untuk perubahan UI, baca `docs/UI_DESIGN_SYSTEM.md` dan gunakan shared primitive existing.
+5. Untuk perubahan guarded atau lintas arsitektur, siapkan RFC/approval sebelum coding.
+6. Ikuti `docs/GIT_WORKFLOW.md` untuk branch dan command quality gate.
 
 ## Prinsip kontribusi
 

@@ -3,7 +3,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { getDatabase } from "../api/_lib/db/httpClient.js";
 import { readSchemaStatus } from "../api/_lib/db/schema.js";
-import { integrityIssues } from "../api/_lib/services/reports.js";
+import { integrityIssues } from "../api/_lib/services/reporting/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 try { process.loadEnvFile(path.join(root, ".env.local")); } catch (error) { if (error.code !== "ENOENT") throw error; }

@@ -8,6 +8,7 @@ Perubahan selesai hanya bila:
 - unit/integration/contract test relevan ditambah dan lulus;
 - lint, build, source validation, dan full test dijalankan;
 - manual test role/device/flow relevan dilakukan;
+- perubahan UI mengikuti `UI_DESIGN_SYSTEM.md` dan diuji pada mobile/desktop, light/dark, keyboard, focus, loading, error, serta reduced motion yang relevan;
 - security, privacy, data integrity, accessibility, dan offline state diperiksa;
 - migration/parity/backup/rollback diverifikasi bila relevan;
 - observability dan audit event tersedia bila perilaku baru memerlukannya;

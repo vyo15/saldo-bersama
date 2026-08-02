@@ -19,3 +19,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Browser smoke
+        run: npm run test:browser
+      - name: Verify clean source archive
+        run: npm run zip -- "$RUNNER_TEMP/saldo-bersama-clean.zip"

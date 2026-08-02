@@ -22,6 +22,7 @@ const requiredFiles = [
   ".github/CODEOWNERS",
   ".github/PULL_REQUEST_TEMPLATE.md",
   "docs/INDEX.md",
+  "docs/DOCUMENT_LIFECYCLE.md",
   "docs/PROJECT_STATUS.md",
   "docs/PROJECT_HANDOFF.md",
   "docs/ARCHITECTURE.md",
@@ -47,6 +48,7 @@ const requiredFiles = [
   "docs/RELEASE_CHECKLIST.md",
   "docs/ROLLBACK_RUNBOOK.md",
   "docs/LOG_EVENT_CATALOG.md",
+  "docs/UI_DESIGN_SYSTEM.md",
   "docs/adr/README.md",
   "docs/rfc/README.md",
   "docs/rfc/RFC_TEMPLATE.md",
@@ -95,6 +97,7 @@ test("documentation index exposes product boundaries, roadmap, and task handoff 
     "product/OUT_OF_SCOPE.md",
     "product/ROADMAP.md",
     "templates/TASK_HANDOFF_TEMPLATE.md",
+    "UI_DESIGN_SYSTEM.md",
   ]) assert.match(index, new RegExp(escapeRegExp(reference)));
 });
 
@@ -147,19 +150,23 @@ test("every canonical environment key is documented and classifications use one 
   assert.doesNotMatch(environmentDocs, /sembilan key core/i);
 });
 
-test("environment policy uses Vercel Production only and local env never pulls cloud secrets", () => {
-  const example = read(".env.example");
+test("environment policy uses Vercel Development as guarded local bootstrap", () => {
   const environmentDocs = read("docs/ENVIRONMENT_VARIABLES.md");
   const bootstrap = read("scripts/bootstrap-development-env.mjs");
   const setup = read("docs/SETUP.md");
+  const packageJson = read("package.json");
 
-  for (const source of [example, environmentDocs, setup]) {
-    assert.match(source, /Production/);
-    assert.doesNotMatch(source, /Development \+ Production|Production \+ Development|Vercel Development Environment/);
+  for (const source of [environmentDocs, setup]) {
+    assert.match(source, /Vercel Development/);
+    assert.match(source, /npm run dev/);
   }
-  assert.match(environmentDocs, /Preview dan Development/);
-  assert.doesNotMatch(bootstrap, /vercel|env.*pull|VERCEL_OIDC_TOKEN/i);
-  assert.match(bootstrap, /\.env\.local/);
+  assert.match(environmentDocs, /Production dan Development/);
+  assert.match(environmentDocs, /VERCEL_OIDC_TOKEN/);
+  assert.match(bootstrap, /env", "pull"/);
+  assert.match(bootstrap, /cleanEnvironmentText/);
+  assert.match(bootstrap, /VERCEL_DEVELOPMENT_ENV_INCOMPLETE/);
+  assert.match(packageJson, /env:push:development/);
+  assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
 test("project status records active schema version and guarded shared database decision", () => {

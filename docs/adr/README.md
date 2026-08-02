@@ -25,3 +25,5 @@ Index:
 - `0006-no-offline-financial-writes.md`
 - `0007-single-turso-database-current-constraint.md`
 - `0008-vercel-functions-google-bridge.md`
+- `0009-mantine-css-modules-ui-foundation.md`
+- `0010-vercel-development-environment-bootstrap.md`

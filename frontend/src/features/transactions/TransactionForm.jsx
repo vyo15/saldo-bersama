@@ -10,7 +10,7 @@ import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
 import { filterByOwnership, hasSameOwnership, ownershipLabel } from "../../domain/ownership.js";
-import { apiClient } from "../../services/api/client.js";
+import { createTransaction, updateTransaction } from "./transactions.api.js";
 
 const emptyForm = () => ({
   transaction_type: TRANSACTION_TYPES.EXPENSE,
@@ -130,8 +130,8 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
     setErrors({});
     setSubmitState({ status: "submitting", error: null });
     try {
-      const action = transaction ? "transactions.update" : "transactions.create";
-      const saved = await apiClient.request(action, validation.value, {
+      const saveTransaction = transaction ? updateTransaction : createTransaction;
+      const saved = await saveTransaction(validation.value, {
         idempotencyKey: idempotencyKeyRef.current,
         rowVersion: transaction?.row_version,
       });

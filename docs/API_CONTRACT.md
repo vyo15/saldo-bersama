@@ -58,18 +58,18 @@ Server tidak menerima actor, role, UID, audit field, scope internal, timestamps,
 
 ## Action catalog
 
-Permission canonical tetap `api/_lib/security.js`. Handler canonical tetap `api/_lib/actionDispatcher.js` dan service terkait.
+Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `api/_lib/actions/registry.js`, operational policy di `api/_lib/actions/policy.js`, dan `api/_lib/actionDispatcher.js` hanya melakukan dispatch terjaga.
 
 | Action | Owner | Member | Mode | Idempotency | Source utama |
 |---|---:|---:|---|---|---|
 | `system.health` | Ya | Ya | Read | Tidak | `api/_lib/actionDispatcher.js` |
-| `app.initialState` | Ya | Ya | Read | Tidak | `api/_lib/services/reports.js` |
-| `bootstrap.get` | Ya | Ya | Read | Tidak | `api/_lib/services/reports.js` |
+| `app.initialState` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
+| `bootstrap.get` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `users.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/users.js` |
 | `users.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
 | `users.deactivate` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
 | `audit.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/audit.js` |
-| `dashboard.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/reports.js` |
+| `dashboard.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `accounts.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `accounts.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
@@ -82,41 +82,41 @@ Permission canonical tetap `api/_lib/security.js`. Handler canonical tetap `api/
 | `transactions.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `transactions.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `transactions.cancel` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
-| `envelopes.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning.js` |
-| `envelopes.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `envelopes.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `envelopes.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `recurring.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning.js` |
-| `recurring.createRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `recurring.updateRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `recurring.payOccurrence` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `recurring.reversePayment` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `budgets.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning.js` |
-| `budgets.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `budgets.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `goals.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning.js` |
-| `goals.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `goals.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `goals.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `goals.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning.js` |
-| `reports.monthly` | Ya | Ya | Read | Tidak | `api/_lib/services/reports.js` |
-| `reconciliations.list` | Ya | Ya | Read | Tidak | `api/_lib/services/reports.js` |
-| `reconciliations.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/reports.js` |
-| `periods.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/reports.js` |
-| `periods.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reports.js` |
-| `periods.reopen` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reports.js` |
+| `envelopes.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
+| `envelopes.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
+| `recurring.createRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.updateRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.payOccurrence` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.reversePayment` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `budgets.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
+| `budgets.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `budgets.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
+| `goals.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `reports.monthly` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
+| `reconciliations.list` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
+| `reconciliations.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/reporting/` |
+| `periods.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/reporting/` |
+| `periods.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reporting/` |
+| `periods.reopen` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reporting/` |
 | `calendar.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
 | `mirror.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
 | `mirror.rebuild` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
 | `integrations.status` | Ya | Ya | Read | Tidak | `api/_lib/services/integrations.js` / dispatcher |
 | `notifications.register` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.unregister` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
-| `backup.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance.js` |
-| `import.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance.js` |
-| `import.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance.js` |
-| `restore.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance.js` |
-| `restore.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance.js` |
-| `integrity.run` | Ya | Tidak | Write/operation | Tidak | `api/_lib/services/maintenance.js` |
+| `backup.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
+| `import.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance/` |
+| `import.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
+| `restore.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance/` |
+| `restore.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
+| `integrity.run` | Ya | Tidak | Write/operation | Tidak | `api/_lib/services/maintenance/` |
 
 ## Version/conflict
 

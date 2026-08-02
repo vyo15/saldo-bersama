@@ -45,10 +45,10 @@ export const buildVercelInvocation = (vercelArgs, { platform = process.platform,
   if (platform === "win32") {
     return {
       executable: comspec || "cmd.exe",
-      args: ["/d", "/s", "/c", "npx.cmd", "vercel", ...vercelArgs],
+      args: ["/d", "/s", "/c", "npx.cmd", "--yes", "vercel", ...vercelArgs],
     };
   }
-  return { executable: "npx", args: ["vercel", ...vercelArgs] };
+  return { executable: "npx", args: ["--yes", "vercel", ...vercelArgs] };
 };
 
 const spawnVercel = ({ cwd, vercelArgs, stdio }) => {

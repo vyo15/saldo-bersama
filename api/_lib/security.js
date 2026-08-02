@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { requiresIdempotencyKey } from "./actions/policy.js";
 
 const SESSION_COOKIE = "sb_session";
 const encoder = (value) => Buffer.from(value).toString("base64url");
@@ -145,19 +146,7 @@ export const assertPayloadAuthorization = (session, action, payload = {}) => {
   }
 };
 
-const IDEMPOTENCY_REQUIRED_ACTIONS = new Set([
-  "users.upsert", "users.deactivate",
-  "accounts.create", "accounts.update", "accounts.archive",
-  "categories.create", "categories.update", "categories.archive",
-  "transactions.create", "transactions.update", "transactions.cancel",
-  "envelopes.create", "envelopes.move", "envelopes.close",
-  "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
-  "budgets.upsert", "budgets.archive", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reconciliations.create",
-  "periods.close", "periods.reopen", "calendar.sync", "mirror.sync", "mirror.rebuild",
-  "notifications.register", "notifications.unregister", "backup.create", "import.apply", "restore.apply"
-]);
-export const requiresIdempotencyKey = (action) => IDEMPOTENCY_REQUIRED_ACTIONS.has(action);
-
+export { requiresIdempotencyKey };
 const buckets = new Map();
 const MAX_RATE_LIMIT_BUCKETS = 5_000;
 

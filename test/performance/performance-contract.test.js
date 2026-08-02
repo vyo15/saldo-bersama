@@ -5,15 +5,16 @@ import test from "node:test";
 const source = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 
 test("initial state dan read identik dikoaleskan serta cache frontend tetap private-memory", async () => {
-  const [client, finance, gateway] = await Promise.all([
+  const [client, cache, finance, gateway] = await Promise.all([
     source("frontend/src/services/api/client.js"),
+    source("frontend/src/services/api/cache.js"),
     source("frontend/src/app/FinanceContext.jsx"),
     source("api/gateway.js"),
   ]);
-  assert.match(client, /const readCache = new Map\(\)/);
-  assert.match(client, /const inFlightReads = new Map\(\)/);
+  assert.match(cache, /const readCache = new Map\(\)/);
+  assert.match(cache, /const inFlightReads = new Map\(\)/);
   assert.match(client, /clearReadState\(\)/);
-  assert.doesNotMatch(client, /localStorage|sessionStorage|caches\.open/);
+  assert.doesNotMatch(`${client}\n${cache}`, /localStorage|sessionStorage|caches\.open/);
   assert.match(finance, /apiClient\.request\("app\.initialState"/);
   assert.doesNotMatch(finance, /system\.initialize|IDENTITY_BIND_REQUIRED|callAppsScript/);
   assert.match(gateway, /const inFlightReads = new Map\(\)/);

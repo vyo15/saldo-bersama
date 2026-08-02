@@ -13,7 +13,7 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { apiClient } from "../../services/api/client.js";
+import { createGoal as requestCreateGoal, moveGoal as requestMoveGoal, reverseGoalMovement, updateGoal as requestUpdateGoal } from "./goals.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
@@ -41,7 +41,7 @@ const GoalsPage = () => {
   const createGoal = async (event) => {
     event.preventDefault();
     try {
-      await apiClient.request("goals.create", { ...form, target_amount: assertPositiveRupiah(form.target_amount) }, { idempotencyKey: createIdempotencyKey() });
+      await requestCreateGoal({ ...form, target_amount: assertPositiveRupiah(form.target_amount) }, { idempotencyKey: createIdempotencyKey() });
       setForm({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
       setMessage({ type: "success", text: "Target keuangan berhasil dibuat." });
       invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
@@ -75,7 +75,7 @@ const GoalsPage = () => {
     }
     setMovementState({ status: "submitting", error: null });
     try {
-      await apiClient.request("goals.move", {
+      await requestMoveGoal({
         goal_id: movement.goal.goal_id,
         movement_type: movement.movement_type,
         amount: assertPositiveRupiah(movement.amount),
@@ -97,7 +97,7 @@ const GoalsPage = () => {
     if (!editGoal) return;
     setEditState({ status: "submitting", error: null });
     try {
-      await apiClient.request("goals.update", {
+      await requestUpdateGoal({
         goal_id: editGoal.goal_id,
         row_version: editGoal.row_version,
         name: editGoal.name,
@@ -120,7 +120,7 @@ const GoalsPage = () => {
     if (!archiveTarget) return;
     setArchiveState({ status: "submitting", error: null });
     try {
-      await apiClient.request("goals.update", {
+      await requestUpdateGoal({
         goal_id: archiveTarget.goal_id,
         row_version: archiveTarget.row_version,
         status: "archived",
@@ -139,7 +139,7 @@ const GoalsPage = () => {
     if (!reverseTarget?.last_movement_id) return;
     setReverseState({ status: "submitting", error: null });
     try {
-      await apiClient.request("goals.reverseMovement", { goal_movement_id: reverseTarget.last_movement_id, reason }, { idempotencyKey: createIdempotencyKey() });
+      await reverseGoalMovement({ goal_movement_id: reverseTarget.last_movement_id, reason }, { idempotencyKey: createIdempotencyKey() });
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan." });

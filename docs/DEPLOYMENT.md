@@ -2,9 +2,9 @@
 
 ## 1. Environment canonical
 
-Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variable. Hapus entry Vercel lama terlebih dahulu, lalu buat satu entry per key hanya pada scope **Production**. Preview dan Vercel Development tidak digunakan.
+Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variable. Scope **Development** dipakai untuk bootstrap lokal terjaga, scope **Production** dipakai deployment, dan Preview tetap kosong. Nama key yang sama pada Development dan Production adalah pemisahan scope yang disengaja, bukan duplikasi konflik.
 
-Variable `VITE_*` bersifat publik. Secret tidak boleh memakai prefix `VITE_`. Setelah environment berubah, deployment Production wajib dijalankan ulang.
+Variable `VITE_*` bersifat publik. Secret tidak boleh memakai prefix `VITE_`. Setelah environment berubah, deployment Production wajib dijalankan ulang. Seed Development adalah onboarding terpisah melalui `npm run env:push:development`, bukan bagian release gate rutin.
 
 ## 2. Database Turso tunggal
 

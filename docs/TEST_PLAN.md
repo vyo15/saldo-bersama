@@ -7,7 +7,10 @@ npm run validate:source
 npm run lint
 npm run test
 npm run build
+npm run build:budget
 npm run check
+npm run test:browser
+npm run zip
 ```
 
 Cakupan wajib:
@@ -21,7 +24,11 @@ Cakupan wajib:
 - read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, dan duplicate Calendar prevention;
 - formula injection dan valid XLSX;
 - backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, dan push credential exclusion;
-- service worker tanpa API cache dan tanpa offline write queue.
+- service worker tanpa API cache dan tanpa offline write queue;
+- artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output;
+- browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
+- browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
+- gzip bundle dan source archive tetap di bawah budget.
 
 ## Manual
 
@@ -36,5 +43,6 @@ Uji dua browser/perangkat dengan owner dan member:
 7. Export Excel dan periksa formula-like input.
 8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif.
 9. Responsive, keyboard, focus, contrast, loading/empty/error/unauthorized/maintenance.
+10. Full axe scan, authenticated browser journey, visual regression, dan Chrome/Firefox/Safari device coverage.
 
 Tidak boleh mengklaim production-ready hanya berdasarkan unit test; real resource integration dan migration parity wajib lulus.

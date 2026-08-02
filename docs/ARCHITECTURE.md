@@ -20,7 +20,7 @@ PWA React/Vite
 
 ## Kebijakan environment
 
-Runtime lokal dari `.env.local` dan Vercel Production memakai satu database Turso sesuai keputusan pemilik. Vercel Preview dan Development tidak digunakan. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
+Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari Vercel Development. Vercel Production adalah runtime deployment, sedangkan Preview tetap kosong. Lokal dan Production saat ini memakai satu database Turso sesuai keputusan pemilik. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
 
 ## Trust boundaries
 
@@ -40,6 +40,14 @@ Runtime lokal dari `.env.local` dan Vercel Production memakai satu database Turs
 5. Perubahan utama, audit, idempotency response, dan outbox commit dalam transaction yang sama.
 6. Response sukses baru dikirim setelah commit.
 7. Worker memproses Sheets/Calendar/Drive secara terpisah. Kegagalan integrasi tidak membatalkan transaksi finansial.
+
+## Internal code boundaries
+
+- Lima endpoint di `api/` hanya melakukan HTTP/session orchestration.
+- Handler action canonical berada di `api/_lib/actions/registry.js`; operational metadata berada di `api/_lib/actions/policy.js`; authorization role/scope tetap canonical di `api/_lib/security.js`.
+- Business service besar dibagi ke `services/planning/`, `services/reporting/`, dan `services/maintenance/`; file facade lama mempertahankan compatibility import.
+- Frontend feature memakai `*.api.js`; transport/cache/error hanya berada di `frontend/src/services/api/`.
+- Feature/page tidak boleh mengimpor transport global untuk write dan tidak boleh mengimpor toolkit UI langsung.
 
 ## Read model
 
@@ -73,6 +81,10 @@ Sheets adalah mirror satu arah dan dapat dibangun ulang. Calendar hanya menerima
 ## PWA
 
 Service worker hanya meng-cache app shell dan asset statis. `/api/*` tidak pernah dicache. Offline write ditolak agar tidak terjadi transaksi ganda atau status ambigu. Instalasi iOS dilakukan melalui Safari → Share → Add to Home Screen.
+
+## UI architecture
+
+Shared UI primitive memakai CSS Modules dan design tokens project. Feature mengimpor shared wrapper, bukan toolkit secara langsung. Mantine telah disetujui sebagai toolkit target untuk perilaku kompleks melalui staged adoption; dependency dan lockfile Mantine tersedia, tetapi runtime adoption tetap bertahap melalui wrapper project. Kontrak lengkap berada di `UI_DESIGN_SYSTEM.md` dan ADR-0009.
 
 
 ## Batas privasi mirror

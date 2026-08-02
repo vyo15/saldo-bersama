@@ -1,85 +1,74 @@
 # Project Handoff
 
 **Updated:** 2026-08-02
-**Task:** Documentation governance and source-drift hardening
-**Status:** Implemented in source; lihat hasil validasi di bawah.
-
-## Tujuan task
-
-Menutup mismatch konkret antara source, schema, environment, index dokumentasi, workflow Git, dan governance tests. Task ini juga menetapkan bahwa setiap perubahan project harus meninggalkan jejak pada status, handoff, changelog, dan dokumen contract/runbook yang relevan.
+**Task:** Project structure, artifact hygiene, and maintainability hardening
+**Status:** Patch implemented and unit/static validation passed; final Node 24 build/browser smoke must run after applying the patch locally.
 
 ## Source yang divalidasi
 
-- Arsip: `saldo-bersama-clean(75).zip`
-- Root project: `saldo-bersama/`
-- Schema canonical: `database/migrations/001_initial_schema.sql`
-- Path utama:
-  - `docs/TURSO_SCHEMA.md`
-  - `docs/DATA_DICTIONARY.md`
-  - `docs/ENVIRONMENT_VARIABLES.md`
-  - `docs/INDEX.md`
-  - `CONTRIBUTING.md`
-  - `docs/GIT_WORKFLOW.md`
-  - `scripts/runtime-environment.mjs`
-  - `scripts/check-environment.mjs`
-  - `scripts/push-vercel-production-env.mjs`
-  - `test/api/governance-docs.test.js`
+- Arsip penuh: `saldo-bersama(6).zip`
+- Root: `saldo-bersama/`
+- Canonical boundaries: `frontend/`, `api/`, `database/`, `apps-script/`, `scripts/`, `test/`, `docs/`.
+- Source runtime reachability diperiksa; tidak ada source frontend/API canonical atau asset yang dihapus secara spekulatif.
 
 ## Perubahan utama
 
-- `request_nonces` ditambahkan ke ringkasan `TURSO_SCHEMA.md` dan dijelaskan sebagai anti-replay persisten.
-- Environment memiliki satu sumber daftar canonical:
-  - 8 core wajib;
-  - 1 logging opsional (`LOG_LEVEL`);
-  - grup Google bridge;
-  - grup Web Push;
-  - 9 key Production sync.
-- `VITE_APP_NAME` sekarang diperiksa konsisten oleh bootstrap, environment checker, diagnostic, dan production sync.
-- `docs/INDEX.md` sekarang memuat out-of-scope, roadmap, handoff template, serta membedakan cutover legacy dari policy schema.
-- `CONTRIBUTING.md` menjadi kebijakan kontribusi; `docs/GIT_WORKFLOW.md` menjadi sumber command Git canonical. Keduanya saling merujuk.
-- `docs/DATA_MIGRATION.md` di-rename menjadi `docs/LEGACY_SHEETS_TO_TURSO_CUTOVER.md` agar tidak tertukar dengan `DATABASE_MIGRATION_POLICY.md`.
-- Implementation matrix memisahkan status source dari activation/real-resource verification.
-- Governance tests sekarang menjaga required reading, local Markdown reference, index coverage, dua dokumentasi schema, cross-reference Git, serta klasifikasi environment.
-- Changelog dan project status diperbarui untuk merekam perubahan terdahulu yang masih aktif pada source.
+1. Artifact policy tunggal, cleanup generated yang fail closed, cleanup dependency eksplisit, archive size guard, dan test ZIP bersih.
+2. Backend `planning`, `reporting`, dan `maintenance` dipecah per domain dengan facade kompatibel.
+3. Action handler/operational metadata menjadi registry/policy canonical tanpa mengubah permission map authorization.
+4. Frontend API dipecah menjadi transport, cache, error, client facade, dan facade per feature.
+5. Dashboard menjadi orchestration page kecil dengan komponen mobile/desktop dan presentation helper bersama.
+6. Selector CSS global yang tidak memiliki pemilik runtime dihapus dan dijaga regression test.
+7. Test backend dipindahkan dari folder generik `test/api` ke domain test yang tepat.
+8. Build budget, browser smoke Chromium/CDP, docs lifecycle, CODEOWNERS, CI, dan PR checklist diperbarui.
 
 ## Guarded area
 
-Task ini tidak mengubah:
+Tidak ada perubahan pada:
 
-- schema atau data Turso;
-- auth, role, session, atau authorization;
-- API bisnis;
-- saldo, transfer, audit, idempotency, atau `row_version`;
-- import/export, backup/restore implementation;
-- secret, nilai environment, atau deployment resource;
-- dependency.
+- schema/migration Turso;
+- action name atau request/response contract;
+- Firebase auth, allowlist, role, ownership, atau authorization;
+- perhitungan saldo, transfer, soft cancel, audit, idempotency, dan row version;
+- backup/restore/import semantics;
+- Apps Script endpoint, HMAC, resource ID, environment value, atau deployment production.
 
-## Validasi
-
-Command yang berhasil dijalankan pada source patch:
+## Validasi yang sudah dijalankan
 
 ```text
-npm run validate:source: PASS — 222 file; 5/12 Vercel Functions canonical
-npm test: PASS — frontend 29/29; backend/database/governance 78/78; total 107/107
-node scripts/check-node-syntax.mjs: PASS — 54 file
-node scripts/check-apps-script-syntax.mjs: PASS — 6 file, 2 urutan load
+npm run lint: PASS
+frontend tests: 39/39 PASS
+backend/database/security/tooling tests: 90/90 PASS
+Node syntax: 85 file PASS
+Apps Script syntax/boot: 6 file, 2 urutan load PASS
+artifact clean/archive tests: PASS
 ```
 
-Quality gate yang belum dapat dijalankan pada sandbox archive bersih:
+Sandbox memakai Node 22.16.0 dan registry internal tidak menyediakan `vite-7.3.6.tgz`, Rollup Linux, Playwright, atau axe packages. Karena itu production build terbaru dan browser smoke belum dapat dijalankan ulang di sandbox. Komputer project sebelumnya membuktikan build baseline pada Node 24; patch final tetap wajib menjalankan command di bawah setelah diterapkan.
 
-```text
-npm run lint: BELUM TERVERIFIKASI — eslint tidak tersedia karena node_modules tidak dibawa ZIP
-npm run build: BELUM TERVERIFIKASI — vite tidak tersedia karena node_modules tidak dibawa ZIP
+## Apply dan validasi lokal
+
+```bash
+npm ci
+npm run check
+npm run test:browser
+npm run clean:dry-run
+npm run clean
+npm run zip
 ```
 
-Lint dan build wajib diulang pada komputer project dengan Node 24 dan dependency terpasang.
+Pada Windows, browser smoke mencari Google Chrome, Microsoft Edge, dan Brave secara otomatis. Bila browser Chromium berada di lokasi khusus:
 
-## Risiko dan unresolved
+```bash
+CHROMIUM_BIN="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" npm run test:browser
+```
 
-- ZIP tidak membawa `.git`; histori bahwa setiap perubahan lama selalu terdokumentasi tidak dapat dibuktikan. Patch ini menguatkan enforcement mulai source sekarang.
-- Status integrasi source dan activation production tetap harus dibedakan; Google bridge, Web Push, dan restore drill memerlukan verifikasi resource nyata.
-- Link validation saat ini menjaga README, AGENTS, dan INDEX sebagai entry point; dokumen lain tetap perlu review saat diubah.
+## Delete/move yang harus tercermin di Git
 
-## Next safe step
+Folder lama `test/api/` telah diganti oleh folder test berbasis domain. Saat patch changed-files-only diterapkan manual, hapus folder lama dengan command yang disediakan pada laporan patch. Jangan menghapus source lain, `.git`, `.vercel`, atau `.env.local`.
 
-Jalankan full quality gate pada Node 24, commit patch dokumentasi, lalu lanjutkan prioritas operasional di `PROJECT_STATUS.md` tanpa mengubah area guarded sebelum approval baru.
+## Risiko dan tindak lanjut
+
+- Rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` karena ZIP manual pernah memuat `.env.local`.
+- Full axe scan dan visual regression belum ditambahkan karena dependency tidak tersedia/terverifikasi dalam lockfile saat patch dibuat.
+- Real-resource Google integration, push, migration parity, dan restore drill tetap harus dilakukan terpisah.

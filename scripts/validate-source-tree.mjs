@@ -2,43 +2,12 @@ import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ARCHIVE_IGNORED_SEGMENTS, IGNORED_LOCAL_FILE_PATTERNS } from "./artifact-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const ignoredSegments = new Set([
-  ".git",
-  ".vercel",
-  ".sites-runtime",
-  ".vinext",
-  ".wrangler",
-  ".vite",
-  ".cache",
-  ".next",
-  ".nuxt",
-  ".output",
-  ".firebase",
-  ".turbo",
-  ".parcel-cache",
-  "node_modules",
-  "dist",
-  "build",
-  "coverage",
-  "playwright-report",
-  "test-results",
-  "blob-report",
-  "temp",
-  "tmp",
-  "cache",
-  "logs",
-]);
-
-const ignoredLocalFilePatterns = [
-  /^\.env$/i,
-  /^\.env\.(?!example$).+/i,
-  /^\.clasp\.json$/i,
-  /^(?:npm-debug|yarn-error|pnpm-debug|firebase-debug)\.log$/i,
-  /\.(?:log|tmp|temp|bak|zip|rar|7z)$/i,
-];
+const ignoredSegments = ARCHIVE_IGNORED_SEGMENTS;
+const ignoredLocalFilePatterns = IGNORED_LOCAL_FILE_PATTERNS;
 
 const isIgnoredLocalFile = (file) => {
   const name = path.posix.basename(file);
@@ -205,7 +174,7 @@ const vercelFunctionConfigMismatch = configuredFunctions.length !== canonicalCon
   || configuredFunctions.some((file, index) => file !== canonicalConfiguredFunctions[index]);
 
 const legacyViolations = [];
-for (const file of files.filter((item) => !["scripts/validate-source-tree.mjs", "scripts/create-clean-archive.mjs"].includes(item) && /\.(?:js|jsx|mjs|json|md|css|yml|yaml|html|gs)$/.test(item))) {
+for (const file of files.filter((item) => !["scripts/validate-source-tree.mjs", "scripts/create-clean-archive.mjs", "scripts/artifact-policy.mjs"].includes(item) && /\.(?:js|jsx|mjs|json|md|css|yml|yaml|html|gs)$/.test(item))) {
   const content = await readFile(path.join(root, file), "utf8");
   if (forbiddenLegacyContent.some((pattern) => pattern.test(content))) legacyViolations.push(file);
 }
