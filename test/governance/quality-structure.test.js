@@ -30,6 +30,8 @@ test("quality workflow menjalankan check, browser smoke, dan verifikasi clean ar
   assert.match(browserSmoke, /detached:\s*process\.platform !== "win32"/);
   assert.match(browserSmoke, /stdio:\s*"ignore"/);
   assert.match(browserSmoke, /terminateChromiumTree/);
+  assert.match(browserSmoke, /Network\.setBlockedURLs/);
+  assert.match(browserSmoke, /accounts\.google\.com\/gsi\/client/);
   assert.ok(
     browserSmoke.indexOf("await chromium?.close()") < browserSmoke.indexOf("await page?.close()"),
     "Chromium process tree harus ditutup sebelum koneksi CDP agar tidak meninggalkan handle pada runner.",

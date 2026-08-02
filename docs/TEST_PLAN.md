@@ -31,6 +31,7 @@ Cakupan wajib:
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output;
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
+- browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
 - gzip bundle dan source archive tetap di bawah budget.
 
 ## Manual

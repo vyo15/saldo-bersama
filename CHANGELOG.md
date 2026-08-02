@@ -1,3 +1,5 @@
+
+- Browser smoke GitHub Actions kini memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga CI tidak timeout karena perilaku jaringan/provider.
 # Changelog
 
 Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi production harus menunjuk commit SHA yang sudah diuji.
