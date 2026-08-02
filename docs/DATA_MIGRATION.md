@@ -6,7 +6,7 @@ Memindahkan source of truth dari spreadsheet lama ke Turso tanpa mengubah arti t
 
 ## Prasyarat
 
-- Database Turso DEV telah dimigrasikan.
+- Database target atau salinan terisolasi sementara telah menerima schema migration.
 - Backup spreadsheet lama berhasil diverifikasi.
 - Data legacy diekspor ke JSON canonical yang didukung migration tool.
 - Kedua akun dan role sudah ditentukan.
@@ -37,7 +37,7 @@ npm run db:import-legacy -- path/to/legacy-export.json --apply --confirm=MIGRATE
 npm run db:integrity
 ```
 
-Import harus dilakukan pada DEV terlebih dahulu. Hasil dianggap lulus hanya jika row count, financial fingerprint, saldo per rekening, dan laporan bulanan cocok.
+Import harus dipreview dan diuji pada salinan terisolasi sementara terlebih dahulu. Hasil dianggap lulus hanya jika row count, financial fingerprint, saldo per rekening, dan laporan bulanan cocok. Salinan tersebut bukan database Development permanen dan harus dihapus setelah verifikasi.
 
 ## Cutover production
 

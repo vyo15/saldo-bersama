@@ -46,10 +46,12 @@ npm install
 npm run dev
 ```
 
-`npm run dev` memakai `.env.local` yang lengkap; bila belum ada, terminal interaktif akan login/link Vercel dan menarik **Development Environment** tanpa menampilkan secret. Gunakan `.env.example` hanya sebagai daftar canonical/fallback manual. Verifikasi:
+`npm run dev` hanya memakai `.env.local` dan akan fail closed bila file tersebut tidak ada atau belum lengkap. Salin `.env.example` menjadi `.env.local`, isi nilainya melalui penyimpanan rahasia yang disetujui, lalu verifikasi. Vercel hanya memakai scope **Production**; Preview dan Vercel Development sengaja dibiarkan kosong.
 
 ```bash
 npm run env:check
+# Kirim 9 key canonical dari .env.local ke Vercel Production
+npm run env:push:production
 npm run diagnose
 npm run db:integrity
 ```

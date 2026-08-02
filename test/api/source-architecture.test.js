@@ -168,6 +168,7 @@ test("runtime memakai satu Firebase public key dan tidak menduplikasi resource I
   for (const sourceText of [jobs, integrations, maintenance]) {
     assert.doesNotMatch(sourceText, /process\.env\.(MIRROR_SPREADSHEET_ID|GOOGLE_CALENDAR_ID|BACKUP_FOLDER_ID|JOBS_ENDPOINT_URL)/);
   }
-  assert.match(environmentDoc, /Development \+ Production/);
-  assert.match(environmentDoc, /Preview tidak/);
+  assert.match(environmentDoc, /scope \*\*Production\*\*/i);
+  assert.match(environmentDoc, /Preview dan Development/);
+  assert.doesNotMatch(environmentDoc, /Development \+ Production|Production \+ Development/);
 });

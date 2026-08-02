@@ -31,4 +31,4 @@ Jika apply atau integrity gagal, transaction rollback dan maintenance tetap akti
 - Jangan mengubah data langsung melalui Turso console kecuali prosedur maintenance disetujui.
 - Simpan request ID, waktu, actor, error code, dan backup ID.
 - Jangan membagikan stack trace/token pada pengguna.
-- Uji restore drill berkala pada database DEV terpisah.
+- Uji restore drill berkala pada salinan terisolasi sementara atau branch disposable; jangan gunakan database aktif dan jangan mempertahankannya sebagai database Development permanen.

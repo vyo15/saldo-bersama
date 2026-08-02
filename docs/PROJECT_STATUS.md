@@ -29,8 +29,8 @@ Dokumen ini adalah snapshot status, bukan pengganti source. Perbarui pada setiap
 
 ## Keputusan/risiko aktif
 
-1. Development lokal dan Production saat ini memakai satu database Turso sesuai keputusan pemilik. Ini meningkatkan risiko eksperimen terhadap data production. Jangan mengubah atau memisahkan tanpa RFC/approval; jangan gunakan data dummy atau operasi destruktif.
-2. Preview tidak diberi database token/secret.
+1. Runtime lokal dan Vercel Production memakai satu database Turso sesuai keputusan pemilik. Ini meningkatkan risiko eksperimen terhadap data production. Jangan mengubah atau memisahkan tanpa RFC/approval; jangan gunakan data dummy atau operasi destruktif.
+2. Vercel hanya memakai scope Production. Preview dan Vercel Development tidak diberi environment aplikasi.
 3. Rate limit runtime masih best-effort per instance.
 4. Backup teknis terkompresi dan ber-checksum; enkripsi aplikasi belum menjadi baseline yang terbukti pada source.
 5. Branch protection, repository ruleset, GitHub Security features, dan Vercel settings tidak dapat dibuktikan dari source; verifikasi dashboard masih diperlukan.
@@ -51,11 +51,11 @@ Tersedia:
 ## Prioritas berikutnya
 
 1. Terapkan GitHub branch protection/ruleset dan required `Quality` check.
-2. Jalankan migration parity pada data DEV/controlled copy.
+2. Jalankan migration parity pada snapshot atau salinan terisolasi yang bersifat sementara.
 3. Jalankan backup/restore real-resource drill.
 4. Lengkapi observability terminal logging, client crash reporting, metrics, dan alert.
 5. Tambah Playwright E2E, axe accessibility, dan performance budget.
-6. Evaluasi pemisahan database Development/Production melalui RFC sebelum tim berkembang.
+6. Tinjau ulang guard operasional database tunggal melalui RFC sebelum tim berkembang.
 
 ## Cara melanjutkan di chat baru
 

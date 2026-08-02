@@ -69,5 +69,7 @@ test("service worker hanya meng-cache app shell dan tidak pernah meng-cache API 
   assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return/);
   assert.doesNotMatch(sw, /cache\.put\([^\n]*\/api\//);
-  assert.match(sw, /saldo-bersama-static-v5/);
+  assert.match(sw, /saldo-bersama-static-v6/);
+  assert.match(sw, /response\.bodyUsed/);
+  assert.match(sw, /event\.waitUntil/);
 });

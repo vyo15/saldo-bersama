@@ -90,8 +90,23 @@ test("every canonical environment key is documented", () => {
   });
 });
 
+test("environment policy uses Vercel Production only and local env never pulls cloud secrets", () => {
+  const example = read(".env.example");
+  const environmentDocs = read("docs/ENVIRONMENT_VARIABLES.md");
+  const bootstrap = read("scripts/bootstrap-development-env.mjs");
+  const setup = read("docs/SETUP.md");
+
+  for (const source of [example, environmentDocs, setup]) {
+    assert.match(source, /Production/);
+    assert.doesNotMatch(source, /Development \+ Production|Production \+ Development|Vercel Development Environment/);
+  }
+  assert.match(environmentDocs, /Preview dan Development/);
+  assert.doesNotMatch(bootstrap, /vercel|env.*pull|VERCEL_OIDC_TOKEN/i);
+  assert.match(bootstrap, /\.env\.local/);
+});
+
 test("project status records active schema version and guarded shared database decision", () => {
   const status = read("docs/PROJECT_STATUS.md");
   assert.match(status, /Schema:\*\* version 3/);
-  assert.match(status, /Development lokal dan Production saat ini memakai satu database Turso/);
+  assert.match(status, /Runtime lokal dan Vercel Production memakai satu database Turso/);
 });

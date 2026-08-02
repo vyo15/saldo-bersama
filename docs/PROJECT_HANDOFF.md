@@ -1,59 +1,63 @@
 # Project Handoff
 
 **Updated:** 2026-08-02  
-**Task:** Team Governance & Documentation Foundation  
+**Task:** Production-only Environment Synchronization  
 **Status:** Implemented in source; lihat hasil test pada bagian Validasi.
 
 ## Tujuan task
 
-Membuat repository dapat dilanjutkan oleh anggota tim atau ChatGPT lain tanpa mengulang penjelasan dari awal, sekaligus mengurangi mismatch antara kode, kontrak, keputusan, dan dokumentasi.
+Menyelaraskan source, test, onboarding, dan dokumentasi dengan keputusan operasional terbaru:
+
+- Vercel hanya memakai scope Production;
+- Vercel Preview dan Development sengaja kosong;
+- runtime lokal hanya membaca `.env.local`;
+- runtime lokal dan Vercel Production mengakses satu database Turso yang sama;
+- tidak ada bootstrap otomatis yang menarik secret dari Vercel.
 
 ## Perubahan utama
 
-- Menambah `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, dan `CHANGELOG.md`.
-- Menambah code ownership, PR template, dan issue templates.
-- Menambah project status/handoff, product requirements, glossary, API/authorization/data contract, governance, ADR/RFC, security, operations, incident, release/rollback, dan log catalog.
-- Memperbarui onboarding README/Git workflow serta cross-link docs.
-- Menambah test governance agar action, schema table, env key, dan root governance docs tidak hilang atau tidak terdokumentasi.
-- Menghapus `PATCH_SUMMARY.txt` sementara dari source clean.
+- `.env.example`, README, setup, deployment, architecture, status, ADR, migration, recovery, QA, dan test plan diselaraskan ke kebijakan Production-only.
+- `scripts/bootstrap-development-env.mjs` disederhanakan menjadi local-only guard yang fail closed bila `.env.local` hilang atau tidak lengkap.
+- Logic login/link/pull Vercel Development dan pembersihan OIDC sementara dihapus karena tidak lagi digunakan.
+- `sanitizePulledEnvironment` yang tidak lagi dipakai dihapus.
+- Contract test baru mencegah kebijakan `Development + Production` atau `vercel env pull` kembali tanpa review.
+- Restore/migration drill tetap wajib memakai salinan terisolasi sementara, bukan database aktif dan bukan database Development permanen.
 
 ## Guarded area
 
 Task ini tidak mengubah:
 
-- schema Turso;
-- auth/role/authorization runtime;
-- action/API behavior;
-- saldo/transfer/audit/idempotency/row version;
+- schema atau data Turso;
+- auth, role, session, dan authorization runtime;
+- action/API contract;
+- saldo, transfer, audit, idempotency, dan `row_version`;
 - backup/restore implementation;
 - dependency;
-- deployment configuration.
+- nilai environment atau secret pengguna.
 
 ## Validasi
 
-Isi hasil aktual setelah command dijalankan:
+Hasil aktual pada patch sinkronisasi environment:
 
 ```text
 Runtime pemeriksaan: Node 22.16.0 / npm 10.9.2
 Project canonical: Node 24.x / npm >=10
 
 npm run validate:source: LULUS — 218 file; 5/12 Vercel Functions canonical
-npm run lint: LULUS — ESLint; syntax Node 50 file; Apps Script 6 file/2 load order
-npm run test: LULUS — frontend 27/27; API/database/governance 68/68
-npm run build: BELUM TERVERIFIKASI — Rollup Linux optional package tidak tersedia pada node_modules Windows
-npm run check: GAGAL pada tahap build setelah validate/lint/test lulus
-npm ci: GAGAL — registry pemeriksaan mengembalikan 404 untuk vite-7.3.6.tgz
+npm run test: LULUS — frontend 27/27; API/database/governance 66/66
+node scripts/check-node-syntax.mjs: LULUS — 50 file
+node scripts/check-apps-script-syntax.mjs: LULUS — 6 file/2 load order
+npm run lint: BELUM TERVERIFIKASI — archive bersih tidak membawa node_modules/eslint
+npm run build: BELUM TERVERIFIKASI — archive bersih tidak membawa dependency Vite/Rollup
 ```
-
-Kegagalan build berasal dari environment pemeriksaan: archive membawa optional binary Rollup Windows, sedangkan registry internal tidak dapat memasang dependency Linux. Build harus diulang pada Node 24 dengan `npm ci` yang berhasil.
 
 ## Unresolved
 
-- GitHub ruleset/branch protection harus dikonfigurasi di dashboard.
-- Team alias belum ada; `CODEOWNERS` sementara menunjuk `@vyo15`.
-- Machine-readable JSON Schema/OpenAPI per payload belum dibuat; kontrak saat ini mendokumentasikan action envelope dan source canonical.
-- Environment Development dan Production masih memakai satu Turso database sesuai keputusan aktif.
+- Sembilan environment core masih perlu dipastikan terpasang pada Vercel Production dan diverifikasi melalui deployment baru.
+- Google bridge dan Web Push tetap opsional serta belum dikonfigurasi penuh.
+- GitHub ruleset/branch protection harus diverifikasi di dashboard.
+- Runtime lokal dan Vercel Production memakai satu Turso database; data dummy dan destructive testing dilarang.
 
 ## Next safe step
 
-Jalankan quality gate pada Node 24, review dokumen untuk nama tim/owner, lalu konfigurasi branch protection. Perubahan arsitektur berikutnya harus melalui RFC.
+Terapkan patch, jalankan quality gate pada Node 24, sinkronkan `.env.local` ke Vercel Production tanpa Preview/Development, deploy ulang, lalu verifikasi `/api/health`, login, dan `POST /api/gateway`.

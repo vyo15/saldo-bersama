@@ -19,7 +19,9 @@
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:integrity": "node scripts/db-integrity.mjs",
     "db:import-legacy": "node scripts/migrate-legacy-json.mjs",
-    "env:check": "node scripts/check-environment.mjs"
+    "env:check": "node scripts/check-environment.mjs",
+    "env:push:production": "node scripts/push-vercel-production-env.mjs",
+    "env:clean": "node scripts/clean-local-environment.mjs"
   },
   "workspaces": [
     "frontend"

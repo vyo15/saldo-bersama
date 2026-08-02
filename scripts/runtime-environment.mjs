@@ -34,7 +34,3 @@ export const environmentStatus = (values = {}) => {
   return { complete: missing.length === 0, missing };
 };
 
-export const sanitizePulledEnvironment = (source = "") => {
-  const lines = String(source).split(/\r?\n/).filter((line) => !/^\s*VERCEL_OIDC_TOKEN\s*=/.test(line));
-  return `${lines.join("\n").replace(/\n+$/g, "")}\n`;
-};

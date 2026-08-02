@@ -12,7 +12,7 @@
 - [ ] Sheets hanya mirror satu arah dan view-only.
 - [ ] Calendar hanya data shared.
 - [ ] Excel netral terhadap formula injection.
-- [ ] Backup checksum dan restore drill DEV lulus.
+- [ ] Backup checksum dan restore drill pada salinan terisolasi sementara lulus.
 - [ ] Offline write ditolak.
 - [ ] PWA iOS/Android, push, safe area, focus, contrast, tap target diuji.
 - [ ] Monitoring health/integration queue tidak membocorkan secret.

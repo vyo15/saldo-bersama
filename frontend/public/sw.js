@@ -1,5 +1,5 @@
-const STATIC_CACHE = "saldo-bersama-static-v5";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v5";
+const STATIC_CACHE = "saldo-bersama-static-v6";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v6";
 const STATIC_ASSETS = [
   "/",
   "/site.webmanifest",
@@ -9,6 +9,17 @@ const STATIC_ASSETS = [
   "/icons/icon-192.png?v=4",
   "/icons/icon-512.png?v=4"
 ];
+
+const cacheResponse = (event, cacheName, request, response) => {
+  if (!response?.ok || response.bodyUsed) return;
+  let copy;
+  try { copy = response.clone(); } catch { return; }
+  event.waitUntil(
+    caches.open(cacheName)
+      .then((cache) => cache.put(request, copy))
+      .catch(() => {}),
+  );
+};
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));
@@ -30,18 +41,28 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   if (["localhost", "127.0.0.1", "::1"].includes(url.hostname)) return;
+
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).then((response) => {
-      if (response.ok) caches.open(RUNTIME_CACHE).then((cache) => cache.put("/", response.clone()));
-      return response;
-    }).catch(() => caches.match("/")));
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        cacheResponse(event, RUNTIME_CACHE, "/", response);
+        return response;
+      } catch {
+        return (await caches.match("/")) || Response.error();
+      }
+    })());
     return;
   }
+
   if (!["script", "style", "font", "image", "manifest"].includes(request.destination)) return;
-  event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-    if (response.ok) caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, response.clone()));
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    cacheResponse(event, RUNTIME_CACHE, request, response);
     return response;
-  })));
+  })());
 });
 
 self.addEventListener("push", (event) => {

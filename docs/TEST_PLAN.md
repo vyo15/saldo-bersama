@@ -34,7 +34,7 @@ Uji dua browser/perangkat dengan owner dan member:
 5. Install PWA iPhone/Android, update app shell, push notification.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.
 7. Export Excel dan periksa formula-like input.
-8. Backup/restore drill pada DEV.
+8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif.
 9. Responsive, keyboard, focus, contrast, loading/empty/error/unauthorized/maintenance.
 
 Tidak boleh mengklaim production-ready hanya berdasarkan unit test; real resource integration dan migration parity wajib lulus.

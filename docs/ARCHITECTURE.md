@@ -20,7 +20,7 @@ PWA React/Vite
 
 ## Kebijakan environment
 
-Development lokal dan Production memakai satu database Turso sesuai keputusan pemilik. Preview tidak mendapat akses database. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
+Runtime lokal dari `.env.local` dan Vercel Production memakai satu database Turso sesuai keputusan pemilik. Vercel Preview dan Development tidak digunakan. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
 
 ## Trust boundaries
 

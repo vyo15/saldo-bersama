@@ -2,7 +2,7 @@
 
 ## 1. Environment canonical
 
-Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variable. Hapus entry Vercel lama terlebih dahulu, lalu buat satu entry per key dengan scope **Development + Production**. Preview tidak diberi database token atau secret.
+Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variable. Hapus entry Vercel lama terlebih dahulu, lalu buat satu entry per key hanya pada scope **Production**. Preview dan Vercel Development tidak digunakan.
 
 Variable `VITE_*` bersifat publik. Secret tidak boleh memakai prefix `VITE_`. Setelah environment berubah, deployment Production wajib dijalankan ulang.
 
@@ -41,6 +41,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 ```bash
 npm ci
 npm run env:check
+npm run env:push:production
 npm run check
 npm run db:integrity
 ```

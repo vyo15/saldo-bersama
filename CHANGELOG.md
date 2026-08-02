@@ -14,5 +14,6 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ### Changed
 
+- Kebijakan environment diselaraskan: Vercel hanya memakai Production, runtime lokal memakai `.env.local`, dan bootstrap Vercel Development dihapus.
 - README dan Git workflow diarahkan ke onboarding serta handoff canonical.
 - Source validator menerima hanya root governance files yang disetujui.

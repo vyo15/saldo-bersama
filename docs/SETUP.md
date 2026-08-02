@@ -10,29 +10,25 @@ Baca `../AGENTS.md`, `PROJECT_STATUS.md`, dan `PROJECT_HANDOFF.md` sebelum mengu
 
 ## 3. Environment
 
-Jalankan:
+Buat konfigurasi lokal dari template:
 
 ```bash
-npm run dev
+cp .env.example .env.local
 ```
 
-Jika `.env.local` belum lengkap dan terminal interaktif, bootstrap akan:
-
-1. memeriksa login Vercel;
-2. menjalankan login bila perlu;
-3. menghubungkan folder ke project berdasarkan repository Git;
-4. menarik Vercel **Development Environment**;
-5. menyimpan `.env.local` secara lokal tanpa menampilkan secret;
-6. menjalankan frontend dan lima endpoint API dalam satu proses.
-
-Fallback manual menggunakan `.env.example`. Daftar canonical dan pemisahan Vercel/Apps Script ada di `ENVIRONMENT_VARIABLES.md`.
+Isi `.env.local` melalui sumber rahasia yang disetujui, kemudian jalankan:
 
 ```bash
 npm run env:check
+# Setelah project Vercel di-link, sinkronkan Production tanpa input manual
+npm run env:push:production
 npm run diagnose
+npm run dev
 ```
 
-Jangan commit `.env.local` atau `.vercel`.
+`npm run dev` tidak menarik environment dari Vercel. Ia akan fail closed bila `.env.local` tidak tersedia atau key wajib belum lengkap. Vercel hanya memakai scope **Production**; Preview dan Vercel Development sengaja kosong.
+
+Daftar canonical dan pemisahan Vercel/Apps Script ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local` atau `.vercel`.
 
 ## 4. Database
 
@@ -41,7 +37,7 @@ npm run db:migrate
 npm run db:integrity
 ```
 
-Migration hanya eksplisit. Owner pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta signed allowlist role adalah owner. Karena Development dan Production saat ini berbagi database, jangan membuat data dummy atau menjalankan destructive operation.
+Migration hanya eksplisit. Owner pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta signed allowlist role adalah owner. Karena runtime lokal dan Vercel Production memakai database yang sama, jangan membuat data dummy atau menjalankan destructive operation.
 
 ## 5. Integrasi Google
 

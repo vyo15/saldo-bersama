@@ -165,7 +165,7 @@ const runtimeConfiguration = Object.freeze({
   googleBridgeConfigured: Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET),
   scheduledJobsConfigured: Boolean(process.env.JOBS_SHARED_SECRET),
 });
-console.log(`\n  Saldo Bersama DEV siap di http://localhost:${port}`);
+console.log(`\n  Saldo Bersama lokal siap di http://localhost:${port}`);
 console.log("  Frontend dan lima endpoint /api berjalan dalam satu proses. Tekan Ctrl+C untuk berhenti.");
 console.log(`  Turso: ${runtimeConfiguration.databaseConfigured ? "set" : "MISSING"}; Google bridge: ${runtimeConfiguration.googleBridgeConfigured ? "set/optional" : "not configured"}`);
 console.log("  Diagnostik aman: npm run diagnose\n");

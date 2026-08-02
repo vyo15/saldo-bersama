@@ -33,8 +33,9 @@ test("branding assets and favicon references stay complete", async () => {
   const manifest = JSON.parse(manifestRaw);
   assert.match(html, /favicon-32\.png\?v=4/);
   assert.match(html, /apple-touch-icon\.png\?v=4/);
+  assert.match(html, /name="mobile-web-app-capable" content="yes"/);
   assert.equal(manifest.icons.some((icon) => icon.purpose === "maskable"), true);
-  assert.match(sw, /saldo-bersama-static-v5/);
+  assert.match(sw, /saldo-bersama-static-v6/);
   assert.match(sw, /SKIP_WAITING/);
   assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return;/);
   assert.equal(logo.subarray(1, 4).toString(), "PNG");
