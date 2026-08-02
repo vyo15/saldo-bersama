@@ -46,3 +46,8 @@ Uji dua browser/perangkat dengan owner dan member:
 10. Full axe scan, authenticated browser journey, visual regression, dan Chrome/Firefox/Safari device coverage.
 
 Tidak boleh mengklaim production-ready hanya berdasarkan unit test; real resource integration dan migration parity wajib lulus.
+
+
+## Browser smoke cleanup guard
+
+Browser smoke wajib menutup process tree Chromium dan koneksi Chrome DevTools Protocol pada semua jalur sukses maupun gagal. Workflow memberi batas waktu dua menit pada langkah browser agar runner tidak menggantung bila executable browser atau proses turunannya bermasalah.

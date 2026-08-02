@@ -9,6 +9,7 @@ export class CdpSession {
     this.pending = new Map();
     this.listeners = new Map();
     this.ready = once(this.socket, "open");
+    this.closed = once(this.socket, "close");
     this.socket.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data));
       if (message.id) {
@@ -72,8 +73,20 @@ export class CdpSession {
     return result.result?.value;
   }
 
-  async close() {
-    if (this.socket.readyState === WebSocket.OPEN) this.socket.close();
+  async close({ timeoutMs = 1_000 } = {}) {
+    if (this.socket.readyState === WebSocket.CLOSED) return;
+    if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
+      this.socket.close();
+    }
+    let timer;
+    await Promise.race([
+      this.closed.catch(() => undefined),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+        timer.unref?.();
+      }),
+    ]);
+    if (timer) clearTimeout(timer);
   }
 }
 

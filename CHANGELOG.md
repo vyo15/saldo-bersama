@@ -4,6 +4,9 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Browser smoke CI sekarang menutup seluruh process tree Chromium dan koneksi CDP secara deterministik, memakai timeout workflow, serta tidak lagi menahan GitHub Actions setelah assertion selesai.
+- GitHub Actions resmi diperbarui ke `actions/checkout@v5` dan `actions/setup-node@v5` agar memakai runtime Node 24.
+
 ### Added
 
 - Artifact policy terpusat, safe generated cleanup, explicit dependency cleanup, archive size guard, build budget, dan Chromium/CDP browser smoke.
