@@ -18,7 +18,8 @@
     "zip": "node scripts/create-clean-archive.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:integrity": "node scripts/db-integrity.mjs",
-    "db:import-legacy": "node scripts/migrate-legacy-json.mjs"
+    "db:import-legacy": "node scripts/migrate-legacy-json.mjs",
+    "env:check": "node scripts/check-environment.mjs"
   },
   "workspaces": [
     "frontend"

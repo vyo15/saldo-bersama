@@ -38,6 +38,9 @@ Backup teknis berupa JSON terkompresi dengan manifest, schema version, row count
 
 ## Script Properties
 
+Enam nilai berikut hanya disimpan di Apps Script Properties. Jangan menduplikasi ID resource atau `JOBS_ENDPOINT_URL` di Vercel.
+
+
 ```text
 GOOGLE_BRIDGE_SHARED_SECRET
 MIRROR_SPREADSHEET_ID

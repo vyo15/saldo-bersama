@@ -1,0 +1,40 @@
+name: Feature
+description: Usulkan perubahan produk dengan acceptance criteria.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Masalah pengguna
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Hasil yang diinginkan
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope dan non-goal
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Area terdampak
+      options:
+        - label: UI/UX
+        - label: API contract
+        - label: Database/schema
+        - label: Auth/role
+        - label: Saldo/data integrity
+        - label: Backup/restore
+        - label: Environment/deployment

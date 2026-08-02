@@ -1,0 +1,38 @@
+name: Data integrity
+description: Laporkan potensi saldo salah, duplicate, conflict, audit, import, atau restore.
+title: "data-integrity: "
+labels: ["data-integrity"]
+body:
+  - type: markdown
+    attributes:
+      value: "Jangan mengubah atau menghapus data untuk mencoba memperbaiki. Gunakan ID teredaksi dan request ID."
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Gejala
+    validations:
+      required: true
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Invariant yang diduga dilanggar
+      description: Contoh transfer masuk total income, saldo tidak sama dengan ledger, atau duplicate write.
+    validations:
+      required: true
+  - type: textarea
+    id: timeline
+    attributes:
+      label: Timeline dan operasi terakhir
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Bukti aman
+      description: Request ID, error code, entity ID teredaksi, hasil integrity check. Jangan sertakan nominal/data nyata.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: Write terkait sudah dihentikan
+        - label: Tidak ada hard delete/manual SQL
+        - label: Backup/snapshot aman sudah tersedia

@@ -1,23 +1,26 @@
 # Git Workflow
 
-Gunakan branch terpisah untuk perubahan besar. Jangan langsung menimpa `main` tanpa review.
-
-## Mulai bekerja
+## Mulai task
 
 ```bash
 git checkout main
 git pull --rebase origin main
-git checkout -b refactor/saldo-bersama-foundation
+git status --short
 npm ci
+npm run env:check
+npm run check
+git checkout -b feat/nama-fitur
 ```
 
-Jika branch sudah ada:
+Gunakan prefix `feat/`, `fix/`, `security/`, `perf/`, `docs/`, `test/`, atau `chore/`. Jangan bekerja langsung di `main`.
 
-```bash
-git checkout refactor/saldo-bersama-foundation
-git pull --rebase origin refactor/saldo-bersama-foundation
-npm ci
-```
+## Selama bekerja
+
+- Baca `AGENTS.md`, project status, dan handoff.
+- Satu task/branch harus memiliki scope jelas.
+- Sync sebelum berpindah laptop/PC.
+- Jangan mengerjakan file sama di dua perangkat tanpa push/pull.
+- Gunakan RFC/ADR untuk perubahan guarded/lintas tim.
 
 ## Sebelum commit
 
@@ -31,34 +34,22 @@ git diff --cached --check
 git diff --cached --stat
 ```
 
-Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, `dist`, credential, token, atau export spreadsheet berisi data nyata.
+Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, build output, credential, token, dump, backup, atau export berisi data nyata.
 
-## Commit dan push
-
-```bash
-git commit -m "feat: build Saldo Bersama foundation"
-git push -u origin refactor/saldo-bersama-foundation
-```
-
-Buat Pull Request ke `main`, periksa Vercel Preview, lalu merge setelah quality gate dan smoke test lulus.
-
-## Sinkronisasi laptop rumah dan PC kantor
-
-Sebelum mulai di perangkat mana pun:
+## Commit dan PR
 
 ```bash
-git status --short
-git pull --rebase
-npm ci
+git commit -m "feat: describe the change"
+git push -u origin feat/nama-fitur
 ```
 
-Setelah selesai:
+Buat PR ke `main`, isi template, tunggu code owner approval, quality gate, preview/smoke test, dan resolve seluruh conversation. Direct push/force push ke `main` harus dilarang melalui repository ruleset.
 
-```bash
-npm run check
-git add -A
-git commit -m "chore: describe the completed change"
-git push
-```
+## Handoff
 
-Jangan mengerjakan file yang sama pada dua perangkat tanpa push/pull terlebih dahulu.
+Sebelum task ditutup, perbarui:
+
+- `docs/PROJECT_STATUS.md`
+- `docs/PROJECT_HANDOFF.md`
+- `CHANGELOG.md`
+- contract/ADR/RFC/runbook yang terdampak

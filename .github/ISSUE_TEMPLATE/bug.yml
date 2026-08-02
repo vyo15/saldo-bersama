@@ -1,0 +1,55 @@
+name: Bug
+description: Laporkan perilaku yang tidak sesuai tanpa data sensitif.
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Gunakan data dummy. Jangan tempel token, email pribadi, nominal nyata, atau screenshot data production."
+  - type: textarea
+    id: summary
+    attributes:
+      label: Ringkasan
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Langkah reproduksi
+      description: Sertakan route, role, dan data dummy.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Hasil yang diharapkan
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Hasil aktual
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit/deployment
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Dampak
+      options:
+        - UI saja
+        - Fitur bisnis
+        - Security/privacy
+        - Saldo/data integrity
+        - Backup/restore
+        - Deployment/integrasi
+    validations:
+      required: true
+  - type: textarea
+    id: request_id
+    attributes:
+      label: Request ID atau error code
+      description: Jangan sertakan payload atau secret.

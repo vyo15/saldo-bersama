@@ -2,38 +2,56 @@
 
 ## 1. Runtime
 
-Gunakan Node 24.x dan npm 10+. Jalankan `npm install` dari root workspace.
+Gunakan Node 24.x dan npm 10+. Jalankan `npm install` atau `npm ci` dari root workspace.
 
-## 2. Environment
+## 2. Onboarding
 
-Salin `.env.example` ke `.env.local` untuk development. Isi Firebase, allowlist dua Gmail, session secret, Turso, Google bridge, jobs, dan VAPID bila dipakai. Jangan commit file tersebut.
+Baca `../AGENTS.md`, `PROJECT_STATUS.md`, dan `PROJECT_HANDOFF.md` sebelum mengubah source.
 
-## 3. Database
+## 3. Environment
+
+Jalankan:
+
+```bash
+npm run dev
+```
+
+Jika `.env.local` belum lengkap dan terminal interaktif, bootstrap akan:
+
+1. memeriksa login Vercel;
+2. menjalankan login bila perlu;
+3. menghubungkan folder ke project berdasarkan repository Git;
+4. menarik Vercel **Development Environment**;
+5. menyimpan `.env.local` secara lokal tanpa menampilkan secret;
+6. menjalankan frontend dan lima endpoint API dalam satu proses.
+
+Fallback manual menggunakan `.env.example`. Daftar canonical dan pemisahan Vercel/Apps Script ada di `ENVIRONMENT_VARIABLES.md`.
+
+```bash
+npm run env:check
+npm run diagnose
+```
+
+Jangan commit `.env.local` atau `.vercel`.
+
+## 4. Database
 
 ```bash
 npm run db:migrate
 npm run db:integrity
 ```
 
-Owner pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta role signed allowlist adalah owner.
+Migration hanya eksplisit. Owner pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta signed allowlist role adalah owner. Karena Development dan Production saat ini berbagi database, jangan membuat data dummy atau menjalankan destructive operation.
 
-## 4. Integrasi Google
+## 5. Integrasi Google
 
 Deploy Apps Script bridge, isi Script Properties, buat spreadsheet mirror, Calendar, dan folder backup. Verifikasi `integration.health` sebelum menyalakan scheduler.
 
-## 5. PWA
+Saat deploy Web App, pilih **Execute as me/deployer** dan **Anyone/anonymous**. Keamanan berasal dari HMAC + timestamp + nonce, bukan sesi browser Google.
 
-- iOS: buka domain HTTPS melalui Safari, Share, Add to Home Screen.
+## 6. PWA
+
+- iOS: Safari → Share → Add to Home Screen.
 - Android/desktop: gunakan prompt Pasang Saldo Bersama.
 - Push permission hanya diminta setelah aksi pengguna.
-
-## 6. Development
-
-```bash
-npm run dev
-```
-
-API lokal tetap membutuhkan server environment yang lengkap. `frontend` tidak boleh menerima Turso token atau bridge secret.
-
-
-Saat deploy Apps Script Web App, pilih **Execute as me/deployer** dan **Anyone/anonymous**. Keamanan akses berasal dari HMAC + timestamp + nonce, bukan sesi browser Google.
+- `/api/*` tidak dicache dan write offline ditolak.

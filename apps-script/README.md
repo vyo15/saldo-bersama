@@ -17,3 +17,5 @@ Script Properties wajib:
 - `JOBS_SHARED_SECRET`
 
 Deploy Web App dengan **Execute as: user deploying** dan **Who has access: anyone/anonymous** agar Vercel dapat memanggilnya tanpa sesi Google. Endpoint publik ini hanya menerima action allowlist dengan HMAC, timestamp, dan nonce; URL serta shared secret tidak boleh dibagikan.
+
+Daftar pemisahan Vercel environment dan Script Properties berada di `docs/ENVIRONMENT_VARIABLES.md`.

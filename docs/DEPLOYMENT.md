@@ -1,46 +1,48 @@
 # Deployment
 
-## Vercel environment
+## 1. Environment canonical
 
-Gunakan `.env.example` sebagai daftar canonical. Variable `VITE_*` bersifat publik; jangan menyimpan secret di sana. Server-only wajib mencakup session secret, Turso URL/token, allowlist, Google bridge secret, jobs secret, serta VAPID private key bila push aktif.
+Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variable. Hapus entry Vercel lama terlebih dahulu, lalu buat satu entry per key dengan scope **Development + Production**. Preview tidak diberi database token atau secret.
 
-## Turso
+Variable `VITE_*` bersifat publik. Secret tidak boleh memakai prefix `VITE_`. Setelah environment berubah, deployment Production wajib dijalankan ulang.
 
-1. Buat database DEV dan production terpisah.
-2. Simpan URL/token hanya di Vercel.
-3. Jalankan `npm run db:migrate` terhadap target yang benar.
-4. Jalankan `npm run db:integrity`.
-5. Jangan menjalankan migration otomatis pada cold start API.
+## 2. Database Turso tunggal
 
-## Firebase
+Sesuai keputusan pemilik, localhost dan Production memakai satu database Turso. Konsekuensinya:
 
-Aktifkan Google provider dan masukkan authorized domains untuk localhost serta domain Vercel. Backend tetap memverifikasi token dengan Firebase Identity Toolkit; allowlist frontend tidak cukup.
+- jangan memakai data dummy setelah aplikasi mulai digunakan;
+- jangan menjalankan restore/import/purge untuk eksperimen;
+- backup wajib sebelum migration atau operasi besar;
+- migration hanya dijalankan eksplisit;
+- selalu jalankan integrity check.
 
-## Apps Script
+```bash
+npm run db:migrate
+npm run db:integrity
+```
+
+## 3. Firebase
+
+Aktifkan Google provider dan authorized domain untuk localhost serta domain Vercel. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; Firebase Web API key bukan secret. Authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`.
+
+## 4. Apps Script bridge
 
 1. Buat project bridge dari folder `apps-script/`.
-2. Isi Script Properties sesuai `GOOGLE_INTEGRATIONS.md`.
-3. Deploy Web App sebagai pemilik.
-4. Isi URL deployment pada `GOOGLE_BRIDGE_WEB_APP_URL` Vercel.
-5. Pasang scheduler melalui fungsi setup yang disediakan dan pastikan hanya satu trigger aktif.
+2. Isi hanya Script Properties pada `GOOGLE_INTEGRATIONS.md`.
+3. Deploy Web App sebagai user deploying dengan akses anyone/anonymous.
+4. Simpan URL `/exec` sebagai `GOOGLE_BRIDGE_WEB_APP_URL` di Vercel.
+5. Pastikan shared secret sama pada Vercel dan Script Properties.
+6. Instal satu scheduled trigger.
 
-## Google resources
+ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di Apps Script Properties, bukan di Vercel.
 
-- Spreadsheet mirror baru; share viewer kepada pasangan.
-- Calendar khusus Saldo Bersama atau kalender shared yang disetujui.
-- Folder Drive khusus backup dengan akses minimum.
-
-## Release gate
+## 5. Release gate
 
 ```bash
 npm ci
+npm run env:check
 npm run check
 npm run db:integrity
 ```
 
-Lanjutkan smoke test login owner/member, create/update/cancel transaksi, transfer, conflict, Excel, push, mirror, Calendar, backup, restore DEV, PWA iOS/Android. Production NO-GO bila salah satu financial parity atau restore drill belum lulus.
-
-
-## Deployment Google bridge
-
-Manifest bridge memakai `executeAs: USER_DEPLOYING` dan `access: ANYONE_ANONYMOUS`. Pastikan shared secret minimal 32 karakter, simpan hanya di Vercel dan Script Properties, lalu uji request tanpa signature ditolak.
+Lanjutkan smoke test login owner/member, create/update/cancel transaksi, transfer, conflict, Excel, push, mirror, Calendar, backup, restore drill, dan PWA iOS/Android.

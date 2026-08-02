@@ -2,6 +2,18 @@
 
 Aplikasi keuangan privat untuk dua akun Google, dipakai dari ponsel, tablet, dan desktop. Turso adalah **source of truth** untuk saldo dan seluruh data finansial. Google Sheets hanya mirror laporan satu arah, Google Calendar hanya pengingat bersama, Google Drive menyimpan backup teknis, dan Excel adalah export pengguna.
 
+## Mulai untuk anggota tim atau ChatGPT baru
+
+Baca berurutan:
+
+1. `AGENTS.md`
+2. `docs/PROJECT_STATUS.md`
+3. `docs/PROJECT_HANDOFF.md`
+4. `docs/INDEX.md`
+5. Source dan test aktual pada area task
+
+Jangan menggunakan chat/memory sebagai source of truth ketika repository tersedia.
+
 ## Stack
 
 - React + Vite PWA
@@ -31,12 +43,18 @@ Persyaratan canonical: Node.js 24.x dan npm 10 atau lebih baru.
 
 ```bash
 npm install
-cp .env.example .env.local
-npm run db:migrate
 npm run dev
 ```
 
-Isi seluruh variable server-only pada environment lokal/Vercel. Jangan commit `.env.local`, token Turso, secret session, VAPID private key, atau Google bridge secret.
+`npm run dev` memakai `.env.local` yang lengkap; bila belum ada, terminal interaktif akan login/link Vercel dan menarik **Development Environment** tanpa menampilkan secret. Gunakan `.env.example` hanya sebagai daftar canonical/fallback manual. Verifikasi:
+
+```bash
+npm run env:check
+npm run diagnose
+npm run db:integrity
+```
+
+Jangan commit `.env.local`, token Turso, session secret, VAPID private key, atau Google bridge secret.
 
 ## Quality gate
 
@@ -72,15 +90,10 @@ npm run db:import-legacy -- path/to/legacy-export.json --apply --confirm=MIGRATE
 
 Urutan aman:
 
-1. Buat database Turso DEV dan jalankan migration.
-2. Konfigurasi Firebase, Vercel env, dan allowlist dua akun.
-3. Deploy Apps Script bridge serta Script Properties.
-4. Buat spreadsheet mirror baru dan bagikan sebagai viewer saja.
-5. Uji migration/parity pada data DEV.
-6. Uji backup dan restore drill.
-7. Baru lakukan cutover production mengikuti `docs/DATA_MIGRATION.md`.
-
-Dokumentasi lengkap berada di folder `docs/`.
-
+1. Verifikasi environment canonical dan database Turso yang disetujui.
+2. Jalankan migration/integrity hanya secara eksplisit.
+3. Konfigurasi Firebase, allowlist, Apps Script bridge, mirror, Calendar, dan Drive.
+4. Uji migration/parity, backup/restore drill, owner/member, dan smoke test.
+5. Cutover mengikuti `docs/DATA_MIGRATION.md` dan `docs/RELEASE_CHECKLIST.md`.
 
 > Mirror Google Sheets hanya memuat data `shared`. Data personal tidak pernah dikirim ke spreadsheet bersama.

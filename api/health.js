@@ -9,13 +9,8 @@ export default async function handler(request, response) {
   attachRequestId(response, requestId);
   let databaseStatus = "unavailable";
   let schema = { ready: false, version: null };
-  const integrations = {
-    configured: {
-      sheets: Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET && process.env.MIRROR_SPREADSHEET_ID),
-      calendar: Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET && process.env.GOOGLE_CALENDAR_ID),
-      drive: Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET && process.env.BACKUP_FOLDER_ID),
-    },
-  };
+  const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);
+  const integrations = { configured: { sheets: bridgeConfigured, calendar: bridgeConfigured, drive: bridgeConfigured } };
   let maintenanceMode = false;
   try {
     const db = getDatabase();

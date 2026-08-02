@@ -21,3 +21,8 @@ Periksa:
 - repeated auth/rate-limit failure.
 
 Worker `processing` yang melewati batas waktu direclaim secara terbatas. Dead-letter memerlukan tindakan owner, bukan retry tanpa batas.
+
+
+## Event catalog dan runbook
+
+Nama event, field minimum/terlarang, owner, dan alert dicatat pada `LOG_EVENT_CATALOG.md`. Tindakan operasional mengikuti `OPERATIONS_RUNBOOK.md` dan `INCIDENT_RESPONSE.md`.

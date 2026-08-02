@@ -163,7 +163,7 @@ await new Promise((resolve, reject) => {
 const runtimeConfiguration = Object.freeze({
   databaseConfigured: Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
   googleBridgeConfigured: Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET),
-  scheduledJobsConfigured: Boolean(process.env.JOBS_ENDPOINT_URL && process.env.JOBS_SHARED_SECRET),
+  scheduledJobsConfigured: Boolean(process.env.JOBS_SHARED_SECRET),
 });
 console.log(`\n  Saldo Bersama DEV siap di http://localhost:${port}`);
 console.log("  Frontend dan lima endpoint /api berjalan dalam satu proses. Tekan Ctrl+C untuk berhenti.");

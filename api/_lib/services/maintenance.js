@@ -100,7 +100,7 @@ export const createTechnicalBackup = async (db, context, { type = "manual", audi
   const fileName = existing?.file_name || proposedFileName;
   await db.execute("UPDATE backup_runs SET status='pending',checksum=?,error_code=NULL WHERE backup_id=? AND status<>'verified'", [snapshot.checksum, backupId]);
   try {
-    const stored = await callGoogleBridge("backup.store", { backupId, fileName, contentBase64: encodeBackup(snapshot), checksum: snapshot.checksum, folderId: process.env.BACKUP_FOLDER_ID || "" });
+    const stored = await callGoogleBridge("backup.store", { backupId, fileName, contentBase64: encodeBackup(snapshot), checksum: snapshot.checksum });
     if (!stored?.fileId) throw appError("BACKUP_STORE_FAILED", "Google Drive tidak mengembalikan file backup.", 503);
     await db.execute("UPDATE backup_runs SET external_file_id=?,status='verified',checksum=?,verified_at=?,error_code=NULL WHERE backup_id=?", [stored.fileId, snapshot.checksum, nowIso(), backupId]);
     await ensureBackupAudit(db, context, backupId, { fileName, status: "verified", checksum: snapshot.checksum }, audit);

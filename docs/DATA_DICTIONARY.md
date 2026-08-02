@@ -1,0 +1,56 @@
+# Data Dictionary
+
+Schema column-level canonical berada di `database/migrations/001_initial_schema.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+
+## Aturan lintas tabel
+
+- Rupiah memakai `INTEGER`, bukan float.
+- Waktu canonical ISO UTC; tanggal bisnis/timezone mengikuti `Asia/Jakarta`.
+- ID dibuat server-side.
+- Actor/timestamp/audit field dibuat server.
+- `row_version` naik setiap perubahan optimistic.
+- `shared` tidak memiliki `owner_user_id`; `personal` wajib memiliki owner.
+- Data finansial normal tidak di-hard-delete.
+- Foreign key wajib aktif.
+- Backup/import/restore mengikuti preview dan integrity guard.
+
+## Tabel
+
+| Tabel | Tujuan | Sensitivitas | Lifecycle |
+|---|---|---|---|
+| `schema_migrations` | Riwayat migration yang sudah diterapkan. | Sedang | Migration-only |
+| `system_config` | Konfigurasi runtime internal seperti schema version, maintenance, timezone, dan currency. | Sedang | Migration-only |
+| `users` | Identitas aplikasi yang terikat pada Firebase UID, email, role, dan status. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `accounts` | Rekening shared/personal beserta saldo awal dan kebijakan saldo negatif. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `categories` | Kategori pemasukan/pengeluaran. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `envelope_rules` | Definisi kantong/alokasi berkala. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `envelope_periods` | Instance kantong per periode dan alokasi aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `recurring_rules` | Aturan tagihan atau pemasukan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `recurring_occurrences` | Kejadian per jatuh tempo dari aturan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `savings_goals` | Target tabungan yang terhubung ke rekening. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `transactions` | Ledger transaksi income, expense, transfer, refund, dan adjustment. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `envelope_movements` | Realokasi atau mutasi kantong yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `budgets` | Anggaran kategori per periode. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `goal_movements` | Setoran/penarikan target yang terhubung ke transaksi. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `reconciliations` | Perbandingan saldo sistem dan saldo aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `period_closures` | Snapshot serta status penutupan periode. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `audit_log` | Audit append-only untuk perubahan penting. | Tinggi | Append-only |
+| `idempotency_keys` | Hasil write yang dapat diputar ulang secara aman dengan key sama. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `request_nonces` | Nonce anti-replay untuk request bertanda tangan. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `integration_outbox` | Antrean atomik menuju Sheets, Calendar, Drive, atau worker lain. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `integration_links` | Pemetaan entity internal dengan resource integrasi eksternal. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `notification_queue` | Antrean notifikasi yang diproses worker. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `push_subscriptions` | Subscription Web Push per pengguna/perangkat. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `backup_runs` | Metadata backup teknis dan statusnya. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `import_previews` | Preview import yang memiliki fingerprint dan masa berlaku. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `restore_previews` | Preview restore yang memiliki fingerprint dan masa berlaku. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `integrity_runs` | Hasil pemeriksaan integritas database. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+
+## Field finansial utama
+
+- `transactions.amount`, `accounts.initial_balance`, budget, envelope, goal, occurrence, reconciliation: integer Rupiah.
+- `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
+- Transfer wajib source dan destination berbeda.
+- `transactions.status` menentukan dampak saldo; cancelled/archived tidak dihitung.
+- `owner_scope`/`scope`: `shared` atau `personal`.
+- `created_by`, `updated_by`, cancellation/reversal actor: server canonical.

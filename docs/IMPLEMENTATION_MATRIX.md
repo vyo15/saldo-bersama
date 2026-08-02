@@ -17,3 +17,8 @@
 | Web Push | backend queue + VAPID | Implemented; device test required |
 | Legacy Sheets DB | removed from runtime | Completed |
 | Production migration | controlled cutover | Pending real data parity |
+| Governance/handoff | AGENTS, status, handoff, CODEOWNERS, templates | Implemented |
+| Team contracts | API, authorization, data, security, release/runbook docs | Implemented; machine-readable payload schema pending |
+| Browser E2E/accessibility automation | Playwright/axe | Not implemented |
+| External alerting | Vercel/log drain/approved provider | Not implemented |
+

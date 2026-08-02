@@ -1,6 +1,6 @@
 export const verifyFirebaseIdToken = async (idToken) => {
-  const apiKey = process.env.FIREBASE_WEB_API_KEY;
-  if (!apiKey) throw new Error("FIREBASE_WEB_API_KEY belum diatur.");
+  const apiKey = process.env.VITE_FIREBASE_API_KEY;
+  if (!apiKey) throw new Error("VITE_FIREBASE_API_KEY belum diatur.");
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

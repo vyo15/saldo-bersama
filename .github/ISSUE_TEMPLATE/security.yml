@@ -1,0 +1,24 @@
+name: Security hardening
+description: Gunakan hanya untuk hardening non-rahasia; vulnerability harus melalui private advisory.
+title: "security: "
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: "Untuk exploit, secret exposure, auth bypass, atau data leak gunakan private security advisory."
+  - type: textarea
+    id: hardening
+    attributes:
+      label: Hardening yang diusulkan
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Risiko yang dikurangi
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Dampak compatibility/deployment

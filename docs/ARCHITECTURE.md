@@ -17,6 +17,11 @@ PWA React/Vite
             -> Drive backup
 ```
 
+
+## Kebijakan environment
+
+Development lokal dan Production memakai satu database Turso sesuai keputusan pemilik. Preview tidak mendapat akses database. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
+
 ## Trust boundaries
 
 1. Browser dianggap tidak tepercaya.
@@ -73,3 +78,8 @@ Service worker hanya meng-cache app shell dan asset statis. `/api/*` tidak perna
 ## Batas privasi mirror
 
 Google Sheets mirror hanya memuat rekening, transaksi, anggaran, kantong, recurring, target, dan rekonsiliasi dengan scope `shared`. Data personal tetap berada di Turso dan hanya diakses melalui API dengan authorization.
+
+
+## Keputusan arsitektur
+
+Keputusan dan trade-off canonical dicatat di `docs/adr/`. Perubahan guarded/lintas tim harus melalui RFC pada `docs/rfc/` sebelum ADR diperbarui.

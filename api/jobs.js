@@ -40,7 +40,6 @@ const mirrorSnapshot = async (db) => {
     FROM accounts a WHERE a.status='active' AND a.owner_scope='shared'`, [todayJakarta(), todayJakarta()]);
   return {
     generatedAt: nowIso(),
-    spreadsheetId: process.env.MIRROR_SPREADSHEET_ID || "",
     sheets: {
       Ringkasan: safeRows([{ generated_at: nowIso(), schema_version: 3, approximate_total_balance: Number(total?.approximate_total || 0), note: "Mirror read-only. Saldo resmi berada di Turso dan aplikasi Saldo Bersama." }]),
       Transaksi: safeRows(transactions), Rekening: safeRows(accounts), Kategori: safeRows(categories), Anggaran: safeRows(budgets), Kantong: safeRows(envelopes), Tagihan: safeRows(recurring), Target: safeRows(goals), Rekonsiliasi: safeRows(reconciliations),
@@ -52,7 +51,7 @@ const calendarSnapshot = async (db) => {
   const items = await db.all(`SELECT o.occurrence_id,r.name,r.kind,o.due_date,o.expected_amount,o.actual_amount,o.status
     FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
     WHERE r.scope='shared' AND r.status='active' AND o.status<>'cancelled' AND o.due_date BETWEEN ? AND ? ORDER BY o.due_date,r.name`, [monthBoundary(-1), monthBoundary(12, true)]);
-  return { calendarId: process.env.GOOGLE_CALENDAR_ID || "", items: items.map((item) => ({ entityId: item.occurrence_id, title: `${Number(item.actual_amount) >= Number(item.expected_amount) ? "✓ " : ""}${item.kind === "income" ? "Periksa pemasukan" : "Periksa tagihan"}: ${item.name}`, date: item.due_date, description: "Buka aplikasi Saldo Bersama untuk detail. Kalender bukan sumber status pembayaran.", status: item.status })) };
+  return { items: items.map((item) => ({ entityId: item.occurrence_id, title: `${Number(item.actual_amount) >= Number(item.expected_amount) ? "✓ " : ""}${item.kind === "income" ? "Periksa pemasukan" : "Periksa tagihan"}: ${item.name}`, date: item.due_date, description: "Buka aplikasi Saldo Bersama untuk detail. Kalender bukan sumber status pembayaran.", status: item.status })) };
 };
 
 const claimOutbox = async (db, workerId) => db.transaction(async (tx) => {
@@ -126,7 +125,7 @@ const queueDueNotifications = async (db) => {
 };
 
 const processPush = async (db) => {
-  const publicKey = process.env.VAPID_PUBLIC_KEY; const privateKey = process.env.VAPID_PRIVATE_KEY; const subject = process.env.VAPID_SUBJECT;
+  const publicKey = process.env.VITE_VAPID_PUBLIC_KEY; const privateKey = process.env.VAPID_PRIVATE_KEY; const subject = process.env.VAPID_SUBJECT;
   if (!publicKey || !privateKey || !subject) return { sent: 0, failed: 0, skipped: true };
   webpush.setVapidDetails(subject, publicKey, privateKey);
   const timestamp = nowIso();

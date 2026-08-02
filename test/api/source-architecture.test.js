@@ -112,11 +112,11 @@ test("action internal kantong tidak diekspos dan health publik tidak membocorkan
   assert.match(health, /configured/);
 });
 
-test("environment template tidak berisi secret dan memakai konfigurasi arsitektur baru", async () => {
+test("environment template hanya memakai daftar canonical tanpa duplikasi legacy", async () => {
   const values = parseEnv(await source(".env.example"));
   for (const key of ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "SESSION_SECRET", "GOOGLE_BRIDGE_SHARED_SECRET", "JOBS_SHARED_SECRET", "VAPID_PRIVATE_KEY"]) assert.equal(values[key], "", `${key} wajib kosong`);
-  for (const key of ["GOOGLE_BRIDGE_WEB_APP_URL", "MIRROR_SPREADSHEET_ID", "GOOGLE_CALENDAR_ID", "BACKUP_FOLDER_ID", "JOBS_ENDPOINT_URL"]) assert.ok(key in values, key);
-  for (const legacy of ["INTERNAL_SHARED_SECRET", "APPS_SCRIPT_WEB_APP_URL", "SPREADSHEET_ID"]) assert.equal(legacy in values, false, legacy);
+  for (const key of ["VITE_APP_NAME", "VITE_GOOGLE_CLIENT_ID", "VITE_FIREBASE_API_KEY", "ALLOWED_USERS_JSON", "ALLOWED_ORIGINS", "GOOGLE_BRIDGE_WEB_APP_URL", "VITE_VAPID_PUBLIC_KEY", "VAPID_SUBJECT"]) assert.ok(key in values, key);
+  for (const legacy of ["INTERNAL_SHARED_SECRET", "APPS_SCRIPT_WEB_APP_URL", "FIREBASE_WEB_API_KEY", "VAPID_PUBLIC_KEY", "VITE_DEV_MODE", "SPREADSHEET_ID", "MIRROR_SPREADSHEET_ID", "GOOGLE_CALENDAR_ID", "BACKUP_FOLDER_ID", "JOBS_ENDPOINT_URL"]) assert.equal(legacy in values, false, legacy);
 });
 
 test("packager dan source validator menolak env, secret, archive, serta local database dump", async () => {
@@ -145,10 +145,29 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
 });
 
 test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah dihapus", async () => {
-  for (const file of ["docs/TURSO_SCHEMA.md", "docs/GOOGLE_INTEGRATIONS.md", "docs/DATA_MIGRATION.md", "docs/RECOVERY_RUNBOOK.md"]) assert.equal(await exists(file), true, file);
+  for (const file of ["docs/TURSO_SCHEMA.md", "docs/GOOGLE_INTEGRATIONS.md", "docs/DATA_MIGRATION.md", "docs/RECOVERY_RUNBOOK.md", "docs/ENVIRONMENT_VARIABLES.md"]) assert.equal(await exists(file), true, file);
   assert.equal(await exists("docs/GOOGLE_SHEETS_SCHEMA.md"), false);
   const architecture = await source("docs/ARCHITECTURE.md");
   assert.match(architecture, /Turso/);
   assert.match(architecture, /source of truth/i);
   assert.match(architecture, /mirror/i);
+});
+
+test("runtime memakai satu Firebase public key dan tidak menduplikasi resource ID Google di Vercel", async () => {
+  const [firebase, jobs, integrations, maintenance, environmentDoc] = await Promise.all([
+    source("api/_lib/firebase.js"),
+    source("api/jobs.js"),
+    source("api/_lib/services/integrations.js"),
+    source("api/_lib/services/maintenance.js"),
+    source("docs/ENVIRONMENT_VARIABLES.md"),
+  ]);
+  assert.match(firebase, /process\.env\.VITE_FIREBASE_API_KEY/);
+  assert.doesNotMatch(firebase, /FIREBASE_WEB_API_KEY/);
+  assert.match(jobs, /process\.env\.VITE_VAPID_PUBLIC_KEY/);
+  assert.doesNotMatch(jobs, /process\.env\.VAPID_PUBLIC_KEY/);
+  for (const sourceText of [jobs, integrations, maintenance]) {
+    assert.doesNotMatch(sourceText, /process\.env\.(MIRROR_SPREADSHEET_ID|GOOGLE_CALENDAR_ID|BACKUP_FOLDER_ID|JOBS_ENDPOINT_URL)/);
+  }
+  assert.match(environmentDoc, /Development \+ Production/);
+  assert.match(environmentDoc, /Preview tidak/);
 });

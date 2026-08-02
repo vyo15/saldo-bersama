@@ -31,7 +31,8 @@ export const integrationStatus = async (db) => {
     if (!item.lastUpdatedAt || String(row.last_updated_at) > item.lastUpdatedAt) item.lastUpdatedAt = row.last_updated_at;
     providers[row.provider] = item;
   }
-  return { providers, configured: { sheets: Boolean(process.env.MIRROR_SPREADSHEET_ID && process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET), calendar: Boolean(process.env.GOOGLE_CALENDAR_ID && process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET), drive: Boolean(process.env.BACKUP_FOLDER_ID && process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET) } };
+  const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);
+  return { providers, configured: { sheets: bridgeConfigured, calendar: bridgeConfigured, drive: bridgeConfigured } };
 };
 
 const signature = (message, secret) => crypto.createHmac("sha256", secret).update(message).digest("hex");

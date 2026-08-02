@@ -1,0 +1,15 @@
+# Fallback owner sampai tim GitHub/alias khusus dibuat.
+* @vyo15
+
+# Guarded areas tetap membutuhkan review owner.
+database/migrations/ @vyo15
+api/_lib/security.js @vyo15
+api/_lib/services/finance.js @vyo15
+api/_lib/services/maintenance.js @vyo15
+api/_lib/services/audit.js @vyo15
+api/session.js @vyo15
+api/gateway.js @vyo15
+apps-script/ @vyo15
+.github/workflows/ @vyo15
+docs/adr/ @vyo15
+docs/rfc/ @vyo15

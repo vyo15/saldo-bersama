@@ -1,0 +1,19 @@
+# Threat Model
+
+| Threat | Control aktif | Gap/aksi |
+|---|---|---|
+| Broken access control/IDOR | Action permission + service ownership query | Contract test harus mengikuti setiap action/read model baru. |
+| Token/session theft | HttpOnly, SameSite Strict, Secure production, expiry | Rotasi dan revoke runbook perlu dipraktikkan. |
+| CSRF/origin abuse | SameSite + strict origin allowlist | Semua state-changing endpoint baru wajib memakai guard sama. |
+| Replay/duplicate write | Idempotency, nonce, timestamp | Rate limit global masih perlu evaluasi. |
+| Concurrent overwrite | `row_version` conditional update | UI wajib menampilkan conflict, bukan retry overwrite. |
+| SQL injection | Parameterized Turso statements | Jangan membuat dynamic SQL dari input tanpa allowlist. |
+| Formula injection | Neutralisasi export/import | Test setiap format baru. |
+| XSS | React escaping, larangan raw HTML | Audit dependency dan render HTML baru. |
+| Privilege escalation | Server role/allowlist/binding | Role change owner-only dan audit. |
+| Backup disclosure | Private Drive folder, checksum | Enkripsi aplikasi belum menjadi baseline teruji. |
+| Malicious import/restore | Preview, fingerprint, safety backup, maintenance, integrity | Real-resource drill wajib. |
+| Log leakage | Structured redaction | Coverage terminal log/client crash masih perlu ditingkatkan. |
+| Supply-chain compromise | Lockfile, CI, source validation | Dependabot/code scanning belum dibuktikan aktif. |
+| Insider/manual SQL | Service-only policy, audit | Batasi token dan dokumentasikan break-glass. |
+| Offline duplicate | Offline write ditolak | Jangan menambah browser write queue. |
