@@ -33,6 +33,9 @@ Cakupan wajib:
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
 - browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
+- authenticated route journey wajib menunggu `document.readyState` selesai dan heading canonical route yang tepat; pathname saja tidak boleh dianggap bukti render karena DOM lama/loading dapat masih aktif saat full navigation;
+- route readiness wajib menolak `main.loading-screen`, memverifikasi heading canonical secara stabil dua kali, dan selector browser harus menunjuk class runtime aktual;
+- resource enabled pada initial `idle` wajib dipresentasikan sebagai loading agar page tidak berkedip dari konten kosong ke loading screen;
 - workflow CI membangun frontend browser smoke dengan nilai public dummy untuk `VITE_GOOGLE_CLIENT_ID` dan `VITE_FIREBASE_API_KEY`; nilai ini bukan secret dan hanya mencegah guard konfigurasi menghentikan render mock login;
 - gzip bundle dan source archive tetap di bawah budget.
 
@@ -74,3 +77,33 @@ Perubahan sistem pengendali uang bersama wajib mencakup skenario berikut:
 - setiap gap yang membutuhkan schema baru memiliki RFC `Proposed` sebelum migration atau API baru dibuat.
 
 Fitur planned seperti receipt, utang/piutang, contribution split, category hierarchy, goal stages, privacy granular, dan Partner role tidak boleh dianggap implemented hanya karena RFC tersedia.
+
+## Authenticated desktop/mobile capability parity
+
+Browser test authenticated wajib memakai fixture owner dan member yang deterministik, tanpa koneksi Firebase, Turso, Google Identity, atau provider eksternal. Cakupan minimum:
+
+- seluruh route `/`, `/transaksi`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, dan `/pengaturan` dapat dirender pada mobile;
+- heading utama, navigation landmark, route aktif, dan error state tetap benar;
+- dashboard mobile membawa batas aman harian, dana belum dialokasikan, rincian rekening/kategori, seluruh peringatan melalui progressive disclosure, filter lengkap, privacy nominal, serta detail transaksi;
+- dashboard desktop membawa filter jenis, detail transaksi, dan privacy nominal yang sama;
+- menu `Lainnya` aktif dengan `aria-current="page"` pada route sekunder;
+- owner dan member memakai route yang sama, sementara kontrol write tetap mengikuti authorization data/API;
+- viewport tidak overflow horizontal dan business form tidak diduplikasi per perangkat.
+
+Viewport regression minimum:
+
+```text
+360×800
+390×844
+412×915
+768×1024
+820×1180
+821×1180
+900×1000
+940×1000
+941×1000
+1024×768
+1440×900
+```
+
+Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile serta kontrol sesi desktop. Pada setiap ukuran, setidaknya satu jalur logout harus tersedia melalui header desktop atau menu mobile.

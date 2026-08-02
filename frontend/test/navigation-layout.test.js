@@ -108,3 +108,22 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
   assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*flex; \}/);
   assert.match(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*none; \}/);
 });
+
+test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoint 820/821/940/941", async () => {
+  const [responsiveCss, mobileNavigation, navigationConfig] = await Promise.all([
+    read("src/styles/responsive.css"),
+    read("src/components/navigation/MobileNavigation.jsx"),
+    read("src/config/navigation.js"),
+  ]);
+
+  const tabletBlock = responsiveCss.match(/@media \(max-width:\s*940px\) \{[\s\S]*?\n\}/)?.[0] || "";
+  const mobileBlock = responsiveCss.match(/@media \(max-width:\s*820px\) \{[\s\S]*?\.mobile-navigation \{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(tabletBlock, /\.desktop-user-avatar \{ display:\s*none; \}/);
+  assert.doesNotMatch(tabletBlock, /desktop-logout-button[^}]*display:\s*none/);
+  assert.match(mobileBlock, /\.desktop-app-header \{ display:\s*none; \}/);
+  assert.match(mobileBlock, /\.mobile-navigation \{[^}]*display:\s*grid;/);
+  assert.match(navigationConfig, /isMobileSecondaryNavigationPath/);
+  assert.match(mobileNavigation, /secondaryRouteActive/);
+  assert.match(mobileNavigation, /aria-current=\{secondaryRouteActive \? "page"/);
+  assert.match(mobileNavigation, /mobile-navigation__more\$\{moreActive \? " active"/);
+});

@@ -192,3 +192,9 @@ test("FinanceContext memakai initial state Turso tanpa bootstrap Apps Script leg
   assert.match(source, /apiClient\.request\("app\.initialState", \{\}, \{ force \}\)/);
   assert.doesNotMatch(source, /IDENTITY_BIND_REQUIRED|system\.initialize|Apps Script/);
 });
+
+test("useApiResource memperlakukan idle enabled sebagai initial loading agar halaman tidak berkedip siap lalu loading", async () => {
+  const source = await readFile(new URL("../src/hooks/useApiResource.js", import.meta.url), "utf8");
+  assert.match(source, /enabled && state\.status === "idle" \? "loading" : state\.status/);
+  assert.match(source, /return \{[\s\S]*status,[\s\S]*isRefreshing: status === "refreshing"/);
+});

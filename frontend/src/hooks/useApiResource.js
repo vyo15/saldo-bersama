@@ -45,9 +45,12 @@ export const useApiResource = (action, payload = {}, { enabled = true } = {}) =>
     return () => activeController.current?.abort();
   }, [enabled, load]);
 
+  const status = enabled && state.status === "idle" ? "loading" : state.status;
+
   return {
     ...state,
-    isRefreshing: state.status === "refreshing",
+    status,
+    isRefreshing: status === "refreshing",
     reload: () => load({ force: true }),
   };
 };

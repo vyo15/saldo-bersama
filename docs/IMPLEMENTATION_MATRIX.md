@@ -14,8 +14,8 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-DATA-001`–`REQ-DATA-002` | Turso/recovery | Implemented | migration, maintenance services | Restore drill nyata |
 | `REQ-OFFLINE-001` | Offline write deny | Implemented | service worker/front-end guards | Device smoke |
 | `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
-| `REQ-UX-001` | UI states | Implemented | feedback components/pages | Authenticated E2E |
-| `REQ-A11Y-001` | Accessibility baseline | Partial | semantic tests/browser smoke | axe penuh pending |
+| `REQ-UX-001` | UI states | Implemented | feedback components/pages + shared responsive view model | Production/device smoke |
+| `REQ-A11Y-001` | Accessibility baseline | Partial | semantic tests + unauthenticated/authenticated Chromium smoke | axe penuh dan Safari/Firefox device coverage pending |
 | `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard | Granular privacy pending RFC-0015 |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
 | `REQ-PROD-03` | Kategori | Partial | categories + `nature` | hierarchy pending RFC-0014 |
@@ -24,7 +24,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection | split/stages pending RFC-0013/0014 |
 | `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences | assignee/receipt pending RFC-0011/0013 |
 | `REQ-PROD-08` | Kalender keuangan | Partial | shared recurring Calendar bridge | internal multi-event calendar belum ada |
-| `REQ-PROD-09` | Dashboard pasangan | Implemented | dashboard overview/mobile/desktop alerts | Production smoke |
+| `REQ-PROD-09` | Dashboard pasangan | Implemented | shared dashboard view model, mobile/desktop filters, detail, alerts, privacy | Production/device smoke |
 | `REQ-PROD-10` | Kontribusi/split | Planned | hanya aktivitas pencatatan | RFC-0013 |
 | `REQ-PROD-11` | Quick/draft transaction | Partial | quick form, duplicate guard, unallocated alerts | draft/template pending RFC-0011 |
 | `REQ-PROD-12` | Utang/piutang | Planned | tidak ada runtime table/action | RFC-0012 |

@@ -33,3 +33,18 @@ export const MOBILE_SECONDARY_NAVIGATION = Object.freeze([
   PRIMARY_NAVIGATION[6],
   PRIMARY_NAVIGATION[7],
 ]);
+
+const normalizePathname = (pathname) => {
+  const normalized = `/${String(pathname || "").replace(/^\/+|\/+$/g, "")}`;
+  return normalized === "/" ? normalized : normalized.replace(/\/+$/, "");
+};
+
+export const matchesNavigationPath = (pathname, item) => {
+  const current = normalizePathname(pathname);
+  const target = normalizePathname(item?.to);
+  return item?.end ? current === target : current === target || current.startsWith(`${target}/`);
+};
+
+export const isMobileSecondaryNavigationPath = (pathname) => (
+  MOBILE_SECONDARY_NAVIGATION.some((item) => matchesNavigationPath(pathname, item))
+);

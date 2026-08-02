@@ -7,6 +7,8 @@ import TransactionForm from "../transactions/TransactionForm.jsx";
 import { TRANSACTION_LABELS } from "../transactions/transactionPresentation.js";
 import DesktopFinanceDashboard from "./components/DesktopFinanceDashboard.jsx";
 import MobileFinanceDashboard from "./components/MobileFinanceDashboard.jsx";
+import MobileDashboardFilters from "./components/MobileDashboardFilters.jsx";
+import MobileTransactionDetail from "./components/MobileTransactionDetail.jsx";
 import { absoluteAmount } from "./dashboardPresentation.js";
 
 const DashboardPage = () => {
@@ -19,24 +21,18 @@ const DashboardPage = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedTransactionId, setSelectedTransactionId] = useState("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileTransactionDetailOpen, setMobileTransactionDetailOpen] = useState(false);
 
-  const accountLookup = useMemo(
-    () => Object.fromEntries((overview?.accountBalances || []).map((item) => [item.account_id, item.name])),
-    [overview?.accountBalances],
-  );
-  const categoryLookup = useMemo(
-    () => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item.name])),
-    [bootstrap?.categories],
-  );
-  const envelopeLookup = useMemo(
-    () => Object.fromEntries((overview?.envelopes || []).map((item) => [item.envelope_period_id, item.name])),
-    [overview?.envelopes],
-  );
+  const dashboardViewModel = useMemo(() => {
+    if (!overview) return null;
 
-  const recentTransactions = useMemo(() => overview?.recentTransactions || [], [overview?.recentTransactions]);
-  const filteredTransactions = useMemo(() => {
+    const accountLookup = Object.fromEntries((overview.accountBalances || []).map((item) => [item.account_id, item.name]));
+    const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item.name]));
+    const envelopeLookup = Object.fromEntries((overview.envelopes || []).map((item) => [item.envelope_period_id, item.name]));
+    const recentTransactions = overview.recentTransactions || [];
     const query = searchTerm.trim().toLocaleLowerCase("id-ID");
-    return recentTransactions.filter((item) => {
+    const filteredTransactions = recentTransactions.filter((item) => {
       const matchesAccount = accountFilter === "all"
         || item.source_account_id === accountFilter
         || item.destination_account_id === accountFilter;
@@ -55,90 +51,112 @@ const DashboardPage = () => {
       ].filter(Boolean).join(" ").toLocaleLowerCase("id-ID");
       return searchable.includes(query);
     });
-  }, [accountFilter, accountLookup, categoryFilter, categoryLookup, recentTransactions, searchTerm, typeFilter]);
-
-  const selectedTransaction = useMemo(
-    () => filteredTransactions.find((item) => item.transaction_id === selectedTransactionId)
+    const selectedTransaction = filteredTransactions.find((item) => item.transaction_id === selectedTransactionId)
       || filteredTransactions[0]
-      || null,
-    [filteredTransactions, selectedTransactionId],
-  );
+      || null;
+    const expenseByCategory = overview.categoryExpenses || [];
+    const featuredEnvelope = overview.envelopes?.[0] || null;
+    const featuredEnvelopeUsed = featuredEnvelope
+      ? Number(featuredEnvelope.used_amount || 0) + Number(featuredEnvelope.reserved_amount || 0)
+      : 0;
+    const featuredEnvelopeMax = Number(featuredEnvelope?.allocated_amount || 0);
+    const featuredEnvelopePercent = featuredEnvelopeMax > 0
+      ? Math.min(100, Math.round((featuredEnvelopeUsed / featuredEnvelopeMax) * 100))
+      : 0;
+    const accountBars = overview.accountBalances.slice(0, 6);
+    const maxAccountBalance = Math.max(1, ...accountBars.map((item) => absoluteAmount(item.balance)));
+    const expenseBars = expenseByCategory.slice(0, 7);
+    const maxCategoryExpense = Math.max(1, ...expenseBars.map((item) => absoluteAmount(item.amount)));
+    const activeFilterCount = [accountFilter, categoryFilter, typeFilter].filter((value) => value !== "all").length
+      + (searchTerm.trim() ? 1 : 0);
+
+    const transactionAccountLabel = (item) => {
+      if (!item) return "Rekening tidak tersedia";
+      if (item.transaction_type === "transfer") {
+        const source = accountLookup[item.source_account_id] || "Rekening asal";
+        const destination = accountLookup[item.destination_account_id] || "Rekening tujuan";
+        return `${source} → ${destination}`;
+      }
+      return accountLookup[item.source_account_id]
+        || accountLookup[item.destination_account_id]
+        || "Rekening tidak tersedia";
+    };
+
+    const selectedTitle = selectedTransaction?.description
+      || selectedTransaction?.merchant
+      || categoryLookup[selectedTransaction?.category_id]
+      || "Transaksi";
+    const selectedCategory = categoryLookup[selectedTransaction?.category_id] || "Belum dikategorikan";
+    const selectedEnvelope = selectedTransaction?.envelope_period_id
+      ? envelopeLookup[selectedTransaction.envelope_period_id] || "Alokasi tidak tersedia"
+      : selectedTransaction?.transaction_type === "expense" ? "Belum dialokasikan" : "Tidak menggunakan alokasi";
+    const selectedEnvelopeNote = selectedTransaction?.envelope_period_id
+      ? "Terhubung ke kantong aktif"
+      : selectedTransaction?.transaction_type === "expense" ? "Perlu ditinjau sebelum tutup periode" : "Jenis transaksi ini tidak memerlukan kantong";
+    const parsedSyncTime = new Date(overview.lastSyncedAt);
+    const lastSyncedAt = Number.isNaN(parsedSyncTime.getTime())
+      ? "Waktu sinkron tidak tersedia"
+      : parsedSyncTime.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+
+    return {
+      accountLookup,
+      categoryLookup,
+      recentTransactions,
+      filteredTransactions,
+      selectedTransaction,
+      expenseByCategory,
+      featuredEnvelope,
+      featuredEnvelopeUsed,
+      featuredEnvelopeMax,
+      featuredEnvelopePercent,
+      accountBars,
+      maxAccountBalance,
+      expenseBars,
+      maxCategoryExpense,
+      activeFilterCount,
+      transactionAccountLabel,
+      selectedTitle,
+      selectedCategory,
+      selectedEnvelope,
+      selectedEnvelopeNote,
+      lastSyncedAt,
+    };
+  }, [accountFilter, bootstrap?.categories, categoryFilter, overview, searchTerm, selectedTransactionId, typeFilter]);
 
   if (status === "loading" || status === "idle") return <LoadingScreen />;
   if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />;
-  if (!overview) return null;
+  if (!overview || !dashboardViewModel) return null;
 
-  const expenseByCategory = overview.categoryExpenses || [];
-  const featuredEnvelope = overview.envelopes?.[0] || null;
-  const featuredEnvelopeUsed = featuredEnvelope
-    ? Number(featuredEnvelope.used_amount || 0) + Number(featuredEnvelope.reserved_amount || 0)
-    : 0;
-  const featuredEnvelopeMax = Number(featuredEnvelope?.allocated_amount || 0);
-  const featuredEnvelopePercent = featuredEnvelopeMax > 0
-    ? Math.min(100, Math.round((featuredEnvelopeUsed / featuredEnvelopeMax) * 100))
-    : 0;
   const displayName = String(user?.name || user?.email || "").trim().split(/\s+/)[0] || "Kamu";
-  const accountBars = overview.accountBalances.slice(0, 6);
-  const maxAccountBalance = Math.max(1, ...accountBars.map((item) => absoluteAmount(item.balance)));
-  const expenseBars = expenseByCategory.slice(0, 7);
-  const maxCategoryExpense = Math.max(1, ...expenseBars.map((item) => absoluteAmount(item.amount)));
-  const activeFilterCount = [accountFilter, categoryFilter, typeFilter].filter((value) => value !== "all").length + (searchTerm.trim() ? 1 : 0);
-
-  const transactionAccountLabel = (item) => {
-    if (!item) return "Rekening tidak tersedia";
-    if (item.transaction_type === "transfer") {
-      const source = accountLookup[item.source_account_id] || "Rekening asal";
-      const destination = accountLookup[item.destination_account_id] || "Rekening tujuan";
-      return `${source} → ${destination}`;
-    }
-    return accountLookup[item.source_account_id]
-      || accountLookup[item.destination_account_id]
-      || "Rekening tidak tersedia";
+  const openMobileTransactionDetail = (transactionId) => {
+    setSelectedTransactionId(transactionId);
+    setMobileTransactionDetailOpen(true);
   };
-
-  const selectedTitle = selectedTransaction?.description
-    || selectedTransaction?.merchant
-    || categoryLookup[selectedTransaction?.category_id]
-    || "Transaksi";
-  const selectedCategory = categoryLookup[selectedTransaction?.category_id] || "Belum dikategorikan";
-  const selectedEnvelope = selectedTransaction?.envelope_period_id
-    ? envelopeLookup[selectedTransaction.envelope_period_id] || "Alokasi tidak tersedia"
-    : selectedTransaction?.transaction_type === "expense" ? "Belum dialokasikan" : "Tidak menggunakan alokasi";
-  const selectedEnvelopeNote = selectedTransaction?.envelope_period_id
-    ? "Terhubung ke kantong aktif"
-    : selectedTransaction?.transaction_type === "expense" ? "Perlu ditinjau sebelum tutup periode" : "Jenis transaksi ini tidak memerlukan kantong";
-  const lastSyncedAt = (() => {
-    const parsed = new Date(overview.lastSyncedAt);
-    return Number.isNaN(parsed.getTime())
-      ? "Waktu sinkron tidak tersedia"
-      : parsed.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-  })();
+  const resetDashboardFilters = () => {
+    setSearchTerm("");
+    setAccountFilter("all");
+    setCategoryFilter("all");
+    setTypeFilter("all");
+  };
 
   return (
     <div className="dashboard-page">
       <MobileFinanceDashboard
         overview={overview}
+        bootstrap={bootstrap}
+        viewModel={dashboardViewModel}
         displayName={displayName}
         balanceVisible={balanceVisible}
         onToggleBalance={() => setBalanceVisible((current) => !current)}
         onRefresh={refreshOverview}
-        recentTransactions={recentTransactions}
-        categoryLookup={categoryLookup}
-        transactionAccountLabel={transactionAccountLabel}
         onOpenTransaction={() => setFormOpen(true)}
-        featuredEnvelope={featuredEnvelope}
-        featuredEnvelopeUsed={featuredEnvelopeUsed}
-        featuredEnvelopeMax={featuredEnvelopeMax}
-        featuredEnvelopePercent={featuredEnvelopePercent}
+        onOpenFilters={() => setMobileFiltersOpen(true)}
+        onOpenTransactionDetail={openMobileTransactionDetail}
       />
       <DesktopFinanceDashboard
         overview={overview}
         bootstrap={bootstrap}
-        expenseByCategory={expenseByCategory}
-        accountBars={accountBars}
-        maxAccountBalance={maxAccountBalance}
-        expenseBars={expenseBars}
-        maxCategoryExpense={maxCategoryExpense}
+        viewModel={dashboardViewModel}
         accountFilter={accountFilter}
         setAccountFilter={setAccountFilter}
         categoryFilter={categoryFilter}
@@ -147,19 +165,43 @@ const DashboardPage = () => {
         setTypeFilter={setTypeFilter}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
-        activeFilterCount={activeFilterCount}
-        filteredTransactions={filteredTransactions}
-        selectedTransaction={selectedTransaction}
         setSelectedTransactionId={setSelectedTransactionId}
-        categoryLookup={categoryLookup}
-        transactionAccountLabel={transactionAccountLabel}
-        selectedTitle={selectedTitle}
-        selectedCategory={selectedCategory}
-        selectedEnvelope={selectedEnvelope}
-        selectedEnvelopeNote={selectedEnvelopeNote}
-        lastSyncedAt={lastSyncedAt}
+        balanceVisible={balanceVisible}
+        onToggleBalance={() => setBalanceVisible((current) => !current)}
         onRefresh={refreshOverview}
         onOpenTransaction={() => setFormOpen(true)}
+      />
+      <MobileDashboardFilters
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        accounts={overview.accountBalances}
+        categories={(bootstrap?.categories || []).filter((item) => item.status === "active")}
+        accountFilter={accountFilter}
+        onAccountFilterChange={setAccountFilter}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={setCategoryFilter}
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        activeFilterCount={dashboardViewModel.activeFilterCount}
+        onReset={resetDashboardFilters}
+      />
+      <MobileTransactionDetail
+        open={mobileTransactionDetailOpen}
+        onClose={() => setMobileTransactionDetailOpen(false)}
+        transaction={dashboardViewModel.selectedTransaction}
+        title={dashboardViewModel.selectedTitle}
+        category={dashboardViewModel.selectedCategory}
+        accountLabel={dashboardViewModel.transactionAccountLabel(dashboardViewModel.selectedTransaction)}
+        envelope={dashboardViewModel.selectedEnvelope}
+        envelopeNote={dashboardViewModel.selectedEnvelopeNote}
+        lastSyncedAt={dashboardViewModel.lastSyncedAt}
+        balanceVisible={balanceVisible}
+        onOpenTransaction={() => {
+          setMobileTransactionDetailOpen(false);
+          setFormOpen(true);
+        }}
       />
       <TransactionForm open={formOpen} onClose={() => setFormOpen(false)} />
     </div>

@@ -4,6 +4,13 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Memperbaiki browser parity follow-up: selector privacy desktop kini mengikuti class runtime `.dashboard-desktop`, `useApiResource` tidak lagi merender konten semu pada status awal `idle`, dan route journey menolak loading screen serta memverifikasi heading stabil dua kali.
+- Memperbaiki race pada authenticated Chromium route journey: helper kini menunggu dokumen selesai dan heading route yang tepat, sehingga DOM route sebelumnya atau loading state tidak lagi menghasilkan kegagalan palsu pada `/rekening`.
+- Menyamakan capability dashboard desktop/mobile melalui shared view model, filter, transaction detail, alerts, account/category insights, daily safe spend, unallocated funds, dan privacy nominal tanpa menduplikasi business form.
+- Memperbaiki gap logout pada viewport 821–940px serta menandai menu mobile `Lainnya` aktif untuk seluruh route sekunder.
+- Menambahkan authenticated Chromium fixture owner/member, seluruh route parity journey, dan breakpoint regression 820/821/940/941.
+- Mendokumentasikan kontrak capability parity: layout boleh berbeda, tetapi data, aksi, authorization, state, dan workflow wajib tersedia pada desktop serta mobile.
+
 - Memperbaiki transport login/logout frontend agar menunggu `Response` dari `fetch` sebelum parsing, mencegah error minified `i.json is not a function` dan inkonsistensi status sesi.
 - Menambahkan regression test kontrak request sesi, structured API error, serta guard source agar `Promise<Response>` tidak kembali diberikan langsung kepada `parseResponse`.
 - Membersihkan import test financial insights yang tidak digunakan agar backend lint dan Quality gate kembali hijau.

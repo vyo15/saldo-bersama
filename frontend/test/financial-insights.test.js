@@ -33,3 +33,31 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", 
   assert.match(goals, /required_monthly_amount/);
   assert.match(goals, /pace_status/);
 });
+
+test("dashboard desktop dan mobile memakai view model, filter, detail, alert, dan privacy yang sama", async () => {
+  const [page, desktop, mobile, filters, detail] = await Promise.all([
+    source("src/features/dashboard/DashboardPage.jsx"),
+    source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    source("src/features/dashboard/components/MobileDashboardFilters.jsx"),
+    source("src/features/dashboard/components/MobileTransactionDetail.jsx"),
+  ]);
+
+  assert.match(page, /dashboardViewModel/);
+  assert.match(page, /viewModel=\{dashboardViewModel\}/);
+  assert.match(page, /MobileDashboardFilters/);
+  assert.match(page, /MobileTransactionDetail/);
+  assert.match(desktop, /SensitiveMoney/);
+  assert.match(desktop, /Sembunyikan seluruh nominal/);
+  assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
+  assert.match(mobile, /Batas aman per hari/);
+  assert.match(mobile, /Dana belum dialokasikan/);
+  assert.match(mobile, /Rincian rekening dan kategori/);
+  assert.match(mobile, /onOpenFilters/);
+  assert.match(mobile, /onOpenTransactionDetail/);
+  assert.match(filters, /TRANSACTION_LABELS/);
+  assert.match(filters, /Semua rekening/);
+  assert.match(filters, /Semua kategori/);
+  assert.match(detail, /Detail transaksi/);
+  assert.match(detail, /lastSyncedAt/);
+});

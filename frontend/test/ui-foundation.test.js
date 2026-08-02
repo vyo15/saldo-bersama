@@ -153,3 +153,22 @@ test("feature write memakai API facade lokal dan halaman tidak mengimpor transpo
     "transactions/transactions.api.js",
   ]) assert.match(await read(`src/features/${facade}`), /apiClient/);
 });
+
+test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi business form", async () => {
+  const [page, desktop, mobile, filters, detail, responsive] = await Promise.all([
+    read("src/features/dashboard/DashboardPage.jsx"),
+    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/MobileDashboardFilters.jsx"),
+    read("src/features/dashboard/components/MobileTransactionDetail.jsx"),
+    read("src/styles/responsive.css"),
+  ]);
+
+  assert.equal((page.match(/<TransactionForm/g) || []).length, 1, "Dashboard hanya boleh memiliki satu form transaksi shared.");
+  assert.match(desktop, /aria-label=\{balanceVisible \? "Sembunyikan seluruh nominal"/);
+  assert.match(mobile, /type="button" className="mobile-transaction-item"/);
+  assert.match(filters, /<form className="mobile-dashboard-filter-form"/);
+  assert.match(detail, /<Modal/);
+  assert.match(detail, /<dl>/);
+  assert.doesNotMatch(responsive, /\.premium-filterbar > \.premium-select:nth-of-type\(3\) \{ display: none; \}/);
+});

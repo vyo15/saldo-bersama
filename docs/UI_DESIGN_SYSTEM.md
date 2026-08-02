@@ -125,3 +125,14 @@ Adopsi Mantine harus dilakukan bertahap:
 - Apakah perubahan memengaruhi transaksi, saldo, authorization, atau data flow?
 - Apakah screenshot/preview mencakup mobile dan desktop?
 - Apakah docs, changelog, status, serta handoff diperbarui?
+
+## Kontrak capability desktop dan mobile
+
+- Semua route, data, aksi, state, dan izin yang tersedia pada desktop wajib dapat dijangkau pada mobile PWA; begitu juga sebaliknya.
+- Kesetaraan berarti **capability parity**, bukan tampilan piksel-identik. Desktop boleh memakai toolbar/panel, sedangkan mobile boleh memakai drawer, bottom sheet, `details`, atau card ringkas.
+- Authorization dan business behavior tidak boleh bercabang berdasarkan viewport, user agent, atau status PWA. Keduanya memakai handler, API facade, serta backend guard yang sama.
+- Komponen presentasi desktop/mobile wajib memakai view model dan state filter yang sama ketika menampilkan domain yang sama. Business form tidak boleh diduplikasi hanya untuk perangkat berbeda.
+- Setiap breakpoint harus menyediakan jalur sesi yang terlihat. Desktop logout tidak boleh disembunyikan sebelum navigasi mobile yang memuat logout aktif.
+- Route sekunder pada navigasi mobile harus memberi orientasi aktif melalui menu `Lainnya` dan `aria-current`.
+- Pengurangan informasi pada mobile hanya boleh melalui progressive disclosure; data atau aksi tidak boleh dihapus tanpa pengganti yang dapat dijangkau.
+- Perubahan dashboard/navigation wajib diuji pada batas 820/821 dan 940/941 CSS pixel, selain viewport ponsel, tablet, dan desktop umum.
