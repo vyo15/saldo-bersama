@@ -4,6 +4,10 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Mengubah halaman Rekening menjadi daftar ringkas dengan panel detail terpilih, detail overlay pada mobile, dan ukuran kartu konsisten 1.586:1 untuk BCA/BNI/BTN/Mandiri/Permata.
+- Menambahkan migration schema v4 untuk `accounts.account_number`, validasi backend 6–34 digit, form create/edit, preview langsung, clipboard detail, audit bertopeng, serta kompatibilitas restore backup v3.
+- Menormalisasi asset Mandiri menjadi kanvas 768×484 agar tidak berbeda proporsi dari empat template bank lain; Sheets mirror dan export baca tetap tidak membawa nomor rekening.
+- Mengintegrasikan base asset baru BNI, BCA, BTN, dan Permata pada kartu rekening, mempertahankan logo di kanan serta chip di dalam gambar, menghapus overlay wordmark/chip yang duplikatif, dan menjaga saldo tetap di panel ringkasan.
 - Mendesain ulang halaman Rekening menjadi list-first dengan kartu finansial responsif BCA/BNI/BTN/Mandiri/Permata, fallback non-bank, satu dialog tambah Rekening/Kategori, owner action mobile, category listing untuk member, serta refresh dashboard setelah rekonsiliasi.
 - Memperbaiki browser parity follow-up: selector privacy desktop kini mengikuti class runtime `.dashboard-desktop`, `useApiResource` tidak lagi merender konten semu pada status awal `idle`, dan route journey menolak loading screen serta memverifikasi heading stabil dua kali.
 - Memperbaiki race pada authenticated Chromium route journey: helper kini menunggu dokumen selesai dan heading route yang tepat, sehingga DOM route sebelumnya atau loading state tidak lagi menghasilkan kegagalan palsu pada `/rekening`.

@@ -41,7 +41,7 @@
   .app-content { width: 100%; max-width: none; padding: 16px var(--mobile-page-gutter) calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom) + var(--mobile-navigation-content-gap)); }
   .floating-add { display: none; }
   .mobile-navigation { position: fixed; inset-inline: 0; bottom: 0; z-index: 50; width: 100%; height: calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom)); padding: 8px max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; background: var(--navigation-surface); border-top: 1px solid var(--border); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-  .mobile-navigation a, .mobile-navigation__more { min-width: 0; min-height: 50px; padding-top: 3px; border: 0; background: transparent; display: grid; place-items: center; gap: 3px; color: var(--muted); font-size: 11px; font-weight: 750; cursor: pointer; touch-action: manipulation; }
+  .mobile-navigation a, .mobile-navigation__more { min-width: 0; min-height: 50px; padding-top: 3px; border: 0; background: transparent; display: grid; place-items: center; gap: 3px; color: var(--muted); font-size: 11px; font-weight: var(--font-weight-semibold); cursor: pointer; touch-action: manipulation; }
   .mobile-navigation a.active, .mobile-navigation__more.active, .mobile-navigation__more[aria-expanded="true"] { color: var(--primary); }
   .mobile-navigation a svg, .mobile-navigation__more svg { width: 20px; height: 20px; }
   .mobile-navigation__add { width: 50px; height: 50px; min-height: 50px; justify-self: center; align-self: start; margin-top: -17px; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 28%, transparent); touch-action: manipulation; }
@@ -134,7 +134,7 @@
   .mobile-finance-hero__bar { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .mobile-finance-brand { min-width: 0; display: grid; gap: 3px; }
   .mobile-finance-brand strong { font-size: 14px; letter-spacing: -.02em; }
-  .mobile-finance-brand span { color: rgba(255,255,255,.74); font-size: 11px; font-weight: 650; text-transform: capitalize; }
+  .mobile-finance-brand span { color: rgba(255,255,255,.74); font-size: 11px; font-weight: var(--font-weight-medium); text-transform: capitalize; }
   .mobile-finance-hero__actions { gap: 6px; }
   .mobile-hero-button,
   .mobile-finance-hero .theme-toggle { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); min-height: var(--mobile-control-height); border-radius: 12px; }

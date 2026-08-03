@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { canonicalJson } from "../../api/_lib/services/core.js";
+import { digest, insertRows, snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
+import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const maintenanceSource = async () => {
   const directory = new URL("../../api/_lib/services/maintenance/", import.meta.url);
@@ -59,4 +62,32 @@ test("import dibatasi 50 row, preview tervalidasi, safety backup, atomic apply, 
   assert.match(maintenance, /appendAudit\(tx, context/);
   assert.match(maintenance, /status === "applied"/);
   assert.match(maintenance, /IMPORT TRANSAKSI/);
+});
+
+test("backup schema v3 tetap dapat dimuat ke schema v4 dengan account_number default kosong", async () => {
+  const sourceDb = await createSqliteTestDatabase();
+  const targetDb = await createSqliteTestDatabase();
+  try {
+    const now = "2026-08-03T00:00:00.000Z";
+    await sourceDb.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-v3", "firebase-v3", "v3@example.com", "Legacy", "owner", "active", 1, now, now]);
+    await sourceDb.execute("INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["a-v3", "Legacy BNI", "bank", "1234567890", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-v3", now, "u-v3", now]);
+
+    const current = await snapshotDatabase(sourceDb);
+    const legacyTables = structuredClone(current.tables);
+    legacyTables.accounts = legacyTables.accounts.map(({ account_number: _accountNumber, ...row }) => row);
+    const manifest = { ...current.manifest, version: 3, schemaVersion: 3, tables: { ...current.manifest.tables } };
+    const legacy = { manifest, tables: legacyTables };
+    legacy.checksum = digest(canonicalJson(legacy));
+    assert.equal(validateSnapshot(legacy), legacy.checksum);
+
+    await targetDb.transaction(async (tx) => {
+      await insertRows(tx, "users", legacy.tables.users);
+      await insertRows(tx, "accounts", legacy.tables.accounts);
+    });
+    const restored = await targetDb.one("SELECT account_number FROM accounts WHERE account_id='a-v3'");
+    assert.equal(restored.account_number, "");
+  } finally {
+    sourceDb.close();
+    targetDb.close();
+  }
 });

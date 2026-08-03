@@ -1,3 +1,4 @@
+import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { callGoogleBridge, enqueueIntegration } from "../integrations.js";
 import { integrityIssues } from "../reporting/index.js";
@@ -112,9 +113,10 @@ export const applyRestore = async (db, context) => {
         mode: "INSERT OR IGNORE"
       });
       for (const row of snapshot.tables.system_config) {
-        if (row.key === "maintenance_mode") continue;
+        if (row.key === "maintenance_mode" || row.key === "schema_version") continue;
         await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [row.key, row.value, row.updated_at]);
       }
+      await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES('schema_version',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [String(DATABASE_SCHEMA_VERSION), nowIso()]);
       const issues = await integrityIssues(tx);
       if (issues.length) throw appError("RESTORE_INTEGRITY_FAILED", "Restore dibatalkan karena integrity check gagal.", 409, issues);
       await appendAudit(tx, {

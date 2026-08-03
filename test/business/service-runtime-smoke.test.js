@@ -136,6 +136,49 @@ test("authenticated app.initialState menjalankan reporting hasil refactor tanpa 
   }
 });
 
+test("rekening bank mewajibkan nomor digit dan audit hanya menyimpan empat digit terakhir", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedFinanceMaster(db);
+    const created = await dispatchAction({
+      signedActor,
+      action: "accounts.create",
+      payload: {
+        name: "Tabungan BNI",
+        account_type: "bank",
+        account_number: "1234-5678 9012 3456",
+        owner_scope: "shared",
+        initial_balance: 0,
+        initial_balance_date: todayJakarta(),
+        allow_negative: false
+      },
+      requestId: "test:account-number-create",
+      idempotencyKey: "test-account-number-create",
+      database: db
+    });
+    assert.equal(created.account_number, "1234567890123456");
+
+    const audit = await db.one("SELECT new_value FROM audit_log WHERE entity_type='account' AND entity_id=? ORDER BY timestamp DESC LIMIT 1", [created.account_id]);
+    assert.ok(audit);
+    assert.equal(JSON.parse(audit.new_value).account_number, "••••3456");
+    assert.doesNotMatch(audit.new_value, /1234567890123456/);
+
+    await assert.rejects(
+      () => dispatchAction({
+        signedActor,
+        action: "accounts.create",
+        payload: { name: "Bank tanpa nomor", account_type: "bank", owner_scope: "shared", initial_balance: 0, initial_balance_date: todayJakarta() },
+        requestId: "test:account-number-required",
+        idempotencyKey: "test-account-number-required",
+        database: db
+      }),
+      (error) => error?.code === "ACCOUNT_NUMBER_REQUIRED"
+    );
+  } finally {
+    db.close();
+  }
+});
+
 test("budget dan recurring hasil pemecahan service tetap dapat create, update, pay, dan reverse", async () => {
   const db = await createSqliteTestDatabase();
   try {

@@ -63,3 +63,20 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(pages, /Keep desktop information readable instead of simulating density with 7–10px text/);
   assert.match(pages, /\.google-login-button \{ min-height:\s*46px;/);
 });
+
+test("tipografi memakai system font yang tersedia dan bobot standar tanpa synthetic weight ekstrem", async () => {
+  assert.match(tokenSource, /--font-sans:\s*"Segoe UI Variable Text", "Segoe UI", Inter/);
+  assert.match(tokenSource, /--font-mono:\s*"Cascadia Mono", "SFMono-Regular", Consolas/);
+  assert.match(tokenSource, /--font-weight-regular:\s*400;/);
+  assert.match(tokenSource, /--font-weight-medium:\s*500;/);
+  assert.match(tokenSource, /--font-weight-semibold:\s*600;/);
+  assert.match(tokenSource, /--font-weight-bold:\s*700;/);
+
+  const sharedStyles = await Promise.all([
+    "app.css",
+    "components.css",
+    "pages.css",
+    "responsive.css",
+  ].map((name) => readFile(new URL(`../src/styles/${name}`, import.meta.url), "utf8")));
+  assert.doesNotMatch(sharedStyles.join("\n"), /font-weight:\s*(?:[89]\d{2}|7[5-9]\d);/);
+});

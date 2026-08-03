@@ -2,8 +2,8 @@
 
 **Last source verification:** 2026-08-03
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(98).zip` + financial account-card UI patch
-**Schema:** version 3, migration `database/migrations/001_initial_schema.sql`
+**Source baseline:** `saldo-bersama-clean(109).zip` + rekening list/detail dan account-number migration patch
+**Schema:** version 4, migrations `database/migrations/001_initial_schema.sql` dan `database/migrations/002_account_number.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
 Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implementasi utama.
@@ -33,13 +33,14 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 
 ## Financial account-card UI 2026-08-03
 
-- Halaman Rekening memakai pola list-first: rekening dan kategori ditampilkan lebih dahulu, sedangkan form tambah dibuka on-demand.
-- Owner memiliki satu aksi `Tambah` yang tersedia di desktop dan mobile; dialog yang sama berisi tab Rekening/Kategori dan menjadi bottom sheet melalui primitive Modal pada viewport kecil.
-- Rekening bank BCA, BNI, BTN, Mandiri, dan Permata memakai asset kartu transparan teroptimasi; rekening lain memakai fallback card berbasis token project.
-- Template bank ditentukan dari nama rekening yang memuat nama bank. Tidak ada schema, nomor kartu, PIN, CVV, atau masa berlaku baru.
-- Kategori sekarang tetap dapat dilihat oleh member, sedangkan create/edit/archive tetap owner-only sesuai authorization backend.
-- Create rekening/kategori tetap menunggu konfirmasi server lalu me-reload master data dan overview; rekonsiliasi juga menyegarkan alert/dashboard.
-- Static regression test menjaga lima asset, deteksi template, unified dialog, CSS Modules, dan ketiadaan selector account-card legacy.
+- Halaman Rekening memakai workspace list/detail: banyak rekening tetap ringkas di kolom daftar, sedangkan rekening terpilih ditampilkan pada panel detail sticky di desktop dan overlay penuh pada mobile setelah item dipilih.
+- Seluruh visual BCA, BNI, BTN, Mandiri, dan Permata memakai kanvas WebP 768×484 serta rasio CSS 1.586:1. Asset Mandiri dinormalisasi agar tidak berbeda tinggi/lebar dari bank lain.
+- Kartu tidak dibungkus panel dekoratif tambahan; gambar base, nomor rekening, contactless, dan nama rekening membentuk satu visual proporsional. Saldo dan metadata tetap berada di luar gambar kartu.
+- Schema v4 menambah `accounts.account_number` melalui migration `002_account_number.sql`. Nilai dinormalisasi menjadi 6–34 digit di backend; nomor rekening bank wajib pada create dan dapat diperbarui dengan `row_version`.
+- Nomor rekening hanya dikirim pada read yang sudah scope-filtered, dapat disalin dari panel detail, dan tidak pernah dipakai sebagai nomor kartu debit. PIN, CVV, masa berlaku, dan nomor kartu tetap dilarang.
+- Audit account menyimpan bentuk bertopeng `••••1234`, bukan nomor lengkap. Sheets mirror dan export baca tidak menambahkan nomor rekening; backup teknis terjaga tetap mencakup seluruh tabel untuk recovery.
+- Form tambah/edit menyediakan field `No rekening`; preview langsung memakai grouping empat digit. Create/update tetap menunggu konfirmasi server dan me-reload master/dashboard.
+- Static regression test menjaga layout list/detail, field nomor rekening, clipboard action, font monospace, rasio 1.586:1, ukuran asset 768×484, serta batas asset 160 KB.
 
 ## Browser parity stability follow-up 2026-08-02
 

@@ -6,6 +6,31 @@ const ACCOUNT_TYPES = new Set(["cash", "bank", "ewallet", "savings", "emergency_
 const CATEGORY_TYPES = new Set(["income", "expense", "refund"]);
 const CATEGORY_NATURES = new Set(["fixed", "variable", "unexpected", "discretionary", "emergency", "savings", "other"]);
 
+const ACCOUNT_NUMBER_MIN_LENGTH = 6;
+const ACCOUNT_NUMBER_MAX_LENGTH = 34;
+
+const normalizeAccountNumber = (value, accountType, { required = false } = {}) => {
+  const raw = sanitizeText(value, 64);
+  if (!raw) {
+    if (required && accountType === "bank") throw appError("ACCOUNT_NUMBER_REQUIRED", "Nomor rekening bank wajib diisi.", 400);
+    return "";
+  }
+  if (accountType !== "bank") throw appError("ACCOUNT_NUMBER_BANK_ONLY", "Nomor rekening hanya dapat disimpan untuk jenis rekening bank.", 400);
+  if (!/^[0-9\s-]+$/.test(raw)) throw appError("INVALID_ACCOUNT_NUMBER", "Nomor rekening hanya boleh berisi angka, spasi, atau tanda hubung.", 400);
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < ACCOUNT_NUMBER_MIN_LENGTH || digits.length > ACCOUNT_NUMBER_MAX_LENGTH) {
+    throw appError("INVALID_ACCOUNT_NUMBER", `Nomor rekening harus terdiri dari ${ACCOUNT_NUMBER_MIN_LENGTH}-${ACCOUNT_NUMBER_MAX_LENGTH} digit.`, 400);
+  }
+  return digits;
+};
+
+const accountAuditRow = (row) => {
+  const result = publicRow(row, ["allow_negative"]);
+  const accountNumber = String(result.account_number || "");
+  result.account_number = accountNumber ? `••••${accountNumber.slice(-4)}` : "";
+  return result;
+};
+
 export const listAccounts = async (db, context) => ({ items: await visibleAccounts(db, context.actor) });
 
 export const createAccount = async (db, context) => {
@@ -21,17 +46,18 @@ export const createAccount = async (db, context) => {
   const allowNegative = strictBoolean(payload.allow_negative, false);
   if (initialBalance < 0 && !allowNegative) throw appError("NEGATIVE_INITIAL_BALANCE_NOT_ALLOWED", "Saldo awal negatif hanya boleh digunakan jika rekening mengizinkan saldo minus.", 409);
   const initialDate = dateValue(payload.initial_balance_date || context.today, "Tanggal saldo awal");
+  const accountNumber = normalizeAccountNumber(payload.account_number, type, { required: type === "bank" });
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [name, owned.scope, owned.owner_user_id]);
   if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);
   const timestamp = nowIso();
   const record = {
-    account_id: uuid(), name, account_type: type, owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
+    account_id: uuid(), name, account_type: type, account_number: accountNumber, owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
     initial_balance: initialBalance, initial_balance_date: initialDate, allow_negative: allowNegative ? 1 : 0,
     status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp,
   };
-  await db.execute(`INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
-  await appendAudit(db, context, { entityType: "account", entityId: record.account_id, next: publicRow(record, ["allow_negative"]) });
+  await db.execute(`INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await appendAudit(db, context, { entityType: "account", entityId: record.account_id, next: accountAuditRow(record) });
   await context.enqueueMirror?.(db, "account", record.account_id);
   return publicRow(record, ["allow_negative"]);
 };
@@ -51,10 +77,12 @@ export const updateAccount = async (db, context) => {
   if ((current.owner_scope !== owned.scope || String(current.owner_user_id || "") !== String(owned.owner_user_id || "")) && Object.values(dependencies).some((value) => Number(value) > 0)) {
     throw appError("ACCOUNT_SCOPE_LOCKED", "Kepemilikan rekening tidak dapat diubah karena sudah memiliki data terkait.", 409, dependencies);
   }
+  const nextAccountType = payload.account_type === undefined ? current.account_type : String(payload.account_type);
   const next = {
     ...current,
     name: sanitizeText(payload.name === undefined ? current.name : payload.name, 120),
-    account_type: payload.account_type === undefined ? current.account_type : String(payload.account_type),
+    account_type: nextAccountType,
+    account_number: payload.account_number === undefined ? String(current.account_number || "") : normalizeAccountNumber(payload.account_number, nextAccountType, { required: nextAccountType === "bank" }),
     owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
     allow_negative: payload.allow_negative === undefined ? current.allow_negative : (strictBoolean(payload.allow_negative) ? 1 : 0),
     row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso(),
@@ -67,10 +95,10 @@ export const updateAccount = async (db, context) => {
     const negative = await firstNegativeBalance(db, current, { fromDate: current.initial_balance_date });
     if (negative) throw appError("ACCOUNT_HAS_NEGATIVE_HISTORY", "Izin saldo minus tidak dapat dimatikan karena histori rekening pernah negatif.", 409, negative);
   }
-  const result = await db.execute(`UPDATE accounts SET name=?,account_type=?,owner_scope=?,owner_user_id=?,allow_negative=?,row_version=?,updated_by=?,updated_at=?
-    WHERE account_id=? AND row_version=?`, [next.name,next.account_type,next.owner_scope,next.owner_user_id,next.allow_negative,next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
+  const result = await db.execute(`UPDATE accounts SET name=?,account_type=?,account_number=?,owner_scope=?,owner_user_id=?,allow_negative=?,row_version=?,updated_by=?,updated_at=?
+    WHERE account_id=? AND row_version=?`, [next.name,next.account_type,next.account_number,next.owner_scope,next.owner_user_id,next.allow_negative,next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Rekening berubah di perangkat lain.", 409);
-  await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: publicRow(current, ["allow_negative"]), next: publicRow(next, ["allow_negative"]) });
+  await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: accountAuditRow(current), next: accountAuditRow(next) });
   await context.enqueueMirror?.(db, "account", current.account_id);
   return publicRow(next, ["allow_negative"]);
 };
@@ -91,7 +119,7 @@ export const archiveAccount = async (db, context) => {
   const next = { ...current, status: "archived", row_version: Number(current.row_version)+1, updated_by: context.actor.user_id, updated_at: nowIso() };
   const result = await db.execute("UPDATE accounts SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE account_id=? AND row_version=?", [next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Rekening berubah di perangkat lain.", 409);
-  await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: publicRow(current), next: publicRow(next) });
+  await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: accountAuditRow(current), next: accountAuditRow(next) });
   await context.enqueueMirror?.(db, "account", current.account_id);
   return publicRow(next, ["allow_negative"]);
 };

@@ -1,6 +1,6 @@
 .accountSection {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .sectionHeading {
@@ -13,18 +13,38 @@
 .sectionHeading h2 {
   margin-top: var(--space-1);
   font-size: var(--font-size-heading-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.025em;
+  line-height: 1.25;
 }
 
 .sectionHeading > span {
   color: var(--text-muted);
   font-size: var(--font-size-body-sm);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.accountWorkspace {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(34rem, 1fr) minmax(21rem, 25rem);
+  align-items: start;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
 }
 
 .accountGrid {
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
-  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.detailColumn {
+  min-width: 0;
+  position: sticky;
+  top: calc(var(--topbar-height, 4.5rem) + var(--space-4));
 }
 
 .emptyPanel {
@@ -163,10 +183,33 @@
   align-items: start;
 }
 
-@media (max-width: 820px) {
-  .accountGrid {
+@media (max-width: 1180px) {
+  .accountWorkspace {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--mobile-section-gap);
+  }
+
+  .accountGrid {
+    gap: var(--space-3);
+  }
+
+  .detailColumn {
+    display: none;
+  }
+
+  .detailColumnOpen {
+    position: fixed;
+    z-index: 80;
+    inset: var(--topbar-height, 4.5rem) 0 0;
+    padding: var(--space-4);
+    display: grid;
+    place-items: start center;
+    overflow-y: auto;
+    background: color-mix(in srgb, var(--page) 84%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  .detailColumnOpen > * {
+    width: min(100%, 30rem);
   }
 
   .categoryGroups,

@@ -1,6 +1,6 @@
 import webpush from "web-push";
 import { getDatabase } from "./_lib/db/httpClient.js";
-import { assertDatabaseReady } from "./_lib/db/schema.js";
+import { assertDatabaseReady, DATABASE_SCHEMA_VERSION } from "./_lib/db/schema.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
 import { verifyScheduledJobSignature } from "./_lib/security.js";
@@ -41,7 +41,7 @@ const mirrorSnapshot = async (db) => {
   return {
     generatedAt: nowIso(),
     sheets: {
-      Ringkasan: safeRows([{ generated_at: nowIso(), schema_version: 3, approximate_total_balance: Number(total?.approximate_total || 0), note: "Mirror read-only. Saldo resmi berada di Turso dan aplikasi Saldo Bersama." }]),
+      Ringkasan: safeRows([{ generated_at: nowIso(), schema_version: DATABASE_SCHEMA_VERSION, approximate_total_balance: Number(total?.approximate_total || 0), note: "Mirror read-only. Saldo resmi berada di Turso dan aplikasi Saldo Bersama." }]),
       Transaksi: safeRows(transactions), Rekening: safeRows(accounts), Kategori: safeRows(categories), Anggaran: safeRows(budgets), Kantong: safeRows(envelopes), Tagihan: safeRows(recurring), Target: safeRows(goals), Rekonsiliasi: safeRows(reconciliations),
     },
   };

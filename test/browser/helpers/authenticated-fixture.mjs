@@ -23,6 +23,9 @@ const accounts = Object.freeze([
     account_id: "acc-shared-bank",
     name: "Rekening Bersama",
     account_type: "bank",
+    account_number: "1234567890123456",
+    initial_balance: 5000000,
+    updated_at: "2026-08-03T00:00:00.000Z",
     owner_scope: "shared",
     owner_user_id: null,
     balance: 8_500_000,
@@ -34,6 +37,9 @@ const accounts = Object.freeze([
     account_id: "acc-shared-cash",
     name: "Tunai Bersama",
     account_type: "cash",
+    account_number: "",
+    initial_balance: 1000000,
+    updated_at: "2026-08-03T00:00:00.000Z",
     owner_scope: "shared",
     owner_user_id: null,
     balance: 1_500_000,
@@ -179,7 +185,7 @@ const alerts = Object.freeze([
 export const bootstrapFixture = Object.freeze({
   accounts,
   categories,
-  config: { schemaVersion: 3, timezone: "Asia/Jakarta", maintenanceMode: false },
+  config: { schemaVersion: 4, timezone: "Asia/Jakarta", maintenanceMode: false },
 });
 
 export const overviewFixture = Object.freeze({
@@ -267,7 +273,7 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => (
     { user_id: memberSession.uid, email: memberSession.email, name: memberSession.name, role: "member", status: "active", is_current: session.uid === memberSession.uid, row_version: 1 },
   ] },
   "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
-  "system.health": { database: "ok", maintenanceMode: false, schema: { ready: true, version: 3 }, integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
+  "system.health": { database: "ok", maintenanceMode: false, schema: { ready: true, version: 4 }, integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
   "integrations.status": { configured: { sheets: false, calendar: false }, providers: { sheets: {}, calendar: {} } },
   "periods.list": { items: [] },
 });

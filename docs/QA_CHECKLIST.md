@@ -29,4 +29,4 @@
 - [ ] Proyeksi target tidak membagi dengan nol dan menangani tanpa tanggal, lewat jatuh tempo, serta target selesai.
 - [ ] Notification dedupe mencegah antrean ganda pada job retry.
 - [ ] Semua `REQ-*` terlacak pada implementation matrix.
-- [ ] Fitur yang membutuhkan schema hanya memiliki RFC Proposed dan belum mengubah migration v3 tanpa approval terpisah.
+- [ ] Fitur yang membutuhkan schema hanya memiliki RFC Proposed dan belum mengubah schema v4 tanpa approval terpisah.

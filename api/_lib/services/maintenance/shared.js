@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
+import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso } from "../core.js";
 
@@ -41,8 +42,8 @@ export const snapshotDatabase = async (db) => db.transaction(async (tx) => {
   const tables = Object.fromEntries(BACKUP_TABLES.map((table, index) => [table, results[index].rows]));
   const manifest = {
     format: "saldo-bersama-backup",
-    version: 3,
-    schemaVersion: 3,
+    version: DATABASE_SCHEMA_VERSION,
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     createdAt: nowIso(),
     tables: Object.fromEntries(BACKUP_TABLES.map((table) => [table, tables[table].length])),
   };
@@ -66,7 +67,7 @@ export const decodeBackup = (base64) => {
 };
 
 export const validateSnapshot = (snapshot) => {
-  if (!snapshot || snapshot.manifest?.format !== "saldo-bersama-backup" || Number(snapshot.manifest?.schemaVersion) !== 3 || !snapshot.tables) {
+  if (!snapshot || snapshot.manifest?.format !== "saldo-bersama-backup" || ![3, DATABASE_SCHEMA_VERSION].includes(Number(snapshot.manifest?.schemaVersion)) || !snapshot.tables) {
     throw appError("BACKUP_SCHEMA_UNSUPPORTED", "Format atau versi backup tidak didukung.", 409);
   }
   for (const table of BACKUP_TABLES) {

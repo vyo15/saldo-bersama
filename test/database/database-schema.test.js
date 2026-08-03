@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
-const migrationUrl = new URL("../../database/migrations/001_initial_schema.sql", import.meta.url);
+const migrationDirectory = new URL("../../database/migrations/", import.meta.url);
+const initialMigrationUrl = new URL("001_initial_schema.sql", migrationDirectory);
+const accountNumberMigrationUrl = new URL("002_account_number.sql", migrationDirectory);
 
-const migrationSql = async () => (await readFile(migrationUrl, "utf8")).replaceAll("-- migrate:split", "");
+const migrationSql = async () => {
+  const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
+  const sources = await Promise.all(files.map((name) => readFile(new URL(name, migrationDirectory), "utf8")));
+  return sources.join("\n").replaceAll("-- migrate:split", "");
+};
 
 const validateWithSqlite = async () => {
   const db = new DatabaseSync(":memory:");
@@ -14,8 +20,9 @@ const validateWithSqlite = async () => {
     db.exec(await migrationSql());
     const now = "2026-08-01T15:00:00.000Z";
     db.prepare("INSERT INTO users VALUES(?,?,?,?,?,?,?,?,?)").run("u1", "firebase-1", "owner@example.com", "Owner", "owner", "active", 1, now, now);
-    db.prepare("INSERT INTO accounts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("a1", "Kas", "cash", "shared", null, 100000, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
-    db.prepare("INSERT INTO accounts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("a2", "Bank", "bank", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
+    const accountInsert = "INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    db.prepare(accountInsert).run("a1", "Kas", "cash", "", "shared", null, 100000, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
+    db.prepare(accountInsert).run("a2", "Bank", "bank", "1234567890", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
     db.prepare("INSERT INTO categories VALUES(?,?,?,?,?,?,?,?,?,?,?)").run("c1", "Makan", "expense", "variable", "", "active", 1, "u1", now, "u1", now);
 
     const rejected = (statement, args = []) => {
@@ -56,7 +63,9 @@ const validateWithSqlite = async () => {
       duplicate_idempotency_rejected: rejected(tx, duplicateIdempotency),
       invalid_expense_shape_rejected: rejected(tx, invalidExpenseShape),
       invalid_cancellation_metadata_rejected: rejected(tx, invalidCancellation),
-      negative_initial_without_permission_rejected: rejected("INSERT INTO accounts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["a-negative", "Minus", "cash", "shared", null, -1, "2026-01-01", 0, "active", 1, "u1", now, "u1", now]),
+      negative_initial_without_permission_rejected: rejected(accountInsert, ["a-negative", "Minus", "cash", "", "shared", null, -1, "2026-01-01", 0, "active", 1, "u1", now, "u1", now]),
+      invalid_account_number_rejected: rejected(accountInsert, ["a-invalid-number", "Bank invalid", "bank", "12A34", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now]),
+      non_bank_account_number_rejected: rejected(accountInsert, ["a-cash-number", "Cash invalid", "cash", "123456", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now]),
       audit_update_rejected: rejected("UPDATE audit_log SET action='changed' WHERE audit_id='audit1'"),
       audit_delete_rejected: rejected("DELETE FROM audit_log WHERE audit_id='audit1'"),
       second_pending_rejected: rejected(outboxInsert, ["waiting2", "sheets", "upsert", "transaction", "t1", "sheets:upsert:transaction:t1", "{}", "pending", 0, now, null, null, "", "", now, now, null]),
@@ -69,9 +78,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v3 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v4 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "3");
+  assert.equal(result.schema_version, "4");
   assert.ok(result.table_count >= 24);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -79,7 +88,7 @@ test("schema Turso/SQLite v3 dapat dibuat lengkap dan foreign key aktif", async 
 
 test("constraint finansial, audit append-only, dan outbox coalescing ditegakkan database", async () => {
   const result = await validateWithSqlite();
-  for (const key of ["float_rejected", "same_account_rejected", "foreign_key_rejected", "duplicate_idempotency_rejected", "invalid_expense_shape_rejected", "invalid_cancellation_metadata_rejected", "negative_initial_without_permission_rejected", "audit_update_rejected", "audit_delete_rejected", "second_pending_rejected", "processing_and_pending_coexist"]) {
+  for (const key of ["float_rejected", "same_account_rejected", "foreign_key_rejected", "duplicate_idempotency_rejected", "invalid_expense_shape_rejected", "invalid_cancellation_metadata_rejected", "negative_initial_without_permission_rejected", "invalid_account_number_rejected", "non_bank_account_number_rejected", "audit_update_rejected", "audit_delete_rejected", "second_pending_rejected", "processing_and_pending_coexist"]) {
     assert.equal(result[key], true, key);
   }
 });
@@ -91,7 +100,7 @@ test("preview import/restore menyimpan status hasil agar retry tidak menggandaka
 });
 
 test("migration menggunakan satu statement per split HTTP, STRICT, index periode, dan tanpa cascade delete finansial", async () => {
-  const sql = await readFile(migrationUrl, "utf8");
+  const sql = await readFile(initialMigrationUrl, "utf8");
   const chunks = sql.split(/^\s*-- migrate:split\s*$/m).map((item) => item.trim()).filter(Boolean);
   assert.ok(chunks.length >= 40);
   assert.doesNotMatch(chunks[0], /PRAGMA\s+foreign_keys[\s\S]*CREATE TABLE/i);
@@ -101,4 +110,13 @@ test("migration menggunakan satu statement per split HTTP, STRICT, index periode
   assert.match(sql, /status IN \('pending','applying','applied'\)/);
   assert.match(sql, /idx_outbox_coalesced_waiting[\s\S]*WHERE status IN \('pending','failed'\)/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+
+test("migration v4 menambahkan nomor rekening terformat digit tanpa merusak data lama", async () => {
+  const sql = await readFile(accountNumberMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE accounts[\s\S]*ADD COLUMN account_number/);
+  assert.match(sql, /account_type = 'bank'/);
+  assert.match(sql, /length\(account_number\) BETWEEN 6 AND 34/);
+  assert.match(sql, /value = '4'/);
 });

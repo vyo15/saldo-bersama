@@ -87,12 +87,15 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 ## Pola kartu rekening
 
 - Daftar rekening memakai komponen domain `AccountFinancialCard`, bukan card generik yang ditata ulang di page.
-- Rekening bank yang namanya memuat BCA, BNI, BTN, Mandiri, atau Permata dapat memakai asset template transparan. Asset hanya dekoratif; nama rekening, saldo, status, scope, dan aksi tetap teks/komponen HTML di atasnya.
-- Nomor kartu, PIN, CVV, masa berlaku, dan nomor rekening penuh tidak boleh ditambahkan untuk kebutuhan dekorasi.
-- Bank yang tidak dikenali serta rekening non-bank wajib memiliki fallback berbasis design token agar tidak bergantung pada asset pihak ketiga.
-- Rekening ditampilkan grid pada desktop dan satu kolom pada mobile. Aksi Rekonsiliasi/Edit/Arsip harus tetap terjangkau pada keduanya.
-- Form master mengikuti pola list-first dan form-on-demand: satu aksi Tambah membuka dialog desktop atau bottom sheet mobile dengan tab Rekening/Kategori.
-- Template visual tidak boleh mengubah schema atau business rule. Pada schema v3, deteksi template bersifat presentational dari nama bank pada nama rekening.
+- BCA, BNI, BTN, Mandiri, dan Permata memakai asset WebP 768×484 sebagai base visual. Wordmark dan chip dekoratif hanya berasal dari asset; HTML tidak boleh menggambarnya kembali.
+- Semua kartu memakai rasio 1.586:1, container, radius, dan object sizing yang sama. Tidak boleh ada bank yang tampak lebih panjang, pendek, atau terbungkus panel dekoratif tambahan.
+- Card face hanya menambahkan contactless, nomor rekening yang sudah dinormalisasi, dan nama rekening. Saldo, status, timestamp, kepemilikan, serta aksi berada pada panel detail terpisah.
+- Nomor rekening berasal dari `accounts.account_number`, dikelompokkan empat digit, dan hanya ditampilkan setelah authentication serta scope filtering backend. Tombol salin berada di panel detail dan memiliki accessible name.
+- Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap dilarang pada asset, DOM, payload, audit, dan integrasi.
+- Desktop lebar memakai daftar ringkas di kiri dan satu panel detail sticky di kanan. Pada viewport yang tidak cukup, detail disembunyikan sampai item dipilih lalu tampil sebagai overlay yang dapat ditutup.
+- Bank yang tidak dikenali serta rekening non-bank memakai fallback berbasis design token dan tidak bergantung pada asset pihak ketiga.
+- Form master mengikuti pola list-first dan form-on-demand: satu aksi Tambah membuka dialog desktop atau bottom sheet mobile dengan tab Rekening/Kategori. Field `No rekening` wajib untuk rekening bank dan memperbarui preview langsung.
+- Template bank tetap presentational dari nama rekening. Schema v4 hanya menambahkan nomor rekening dan tidak mengubah perhitungan saldo maupun aturan transaksi.
 
 ## Mobile dan PWA
 

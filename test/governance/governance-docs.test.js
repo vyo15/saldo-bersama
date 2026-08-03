@@ -177,7 +177,7 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
 
 test("project status records active schema version and guarded shared database decision", () => {
   const status = read("docs/PROJECT_STATUS.md");
-  assert.match(status, /Schema:\*\* version 3/);
+  assert.match(status, /Schema:\*\* version 4/);
   assert.match(status, /Runtime lokal dan Vercel Production memakai satu database Turso/);
 });
 

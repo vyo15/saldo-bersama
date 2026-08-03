@@ -1,5 +1,5 @@
 import { getDatabase } from "./_lib/db/httpClient.js";
-import { assertDatabaseReady } from "./_lib/db/schema.js";
+import { assertDatabaseReady, DATABASE_SCHEMA_VERSION } from "./_lib/db/schema.js";
 import { createXlsx } from "./_lib/export/xlsx.js";
 import { methodNotAllowed, fail } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
@@ -19,7 +19,7 @@ const exportData = async (db) => {
     db.all("SELECT r.reconciliation_id,r.reconciled_at,a.name AS account_name,r.system_balance,r.actual_balance,r.difference,r.notes,r.status FROM reconciliations r JOIN accounts a ON a.account_id=r.account_id ORDER BY r.reconciled_at DESC"),
     db.all("SELECT timestamp,actor_email,action,entity_type,entity_id,result FROM audit_log ORDER BY timestamp DESC LIMIT 10000"),
   ]);
-  return { Ringkasan: [{ exported_at: nowIso(), schema_version: 3, timezone: "Asia/Jakarta", currency: "IDR", note: "Excel adalah export baca, bukan file restore." }], Transaksi: transactions, Rekening: accounts, Kategori: categories, Anggaran: budgets, Kantong: envelopes, Tagihan: recurring, Target: goals, Rekonsiliasi: reconciliations, Audit: audit };
+  return { Ringkasan: [{ exported_at: nowIso(), schema_version: DATABASE_SCHEMA_VERSION, timezone: "Asia/Jakarta", currency: "IDR", note: "Excel adalah export baca, bukan file restore." }], Transaksi: transactions, Rekening: accounts, Kategori: categories, Anggaran: budgets, Kantong: envelopes, Tagihan: recurring, Target: goals, Rekonsiliasi: reconciliations, Audit: audit };
 };
 
 export default async function handler(request, response) {

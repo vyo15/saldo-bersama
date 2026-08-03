@@ -114,7 +114,10 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive owner.
 - Dialog tambah memiliki dua tab semantik dan memakai form yang sama pada desktop/mobile.
 - Template BCA, BNI, BTN, Mandiri, dan Permata terdeteksi dari nama rekening; rekening bank lain dan non-bank memakai fallback.
-- Tidak ada nomor kartu, PIN, CVV, masa berlaku, atau data sensitif pada asset/DOM.
+- Asset base bank memuat logo dan chip hanya satu kali; komponen tidak merender wordmark atau chip HTML yang menumpuk di atas asset.
+- Nomor rekening bank 6–34 digit divalidasi backend, ditampilkan hanya pada rekening yang lolos scope authorization, dapat disalin dari detail, dan audit hanya menyimpan empat digit terakhir. Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap tidak boleh berada pada asset/DOM.
+- Create bank tanpa nomor, karakter non-digit yang tidak diizinkan, account number terlalu pendek/panjang, dan constraint database harus ditolak.
+- Lima asset BCA/BNI/BTN/Mandiri/Permata harus tepat 768×484, maksimal 160 KB, dan memakai rasio CSS 1.586:1 pada list, detail, preview, desktop, serta mobile.
 - Setelah create/update/archive rekening atau kategori, daftar aktif dan dashboard diperbarui tanpa refresh manual.
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.

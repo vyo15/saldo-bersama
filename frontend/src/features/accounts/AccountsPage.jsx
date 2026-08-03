@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiArchive, FiEdit2, FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
@@ -33,6 +33,7 @@ const emptyAccountForm = () => ({
   name: "",
   account_type: "bank",
   bank_template: "generic",
+  account_number: "",
   owner_scope: "shared",
   initial_balance: "",
   initial_balance_date: todayInJakarta(),
@@ -73,6 +74,8 @@ const AccountsPage = () => {
   const [reconciliation, setReconciliation] = useState({ account: null, actual_balance: "", notes: "Cocokkan dengan mutasi bank/tunai" });
   const [dialogState, setDialogState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
   const reloadMasters = async () => {
     invalidate([
@@ -123,6 +126,7 @@ const AccountsPage = () => {
       await requestUpdateAccount({
         account_id: editAccount.account_id,
         name: editAccount.name,
+        account_number: editAccount.account_number || "",
         owner_scope: editAccount.owner_scope,
         allow_negative: Boolean(editAccount.allow_negative),
         row_version: editAccount.row_version,
@@ -210,16 +214,28 @@ const AccountsPage = () => {
     return groups;
   }, {}) || {}, [categoriesResource.data]);
 
+  useEffect(() => {
+    const items = accountsResource.data?.items || [];
+    if (!items.length) {
+      setSelectedAccountId("");
+      setMobileDetailOpen(false);
+      return;
+    }
+    if (!items.some((account) => account.account_id === selectedAccountId)) setSelectedAccountId(items[0].account_id);
+  }, [accountsResource.data, selectedAccountId]);
+
   if (accountsResource.status === "loading" || categoriesResource.status === "loading") return <LoadingScreen label="Memuat rekening dan kategori..." />;
   if (accountsResource.status === "error") return <ErrorState error={accountsResource.error} onRetry={accountsResource.reload} />;
   if (categoriesResource.status === "error") return <ErrorState error={categoriesResource.error} onRetry={categoriesResource.reload} />;
 
   const accounts = accountsResource.data?.items || [];
   const categories = categoriesResource.data?.items || [];
+  const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) || accounts[0] || null;
   const activeCreateForm = createDialog.mode === "account" ? "create-account-form" : "create-category-form";
   const accountPreview = {
     name: accountForm.name || (accountForm.bank_template !== "generic" ? BANK_TEMPLATE_OPTIONS.find((option) => option.value === accountForm.bank_template)?.label : "Nama rekening"),
     account_type: accountForm.account_type,
+    account_number: accountForm.account_number,
     owner_scope: accountForm.owner_scope,
     balance: previewBalance(accountForm.initial_balance),
     status: "active",
@@ -241,17 +257,30 @@ const AccountsPage = () => {
           <span>{accounts.length} rekening</span>
         </div>
         {accounts.length ? (
-          <div className={styles.accountGrid}>
-            {accounts.map((account) => (
-              <AccountFinancialCard
-                key={account.account_id}
-                account={account}
-                ownerMode={ownerMode}
-                onReconcile={(item) => { setReconciliation({ account: item, actual_balance: String(item.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" }); setDialogState({ status: "idle", error: null }); }}
-                onEdit={(item) => { setEditAccount({ ...item }); setDialogState({ status: "idle", error: null }); }}
-                onArchive={(item) => { setArchiveTarget({ kind: "account", item }); setDialogState({ status: "idle", error: null }); }}
-              />
-            ))}
+          <div className={styles.accountWorkspace}>
+            <div className={styles.accountGrid} aria-label="Daftar rekening">
+              {accounts.map((account) => (
+                <AccountFinancialCard
+                  key={account.account_id}
+                  account={account}
+                  selected={account.account_id === selectedAccount?.account_id}
+                  onSelect={(item) => { setSelectedAccountId(item.account_id); setMobileDetailOpen(true); }}
+                />
+              ))}
+            </div>
+            {selectedAccount ? (
+              <div className={`${styles.detailColumn} ${mobileDetailOpen ? styles.detailColumnOpen : ""}`}>
+                <AccountFinancialCard
+                  account={selectedAccount}
+                  variant="detail"
+                  ownerMode={ownerMode}
+                  onClose={() => setMobileDetailOpen(false)}
+                  onReconcile={(item) => { setReconciliation({ account: item, actual_balance: String(item.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" }); setDialogState({ status: "idle", error: null }); }}
+                  onEdit={(item) => { setEditAccount({ ...item }); setDialogState({ status: "idle", error: null }); }}
+                  onArchive={(item) => { setArchiveTarget({ kind: "account", item }); setDialogState({ status: "idle", error: null }); }}
+                />
+              </div>
+            ) : null}
           </div>
         ) : (
           <Card className={styles.emptyPanel}>
@@ -337,12 +366,13 @@ const AccountsPage = () => {
 
         {createDialog.mode === "account" ? (
           <div className={styles.createAccountLayout}>
-            <AccountFinancialCard account={accountPreview} preview templateOverride={accountForm.account_type === "bank" ? accountForm.bank_template : "generic"} />
+            <AccountFinancialCard account={accountPreview} variant="preview" templateOverride={accountForm.account_type === "bank" ? accountForm.bank_template : "generic"} />
             <form id="create-account-form" className="form-grid" onSubmit={createAccount}>
               <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" placeholder="Contoh: Rekening gaji · BNI" value={accountForm.name} onChange={(event) => setAccountForm((current) => ({ ...current, name: event.target.value }))} /></label>
-              <label className="field"><span>Jenis</span><select value={accountForm.account_type} onChange={(event) => setAccountForm((current) => ({ ...current, account_type: event.target.value, bank_template: event.target.value === "bank" ? current.bank_template : "generic" }))}><option value="bank">Bank</option><option value="cash">Tunai</option><option value="ewallet">E-wallet</option><option value="savings">Tabungan</option><option value="emergency_fund">Dana darurat</option><option value="sinking_fund">Dana berkala</option><option value="investment">Investasi</option><option value="other">Lainnya</option></select></label>
+              {accountForm.account_type === "bank" ? <label className="field form-grid__full"><span>No rekening *</span><input required inputMode="numeric" autoComplete="off" maxLength="34" pattern="[0-9 ]{6,34}" placeholder="Contoh: 1234567890123456" value={accountForm.account_number} onChange={(event) => setAccountForm((current) => ({ ...current, account_number: event.target.value.replace(/\D/g, "").slice(0, 34) }))} /><small>Disimpan sebagai digit saja dan hanya ditampilkan kepada pengguna yang berwenang.</small></label> : null}
+              <label className="field"><span>Jenis</span><select value={accountForm.account_type} onChange={(event) => setAccountForm((current) => ({ ...current, account_type: event.target.value, account_number: event.target.value === "bank" ? current.account_number : "", bank_template: event.target.value === "bank" ? current.bank_template : "generic" }))}><option value="bank">Bank</option><option value="cash">Tunai</option><option value="ewallet">E-wallet</option><option value="savings">Tabungan</option><option value="emergency_fund">Dana darurat</option><option value="sinking_fund">Dana berkala</option><option value="investment">Investasi</option><option value="other">Lainnya</option></select></label>
               <label className="field"><span>Kepemilikan</span><select value={accountForm.owner_scope} onChange={(event) => setAccountForm((current) => ({ ...current, owner_scope: event.target.value }))}><option value="shared">Bersama</option><option value="personal">Pribadi saya</option></select></label>
-              {accountForm.account_type === "bank" ? <label className="field form-grid__full"><span>Template kartu bank</span><select value={accountForm.bank_template} onChange={(event) => setAccountForm((current) => ({ ...current, bank_template: event.target.value, name: applyBankTemplateToName(current.name, event.target.value) }))}>{BANK_TEMPLATE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select><small>Template dikenali dari nama bank pada nama rekening; tidak menyimpan nomor kartu, PIN, CVV, atau masa berlaku.</small></label> : null}
+              {accountForm.account_type === "bank" ? <label className="field form-grid__full"><span>Template kartu bank</span><select value={accountForm.bank_template} onChange={(event) => setAccountForm((current) => ({ ...current, bank_template: event.target.value, name: applyBankTemplateToName(current.name, event.target.value) }))}>{BANK_TEMPLATE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select><small>Template hanya mengubah tampilan. Nomor rekening disimpan terpisah; PIN, CVV, nomor kartu debit, dan masa berlaku tidak pernah disimpan.</small></label> : null}
               <MoneyInput id="initial-balance" label="Saldo awal" value={accountForm.initial_balance} onChange={(value) => setAccountForm((current) => ({ ...current, initial_balance: value }))} />
               <label className="field"><span>Tanggal saldo awal</span><input type="date" value={accountForm.initial_balance_date} onChange={(event) => setAccountForm((current) => ({ ...current, initial_balance_date: event.target.value }))} /></label>
               <label className="checkbox-field form-grid__full"><input type="checkbox" checked={accountForm.allow_negative} onChange={(event) => setAccountForm((current) => ({ ...current, allow_negative: event.target.checked }))} /><span>Izinkan saldo negatif</span></label>
@@ -370,6 +400,7 @@ const AccountsPage = () => {
       <Modal open={Boolean(editAccount)} onClose={() => dialogState.status !== "submitting" && setEditAccount(null)} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={() => setEditAccount(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={dialogState.status === "submitting"}>{dialogState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
         <form id="edit-account-form" className="form-grid" onSubmit={saveAccount}>
           <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" value={editAccount?.name || ""} onChange={(event) => setEditAccount((current) => ({ ...current, name: event.target.value }))} /></label>
+          {editAccount?.account_type === "bank" ? <label className="field form-grid__full"><span>No rekening *</span><input required inputMode="numeric" autoComplete="off" maxLength="34" pattern="[0-9 ]{6,34}" value={editAccount?.account_number || ""} onChange={(event) => setEditAccount((current) => ({ ...current, account_number: event.target.value.replace(/\D/g, "").slice(0, 34) }))} /></label> : null}
           <label className="field"><span>Kepemilikan</span><select value={editAccount?.owner_scope || "shared"} onChange={(event) => setEditAccount((current) => ({ ...current, owner_scope: event.target.value }))}><option value="shared">Bersama</option><option value="personal">Pribadi saya</option></select></label>
           <label className="checkbox-field"><input type="checkbox" checked={Boolean(editAccount?.allow_negative)} onChange={(event) => setEditAccount((current) => ({ ...current, allow_negative: event.target.checked }))} /><span>Izinkan saldo negatif</span></label>
           {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}

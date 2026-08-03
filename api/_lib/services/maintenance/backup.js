@@ -1,3 +1,4 @@
+import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { callGoogleBridge } from "../integrations.js";
 import { appError, assertOwner, nowIso, sanitizeText, uuid } from "../core.js";
 import { digest, encodeBackup, ensureBackupAudit, snapshotDatabase } from "./shared.js";
@@ -16,9 +17,9 @@ export const createTechnicalBackup = async (db, context, { type = "manual", audi
   }
   const snapshot = await snapshotDatabase(db);
   const timestamp = nowIso().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
-  const proposedFileName = `saldo-bersama-backup-v3-${timestamp}-${backupId.slice(-8)}.json.gz`;
+  const proposedFileName = `saldo-bersama-backup-v${DATABASE_SCHEMA_VERSION}-${timestamp}-${backupId.slice(-8)}.json.gz`;
   await db.execute(`INSERT OR IGNORE INTO backup_runs(backup_id,backup_type,external_file_id,file_name,schema_version,status,checksum,created_by,created_at,verified_at,error_code)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?)`, [backupId, backupType, null, proposedFileName, 3, "pending", snapshot.checksum, context.actor.user_id, nowIso(), null, null]);
+    VALUES(?,?,?,?,?,?,?,?,?,?,?)`, [backupId, backupType, null, proposedFileName, DATABASE_SCHEMA_VERSION, "pending", snapshot.checksum, context.actor.user_id, nowIso(), null, null]);
   existing = await db.one("SELECT * FROM backup_runs WHERE backup_id=?", [backupId]);
   if (existing?.status === "verified" && existing.external_file_id) {
     await ensureBackupAudit(db, context, backupId, { fileName: existing.file_name, status: "verified", checksum: existing.checksum }, audit);

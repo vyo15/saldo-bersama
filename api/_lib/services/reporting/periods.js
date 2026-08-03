@@ -1,3 +1,4 @@
+import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, canonicalJson, monthBounds, nowIso, periodKey, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { monthlyReport } from "./dashboard.js";
@@ -12,7 +13,7 @@ const compactSnapshot = async (db, context, period) => {
   });
   const overview = report.overview;
   const snapshot = {
-    schemaVersion: 3,
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     periodKey: period,
     generatedAt: nowIso(),
     totals: {

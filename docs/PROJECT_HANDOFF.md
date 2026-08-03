@@ -1,6 +1,85 @@
 # Project Handoff
 
-## Current task — Financial account-card UI and unified master creation
+## Current task — Rekening list/detail proporsional dan nomor rekening
+
+**Updated:** 2026-08-03  
+**Source:** `saldo-bersama-clean(109).zip`  
+**Scope:** layout daftar/detail rekening, konsistensi lima asset kartu, field nomor rekening, schema v4, audit/backup compatibility, dan responsive behavior.
+
+### Implementasi
+
+1. Halaman rekening memakai daftar ringkas dan satu panel detail terpilih. Desktop mempertahankan panel sticky; mobile baru membuka detail setelah rekening diklik.
+2. Seluruh kartu memakai rasio 1.586:1. Asset Mandiri dinormalisasi menjadi 768×484 agar ukurannya sama dengan BCA, BNI, BTN, dan Permata.
+3. Migration `002_account_number.sql` menambah `accounts.account_number` dan menaikkan schema ke v4. Data legacy memperoleh default kosong.
+4. Create rekening bank mewajibkan 6–34 digit. Backend menormalisasi spasi/tanda hubung; edit tetap memakai `row_version` dan conflict guard.
+5. Nomor rekening mengisi baris angka pada kartu dan dapat disalin dari detail. Audit hanya menyimpan `••••` + empat digit terakhir; Sheets mirror serta export baca tetap tidak menyertakannya.
+6. Backup v4 memuat kolom baru dan restore tetap menerima backup v3. Restore v3 mengandalkan default kosong lalu menormalisasi `system_config.schema_version` ke v4 sebelum integrity check selesai.
+
+### Guarded areas
+
+Perubahan schema telah disetujui pada task ini dan dibatasi pada satu migration additive. Tidak ada perubahan Firebase Auth, role/authorization matrix, perhitungan saldo, transfer, soft cancel, idempotency semantics, environment, dependency, atau deployment. Production wajib backup dan migration eksplisit sebelum deploy runtime v4.
+
+### Test wajib sebelum merge
+
+- Frontend unit/static account UI dan seluruh frontend suite.
+- Database migration/constraint, account service validation, masked audit, backup v3/v4 restore compatibility, dan full backend suite.
+- `npm run validate:source`, syntax checks, lint/build/build budget pada Node 24.
+- Browser owner/member pada 360, 390, 820/821, 940/941, dan 1440; verifikasi ukuran lima kartu sama, detail mobile dapat ditutup, clipboard, focus, overflow, dark/light.
+
+---
+
+## Previous task — Integrasi base asset kartu bank
+
+**Updated:** 2026-08-03  
+**Source:** `saldo-bersama-clean(103).zip`  
+**Scope:** base visual BNI/BCA/BTN/Permata dan penghilangan elemen kartu yang terduplikasi.
+
+### Implementasi
+
+1. Asset `bni.webp`, `bca.webp`, `btn.webp`, dan `permata.webp` diganti dengan base visual rasio 1.586:1, logo di kanan, chip menyatu pada gambar, dan tanpa data pengguna.
+2. Mandiri tidak diubah karena asset canonical sudah memiliki logo kanan dan chip yang sesuai.
+3. `AccountFinancialCard` tidak lagi merender wordmark serta chip HTML di atas gambar; hanya contactless, placeholder bertopeng, dan nama rekening yang menjadi overlay.
+4. Filter gelap menyeluruh dihapus. Gradient bawah yang terbatas menjaga keterbacaan placeholder/nama tanpa menutupi identitas asset.
+5. Saldo, saldo awal, timestamp, status, dan action tetap berada di panel terpisah.
+
+### Files changed
+
+```text
+frontend/src/assets/bank-cards/bca.webp
+frontend/src/assets/bank-cards/bni.webp
+frontend/src/assets/bank-cards/btn.webp
+frontend/src/assets/bank-cards/permata.webp
+frontend/src/features/accounts/components/AccountFinancialCard.jsx
+frontend/src/features/accounts/components/AccountFinancialCard.module.css
+frontend/test/accounts-ui.test.js
+docs/UI_DESIGN_SYSTEM.md
+docs/PROJECT_STATUS.md
+docs/PROJECT_HANDOFF.md
+docs/TEST_PLAN.md
+CHANGELOG.md
+```
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration Turso, API contract, Firebase Auth, role/authorization, saldo/transfer, audit, idempotency, row version, environment, backup/restore, dependency, atau deployment. Tidak ada nomor kartu/rekening nyata, PIN, CVV, atau masa berlaku yang ditambahkan.
+
+### Test aktual
+
+- `node --test frontend/test/accounts-ui.test.js`: PASS — 4/4.
+- `npm run test --workspace saldo-bersama-frontend`: PASS — 55/55.
+- `npm run validate:source`: PASS — 306 file; 5/12 Vercel Functions canonical.
+- `node scripts/check-node-syntax.mjs`: PASS — 91 file.
+- `node scripts/check-apps-script-syntax.mjs`: PASS — 6 file dan 2 urutan load.
+- Asset BNI/BCA/BTN/Permata: 768×484 WebP dan masing-masing di bawah 17 KB; guard repository tetap membatasi maksimal 160 KB.
+- `npm ci`: GAGAL di sandbox karena registry internal tidak menyediakan `vite-7.3.6.tgz`; runtime sandbox Node 22.16.0 juga lebih rendah dari Node 24.x project. Karena dependency tidak terpasang, lint, build, build budget, dan browser journey belum dijalankan pada patch ini.
+
+### Next safe step
+
+Jalankan `npm ci && npm run check && npm run test:browser` pada Node 24, lalu smoke visual dark/light untuk lima bank pada viewport 360, 390, 820/821, 940/941, dan 1440.
+
+---
+
+## Previous task — Financial account-card UI and unified master creation
 
 **Updated:** 2026-08-03  
 **Source:** `saldo-bersama-clean(98).zip`  
@@ -64,7 +143,7 @@ Lakukan smoke visual owner/member pada mobile dan desktop. Verifikasi kartu BCA/
 
 ---
 
-## Current task — Browser parity stability follow-up
+## Previous task — Browser parity stability follow-up
 
 **Source:** `saldo-bersama-clean(95).zip`  
 **Scope:** browser test reliability and initial resource loading state only.

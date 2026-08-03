@@ -16,7 +16,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
 | `REQ-UX-001` | UI states | Implemented | feedback components/pages + shared responsive view model | Production/device smoke |
 | `REQ-A11Y-001` | Accessibility baseline | Partial | semantic tests + unauthenticated/authenticated Chromium smoke | axe penuh dan Safari/Firefox device coverage pending |
-| `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + responsive financial-card UI + unified add flow | Granular privacy pending RFC-0015; bank template tetap presentational dari nama |
+| `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v4 account number + list/detail financial-card UI + unified add flow | Granular privacy pending RFC-0015; bank template tetap presentational dari nama; real-resource privacy smoke pending |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
 | `REQ-PROD-03` | Kategori | Partial | categories + `nature` | hierarchy pending RFC-0014 |
 | `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods | Real-device UX verification |
@@ -39,7 +39,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Production smoke after env/deploy changes |
-| Turso schema v3 | Implemented | Active; parity/integrity evidence pending |
+| Turso schema v4 | Implemented | Active; parity/integrity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

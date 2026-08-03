@@ -1,14 +1,20 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 
-const migrationUrl = new URL("../../database/migrations/001_initial_schema.sql", import.meta.url);
+const migrationDirectory = new URL("../../database/migrations/", import.meta.url);
+
+const migrationSql = async () => {
+  const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
+  const sources = await Promise.all(files.map((name) => readFile(new URL(name, migrationDirectory), "utf8")));
+  return sources.join("\n").replaceAll("-- migrate:split", "");
+};
 
 const isReadStatement = (sql) => /^\s*(?:SELECT|PRAGMA|WITH)\b/i.test(sql);
 
 export const createSqliteTestDatabase = async () => {
   const raw = new DatabaseSync(":memory:");
   raw.exec("PRAGMA foreign_keys=ON");
-  raw.exec((await readFile(migrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+  raw.exec(await migrationSql());
 
   let transactionDepth = 0;
   const adapter = {

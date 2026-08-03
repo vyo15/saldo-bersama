@@ -74,6 +74,14 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `accounts.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+
+### Kontrak rekening bank
+
+- `accounts.create` untuk `account_type=bank` menerima `account_number` wajib. Input boleh memakai angka, spasi, atau tanda hubung; server menyimpan 6–34 digit hasil normalisasi.
+- `accounts.update` menerima `account_number` bersama `row_version`; conflict tetap ditolak dan tidak boleh ditimpa diam-diam.
+- `accounts.list`, `accounts.create`, dan `accounts.update` dapat mengembalikan nomor lengkap hanya setelah authentication serta scope filtering backend. Rekening personal tidak boleh terlihat oleh actor lain.
+- Audit create/update hanya mencatat bentuk bertopeng empat digit terakhir. Nomor rekening tidak ditambahkan ke Sheets mirror atau export baca. Backup teknis tetap memuat kolom tersebut untuk recovery terjaga.
+- Field ini adalah nomor rekening transfer, bukan nomor kartu debit. PIN, CVV, masa berlaku, serta nomor kartu debit tidak diterima.
 | `categories.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `categories.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
