@@ -33,6 +33,7 @@ Cakupan wajib:
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
 - browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
+- login mobile wajib memakai logo resmi, tepat satu host `.google-login-button`, background rupiah dekoratif `aria-hidden`, target sentuh minimum, dark/light theme, serta `prefers-reduced-motion` tanpa mengganti flow Google Identity Services/Firebase;
 - authenticated route journey wajib menunggu `document.readyState` selesai dan heading canonical route yang tepat; pathname saja tidak boleh dianggap bukti render karena DOM lama/loading dapat masih aktif saat full navigation;
 - route readiness wajib menolak `main.loading-screen`, memverifikasi heading canonical secara stabil dua kali, dan selector browser harus menunjuk class runtime aktual;
 - resource enabled pada initial `idle` wajib dipresentasikan sebagai loading agar page tidak berkedip dari konten kosong ke loading screen;

@@ -81,7 +81,7 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(responsive, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
   assert.match(responsive, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
   assert.match(pages, /Keep desktop information readable instead of simulating density with 7–10px text/);
-  assert.match(pages, /\.google-login-button \{ min-height:\s*46px;/);
+  assert.match(pages, /\.google-login-button \{[^}]*min-height:\s*48px;/);
 });
 
 test("tipografi memakai system font yang tersedia dan bobot standar tanpa synthetic weight ekstrem", async () => {

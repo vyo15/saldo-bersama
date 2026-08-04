@@ -4,6 +4,7 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Mendesain ulang login mobile dengan logo resmi Saldo Bersama, background rupiah ilustratif yang dianimasikan secara ringan, trust strip, dark/light mode, reduced-motion guard, dan kredit `Created by Vio Yusup Iskandar` tanpa mengubah Google Identity Services, Firebase exchange, allowlist, atau session backend.
 - Mendesain ulang dashboard desktop sebagai workspace berbasis rekening: kartu rekening aktual dapat dipilih, transaksi di bawahnya berubah mengikuti rekening tanpa mengubah sidebar melengkung, sementara statistik global, KPI arus kas, anggaran, tagihan, target, aksi cepat, privacy nominal, dan insight tetap memakai data API canonical.
 - Memperbaiki focus trap modal yang memindahkan fokus setiap ketikan, memisahkan template kartu dari nama rekening melalui schema v5 `accounts.bank_template`, mempertahankan sidebar melengkung dengan target sentuh lebih besar, menyederhanakan submenu desktop, dan menghapus duplikasi theme toggle dari menu mobile.
 - Menambahkan kebijakan lifecycle data dan proteksi human error: preview dampak, konfirmasi bertingkat, alasan wajib, exact phrase, acknowledgement, countdown, serta pemulihan per item.

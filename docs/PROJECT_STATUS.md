@@ -13,6 +13,7 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 - React 19, React Router, dan Vite PWA.
 - Shared UI primitive memakai CSS Modules serta design tokens; feature dilarang direct import toolkit.
 - Firebase Google Authentication dan signed HttpOnly session.
+- Login mobile memakai logo resmi, komposisi glass card, background rupiah bergaya ilustratif CSS, theme toggle, reduced-motion fallback, trust messaging, dan kredit pembuat; host tombol Google canonical serta verifikasi backend tetap tidak berubah.
 - Lima Vercel Functions canonical: session, gateway, export, health, jobs.
 - Turso/libSQL sebagai satu-satunya source of truth finansial.
 - Apps Script hanya integration bridge bertanda tangan untuk Sheets mirror, Calendar, Drive backup, dan scheduler.

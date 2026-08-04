@@ -87,6 +87,11 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.doesNotMatch(page, /accountsResult\.status === "rejected"/);
   assert.match(page, /selectedAccountId/);
   assert.match(page, /mobileDetailOpen/);
+  assert.match(page, /mobileAccountSheet/);
+  assert.match(page, /paymentHistoryPeriod/);
+  assert.match(page, /useApiResource\("transactions\.list"/);
+  assert.match(page, /enabled: mobileAccountSheet === "history"/);
+  assert.match(page, /account_id: selectedAccountId \|\| "all"/);
   assert.match(page, /mobileStackCardRefs/);
   assert.match(page, /MOBILE_STACK_SLOT_STYLES/);
   assert.match(page, /shortestCircularDifference/);
@@ -96,6 +101,14 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(page, /prefers-reduced-motion: reduce/);
   assert.match(page, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
   assert.match(page, /<AccountVisual account=\{account\} stack \/>/);
+  assert.match(page, /setMobileAccountSheet\("detail"\)/);
+  assert.match(page, /title="Riwayat pembayaran"/);
+  assert.match(page, /Pembayaran keluar yang menggunakan/);
+  assert.match(page, />Bayar tagihan</);
+  assert.match(page, />Riwayat</);
+  assert.match(page, /variant="mobileDetail"/);
+  assert.match(page, /embedded/);
+  assert.doesNotMatch(page, /ref=\{mobileDetailRef\}/);
   assert.doesNotMatch(page, /mobilePagination|mobileCarousel|setInterval\(/);
   assert.match(page, /buttonRef=/);
   assert.match(page, /useFocusTrap/);
@@ -115,6 +128,9 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(pageStyles, /position: sticky/);
   assert.match(pageStyles, /detailColumnOpen/);
   assert.match(pageStyles, /mobileStackPanel/);
+  assert.match(pageStyles, /mobileQuickActions/);
+  assert.match(pageStyles, /paymentHistoryList/);
+  assert.match(pageStyles, /paymentHistoryItem/);
   assert.match(pageStyles, /perspective: 93\.75rem/);
   assert.match(pageStyles, /transform-style: preserve-3d/);
   assert.match(pageStyles, /touch-action: none/);
@@ -132,6 +148,8 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(cardStyles, /width: min\(100%, 26\.5rem\)/);
   assert.match(cardStyles, /font-family: var\(--font-mono\)/);
   assert.match(card, /stack = false/);
+  assert.match(card, /embedded = false/);
+  assert.match(card, /embedded \? <h2/);
   assert.match(card, /aria-label=\{`Detail rekening \$\{account\.name\}`\}/);
   assert.match(cardStyles, /stackVisual/);
   assert.match(categoryPage, /title="Kategori transaksi"/);

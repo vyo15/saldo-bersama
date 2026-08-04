@@ -178,6 +178,29 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     })()`), { description: "tiga kartu rekening terlihat pada stack mobile" });
     assert.equal(await page.evaluate(`Boolean(document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]'))`), true, "Stack rekening mobile harus dapat dikendalikan dengan gesture dan keyboard.");
     assert.equal(await page.evaluate(`document.querySelectorAll('button[aria-label^="Pilih rekening"]').length`), 0, "Pagination carousel lama harus dihapus.");
+    await page.evaluate(`(() => {
+      const card = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')]
+        .find((item) => getComputedStyle(item).pointerEvents !== 'none');
+      card?.click();
+    })()`);
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Saldo saat ini') || false"),
+      { description: "detail rekening dari kartu aktif" },
+    );
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('No. rekening') || false"), true, "Detail rekening hanya muncul setelah kartu aktif ditekan.");
+    await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "detail rekening ditutup" });
+    assert.equal(await page.evaluate("[...document.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Bayar tagihan')"), true, "Aksi Bayar tagihan harus tersedia pada rekening mobile.");
+    await page.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Riwayat')?.click()");
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Riwayat pembayaran'"),
+      { description: "riwayat pembayaran rekening aktif" },
+    );
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Belanja makan mingguan') || false"), true, "Riwayat harus memuat pembayaran keluar dari kartu aktif.");
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Isi kas bersama') || false"), true, "Transfer keluar dari kartu aktif harus masuk riwayat pembayaran.");
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Gaji bulan Agustus') || false"), false, "Pemasukan tidak boleh dicampur ke riwayat pembayaran keluar.");
+    await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "riwayat pembayaran ditutup" });
     assert.equal(await page.evaluate("document.body.textContent.includes('Riwayat dimuat hanya saat dibuka agar halaman rekening tetap ringan.')"), false, "Detail implementasi tidak boleh memenuhi halaman rekening.");
     await page.evaluate("document.querySelector('button[aria-label=\"Baca penjelasan rekonsiliasi\"]')?.click()");
     await waitFor(

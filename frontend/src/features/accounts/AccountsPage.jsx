@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { FiArrowLeft, FiClock, FiEye, FiInfo, FiPlus } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiClock,
+  FiEye,
+  FiFileText,
+  FiInfo,
+  FiList,
+  FiPlus,
+  FiRefreshCw,
+} from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
@@ -24,8 +33,14 @@ import {
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
-import { todayInJakarta } from "../../domain/dates.js";
+import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
+import {
+  formatTransactionDate,
+  TRANSACTION_LABELS,
+  transactionCategoryIcon,
+  transactionTone,
+} from "../transactions/transactionPresentation.js";
 import AccountFinancialCard, { AccountVisual } from "./components/AccountFinancialCard.jsx";
 import { accountCardholderName, BANK_TEMPLATE_OPTIONS, detectBankTemplate } from "./accountPresentation.js";
 import styles from "./AccountsPage.module.css";
@@ -84,7 +99,7 @@ const AccountsPage = () => {
   const [showReconciliations, setShowReconciliations] = useState(false);
   const [reconciliationInfoOpen, setReconciliationInfoOpen] = useState(false);
   const reconciliationsResource = useApiResource("reconciliations.list", { limit: 30 }, { enabled: showReconciliations });
-  const { refreshAll, invalidate } = useFinance();
+  const { bootstrap, refreshAll, invalidate } = useFinance();
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
   const usersResource = useApiResource("users.list", {}, { enabled: ownerMode });
@@ -97,6 +112,19 @@ const AccountsPage = () => {
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [mobileAccountSheet, setMobileAccountSheet] = useState(null);
+  const [paymentHistoryPeriod, setPaymentHistoryPeriod] = useState(currentMonthInJakarta);
+  const paymentHistoryResource = useApiResource("transactions.list", {
+    period: paymentHistoryPeriod,
+    limit: 50,
+    offset: 0,
+    query: "",
+    transaction_type: "all",
+    allocation: "all",
+    account_id: selectedAccountId || "all",
+    category_id: "all",
+    created_by: "all",
+  }, { enabled: mobileAccountSheet === "history" && Boolean(selectedAccountId) });
   const accountButtonRefs = useRef(new Map());
   const mobileStackCardRefs = useRef(new Map());
   const mobileStackStageRef = useRef(null);
@@ -108,7 +136,6 @@ const AccountsPage = () => {
   const mobileStackGestureRef = useRef({ dragging: false, startY: 0, startTime: 0, lastY: 0, lastTime: 0, velocityY: 0, suppressClick: false });
   const mobileStackAnimatingRef = useRef(false);
   const mobileStackWheelLockedRef = useRef(false);
-  const mobileDetailRef = useRef(null);
   const detailContainerRef = useRef(null);
   const detailCloseRef = useRef(null);
   const createNameInputRef = useRef(null);
@@ -258,6 +285,7 @@ const AccountsPage = () => {
     if (!items.length) {
       setSelectedAccountId("");
       setMobileDetailOpen(false);
+      setMobileAccountSheet(null);
       return;
     }
     if (!items.some((account) => account.account_id === selectedAccountId)) setSelectedAccountId(items[0].account_id);
@@ -452,7 +480,7 @@ const AccountsPage = () => {
       return;
     }
     setSelectedAccountId(account.account_id);
-    window.requestAnimationFrame(() => mobileDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    setMobileAccountSheet("detail");
   }, [animateMobileStackTo]);
 
   useLayoutEffect(() => {
@@ -481,6 +509,13 @@ const AccountsPage = () => {
   const currentDatabaseUser = activeUsers.find((item) => item.is_current) || null;
   const currentOwnerLabel = currentDatabaseUser?.name || user?.name || "Pengguna aktif";
   const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) || accounts[0] || null;
+  const accountLookup = Object.fromEntries((bootstrap?.accounts?.length ? bootstrap.accounts : accounts).map((account) => [account.account_id, account.name]));
+  const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((category) => [category.category_id, category]));
+  const paymentHistoryItems = (paymentHistoryResource.data?.items || []).filter((item) => (
+    item.source_account_id === selectedAccount?.account_id
+    && ["expense", "transfer"].includes(item.transaction_type)
+  ));
+  const canReconcileSelectedAccount = Boolean(selectedAccount?.can_reconcile ?? ownerMode);
   const accountPreview = {
     name: accountForm.name || "Nama rekening",
     account_type: accountForm.account_type,
@@ -584,21 +619,37 @@ const AccountsPage = () => {
                     <span>{Math.max(1, accounts.findIndex((account) => account.account_id === selectedAccount.account_id) + 1)} dari {accounts.length}</span>
                   </div>
                 ) : null}
-                <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser vertikal. Kartu depan akan berputar ke belakang dan kartu berikutnya maju ke depan.</p>
+                <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser vertikal untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
                 <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />
               </section>
 
               {selectedAccount ? (
-                <div ref={mobileDetailRef} className={styles.mobileDetailContainer}>
-                  <AccountFinancialCard
-                    account={selectedAccount}
-                    variant="mobileDetail"
-                    ownerMode={ownerMode}
-                    onViewTransactions={() => navigate("/transaksi")}
-                    onReconcile={(item) => { setReconciliation({ account: item, actual_balance: String(item.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" }); setDialogState({ status: "idle", error: null }); }}
-                    onEdit={openEditAccount}
-                    onArchive={openAccountLifecycle}
-                  />
+                <div className={styles.mobileQuickActions} aria-label={`Aksi cepat rekening ${selectedAccount.name}`}>
+                  <button type="button" className={styles.mobileQuickAction} onClick={() => navigate("/transaksi")}>
+                    <span><FiList aria-hidden="true" /></span>
+                    <strong>Transaksi</strong>
+                  </button>
+                  {canReconcileSelectedAccount ? (
+                    <button
+                      type="button"
+                      className={styles.mobileQuickAction}
+                      onClick={() => {
+                        setReconciliation({ account: selectedAccount, actual_balance: String(selectedAccount.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" });
+                        setDialogState({ status: "idle", error: null });
+                      }}
+                    >
+                      <span><FiRefreshCw aria-hidden="true" /></span>
+                      <strong>Rekonsiliasi</strong>
+                    </button>
+                  ) : null}
+                  <button type="button" className={styles.mobileQuickAction} onClick={() => navigate("/tagihan")}>
+                    <span><FiFileText aria-hidden="true" /></span>
+                    <strong>Bayar tagihan</strong>
+                  </button>
+                  <button type="button" className={styles.mobileQuickAction} onClick={() => setMobileAccountSheet("history")}>
+                    <span><FiClock aria-hidden="true" /></span>
+                    <strong>Riwayat</strong>
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -686,6 +737,93 @@ const AccountsPage = () => {
               ) : <p className="empty-inline-message">Belum ada rekonsiliasi.</p>
         ) : null}
       </Card>
+
+      <Modal
+        open={mobileAccountSheet === "detail" && Boolean(selectedAccount)}
+        onClose={() => setMobileAccountSheet(null)}
+        title={selectedAccount?.name || "Detail rekening"}
+        description="Detail rekening hanya ditampilkan setelah kartu aktif ditekan."
+        size="sm"
+      >
+        {selectedAccount ? (
+          <AccountFinancialCard
+            account={selectedAccount}
+            variant="mobileDetail"
+            embedded
+            ownerMode={ownerMode}
+            onViewTransactions={() => { setMobileAccountSheet(null); navigate("/transaksi"); }}
+            onReconcile={(item) => {
+              setMobileAccountSheet(null);
+              setReconciliation({ account: item, actual_balance: String(item.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" });
+              setDialogState({ status: "idle", error: null });
+            }}
+            onEdit={(item) => { setMobileAccountSheet(null); openEditAccount(item); }}
+            onArchive={(item) => { setMobileAccountSheet(null); openAccountLifecycle(item); }}
+          />
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={mobileAccountSheet === "history" && Boolean(selectedAccount)}
+        onClose={() => setMobileAccountSheet(null)}
+        title="Riwayat pembayaran"
+        description={selectedAccount ? `Pembayaran keluar yang menggunakan ${selectedAccount.name}.` : "Riwayat pembayaran rekening."}
+        size="sm"
+        footer={<Button onClick={() => { setMobileAccountSheet(null); navigate("/transaksi"); }}>Lihat semua transaksi</Button>}
+      >
+        <div className={styles.paymentHistoryToolbar}>
+          <label>
+            <span>Periode</span>
+            <input
+              type="month"
+              max={currentMonthInJakarta()}
+              value={paymentHistoryPeriod}
+              onChange={(event) => setPaymentHistoryPeriod(event.target.value)}
+              aria-label="Periode riwayat pembayaran"
+            />
+          </label>
+          <p>Riwayat dimuat saat dibuka dan difilter berdasarkan rekening aktif.</p>
+        </div>
+
+        {paymentHistoryResource.refreshError ? <RefreshWarning error={paymentHistoryResource.refreshError} onRetry={paymentHistoryResource.reload} /> : null}
+        {["loading", "refreshing"].includes(paymentHistoryResource.status) ? (
+          <p className={styles.paymentHistoryState}>Memuat riwayat pembayaran...</p>
+        ) : paymentHistoryResource.status === "error" ? (
+          <ErrorState error={paymentHistoryResource.error} onRetry={paymentHistoryResource.reload} />
+        ) : paymentHistoryItems.length ? (
+          <div className={styles.paymentHistoryList} aria-label={`Riwayat pembayaran ${selectedAccount?.name || "rekening"}`}>
+            {paymentHistoryItems.map((item) => {
+              const category = categoryLookup[item.category_id];
+              const HistoryIcon = transactionCategoryIcon(category, item.transaction_type);
+              const tone = transactionTone(item.transaction_type);
+              const destination = item.transaction_type === "transfer"
+                ? accountLookup[item.destination_account_id] || "Rekening tujuan"
+                : category?.name || TRANSACTION_LABELS[item.transaction_type] || "Pembayaran";
+              const title = item.description || item.merchant || TRANSACTION_LABELS[item.transaction_type] || "Pembayaran";
+              return (
+                <article className={styles.paymentHistoryItem} key={item.transaction_id}>
+                  <span className={styles.paymentHistoryIcon} data-tone={tone}><HistoryIcon aria-hidden="true" /></span>
+                  <div className={styles.paymentHistoryCopy}>
+                    <strong>{title}</strong>
+                    <small>{item.transaction_type === "transfer" ? `Transfer ke ${destination}` : destination}</small>
+                    <span>{formatTransactionDate(item.transaction_date)}</span>
+                  </div>
+                  <div className={styles.paymentHistoryMeta}>
+                    <strong data-tone={tone}>− <Money value={item.amount || 0} /></strong>
+                    {item.status && item.status !== "active" ? <StatusBadge status={item.status} /> : <small>Tercatat</small>}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={styles.paymentHistoryEmpty}>
+            <FiClock aria-hidden="true" />
+            <strong>Belum ada pembayaran pada periode ini</strong>
+            <p>Pilih periode lain atau buka seluruh transaksi untuk melihat aktivitas rekening.</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={reconciliationInfoOpen}

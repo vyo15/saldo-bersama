@@ -324,7 +324,7 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
     })()`);
 
     assert.equal(result.pathname, "/login");
-    assert.equal(result.title, "Keuangan rapi, transparan, dan terlacak");
+    assert.equal(result.title, "Selamat datang!");
     assert.equal(result.mainCount, 1, "Halaman harus mempunyai satu landmark main.");
     assert.equal(result.h1Count, 1, "Halaman harus mempunyai satu heading utama.");
     assert.ok(result.overflow <= 1, `Layout mobile tidak boleh overflow horizontal (${result.overflow}px).`);

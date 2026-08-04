@@ -111,6 +111,7 @@ const AccountFinancialCard = ({
   onEdit,
   onArchive,
   onViewTransactions,
+  embedded = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const typeLabel = accountTypeLabel(account.account_type);
@@ -156,16 +157,18 @@ const AccountFinancialCard = ({
   if (variant === "mobileDetail") {
     return (
       <section className={styles.mobileDetail} aria-labelledby={`mobile-account-${account.account_id}`} aria-label={`Detail rekening ${account.name}`}>
-        <header className={styles.mobileDetailHeading}>
-          <div>
-            <p>Detail rekening</p>
-            <h2 id={`mobile-account-${account.account_id}`}>{account.name}</h2>
-          </div>
-          <div className={styles.mobileDetailBadges}>
-            <StatusBadge status={account.status || "active"} />
-            {readOnly ? <span className={styles.readOnlyBadge}><FiEye aria-hidden="true" />Hanya lihat</span> : null}
-          </div>
-        </header>
+        {embedded ? <h2 id={`mobile-account-${account.account_id}`} className="sr-only">{account.name}</h2> : (
+          <header className={styles.mobileDetailHeading}>
+            <div>
+              <p>Detail rekening</p>
+              <h2 id={`mobile-account-${account.account_id}`}>{account.name}</h2>
+            </div>
+            <div className={styles.mobileDetailBadges}>
+              <StatusBadge status={account.status || "active"} />
+              {readOnly ? <span className={styles.readOnlyBadge}><FiEye aria-hidden="true" />Hanya lihat</span> : null}
+            </div>
+          </header>
+        )}
 
         <dl className={styles.mobileDetailCard}>
           <MobileDetailRow icon={FiList} label="Bank / jenis"><span>{bankLabel}</span></MobileDetailRow>

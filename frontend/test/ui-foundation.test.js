@@ -97,6 +97,23 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /created_by:\s*filters\.creator/);
 });
 
+test("login mobile memakai brand resmi, dekorasi rupiah aman, dan auth provider canonical", async () => {
+  const [login, pages, auth] = await Promise.all([
+    read("src/features/auth/LoginPage.jsx"),
+    read("src/styles/pages.css"),
+    read("src/services/auth/googleFirebaseAuth.js"),
+  ]);
+
+  assert.match(login, /<Brand \/>/);
+  assert.match(login, /MONEY_NOTES/);
+  assert.match(login, /aria-hidden="true"/);
+  assert.match(login, /Created by <strong>Vio Yusup Iskandar<\/strong>/);
+  assert.equal((login.match(/className="google-login-button"/g) || []).length, 1);
+  assert.match(auth, /identity\.renderButton\(element/);
+  assert.match(pages, /@keyframes login-money-fall/);
+  assert.match(pages, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
+});
+
 test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", async () => {
   const [dashboard, presentation, mobile] = await Promise.all([
     read("src/features/dashboard/DashboardPage.jsx"),
