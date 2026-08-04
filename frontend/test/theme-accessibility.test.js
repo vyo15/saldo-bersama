@@ -31,15 +31,35 @@ const contrast = (left, right) => {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
 
+test("palette Saldo Bersama yang disetujui tetap menjadi primitive canonical", () => {
+  for (const [name, value] of Object.entries({
+    "--palette-rich-black": "#0b1110",
+    "--palette-dark-green": "#0f1a18",
+    "--palette-bangladesh-green": "#03624c",
+    "--palette-mountain-meadow": "#2cc295",
+    "--palette-caribbean-green": "#00d681",
+    "--palette-mint": "#a7f3d0",
+    "--palette-anti-flash-white": "#f4faf7",
+    "--palette-pistachio": "#e8f5ef",
+  })) assert.match(tokenSource, new RegExp(`${name}:\\s*${value};`, "i"));
+});
+
 test("token light dan dark memenuhi kontras teks serta tombol utama", () => {
   const light = blockFor(":root,");
   const dark = blockFor(':root[data-theme="dark"]');
-  assert.ok(contrast(token(light, "--text"), token(light, "--surface")) >= 4.5);
+  for (const foreground of ["--text", "--text-soft", "--text-muted", "--primary", "--positive", "--negative", "--warning", "--info"]) {
+    assert.ok(contrast(token(light, foreground), token(light, "--surface")) >= 4.5, `Kontras light gagal: ${foreground}`);
+    assert.ok(contrast(token(dark, foreground), token(dark, "--surface")) >= 4.5, `Kontras dark gagal: ${foreground}`);
+  }
   assert.ok(contrast(token(light, "--on-primary"), token(light, "--primary")) >= 4.5);
   assert.ok(contrast(token(light, "--on-negative"), token(light, "--negative")) >= 4.5);
-  assert.ok(contrast(token(dark, "--text"), token(dark, "--surface")) >= 4.5);
   assert.ok(contrast(token(dark, "--on-primary"), token(dark, "--primary")) >= 4.5);
   assert.ok(contrast(token(dark, "--on-negative"), token(dark, "--negative")) >= 4.5);
+  for (const theme of [light, dark]) {
+    for (const endpoint of ["--hero-start", "--hero-mid", "--hero-end"]) {
+      assert.ok(contrast(token(theme, "--on-hero"), token(theme, endpoint)) >= 4.5, `Kontras hero gagal: ${endpoint}`);
+    }
+  }
 });
 
 test("komponen memakai semantic foreground dan reduced motion", () => {

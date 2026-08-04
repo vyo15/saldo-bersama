@@ -38,6 +38,10 @@ test("semantic primitives keep accessibility and avoid dynamic inline layout sty
   assert.match(modal, /role="dialog"/);
   assert.match(modal, /aria-modal="true"/);
   assert.match(modal, /useFocusTrap/);
+  const focusTrap = await read("src/hooks/useFocusTrap.js");
+  assert.match(focusTrap, /onEscapeRef\.current = onEscape/);
+  assert.match(focusTrap, /onEscapeRef\.current\?\.\(\)/);
+  assert.doesNotMatch(focusTrap, /\[bodyClassName, containerRef, initialFocusRef, onEscape, open\]/);
   assert.match(moneyInput, /aria-describedby=\{describedBy\}/);
   assert.match(moneyInput, /inputMode="numeric"/);
   assert.match(progress, /<progress/);
@@ -168,6 +172,12 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
 
   assert.equal((page.match(/<TransactionForm/g) || []).length, 1, "Dashboard hanya boleh memiliki satu form transaksi shared.");
   assert.match(desktop, /aria-label=\{balanceVisible \? "Sembunyikan seluruh nominal"/);
+  assert.match(desktop, /Pilih rekening untuk melihat aktivitasnya/);
+  assert.match(desktop, /accountTransactionDelta/);
+  assert.match(desktop, /transaction\.transaction_type === "adjustment"/);
+  assert.match(desktop, /other-categories/);
+  assert.match(desktop, /shared-transaction-table/);
+  assert.match(desktop, /shared-donut/);
   assert.match(mobile, /type="button" className="mobile-transaction-item"/);
   assert.match(filters, /<form className="mobile-dashboard-filter-form"/);
   assert.match(detail, /<Modal/);

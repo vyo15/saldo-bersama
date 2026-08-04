@@ -21,10 +21,12 @@ export const memberSession = Object.freeze({
 const accounts = Object.freeze([
   {
     account_id: "acc-shared-bank",
-    name: "Rekening Bersama",
+    name: "Rekening Bersama · BNI",
     account_type: "bank",
+    bank_template: "bni",
     account_number: "1234567890123456",
     initial_balance: 5000000,
+    initial_balance_date: "2026-01-01",
     updated_at: "2026-08-03T00:00:00.000Z",
     owner_scope: "shared",
     owner_user_id: null,
@@ -37,8 +39,10 @@ const accounts = Object.freeze([
     account_id: "acc-shared-cash",
     name: "Tunai Bersama",
     account_type: "cash",
+    bank_template: "generic",
     account_number: "",
     initial_balance: 1000000,
+    initial_balance_date: "2026-01-01",
     updated_at: "2026-08-03T00:00:00.000Z",
     owner_scope: "shared",
     owner_user_id: null,
@@ -47,7 +51,54 @@ const accounts = Object.freeze([
     allow_negative: false,
     row_version: 1,
   },
+  {
+    account_id: "acc-owner-personal",
+    name: "Tabungan Owner · BCA",
+    account_type: "bank",
+    bank_template: "bca",
+    account_number: "9876543210123456",
+    initial_balance: 2000000,
+    initial_balance_date: "2026-01-01",
+    updated_at: "2026-08-03T00:00:00.000Z",
+    owner_scope: "personal",
+    owner_user_id: ownerSession.uid,
+    balance: 2_250_000,
+    status: "active",
+    allow_negative: false,
+    row_version: 1,
+  },
+  {
+    account_id: "acc-member-personal",
+    name: "Tabungan Member · Mandiri",
+    account_type: "bank",
+    bank_template: "mandiri",
+    account_number: "1111222233334444",
+    initial_balance: 1250000,
+    initial_balance_date: "2026-01-01",
+    updated_at: "2026-08-03T00:00:00.000Z",
+    owner_scope: "personal",
+    owner_user_id: memberSession.uid,
+    balance: 1_750_000,
+    status: "active",
+    allow_negative: false,
+    row_version: 1,
+  },
 ]);
+
+const accountsForSession = (session) => accounts.map((account) => {
+  const isOwnedByActor = account.owner_scope === "personal" && account.owner_user_id === session.uid;
+  const canOperate = session.role === "owner" || account.owner_scope === "shared" || isOwnedByActor;
+  const owner = account.owner_user_id === ownerSession.uid ? ownerSession : account.owner_user_id === memberSession.uid ? memberSession : null;
+  return {
+    ...account,
+    owner_name: account.owner_scope === "personal" ? owner?.name || "Pengguna" : "",
+    is_owned_by_actor: isOwnedByActor,
+    can_transact: canOperate,
+    can_reconcile: canOperate,
+    can_manage: session.role === "owner",
+    read_only: !canOperate && session.role !== "owner",
+  };
+});
 
 const categories = Object.freeze([
   { category_id: "cat-income", name: "Gaji", transaction_type: "income", nature: "fixed", status: "active", row_version: 1 },
@@ -174,6 +225,21 @@ const goals = Object.freeze([
   },
 ]);
 
+const budgets = Object.freeze([
+  {
+    budget_id: "budget-food",
+    category_id: "cat-food",
+    category_name: "Makan",
+    name: "Makan",
+    scope: "shared",
+    amount: 1_000_000,
+    used_amount: 800_000,
+    warning_threshold: 80,
+    row_version: 1,
+    status: "active",
+  },
+]);
+
 const alerts = Object.freeze([
   { id: "alert-budget", severity: "warning", title: "Budget makan 80%", message: "Pemakaian kategori makan mendekati batas.", targetPath: "/laporan" },
   { id: "alert-recurring", severity: "info", title: "Kontrakan segera jatuh tempo", message: "Tagihan jatuh tempo dalam 8 hari.", targetPath: "/tagihan" },
@@ -185,7 +251,7 @@ const alerts = Object.freeze([
 export const bootstrapFixture = Object.freeze({
   accounts,
   categories,
-  config: { schemaVersion: 4, timezone: "Asia/Jakarta", maintenanceMode: false },
+  config: { schemaVersion: 5, timezone: "Asia/Jakarta", maintenanceMode: false },
 });
 
 export const overviewFixture = Object.freeze({
@@ -206,6 +272,7 @@ export const overviewFixture = Object.freeze({
   envelopes,
   recurring,
   goals,
+  budgets,
   recentTransactions,
   alerts,
   lastSyncedAt: "2026-08-02T05:44:14.120Z",
@@ -214,20 +281,7 @@ export const overviewFixture = Object.freeze({
 
 const reportFixture = Object.freeze({
   overview: overviewFixture,
-  budgets: [
-    {
-      budget_id: "budget-food",
-      category_id: "cat-food",
-      category_name: "Makan",
-      scope: "shared",
-      amount: 1_000_000,
-      actual_amount: 800_000,
-      remaining_amount: 200_000,
-      warning_threshold: 80,
-      row_version: 1,
-      status: "active",
-    },
-  ],
+  budgets,
   categoryExpenses: overviewFixture.categoryExpenses.map((item) => ({ label: item.name, value: item.amount, name: item.name, amount: item.amount })),
   accountExpenses: [{ label: "Rekening Bersama", value: 125_000, name: "Rekening Bersama", amount: 125_000 }],
   creatorExpenses: [{ label: "Owner Browser", value: 125_000, name: "Owner Browser", amount: 125_000 }],
@@ -245,35 +299,44 @@ const reportFixture = Object.freeze({
   },
 });
 
-export const createAuthenticatedGatewayResponses = (session = ownerSession) => ({
-  "app.initialState": { bootstrap: bootstrapFixture, overview: overviewFixture },
-  "bootstrap.get": bootstrapFixture,
-  "dashboard.overview": overviewFixture,
-  "transactions.list": {
-    items: recentTransactions,
-    filterOptions: {
-      accounts: accounts.map(({ account_id, name }) => ({ account_id, name })),
-      categories: categories.map(({ category_id, name }) => ({ category_id, name })),
-      creators: [{ user_id: session.uid, name: session.name, email: session.email }],
+export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
+  const sessionAccounts = accountsForSession(session);
+  const sessionBootstrap = { ...bootstrapFixture, accounts: sessionAccounts };
+  const sessionOverview = {
+    ...overviewFixture,
+    totalBalance: sessionAccounts.reduce((sum, account) => sum + Number(account.balance || 0), 0),
+    accountBalances: sessionAccounts.map(({ account_id, name, balance, owner_scope, owner_name }) => ({ account_id, name, balance, owner_scope, owner_name })),
+  };
+  return {
+    "app.initialState": { bootstrap: sessionBootstrap, overview: sessionOverview },
+    "bootstrap.get": sessionBootstrap,
+    "dashboard.overview": sessionOverview,
+    "transactions.list": {
+      items: recentTransactions,
+      filterOptions: {
+        accounts: sessionAccounts.map(({ account_id, name, owner_scope, owner_name }) => ({ account_id, name, owner_scope, owner_name })),
+        categories: categories.map(({ category_id, name }) => ({ category_id, name })),
+        creators: [{ user_id: session.uid, name: session.name, email: session.email }],
+      },
+      total: recentTransactions.length,
+      limit: 100,
+      offset: 0,
+      periodLocked: false,
     },
-    total: recentTransactions.length,
-    limit: 100,
-    offset: 0,
-    periodLocked: false,
-  },
-  "envelopes.list": { items: envelopes },
-  "recurring.list": { items: recurring },
-  "goals.list": { items: goals },
-  "reports.monthly": reportFixture,
-  "accounts.list": { items: accounts },
-  "categories.list": { items: categories },
-  "reconciliations.list": { items: [] },
-  "users.list": { items: [
-    { user_id: ownerSession.uid, email: ownerSession.email, name: ownerSession.name, role: "owner", status: "active", is_current: session.uid === ownerSession.uid, row_version: 1 },
-    { user_id: memberSession.uid, email: memberSession.email, name: memberSession.name, role: "member", status: "active", is_current: session.uid === memberSession.uid, row_version: 1 },
-  ] },
-  "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
-  "system.health": { database: "ok", maintenanceMode: false, schema: { ready: true, version: 4 }, integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
-  "integrations.status": { configured: { sheets: false, calendar: false }, providers: { sheets: {}, calendar: {} } },
-  "periods.list": { items: [] },
-});
+    "envelopes.list": { items: envelopes },
+    "recurring.list": { items: recurring },
+    "goals.list": { items: goals },
+    "reports.monthly": { ...reportFixture, overview: sessionOverview },
+    "accounts.list": { items: sessionAccounts },
+    "categories.list": { items: categories },
+    "reconciliations.list": { items: [] },
+    "users.list": { items: [
+      { user_id: ownerSession.uid, email: ownerSession.email, name: ownerSession.name, role: "owner", status: "active", is_current: session.uid === ownerSession.uid, row_version: 1 },
+      { user_id: memberSession.uid, email: memberSession.email, name: memberSession.name, role: "member", status: "active", is_current: session.uid === memberSession.uid, row_version: 1 },
+    ] },
+    "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
+    "system.health": { database: "ok", maintenanceMode: false, schema: { ready: true, version: 5 }, integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
+    "integrations.status": { configured: { sheets: false, calendar: false }, providers: { sheets: {}, calendar: {} } },
+    "periods.list": { items: [] },
+  };
+};

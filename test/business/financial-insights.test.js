@@ -120,6 +120,11 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
     const previous = periodOffset(period, -1);
     await insertTransaction(db, { id: "income-prev", date: `${previous}-03`, type: "income", amount: 1_000_000, destination: "account-bank", category: "category-salary" });
     await insertTransaction(db, { id: "expense-current", date: `${period}-02`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food", creator: member.user_id });
+    await db.execute(
+      "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["account-member-personal", "Tabungan pasangan", "bank", "personal", member.user_id, 750_000, "2020-01-01", 0, "active", 1, owner.user_id, now, owner.user_id, now],
+    );
+    await insertTransaction(db, { id: "expense-personal", date: `${period}-03`, type: "expense", amount: 35_000, source: "account-member-personal", category: "category-food", creator: member.user_id });
 
     await db.execute(
       "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -139,6 +144,12 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
     assert.equal(report.trend.months, 3);
     assert.equal(report.trend.items.length, 3);
     assert.equal(report.accountExpenses[0].account_id, "account-bank");
+    const personalBreakdown = report.accountExpenses.find((item) => item.account_id === "account-member-personal");
+    assert.equal(personalBreakdown.label, "Tabungan pasangan · Pribadi · Partner");
+    const memberReport = await monthlyReport(db, { actor: member, payload: { period, trend_months: 3 } });
+    assert.equal(memberReport.accountExpenses.some((item) => item.account_id === "account-bank"), true);
+    assert.equal(memberReport.accountExpenses.find((item) => item.account_id === "account-member-personal")?.label, "Tabungan pasangan · Pribadi · Partner");
+    assert.equal(memberReport.overview.alerts.some((item) => item.title.includes("Tabungan pasangan · Pribadi · Partner")), true);
     assert.equal(report.creatorExpenses[0].user_id, member.user_id);
     assert.equal(report.natureExpenses[0].nature, "variable");
     assert.ok(report.overview.alerts.some((item) => item.type === "budget_threshold"));

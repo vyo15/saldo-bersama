@@ -30,6 +30,12 @@ Policy entity atau field visibility versioned dengan server-side read models. Qu
 
 Inference attack, inconsistent projection, dan confusing UX.
 
+## Baseline yang sudah dipilih
+
+Untuk runtime saat ini, dua pengguna terotorisasi memakai transparansi penuh pada rekening dan ledger: shared maupun personal dapat dibaca keduanya dengan label pemilik. Hak transaksi, rekonsiliasi, edit, dan cancel tetap dibatasi backend berdasarkan ownership/capability. Sheets mirror tetap shared-only.
+
+RFC ini tetap Proposed hanya untuk mode granular tambahan seperti balance-only, contribution-only, atau private penuh. Mode tersebut belum diimplementasikan.
+
 ## Decision
 
-Pending privacy policy product dan security review.
+Pending untuk policy granular di luar baseline transparansi dua pengguna.

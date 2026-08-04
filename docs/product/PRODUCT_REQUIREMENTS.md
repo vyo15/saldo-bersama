@@ -35,7 +35,7 @@ Status menggunakan **Implemented**, **Partial**, atau **Planned**. Detail bukti 
 
 Mendukung bank, tunai, e-wallet, tabungan, dana darurat, sinking fund, investasi, rekening bersama/personal, saldo aktual, saldo aman, alokasi, dan riwayat perubahan. Transfer internal harus netral terhadap income/expense.
 
-**Acceptance:** saldo berasal dari ledger; rekening tidak aktif tidak menerima transaksi baru; ownership diverifikasi backend; saldo tersedia dibedakan dari saldo rekening.
+**Acceptance:** saldo berasal dari ledger; rekening tidak aktif tidak menerima transaksi baru; kedua pengguna terotorisasi dapat membaca rekening/ledger pasangan dengan label pemilik; capability write rekening personal tetap diverifikasi backend; saldo tersedia dibedakan dari saldo rekening.
 
 ### `REQ-PROD-02` Transaksi lengkap — Partial
 

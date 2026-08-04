@@ -12,6 +12,7 @@ const RecurringPage = lazy(() => import("../features/recurring/RecurringPage.jsx
 const GoalsPage = lazy(() => import("../features/goals/GoalsPage.jsx"));
 const ReportsPage = lazy(() => import("../features/reports/ReportsPage.jsx"));
 const AccountsPage = lazy(() => import("../features/accounts/AccountsPage.jsx"));
+const CategoriesPage = lazy(() => import("../features/categories/CategoriesPage.jsx"));
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage.jsx"));
 const NotFoundPage = lazy(() => import("../features/settings/NotFoundPage.jsx"));
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="target" element={<GoalsPage />} />
           <Route path="laporan" element={<ReportsPage />} />
           <Route path="rekening" element={<AccountsPage />} />
+          <Route path="kategori" element={<CategoriesPage />} />
           <Route path="pengaturan" element={<SettingsPage />} />
           <Route path="404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />

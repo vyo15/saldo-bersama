@@ -67,7 +67,7 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
   }, [errors.overspend_reason]);
 
   const accounts = useMemo(
-    () => bootstrap?.accounts?.filter((item) => item.status === "active") || [],
+    () => bootstrap?.accounts?.filter((item) => item.status === "active" && item.can_transact !== false) || [],
     [bootstrap?.accounts],
   );
   const accountBalances = useMemo(() => overview?.accountBalances || [], [overview?.accountBalances]);

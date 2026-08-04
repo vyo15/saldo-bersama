@@ -6,6 +6,7 @@ import test from "node:test";
 const migrationDirectory = new URL("../../database/migrations/", import.meta.url);
 const initialMigrationUrl = new URL("001_initial_schema.sql", migrationDirectory);
 const accountNumberMigrationUrl = new URL("002_account_number.sql", migrationDirectory);
+const bankTemplateMigrationUrl = new URL("003_account_bank_template.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -23,6 +24,7 @@ const validateWithSqlite = async () => {
     const accountInsert = "INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     db.prepare(accountInsert).run("a1", "Kas", "cash", "", "shared", null, 100000, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
     db.prepare(accountInsert).run("a2", "Bank", "bank", "1234567890", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
+    db.prepare("UPDATE accounts SET bank_template='bni' WHERE account_id='a2'").run();
     db.prepare("INSERT INTO categories VALUES(?,?,?,?,?,?,?,?,?,?,?)").run("c1", "Makan", "expense", "variable", "", "active", 1, "u1", now, "u1", now);
 
     const rejected = (statement, args = []) => {
@@ -66,6 +68,9 @@ const validateWithSqlite = async () => {
       negative_initial_without_permission_rejected: rejected(accountInsert, ["a-negative", "Minus", "cash", "", "shared", null, -1, "2026-01-01", 0, "active", 1, "u1", now, "u1", now]),
       invalid_account_number_rejected: rejected(accountInsert, ["a-invalid-number", "Bank invalid", "bank", "12A34", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now]),
       non_bank_account_number_rejected: rejected(accountInsert, ["a-cash-number", "Cash invalid", "cash", "123456", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now]),
+      invalid_bank_template_rejected: rejected("UPDATE accounts SET bank_template='visa' WHERE account_id='a2'"),
+      non_bank_template_rejected: rejected("UPDATE accounts SET bank_template='bca' WHERE account_id='a1'"),
+      bank_template_saved: db.prepare("SELECT bank_template FROM accounts WHERE account_id='a2'").get().bank_template === "bni",
       audit_update_rejected: rejected("UPDATE audit_log SET action='changed' WHERE audit_id='audit1'"),
       audit_delete_rejected: rejected("DELETE FROM audit_log WHERE audit_id='audit1'"),
       second_pending_rejected: rejected(outboxInsert, ["waiting2", "sheets", "upsert", "transaction", "t1", "sheets:upsert:transaction:t1", "{}", "pending", 0, now, null, null, "", "", now, now, null]),
@@ -78,9 +83,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v4 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v5 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "4");
+  assert.equal(result.schema_version, "5");
   assert.ok(result.table_count >= 24);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -88,7 +93,7 @@ test("schema Turso/SQLite v4 dapat dibuat lengkap dan foreign key aktif", async 
 
 test("constraint finansial, audit append-only, dan outbox coalescing ditegakkan database", async () => {
   const result = await validateWithSqlite();
-  for (const key of ["float_rejected", "same_account_rejected", "foreign_key_rejected", "duplicate_idempotency_rejected", "invalid_expense_shape_rejected", "invalid_cancellation_metadata_rejected", "negative_initial_without_permission_rejected", "invalid_account_number_rejected", "non_bank_account_number_rejected", "audit_update_rejected", "audit_delete_rejected", "second_pending_rejected", "processing_and_pending_coexist"]) {
+  for (const key of ["float_rejected", "same_account_rejected", "foreign_key_rejected", "duplicate_idempotency_rejected", "invalid_expense_shape_rejected", "invalid_cancellation_metadata_rejected", "negative_initial_without_permission_rejected", "invalid_account_number_rejected", "non_bank_account_number_rejected", "invalid_bank_template_rejected", "non_bank_template_rejected", "bank_template_saved", "audit_update_rejected", "audit_delete_rejected", "second_pending_rejected", "processing_and_pending_coexist"]) {
     assert.equal(result[key], true, key);
   }
 });
@@ -119,4 +124,14 @@ test("migration v4 menambahkan nomor rekening terformat digit tanpa merusak data
   assert.match(sql, /account_type = 'bank'/);
   assert.match(sql, /length\(account_number\) BETWEEN 6 AND 34/);
   assert.match(sql, /value = '4'/);
+});
+
+
+test("migration v5 menyimpan template kartu terpisah tanpa mengubah nama dan saldo", async () => {
+  const sql = await readFile(bankTemplateMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE accounts[\s\S]*ADD COLUMN bank_template/);
+  assert.match(sql, /bank_template IN \('generic','bca','bni','btn','mandiri','permata'\)/);
+  assert.match(sql, /WHERE account_type = 'bank'/);
+  assert.match(sql, /value = '5'/);
+  assert.doesNotMatch(sql, /UPDATE accounts\s+SET name/i);
 });

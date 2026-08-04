@@ -95,17 +95,24 @@ export const publicRow = (row, booleanFields = []) => {
   return result;
 };
 
-export const visibleScopeSql = (actor, alias = "") => {
+export const readableLedgerSql = (_actor, _alias = "") => ({ sql: "1=1", args: [] });
+export const readableAccountSql = (_actor, _alias = "") => ({ sql: "1=1", args: [] });
+
+export const operableScopeSql = (actor, alias = "") => {
   const prefix = alias ? `${alias}.` : "";
   if (actor.role === "owner") return { sql: "1=1", args: [] };
   return { sql: `(${prefix}scope = 'shared' OR (${prefix}scope = 'personal' AND ${prefix}owner_user_id = ?))`, args: [actor.user_id] };
 };
 
-export const visibleAccountSql = (actor, alias = "") => {
+export const operableAccountSql = (actor, alias = "") => {
   const prefix = alias ? `${alias}.` : "";
   if (actor.role === "owner") return { sql: "1=1", args: [] };
   return { sql: `(${prefix}owner_scope = 'shared' OR (${prefix}owner_scope = 'personal' AND ${prefix}owner_user_id = ?))`, args: [actor.user_id] };
 };
+
+// Backward-compatible aliases remain write-oriented. Read paths must opt into readable*Sql explicitly.
+export const visibleScopeSql = operableScopeSql;
+export const visibleAccountSql = operableAccountSql;
 
 export const normalizeOwnedScope = async (db, actor, payload = {}, fallback = { scope: "shared", owner_user_id: null }) => {
   const requested = payload.scope === undefined ? fallback.scope : String(payload.scope);

@@ -1,11 +1,12 @@
 import { listAudit } from "../services/audit.js";
 import { ACTION_POLICIES, actionNames, getActionPolicy, isExternalAction, isMaintenanceAllowedAction, isReadAction } from "./policy.js";
 import { nowIso, todayJakarta } from "../services/core.js";
-import { createTransaction, updateTransaction, cancelTransaction, listTransactions } from "../services/finance.js";
+import { createTransaction, updateTransaction, cancelTransaction, restoreTransaction, listTransactions } from "../services/finance.js";
 import { integrationStatus, enqueueIntegration } from "../services/integrations.js";
 import {
-  archiveAccount, archiveCategory, createAccount, createCategory, listAccounts, listCategories,
-  updateAccount, updateCategory,
+  archiveAccount, archiveCategory, createAccount, createCategory, deleteUnusedAccount, listAccounts, listArchivedData,
+  listCategories, previewAccountLifecycle, previewCategoryArchive, restoreAccount, restoreCategory, updateAccount,
+  updateCategory,
 } from "../services/masterData.js";
 import {
   applyImport, applyRestore, createTechnicalBackup, integrityWithMaintenanceRecovery, previewImport,
@@ -19,9 +20,9 @@ import {
 } from "../services/planning/index.js";
 import {
   appInitialState, bootstrapData, closePeriod, createReconciliation, dashboardOverview, listPeriods,
-  listReconciliations, monthlyReport, reopenPeriod,
+  listReconciliations, monthlyReport, previewClosePeriod, reopenPeriod,
 } from "../services/reporting/index.js";
-import { deactivateUser, listUsers, upsertUser } from "../services/users.js";
+import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../services/users.js";
 
 const systemHealth = async (db) => {
   const configRows = await db.all("SELECT key,value FROM system_config WHERE key IN ('schema_version','maintenance_mode','timezone','currency')");
@@ -62,20 +63,28 @@ const ACTION_HANDLERS = Object.freeze({
   "users.list": listUsers,
   "users.upsert": upsertUser,
   "users.deactivate": deactivateUser,
+  "users.reactivate": reactivateUser,
   "audit.list": listAudit,
+  "archive.list": listArchivedData,
   "dashboard.overview": dashboardOverview,
   "accounts.list": listAccounts,
   "accounts.create": createAccount,
   "accounts.update": updateAccount,
+  "accounts.previewLifecycle": previewAccountLifecycle,
   "accounts.archive": archiveAccount,
+  "accounts.restore": restoreAccount,
+  "accounts.deleteUnused": deleteUnusedAccount,
   "categories.list": listCategories,
   "categories.create": createCategory,
   "categories.update": updateCategory,
+  "categories.previewArchive": previewCategoryArchive,
   "categories.archive": archiveCategory,
+  "categories.restore": restoreCategory,
   "transactions.list": listTransactions,
   "transactions.create": createTransaction,
   "transactions.update": updateTransaction,
   "transactions.cancel": cancelTransaction,
+  "transactions.restore": restoreTransaction,
   "envelopes.list": listEnvelopes,
   "envelopes.create": createEnvelope,
   "envelopes.move": moveEnvelope,
@@ -97,6 +106,7 @@ const ACTION_HANDLERS = Object.freeze({
   "reconciliations.list": listReconciliations,
   "reconciliations.create": createReconciliation,
   "periods.list": listPeriods,
+  "periods.previewClose": previewClosePeriod,
   "periods.close": closePeriod,
   "periods.reopen": reopenPeriod,
   "notifications.register": registerPush,

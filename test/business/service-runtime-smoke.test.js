@@ -147,6 +147,7 @@ test("rekening bank mewajibkan nomor digit dan audit hanya menyimpan empat digit
         name: "Tabungan BNI",
         account_type: "bank",
         account_number: "1234-5678 9012 3456",
+        bank_template: "bni",
         owner_scope: "shared",
         initial_balance: 0,
         initial_balance_date: todayJakarta(),
@@ -157,11 +158,44 @@ test("rekening bank mewajibkan nomor digit dan audit hanya menyimpan empat digit
       database: db
     });
     assert.equal(created.account_number, "1234567890123456");
+    assert.equal(created.bank_template, "bni");
 
     const audit = await db.one("SELECT new_value FROM audit_log WHERE entity_type='account' AND entity_id=? ORDER BY timestamp DESC LIMIT 1", [created.account_id]);
     assert.ok(audit);
     assert.equal(JSON.parse(audit.new_value).account_number, "••••3456");
     assert.doesNotMatch(audit.new_value, /1234567890123456/);
+
+    const updated = await dispatchAction({
+      signedActor,
+      action: "accounts.update",
+      payload: {
+        account_id: created.account_id,
+        name: "Tabungan nikah",
+        account_number: created.account_number,
+        bank_template: "mandiri",
+        owner_scope: "shared",
+        allow_negative: false,
+        row_version: created.row_version,
+      },
+      rowVersion: created.row_version,
+      requestId: "test:account-template-update",
+      idempotencyKey: "test-account-template-update",
+      database: db,
+    });
+    assert.equal(updated.name, "Tabungan nikah");
+    assert.equal(updated.bank_template, "mandiri");
+
+    await assert.rejects(
+      () => dispatchAction({
+        signedActor,
+        action: "accounts.create",
+        payload: { name: "Template invalid", account_type: "bank", account_number: "123456789012", bank_template: "visa", owner_scope: "shared", initial_balance: 0, initial_balance_date: todayJakarta() },
+        requestId: "test:account-template-invalid",
+        idempotencyKey: "test-account-template-invalid",
+        database: db,
+      }),
+      (error) => error?.code === "INVALID_BANK_TEMPLATE"
+    );
 
     await assert.rejects(
       () => dispatchAction({

@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql` dan `database/migrations/002_account_number.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, dan `database/migrations/003_account_bank_template.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -50,6 +50,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - Metadata cancellation harus konsisten dengan status transaksi.
 - Saldo awal negatif hanya diizinkan ketika `allow_negative=1`.
 - `accounts.account_number` kosong untuk data legacy/non-bank atau berisi 6–34 digit; service mewajibkannya untuk rekening bank baru dan menolak karakter selain angka, spasi, atau tanda hubung sebelum normalisasi.
+- `accounts.bank_template` menyimpan template visual kartu secara terpisah dari nama rekening. Nilai rekening bank dibatasi ke `generic`, `bca`, `bni`, `btn`, `mandiri`, atau `permata`; rekening non-bank wajib `generic`.
 - Data finansial menggunakan `ON DELETE RESTRICT`.
 - Audit dicegah dari update/delete melalui trigger append-only.
 - Status transaksi normal berubah melalui soft cancel/archive, bukan hard delete.
@@ -78,15 +79,16 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `4`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `5`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
 
-### Migration v4 dan rollback
+### Migration v5 dan rollback
 
 - Sebelum `npm run db:migrate`, buat backup teknis terverifikasi dan catat database target.
-- `002_account_number.sql` bersifat additive; row lama memperoleh `account_number=''` dan saldo/transaksi tidak dihitung ulang.
-- Setelah migration, deploy runtime v4. Runtime v3 tidak boleh dipakai pada database yang sudah melaporkan schema v4.
-- Bila deployment runtime gagal, utamakan forward-fix v4. Rollback ke runtime v3 hanya melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment secara terjaga. Jangan mencoba menghapus kolom langsung pada database produksi.
-- Bila nomor rekening sudah ditulis setelah migration, rollback yang membuang kolom memerlukan preview dampak data dan approval baru.
+- `003_account_bank_template.sql` bersifat additive; row lama memperoleh `bank_template='generic'`, lalu rekening bank dengan suffix nama legacy yang dikenali dipetakan ke template sesuai bank tanpa mengubah `name`, saldo, atau transaksi.
+- Setelah migration, deploy runtime v5. Runtime v4 tidak boleh dipakai pada database yang sudah melaporkan schema v5 karena runtime lama tidak memahami kontrak template terpisah.
+- Restore runtime v5 tetap menerima backup schema v3/v4; field yang belum ada dinormalisasi saat restore dan schema hasil restore ditutup pada version v5 sebelum integrity check.
+- Bila deployment runtime gagal, utamakan forward-fix v5. Rollback ke runtime v4 hanya melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment secara terjaga. Jangan mencoba menghapus kolom langsung pada database produksi.
+- Bila template sudah diubah setelah migration, rollback yang membuang kolom memerlukan preview dampak data dan approval baru. Nama rekening tidak boleh dipakai lagi sebagai storage template.
 
 
 Arti dan lifecycle tabel didokumentasikan di `DATA_DICTIONARY.md`; kebijakan perubahan schema berada di `DATABASE_MIGRATION_POLICY.md`.

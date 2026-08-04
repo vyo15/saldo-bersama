@@ -42,13 +42,13 @@
 .hero {
   border-color: var(--glass-border);
   background: var(--glass-surface);
-  color: var(--on-primary);
+  color: var(--on-hero);
   box-shadow: none;
   backdrop-filter: blur(10px);
 }
 
 .hero:hover {
-  border-color: rgba(255, 255, 255, 0.34);
-  background: rgba(255, 255, 255, 0.14);
-  color: var(--on-primary);
+  border-color: var(--glass-border);
+  background: var(--glass-hover);
+  color: var(--on-hero);
 }

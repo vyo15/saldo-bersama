@@ -9,4 +9,8 @@ export const filterByOwnership = (items, reference) => (
   reference ? items.filter((item) => hasSameOwnership(item, reference)) : items
 );
 
-export const ownershipLabel = (entity) => ownershipKey(entity).startsWith("personal:") ? "pribadi" : "bersama";
+export const ownershipLabel = (entity) => {
+  if (!ownershipKey(entity).startsWith("personal:")) return "bersama";
+  const ownerName = String(entity?.owner_name || "").trim();
+  return ownerName ? `pribadi · ${ownerName}` : "pribadi";
+};

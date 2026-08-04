@@ -1,4 +1,4 @@
-import { monthBounds, publicRow, todayJakarta, visibleAccountSql, visibleScopeSql } from "./core.js";
+import { monthBounds, publicRow, readableAccountSql, readableLedgerSql, todayJakarta, visibleScopeSql } from "./core.js";
 
 export const transactionImpact = (accountId, transaction) => {
   if (transaction.status !== "active") return 0;
@@ -14,8 +14,8 @@ export const transactionImpact = (accountId, transaction) => {
 };
 
 export const visibleAccounts = async (db, actor, { includeArchived = false, cutoffDate = todayJakarta() } = {}) => {
-  const access = visibleAccountSql(actor, "a");
-  const rows = await db.all(`SELECT a.*,
+  const access = readableAccountSql(actor, "a");
+  const rows = await db.all(`SELECT a.*,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name,
     CASE WHEN a.initial_balance_date <= ? THEN a.initial_balance ELSE 0 END + COALESCE((
       SELECT SUM(CASE
         WHEN t.status <> 'active' OR t.transaction_date > ? OR t.transaction_date < a.initial_balance_date THEN 0
@@ -29,9 +29,23 @@ export const visibleAccounts = async (db, actor, { includeArchived = false, cuto
       WHERE t.source_account_id = a.account_id OR t.destination_account_id = a.account_id
     ),0) AS balance
     FROM accounts a
+    LEFT JOIN users u ON u.user_id=a.owner_user_id
     WHERE ${access.sql} ${includeArchived ? "" : "AND a.status = 'active'"}
     ORDER BY a.status, a.name COLLATE NOCASE`, [cutoffDate, cutoffDate, ...access.args]);
-  return rows.map((row) => publicRow(row, ["allow_negative"]));
+  return rows.map((row) => {
+    const item = publicRow(row, ["allow_negative"]);
+    const actorOwnsAccount = item.owner_scope === "personal" && item.owner_user_id === actor.user_id;
+    const canOperate = actor.role === "owner" || item.owner_scope === "shared" || actorOwnsAccount;
+    return {
+      ...item,
+      owner_name: item.owner_scope === "personal" ? item.owner_name : "",
+      is_owned_by_actor: actorOwnsAccount,
+      can_transact: canOperate,
+      can_reconcile: canOperate,
+      can_manage: actor.role === "owner",
+      read_only: !canOperate && actor.role !== "owner",
+    };
+  });
 };
 
 export const accountBalanceAsOf = async (db, account, cutoffDate = todayJakarta(), { excludeTransactionId = null, candidate = null } = {}) => {
@@ -65,7 +79,7 @@ export const firstNegativeBalance = async (db, account, { excludeTransactionId =
 };
 
 export const visibleTransactions = async (db, actor, { startDate = null, endDate = null, includeCancelled = true } = {}) => {
-  const access = visibleScopeSql(actor, "t");
+  const access = readableLedgerSql(actor, "t");
   const conditions = [access.sql];
   const args = [...access.args];
   if (startDate) { conditions.push("t.transaction_date >= ?"); args.push(startDate); }
@@ -77,7 +91,7 @@ export const visibleTransactions = async (db, actor, { startDate = null, endDate
 };
 
 export const categoryExpenseTotals = async (db, actor, startDate, endDate) => {
-  const access = visibleScopeSql(actor, "t");
+  const access = readableLedgerSql(actor, "t");
   const rows = await db.all(`SELECT t.category_id, COALESCE(c.name,'Tanpa kategori') AS name, SUM(t.amount) AS amount
     FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id
     WHERE t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}

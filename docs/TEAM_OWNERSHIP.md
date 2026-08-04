@@ -24,4 +24,4 @@ Setiap area memiliki Responsible dan Approver. Satu orang boleh memegang beberap
 - Auth/role change: security/backend Responsible, repository owner Accountable.
 - Production deploy: release manager Responsible, owner Accountable.
 - Restore/import besar: operations Responsible, owner Accountable, backend/QA Consulted.
-- Purge: owner-only maintenance workflow; tidak boleh dilakukan langsung melalui SQL.
+- Generic purge: dinonaktifkan dan tidak boleh dilakukan langsung melalui SQL. Pengecualian sempit `accounts.deleteUnused` hanya untuk rekening aktif dengan saldo awal/saat ini Rp0 yang belum pernah dipakai, tetap owner-only, guarded, dan diaudit sesuai `DATA_DELETION_AND_RECOVERY_POLICY.md`.

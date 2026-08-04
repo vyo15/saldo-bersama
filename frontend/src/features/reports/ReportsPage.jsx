@@ -98,7 +98,7 @@ const ReportsPage = () => {
         <Card className="metric-card"><span>Arus kas bersih</span><Money value={overview?.cashFlow?.net || 0} tone={(overview?.cashFlow?.net || 0) >= 0 ? "positive" : "negative"} /></Card>
         <Card className="metric-card"><span>Total saldo</span><Money value={overview?.totalBalance || 0} /></Card>
         <Card className="metric-card"><span>Kewajiban tersisa</span><Money value={overview?.reservedBills || 0} /></Card>
-        <Card className="metric-card"><span>Saldo aman</span><Money value={overview?.safeToSpend || 0} /></Card>
+        <Card className="metric-card"><span>Saldo aman akun ini</span><Money value={overview?.safeToSpend || 0} /></Card>
       </section>
       {overview?.alerts?.length ? <Card className="panel report-alert-panel"><div className="panel__header"><div><p className="eyebrow">Perlu perhatian</p><h2>Peringatan periode aktif</h2></div></div><ul className="financial-alert-list">{overview.alerts.slice(0, 8).map((alert) => <li key={alert.id} data-severity={alert.severity}><strong>{alert.title}</strong><span>{alert.message}</span></li>)}</ul></Card> : null}
       <section className="two-column-grid report-chart-grid">

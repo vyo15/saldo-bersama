@@ -44,10 +44,20 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   ]);
 
   assert.match(page, /dashboardViewModel/);
+  assert.match(page, /ownershipLabel/);
+  assert.match(page, /accountBalances = \(overview\.accountBalances \|\| \[\]\)\.map/);
+  assert.match(page, /displayOverview = \{ \.\.\.overview, accountBalances: dashboardViewModel\.accountBalances \}/);
   assert.match(page, /viewModel=\{dashboardViewModel\}/);
   assert.match(page, /MobileDashboardFilters/);
   assert.match(page, /MobileTransactionDetail/);
   assert.match(desktop, /SensitiveMoney/);
+  assert.match(desktop, /Transaksi rekening terpilih/);
+  assert.match(desktop, /data-dashboard-account/);
+  assert.match(desktop, /Statistik pengeluaran/);
+  assert.match(desktop, /Anggaran bulan ini/);
+  assert.match(desktop, /Tagihan terdekat/);
+  assert.match(desktop, /Target tabungan/);
+  assert.match(mobile, /Aman digunakan akun ini/);
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
   assert.match(mobile, /Batas aman per hari/);

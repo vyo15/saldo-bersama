@@ -1,9 +1,9 @@
 # Project Status
 
-**Last source verification:** 2026-08-03
+**Last source verification:** 2026-08-04
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(109).zip` + rekening list/detail dan account-number migration patch
-**Schema:** version 4, migrations `database/migrations/001_initial_schema.sql` dan `database/migrations/002_account_number.sql`
+**Source baseline:** `saldo-bersama-clean(131).zip` + patch modal/template/sidebar yang disetujui 2026-08-04
+**Schema:** version 5, migrations `001_initial_schema.sql`, `002_account_number.sql`, dan `003_account_bank_template.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
 Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implementasi utama.
@@ -31,13 +31,36 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 - Integrasi axe penuh dan visual-regression baseline masih belum tersedia karena dependency tersebut belum menjadi bagian lockfile.
 
 
+
+## Modal, template rekening, dan navigasi shell 2026-08-04
+
+- Focus trap dialog memakai callback Escape melalui ref stabil. Mengetik pada controlled input tidak lagi memicu cleanup/setup trap, memindahkan fokus ke tombol tutup, atau memaksa pengguna mengklik field setiap karakter.
+- Schema v5 menambah `accounts.bank_template` yang divalidasi backend. Template BCA/BNI/BTN/Mandiri/Permata kini disimpan terpisah dari `accounts.name`; mengganti template tidak mengubah nama rekening.
+- Migration v5 memetakan suffix bank legacy ke field baru tanpa mengubah nama, saldo, transaksi, ownership, atau authorization. Restore v5 menerima backup v3/v4 dan menormalisasi field yang belum ada sebelum apply.
+- Form tambah/edit mengirim template canonical, menyediakan initial focus pada Nama rekening, dan memakai placeholder nama yang netral. Preview kartu membaca template secara eksplisit.
+- Sidebar desktop tetap memakai bentuk/mask melengkung Saldo Bersama, tetapi rail dan target sentuh diperbesar. Submenu disederhanakan menjadi daftar satu baris dengan close button aksesibel; menu mobile tidak lagi menduplikasi theme toggle dan logout dipisahkan ke footer.
+
+## Rekening, kategori, authorization read-path, dan responsive parity 2026-08-03
+
+- Route `/rekening` sekarang fokus pada daftar/detail rekening; pengelolaan kategori dipindahkan ke `/kategori` dengan API facade dan state mandiri.
+- Panel detail rekening diperbesar hingga kolom 28–32rem, kartu detail maksimum 26.5rem, dan seluruh asset bank tetap rasio 1.586:1. Pada viewport sempit detail menjadi dialog overlay dengan focus trap, Escape, scroll lock, dan focus restoration setelah rekening dipilih. Nomor panjang dipadatkan hanya pada muka kartu; detail/copy tetap memakai nilai lengkap.
+- Kedua pengguna aktif dapat membaca seluruh rekening dan ledger pasangan. Response rekening membawa `owner_name`, `is_owned_by_actor`, `can_transact`, `can_reconcile`, `can_manage`, dan `read_only` dari backend.
+- Hak operasi tidak diperluas: member hanya dapat memakai shared atau personal miliknya, hanya dapat update/cancel transaksi sendiri pada scope operable, dan tidak dapat merekonsiliasi rekening personal pasangan.
+- Transaction form menyaring pilihan write berdasarkan `can_transact`; daftar/filter transaksi, breakdown laporan, riwayat rekonsiliasi, dan alert rekening menampilkan label pemilik agar rekening bernama sama tidak ambigu.
+- Total saldo dashboard tetap transparan untuk semua rekening, sedangkan saldo aman, batas harian, dana belum dialokasikan, dan jumlah transaksi belum dialokasikan hanya memakai rekening/scope yang dapat dioperasikan actor.
+- Bug mobile `.two-column-grid,` yang menyembunyikan Tagihan, seluruh chart Laporan, serta kolaborasi/admin Pengaturan telah diperbaiki. Override `.settings-card` ≤580px juga dipulihkan.
+- Blok responsive global dikonsolidasikan menjadi satu blok per breakpoint dan diurutkan besar-ke-kecil; static/browser regression menjaga selector tidak menggantung dan capability mobile tetap memiliki ukuran nonzero.
+- Navigasi memakai ikon semantic, route `/kategori`, dan pemilihan mobile berbasis path alih-alih indeks array.
+- Owner dapat menetapkan pemilik rekening personal dari daftar user aktif. Kegagalan refresh user tidak menyebabkan client menebak user ID: create fallback ke actor terverifikasi di backend dan edit mempertahankan ownership existing.
+- Route Kategori mendukung kategori refund seperti kontrak backend. Mutation rekening/kategori memakai refresh best-effort setelah respons server sukses; kegagalan reload domain maupun refresh dashboard/bootstrap ditampilkan sebagai refresh warning dan tidak mengubah mutation yang sudah terkonfirmasi menjadi kegagalan semu.
+
 ## Financial account-card UI 2026-08-03
 
 - Halaman Rekening memakai workspace list/detail: banyak rekening tetap ringkas di kolom daftar, sedangkan rekening terpilih ditampilkan pada panel detail sticky di desktop dan overlay penuh pada mobile setelah item dipilih.
 - Seluruh visual BCA, BNI, BTN, Mandiri, dan Permata memakai kanvas WebP 768×484 serta rasio CSS 1.586:1. Asset Mandiri dinormalisasi agar tidak berbeda tinggi/lebar dari bank lain.
 - Kartu tidak dibungkus panel dekoratif tambahan; gambar base, nomor rekening, contactless, dan nama rekening membentuk satu visual proporsional. Saldo dan metadata tetap berada di luar gambar kartu.
 - Schema v4 menambah `accounts.account_number` melalui migration `002_account_number.sql`. Nilai dinormalisasi menjadi 6–34 digit di backend; nomor rekening bank wajib pada create dan dapat diperbarui dengan `row_version`.
-- Nomor rekening hanya dikirim pada read yang sudah scope-filtered, dapat disalin dari panel detail, dan tidak pernah dipakai sebagai nomor kartu debit. PIN, CVV, masa berlaku, dan nomor kartu tetap dilarang.
+- Nomor rekening hanya dikirim setelah session serta binding user backend valid, dapat dibaca kedua pengguna terotorisasi dan disalin dari panel detail, tetapi tidak pernah dipakai sebagai nomor kartu debit. PIN, CVV, masa berlaku, dan nomor kartu tetap dilarang.
 - Audit account menyimpan bentuk bertopeng `••••1234`, bukan nomor lengkap. Sheets mirror dan export baca tidak menambahkan nomor rekening; backup teknis terjaga tetap mencakup seluruh tabel untuk recovery.
 - Form tambah/edit menyediakan field `No rekening`; preview langsung memakai grouping empat digit. Create/update tetap menunggu konfirmasi server dan me-reload master/dashboard.
 - Static regression test menjaga layout list/detail, field nomor rekening, clipboard action, font monospace, rasio 1.586:1, ukuran asset 768×484, serta batas asset 160 KB.
@@ -92,6 +115,7 @@ Tidak ada perubahan pada API, authorization, saldo, schema, atau business rule.
 ## Desktop/mobile capability parity 2026-08-02
 
 - Dashboard desktop dan mobile memakai satu view model, state filter, selection, lookup, serta privacy state yang sama.
+- Dashboard desktop memakai kartu rekening aktual sebagai pemilih utama. Perubahan kartu hanya memfilter transaksi rekening dan running balance dihitung dari seluruh transaksi terbaru rekening sebelum filter tampilan diterapkan; statistik kategori tetap berlabel semua rekening karena API belum menyediakan breakdown kategori per rekening.
 - Mobile menampilkan batas aman harian, dana belum dialokasikan, ringkasan rekening/kategori, seluruh alert melalui progressive disclosure, filter lengkap, dan detail transaksi bottom sheet.
 - Desktop memperoleh privacy nominal yang sama; filter jenis transaksi tidak lagi disembunyikan pada layout compact.
 - Tombol logout desktop tetap tersedia pada lebar 821–940px sampai navigasi mobile mengambil alih pada 820px.

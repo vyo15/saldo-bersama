@@ -16,9 +16,9 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
 | `REQ-UX-001` | UI states | Implemented | feedback components/pages + shared responsive view model | Production/device smoke |
 | `REQ-A11Y-001` | Accessibility baseline | Partial | semantic tests + unauthenticated/authenticated Chromium smoke | axe penuh dan Safari/Firefox device coverage pending |
-| `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v4 account number + list/detail financial-card UI + unified add flow | Granular privacy pending RFC-0015; bank template tetap presentational dari nama; real-resource privacy smoke pending |
+| `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v5 account number + `bank_template` terpisah + list/detail financial-card UI + owner label/capability + route rekening terpisah | Mode privacy granular pending RFC-0015; real-resource owner/member smoke pending |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
-| `REQ-PROD-03` | Kategori | Partial | categories + `nature` | hierarchy pending RFC-0014 |
+| `REQ-PROD-03` | Kategori | Partial | route `/kategori`, facade feature, categories + `nature` | hierarchy pending RFC-0014 |
 | `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods | Real-device UX verification |
 | `REQ-PROD-05` | Anggaran multi-cadence | Partial | envelope cadence + monthly budgets + alerts | recurring budget rules belum ada |
 | `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection | split/stages pending RFC-0013/0014 |
@@ -30,7 +30,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-12` | Utang/piutang | Planned | tidak ada runtime table/action | RFC-0012 |
 | `REQ-PROD-13` | Laporan | Partial | monthly report + 3/6/12 trend + breakdown | contribution/debt model pending |
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts | Cadence configurable belum ada |
-| `REQ-PROD-15` | Privasi | Partial | shared/personal backend scope | projection granular pending RFC-0015 |
+| `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
 | `REQ-PROD-16` | Notifikasi | Partial | queue/push actionable | VAPID/device verification, more policies pending |
 | `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/idempotency/version/backup/export | external alerting + operational drills |
 
@@ -39,7 +39,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Production smoke after env/deploy changes |
-| Turso schema v4 | Implemented | Active; parity/integrity evidence pending |
+| Turso schema v5 | Implemented | Active; parity/integrity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

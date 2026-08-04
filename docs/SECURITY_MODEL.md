@@ -22,6 +22,8 @@ Secret tidak boleh masuk source, frontend bundle, log, issue, screenshot, export
 
 ## Data protection
 
+- Data finansial privat untuk dua pengguna terotorisasi. Baseline produk bersifat transparan untuk rekening dan ledger pasangan, tetapi authorization write tetap berdasarkan role, account ownership, creator, dan capability backend.
+- Nomor rekening dapat dibaca kedua pengguna di aplikasi, tetapi tidak boleh masuk log, audit mentah, URL, metadata, Sheets mirror, atau export baca; audit hanya menyimpan bentuk bertopeng.
 - Data finansial privat; minimalkan log dan export.
 - Audit bukan tempat token/payload mentah.
 - Sheets hanya mirror shared.
@@ -31,3 +33,13 @@ Secret tidak boleh masuk source, frontend bundle, log, issue, screenshot, export
 ## Security review trigger
 
 Wajib untuk perubahan auth, role, permission, ownership, schema, transaction, import/export, backup/restore, integration, dependency, log, atau deployment.
+
+## Destructive-action protection
+
+- Data finansial yang pernah dipakai memakai cancel, archive, reverse, atau deactivate; bukan hard delete.
+- `accounts.deleteUnused` adalah pengecualian sempit, bukan generic purge. Backend menghitung saldo dan seluruh dependency, memeriksa semua status transaksi, `row_version`, idempotency, acknowledgement, alasan, dan frasa konfirmasi di dalam transaction.
+- Preview dari client tidak dipercaya saat apply; service membaca ulang data terbaru sebelum commit.
+- Transaksi cancelled hanya dapat dipulihkan owner bila periode terbuka, referensi aktif, balance guard, dan duplicate guard lulus.
+- Rekening/kategori arsip serta anggota nonaktif dipulihkan melalui action eksplisit yang diaudit.
+- Audit append-only tetap dipertahankan ketika rekening belum dipakai dihapus.
+- UI tidak melakukan optimistic removal untuk destructive write dan tidak menyediakan generic purge.

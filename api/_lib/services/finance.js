@@ -1,8 +1,8 @@
 import { appendAudit } from "./audit.js";
 import { firstNegativeBalance } from "./readModels.js";
 import {
-  appError, assertVersion, boundedInteger, dateValue, nowIso, periodKey, positiveInteger, publicRow,
-  sanitizeText, scopeFromAccountPair, uuid, visibleScopeSql,
+  appError, assertOwner, assertVersion, boundedInteger, dateValue, nowIso, periodKey, positiveInteger, publicRow,
+  readableLedgerSql, sanitizeText, scopeFromAccountPair, uuid,
 } from "./core.js";
 
 const TRANSACTION_TYPES = new Set(["income", "expense", "transfer", "refund", "adjustment"]);
@@ -41,9 +41,13 @@ const assertAccountDate = (account, transactionDate) => {
   if (transactionDate < account.initial_balance_date) throw appError("TRANSACTION_BEFORE_INITIAL_BALANCE", "Tanggal transaksi tidak boleh sebelum tanggal saldo awal rekening.", 409, { accountId: account.account_id, initialBalanceDate: account.initial_balance_date, transactionDate });
 };
 
+const actorCanOperateTransaction = (actor, transaction) => actor.role === "owner"
+  || transaction.scope === "shared"
+  || (transaction.scope === "personal" && transaction.owner_user_id === actor.user_id);
+
 const assertCanModify = (context, transaction) => {
   if (transaction.transaction_type === "adjustment" && context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat diubah owner.", 403);
-  if (context.actor.role !== "owner" && transaction.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat mengubah transaksi yang dibuat sendiri.", 403);
+  if (context.actor.role !== "owner" && (!actorCanOperateTransaction(context.actor, transaction) || transaction.created_by !== context.actor.user_id)) throw appError("FORBIDDEN", "Member hanya dapat mengubah transaksi miliknya pada rekening yang dapat dioperasikan.", 403);
   if (transaction.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Koreksi transaksi rutin harus dilakukan melalui menu Tagihan.", 409, { occurrenceId: transaction.recurring_occurrence_id });
   if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi target harus dilakukan melalui menu Target.", 409, { goalId: transaction.goal_id });
 };
@@ -51,12 +55,13 @@ const assertCanModify = (context, transaction) => {
 const transactionCapabilities = async (db, context, transaction) => {
   const active = transaction.status === "active";
   const linked = Boolean(transaction.recurring_occurrence_id || transaction.goal_id);
-  const ownerOrCreator = context.actor.role === "owner" || transaction.created_by === context.actor.user_id;
+  const ownerOrCreator = context.actor.role === "owner" || (transaction.created_by === context.actor.user_id && actorCanOperateTransaction(context.actor, transaction));
   const adjustmentAllowed = transaction.transaction_type !== "adjustment" || context.actor.role === "owner";
   const periodOpen = !(await isTransactionDateLocked(db, transaction.transaction_date));
   return {
     can_edit: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
     can_cancel: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
+    can_restore: Boolean(transaction.status === "cancelled" && periodOpen && !linked && context.actor.role === "owner"),
     period_closed: Boolean(active && !periodOpen),
     managed_by: transaction.recurring_occurrence_id ? "recurring" : transaction.goal_id ? "goal" : "",
   };
@@ -213,6 +218,42 @@ export const cancelTransaction = async (db, context) => {
   return cancelTransactionInternal(db, context, current, payload.reason);
 };
 
+export const restoreTransaction = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM transactions WHERE transaction_id=? AND status='cancelled'", [payload.transaction_id || payload.transactionId]);
+  if (!current) throw appError("NOT_FOUND", "Transaksi cancelled tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? payload.row_version ?? payload.rowVersion);
+  if (current.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Pulihkan pembayaran rutin melalui menu Tagihan.", 409, { occurrenceId: current.recurring_occurrence_id });
+  if (current.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Pulihkan mutasi target melalui menu Target.", 409, { goalId: current.goal_id });
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan transaksi wajib diisi.", 400);
+  const normalized = await normalizeTransaction(db, context, { confirm_duplicate: false }, { current });
+  await assertAffectedBalances(db, current, normalized);
+  const next = {
+    ...current,
+    ...normalized,
+    status: "active",
+    cancelled_by: null,
+    cancelled_at: null,
+    cancellation_reason: "",
+    row_version: Number(current.row_version) + 1,
+    updated_by: context.actor.user_id,
+    updated_at: nowIso(),
+  };
+  const result = await db.execute(`UPDATE transactions SET status='active',cancelled_by=NULL,cancelled_at=NULL,cancellation_reason='',row_version=?,updated_by=?,updated_at=?
+    WHERE transaction_id=? AND row_version=? AND status='cancelled'`, [next.row_version, next.updated_by, next.updated_at, current.transaction_id, current.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Transaksi berubah di perangkat lain.", 409);
+  await appendAudit(db, context, {
+    entityType: "transaction",
+    entityId: current.transaction_id,
+    previous: publicRow(current),
+    next: { ...publicRow(next), restoration_reason: reason },
+  });
+  await context.enqueueMirror?.(db, "transaction", current.transaction_id);
+  return publicRow(next);
+};
+
 export const listTransactions = async (db, context) => {
   const payload = context.payload || {};
   const period = periodKey(payload.period);
@@ -228,7 +269,7 @@ export const listTransactions = async (db, context) => {
   if (!["all", ...TRANSACTION_TYPES].includes(type)) throw appError("INVALID_TRANSACTION_TYPE", "Filter jenis transaksi tidak valid.", 400);
   if (!["all", "allocated", "unallocated"].includes(allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter alokasi tidak valid.", 400);
 
-  const access = visibleScopeSql(context.actor, "t");
+  const access = readableLedgerSql(context.actor, "t");
   const baseConditions = ["substr(t.transaction_date,1,7)=?", access.sql];
   const baseArgs = [period, ...access.args];
   const conditions = [...baseConditions];
@@ -261,8 +302,9 @@ export const listTransactions = async (db, context) => {
     db.one(`SELECT COUNT(*) AS total FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}`, args),
     db.all(`SELECT t.* FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}
       ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT ? OFFSET ?`, [...args, limit, offset]),
-    db.all(`SELECT DISTINCT a.account_id,a.name
+    db.all(`SELECT DISTINCT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name
       FROM accounts a JOIN transactions t ON t.source_account_id=a.account_id OR t.destination_account_id=a.account_id
+      LEFT JOIN users u ON u.user_id=a.owner_user_id
       WHERE ${baseConditions.join(" AND ")} ORDER BY a.name COLLATE NOCASE`, baseArgs),
     db.all(`SELECT DISTINCT c.category_id,c.name
       FROM categories c JOIN transactions t ON t.category_id=c.category_id

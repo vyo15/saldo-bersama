@@ -198,3 +198,13 @@ test("useApiResource memperlakukan idle enabled sebagai initial loading agar hal
   assert.match(source, /enabled && state\.status === "idle" \? "loading" : state\.status/);
   assert.match(source, /return \{[\s\S]*status,[\s\S]*isRefreshing: status === "refreshing"/);
 });
+
+test("preview lifecycle dan arsip owner tetap diklasifikasikan sebagai read tanpa cache stale", async () => {
+  const { isReadAction, READ_CACHE_TTL_MS } = await import("../src/services/api/cache.js");
+  for (const action of ["accounts.previewLifecycle", "categories.previewArchive", "periods.previewClose"]) {
+    assert.equal(isReadAction(action), true, `${action} harus memakai transport read`);
+    assert.equal(READ_CACHE_TTL_MS[action], 0, `${action} tidak boleh memakai hasil preview stale`);
+  }
+  assert.equal(isReadAction("archive.list"), true);
+  assert.equal(READ_CACHE_TTL_MS["archive.list"], 30_000);
+});

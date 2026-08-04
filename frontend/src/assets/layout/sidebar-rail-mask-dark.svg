@@ -1,9 +1,9 @@
 <svg width="92" height="480" viewBox="0 0 92 480" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="saldoRailDark" x1="0" y1="0" x2="92" y2="0" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#061014"/>
-      <stop offset="0.62" stop-color="#0B343A"/>
-      <stop offset="1" stop-color="#137976"/>
+      <stop stop-color="#0B1110"/>
+      <stop offset="0.62" stop-color="#03624C"/>
+      <stop offset="1" stop-color="#10B981"/>
     </linearGradient>
   </defs>
   <path d="M0 0C0 28 15 48 56 66C80 81 91 100 92 128V352C91 380 80 399 56 414C15 432 0 452 0 480V0Z" fill="url(#saldoRailDark)"/>

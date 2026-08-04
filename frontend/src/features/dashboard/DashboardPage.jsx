@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import ErrorState from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import TransactionForm from "../transactions/TransactionForm.jsx";
 import { TRANSACTION_LABELS } from "../transactions/transactionPresentation.js";
+import { ownershipLabel } from "../../domain/ownership.js";
 import DesktopFinanceDashboard from "./components/DesktopFinanceDashboard.jsx";
 import MobileFinanceDashboard from "./components/MobileFinanceDashboard.jsx";
 import MobileDashboardFilters from "./components/MobileDashboardFilters.jsx";
@@ -21,14 +22,20 @@ const DashboardPage = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedTransactionId, setSelectedTransactionId] = useState("");
+  const [desktopAccountId, setDesktopAccountId] = useState("");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileTransactionDetailOpen, setMobileTransactionDetailOpen] = useState(false);
 
   const dashboardViewModel = useMemo(() => {
     if (!overview) return null;
 
-    const accountLookup = Object.fromEntries((overview.accountBalances || []).map((item) => [item.account_id, item.name]));
-    const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item.name]));
+    const accountBalances = (overview.accountBalances || []).map((item) => ({
+      ...item,
+      account_name: item.name,
+      name: `${item.name} · ${ownershipLabel(item)}`,
+    }));
+    const accountLookup = Object.fromEntries(accountBalances.map((item) => [item.account_id, item.name]));
+    const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item]));
     const envelopeLookup = Object.fromEntries((overview.envelopes || []).map((item) => [item.envelope_period_id, item.name]));
     const recentTransactions = overview.recentTransactions || [];
     const query = searchTerm.trim().toLocaleLowerCase("id-ID");
@@ -46,7 +53,7 @@ const DashboardPage = () => {
         item.merchant,
         accountLookup[item.source_account_id],
         accountLookup[item.destination_account_id],
-        categoryLookup[item.category_id],
+        categoryLookup[item.category_id]?.name,
         TRANSACTION_LABELS[item.transaction_type],
       ].filter(Boolean).join(" ").toLocaleLowerCase("id-ID");
       return searchable.includes(query);
@@ -63,7 +70,7 @@ const DashboardPage = () => {
     const featuredEnvelopePercent = featuredEnvelopeMax > 0
       ? Math.min(100, Math.round((featuredEnvelopeUsed / featuredEnvelopeMax) * 100))
       : 0;
-    const accountBars = overview.accountBalances.slice(0, 6);
+    const accountBars = accountBalances.slice(0, 6);
     const maxAccountBalance = Math.max(1, ...accountBars.map((item) => absoluteAmount(item.balance)));
     const expenseBars = expenseByCategory.slice(0, 7);
     const maxCategoryExpense = Math.max(1, ...expenseBars.map((item) => absoluteAmount(item.amount)));
@@ -84,9 +91,9 @@ const DashboardPage = () => {
 
     const selectedTitle = selectedTransaction?.description
       || selectedTransaction?.merchant
-      || categoryLookup[selectedTransaction?.category_id]
+      || categoryLookup[selectedTransaction?.category_id]?.name
       || "Transaksi";
-    const selectedCategory = categoryLookup[selectedTransaction?.category_id] || "Belum dikategorikan";
+    const selectedCategory = categoryLookup[selectedTransaction?.category_id]?.name || "Belum dikategorikan";
     const selectedEnvelope = selectedTransaction?.envelope_period_id
       ? envelopeLookup[selectedTransaction.envelope_period_id] || "Alokasi tidak tersedia"
       : selectedTransaction?.transaction_type === "expense" ? "Belum dialokasikan" : "Tidak menggunakan alokasi";
@@ -100,6 +107,7 @@ const DashboardPage = () => {
 
     return {
       accountLookup,
+      accountBalances,
       categoryLookup,
       recentTransactions,
       filteredTransactions,
@@ -123,9 +131,20 @@ const DashboardPage = () => {
     };
   }, [accountFilter, bootstrap?.categories, categoryFilter, overview, searchTerm, selectedTransactionId, typeFilter]);
 
+
+  useEffect(() => {
+    const accounts = overview?.accountBalances || [];
+    if (!accounts.length) {
+      setDesktopAccountId("");
+      return;
+    }
+    setDesktopAccountId((current) => accounts.some((item) => item.account_id === current) ? current : accounts[0].account_id);
+  }, [overview]);
+
   if (status === "loading" || status === "idle") return <LoadingScreen />;
   if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />;
   if (!overview || !dashboardViewModel) return null;
+  const displayOverview = { ...overview, accountBalances: dashboardViewModel.accountBalances };
 
   const displayName = String(user?.name || user?.email || "").trim().split(/\s+/)[0] || "Kamu";
   const openMobileTransactionDetail = (transactionId) => {
@@ -142,7 +161,7 @@ const DashboardPage = () => {
   return (
     <div className="dashboard-page">
       <MobileFinanceDashboard
-        overview={overview}
+        overview={displayOverview}
         bootstrap={bootstrap}
         viewModel={dashboardViewModel}
         displayName={displayName}
@@ -154,17 +173,22 @@ const DashboardPage = () => {
         onOpenTransactionDetail={openMobileTransactionDetail}
       />
       <DesktopFinanceDashboard
-        overview={overview}
+        overview={displayOverview}
         bootstrap={bootstrap}
         viewModel={dashboardViewModel}
-        accountFilter={accountFilter}
-        setAccountFilter={setAccountFilter}
+        displayName={displayName}
+        selectedAccountId={desktopAccountId}
+        onSelectAccount={(accountId) => {
+          setDesktopAccountId(accountId);
+          setSelectedTransactionId("");
+        }}
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
         typeFilter={typeFilter}
         setTypeFilter={setTypeFilter}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
+        selectedTransactionId={selectedTransactionId}
         setSelectedTransactionId={setSelectedTransactionId}
         balanceVisible={balanceVisible}
         onToggleBalance={() => setBalanceVisible((current) => !current)}
@@ -174,7 +198,7 @@ const DashboardPage = () => {
       <MobileDashboardFilters
         open={mobileFiltersOpen}
         onClose={() => setMobileFiltersOpen(false)}
-        accounts={overview.accountBalances}
+        accounts={dashboardViewModel.accountBalances}
         categories={(bootstrap?.categories || []).filter((item) => item.status === "active")}
         accountFilter={accountFilter}
         onAccountFilterChange={setAccountFilter}

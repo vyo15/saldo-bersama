@@ -20,6 +20,7 @@
 - `ENVIRONMENT_VARIABLES.md`
 - `TURSO_SCHEMA.md`
 - `DATA_DICTIONARY.md`
+- `DATA_DELETION_AND_RECOVERY_POLICY.md` — aturan cancel, archive, pemulihan, serta pengecualian hapus rekening kosong.
 - `DATABASE_MIGRATION_POLICY.md` — kebijakan perubahan schema Turso jangka panjang.
 - `LEGACY_SHEETS_TO_TURSO_CUTOVER.md` — prosedur one-time cutover dari database Google Sheets lama.
 

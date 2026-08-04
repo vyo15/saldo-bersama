@@ -114,10 +114,8 @@ export const listPeriods = async db => {
     })
   };
 };
-export const closePeriod = async (db, context) => {
-  assertOwner(context.actor);
-  const p = context.payload || {};
-  const period = periodKey(p.period_key);
+
+const periodCloseImpact = async (db, period) => {
   const current = todayJakarta().slice(0, 7);
   const bounds = monthBounds(period);
   if (period > current) throw appError("FUTURE_PERIOD", "Periode masa depan belum dapat ditutup.", 400);
@@ -126,18 +124,57 @@ export const closePeriod = async (db, context) => {
   });
   const existing = await db.one("SELECT * FROM period_closures WHERE period_key=? AND scope='shared'", [period]);
   if (existing?.status === "closed") throw appError("PERIOD_ALREADY_CLOSED", "Periode sudah ditutup.", 409);
-  const integrity = await integrityIssues(db);
-  const unallocated = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?", [period]);
-  if (Number(unallocated?.count || 0)) integrity.push({
+  const [integrity, unallocated, statistics] = await Promise.all([
+    integrityIssues(db),
+    db.one("SELECT COUNT(*) AS count FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?", [period]),
+    db.one(`SELECT
+      COUNT(*) AS transaction_count,
+      SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active_count,
+      SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
+      COALESCE(SUM(CASE WHEN status='active' AND transaction_type IN ('income','refund') THEN amount ELSE 0 END),0) AS income_total,
+      COALESCE(SUM(CASE WHEN status='active' AND transaction_type='expense' THEN amount ELSE 0 END),0) AS expense_total
+      FROM transactions WHERE substr(transaction_date,1,7)=?`, [period]),
+  ]);
+  const issues = [...integrity];
+  if (Number(unallocated?.count || 0)) issues.push({
     code: "UNALLOCATED_EXPENSE",
     count: Number(unallocated.count),
     periodKey: period
   });
-  if (integrity.length) throw appError("PERIOD_INTEGRITY_FAILED", "Periode belum dapat ditutup karena integrity check gagal.", 409, integrity);
+  return {
+    periodKey: period,
+    canClose: issues.length === 0,
+    issues,
+    transactionCount: Number(statistics?.transaction_count || 0),
+    activeTransactionCount: Number(statistics?.active_count || 0),
+    cancelledTransactionCount: Number(statistics?.cancelled_count || 0),
+    incomeTotal: Number(statistics?.income_total || 0),
+    expenseTotal: Number(statistics?.expense_total || 0),
+    unallocatedExpenseCount: Number(unallocated?.count || 0),
+    confirmation: `TUTUP PERIODE ${period}`,
+    existingClosureId: existing?.closure_id || "",
+  };
+};
+
+export const previewClosePeriod = async (db, context) => {
+  assertOwner(context.actor);
+  const period = periodKey(context.payload?.period_key);
+  return periodCloseImpact(db, period);
+};
+
+export const closePeriod = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const period = periodKey(p.period_key);
+  const impact = await periodCloseImpact(db, period);
+  if (!impact.canClose) throw appError("PERIOD_INTEGRITY_FAILED", "Periode belum dapat ditutup karena integrity check gagal.", 409, impact.issues);
+  if (String(p.confirmation || "").trim() !== impact.confirmation) throw appError("CONFIRMATION_MISMATCH", "Frasa konfirmasi penutupan periode tidak sesuai.", 400, { expected: impact.confirmation });
+  const existing = impact.existingClosureId ? await db.one("SELECT * FROM period_closures WHERE closure_id=?", [impact.existingClosureId]) : null;
   const snapshot = await compactSnapshot(db, context, period);
   const snapshotJson = canonicalJson(snapshot);
   if (snapshotJson.length > 100_000) throw appError("SNAPSHOT_TOO_LARGE", "Snapshot tutup buku terlalu besar.", 409);
   const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Catatan penutupan periode wajib diisi.", 400);
   const timestamp = nowIso();
   let next;
   if (existing) {

@@ -45,3 +45,20 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 - Verifikasi env scope dan deployment baru.
 - Rollback kode hanya bila kompatibel dengan schema/data.
 - Ikuti `ROLLBACK_RUNBOOK.md`.
+
+## Salah arsip, salah batal, atau salah nonaktif
+
+1. Jangan mengedit Turso langsung dan jangan melakukan full restore terlebih dahulu.
+2. Owner membuka Pengaturan → Arsip dan pemulihan untuk rekening/kategori, atau daftar Transaksi untuk transaksi cancelled.
+3. Periksa entity, versi, alasan, periode, serta dependency yang ditampilkan.
+4. Jalankan pemulihan satu item. Backend akan menolak konflik, duplicate, periode tertutup, referensi tidak aktif, atau dampak saldo tidak valid.
+5. Refresh data, verifikasi saldo/laporan, lalu periksa audit activity.
+6. Gunakan full restore hanya bila lifecycle per-item tidak memadai dan prosedur `RECOVERY_RUNBOOK.md` disetujui.
+
+## Hapus rekening belum dipakai
+
+- Hanya owner dapat menjalankan `accounts.deleteUnused` dari detail rekening setelah preview server.
+- Pastikan saldo awal/saat ini Rp0 dan seluruh hitungan transaksi, rekonsiliasi, kantong, tagihan, serta target bernilai nol.
+- Isi alasan, centang acknowledgement, dan ketik frasa yang diminta.
+- Bila muncul conflict, jangan retry dengan data lama; refresh lalu tinjau ulang.
+- Hasil hard delete tidak memiliki tombol undo karena row rekening sudah hilang. Audit tetap ada; bila rekening ternyata masih dibutuhkan, buat rekening baru. Jangan restore database hanya untuk rekening kosong yang belum pernah digunakan.

@@ -4,7 +4,7 @@ import Button from "../../../components/common/Button.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import ThemeToggle from "../../../components/common/ThemeToggle.jsx";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
-import { formatTransactionDate, transactionIcon, transactionSign, transactionTone } from "../../transactions/transactionPresentation.js";
+import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../transactions/transactionPresentation.js";
 import { formatPeriod, QUICK_ACTIONS } from "../dashboardPresentation.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
@@ -68,10 +68,10 @@ const MobileFinanceDashboard = ({
         </div>
 
         <div className="mobile-finance-summary" aria-label="Ringkasan saldo dan alokasi">
-          <div><span>Aman digunakan</span><SensitiveMoney visible={balanceVisible} value={overview.safeToSpend} /></div>
+          <div><span>Aman digunakan akun ini</span><SensitiveMoney visible={balanceVisible} value={overview.safeToSpend} /></div>
           <div><span>Pengeluaran bulan ini</span><SensitiveMoney visible={balanceVisible} value={overview.cashFlow.expense} /></div>
           <div><span>Batas aman per hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
-          <div><span>Dana belum dialokasikan</span><SensitiveMoney visible={balanceVisible} value={overview.unallocatedFunds || 0} /><small>{overview.unallocatedCount || 0} transaksi</small></div>
+          <div><span>Dana belum dialokasikan akun ini</span><SensitiveMoney visible={balanceVisible} value={overview.unallocatedFunds || 0} /><small>{overview.unallocatedCount || 0} transaksi</small></div>
         </div>
       </header>
 
@@ -156,8 +156,9 @@ const MobileFinanceDashboard = ({
           {filteredTransactions.length ? (
             <div className="mobile-transaction-list">
               {filteredTransactions.slice(0, 5).map((item) => {
-                const Icon = transactionIcon(item.transaction_type);
-                const title = item.description || item.merchant || categoryLookup[item.category_id] || "Transaksi";
+                const category = categoryLookup[item.category_id];
+                const Icon = transactionCategoryIcon(category, item.transaction_type);
+                const title = item.description || item.merchant || category?.name || "Transaksi";
                 const sign = balanceVisible ? transactionSign(item.transaction_type) : "";
                 return (
                   <button type="button" className="mobile-transaction-item" key={item.transaction_id} onClick={() => onOpenTransactionDetail(item.transaction_id)} aria-label={`Buka detail ${title}`}>

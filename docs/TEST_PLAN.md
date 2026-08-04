@@ -85,7 +85,7 @@ Browser test authenticated wajib memakai fixture owner dan member yang determini
 - seluruh route `/`, `/transaksi`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, dan `/pengaturan` dapat dirender pada mobile;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
 - dashboard mobile membawa batas aman harian, dana belum dialokasikan, rincian rekening/kategori, seluruh peringatan melalui progressive disclosure, filter lengkap, privacy nominal, serta detail transaksi;
-- dashboard desktop membawa filter jenis, detail transaksi, dan privacy nominal yang sama;
+- dashboard desktop menampilkan kartu rekening aktual yang dapat dipilih, transaksi rekening terpilih, filter kategori/jenis/pencarian, privacy nominal, statistik global yang tidak salah diklaim sebagai statistik rekening, KPI arus kas, anggaran, tagihan, target, dan insight;
 - menu `Lainnya` aktif dengan `aria-current="page"` pada route sekunder;
 - owner dan member memakai route yang sama, sementara kontrol write tetap mengikuti authorization data/API;
 - viewport tidak overflow horizontal dan business form tidak diduplikasi per perangkat.
@@ -113,7 +113,7 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Owner mobile dan desktop melihat aksi `Tambah rekening atau kategori`.
 - Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive owner.
 - Dialog tambah memiliki dua tab semantik dan memakai form yang sama pada desktop/mobile.
-- Template BCA, BNI, BTN, Mandiri, dan Permata terdeteksi dari nama rekening; rekening bank lain dan non-bank memakai fallback.
+- Template BCA, BNI, BTN, Mandiri, dan Permata berasal dari `accounts.bank_template`; mengganti template tidak boleh mengubah nama rekening. Object legacy tanpa field boleh memakai suffix nama hanya sebagai fallback visual.
 - Asset base bank memuat logo dan chip hanya satu kali; komponen tidak merender wordmark atau chip HTML yang menumpuk di atas asset.
 - Nomor rekening bank 6–34 digit divalidasi backend, ditampilkan hanya pada rekening yang lolos scope authorization, dapat disalin dari detail, dan audit hanya menyimpan empat digit terakhir. Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap tidak boleh berada pada asset/DOM.
 - Create bank tanpa nomor, karakter non-digit yang tidak diizinkan, account number terlalu pendek/panjang, dan constraint database harus ditolak.
@@ -121,3 +121,38 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Setelah create/update/archive rekening atau kategori, daftar aktif dan dashboard diperbarui tanpa refresh manual.
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.
+- Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
+- Migration v5 menerima enum template valid, menolak template invalid/non-bank, menjaga nama legacy tetap sama, serta restore backup v3/v4 menormalisasi field ke schema v5.
+- Sidebar melengkung harus tetap terlihat, target sentuh minimal 44px, submenu minimal dapat ditutup, dan menu mobile tidak menduplikasi theme toggle.
+
+## Regression rekening transparan dan capability mobile
+
+- Member harus menerima seluruh rekening shared/personal beserta `owner_name`; rekening personal pasangan wajib `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
+- Member harus dapat membaca transaksi pasangan untuk menelusuri saldo, tetapi update/cancel hanya boleh untuk transaksi sendiri pada scope operable; transaksi legacy pada rekening personal pasangan tetap harus ditolak.
+- `totalBalance` harus mencakup semua rekening readable, sedangkan `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` hanya boleh memakai rekening/scope operable actor.
+- Label pemilik wajib konsisten pada filter transaksi, account breakdown, reconciliation history, dan reconciliation alert.
+- `reconciliations.list` bersifat readable; `reconciliations.create` tetap operable. Negative authorization test wajib memakai request langsung ke service, bukan hanya tombol tersembunyi.
+- Form transaksi hanya menawarkan rekening dengan `can_transact !== false`; backend tetap mengulang guard ownership.
+- Form rekening personal owner dapat memilih user aktif. Saat `users.list` gagal, create harus fallback ke actor backend dan edit harus mempertahankan `owner_user_id` existing tanpa field required kosong.
+- Route `/kategori` harus menyediakan tipe refund sesuai `CATEGORY_TYPES` backend. Mutation master yang sudah sukses tidak boleh dilaporkan gagal karena reload domain atau refresh dashboard/bootstrap sesudahnya gagal; UI harus mempertahankan status sukses server dan mengekspos refresh warning.
+- Browser mobile 390×844 wajib memeriksa capability anchor dengan computed style dan bounding rect: dua panel `/tagihan`, minimal tujuh panel chart `/laporan`, kolaborasi serta admin owner `/pengaturan`, detail read-only pasangan `/rekening`, dan route `/kategori`. Detail rekening wajib lulus focus trap Tab/Shift+Tab, Escape close, body scroll lock, dan focus restoration.
+- Nomor rekening panjang wajib dipadatkan pada visual kartu tanpa mengubah nilai lengkap pada detail/copy.
+- Boundary responsive wajib mencakup 580/581, 820/821, dan 940/941. Static test menolak dangling selector serta `.two-column-grid { display:none }`.
+
+## Human-error protection dan data lifecycle
+
+Regression wajib membuktikan:
+
+- member ditolak untuk preview/apply lifecycle owner;
+- rekening aktif dengan saldo awal Rp0, saldo saat ini Rp0, tanpa transaksi/dependency/reconciliation dapat dihapus owner setelah alasan, acknowledgement, exact phrase, `row_version`, dan idempotency lulus;
+- transaksi cancelled tetap dianggap histori dan memblokir hard delete rekening;
+- rekening dengan saldo, transaksi, kantong, recurring, goal, atau rekonsiliasi tidak dapat hard delete;
+- retry dengan idempotency key sama tidak menggandakan audit;
+- audit delete-unused tetap ada dan nomor rekening penuh tidak dicatat;
+- rekening/kategori arsip dapat dipulihkan bila duplicate/ownership/version guard lulus;
+- transaksi cancelled hanya dapat dipulihkan owner pada periode terbuka, unlinked, dan dengan proyeksi saldo valid;
+- user inactive hanya dapat aktif melalui `users.reactivate` dan allowlist terbaru;
+- tutup periode membutuhkan preview dan exact confirmation, lalu memvalidasi ulang integrity/unallocated transaction;
+- ConfirmationModal memerlukan alasan/typed phrase/acknowledgement/countdown sesuai tingkat risiko dan mencegah submit Enter tidak sengaja;
+- destructive UI tidak menghilangkan data sebelum server sukses dan menampilkan conflict secara jelas;
+- generic purge tidak ada pada action registry, permission, API, atau UI.

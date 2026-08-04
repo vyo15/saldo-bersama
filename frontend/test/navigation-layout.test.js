@@ -4,15 +4,21 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("desktop memakai floating module dock IMS tanpa mengubah sumber route", async () => {
+test("desktop mempertahankan module dock IMS melengkung dengan submenu minimal", async () => {
   const source = await read("src/components/navigation/SideNavigation.jsx");
 
-  assert.match(source, /PRIMARY_NAVIGATION\.map/);
+  assert.match(source, /DESKTOP_NAVIGATION\.map/);
   assert.match(source, /desktop-module-dock/);
   assert.match(source, /sidebar-rail-mask\.svg/);
   assert.match(source, /sidebar-rail-mask-dark\.svg/);
   assert.match(source, /aria-label="Navigasi utama Saldo Bersama"/);
   assert.match(source, /aria-label=\{`Buka \$\{label\}`\}/);
+  assert.match(source, /aria-expanded=\{open\}/);
+  assert.match(source, /desktop-module-dock__flyout/);
+  assert.match(source, /desktop-module-dock__flyout-close/);
+  assert.match(source, /Tutup menu/);
+  assert.doesNotMatch(source, /childDescription/);
+  assert.match(source, /event\.key !== "Escape"/);
   assert.match(source, /data-label=\{label\}/);
 });
 
@@ -75,10 +81,11 @@ test("geometri rail mengikuti IMS dan menyisakan navigasi mobile", async () => {
     read("src/components/navigation/MobileNavigation.jsx"),
   ]);
 
-  assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*width:\s*92px;[\s\S]*height:\s*480px;/);
-  assert.match(appCss, /\.desktop-module-dock__navigation\s*\{[\s\S]*inset-inline-start:\s*15px;/);
+  assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*width:\s*108px;[\s\S]*height:\s*clamp\(480px, 68dvh, 600px\);/);
+  assert.match(appCss, /\.desktop-module-dock__navigation\s*\{[\s\S]*inset-inline-start:\s*17px;/);
+  assert.match(appCss, /\.desktop-module-dock__link\s*\{[\s\S]*width:\s*48px;[\s\S]*height:\s*48px;/);
   assert.match(appCss, /\.desktop-module-dock__link\.is-active::after/);
-  assert.match(appCss, /height:\s*22px;/);
+  assert.match(appCss, /height:\s*26px;/);
   assert.match(responsiveCss, /@media \(max-width:\s*820px\)[\s\S]*\.desktop-module-dock \{ display:\s*none; \}/);
   assert.match(responsiveCss, /\.app-shell__main \{ padding-inline-start:\s*0; \}/);
   assert.match(mobileNavigation, /MOBILE_PRIMARY_NAVIGATION/);
@@ -126,4 +133,49 @@ test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoin
   assert.match(mobileNavigation, /secondaryRouteActive/);
   assert.match(mobileNavigation, /aria-current=\{secondaryRouteActive \? "page"/);
   assert.match(mobileNavigation, /mobile-navigation__more\$\{moreActive \? " active"/);
+});
+
+test("navigasi mengelompokkan perencanaan dan kelola tanpa mengubah route", async () => {
+  const source = await read("src/config/navigation.js");
+  assert.match(source, /FiList/);
+  assert.match(source, /FiRepeat/);
+  assert.match(source, /FiCreditCard/);
+  assert.match(source, /FiTag/);
+  assert.match(source, /to: "\/kategori", label: "Kategori"/);
+  assert.match(source, /label: "Perencanaan"/);
+  assert.match(source, /items: pickNavigation\("\/alokasi", "\/tagihan", "\/target"\)/);
+  assert.match(source, /label: "Kelola"/);
+  assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
+  assert.match(source, /MOBILE_SECONDARY_GROUPS/);
+  assert.match(source, /pickNavigation\("\/", "\/transaksi", "\/laporan"\)/);
+  assert.doesNotMatch(source, /PRIMARY_NAVIGATION\[\d+\]/);
+});
+
+test("responsive mobile tidak menyembunyikan two-column-grid dan breakpoint sempit menang", async () => {
+  const source = await read("src/styles/responsive.css");
+  assert.doesNotMatch(source, /\.two-column-grid,\s*\n\s*\.app-shell--dashboard \.topbar/);
+  assert.doesNotMatch(source, /\.two-column-grid\s*\{[^}]*display:\s*none/);
+  const width820 = source.indexOf("@media (max-width: 820px)");
+  const width580 = source.indexOf("@media (max-width: 580px)");
+  assert.ok(width820 >= 0 && width580 > width820, "Breakpoint 580px harus berada setelah 820px agar override mobile sempit menang.");
+  assert.match(source.slice(width580), /\.settings-card > :last-child \{ grid-column: 1 \/ -1; width: 100%; \}/);
+});
+
+test("selector responsive tidak boleh menggantung sebelum selector berikutnya", async () => {
+  const source = await read("src/styles/responsive.css");
+  assert.doesNotMatch(source, /[^,{]+,\s*\n\s*\n\s*[^@]/, "Selector yang berakhir koma tidak boleh dipisahkan baris kosong.");
+});
+
+
+test("menu mobile tidak menduplikasi kontrol tema dan logout berada di footer", async () => {
+  const [shell, components] = await Promise.all([
+    read("src/layouts/AppShell.jsx"),
+    read("src/styles/components.css"),
+  ]);
+  assert.doesNotMatch(shell, /ThemeToggle showLabel/);
+  assert.match(shell, /mobile-menu-footer/);
+  assert.match(shell, /mobile-menu-logout/);
+  assert.match(components, /\.mobile-menu-link \{[^}]*border:\s*0;/);
+  assert.match(components, /\.mobile-menu-footer/);
+  assert.doesNotMatch(components, /mobile-menu-theme/);
 });

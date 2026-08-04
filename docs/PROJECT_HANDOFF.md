@@ -1,9 +1,71 @@
+## Current task — Focus modal, template kartu canonical, dan navigasi shell
+
+**Tanggal:** 2026-08-04  
+**Source:** `saldo-bersama-clean(131).zip`  
+**Scope:** memperbaiki focus trap controlled form, memisahkan template visual bank dari nama rekening melalui schema v5, mempertahankan sidebar mask melengkung sambil memperbesar target sentuh, menyederhanakan submenu, dan menghapus duplikasi theme toggle pada menu mobile.
+
+### Keputusan implementasi
+
+1. `database/migrations/003_account_bank_template.sql` menambah `accounts.bank_template` dengan enum backend/database dan menaikkan schema ke v5. Migration tidak mengubah nama, saldo, transaksi, ownership, atau audit lama.
+2. Create/update/list account membawa template canonical. Nama rekening tidak lagi ditambah suffix bank; deteksi suffix hanya fallback visual object legacy.
+3. Restore runtime v5 menerima backup v3/v4 dan menormalisasi `account_number`/`bank_template` yang belum ada sebelum apply serta integrity check.
+4. `useFocusTrap` menyimpan callback Escape pada ref, sehingga perubahan state form tidak merestart trap dan tidak memindahkan fokus setiap ketikan.
+5. Sidebar desktop tetap memakai asset/mask melengkung existing. Rail serta target sentuh diperbesar; submenu menjadi daftar satu tingkat tanpa card-in-card dan memiliki close button aksesibel.
+6. Theme toggle dihapus hanya dari dialog “Menu lainnya”; kontrol tema canonical di shell tetap tersedia. Logout berada pada footer terpisah.
+
+### Guard deployment
+
+Production wajib membuat backup terverifikasi lalu menjalankan `npm run db:migrate` sebelum deploy runtime v5. Runtime fail-closed bila schema masih v4. Rollback tidak dilakukan dengan menghapus kolom; gunakan backup pra-migration pada database terpisah, integrity check, lalu repoint environment setelah approval.
+
+---
+
 # Project Handoff
 
-## Current task — Rekening list/detail proporsional dan nomor rekening
+## Current task — Merge patch responsive/transparency dan color tokens
 
-**Updated:** 2026-08-03  
-**Source:** `saldo-bersama-clean(109).zip`  
+**Updated:** 2026-08-03
+**Source:** `saldo-bersama-clean(115).zip` + `saldo-bersama-patch-full-responsive-transparency-111(2).zip` + `saldo-bersama-patch-color-tokens(2).zip`
+**Scope:** menggabungkan seluruh perubahan responsive/transparency ke source 115 sambil mempertahankan seluruh token warna light/dark, asset tema, dan kontrak aksesibilitas. Tidak ada migration atau perubahan schema baru.
+
+### Implementasi
+
+0. Patch color-token pada source 115 dipertahankan utuh. Empat file CSS dan satu dokumen yang overlap digabung per hunk agar perbaikan responsive tidak mengembalikan warna lama.
+1. `/rekening` hanya memuat rekening; `/kategori` memiliki page, CSS Module, dan API facade sendiri. Modal Rekening/Kategori gabungan dihapus.
+2. Detail rekening diperbesar dan seluruh kartu memakai container/rasio identik. Ikon menu serta detail diselaraskan dengan fungsi.
+3. Read model rekening/ledger transparan untuk dua pengguna terotorisasi. Rekening personal menampilkan pemilik dan capability backend.
+4. Policy operasi tetap menjaga rekening personal pasangan: tidak dapat dipakai transaksi atau rekonsiliasi oleh member. Update/cancel transaksi member juga membutuhkan creator yang sama dan scope operable. Total saldo tetap transparan, tetapi saldo aman/dana belum dialokasikan hanya memakai rekening operable actor.
+5. Bug `.two-column-grid,` serta cascade settings ≤580px diperbaiki. Responsive CSS dikonsolidasikan per breakpoint.
+6. Browser fixture/test mencakup route kategori, rekening pasangan read-only, Tagihan/Laporan/Pengaturan mobile, dan capability anchor nonzero.
+7. Form rekening personal owner dapat memilih pemilik aktif. Jika `users.list` gagal, create tetap fail-safe ke pengguna aktif dan edit mempertahankan pemilik sebelumnya tanpa mengirim tebakan dari client.
+8. Kategori refund kini dapat dibuat dari route Kategori sesuai kontrak backend. Reload domain dan refresh tambahan dashboard/bootstrap setelah mutation rekening/kategori berjalan best-effort; kegagalan refresh tidak lagi membuat mutation yang sudah dikonfirmasi server terlihat gagal.
+9. Detail rekening mobile memakai focus trap, Escape, scroll lock, focus restoration, dan dialog semantics. Nomor panjang dipadatkan pada visual kartu, sementara panel detail dan clipboard tetap memakai nomor lengkap.
+10. Label kepemilikan diteruskan ke filter, breakdown laporan, riwayat rekonsiliasi, dan alert rekening agar seluruh read-path konsisten.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist, role action matrix, perhitungan saldo, transfer, idempotency, audit format, backup/restore, environment, dependency, atau deployment. Perubahan authorization hanya pada **read-path rekening dan ledger** yang disetujui; write-path tetap lebih ketat.
+
+### Test wajib sebelum merge
+
+- Frontend static/unit, backend business/security, source validation, Node/Apps Script syntax.
+- Lint, production build, build budget, dan authenticated browser test pada Node 24.
+- Smoke owner/member nyata pada 390, 580/581, 820/821, 940/941, dan 1440; verifikasi dark/light, keyboard, overflow, read-only pasangan, serta admin owner mobile.
+
+### Test aktual di sandbox
+
+- `node --test frontend/test/*.test.js`: PASS — 62/62.
+- `node scripts/run-backend-tests.mjs`: PASS — 108/108.
+- `npm run validate:source`: PASS — 312 file; 5/12 Vercel Functions canonical.
+- `node scripts/check-node-syntax.mjs`: PASS — 92 file.
+- `node scripts/check-apps-script-syntax.mjs`: PASS — 6 file dan 2 urutan load.
+- Lint/build belum berjalan di sandbox: `npm ci` gagal karena registry internal tidak memiliki tarball `vite@7.3.6`, registry npm resmi timeout, dan runtime sandbox Node 22.16.0 lebih rendah dari baseline Node 24. Build budget serta authenticated browser journey tetap harus dijalankan setelah dependency tersedia.
+
+---
+
+## Previous task — Rekening list/detail proporsional dan nomor rekening
+
+**Updated:** 2026-08-03
+**Source:** `saldo-bersama-clean(109).zip`
 **Scope:** layout daftar/detail rekening, konsistensi lima asset kartu, field nomor rekening, schema v4, audit/backup compatibility, dan responsive behavior.
 
 ### Implementasi
@@ -30,8 +92,8 @@ Perubahan schema telah disetujui pada task ini dan dibatasi pada satu migration 
 
 ## Previous task — Integrasi base asset kartu bank
 
-**Updated:** 2026-08-03  
-**Source:** `saldo-bersama-clean(103).zip`  
+**Updated:** 2026-08-03
+**Source:** `saldo-bersama-clean(103).zip`
 **Scope:** base visual BNI/BCA/BTN/Permata dan penghilangan elemen kartu yang terduplikasi.
 
 ### Implementasi
@@ -81,8 +143,8 @@ Jalankan `npm ci && npm run check && npm run test:browser` pada Node 24, lalu sm
 
 ## Previous task — Financial account-card UI and unified master creation
 
-**Updated:** 2026-08-03  
-**Source:** `saldo-bersama-clean(98).zip`  
+**Updated:** 2026-08-03
+**Source:** `saldo-bersama-clean(98).zip`
 **Scope:** halaman Rekening & kategori, asset visual bank, responsive owner action, category listing, dan refresh setelah mutation.
 
 ### Implementasi
@@ -145,7 +207,7 @@ Lakukan smoke visual owner/member pada mobile dan desktop. Verifikasi kartu BCA/
 
 ## Previous task — Browser parity stability follow-up
 
-**Source:** `saldo-bersama-clean(95).zip`  
+**Source:** `saldo-bersama-clean(95).zip`
 **Scope:** browser test reliability and initial resource loading state only.
 
 ### Evidence from Node 24
@@ -195,8 +257,8 @@ Expected browser result: `7 pass, 0 fail`.
 
 ---
 
-**Updated:** 2026-08-02  
-**Task:** Desktop/mobile capability parity — browser route-readiness hotfix  
+**Updated:** 2026-08-02
+**Task:** Desktop/mobile capability parity — browser route-readiness hotfix
 **Status:** Quality gate lokal lulus; authenticated browser journey menemukan race test `/rekening` dan hotfix sudah diterapkan. Browser journey perlu diulang pada Node 24.
 
 ## Source yang divalidasi

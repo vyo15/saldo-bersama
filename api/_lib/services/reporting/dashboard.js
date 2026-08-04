@@ -7,9 +7,9 @@ import {
   nowIso,
   periodKey,
   publicRow,
+  readableAccountSql,
+  readableLedgerSql,
   todayJakarta,
-  visibleAccountSql,
-  visibleScopeSql,
 } from "../core.js";
 import { dateBefore } from "./shared.js";
 
@@ -84,14 +84,15 @@ const allocationSummary = async (db, actor, accounts, period) => {
 };
 
 const reportBreakdowns = async (db, actor, startDate, endDate) => {
-  const access = visibleScopeSql(actor, "t");
+  const access = readableLedgerSql(actor, "t");
   const commonWhere = `t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}`;
   const args = [startDate, endDate, ...access.args];
   const [accounts, creators, natures] = await Promise.all([
-    db.all(`SELECT a.account_id,a.name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
+    db.all(`SELECT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
       FROM transactions t JOIN accounts a ON a.account_id=t.source_account_id
+      LEFT JOIN users u ON u.user_id=a.owner_user_id
       WHERE ${commonWhere}
-      GROUP BY a.account_id,a.name ORDER BY amount DESC`, args),
+      GROUP BY a.account_id,a.name,a.owner_scope,a.owner_user_id,u.name ORDER BY amount DESC`, args),
     db.all(`SELECT u.user_id,u.name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
       FROM transactions t JOIN users u ON u.user_id=t.created_by
       WHERE ${commonWhere}
@@ -102,7 +103,10 @@ const reportBreakdowns = async (db, actor, startDate, endDate) => {
       GROUP BY COALESCE(c.nature,'other') ORDER BY amount DESC`, args),
   ]);
   return {
-    accountExpenses: accounts.map((row) => ({ ...publicRow(row), label: row.name })),
+    accountExpenses: accounts.map((row) => ({
+      ...publicRow(row),
+      label: row.owner_scope === "personal" ? `${row.name} · Pribadi · ${row.owner_name}` : `${row.name} · Bersama`,
+    })),
     creatorExpenses: creators.map((row) => ({ ...publicRow(row), label: row.name })),
     natureExpenses: natures.map((row) => ({ ...publicRow(row), label: NATURE_LABELS[row.nature] || NATURE_LABELS.other })),
   };
@@ -114,7 +118,7 @@ const monthlyTrend = async (db, actor, endPeriod, count) => {
   const lastBounds = monthBounds(periods.at(-1));
   const currentPeriod = todayJakarta().slice(0, 7);
   const trendEnd = periods.at(-1) === currentPeriod ? todayJakarta() : lastBounds.end;
-  const access = visibleScopeSql(actor, "t");
+  const access = readableLedgerSql(actor, "t");
   const rows = await db.all(`SELECT substr(t.transaction_date,1,7) AS period_key,
       COALESCE(SUM(CASE WHEN t.transaction_type='income' THEN t.amount ELSE 0 END),0) AS income,
       COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
@@ -146,7 +150,7 @@ const monthlyTrend = async (db, actor, endPeriod, count) => {
 };
 
 const reconciliationAlerts = async (db, actor, accounts) => {
-  const access = visibleAccountSql(actor, "a");
+  const access = readableAccountSql(actor, "a");
   const rows = await db.all(`SELECT a.account_id,a.name,r.reconciled_at,r.difference
     FROM accounts a
     LEFT JOIN reconciliations r ON r.reconciliation_id=(
@@ -156,15 +160,20 @@ const reconciliationAlerts = async (db, actor, accounts) => {
     WHERE a.status='active' AND ${access.sql}
     ORDER BY a.name COLLATE NOCASE`, access.args);
   const balanceLookup = new Map(accounts.map((item) => [item.account_id, Number(item.balance || 0)]));
+  const accountLabelLookup = new Map(accounts.map((item) => [
+    item.account_id,
+    item.owner_scope === "personal" ? `${item.name} · Pribadi · ${item.owner_name || "Pengguna"}` : `${item.name} · Bersama`,
+  ]));
   const today = todayJakarta();
   const alerts = [];
   for (const row of rows) {
+    const accountLabel = accountLabelLookup.get(row.account_id) || row.name;
     if (Number(row.difference || 0) !== 0) {
       alerts.push({
         id: `reconciliation-difference:${row.account_id}`,
         type: "reconciliation_difference",
         severity: "danger",
-        title: `Selisih saldo ${row.name}`,
+        title: `Selisih saldo ${accountLabel}`,
         message: "Saldo aktual terakhir masih berbeda dari saldo aplikasi.",
         targetPath: "/rekening",
       });
@@ -176,7 +185,7 @@ const reconciliationAlerts = async (db, actor, accounts) => {
         id: `reconciliation-stale:${row.account_id}`,
         type: "reconciliation_stale",
         severity: "info",
-        title: `Rekonsiliasi ${row.name}`,
+        title: `Rekonsiliasi ${accountLabel}`,
         message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak rekonsiliasi terakhir." : "Rekening belum pernah direkonsiliasi.",
         targetPath: "/rekening",
       });
@@ -296,16 +305,18 @@ export const dashboardOverview = async (db, context) => {
     listGoals(db, context),
     listBudgets(db, { ...context, payload: { period } }),
   ]);
-  const allocation = await allocationSummary(db, context.actor, accounts, period);
+  const operableAccounts = accounts.filter((account) => account.can_transact !== false);
+  const allocation = await allocationSummary(db, context.actor, operableAccounts, period);
   let income = 0;
   let expense = 0;
   let refund = 0;
   let unallocatedCount = 0;
   for (const row of transactions) {
+    const actorCanOperate = context.actor.role === "owner" || row.scope === "shared" || (row.scope === "personal" && row.owner_user_id === context.actor.user_id);
     if (row.transaction_type === "income") income += Number(row.amount);
     else if (row.transaction_type === "expense") {
       expense += Number(row.amount);
-      if (!row.envelope_period_id) unallocatedCount += 1;
+      if (!row.envelope_period_id && actorCanOperate) unallocatedCount += 1;
     } else if (row.transaction_type === "refund") refund += Number(row.amount);
   }
   const openingDate = dateBefore(bounds.start);
@@ -316,19 +327,20 @@ export const dashboardOverview = async (db, context) => {
   const emergencyBalance = accounts.filter((row) => row.account_type === "emergency_fund").reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const protectedBalance = accounts.filter((row) => protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const liquidBalance = accounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
+  const operableLiquidBalance = operableAccounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const recurring = recurringResult.items;
   const goals = goalsResult.items;
   const budgets = budgetResult.items;
   const reservedBills = recurring.filter((row) => row.kind === "expense" && !["paid", "cancelled"].includes(row.status)).reduce((sum, row) => sum + Math.max(0, Number(row.expected_amount) - Number(row.actual_amount)), 0);
-  const safeToSpend = Math.max(0, liquidBalance - reservedBills);
+  const safeToSpend = Math.max(0, operableLiquidBalance - reservedBills);
   const lastDay = Number(bounds.end.slice(-2));
   const currentDay = period === currentPeriod ? Number(todayJakarta().slice(-2)) : 1;
   const daysRemaining = historical ? 0 : Math.max(1, lastDay - currentDay + 1);
-  const recentTransactions = transactions.slice(0, 12).map((row) => ({
-    ...row,
-    can_update: row.status === "active" && (context.actor.role === "owner" || row.created_by === context.actor.user_id),
-    can_cancel: row.status === "active" && (context.actor.role === "owner" || row.created_by === context.actor.user_id),
-  }));
+  const recentTransactions = transactions.slice(0, 12).map((row) => {
+    const actorCanOperate = context.actor.role === "owner" || row.scope === "shared" || (row.scope === "personal" && row.owner_user_id === context.actor.user_id);
+    const actorCanModify = row.status === "active" && (context.actor.role === "owner" || (actorCanOperate && row.created_by === context.actor.user_id));
+    return { ...row, can_update: actorCanModify, can_cancel: actorCanModify };
+  });
   const alerts = await buildFinancialAlerts(db, context, {
     period,
     historical,

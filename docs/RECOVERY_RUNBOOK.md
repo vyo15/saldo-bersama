@@ -32,3 +32,14 @@ Jika apply atau integrity gagal, transaction rollback dan maintenance tetap akti
 - Simpan request ID, waktu, actor, error code, dan backup ID.
 - Jangan membagikan stack trace/token pada pengguna.
 - Uji restore drill berkala pada salinan terisolasi sementara atau branch disposable; jangan gunakan database aktif dan jangan mempertahankannya sebagai database Development permanen.
+
+## Pemulihan satu entity sebelum full restore
+
+Kesalahan pengguna biasa harus ditangani melalui lifecycle per-item:
+
+- rekening/kategori arsip → action restore dengan alasan dan `row_version`;
+- transaksi cancelled → restore khusus owner bila period, reference, duplicate, dan balance guard lulus;
+- anggota nonaktif → reaktivasi eksplisit setelah allowlist diverifikasi;
+- periode salah ditutup → buka kembali secara berurutan dengan alasan.
+
+Full database restore bukan mekanisme undo harian. Gunakan restore guarded hanya bila kerusakan mencakup banyak data atau lifecycle per-item tidak dapat menjaga konsistensi. Rekening kosong yang dihapus melalui `accounts.deleteUnused` tidak dipulihkan per item; audit tetap tersedia dan rekening baru dapat dibuat kembali tanpa memalsukan histori.

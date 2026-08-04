@@ -4,7 +4,7 @@ import { callGoogleBridge, enqueueIntegration } from "../integrations.js";
 import { integrityIssues } from "../reporting/index.js";
 import { appError, assertOwner, canonicalJson, nowIso, sanitizeText, uuid } from "../core.js";
 import { createTechnicalBackup } from "./backup.js";
-import { RESTORE_DELETE_ORDER, decodeBackup, expiry, insertRows, quoted, validateSnapshot } from "./shared.js";
+import { RESTORE_DELETE_ORDER, decodeBackup, expiry, insertRows, normalizeRestoredRows, quoted, validateSnapshot } from "./shared.js";
 export const readBackupFromDrive = async (db, externalFileId) => {
   const run = await db.one("SELECT * FROM backup_runs WHERE external_file_id=? AND status IN ('verified','completed')", [externalFileId]);
   if (!run) throw appError("BACKUP_NOT_FOUND", "Backup terverifikasi tidak ditemukan.", 404);
@@ -108,7 +108,9 @@ export const applyRestore = async (db, context) => {
         const nextRole = allowedRole || current.role;
         await tx.execute("UPDATE users SET role=?,status=?,row_version=row_version+1,updated_at=? WHERE user_id=?", [nextRole, nextStatus, nowIso(), current.user_id]);
       }
-      for (const table of ["accounts", "categories", "envelope_rules", "envelope_periods", "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements", "budgets", "goal_movements", "reconciliations", "period_closures", "idempotency_keys"]) await insertRows(tx, table, snapshot.tables[table]);
+      for (const table of ["accounts", "categories", "envelope_rules", "envelope_periods", "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements", "budgets", "goal_movements", "reconciliations", "period_closures", "idempotency_keys"]) {
+        await insertRows(tx, table, normalizeRestoredRows(table, snapshot.tables[table]));
+      }
       await insertRows(tx, "audit_log", snapshot.tables.audit_log, {
         mode: "INSERT OR IGNORE"
       });

@@ -24,6 +24,23 @@ Status source saat dokumen ini diperbarui: shared primitive sudah memakai CSS Mo
 | Responsive/PWA safe area | `frontend/src/styles/responsive.css` selama migrasi; feature style baru harus colocated |
 | Keputusan toolkit | `docs/adr/0009-mantine-css-modules-ui-foundation.md` |
 
+## Palet warna canonical
+
+Palet visual yang disetujui disimpan sebagai primitive pada `frontend/src/styles/tokens.css`, lalu dipetakan ke token semantik yang berbeda untuk light dan dark mode. Komponen hanya boleh memakai token semantik, bukan menyalin hex palet langsung.
+
+| Primitive | Nilai | Peran utama |
+|---|---:|---|
+| Rich Black | `#0B1110` | Background utama dark mode |
+| Dark Green | `#0F1A18` | Surface dark dan teks utama light |
+| Bangladesh Green | `#03624C` | Primary light dan panel brand |
+| Mountain Meadow | `#2CC295` | Secondary/accent |
+| Caribbean Green | `#00D681` | Accent dekoratif terbatas |
+| Mint | `#A7F3D0` | Highlight lembut dan foreground pendukung |
+| Anti-Flash White | `#F4FAF7` | Teks utama dark/hero |
+| Pistachio | `#E8F5EF` | Surface kuat dan primary-soft light |
+
+Status pada light mode memakai varian yang lebih gelap dari accent referensi agar teks dan kontrol tetap memenuhi kontras WCAG. Dark mode dapat memakai accent referensi yang lebih terang karena kontras terhadap surface gelap sudah memadai. Browser `theme-color`, PWA background, sidebar rail, hero, focus ring, shadow, dan navigation surface wajib mengikuti token tema yang sama.
+
 ## Struktur komponen
 
 Setiap shared component yang memiliki styling khusus memakai pasangan file:
@@ -89,13 +106,16 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Daftar rekening memakai komponen domain `AccountFinancialCard`, bukan card generik yang ditata ulang di page.
 - BCA, BNI, BTN, Mandiri, dan Permata memakai asset WebP 768×484 sebagai base visual. Wordmark dan chip dekoratif hanya berasal dari asset; HTML tidak boleh menggambarnya kembali.
 - Semua kartu memakai rasio 1.586:1, container, radius, dan object sizing yang sama. Tidak boleh ada bank yang tampak lebih panjang, pendek, atau terbungkus panel dekoratif tambahan.
-- Card face hanya menambahkan contactless, nomor rekening yang sudah dinormalisasi, dan nama rekening. Saldo, status, timestamp, kepemilikan, serta aksi berada pada panel detail terpisah.
-- Nomor rekening berasal dari `accounts.account_number`, dikelompokkan empat digit, dan hanya ditampilkan setelah authentication serta scope filtering backend. Tombol salin berada di panel detail dan memiliki accessible name.
+- Card face menambahkan contactless, nomor rekening yang sudah dinormalisasi, dan nama rekening. Pada stack mobile terautentikasi, saldo saat ini dan label kepemilikan boleh tampil sebagai overlay ringkas; status, timestamp, nomor lengkap, dan aksi tetap berada pada panel detail.
+- Nomor rekening berasal dari `accounts.account_number`, dikelompokkan empat digit, dan hanya ditampilkan setelah authentication serta binding user backend. Kedua pengguna terotorisasi dapat membacanya; tombol salin berada di panel detail dan memiliki accessible name.
 - Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap dilarang pada asset, DOM, payload, audit, dan integrasi.
-- Desktop lebar memakai daftar ringkas di kiri dan satu panel detail sticky di kanan. Pada viewport yang tidak cukup, detail disembunyikan sampai item dipilih lalu tampil sebagai overlay yang dapat ditutup.
+- Desktop lebar memakai daftar ringkas di kiri dan satu panel detail sticky di kanan. Pada viewport yang tidak cukup, detail disembunyikan sampai item dipilih lalu tampil sebagai dialog overlay dengan focus trap, Escape handling, body scroll lock, dan focus restoration ke kartu pemicu.
+- Mobile memakai circular 3D card stack dengan node kartu yang stabil. Satu rekening menampilkan satu kartu, dua rekening menampilkan dua kartu, dan tiga atau lebih menampilkan maksimal tiga kartu terlihat dengan ukuran serta rasio yang identik. Swipe vertikal, wheel untuk pengujian desktop, dan tombol panah keyboard memutar urutan secara sirkular; tidak ada auto-rotate, pagination dots, atau panah samping.
+- Selama gesture, seluruh tumpukan mengikuti jari menggunakan `transform`/`opacity`; kartu depan bergerak ke belakang dan kartu berikutnya maju ke depan. Swipe pendek kembali ke posisi semula, reduced-motion mengurangi rotasi dan durasi, dan rekening aktif diumumkan tanpa membacakan saldo.
+- Nomor rekening panjang boleh dipadatkan hanya pada muka kartu agar tidak overflow; panel detail, accessible copy action, dan data backend tetap memakai nomor lengkap.
 - Bank yang tidak dikenali serta rekening non-bank memakai fallback berbasis design token dan tidak bergantung pada asset pihak ketiga.
-- Form master mengikuti pola list-first dan form-on-demand: satu aksi Tambah membuka dialog desktop atau bottom sheet mobile dengan tab Rekening/Kategori. Field `No rekening` wajib untuk rekening bank dan memperbarui preview langsung.
-- Template bank tetap presentational dari nama rekening. Schema v4 hanya menambahkan nomor rekening dan tidak mengubah perhitungan saldo maupun aturan transaksi.
+- Rekening dan kategori tidak dicampur dalam satu halaman. `/rekening` memakai aksi `Tambah rekening`; `/kategori` memakai aksi `Tambah kategori`. Masing-masing membuka dialog desktop atau bottom sheet mobile tanpa tab domain lain. Field `No rekening` wajib untuk rekening bank dan memperbarui preview langsung.
+- Template bank disimpan pada `accounts.bank_template` schema v5 dan tetap bersifat presentational. Mengubah template tidak mengubah nama, saldo, atau aturan transaksi.
 
 ## Mobile dan PWA
 
@@ -105,6 +125,13 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Keyboard virtual tidak boleh menutup nominal atau action utama.
 - PWA tetap `display: standalone`; Fullscreen API tidak dipaksakan.
 - Offline write finansial tetap dilarang.
+
+## Kontrak responsive global
+
+- `frontend/src/styles/responsive.css` memakai satu blok canonical per breakpoint dan diurutkan dari viewport besar ke kecil: 1280, 1100, 940, 820, 767, 680, 580, 520, 420, 370.
+- Selector yang berakhir koma tidak boleh dipisahkan baris kosong. Static test wajib menolak dangling selector.
+- Layout multi-kolom pada mobile harus berubah menjadi satu kolom, bukan disembunyikan. Capability anchor route penting wajib memiliki `width > 0` dan `height > 0` pada browser test mobile.
+- `!important` hanya dipertahankan untuk compatibility yang didokumentasikan; reduced-motion global adalah pengecualian canonical saat ini.
 
 ## State wajib setiap komponen
 
@@ -128,6 +155,12 @@ Adopsi Mantine harus dilakukan bertahap:
 4. Jangan memakai `sx`, styling prop, atau direct import di feature untuk layout normal.
 5. Setiap migrasi wajib lulus lint, unit/static contract test, build, keyboard test, mobile test, dan dark/light review.
 6. CSS lama dihapus hanya ketika tidak ada usage dan visual regression telah diperiksa.
+
+## Navigasi shell
+
+- Sidebar desktop mempertahankan mask melengkung brand Saldo Bersama. Ukurannya boleh diperbesar untuk tap target dan proporsi layar, tetapi bentuk/aset canonical tidak boleh diganti tanpa approval visual baru.
+- Kontrol utama desktop minimum 44×44px. Submenu grup memakai panel minimal satu tingkat, label satu baris, close button aksesibel, Escape, click-outside, dan focus restoration; hindari kartu di dalam kartu serta deskripsi panjang pada setiap route.
+- Theme toggle hanya tampil pada kontrol shell yang canonical. Menu mobile “Menu lainnya” tidak menduplikasi dark/light toggle; logout berada pada footer terpisah dan bottom navigation tetap tersedia.
 
 ## Review checklist UI
 

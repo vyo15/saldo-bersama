@@ -58,9 +58,10 @@ export const upsertUser = async (db, context) => {
   const current = await db.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
   const timestamp = nowIso();
   if (current) {
+    if (current.status === "inactive") throw appError("USER_REACTIVATION_REQUIRED", "Anggota nonaktif harus dipulihkan melalui tindakan reaktivasi eksplisit.", 409, { userId: current.user_id });
     assertVersion(current, context.rowVersion ?? payload.row_version);
-    const next = { ...current, name: sanitizeText(payload.name || current.name || email, 120), role, status: "active", row_version: Number(current.row_version) + 1, updated_at: timestamp };
-    const result = await db.execute("UPDATE users SET name=?,role=?,status='active',row_version=?,updated_at=? WHERE user_id=? AND row_version=?", [next.name, role, next.row_version, timestamp, current.user_id, current.row_version]);
+    const next = { ...current, name: sanitizeText(payload.name || current.name || email, 120), role, row_version: Number(current.row_version) + 1, updated_at: timestamp };
+    const result = await db.execute("UPDATE users SET name=?,role=?,row_version=?,updated_at=? WHERE user_id=? AND row_version=? AND status='active'", [next.name, role, next.row_version, timestamp, current.user_id, current.row_version]);
     if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data anggota berubah. Muat ulang.", 409);
     await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: publicRow(next) });
     return publicRow(next);
@@ -73,6 +74,8 @@ export const upsertUser = async (db, context) => {
 
 export const deactivateUser = async (db, context) => {
   assertOwner(context.actor);
+  const reason = sanitizeText(context.payload?.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan penonaktifan anggota wajib diisi.", 400);
   const current = await db.one("SELECT * FROM users WHERE user_id = ?", [context.payload?.user_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Anggota aktif tidak ditemukan.", 404);
   if (current.user_id === context.actor.user_id) throw appError("SELF_DEACTIVATE_DENIED", "Owner tidak dapat menonaktifkan dirinya sendiri.", 409);
@@ -92,6 +95,23 @@ export const deactivateUser = async (db, context) => {
   await db.execute("UPDATE notification_queue SET status='dead_letter',last_attempt_at=? WHERE user_id=? AND status IN ('pending','processing','failed')", [next.updated_at, current.user_id]);
   const result = await db.execute("UPDATE users SET status='inactive',row_version=?,updated_at=? WHERE user_id=? AND row_version=?", [next.row_version, next.updated_at, current.user_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data anggota berubah. Muat ulang.", 409);
-  await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: publicRow(next) });
+  await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: { ...publicRow(next), deactivation_reason: reason } });
+  return publicRow(next);
+};
+
+export const reactivateUser = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan reaktivasi anggota wajib diisi.", 400);
+  const current = await db.one("SELECT * FROM users WHERE user_id = ?", [payload.user_id]);
+  if (!current || current.status !== "inactive") throw appError("NOT_FOUND", "Anggota nonaktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const allowed = context.allowedUsers?.find((item) => item.email === String(current.email || "").toLowerCase());
+  if (!allowed || allowed.role !== current.role) throw appError("ALLOWLIST_MISMATCH", "Email dan role anggota harus aktif dan sama dengan ALLOWED_USERS_JSON di Vercel sebelum reaktivasi.", 409);
+  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_at: nowIso() };
+  const result = await db.execute("UPDATE users SET status='active',row_version=?,updated_at=? WHERE user_id=? AND row_version=? AND status='inactive'", [next.row_version, next.updated_at, current.user_id, current.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data anggota berubah. Muat ulang.", 409);
+  await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: { ...publicRow(next), reactivation_reason: reason } });
   return publicRow(next);
 };

@@ -10,7 +10,7 @@ import Modal from "../components/common/Modal.jsx";
 import Button from "../components/common/Button.jsx";
 import ThemeToggle from "../components/common/ThemeToggle.jsx";
 import UserAvatar from "../components/common/UserAvatar.jsx";
-import { MOBILE_SECONDARY_NAVIGATION } from "../config/navigation.js";
+import { MOBILE_SECONDARY_GROUPS } from "../config/navigation.js";
 import { useFinance } from "../app/FinanceContext.jsx";
 import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
 import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
@@ -27,6 +27,7 @@ const AppShell = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const dashboardRoute = location.pathname === "/";
+  const accountsRoute = location.pathname === "/rekening";
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();
@@ -41,7 +42,7 @@ const AppShell = () => {
     <>
       <SideNavigation />
 
-      <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}`}>
+      <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}${accountsRoute ? " app-shell--accounts" : ""}`}>
         <header className="desktop-app-header">
           <Brand />
           <div className="desktop-app-header__actions">
@@ -84,18 +85,24 @@ const AppShell = () => {
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         title="Menu lainnya"
-        description="Akses fitur tambahan, tampilan aplikasi, dan sesi akun."
+        description="Akses fitur tambahan, pengelolaan keuangan, dan sesi akun."
         size="sm"
       >
         <div className="mobile-menu-list">
-          <Button variant="primary" icon={FiPlus} type="button" disabled={offline} onClick={() => { setMobileMenuOpen(false); setQuickAddOpen(true); }}>Tambah transaksi</Button>
-          {MOBILE_SECONDARY_NAVIGATION.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>
-              <Icon aria-hidden="true" /><span>{label}</span>
-            </NavLink>
+          <Button className="mobile-menu-quick-add" variant="primary" icon={FiPlus} type="button" disabled={offline} onClick={() => { setMobileMenuOpen(false); setQuickAddOpen(true); }}>Tambah transaksi</Button>
+          {MOBILE_SECONDARY_GROUPS.map(({ id, label, items }) => (
+            <section key={id} className="mobile-menu-section" aria-labelledby={`mobile-menu-${id}`}>
+              <h3 id={`mobile-menu-${id}`}>{label}</h3>
+              {items.map(({ to, label: itemLabel, icon: Icon }) => (
+                <NavLink key={to} to={to} className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>
+                  <Icon aria-hidden="true" /><span>{itemLabel}</span>
+                </NavLink>
+              ))}
+            </section>
           ))}
-          <ThemeToggle showLabel className="mobile-menu-theme" />
-          <Button icon={FiLogOut} type="button" onClick={handleLogout}>Keluar</Button>
+          <div className="mobile-menu-footer">
+            <Button className="mobile-menu-logout" icon={FiLogOut} type="button" onClick={handleLogout}>Keluar</Button>
+          </div>
         </div>
       </Modal>
     </>

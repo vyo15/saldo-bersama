@@ -68,28 +68,29 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `users.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/users.js` |
 | `users.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
 | `users.deactivate` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
+| `users.reactivate` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
+| `archive.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `audit.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/audit.js` |
 | `dashboard.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `accounts.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `accounts.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `accounts.previewLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `accounts.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `accounts.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `accounts.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 
-### Kontrak rekening bank
-
-- `accounts.create` untuk `account_type=bank` menerima `account_number` wajib. Input boleh memakai angka, spasi, atau tanda hubung; server menyimpan 6–34 digit hasil normalisasi.
-- `accounts.update` menerima `account_number` bersama `row_version`; conflict tetap ditolak dan tidak boleh ditimpa diam-diam.
-- `accounts.list`, `accounts.create`, dan `accounts.update` dapat mengembalikan nomor lengkap hanya setelah authentication serta scope filtering backend. Rekening personal tidak boleh terlihat oleh actor lain.
-- Audit create/update hanya mencatat bentuk bertopeng empat digit terakhir. Nomor rekening tidak ditambahkan ke Sheets mirror atau export baca. Backup teknis tetap memuat kolom tersebut untuk recovery terjaga.
-- Field ini adalah nomor rekening transfer, bukan nomor kartu debit. PIN, CVV, masa berlaku, serta nomor kartu debit tidak diterima.
 | `categories.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `categories.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `categories.previewArchive` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `categories.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `categories.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `transactions.list` | Ya | Ya | Read | Tidak | `api/_lib/services/finance.js` |
 | `transactions.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `transactions.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `transactions.cancel` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
+| `transactions.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `envelopes.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `envelopes.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -111,6 +112,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `reconciliations.list` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `reconciliations.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/reporting/` |
 | `periods.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/reporting/` |
+| `periods.previewClose` | Ya | Tidak | Read | Tidak | `api/_lib/services/reporting/` |
 | `periods.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reporting/` |
 | `periods.reopen` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reporting/` |
 | `calendar.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
@@ -125,6 +127,22 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `restore.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance/` |
 | `restore.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
 | `integrity.run` | Ya | Tidak | Write/operation | Tidak | `api/_lib/services/maintenance/` |
+
+### Kontrak rekening bank
+
+- `accounts.create` untuk `account_type=bank` menerima `account_number` wajib. Input boleh memakai angka, spasi, atau tanda hubung; server menyimpan 6–34 digit hasil normalisasi.
+- `accounts.update` menerima `account_number` bersama `row_version`; conflict tetap ditolak dan tidak boleh ditimpa diam-diam.
+- `accounts.create` dan `accounts.update` menerima `bank_template` terpisah dari `name`. Backend hanya menerima `generic`, `bca`, `bni`, `btn`, `mandiri`, atau `permata` untuk rekening bank; rekening non-bank selalu dinormalisasi ke `generic`. Mengubah template tidak boleh mengubah nama rekening.
+- `accounts.list` mengembalikan `bank_template` canonical. Client boleh memakai deteksi suffix nama hanya sebagai fallback visual untuk object legacy yang belum melalui normalisasi, bukan sebagai storage baru.
+- `accounts.list` mengembalikan seluruh rekening shared dan personal kepada dua pengguna aktif yang terotorisasi. Rekening personal membawa `owner_name`, `is_owned_by_actor`, `can_transact`, `can_reconcile`, `can_manage`, dan `read_only` yang dihitung backend.
+- Nomor rekening lengkap hanya dikirim setelah authentication dan binding user berhasil. Transparansi baca kepada pasangan tidak memperluas write: member tetap tidak dapat bertransaksi atau merekonsiliasi rekening personal pasangan.
+- `transactions.list`, dashboard, laporan, serta `reconciliations.list` memakai ledger readable yang sama agar saldo dapat ditelusuri. Capability edit/cancel transaksi tetap memperhitungkan creator dan scope operable. Label rekening pada filter, breakdown, alert, dan rekonsiliasi menyertakan kepemilikan agar rekening personal pasangan tidak ambigu.
+- `dashboard.overview.totalBalance` membaca seluruh rekening transparan. Metrik actionable `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` hanya menghitung rekening/scope yang `can_transact` bagi actor, supaya saldo personal pasangan tidak salah dianggap dapat digunakan atau dialokasikan member.
+- Audit create/update hanya mencatat bentuk bertopeng empat digit terakhir. Nomor rekening tidak ditambahkan ke Sheets mirror atau export baca. Backup teknis tetap memuat kolom tersebut untuk recovery terjaga.
+- Field ini adalah nomor rekening transfer, bukan nomor kartu debit. PIN, CVV, masa berlaku, serta nomor kartu debit tidak diterima.
+- `accounts.previewLifecycle` menghitung saldo dan seluruh dependensi sebelum owner memilih arsip atau penghapusan rekening belum dipakai.
+- `accounts.deleteUnused` bukan purge umum. Action ini hanya berhasil bila rekening aktif mempunyai saldo awal Rp0, saldo saat ini Rp0, tidak pernah memiliki transaksi dalam status apa pun, tidak memiliki rekonsiliasi, dan tidak pernah direferensikan kantong, tagihan, atau target. Alasan, acknowledgement, frasa konfirmasi, `row_version`, idempotency, dan audit wajib.
+- Rekening yang pernah digunakan hanya boleh memakai `accounts.archive`; pemulihannya memakai `accounts.restore` dengan alasan dan validasi ulang backend.
 
 ## Read payload dan response penting
 
@@ -146,7 +164,7 @@ Payload opsional:
 }
 ```
 
-Response bersifat scope-filtered dan memuat `items`, pagination, `periodLocked`, serta `filterOptions.accounts`, `filterOptions.categories`, dan `filterOptions.creators`. Filter pencatat hanya menyaring transaksi yang memang terlihat oleh actor; tidak mengubah authorization.
+Response memakai ledger readable backend dan memuat `items`, pagination, `periodLocked`, serta `filterOptions.accounts`, `filterOptions.categories`, dan `filterOptions.creators`. Filter rekening membawa label pemilik; capability edit/cancel tetap mengikuti creator dan scope operable.
 
 ### `reports.monthly`
 

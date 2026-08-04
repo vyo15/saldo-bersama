@@ -20,9 +20,27 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
     if (policy.mode === "read") assert.equal(requiresIdempotencyKey(action), false, action);
   }
   for (const action of [
-    "transactions.create", "transactions.update", "transactions.cancel",
-    "envelopes.move", "recurring.payOccurrence", "goals.move",
+    "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
+    "accounts.archive", "accounts.restore", "accounts.deleteUnused",
+    "categories.archive", "categories.restore", "users.deactivate", "users.reactivate",
+    "envelopes.move", "recurring.payOccurrence", "goals.move", "periods.close",
     "backup.create", "import.apply", "restore.apply",
   ]) assert.equal(requiresIdempotencyKey(action), true, action);
   assert.equal(requiresIdempotencyKey("integrity.run"), false);
+});
+
+test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", () => {
+  const ownerOnly = [
+    "archive.list", "accounts.previewLifecycle", "accounts.restore", "accounts.deleteUnused",
+    "categories.previewArchive", "categories.restore", "transactions.restore", "users.reactivate", "periods.previewClose",
+  ];
+  for (const action of ownerOnly) {
+    assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
+    assert.equal(ACTION_PERMISSIONS.member.has(action), false, `${action} tidak boleh tersedia untuk member`);
+  }
+  for (const forbidden of ["purge", "data.purge", "accounts.delete", "transactions.delete", "categories.delete"]) {
+    assert.equal(ACTION_POLICIES[forbidden], undefined, `${forbidden} tidak boleh terdaftar`);
+    assert.equal(ACTION_REGISTRY[forbidden], undefined, `${forbidden} tidak boleh memiliki handler`);
+  }
+  assert.equal(ACTION_POLICIES["accounts.deleteUnused"].maintenanceAllowed, false);
 });

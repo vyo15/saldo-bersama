@@ -6,6 +6,7 @@ import {
   FiPlus,
   FiSearch,
   FiTrash2,
+  FiRotateCcw,
 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -16,12 +17,13 @@ import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { cancelTransaction as requestCancelTransaction } from "./transactions.api.js";
+import { cancelTransaction as requestCancelTransaction, restoreTransaction as requestRestoreTransaction } from "./transactions.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
-import { formatTransactionDate, transactionIcon, TRANSACTION_LABELS, transactionTone } from "./transactionPresentation.js";
+import { ownershipLabel } from "../../domain/ownership.js";
+import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionTone } from "./transactionPresentation.js";
 
 const PAGE_SIZE = 100;
 
@@ -42,6 +44,8 @@ const TransactionsPage = () => {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelState, setCancelState] = useState({ status: "idle", error: null });
+  const [restoreTarget, setRestoreTarget] = useState(null);
+  const [restoreState, setRestoreState] = useState({ status: "idle", error: null });
   const resource = useApiResource("transactions.list", {
     period: filters.period,
     limit: PAGE_SIZE,
@@ -53,8 +57,8 @@ const TransactionsPage = () => {
     category_id: filters.category,
     created_by: filters.creator,
   });
-  const accountLookup = Object.fromEntries((bootstrap?.accounts || []).map((item) => [item.account_id, item.name]));
-  const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item.name]));
+  const accountLookup = Object.fromEntries((bootstrap?.accounts || []).map((item) => [item.account_id, `${item.name} · ${ownershipLabel(item)}`]));
+  const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item]));
   const items = resource.data?.items || [];
   const filterOptions = resource.data?.filterOptions || { accounts: [], categories: [], creators: [] };
   const filtersActive = filters.query || [filters.type, filters.allocation, filters.account, filters.category, filters.creator].some((value) => value !== "all");
@@ -77,7 +81,7 @@ const TransactionsPage = () => {
     return accountLookup[item.source_account_id] || accountLookup[item.destination_account_id] || "Rekening tidak tersedia";
   };
 
-  const categoryLabel = (item) => categoryLookup[item.category_id]
+  const categoryLabel = (item) => categoryLookup[item.category_id]?.name
     || (item.transaction_type === "transfer" ? "Transfer internal" : "Belum dialokasikan");
 
   const cancelTransaction = async (reason) => {
@@ -91,20 +95,45 @@ const TransactionsPage = () => {
       }, { rowVersion: cancelTarget.row_version, idempotencyKey: createIdempotencyKey() });
       setCancelTarget(null);
       setCancelState({ status: "idle", error: null });
-      invalidate(["transactions.list", "envelopes.list", "reports.monthly", "app.initialState"]);
+      invalidate(["transactions.list", "accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState", "archive.list"]);
       await Promise.all([resource.reload(), refreshOverview()]);
     } catch (error) {
       setCancelState({ status: "error", error });
     }
   };
 
+  const restoreCancelledTransaction = async (reason) => {
+    if (!restoreTarget) return;
+    setRestoreState({ status: "submitting", error: null });
+    try {
+      await requestRestoreTransaction({
+        transaction_id: restoreTarget.transaction_id,
+        row_version: restoreTarget.row_version,
+        reason,
+      }, { rowVersion: restoreTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      setRestoreTarget(null);
+      setRestoreState({ status: "idle", error: null });
+      invalidate(["transactions.list", "accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState", "archive.list"]);
+      await Promise.all([resource.reload(), refreshOverview()]);
+    } catch (error) {
+      setRestoreState({ status: "error", error });
+    }
+  };
+
   const renderActions = (item, linkedModule) => {
+    if (item.status === "cancelled") {
+      return item.can_restore ? (
+        <Button type="button" icon={FiRotateCcw} onClick={() => { setRestoreTarget(item); setRestoreState({ status: "idle", error: null }); }}>
+          Pulihkan
+        </Button>
+      ) : null;
+    }
     if (item.status !== "active") return null;
     if (linkedModule) return <small className="managed-transaction-note">Kelola dari menu {linkedModule}</small>;
     return (
       <div className="button-group transaction-actions">
-        {item.can_edit ? <button type="button" className="icon-button" onClick={() => { setEditingTransaction(item); setFormOpen(true); }} aria-label={`Edit ${item.description || "transaksi"}`}><FiEdit2 aria-hidden="true" /></button> : null}
-        {item.can_cancel ? <button type="button" className="icon-button icon-button--danger" onClick={() => { setCancelTarget(item); setCancelState({ status: "idle", error: null }); }} aria-label={`Batalkan ${item.description || "transaksi"}`}><FiTrash2 aria-hidden="true" /></button> : null}
+        {item.can_edit ? <Button type="button" icon={FiEdit2} onClick={() => { setEditingTransaction(item); setFormOpen(true); }}>Edit</Button> : null}
+        {item.can_cancel ? <Button type="button" variant="danger" icon={FiTrash2} onClick={() => { setCancelTarget(item); setCancelState({ status: "idle", error: null }); }}>Batalkan</Button> : null}
       </div>
     );
   };
@@ -122,7 +151,7 @@ const TransactionsPage = () => {
           <label className="field field--compact"><span className="sr-only">Periode transaksi</span><input type="month" max={currentMonthInJakarta()} value={filters.period} onChange={(event) => updateFilter("period", event.target.value)} aria-label="Periode transaksi" /></label>
           <select value={filters.type} onChange={(event) => updateFilter("type", event.target.value)} aria-label="Filter jenis transaksi"><option value="all">Semua jenis</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="transfer">Transfer</option><option value="refund">Refund</option><option value="adjustment">Penyesuaian</option></select>
           <select value={filters.allocation} onChange={(event) => updateFilter("allocation", event.target.value)} aria-label="Filter alokasi"><option value="all">Semua alokasi</option><option value="unallocated">Belum dialokasikan</option><option value="allocated">Sudah dialokasikan</option></select>
-          <select value={filters.account} onChange={(event) => updateFilter("account", event.target.value)} aria-label="Filter rekening"><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name}</option>)}</select>
+          <select value={filters.account} onChange={(event) => updateFilter("account", event.target.value)} aria-label="Filter rekening"><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name} · {ownershipLabel(item)}</option>)}</select>
           <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)} aria-label="Filter kategori"><option value="all">Semua kategori</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select>
           <select value={filters.creator} onChange={(event) => updateFilter("creator", event.target.value)} aria-label="Filter pencatat"><option value="all">Semua pencatat</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select>
           {filtersActive ? <Button type="button" onClick={() => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 })); }}>Reset filter</Button> : null}
@@ -140,10 +169,11 @@ const TransactionsPage = () => {
               <thead><tr><th>Tanggal</th><th>Transaksi</th><th>Rekening</th><th>Kategori</th><th>Status</th><th className="align-right">Nominal</th><th><span className="sr-only">Aksi</span></th></tr></thead>
               <tbody>{items.map((item) => {
                 const linkedModule = item.managed_by === "recurring" ? "Tagihan" : item.managed_by === "goal" ? "Target" : "";
+                const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type);
                 return (
                   <tr key={item.transaction_id}>
                     <td><time>{item.transaction_date}</time></td>
-                    <td><strong>{item.description || item.merchant || "Tanpa keterangan"}</strong><small>{TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</small></td>
+                    <td><div className="transaction-table-primary"><span className={`transaction-category-icon transaction-category-icon--${item.transaction_type || "default"}`}><Icon aria-hidden="true" /></span><span><strong>{item.description || item.merchant || "Tanpa keterangan"}</strong><small>{TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</small></span></div></td>
                     <td>{accountLabel(item)}</td>
                     <td>{categoryLabel(item)}</td>
                     <td><StatusBadge status={item.status} /></td>
@@ -158,7 +188,7 @@ const TransactionsPage = () => {
           <div className="mobile-data-list transaction-mobile-list" aria-label="Daftar transaksi">
             {items.map((item) => {
               const linkedModule = item.managed_by === "recurring" ? "Tagihan" : item.managed_by === "goal" ? "Target" : "";
-              const Icon = transactionIcon(item.transaction_type);
+              const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type);
               return (
                 <article className="mobile-data-card transaction-mobile-card" key={item.transaction_id}>
                   <div className="transaction-mobile-card__main">
@@ -195,15 +225,32 @@ const TransactionsPage = () => {
       <ConfirmationModal
         open={Boolean(cancelTarget)}
         title="Batalkan transaksi?"
-        description={cancelTarget ? `${cancelTarget.description || "Transaksi"} · pembatalan tidak menghapus audit dan akan menghitung ulang saldo.` : ""}
-        confirmLabel="Batalkan transaksi"
+        description={cancelTarget ? `${cancelTarget.description || "Transaksi"} tidak dihapus permanen. Status berubah menjadi cancelled dan saldo dihitung ulang.` : ""}
+        confirmLabel={cancelTarget ? `Batalkan transaksi Rp${Number(cancelTarget.amount || 0).toLocaleString("id-ID")}` : "Batalkan transaksi"}
         reasonLabel="Alasan pembatalan"
         requireReason
         busy={cancelState.status === "submitting"}
         error={cancelState.error}
         onCancel={() => cancelState.status !== "submitting" && setCancelTarget(null)}
         onConfirm={cancelTransaction}
-      />
+      >
+        {cancelTarget ? <div className="notice notice--warning"><span>{cancelTarget.transaction_date} · {accountLabel(cancelTarget)} · {categoryLabel(cancelTarget)}</span></div> : null}
+      </ConfirmationModal>
+      <ConfirmationModal
+        open={Boolean(restoreTarget)}
+        title="Pulihkan transaksi yang dibatalkan?"
+        description={restoreTarget ? `${restoreTarget.description || "Transaksi"} akan aktif kembali dan kembali memengaruhi saldo. Backend akan memeriksa periode, rekening, kategori, duplikasi, dan saldo terbaru.` : ""}
+        confirmLabel="Pulihkan transaksi"
+        reasonLabel="Alasan pemulihan"
+        requireReason
+        tone="primary"
+        busy={restoreState.status === "submitting"}
+        error={restoreState.error}
+        onCancel={() => restoreState.status !== "submitting" && setRestoreTarget(null)}
+        onConfirm={restoreCancelledTransaction}
+      >
+        {restoreTarget ? <div className="notice notice--warning"><span>Rp{Number(restoreTarget.amount || 0).toLocaleString("id-ID")} · {restoreTarget.transaction_date} · {accountLabel(restoreTarget)}</span></div> : null}
+      </ConfirmationModal>
     </div>
   );
 };

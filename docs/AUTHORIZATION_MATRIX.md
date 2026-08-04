@@ -20,20 +20,28 @@
 | `users.list` | Ya | Tidak |
 | `users.upsert` | Ya | Tidak |
 | `users.deactivate` | Ya | Tidak |
+| `users.reactivate` | Ya | Tidak |
+| `archive.list` | Ya | Tidak |
 | `audit.list` | Ya | Tidak |
 | `dashboard.overview` | Ya | Ya |
 | `accounts.list` | Ya | Ya |
 | `accounts.create` | Ya | Tidak |
 | `accounts.update` | Ya | Tidak |
+| `accounts.previewLifecycle` | Ya | Tidak |
 | `accounts.archive` | Ya | Tidak |
+| `accounts.restore` | Ya | Tidak |
+| `accounts.deleteUnused` | Ya | Tidak |
 | `categories.list` | Ya | Ya |
 | `categories.create` | Ya | Tidak |
 | `categories.update` | Ya | Tidak |
+| `categories.previewArchive` | Ya | Tidak |
 | `categories.archive` | Ya | Tidak |
+| `categories.restore` | Ya | Tidak |
 | `transactions.list` | Ya | Ya |
 | `transactions.create` | Ya | Ya |
 | `transactions.update` | Ya | Ya |
 | `transactions.cancel` | Ya | Ya |
+| `transactions.restore` | Ya | Tidak |
 | `envelopes.list` | Ya | Ya |
 | `envelopes.create` | Ya | Tidak |
 | `envelopes.move` | Ya | Ya |
@@ -55,6 +63,7 @@
 | `reconciliations.list` | Ya | Ya |
 | `reconciliations.create` | Ya | Ya |
 | `periods.list` | Ya | Tidak |
+| `periods.previewClose` | Ya | Tidak |
 | `periods.close` | Ya | Tidak |
 | `periods.reopen` | Ya | Tidak |
 | `calendar.sync` | Ya | Tidak |
@@ -72,13 +81,15 @@
 
 ## Ownership penting
 
-- Member tidak dapat membaca atau menulis rekening personal pengguna lain.
-- Member hanya dapat mengubah/cancel transaksi sendiri, kecuali rule service menyatakan lain.
-- Adjustment owner-only.
+- Kedua pengguna aktif yang lolos Firebase session, outer allowlist, dan binding tabel `users` dapat **membaca seluruh rekening serta ledger**: shared, personal milik sendiri, dan personal milik pasangan. Transparansi baca ini mencakup saldo, nomor rekening, transaksi pembentuk saldo, laporan, dashboard, dan riwayat rekonsiliasi.
+- Rekening personal selalu membawa `owner_name` dari join backend serta capability server-side. Frontend tidak boleh menentukan pemilik atau hak akses dari nama rekening, email client, atau role yang dikirim browser.
+- Hak operasi tetap lebih sempit: member hanya dapat bertransaksi dan merekonsiliasi rekening shared atau rekening personal miliknya. Rekening personal pasangan memiliki `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
+- Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
+- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap owner-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap owner-only.
 - User management, master create/update/archive, budget management, period close/reopen, mirror/calendar manual sync, backup/import/restore/integrity adalah owner-only sesuai action matrix.
-- Export lengkap owner-only melalui `/api/export`.
-- Data `shared` dapat digunakan dua actor sesuai action permission.
-- Setiap query/read model wajib menerapkan filter ownership; jangan mengandalkan filtering frontend.
+- Export lengkap owner-only melalui `/api/export`. Sheets mirror tetap shared-only.
+- Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.
+- `totalBalance` adalah metrik readable/transparan. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` adalah metrik actionable sehingga hanya boleh memakai rekening/scope operable actor.
 
 ## Keputusan role pasangan
 

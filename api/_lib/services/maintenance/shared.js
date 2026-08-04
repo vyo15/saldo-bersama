@@ -4,6 +4,9 @@ import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso } from "../core.js";
 
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, DATABASE_SCHEMA_VERSION]);
+const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
+
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "envelope_rules", "envelope_periods",
   "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements",
@@ -67,7 +70,7 @@ export const decodeBackup = (base64) => {
 };
 
 export const validateSnapshot = (snapshot) => {
-  if (!snapshot || snapshot.manifest?.format !== "saldo-bersama-backup" || ![3, DATABASE_SCHEMA_VERSION].includes(Number(snapshot.manifest?.schemaVersion)) || !snapshot.tables) {
+  if (!snapshot || snapshot.manifest?.format !== "saldo-bersama-backup" || !SUPPORTED_BACKUP_SCHEMA_VERSIONS.has(Number(snapshot.manifest?.schemaVersion)) || !snapshot.tables) {
     throw appError("BACKUP_SCHEMA_UNSUPPORTED", "Format atau versi backup tidak didukung.", 409);
   }
   for (const table of BACKUP_TABLES) {
@@ -79,6 +82,31 @@ export const validateSnapshot = (snapshot) => {
   const copy = { manifest: snapshot.manifest, tables: snapshot.tables };
   if (!checksum || digest(canonicalJson(copy)) !== checksum) throw appError("BACKUP_CHECKSUM_INVALID", "Checksum backup tidak sesuai.", 409);
   return checksum;
+};
+
+
+const legacyBankTemplate = (row = {}) => {
+  if (String(row.account_type || "") !== "bank") return "generic";
+  const name = String(row.name || "").trim().toLowerCase();
+  for (const template of ["bca", "bni", "btn", "mandiri", "permata"]) {
+    if (name.endsWith(` · ${template}`) || name.endsWith(` - ${template}`)) return template;
+  }
+  return "generic";
+};
+
+export const normalizeRestoredRows = (table, rows) => {
+  if (table !== "accounts") return rows;
+  return rows.map((row) => {
+    const accountType = String(row.account_type || "");
+    if (Object.hasOwn(row, "bank_template")) {
+      const template = String(row.bank_template || "").toLowerCase();
+      if (!BANK_TEMPLATES.has(template) || (accountType !== "bank" && template !== "generic")) {
+        throw appError("BACKUP_ROW_INVALID", "Template kartu pada backup tidak valid untuk jenis rekening.", 409);
+      }
+      return { ...row, bank_template: template };
+    }
+    return { ...row, bank_template: legacyBankTemplate(row) };
+  });
 };
 
 export const insertRows = async (tx, table, rows, { mode = "INSERT" } = {}) => {
