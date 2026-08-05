@@ -79,17 +79,19 @@ test("design tokens expose shared control, motion, and layer contracts", async (
 });
 
 test("halaman data utama memiliki representasi card mobile dan filter transaksi canonical", async () => {
-  const [transactions, reports, accounts, settings] = await Promise.all([
+  const [transactions, reports, accounts, reconciliation, settings] = await Promise.all([
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/reconciliations/ReconciliationsPage.jsx"),
     read("src/features/settings/SettingsPage.jsx"),
   ]);
 
   assert.match(transactions, /desktop-data-table/);
   assert.match(transactions, /transaction-mobile-list/);
   assert.match(reports, /budget-mobile-list/);
-  assert.match(accounts, /reconciliation-mobile-list/);
+  assert.match(accounts, /paymentHistoryList/);
+  assert.match(reconciliation, /reconciliation-mobile-list/);
   assert.match(settings, /audit-mobile-list/);
   assert.match(settings, /owner-admin-section/);
   assert.match(transactions, /account_id:\s*filters\.account/);

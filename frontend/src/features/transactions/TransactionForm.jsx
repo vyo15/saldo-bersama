@@ -9,7 +9,8 @@ import { createIdempotencyKey } from "../../domain/security.js";
 import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
-import { filterByOwnership, hasSameOwnership, ownershipLabel } from "../../domain/ownership.js";
+import { filterByOwnership, hasSameOwnership } from "../../domain/ownership.js";
+import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
 
 const emptyForm = () => ({
@@ -20,7 +21,7 @@ const emptyForm = () => ({
   destination_account_id: "",
   category_id: "",
   envelope_period_id: "",
-  payment_method: "transfer",
+  payment_method: "",
   merchant: "",
   description: "",
   overspend_reason: "",
@@ -217,11 +218,11 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
                 envelope_period_id: envelope && !hasSameOwnership(envelope, nextAccount) ? "" : current.envelope_period_id,
               };
             });
-          }} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name} · {ownershipLabel(item)}</option>)}</select>{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>
+          }} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select>{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>
         ) : null}
 
         {(isIncome || isTransfer) ? (
-          <label className="field" htmlFor="destination-account"><span>Rekening tujuan *</span><select id="destination-account" value={form.destination_account_id} onChange={(event) => update("destination_account_id", event.target.value)} aria-invalid={Boolean(errors.destination_account_id)}><option value="">Pilih rekening</option>{compatibleDestinationAccounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name} · {ownershipLabel(item)}</option>)}</select>{errors.destination_account_id ? <small className="field__error">{errors.destination_account_id}</small> : null}</label>
+          <label className="field" htmlFor="destination-account"><span>Rekening tujuan *</span><select id="destination-account" value={form.destination_account_id} onChange={(event) => update("destination_account_id", event.target.value)} aria-invalid={Boolean(errors.destination_account_id)}><option value="">Pilih rekening</option>{compatibleDestinationAccounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select>{errors.destination_account_id ? <small className="field__error">{errors.destination_account_id}</small> : null}</label>
         ) : null}
 
         {!isTransfer ? (
@@ -246,7 +247,7 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
             <FiChevronDown aria-hidden="true" />
           </button>
           <div id="transaction-optional-fields" className={`optional-fields__content${detailsOpen ? " is-open" : ""}`} hidden={!detailsOpen}>
-            <label className="field" htmlFor="payment-method"><span>Metode pembayaran</span><select id="payment-method" value={form.payment_method} onChange={(event) => update("payment_method", event.target.value)}><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="debit">Kartu debit</option><option value="ewallet">E-wallet</option><option value="autodebit">Auto-debit</option></select></label>
+            <label className="field" htmlFor="payment-method"><span>Metode pembayaran</span><select id="payment-method" value={form.payment_method} onChange={(event) => update("payment_method", event.target.value)}><option value="">Belum dipilih</option><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="debit">Kartu debit</option><option value="ewallet">E-wallet</option><option value="autodebit">Auto-debit</option></select></label>
             <label className="field" htmlFor="merchant"><span>Merchant/penerima</span><input id="merchant" maxLength="120" value={form.merchant} onChange={(event) => update("merchant", event.target.value)} /></label>
             {form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <label className="field form-grid__full" htmlFor="overspend-reason"><span>Alasan jika melebihi jatah</span><input id="overspend-reason" maxLength="180" value={form.overspend_reason} onChange={(event) => update("overspend_reason", event.target.value)} aria-invalid={Boolean(errors.overspend_reason)} placeholder="Wajib hanya jika sisa jatah tidak cukup" />{errors.overspend_reason ? <small className="field__error">{errors.overspend_reason}</small> : null}</label> : null}
             <label className="field form-grid__full" htmlFor="description"><span>Keterangan</span><textarea id="description" rows="3" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>

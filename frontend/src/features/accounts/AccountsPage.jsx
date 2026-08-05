@@ -2,12 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import {
   FiArrowLeft,
   FiClock,
-  FiEye,
-  FiFileText,
-  FiInfo,
   FiList,
   FiPlus,
-  FiRefreshCw,
 } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
@@ -25,7 +21,6 @@ import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   archiveAccount,
   createAccount as requestCreateAccount,
-  createReconciliation,
   deleteUnusedAccount,
   previewAccountLifecycle,
   updateAccount as requestUpdateAccount,
@@ -42,7 +37,7 @@ import {
   transactionTone,
 } from "../transactions/transactionPresentation.js";
 import AccountFinancialCard, { AccountVisual } from "./components/AccountFinancialCard.jsx";
-import { accountCardholderName, BANK_TEMPLATE_OPTIONS, detectBankTemplate } from "./accountPresentation.js";
+import { accountCardholderName, accountDisplayLabel, BANK_TEMPLATE_OPTIONS, detectBankTemplate } from "./accountPresentation.js";
 import styles from "./AccountsPage.module.css";
 
 const emptyAccountForm = () => ({
@@ -96,9 +91,6 @@ const stackStyleAtDifference = (difference) => {
 const AccountsPage = () => {
   const navigate = useNavigate();
   const accountsResource = useApiResource("accounts.list");
-  const [showReconciliations, setShowReconciliations] = useState(false);
-  const [reconciliationInfoOpen, setReconciliationInfoOpen] = useState(false);
-  const reconciliationsResource = useApiResource("reconciliations.list", { limit: 30 }, { enabled: showReconciliations });
   const { bootstrap, refreshAll, invalidate } = useFinance();
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -107,7 +99,6 @@ const AccountsPage = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [message, setMessage] = useState(null);
   const [editAccount, setEditAccount] = useState(null);
-  const [reconciliation, setReconciliation] = useState({ account: null, actual_balance: "", notes: "Cocokkan dengan mutasi bank/tunai" });
   const [dialogState, setDialogState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -133,7 +124,7 @@ const AccountsPage = () => {
   const mobileStackPositionRef = useRef(0);
   const mobileStackSettledIndexRef = useRef(0);
   const mobileStackAnimationRef = useRef(0);
-  const mobileStackGestureRef = useRef({ dragging: false, startY: 0, startTime: 0, lastY: 0, lastTime: 0, velocityY: 0, suppressClick: false });
+  const mobileStackGestureRef = useRef({ tracking: false, dragging: false, pointerId: null, startX: 0, startY: 0, startTime: 0, lastX: 0, lastTime: 0, velocityX: 0, suppressClick: false });
   const mobileStackAnimatingRef = useRef(false);
   const mobileStackWheelLockedRef = useRef(false);
   const detailContainerRef = useRef(null);
@@ -211,24 +202,6 @@ const AccountsPage = () => {
       bank_template: detectBankTemplate(account),
     });
     setDialogState({ status: "idle", error: null });
-  };
-
-  const saveReconciliation = async (event) => {
-    event.preventDefault();
-    if (!reconciliation.account) return;
-    setDialogState({ status: "submitting", error: null });
-    try {
-      const result = await createReconciliation({
-        account_id: reconciliation.account.account_id,
-        actual_balance: parseRupiah(reconciliation.actual_balance),
-        notes: reconciliation.notes,
-      }, { idempotencyKey: createIdempotencyKey() });
-      setReconciliation({ account: null, actual_balance: "", notes: "Cocokkan dengan mutasi bank/tunai" });
-      setDialogState({ status: "idle", error: null });
-      setMessage({ type: result.difference === 0 ? "success" : "warning", text: result.difference === 0 ? "Saldo cocok dan rekonsiliasi tercatat." : `Ada selisih ${result.difference}. Cari transaksi tertinggal atau buat penyesuaian beralasan.` });
-      invalidate(["reconciliations.list", "dashboard.overview", "app.initialState"]);
-      await Promise.allSettled([showReconciliations ? reconciliationsResource.reload() : Promise.resolve(), refreshAll()]);
-    } catch (error) { setDialogState({ status: "error", error }); }
   };
 
   const openAccountLifecycle = async (account) => {
@@ -398,76 +371,124 @@ const AccountsPage = () => {
     animateMobileStackTo(mobileStackSettledIndexRef.current + step);
   }, [animateMobileStackTo]);
 
+  const resetMobileStackGesture = useCallback(() => {
+    const gesture = mobileStackGestureRef.current;
+    gesture.tracking = false;
+    gesture.dragging = false;
+    gesture.pointerId = null;
+    mobileStackStageRef.current?.classList.remove(styles.mobileStackDragging);
+    setMobileStackWillChange(false);
+  }, [setMobileStackWillChange]);
+
   const handleMobileStackPointerDown = useCallback((event) => {
     if (mobileStackAnimatingRef.current || mobileStackAccountsRef.current.length <= 1) return;
     const now = performance.now();
     mobileStackGestureRef.current = {
-      dragging: true,
+      tracking: true,
+      dragging: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
       startY: event.clientY,
       startTime: now,
-      lastY: event.clientY,
+      lastX: event.clientX,
       lastTime: now,
-      velocityY: 0,
+      velocityX: 0,
       suppressClick: false,
     };
-    mobileStackStageRef.current?.classList.add(styles.mobileStackDragging);
-    mobileStackStageRef.current?.setPointerCapture(event.pointerId);
-    setMobileStackWillChange(true);
-  }, [setMobileStackWillChange]);
+  }, []);
 
   const handleMobileStackPointerMove = useCallback((event) => {
     const gesture = mobileStackGestureRef.current;
-    if (!gesture.dragging) return;
+    if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+
+    if (!gesture.dragging) {
+      if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        gesture.tracking = false;
+        return;
+      }
+      if (Math.abs(deltaX) < 8 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.15) return;
+      gesture.dragging = true;
+      gesture.suppressClick = true;
+      mobileStackStageRef.current?.classList.add(styles.mobileStackDragging);
+      mobileStackStageRef.current?.setPointerCapture(event.pointerId);
+      setMobileStackWillChange(true);
+    }
+
     const now = performance.now();
     const elapsed = Math.max(1, now - gesture.lastTime);
-    gesture.velocityY = (event.clientY - gesture.lastY) / elapsed;
-    gesture.lastY = event.clientY;
+    gesture.velocityX = (event.clientX - gesture.lastX) / elapsed;
+    gesture.lastX = event.clientX;
     gesture.lastTime = now;
 
-    const deltaY = event.clientY - gesture.startY;
-    if (Math.abs(deltaY) > 5) gesture.suppressClick = true;
-    const progress = clamp(-deltaY / 154, -0.92, 0.92);
+    const progress = clamp(-deltaX / 154, -0.92, 0.92);
     mobileStackPositionRef.current = mobileStackSettledIndexRef.current + progress;
     applyMobileStackPosition();
-  }, [applyMobileStackPosition]);
+  }, [applyMobileStackPosition, setMobileStackWillChange]);
 
   const finishMobileStackPointer = useCallback((event) => {
     const gesture = mobileStackGestureRef.current;
-    if (!gesture.dragging) return;
-    const totalDeltaY = event.clientY - gesture.startY;
+    if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
+
+    if (!gesture.dragging) {
+      resetMobileStackGesture();
+      return;
+    }
+
+    const totalDeltaX = event.clientX - gesture.startX;
     const totalElapsed = Math.max(1, performance.now() - gesture.startTime);
-    const averageVelocity = totalDeltaY / totalElapsed;
+    const averageVelocity = totalDeltaX / totalElapsed;
     const progress = mobileStackPositionRef.current - mobileStackSettledIndexRef.current;
 
-    gesture.dragging = false;
-    mobileStackStageRef.current?.classList.remove(styles.mobileStackDragging);
+    if (mobileStackStageRef.current?.hasPointerCapture(event.pointerId)) {
+      mobileStackStageRef.current.releasePointerCapture(event.pointerId);
+    }
+    resetMobileStackGesture();
 
-    const fastSwipe = Math.abs(gesture.velocityY) > 0.48 || Math.abs(averageVelocity) > 0.42;
+    const fastSwipe = Math.abs(gesture.velocityX) > 0.48 || Math.abs(averageVelocity) > 0.42;
     const passedThreshold = Math.abs(progress) >= 0.28;
     if (fastSwipe || passedThreshold) {
-      const direction = progress !== 0 ? Math.sign(progress) : (totalDeltaY < 0 ? 1 : -1);
+      const direction = progress !== 0 ? Math.sign(progress) : (totalDeltaX < 0 ? 1 : -1);
       animateMobileStackTo(mobileStackSettledIndexRef.current + direction);
     } else {
       animateMobileStackTo(mobileStackSettledIndexRef.current, { announce: false });
     }
 
     window.setTimeout(() => { mobileStackGestureRef.current.suppressClick = false; }, 0);
-  }, [animateMobileStackTo]);
+  }, [animateMobileStackTo, resetMobileStackGesture]);
+
+  const cancelMobileStackPointer = useCallback((event) => {
+    const gesture = mobileStackGestureRef.current;
+    if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
+    if (mobileStackStageRef.current?.hasPointerCapture(event.pointerId)) {
+      mobileStackStageRef.current.releasePointerCapture(event.pointerId);
+    }
+    const wasDragging = gesture.dragging;
+    resetMobileStackGesture();
+    if (wasDragging) animateMobileStackTo(mobileStackSettledIndexRef.current, { announce: false });
+  }, [animateMobileStackTo, resetMobileStackGesture]);
 
   const handleMobileStackWheel = useCallback((event) => {
-    if (mobileStackWheelLockedRef.current || mobileStackAnimatingRef.current || mobileStackAccountsRef.current.length <= 1) return;
+    if (
+      Math.abs(event.deltaX) <= Math.abs(event.deltaY)
+      || mobileStackWheelLockedRef.current
+      || mobileStackAnimatingRef.current
+      || mobileStackAccountsRef.current.length <= 1
+    ) return;
     event.preventDefault();
     mobileStackWheelLockedRef.current = true;
-    moveMobileStack(event.deltaY > 0 ? 1 : -1);
+    moveMobileStack(event.deltaX > 0 ? 1 : -1);
     window.setTimeout(() => { mobileStackWheelLockedRef.current = false; }, 560);
   }, [moveMobileStack]);
 
   const handleMobileStackKeyDown = useCallback((event) => {
-    if (["ArrowUp", "ArrowLeft"].includes(event.key)) {
+    if (event.key === "ArrowLeft") {
       event.preventDefault();
       moveMobileStack(-1);
     }
-    if (["ArrowDown", "ArrowRight"].includes(event.key)) {
+    if (event.key === "ArrowRight") {
       event.preventDefault();
       moveMobileStack(1);
     }
@@ -509,13 +530,12 @@ const AccountsPage = () => {
   const currentDatabaseUser = activeUsers.find((item) => item.is_current) || null;
   const currentOwnerLabel = currentDatabaseUser?.name || user?.name || "Pengguna aktif";
   const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) || accounts[0] || null;
-  const accountLookup = Object.fromEntries((bootstrap?.accounts?.length ? bootstrap.accounts : accounts).map((account) => [account.account_id, account.name]));
+  const accountLookup = Object.fromEntries((bootstrap?.accounts?.length ? bootstrap.accounts : accounts).map((account) => [account.account_id, accountDisplayLabel(account)]));
   const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((category) => [category.category_id, category]));
   const paymentHistoryItems = (paymentHistoryResource.data?.items || []).filter((item) => (
     item.source_account_id === selectedAccount?.account_id
     && ["expense", "transfer"].includes(item.transaction_type)
   ));
-  const canReconcileSelectedAccount = Boolean(selectedAccount?.can_reconcile ?? ownerMode);
   const accountPreview = {
     name: accountForm.name || "Nama rekening",
     account_type: accountForm.account_type,
@@ -553,8 +573,8 @@ const AccountsPage = () => {
             <div className={styles.mobileAccountExperience}>
               <section className={styles.mobileStackPanel} aria-labelledby="mobile-account-stack-title">
                 <header className={styles.mobileStackHeader}>
-                  <button type="button" className={styles.mobileStackHeaderButton} onClick={() => navigate(-1)}>
-                    <FiArrowLeft aria-hidden="true" /><span>Kembali</span>
+                  <button type="button" className={styles.mobileStackHeaderButton} onClick={() => navigate("/")}>
+                    <FiArrowLeft aria-hidden="true" /><span>Beranda</span>
                   </button>
                   <div className={styles.mobileStackHeaderActions}>
                     {ownerMode ? (
@@ -565,10 +585,10 @@ const AccountsPage = () => {
                     <button
                       type="button"
                       className={styles.mobileStackHeaderButton}
-                      onClick={() => mobileStackStageRef.current?.focus()}
-                      aria-label={`Semua kartu, ${accounts.length} rekening aktif`}
+                      onClick={() => setMobileAccountSheet("accounts")}
+                      aria-label={`Buka daftar ${accounts.length} rekening aktif`}
                     >
-                      <span>Semua kartu</span><FiEye aria-hidden="true" />
+                      <span>Daftar rekening</span><FiList aria-hidden="true" />
                     </button>
                   </div>
                 </header>
@@ -577,12 +597,12 @@ const AccountsPage = () => {
                   ref={mobileStackStageRef}
                   className={styles.mobileStackStage}
                   tabIndex={0}
-                  aria-label="Geser ke atas atau bawah untuk mengganti rekening"
+                  aria-label="Geser ke kiri atau kanan untuk mengganti rekening"
                   aria-describedby="mobile-account-stack-hint"
                   onPointerDown={handleMobileStackPointerDown}
                   onPointerMove={handleMobileStackPointerMove}
                   onPointerUp={finishMobileStackPointer}
-                  onPointerCancel={finishMobileStackPointer}
+                  onPointerCancel={cancelMobileStackPointer}
                   onWheel={handleMobileStackWheel}
                   onKeyDown={handleMobileStackKeyDown}
                 >
@@ -619,36 +639,19 @@ const AccountsPage = () => {
                     <span>{Math.max(1, accounts.findIndex((account) => account.account_id === selectedAccount.account_id) + 1)} dari {accounts.length}</span>
                   </div>
                 ) : null}
-                <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser vertikal untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
+                <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser horizontal untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
                 <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />
               </section>
 
               {selectedAccount ? (
                 <div className={styles.mobileQuickActions} aria-label={`Aksi cepat rekening ${selectedAccount.name}`}>
-                  <button type="button" className={styles.mobileQuickAction} onClick={() => navigate("/transaksi")}>
+                  <button type="button" className={styles.mobileQuickAction} onClick={() => navigate("/transaksi", { state: { accountId: selectedAccount.account_id } })}>
                     <span><FiList aria-hidden="true" /></span>
                     <strong>Transaksi</strong>
                   </button>
-                  {canReconcileSelectedAccount ? (
-                    <button
-                      type="button"
-                      className={styles.mobileQuickAction}
-                      onClick={() => {
-                        setReconciliation({ account: selectedAccount, actual_balance: String(selectedAccount.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" });
-                        setDialogState({ status: "idle", error: null });
-                      }}
-                    >
-                      <span><FiRefreshCw aria-hidden="true" /></span>
-                      <strong>Rekonsiliasi</strong>
-                    </button>
-                  ) : null}
-                  <button type="button" className={styles.mobileQuickAction} onClick={() => navigate("/tagihan")}>
-                    <span><FiFileText aria-hidden="true" /></span>
-                    <strong>Bayar tagihan</strong>
-                  </button>
                   <button type="button" className={styles.mobileQuickAction} onClick={() => setMobileAccountSheet("history")}>
                     <span><FiClock aria-hidden="true" /></span>
-                    <strong>Riwayat</strong>
+                    <strong>Pembayaran keluar</strong>
                   </button>
                 </div>
               ) : null}
@@ -687,7 +690,7 @@ const AccountsPage = () => {
                     ownerMode={ownerMode}
                     closeButtonRef={detailCloseRef}
                     onClose={closeMobileDetail}
-                    onReconcile={(item) => { setReconciliation({ account: item, actual_balance: String(item.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" }); setDialogState({ status: "idle", error: null }); }}
+                    onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
                     onEdit={openEditAccount}
                     onArchive={openAccountLifecycle}
                   />
@@ -704,39 +707,35 @@ const AccountsPage = () => {
         )}
       </section>
 
-      <Card className={`panel ${styles.reconciliationPanel}`}>
-        <div className={`panel__header ${styles.reconciliationHeader}`}>
-          <div className={styles.reconciliationHeading}>
-            <div className={styles.reconciliationEyebrowRow}>
-              <p className="eyebrow">Riwayat rekonsiliasi</p>
-              <button
-                type="button"
-                className={styles.reconciliationInfoButton}
-                aria-label="Baca penjelasan rekonsiliasi"
-                title="Tentang rekonsiliasi"
-                onClick={() => setReconciliationInfoOpen(true)}
-              >
-                <FiInfo aria-hidden="true" />
-              </button>
-            </div>
-            <h2>Perbandingan saldo sistem dan saldo aktual</h2>
-            <p className={styles.reconciliationSummary}>Buka riwayat untuk melihat hasil pencocokan terakhir.</p>
-          </div>
-          <Button className={styles.reconciliationToggle} icon={FiClock} onClick={() => setShowReconciliations((current) => !current)}>{showReconciliations ? "Tutup riwayat" : "Muat riwayat"}</Button>
+
+      <Modal
+        open={mobileAccountSheet === "accounts"}
+        onClose={() => setMobileAccountSheet(null)}
+        title="Daftar rekening"
+        description="Pilih rekening untuk menampilkannya sebagai kartu aktif."
+        size="sm"
+      >
+        <div className={styles.mobileAccountList} aria-label="Daftar rekening aktif">
+          {accounts.map((account) => (
+            <button
+              key={`mobile-account-list-${account.account_id}`}
+              type="button"
+              className={styles.mobileAccountListItem}
+              aria-pressed={account.account_id === selectedAccount?.account_id}
+              onClick={() => {
+                setSelectedAccountId(account.account_id);
+                setMobileAccountSheet(null);
+              }}
+            >
+              <span>
+                <strong>{accountDisplayLabel(account)}</strong>
+                <small>{account.owner_scope === "shared" ? "Rekening bersama" : `Rekening pribadi${account.owner_name ? ` · ${account.owner_name}` : ""}`}</small>
+              </span>
+              <Money value={account.balance || 0} />
+            </button>
+          ))}
         </div>
-        {showReconciliations ? (
-          reconciliationsResource.status === "loading"
-            ? <p>Memuat riwayat rekonsiliasi...</p>
-            : reconciliationsResource.status === "error"
-              ? <ErrorState error={reconciliationsResource.error} onRetry={reconciliationsResource.reload} />
-              : (reconciliationsResource.data?.items || []).length ? (
-                <>
-                  <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Waktu</th><th>Rekening</th><th className="align-right">Sistem</th><th className="align-right">Aktual</th><th className="align-right">Selisih</th><th>Status</th></tr></thead><tbody>{(reconciliationsResource.data?.items || []).map((item) => <tr key={item.reconciliation_id}><td>{item.reconciled_at}</td><td>{item.account_name || item.account_id}</td><td className="align-right"><Money value={item.system_balance} /></td><td className="align-right"><Money value={item.actual_balance} /></td><td className="align-right"><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody></table></div>
-                  <div className="mobile-data-list reconciliation-mobile-list" aria-label="Riwayat rekonsiliasi">{(reconciliationsResource.data?.items || []).map((item) => <article className="mobile-data-card reconciliation-mobile-card" key={item.reconciliation_id}><div className="reconciliation-mobile-card__header"><div><strong>{item.account_name || item.account_id}</strong><small>{item.reconciled_at}</small></div><StatusBadge status={item.status} /></div><dl><div><dt>Saldo sistem</dt><dd><Money value={item.system_balance} /></dd></div><div><dt>Saldo aktual</dt><dd><Money value={item.actual_balance} /></dd></div><div><dt>Selisih</dt><dd><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></dd></div></dl></article>)}</div>
-                </>
-              ) : <p className="empty-inline-message">Belum ada rekonsiliasi.</p>
-        ) : null}
-      </Card>
+      </Modal>
 
       <Modal
         open={mobileAccountSheet === "detail" && Boolean(selectedAccount)}
@@ -751,12 +750,7 @@ const AccountsPage = () => {
             variant="mobileDetail"
             embedded
             ownerMode={ownerMode}
-            onViewTransactions={() => { setMobileAccountSheet(null); navigate("/transaksi"); }}
-            onReconcile={(item) => {
-              setMobileAccountSheet(null);
-              setReconciliation({ account: item, actual_balance: String(item.balance || 0), notes: "Cocokkan dengan mutasi bank/tunai" });
-              setDialogState({ status: "idle", error: null });
-            }}
+            onViewTransactions={(item) => { setMobileAccountSheet(null); navigate("/transaksi", { state: { accountId: item.account_id } }); }}
             onEdit={(item) => { setMobileAccountSheet(null); openEditAccount(item); }}
             onArchive={(item) => { setMobileAccountSheet(null); openAccountLifecycle(item); }}
           />
@@ -766,10 +760,10 @@ const AccountsPage = () => {
       <Modal
         open={mobileAccountSheet === "history" && Boolean(selectedAccount)}
         onClose={() => setMobileAccountSheet(null)}
-        title="Riwayat pembayaran"
-        description={selectedAccount ? `Pembayaran keluar yang menggunakan ${selectedAccount.name}.` : "Riwayat pembayaran rekening."}
+        title="Pembayaran keluar"
+        description={selectedAccount ? `Pengeluaran dan transfer keluar yang menggunakan ${selectedAccount.name}.` : "Pembayaran keluar rekening."}
         size="sm"
-        footer={<Button onClick={() => { setMobileAccountSheet(null); navigate("/transaksi"); }}>Lihat semua transaksi</Button>}
+        footer={<Button onClick={() => { setMobileAccountSheet(null); navigate("/transaksi", { state: { accountId: selectedAccount.account_id } }); }}>Lihat semua transaksi rekening</Button>}
       >
         <div className={styles.paymentHistoryToolbar}>
           <label>
@@ -791,7 +785,7 @@ const AccountsPage = () => {
         ) : paymentHistoryResource.status === "error" ? (
           <ErrorState error={paymentHistoryResource.error} onRetry={paymentHistoryResource.reload} />
         ) : paymentHistoryItems.length ? (
-          <div className={styles.paymentHistoryList} aria-label={`Riwayat pembayaran ${selectedAccount?.name || "rekening"}`}>
+          <div className={styles.paymentHistoryList} aria-label={`Pembayaran keluar ${selectedAccount?.name || "rekening"}`}>
             {paymentHistoryItems.map((item) => {
               const category = categoryLookup[item.category_id];
               const HistoryIcon = transactionCategoryIcon(category, item.transaction_type);
@@ -800,17 +794,18 @@ const AccountsPage = () => {
                 ? accountLookup[item.destination_account_id] || "Rekening tujuan"
                 : category?.name || TRANSACTION_LABELS[item.transaction_type] || "Pembayaran";
               const title = item.description || item.merchant || TRANSACTION_LABELS[item.transaction_type] || "Pembayaran";
+              const inactive = Boolean(item.status && item.status !== "active");
               return (
                 <article className={styles.paymentHistoryItem} key={item.transaction_id}>
-                  <span className={styles.paymentHistoryIcon} data-tone={tone}><HistoryIcon aria-hidden="true" /></span>
+                  <span className={styles.paymentHistoryIcon} data-tone={inactive ? "neutral" : tone}><HistoryIcon aria-hidden="true" /></span>
                   <div className={styles.paymentHistoryCopy}>
                     <strong>{title}</strong>
                     <small>{item.transaction_type === "transfer" ? `Transfer ke ${destination}` : destination}</small>
                     <span>{formatTransactionDate(item.transaction_date)}</span>
                   </div>
                   <div className={styles.paymentHistoryMeta}>
-                    <strong data-tone={tone}>− <Money value={item.amount || 0} /></strong>
-                    {item.status && item.status !== "active" ? <StatusBadge status={item.status} /> : <small>Tercatat</small>}
+                    <strong data-tone={inactive ? "neutral" : tone}>{inactive ? null : "− "}<Money value={item.amount || 0} /></strong>
+                    {inactive ? <StatusBadge status={item.status} /> : <small>Tercatat</small>}
                   </div>
                 </article>
               );
@@ -825,23 +820,6 @@ const AccountsPage = () => {
         )}
       </Modal>
 
-      <Modal
-        open={reconciliationInfoOpen}
-        onClose={() => setReconciliationInfoOpen(false)}
-        title="Tentang rekonsiliasi"
-        description="Panduan singkat untuk menjaga saldo aplikasi tetap sesuai kondisi nyata."
-        size="sm"
-        footer={<Button variant="primary" onClick={() => setReconciliationInfoOpen(false)}>Mengerti</Button>}
-      >
-        <div className={styles.reconciliationInfo}>
-          <p>Cocokkan saldo aplikasi dengan saldo bank atau uang tunai secara berkala, disarankan satu kali setiap bulan.</p>
-          <ul>
-            <li>Rekening pribadi pasangan tetap terlihat untuk transparansi bersama.</li>
-            <li>Aksi rekonsiliasi, edit, dan arsip hanya tersedia bila izin akun Anda telah dikonfirmasi oleh server.</li>
-            <li>Selisih tidak mengubah saldo secara otomatis; periksa transaksi yang tertinggal sebelum membuat penyesuaian.</li>
-          </ul>
-        </div>
-      </Modal>
 
       <Modal open={createDialogOpen} onClose={closeCreateDialog} title="Tambah rekening" description="Isi identitas rekening dan saldo awal. Nomor rekening tidak pernah diperlakukan sebagai nomor kartu debit." size="lg" initialFocusRef={createNameInputRef} footer={<><Button onClick={closeCreateDialog} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={dialogState.status === "submitting"}>Simpan rekening</Button></>}>
         <div className={styles.createAccountLayout}>
@@ -871,13 +849,6 @@ const AccountsPage = () => {
         </div>
       </Modal>
 
-      <Modal open={Boolean(reconciliation.account)} onClose={() => dialogState.status !== "submitting" && setReconciliation((current) => ({ ...current, account: null }))} title="Rekonsiliasi rekening" description={reconciliation.account ? `${reconciliation.account.name} · saldo sistem ${reconciliation.account.balance}` : ""} footer={<><Button onClick={() => setReconciliation((current) => ({ ...current, account: null }))} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="reconciliation-form" disabled={dialogState.status === "submitting"}>{dialogState.status === "submitting" ? "Menyimpan..." : "Simpan rekonsiliasi"}</Button></>}>
-        <form id="reconciliation-form" className="form-grid" onSubmit={saveReconciliation}>
-          <MoneyInput id="actual-balance" label="Saldo aktual" value={reconciliation.actual_balance} onChange={(value) => setReconciliation((current) => ({ ...current, actual_balance: value }))} />
-          <label className="field form-grid__full"><span>Catatan</span><textarea rows="3" maxLength="250" value={reconciliation.notes} onChange={(event) => setReconciliation((current) => ({ ...current, notes: event.target.value }))} /></label>
-          {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
-        </form>
-      </Modal>
 
       <Modal open={Boolean(editAccount)} onClose={() => dialogState.status !== "submitting" && setEditAccount(null)} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={() => setEditAccount(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={dialogState.status === "submitting"}>{dialogState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
         <form id="edit-account-form" className="form-grid" onSubmit={saveAccount}>

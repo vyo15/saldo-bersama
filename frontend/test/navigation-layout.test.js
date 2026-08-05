@@ -141,11 +141,13 @@ test("navigasi mengelompokkan perencanaan dan kelola tanpa mengubah route", asyn
   assert.match(source, /FiRepeat/);
   assert.match(source, /FiCreditCard/);
   assert.match(source, /FiTag/);
+  assert.match(source, /FiCheckCircle/);
   assert.match(source, /to: "\/kategori", label: "Kategori"/);
+  assert.match(source, /to: "\/rekonsiliasi", label: "Rekonsiliasi"/);
   assert.match(source, /label: "Perencanaan"/);
   assert.match(source, /items: pickNavigation\("\/alokasi", "\/tagihan", "\/target"\)/);
   assert.match(source, /label: "Kelola"/);
-  assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
+  assert.match(source, /items: pickNavigation\("\/rekening", "\/rekonsiliasi", "\/kategori"\)/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
   assert.match(source, /pickNavigation\("\/", "\/transaksi", "\/laporan"\)/);
   assert.doesNotMatch(source, /PRIMARY_NAVIGATION\[\d+\]/);
@@ -173,6 +175,8 @@ test("menu mobile tidak menduplikasi kontrol tema dan logout berada di footer", 
     read("src/styles/components.css"),
   ]);
   assert.doesNotMatch(shell, /ThemeToggle showLabel/);
+  assert.doesNotMatch(shell, /mobile-menu-quick-add/);
+  assert.match(shell, /!dashboardRoute && !transactionsRoute/);
   assert.match(shell, /mobile-menu-footer/);
   assert.match(shell, /mobile-menu-logout/);
   assert.match(components, /\.mobile-menu-link \{[^}]*border:\s*0;/);

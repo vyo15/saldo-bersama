@@ -1,6 +1,7 @@
 import { FiFilter, FiRotateCcw } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
+import { accountDisplayLabel } from "../../accounts/accountPresentation.js";
 import { TRANSACTION_LABELS } from "../../transactions/transactionPresentation.js";
 
 const MobileDashboardFilters = ({
@@ -46,7 +47,7 @@ const MobileDashboardFilters = ({
         <span>Rekening</span>
         <select value={accountFilter} onChange={(event) => onAccountFilterChange(event.target.value)}>
           <option value="all">Semua rekening</option>
-          {accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name}</option>)}
+          {accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}
         </select>
       </label>
       <label className="field">

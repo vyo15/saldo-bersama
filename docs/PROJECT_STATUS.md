@@ -1,12 +1,33 @@
 # Project Status
 
-**Last source verification:** 2026-08-04
+**Last source verification:** 2026-08-05
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(131).zip` + patch modal/template/sidebar yang disetujui 2026-08-04
+**Source baseline:** `saldo-bersama-clean(4).zip` + patch rekening, rekonsiliasi, navigasi, dan accessibility yang disetujui 2026-08-05
 **Schema:** version 5, migrations `001_initial_schema.sql`, `002_account_number.sql`, dan `003_account_bank_template.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
 Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implementasi utama.
+
+## Rekening, rekonsiliasi, navigasi, dan accessibility 2026-08-05
+
+- Stack kartu rekening mobile memakai swipe horizontal serta `touch-action: pan-y`, sehingga pergantian rekening tidak mengambil alih scroll vertikal halaman.
+- Kontrol `Daftar rekening` membuka daftar rekening aktif; tombol kembali mobile menuju Beranda secara deterministik; navigasi dari rekening ke Transaksi membawa filter rekening melalui navigation state, bukan URL.
+- Quick action rekening dipersempit menjadi `Transaksi` dan `Pembayaran keluar`. Aksi `Bayar tagihan`, panel rekonsiliasi tertanam, serta penjelasan rekonsiliasi yang berulang dihapus dari halaman Rekening.
+- Route `/rekonsiliasi` menjadi tempat canonical untuk pencocokan saldo. Form hanya tampil untuk rekening dengan `can_reconcile === true`; backend tetap memverifikasi capability, idempotency, dan audit. Selisih tidak membuat adjustment otomatis.
+- Formatter label rekening terpusat menampilkan provider, nama rekening, dan pemilik personal bila perlu agar rekening bernama serupa tetap dapat dibedakan.
+- Form transaksi tidak lagi mengisi metode pembayaran `transfer` secara tersembunyi. Nilai awal kosong dan pengguna harus memilih bila ingin mencatat metode pembayaran.
+- Menu lainnya tidak menduplikasi `Tambah transaksi`; floating quick-add tidak tampil pada Dashboard atau route Transaksi; label aksi dashboard diselaraskan dengan perilaku navigasinya.
+- Kontrol form mobile memakai font minimal 16px untuk mengurangi auto-zoom Safari. Geometri modal hanya berasal dari `Modal.module.css`; minimum width body yang berpotensi menyebabkan overflow viewport sempit dihapus.
+- Tidak ada perubahan schema, migration, API contract, Firebase Auth, allowlist, role, perhitungan saldo, transfer, soft delete, audit backend, backup/restore, environment, dependency, atau deployment.
+
+### Verifikasi sandbox 2026-08-05
+
+- Frontend static/contract: 73/73 lulus.
+- Backend: 118/118 lulus.
+- Source validation: lulus, 320 file diperiksa dan 5/12 Vercel Functions canonical.
+- Syntax Node: lulus, 94 file.
+- Syntax dan boot Apps Script: lulus, 6 file dan 2 urutan load.
+- Dependency install gagal karena registry sandbox tidak menyediakan tarball `vite@7.3.6`; runtime sandbox Node 22.16.0 juga lebih rendah dari baseline Node 24.x. Lint dan build kemudian terblokir karena `eslint`/`vite` tidak tersedia, build budget terblokir karena `frontend/dist` belum terbentuk, dan browser suite menghasilkan 3 lulus serta 4 terblokir karena `frontend/dist/index.html` tidak tersedia.
 
 ## Arsitektur aktif
 

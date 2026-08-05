@@ -100,3 +100,22 @@ test("tipografi memakai system font yang tersedia dan bobot standar tanpa synthe
   ].map((name) => readFile(new URL(`../src/styles/${name}`, import.meta.url), "utf8")));
   assert.doesNotMatch(sharedStyles.join("\n"), /font-weight:\s*(?:[89]\d{2}|7[5-9]\d);/);
 });
+
+test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir scroll vertikal", async () => {
+  const [responsive, accountStyles, indexHtml, components, modalStyles, reset] = await Promise.all([
+    readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/accounts/AccountsPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/Modal.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*font-size: 16px;/);
+  assert.match(accountStyles, /touch-action: pan-y/);
+  assert.doesNotMatch(accountStyles, /touch-action: none/);
+  assert.doesNotMatch(indexHtml, /user-scalable=no|maximum-scale=1/i);
+  assert.doesNotMatch(components, /\.modal(?:-backdrop|--lg|__header|__body|__footer|\s*\{)/);
+  assert.match(modalStyles, /max-height: min\(94dvh, 57\.5rem\)/);
+  assert.match(reset, /body \{ margin: 0; min-width: 0;/);
+});

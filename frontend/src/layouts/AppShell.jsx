@@ -28,6 +28,7 @@ const AppShell = () => {
   const [logoutError, setLogoutError] = useState("");
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
+  const transactionsRoute = location.pathname === "/transaksi";
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();
@@ -77,7 +78,7 @@ const AppShell = () => {
         </div>
       </div>
 
-      {!dashboardRoute ? <button type="button" className="floating-add" disabled={offline} onClick={() => setQuickAddOpen(true)} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
+      {!dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={() => setQuickAddOpen(true)} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
       <MobileNavigation onQuickAdd={() => setQuickAddOpen(true)} onMore={() => setMobileMenuOpen(true)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
       <TransactionForm open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
 
@@ -89,7 +90,6 @@ const AppShell = () => {
         size="sm"
       >
         <div className="mobile-menu-list">
-          <Button className="mobile-menu-quick-add" variant="primary" icon={FiPlus} type="button" disabled={offline} onClick={() => { setMobileMenuOpen(false); setQuickAddOpen(true); }}>Tambah transaksi</Button>
           {MOBILE_SECONDARY_GROUPS.map(({ id, label, items }) => (
             <section key={id} className="mobile-menu-section" aria-labelledby={`mobile-menu-${id}`}>
               <h3 id={`mobile-menu-${id}`}>{label}</h3>

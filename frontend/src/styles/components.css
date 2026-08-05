@@ -46,13 +46,6 @@
 .notice--success { background: var(--positive-soft); color: var(--positive); }
 .notice--loading { background: var(--surface-soft); color: var(--text-soft); }
 .modal-open { overflow: hidden; }
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 18px; background: var(--overlay); display: grid; place-items: center; }
-.modal { width: min(100%, 640px); max-height: min(90vh, 900px); overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow-md); }
-.modal--lg { width: min(100%, 800px); }
-.modal__header, .modal__footer { padding: 18px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); }
-.modal__header p { margin-top: 5px; color: var(--text-soft); }
-.modal__body { padding: 20px; overflow-y: auto; }
-.modal__footer { border-top: 1px solid var(--border); border-bottom: 0; justify-content: flex-end; align-items: center; }
 .loading-screen, .fatal-error, .centered-page { min-height: 60vh; display: grid; place-items: center; align-content: center; gap: 16px; padding: 32px; text-align: center; }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--surface-strong); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -66,7 +59,6 @@
 .notice a { font-weight: var(--font-weight-bold); text-decoration: underline; }
 
 .mobile-menu-list { display: grid; gap: var(--space-3); }
-.mobile-menu-quick-add { width: 100%; }
 .mobile-menu-section { display: grid; gap: .15rem; padding-top: var(--space-2); border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent); }
 .mobile-menu-section h3 { padding: .35rem .6rem .2rem; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .09em; text-transform: uppercase; }
 .mobile-menu-link { min-height: 50px; display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 0; border-radius: .8rem; color: var(--text); background: transparent; font-weight: var(--font-weight-semibold); transition: background-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast); }
@@ -136,20 +128,6 @@
 .segmented-control span { min-height: 44px; font-size: 13px; }
 .quick-amounts { gap: 8px; }
 .quick-amounts button { min-height: 36px; padding: 7px 12px; font-size: 12px; background: var(--input); }
-
-.modal-backdrop { backdrop-filter: blur(8px); }
-.modal {
-  width: min(100%, 680px);
-  max-height: min(92vh, 920px);
-  background: var(--surface-elevated);
-  border-color: var(--border-strong);
-}
-.modal--lg { width: min(100%, 860px); }
-.modal__header,
-.modal__footer { background: color-mix(in srgb, var(--surface-elevated) 95%, var(--surface-strong)); }
-.modal__body { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
-.modal__body::-webkit-scrollbar { width: 10px; }
-.modal__body::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: var(--scrollbar-thumb); background-clip: padding-box; }
 
 .transaction-form { align-items: start; }
 .transaction-scope-note { margin-top: 2px; }

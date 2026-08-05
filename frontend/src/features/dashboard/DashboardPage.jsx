@@ -5,7 +5,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import TransactionForm from "../transactions/TransactionForm.jsx";
 import { TRANSACTION_LABELS } from "../transactions/transactionPresentation.js";
-import { ownershipLabel } from "../../domain/ownership.js";
+import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import DesktopFinanceDashboard from "./components/DesktopFinanceDashboard.jsx";
 import MobileFinanceDashboard from "./components/MobileFinanceDashboard.jsx";
 import MobileDashboardFilters from "./components/MobileDashboardFilters.jsx";
@@ -32,7 +32,7 @@ const DashboardPage = () => {
     const accountBalances = (overview.accountBalances || []).map((item) => ({
       ...item,
       account_name: item.name,
-      name: `${item.name} · ${ownershipLabel(item)}`,
+      name: accountDisplayLabel(item),
     }));
     const accountLookup = Object.fromEntries(accountBalances.map((item) => [item.account_id, item.name]));
     const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item]));

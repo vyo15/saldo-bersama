@@ -14,6 +14,7 @@ import { deactivateUser, downloadFinanceExcel, reactivateUser, reopenPeriod as r
 import { disablePushNotifications, enablePushNotifications, getPushNotificationState } from "../../services/notifications.js";
 import { readTransactionImportFile } from "../../services/importer.js";
 import { createIdempotencyKey } from "../../domain/security.js";
+import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { currentMonthInJakarta, previousMonthInJakarta } from "../../domain/dates.js";
 
@@ -305,7 +306,7 @@ const SettingsPage = () => {
                   <div className="compact-list compact-list--stacked">
                     {(archiveResource.data?.accounts || []).map((account) => (
                       <div key={account.account_id}>
-                        <span><strong>{account.name}</strong><small>Rekening · {account.owner_scope === "shared" ? "Bersama" : account.owner_name || "Pribadi"}</small></span>
+                        <span><strong>{accountDisplayLabel(account)}</strong><small>Rekening diarsipkan</small></span>
                         <Button icon={FiRotateCcw} type="button" onClick={() => { setRestoreArchiveTarget({ type: "account", item: account }); setRestoreArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button>
                       </div>
                     ))}

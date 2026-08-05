@@ -110,7 +110,8 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Nomor rekening berasal dari `accounts.account_number`, dikelompokkan empat digit, dan hanya ditampilkan setelah authentication serta binding user backend. Kedua pengguna terotorisasi dapat membacanya; tombol salin berada di panel detail dan memiliki accessible name.
 - Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap dilarang pada asset, DOM, payload, audit, dan integrasi.
 - Desktop lebar memakai daftar ringkas di kiri dan satu panel detail sticky di kanan. Pada viewport yang tidak cukup, detail disembunyikan sampai item dipilih lalu tampil sebagai dialog overlay dengan focus trap, Escape handling, body scroll lock, dan focus restoration ke kartu pemicu.
-- Mobile memakai circular 3D card stack dengan node kartu yang stabil. Satu rekening menampilkan satu kartu, dua rekening menampilkan dua kartu, dan tiga atau lebih menampilkan maksimal tiga kartu terlihat dengan ukuran serta rasio yang identik. Swipe vertikal, wheel untuk pengujian desktop, dan tombol panah keyboard memutar urutan secara sirkular; tidak ada auto-rotate, pagination dots, atau panah samping.
+- Mobile memakai circular 3D card stack dengan node kartu yang stabil. Satu rekening menampilkan satu kartu, dua rekening menampilkan dua kartu, dan tiga atau lebih menampilkan maksimal tiga kartu terlihat dengan ukuran serta rasio yang identik. Swipe horizontal, wheel horizontal untuk pengujian desktop, dan tombol panah kiri/kanan memutar urutan secara sirkular; tidak ada auto-rotate, pagination dots, atau panah samping.
+- Area stack wajib memakai `touch-action: pan-y`. Gesture vertikal harus tetap menggulir halaman dan tidak boleh dipakai untuk mengganti rekening.
 - Selama gesture, seluruh tumpukan mengikuti jari menggunakan `transform`/`opacity`; kartu depan bergerak ke belakang dan kartu berikutnya maju ke depan. Swipe pendek kembali ke posisi semula, reduced-motion mengurangi rotasi dan durasi, dan rekening aktif diumumkan tanpa membacakan saldo.
 - Nomor rekening panjang boleh dipadatkan hanya pada muka kartu agar tidak overflow; panel detail, accessible copy action, dan data backend tetap memakai nomor lengkap.
 - Bank yang tidak dikenali serta rekening non-bank memakai fallback berbasis design token dan tidak bergantung pada asset pihak ketiga.
@@ -122,6 +123,7 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Mobile adalah layout aplikasi, bukan desktop yang diperkecil.
 - Navigasi bawah fixed harus menyisakan safe area dan ruang scroll.
 - Dialog menjadi bottom sheet pada viewport kecil tanpa menduplikasi business form.
+- `input`, `select`, dan `textarea` pada viewport mobile memakai font minimal 16px untuk mencegah auto-zoom Safari; viewport zoom tidak boleh dinonaktifkan.
 - Keyboard virtual tidak boleh menutup nominal atau action utama.
 - PWA tetap `display: standalone`; Fullscreen API tidak dipaksakan.
 - Offline write finansial tetap dilarang.

@@ -1,4 +1,40 @@
-## Current task — Focus modal, template kartu canonical, dan navigasi shell
+## Current task — Rekening mobile, route rekonsiliasi, dan data-quality form
+
+**Tanggal:** 2026-08-05
+**Source:** `saldo-bersama-clean(4).zip`
+**Scope:** memperbaiki scroll/auto-zoom mobile, menghapus aksi duplikat atau berlabel menyesatkan, memusatkan Rekonsiliasi, menyeragamkan identitas rekening, serta mencegah metode pembayaran tersembunyi tanpa mengubah area guarded.
+
+### Keputusan implementasi
+
+1. Gesture stack kartu berubah dari vertikal menjadi horizontal. Container memakai `touch-action: pan-y`; scroll halaman tetap menjadi perilaku utama pada gerakan vertikal.
+2. Halaman Rekening hanya mempertahankan aksi `Transaksi` dan `Pembayaran keluar`. `Daftar rekening` membuka modal daftar nyata, sementara navigasi Transaksi membawa rekening terpilih melalui router state.
+3. Rekonsiliasi dipindahkan ke `/rekonsiliasi`. Page memakai action API existing, `createIdempotencyKey`, capability `can_reconcile` dari backend, reload terjaga, dan tidak membuat transaksi penyesuaian otomatis.
+4. Formatter label rekening canonical menampilkan provider, nama, dan pemilik personal bila relevan pada seluruh selector utama.
+5. `TransactionForm` memulai `payment_method` sebagai string kosong. Backend/API contract tidak diubah.
+6. Menu lainnya tidak lagi memuat `Tambah transaksi`; floating CTA disembunyikan pada Dashboard dan Transaksi. Label shortcut dashboard diubah menjadi label navigasi yang jujur.
+7. Kontrol form mobile minimal 16px, body tidak memiliki minimum width 320px, dan aturan geometri modal global yang berkonflik dihapus.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist, role/action matrix, API contract, Turso query, perhitungan saldo, transfer, soft delete, audit backend, import/export, backup/restore, environment, dependency, GitHub Actions, atau deployment.
+
+### Test aktual di sandbox
+
+- `node --test frontend/test/*.test.js`: PASS, 73/73.
+- `node scripts/run-backend-tests.mjs`: PASS, 118/118.
+- `npm run validate:source`: PASS, 320 file; 5/12 Vercel Functions canonical.
+- `node scripts/check-node-syntax.mjs`: PASS, 94 file.
+- `node scripts/check-apps-script-syntax.mjs`: PASS, 6 file dan 2 urutan load.
+- `node --check test/browser/authenticated-app.test.mjs`: PASS.
+- `npm ci --ignore-scripts`: GAGAL karena registry sandbox tidak memiliki `vite@7.3.6`; sandbox memakai Node 22.16.0 sedangkan project membutuhkan Node 24.x. `npm run lint` terblokir karena `eslint` tidak tersedia, `npm run build` terblokir karena `vite` tidak tersedia, `npm run build:budget` terblokir karena `frontend/dist/assets` belum terbentuk, dan `npm run test:browser` menghasilkan 3/7 lulus serta 4/7 terblokir karena `frontend/dist/index.html` tidak tersedia.
+
+### Wajib sebelum merge/deploy
+
+Jalankan pada Node 24 dengan registry npm yang lengkap: `npm ci`, `npm run lint`, `npm run test`, `npm run build`, `npm run build:budget`, dan `npm run test:browser`. Lakukan smoke manual Safari iPhone, Android Chrome, tablet, serta desktop untuk scroll dari area kartu, keyboard virtual, fokus form, route Rekonsiliasi owner/member, filter rekening, dan tidak adanya overflow horizontal.
+
+---
+
+## Previous task — Focus modal, template kartu canonical, dan navigasi shell
 
 **Tanggal:** 2026-08-04  
 **Source:** `saldo-bersama-clean(131).zip`  

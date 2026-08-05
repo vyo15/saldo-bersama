@@ -32,6 +32,9 @@ Cakupan wajib:
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output;
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
+- halaman Rekening mobile wajib membiarkan scroll vertikal dari area stack (`touch-action: pan-y`), memakai swipe horizontal untuk ganti rekening, dan menjaga kontrol form minimal 16px tanpa mematikan browser zoom;
+- menu `Lainnya` tidak boleh menduplikasi `Tambah transaksi`; route `/rekonsiliasi` harus tersedia di kelompok Kelola keuangan dan form hanya muncul berdasarkan capability backend;
+- default metode pembayaran transaksi harus kosong, bukan nilai `transfer` tersembunyi; selector rekening utama harus memakai formatter provider/nama/pemilik yang konsisten;
 - browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
 - login mobile wajib memakai logo resmi, tepat satu host `.google-login-button`, background rupiah dekoratif `aria-hidden`, target sentuh minimum, dark/light theme, serta `prefers-reduced-motion` tanpa mengganti flow Google Identity Services/Firebase;
 - authenticated route journey wajib menunggu `document.readyState` selesai dan heading canonical route yang tepat; pathname saja tidak boleh dianggap bukti render karena DOM lama/loading dapat masih aktif saat full navigation;
@@ -48,7 +51,7 @@ Uji dua browser/perangkat dengan owner dan member:
 2. Edit record yang sama untuk memastikan 409 conflict jelas.
 3. Double-click/retry menggunakan idempotency yang sama.
 4. Putus jaringan sebelum write; UI harus menolak tanpa menyatakan sukses.
-5. Install PWA iPhone/Android, update app shell, push notification.
+5. Install PWA iPhone/Android, update app shell, push notification; pada Safari iPhone pastikan fokus input tidak memicu auto-zoom dan scroll dapat dimulai dari area kartu rekening.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.
 7. Export Excel dan periksa formula-like input.
 8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif.
@@ -83,11 +86,12 @@ Fitur planned seperti receipt, utang/piutang, contribution split, category hiera
 
 Browser test authenticated wajib memakai fixture owner dan member yang deterministik, tanpa koneksi Firebase, Turso, Google Identity, atau provider eksternal. Cakupan minimum:
 
-- seluruh route `/`, `/transaksi`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, dan `/pengaturan` dapat dirender pada mobile;
+- seluruh route `/`, `/transaksi`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, dan `/pengaturan` dapat dirender pada mobile;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
 - dashboard mobile membawa batas aman harian, dana belum dialokasikan, rincian rekening/kategori, seluruh peringatan melalui progressive disclosure, filter lengkap, privacy nominal, serta detail transaksi;
 - dashboard desktop menampilkan kartu rekening aktual yang dapat dipilih, transaksi rekening terpilih, filter kategori/jenis/pencarian, privacy nominal, statistik global yang tidak salah diklaim sebagai statistik rekening, KPI arus kas, anggaran, tagihan, target, dan insight;
 - menu `Lainnya` aktif dengan `aria-current="page"` pada route sekunder;
+- menu `Lainnya` tidak memuat quick-add duplikat dan menampilkan link Rekonsiliasi pada kelompok Kelola keuangan;
 - owner dan member memakai route yang sama, sementara kontrol write tetap mengikuti authorization data/API;
 - viewport tidak overflow horizontal dan business form tidak diduplikasi per perangkat.
 
@@ -109,11 +113,14 @@ Viewport regression minimum:
 
 Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile serta kontrol sesi desktop. Pada setiap ukuran, setidaknya satu jalur logout harus tersedia melalui header desktop atau menu mobile.
 
-## Rekening dan kategori — responsive financial card
+## Rekening, rekonsiliasi, dan kategori — responsive financial card
 
-- Owner mobile dan desktop melihat aksi `Tambah rekening atau kategori`.
+- Owner mobile dan desktop melihat aksi `Tambah rekening` pada route Rekening dan `Tambah kategori` pada route Kategori.
 - Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive owner.
-- Dialog tambah memiliki dua tab semantik dan memakai form yang sama pada desktop/mobile.
+- Dialog rekening dan kategori terpisah serta memakai form domain yang sama pada desktop/mobile tanpa tab lintas domain.
+- Stack kartu mobile memakai swipe horizontal dan `touch-action: pan-y`; gesture vertikal tidak boleh dibajak dari scroll halaman.
+- Tombol `Daftar rekening` harus membuka daftar rekening aktif. Quick action rekening hanya memuat navigasi Transaksi dan Pembayaran keluar; Tagihan dan Rekonsiliasi berada pada route masing-masing.
+- Route `/rekonsiliasi` menampilkan form hanya untuk rekening `can_reconcile`, mengirim idempotency key, mencatat selisih tanpa adjustment otomatis, dan tetap mengandalkan authorization backend.
 - Template BCA, BNI, BTN, Mandiri, dan Permata berasal dari `accounts.bank_template`; mengganti template tidak boleh mengubah nama rekening. Object legacy tanpa field boleh memakai suffix nama hanya sebagai fallback visual.
 - Asset base bank memuat logo dan chip hanya satu kali; komponen tidak merender wordmark atau chip HTML yang menumpuk di atas asset.
 - Nomor rekening bank 6–34 digit divalidasi backend, ditampilkan hanya pada rekening yang lolos scope authorization, dapat disalin dari detail, dan audit hanya menyimpan empat digit terakhir. Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap tidak boleh berada pada asset/DOM.

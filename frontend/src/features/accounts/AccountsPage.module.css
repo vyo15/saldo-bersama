@@ -65,90 +65,6 @@
   line-height: 1.6;
 }
 
-.reconciliationPanel {
-  overflow: hidden;
-}
-
-.reconciliationHeader {
-  align-items: flex-start;
-}
-
-.reconciliationHeading {
-  min-width: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-
-.reconciliationEyebrowRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.reconciliationInfoButton {
-  width: 2.75rem;
-  min-width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  display: inline-grid;
-  place-items: center;
-  background: transparent;
-  color: var(--primary);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: border-color var(--motion-fast), background-color var(--motion-fast), transform var(--motion-fast);
-}
-
-.reconciliationInfoButton:hover {
-  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
-  background: var(--primary-soft);
-}
-
-.reconciliationInfoButton:active {
-  transform: scale(.96);
-}
-
-.reconciliationInfoButton:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.reconciliationInfoButton svg {
-  width: 1.15rem;
-  height: 1.15rem;
-}
-
-.reconciliationSummary {
-  max-width: 42rem;
-  color: var(--text-soft);
-  font-size: var(--font-size-body-sm);
-  line-height: 1.5;
-}
-
-.reconciliationToggle {
-  flex: 0 0 auto;
-}
-
-.reconciliationInfo {
-  display: grid;
-  gap: var(--space-4);
-  color: var(--text-soft);
-  line-height: 1.65;
-}
-
-.reconciliationInfo ul {
-  margin: 0;
-  padding-inline-start: 1.25rem;
-  display: grid;
-  gap: var(--space-3);
-}
-
-.reconciliationInfo li::marker {
-  color: var(--primary);
-}
-
 .createAccountLayout {
   display: grid;
   grid-template-columns: minmax(17rem, 0.95fr) minmax(18rem, 1.05fr);
@@ -268,15 +184,10 @@
 
   .mobileAccountExperience {
     min-width: 0;
-    display: grid;
-    gap: var(--space-4);
-  }
-
-  .mobileStackPanel {
-    min-width: 0;
     margin-inline: calc(0px - var(--mobile-page-gutter));
-    padding-bottom: var(--space-4);
-    display: block;
+    padding-bottom: var(--space-3);
+    display: grid;
+    gap: 0;
     overflow: hidden;
     color: #fff;
     background:
@@ -284,6 +195,15 @@
       radial-gradient(circle at 8% 88%, rgb(22 199 132 / .12), transparent 30%),
       linear-gradient(145deg, #101413 0%, #0c1110 48%, #07100e 100%);
     isolation: isolate;
+  }
+
+  .mobileStackPanel {
+    min-width: 0;
+    padding-bottom: 0;
+    display: block;
+    overflow: hidden;
+    color: #fff;
+    background: transparent;
   }
 
   .mobileStackHeader {
@@ -362,9 +282,9 @@
     overflow: hidden;
     perspective: 93.75rem;
     perspective-origin: 50% 45%;
-    touch-action: none;
+    touch-action: pan-y;
     user-select: none;
-    cursor: grab;
+    cursor: ew-resize;
   }
 
   .mobileStackStage:focus-visible {
@@ -541,10 +461,11 @@
 
   .mobileQuickActions {
     min-width: 0;
-    padding: .2rem .15rem 0;
+    padding: .7rem var(--mobile-page-gutter) .35rem;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
+    border-top: 1px solid color-mix(in srgb, var(--on-hero) 7%, transparent);
   }
 
   .mobileQuickAction {
@@ -558,7 +479,7 @@
     align-content: center;
     gap: .45rem;
     background: transparent;
-    color: var(--text-soft);
+    color: var(--on-hero-muted);
     cursor: pointer;
     touch-action: manipulation;
     transition: background-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
@@ -569,10 +490,10 @@
     height: 2.55rem;
     display: grid;
     place-items: center;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--on-hero) 12%, transparent);
     border-radius: .9rem;
-    background: var(--surface-soft);
-    color: var(--text);
+    background: color-mix(in srgb, var(--on-hero) 7%, transparent);
+    color: var(--on-hero);
     box-shadow: var(--shadow-control);
   }
 
@@ -593,14 +514,14 @@
 
   .mobileQuickAction:hover,
   .mobileQuickAction:focus-visible {
-    background: var(--primary-soft);
+    background: color-mix(in srgb, var(--on-hero) 6%, transparent);
     color: var(--primary);
   }
 
   .mobileQuickAction:hover > span,
   .mobileQuickAction:focus-visible > span {
-    border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
-    background: var(--primary-soft);
+    border-color: color-mix(in srgb, var(--primary) 44%, transparent);
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
     color: var(--primary);
   }
 
@@ -618,15 +539,55 @@
     scroll-margin-top: calc(var(--topbar-height, 3.5rem) + var(--space-3));
   }
 
-  .reconciliationHeader {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-  }
+}
 
-  .reconciliationToggle {
-    width: 100%;
-  }
+.mobileAccountList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mobileAccountListItem {
+  width: 100%;
+  min-height: 4.75rem;
+  padding: .8rem .9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobileAccountListItem[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.mobileAccountListItem > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: .2rem;
+}
+
+.mobileAccountListItem strong,
+.mobileAccountListItem small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileAccountListItem small {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.mobileAccountListItem :global(.money) {
+  flex: 0 0 auto;
 }
 
 .paymentHistoryToolbar {
@@ -709,6 +670,11 @@
   color: var(--positive);
 }
 
+.paymentHistoryIcon[data-tone="neutral"] {
+  background: var(--surface-soft);
+  color: var(--text-muted);
+}
+
 .paymentHistoryIcon svg {
   width: 1.1rem;
   height: 1.1rem;
@@ -757,6 +723,11 @@
 .paymentHistoryMeta > strong[data-tone="negative"],
 .paymentHistoryMeta > strong[data-tone="negative"] :global(.money) {
   color: var(--negative);
+}
+
+.paymentHistoryMeta > strong[data-tone="neutral"],
+.paymentHistoryMeta > strong[data-tone="neutral"] :global(.money) {
+  color: var(--text-muted);
 }
 
 .paymentHistoryMeta > small {

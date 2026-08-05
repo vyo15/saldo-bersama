@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -22,24 +23,25 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
-import { ownershipLabel } from "../../domain/ownership.js";
+import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionTone } from "./transactionPresentation.js";
 
 const PAGE_SIZE = 100;
 
 const TransactionsPage = () => {
+  const location = useLocation();
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const [draftQuery, setDraftQuery] = useState("");
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState(() => ({
     period: currentMonthInJakarta(),
     query: "",
     type: "all",
     allocation: "all",
-    account: "all",
+    account: typeof location.state?.accountId === "string" && location.state.accountId ? location.state.accountId : "all",
     category: "all",
     creator: "all",
     offset: 0,
-  });
+  }));
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -57,7 +59,7 @@ const TransactionsPage = () => {
     category_id: filters.category,
     created_by: filters.creator,
   });
-  const accountLookup = Object.fromEntries((bootstrap?.accounts || []).map((item) => [item.account_id, `${item.name} · ${ownershipLabel(item)}`]));
+  const accountLookup = Object.fromEntries((bootstrap?.accounts || []).map((item) => [item.account_id, accountDisplayLabel(item)]));
   const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item]));
   const items = resource.data?.items || [];
   const filterOptions = resource.data?.filterOptions || { accounts: [], categories: [], creators: [] };
@@ -151,7 +153,7 @@ const TransactionsPage = () => {
           <label className="field field--compact"><span className="sr-only">Periode transaksi</span><input type="month" max={currentMonthInJakarta()} value={filters.period} onChange={(event) => updateFilter("period", event.target.value)} aria-label="Periode transaksi" /></label>
           <select value={filters.type} onChange={(event) => updateFilter("type", event.target.value)} aria-label="Filter jenis transaksi"><option value="all">Semua jenis</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="transfer">Transfer</option><option value="refund">Refund</option><option value="adjustment">Penyesuaian</option></select>
           <select value={filters.allocation} onChange={(event) => updateFilter("allocation", event.target.value)} aria-label="Filter alokasi"><option value="all">Semua alokasi</option><option value="unallocated">Belum dialokasikan</option><option value="allocated">Sudah dialokasikan</option></select>
-          <select value={filters.account} onChange={(event) => updateFilter("account", event.target.value)} aria-label="Filter rekening"><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name} · {ownershipLabel(item)}</option>)}</select>
+          <select value={filters.account} onChange={(event) => updateFilter("account", event.target.value)} aria-label="Filter rekening"><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select>
           <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)} aria-label="Filter kategori"><option value="all">Semua kategori</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select>
           <select value={filters.creator} onChange={(event) => updateFilter("creator", event.target.value)} aria-label="Filter pencatat"><option value="all">Semua pencatat</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select>
           {filtersActive ? <Button type="button" onClick={() => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 })); }}>Reset filter</Button> : null}

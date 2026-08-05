@@ -32,6 +32,7 @@ const TEMPLATE_MATCHERS = Object.freeze([
 ]);
 
 const KNOWN_BANK_SUFFIX = /\s*(?:-|·)\s*(?:BCA|BNI|BTN|Mandiri|Permata)\s*$/i;
+const BANK_LABEL_BY_TEMPLATE = new Map(BANK_TEMPLATE_OPTIONS.map((option) => [option.value, option.label]));
 
 export const detectBankTemplate = (account = {}) => {
   if (account.account_type !== "bank") return "generic";
@@ -56,6 +57,27 @@ export const accountOwnershipLabel = (account = {}) => {
   return ownerName ? `Pribadi · ${ownerName}` : "Pribadi";
 };
 
+export const accountProviderLabel = (account = {}) => {
+  if (account.account_type !== "bank") return accountTypeLabel(account.account_type);
+  const configuredTemplate = detectBankTemplate(account);
+  if (configuredTemplate !== "generic") return BANK_LABEL_BY_TEMPLATE.get(configuredTemplate) || "Bank lainnya";
+  const inferredTemplate = TEMPLATE_MATCHERS.find(([, matcher]) => matcher.test(String(account.account_name || account.name || "")))?.[0];
+  return BANK_LABEL_BY_TEMPLATE.get(inferredTemplate) || "Bank lainnya";
+};
+
+export const accountDisplayLabel = (account = {}, { includeOwner = true } = {}) => {
+  const name = accountCardholderName(account.account_name || account.name) || "Rekening tanpa nama";
+  const provider = accountProviderLabel(account);
+  const parts = provider && provider.toLocaleLowerCase("id-ID") !== name.toLocaleLowerCase("id-ID")
+    ? [provider, name]
+    : [name];
+
+  if (includeOwner && account.owner_scope === "personal") {
+    parts.push(accountOwnerName(account) || "Pribadi");
+  }
+
+  return parts.filter(Boolean).join(" · ");
+};
 
 export const normalizeAccountNumber = (value) => String(value || "").replace(/\D/g, "").slice(0, 34);
 

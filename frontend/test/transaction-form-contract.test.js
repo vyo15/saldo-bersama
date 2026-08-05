@@ -11,3 +11,11 @@ test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori waji
   assert.match(text, /!\[TRANSACTION_TYPES\.TRANSFER, TRANSACTION_TYPES\.ADJUSTMENT\]\.includes\(form\.transaction_type\)/);
   assert.match(text, /form\.transaction_type === "refund" && item\.transaction_type === "expense"/);
 });
+
+test("metode pembayaran tidak diasumsikan ketika detail tambahan belum dipilih", async () => {
+  const text = await source();
+  assert.match(text, /payment_method: ""/);
+  assert.match(text, /<option value="">Belum dipilih<\/option>/);
+  assert.doesNotMatch(text, /payment_method: "transfer"/);
+  assert.match(text, /accountDisplayLabel/);
+});

@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   accountCardholderName,
   accountCardNumberGroups,
+  accountDisplayLabel,
+  accountProviderLabel,
   accountNumberGroups,
   accountOwnershipLabel,
   detectBankTemplate,
@@ -60,12 +62,13 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
 });
 
 test("halaman rekening fokus pada rekening, detail besar, capability, dan form nomor rekening", async () => {
-  const [page, card, pageStyles, cardStyles, categoryPage] = await Promise.all([
+  const [page, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/AccountFinancialCard.jsx"),
     read("src/features/accounts/AccountsPage.module.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
     read("src/features/categories/CategoriesPage.jsx"),
+    read("src/features/reconciliations/ReconciliationsPage.jsx"),
   ]);
 
   assert.match(page, /title="Rekening"/);
@@ -99,13 +102,15 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(page, /onPointerMove=\{handleMobileStackPointerMove\}/);
   assert.match(page, /onWheel=\{handleMobileStackWheel\}/);
   assert.match(page, /prefers-reduced-motion: reduce/);
-  assert.match(page, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
+  assert.match(page, /aria-label="Geser ke kiri atau kanan untuk mengganti rekening"/);
   assert.match(page, /<AccountVisual account=\{account\} stack \/>/);
   assert.match(page, /setMobileAccountSheet\("detail"\)/);
-  assert.match(page, /title="Riwayat pembayaran"/);
-  assert.match(page, /Pembayaran keluar yang menggunakan/);
-  assert.match(page, />Bayar tagihan</);
-  assert.match(page, />Riwayat</);
+  assert.match(page, /title="Pembayaran keluar"/);
+  assert.match(page, /Pengeluaran dan transfer keluar yang menggunakan/);
+  assert.doesNotMatch(page, />Bayar tagihan</);
+  assert.match(page, />Pembayaran keluar</);
+  assert.match(page, /title="Daftar rekening"/);
+  assert.match(page, /state: \{ accountId:/);
   assert.match(page, /variant="mobileDetail"/);
   assert.match(page, /embedded/);
   assert.doesNotMatch(page, /ref=\{mobileDetailRef\}/);
@@ -116,14 +121,14 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(page, /bodyClassName: "modal-open"/);
   assert.match(page, /aria-modal=\{mobileDetailOpen \|\| undefined\}/);
   assert.match(page, /variant="detail"/);
-  assert.match(page, /aria-label="Baca penjelasan rekonsiliasi"/);
-  assert.match(page, /title="Tentang rekonsiliasi"/);
-  assert.match(page, /Buka riwayat untuk melihat hasil pencocokan terakhir/);
-  assert.match(page, /Aksi rekonsiliasi, edit, dan arsip hanya tersedia/);
-  assert.doesNotMatch(page, /Rekonsiliasi disarankan setiap bulan\.<\/strong>/);
-  assert.doesNotMatch(page, /Riwayat dimuat hanya saat dibuka agar halaman rekening tetap ringan/);
-  assert.match(pageStyles, /reconciliationInfoButton/);
-  assert.match(pageStyles, /reconciliationToggle/);
+  assert.doesNotMatch(page, /aria-label="Baca penjelasan rekonsiliasi"/);
+  assert.doesNotMatch(page, /title="Tentang rekonsiliasi"/);
+  assert.match(reconciliationPage, /title="Rekonsiliasi"/);
+  assert.match(reconciliationPage, /account\.can_reconcile === true/);
+  assert.match(reconciliationPage, /reconciliations\.list/);
+  assert.match(reconciliationPage, /createReconciliation/);
+  assert.match(reconciliationPage, /Sistem tidak membuat transaksi penyesuaian secara otomatis/);
+  assert.doesNotMatch(pageStyles, /reconciliationInfoButton|reconciliationToggle|reconciliationPanel/);
   assert.match(pageStyles, /grid-template-columns: minmax\(32rem, 1fr\) minmax\(28rem, 32rem\)/);
   assert.match(pageStyles, /position: sticky/);
   assert.match(pageStyles, /detailColumnOpen/);
@@ -133,13 +138,15 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(pageStyles, /paymentHistoryItem/);
   assert.match(pageStyles, /perspective: 93\.75rem/);
   assert.match(pageStyles, /transform-style: preserve-3d/);
-  assert.match(pageStyles, /touch-action: none/);
+  assert.match(pageStyles, /touch-action: pan-y/);
+  assert.doesNotMatch(pageStyles, /touch-action: none/);
   assert.match(pageStyles, /width: min\(78vw, 19\.1rem\)/);
   assert.doesNotMatch(pageStyles, /mobilePagination|scroll-snap-type/);
 
   for (const asset of ["bca", "bni", "btn", "mandiri", "permata"]) assert.match(card, new RegExp(`${asset}\.webp`));
   assert.match(card, /accountOwnershipLabel/);
-  assert.match(card, /account\.can_reconcile/);
+  assert.doesNotMatch(card, /account\.can_reconcile/);
+  assert.match(card, /onViewTransactions/);
   assert.match(card, /account\.can_manage/);
   assert.match(card, /account\.read_only/);
   assert.match(card, /navigator\.clipboard\.writeText\(account\.account_number\)/);
@@ -155,6 +162,13 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(categoryPage, /title="Kategori transaksi"/);
   assert.match(categoryPage, /categories\.list/);
   assert.doesNotMatch(categoryPage, /accounts\.list/);
+});
+
+test("label rekening memprioritaskan provider dan tetap membedakan pemilik personal", () => {
+  assert.equal(accountProviderLabel({ account_type: "bank", bank_template: "bca", name: "Tabungan bulanan" }), "BCA");
+  assert.equal(accountProviderLabel({ account_type: "bank", bank_template: "generic", name: "Rekening BNI" }), "BNI");
+  assert.equal(accountDisplayLabel({ account_type: "bank", bank_template: "bca", name: "Tabungan bulanan", owner_scope: "shared" }), "BCA · Tabungan bulanan");
+  assert.equal(accountDisplayLabel({ account_type: "cash", name: "Dompet", owner_scope: "personal", owner_name: "Vio" }), "Tunai · Dompet · Vio");
 });
 
 test("label kepemilikan rekening personal selalu menyebut pemilik", () => {

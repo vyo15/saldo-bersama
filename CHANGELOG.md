@@ -4,6 +4,12 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Menyederhanakan halaman Rekening mobile: gesture pergantian kartu kini horizontal dan membiarkan scroll vertikal, tombol `Daftar rekening` benar-benar membuka daftar, aksi ganda `Bayar tagihan` dihapus, serta `Riwayat` diperjelas menjadi `Pembayaran keluar` dengan status transaksi nonaktif yang netral.
+- Memindahkan form, panduan, dan riwayat Rekonsiliasi ke route `/rekonsiliasi` yang memakai capability backend existing, idempotency key, audit server, dan tidak membuat adjustment otomatis.
+- Menghapus duplikasi `Tambah transaksi` dari Menu lainnya dan floating action pada route Transaksi, serta menyelaraskan label aksi dashboard dengan perilaku navigasinya.
+- Menambahkan formatter identitas rekening terpusat berbasis provider, nama rekening, dan pemilik personal pada transaksi, target, alokasi, tagihan, dashboard, pengaturan, serta rekonsiliasi.
+- Mencegah auto-zoom Safari mobile melalui ukuran font kontrol minimal 16px, menjadikan CSS Module sebagai sumber geometri modal canonical, dan menghapus minimum body width yang dapat memicu overflow pada viewport sempit.
+- Mengubah default metode pembayaran transaksi dari nilai tersembunyi `transfer` menjadi kosong agar data tidak direkam tanpa pilihan pengguna.
 - Mendesain ulang login mobile dengan logo resmi Saldo Bersama, background rupiah ilustratif yang dianimasikan secara ringan, trust strip, dark/light mode, reduced-motion guard, dan kredit `Created by Vio Yusup Iskandar` tanpa mengubah Google Identity Services, Firebase exchange, allowlist, atau session backend.
 - Mendesain ulang dashboard desktop sebagai workspace berbasis rekening: kartu rekening aktual dapat dipilih, transaksi di bawahnya berubah mengikuti rekening tanpa mengubah sidebar melengkung, sementara statistik global, KPI arus kas, anggaran, tagihan, target, aksi cepat, privacy nominal, dan insight tetap memakai data API canonical.
 - Memperbaiki focus trap modal yang memindahkan fokus setiap ketikan, memisahkan template kartu dari nama rekening melalui schema v5 `accounts.bank_template`, mempertahankan sidebar melengkung dengan target sentuh lebih besar, menyederhanakan submenu desktop, dan menghapus duplikasi theme toggle dari menu mobile.

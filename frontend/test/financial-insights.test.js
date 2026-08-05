@@ -44,7 +44,7 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   ]);
 
   assert.match(page, /dashboardViewModel/);
-  assert.match(page, /ownershipLabel/);
+  assert.match(page, /accountDisplayLabel/);
   assert.match(page, /accountBalances = \(overview\.accountBalances \|\| \[\]\)\.map/);
   assert.match(page, /displayOverview = \{ \.\.\.overview, accountBalances: dashboardViewModel\.accountBalances \}/);
   assert.match(page, /viewModel=\{dashboardViewModel\}/);
@@ -57,6 +57,11 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   assert.match(desktop, /Anggaran bulan ini/);
   assert.match(desktop, /Tagihan terdekat/);
   assert.match(desktop, /Target tabungan/);
+  assert.match(desktop, /Buka transaksi/);
+  assert.match(desktop, /Buka anggaran/);
+  assert.match(desktop, /Buka tagihan/);
+  assert.match(desktop, /to="\/rekonsiliasi"/);
+  assert.equal((desktop.match(/>Tambah transaksi<\/span>/g) || []).length, 1);
   assert.match(mobile, /Aman digunakan akun ini/);
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
@@ -68,6 +73,7 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   assert.match(filters, /TRANSACTION_LABELS/);
   assert.match(filters, /Semua rekening/);
   assert.match(filters, /Semua kategori/);
+  assert.match(filters, /categories\.map\(\(item\) => <option[^>]+>\{item\.name\}<\/option>\)/);
   assert.match(detail, /Detail transaksi/);
   assert.match(detail, /lastSyncedAt/);
 });

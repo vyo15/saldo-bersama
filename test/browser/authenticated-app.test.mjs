@@ -12,11 +12,12 @@ const routeCases = Object.freeze([
   ["/target", "Tabungan & target"],
   ["/laporan", "Laporan"],
   ["/rekening", "Rekening"],
+  ["/rekonsiliasi", "Rekonsiliasi"],
   ["/kategori", "Kategori transaksi"],
   ["/pengaturan", "Pengaturan"],
 ]);
 
-const secondaryRoutes = new Set(["/alokasi", "/tagihan", "/target", "/rekening", "/kategori", "/pengaturan"]);
+const secondaryRoutes = new Set(["/alokasi", "/tagihan", "/target", "/rekening", "/rekonsiliasi", "/kategori", "/pengaturan"]);
 
 const visibleExpression = (selector) => `(() => {
   const element = document.querySelector(${JSON.stringify(selector)});
@@ -139,10 +140,14 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       const text = dialog?.textContent || '';
       return {
         themeDuplicate: Boolean(dialog?.querySelector('.mobile-menu-theme')) || /Dark mode|Light mode/i.test(text),
+        quickAddDuplicate: [...(dialog?.querySelectorAll('button') || [])].some((button) => button.textContent.trim() === 'Tambah transaksi'),
+        reconciliationRoute: Boolean(dialog?.querySelector('a[href="/rekonsiliasi"]')),
         logoutInFooter: Boolean(dialog?.querySelector('.mobile-menu-footer button')),
       };
     })()`);
     assert.equal(mobileMenuState.themeDuplicate, false, "Menu lainnya tidak boleh menduplikasi dark/light toggle.");
+    assert.equal(mobileMenuState.quickAddDuplicate, false, "Menu lainnya tidak boleh menduplikasi aksi Tambah transaksi dari navigasi utama.");
+    assert.equal(mobileMenuState.reconciliationRoute, true, "Rekonsiliasi harus tersedia sebagai route kelola keuangan tersendiri.");
     assert.equal(mobileMenuState.logoutInFooter, true, "Logout mobile harus tersedia pada footer menu.");
     await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
     await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "menu lainnya ditutup" });
@@ -176,7 +181,14 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       const cards = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')];
       return cards.filter((card) => Number.parseFloat(getComputedStyle(card).opacity || '0') > 0.05).length >= Math.min(3, cards.length);
     })()`), { description: "tiga kartu rekening terlihat pada stack mobile" });
-    assert.equal(await page.evaluate(`Boolean(document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]'))`), true, "Stack rekening mobile harus dapat dikendalikan dengan gesture dan keyboard.");
+    assert.equal(await page.evaluate(`Boolean(document.querySelector('[aria-label="Geser ke kiri atau kanan untuk mengganti rekening"]'))`), true, "Stack rekening mobile harus dapat dikendalikan horizontal tanpa mengambil alih scroll vertikal.");
+    const mobileAccountInteraction = await page.evaluate(`(() => {
+      const stack = document.querySelector('[aria-label="Geser ke kiri atau kanan untuk mengganti rekening"]');
+      return {
+        touchAction: stack ? getComputedStyle(stack).touchAction : '',
+      };
+    })()`);
+    assert.equal(mobileAccountInteraction.touchAction, "pan-y", "Area kartu harus membiarkan gesture scroll vertikal halaman.");
     assert.equal(await page.evaluate(`document.querySelectorAll('button[aria-label^="Pilih rekening"]').length`), 0, "Pagination carousel lama harus dihapus.");
     await page.evaluate(`(() => {
       const card = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')]
@@ -190,26 +202,24 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('No. rekening') || false"), true, "Detail rekening hanya muncul setelah kartu aktif ditekan.");
     await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
     await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "detail rekening ditutup" });
-    assert.equal(await page.evaluate("[...document.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Bayar tagihan')"), true, "Aksi Bayar tagihan harus tersedia pada rekening mobile.");
-    await page.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Riwayat')?.click()");
+    assert.equal(await page.evaluate("[...document.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Bayar tagihan')"), false, "Halaman rekening tidak boleh menduplikasi navigasi Tagihan dengan label aksi langsung yang menyesatkan.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('button[aria-label^=\"Buka daftar\"]'))"), true, "Kontrol Daftar rekening harus benar-benar tersedia.");
+    await page.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Pembayaran keluar')?.click()");
     await waitFor(
-      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Riwayat pembayaran'"),
-      { description: "riwayat pembayaran rekening aktif" },
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Pembayaran keluar'"),
+      { description: "pembayaran keluar rekening aktif" },
     );
-    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Belanja makan mingguan') || false"), true, "Riwayat harus memuat pembayaran keluar dari kartu aktif.");
-    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Isi kas bersama') || false"), true, "Transfer keluar dari kartu aktif harus masuk riwayat pembayaran.");
-    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Gaji bulan Agustus') || false"), false, "Pemasukan tidak boleh dicampur ke riwayat pembayaran keluar.");
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Belanja makan mingguan') || false"), true, "Daftar harus memuat pengeluaran dari rekening aktif.");
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Isi kas bersama') || false"), true, "Transfer keluar dari rekening aktif harus masuk daftar pembayaran.");
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Gaji bulan Agustus') || false"), false, "Pemasukan tidak boleh dicampur ke pembayaran keluar.");
     await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
-    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "riwayat pembayaran ditutup" });
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "pembayaran keluar ditutup" });
     assert.equal(await page.evaluate("document.body.textContent.includes('Riwayat dimuat hanya saat dibuka agar halaman rekening tetap ringan.')"), false, "Detail implementasi tidak boleh memenuhi halaman rekening.");
-    await page.evaluate("document.querySelector('button[aria-label=\"Baca penjelasan rekonsiliasi\"]')?.click()");
-    await waitFor(
-      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Tentang rekonsiliasi'"),
-      { description: "informasi rekonsiliasi" },
-    );
-    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('transparansi bersama') || false"), true, "Informasi transparansi harus tetap tersedia melalui dialog.");
-    await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
-    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "informasi rekonsiliasi ditutup" });
+    assert.equal(await page.evaluate("Boolean(document.querySelector('button[aria-label=\"Baca penjelasan rekonsiliasi\"]'))"), false, "Penjelasan rekonsiliasi tidak boleh tetap tersebar di halaman Rekening.");
+    await navigateAndAssert(page, appServer.origin, "/rekonsiliasi", "Rekonsiliasi", { mobile: true });
+    assert.equal(await page.evaluate("document.body.textContent.includes('Cocokkan saldo sistem dengan saldo aktual')"), true, "Route Rekonsiliasi harus menjelaskan tujuan proses tanpa menyembunyikan selisih saldo.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('form'))"), true, "Owner yang memiliki capability harus memperoleh form rekonsiliasi.");
+    await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     await page.evaluate("document.querySelector('button[aria-label=\"Tambah rekening\"]')?.click()");
     await waitFor(
       () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Tambah rekening'"),
@@ -217,6 +227,11 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     );
     assert.equal(await page.evaluate("document.querySelectorAll('[role=dialog] [role=tab]').length"), 0, "Dialog rekening tidak boleh lagi mencampur tab kategori.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('[role=dialog] input[placeholder*=\"123456\"]'))"), true, "Form rekening harus menyediakan nomor rekening.");
+    const mobileControlFontSize = await page.evaluate(`(() => {
+      const control = document.querySelector('[role=dialog] input, [role=dialog] select, [role=dialog] textarea');
+      return control ? Number.parseFloat(getComputedStyle(control).fontSize) : 0;
+    })()`);
+    assert.ok(mobileControlFontSize >= 16, `Kontrol form mobile minimal 16px untuk mencegah auto-zoom Safari, ditemukan ${mobileControlFontSize}px.`);
     const nameSelector = '[role=dialog] input[placeholder="Contoh: Tabungan nikah"]';
     await waitFor(() => page.evaluate(`document.activeElement === document.querySelector(${JSON.stringify(nameSelector)})`), { description: "focus awal nama rekening" });
     let typedName = "";

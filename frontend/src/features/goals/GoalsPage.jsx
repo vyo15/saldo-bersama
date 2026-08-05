@@ -17,7 +17,8 @@ import { createGoal as requestCreateGoal, moveGoal as requestMoveGoal, reverseGo
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
-import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
+import { filterByOwnership } from "../../domain/ownership.js";
+import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 
 
 const GOAL_PACE_LABELS = Object.freeze({
@@ -195,7 +196,7 @@ const GoalsPage = () => {
             <label className="field"><span>Jenis</span><select value={form.goal_type} onChange={(event) => setForm((current) => ({ ...current, goal_type: event.target.value }))}><option value="savings">Tabungan tujuan</option><option value="emergency_fund">Dana darurat</option><option value="sinking_fund">Dana berkala</option></select></label>
             <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
             <label className="field"><span>Tanggal target</span><input required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
-            <label className="field"><span>Rekening tujuan</span><select required value={form.account_id} onChange={(event) => setForm((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select></label>
+            <label className="field"><span>Rekening tujuan</span><select required value={form.account_id} onChange={(event) => setForm((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label>
             <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit">Buat target</Button></div>
           </form>
         </Card>
@@ -227,8 +228,8 @@ const GoalsPage = () => {
       >
         <form id="goal-movement-form" className="form-grid" onSubmit={submitMovement}>
           <MoneyInput id="goal-movement-amount" label="Nominal" value={movement.amount} onChange={(value) => setMovement((current) => ({ ...current, amount: value }))} />
-          <label className="field"><span>Rekening sumber *</span><select required value={movement.source_account_id} onChange={(event) => setMovement((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Pilih rekening</option>{compatibleMovementAccounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select></label>
-          <label className="field"><span>Rekening tujuan *</span><select required value={movement.destination_account_id} onChange={(event) => setMovement((current) => ({ ...current, destination_account_id: event.target.value }))}><option value="">Pilih rekening</option>{compatibleMovementAccounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select></label>
+          <label className="field"><span>Rekening sumber *</span><select required value={movement.source_account_id} onChange={(event) => setMovement((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Pilih rekening</option>{compatibleMovementAccounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label>
+          <label className="field"><span>Rekening tujuan *</span><select required value={movement.destination_account_id} onChange={(event) => setMovement((current) => ({ ...current, destination_account_id: event.target.value }))}><option value="">Pilih rekening</option>{compatibleMovementAccounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label>
           <label className="field"><span>Tanggal *</span><input required type="date" value={movement.transaction_date} onChange={(event) => setMovement((current) => ({ ...current, transaction_date: event.target.value }))} /></label>
           <label className="field form-grid__full"><span>Alasan *</span><input required maxLength="180" value={movement.reason} onChange={(event) => setMovement((current) => ({ ...current, reason: event.target.value }))} /></label>
           {movementState.error ? <div className="notice notice--danger form-grid__full" role="alert">{movementState.error.message}</div> : null}

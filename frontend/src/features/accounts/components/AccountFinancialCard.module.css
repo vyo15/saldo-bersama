@@ -188,7 +188,7 @@
 .rowMetrics {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: 0;
 }
 .rowMetrics > span {
@@ -343,7 +343,7 @@
 .detailActions {
   margin-top: var(--space-5);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: var(--space-2);
 }
 .detailActions:empty { display: none; }

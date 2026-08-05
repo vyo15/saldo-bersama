@@ -14,9 +14,10 @@ import { closeEnvelope as requestCloseEnvelope, createEnvelope as requestCreateE
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthBoundsInJakarta } from "../../domain/dates.js";
-import { filterByOwnership, ownershipLabel } from "../../domain/ownership.js";
+import { filterByOwnership } from "../../domain/ownership.js";
 
 const AllocationsPage = () => {
   const resource = useApiResource("envelopes.list");
@@ -122,7 +123,7 @@ const AllocationsPage = () => {
           <form className="form-grid" onSubmit={createEnvelope}>
             <label className="field form-grid__full"><span>Nama kantong *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Jatah makan bulanan" /></label>
             <MoneyInput id="envelope-default" label="Nominal alokasi" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} />
-            <label className="field"><span>Rekening sumber</span><select value={createForm.source_account_id} onChange={(event) => setCreateForm((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Gabungan rekening bersama</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name} · {ownershipLabel(account)}</option>)}</select><small>Rekening pribadi otomatis membuat kantong pribadi.</small></label>
+            <label className="field"><span>Rekening sumber</span><select value={createForm.source_account_id} onChange={(event) => setCreateForm((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Gabungan rekening bersama</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select><small>Rekening pribadi otomatis membuat kantong pribadi.</small></label>
             <label className="field"><span>Periode jatah</span><select value={createForm.period_type} onChange={(event) => setCreateForm((current) => ({ ...current, period_type: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="paycycle">Periode gajian</option><option value="custom">Khusus</option></select></label>
             <label className="field"><span>Rollover</span><select value={createForm.rollover_policy} onChange={(event) => setCreateForm((current) => ({ ...current, rollover_policy: event.target.value }))}><option value="unallocated">Kembali ke belum dialokasikan</option><option value="carry">Bawa sisa ke periode berikutnya</option></select><small>Rollover hanya memindahkan sisa alokasi dan tidak dihitung sebagai pemasukan.</small></label>
             <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>

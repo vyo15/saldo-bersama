@@ -3,6 +3,7 @@ import {
   FiArrowDownLeft,
   FiArrowUpRight,
   FiCalendar,
+  FiCheckCircle,
   FiChevronDown,
   FiCreditCard,
   FiEye,
@@ -313,10 +314,10 @@ const DesktopFinanceDashboard = ({
         <article className="shared-panel shared-widget shared-quick-actions">
           <div className="shared-widget__heading"><h2>Aksi cepat</h2></div>
           <div>
-            <button type="button" onClick={onOpenTransaction}><span><FiPlus aria-hidden="true" /></span><strong>Tambah transaksi</strong></button>
-            <Link to="/transaksi"><span><FiRepeat aria-hidden="true" /></span><strong>Transfer</strong></Link>
-            <Link to="/laporan"><span><FiFileText aria-hidden="true" /></span><strong>Buat anggaran</strong></Link>
-            <Link to="/tagihan"><span><FiCalendar aria-hidden="true" /></span><strong>Catat tagihan</strong></Link>
+            <Link to="/transaksi"><span><FiRepeat aria-hidden="true" /></span><strong>Buka transaksi</strong></Link>
+            <Link to="/laporan"><span><FiFileText aria-hidden="true" /></span><strong>Buka anggaran</strong></Link>
+            <Link to="/tagihan"><span><FiCalendar aria-hidden="true" /></span><strong>Buka tagihan</strong></Link>
+            <Link to="/rekonsiliasi"><span><FiCheckCircle aria-hidden="true" /></span><strong>Rekonsiliasi</strong></Link>
           </div>
         </article>
 

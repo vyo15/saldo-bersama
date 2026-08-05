@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   FiArchive,
-  FiCheckCircle,
   FiChevronRight,
   FiClock,
   FiCopy,
@@ -107,7 +106,6 @@ const AccountFinancialCard = ({
   closeButtonRef,
   onSelect,
   onClose,
-  onReconcile,
   onEdit,
   onArchive,
   onViewTransactions,
@@ -118,7 +116,6 @@ const AccountFinancialCard = ({
   const ownershipLabel = accountOwnershipLabel(account);
   const ownerName = accountOwnerName(account);
   const canManage = Boolean(account.can_manage ?? ownerMode);
-  const canReconcile = Boolean(account.can_reconcile ?? ownerMode);
   const readOnly = Boolean(account.read_only);
   const detectedTemplate = templateOverride || detectBankTemplate(account);
   const bankLabel = account.account_type === "bank" ? BANK_LABELS[detectedTemplate] || "Bank lainnya" : typeLabel;
@@ -193,10 +190,11 @@ const AccountFinancialCard = ({
           <Button variant="primary" icon={FiFileText} onClick={() => onViewTransactions?.(account)}>Lihat transaksi</Button>
         </div>
 
-        <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
-          {account.status === "active" && canReconcile ? <button type="button" onClick={() => onReconcile?.(account)}><FiCheckCircle aria-hidden="true" />Rekonsiliasi</button> : null}
-          {account.status === "active" && canManage ? <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Arsipkan</button> : null}
-        </div>
+        {account.status === "active" && canManage ? (
+          <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
+            <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Arsipkan</button>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -223,7 +221,7 @@ const AccountFinancialCard = ({
         </dl>
         {readOnly ? <p className={styles.readOnlyNotice}>Rekening ini transparan untuk pasangan, tetapi hanya pemilik atau owner yang berwenang dapat melakukan tindakan finansial.</p> : null}
         <div className={styles.detailActions} aria-label={`Aksi rekening ${account.name}`}>
-          {account.status === "active" && canReconcile ? <Button icon={FiCheckCircle} onClick={() => onReconcile?.(account)}>Rekonsiliasi</Button> : null}
+          <Button variant="primary" icon={FiFileText} onClick={() => onViewTransactions?.(account)}>Lihat transaksi</Button>
           {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEdit?.(account)}>Edit</Button> : null}
           {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchive?.(account)}>Arsipkan</Button> : null}
         </div>
