@@ -124,9 +124,21 @@ const AccountsPage = () => {
   const mobileStackPositionRef = useRef(0);
   const mobileStackSettledIndexRef = useRef(0);
   const mobileStackAnimationRef = useRef(0);
-  const mobileStackGestureRef = useRef({ tracking: false, dragging: false, pointerId: null, startX: 0, startY: 0, startTime: 0, lastX: 0, lastTime: 0, velocityX: 0, suppressClick: false });
+  const mobileStackGestureRef = useRef({
+    tracking: false,
+    dragging: false,
+    rejected: false,
+    pointerId: null,
+    captureElement: null,
+    startX: 0,
+    startY: 0,
+    startTime: 0,
+    lastY: 0,
+    lastTime: 0,
+    velocityY: 0,
+    suppressClick: false,
+  });
   const mobileStackAnimatingRef = useRef(false);
-  const mobileStackWheelLockedRef = useRef(false);
   const detailContainerRef = useRef(null);
   const detailCloseRef = useRef(null);
   const createNameInputRef = useRef(null);
@@ -375,7 +387,9 @@ const AccountsPage = () => {
     const gesture = mobileStackGestureRef.current;
     gesture.tracking = false;
     gesture.dragging = false;
+    gesture.rejected = false;
     gesture.pointerId = null;
+    gesture.captureElement = null;
     mobileStackStageRef.current?.classList.remove(styles.mobileStackDragging);
     setMobileStackWillChange(false);
   }, [setMobileStackWillChange]);
@@ -386,13 +400,15 @@ const AccountsPage = () => {
     mobileStackGestureRef.current = {
       tracking: true,
       dragging: false,
+      rejected: false,
       pointerId: event.pointerId,
+      captureElement: event.currentTarget,
       startX: event.clientX,
       startY: event.clientY,
       startTime: now,
-      lastX: event.clientX,
+      lastY: event.clientY,
       lastTime: now,
-      velocityX: 0,
+      velocityY: 0,
       suppressClick: false,
     };
   }, []);
@@ -404,26 +420,29 @@ const AccountsPage = () => {
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
 
+    if (gesture.rejected) return;
+
     if (!gesture.dragging) {
-      if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
-        gesture.tracking = false;
+      if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        gesture.rejected = true;
+        gesture.suppressClick = true;
         return;
       }
-      if (Math.abs(deltaX) < 8 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.15) return;
+      if (Math.abs(deltaY) < 8 || Math.abs(deltaY) <= Math.abs(deltaX) * 1.15) return;
       gesture.dragging = true;
       gesture.suppressClick = true;
       mobileStackStageRef.current?.classList.add(styles.mobileStackDragging);
-      mobileStackStageRef.current?.setPointerCapture(event.pointerId);
+      gesture.captureElement?.setPointerCapture(event.pointerId);
       setMobileStackWillChange(true);
     }
 
     const now = performance.now();
     const elapsed = Math.max(1, now - gesture.lastTime);
-    gesture.velocityX = (event.clientX - gesture.lastX) / elapsed;
-    gesture.lastX = event.clientX;
+    gesture.velocityY = (event.clientY - gesture.lastY) / elapsed;
+    gesture.lastY = event.clientY;
     gesture.lastTime = now;
 
-    const progress = clamp(-deltaX / 154, -0.92, 0.92);
+    const progress = clamp(-deltaY / 154, -0.92, 0.92);
     mobileStackPositionRef.current = mobileStackSettledIndexRef.current + progress;
     applyMobileStackPosition();
   }, [applyMobileStackPosition, setMobileStackWillChange]);
@@ -432,25 +451,31 @@ const AccountsPage = () => {
     const gesture = mobileStackGestureRef.current;
     if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
 
+    if (gesture.rejected) {
+      resetMobileStackGesture();
+      window.setTimeout(() => { mobileStackGestureRef.current.suppressClick = false; }, 0);
+      return;
+    }
+
     if (!gesture.dragging) {
       resetMobileStackGesture();
       return;
     }
 
-    const totalDeltaX = event.clientX - gesture.startX;
+    const totalDeltaY = event.clientY - gesture.startY;
     const totalElapsed = Math.max(1, performance.now() - gesture.startTime);
-    const averageVelocity = totalDeltaX / totalElapsed;
+    const averageVelocity = totalDeltaY / totalElapsed;
     const progress = mobileStackPositionRef.current - mobileStackSettledIndexRef.current;
 
-    if (mobileStackStageRef.current?.hasPointerCapture(event.pointerId)) {
-      mobileStackStageRef.current.releasePointerCapture(event.pointerId);
+    if (gesture.captureElement?.hasPointerCapture(event.pointerId)) {
+      gesture.captureElement.releasePointerCapture(event.pointerId);
     }
     resetMobileStackGesture();
 
-    const fastSwipe = Math.abs(gesture.velocityX) > 0.48 || Math.abs(averageVelocity) > 0.42;
+    const fastSwipe = Math.abs(gesture.velocityY) > 0.48 || Math.abs(averageVelocity) > 0.42;
     const passedThreshold = Math.abs(progress) >= 0.28;
     if (fastSwipe || passedThreshold) {
-      const direction = progress !== 0 ? Math.sign(progress) : (totalDeltaX < 0 ? 1 : -1);
+      const direction = progress !== 0 ? Math.sign(progress) : (totalDeltaY < 0 ? 1 : -1);
       animateMobileStackTo(mobileStackSettledIndexRef.current + direction);
     } else {
       animateMobileStackTo(mobileStackSettledIndexRef.current, { announce: false });
@@ -462,33 +487,22 @@ const AccountsPage = () => {
   const cancelMobileStackPointer = useCallback((event) => {
     const gesture = mobileStackGestureRef.current;
     if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
-    if (mobileStackStageRef.current?.hasPointerCapture(event.pointerId)) {
-      mobileStackStageRef.current.releasePointerCapture(event.pointerId);
+    if (gesture.captureElement?.hasPointerCapture(event.pointerId)) {
+      gesture.captureElement.releasePointerCapture(event.pointerId);
     }
     const wasDragging = gesture.dragging;
+    const shouldSuppressClick = gesture.suppressClick;
     resetMobileStackGesture();
     if (wasDragging) animateMobileStackTo(mobileStackSettledIndexRef.current, { announce: false });
+    if (shouldSuppressClick) window.setTimeout(() => { mobileStackGestureRef.current.suppressClick = false; }, 0);
   }, [animateMobileStackTo, resetMobileStackGesture]);
 
-  const handleMobileStackWheel = useCallback((event) => {
-    if (
-      Math.abs(event.deltaX) <= Math.abs(event.deltaY)
-      || mobileStackWheelLockedRef.current
-      || mobileStackAnimatingRef.current
-      || mobileStackAccountsRef.current.length <= 1
-    ) return;
-    event.preventDefault();
-    mobileStackWheelLockedRef.current = true;
-    moveMobileStack(event.deltaX > 0 ? 1 : -1);
-    window.setTimeout(() => { mobileStackWheelLockedRef.current = false; }, 560);
-  }, [moveMobileStack]);
-
   const handleMobileStackKeyDown = useCallback((event) => {
-    if (event.key === "ArrowLeft") {
+    if (event.key === "ArrowUp") {
       event.preventDefault();
       moveMobileStack(-1);
     }
-    if (event.key === "ArrowRight") {
+    if (event.key === "ArrowDown") {
       event.preventDefault();
       moveMobileStack(1);
     }
@@ -597,13 +611,8 @@ const AccountsPage = () => {
                   ref={mobileStackStageRef}
                   className={styles.mobileStackStage}
                   tabIndex={0}
-                  aria-label="Geser ke kiri atau kanan untuk mengganti rekening"
+                  aria-label="Geser ke atas atau bawah untuk mengganti rekening"
                   aria-describedby="mobile-account-stack-hint"
-                  onPointerDown={handleMobileStackPointerDown}
-                  onPointerMove={handleMobileStackPointerMove}
-                  onPointerUp={finishMobileStackPointer}
-                  onPointerCancel={cancelMobileStackPointer}
-                  onWheel={handleMobileStackWheel}
                   onKeyDown={handleMobileStackKeyDown}
                 >
                   <div className={styles.mobileStackAmbient} aria-hidden="true" />
@@ -618,6 +627,10 @@ const AccountsPage = () => {
                       className={styles.mobileStackCard}
                       aria-label={`Lihat detail rekening ${account.name}`}
                       aria-pressed={account.account_id === selectedAccount?.account_id}
+                      onPointerDown={handleMobileStackPointerDown}
+                      onPointerMove={handleMobileStackPointerMove}
+                      onPointerUp={finishMobileStackPointer}
+                      onPointerCancel={cancelMobileStackPointer}
                       onClick={() => selectMobileStackAccount(account, index)}
                     >
                       <AccountVisual account={account} stack />
@@ -639,7 +652,7 @@ const AccountsPage = () => {
                     <span>{Math.max(1, accounts.findIndex((account) => account.account_id === selectedAccount.account_id) + 1)} dari {accounts.length}</span>
                   </div>
                 ) : null}
-                <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser horizontal untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
+                <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser kartu aktif ke atas atau bawah untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
                 <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />
               </section>
 

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -22,7 +23,23 @@ import {
   PRODUCTION_SYNC_ENV_KEYS,
 } from "../../scripts/runtime-environment.mjs";
 
-const canonicalValues = () => Object.fromEntries(PRODUCTION_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
+const coreValues = () => Object.fromEntries([...CORE_RUNTIME_ENV_KEYS, ...OPTIONAL_LOGGING_ENV_KEYS].map((key) => [key, `${key.toLowerCase()}-value`]));
+const validWebPushValues = () => {
+  const ecdh = crypto.createECDH("prime256v1");
+  ecdh.generateKeys();
+  return {
+    VITE_VAPID_PUBLIC_KEY: ecdh.getPublicKey().toString("base64url"),
+    VAPID_PRIVATE_KEY: ecdh.getPrivateKey().toString("base64url"),
+    VAPID_SUBJECT: "mailto:owner@example.com",
+  };
+};
+const canonicalValues = () => ({
+  ...coreValues(),
+  GOOGLE_BRIDGE_WEB_APP_URL: "https://script.google.com/macros/s/test/exec",
+  GOOGLE_BRIDGE_SHARED_SECRET: "g".repeat(40),
+  JOBS_SHARED_SECRET: "j".repeat(40),
+  ...validWebPushValues(),
+});
 const serialize = (values) => `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n")}\n`;
 
 const withTempProject = async (callback) => {
@@ -34,11 +51,11 @@ const withTempProject = async (callback) => {
   }
 };
 
-test("sinkronisasi Vercel memakai delapan core dan satu logging canonical Production", () => {
+test("sinkronisasi Vercel mencakup core, logging, dan grup integrasi Production", () => {
   assert.equal(CORE_RUNTIME_ENV_KEYS.length, 8);
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
   assert.deepEqual(PRODUCTION_ENV_KEYS, PRODUCTION_SYNC_ENV_KEYS);
-  assert.equal(PRODUCTION_ENV_KEYS.length, 9);
+  assert.equal(PRODUCTION_ENV_KEYS.length, 15);
   assert.deepEqual(new Set([...PUBLIC_PRODUCTION_KEYS, ...SENSITIVE_PRODUCTION_KEYS]), new Set(PRODUCTION_ENV_KEYS));
   assert.equal(validateProductionEnvironment(canonicalValues()).valid, true);
 });
@@ -65,7 +82,7 @@ test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi delapan cor
     projectRunner: async () => {},
     runner: async (request) => calls.push(request),
   });
-  assert.equal(result.synced.length, 8);
+  assert.equal(result.synced.length, 14);
   assert.equal(calls.some(({ key }) => key === "LOG_LEVEL"), false);
 }));
 
@@ -83,7 +100,10 @@ test("sinkronisasi mengirim nilai via runner tanpa mengekspos secret ke argumen 
   assert.deepEqual(result.synced, [...PRODUCTION_ENV_KEYS]);
   assert.deepEqual(calls.map(({ key }) => key), [...PRODUCTION_ENV_KEYS]);
   assert.equal(calls.find(({ key }) => key === "TURSO_AUTH_TOKEN").sensitive, true);
+  assert.equal(calls.find(({ key }) => key === "GOOGLE_BRIDGE_SHARED_SECRET").sensitive, true);
+  assert.equal(calls.find(({ key }) => key === "VAPID_PRIVATE_KEY").sensitive, true);
   assert.equal(calls.find(({ key }) => key === "VITE_APP_NAME").sensitive, false);
+  assert.equal(calls.find(({ key }) => key === "VITE_VAPID_PUBLIC_KEY").sensitive, false);
   assert.equal(calls.find(({ key }) => key === "SESSION_SECRET").value, values.SESSION_SECRET);
 }));
 
@@ -102,6 +122,28 @@ test("sinkronisasi tidak bergantung pada .vercel/project.json dan menerima proje
 }));
 
 
+test("sinkronisasi Production menolak grup integrasi parsial dan VAPID tidak valid", () => {
+  const partial = coreValues();
+  partial.VITE_VAPID_PUBLIC_KEY = "invalid";
+  const partialStatus = validateProductionEnvironment(partial);
+  assert.equal(partialStatus.valid, false);
+  assert.deepEqual(partialStatus.incompleteWebPush, ["VAPID_PRIVATE_KEY", "VAPID_SUBJECT"]);
+
+  const invalid = canonicalValues();
+  invalid.VAPID_PRIVATE_KEY = "invalid";
+  const invalidStatus = validateProductionEnvironment(invalid);
+  assert.equal(invalidStatus.valid, false);
+  assert.deepEqual(invalidStatus.invalidWebPush, ["VAPID_PRIVATE_KEY"]);
+
+  const mismatched = canonicalValues();
+  const otherPair = crypto.createECDH("prime256v1");
+  otherPair.generateKeys();
+  mismatched.VAPID_PRIVATE_KEY = otherPair.getPrivateKey().toString("base64url");
+  const mismatchedStatus = validateProductionEnvironment(mismatched);
+  assert.equal(mismatchedStatus.valid, false);
+  assert.deepEqual(mismatchedStatus.invalidWebPush, ["VAPID_KEY_PAIR"]);
+});
+
 test("runner Vercel memakai cmd.exe pada Windows agar npx.cmd tidak memicu spawn EINVAL", () => {
   const invocation = buildVercelInvocation(["env", "ls", "production"], {
     platform: "win32",
@@ -119,7 +161,7 @@ test("runner Vercel memakai npx langsung pada platform non-Windows", () => {
 
 
 test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap", async () => withTempProject(async (root) => {
-  const values = Object.fromEntries(DEVELOPMENT_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
+  const values = canonicalValues();
   assert.equal(validateDevelopmentEnvironment(values).valid, true);
   await writeFile(path.join(root, ".env.local"), serialize(values));
   const calls = [];
@@ -134,7 +176,7 @@ test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap
 }));
 
 test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idempotent", async () => withTempProject(async (root) => {
-  const values = Object.fromEntries(DEVELOPMENT_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
+  const values = canonicalValues();
   const envPath = path.join(root, ".env.local");
   await writeFile(envPath, serialize(values));
   let projectRuns = 0;
@@ -154,7 +196,7 @@ test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idem
 }));
 
 test("sinkronisasi Development membersihkan OIDC ketika pemeriksaan project gagal", async () => withTempProject(async (root) => {
-  const values = Object.fromEntries(DEVELOPMENT_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
+  const values = canonicalValues();
   const envPath = path.join(root, ".env.local");
   await writeFile(envPath, serialize(values));
 
@@ -174,7 +216,7 @@ test("sinkronisasi Development membersihkan OIDC ketika pemeriksaan project gaga
 }));
 
 test("sinkronisasi Development menolak grup opsional parsial dan key OIDC", () => {
-  const values = canonicalValues();
+  const values = coreValues();
   values.GOOGLE_BRIDGE_WEB_APP_URL = "https://example.test/exec";
   values.VERCEL_OIDC_TOKEN = "temporary";
   const status = validateDevelopmentEnvironment(values);

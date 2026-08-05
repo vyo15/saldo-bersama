@@ -181,14 +181,84 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       const cards = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')];
       return cards.filter((card) => Number.parseFloat(getComputedStyle(card).opacity || '0') > 0.05).length >= Math.min(3, cards.length);
     })()`), { description: "tiga kartu rekening terlihat pada stack mobile" });
-    assert.equal(await page.evaluate(`Boolean(document.querySelector('[aria-label="Geser ke kiri atau kanan untuk mengganti rekening"]'))`), true, "Stack rekening mobile harus dapat dikendalikan horizontal tanpa mengambil alih scroll vertikal.");
+    assert.equal(await page.evaluate(`Boolean(document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]'))`), true, "Stack rekening mobile harus memakai gesture vertikal yang selaras dengan animasi tumpukan.");
     const mobileAccountInteraction = await page.evaluate(`(() => {
-      const stack = document.querySelector('[aria-label="Geser ke kiri atau kanan untuk mengganti rekening"]');
+      const stack = document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]');
+      const activeCard = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')]
+        .find((item) => item.getAttribute('aria-pressed') === 'true');
       return {
-        touchAction: stack ? getComputedStyle(stack).touchAction : '',
+        stackTouchAction: stack ? getComputedStyle(stack).touchAction : '',
+        activeCardTouchAction: activeCard ? getComputedStyle(activeCard).touchAction : '',
+        activeName: document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim() || '',
+        activeRect: activeCard ? (() => {
+          const rect = activeCard.getBoundingClientRect();
+          return { x: rect.left + (rect.width / 2), y: rect.top + (rect.height / 2) };
+        })() : null,
       };
     })()`);
-    assert.equal(mobileAccountInteraction.touchAction, "pan-y", "Area kartu harus membiarkan gesture scroll vertikal halaman.");
+    assert.equal(mobileAccountInteraction.stackTouchAction, "pan-y pinch-zoom", "Area di luar kartu aktif harus tetap membiarkan scroll vertikal dan pinch zoom.");
+    assert.equal(mobileAccountInteraction.activeCardTouchAction, "pan-x pinch-zoom", "Kartu aktif harus menerima gesture vertikal tanpa memblokir pinch zoom.");
+    assert.ok(mobileAccountInteraction.activeRect, "Kartu aktif harus tersedia untuk gesture browser.");
+    await page.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+    await page.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: mobileAccountInteraction.activeRect.x, y: mobileAccountInteraction.activeRect.y }],
+    });
+    await page.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: mobileAccountInteraction.activeRect.x + 2, y: mobileAccountInteraction.activeRect.y - 118 }],
+    });
+    await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await waitFor(
+      () => page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim() !== ${JSON.stringify(mobileAccountInteraction.activeName)}`),
+      { description: "swipe vertikal mengganti rekening aktif" },
+    );
+
+    const accountAfterVerticalSwipe = await page.evaluate(`(() => {
+      const activeCard = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')]
+        .find((item) => item.getAttribute('aria-pressed') === 'true');
+      const rect = activeCard?.getBoundingClientRect();
+      return {
+        name: document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim() || '',
+        rect: rect ? { x: rect.left + (rect.width / 2), y: rect.top + (rect.height / 2) } : null,
+      };
+    })()`);
+    assert.ok(accountAfterVerticalSwipe.rect, "Kartu aktif setelah swipe vertikal harus tersedia.");
+
+    await page.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: accountAfterVerticalSwipe.rect.x, y: accountAfterVerticalSwipe.rect.y }],
+    });
+    await page.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: accountAfterVerticalSwipe.rect.x + 118, y: accountAfterVerticalSwipe.rect.y + 2 }],
+    });
+    await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    assert.equal(
+      await page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim()`),
+      accountAfterVerticalSwipe.name,
+      "Gesture horizontal tidak boleh mengganti rekening atau membuka detail.",
+    );
+
+    await page.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: accountAfterVerticalSwipe.rect.x, y: accountAfterVerticalSwipe.rect.y }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    await page.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: accountAfterVerticalSwipe.rect.x + 1, y: accountAfterVerticalSwipe.rect.y - 20 }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await new Promise((resolve) => setTimeout(resolve, 620));
+    assert.equal(
+      await page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim()`),
+      accountAfterVerticalSwipe.name,
+      "Swipe vertikal pendek harus kembali ke rekening aktif tanpa berpindah.",
+    );
+
     assert.equal(await page.evaluate(`document.querySelectorAll('button[aria-label^="Pilih rekening"]').length`), 0, "Pagination carousel lama harus dihapus.");
     await page.evaluate(`(() => {
       const card = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')]

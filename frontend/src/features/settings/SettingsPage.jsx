@@ -11,7 +11,12 @@ import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { deactivateUser, downloadFinanceExcel, reactivateUser, reopenPeriod as requestReopenPeriod, runSettingsAction } from "./settings.api.js";
-import { disablePushNotifications, enablePushNotifications, getPushNotificationState } from "../../services/notifications.js";
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  getPushNotificationState,
+  testPushNotification,
+} from "../../services/notifications.js";
 import { readTransactionImportFile } from "../../services/importer.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { accountDisplayLabel } from "../accounts/accountPresentation.js";
@@ -22,6 +27,29 @@ const providerSummary = (integration, provider) => {
   const item = integration?.providers?.[provider] || {};
   const pending = Number(item.pending || 0) + Number(item.processing || 0) + Number(item.failed || 0);
   return { pending, completed: Number(item.completed || 0), lastUpdatedAt: item.lastUpdatedAt || null };
+};
+
+
+const pushPresentation = (state) => {
+  if (state.status === "loading") return { text: "Memeriksa kesiapan perangkat dan server...", tone: "info", label: "Memeriksa", canEnable: false };
+  const presentations = {
+    ready_tested: { text: "Perangkat terdaftar dan pengiriman uji sudah diterima layanan push.", tone: "active", label: "Aktif", canEnable: false },
+    ready_unverified: { text: "Perangkat terdaftar. Kirim notifikasi uji untuk memeriksa jalur pengiriman.", tone: "warning", label: "Belum diuji", canEnable: false },
+    not_subscribed: { text: "Belum aktif pada perangkat ini.", tone: "neutral", label: "Belum aktif", canEnable: true },
+    registration_required: { text: "Subscription browser ada, tetapi perlu didaftarkan ulang ke server.", tone: "warning", label: "Daftar ulang", canEnable: true },
+    vapid_key_changed: { text: "Kunci Web Push berubah. Daftarkan ulang perangkat ini.", tone: "warning", label: "Daftar ulang", canEnable: true },
+    account_conflict: { text: "Subscription browser masih terkait akun lain. Daftarkan ulang untuk akun ini.", tone: "warning", label: "Daftar ulang", canEnable: true },
+    unsupported: { text: "Browser ini belum mendukung Web Push.", tone: "danger", label: "Tidak didukung", canEnable: false },
+    insecure_context: { text: "Notifikasi memerlukan HTTPS. Pengujian lokal dapat memakai localhost, bukan alamat IP jaringan.", tone: "danger", label: "Perlu HTTPS", canEnable: false },
+    ios_install_required: { text: "Pada iPhone atau iPad, tambahkan aplikasi ke Home Screen lalu buka dari ikon aplikasi.", tone: "warning", label: "Pasang aplikasi", canEnable: false },
+    permission_denied: { text: "Izin notifikasi diblokir. Aktifkan kembali melalui pengaturan browser atau perangkat.", tone: "danger", label: "Izin diblokir", canEnable: false },
+    client_not_configured: { text: "VAPID public key belum tersedia pada frontend.", tone: "danger", label: "Belum siap", canEnable: false },
+    client_configuration_invalid: { text: "VAPID public key pada frontend tidak valid.", tone: "danger", label: "Konfigurasi salah", canEnable: false },
+    server_not_configured: { text: "Web Push belum dikonfigurasi pada server Production.", tone: "danger", label: "Server belum siap", canEnable: false },
+    server_configuration_invalid: { text: "Konfigurasi Web Push pada server belum lengkap atau tidak valid.", tone: "danger", label: "Konfigurasi salah", canEnable: false },
+    server_status_unavailable: { text: "Status Web Push pada server belum dapat diverifikasi.", tone: "danger", label: "Tidak terverifikasi", canEnable: false },
+  };
+  return presentations[state.reason] || { text: "Status notifikasi belum dapat ditentukan.", tone: "danger", label: "Tidak diketahui", canEnable: false };
 };
 
 const SettingsPage = () => {
@@ -53,7 +81,7 @@ const SettingsPage = () => {
   const [restoreArchiveState, setRestoreArchiveState] = useState({ status: "idle", error: null });
   const [periodClosePreview, setPeriodClosePreview] = useState(null);
   const [periodCloseState, setPeriodCloseState] = useState({ status: "idle", error: null });
-  const [pushState, setPushState] = useState({ status: "loading", supported: true, permission: "default", enabled: false });
+  const [pushState, setPushState] = useState({ status: "loading", supported: true, permission: "default", enabled: false, reason: "loading", browserSubscribed: false });
   const [exporting, setExporting] = useState(false);
 
   const refreshPushState = useCallback(async () => {
@@ -62,7 +90,7 @@ const SettingsPage = () => {
       setPushState({ status: "ready", ...next });
       return next;
     } catch (error) {
-      setPushState({ status: "error", supported: false, permission: "unknown", enabled: false, error });
+      setPushState({ status: "error", supported: true, permission: "unknown", enabled: false, reason: "server_status_unavailable", browserSubscribed: false, error });
       return null;
     }
   }, []);
@@ -84,6 +112,7 @@ const SettingsPage = () => {
       let data;
       if (action === "notifications.enable") data = await enablePushNotifications();
       else if (action === "notifications.disable") data = await disablePushNotifications();
+      else if (action === "notifications.test") data = await testPushNotification();
       else data = await runSettingsAction(action, payload, { idempotencyKey: createIdempotencyKey(), ...options });
       if (action.startsWith("notifications.")) await refreshPushState();
       if (["calendar.sync", "mirror.sync", "mirror.rebuild", "backup.create"].includes(action)) await integrationResource.reload();
@@ -93,8 +122,11 @@ const SettingsPage = () => {
         : action === "mirror.rebuild" ? "Pembangunan ulang mirror sudah masuk antrean."
           : action === "mirror.sync" ? "Sinkronisasi mirror sudah masuk antrean."
             : action === "calendar.sync" ? "Sinkronisasi Calendar sudah masuk antrean."
-              : action === "integrity.run" ? (data.ok ? "Integrity check lulus." : `Integrity check menemukan ${data.issues?.length || 0} masalah.`)
-                : "Operasi berhasil diverifikasi.";
+              : action === "notifications.enable" ? "Perangkat berhasil didaftarkan. Kirim notifikasi uji untuk memverifikasi penerimaan."
+                : action === "notifications.disable" ? "Notifikasi dinonaktifkan pada perangkat ini."
+                  : action === "notifications.test" ? "Notifikasi uji dikirim. Periksa panel notifikasi pada perangkat ini."
+                    : action === "integrity.run" ? (data.ok ? "Integrity check lulus." : `Integrity check menemukan ${data.issues?.length || 0} masalah.`)
+                      : "Operasi berhasil diverifikasi.";
       setResult({ status: "success", text: message, fileLink });
       return data;
     } catch (error) {
@@ -230,6 +262,8 @@ const SettingsPage = () => {
   const integrations = integrationResource.data || healthResource.data?.integrations || {};
   const sheets = providerSummary(integrations, "sheets");
   const calendar = providerSummary(integrations, "calendar");
+  const pushView = pushPresentation(pushState);
+  const pushBusy = result?.status === "loading";
 
   return (
     <div className="page-stack settings-page">
@@ -242,7 +276,19 @@ const SettingsPage = () => {
         <Card className="settings-card"><FiDatabase /><div><h2>Turso database</h2><p>Schema {bootstrap?.config?.schemaVersion || healthResource.data?.schema?.version || "-"} · {bootstrap?.config?.timezone || "Asia/Jakarta"}</p></div>{ownerMode ? <Button onClick={() => run("integrity.run")}>Periksa integritas</Button> : <span className="status-badge">Owner</span>}</Card>
         <Card className="settings-card"><FiCalendar /><div><h2>Google Calendar</h2><p>{integrations.configured?.calendar ? `Terhubung · antrean ${calendar.pending}` : "Belum dikonfigurasi"}</p></div>{ownerMode ? <Button disabled={!integrations.configured?.calendar} onClick={() => run("calendar.sync")}>Sinkronkan</Button> : <span className="status-badge">Owner</span>}</Card>
         <Card className="settings-card"><FiFileText /><div><h2>Google Sheets mirror</h2><p>{integrations.configured?.sheets ? `Read-only · antrean ${sheets.pending}` : "Belum dikonfigurasi"}</p></div>{ownerMode ? <Button disabled={!integrations.configured?.sheets} onClick={() => run("mirror.sync")}>Sinkronkan</Button> : <span className="status-badge">Owner</span>}</Card>
-        <Card className="settings-card"><FiBell /><div><h2>Notifikasi perangkat</h2><p>{pushState.enabled ? "Aktif pada browser ini." : pushState.supported ? "Belum aktif pada browser ini." : "Browser tidak mendukung Web Push."}</p></div>{pushState.enabled ? <Button onClick={() => run("notifications.disable")}>Nonaktifkan</Button> : <Button disabled={!pushState.supported || pushState.status === "loading"} onClick={() => run("notifications.enable")}>Aktifkan</Button>}</Card>
+        <Card className="settings-card">
+          <FiBell />
+          <div>
+            <h2>Notifikasi perangkat</h2>
+            <p>{pushView.text}{pushState.activeDeviceCount > 1 ? ` ${pushState.activeDeviceCount} perangkat aktif pada akun ini.` : ""}</p>
+          </div>
+          <div className="button-group">
+            {pushState.enabled ? <Button disabled={pushBusy} onClick={() => run("notifications.test")}>Uji notifikasi</Button> : null}
+            {!pushState.enabled && pushView.canEnable ? <Button disabled={pushBusy} onClick={() => run("notifications.enable")}>{pushState.browserSubscribed ? "Daftarkan ulang" : "Aktifkan"}</Button> : null}
+            {pushState.browserSubscribed ? <Button disabled={pushBusy} onClick={() => run("notifications.disable")}>Nonaktifkan</Button> : null}
+            {!pushState.browserSubscribed && !pushView.canEnable ? <span className={`status-badge status-badge--${pushView.tone}`}>{pushView.label}</span> : null}
+          </div>
+        </Card>
         <Card className="settings-card"><FiCheckCircle /><div><h2>Status backend</h2><p>Database {healthResource.data?.database || "-"} · schema {healthResource.data?.schema?.ready ? "siap" : "belum siap"}</p></div><span className={`status-badge status-badge--${backendStatus.tone}`}>{backendStatus.label}</span></Card>
       </section>
 

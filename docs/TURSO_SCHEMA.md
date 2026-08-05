@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, dan `database/migrations/003_account_bank_template.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, dan `database/migrations/003_account_bank_template.sql`, dan `database/migrations/004_notification_deliveries.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -33,6 +33,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `integration_outbox`
 - `integration_links`
 - `notification_queue`
+- `notification_deliveries`
 - `push_subscriptions`
 - `backup_runs`
 - `import_previews`
@@ -79,16 +80,15 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `5`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `6`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
 
-### Migration v5 dan rollback
+### Migration v6 dan rollback
 
 - Sebelum `npm run db:migrate`, buat backup teknis terverifikasi dan catat database target.
-- `003_account_bank_template.sql` bersifat additive; row lama memperoleh `bank_template='generic'`, lalu rekening bank dengan suffix nama legacy yang dikenali dipetakan ke template sesuai bank tanpa mengubah `name`, saldo, atau transaksi.
-- Setelah migration, deploy runtime v5. Runtime v4 tidak boleh dipakai pada database yang sudah melaporkan schema v5 karena runtime lama tidak memahami kontrak template terpisah.
-- Restore runtime v5 tetap menerima backup schema v3/v4; field yang belum ada dinormalisasi saat restore dan schema hasil restore ditutup pada version v5 sebelum integrity check.
-- Bila deployment runtime gagal, utamakan forward-fix v5. Rollback ke runtime v4 hanya melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment secara terjaga. Jangan mencoba menghapus kolom langsung pada database produksi.
-- Bila template sudah diubah setelah migration, rollback yang membuang kolom memerlukan preview dampak data dan approval baru. Nama rekening tidak boleh dipakai lagi sebagai storage template.
-
+- `004_notification_deliveries.sql` bersifat additive. Tabel baru mencatat satu delivery untuk kombinasi notification dan subscription, beserta attempt, lock, status, dan error code tersanitasi.
+- Runtime v6 hanya mengulang delivery `pending` atau `failed`. Perangkat yang sudah `sent` tidak menerima ulang ketika perangkat lain gagal.
+- Queue, delivery, dan push subscription bersifat data operasional. Backup finansial tidak menyalin credential Push. Restore menghapus delivery, queue, dan subscription lama dalam urutan foreign key yang aman.
+- Runtime v6 tetap menerima backup schema v3, v4, dan v5. Hasil restore dinormalisasi ke schema v6 sebelum integrity check selesai.
+- Bila deployment runtime gagal, gunakan forward-fix v6. Rollback dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menjatuhkan tabel secara langsung pada database produksi.
 
 Arti dan lifecycle tabel didokumentasikan di `DATA_DICTIONARY.md`; kebijakan perubahan schema berada di `DATABASE_MIGRATION_POLICY.md`.

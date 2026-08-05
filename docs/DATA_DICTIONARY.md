@@ -39,7 +39,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `request_nonces` | Nonce anti-replay untuk request bertanda tangan. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `integration_outbox` | Antrean atomik menuju Sheets, Calendar, Drive, atau worker lain. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `integration_links` | Pemetaan entity internal dengan resource integrasi eksternal. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
-| `notification_queue` | Antrean notifikasi yang diproses worker. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `notification_queue` | Antrean notifikasi per pengguna yang diproses worker. | Sedang | Service/API; data operasional, dibersihkan hanya melalui workflow maintenance |
+| `notification_deliveries` | Status pengiriman per notification dan subscription untuk retry tanpa duplikasi perangkat sukses. | Tinggi | Service/API; endpoint tidak disalin ke backup finansial |
 | `push_subscriptions` | Subscription Web Push per pengguna/perangkat. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `backup_runs` | Metadata backup teknis dan statusnya. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `import_previews` | Preview import yang memiliki fingerprint dan masa berlaku. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
@@ -67,7 +68,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - budget/kantong threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v5
+## Model planned — belum ada di schema v6
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 

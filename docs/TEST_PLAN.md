@@ -29,10 +29,11 @@ Cakupan wajib:
 - formula injection dan valid XLSX;
 - backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, dan push credential exclusion;
 - service worker tanpa API cache dan tanpa offline write queue;
+- Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, payload lock-screen privat, 404/410 expiry, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output;
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
-- halaman Rekening mobile wajib membiarkan scroll vertikal dari area stack (`touch-action: pan-y`), memakai swipe horizontal untuk ganti rekening, dan menjaga kontrol form minimal 16px tanpa mematikan browser zoom;
+- halaman Rekening mobile wajib memakai swipe vertikal hanya pada kartu aktif, membiarkan scroll vertikal dari area kosong stack, menolak gesture horizontal, mengembalikan swipe pendek, mempertahankan pinch zoom, dan menjaga kontrol form minimal 16px;
 - menu `Lainnya` tidak boleh menduplikasi `Tambah transaksi`; route `/rekonsiliasi` harus tersedia di kelompok Kelola keuangan dan form hanya muncul berdasarkan capability backend;
 - default metode pembayaran transaksi harus kosong, bukan nilai `transfer` tersembunyi; selector rekening utama harus memakai formatter provider/nama/pemilik yang konsisten;
 - browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
@@ -51,7 +52,7 @@ Uji dua browser/perangkat dengan owner dan member:
 2. Edit record yang sama untuk memastikan 409 conflict jelas.
 3. Double-click/retry menggunakan idempotency yang sama.
 4. Putus jaringan sebelum write; UI harus menolak tanpa menyatakan sukses.
-5. Install PWA iPhone/Android, update app shell, push notification; pada Safari iPhone pastikan fokus input tidak memicu auto-zoom dan scroll dapat dimulai dari area kartu rekening.
+5. Install PWA iPhone/Android dan update app shell. Aktifkan Push pada HTTPS, kirim notifikasi uji, lalu periksa panel sistem. Uji dua perangkat saat satu delivery gagal sementara dan pastikan perangkat sukses tidak menerima duplikat. Pada Safari iPhone pastikan aplikasi dibuka dari Home Screen, fokus input tidak memicu auto-zoom, dan scroll dapat dimulai dari area kartu rekening.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.
 7. Export Excel dan periksa formula-like input.
 8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif.
@@ -76,7 +77,7 @@ Perubahan sistem pengendali uang bersama wajib mencakup skenario berikut:
 - peringatan budget dan kantong muncul pada threshold, tidak menggandakan notifikasi, dan tidak membocorkan scope personal;
 - target dengan tanggal selesai menghitung sisa, kebutuhan setoran bulanan, dan status pace secara deterministik;
 - rekonsiliasi berbeda atau terlalu lama menghasilkan peringatan tanpa membuat adjustment otomatis;
-- notification queue memakai dedupe key stabil dan retry tidak menghasilkan push ganda;
+- notification queue memakai dedupe key stabil, delivery dicatat per subscription, dan retry hanya mengulang perangkat yang gagal;
 - setiap `REQ-*` dalam product requirements tercatat pada implementation matrix;
 - setiap gap yang membutuhkan schema baru memiliki RFC `Proposed` sebelum migration atau API baru dibuat.
 
@@ -118,7 +119,7 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Owner mobile dan desktop melihat aksi `Tambah rekening` pada route Rekening dan `Tambah kategori` pada route Kategori.
 - Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive owner.
 - Dialog rekening dan kategori terpisah serta memakai form domain yang sama pada desktop/mobile tanpa tab lintas domain.
-- Stack kartu mobile memakai swipe horizontal dan `touch-action: pan-y`; gesture vertikal tidak boleh dibajak dari scroll halaman.
+- Stack kartu mobile memakai swipe vertikal pada kartu aktif. Container memakai `touch-action: pan-y pinch-zoom`, kartu aktif memakai `touch-action: pan-x pinch-zoom`, gesture horizontal tidak mengganti rekening, dan area kosong stack tetap menggulir halaman.
 - Tombol `Daftar rekening` harus membuka daftar rekening aktif. Quick action rekening hanya memuat navigasi Transaksi dan Pembayaran keluar; Tagihan dan Rekonsiliasi berada pada route masing-masing.
 - Route `/rekonsiliasi` menampilkan form hanya untuk rekening `can_reconcile`, mengirim idempotency key, mencatat selisih tanpa adjustment otomatis, dan tetap mengandalkan authorization backend.
 - Template BCA, BNI, BTN, Mandiri, dan Permata berasal dari `accounts.bank_template`; mengganti template tidak boleh mengubah nama rekening. Object legacy tanpa field boleh memakai suffix nama hanya sebagai fallback visual.
@@ -130,7 +131,7 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
-- Migration v5 menerima enum template valid, menolak template invalid/non-bank, menjaga nama legacy tetap sama, serta restore backup v3/v4 menormalisasi field ke schema v5.
+- Migration v5 menerima enum template valid, menolak template invalid/non-bank, dan menjaga nama legacy tetap sama. Migration v6 menambah delivery Web Push per subscription. Restore runtime v6 tetap menerima backup schema v3/v4/v5.
 - Sidebar melengkung harus tetap terlihat, target sentuh minimal 44px, submenu minimal dapat ditutup, dan menu mobile tidak menduplikasi theme toggle.
 
 ## Regression rekening transparan dan capability mobile

@@ -1,5 +1,5 @@
-const STATIC_CACHE = "saldo-bersama-static-v6";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v6";
+const STATIC_CACHE = "saldo-bersama-static-v7";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v7";
 const STATIC_ASSETS = [
   "/",
   "/site.webmanifest",
@@ -21,6 +21,18 @@ const cacheResponse = (event, cacheName, request, response) => {
   );
 };
 
+const isLocalHostname = (hostname) => ["localhost", "127.0.0.1", "::1", "[::1]"].includes(hostname);
+
+const safeTargetPath = (value) => {
+  const candidate = String(value || "/").trim();
+  if (candidate.length > 200 || !/^\/(?!\/)[A-Za-z0-9/_-]*$/.test(candidate) || candidate.includes("\\")) return "/";
+  return candidate;
+};
+
+const notificationCopy = (type) => type === "test"
+  ? { title: "Saldo Bersama", body: "Notifikasi uji berhasil diterima oleh perangkat ini." }
+  : { title: "Saldo Bersama", body: "Ada pengingat keuangan yang perlu diperiksa di aplikasi." };
+
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));
 });
@@ -31,7 +43,9 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(Promise.all([
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => ![STATIC_CACHE, RUNTIME_CACHE].includes(key)).map((key) => caches.delete(key)))),
+    caches.keys().then((keys) => Promise.all(keys
+      .filter((key) => key.startsWith("saldo-bersama-") && ![STATIC_CACHE, RUNTIME_CACHE].includes(key))
+      .map((key) => caches.delete(key)))),
     self.clients.claim()
   ]));
 });
@@ -40,7 +54,7 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
-  if (["localhost", "127.0.0.1", "::1"].includes(url.hostname)) return;
+  if (isLocalHostname(url.hostname)) return;
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {
@@ -67,20 +81,23 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   let payload = {};
-  try { payload = event.data?.json() || {}; } catch { payload = { body: event.data?.text() }; }
-  event.waitUntil(self.registration.showNotification(payload.title || "Saldo Bersama", {
-    body: payload.body || "Ada pembaruan yang perlu diperiksa.",
+  try { payload = event.data?.json() || {}; } catch { payload = {}; }
+  const copy = notificationCopy(String(payload.notificationType || ""));
+  const notificationId = String(payload.notificationId || "").slice(0, 120) || undefined;
+  event.waitUntil(self.registration.showNotification(copy.title, {
+    body: copy.body,
     icon: "/icons/icon-192.png?v=4",
     badge: "/icons/favicon-64.png?v=4",
-    tag: payload.notificationId || undefined,
+    tag: notificationId,
     renotify: false,
-    data: { targetPath: payload.targetPath || "/" }
+    data: { targetPath: safeTargetPath(payload.targetPath) }
   }));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.targetPath || "/", self.location.origin).href;
+  const targetPath = safeTargetPath(event.notification.data?.targetPath);
+  const targetUrl = new URL(targetPath, self.location.origin).href;
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
     const existing = clients.find((client) => client.url.startsWith(self.location.origin));
     if (existing) { existing.navigate(targetUrl); return existing.focus(); }

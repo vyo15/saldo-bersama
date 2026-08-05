@@ -119,14 +119,25 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `mirror.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
 | `mirror.rebuild` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
 | `integrations.status` | Ya | Ya | Read | Tidak | `api/_lib/services/integrations.js` / dispatcher |
+| `notifications.status` | Ya | Ya | Read | Tidak | `api/_lib/services/notifications.js` |
 | `notifications.register` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.unregister` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
+| `notifications.test` | Ya | Ya | External/operation | Wajib | `api/_lib/services/notifications.js` |
 | `backup.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
 | `import.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance/` |
 | `import.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
 | `restore.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance/` |
 | `restore.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
 | `integrity.run` | Ya | Tidak | Write/operation | Tidak | `api/_lib/services/maintenance/` |
+
+### Kontrak Web Push
+
+- `notifications.status` membandingkan subscription browser dengan registrasi backend milik actor. Status aktif tidak boleh ditentukan hanya dari browser.
+- `notifications.register` menerima endpoint HTTPS publik serta key `p256dh` dan `auth` yang valid. Endpoint milik akun lain, baik aktif maupun nonaktif, hanya dapat dipindahkan ketika client membuktikan subscription browser yang sama melalui kedua key yang persis cocok. Mismatch menghasilkan `PUSH_ENDPOINT_OWNERSHIP_CONFLICT`.
+- Endpoint dengan port nonstandar, IP literal, hostname lokal/internal, dan alamat DNS yang mengarah ke jaringan nonpublik ditolak. Lookup terjaga dipakai sebagai agent request agar koneksi tidak melakukan resolusi DNS kedua yang tidak tervalidasi. Jika hostname berubah dan mengarah ke alamat privat saat pengiriman, subscription dinonaktifkan serta seluruh delivery tertundanya diakhiri agar tidak terus di-retry.
+- `notifications.test` hanya mengirim ke endpoint aktif milik actor, wajib idempotency key, memakai cooldown, timeout, dan payload generik tanpa detail finansial. Penerimaan oleh push service tidak membuktikan sistem operasi menampilkan notifikasi.
+- `notifications.unregister` menonaktifkan subscription dan menandai delivery tertunda pada perangkat tersebut sebagai `expired`.
+- Scheduled delivery memakai satu `notification_deliveries` per subscription. Retry hanya mengulang perangkat gagal dan tidak mengirim ulang ke perangkat yang sudah sukses.
 
 ### Kontrak rekening bank
 

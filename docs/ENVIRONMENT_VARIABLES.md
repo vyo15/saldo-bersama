@@ -47,19 +47,21 @@ Development menyimpan delapan key core wajib dan satu key logging opsional, dita
 
 ### Web Push — opsional sebagai satu grup
 
-| Key |
-|---|
-| `VITE_VAPID_PUBLIC_KEY` |
-| `VAPID_PRIVATE_KEY` |
-| `VAPID_SUBJECT` |
+| Key | Validasi |
+|---|---|
+| `VITE_VAPID_PUBLIC_KEY` | Base64url uncompressed P-256 public key, 65 byte dan diawali byte `0x04` |
+| `VAPID_PRIVATE_KEY` | Base64url private key, 32 byte |
+| `VAPID_SUBJECT` | URI `mailto:` valid atau URL HTTPS |
+
+Public dan private key harus berasal dari pasangan VAPID yang sama. `npm run env:check` dan script sinkronisasi menolak pasangan yang tidak cocok. Rotasi key membuat subscription lama perlu didaftarkan ulang.
 
 Grup opsional harus lengkap atau seluruh grup dibiarkan kosong. Development variables sengaja dapat ditarik oleh collaborator yang berwenang; jangan memberikan akses project Vercel kepada pihak yang tidak perlu melihat secret development.
 
 ## Scope Production canonical
 
-Production memakai delapan key core dan satu key logging opsional yang sama namanya. Google bridge dan Web Push ditambahkan hanya bila fitur diaktifkan dan seluruh grup lengkap.
+Production memakai delapan key core dan satu key logging opsional yang sama namanya. Google bridge dan Web Push ikut disinkronkan hanya bila seluruh key pada grup terkait lengkap dan valid.
 
-Secret/token Production harus diperlakukan sebagai secret deployment. `npm run env:push:production` hanya menyinkronkan delapan core dan `LOG_LEVEL`; perubahan integrasi opsional tetap mengikuti runbook integrasi yang disetujui.
+Secret/token Production harus diperlakukan sebagai secret deployment. `npm run env:push:production` menyinkronkan core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap. Grup parsial atau key VAPID invalid membuat command berhenti sebelum mengubah Vercel.
 
 ## `.env.local` canonical
 
@@ -107,7 +109,7 @@ npm run env:check
 npm run env:push:production
 ```
 
-Command mengirim delapan key core dan `LOG_LEVEL` ke Production. Jalankan deployment Production baru setelah sinkronisasi.
+Command mengirim core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap ke Production tanpa mencetak nilai secret. Jalankan deployment Production baru setelah sinkronisasi.
 
 ## Apps Script Properties canonical
 

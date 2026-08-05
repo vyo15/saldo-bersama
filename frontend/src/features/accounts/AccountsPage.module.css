@@ -282,9 +282,9 @@
     overflow: hidden;
     perspective: 93.75rem;
     perspective-origin: 50% 45%;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     user-select: none;
-    cursor: ew-resize;
+    cursor: default;
   }
 
   .mobileStackStage:focus-visible {
@@ -292,7 +292,7 @@
     outline-offset: -5px;
   }
 
-  .mobileStackDragging {
+  .mobileStackStage.mobileStackDragging .mobileStackCard[aria-pressed="true"] {
     cursor: grabbing;
   }
 
@@ -344,7 +344,13 @@
     transform-style: preserve-3d;
     backface-visibility: hidden;
     contain: layout paint;
+    touch-action: auto;
     cursor: pointer;
+  }
+
+  .mobileStackCard[aria-pressed="true"] {
+    touch-action: pan-x pinch-zoom;
+    cursor: grab;
   }
 
   .mobileStackCard:focus-visible {

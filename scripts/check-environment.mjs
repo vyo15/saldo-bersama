@@ -5,7 +5,9 @@ import {
   CORE_RUNTIME_ENV_KEYS,
   GOOGLE_BRIDGE_ENV_KEYS,
   WEB_PUSH_ENV_KEYS,
+  optionalGroupStatus,
   parseEnvironmentText,
+  validateWebPushEnvironment,
 } from "./runtime-environment.mjs";
 import { readFile } from "node:fs/promises";
 
@@ -27,17 +29,19 @@ const values = parseEnvironmentText(source);
 const present = (key) => Boolean(String(values[key] ?? "").trim());
 const missingCore = CORE_RUNTIME_ENV_KEYS.filter((key) => !present(key));
 const legacy = forbidden.filter((key) => key in values);
-const groupStatus = (keys) => {
-  const count = keys.filter(present).length;
-  return count === 0 ? "disabled" : count === keys.length ? "complete" : `INCOMPLETE (${keys.filter((key) => !present(key)).join(", ")})`;
-};
+const google = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);
+const webPush = validateWebPushEnvironment(values);
 
-const googleStatus = groupStatus(GOOGLE_BRIDGE_ENV_KEYS);
-const pushStatus = groupStatus(WEB_PUSH_ENV_KEYS);
+const groupLabel = (group) => {
+  if (!group.enabled) return "disabled";
+  if (!group.complete) return `INCOMPLETE (${group.missing.join(", ")})`;
+  if (group.invalid?.length) return `INVALID (${group.invalid.join(", ")})`;
+  return "complete";
+};
 
 console.log(`Environment: ${envPath}`);
 console.log(`Core: ${missingCore.length ? `INCOMPLETE (${missingCore.join(", ")})` : "complete"}`);
-console.log(`Google bridge: ${googleStatus}`);
-console.log(`Web Push: ${pushStatus}`);
+console.log(`Google bridge: ${groupLabel(google)}`);
+console.log(`Web Push: ${groupLabel(webPush)}`);
 console.log(`Legacy/forbidden: ${legacy.length ? legacy.join(", ") : "none"}`);
-if (missingCore.length || legacy.length || googleStatus.startsWith("INCOMPLETE") || pushStatus.startsWith("INCOMPLETE")) process.exitCode = 1;
+if (missingCore.length || legacy.length || (google.enabled && !google.complete) || !webPush.valid) process.exitCode = 1;

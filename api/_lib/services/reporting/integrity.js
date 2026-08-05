@@ -14,6 +14,23 @@ export const integrityIssues = async (db) => {
   if (brokenOwnership.length) issues.push({ code: "BROKEN_ACCOUNT_OWNERSHIP", count: brokenOwnership.length });
   const linkedCancelled = await db.all("SELECT occurrence_id FROM recurring_occurrences WHERE actual_amount<>(SELECT COALESCE(SUM(amount),0) FROM transactions WHERE status='active' AND recurring_occurrence_id=recurring_occurrences.occurrence_id)");
   if (linkedCancelled.length) issues.push({ code: "RECURRING_ACTUAL_MISMATCH", count: linkedCancelled.length });
+  const pushOwnershipMismatchRows = await db.all(`SELECT COUNT(*) AS count
+    FROM notification_deliveries d
+    JOIN notification_queue n ON n.notification_id=d.notification_id
+    JOIN push_subscriptions s ON s.subscription_id=d.subscription_id
+    WHERE n.user_id<>s.user_id`);
+  const pushOwnershipMismatchCount = Number(pushOwnershipMismatchRows[0]?.count || 0);
+  if (pushOwnershipMismatchCount > 0) issues.push({ code: "PUSH_DELIVERY_OWNERSHIP_MISMATCH", count: pushOwnershipMismatchCount });
+  const inactiveUserSubscriptionRows = await db.all(`SELECT COUNT(*) AS count
+    FROM push_subscriptions s JOIN users u ON u.user_id=s.user_id
+    WHERE s.status='active' AND u.status<>'active'`);
+  const inactiveUserSubscriptionCount = Number(inactiveUserSubscriptionRows[0]?.count || 0);
+  if (inactiveUserSubscriptionCount > 0) issues.push({ code: "PUSH_SUBSCRIPTION_INACTIVE_USER", count: inactiveUserSubscriptionCount });
+  const terminalQueueWithRetryableDeliveryRows = await db.all(`SELECT COUNT(DISTINCT n.notification_id) AS count
+    FROM notification_queue n JOIN notification_deliveries d ON d.notification_id=n.notification_id
+    WHERE n.status IN ('sent','dead_letter') AND d.status IN ('pending','processing','failed')`);
+  const terminalQueueWithRetryableDeliveryCount = Number(terminalQueueWithRetryableDeliveryRows[0]?.count || 0);
+  if (terminalQueueWithRetryableDeliveryCount > 0) issues.push({ code: "PUSH_QUEUE_TERMINAL_WITH_RETRYABLE_DELIVERY", count: terminalQueueWithRetryableDeliveryCount });
   const protectedAccounts = await db.all("SELECT * FROM accounts WHERE allow_negative=0");
   for (const account of protectedAccounts) {
     const negative = await firstNegativeBalance(db, account, { fromDate: account.initial_balance_date });

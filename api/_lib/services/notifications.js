@@ -1,47 +1,392 @@
+import crypto from "node:crypto";
+import dns from "node:dns";
+import https from "node:https";
+import net from "node:net";
+import webpush from "web-push";
 import { appendAudit } from "./audit.js";
 import { appError, nowIso, publicRow, sanitizeText, todayJakarta, uuid } from "./core.js";
 import { goalProjection } from "./planning/goals.js";
 
-export const registerPush = async (db, context) => {
-  const p = context.payload || {};
-  if (!/^https:\/\//.test(String(p.endpoint || "")) || !p.keys?.p256dh || !p.keys?.auth) throw appError("INVALID_SUBSCRIPTION", "Push subscription tidak valid.", 400);
-  const existing = await db.one("SELECT * FROM push_subscriptions WHERE endpoint=?", [p.endpoint]);
-  if (existing && existing.user_id !== context.actor.user_id) throw appError("PUSH_ENDPOINT_OWNERSHIP_CONFLICT", "Perangkat ini masih terhubung ke akun lain.", 409);
-  const timestamp = nowIso();
-  let next;
-  if (existing) {
-    next = { ...existing, p256dh: String(p.keys.p256dh), auth: String(p.keys.auth), user_agent: sanitizeText(p.userAgent, 250), status: "active", updated_at: timestamp };
-    await db.execute("UPDATE push_subscriptions SET p256dh=?,auth=?,user_agent=?,status='active',updated_at=? WHERE subscription_id=?", [next.p256dh, next.auth, next.user_agent, next.updated_at, existing.subscription_id]);
-  } else {
-    next = { subscription_id: uuid(), user_id: context.actor.user_id, endpoint: String(p.endpoint), p256dh: String(p.keys.p256dh), auth: String(p.keys.auth), user_agent: sanitizeText(p.userAgent, 250), status: "active", created_at: timestamp, updated_at: timestamp };
-    await db.execute("INSERT INTO push_subscriptions(subscription_id,user_id,endpoint,p256dh,auth,user_agent,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", Object.values(next));
+const WEB_PUSH_ENV_KEYS = ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"];
+const BLOCKED_ENDPOINT_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".example", ".invalid", ".onion"];
+const TEST_COOLDOWN_MS = 30_000;
+export const PUSH_REQUEST_TIMEOUT_MS = 8_000;
+
+const PUSH_ADDRESS_BLOCKLIST = new net.BlockList();
+for (const [network, prefix] of [
+  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8],
+  ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24],
+  ["192.88.99.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24],
+  ["203.0.113.0", 24], ["224.0.0.0", 4], ["240.0.0.0", 4],
+]) PUSH_ADDRESS_BLOCKLIST.addSubnet(network, prefix, "ipv4");
+for (const [network, prefix] of [
+  ["::", 128], ["::1", 128], ["64:ff9b:1::", 48], ["100::", 64],
+  ["2001::", 32], ["2001:2::", 48], ["2001:10::", 28], ["2001:20::", 28],
+  ["2001:db8::", 32], ["2002::", 16], ["fc00::", 7], ["fe80::", 10],
+  ["fec0::", 10], ["ff00::", 8],
+]) PUSH_ADDRESS_BLOCKLIST.addSubnet(network, prefix, "ipv6");
+
+const parseIpv6Hextets = (value) => {
+  let address = String(value || "").trim().toLowerCase();
+  const dottedTail = address.match(/^(.*:)(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (dottedTail) {
+    const octets = dottedTail[2].split(".").map(Number);
+    if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return null;
+    address = `${dottedTail[1]}${((octets[0] << 8) | octets[1]).toString(16)}:${((octets[2] << 8) | octets[3]).toString(16)}`;
   }
-  await appendAudit(db, context, { entityType: "push_subscription", entityId: next.subscription_id, previous: existing ? { status: existing.status } : null, next: { status: next.status } });
-  return { registered: true, subscriptionId: next.subscription_id };
+  const halves = address.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":") : [];
+  const right = halves[1] ? halves[1].split(":") : [];
+  const missing = 8 - left.length - right.length;
+  if ((halves.length === 1 && missing !== 0) || (halves.length === 2 && missing < 1)) return null;
+  const parts = [...left, ...Array(Math.max(0, missing)).fill("0"), ...right];
+  if (parts.length !== 8 || parts.some((part) => !/^[0-9a-f]{1,4}$/i.test(part))) return null;
+  return parts.map((part) => Number.parseInt(part, 16));
+};
+
+const ipv4FromHextets = (high, low) => `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+
+export const isPublicPushAddress = (value) => {
+  const address = String(value || "").trim().toLowerCase();
+  const family = net.isIP(address);
+  if (!family) return false;
+  if (family === 6) {
+    const hextets = parseIpv6Hextets(address);
+    if (!hextets) return false;
+    const ipv4Mapped = hextets.slice(0, 5).every((part) => part === 0) && hextets[5] === 0xffff;
+    if (ipv4Mapped) return isPublicPushAddress(ipv4FromHextets(hextets[6], hextets[7]));
+    const wellKnownNat64 = hextets[0] === 0x64 && hextets[1] === 0xff9b && hextets.slice(2, 6).every((part) => part === 0);
+    if (wellKnownNat64) return isPublicPushAddress(ipv4FromHextets(hextets[6], hextets[7]));
+  }
+  return !PUSH_ADDRESS_BLOCKLIST.check(address, family === 4 ? "ipv4" : "ipv6");
+};
+
+const safePushLookup = (hostname, options, callback) => {
+  const requestedFamily = typeof options === "number" ? Number(options || 0) : Number(options?.family || 0);
+  const hints = typeof options === "object" ? Number(options?.hints || 0) : 0;
+  dns.lookup(hostname, { all: true, verbatim: true, family: requestedFamily, hints }, (error, addresses) => {
+    if (error) return callback(error);
+    if (!addresses?.length || addresses.some((entry) => !isPublicPushAddress(entry.address))) {
+      return callback(Object.assign(new Error("Alamat push service tidak diizinkan."), { code: "PUSH_ENDPOINT_PRIVATE_ADDRESS" }));
+    }
+    const selected = addresses.find((entry) => !requestedFamily || entry.family === requestedFamily) || addresses[0];
+    return callback(null, selected.address, selected.family);
+  });
+};
+
+const PUSH_HTTPS_AGENT = new https.Agent({ keepAlive: true, maxSockets: 10, lookup: safePushLookup });
+export const webPushRequestOptions = (ttlSeconds) => ({
+  TTL: ttlSeconds,
+  timeout: PUSH_REQUEST_TIMEOUT_MS,
+  agent: PUSH_HTTPS_AGENT,
+});
+
+const base64UrlBuffer = (value) => {
+  const candidate = String(value || "").trim();
+  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(candidate)) return null;
+  try {
+    return Buffer.from(candidate.replace(/=+$/, ""), "base64url");
+  } catch {
+    return null;
+  }
+};
+
+const validVapidSubject = (value) => {
+  const subject = String(value || "").trim();
+  if (/^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(subject)) return true;
+  try {
+    const url = new URL(subject);
+    return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password && !url.hash;
+  } catch {
+    return false;
+  }
+};
+
+export const webPushConfigurationStatus = (environment = process.env) => {
+  const values = Object.fromEntries(WEB_PUSH_ENV_KEYS.map((key) => [key, String(environment[key] || "").trim()]));
+  const present = WEB_PUSH_ENV_KEYS.filter((key) => values[key]);
+  if (!present.length) return { configured: false, ready: false, code: "DISABLED", missing: [...WEB_PUSH_ENV_KEYS], invalid: [] };
+  const missing = WEB_PUSH_ENV_KEYS.filter((key) => !values[key]);
+  if (missing.length) return { configured: true, ready: false, code: "INCOMPLETE", missing, invalid: [] };
+
+  const publicKey = base64UrlBuffer(values.VITE_VAPID_PUBLIC_KEY);
+  const privateKey = base64UrlBuffer(values.VAPID_PRIVATE_KEY);
+  const invalid = [];
+  const publicKeyValid = Boolean(publicKey && publicKey.length === 65 && publicKey[0] === 4);
+  const privateKeyValid = Boolean(privateKey && privateKey.length === 32);
+  if (!publicKeyValid) invalid.push("VITE_VAPID_PUBLIC_KEY");
+  if (!privateKeyValid) invalid.push("VAPID_PRIVATE_KEY");
+  if (publicKeyValid && privateKeyValid) {
+    try {
+      const ecdh = crypto.createECDH("prime256v1");
+      ecdh.setPrivateKey(privateKey);
+      if (!crypto.timingSafeEqual(ecdh.getPublicKey(), publicKey)) invalid.push("VAPID_KEY_PAIR");
+    } catch {
+      invalid.push("VAPID_KEY_PAIR");
+    }
+  }
+  if (!validVapidSubject(values.VAPID_SUBJECT)) invalid.push("VAPID_SUBJECT");
+  if (invalid.length) return { configured: true, ready: false, code: "INVALID", missing: [], invalid: [...new Set(invalid)] };
+  return { configured: true, ready: true, code: "READY", missing: [], invalid: [] };
+};
+
+export const configureWebPushClient = (client = webpush, environment = process.env) => {
+  const status = webPushConfigurationStatus(environment);
+  if (!status.ready) {
+    throw appError(
+      "WEB_PUSH_NOT_READY",
+      status.configured ? "Konfigurasi Web Push belum valid." : "Web Push belum dikonfigurasi pada server.",
+      503,
+      { configurationCode: status.code },
+    );
+  }
+  try {
+    client.setVapidDetails(
+      String(environment.VAPID_SUBJECT).trim(),
+      String(environment.VITE_VAPID_PUBLIC_KEY).trim(),
+      String(environment.VAPID_PRIVATE_KEY).trim(),
+    );
+  } catch {
+    throw appError("WEB_PUSH_NOT_READY", "Konfigurasi Web Push belum valid.", 503, { configurationCode: "CLIENT_REJECTED" });
+  }
+  return status;
+};
+
+export const normalizePushEndpoint = (value) => {
+  const candidate = String(value || "").trim();
+  if (!candidate || candidate.length > 2_048) throw appError("INVALID_SUBSCRIPTION", "Push subscription tidak valid.", 400);
+  let url;
+  try {
+    url = new URL(candidate);
+  } catch {
+    throw appError("INVALID_SUBSCRIPTION", "Push subscription tidak valid.", 400);
+  }
+  const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  const blockedHostname = !hostname
+    || hostname.length > 253
+    || hostname === "localhost"
+    || !hostname.includes(".")
+    || BLOCKED_ENDPOINT_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+    || net.isIP(hostname) !== 0;
+  if (url.protocol !== "https:" || (url.port && url.port !== "443") || url.username || url.password || url.hash || blockedHostname) {
+    throw appError("INVALID_SUBSCRIPTION", "Push subscription tidak valid.", 400);
+  }
+  return url.href;
+};
+
+const normalizeSubscriptionKeys = (keys) => {
+  const p256dh = String(keys?.p256dh || "").trim();
+  const auth = String(keys?.auth || "").trim();
+  const p256dhBuffer = base64UrlBuffer(p256dh);
+  const authBuffer = base64UrlBuffer(auth);
+  if (!p256dhBuffer || p256dhBuffer.length !== 65 || p256dhBuffer[0] !== 4 || !authBuffer || authBuffer.length !== 16) {
+    throw appError("INVALID_SUBSCRIPTION", "Push subscription tidak valid.", 400);
+  }
+  return { p256dh: p256dh.replace(/=+$/, ""), auth: auth.replace(/=+$/, "") };
+};
+
+export const safeNotificationTargetPath = (value = "/") => {
+  const candidate = String(value || "/").trim();
+  if (candidate.length > 200 || !/^\/(?!\/)[A-Za-z0-9/_-]*$/.test(candidate) || candidate.includes("\\")) return "/";
+  return candidate;
+};
+
+export const registerPush = async (db, context) => {
+  const payload = context.payload || {};
+  const endpoint = normalizePushEndpoint(payload.endpoint);
+  const keys = normalizeSubscriptionKeys(payload.keys);
+  const existing = await db.one("SELECT * FROM push_subscriptions WHERE endpoint=?", [endpoint]);
+  const ownedByOtherUser = existing && existing.user_id !== context.actor.user_id;
+  const provesCurrentSubscription = ownedByOtherUser
+    && existing.p256dh === keys.p256dh
+    && existing.auth === keys.auth;
+  if (ownedByOtherUser && !provesCurrentSubscription) {
+    throw appError("PUSH_ENDPOINT_OWNERSHIP_CONFLICT", "Perangkat ini masih tercatat pada akun lain dan bukti subscription tidak cocok.", 409);
+  }
+
+  const timestamp = nowIso();
+  const userAgent = sanitizeText(payload.userAgent, 250) || "Unknown device";
+  const reassigned = Boolean(existing && existing.user_id !== context.actor.user_id);
+  let next;
+  if (existing && !reassigned) {
+    next = { ...existing, ...keys, user_agent: userAgent, status: "active", updated_at: timestamp };
+    await db.execute(
+      "UPDATE push_subscriptions SET p256dh=?,auth=?,user_agent=?,status='active',updated_at=? WHERE subscription_id=?",
+      [next.p256dh, next.auth, next.user_agent, next.updated_at, existing.subscription_id],
+    );
+  } else {
+    if (existing) {
+      const retiredEndpoint = `https://retired.invalid/${existing.subscription_id}`;
+      await db.execute(
+        "UPDATE push_subscriptions SET endpoint=?,status='inactive',updated_at=? WHERE subscription_id=?",
+        [retiredEndpoint, timestamp, existing.subscription_id],
+      );
+      await db.execute(`UPDATE notification_deliveries
+        SET status='expired',locked_by=NULL,error_code='SUBSCRIPTION_REASSIGNED',updated_at=?
+        WHERE subscription_id=? AND status IN ('pending','processing','failed')`, [timestamp, existing.subscription_id]);
+    }
+    next = {
+      subscription_id: uuid(),
+      user_id: context.actor.user_id,
+      endpoint,
+      ...keys,
+      user_agent: userAgent,
+      status: "active",
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    await db.execute(
+      "INSERT INTO push_subscriptions(subscription_id,user_id,endpoint,p256dh,auth,user_agent,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+      [next.subscription_id, next.user_id, next.endpoint, next.p256dh, next.auth, next.user_agent, next.status, next.created_at, next.updated_at],
+    );
+  }
+  await appendAudit(db, context, {
+    entityType: "push_subscription",
+    entityId: next.subscription_id,
+    previous: existing ? { subscriptionId: existing.subscription_id, status: existing.status, userId: existing.user_id, reassigned } : null,
+    next: { status: next.status, userId: next.user_id, registered: true },
+  });
+  return { registered: true, subscriptionId: next.subscription_id, registeredAt: timestamp };
 };
 
 export const unregisterPush = async (db, context) => {
-  const endpoint = String(context.payload?.endpoint || "");
+  const endpoint = normalizePushEndpoint(context.payload?.endpoint);
   const current = await db.one("SELECT * FROM push_subscriptions WHERE endpoint=? AND user_id=?", [endpoint, context.actor.user_id]);
   if (!current) throw appError("NOT_FOUND", "Subscription tidak ditemukan.", 404);
-  await db.execute("UPDATE push_subscriptions SET status='inactive',updated_at=? WHERE subscription_id=?", [nowIso(), current.subscription_id]);
-  await appendAudit(db, context, { entityType: "push_subscription", entityId: current.subscription_id, previous: { status: current.status }, next: { status: "inactive" } });
-  return { unregistered: true };
+  const timestamp = nowIso();
+  await db.execute("UPDATE push_subscriptions SET status='inactive',updated_at=? WHERE subscription_id=?", [timestamp, current.subscription_id]);
+  await db.execute(`UPDATE notification_deliveries SET status='expired',locked_by=NULL,error_code='SUBSCRIPTION_INACTIVE',updated_at=?
+    WHERE subscription_id=? AND status IN ('pending','processing','failed')`, [timestamp, current.subscription_id]);
+  await appendAudit(db, context, {
+    entityType: "push_subscription",
+    entityId: current.subscription_id,
+    previous: { status: current.status },
+    next: { status: "inactive" },
+  });
+  return { unregistered: true, unregisteredAt: timestamp };
+};
+
+export const notificationStatus = async (db, context) => {
+  const configuration = webPushConfigurationStatus();
+  const endpointValue = String(context.payload?.endpoint || "").trim();
+  let currentDevice = { state: "not_subscribed", registered: false, updatedAt: null };
+  let currentSubscriptionId = null;
+  if (endpointValue) {
+    const endpoint = normalizePushEndpoint(endpointValue);
+    const current = await db.one("SELECT subscription_id,user_id,status,updated_at FROM push_subscriptions WHERE endpoint=?", [endpoint]);
+    if (current?.user_id === context.actor.user_id) currentSubscriptionId = current.subscription_id;
+    currentDevice = !current
+      ? { state: "not_registered", registered: false, updatedAt: null }
+      : current.user_id !== context.actor.user_id
+        ? { state: "owned_by_other", registered: false, updatedAt: null }
+        : { state: current.status === "active" ? "active" : "inactive", registered: current.status === "active", updatedAt: current.updated_at || null };
+  }
+  const activeDevices = await db.one("SELECT COUNT(*) AS count FROM push_subscriptions WHERE user_id=? AND status='active'", [context.actor.user_id]);
+  const lastTest = currentSubscriptionId ? await db.one(`SELECT timestamp FROM audit_log
+    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='success'
+    ORDER BY timestamp DESC LIMIT 1`, [context.actor.user_id, currentSubscriptionId]) : null;
+  const lastDelivery = await db.one(`SELECT notification_type,status,attempt_count,last_attempt_at,created_at
+    FROM notification_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 1`, [context.actor.user_id]);
+  return {
+    server: { configured: configuration.configured, ready: configuration.ready, code: configuration.code },
+    currentDevice,
+    activeDeviceCount: Number(activeDevices?.count || 0),
+    lastTestAt: lastTest?.timestamp || null,
+    lastDelivery: lastDelivery ? {
+      type: lastDelivery.notification_type,
+      status: lastDelivery.status,
+      attemptCount: Number(lastDelivery.attempt_count || 0),
+      lastAttemptAt: lastDelivery.last_attempt_at || null,
+      createdAt: lastDelivery.created_at,
+    } : null,
+  };
+};
+
+const testRateLimit = async (db, actorId) => {
+  const latest = await db.one(`SELECT timestamp FROM audit_log
+    WHERE actor_id=? AND action='notifications.test'
+    ORDER BY timestamp DESC LIMIT 1`, [actorId]);
+  if (!latest?.timestamp) return;
+  const elapsed = Date.now() - new Date(latest.timestamp).getTime();
+  if (!Number.isFinite(elapsed) || elapsed >= TEST_COOLDOWN_MS) return;
+  const retryAfterSeconds = Math.max(1, Math.ceil((TEST_COOLDOWN_MS - elapsed) / 1_000));
+  throw Object.assign(appError("PUSH_TEST_RATE_LIMITED", `Tunggu ${retryAfterSeconds} detik sebelum mengirim notifikasi uji lagi.`, 429), { retryAfterSeconds });
+};
+
+export const testPush = async (db, context, { pushClient = webpush } = {}) => {
+  configureWebPushClient(pushClient);
+  await testRateLimit(db, context.actor.user_id);
+  const endpoint = normalizePushEndpoint(context.payload?.endpoint);
+  const subscription = await db.one("SELECT * FROM push_subscriptions WHERE endpoint=? AND user_id=? AND status='active'", [endpoint, context.actor.user_id]);
+  if (!subscription) throw appError("PUSH_DEVICE_NOT_REGISTERED", "Perangkat ini belum terdaftar aktif pada server.", 409);
+
+  const testedAt = nowIso();
+  const notificationId = `test:${sanitizeText(context.idempotencyKey || uuid(), 80)}`;
+  try {
+    await pushClient.sendNotification(
+      { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
+      JSON.stringify({ notificationType: "test", targetPath: "/pengaturan", notificationId }),
+      webPushRequestOptions(300),
+    );
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 0);
+    const errorCode = [404, 410].includes(statusCode) ? "SUBSCRIPTION_EXPIRED"
+      : error?.code === "PUSH_ENDPOINT_PRIVATE_ADDRESS" ? "PUSH_ENDPOINT_PRIVATE_ADDRESS"
+        : statusCode ? `PUSH_HTTP_${statusCode}` : "PUSH_DELIVERY_FAILED";
+    const terminalSubscription = [404, 410].includes(statusCode) || errorCode === "PUSH_ENDPOINT_PRIVATE_ADDRESS";
+    const recordFailure = async (tx) => {
+      if (terminalSubscription) {
+        await tx.execute("UPDATE push_subscriptions SET status='inactive',updated_at=? WHERE subscription_id=?", [testedAt, subscription.subscription_id]);
+        await tx.execute(`UPDATE notification_deliveries SET status='expired',locked_by=NULL,error_code=?,updated_at=?
+          WHERE subscription_id=? AND status IN ('pending','processing','failed')`, [errorCode, testedAt, subscription.subscription_id]);
+      }
+      await appendAudit(tx, context, {
+        entityType: "push_subscription",
+        entityId: subscription.subscription_id,
+        previous: null,
+        next: { testAcceptedAt: null, errorCode },
+        result: "failed",
+      });
+    };
+    if (typeof db.transaction === "function") await db.transaction(recordFailure);
+    else await recordFailure(db);
+    if ([404, 410].includes(statusCode)) {
+      throw appError("PUSH_SUBSCRIPTION_EXPIRED", "Subscription perangkat sudah kedaluwarsa. Aktifkan ulang notifikasi.", 409);
+    }
+    if (errorCode === "PUSH_ENDPOINT_PRIVATE_ADDRESS") {
+      throw appError("PUSH_ENDPOINT_BLOCKED", "Alamat push service perangkat tidak diizinkan. Daftarkan ulang perangkat setelah memeriksa browser dan jaringan.", 409);
+    }
+    throw appError("PUSH_DELIVERY_FAILED", "Push service belum menerima notifikasi uji. Coba lagi setelah memeriksa konfigurasi.", 502);
+  }
+
+  await appendAudit(db, context, {
+    entityType: "push_subscription",
+    entityId: subscription.subscription_id,
+    previous: null,
+    next: { testAcceptedAt: testedAt },
+  });
+  return { accepted: true, testedAt };
 };
 
 export const queueNotification = async (db, { userId, type, title, body, targetPath = "/", scheduledAt = nowIso(), dedupeKey }) => {
   const safeDedupeKey = sanitizeText(dedupeKey, 200);
   if (!safeDedupeKey) throw appError("NOTIFICATION_DEDUPE_REQUIRED", "Dedupe key notifikasi wajib diisi.", 500);
   const id = uuid();
-  const result = await db.execute("INSERT OR IGNORE INTO notification_queue(notification_id,user_id,notification_type,title,body,target_path,scheduled_at,status,attempt_count,last_attempt_at,locked_by,dedupe_key,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", [id, userId, sanitizeText(type, 60), sanitizeText(title, 80), sanitizeText(body, 180), String(targetPath).startsWith("/") ? targetPath : "/", scheduledAt, "pending", 0, null, null, safeDedupeKey, nowIso()]);
+  const result = await db.execute(
+    "INSERT OR IGNORE INTO notification_queue(notification_id,user_id,notification_type,title,body,target_path,scheduled_at,status,attempt_count,last_attempt_at,locked_by,dedupe_key,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    [id, userId, sanitizeText(type, 60), sanitizeText(title, 80), sanitizeText(body, 180), safeNotificationTargetPath(targetPath), scheduledAt, "pending", 0, null, null, safeDedupeKey, nowIso()],
+  );
   if (result.rowsAffected === 1) return { notificationId: id, created: true };
   const existing = await db.one("SELECT notification_id FROM notification_queue WHERE dedupe_key=?", [safeDedupeKey]);
   if (!existing) throw appError("NOTIFICATION_QUEUE_CONFLICT", "Notifikasi tidak dapat diantrikan secara idempotent.", 409);
   return { notificationId: existing.notification_id, created: false };
 };
 
-export const listSubscriptionsForUser = async (db, userId) => (await db.all("SELECT endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=? AND status='active'", [userId])).map((row) => publicRow(row));
-
+export const listSubscriptionsForUser = async (db, userId) => (await db.all(
+  "SELECT endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=? AND status='active'",
+  [userId],
+)).map((row) => publicRow(row));
 
 const notificationRecipients = (users, item) => item.scope === "personal"
   ? users.filter((user) => user.user_id === item.owner_user_id)
@@ -86,8 +431,8 @@ export const queueActionableNotifications = async (db) => {
   for (const item of recurring) {
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_due",
-      title: item.kind === "income" ? "Pemasukan terjadwal" : "Tagihan mendekati jatuh tempo",
-      body: `${item.name} · ${item.due_date}`,
+      title: "Pengingat keuangan",
+      body: "Ada jadwal keuangan yang perlu diperiksa di aplikasi.",
       targetPath: "/tagihan",
       dedupeKey: `recurring:${item.occurrence_id}:${item.due_date}`,
     });
@@ -104,8 +449,8 @@ export const queueActionableNotifications = async (db) => {
     if (!threshold) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "budget_threshold",
-      title: percentage >= 100 ? "Budget terlampaui" : "Budget mendekati batas",
-      body: `${item.name} · ${percentage}% terpakai`,
+      title: "Pengingat keuangan",
+      body: "Ada batas anggaran yang perlu diperiksa di aplikasi.",
       targetPath: "/laporan",
       dedupeKey: `budget:${item.budget_id}:${period}:${threshold}`,
     });
@@ -122,8 +467,8 @@ export const queueActionableNotifications = async (db) => {
     if (!threshold) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "envelope_threshold",
-      title: percentage >= 100 ? "Kantong habis" : "Kantong mendekati batas",
-      body: `${item.name} · ${percentage}% terpakai`,
+      title: "Pengingat keuangan",
+      body: "Ada kantong alokasi yang perlu diperiksa di aplikasi.",
       targetPath: "/alokasi",
       dedupeKey: `envelope:${item.envelope_period_id}:${threshold}`,
     });
@@ -137,8 +482,8 @@ export const queueActionableNotifications = async (db) => {
     if (projection.pace_status !== "behind" && projection.pace_status !== "overdue") continue;
     queued += await queueForRecipients(db, users, item, {
       type: "goal_behind",
-      title: projection.pace_status === "overdue" ? "Target melewati tenggat" : "Target tertinggal",
-      body: `${item.name} perlu ditinjau agar kembali sesuai rencana.`,
+      title: "Pengingat keuangan",
+      body: "Ada target keuangan yang perlu diperiksa di aplikasi.",
       targetPath: "/target",
       dedupeKey: `goal:${item.goal_id}:${period}:${projection.pace_status}`,
     });
@@ -151,8 +496,8 @@ export const queueActionableNotifications = async (db) => {
     if (Number(item.count || 0) < 1) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "unallocated_expense",
-      title: "Transaksi belum dialokasikan",
-      body: `${Number(item.count)} transaksi perlu dilengkapi sebelum tutup periode.`,
+      title: "Pengingat keuangan",
+      body: "Ada transaksi yang perlu diperiksa di aplikasi.",
       targetPath: "/transaksi",
       dedupeKey: `unallocated:${item.scope}:${item.owner_user_id || "shared"}:${today}`,
     });

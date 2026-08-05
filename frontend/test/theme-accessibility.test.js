@@ -112,7 +112,8 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
   ]);
 
   assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*font-size: 16px;/);
-  assert.match(accountStyles, /touch-action: pan-y/);
+  assert.match(accountStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
+  assert.match(accountStyles, /\.mobileStackCard\[aria-pressed="true"\][^{]*\{[^}]*touch-action: pan-x pinch-zoom;/s);
   assert.doesNotMatch(accountStyles, /touch-action: none/);
   assert.doesNotMatch(indexHtml, /user-scalable=no|maximum-scale=1/i);
   assert.doesNotMatch(components, /\.modal(?:-backdrop|--lg|__header|__body|__footer|\s*\{)/);

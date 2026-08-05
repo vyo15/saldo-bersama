@@ -100,9 +100,15 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(page, /shortestCircularDifference/);
   assert.match(page, /onPointerDown=\{handleMobileStackPointerDown\}/);
   assert.match(page, /onPointerMove=\{handleMobileStackPointerMove\}/);
-  assert.match(page, /onWheel=\{handleMobileStackWheel\}/);
+  assert.match(page, /const progress = clamp\(-deltaY \/ 154/);
+  assert.doesNotMatch(page, /const progress = clamp\(-deltaX \/ 154/);
+  assert.match(page, /velocityY/);
+  assert.doesNotMatch(page, /velocityX|handleMobileStackWheel|onWheel=\{/);
+  assert.match(page, /event\.key === "ArrowUp"/);
+  assert.match(page, /event\.key === "ArrowDown"/);
   assert.match(page, /prefers-reduced-motion: reduce/);
-  assert.match(page, /aria-label="Geser ke kiri atau kanan untuk mengganti rekening"/);
+  assert.match(page, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
+  assert.match(page, /Geser kartu aktif ke atas atau bawah/);
   assert.match(page, /<AccountVisual account=\{account\} stack \/>/);
   assert.match(page, /setMobileAccountSheet\("detail"\)/);
   assert.match(page, /title="Pembayaran keluar"/);
@@ -138,7 +144,8 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(pageStyles, /paymentHistoryItem/);
   assert.match(pageStyles, /perspective: 93\.75rem/);
   assert.match(pageStyles, /transform-style: preserve-3d/);
-  assert.match(pageStyles, /touch-action: pan-y/);
+  assert.match(pageStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
+  assert.match(pageStyles, /\.mobileStackCard\[aria-pressed="true"\][^{]*\{[^}]*touch-action: pan-x pinch-zoom;/s);
   assert.doesNotMatch(pageStyles, /touch-action: none/);
   assert.match(pageStyles, /width: min\(78vw, 19\.1rem\)/);
   assert.doesNotMatch(pageStyles, /mobilePagination|scroll-snap-type/);

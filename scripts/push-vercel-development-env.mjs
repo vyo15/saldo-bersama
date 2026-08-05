@@ -7,7 +7,9 @@ import {
   GOOGLE_BRIDGE_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
   WEB_PUSH_ENV_KEYS,
+  optionalGroupStatus,
   parseEnvironmentText,
+  validateWebPushEnvironment,
 } from "./runtime-environment.mjs";
 import { cleanEnvironmentFile, cleanEnvironmentText, writeEnvironmentFileAtomic } from "./clean-local-environment.mjs";
 import { buildVercelInvocation } from "./push-vercel-production-env.mjs";
@@ -42,24 +44,21 @@ const FORBIDDEN_DEVELOPMENT_KEYS = Object.freeze([
   "VERCEL_OIDC_TOKEN",
 ]);
 
-const incompleteGroup = (values, keys) => {
-  const present = keys.filter((key) => String(values[key] ?? "").trim());
-  return present.length > 0 && present.length < keys.length
-    ? keys.filter((key) => !present.includes(key))
-    : [];
-};
-
 export const validateDevelopmentEnvironment = (values = {}) => {
   const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
   const forbidden = FORBIDDEN_DEVELOPMENT_KEYS.filter((key) => Object.hasOwn(values, key));
-  const incompleteGoogleBridge = incompleteGroup(values, GOOGLE_BRIDGE_ENV_KEYS);
-  const incompleteWebPush = incompleteGroup(values, WEB_PUSH_ENV_KEYS);
+  const googleBridge = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);
+  const webPush = validateWebPushEnvironment(values);
+  const incompleteGoogleBridge = googleBridge.enabled && !googleBridge.complete ? googleBridge.missing : [];
+  const incompleteWebPush = webPush.enabled && !webPush.complete ? webPush.missing : [];
+  const invalidWebPush = webPush.complete ? webPush.invalid : [];
   return {
-    valid: !missing.length && !forbidden.length && !incompleteGoogleBridge.length && !incompleteWebPush.length,
+    valid: !missing.length && !forbidden.length && !incompleteGoogleBridge.length && !incompleteWebPush.length && !invalidWebPush.length,
     missing,
     forbidden,
     incompleteGoogleBridge,
     incompleteWebPush,
+    invalidWebPush,
   };
 };
 
@@ -119,6 +118,7 @@ export const pushDevelopmentEnvironment = async ({
     if (status.forbidden.length) messages.push(`key legacy/forbidden terdeteksi: ${status.forbidden.join(", ")}`);
     if (status.incompleteGoogleBridge.length) messages.push(`Google bridge belum lengkap: ${status.incompleteGoogleBridge.join(", ")}`);
     if (status.incompleteWebPush.length) messages.push(`Web Push belum lengkap: ${status.incompleteWebPush.join(", ")}`);
+    if (status.invalidWebPush.length) messages.push(`Web Push tidak valid: ${status.invalidWebPush.join(", ")}`);
     throw Object.assign(
       new Error(`Environment Development tidak valid — ${messages.join("; ")}.`),
       { code: "DEVELOPMENT_ENV_INVALID", ...status },

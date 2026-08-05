@@ -92,7 +92,9 @@ export const deactivateUser = async (db, context) => {
   if (Object.values(dependencies || {}).some((value) => Number(value) > 0)) throw appError("USER_HAS_ACTIVE_DATA", "Anggota masih memiliki data personal aktif. Arsipkan atau pindahkan data terlebih dahulu.", 409, dependencies);
   const next = { ...current, status: "inactive", row_version: Number(current.row_version) + 1, updated_at: nowIso() };
   await db.execute("UPDATE push_subscriptions SET status='inactive',updated_at=? WHERE user_id=? AND status='active'", [next.updated_at, current.user_id]);
-  await db.execute("UPDATE notification_queue SET status='dead_letter',last_attempt_at=? WHERE user_id=? AND status IN ('pending','processing','failed')", [next.updated_at, current.user_id]);
+  await db.execute(`UPDATE notification_deliveries SET status='dead_letter',locked_by=NULL,error_code='USER_INACTIVE',updated_at=?
+    WHERE notification_id IN (SELECT notification_id FROM notification_queue WHERE user_id=?) AND status IN ('pending','processing','failed')`, [next.updated_at, current.user_id]);
+  await db.execute("UPDATE notification_queue SET status='dead_letter',last_attempt_at=?,locked_by=NULL WHERE user_id=? AND status IN ('pending','processing','failed')", [next.updated_at, current.user_id]);
   const result = await db.execute("UPDATE users SET status='inactive',row_version=?,updated_at=? WHERE user_id=? AND row_version=?", [next.row_version, next.updated_at, current.user_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data anggota berubah. Muat ulang.", 409);
   await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: { ...publicRow(next), deactivation_reason: reason } });

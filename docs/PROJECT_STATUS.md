@@ -2,15 +2,53 @@
 
 **Last source verification:** 2026-08-05
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(4).zip` + patch rekening, rekonsiliasi, navigasi, dan accessibility yang disetujui 2026-08-05
-**Schema:** version 5, migrations `001_initial_schema.sql`, `002_account_number.sql`, dan `003_account_bank_template.sql`
+**Source baseline:** `saldo-bersama-clean(7).zip` + patch korektif gesture kartu rekening mobile yang disetujui 2026-08-05
+**Schema:** version 6, migrations `001_initial_schema.sql` sampai `004_notification_deliveries.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
 Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implementasi utama.
 
-## Rekening, rekonsiliasi, navigasi, dan accessibility 2026-08-05
+## Koreksi gesture kartu rekening mobile 2026-08-05
 
-- Stack kartu rekening mobile memakai swipe horizontal serta `touch-action: pan-y`, sehingga pergantian rekening tidak mengambil alih scroll vertikal halaman.
+- Gesture kartu aktif kembali memakai swipe vertikal agar arah jari selaras dengan geometri circular 3D stack. Swipe ke atas memilih rekening berikutnya dan swipe ke bawah memilih rekening sebelumnya.
+- Pointer handler hanya dipasang pada kartu aktif. Area kosong pada stack tetap memakai `touch-action: pan-y pinch-zoom`, sehingga halaman dapat digulir dari luar kartu dan browser zoom tetap tersedia.
+- Kartu aktif memakai `touch-action: pan-x pinch-zoom` agar swipe vertikal dapat dikendalikan aplikasi. Gerakan horizontal ditolak, swipe pendek kembali ke posisi semula, dan wheel switching dihapus agar trackpad tidak mengganti rekening tanpa sengaja.
+- Keyboard stack memakai Arrow Up dan Arrow Down. Live region tetap hanya mengumumkan nama rekening aktif tanpa membacakan saldo.
+- Tidak ada perubahan pada schema, API, authorization, transaksi, saldo, audit, backup, restore, environment, dependency, atau deployment.
+
+### Verifikasi patch gesture
+
+- Frontend static/contract: 73/73 lulus.
+- Backend tanpa enam file yang membutuhkan package `web-push`: 104/104 lulus. Enam file penuh terblokir karena dependency tidak tersedia pada registry sandbox, bukan karena perubahan gesture.
+- Source validation: lulus, 322 file diperiksa dan 5/12 Vercel Functions canonical.
+- Syntax Node: lulus, 95 file. Syntax JSX target dan CSS target juga valid melalui parser TypeScript dan PostCSS.
+- Syntax dan boot Apps Script: lulus, 6 file dan 2 urutan load.
+- Full lint, build, build budget, serta browser runtime belum dapat dijalankan karena `npm ci` gagal mengambil `vite@7.3.6`; sandbox juga memakai Node 22.16.0, sedangkan project membutuhkan Node 24.x.
+
+## Web Push, delivery per perangkat, dan schema v6 2026-08-05
+
+- Frontend tidak lagi memblokir seluruh mode development. Web Push memakai pemeriksaan capability, secure context, status permission, kebutuhan Home Screen iOS, validitas public VAPID key, subscription browser, dan registrasi backend. Desktop localhost dapat dipakai untuk development; alamat IP LAN HTTP tetap ditolak.
+- Status Pengaturan memisahkan belum aktif, izin diblokir, server belum siap, perlu daftar ulang, terdaftar belum diuji, dan terdaftar sudah diterima layanan push. Tombol uji hanya aktif untuk subscription actor yang terdaftar.
+- Schema v6 menambah `notification_deliveries` per subscription. Retry hanya mengulang perangkat gagal dan tidak menggandakan perangkat yang sudah sukses. Subscription 404/410 atau endpoint yang berubah melalui DNS menjadi alamat privat dinonaktifkan dan delivery tertunda menjadi expired.
+- Perpindahan endpoint aktif maupun nonaktif pada browser yang sama hanya diizinkan bila `p256dh` dan `auth` membuktikan subscription yang sama. Record pemilik lama dipensiunkan dengan ID historis tetap, bukan ditimpa. Rotasi VAPID membersihkan registrasi lama sebelum membuat subscription baru.
+- Endpoint push harus HTTPS publik. Host lokal/internal, IP literal, serta hasil DNS private, loopback, link-local, reserved, multicast, atau documentation range ditolak melalui guarded HTTPS agent.
+- Payload push tidak membawa judul/body finansial. Service worker memakai teks generik pada lock screen dan hanya membuka path same-origin yang tervalidasi. Pembersihan cache dibatasi ke prefix `saldo-bersama-`.
+- Konfigurasi Production kini menyinkronkan grup Google bridge dan Web Push yang lengkap. Grup parsial, format VAPID invalid, atau pasangan public/private yang tidak cocok ditolak sebelum perubahan Vercel. Private key tidak pernah memakai prefix `VITE_`.
+- Kegagalan antrean notifikasi atau pengiriman Push diisolasi dari scheduled backup. Timeout, stale lock recovery, attempt limit, dead letter, dan error code tersanitasi tersedia. Integrity check mendeteksi delivery lintas user, subscription aktif milik user nonaktif, dan queue terminal dengan delivery retryable.
+- Backup teknis tetap tidak menyimpan push credential dan delivery operasional. Restore schema v6 menerima backup schema v3/v4/v5/v6, menghapus subscription lama, lalu mengharuskan perangkat mendaftar ulang.
+
+### Verifikasi sandbox 2026-08-05
+
+- Frontend static/contract: 73/73 lulus.
+- Backend: 129/129 lulus.
+- Source validation: lulus, 322 file diperiksa dan 5/12 Vercel Functions canonical.
+- Syntax Node: lulus, 95 file.
+- Syntax dan boot Apps Script: lulus, 6 file dan 2 urutan load.
+- Dependency install tidak selesai karena sandbox memakai Node 22.16.0, sedangkan project membutuhkan Node 24.x dan React Router membutuhkan Node minimal 22.22. Registry sandbox juga tidak menyediakan tarball `vite@7.3.6`. Full lint, build, build budget, browser smoke, serta push nyata Android/iOS/Vercel/Apps Script belum dijalankan.
+
+## Previous: rekening, rekonsiliasi, navigasi, dan accessibility 2026-08-05
+
+- Stack kartu rekening mobile memakai swipe vertikal pada kartu aktif. Area di luar kartu tetap memakai `touch-action: pan-y pinch-zoom`, sedangkan gerakan horizontal tidak mengganti rekening.
 - Kontrol `Daftar rekening` membuka daftar rekening aktif; tombol kembali mobile menuju Beranda secara deterministik; navigasi dari rekening ke Transaksi membawa filter rekening melalui navigation state, bukan URL.
 - Quick action rekening dipersempit menjadi `Transaksi` dan `Pembayaran keluar`. Aksi `Bayar tagihan`, panel rekonsiliasi tertanam, serta penjelasan rekonsiliasi yang berulang dihapus dari halaman Rekening.
 - Route `/rekonsiliasi` menjadi tempat canonical untuk pencocokan saldo. Form hanya tampil untuk rekening dengan `can_reconcile === true`; backend tetap memverifikasi capability, idempotency, dan audit. Selisih tidak membuat adjustment otomatis.
@@ -39,7 +77,7 @@ Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implemen
 - Turso/libSQL sebagai satu-satunya source of truth finansial.
 - Apps Script hanya integration bridge bertanda tangan untuk Sheets mirror, Calendar, Drive backup, dan scheduler.
 - Google Sheets hanya mirror data `shared`; data personal tidak dikirim ke spreadsheet bersama.
-- Web Push diproses melalui queue backend.
+- Web Push diproses melalui queue backend dan delivery per subscription pada schema v6.
 
 ## Struktur dan quality guard
 

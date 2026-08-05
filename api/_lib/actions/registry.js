@@ -12,7 +12,7 @@ import {
   applyImport, applyRestore, createTechnicalBackup, integrityWithMaintenanceRecovery, previewImport,
   previewRestore,
 } from "../services/maintenance/index.js";
-import { registerPush, unregisterPush } from "../services/notifications.js";
+import { notificationStatus, registerPush, testPush, unregisterPush } from "../services/notifications.js";
 import {
   archiveBudget, closeEnvelope, createEnvelope, createGoal, createRecurringRule, listBudgets,
   listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence, reverseGoalMovement,
@@ -109,8 +109,10 @@ const ACTION_HANDLERS = Object.freeze({
   "periods.previewClose": previewClosePeriod,
   "periods.close": closePeriod,
   "periods.reopen": reopenPeriod,
+  "notifications.status": notificationStatus,
   "notifications.register": registerPush,
   "notifications.unregister": unregisterPush,
+  "notifications.test": testPush,
   "calendar.sync": calendarSync,
   "mirror.sync": (db, context) => mirrorSync(db, context, false),
   "mirror.rebuild": (db, context) => mirrorSync(db, context, true),

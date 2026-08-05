@@ -4,7 +4,7 @@ import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
 
 export const BACKUP_TABLES = [
@@ -14,7 +14,7 @@ export const BACKUP_TABLES = [
 ];
 
 export const RESTORE_DELETE_ORDER = [
-  "notification_queue", "integration_links", "integration_outbox", "request_nonces", "goal_movements", "budgets", "envelope_movements",
+  "notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces", "goal_movements", "budgets", "envelope_movements",
   "transactions", "recurring_occurrences", "recurring_rules", "envelope_periods", "envelope_rules", "savings_goals",
   "reconciliations", "period_closures", "categories", "accounts", "push_subscriptions", "idempotency_keys",
 ];

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { getDatabase } from "./httpClient.js";
 
-export const DATABASE_SCHEMA_VERSION = 5;
+export const DATABASE_SCHEMA_VERSION = 6;
 const CACHE_MS = 60_000;
 let cached = null;
 

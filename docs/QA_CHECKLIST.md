@@ -29,7 +29,7 @@
 - [ ] Proyeksi target tidak membagi dengan nol dan menangani tanpa tanggal, lewat jatuh tempo, serta target selesai.
 - [ ] Notification dedupe mencegah antrean ganda pada job retry.
 - [ ] Semua `REQ-*` terlacak pada implementation matrix.
-- [ ] Fitur yang membutuhkan schema hanya memiliki RFC Proposed dan belum mengubah schema v5 tanpa approval terpisah.
+- [ ] Perubahan schema setelah v6 hanya dilakukan melalui RFC/approval terpisah, backup terverifikasi, migration, integrity check, dan rollback plan.
 
 ## Rekening, kategori, dan responsive parity
 
@@ -42,7 +42,7 @@
 - [ ] Kategori refund dapat dibuat, dan kegagalan reload domain/refresh dashboard setelah respons mutation sukses hanya menghasilkan refresh warning, bukan error mutation semu.
 - [ ] Semua asset kartu BCA/BNI/BTN/Mandiri/Permata memakai rasio 1.586:1 dan ukuran container identik.
 - [ ] Stack rekening mobile menampilkan 1 kartu untuk 1 rekening, 2 kartu untuk 2 rekening, dan maksimal 3 kartu untuk 3+ rekening tanpa wrapper berbeda ukuran.
-- [ ] Swipe vertikal menggerakkan seluruh stack secara kontinu, menyelesaikan satu perpindahan per gesture, kembali saat threshold tidak tercapai, serta mendukung wheel/Arrow key tanpa auto-rotate.
+- [ ] Swipe vertikal pada kartu aktif menggerakkan seluruh stack secara kontinu, menyelesaikan satu perpindahan per gesture, dan kembali saat threshold tidak tercapai. Gesture horizontal tidak mengganti rekening, area kosong stack tetap menggulir halaman, wheel tidak mengubah rekening, serta Arrow Up/Down bekerja tanpa auto-rotate.
 - [ ] `prefers-reduced-motion` mengurangi rotasi/durasi, focus-visible tetap jelas, dan live region hanya mengumumkan nama rekening aktif.
 - [ ] Detail rekening sticky cukup besar pada desktop dan menjadi overlay/fullscreen dengan focus trap, Escape, body scroll lock, serta focus restoration pada tablet/mobile.
 - [ ] Nomor rekening lebih dari 16 digit tidak overflow pada muka kartu; nomor lengkap tetap tersedia di detail dan clipboard.

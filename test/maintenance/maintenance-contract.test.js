@@ -38,7 +38,7 @@ test("restore melakukan preview, safety backup, maintenance fail-closed, transac
 
 test("restore menghapus queue dan push credential lama, mempertahankan audit, serta mengikat identitas ke konfigurasi aktif", async () => {
   const maintenance = await maintenanceSource();
-  assert.match(maintenance, /"notification_queue", "integration_links", "integration_outbox", "request_nonces"/);
+  assert.match(maintenance, /"notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces"/);
   assert.match(maintenance, /"push_subscriptions"/);
   assert.doesNotMatch(maintenance, /BACKUP_TABLES[\s\S]{0,500}"push_subscriptions"/);
   assert.doesNotMatch(maintenance, /insertRows\(tx, "push_subscriptions"/);
@@ -75,7 +75,7 @@ test("normalisasi restore template menurunkan enum uppercase dan menolak templat
   );
 });
 
-test("backup schema v3/v4 tetap dapat dimuat ke schema v5 dengan default field additive", async () => {
+test("backup schema v3/v4/v5 tetap dapat dimuat ke schema v6 dengan default field additive", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -97,6 +97,12 @@ test("backup schema v3/v4 tetap dapat dimuat ke schema v5 dengan default field a
     v4.tables.accounts = current.tables.accounts.map(({ bank_template: _bankTemplate, ...row }) => row);
     v4.checksum = digest(canonicalJson({ manifest: v4.manifest, tables: v4.tables }));
     assert.equal(validateSnapshot(v4), v4.checksum);
+
+    const v5 = structuredClone(current);
+    v5.manifest.version = 5;
+    v5.manifest.schemaVersion = 5;
+    v5.checksum = digest(canonicalJson({ manifest: v5.manifest, tables: v5.tables }));
+    assert.equal(validateSnapshot(v5), v5.checksum);
 
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);

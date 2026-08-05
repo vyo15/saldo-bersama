@@ -31,7 +31,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-13` | Laporan | Partial | monthly report + 3/6/12 trend + breakdown | contribution/debt model pending |
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
-| `REQ-PROD-16` | Notifikasi | Partial | queue/push actionable | VAPID/device verification, more policies pending |
+| `REQ-PROD-16` | Notifikasi | Partial | secure-context guard, backend status/test, privacy-safe payload, per-device delivery/retry | real Android/iOS, scheduler, dan VAPID Production verification pending |
 | `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/idempotency/version/backup/export | external alerting + operational drills |
 
 ## Infrastruktur dan deployment
@@ -39,11 +39,11 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Production smoke after env/deploy changes |
-| Turso schema v5 | Implemented | Active; parity/integrity evidence pending |
+| Turso schema v6 | Implemented | Migration additive delivery Web Push; production migration/parity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |
 | Backup/restore | Implemented | Real-resource restore drill required |
-| PWA/Web Push | Implemented | Device install/push test required |
+| PWA/Web Push | Partial | Source contract implemented; real-device HTTPS and scheduler delivery test required |
 | Browser smoke/build budget | Implemented | Enforced after successful local/CI install |
 | External alerting | Not implemented | RFC/approved provider pending |

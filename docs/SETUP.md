@@ -51,7 +51,7 @@ Production tetap terpisah:
 npm run env:push:production
 ```
 
-Setelah Production berubah, buat deployment Production baru. Preview dibiarkan kosong.
+Setelah Production berubah, buat deployment Production baru. Command Production juga menyinkronkan grup Google bridge dan Web Push bila grup tersebut lengkap dan valid. Preview dibiarkan kosong.
 
 Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local` atau `.vercel`.
 
@@ -70,9 +70,12 @@ Deploy Apps Script bridge, isi Script Properties, buat spreadsheet mirror, Calen
 
 Saat deploy Web App, pilih **Execute as me/deployer** dan **Anyone/anonymous**. Keamanan berasal dari HMAC + timestamp + nonce, bukan sesi browser Google.
 
-## 7. PWA
+## 7. PWA dan Web Push
 
-- iOS: Safari → Share → Add to Home Screen.
-- Android/desktop: gunakan prompt Pasang Saldo Bersama.
-- Push permission hanya diminta setelah aksi pengguna.
+- iOS/iPadOS: buka melalui Safari, pilih Share, Add to Home Screen, lalu jalankan dari ikon aplikasi sebelum mengaktifkan notifikasi.
+- Android/desktop: gunakan prompt Pasang Saldo Bersama atau jalankan dari browser HTTPS yang mendukung Push API.
+- Desktop `http://localhost` dapat dipakai untuk development. Alamat LAN seperti `http://192.168.x.x` tidak aman dan harus ditolak. Pengujian ponsel memakai deployment HTTPS.
+- Push permission hanya diminta setelah pengguna menekan Aktifkan.
+- Status aktif memerlukan subscription browser dan registrasi backend yang cocok. Tombol Uji notifikasi memeriksa penerimaan oleh layanan push. Pengguna tetap harus memeriksa panel notifikasi perangkat.
+- Bila permission ditolak, aktifkan kembali dari pengaturan browser atau sistem operasi.
 - `/api/*` tidak dicache dan write offline ditolak.

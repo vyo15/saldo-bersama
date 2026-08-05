@@ -5,9 +5,12 @@ import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   CORE_RUNTIME_ENV_KEYS,
+  GOOGLE_BRIDGE_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
   PRODUCTION_SYNC_ENV_KEYS,
+  optionalGroupStatus,
   parseEnvironmentText,
+  validateWebPushEnvironment,
 } from "./runtime-environment.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -17,11 +20,14 @@ export const PUBLIC_PRODUCTION_KEYS = Object.freeze([
   "VITE_GOOGLE_CLIENT_ID",
   "VITE_FIREBASE_API_KEY",
   "ALLOWED_ORIGINS",
+  "GOOGLE_BRIDGE_WEB_APP_URL",
+  "VITE_VAPID_PUBLIC_KEY",
+  "VAPID_SUBJECT",
   ...OPTIONAL_LOGGING_ENV_KEYS,
 ]);
 
 export const SENSITIVE_PRODUCTION_KEYS = Object.freeze(
-  CORE_RUNTIME_ENV_KEYS.filter((key) => !PUBLIC_PRODUCTION_KEYS.includes(key)),
+  PRODUCTION_SYNC_ENV_KEYS.filter((key) => !PUBLIC_PRODUCTION_KEYS.includes(key)),
 );
 
 export const PRODUCTION_ENV_KEYS = PRODUCTION_SYNC_ENV_KEYS;
@@ -38,7 +44,19 @@ const forbiddenKeys = Object.freeze([
 export const validateProductionEnvironment = (values = {}) => {
   const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
   const forbidden = forbiddenKeys.filter((key) => Object.hasOwn(values, key));
-  return { valid: missing.length === 0 && forbidden.length === 0, missing, forbidden };
+  const googleBridge = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);
+  const webPush = validateWebPushEnvironment(values);
+  const incompleteGoogleBridge = googleBridge.enabled && !googleBridge.complete ? googleBridge.missing : [];
+  const incompleteWebPush = webPush.enabled && !webPush.complete ? webPush.missing : [];
+  const invalidWebPush = webPush.complete ? webPush.invalid : [];
+  return {
+    valid: !missing.length && !forbidden.length && !incompleteGoogleBridge.length && !incompleteWebPush.length && !invalidWebPush.length,
+    missing,
+    forbidden,
+    incompleteGoogleBridge,
+    incompleteWebPush,
+    invalidWebPush,
+  };
 };
 
 export const buildVercelInvocation = (vercelArgs, { platform = process.platform, comspec = process.env.ComSpec } = {}) => {
@@ -117,6 +135,9 @@ export const pushProductionEnvironment = async ({
     const messages = [];
     if (status.missing.length) messages.push(`key wajib belum lengkap: ${status.missing.join(", ")}`);
     if (status.forbidden.length) messages.push(`key legacy terdeteksi: ${status.forbidden.join(", ")}`);
+    if (status.incompleteGoogleBridge.length) messages.push(`Google bridge belum lengkap: ${status.incompleteGoogleBridge.join(", ")}`);
+    if (status.incompleteWebPush.length) messages.push(`Web Push belum lengkap: ${status.incompleteWebPush.join(", ")}`);
+    if (status.invalidWebPush.length) messages.push(`Web Push tidak valid: ${status.invalidWebPush.join(", ")}`);
     throw Object.assign(new Error(`Environment Production tidak valid — ${messages.join("; ")}.`), { code: "PRODUCTION_ENV_INVALID", ...status });
   }
 

@@ -7,7 +7,7 @@ import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, enfor
 const COALESCED_READ_ACTIONS = new Set([
   "app.initialState", "system.health", "users.list", "audit.list", "dashboard.overview", "accounts.list",
   "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list",
-  "reports.monthly", "reconciliations.list", "periods.list", "integrations.status",
+  "reports.monthly", "reconciliations.list", "periods.list", "integrations.status", "notifications.status",
 ]);
 const inFlightReads = new Map();
 const stableValue = (value) => Array.isArray(value) ? value.map(stableValue) : value && typeof value === "object"

@@ -1,4 +1,71 @@
-## Current task — Rekening mobile, route rekonsiliasi, dan data-quality form
+## Current task — Koreksi gesture kartu rekening mobile
+
+**Tanggal:** 2026-08-05
+**Source:** `saldo-bersama-clean(7).zip`
+**Scope:** mengembalikan gesture kartu rekening seperti perilaku awal yang natural, tanpa mengembalikan blokir scroll pada seluruh panel dan tanpa menyentuh area guarded.
+
+### Keputusan implementasi
+
+1. Swipe kartu aktif kembali vertikal dan memakai `deltaY`, `velocityY`, serta threshold stack yang sama dengan geometri animasi.
+2. Pointer handler dipindahkan dari container setinggi stack ke kartu aktif. Area di luar kartu tetap dapat menggulir halaman dan pinch zoom tetap tersedia.
+3. Directional lock menolak gesture horizontal. Swipe pendek snap kembali. Satu swipe hanya menyelesaikan satu perpindahan rekening.
+4. Wheel switching dihapus agar trackpad tidak mengganti rekening tanpa sengaja. Keyboard memakai Arrow Up dan Arrow Down.
+5. Browser contract mencakup swipe vertikal, penolakan gesture horizontal, swipe pendek, touch-action, serta perubahan nama rekening aktif.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist, role/action matrix, API contract, Turso query, perhitungan saldo, transfer, soft delete, audit backend, import/export, backup/restore, environment, dependency, GitHub Actions, atau deployment.
+
+### Test aktual di sandbox
+
+- `node --test frontend/test/*.test.js`: PASS, 73/73.
+- Backend test yang tidak memerlukan package `web-push`: PASS, 104/104. Enam file test penuh terblokir karena `web-push` tidak tersedia pada registry sandbox.
+- `node scripts/validate-source-tree.mjs`: PASS, 322 file; 5/12 Vercel Functions canonical.
+- `node scripts/check-node-syntax.mjs`: PASS, 95 file.
+- Parser TypeScript untuk `AccountsPage.jsx`: PASS. Parser PostCSS untuk `AccountsPage.module.css`: PASS.
+- `node scripts/check-apps-script-syntax.mjs`: PASS, 6 file dan 2 urutan load.
+- `node --check test/browser/authenticated-app.test.mjs`: PASS.
+- `npm ci --ignore-scripts`: GAGAL karena registry sandbox tidak memiliki `vite@7.3.6`; Node sandbox 22.16.0 juga lebih rendah dari Node 24.x project. Lint ESLint, build Vite, build budget, dan browser runtime masih wajib dijalankan pada environment resmi.
+
+### Wajib sebelum merge/deploy
+
+Jalankan Node 24 dengan registry lengkap: `npm ci`, `npm run lint`, `npm run test`, `npm run build`, `npm run build:budget`, dan `npm run test:browser`. Lakukan smoke manual Safari iPhone dan Android Chrome untuk swipe atas/bawah, gesture horizontal, swipe pendek, scroll dari area kosong stack, pinch zoom, serta tap kartu aktif.
+
+---
+
+## Previous task — Web Push production-safe dan delivery per perangkat
+
+**Tanggal:** 2026-08-05
+**Source:** `saldo-bersama-clean(5).zip`
+**Scope:** memperbaiki aktivasi notifikasi mobile, sinkronisasi subscription browser/backend, privacy lock screen, SSRF, retry multi-perangkat, environment Production, scheduler isolation, dan schema v6.
+
+### Keputusan implementasi
+
+1. `import.meta.env.DEV` tidak lagi memblokir notifikasi. Secure context, localhost, permission, iOS standalone, VAPID public key, service worker, subscription lokal, dan status backend diperiksa terpisah.
+2. Action `notifications.status` dan `notifications.test` ditambahkan untuk verifikasi perangkat. Test hanya menuju endpoint aktif milik actor, rate-limited, idempotent, bertimeout, dan memakai payload generik.
+3. `database/migrations/004_notification_deliveries.sql` menaikkan schema ke v6. Satu delivery disimpan untuk setiap notification dan subscription, sehingga retry tidak mengirim ulang ke perangkat sukses.
+4. Endpoint HTTPS divalidasi sebelum storage dan saat koneksi. Guarded DNS lookup menolak alamat nonpublik. Perubahan DNS menuju jaringan privat menonaktifkan subscription dan mengakhiri retry tertunda. Transfer endpoint aktif maupun nonaktif antar akun hanya boleh ketika key subscription browser cocok persis. Record lama dipensiunkan tanpa mengubah ownership historis delivery.
+5. Push stage di `/api/jobs` mempunyai timeout, stale lock recovery, attempt limit, dead letter, error code tersanitasi, dan tidak dapat menghentikan backup harian. Integrity check menolak ownership delivery dan status queue/subscription yang tidak konsisten.
+6. Service worker menampilkan copy privat, membatasi target click ke same-origin, tidak meng-cache local development, dan hanya menghapus cache milik Saldo Bersama.
+7. Sinkronisasi environment Production/Development membawa grup Google bridge dan Web Push hanya bila lengkap. VAPID private key ditandai sensitive dan tidak dicetak. Public/private key wajib berasal dari pasangan P-256 yang sama.
+8. Restore schema v6 tetap menerima backup v3/v4/v5/v6. Push subscription dan delivery operasional tidak dipulihkan; perangkat wajib mendaftar ulang.
+
+### Guard deployment
+
+Cutover schema v6 harus terkoordinasi karena runtime v5 menolak schema v6 dan runtime v6 menolak schema v5. Buat backup terverifikasi, aktifkan maintenance window singkat, jalankan migration v6 dan integrity check, deploy runtime v6 segera, lalu lakukan smoke owner/member. Jangan menghapus tabel v6 sebagai rollback. Restore backup pra-migration pada database terpisah, verifikasi, lalu repoint environment setelah approval.
+
+### Test aktual di sandbox
+
+- `node --test frontend/test/*.test.js`: PASS, 73/73.
+- `node scripts/run-backend-tests.mjs`: PASS, 129/129.
+- `npm run validate:source`: PASS, 322 file; 5/12 Vercel Functions canonical.
+- `node scripts/check-node-syntax.mjs`: PASS, 95 file.
+- `node scripts/check-apps-script-syntax.mjs`: PASS, 6 file dan 2 urutan load.
+- `npm ci` gagal karena Node sandbox 22.16.0 lebih rendah dari Node 24.x project dan registry sandbox tidak menyediakan `vite@7.3.6`. Full lint, build, build budget, browser smoke, real VAPID delivery, Vercel Production, serta Apps Script trigger masih wajib diverifikasi di environment resmi.
+
+---
+
+## Previous task — Rekening mobile, route rekonsiliasi, dan data-quality form
 
 **Tanggal:** 2026-08-05
 **Source:** `saldo-bersama-clean(4).zip`
@@ -6,7 +73,7 @@
 
 ### Keputusan implementasi
 
-1. Gesture stack kartu berubah dari vertikal menjadi horizontal. Container memakai `touch-action: pan-y`; scroll halaman tetap menjadi perilaku utama pada gerakan vertikal.
+1. Implementasi horizontal pada task ini kemudian disupersede oleh patch korektif `saldo-bersama-clean(7).zip`: kartu aktif kembali memakai swipe vertikal, sedangkan area di luar kartu tetap dapat menggulir halaman.
 2. Halaman Rekening hanya mempertahankan aksi `Transaksi` dan `Pembayaran keluar`. `Daftar rekening` membuka modal daftar nyata, sementara navigasi Transaksi membawa rekening terpilih melalui router state.
 3. Rekonsiliasi dipindahkan ke `/rekonsiliasi`. Page memakai action API existing, `createIdempotencyKey`, capability `can_reconcile` dari backend, reload terjaga, dan tidak membuat transaksi penyesuaian otomatis.
 4. Formatter label rekening canonical menampilkan provider, nama, dan pemilik personal bila relevan pada seluruh selector utama.

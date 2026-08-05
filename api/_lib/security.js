@@ -92,14 +92,14 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "budgets.list", "budgets.upsert", "budgets.archive", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly",
     "reconciliations.list", "reconciliations.create", "periods.list", "periods.previewClose", "periods.close", "periods.reopen",
     "calendar.sync", "mirror.sync", "mirror.rebuild", "integrations.status",
-    "notifications.register", "notifications.unregister", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
+    "notifications.status", "notifications.register", "notifications.unregister", "notifications.test", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
   ]),
   member: new Set([
     "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.move", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",
-    "notifications.register", "notifications.unregister", "integrations.status",
+    "notifications.status", "notifications.register", "notifications.unregister", "notifications.test", "integrations.status",
   ]),
 });
 export const authorizeAction = (session, action) => Boolean(session && ACTION_PERMISSIONS[session.role]?.has(action));

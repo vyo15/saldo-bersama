@@ -7,6 +7,7 @@ const migrationDirectory = new URL("../../database/migrations/", import.meta.url
 const initialMigrationUrl = new URL("001_initial_schema.sql", migrationDirectory);
 const accountNumberMigrationUrl = new URL("002_account_number.sql", migrationDirectory);
 const bankTemplateMigrationUrl = new URL("003_account_bank_template.sql", migrationDirectory);
+const notificationDeliveriesMigrationUrl = new URL("004_notification_deliveries.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -83,10 +84,10 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v5 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v6 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "5");
-  assert.ok(result.table_count >= 24);
+  assert.equal(result.schema_version, "6");
+  assert.ok(result.table_count >= 25);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
 });
@@ -134,4 +135,15 @@ test("migration v5 menyimpan template kartu terpisah tanpa mengubah nama dan sal
   assert.match(sql, /WHERE account_type = 'bank'/);
   assert.match(sql, /value = '5'/);
   assert.doesNotMatch(sql, /UPDATE accounts\s+SET name/i);
+});
+
+
+test("migration v6 menambahkan delivery per subscription untuk retry Web Push tanpa duplikasi perangkat sukses", async () => {
+  const sql = await readFile(notificationDeliveriesMigrationUrl, "utf8");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS notification_deliveries/);
+  assert.match(sql, /UNIQUE\(notification_id, subscription_id\)/);
+  assert.match(sql, /status IN \('pending','processing','sent','failed','expired','dead_letter'\)/);
+  assert.match(sql, /idx_notification_deliveries_ready/);
+  assert.match(sql, /value = '6'/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
 });

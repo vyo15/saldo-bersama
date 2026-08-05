@@ -4,7 +4,7 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
-- Menyederhanakan halaman Rekening mobile: gesture pergantian kartu kini horizontal dan membiarkan scroll vertikal, tombol `Daftar rekening` benar-benar membuka daftar, aksi ganda `Bayar tagihan` dihapus, serta `Riwayat` diperjelas menjadi `Pembayaran keluar` dengan status transaksi nonaktif yang netral.
+- Menyederhanakan halaman Rekening mobile: gesture kartu aktif kembali vertikal agar selaras dengan animasi tumpukan, area di luar kartu tetap dapat menggulir halaman, tombol `Daftar rekening` benar-benar membuka daftar, aksi ganda `Bayar tagihan` dihapus, serta `Riwayat` diperjelas menjadi `Pembayaran keluar` dengan status transaksi nonaktif yang netral.
 - Memindahkan form, panduan, dan riwayat Rekonsiliasi ke route `/rekonsiliasi` yang memakai capability backend existing, idempotency key, audit server, dan tidak membuat adjustment otomatis.
 - Menghapus duplikasi `Tambah transaksi` dari Menu lainnya dan floating action pada route Transaksi, serta menyelaraskan label aksi dashboard dengan perilaku navigasinya.
 - Menambahkan formatter identitas rekening terpusat berbasis provider, nama rekening, dan pemilik personal pada transaksi, target, alokasi, tagihan, dashboard, pengaturan, serta rekonsiliasi.

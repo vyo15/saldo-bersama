@@ -70,8 +70,10 @@
 | `mirror.sync` | Ya | Tidak |
 | `mirror.rebuild` | Ya | Tidak |
 | `integrations.status` | Ya | Ya |
+| `notifications.status` | Ya | Ya |
 | `notifications.register` | Ya | Ya |
 | `notifications.unregister` | Ya | Ya |
+| `notifications.test` | Ya | Ya |
 | `backup.create` | Ya | Tidak |
 | `import.preview` | Ya | Tidak |
 | `import.apply` | Ya | Tidak |

@@ -153,6 +153,32 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
   assert.match(sw, /SKIP_WAITING/);
 });
 
+
+test("Web Push memakai secure context, status backend, payload privat, dan delivery per perangkat", async () => {
+  const [frontendNotifications, settings, serviceWorker, backendNotifications, jobs, deliveryMigration] = await Promise.all([
+    source("frontend/src/services/notifications.js"),
+    source("frontend/src/features/settings/SettingsPage.jsx"),
+    source("frontend/public/sw.js"),
+    source("api/_lib/services/notifications.js"),
+    source("api/jobs.js"),
+    source("database/migrations/004_notification_deliveries.sql"),
+  ]);
+  assert.doesNotMatch(frontendNotifications, /import\.meta\.env\.DEV/);
+  assert.match(frontendNotifications, /window\.isSecureContext/);
+  assert.match(frontendNotifications, /ios_install_required/);
+  assert.match(frontendNotifications, /notifications\.status/);
+  assert.match(frontendNotifications, /notifications\.test/);
+  assert.match(settings, /Uji notifikasi/);
+  assert.match(serviceWorker, /Ada pengingat keuangan yang perlu diperiksa/);
+  assert.doesNotMatch(serviceWorker, /payload\.title|payload\.body/);
+  assert.match(backendNotifications, /normalizePushEndpoint/);
+  assert.match(backendNotifications, /PUSH_ENDPOINT_OWNERSHIP_CONFLICT/);
+  assert.match(jobs, /notification_deliveries/);
+  assert.match(jobs, /webPushRequestOptions\(3_600\)/);
+  assert.match(backendNotifications, /PUSH_ENDPOINT_PRIVATE_ADDRESS/);
+  assert.match(deliveryMigration, /UNIQUE\(notification_id, subscription_id\)/);
+});
+
 test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah dihapus", async () => {
   for (const file of ["docs/TURSO_SCHEMA.md", "docs/GOOGLE_INTEGRATIONS.md", "docs/LEGACY_SHEETS_TO_TURSO_CUTOVER.md", "docs/RECOVERY_RUNBOOK.md", "docs/ENVIRONMENT_VARIABLES.md"]) assert.equal(await exists(file), true, file);
   assert.equal(await exists("docs/GOOGLE_SHEETS_SCHEMA.md"), false);
@@ -163,17 +189,19 @@ test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah di
 });
 
 test("runtime memakai satu Firebase public key dan tidak menduplikasi resource ID Google di Vercel", async () => {
-  const [firebase, jobs, integrations, maintenance, environmentDoc] = await Promise.all([
+  const [firebase, jobs, notifications, integrations, maintenance, environmentDoc] = await Promise.all([
     source("api/_lib/firebase.js"),
     source("api/jobs.js"),
+    source("api/_lib/services/notifications.js"),
     source("api/_lib/services/integrations.js"),
     Promise.all(["shared.js", "backup.js", "restore.js", "import.js", "integrity.js"].map((name) => source(`api/_lib/services/maintenance/${name}`))).then((parts) => parts.join("\n")),
     source("docs/ENVIRONMENT_VARIABLES.md"),
   ]);
   assert.match(firebase, /process\.env\.VITE_FIREBASE_API_KEY/);
   assert.doesNotMatch(firebase, /FIREBASE_WEB_API_KEY/);
-  assert.match(jobs, /process\.env\.VITE_VAPID_PUBLIC_KEY/);
-  assert.doesNotMatch(jobs, /process\.env\.VAPID_PUBLIC_KEY/);
+  assert.match(notifications, /process\.env|environment = process\.env/);
+  assert.match(notifications, /VITE_VAPID_PUBLIC_KEY/);
+  assert.doesNotMatch(notifications, /process\.env\.VAPID_PUBLIC_KEY/);
   for (const sourceText of [jobs, integrations, maintenance]) {
     assert.doesNotMatch(sourceText, /process\.env\.(MIRROR_SPREADSHEET_ID|GOOGLE_CALENDAR_ID|BACKUP_FOLDER_ID|JOBS_ENDPOINT_URL)/);
   }

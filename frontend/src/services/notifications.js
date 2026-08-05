@@ -3,24 +3,54 @@ import { apiClient } from "./api/client.js";
 import { createIdempotencyKey } from "../domain/security.js";
 
 const urlBase64ToUint8Array = (value) => {
-  const padding = "=".repeat((4 - (value.length % 4)) % 4);
-  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
+  const candidate = String(value || "").trim();
+  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(candidate)) throw new Error("VAPID public key tidak valid.");
+  const padding = "=".repeat((4 - (candidate.length % 4)) % 4);
+  const base64 = (candidate + padding).replace(/-/g, "+").replace(/_/g, "/");
+  let raw;
+  try { raw = atob(base64); } catch { throw new Error("VAPID public key tidak valid."); }
+  const bytes = Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
+  if (bytes.length !== 65 || bytes[0] !== 4) throw new Error("VAPID public key tidak valid.");
+  return bytes;
+};
+
+const equalBytes = (left, right) => {
+  if (!left || !right || left.byteLength !== right.byteLength) return false;
+  const a = new Uint8Array(left);
+  const b = new Uint8Array(right);
+  return a.every((value, index) => value === b[index]);
+};
+
+const isAppleMobile = () => {
+  const userAgent = navigator.userAgent || "";
+  return /iPhone|iPad|iPod/i.test(userAgent)
+    || (navigator.platform === "MacIntel" && Number(navigator.maxTouchPoints || 0) > 1);
+};
+
+const isStandaloneApp = () => window.matchMedia?.("(display-mode: standalone)")?.matches === true
+  || navigator.standalone === true;
+
+const notificationCapability = () => {
+  const supported = "Notification" in window && "PushManager" in window && "serviceWorker" in navigator;
+  const secureContext = window.isSecureContext === true;
+  const iosInstallRequired = supported && isAppleMobile() && !isStandaloneApp();
+  let clientKeyValid = false;
+  if (env.vapidPublicKey) {
+    try { urlBase64ToUint8Array(env.vapidPublicKey); clientKeyValid = true; } catch { clientKeyValid = false; }
+  }
+  return {
+    supported,
+    secureContext,
+    iosInstallRequired,
+    clientConfigured: Boolean(env.vapidPublicKey),
+    clientKeyValid,
+    permission: supported ? Notification.permission : "unsupported",
+  };
 };
 
 export const registerServiceWorker = async () => {
-  if (!("serviceWorker" in navigator)) return null;
-  if (import.meta.env.DEV) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map((registration) => registration.unregister()));
-    if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.filter((key) => key.startsWith("saldo-bersama-")).map((key) => caches.delete(key)));
-    }
-    return null;
-  }
-  const registration = await navigator.serviceWorker.register("/sw.js");
+  if (!("serviceWorker" in navigator) || window.isSecureContext !== true) return null;
+  const registration = await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
   const notifyUpdate = () => window.dispatchEvent(new CustomEvent("saldo-bersama:update-available", { detail: { registration } }));
   if (registration.waiting && navigator.serviceWorker.controller) notifyUpdate();
   registration.addEventListener("updatefound", () => {
@@ -39,37 +69,178 @@ const currentPushSubscription = async () => {
   return registration ? registration.pushManager.getSubscription() : null;
 };
 
-export const getPushNotificationState = async () => {
-  const supported = "Notification" in window && "PushManager" in window && "serviceWorker" in navigator;
-  if (!supported) return { supported: false, permission: "unsupported", enabled: false };
-  const subscription = await currentPushSubscription();
-  return { supported: true, permission: Notification.permission, enabled: Boolean(subscription) };
+const subscriptionKeyMatches = (subscription) => {
+  if (!subscription || !env.vapidPublicKey) return true;
+  const currentKey = subscription.options?.applicationServerKey;
+  if (!currentKey) return true;
+  try { return equalBytes(currentKey, urlBase64ToUint8Array(env.vapidPublicKey)); }
+  catch { return false; }
 };
 
-export const enablePushNotifications = async () => {
-  if (!("Notification" in window) || !("PushManager" in window)) {
-    throw new Error("Browser ini belum mendukung Web Push.");
-  }
-  if (import.meta.env.DEV) throw new Error("Web Push hanya dapat diuji pada deployment HTTPS, bukan server development lokal.");
-  if (!env.vapidPublicKey) throw new Error("VAPID public key belum dikonfigurasi.");
+const localReason = (capability) => {
+  if (!capability.supported) return "unsupported";
+  if (!capability.secureContext) return "insecure_context";
+  if (capability.iosInstallRequired) return "ios_install_required";
+  if (capability.permission === "denied") return "permission_denied";
+  if (!capability.clientConfigured) return "client_not_configured";
+  if (!capability.clientKeyValid) return "client_configuration_invalid";
+  return null;
+};
 
-  const permission = await Notification.requestPermission();
+export const getPushNotificationState = async () => {
+  const capability = notificationCapability();
+  const subscription = capability.supported && capability.secureContext
+    ? await currentPushSubscription().catch(() => null)
+    : null;
+  const browserSubscribed = Boolean(subscription);
+  const blockedReason = localReason(capability);
+  if (blockedReason) {
+    return {
+      ...capability,
+      reason: blockedReason,
+      browserSubscribed,
+      registered: false,
+      enabled: false,
+      server: null,
+      activeDeviceCount: 0,
+      lastDelivery: null,
+    };
+  }
+
+
+  const keyMismatch = browserSubscribed && !subscriptionKeyMatches(subscription);
+  let remote;
+  try {
+    remote = await apiClient.request(
+      "notifications.status",
+      subscription ? { endpoint: subscription.endpoint } : {},
+      { force: true },
+    );
+  } catch (error) {
+    return {
+      ...capability,
+      reason: "server_status_unavailable",
+      browserSubscribed,
+      registered: false,
+      enabled: false,
+      keyMismatch,
+      server: null,
+      activeDeviceCount: 0,
+      lastDelivery: null,
+      error,
+    };
+  }
+
+  const registered = remote.currentDevice?.registered === true;
+  let reason = "not_subscribed";
+  if (!remote.server?.configured) reason = "server_not_configured";
+  else if (!remote.server?.ready) reason = "server_configuration_invalid";
+  else if (keyMismatch) reason = "vapid_key_changed";
+  else if (remote.currentDevice?.state === "owned_by_other") reason = "account_conflict";
+  else if (browserSubscribed && !registered) reason = "registration_required";
+  else if (browserSubscribed && registered) reason = remote.lastTestAt ? "ready_tested" : "ready_unverified";
+
+  return {
+    ...capability,
+    reason,
+    browserSubscribed,
+    registered,
+    enabled: reason === "ready_tested" || reason === "ready_unverified",
+    keyMismatch,
+    server: remote.server || null,
+    currentDevice: remote.currentDevice || null,
+    activeDeviceCount: Number(remote.activeDeviceCount || 0),
+    lastTestAt: remote.lastTestAt || null,
+    lastDelivery: remote.lastDelivery || null,
+  };
+};
+
+const stateError = (state) => {
+  const messages = {
+    unsupported: "Browser ini belum mendukung Web Push.",
+    insecure_context: "Notifikasi memerlukan HTTPS. Untuk pengujian lokal gunakan localhost, bukan alamat IP jaringan lokal.",
+    ios_install_required: "Pada iPhone atau iPad, pasang Saldo Bersama ke Home Screen lalu buka dari ikon aplikasi.",
+    permission_denied: "Izin notifikasi diblokir. Aktifkan kembali melalui pengaturan browser atau pengaturan notifikasi perangkat.",
+    client_not_configured: "VAPID public key belum dikonfigurasi pada frontend.",
+    client_configuration_invalid: "VAPID public key pada frontend tidak valid.",
+    server_not_configured: "Web Push belum dikonfigurasi pada server.",
+    server_configuration_invalid: "Konfigurasi Web Push pada server belum valid.",
+    server_status_unavailable: "Status Web Push pada server belum dapat diverifikasi.",
+  };
+  return messages[state.reason] || null;
+};
+
+const subscribeWithCurrentKey = async (registration) => registration.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: urlBase64ToUint8Array(env.vapidPublicKey),
+});
+
+export const enablePushNotifications = async () => {
+  const initialState = await getPushNotificationState();
+  const blockingMessage = stateError(initialState);
+  if (blockingMessage) throw new Error(blockingMessage);
+
+  const permission = initialState.permission === "granted"
+    ? "granted"
+    : await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Izin notifikasi belum diberikan.");
 
   const registration = await registerServiceWorker();
-  if (!registration) throw new Error("Service worker notifikasi belum tersedia.");
-  const existing = await registration.pushManager.getSubscription();
-  const subscription = existing || await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(env.vapidPublicKey),
-  });
-  const json = subscription.toJSON();
-  await apiClient.request("notifications.register", {
-    endpoint: json.endpoint,
-    keys: json.keys,
-    userAgent: navigator.userAgent.slice(0, 250),
-  }, { idempotencyKey: createIdempotencyKey() });
-  return subscription;
+  if (!registration) throw new Error("Service worker notifikasi belum tersedia pada koneksi ini.");
+  await navigator.serviceWorker.ready;
+
+  let subscription = await registration.pushManager.getSubscription();
+  const subscriptionPayload = (value) => {
+    const json = value.toJSON();
+    return { endpoint: json.endpoint, keys: json.keys, userAgent: navigator.userAgent.slice(0, 250) };
+  };
+  const registerRemote = (value) => apiClient.request(
+    "notifications.register",
+    subscriptionPayload(value),
+    { idempotencyKey: createIdempotencyKey() },
+  );
+
+  if (subscription && initialState.keyMismatch) {
+    if (initialState.currentDevice?.state === "owned_by_other") await registerRemote(subscription);
+    if (["active", "owned_by_other"].includes(initialState.currentDevice?.state)) {
+      await apiClient.request(
+        "notifications.unregister",
+        { endpoint: subscription.endpoint },
+        { idempotencyKey: createIdempotencyKey() },
+      );
+    }
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+
+  let created = false;
+  if (!subscription) {
+    subscription = await subscribeWithCurrentKey(registration);
+    created = true;
+  }
+
+  try {
+    const result = await registerRemote(subscription);
+    apiClient.invalidate("notifications.status");
+    return { ...result, subscription };
+  } catch (error) {
+    if (created) await subscription.unsubscribe().catch(() => {});
+    throw error;
+  }
+};
+
+export const testPushNotification = async () => {
+  const state = await getPushNotificationState();
+  if (!state.enabled) throw new Error("Perangkat belum terdaftar aktif dan belum siap menerima notifikasi uji.");
+  const subscription = await currentPushSubscription();
+  if (!subscription) throw new Error("Subscription perangkat tidak ditemukan.");
+  const result = await apiClient.request(
+    "notifications.test",
+    { endpoint: subscription.endpoint },
+    { idempotencyKey: createIdempotencyKey() },
+  );
+  apiClient.invalidate("notifications.status");
+  return result;
 };
 
 export const disablePushNotifications = async ({ bestEffort = false, localOnly = false } = {}) => {
@@ -84,6 +255,7 @@ export const disablePushNotifications = async ({ bestEffort = false, localOnly =
       }
     }
     const unsubscribed = await subscription.unsubscribe();
+    apiClient.invalidate("notifications.status");
     return { disabled: true, hadSubscription: true, unsubscribed };
   } catch (error) {
     if (bestEffort) return { disabled: false, errorCode: error?.code || "PUSH_DISABLE_FAILED" };

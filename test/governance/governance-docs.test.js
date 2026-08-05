@@ -5,8 +5,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   CORE_RUNTIME_ENV_KEYS,
+  GOOGLE_BRIDGE_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
   PRODUCTION_SYNC_ENV_KEYS,
+  WEB_PUSH_ENV_KEYS,
 } from "../../scripts/runtime-environment.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -151,7 +153,12 @@ test("every canonical environment key is documented and classifications use one 
   });
   assert.equal(CORE_RUNTIME_ENV_KEYS.length, 8);
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
-  assert.deepEqual(PRODUCTION_SYNC_ENV_KEYS, [...CORE_RUNTIME_ENV_KEYS, ...OPTIONAL_LOGGING_ENV_KEYS]);
+  assert.deepEqual(PRODUCTION_SYNC_ENV_KEYS, [
+    ...CORE_RUNTIME_ENV_KEYS,
+    ...OPTIONAL_LOGGING_ENV_KEYS,
+    ...GOOGLE_BRIDGE_ENV_KEYS,
+    ...WEB_PUSH_ENV_KEYS,
+  ]);
   assert.match(environmentDocs, /delapan key core wajib dan satu key logging opsional/);
   assert.doesNotMatch(environmentDocs, /sembilan key core/i);
 });
@@ -177,7 +184,7 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
 
 test("project status records active schema version and guarded shared database decision", () => {
   const status = read("docs/PROJECT_STATUS.md");
-  assert.match(status, /Schema:\*\* version 5/);
+  assert.match(status, /Schema:\*\* version 6/);
   assert.match(status, /Runtime lokal dan Vercel Production memakai satu database Turso/);
 });
 
