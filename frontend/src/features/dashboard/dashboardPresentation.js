@@ -3,7 +3,7 @@ import { FiCreditCard, FiPieChart, FiRepeat, FiTarget } from "react-icons/fi";
 export const QUICK_ACTIONS = Object.freeze([
   { to: "/rekening", label: "Rekening", icon: FiCreditCard },
   { to: "/alokasi", label: "Alokasi", icon: FiPieChart },
-  { to: "/tagihan", label: "Tagihan", icon: FiRepeat },
+  { to: "/tagihan", label: "Jadwal rutin", icon: FiRepeat },
   { to: "/target", label: "Target", icon: FiTarget },
 ]);
 

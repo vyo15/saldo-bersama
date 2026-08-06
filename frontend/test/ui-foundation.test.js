@@ -173,7 +173,7 @@ test("feature write memakai API facade lokal dan halaman tidak mengimpor transpo
     "allocations/allocations.api.js",
     "goals/goals.api.js",
     "recurring/recurring.api.js",
-    "reports/reports.api.js",
+    "budgets/budgets.api.js",
     "settings/settings.api.js",
     "transactions/transactions.api.js",
   ]) assert.match(await read(`src/features/${facade}`), /apiClient/);
@@ -202,4 +202,14 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.match(detail, /<Modal/);
   assert.match(detail, /<dl>/);
   assert.doesNotMatch(responsive, /\.premium-filterbar > \.premium-select:nth-of-type\(3\) \{ display: none; \}/);
+});
+
+test("pengaturan memakai kontrak system.health aktual dan status notifikasi aksesibel", async () => {
+  const settings = await read("src/features/settings/SettingsPage.jsx");
+  assert.match(settings, /healthResource\.data\?\.status === "ok"/);
+  assert.match(settings, /healthResource\.data\?\.schemaVersion/);
+  assert.doesNotMatch(settings, /healthResource\.data\?\.database/);
+  assert.doesNotMatch(settings, /healthResource\.data\?\.schema\?\.ready/);
+  assert.match(settings, /<h2>Notifikasi perangkat<\/h2>[\s\S]*role="status" aria-live="polite"/);
+  assert.match(settings, /<h2>Status backend<\/h2>[\s\S]*role="status" aria-live="polite"/);
 });

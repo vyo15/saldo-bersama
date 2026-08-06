@@ -218,11 +218,11 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
                 envelope_period_id: envelope && !hasSameOwnership(envelope, nextAccount) ? "" : current.envelope_period_id,
               };
             });
-          }} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select>{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>
+          }} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item, { includeOwner: false })}</option>)}</select>{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>
         ) : null}
 
         {(isIncome || isTransfer) ? (
-          <label className="field" htmlFor="destination-account"><span>Rekening tujuan *</span><select id="destination-account" value={form.destination_account_id} onChange={(event) => update("destination_account_id", event.target.value)} aria-invalid={Boolean(errors.destination_account_id)}><option value="">Pilih rekening</option>{compatibleDestinationAccounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select>{errors.destination_account_id ? <small className="field__error">{errors.destination_account_id}</small> : null}</label>
+          <label className="field" htmlFor="destination-account"><span>Rekening tujuan *</span><select id="destination-account" value={form.destination_account_id} onChange={(event) => update("destination_account_id", event.target.value)} aria-invalid={Boolean(errors.destination_account_id)}><option value="">Pilih rekening</option>{compatibleDestinationAccounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item, { includeOwner: false })}</option>)}</select>{errors.destination_account_id ? <small className="field__error">{errors.destination_account_id}</small> : null}</label>
         ) : null}
 
         {!isTransfer ? (

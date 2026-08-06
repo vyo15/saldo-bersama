@@ -170,7 +170,7 @@ const TransactionsPage = () => {
             <table className="data-table">
               <thead><tr><th>Tanggal</th><th>Transaksi</th><th>Rekening</th><th>Kategori</th><th>Status</th><th className="align-right">Nominal</th><th><span className="sr-only">Aksi</span></th></tr></thead>
               <tbody>{items.map((item) => {
-                const linkedModule = item.managed_by === "recurring" ? "Tagihan" : item.managed_by === "goal" ? "Target" : "";
+                const linkedModule = item.managed_by === "recurring" ? "Jadwal rutin" : item.managed_by === "goal" ? "Target" : "";
                 const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type);
                 return (
                   <tr key={item.transaction_id}>
@@ -189,7 +189,7 @@ const TransactionsPage = () => {
 
           <div className="mobile-data-list transaction-mobile-list" aria-label="Daftar transaksi">
             {items.map((item) => {
-              const linkedModule = item.managed_by === "recurring" ? "Tagihan" : item.managed_by === "goal" ? "Target" : "";
+              const linkedModule = item.managed_by === "recurring" ? "Jadwal rutin" : item.managed_by === "goal" ? "Target" : "";
               const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type);
               return (
                 <article className="mobile-data-card transaction-mobile-card" key={item.transaction_id}>

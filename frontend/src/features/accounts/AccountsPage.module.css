@@ -190,10 +190,11 @@
     gap: 0;
     overflow: hidden;
     color: #fff;
-    background:
+    --accounts-mobile-surface:
       radial-gradient(circle at 72% 18%, rgb(255 255 255 / .08), transparent 27%),
       radial-gradient(circle at 8% 88%, rgb(22 199 132 / .12), transparent 30%),
       linear-gradient(145deg, #101413 0%, #0c1110 48%, #07100e 100%);
+    background: var(--accounts-mobile-background, var(--accounts-mobile-surface));
     isolation: isolate;
   }
 
@@ -406,18 +407,18 @@
   }
 
   .mobileStackSummary {
-    margin: -.35rem var(--mobile-page-gutter) 0;
-    padding: .85rem 1rem;
+    margin: -.35rem 0 0;
+    padding: .85rem calc(var(--mobile-page-gutter) + .25rem) .25rem;
     position: relative;
     z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    border: 1px solid rgb(255 255 255 / .09);
-    border-radius: 1rem;
-    background: rgb(255 255 255 / .055);
-    backdrop-filter: blur(14px);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    backdrop-filter: none;
   }
 
   .mobileStackSummary > div {
@@ -471,7 +472,7 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
-    border-top: 1px solid color-mix(in srgb, var(--on-hero) 7%, transparent);
+    border-top: 0;
   }
 
   .mobileQuickAction {

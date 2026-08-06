@@ -7,8 +7,9 @@ import { createAuthenticatedGatewayResponses, memberSession, ownerSession } from
 const routeCases = Object.freeze([
   ["/", "Ringkasan Keuangan"],
   ["/transaksi", "Transaksi"],
+  ["/anggaran", "Anggaran"],
   ["/alokasi", "Alokasi dana"],
-  ["/tagihan", "Tagihan & jadwal"],
+  ["/tagihan", "Jadwal rutin"],
   ["/target", "Tabungan & target"],
   ["/laporan", "Laporan"],
   ["/rekening", "Rekening"],
@@ -17,7 +18,7 @@ const routeCases = Object.freeze([
   ["/pengaturan", "Pengaturan"],
 ]);
 
-const secondaryRoutes = new Set(["/alokasi", "/tagihan", "/target", "/rekening", "/rekonsiliasi", "/kategori", "/pengaturan"]);
+const secondaryRoutes = new Set(["/anggaran", "/alokasi", "/tagihan", "/target", "/rekening", "/rekonsiliasi", "/kategori", "/pengaturan"]);
 
 const visibleExpression = (selector) => `(() => {
   const element = document.querySelector(${JSON.stringify(selector)});
@@ -105,6 +106,18 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(dashboard.insights, true);
     assert.equal(dashboard.transaction, true);
     assert.ok(dashboard.alertCount >= 4, "Dashboard mobile harus mengekspos peringatan keuangan.");
+    const mobileScrollState = await page.evaluate(`(() => {
+      const htmlStyle = getComputedStyle(document.documentElement);
+      const bodyStyle = getComputedStyle(document.body);
+      return {
+        scrollbarWidth: htmlStyle.scrollbarWidth,
+        htmlOverflowY: htmlStyle.overflowY,
+        bodyOverflowY: bodyStyle.overflowY,
+      };
+    })()`);
+    assert.equal(mobileScrollState.scrollbarWidth, "none", "Scrollbar mobile harus disembunyikan tanpa mengunci dokumen.");
+    assert.notEqual(mobileScrollState.htmlOverflowY, "hidden", "Scroll vertikal html tidak boleh dikunci.");
+    assert.notEqual(mobileScrollState.bodyOverflowY, "hidden", "Scroll vertikal body tidak boleh dikunci.");
 
     await page.evaluate("document.querySelector('.mobile-dashboard-filter-button').click()");
     await waitFor(
@@ -134,7 +147,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       { description: "menu lainnya mobile" },
     );
     const mobileMenuGroups = await page.evaluate("[...document.querySelectorAll('.mobile-menu-section h3')].map((item) => item.textContent.trim())");
-    assert.deepEqual(mobileMenuGroups, ["Perencanaan", "Kelola keuangan", "Aplikasi"]);
+    assert.deepEqual(mobileMenuGroups, ["Perencanaan", "Data keuangan", "Kontrol saldo", "Aplikasi"]);
     const mobileMenuState = await page.evaluate(`(() => {
       const dialog = document.querySelector('[role=dialog]');
       const text = dialog?.textContent || '';
@@ -147,16 +160,21 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     })()`);
     assert.equal(mobileMenuState.themeDuplicate, false, "Menu lainnya tidak boleh menduplikasi dark/light toggle.");
     assert.equal(mobileMenuState.quickAddDuplicate, false, "Menu lainnya tidak boleh menduplikasi aksi Tambah transaksi dari navigasi utama.");
-    assert.equal(mobileMenuState.reconciliationRoute, true, "Rekonsiliasi harus tersedia sebagai route kelola keuangan tersendiri.");
+    assert.equal(mobileMenuState.reconciliationRoute, true, "Rekonsiliasi harus tersedia pada grup Kontrol saldo.");
     assert.equal(mobileMenuState.logoutInFooter, true, "Logout mobile harus tersedia pada footer menu.");
     await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
     await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "menu lainnya ditutup" });
 
-    await navigateAndAssert(page, appServer.origin, "/tagihan", "Tagihan & jadwal", { mobile: true });
-    assert.equal(await page.evaluate(visibleExpression(".two-column-grid")), true, "Grid tagihan mobile tidak boleh disembunyikan.");
-    assert.equal(await page.evaluate("document.body.textContent.includes('Tagihan periode ini') && document.body.textContent.includes('Penerimaan yang diharapkan')"), true, "Kedua capability tagihan harus dapat dijangkau pada mobile.");
+    await navigateAndAssert(page, appServer.origin, "/tagihan", "Jadwal rutin", { mobile: true });
+    assert.equal(await page.evaluate(visibleExpression(".two-column-grid")), true, "Grid jadwal rutin mobile tidak boleh disembunyikan.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Tagihan periode ini') && document.body.textContent.includes('Penerimaan yang diharapkan')"), true, "Tagihan dan pemasukan rutin harus dapat dijangkau pada mobile.");
+
+    await navigateAndAssert(page, appServer.origin, "/anggaran", "Anggaran", { mobile: true });
+    assert.equal(await page.evaluate(visibleExpression("#budget-form")), true, "Owner harus dapat mengelola anggaran periode aktif.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Anggaran dan pengeluaran aktual') && document.body.textContent.includes('Simpan anggaran')"), true, "Pemantauan dan form Anggaran harus tersedia pada route terpisah.");
 
     await navigateAndAssert(page, appServer.origin, "/laporan", "Laporan", { mobile: true });
+    assert.equal(await page.evaluate("!document.body.textContent.includes('Simpan anggaran') && !document.body.textContent.includes('Arsipkan anggaran')"), true, "Laporan tidak boleh memuat mutation anggaran.");
     const visibleReportPanels = await page.evaluate(`(() => {
       const grid = document.querySelector('.report-chart-grid');
       if (!grid) return 0;
@@ -169,7 +187,10 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.ok(visibleReportPanels >= 7, `Chart laporan mobile harus terlihat, ditemukan ${visibleReportPanels} panel.`);
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
-    assert.equal(await page.evaluate(visibleExpression(".settings-section .two-column-grid")), true, "Anggota dan integrasi harus terlihat pada mobile.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v6')"), true, "Status backend harus memakai kontrak system.health aktual.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Degraded')"), false, "Status backend siap tidak boleh salah ditampilkan sebagai Degraded.");
+    assert.equal(await page.evaluate(visibleExpression(".settings-section .two-column-grid")), true, "Akses, integrasi, dan administrasi owner harus terlihat pada mobile.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('#device-notification-title')) && Boolean(document.querySelector('#access-members-title')) && Boolean(document.querySelector('#integration-settings-title'))"), true, "Notifikasi perangkat, akses anggota, dan integrasi harus dipisahkan berdasarkan fungsi.");
     await page.evaluate("document.querySelector('.owner-admin-section')?.setAttribute('open', '')");
     await waitFor(() => page.evaluate(visibleExpression(".owner-admin-grid")), { description: "administrasi owner mobile terlihat" });
     assert.equal(await page.evaluate("['Unduh Excel lengkap','Snapshot teknis ke Drive','Pulihkan backup teknis Turso','Aktivitas penting terbaru'].every((text) => document.body.textContent.includes(text))"), true, "Export, backup, restore, dan audit harus dapat dijangkau owner pada mobile.");
@@ -177,6 +198,36 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     assert.equal(await page.evaluate(visibleExpression('button[aria-label="Tambah rekening"]')), true, "Owner mobile harus memiliki tombol tambah rekening.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Pribadi · Owner Browser') && document.body.textContent.includes('Pribadi · Member Browser')"), true, "Label pemilik rekening personal harus tampil transparan.");
+
+    await setViewport(page, 351, 590);
+    await page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)");
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    const accountFullScreenState = await page.evaluate(`(() => {
+      const stage = document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]');
+      const experience = stage?.closest('section')?.parentElement;
+      const content = document.querySelector('.app-shell--accounts .app-content');
+      const shell = document.querySelector('.app-shell--accounts');
+      const navigation = document.querySelector('.mobile-navigation');
+      const contentStyle = content ? getComputedStyle(content) : null;
+      const experienceStyle = experience ? getComputedStyle(experience) : null;
+      const experienceRect = experience?.getBoundingClientRect();
+      const navigationRect = navigation?.getBoundingClientRect();
+      return {
+        viewportHeight: window.innerHeight,
+        shellHeight: shell?.getBoundingClientRect().height || 0,
+        contentBackground: contentStyle?.backgroundImage || '',
+        experienceBackground: experienceStyle?.backgroundImage || '',
+        reservedGap: experienceRect && navigationRect ? navigationRect.top - experienceRect.bottom : -1,
+        contentColor: contentStyle?.color || '',
+      };
+    })()`);
+    assert.ok(accountFullScreenState.shellHeight >= accountFullScreenState.viewportHeight - 1, "Shell Rekening harus memenuhi dynamic viewport pada layar pendek.");
+    assert.notEqual(accountFullScreenState.contentBackground, "none", "Area aman di bawah konten Rekening harus memiliki background route.");
+    assert.equal(accountFullScreenState.contentBackground, accountFullScreenState.experienceBackground, "Background Rekening harus berlanjut sampai ruang aman sebelum navigasi.");
+    assert.ok(accountFullScreenState.reservedGap >= -1 && accountFullScreenState.reservedGap <= 20, `Ruang aman sebelum navigasi harus tetap terkontrol, ditemukan ${accountFullScreenState.reservedGap}px.`);
+    assert.match(accountFullScreenState.contentColor, /rgb\(255, 255, 255\)/, "State loading atau notice pada route Rekening harus tetap terbaca di atas surface gelap.");
+    await setViewport(page, 390, 844);
+    await page.evaluate("window.scrollTo(0, 0)");
     await waitFor(() => page.evaluate(`(() => {
       const cards = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')];
       return cards.filter((card) => Number.parseFloat(getComputedStyle(card).opacity || '0') > 0.05).length >= Math.min(3, cards.length);
@@ -336,6 +387,21 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await navigateAndAssert(page, appServer.origin, "/kategori", "Kategori transaksi", { mobile: true });
     assert.equal(await page.evaluate(visibleExpression('button[aria-label="Tambah kategori"]')), true, "Owner harus memperoleh aksi kategori pada route khusus.");
 
+    await navigateAndAssert(page, appServer.origin, "/404", "Halaman tidak ditemukan", { mobile: true });
+    const notFoundState = await page.evaluate(`(() => {
+      const page = document.querySelector('.centered-page');
+      const content = document.querySelector('.app-content');
+      const navigation = document.querySelector('.mobile-navigation');
+      const pageRect = page?.getBoundingClientRect();
+      const contentRect = content?.getBoundingClientRect();
+      const navigationRect = navigation?.getBoundingClientRect();
+      return {
+        pageHeight: pageRect?.height || 0,
+        availableHeight: contentRect && navigationRect ? Math.max(0, navigationRect.top - contentRect.top - 16) : 0,
+      };
+    })()`);
+    assert.ok(notFoundState.pageHeight >= notFoundState.availableHeight - 2, "Halaman 404 harus memenuhi area konten yang tersedia tanpa gap vertikal besar.");
+
     await setViewport(page, 1440, 900);
     await navigateAndAssert(page, appServer.origin, "/", "Ringkasan Keuangan", { mobile: false });
     assert.equal(await page.evaluate(visibleExpression(".desktop-logout-button")), true, "Logout desktop harus terlihat.");
@@ -416,6 +482,12 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
     for (const [pathname, heading] of routeCases) {
       await navigateAndAssert(page, appServer.origin, pathname, heading, { mobile: true });
     }
+    await navigateAndAssert(page, appServer.origin, "/anggaran", "Anggaran", { mobile: true });
+    assert.equal(await page.evaluate("Boolean(document.querySelector('#budget-form'))"), false, "Member tidak boleh memperoleh form mutation anggaran.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Anggota dapat memantau anggaran')"), true, "Member harus memperoleh status Anggaran read-only yang jelas.");
+    await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
+    assert.equal(await page.evaluate("Boolean(document.querySelector('#device-notification-title'))"), true, "Member harus dapat mengelola subscription notifikasi perangkatnya sendiri.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('#access-members-title'))"), false, "Member tidak boleh memperoleh pengelolaan akses owner.");
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('button[aria-label=\"Tambah rekening\"]'))"), false, "Member tidak boleh memperoleh aksi master data owner.");
     const memberTransparency = await page.evaluate(`(() => {

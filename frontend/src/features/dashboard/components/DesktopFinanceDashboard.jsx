@@ -315,14 +315,14 @@ const DesktopFinanceDashboard = ({
           <div className="shared-widget__heading"><h2>Aksi cepat</h2></div>
           <div>
             <Link to="/transaksi"><span><FiRepeat aria-hidden="true" /></span><strong>Buka transaksi</strong></Link>
-            <Link to="/laporan"><span><FiFileText aria-hidden="true" /></span><strong>Buka anggaran</strong></Link>
-            <Link to="/tagihan"><span><FiCalendar aria-hidden="true" /></span><strong>Buka tagihan</strong></Link>
+            <Link to="/anggaran"><span><FiFileText aria-hidden="true" /></span><strong>Buka anggaran</strong></Link>
+            <Link to="/tagihan"><span><FiCalendar aria-hidden="true" /></span><strong>Buka jadwal rutin</strong></Link>
             <Link to="/rekonsiliasi"><span><FiCheckCircle aria-hidden="true" /></span><strong>Rekonsiliasi</strong></Link>
           </div>
         </article>
 
         <article className="shared-panel shared-widget">
-          <div className="shared-widget__heading"><div><h2>Anggaran bulan ini</h2><span>{budgets.length} anggaran aktif</span></div><Link to="/laporan">Lihat semua</Link></div>
+          <div className="shared-widget__heading"><div><h2>Anggaran bulan ini</h2><span>{budgets.length} anggaran aktif</span></div><Link to="/anggaran">Lihat semua</Link></div>
           <ul className="shared-progress-list">
             {budgets.length ? budgets.slice(0, 3).map((item) => <li key={item.budget_id}><div><strong>{item.name || item.display_name || "Anggaran"}</strong><span><SensitiveMoney visible={balanceVisible} value={item.used_amount || 0} /> / <SensitiveMoney visible={balanceVisible} value={item.amount || 0} /></span></div><ProgressBar value={item.used_amount || 0} max={item.amount || 0} label={`Pemakaian ${item.name || "anggaran"}`} /></li>) : <li className="shared-widget-empty">Belum ada anggaran aktif.</li>}
           </ul>

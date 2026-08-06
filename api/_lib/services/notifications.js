@@ -451,7 +451,7 @@ export const queueActionableNotifications = async (db) => {
       type: "budget_threshold",
       title: "Pengingat keuangan",
       body: "Ada batas anggaran yang perlu diperiksa di aplikasi.",
-      targetPath: "/laporan",
+      targetPath: "/anggaran",
       dedupeKey: `budget:${item.budget_id}:${period}:${threshold}`,
     });
   }

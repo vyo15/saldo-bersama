@@ -2,6 +2,7 @@ import {
   FiBarChart2,
   FiCheckCircle,
   FiCreditCard,
+  FiDollarSign,
   FiHome,
   FiList,
   FiPieChart,
@@ -14,13 +15,14 @@ import {
 export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/", label: "Beranda", icon: FiHome, end: true },
   { to: "/transaksi", label: "Transaksi", icon: FiList },
+  { to: "/anggaran", label: "Anggaran", description: "Tetapkan dan pantau batas pengeluaran per kategori.", icon: FiDollarSign },
   { to: "/alokasi", label: "Alokasi", description: "Atur kantong dan pembagian dana.", icon: FiPieChart },
-  { to: "/tagihan", label: "Tagihan", description: "Kelola kewajiban dan jadwal rutin.", icon: FiRepeat },
+  { to: "/tagihan", label: "Jadwal rutin", description: "Kelola tagihan, pengeluaran tetap, dan pemasukan rutin.", icon: FiRepeat },
   { to: "/target", label: "Target", description: "Pantau tabungan dan tujuan keuangan.", icon: FiTarget },
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
   { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: FiCreditCard },
-  { to: "/rekonsiliasi", label: "Rekonsiliasi", description: "Cocokkan saldo sistem dengan saldo aktual.", icon: FiCheckCircle },
   { to: "/kategori", label: "Kategori", description: "Atur kategori transaksi yang digunakan.", icon: FiTag },
+  { to: "/rekonsiliasi", label: "Rekonsiliasi", description: "Cocokkan saldo sistem dengan saldo aktual.", icon: FiCheckCircle },
   { to: "/pengaturan", label: "Pengaturan", description: "Atur aplikasi, integrasi, dan akses.", icon: FiSettings },
 ]);
 
@@ -34,25 +36,27 @@ export const DESKTOP_NAVIGATION = Object.freeze([
   freezeGroup({
     id: "planning",
     label: "Perencanaan",
-    description: "Alokasi, tagihan, dan target dalam satu tempat.",
+    description: "Anggaran, alokasi, jadwal rutin, dan target dalam satu tempat.",
     icon: FiPieChart,
-    items: pickNavigation("/alokasi", "/tagihan", "/target"),
+    items: pickNavigation("/anggaran", "/alokasi", "/tagihan", "/target"),
   }),
   navigationByPath.get("/laporan"),
   freezeGroup({
-    id: "management",
-    label: "Kelola",
-    description: "Rekening, rekonsiliasi, dan referensi transaksi.",
+    id: "financial-data",
+    label: "Data keuangan",
+    description: "Rekening dan referensi kategori transaksi.",
     icon: FiCreditCard,
-    items: pickNavigation("/rekening", "/rekonsiliasi", "/kategori"),
+    items: pickNavigation("/rekening", "/kategori"),
   }),
+  navigationByPath.get("/rekonsiliasi"),
 ]);
 
 export const MOBILE_PRIMARY_NAVIGATION = Object.freeze(pickNavigation("/", "/transaksi", "/laporan"));
 
 export const MOBILE_SECONDARY_GROUPS = Object.freeze([
-  freezeGroup({ id: "planning", label: "Perencanaan", items: pickNavigation("/alokasi", "/tagihan", "/target") }),
-  freezeGroup({ id: "management", label: "Kelola keuangan", items: pickNavigation("/rekening", "/rekonsiliasi", "/kategori") }),
+  freezeGroup({ id: "planning", label: "Perencanaan", items: pickNavigation("/anggaran", "/alokasi", "/tagihan", "/target") }),
+  freezeGroup({ id: "financial-data", label: "Data keuangan", items: pickNavigation("/rekening", "/kategori") }),
+  freezeGroup({ id: "balance-control", label: "Kontrol saldo", items: pickNavigation("/rekonsiliasi") }),
   freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/pengaturan") }),
 ]);
 

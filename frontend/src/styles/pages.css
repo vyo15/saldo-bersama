@@ -56,6 +56,7 @@
 /* Login */
 .login-page {
   position: relative;
+  min-height: 100vh;
   min-height: 100svh;
   padding: max(72px, calc(env(safe-area-inset-top) + 58px)) 20px max(24px, env(safe-area-inset-bottom));
   display: grid;

@@ -32,6 +32,7 @@ import {
   accountCardNumberGroups,
   accountOwnerName,
   accountOwnershipLabel,
+  accountProviderLabel,
   accountTypeLabel,
   detectBankTemplate,
   formatAccountNumber,
@@ -39,7 +40,6 @@ import {
 import styles from "./AccountFinancialCard.module.css";
 
 const BANK_IMAGES = Object.freeze({ bca: bcaCard, bni: bniCard, btn: btnCard, mandiri: mandiriCard, permata: permataCard });
-const BANK_LABELS = Object.freeze({ bca: "BCA", bni: "BNI", btn: "BTN", mandiri: "Mandiri", permata: "Permata" });
 const ACCOUNT_ICONS = Object.freeze({
   bank: FiCreditCard,
   cash: FiDollarSign,
@@ -118,7 +118,7 @@ const AccountFinancialCard = ({
   const canManage = Boolean(account.can_manage ?? ownerMode);
   const readOnly = Boolean(account.read_only);
   const detectedTemplate = templateOverride || detectBankTemplate(account);
-  const bankLabel = account.account_type === "bank" ? BANK_LABELS[detectedTemplate] || "Bank lainnya" : typeLabel;
+  const bankLabel = accountProviderLabel(account);
   const ownerLabel = account.owner_scope === "personal" ? ownerName || "Belum tersedia" : "Kedua pengguna";
 
   const copyAccountNumber = async () => {

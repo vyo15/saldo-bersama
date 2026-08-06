@@ -66,12 +66,38 @@ test("desktop memakai shell full-bleed tanpa gap viewport", async () => {
     read("src/styles/responsive.css"),
   ]);
 
-  assert.match(appCss, /\.app-shell\s*\{[\s\S]*width:\s*100%;[\s\S]*min-height:\s*100vh;[\s\S]*margin:\s*0;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;/);
+  assert.match(appCss, /\.app-shell\s*\{[\s\S]*width:\s*100%;[\s\S]*min-height:\s*100vh;[\s\S]*min-height:\s*100dvh;[\s\S]*margin:\s*0;[\s\S]*display:\s*flex;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;/);
   assert.match(appCss, /\.desktop-app-header\s*\{[\s\S]*border-radius:\s*0;/);
   assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*position:\s*fixed;[\s\S]*top:\s*50%;[\s\S]*transform:\s*translateY\(-50%\);/);
   assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*inset-inline-start:\s*0;/);
   assert.match(appCss, /\.app-content\s*\{[\s\S]*width:\s*100%;[\s\S]*max-width:\s*none;[\s\S]*margin-inline:\s*0;/);
-  assert.match(responsiveCss, /@media \(max-width:\s*940px\)[\s\S]*\.app-shell \{ width:\s*100%; min-height:\s*100vh; margin:\s*0; border-radius:\s*0; \}/);
+  assert.match(responsiveCss, /@media \(max-width:\s*940px\)[\s\S]*\.app-shell \{ width:\s*100%; min-height:\s*100vh; min-height:\s*100dvh; margin:\s*0; border-radius:\s*0; \}/);
+});
+
+
+test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus ruang aman navigasi", async () => {
+  const [resetCss, appCss, responsiveCss, accountCss, componentCss, accountDetailCss, pagesCss] = await Promise.all([
+    read("src/styles/reset.css"),
+    read("src/styles/app.css"),
+    read("src/styles/responsive.css"),
+    read("src/features/accounts/AccountsPage.module.css"),
+    read("src/styles/components.css"),
+    read("src/features/accounts/components/AccountFinancialCard.module.css"),
+    read("src/styles/pages.css"),
+  ]);
+
+  assert.match(resetCss, /body \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/);
+  assert.match(resetCss, /#root \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/);
+  assert.match(appCss, /\.app-shell__main \{[^}]*flex:\s*1 1 auto;[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
+  assert.match(appCss, /\.app-content \{[^}]*flex:\s*1 1 auto;/);
+  assert.match(responsiveCss, /--accounts-mobile-background:/);
+  assert.match(responsiveCss, /\.app-shell--accounts,\s*\n\s*\.app-shell--accounts \.app-shell__main,\s*\n\s*\.app-shell--accounts \.app-content \{ background:\s*var\(--accounts-mobile-background\); \}/);
+  assert.match(responsiveCss, /\.app-shell--accounts \.app-content \{ padding-top:\s*0; color:\s*var\(--on-hero\); \}/);
+  assert.match(accountCss, /background:\s*var\(--accounts-mobile-background, var\(--accounts-mobile-surface\)\);/);
+  assert.match(componentCss, /\.loading-screen, \.fatal-error \{ min-height:\s*100vh; min-height:\s*100dvh; \}/);
+  assert.match(responsiveCss, /\.app-content > \.loading-screen,[\s\S]*min-height:\s*calc\(100dvh - 56px/);
+  assert.match(accountDetailCss, /max-height:\s*calc\(100vh[^;]+;\s*\n\s*max-height:\s*calc\(100dvh/);
+  assert.match(pagesCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);
 });
 
 test("geometri rail mengikuti IMS dan menyisakan navigasi mobile", async () => {
@@ -87,7 +113,7 @@ test("geometri rail mengikuti IMS dan menyisakan navigasi mobile", async () => {
   assert.match(appCss, /\.desktop-module-dock__link\.is-active::after/);
   assert.match(appCss, /height:\s*26px;/);
   assert.match(responsiveCss, /@media \(max-width:\s*820px\)[\s\S]*\.desktop-module-dock \{ display:\s*none; \}/);
-  assert.match(responsiveCss, /\.app-shell__main \{ padding-inline-start:\s*0; \}/);
+  assert.match(responsiveCss, /\.app-shell__main \{[^}]*padding-inline-start:\s*0;/);
   assert.match(mobileNavigation, /MOBILE_PRIMARY_NAVIGATION/);
 });
 
@@ -135,7 +161,7 @@ test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoin
   assert.match(mobileNavigation, /mobile-navigation__more\$\{moreActive \? " active"/);
 });
 
-test("navigasi mengelompokkan perencanaan dan kelola tanpa mengubah route", async () => {
+test("navigasi mengelompokkan menu berdasarkan fungsi tanpa mengubah route lama", async () => {
   const source = await read("src/config/navigation.js");
   assert.match(source, /FiList/);
   assert.match(source, /FiRepeat/);
@@ -145,9 +171,14 @@ test("navigasi mengelompokkan perencanaan dan kelola tanpa mengubah route", asyn
   assert.match(source, /to: "\/kategori", label: "Kategori"/);
   assert.match(source, /to: "\/rekonsiliasi", label: "Rekonsiliasi"/);
   assert.match(source, /label: "Perencanaan"/);
-  assert.match(source, /items: pickNavigation\("\/alokasi", "\/tagihan", "\/target"\)/);
-  assert.match(source, /label: "Kelola"/);
-  assert.match(source, /items: pickNavigation\("\/rekening", "\/rekonsiliasi", "\/kategori"\)/);
+  assert.match(source, /to: "\/anggaran", label: "Anggaran"/);
+  assert.match(source, /to: "\/tagihan", label: "Jadwal rutin"/);
+  assert.match(source, /items: pickNavigation\("\/anggaran", "\/alokasi", "\/tagihan", "\/target"\)/);
+  assert.match(source, /label: "Data keuangan"/);
+  assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
+  assert.match(source, /label: "Kontrol saldo"/);
+  assert.match(source, /items: pickNavigation\("\/rekonsiliasi"\)/);
+  assert.doesNotMatch(source, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
   assert.match(source, /pickNavigation\("\/", "\/transaksi", "\/laporan"\)/);
   assert.doesNotMatch(source, /PRIMARY_NAVIGATION\[\d+\]/);

@@ -4,6 +4,15 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Memperbaiki status backend pada Pengaturan agar memakai kontrak `system.health` aktual (`status`, `schemaVersion`, `maintenanceMode`) dan tidak lagi menampilkan `Degraded` palsu; status Web Push dan backend kini diumumkan melalui live region yang aksesibel.
+- Menyelaraskan fixture dan browser regression schema v6 serta mendokumentasikan aktivasi Web Push Production untuk desktop, Android, dan iPhone/iPad tanpa menyimpan private VAPID key di source atau arsip.
+- Memisahkan pengelolaan Anggaran dari Laporan melalui route `/anggaran`; Laporan kini read-only untuk perbandingan anggaran vs aktual, sedangkan create/update/archive tetap memakai action backend existing, idempotency key, `row_version`, dan authorization owner.
+- Mengelompokkan navigasi menurut fungsi: Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi; label route `/tagihan` menjadi `Jadwal rutin` tanpa mengubah URL, deep link, recurring contract, atau notification target.
+- Menyatukan visual Rekening mobile dengan menghapus panel tempelan pada ringkasan/quick action, membuat kartu generic flat, menyembunyikan indikator scrollbar tanpa mengunci swipe, dan menetapkan kontrol form 16px tanpa memblokir zoom aksesibilitas.
+- Memperbaiki primitive `MoneyInput` agar prop `required` benar-benar diteruskan ke elemen input, sehingga validasi browser konsisten dengan label dan validasi backend.
+- Menyederhanakan label rekening pada form transaksi menjadi provider/jenis dan nama rekening, serta memusatkan mapping provider agar tidak drift.
+- Memisahkan Pengaturan menjadi status sistem, notifikasi per perangkat untuk owner/member, akses anggota, integrasi owner, data dan portabilitas, backup/pemulihan, kontrol periode, serta audit/keamanan tanpa mengubah workflow guarded.
+- Menyatukan tinggi viewport dan background route mobile: root/shell memakai fallback `100vh` lalu `100dvh`, halaman Rekening mempertahankan surface gelap sampai ruang aman di atas navigasi, serta loading, fatal error, 404, login, dan panel detail memakai tinggi viewport yang sesuai tanpa menghapus safe area atau memblokir zoom.
 - Menyederhanakan halaman Rekening mobile: gesture kartu aktif kembali vertikal agar selaras dengan animasi tumpukan, area di luar kartu tetap dapat menggulir halaman, tombol `Daftar rekening` benar-benar membuka daftar, aksi ganda `Bayar tagihan` dihapus, serta `Riwayat` diperjelas menjadi `Pembayaran keluar` dengan status transaksi nonaktif yang netral.
 - Memindahkan form, panduan, dan riwayat Rekonsiliasi ke route `/rekonsiliasi` yang memakai capability backend existing, idempotency key, audit server, dan tidak membuat adjustment otomatis.
 - Menghapus duplikasi `Tambah transaksi` dari Menu lainnya dan floating action pada route Transaksi, serta menyelaraskan label aksi dashboard dengan perilaku navigasinya.

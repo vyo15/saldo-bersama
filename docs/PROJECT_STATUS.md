@@ -1,14 +1,64 @@
 # Project Status
 
-**Last source verification:** 2026-08-05
+**Last source verification:** 2026-08-06
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(7).zip` + patch korektif gesture kartu rekening mobile yang disetujui 2026-08-05
+**Source baseline:** `saldo-bersama-clean(20260806-023043).zip` + merge patch UI/Menu/Anggaran dan Web Push readiness 2026-08-06
 **Schema:** version 6, migrations `001_initial_schema.sql` sampai `004_notification_deliveries.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
 Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implementasi utama.
 
-## Koreksi gesture kartu rekening mobile 2026-08-05
+## Merge dua patch 2026-08-06
+
+- Patch Web Push readiness pada base terbaru dipertahankan seluruhnya, termasuk kontrak `system.health` canonical, live region status, fixture schema v6, browser regression, deployment checklist, dan dokumentasi platform desktop/Android/iOS Home Screen.
+- Patch UI/Menu/Anggaran diterapkan tanpa menimpa kesiapan Web Push: route `/anggaran`, Laporan read-only, pengelompokan menu, UI Rekening mobile, kontrol 16px, scrollbar tersembunyi, label rekening, dan restrukturisasi Pengaturan tetap tersedia.
+- Konflik overlap diselesaikan melalui ancestor `saldo-bersama-clean(20260806-015600).zip`; source base `023043` terbukti hanya berbeda pada 10 file Web Push readiness.
+- Schema tetap version 6. Tidak ada migration, secret, environment, auth, role, saldo, transaksi, backup, restore, atau Apps Script yang diubah.
+
+## Patch kesiapan Web Push dan status backend
+
+- Frontend Web Push, service worker, manifest PWA, register/unregister/test per perangkat, queue, delivery per subscription, retry, audit, dan scheduler tersedia pada source.
+- Status backend memakai field `status`, `schemaVersion`, dan `maintenanceMode` dari action `system.health`; field lama `database` dan `schema.ready` tidak digunakan.
+- Aktivasi Production tetap membutuhkan schema v6 aktif, pasangan VAPID valid, deployment baru setelah environment berubah, dan satu trigger Apps Script `runScheduledJobs`.
+- Status operasional Production harus diverifikasi pada Vercel, Turso, Apps Script, desktop, Android, serta iOS Home Screen.
+
+## UI mobile, Anggaran, dan pengelompokan fungsi 2026-08-06
+
+- Route `/anggaran` menjadi tempat canonical untuk melihat, membuat, mengubah, dan mengarsipkan anggaran. Owner dapat melakukan write pada periode aktif; member dan periode historis tetap read-only. Laporan hanya menampilkan analisis anggaran vs aktual.
+- Menu Perencanaan berisi Anggaran, Alokasi, Jadwal rutin, dan Target. Rekening/Kategori berada pada Data keuangan; Rekonsiliasi berada pada Kontrol saldo; Pengaturan berada pada Aplikasi. Route `/tagihan` dipertahankan untuk kompatibilitas.
+- Kartu generic memakai warna flat. Ringkasan rekening dan quick action mobile menyatu dengan background halaman. Scrollbar visual disembunyikan tanpa mengunci scroll vertikal.
+- Kontrol input/select/textarea memakai 16px secara langsung sehingga perlindungan auto-zoom iOS tidak bergantung pada breakpoint. Zoom manual dan pinch zoom tetap tersedia.
+- Dropdown rekening transaksi menampilkan provider/jenis dan nama rekening tanpa suffix shared/personal atau nama pemilik, khusus pada form transaksi.
+- Pengaturan dipisah menurut domain dan risiko. Notifikasi perangkat tetap dapat dikelola oleh setiap pengguna, sedangkan sinkronisasi Google, data management, recovery, periode, serta audit owner tetap mengikuti authorization backend.
+- Alert anggaran dashboard dan Web Push kini membuka `/anggaran`; payload finansial privat dan kontrak delivery schema v6 tidak berubah.
+
+### Verifikasi patch
+
+- Frontend static/contract: 76/76 lulus.
+- Backend/business/security/tooling: 129/129 lulus dengan stub module-resolution `web-push` sementara; stub dihapus setelah test dan tidak masuk source/artifact.
+- Source validation: lulus, 325 file diperiksa dan 5/12 Vercel Functions canonical.
+- Syntax Node: lulus, 95 file. Syntax frontend JSX/JS: lulus, 97 file. CSS parser: lulus, 18 file. Syntax dan boot Apps Script: lulus, 6 file dan 2 urutan load.
+- `npm ci --ignore-scripts` terblokir karena sandbox memakai Node 22.16.0, sedangkan project memerlukan Node 24.x dan registry sandbox tidak menyediakan `vite@7.3.6`.
+- Browser test: 3/7 helper test lulus; 4/7 journey terblokir karena `frontend/dist/index.html` belum dapat dibangun. Full ESLint, Vite build, build budget, dan browser runtime wajib diulang pada Node 24.x dengan registry lengkap.
+
+## Full-height viewport dan route surface mobile 2026-08-06
+
+- Root `html/body/#root`, `.app-shell`, `.app-shell__main`, dan `.app-content` sekarang membentuk flex column yang memenuhi viewport dengan fallback `100vh` lalu `100dvh`.
+- Route Rekening memasang background mobile canonical pada shell, main, content, dan experience. Ruang aman untuk bottom navigation serta `env(safe-area-inset-bottom)` tetap dipertahankan, tetapi tidak lagi tampil sebagai strip background berbeda.
+- Loading dan fatal error di luar shell memenuhi viewport. Loading, fatal error, dan 404 di dalam shell memenuhi sisa area konten tanpa menambah body scroll lock.
+- Login mempertahankan `100svh` dengan fallback `100vh`; panel detail rekening memakai `100dvh` dengan fallback `100vh` agar address bar mobile tidak menghasilkan tinggi semu.
+- Gesture kartu, tinggi stack, schema, API, authorization, transaksi, saldo, audit, backup, restore, environment, dependency, dan deployment tidak diubah.
+
+### Verifikasi patch full-height
+
+- Frontend static/contract: 74/74 lulus.
+- Backend runner: 104 test lulus; 6 file gagal dimuat karena package `web-push` tidak tersedia setelah dependency install terblokir. Tidak ada backend production file yang diubah.
+- Source validation: lulus, 322 file diperiksa dan 5/12 Vercel Functions canonical.
+- Syntax Node: lulus, 95 file. Syntax dan boot Apps Script: lulus, 6 file dan 2 urutan load.
+- Seluruh 17 stylesheet frontend valid melalui parser CSS. Browser contract file juga lulus syntax check.
+- `npm ci --ignore-scripts` gagal karena registry sandbox tidak menyediakan `vite@7.3.6`; runtime sandbox Node 22.16.0 juga lebih rendah dari Node 24.x dan kebutuhan React Router 22.22.0. Karena itu lint ESLint, build Vite, build budget, dan 4 browser runtime journey yang membutuhkan `frontend/dist` tetap terblokir. Tiga browser helper test yang tidak membutuhkan build lulus.
+
+## Previous: Koreksi gesture kartu rekening mobile 2026-08-05
 
 - Gesture kartu aktif kembali memakai swipe vertikal agar arah jari selaras dengan geometri circular 3D stack. Swipe ke atas memilih rekening berikutnya dan swipe ke bawah memilih rekening sebelumnya.
 - Pointer handler hanya dipasang pada kartu aktif. Area kosong pada stack tetap memakai `touch-action: pan-y pinch-zoom`, sehingga halaman dapat digulir dari luar kartu dan browser zoom tetap tersedia.

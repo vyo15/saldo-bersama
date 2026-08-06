@@ -241,7 +241,7 @@ const budgets = Object.freeze([
 ]);
 
 const alerts = Object.freeze([
-  { id: "alert-budget", severity: "warning", title: "Budget makan 80%", message: "Pemakaian kategori makan mendekati batas.", targetPath: "/laporan" },
+  { id: "alert-budget", severity: "warning", title: "Anggaran makan 80%", message: "Pemakaian kategori makan mendekati batas.", targetPath: "/anggaran" },
   { id: "alert-recurring", severity: "info", title: "Kontrakan segera jatuh tempo", message: "Tagihan jatuh tempo dalam 8 hari.", targetPath: "/tagihan" },
   { id: "alert-goal", severity: "warning", title: "Target perlu dijaga", message: "Setoran bulanan perlu dipertahankan.", targetPath: "/target" },
   { id: "alert-unallocated", severity: "danger", title: "Transaksi belum dialokasikan", message: "Satu transaksi perlu ditinjau.", targetPath: "/transaksi" },
@@ -251,7 +251,7 @@ const alerts = Object.freeze([
 export const bootstrapFixture = Object.freeze({
   accounts,
   categories,
-  config: { schemaVersion: 5, timezone: "Asia/Jakarta", maintenanceMode: false },
+  config: { schemaVersion: 6, timezone: "Asia/Jakarta", maintenanceMode: false },
 });
 
 export const overviewFixture = Object.freeze({
@@ -326,6 +326,7 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
     "envelopes.list": { items: envelopes },
     "recurring.list": { items: recurring },
     "goals.list": { items: goals },
+    "budgets.list": { items: budgets },
     "reports.monthly": { ...reportFixture, overview: sessionOverview },
     "accounts.list": { items: sessionAccounts },
     "categories.list": { items: categories },
@@ -335,7 +336,7 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
       { user_id: memberSession.uid, email: memberSession.email, name: memberSession.name, role: "member", status: "active", is_current: session.uid === memberSession.uid, row_version: 1 },
     ] },
     "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
-    "system.health": { database: "ok", maintenanceMode: false, schema: { ready: true, version: 5 }, integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
+    "system.health": { status: "ok", schemaVersion: 6, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR", integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
     "integrations.status": { configured: { sheets: false, calendar: false }, providers: { sheets: {}, calendar: {} } },
     "periods.list": { items: [] },
   };

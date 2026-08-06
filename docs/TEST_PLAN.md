@@ -34,7 +34,10 @@ Cakupan wajib:
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
 - halaman Rekening mobile wajib memakai swipe vertikal hanya pada kartu aktif, membiarkan scroll vertikal dari area kosong stack, menolak gesture horizontal, mengembalikan swipe pendek, mempertahankan pinch zoom, dan menjaga kontrol form minimal 16px;
-- menu `Lainnya` tidak boleh menduplikasi `Tambah transaksi`; route `/rekonsiliasi` harus tersedia di kelompok Kelola keuangan dan form hanya muncul berdasarkan capability backend;
+- root, shell, main, dan content wajib memenuhi `100dvh` dengan fallback `100vh`; route Rekening harus mempertahankan background yang sama pada reserved navigation gap tanpa menghapus safe-area;
+- browser journey Rekening pada 351×590 wajib memverifikasi tinggi shell, kontinuitas background content/experience, ruang aman sebelum navigasi, dan keterbacaan foreground; route 404 wajib memenuhi sisa area konten;
+- loading dan fatal error di luar shell harus memenuhi viewport, sedangkan loading/fatal error/404 di dalam shell harus memenuhi area yang tersisa tanpa body scroll lock permanen;
+- menu `Lainnya` tidak boleh menduplikasi `Tambah transaksi`; route `/rekonsiliasi` harus tersedia di kelompok Kontrol saldo dan form hanya muncul berdasarkan capability backend;
 - default metode pembayaran transaksi harus kosong, bukan nilai `transfer` tersembunyi; selector rekening utama harus memakai formatter provider/nama/pemilik yang konsisten;
 - browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
 - login mobile wajib memakai logo resmi, tepat satu host `.google-login-button`, background rupiah dekoratif `aria-hidden`, target sentuh minimum, dark/light theme, serta `prefers-reduced-motion` tanpa mengganti flow Google Identity Services/Firebase;
@@ -72,6 +75,8 @@ Perubahan sistem pengendali uang bersama wajib mencakup skenario berikut:
 
 - filter transaksi berdasarkan rekening, kategori, dan pencatat tetap mengikuti projection personal/shared backend;
 - laporan tren 3, 6, dan 12 bulan tidak menghitung transfer sebagai pemasukan atau pengeluaran;
+- `/anggaran` mengelola create/update/archive dengan idempotency dan `row_version`; `/laporan` hanya menampilkan analisis anggaran vs aktual tanpa mutation;
+- member dan periode historis melihat Anggaran secara read-only, sedangkan owner hanya dapat mengelola periode aktif;
 - breakdown per pencatat diberi label aktivitas pencatatan, bukan kontribusi finansial;
 - breakdown rekening, kategori, dan nature hanya memakai transaksi aktif yang terlihat oleh actor;
 - peringatan budget dan kantong muncul pada threshold, tidak menggandakan notifikasi, dan tidak membocorkan scope personal;
@@ -87,12 +92,13 @@ Fitur planned seperti receipt, utang/piutang, contribution split, category hiera
 
 Browser test authenticated wajib memakai fixture owner dan member yang deterministik, tanpa koneksi Firebase, Turso, Google Identity, atau provider eksternal. Cakupan minimum:
 
-- seluruh route `/`, `/transaksi`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, dan `/pengaturan` dapat dirender pada mobile;
+- seluruh route `/`, `/transaksi`, `/anggaran`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, dan `/pengaturan` dapat dirender pada mobile;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
 - dashboard mobile membawa batas aman harian, dana belum dialokasikan, rincian rekening/kategori, seluruh peringatan melalui progressive disclosure, filter lengkap, privacy nominal, serta detail transaksi;
 - dashboard desktop menampilkan kartu rekening aktual yang dapat dipilih, transaksi rekening terpilih, filter kategori/jenis/pencarian, privacy nominal, statistik global yang tidak salah diklaim sebagai statistik rekening, KPI arus kas, anggaran, tagihan, target, dan insight;
 - menu `Lainnya` aktif dengan `aria-current="page"` pada route sekunder;
-- menu `Lainnya` tidak memuat quick-add duplikat dan menampilkan link Rekonsiliasi pada kelompok Kelola keuangan;
+- menu `Lainnya` tidak memuat quick-add duplikat dan menampilkan link Rekonsiliasi pada kelompok Kontrol saldo;
+- grup mobile harus berurutan Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi; route `/tagihan` menampilkan heading `Jadwal rutin`;
 - owner dan member memakai route yang sama, sementara kontrol write tetap mengikuti authorization data/API;
 - viewport tidak overflow horizontal dan business form tidak diduplikasi per perangkat.
 
@@ -120,7 +126,10 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive owner.
 - Dialog rekening dan kategori terpisah serta memakai form domain yang sama pada desktop/mobile tanpa tab lintas domain.
 - Stack kartu mobile memakai swipe vertikal pada kartu aktif. Container memakai `touch-action: pan-y pinch-zoom`, kartu aktif memakai `touch-action: pan-x pinch-zoom`, gesture horizontal tidak mengganti rekening, dan area kosong stack tetap menggulir halaman.
-- Tombol `Daftar rekening` harus membuka daftar rekening aktif. Quick action rekening hanya memuat navigasi Transaksi dan Pembayaran keluar; Tagihan dan Rekonsiliasi berada pada route masing-masing.
+- Tombol `Daftar rekening` harus membuka daftar rekening aktif. Quick action rekening hanya memuat navigasi Transaksi dan Pembayaran keluar; Jadwal rutin dan Rekonsiliasi berada pada route masing-masing.
+- Kartu generic harus flat tanpa gradient; ringkasan rekening dan quick action tidak boleh membentuk card/panel tambahan.
+- Scrollbar visual mobile boleh disembunyikan, tetapi `overflow-y` tidak boleh dikunci dan konten paling bawah harus tetap dapat dicapai.
+- Kontrol form memakai font 16px tanpa menonaktifkan zoom viewport.
 - Route `/rekonsiliasi` menampilkan form hanya untuk rekening `can_reconcile`, mengirim idempotency key, mencatat selisih tanpa adjustment otomatis, dan tetap mengandalkan authorization backend.
 - Template BCA, BNI, BTN, Mandiri, dan Permata berasal dari `accounts.bank_template`; mengganti template tidak boleh mengubah nama rekening. Object legacy tanpa field boleh memakai suffix nama hanya sebagai fallback visual.
 - Asset base bank memuat logo dan chip hanya satu kali; komponen tidak merender wordmark atau chip HTML yang menumpuk di atas asset.
@@ -165,3 +174,15 @@ Regression wajib membuktikan:
 - ConfirmationModal memerlukan alasan/typed phrase/acknowledgement/countdown sesuai tingkat risiko dan mencegah submit Enter tidak sengaja;
 - destructive UI tidak menghilangkan data sebelum server sukses dan menampilkan conflict secara jelas;
 - generic purge tidak ada pada action registry, permission, API, atau UI.
+
+## Web Push desktop dan mobile
+
+- `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
+- Schema Production harus versi 6 dan `npm run db:integrity` harus lulus sebelum register subscription.
+- `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
+- Setelah `npm run env:push:production`, deployment Production baru wajib dibuat. Bundle lama tidak boleh dianggap menggunakan key baru.
+- Desktop Chrome/Edge dan Android Chrome: Aktifkan, izin granted, register server, Uji notifikasi, click membuka path same-origin, Nonaktifkan, dan register ulang.
+- iPhone/iPad: tab Safari harus menampilkan instruksi Home Screen; aplikasi standalone iOS/iPadOS yang mendukung harus dapat meminta izin melalui tombol pengguna dan menerima Uji notifikasi.
+- Dua perangkat pada akun yang sama harus memiliki subscription terpisah. Retry perangkat gagal tidak boleh mengirim ulang ke perangkat yang sudah sukses.
+- Subscription 404/410 harus dinonaktifkan. Endpoint lokal/private harus ditolak. Payload lock screen tidak boleh membawa nominal, saldo, nama rekening, kategori, atau detail transaksi.
+- Apps Script hanya memiliki satu trigger `runScheduledJobs`, secret scheduler sama dengan Vercel, dan `/api/jobs` berhasil memproses queue tanpa menggagalkan backup ketika Push gagal.

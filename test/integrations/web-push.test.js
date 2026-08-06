@@ -356,7 +356,7 @@ test("retry multi-perangkat hanya mengulang delivery yang gagal dan tidak mengga
       type: "budget_threshold",
       title: "Pengingat keuangan",
       body: "Periksa aplikasi.",
-      targetPath: "/laporan",
+      targetPath: "/anggaran",
       dedupeKey: "multi-device:owner",
     });
 

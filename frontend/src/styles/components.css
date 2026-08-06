@@ -46,7 +46,11 @@
 .notice--success { background: var(--positive-soft); color: var(--positive); }
 .notice--loading { background: var(--surface-soft); color: var(--text-soft); }
 .modal-open { overflow: hidden; }
-.loading-screen, .fatal-error, .centered-page { min-height: 60vh; display: grid; place-items: center; align-content: center; gap: 16px; padding: 32px; text-align: center; }
+.loading-screen, .fatal-error, .centered-page { display: grid; place-items: center; align-content: center; gap: 16px; padding: 32px; text-align: center; }
+.loading-screen, .fatal-error { min-height: 100vh; min-height: 100dvh; }
+.centered-page,
+.app-content > .loading-screen,
+.app-content > .fatal-error { min-height: calc(100vh - 168px); min-height: calc(100dvh - 168px); }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--surface-strong); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .empty-state, .error-state { min-height: 300px; padding: 36px; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; background: var(--surface); border: 1px dashed var(--border); border-radius: 18px; }
@@ -101,6 +105,7 @@
   min-height: 48px;
   border-color: var(--border);
   background: var(--input);
+  font-size: 16px;
 }
 
 .field input:hover,

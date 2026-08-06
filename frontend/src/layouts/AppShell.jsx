@@ -86,7 +86,7 @@ const AppShell = () => {
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         title="Menu lainnya"
-        description="Akses fitur tambahan, pengelolaan keuangan, dan sesi akun."
+        description="Akses perencanaan, data keuangan, kontrol saldo, dan pengaturan aplikasi."
         size="sm"
       >
         <div className="mobile-menu-list">

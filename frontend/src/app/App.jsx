@@ -7,6 +7,7 @@ import AppShell from "../layouts/AppShell.jsx";
 
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage.jsx"));
 const TransactionsPage = lazy(() => import("../features/transactions/TransactionsPage.jsx"));
+const BudgetsPage = lazy(() => import("../features/budgets/BudgetsPage.jsx"));
 const AllocationsPage = lazy(() => import("../features/allocations/AllocationsPage.jsx"));
 const RecurringPage = lazy(() => import("../features/recurring/RecurringPage.jsx"));
 const GoalsPage = lazy(() => import("../features/goals/GoalsPage.jsx"));
@@ -25,6 +26,7 @@ const App = () => (
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="transaksi" element={<TransactionsPage />} />
+          <Route path="anggaran" element={<BudgetsPage />} />
           <Route path="alokasi" element={<AllocationsPage />} />
           <Route path="tagihan" element={<RecurringPage />} />
           <Route path="target" element={<GoalsPage />} />

@@ -228,8 +228,8 @@ const buildFinancialAlerts = async (db, context, {
       type: "budget_threshold",
       severity: crossed.severity,
       title: `${item.name} ${percentage}% terpakai`,
-      message: percentage >= 100 ? "Budget telah terlampaui." : `Pemakaian melewati ambang ${crossed.threshold}%.`,
-      targetPath: "/laporan",
+      message: percentage >= 100 ? "Anggaran telah terlampaui." : `Pemakaian melewati ambang ${crossed.threshold}%.`,
+      targetPath: "/anggaran",
     });
   }
 

@@ -111,7 +111,11 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
     readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*font-size: 16px;/);
+  assert.match(components, /\.field input,\s*\n\.field select,\s*\n\.field textarea,\s*\n\.toolbar select,\s*\n\.search-field \{[^}]*font-size:\s*16px;/s);
+  assert.match(responsive, /scrollbar-width:\s*none;/);
+  assert.match(responsive, /html::-webkit-scrollbar,\s*\n\s*body::-webkit-scrollbar \{[^}]*display:\s*none;/s);
+  assert.match(responsive, /overflow-x:\s*hidden;/);
+  assert.doesNotMatch(responsive, /overflow-y:\s*hidden/);
   assert.match(accountStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
   assert.match(accountStyles, /\.mobileStackCard\[aria-pressed="true"\][^{]*\{[^}]*touch-action: pan-x pinch-zoom;/s);
   assert.doesNotMatch(accountStyles, /touch-action: none/);
@@ -119,4 +123,8 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
   assert.doesNotMatch(components, /\.modal(?:-backdrop|--lg|__header|__body|__footer|\s*\{)/);
   assert.match(modalStyles, /max-height: min\(94dvh, 57\.5rem\)/);
   assert.match(reset, /body \{ margin: 0; min-width: 0;/);
+  assert.match(reset, /body \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/);
+  assert.match(reset, /#root \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/);
+  assert.doesNotMatch(reset, /body \{[^}]*overflow:\s*hidden/);
+  assert.match(responsive, /\.app-shell--accounts \.app-content \{ padding-top:\s*0; color:\s*var\(--on-hero\); \}/);
 });

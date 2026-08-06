@@ -38,12 +38,47 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 
 ## 5. Web Push Production
 
-1. Buat satu pasangan VAPID melalui tooling `web-push`, lalu simpan public key, private key, dan subject sebagai satu grup. Jangan pernah menaruh private key pada variable `VITE_*`.
-2. Isi `VITE_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, dan `VAPID_SUBJECT` pada environment lokal tepercaya. Jalankan `npm run env:check` untuk memvalidasi panjang key, kecocokan pasangan public/private, dan format subject.
-3. Jalankan `npm run env:push:production`. Grup parsial atau invalid harus menghentikan sinkronisasi.
-4. Deploy Production baru. Buka `/pengaturan` melalui HTTPS, aktifkan notifikasi, lalu gunakan Uji notifikasi pada setiap perangkat.
-5. Verifikasi trigger Apps Script memanggil `/api/jobs`, status queue berubah, delivery per perangkat tercatat, subscription 404/410 dinonaktifkan, dan backup terjadwal tetap berjalan saat tahap Push gagal.
-6. Pada iPhone/iPad, uji hanya dari aplikasi yang sudah ditambahkan ke Home Screen.
+1. Pastikan backup teknis terbaru berstatus terverifikasi. Jangan melanjutkan migration atau perubahan environment tanpa titik pemulihan.
+2. Buat satu pasangan VAPID pada komputer tepercaya:
+
+   ```bash
+   npx web-push generate-vapid-keys --json
+   ```
+
+   Salin hasil langsung ke `.env.local`. Jangan menaruh private key di chat, issue, screenshot, GitHub, ZIP, atau variable `VITE_*`.
+3. Isi satu grup lengkap:
+
+   ```text
+   VITE_VAPID_PUBLIC_KEY=<public-key>
+   VAPID_PRIVATE_KEY=<private-key>
+   VAPID_SUBJECT=https://saldo-bersama.vercel.app
+   ```
+
+4. Validasi pasangan key dan seluruh environment tanpa mencetak nilai secret:
+
+   ```bash
+   npm run env:check
+   ```
+
+5. Pastikan database sudah memakai schema v6 dan integrity check lulus:
+
+   ```bash
+   npm run db:migrate
+   npm run db:integrity
+   ```
+
+6. Sinkronkan environment dan buat deployment Production baru:
+
+   ```bash
+   npm run env:push:production
+   npx vercel --prod
+   ```
+
+   Environment baru tidak berlaku pada deployment lama.
+7. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
+8. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap`, schema harus v6, dan Notifikasi perangkat harus menampilkan tombol `Aktifkan`. Aktifkan lalu jalankan `Uji notifikasi` pada setiap perangkat.
+9. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
+10. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
 ## 6. Migration schema v6
 

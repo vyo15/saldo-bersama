@@ -1,0 +1,145 @@
+.periodControl {
+  min-width: 11rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.listPanel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.listHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.listHeading p {
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-3);
+}
+
+.budgetCard {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.budgetHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.budgetHeader > div {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.budgetHeader strong {
+  overflow-wrap: anywhere;
+}
+
+.budgetHeader small {
+  color: var(--text-muted);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.metrics > div {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.metrics dt {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.metrics dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.formPanel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.readOnlyNote {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 580px) {
+  .periodControl {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .summaryGrid {
+    gap: var(--space-2);
+  }
+
+  .listHeading {
+    display: grid;
+  }
+
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .actions,
+  .actions :global(.button) {
+    width: 100%;
+  }
+}

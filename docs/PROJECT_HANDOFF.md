@@ -1,4 +1,118 @@
-## Current task — Koreksi gesture kartu rekening mobile
+## Current task — Merge UI/Menu/Anggaran dan Web Push readiness
+
+**Tanggal:** 2026-08-06  
+**Base terbaru:** `saldo-bersama-clean(20260806-023043).zip`  
+**Patch:** `saldo-bersama-ui-menu-anggaran-patch-20260806(1).zip` dan `saldo-bersama-patch-web-push-readiness(1).zip`  
+**Schema:** tetap version 6
+
+### Keputusan merge
+
+1. Base `023043` sudah memuat patch Web Push readiness secara byte-identik. Patch UI diterapkan melalui merge tiga arah terhadap ancestor `saldo-bersama-clean(20260806-015600).zip`.
+2. Konflik pada Pengaturan diselesaikan dengan mempertahankan information architecture baru sekaligus kontrak canonical `system.health` (`status`, `schemaVersion`, `maintenanceMode`, `timezone`) dan live region aksesibel.
+3. Fixture dan browser regression mempertahankan schema v6 canonical, pengujian status backend, serta struktur menu/Anggaran baru.
+4. Dokumentasi mempertahankan checklist deployment Web Push dan seluruh perubahan UI mobile, route Anggaran, navigasi, Settings, serta regression test.
+5. `frontend/src/features/reports/reports.api.js` dihapus sesuai manifest patch UI dan facade write Anggaran dipindahkan ke `frontend/src/features/budgets/budgets.api.js`.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, auth/allowlist/role, kontrak transaksi atau saldo, backup/restore, secret, environment Production, Apps Script, dependency, atau deployment configuration.
+
+---
+
+## 2026-08-06 — Web Push readiness dan status backend Pengaturan
+
+**Source:** `saldo-bersama-clean(20260806-011618).zip`  
+**Scope:** koreksi presentasi `system.health`, accessibility status, fixture schema v6, browser regression, dan release checklist Web Push.
+
+Perubahan source:
+
+- `SettingsPage.jsx` tidak lagi membaca `database` atau `schema.ready` dari action `system.health`; field canonical adalah `status`, `schemaVersion`, `maintenanceMode`, `timezone`, `currency`, dan `integrations`.
+- Status backend siap menampilkan `Database tersambung · schema v6` dan badge `Siap`. Error, loading, serta maintenance tetap dibedakan.
+- Status Notifikasi perangkat dan Status backend memakai `role=status` serta `aria-live=polite`.
+- Authenticated fixture memakai kontrak schema v6 aktual dan browser regression menolak badge `Degraded` palsu.
+
+Batas operasional:
+
+- Patch tidak memuat VAPID private key, token Turso, shared secret scheduler, atau environment Production.
+- Jalankan backup terverifikasi, migration v6, integrity check, sinkronisasi environment Vercel, deployment baru, Apps Script Properties, dan satu trigger scheduler sebelum menyatakan notifikasi aktif.
+- iPhone/iPad wajib diuji dari aplikasi Home Screen, bukan tab Safari biasa.
+
+---
+
+## Current task — UI mobile, Anggaran, dan information architecture
+
+**Tanggal:** 2026-08-06
+**Source:** `saldo-bersama-clean(20260806-015600).zip`
+**Schema:** tetap version 6
+
+### Implementasi
+
+1. Menambah route `/anggaran` dan feature facade lokal untuk `budgets.list`, `budgets.upsert`, dan `budgets.archive`. Write tetap owner-only, memakai idempotency key dan `row_version`; member/historis read-only.
+2. Menghapus mutation anggaran dari `/laporan`. Laporan mempertahankan tabel Anggaran vs aktual dan tautan ke halaman Anggaran.
+3. Menata navigasi menjadi Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi. Label `/tagihan` menjadi Jadwal rutin tanpa mengganti route.
+4. Membuat kartu generic flat, menyatukan ringkasan/quick action Rekening mobile, menyembunyikan scrollbar visual tanpa mematikan scroll, dan menetapkan kontrol form 16px secara global.
+5. Menyederhanakan label rekening form transaksi dan menghapus mapping provider duplikat.
+6. Menata Pengaturan berdasarkan akses, notifikasi perangkat, integrasi, portabilitas, backup/pemulihan, kontrol periode, serta audit/keamanan. Notifikasi tetap tersedia untuk owner dan member.
+7. Mengarahkan alert anggaran dashboard/Web Push ke `/anggaran` dan memperbarui fixture serta test route schema v6.
+
+### Hasil test
+
+- Frontend static/contract: 76/76 lulus.
+- Backend/business/security/tooling: 129/129 lulus dengan stub `web-push` sementara untuk module resolution. Stub sudah dihapus.
+- Source validation: lulus, 325 file.
+- Node syntax: lulus, 95 file. Frontend JSX/JS syntax: lulus, 97 file. CSS parser: lulus, 18 file. Apps Script syntax/boot: lulus, 6 file dan 2 urutan load.
+- `npm ci --ignore-scripts` gagal karena sandbox memakai Node 22.16.0, project memerlukan Node 24.x, dan registry sandbox tidak menyediakan `vite@7.3.6`. Browser test menghasilkan 3/7 helper test lulus dan 4/7 journey terblokir karena `frontend/dist/index.html` belum tersedia.
+- Full lint, Vite build, build budget, serta browser journey wajib diulang pada Node 24.x dengan registry npm lengkap.
+
+### Smoke wajib setelah dependency tersedia
+
+- Owner dan member membuka `/anggaran`; hanya owner periode aktif melihat form dan tombol arsip.
+- `/laporan` tidak menampilkan form atau tombol mutation anggaran.
+- Menu mobile menampilkan empat grup baru dan active state Lainnya pada seluruh route sekunder.
+- Safari iPhone/Chrome Android: fokus field tidak auto-zoom, swipe vertikal tetap bekerja, scrollbar tidak terlihat, konten bawah tetap dapat dicapai, dan bottom navigation tidak menutup konten.
+- Notifikasi perangkat dapat diaktifkan dan diuji oleh owner maupun member.
+
+---
+
+## Current task — Full-height viewport dan background Rekening mobile
+
+**Tanggal:** 2026-08-06
+**Source:** `saldo-bersama-clean(20260806-011618).zip`
+**Scope:** menghilangkan gap visual di bawah halaman Rekening dan memperbaiki pola halaman pendek yang tidak memenuhi viewport, tanpa menghapus safe area, menutup body scroll, atau menyentuh area guarded.
+
+### Keputusan implementasi
+
+1. `html`, `body`, `#root`, shell, main, dan content memakai kontrak tinggi `100vh` fallback lalu `100dvh`; shell tetap flex column pada desktop dan mobile.
+2. Background route Rekening ditempatkan pada `.app-shell--accounts`, main, content, dan experience. Padding bottom navigation, content gap, dan safe-area tetap ada agar aksi terakhir tidak tertutup.
+3. Loading/fatal error luar shell memenuhi viewport. Loading/fatal error/404 dalam shell memenuhi sisa area konten dengan perhitungan terpisah untuk route bertopbar dan route full-bleed.
+4. Login mendapat fallback `100vh` sebelum `100svh`; panel detail rekening mendapat fallback `100vh` sebelum `100dvh`.
+5. Gesture kartu, geometri stack, business form, route, API, data, dan authorization tidak diubah.
+6. Browser contract menambahkan viewport 351×590 untuk kontinuitas background Rekening dan full-height route 404.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist, role/action matrix, API contract, Turso query, perhitungan saldo, transfer, soft delete, audit backend, import/export, backup/restore, environment, dependency, GitHub Actions, atau deployment.
+
+### Test aktual di sandbox
+
+- `node --test frontend/test/*.test.js`: PASS, 74/74.
+- `node scripts/validate-source-tree.mjs`: PASS, 322 file; 5/12 Vercel Functions canonical.
+- `node scripts/check-node-syntax.mjs`: PASS, 95 file.
+- `node scripts/check-apps-script-syntax.mjs`: PASS, 6 file dan 2 urutan load.
+- Parser CSS: PASS, 17/17 stylesheet frontend.
+- `node --check test/browser/authenticated-app.test.mjs`: PASS.
+- Backend runner: 104 lulus dan 6 file gagal dimuat karena package `web-push` tidak tersedia; perubahan ini tidak menyentuh backend.
+- `npm ci --ignore-scripts`: GAGAL karena registry sandbox tidak menyediakan `vite@7.3.6`; runtime Node 22.16.0 juga di bawah baseline Node 24.x dan kebutuhan React Router 22.22.0.
+- `npm run lint`: TERBLOKIR karena ESLint tidak terpasang. `npm run build`: TERBLOKIR karena Vite tidak terpasang. Build budget terblokir karena `frontend/dist/assets` belum terbentuk.
+- `npm run test:browser`: 3/7 lulus dan 4/7 terblokir karena `frontend/dist/index.html` belum tersedia.
+
+### Wajib sebelum merge/deploy
+
+Jalankan Node 24 dengan registry lengkap: `npm ci`, `npm run lint`, `npm run test`, `npm run build`, `npm run build:budget`, dan `npm run test:browser`. Lakukan smoke Safari iPhone dan Chrome Android pada 320×568, 351×590, 375×667, 390×844, dan 412×915, termasuk browser normal/PWA, address bar berubah, safe area, keyboard virtual, scroll ke bagian paling bawah Rekening, loading, error, serta 404.
+
+---
+
+## Previous task — Koreksi gesture kartu rekening mobile
 
 **Tanggal:** 2026-08-05
 **Source:** `saldo-bersama-clean(7).zip`
@@ -103,8 +217,8 @@ Jalankan pada Node 24 dengan registry npm yang lengkap: `npm ci`, `npm run lint`
 
 ## Previous task — Focus modal, template kartu canonical, dan navigasi shell
 
-**Tanggal:** 2026-08-04  
-**Source:** `saldo-bersama-clean(131).zip`  
+**Tanggal:** 2026-08-04
+**Source:** `saldo-bersama-clean(131).zip`
 **Scope:** memperbaiki focus trap controlled form, memisahkan template visual bank dari nama rekening melalui schema v5, mempertahankan sidebar mask melengkung sambil memperbesar target sentuh, menyederhanakan submenu, dan menghapus duplikasi theme toggle pada menu mobile.
 
 ### Keputusan implementasi
@@ -121,8 +235,6 @@ Jalankan pada Node 24 dengan registry npm yang lengkap: `npm ci`, `npm run lint`
 Production wajib membuat backup terverifikasi lalu menjalankan `npm run db:migrate` sebelum deploy runtime v5. Runtime fail-closed bila schema masih v4. Rollback tidak dilakukan dengan menghapus kolom; gunakan backup pra-migration pada database terpisah, integrity check, lalu repoint environment setelah approval.
 
 ---
-
-# Project Handoff
 
 ## Current task — Merge patch responsive/transparency dan color tokens
 

@@ -61,6 +61,14 @@ test("pengaturan menyediakan arsip per item, reaktivasi eksplisit, dan preview t
   ]);
   assert.match(settings, /useApiResource\("archive\.list"/);
   assert.match(settings, /Proteksi human error/);
+  assert.match(settings, /Akses dan anggota/);
+  assert.match(settings, /Data dan portabilitas/);
+  assert.match(settings, /Backup dan pemulihan/);
+  assert.match(settings, /Kontrol periode/);
+  assert.match(settings, /Audit dan keamanan/);
+  const notificationSection = settings.indexOf('aria-labelledby="device-notification-title"');
+  const ownerGate = settings.indexOf("{ownerMode ? (");
+  assert.ok(notificationSection >= 0 && notificationSection < ownerGate, "Notifikasi perangkat harus dapat dikelola owner maupun member.");
   assert.match(settings, /Purge umum/);
   assert.match(settings, /Dinonaktifkan pada aplikasi harian/);
   assert.match(settings, /runSettingsAction\("periods\.previewClose"/);

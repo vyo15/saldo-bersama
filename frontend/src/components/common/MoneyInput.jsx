@@ -15,6 +15,7 @@ const MoneyInput = forwardRef(({ value, onChange, id, label = "Nominal", error, 
         id={id}
         inputMode="numeric"
         autoComplete="off"
+        required={required}
         value={numericValue === "" ? "" : String(numericValue).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
         onChange={(event) => {
           const raw = event.target.value;

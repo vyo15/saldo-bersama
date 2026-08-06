@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { FiArchive, FiPlus } from "react-icons/fi";
-import Button from "../../components/common/Button.jsx";
+import { Link } from "react-router";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
-import MoneyInput from "../../components/common/MoneyInput.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
-import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import BarChart from "../../components/charts/BarChart.jsx";
 import LineChart from "../../components/charts/LineChart.jsx";
@@ -13,58 +10,12 @@ import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { useFinance } from "../../app/FinanceContext.jsx";
-import { useAuth } from "../auth/AuthContext.jsx";
-import { archiveBudget as requestArchiveBudget, upsertBudget } from "./reports.api.js";
-import { assertPositiveRupiah } from "../../domain/money.js";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 
 const ReportsPage = () => {
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [trendMonths, setTrendMonths] = useState(6);
   const resource = useApiResource("reports.monthly", { period, trend_months: trendMonths });
-  const { bootstrap, invalidate } = useFinance();
-  const { user } = useAuth();
-  const [budgetForm, setBudgetForm] = useState({ category_id: "", amount: "", warning_threshold: 80 });
-  const [message, setMessage] = useState(null);
-  const [archiveTarget, setArchiveTarget] = useState(null);
-  const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
-
-  const saveBudget = async (event) => {
-    event.preventDefault();
-    const existingBudget = (resource.data?.budgets || []).find((item) => item.category_id === budgetForm.category_id && item.scope === "shared") || null;
-    try {
-      await upsertBudget({
-        ...budgetForm,
-        period_key: period,
-        amount: assertPositiveRupiah(budgetForm.amount),
-        row_version: existingBudget?.row_version,
-      }, { idempotencyKey: createIdempotencyKey(), rowVersion: existingBudget?.row_version });
-      setBudgetForm({ category_id: "", amount: "", warning_threshold: 80 });
-      setMessage({ type: "success", text: "Budget periode berhasil disimpan." });
-      invalidate(["reports.monthly"]);
-      await resource.reload();
-    } catch (error) { setMessage({ type: "danger", text: error.message }); }
-  };
-
-  const archiveBudget = async () => {
-    if (!archiveTarget) return;
-    setArchiveState({ status: "submitting", error: null });
-    try {
-      await requestArchiveBudget({
-        budget_id: archiveTarget.budget_id,
-        row_version: archiveTarget.row_version,
-      }, { idempotencyKey: createIdempotencyKey(), rowVersion: archiveTarget.row_version });
-      setArchiveTarget(null);
-      setArchiveState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Budget berhasil diarsipkan. Transaksi dan laporan historis tidak dihapus." });
-      invalidate(["reports.monthly", "budgets.list", "app.initialState"]);
-      await resource.reload();
-    } catch (error) {
-      setArchiveState({ status: "error", error });
-    }
-  };
 
   if (resource.status === "loading") return <LoadingScreen label="Menyusun laporan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
@@ -83,7 +34,6 @@ const ReportsPage = () => {
     { label: "Awal periode", value: overview?.openingBalance || 0 },
     { label: overview?.isHistoricalPeriod ? "Akhir periode" : "Saat ini", value: overview?.totalBalance || 0 },
   ];
-  const canManageBudgets = user?.role === "owner" && !overview?.isHistoricalPeriod;
 
   return (
     <div className="page-stack reports-page">
@@ -93,7 +43,6 @@ const ReportsPage = () => {
         description="Data aktual dan prediksi selalu dibedakan. Transfer internal tidak masuk arus kas. Aktivitas pencatat bukan ukuran kontribusi biaya."
         actions={<div className="report-period-controls"><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><label className="field field--compact"><span>Rentang tren</span><select value={trendMonths} onChange={(event) => setTrendMonths(Number(event.target.value))}><option value="3">3 bulan</option><option value="6">6 bulan</option><option value="12">12 bulan</option></select></label></div>}
       />
-      {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="metric-grid report-metric-grid">
         <Card className="metric-card"><span>Arus kas bersih</span><Money value={overview?.cashFlow?.net || 0} tone={(overview?.cashFlow?.net || 0) >= 0 ? "positive" : "negative"} /></Card>
         <Card className="metric-card"><span>Total saldo</span><Money value={overview?.totalBalance || 0} /></Card>
@@ -110,23 +59,23 @@ const ReportsPage = () => {
         <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Karakter pengeluaran</p><h2>Wajib, variabel, dan hiburan</h2></div></div>{natureExpenses.length ? <BarChart data={natureExpenses} label="Pengeluaran berdasarkan sifat kategori" /> : <EmptyState title="Belum ada klasifikasi" description="Sifat kategori akan merangkum jenis kebutuhan." />}</Card>
         <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Aktivitas pencatatan</p><h2>Pengeluaran yang dicatat tiap pengguna</h2><p className="panel__description">Angka ini menunjukkan siapa yang mencatat, bukan siapa yang menggunakan atau menanggung biaya.</p></div></div>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState title="Belum ada aktivitas" description="Aktivitas pencatatan pengguna akan tampil di sini." />}</Card>
         <Card className="panel panel--wide budget-performance-panel">
-          <div className="panel__header"><div><p className="eyebrow">Budget vs aktual</p><h2>Kinerja budget periode ini</h2></div></div>
+          <div className="panel__header">
+            <div><p className="eyebrow">Anggaran vs aktual</p><h2>Kinerja anggaran periode ini</h2><p className="panel__description">Laporan hanya menampilkan hasil. Pembuatan, perubahan, dan pengarsipan dilakukan di halaman Anggaran.</p></div>
+            <Link className="button button--secondary" to="/anggaran">Kelola anggaran</Link>
+          </div>
           {budgets.length ? (
             <>
               <div className="data-table-wrap desktop-data-table">
-                <table className="data-table"><thead><tr><th>Budget</th><th className="align-right">Rencana</th><th className="align-right">Aktual</th><th className="align-right">Sisa</th>{canManageBudgets ? <th aria-label="Aksi" /> : null}</tr></thead><tbody>{budgets.map((item) => <tr key={item.budget_id}><td>{item.name || item.category_id}</td><td className="align-right"><Money value={item.amount} /></td><td className="align-right"><Money value={item.used_amount} /></td><td className="align-right"><Money value={item.amount - item.used_amount} tone={item.amount - item.used_amount < 0 ? "negative" : "default"} /></td>{canManageBudgets ? <td className="align-right"><button type="button" className="icon-button icon-button--danger" onClick={() => { setArchiveTarget(item); setArchiveState({ status: "idle", error: null }); }} aria-label={`Arsipkan budget ${item.name || item.category_id}`}><FiArchive aria-hidden="true" /></button></td> : null}</tr>)}</tbody></table>
+                <table className="data-table"><thead><tr><th>Anggaran</th><th className="align-right">Rencana</th><th className="align-right">Aktual</th><th className="align-right">Sisa</th></tr></thead><tbody>{budgets.map((item) => <tr key={item.budget_id}><td>{item.name || item.category_id}</td><td className="align-right"><Money value={item.amount} /></td><td className="align-right"><Money value={item.used_amount} /></td><td className="align-right"><Money value={item.amount - item.used_amount} tone={item.amount - item.used_amount < 0 ? "negative" : "default"} /></td></tr>)}</tbody></table>
               </div>
-              <div className="mobile-data-list budget-mobile-list" aria-label="Kinerja budget">
+              <div className="mobile-data-list budget-mobile-list" aria-label="Kinerja anggaran">
                 {budgets.map((item) => {
                   const remaining = Number(item.amount || 0) - Number(item.used_amount || 0);
                   const percentage = Number(item.amount || 0) > 0 ? Math.round((Number(item.used_amount || 0) / Number(item.amount || 0)) * 100) : 0;
                   return (
                     <article className="mobile-data-card budget-mobile-card" key={item.budget_id}>
-                      <div className="budget-mobile-card__header">
-                        <div><strong>{item.name || item.category_id}</strong><small>{percentage}% terpakai</small></div>
-                        {canManageBudgets ? <button type="button" className="icon-button icon-button--danger" onClick={() => { setArchiveTarget(item); setArchiveState({ status: "idle", error: null }); }} aria-label={`Arsipkan budget ${item.name || item.category_id}`}><FiArchive aria-hidden="true" /></button> : null}
-                      </div>
-                      <ProgressBar value={Number(item.used_amount || 0)} max={Number(item.amount || 0)} label={`Pemakaian budget ${item.name || item.category_id}`} />
+                      <div className="budget-mobile-card__header"><div><strong>{item.name || item.category_id}</strong><small>{percentage}% terpakai</small></div></div>
+                      <ProgressBar value={Number(item.used_amount || 0)} max={Number(item.amount || 0)} label={`Pemakaian anggaran ${item.name || item.category_id}`} />
                       <dl className="budget-mobile-card__metrics">
                         <div><dt>Rencana</dt><dd><Money value={item.amount} /></dd></div>
                         <div><dt>Aktual</dt><dd><Money value={item.used_amount} /></dd></div>
@@ -137,31 +86,9 @@ const ReportsPage = () => {
                 })}
               </div>
             </>
-          ) : <EmptyState title="Belum ada budget" description="Tetapkan batas kategori agar rencana dan pengeluaran aktual dapat dibandingkan." />}
+          ) : <EmptyState title="Belum ada anggaran" description="Buka halaman Anggaran untuk menetapkan batas kategori." />}
         </Card>
       </section>
-      {canManageBudgets ? (
-        <Card className="panel budget-form-panel">
-          <div className="panel__header"><div><p className="eyebrow">Budget periode</p><h2>Tetapkan batas kategori</h2></div></div>
-          <form className="form-grid" onSubmit={saveBudget}>
-            <label className="field"><span>Kategori pengeluaran</span><select required value={budgetForm.category_id} onChange={(event) => setBudgetForm((current) => ({ ...current, category_id: event.target.value }))}><option value="">Pilih kategori</option>{(bootstrap?.categories || []).filter((item) => item.status === "active" && item.transaction_type === "expense").map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
-            <MoneyInput id="budget-amount" label="Nominal budget" value={budgetForm.amount} onChange={(value) => setBudgetForm((current) => ({ ...current, amount: value }))} />
-            <label className="field"><span>Ambang peringatan (%)</span><input type="number" min="50" max="100" value={budgetForm.warning_threshold} onChange={(event) => setBudgetForm((current) => ({ ...current, warning_threshold: Number(event.target.value) }))} /></label>
-            <div className="form-actions"><Button variant="primary" icon={FiPlus} type="submit">Simpan budget</Button></div>
-          </form>
-        </Card>
-      ) : null}
-
-      <ConfirmationModal
-        open={Boolean(archiveTarget)}
-        title="Arsipkan budget?"
-        description={archiveTarget ? `${archiveTarget.name || archiveTarget.category_id} tidak lagi menjadi batas aktif periode ini.` : ""}
-        confirmLabel="Arsipkan budget"
-        busy={archiveState.status === "submitting"}
-        error={archiveState.error}
-        onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)}
-        onConfirm={archiveBudget}
-      />
     </div>
   );
 };

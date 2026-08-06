@@ -140,6 +140,8 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   assert.match(pageStyles, /detailColumnOpen/);
   assert.match(pageStyles, /mobileStackPanel/);
   assert.match(pageStyles, /mobileQuickActions/);
+  assert.match(pageStyles, /\.mobileStackSummary \{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s);
+  assert.match(pageStyles, /\.mobileQuickActions \{[^}]*border-top:\s*0;/s);
   assert.match(pageStyles, /paymentHistoryList/);
   assert.match(pageStyles, /paymentHistoryItem/);
   assert.match(pageStyles, /perspective: 93\.75rem/);
@@ -152,6 +154,12 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
 
   for (const asset of ["bca", "bni", "btn", "mandiri", "permata"]) assert.match(card, new RegExp(`${asset}\.webp`));
   assert.match(card, /accountOwnershipLabel/);
+  assert.match(card, /accountProviderLabel/);
+  assert.doesNotMatch(card, /const BANK_LABELS/);
+  assert.match(cardStyles, /\.genericCard \{[^}]*background:\s*var\(--primary-deep\);/s);
+  assert.match(cardStyles, /\.visual\[data-bank-template="generic"\]::after \{ background:\s*none; \}/);
+  const genericCardBlock = cardStyles.match(/\.genericCard \{[^}]*\}/s)?.[0] || "";
+  assert.doesNotMatch(genericCardBlock, /gradient\(/);
   assert.doesNotMatch(card, /account\.can_reconcile/);
   assert.match(card, /onViewTransactions/);
   assert.match(card, /account\.can_manage/);

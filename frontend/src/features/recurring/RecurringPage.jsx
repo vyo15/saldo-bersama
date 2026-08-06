@@ -147,7 +147,7 @@ const RecurringPage = () => {
     } catch (error) { setPaymentState({ status: "error", error }); }
   };
 
-  if (resource.status === "loading") return <LoadingScreen label="Memuat tagihan dan pemasukan rutin..." />;
+  if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const items = resource.data?.items || [];
   const expenses = items.filter((item) => item.kind === "expense");
@@ -170,7 +170,7 @@ const RecurringPage = () => {
   return (
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      <PageHeader title="Tagihan & jadwal" description="Rencana kewajiban dan pemasukan dipisahkan dari transaksi aktual agar statusnya dapat diverifikasi." actions={<label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label>} />
+      <PageHeader title="Jadwal rutin" description="Kelola tagihan, pengeluaran tetap, pemasukan rutin, dan penerimaan yang diharapkan tanpa mencampurnya dengan transaksi aktual." actions={<label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label>} />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
       <section className="two-column-grid">
         <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Pengeluaran tetap</p><h2>Tagihan periode ini</h2></div></div><div className="schedule-list">{expenses.length ? renderItems(expenses) : <p>Belum ada tagihan aktif pada periode ini.</p>}</div></Card>

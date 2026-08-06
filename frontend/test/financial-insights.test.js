@@ -23,6 +23,12 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(reports, /Pengeluaran per rekening/);
   assert.match(reports, /Aktivitas pencatatan/);
   assert.match(reports, /bukan ukuran kontribusi/);
+  assert.match(reports, /to="\/anggaran"/);
+  assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
+  const budgets = await source("src/features/budgets/BudgetsPage.jsx");
+  assert.match(budgets, /useApiResource\("budgets\.list"/);
+  assert.match(budgets, /upsertBudget/);
+  assert.match(budgets, /requestArchiveBudget/);
   assert.match(desktop, /overview\.alerts/);
   assert.match(mobile, /overview\.alerts/);
 });
@@ -59,7 +65,7 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   assert.match(desktop, /Target tabungan/);
   assert.match(desktop, /Buka transaksi/);
   assert.match(desktop, /Buka anggaran/);
-  assert.match(desktop, /Buka tagihan/);
+  assert.match(desktop, /Buka jadwal rutin/);
   assert.match(desktop, /to="\/rekonsiliasi"/);
   assert.equal((desktop.match(/>Tambah transaksi<\/span>/g) || []).length, 1);
   assert.match(mobile, /Aman digunakan akun ini/);

@@ -15,6 +15,9 @@
 - [ ] Backup checksum dan restore drill pada salinan terisolasi sementara lulus.
 - [ ] Offline write ditolak.
 - [ ] PWA iOS/Android, push, safe area, focus, contrast, tap target diuji.
+- [ ] Status backend Pengaturan memakai kontrak `system.health` aktual dan tidak menampilkan `Degraded` palsu.
+- [ ] Schema v6, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
+- [ ] Desktop dan Android lulus Aktifkan → Uji → Nonaktifkan; iPhone/iPad diuji dari aplikasi Home Screen.
 - [ ] Monitoring health/integration queue tidak membocorkan secret.
 
 - [ ] Action registry/policy, authorization map, dan API docs tetap sinkron.
@@ -25,7 +28,7 @@
 - [ ] Filter transaksi rekening/kategori/pencatat diuji untuk owner dan member.
 - [ ] Tren laporan 3/6/12 bulan serta breakdown rekening/kategori/nature/pencatat tervalidasi.
 - [ ] Label pencatat tidak disalahartikan sebagai kontribusi atau penanggung biaya.
-- [ ] Peringatan budget, kantong, recurring, target, transaksi tanpa alokasi, dan rekonsiliasi diuji.
+- [ ] Peringatan anggaran, kantong, recurring, target, transaksi tanpa alokasi, dan rekonsiliasi diuji; alert anggaran membuka `/anggaran`.
 - [ ] Proyeksi target tidak membagi dengan nol dan menangani tanpa tanggal, lewat jatuh tempo, serta target selesai.
 - [ ] Notification dedupe mencegah antrean ganda pada job retry.
 - [ ] Semua `REQ-*` terlacak pada implementation matrix.
@@ -33,6 +36,13 @@
 
 ## Rekening, kategori, dan responsive parity
 
+- [ ] `/anggaran` dapat dibuka owner dan member; hanya owner pada periode aktif memiliki form edit/arsip.
+- [ ] `/laporan` tidak memuat mutation anggaran dan hanya menampilkan Anggaran vs aktual.
+- [ ] Menu Lainnya mengelompokkan Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi; Rekonsiliasi tidak bercampur dengan Rekening/Kategori.
+- [ ] Kartu generic flat; ringkasan dan quick action Rekening menyatu dengan background.
+- [ ] Scrollbar mobile tidak terlihat, scroll vertikal tetap bekerja, input tidak auto-zoom, dan zoom manual tidak diblokir.
+- [ ] Dropdown rekening transaksi menampilkan provider/jenis dan nama tanpa suffix kepemilikan.
+- [ ] Owner dan member dapat mengelola subscription notifikasi perangkat masing-masing.
 - [ ] `/rekening` hanya memuat rekening; `/kategori` hanya memuat kategori. Kegagalan kategori tidak memblokir rekening.
 - [ ] Owner dan member melihat rekening personal pasangan dengan label `Pribadi · <nama pemilik>`.
 - [ ] Member tidak memperoleh tombol transaksi/rekonsiliasi/edit/archive pada rekening personal pasangan; request manual juga ditolak backend, termasuk transaksi legacy yang pernah dibuat member.
@@ -46,7 +56,7 @@
 - [ ] `prefers-reduced-motion` mengurangi rotasi/durasi, focus-visible tetap jelas, dan live region hanya mengumumkan nama rekening aktif.
 - [ ] Detail rekening sticky cukup besar pada desktop dan menjadi overlay/fullscreen dengan focus trap, Escape, body scroll lock, serta focus restoration pada tablet/mobile.
 - [ ] Nomor rekening lebih dari 16 digit tidak overflow pada muka kartu; nomor lengkap tetap tersedia di detail dan clipboard.
-- [ ] Pada 390px, `Tagihan periode ini`, `Penerimaan yang diharapkan`, seluruh chart laporan, Anggota/Integrasi, serta admin owner Export/Backup/Restore/Audit memiliki bounding rect nonzero.
+- [ ] Pada 390px, `Tagihan periode ini`, `Penerimaan yang diharapkan`, halaman Anggaran, seluruh chart laporan, Notifikasi perangkat, Akses/Integrasi, serta owner Export/Backup/Restore/Audit memiliki bounding rect nonzero.
 - [ ] Pada ≤580px, action terakhir `.settings-card` menempati `grid-column: 1 / -1`.
 - [ ] Breakpoint 580/581, 820/821, 940/941 tidak menghasilkan overflow atau capability hilang.
 - [ ] Ikon navigasi sesuai fungsi dan menu mobile tidak bergantung pada indeks array.

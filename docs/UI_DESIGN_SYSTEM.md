@@ -114,7 +114,7 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Area kosong stack wajib memakai `touch-action: pan-y pinch-zoom`. Kartu aktif memakai `touch-action: pan-x pinch-zoom` agar gesture vertikal mengubah rekening tanpa mematikan pinch zoom. Gesture horizontal harus ditolak dan tidak boleh membuka detail atau mengubah rekening.
 - Selama gesture, seluruh tumpukan mengikuti jari menggunakan `transform`/`opacity`; kartu depan bergerak ke belakang dan kartu berikutnya maju ke depan. Swipe pendek kembali ke posisi semula, reduced-motion mengurangi rotasi dan durasi, dan rekening aktif diumumkan tanpa membacakan saldo.
 - Nomor rekening panjang boleh dipadatkan hanya pada muka kartu agar tidak overflow; panel detail, accessible copy action, dan data backend tetap memakai nomor lengkap.
-- Bank yang tidak dikenali serta rekening non-bank memakai fallback berbasis design token dan tidak bergantung pada asset pihak ketiga.
+- Bank yang tidak dikenali serta rekening non-bank memakai fallback flat berbasis satu design token, tanpa radial/linear gradient atau overlay glossy, dan tidak bergantung pada asset pihak ketiga.
 - Rekening dan kategori tidak dicampur dalam satu halaman. `/rekening` memakai aksi `Tambah rekening`; `/kategori` memakai aksi `Tambah kategori`. Masing-masing membuka dialog desktop atau bottom sheet mobile tanpa tab domain lain. Field `No rekening` wajib untuk rekening bank dan memperbarui preview langsung.
 - Template bank disimpan pada `accounts.bank_template` schema v5 dan tetap bersifat presentational. Mengubah template tidak mengubah nama, saldo, atau aturan transaksi.
 
@@ -122,8 +122,12 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 
 - Mobile adalah layout aplikasi, bukan desktop yang diperkecil.
 - Navigasi bawah fixed harus menyisakan safe area dan ruang scroll.
+- Indikator scrollbar mobile boleh disembunyikan untuk tampilan app-like, tetapi scroll vertikal tidak boleh dikunci, body tidak boleh membentuk nested scroll yang membingungkan, dan konten terakhir harus tetap dapat dijangkau.
+- Full-height app memakai fallback `100vh` lalu `100dvh` pada root dan shell. Jangan memakai `100vh` sebagai satu-satunya sumber tinggi mobile.
+- Route full-bleed atau route dengan surface khusus wajib memasang background pada shell/main/content, bukan hanya page component, agar reserved navigation gap dan safe area tetap menyatu secara visual.
+- Loading/fatal error di luar shell memenuhi viewport. Loading/fatal error/404 di dalam shell memenuhi sisa area content, bukan menambah viewport penuh di dalam shell.
 - Dialog menjadi bottom sheet pada viewport kecil tanpa menduplikasi business form.
-- `input`, `select`, dan `textarea` pada viewport mobile memakai font minimal 16px untuk mencegah auto-zoom Safari; viewport zoom tidak boleh dinonaktifkan.
+- `input`, `select`, dan `textarea` memakai font minimal 16px pada kontrol canonical agar pencegahan auto-zoom Safari tidak bergantung pada breakpoint; viewport zoom tidak boleh dinonaktifkan.
 - Keyboard virtual tidak boleh menutup nominal atau action utama.
 - PWA tetap `display: standalone`; Fullscreen API tidak dipaksakan.
 - Offline write finansial tetap dilarang.
@@ -160,6 +164,8 @@ Adopsi Mantine harus dilakukan bertahap:
 
 ## Navigasi shell
 
+- Information architecture canonical: Perencanaan memuat Anggaran, Alokasi, Jadwal rutin, dan Target; Data keuangan memuat Rekening serta Kategori; Rekonsiliasi berada pada Kontrol saldo; Pengaturan berada pada Aplikasi.
+- `/anggaran` adalah route pengelolaan. `/laporan` bersifat analitis dan tidak memuat mutation anggaran. Route `/tagihan` dipertahankan, tetapi label UI canonical adalah `Jadwal rutin`.
 - Sidebar desktop mempertahankan mask melengkung brand Saldo Bersama. Ukurannya boleh diperbesar untuk tap target dan proporsi layar, tetapi bentuk/aset canonical tidak boleh diganti tanpa approval visual baru.
 - Kontrol utama desktop minimum 44×44px. Submenu grup memakai panel minimal satu tingkat, label satu baris, close button aksesibel, Escape, click-outside, dan focus restoration; hindari kartu di dalam kartu serta deskripsi panjang pada setiap route.
 - Theme toggle hanya tampil pada kontrol shell yang canonical. Menu mobile “Menu lainnya” tidak menduplikasi dark/light toggle; logout berada pada footer terpisah dan bottom navigation tetap tersedia.
