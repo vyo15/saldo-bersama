@@ -137,7 +137,7 @@ input[type="file"] {
   min-height: 48px;
   border-color: var(--border);
   background: var(--input);
-  font-size: 16px;
+  font-size: var(--font-size-body);
 }
 
 .field input:hover,

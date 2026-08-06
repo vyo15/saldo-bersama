@@ -4,6 +4,11 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Menambahkan `--font-size-body: 16px`, menghapus seluruh custom property CSS statis yang tidak terdefinisi, dan memperluas perlindungan auto-zoom ke filter Pembayaran keluar serta dashboard tablet.
+- Memperbaiki kontras avatar dan shield login pada light/dark theme, mengonsolidasikan media query/selector yang terfragmentasi, dan menghapus `!important` yang tidak diperlukan.
+- Membuat `npm run zip` atomik dan aman: archive lama dipertahankan sampai hasil baru valid, variasi clean canonical lama dibersihkan otomatis, sedangkan ZIP patch, backup, export, custom-output sibling, symlink, dan target non-file tetap dilindungi.
+- Menambahkan regression test seluruh CSS custom property, auto-zoom, gradient contrast, media query Rekening, dan lifecycle archive clean.
+
 - Memenuhi route chunk budget tanpa menaikkan batas: dialog tambah/edit Rekening dipindahkan ke lazy chunk, filter dan detail transaksi mobile Dashboard dimuat hanya saat dibuka, serta Node project dipin melalui `.node-version` dan panduan `fnm` untuk Windows Git Bash.
 - Memperbaiki pengiriman Web Push nyata pada Node modern: custom DNS lookup kini menghormati callback `all: true` milik HTTPS Agent, VAPID subject lokal/internal ditolak, kegagalan DNS/TLS/network/auth dipetakan secara aman, status perangkat dan Audit menampilkan diagnosis tanpa membocorkan endpoint atau key, serta diagnostic runtime melaporkan kesiapan Web Push.
 - Memperbaiki lint Rekening/Rekonsiliasi, menghapus CSS dashboard legacy yang tidak memiliki pemilik runtime, memecah panel rekening mobile dan form transaksi dashboard menjadi lazy chunk, serta memperbaiki tiga browser regression agar source memenuhi kontrak lint, build budget, dan journey owner/member/breakpoint aktual.
@@ -94,6 +99,11 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 - UI design-system contract, ADR-0009, dan CSS Modules untuk Button, Card, Modal, ThemeToggle, StatusBadge, ProgressBar, serta MoneyInput.
 
 ### Changed
+
+- Menambahkan `--font-size-body: 16px`, menghapus enam custom property CSS yang tidak terdefinisi, dan memperluas perlindungan auto-zoom ke filter Pembayaran keluar serta dashboard tablet.
+- Memperbaiki kontras avatar dan shield login pada light/dark theme, mengonsolidasikan media query/selector yang terfragmentasi, dan menghapus `!important` yang tidak diperlukan.
+- Membuat `npm run zip` atomik dan aman: archive lama dipertahankan sampai hasil baru valid, variasi clean canonical lama dibersihkan otomatis, sedangkan ZIP patch, backup, export, custom-output sibling, symlink, dan target non-file tetap dilindungi.
+- Menambahkan regression test seluruh CSS custom property, auto-zoom, gradient contrast, media query Rekening, dan lifecycle archive clean.
 
 - Browser smoke kini mendeteksi Google Chrome, Microsoft Edge, Brave, dan Chromium lintas platform; kegagalan startup menutup server test tanpa proses menggantung.
 - Packager staging menormalisasi line ending tanpa warning CRLF/LF yang memenuhi output.

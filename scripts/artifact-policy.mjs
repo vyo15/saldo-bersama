@@ -2,6 +2,10 @@ import path from "node:path";
 
 export const MAX_SOURCE_ARCHIVE_BYTES = 5 * 1024 * 1024;
 
+export const CLEAN_SOURCE_ARCHIVE_FILENAME_PATTERN = /^saldo-bersama-clean(?:\((?:\d+|\d{8}-\d{6})\)|-\d{8}-\d{6})?\.zip$/i;
+
+export const isCleanSourceArchiveFilename = (name) => CLEAN_SOURCE_ARCHIVE_FILENAME_PATTERN.test(path.basename(name));
+
 export const GENERATED_DIRECTORIES = Object.freeze([
   "dist",
   "build",

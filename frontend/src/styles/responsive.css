@@ -86,7 +86,7 @@
   }
   .app-shell--dashboard .dashboard-desktop { display: none; }
   .app-shell--dashboard .mobile-finance-dashboard { display: block; }
-  .page-header { display: grid; }
+  .page-header { display: grid; gap: 12px; }
   .two-column-grid { grid-template-columns: 1fr; }
   .panel--wide { grid-column: auto; }
   .toolbar { grid-template-columns: 1fr; }
@@ -95,7 +95,6 @@
   .topbar .brand-wordmark { font-size: 14px; }
   .topbar__actions { margin-left: auto; }
   .page-stack { gap: var(--mobile-section-gap); }
-  .page-header { gap: 12px; }
   .page-header h1 { font-size: clamp(24px, 7vw, 30px); letter-spacing: -.035em; }
   .page-header p { margin-top: 5px; max-width: 100%; display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: var(--font-size-body-sm); line-height: 1.45; }
   .page-header__actions { width: 100%; }
@@ -257,7 +256,7 @@
 
 @media (max-width: 580px) {
   .metric-grid, .allocation-grid, .goal-grid, .settings-grid { grid-template-columns: 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; gap: 12px; }
   .form-grid__full { grid-column: auto; }
   .segmented-control { grid-template-columns: repeat(2, 1fr); }
   .page-header__actions { display: grid; grid-template-columns: 1fr; }
@@ -272,7 +271,6 @@
   .refresh-notice { align-items: stretch; flex-direction: column; }
   .refresh-notice .button { width: 100%; }
 
-  .form-grid { gap: 12px; }
   .form-actions .button { width: 100%; }
 }
 

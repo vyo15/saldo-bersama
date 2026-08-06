@@ -715,7 +715,7 @@
 }
 
 .mobileSecondaryActions .mobileDangerAction {
-  color: var(--danger);
+  color: var(--negative);
 }
 
 @media (max-width: 520px) {

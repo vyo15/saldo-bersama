@@ -98,7 +98,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 }
 .serviceIcon svg { width: 1.35rem; height: 1.35rem; }
 .serviceCopy { min-width: 0; display: grid; gap: var(--space-1); }
-.serviceCopy h3 { font-size: var(--font-size-md); }
+.serviceCopy h3 { font-size: var(--font-size-body); }
 .serviceCopy p { color: var(--text-soft); line-height: 1.5; overflow-wrap: anywhere; }
 .serviceCopy small { color: var(--text-muted); line-height: 1.45; overflow-wrap: anywhere; }
 .serviceActions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

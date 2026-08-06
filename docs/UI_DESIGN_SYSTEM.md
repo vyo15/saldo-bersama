@@ -142,7 +142,9 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Route full-bleed atau route dengan surface khusus wajib memasang background pada shell/main/content, bukan hanya page component, agar reserved navigation gap dan safe area tetap menyatu secara visual.
 - Loading/fatal error di luar shell memenuhi viewport. Loading/fatal error/404 di dalam shell memenuhi sisa area content, bukan menambah viewport penuh di dalam shell.
 - Dialog menjadi bottom sheet pada viewport kecil tanpa menduplikasi business form.
-- `input`, `select`, dan `textarea` memakai font minimal 16px pada kontrol canonical agar pencegahan auto-zoom Safari tidak bergantung pada breakpoint; viewport zoom tidak boleh dinonaktifkan.
+- `input`, `select`, dan `textarea` memakai token canonical `--font-size-body: 16px` agar pencegahan auto-zoom Safari tidak bergantung pada breakpoint; aturan ini juga berlaku pada filter CSS Module dan dashboard tablet. Viewport zoom tidak boleh dinonaktifkan.
+- Setiap `var(--token)` statis harus memiliki definisi canonical. Custom property runtime hanya diizinkan untuk nilai yang benar-benar disuntikkan komponen dan wajib tercakup regression test. Jangan membuat alias semantik baru jika token existing seperti `--border`, `--surface-soft`, `--text`, atau `--negative` sudah sesuai.
+- Gradient yang memuat teks atau ikon informatif harus lolos kontras pada setiap endpoint warna di light dan dark theme. Text shadow tidak dihitung sebagai pengganti rasio WCAG.
 - Keyboard virtual tidak boleh menutup nominal atau action utama.
 - PWA tetap `display: standalone`; Fullscreen API tidak dipaksakan.
 - Offline write finansial tetap dilarang.

@@ -114,7 +114,7 @@ npm run db:import-legacy -- path/to/legacy-export.json
 npm run db:import-legacy -- path/to/legacy-export.json --apply --confirm=MIGRATE_LEGACY_TO_TURSO
 ```
 
-`npm run clean` hanya menghapus output generated yang aman. Penghapusan dependency harus eksplisit melalui `npm run clean:dependencies -- --force`. `npm run zip` memvalidasi source, menolak secret/generated file, dan membatasi ukuran archive.
+`npm run clean` hanya menghapus output generated yang aman. Penghapusan dependency harus eksplisit melalui `npm run clean:dependencies -- --force`. `npm run zip` memvalidasi source, membuat archive sementara, memeriksa ukuran serta isi, mengganti output secara atomik, lalu menghapus hanya variasi lama `saldo-bersama-clean*.zip` yang cocok allowlist ketat. ZIP patch, backup, export, dan file lain tidak disentuh. Custom output hanya mengganti path yang diminta.
 
 `db:import-legacy` hanya dipakai dalam workflow migrasi terkontrol. Jalankan preview/parity dan backup sebelum cutover production.
 

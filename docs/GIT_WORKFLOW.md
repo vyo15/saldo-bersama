@@ -52,7 +52,7 @@ git diff --cached --check
 git diff --cached --stat
 ```
 
-Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, build output, credential, token, dump, backup, atau export berisi data nyata. Gunakan `npm run clean` untuk generated output; jangan menghapus `.git`, `.vercel`, atau `.env.local`.
+Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, build output, credential, token, dump, backup, atau export berisi data nyata. Gunakan `npm run clean` untuk generated output; jangan menghapus `.git`, `.vercel`, atau `.env.local`. `npm run zip` menjaga archive lama sampai archive sementara valid, lalu mengganti file canonical secara atomik. Pada output default, hanya variasi nama clean canonical yang dihapus; ZIP patch dan arsip lain tetap dipertahankan.
 
 ## Commit dan pull request
 

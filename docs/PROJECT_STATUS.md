@@ -1,6 +1,26 @@
 # Project Status
 
 
+## CSS token, auto-zoom, contrast, dan archive tooling 2026-08-06
+
+- Menambahkan token canonical `--font-size-body: 16px` dan mengganti seluruh custom property yang tidak pernah didefinisikan dengan token existing: `--border`, `--surface-soft`, `--text`, dan `--negative`.
+- Filter periode Pembayaran keluar serta filter transaksi dashboard tablet sekarang memakai font 16px. Target sentuh filter dashboard dinaikkan ke control height 44px tanpa menonaktifkan zoom browser.
+- Gradient avatar desktop, avatar user, dan shield login memakai endpoint `--primary` sampai `--primary-strong`, sehingga foreground semantic memenuhi kontras pada light dan dark theme. Kartu generic rekening tetap memakai `--primary-deep` flat.
+- Media query Rekening 820px, selector responsive sederhana, transaction filter, empty state, dan mobile transaction item dikonsolidasikan tanpa mengubah route atau business flow. `!important` non-esensial pada empty widget dihapus.
+- Test frontend kini memindai seluruh CSS untuk token statis yang tidak terdefinisi, menjaga pengecualian hanya untuk lima custom property runtime Login, serta memeriksa auto-zoom dan gradient contrast.
+- `npm run zip` membuat ZIP sementara, memvalidasinya, mengganti output secara atomik, dan baru kemudian menghapus variasi archive clean lama. Custom output tidak membersihkan sibling; ZIP patch, backup, export, symlink, dan target non-file tidak dihapus.
+- Schema, auth, role, API, saldo, transaksi, audit, backup data, restore, environment, dan deployment tidak berubah.
+
+### Verifikasi patch
+
+- Frontend static/contract: 82/82 lulus.
+- Backend/business/security/tooling: 135/135 lulus dengan stub `web-push` sementara hanya untuk module resolution; stub dihapus setelah test dan tidak masuk source atau ZIP.
+- Artifact hygiene: 6/6 lulus, termasuk replacement atomic, allowlist nama, custom output, dan perlindungan target non-file.
+- Source validation: 345 file; syntax Node 96 file; Apps Script 6 file dan 2 urutan load; CSS 19 file tanpa parse error.
+- `npm run zip` default diuji dengan tiga variasi archive lama: ketiganya dihapus setelah hasil baru valid, sedangkan ZIP patch dan file unrelated tetap tersedia.
+- `npm ci --ignore-scripts` pada sandbox terblokir karena Node 22.16.0 tidak memenuhi baseline Node 24.x dan registry sandbox tidak menyediakan `vite@7.3.6`. ESLint, Vite build, build budget, dan empat browser journey yang membutuhkan `frontend/dist` wajib dijalankan ulang pada Node 24 dengan dependency lengkap.
+
+
 ## Web Push transport fix 2026-08-06
 
 - Custom DNS lookup HTTPS Agent sekarang mengembalikan array saat Node meminta `options.all=true`, sehingga pengiriman tidak lagi gagal akibat kontrak callback yang salah.
@@ -11,7 +31,7 @@
 
 **Last source verification:** 2026-08-06
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(20260806-061554).zip` + patch Web Push transport 2026-08-06
+**Source baseline:** `saldo-bersama-clean(20260806-094714).zip` + patch CSS/accessibility/archive tooling 2026-08-06
 **Schema:** version 6, migrations `001_initial_schema.sql` sampai `004_notification_deliveries.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
