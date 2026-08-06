@@ -75,6 +75,21 @@ frontend/src/components/
 8. Pertahankan global compatibility class selama migrasi bertahap; hapus hanya setelah usage search dan regression test membuktikan aman.
 9. Page/form melakukan request melalui facade `features/<domain>/<domain>.api.js`; transport global bukan dependency langsung feature.
 
+
+## Modal dan overflow mobile
+
+- `.modal__body` adalah satu-satunya scroll container internal dialog dan hanya boleh menggulir vertikal. Horizontal overflow harus ditutup pada container, bukan pada konten dengan clipping acak.
+- `form-grid`, child grid, `fieldset`, `.field`, money input, optional section, dan native file input wajib memiliki `min-width: 0` serta `max-width: 100%`.
+- Indikator scrollbar dapat disembunyikan pada mobile, tetapi `overflow-y: hidden`, pembatasan zoom viewport, dan konten footer yang tidak dapat dijangkau dilarang.
+- Carousel horizontal hanya boleh dipakai untuk kontrol yang memang memilih urutan item, saat ini rekening. Filter, tab kategori, dan kelompok ikon harus wrap atau grid.
+
+## Information architecture Pengaturan
+
+- `/pengaturan` adalah ringkasan status. Notifikasi, Integrasi, Anggota, Export, Import, Backup, Pemulihan, Periode, dan Audit memakai nested route sendiri.
+- Setiap route hanya memuat resource yang dibutuhkan dan menampilkan loading/error/result dekat tindakan. Error Audit tidak boleh mengganggu Notifikasi, dan sebaliknya.
+- Owner-only item boleh disembunyikan dari navigasi anggota, tetapi direct route tetap harus menampilkan guard dan backend selalu menjadi authorization utama.
+- Tile layanan adalah `button` bila melakukan aksi. Status siap tanpa aksi tidak boleh diberi click handler pada elemen non-interaktif.
+
 ## HTML semantik
 
 Gunakan elemen berdasarkan makna:

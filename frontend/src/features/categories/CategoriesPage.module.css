@@ -232,16 +232,14 @@
 .iconGroups {
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
-  overflow-x: auto;
+  overflow: visible;
   padding: 2px;
-  scrollbar-width: none;
 }
 
-.iconGroups::-webkit-scrollbar { display: none; }
-
 .iconGroupButton {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-height: 2.25rem;
   padding-inline: var(--space-3);
   border: 1px solid var(--border);

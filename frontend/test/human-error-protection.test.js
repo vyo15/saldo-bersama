@@ -54,26 +54,36 @@ test("kategori dan transaksi menampilkan preview atau pemulihan berlabel", async
   assert.match(transactions, /can_restore/);
 });
 
-test("pengaturan menyediakan arsip per item, reaktivasi eksplisit, dan preview tutup periode", async () => {
-  const [settings, api] = await Promise.all([
-    read("src/features/settings/SettingsPage.jsx"),
+test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode per route", async () => {
+  const [layout, notifications, members, recovery, period, audit, api] = await Promise.all([
+    read("src/features/settings/SettingsLayout.jsx"),
+    read("src/features/settings/DeviceNotificationsPage.jsx"),
+    read("src/features/settings/MembersSettingsPage.jsx"),
+    read("src/features/settings/RecoveryPage.jsx"),
+    read("src/features/settings/PeriodControlPage.jsx"),
+    read("src/features/settings/AuditPage.jsx"),
     read("src/features/settings/settings.api.js"),
   ]);
-  assert.match(settings, /useApiResource\("archive\.list"/);
-  assert.match(settings, /Proteksi human error/);
-  assert.match(settings, /Akses dan anggota/);
-  assert.match(settings, /Data dan portabilitas/);
-  assert.match(settings, /Backup dan pemulihan/);
-  assert.match(settings, /Kontrol periode/);
-  assert.match(settings, /Audit dan keamanan/);
-  const notificationSection = settings.indexOf('aria-labelledby="device-notification-title"');
-  const ownerGate = settings.indexOf("{ownerMode ? (");
-  assert.ok(notificationSection >= 0 && notificationSection < ownerGate, "Notifikasi perangkat harus dapat dikelola owner maupun member.");
-  assert.match(settings, /Purge umum/);
-  assert.match(settings, /Dinonaktifkan pada aplikasi harian/);
-  assert.match(settings, /runSettingsAction\("periods\.previewClose"/);
-  assert.match(settings, /expectedConfirmation=\{periodClosePreview\?\.confirmation/);
-  assert.match(settings, /usersResource\.reload\(\), archiveResource\.reload\(\), auditResource\.reload\(\)/);
+  assert.match(layout, /\/pengaturan\/notifikasi/);
+  assert.match(layout, /\/pengaturan\/anggota/);
+  assert.match(layout, /\/pengaturan\/pemulihan/);
+  assert.match(layout, /\/pengaturan\/periode/);
+  assert.match(layout, /\/pengaturan\/audit/);
+  assert.match(layout, /ownerOnly/);
+  assert.match(notifications, /Setiap pengguna mendaftarkan perangkatnya sendiri/);
+  assert.doesNotMatch(notifications, /Uji notifikasi/);
+  assert.match(members, /Tambah atau ubah akses/);
+  assert.match(members, /Pengguna aplikasi/);
+  assert.match(members, /users\.upsert/);
+  assert.match(members, /reactivateUser/);
+  assert.match(recovery, /useApiResource\("archive\.list"/);
+  assert.match(recovery, /Purge umum tetap dinonaktifkan/);
+  assert.match(recovery, /restore\.preview/);
+  assert.match(recovery, /restore\.apply/);
+  assert.match(period, /runSettingsAction\("periods\.previewClose"/);
+  assert.match(period, /expectedConfirmation=\{closePreview\?\.confirmation/);
+  assert.match(audit, /audit-mobile-list|mobile-data-list/);
+  assert.match(audit, /Audit tidak dapat diedit atau dihapus/);
   assert.match(api, /users\.reactivate/);
-  assert.doesNotMatch(settings, /data\.purge|transactions\.delete|accounts\.delete(?!Unused)/);
+  assert.doesNotMatch([layout, notifications, members, recovery, period, audit].join("\n"), /data\.purge|transactions\.delete|accounts\.delete(?!Unused)/);
 });

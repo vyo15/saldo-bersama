@@ -21,6 +21,13 @@ import {
   categoryIconOption,
 } from "../transactions/transactionPresentation.js";
 import { archiveCategory, createCategory as requestCreateCategory, previewCategoryArchive, updateCategory as requestUpdateCategory } from "./categories.api.js";
+import {
+  CATEGORY_TYPE_OPTIONS,
+  categoryNatureForType,
+  categoryNatureLabel,
+  categoryTypeLabel,
+  expenseNatureOptions,
+} from "./categoryPresentation.js";
 import styles from "./CategoriesPage.module.css";
 
 const emptyCategoryForm = () => ({
@@ -29,9 +36,6 @@ const emptyCategoryForm = () => ({
   nature: "variable",
   icon: DEFAULT_CATEGORY_ICON_BY_TYPE.expense,
 });
-
-const CATEGORY_TYPE_LABELS = Object.freeze({ income: "Pemasukan", expense: "Pengeluaran", refund: "Pengembalian dana" });
-const CATEGORY_NATURE_LABELS = Object.freeze({ fixed: "Tetap", variable: "Variabel", unexpected: "Tidak terduga", discretionary: "Keinginan", emergency: "Darurat", savings: "Tabungan", other: "Lainnya" });
 
 const categoryIconToneClass = (type) => type === "income"
   ? styles.categoryIconIncome
@@ -54,8 +58,8 @@ const CategoryIconPicker = ({ value, onChange, transactionType, nature, name }) 
     <section className={`form-grid__full ${styles.iconPicker}`} aria-labelledby="category-icon-picker-title">
       <div className={styles.iconPickerHeading}>
         <div>
-          <h3 id="category-icon-picker-title">Pilih icon kategori</h3>
-          <p>Cincin untuk tabungan nikah, sedangkan tabungan umum menggunakan icon celengan.</p>
+          <h3 id="category-icon-picker-title">Pilih ikon kategori</h3>
+          <p>Ikon hanya membantu pengenalan visual. Pemindahan uang ke tabungan sendiri tetap dicatat sebagai Transfer atau Target.</p>
         </div>
         <span className={styles.selectedIconBadge}><SelectedIcon aria-hidden="true" /><span>{selected.label}</span></span>
       </div>
@@ -67,11 +71,11 @@ const CategoryIconPicker = ({ value, onChange, transactionType, nature, name }) 
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari icon: nikah, rumah, tagihan..."
+            placeholder="Cari ikon: nikah, rumah, tagihan..."
           />
-          <span className="sr-only">Cari icon kategori</span>
+          <span className="sr-only">Cari ikon kategori</span>
         </label>
-        <div className={styles.iconGroups} aria-label="Kelompok icon">
+        <div className={styles.iconGroups} aria-label="Kelompok ikon">
           {CATEGORY_ICON_GROUPS.map((item) => (
             <button
               key={item.id}
@@ -86,7 +90,7 @@ const CategoryIconPicker = ({ value, onChange, transactionType, nature, name }) 
         </div>
       </div>
 
-      <div className={styles.iconGrid} role="radiogroup" aria-label="Pilihan icon kategori">
+      <div className={styles.iconGrid} role="radiogroup" aria-label="Pilihan ikon kategori">
         {options.length ? options.map((option) => {
           const Icon = option.icon;
           const checked = option.key === selected.key;
@@ -104,16 +108,16 @@ const CategoryIconPicker = ({ value, onChange, transactionType, nature, name }) 
               <span>{option.label}</span>
             </button>
           );
-        }) : <div className={styles.iconEmpty}>Icon tidak ditemukan. Coba kata “nikah”, “rumah”, atau “tagihan”.</div>}
+        }) : <div className={styles.iconEmpty}>Ikon tidak ditemukan. Coba kata “nikah”, “rumah”, atau “tagihan”.</div>}
       </div>
 
-      <div className={styles.categoryPreview} aria-label="Preview kategori">
+      <div className={styles.categoryPreview} aria-label="Pratinjau kategori">
         <span className={`${styles.categoryIcon} ${categoryIconToneClass(transactionType)}`}><SelectedIcon aria-hidden="true" /></span>
         <span className={styles.categoryPreviewCopy}>
           <strong>{name.trim() || "Nama kategori"}</strong>
-          <small>{CATEGORY_NATURE_LABELS[nature] || nature} · {CATEGORY_TYPE_LABELS[transactionType] || transactionType}</small>
+          <small>{categoryNatureLabel(nature, transactionType)} · {categoryTypeLabel(transactionType)}</small>
         </span>
-        <span className={styles.previewLabel}>Preview</span>
+        <span className={styles.previewLabel}>Pratinjau</span>
       </div>
     </section>
   );
@@ -178,7 +182,7 @@ const CategoriesPage = () => {
       await requestUpdateCategory({
         category_id: editCategory.category_id,
         name: editCategory.name,
-        nature: editCategory.nature,
+        ...(editCategory.transaction_type === "expense" ? { nature: editCategory.nature } : {}),
         icon: editCategory.icon,
         row_version: editCategory.row_version,
       }, { rowVersion: editCategory.row_version, idempotencyKey: createIdempotencyKey() });
@@ -232,7 +236,7 @@ const CategoriesPage = () => {
   return (
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={reloadCategories} />
-      <PageHeader title="Kategori transaksi" description="Kelola klasifikasi dan pilih icon agar transaksi lebih cepat dikenali di dashboard maupun laporan." actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />
+      <PageHeader title="Kategori transaksi" description="Kelola klasifikasi dan pilih ikon agar transaksi lebih cepat dikenali di dashboard maupun laporan." actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />
       {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
 
       {items.length ? (
@@ -241,7 +245,7 @@ const CategoriesPage = () => {
             {Object.entries(grouped).map(([type, categories]) => (
               <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}>
                 <div className={styles.categoryGroupHeading}>
-                  <h2 id={`category-${type}`}>{CATEGORY_TYPE_LABELS[type] || type}</h2>
+                  <h2 id={`category-${type}`}>{categoryTypeLabel(type)}</h2>
                   <span>{categories.length}</span>
                 </div>
                 <div className={styles.categoryList}>
@@ -252,7 +256,7 @@ const CategoriesPage = () => {
                         <span className={`${styles.categoryIcon} ${categoryIconToneClass(category.transaction_type)}`}><Icon aria-hidden="true" /></span>
                         <div className={styles.categoryCopy}>
                           <strong>{category.name}</strong>
-                          <small>{CATEGORY_NATURE_LABELS[category.nature] || category.nature}</small>
+                          <small>{categoryNatureLabel(category.nature, category.transaction_type)}</small>
                         </div>
                         <div className={styles.categoryActions}>
                           <StatusBadge status={category.status} />
@@ -268,32 +272,33 @@ const CategoriesPage = () => {
           </div>
         </Card>
       ) : (
-        <Card className={styles.emptyPanel}><h2>Belum ada kategori</h2><p>Tambahkan kategori dengan icon yang sesuai agar transaksi lebih mudah dikenali.</p>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null}</Card>
+        <Card className={styles.emptyPanel}><h2>Belum ada kategori</h2><p>Tambahkan kategori dengan ikon yang sesuai agar transaksi lebih mudah dikenali.</p>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null}</Card>
       )}
 
-      <Modal open={createOpen} onClose={closeCreate} title="Tambah kategori" description="Pilih nama, sifat, dan icon dari katalog terkontrol." size="lg" footer={<><Button onClick={closeCreate} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-category-form" loading={dialogState.status === "submitting"}>Simpan kategori</Button></>}>
+      <Modal open={createOpen} onClose={closeCreate} title="Tambah kategori" description="Pilih kegunaan transaksi, klasifikasi pengeluaran bila relevan, dan ikon dari katalog terkontrol." size="lg" footer={<><Button onClick={closeCreate} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-category-form" loading={dialogState.status === "submitting"}>Simpan kategori</Button></>}>
         <form id="create-category-form" className="form-grid" onSubmit={createCategory}>
-          <label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" placeholder="Contoh: Tabungan nikah" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-          <label className="field"><span>Jenis</span><select value={form.transaction_type} onChange={(event) => {
+          <label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" placeholder="Contoh: Cicilan rumah" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
+          <label className="field"><span>Dipakai untuk transaksi</span><select value={form.transaction_type} onChange={(event) => {
             const nextType = event.target.value;
             setForm((current) => ({
               ...current,
               transaction_type: nextType,
+              nature: categoryNatureForType(nextType, current.nature),
               icon: current.icon === DEFAULT_CATEGORY_ICON_BY_TYPE[current.transaction_type]
                 ? DEFAULT_CATEGORY_ICON_BY_TYPE[nextType]
                 : current.icon,
             }));
-          }}><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="refund">Pengembalian dana</option></select></label>
-          <label className="field"><span>Sifat</span><select value={form.nature} onChange={(event) => setForm((current) => ({ ...current, nature: event.target.value }))}><option value="fixed">Tetap</option><option value="variable">Variabel</option><option value="unexpected">Tidak terduga</option><option value="discretionary">Keinginan</option><option value="emergency">Darurat</option><option value="savings">Tabungan</option><option value="other">Lainnya</option></select></label>
+          }}>{CATEGORY_TYPE_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select><small>Transfer antar rekening tidak memakai kategori dan dibuat dari form Transaksi.</small></label>
+          {form.transaction_type === "expense" ? <label className="field"><span>Sifat pengeluaran</span><select value={form.nature} onChange={(event) => setForm((current) => ({ ...current, nature: event.target.value }))}>{expenseNatureOptions().map((item) => <option value={item.value} key={item.value}>{item.label} · {item.example}</option>)}</select><small>Untuk memindahkan dana ke rekening tabungan sendiri, gunakan Transfer atau Target agar tidak dihitung sebagai pengeluaran.</small></label> : <div className="notice notice--info form-grid__full"><span>Sifat pengeluaran tidak diperlukan untuk {categoryTypeLabel(form.transaction_type).toLowerCase()}.</span></div>}
           <CategoryIconPicker value={form.icon} onChange={(icon) => setForm((current) => ({ ...current, icon }))} transactionType={form.transaction_type} nature={form.nature} name={form.name} />
           {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
         </form>
       </Modal>
 
-      <Modal open={Boolean(editCategory)} onClose={() => dialogState.status !== "submitting" && setEditCategory(null)} title="Edit kategori" description={editCategory ? `Jenis ${CATEGORY_TYPE_LABELS[editCategory.transaction_type] || editCategory.transaction_type} dipertahankan untuk menjaga konsistensi transaksi.` : ""} size="lg" footer={<><Button onClick={() => setEditCategory(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-category-form" loading={dialogState.status === "submitting"}>Simpan perubahan</Button></>}>
+      <Modal open={Boolean(editCategory)} onClose={() => dialogState.status !== "submitting" && setEditCategory(null)} title="Edit kategori" description={editCategory ? `Kegunaan ${categoryTypeLabel(editCategory.transaction_type)} dipertahankan untuk menjaga konsistensi transaksi.` : ""} size="lg" footer={<><Button onClick={() => setEditCategory(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-category-form" loading={dialogState.status === "submitting"}>Simpan perubahan</Button></>}>
         <form id="edit-category-form" className="form-grid" onSubmit={saveCategory}>
           <label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" value={editCategory?.name || ""} onChange={(event) => setEditCategory((current) => ({ ...current, name: event.target.value }))} /></label>
-          <label className="field"><span>Sifat</span><select value={editCategory?.nature || "variable"} onChange={(event) => setEditCategory((current) => ({ ...current, nature: event.target.value }))}><option value="fixed">Tetap</option><option value="variable">Variabel</option><option value="unexpected">Tidak terduga</option><option value="discretionary">Keinginan</option><option value="emergency">Darurat</option><option value="savings">Tabungan</option><option value="other">Lainnya</option></select></label>
+          {editCategory?.transaction_type === "expense" ? <label className="field"><span>Sifat pengeluaran</span><select value={editCategory?.nature || "variable"} onChange={(event) => setEditCategory((current) => ({ ...current, nature: event.target.value }))}>{expenseNatureOptions({ includeLegacySavings: editCategory?.nature === "savings" }).map((item) => <option value={item.value} key={item.value}>{item.label}{item.example ? ` · ${item.example}` : ""}</option>)}</select>{editCategory?.nature === "savings" ? <small>Kategori lama ini masih kompatibel. Pilih klasifikasi baru saat sudah siap; dana ke tabungan sendiri tetap memakai Transfer atau Target.</small> : null}</label> : <div className="notice notice--info form-grid__full"><span>{categoryTypeLabel(editCategory?.transaction_type)} tidak memakai sifat pengeluaran.</span></div>}
           {editCategory ? <CategoryIconPicker value={editCategory.icon} onChange={(icon) => setEditCategory((current) => ({ ...current, icon }))} transactionType={editCategory.transaction_type} nature={editCategory.nature} name={editCategory.name} /> : null}
           {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
         </form>

@@ -6,6 +6,8 @@ const ACCOUNT_TYPES = new Set(["cash", "bank", "ewallet", "savings", "emergency_
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
 const CATEGORY_TYPES = new Set(["income", "expense", "refund"]);
 const CATEGORY_NATURES = new Set(["fixed", "variable", "unexpected", "discretionary", "emergency", "savings", "other"]);
+const CURRENT_EXPENSE_CATEGORY_NATURES = new Set(["fixed", "variable", "unexpected", "discretionary", "emergency", "other"]);
+const LEGACY_SAVINGS_NATURE = "savings";
 const CATEGORY_ICONS = new Set([
   "wedding_ring", "savings", "target", "emergency", "money", "account", "salary", "business", "refund",
   "shopping", "food", "transport", "home", "renovation", "bill", "electricity", "internet", "education",
@@ -288,10 +290,14 @@ export const createCategory = async (db, context) => {
   const payload = context.payload || {};
   const name = sanitizeText(payload.name, 100);
   const type = String(payload.transaction_type || "expense");
-  const nature = String(payload.nature || "variable");
+  const explicitNature = payload.nature !== undefined;
+  const nature = String(explicitNature ? payload.nature : type === "expense" ? "variable" : "other");
   if (!name) throw appError("NAME_REQUIRED", "Nama kategori wajib diisi.", 400);
   if (!CATEGORY_TYPES.has(type)) throw appError("INVALID_CATEGORY_TYPE", "Jenis kategori tidak valid.", 400);
   if (!CATEGORY_NATURES.has(nature)) throw appError("INVALID_CATEGORY_NATURE", "Sifat kategori tidak valid.", 400);
+  if (type !== "expense" && nature !== "other") throw appError("CATEGORY_NATURE_NOT_APPLICABLE", "Sifat pengeluaran tidak berlaku untuk kategori uang masuk atau pengembalian dana.", 400);
+  if (type === "expense" && nature === LEGACY_SAVINGS_NATURE) throw appError("SAVINGS_CATEGORY_NOT_ALLOWED", "Pemindahan dana ke tabungan sendiri harus dicatat sebagai Transfer atau Target, bukan kategori pengeluaran.", 400);
+  if (type === "expense" && !CURRENT_EXPENSE_CATEGORY_NATURES.has(nature)) throw appError("INVALID_CATEGORY_NATURE", "Sifat pengeluaran tidak valid.", 400);
   const duplicate = await db.one("SELECT category_id,status FROM categories WHERE lower(name)=lower(?) AND transaction_type=?", [name,type]);
   if (duplicate?.status === "archived") throw appError("CATEGORY_RESTORE_REQUIRED", "Kategori dengan nama dan jenis yang sama berada di arsip. Pulihkan kategori tersebut agar histori tetap konsisten.", 409, { categoryId: duplicate.category_id });
   if (duplicate) throw appError("DUPLICATE_CATEGORY", "Kategori aktif dengan nama yang sama sudah ada.", 409);
@@ -310,8 +316,19 @@ export const updateCategory = async (db, context) => {
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Kategori aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const nextType = payload.transaction_type === undefined ? current.transaction_type : String(payload.transaction_type);
-  const next = { ...current, name: sanitizeText(payload.name === undefined ? current.name : payload.name,100), transaction_type: nextType, nature: payload.nature === undefined ? current.nature : String(payload.nature), icon: payload.icon === undefined ? current.icon : categoryIconValue(payload.icon, nextType), row_version: Number(current.row_version)+1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const explicitNature = payload.nature !== undefined;
+  if (nextType !== "expense" && explicitNature && String(payload.nature) !== "other") {
+    throw appError("CATEGORY_NATURE_NOT_APPLICABLE", "Sifat pengeluaran tidak dapat diubah untuk kategori uang masuk atau pengembalian dana.", 400);
+  }
+  const nextNature = nextType === "expense"
+    ? (explicitNature ? String(payload.nature) : current.nature)
+    : "other";
+  const next = { ...current, name: sanitizeText(payload.name === undefined ? current.name : payload.name,100), transaction_type: nextType, nature: nextNature, icon: payload.icon === undefined ? current.icon : categoryIconValue(payload.icon, nextType), row_version: Number(current.row_version)+1, updated_by: context.actor.user_id, updated_at: nowIso() };
   if (!next.name || !CATEGORY_TYPES.has(next.transaction_type) || !CATEGORY_NATURES.has(next.nature)) throw appError("INVALID_CATEGORY", "Data kategori tidak valid.", 400);
+  const keepsLegacySavings = current.nature === LEGACY_SAVINGS_NATURE && next.nature === LEGACY_SAVINGS_NATURE;
+  if (next.transaction_type === "expense" && !CURRENT_EXPENSE_CATEGORY_NATURES.has(next.nature) && !keepsLegacySavings) {
+    throw appError("SAVINGS_CATEGORY_NOT_ALLOWED", "Pemindahan dana ke tabungan sendiri harus dicatat sebagai Transfer atau Target, bukan kategori pengeluaran.", 400);
+  }
   const duplicate = await db.one("SELECT category_id FROM categories WHERE category_id<>? AND lower(name)=lower(?) AND transaction_type=? AND status='active'", [current.category_id, next.name, next.transaction_type]);
   if (duplicate) throw appError("DUPLICATE_CATEGORY", "Kategori aktif dengan nama dan jenis yang sama sudah ada.", 409);
   if (next.transaction_type !== current.transaction_type) {

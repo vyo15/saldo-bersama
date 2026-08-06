@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import ErrorState from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import TransactionForm from "../transactions/TransactionForm.jsx";
 import { TRANSACTION_LABELS } from "../transactions/transactionPresentation.js";
 import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import DesktopFinanceDashboard from "./components/DesktopFinanceDashboard.jsx";
@@ -11,6 +10,8 @@ import MobileFinanceDashboard from "./components/MobileFinanceDashboard.jsx";
 import MobileDashboardFilters from "./components/MobileDashboardFilters.jsx";
 import MobileTransactionDetail from "./components/MobileTransactionDetail.jsx";
 import { absoluteAmount } from "./dashboardPresentation.js";
+
+const TransactionForm = lazy(() => import("../transactions/TransactionForm.jsx"));
 
 const DashboardPage = () => {
   const { overview, bootstrap, status, error, refreshOverview, refreshAll } = useFinance();
@@ -227,7 +228,11 @@ const DashboardPage = () => {
           setFormOpen(true);
         }}
       />
-      <TransactionForm open={formOpen} onClose={() => setFormOpen(false)} />
+      {formOpen ? (
+        <Suspense fallback={null}>
+          <TransactionForm open onClose={() => setFormOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 };

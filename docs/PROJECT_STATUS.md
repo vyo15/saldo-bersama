@@ -1,12 +1,58 @@
 # Project Status
 
+
+## Web Push transport fix 2026-08-06
+
+- Custom DNS lookup HTTPS Agent sekarang mengembalikan array saat Node meminta `options.all=true`, sehingga pengiriman tidak lagi gagal akibat kontrak callback yang salah.
+- Failure code aman tersedia untuk DNS, timeout, TLS, jaringan, VAPID authorization, request rejection, endpoint block, dan subscription expiry. Endpoint, key subscription, dan response body provider tidak diekspos ke UI atau audit list.
+- `VAPID_SUBJECT` berupa localhost, IP literal, atau hostname internal ditolak. Gunakan `mailto:` valid atau URL HTTPS publik.
+- Schema, saldo, transaksi, auth, role, delivery per perangkat, backup, restore, dan Apps Script tidak berubah.
+
+
 **Last source verification:** 2026-08-06
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(20260806-023043).zip` + merge patch UI/Menu/Anggaran dan Web Push readiness 2026-08-06
+**Source baseline:** `saldo-bersama-clean(20260806-061554).zip` + patch Web Push transport 2026-08-06
 **Schema:** version 6, migrations `001_initial_schema.sql` sampai `004_notification_deliveries.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
 Dokumen ini adalah snapshot. Source dan test aktual tetap menjadi bukti implementasi utama.
+
+
+## Lint, build budget, dan browser regression 2026-08-06
+
+- Root metadata patch tidak dimasukkan ke source. `PATCH_MANIFEST.md` dan `DELETED_FILES.txt` tetap dianggap artefak distribusi, bukan file runtime.
+- `AccountFinancialCard.jsx` tidak lagi menyimpan `detectedTemplate` yang tidak dipakai. Fallback akun Rekonsiliasi memakai konstanta array stabil agar dependency `useMemo` tidak berubah setiap render.
+- CSS `.premium-*` yang tidak memiliki pemilik runtime dihapus dari stylesheet global. Panel rekening mobile dan form transaksi dashboard dipisah menjadi lazy chunk agar route `AccountsPage` dan `DashboardPage` tidak membawa UI modal yang belum dibuka.
+- Browser test tidak lagi mengirim fungsi ke helper CDP yang hanya menerima expression string. Helper sekarang menolak expression non-string sebelum memanggil `Runtime.evaluate` dan menyertakan nama metode pada error CDP.
+- Journey member memilih rekening pasangan melalui modal Daftar rekening, lalu membuka detail kartu aktif. Breakpoint test memakai selector runtime `.shared-transaction-tools`, bukan selector dashboard legacy.
+
+### Verifikasi patch
+
+- Frontend static/contract: 80/80 lulus.
+- Backend/business/security/tooling: 130/130 lulus dengan stub `web-push` sementara hanya untuk module resolution; stub dihapus setelah test.
+- Browser helper tanpa build: 5/5 lulus.
+- Source validation: 343 file diperiksa; syntax Node 95 file; Apps Script 6 file dan 2 urutan load; CSS 19 file tanpa parse error.
+- Build Vite, build budget, lint ESLint, serta tiga authenticated browser journey wajib diulang pada Node 24.x. Sandbox tidak dapat memasang `vite@7.3.6`, sehingga hasil runtime tersebut tidak diklaim.
+
+
+## Modal mobile, Kategori, dan Pengaturan terpisah 2026-08-06
+
+- Modal canonical menutup `overflow-x`, mempertahankan `overflow-y: auto`, menyembunyikan indikator scrollbar mobile, dan memberi `min-width: 0` pada grid, fieldset, field, serta file input agar child tidak mendorong viewport.
+- Filter Transaksi mobile memakai grid dua kolom lalu satu kolom pada layar sempit. Kelompok ikon Kategori membungkus ke baris berikutnya. Horizontal gesture yang tersisa hanya berada pada komponen rekening yang memang berfungsi sebagai carousel/pemilih.
+- Kategori memakai label Uang keluar, Uang masuk, dan Pengembalian dana. Sifat pengeluaran hanya muncul untuk Uang keluar. Nilai `savings` lama tetap dapat dibaca, tetapi kategori baru dengan sifat tersebut ditolak backend dan pengguna diarahkan ke Transfer atau Target.
+- Pengaturan sekarang memiliki nested route `/pengaturan/notifikasi`, `/integrasi`, `/anggota`, `/export`, `/import`, `/backup`, `/pemulihan`, `/periode`, dan `/audit`. Ringkasan hanya memuat `system.health`; resource anggota, integrasi, arsip, periode, dan audit baru dimuat pada halaman terkait.
+- Notifikasi perangkat hanya memiliki satu tile. Aktivasi berasal dari ketukan pengguna, dilanjutkan register backend dan verifikasi otomatis. Tombol uji terpisah dihapus; penonaktifan tetap memakai dialog konfirmasi.
+- Google Sheets dan Calendar hanya muncul pada halaman Integrasi. Secret bridge tetap server-side. Anggota hanya melihat status, sedangkan sinkronisasi dan rebuild tetap owner-only serta dilindungi backend.
+- Form akses dan daftar pengguna dipisah. Label role/status dilokalkan menjadi Pemilik, Anggota, Aktif, dan Nonaktif tanpa mengubah enum atau allowlist backend.
+- Jadwal rutin menjelaskan bahwa Transfer BNI/BCA ke BTN tidak dihitung sebagai pengeluaran, dan saldo BTN baru berkurang ketika pembayaran aktual auto-debit disimpan.
+
+### Verifikasi patch
+
+- Frontend static/contract: 80/80 lulus.
+- Backend/business/security/tooling: 130/130 lulus dengan stub `web-push` sementara hanya untuk module resolution; stub dihapus setelah test.
+- Source validation: lulus, 341 file diperiksa dan 5/12 Vercel Functions canonical.
+- Syntax Node: 95 file lulus. Parser frontend/test: 129 file lulus. Parser CSS: 19 file lulus. Apps Script: 6 file dan 2 urutan load lulus.
+- Full dependency install, ESLint, Vite build, build budget, dan authenticated browser runtime tetap harus diulang pada Node 24.x dengan registry npm lengkap.
 
 ## Merge dua patch 2026-08-06
 

@@ -12,6 +12,8 @@
 
 .dialog {
   width: min(100%, 42.5rem);
+  min-width: 0;
+  max-width: 100%;
   max-height: min(92dvh, 57.5rem);
   overflow: hidden;
   display: grid;
@@ -88,7 +90,10 @@
 .closeButton svg { width: 1.2rem; height: 1.2rem; }
 
 .body {
+  min-width: 0;
+  max-width: 100%;
   padding: var(--space-5);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -142,6 +147,17 @@
   .body,
   .footer {
     padding: var(--space-4);
+  }
+
+  .body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .footer {

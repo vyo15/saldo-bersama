@@ -191,6 +191,7 @@ const RecurringPage = () => {
             <label className="field"><span>Metode</span><select value={form.payment_method} onChange={(event) => setForm((current) => ({ ...current, payment_method: event.target.value }))}><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="autodebit">Auto-debit</option><option value="ewallet">E-wallet</option></select></label>
             <label className="field"><span>Tanggal mulai</span><input required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
             <label className="checkbox-field form-grid__full"><input type="checkbox" checked={form.auto_debit} onChange={(event) => setForm((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Biasanya dibayar otomatis (hanya penanda, aplikasi tidak menarik uang)</span></label>
+            <div className="notice notice--info form-grid__full"><span>Contoh cicilan: pindahkan dana BNI/BCA ke BTN sebagai Transfer. Jadwal ini baru mengurangi saldo BTN setelah pembayaran aktual disimpan.</span></div>
             <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit">Tambah jadwal</Button></div>
           </form>
         </Card>
@@ -230,7 +231,7 @@ const RecurringPage = () => {
           <label className="field"><span>Metode</span><select value={editRule?.payment_method || "transfer"} onChange={(event) => setEditRule((current) => ({ ...current, payment_method: event.target.value }))}><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="autodebit">Auto-debit</option><option value="ewallet">E-wallet</option></select></label>
           <label className="field"><span>Tanggal mulai</span><input required type="date" value={editRule?.start_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, start_date: event.target.value }))} /></label>
           <label className="field"><span>Tanggal akhir</span><input type="date" value={editRule?.end_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, end_date: event.target.value }))} /></label>
-          <label className="checkbox-field form-grid__full"><input type="checkbox" checked={Boolean(editRule?.auto_debit)} onChange={(event) => setEditRule((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Penanda auto-debit</span></label>
+          <label className="checkbox-field form-grid__full"><input type="checkbox" checked={Boolean(editRule?.auto_debit)} onChange={(event) => setEditRule((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Penanda auto-debit (tidak mengubah saldo sebelum aktual disimpan)</span></label>
           {editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}
         </form>
       </Modal>

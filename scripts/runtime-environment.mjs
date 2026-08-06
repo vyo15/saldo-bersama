@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import net from "node:net";
 
 export const CORE_RUNTIME_ENV_KEYS = Object.freeze([
   "VITE_APP_NAME",
@@ -36,6 +37,8 @@ export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
 
 // Backward-compatible alias for existing bootstrap/diagnostic imports.
 export const REQUIRED_RUNTIME_ENV_KEYS = CORE_RUNTIME_ENV_KEYS;
+
+const BLOCKED_VAPID_SUBJECT_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".example", ".invalid", ".onion"];
 
 const unquote = (value) => {
   const trimmed = String(value ?? "").trim();
@@ -109,7 +112,13 @@ export const validateWebPushEnvironment = (values = {}) => {
   let httpsValid = false;
   try {
     const url = new URL(subject);
-    httpsValid = url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password && !url.hash;
+    const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    const publicHostname = hostname
+      && hostname !== "localhost"
+      && hostname.includes(".")
+      && net.isIP(hostname) === 0
+      && !BLOCKED_VAPID_SUBJECT_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+    httpsValid = url.protocol === "https:" && publicHostname && !url.username && !url.password && !url.hash;
   } catch {
     httpsValid = false;
   }

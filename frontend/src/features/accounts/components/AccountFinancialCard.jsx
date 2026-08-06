@@ -117,7 +117,6 @@ const AccountFinancialCard = ({
   const ownerName = accountOwnerName(account);
   const canManage = Boolean(account.can_manage ?? ownerMode);
   const readOnly = Boolean(account.read_only);
-  const detectedTemplate = templateOverride || detectBankTemplate(account);
   const bankLabel = accountProviderLabel(account);
   const ownerLabel = account.owner_scope === "personal" ? ownerName || "Belum tersedia" : "Kedua pengguna";
 

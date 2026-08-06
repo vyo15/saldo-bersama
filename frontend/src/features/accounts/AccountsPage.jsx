@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   FiArrowLeft,
   FiClock,
@@ -30,15 +30,11 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
-import {
-  formatTransactionDate,
-  TRANSACTION_LABELS,
-  transactionCategoryIcon,
-  transactionTone,
-} from "../transactions/transactionPresentation.js";
 import AccountFinancialCard, { AccountVisual } from "./components/AccountFinancialCard.jsx";
-import { accountCardholderName, accountDisplayLabel, BANK_TEMPLATE_OPTIONS, detectBankTemplate } from "./accountPresentation.js";
+import { accountCardholderName, BANK_TEMPLATE_OPTIONS, detectBankTemplate } from "./accountPresentation.js";
 import styles from "./AccountsPage.module.css";
+
+const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));
 
 const emptyAccountForm = () => ({
   name: "",
@@ -544,12 +540,6 @@ const AccountsPage = () => {
   const currentDatabaseUser = activeUsers.find((item) => item.is_current) || null;
   const currentOwnerLabel = currentDatabaseUser?.name || user?.name || "Pengguna aktif";
   const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) || accounts[0] || null;
-  const accountLookup = Object.fromEntries((bootstrap?.accounts?.length ? bootstrap.accounts : accounts).map((account) => [account.account_id, accountDisplayLabel(account)]));
-  const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((category) => [category.category_id, category]));
-  const paymentHistoryItems = (paymentHistoryResource.data?.items || []).filter((item) => (
-    item.source_account_id === selectedAccount?.account_id
-    && ["expense", "transfer"].includes(item.transaction_type)
-  ));
   const accountPreview = {
     name: accountForm.name || "Nama rekening",
     account_type: accountForm.account_type,
@@ -721,118 +711,38 @@ const AccountsPage = () => {
       </section>
 
 
-      <Modal
-        open={mobileAccountSheet === "accounts"}
-        onClose={() => setMobileAccountSheet(null)}
-        title="Daftar rekening"
-        description="Pilih rekening untuk menampilkannya sebagai kartu aktif."
-        size="sm"
-      >
-        <div className={styles.mobileAccountList} aria-label="Daftar rekening aktif">
-          {accounts.map((account) => (
-            <button
-              key={`mobile-account-list-${account.account_id}`}
-              type="button"
-              className={styles.mobileAccountListItem}
-              aria-pressed={account.account_id === selectedAccount?.account_id}
-              onClick={() => {
-                setSelectedAccountId(account.account_id);
-                setMobileAccountSheet(null);
-              }}
-            >
-              <span>
-                <strong>{accountDisplayLabel(account)}</strong>
-                <small>{account.owner_scope === "shared" ? "Rekening bersama" : `Rekening pribadi${account.owner_name ? ` · ${account.owner_name}` : ""}`}</small>
-              </span>
-              <Money value={account.balance || 0} />
-            </button>
-          ))}
-        </div>
-      </Modal>
-
-      <Modal
-        open={mobileAccountSheet === "detail" && Boolean(selectedAccount)}
-        onClose={() => setMobileAccountSheet(null)}
-        title={selectedAccount?.name || "Detail rekening"}
-        description="Detail rekening hanya ditampilkan setelah kartu aktif ditekan."
-        size="sm"
-      >
-        {selectedAccount ? (
-          <AccountFinancialCard
-            account={selectedAccount}
-            variant="mobileDetail"
-            embedded
+      {mobileAccountSheet ? (
+        <Suspense fallback={null}>
+          <MobileAccountSheets
+            sheet={mobileAccountSheet}
+            accounts={accounts}
+            bootstrap={bootstrap}
+            selectedAccount={selectedAccount}
             ownerMode={ownerMode}
-            onViewTransactions={(item) => { setMobileAccountSheet(null); navigate("/transaksi", { state: { accountId: item.account_id } }); }}
-            onEdit={(item) => { setMobileAccountSheet(null); openEditAccount(item); }}
-            onArchive={(item) => { setMobileAccountSheet(null); openAccountLifecycle(item); }}
+            paymentHistoryPeriod={paymentHistoryPeriod}
+            paymentHistoryResource={paymentHistoryResource}
+            onClose={() => setMobileAccountSheet(null)}
+            onSelectAccount={(accountId) => {
+              setSelectedAccountId(accountId);
+              setMobileAccountSheet(null);
+            }}
+            onViewTransactions={(item) => {
+              if (!item) return;
+              setMobileAccountSheet(null);
+              navigate("/transaksi", { state: { accountId: item.account_id } });
+            }}
+            onEditAccount={(item) => {
+              setMobileAccountSheet(null);
+              openEditAccount(item);
+            }}
+            onArchiveAccount={(item) => {
+              setMobileAccountSheet(null);
+              openAccountLifecycle(item);
+            }}
+            onPaymentHistoryPeriodChange={setPaymentHistoryPeriod}
           />
-        ) : null}
-      </Modal>
-
-      <Modal
-        open={mobileAccountSheet === "history" && Boolean(selectedAccount)}
-        onClose={() => setMobileAccountSheet(null)}
-        title="Pembayaran keluar"
-        description={selectedAccount ? `Pengeluaran dan transfer keluar yang menggunakan ${selectedAccount.name}.` : "Pembayaran keluar rekening."}
-        size="sm"
-        footer={<Button onClick={() => { setMobileAccountSheet(null); navigate("/transaksi", { state: { accountId: selectedAccount.account_id } }); }}>Lihat semua transaksi rekening</Button>}
-      >
-        <div className={styles.paymentHistoryToolbar}>
-          <label>
-            <span>Periode</span>
-            <input
-              type="month"
-              max={currentMonthInJakarta()}
-              value={paymentHistoryPeriod}
-              onChange={(event) => setPaymentHistoryPeriod(event.target.value)}
-              aria-label="Periode riwayat pembayaran"
-            />
-          </label>
-          <p>Riwayat dimuat saat dibuka dan difilter berdasarkan rekening aktif.</p>
-        </div>
-
-        {paymentHistoryResource.refreshError ? <RefreshWarning error={paymentHistoryResource.refreshError} onRetry={paymentHistoryResource.reload} /> : null}
-        {["loading", "refreshing"].includes(paymentHistoryResource.status) ? (
-          <p className={styles.paymentHistoryState}>Memuat riwayat pembayaran...</p>
-        ) : paymentHistoryResource.status === "error" ? (
-          <ErrorState error={paymentHistoryResource.error} onRetry={paymentHistoryResource.reload} />
-        ) : paymentHistoryItems.length ? (
-          <div className={styles.paymentHistoryList} aria-label={`Pembayaran keluar ${selectedAccount?.name || "rekening"}`}>
-            {paymentHistoryItems.map((item) => {
-              const category = categoryLookup[item.category_id];
-              const HistoryIcon = transactionCategoryIcon(category, item.transaction_type);
-              const tone = transactionTone(item.transaction_type);
-              const destination = item.transaction_type === "transfer"
-                ? accountLookup[item.destination_account_id] || "Rekening tujuan"
-                : category?.name || TRANSACTION_LABELS[item.transaction_type] || "Pembayaran";
-              const title = item.description || item.merchant || TRANSACTION_LABELS[item.transaction_type] || "Pembayaran";
-              const inactive = Boolean(item.status && item.status !== "active");
-              return (
-                <article className={styles.paymentHistoryItem} key={item.transaction_id}>
-                  <span className={styles.paymentHistoryIcon} data-tone={inactive ? "neutral" : tone}><HistoryIcon aria-hidden="true" /></span>
-                  <div className={styles.paymentHistoryCopy}>
-                    <strong>{title}</strong>
-                    <small>{item.transaction_type === "transfer" ? `Transfer ke ${destination}` : destination}</small>
-                    <span>{formatTransactionDate(item.transaction_date)}</span>
-                  </div>
-                  <div className={styles.paymentHistoryMeta}>
-                    <strong data-tone={inactive ? "neutral" : tone}>{inactive ? null : "− "}<Money value={item.amount || 0} /></strong>
-                    {inactive ? <StatusBadge status={item.status} /> : <small>Tercatat</small>}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <div className={styles.paymentHistoryEmpty}>
-            <FiClock aria-hidden="true" />
-            <strong>Belum ada pembayaran pada periode ini</strong>
-            <p>Pilih periode lain atau buka seluruh transaksi untuk melihat aktivitas rekening.</p>
-          </div>
-        )}
-      </Modal>
-
+        </Suspense>
+      ) : null}
 
       <Modal open={createDialogOpen} onClose={closeCreateDialog} title="Tambah rekening" description="Isi identitas rekening dan saldo awal. Nomor rekening tidak pernah diperlakukan sebagai nomor kartu debit." size="lg" initialFocusRef={createNameInputRef} footer={<><Button onClick={closeCreateDialog} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={dialogState.status === "submitting"}>Simpan rekening</Button></>}>
         <div className={styles.createAccountLayout}>

@@ -80,7 +80,7 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(tokens, /--mobile-control-height:\s*44px;/);
   assert.match(responsive, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
   assert.match(responsive, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
-  assert.match(pages, /Keep desktop information readable instead of simulating density with 7–10px text/);
+  assert.doesNotMatch(pages, /\.premium-/);
   assert.match(pages, /\.google-login-button \{[^}]*min-height:\s*48px;/);
 });
 

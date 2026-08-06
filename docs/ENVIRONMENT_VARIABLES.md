@@ -51,7 +51,7 @@ Development menyimpan delapan key core wajib dan satu key logging opsional, dita
 |---|---|
 | `VITE_VAPID_PUBLIC_KEY` | Base64url uncompressed P-256 public key, 65 byte dan diawali byte `0x04` |
 | `VAPID_PRIVATE_KEY` | Base64url private key, 32 byte |
-| `VAPID_SUBJECT` | URI `mailto:` valid atau URL HTTPS |
+| `VAPID_SUBJECT` | URI `mailto:` valid atau URL HTTPS publik. `https://localhost`, IP literal, dan hostname internal tidak diterima. |
 
 Public dan private key harus berasal dari pasangan VAPID yang sama. `npm run env:check` dan script sinkronisasi menolak pasangan yang tidak cocok. Rotasi key membuat subscription lama perlu didaftarkan ulang.
 

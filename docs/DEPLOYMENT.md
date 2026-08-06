@@ -76,7 +76,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 
    Environment baru tidak berlaku pada deployment lama.
 7. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
-8. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap`, schema harus v6, dan Notifikasi perangkat harus menampilkan tombol `Aktifkan`. Aktifkan lalu jalankan `Uji notifikasi` pada setiap perangkat.
+8. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v6. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
 9. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 10. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 

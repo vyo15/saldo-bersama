@@ -1,19 +1,11 @@
 @media (max-width: 1280px) {
   .desktop-app-header { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
   .brand-copy small { display: none; }
-  .premium-filterbar { grid-template-columns: auto repeat(3, minmax(125px, 1fr)) minmax(170px, 1.25fr); }
-  .premium-period-filter { display: none; }
 }
 
 @media (max-width: 1100px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .allocation-grid, .goal-grid, .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .premium-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .premium-filterbar { grid-template-columns: auto repeat(2, minmax(135px, 1fr)); }
-  .premium-search { grid-column: span 2; }
-  .premium-transaction-workspace { grid-template-columns: 1fr; }
-  .premium-transaction-list { max-height: 310px; }
-  .premium-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 940px) {
@@ -22,8 +14,6 @@
   .desktop-app-header .brand-wordmark { display: none; }
   .desktop-app-header .brand-mark { width: 36px; height: 36px; }
   .desktop-user-avatar { display: none; }
-  .premium-detail-heading { grid-template-columns: 1fr 1fr; }
-  .premium-detail-heading > div:last-child { grid-column: 1 / -1; }
 
   .sync-indicator span:not(.sr-only) { display: none; }
 }
@@ -181,10 +171,10 @@
   .transaction-toolbar { gap: 9px; }
   .transaction-search-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
   .transaction-search-row .button { min-width: 64px; padding-inline: 12px; }
-  .transaction-filter-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
-  .transaction-filter-row::-webkit-scrollbar { display: none; }
-  .transaction-filter-row > * { flex: 0 0 auto; width: auto; min-width: 150px; }
-  .transaction-filter-row .field { display: block; }
+  .transaction-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: visible; padding-bottom: 0; }
+  .transaction-filter-row > * { min-width: 0; width: 100%; }
+  .transaction-filter-row .field { display: grid; }
+  .transaction-filter-row .button { width: 100%; }
   .transaction-filter-row input,
   .transaction-filter-row select,
   .transaction-search-row .search-field { min-height: var(--mobile-control-height); }
@@ -239,9 +229,6 @@
   .settings-section__heading { display: grid; gap: 4px; }
   .settings-section__heading h2 { font-size: 18px; }
   .settings-section__heading > p { font-size: 12px; text-align: left; }
-  .owner-admin-section { border-radius: var(--mobile-card-radius); box-shadow: none; }
-  .owner-admin-section > summary { min-height: 62px; padding: 13px 14px; }
-  .owner-admin-grid { padding: 10px; gap: 10px; }
   .audit-mobile-card { display: grid; gap: 8px; }
   .audit-mobile-card > small { font-size: 11px; }
   .audit-mobile-card dl { padding-top: 8px; border-top: 1px solid var(--border); }
@@ -287,7 +274,6 @@
 
   .form-grid { gap: 12px; }
   .form-actions .button { width: 100%; }
-  .owner-admin-grid .panel--wide { grid-column: auto; }
 }
 
 @media (max-width: 520px) {
@@ -300,6 +286,7 @@
 }
 
 @media (max-width: 420px) {
+  .transaction-filter-row { grid-template-columns: 1fr; }
   .report-period-controls { grid-template-columns: 1fr; }
   .financial-alert-list li { display: grid; }
 }

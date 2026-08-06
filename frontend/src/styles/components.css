@@ -32,6 +32,38 @@
 .field__error { color: var(--negative); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .form-grid__full { grid-column: 1 / -1; }
+
+/* Prevent form children and native controls from expanding modal or mobile widths. */
+.form-grid,
+.form-grid > *,
+.field,
+.money-entry,
+.optional-fields,
+.optional-fields__content,
+.stack-form,
+.segmented-control {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.segmented-control {
+  min-inline-size: 0;
+}
+
+.field input,
+.field select,
+.field textarea,
+.stack-form input,
+input[type="file"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="file"] {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .form-actions { display: flex; justify-content: flex-end; }
 .segmented-control { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border: 0; padding: 0; margin: 0; }
 .segmented-control legend { grid-column: 1 / -1; margin-bottom: 4px; font-size: 13px; font-weight: var(--font-weight-bold); }

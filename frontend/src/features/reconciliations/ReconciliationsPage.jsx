@@ -17,6 +17,7 @@ import { createReconciliation } from "../accounts/accounts.api.js";
 import styles from "./ReconciliationsPage.module.css";
 
 const INITIAL_FORM = Object.freeze({ account_id: "", actual_balance: "", notes: "Cocokkan dengan mutasi bank atau uang tunai." });
+const EMPTY_ACCOUNTS = Object.freeze([]);
 
 const formatReconciledAt = (value) => {
   if (!value) return "Waktu tidak tersedia";
@@ -38,7 +39,7 @@ const ReconciliationsPage = () => {
   const [submitState, setSubmitState] = useState({ status: "idle", error: null });
   const [message, setMessage] = useState(null);
 
-  const accounts = accountsResource.data?.items || [];
+  const accounts = Array.isArray(accountsResource.data?.items) ? accountsResource.data.items : EMPTY_ACCOUNTS;
   const reconcilableAccounts = useMemo(
     () => accounts.filter((account) => account.status === "active" && account.can_reconcile === true),
     [accounts],

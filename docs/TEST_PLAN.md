@@ -29,7 +29,7 @@ Cakupan wajib:
 - formula injection dan valid XLSX;
 - backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, dan push credential exclusion;
 - service worker tanpa API cache dan tanpa offline write queue;
-- Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, payload lock-screen privat, 404/410 expiry, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
+- Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, payload lock-screen privat, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output;
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
@@ -55,7 +55,7 @@ Uji dua browser/perangkat dengan owner dan member:
 2. Edit record yang sama untuk memastikan 409 conflict jelas.
 3. Double-click/retry menggunakan idempotency yang sama.
 4. Putus jaringan sebelum write; UI harus menolak tanpa menyatakan sukses.
-5. Install PWA iPhone/Android dan update app shell. Aktifkan Push pada HTTPS, kirim notifikasi uji, lalu periksa panel sistem. Uji dua perangkat saat satu delivery gagal sementara dan pastikan perangkat sukses tidak menerima duplikat. Pada Safari iPhone pastikan aplikasi dibuka dari Home Screen, fokus input tidak memicu auto-zoom, dan scroll dapat dimulai dari area kartu rekening.
+5. Install PWA iPhone/Android dan update app shell. Aktifkan Push pada HTTPS, pastikan verifikasi otomatis muncul, lalu periksa panel sistem. Uji dua perangkat saat satu delivery gagal sementara dan pastikan perangkat sukses tidak menerima duplikat. Pada Safari iPhone pastikan aplikasi dibuka dari Home Screen, fokus input tidak memicu auto-zoom, modal tidak bergeser horizontal, dan scroll vertikal tetap bekerja.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.
 7. Export Excel dan periksa formula-like input.
 8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif.
@@ -92,7 +92,7 @@ Fitur planned seperti receipt, utang/piutang, contribution split, category hiera
 
 Browser test authenticated wajib memakai fixture owner dan member yang deterministik, tanpa koneksi Firebase, Turso, Google Identity, atau provider eksternal. Cakupan minimum:
 
-- seluruh route `/`, `/transaksi`, `/anggaran`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, dan `/pengaturan` dapat dirender pada mobile;
+- seluruh route `/`, `/transaksi`, `/anggaran`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, `/pengaturan`, dan nested route Pengaturan dapat dirender pada mobile;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
 - dashboard mobile membawa batas aman harian, dana belum dialokasikan, rincian rekening/kategori, seluruh peringatan melalui progressive disclosure, filter lengkap, privacy nominal, serta detail transaksi;
 - dashboard desktop menampilkan kartu rekening aktual yang dapat dipilih, transaksi rekening terpilih, filter kategori/jenis/pencarian, privacy nominal, statistik global yang tidak salah diklaim sebagai statistik rekening, KPI arus kas, anggaran, tagihan, target, dan insight;
@@ -153,7 +153,7 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Form transaksi hanya menawarkan rekening dengan `can_transact !== false`; backend tetap mengulang guard ownership.
 - Form rekening personal owner dapat memilih user aktif. Saat `users.list` gagal, create harus fallback ke actor backend dan edit harus mempertahankan `owner_user_id` existing tanpa field required kosong.
 - Route `/kategori` harus menyediakan tipe refund sesuai `CATEGORY_TYPES` backend. Mutation master yang sudah sukses tidak boleh dilaporkan gagal karena reload domain atau refresh dashboard/bootstrap sesudahnya gagal; UI harus mempertahankan status sukses server dan mengekspos refresh warning.
-- Browser mobile 390×844 wajib memeriksa capability anchor dengan computed style dan bounding rect: dua panel `/tagihan`, minimal tujuh panel chart `/laporan`, kolaborasi serta admin owner `/pengaturan`, detail read-only pasangan `/rekening`, dan route `/kategori`. Detail rekening wajib lulus focus trap Tab/Shift+Tab, Escape close, body scroll lock, dan focus restoration.
+- Browser mobile 390×844 wajib memeriksa capability anchor dengan computed style dan bounding rect: dua panel `/tagihan`, minimal tujuh panel chart `/laporan`, nested route `/pengaturan` sesuai role, detail read-only pasangan `/rekening`, dan route `/kategori`. Modal transaksi serta kategori wajib bebas overflow horizontal; detail rekening wajib lulus focus trap Tab/Shift+Tab, Escape close, body scroll lock, dan focus restoration.
 - Nomor rekening panjang wajib dipadatkan pada visual kartu tanpa mengubah nilai lengkap pada detail/copy.
 - Boundary responsive wajib mencakup 580/581, 820/821, dan 940/941. Static test menolak dangling selector serta `.two-column-grid { display:none }`.
 
@@ -175,14 +175,25 @@ Regression wajib membuktikan:
 - destructive UI tidak menghilangkan data sebelum server sukses dan menampilkan conflict secara jelas;
 - generic purge tidak ada pada action registry, permission, API, atau UI.
 
+
+## Modal, Kategori, dan route Pengaturan
+
+- Ukur `scrollWidth <= clientWidth + 1` pada dialog dan `.modal__body` untuk Tambah Transaksi, Tambah/Edit Kategori, Rekening, Import, Restore, serta konfirmasi periode pada 320, 360, 390, 414, dan 430px.
+- Pastikan `.modal__body` memakai `overflow-x: hidden`, `overflow-y: auto`, dan indikator scrollbar mobile tersembunyi tanpa body scroll lock permanen.
+- Filter Transaksi memakai grid dua kolom lalu satu kolom; kelompok ikon Kategori memakai wrap. Tidak ada nested horizontal scroll selain pemilih rekening yang disengaja.
+- `categories.create` menormalkan non-pengeluaran tanpa nature eksplisit menjadi `other`, menolak nature pengeluaran pada income/refund, serta menolak kategori expense baru dengan nature `savings`.
+- Data legacy `savings` tetap dapat dibaca dan diubah menuju klasifikasi baru tanpa migration diam-diam.
+- `/pengaturan` hanya memuat `system.health`; setiap nested route memuat resource sendiri dan menampilkan result/error dekat tindakan.
+- Owner-only deep link tetap menampilkan guard frontend dan wajib ditolak backend bila request dipaksakan oleh member.
+
 ## Web Push desktop dan mobile
 
 - `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
 - Schema Production harus versi 6 dan `npm run db:integrity` harus lulus sebelum register subscription.
 - `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
 - Setelah `npm run env:push:production`, deployment Production baru wajib dibuat. Bundle lama tidak boleh dianggap menggunakan key baru.
-- Desktop Chrome/Edge dan Android Chrome: Aktifkan, izin granted, register server, Uji notifikasi, click membuka path same-origin, Nonaktifkan, dan register ulang.
-- iPhone/iPad: tab Safari harus menampilkan instruksi Home Screen; aplikasi standalone iOS/iPadOS yang mendukung harus dapat meminta izin melalui tombol pengguna dan menerima Uji notifikasi.
+- Desktop Chrome/Edge dan Android Chrome: Aktifkan, izin granted, register server, verifikasi otomatis, click membuka `/pengaturan/notifikasi`, Nonaktifkan, dan register ulang.
+- iPhone/iPad: tab Safari harus menampilkan instruksi Home Screen; aplikasi standalone iOS/iPadOS yang mendukung harus dapat meminta izin melalui ketukan tile dan menerima verifikasi otomatis.
 - Dua perangkat pada akun yang sama harus memiliki subscription terpisah. Retry perangkat gagal tidak boleh mengirim ulang ke perangkat yang sudah sukses.
 - Subscription 404/410 harus dinonaktifkan. Endpoint lokal/private harus ditolak. Payload lock screen tidak boleh membawa nominal, saldo, nama rekening, kategori, atau detail transaksi.
 - Apps Script hanya memiliki satu trigger `runScheduledJobs`, secret scheduler sama dengan Vercel, dan `/api/jobs` berhasil memproses queue tanpa menggagalkan backup ketika Push gagal.

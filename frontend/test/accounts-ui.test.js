@@ -62,73 +62,78 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
 });
 
 test("halaman rekening fokus pada rekening, detail besar, capability, dan form nomor rekening", async () => {
-  const [page, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
+  const [page, accountSheets, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/accounts/components/MobileAccountSheets.jsx"),
     read("src/features/accounts/components/AccountFinancialCard.jsx"),
     read("src/features/accounts/AccountsPage.module.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
   ]);
+  const accountPageSource = `${page}
+${accountSheets}`;
 
-  assert.match(page, /title="Rekening"/);
-  assert.match(page, /aria-label="Tambah rekening"/);
-  assert.match(page, /title="Tambah rekening"/);
-  assert.match(page, /create-account-form/);
-  assert.doesNotMatch(page, /create-category-form|categories\.list|Kategori transaksi/);
-  assert.match(page, /account_number/);
-  assert.match(page, /bank_template/);
-  assert.match(page, /initialFocusRef=\{createNameInputRef\}/);
-  assert.match(page, /Nama bank dipilih terpisah melalui template kartu/);
-  assert.doesNotMatch(page, /applyBankTemplateToName/);
-  assert.match(page, /<span>No rekening \*<\/span>/);
-  assert.match(page, /useApiResource\("users\.list"/);
-  assert.match(page, /owner_user_id/);
-  assert.match(page, /<span>Pemilik rekening \*<\/span>/);
-  assert.match(page, /Daftar anggota belum dapat dimuat/);
-  assert.match(page, /Promise\.allSettled\(\[accountsResource\.reload\(\), refreshAll\(\)\]\)/);
-  assert.doesNotMatch(page, /accountsResult\.status === "rejected"/);
-  assert.match(page, /selectedAccountId/);
-  assert.match(page, /mobileDetailOpen/);
-  assert.match(page, /mobileAccountSheet/);
-  assert.match(page, /paymentHistoryPeriod/);
-  assert.match(page, /useApiResource\("transactions\.list"/);
-  assert.match(page, /enabled: mobileAccountSheet === "history"/);
-  assert.match(page, /account_id: selectedAccountId \|\| "all"/);
-  assert.match(page, /mobileStackCardRefs/);
-  assert.match(page, /MOBILE_STACK_SLOT_STYLES/);
-  assert.match(page, /shortestCircularDifference/);
-  assert.match(page, /onPointerDown=\{handleMobileStackPointerDown\}/);
-  assert.match(page, /onPointerMove=\{handleMobileStackPointerMove\}/);
-  assert.match(page, /const progress = clamp\(-deltaY \/ 154/);
-  assert.doesNotMatch(page, /const progress = clamp\(-deltaX \/ 154/);
-  assert.match(page, /velocityY/);
-  assert.doesNotMatch(page, /velocityX|handleMobileStackWheel|onWheel=\{/);
-  assert.match(page, /event\.key === "ArrowUp"/);
-  assert.match(page, /event\.key === "ArrowDown"/);
-  assert.match(page, /prefers-reduced-motion: reduce/);
-  assert.match(page, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
-  assert.match(page, /Geser kartu aktif ke atas atau bawah/);
-  assert.match(page, /<AccountVisual account=\{account\} stack \/>/);
-  assert.match(page, /setMobileAccountSheet\("detail"\)/);
-  assert.match(page, /title="Pembayaran keluar"/);
-  assert.match(page, /Pengeluaran dan transfer keluar yang menggunakan/);
-  assert.doesNotMatch(page, />Bayar tagihan</);
-  assert.match(page, />Pembayaran keluar</);
-  assert.match(page, /title="Daftar rekening"/);
-  assert.match(page, /state: \{ accountId:/);
-  assert.match(page, /variant="mobileDetail"/);
-  assert.match(page, /embedded/);
-  assert.doesNotMatch(page, /ref=\{mobileDetailRef\}/);
-  assert.doesNotMatch(page, /mobilePagination|mobileCarousel|setInterval\(/);
-  assert.match(page, /buttonRef=/);
-  assert.match(page, /useFocusTrap/);
-  assert.match(page, /closeButtonRef=\{detailCloseRef\}/);
-  assert.match(page, /bodyClassName: "modal-open"/);
-  assert.match(page, /aria-modal=\{mobileDetailOpen \|\| undefined\}/);
-  assert.match(page, /variant="detail"/);
-  assert.doesNotMatch(page, /aria-label="Baca penjelasan rekonsiliasi"/);
-  assert.doesNotMatch(page, /title="Tentang rekonsiliasi"/);
+  assert.match(accountPageSource, /title="Rekening"/);
+  assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
+  assert.match(accountSheets, /title="Daftar rekening"/);
+  assert.match(accountPageSource, /aria-label="Tambah rekening"/);
+  assert.match(accountPageSource, /title="Tambah rekening"/);
+  assert.match(accountPageSource, /create-account-form/);
+  assert.doesNotMatch(accountPageSource, /create-category-form|categories\.list|Kategori transaksi/);
+  assert.match(accountPageSource, /account_number/);
+  assert.match(accountPageSource, /bank_template/);
+  assert.match(accountPageSource, /initialFocusRef=\{createNameInputRef\}/);
+  assert.match(accountPageSource, /Nama bank dipilih terpisah melalui template kartu/);
+  assert.doesNotMatch(accountPageSource, /applyBankTemplateToName/);
+  assert.match(accountPageSource, /<span>No rekening \*<\/span>/);
+  assert.match(accountPageSource, /useApiResource\("users\.list"/);
+  assert.match(accountPageSource, /owner_user_id/);
+  assert.match(accountPageSource, /<span>Pemilik rekening \*<\/span>/);
+  assert.match(accountPageSource, /Daftar anggota belum dapat dimuat/);
+  assert.match(accountPageSource, /Promise\.allSettled\(\[accountsResource\.reload\(\), refreshAll\(\)\]\)/);
+  assert.doesNotMatch(accountPageSource, /accountsResult\.status === "rejected"/);
+  assert.match(accountPageSource, /selectedAccountId/);
+  assert.match(accountPageSource, /mobileDetailOpen/);
+  assert.match(accountPageSource, /mobileAccountSheet/);
+  assert.match(accountPageSource, /paymentHistoryPeriod/);
+  assert.match(accountPageSource, /useApiResource\("transactions\.list"/);
+  assert.match(accountPageSource, /enabled: mobileAccountSheet === "history"/);
+  assert.match(accountPageSource, /account_id: selectedAccountId \|\| "all"/);
+  assert.match(accountPageSource, /mobileStackCardRefs/);
+  assert.match(accountPageSource, /MOBILE_STACK_SLOT_STYLES/);
+  assert.match(accountPageSource, /shortestCircularDifference/);
+  assert.match(accountPageSource, /onPointerDown=\{handleMobileStackPointerDown\}/);
+  assert.match(accountPageSource, /onPointerMove=\{handleMobileStackPointerMove\}/);
+  assert.match(accountPageSource, /const progress = clamp\(-deltaY \/ 154/);
+  assert.doesNotMatch(accountPageSource, /const progress = clamp\(-deltaX \/ 154/);
+  assert.match(accountPageSource, /velocityY/);
+  assert.doesNotMatch(accountPageSource, /velocityX|handleMobileStackWheel|onWheel=\{/);
+  assert.match(accountPageSource, /event\.key === "ArrowUp"/);
+  assert.match(accountPageSource, /event\.key === "ArrowDown"/);
+  assert.match(accountPageSource, /prefers-reduced-motion: reduce/);
+  assert.match(accountPageSource, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
+  assert.match(accountPageSource, /Geser kartu aktif ke atas atau bawah/);
+  assert.match(accountPageSource, /<AccountVisual account=\{account\} stack \/>/);
+  assert.match(accountPageSource, /setMobileAccountSheet\("detail"\)/);
+  assert.match(accountPageSource, /title="Pembayaran keluar"/);
+  assert.match(accountPageSource, /Pengeluaran dan transfer keluar yang menggunakan/);
+  assert.doesNotMatch(accountPageSource, />Bayar tagihan</);
+  assert.match(accountPageSource, />Pembayaran keluar</);
+  assert.match(accountPageSource, /title="Daftar rekening"/);
+  assert.match(accountPageSource, /state: \{ accountId:/);
+  assert.match(accountPageSource, /variant="mobileDetail"/);
+  assert.match(accountPageSource, /embedded/);
+  assert.doesNotMatch(accountPageSource, /ref=\{mobileDetailRef\}/);
+  assert.doesNotMatch(accountPageSource, /mobilePagination|mobileCarousel|setInterval\(/);
+  assert.match(accountPageSource, /buttonRef=/);
+  assert.match(accountPageSource, /useFocusTrap/);
+  assert.match(accountPageSource, /closeButtonRef=\{detailCloseRef\}/);
+  assert.match(accountPageSource, /bodyClassName: "modal-open"/);
+  assert.match(accountPageSource, /aria-modal=\{mobileDetailOpen \|\| undefined\}/);
+  assert.match(accountPageSource, /variant="detail"/);
+  assert.doesNotMatch(accountPageSource, /aria-label="Baca penjelasan rekonsiliasi"/);
+  assert.doesNotMatch(accountPageSource, /title="Tentang rekonsiliasi"/);
   assert.match(reconciliationPage, /title="Rekonsiliasi"/);
   assert.match(reconciliationPage, /account\.can_reconcile === true/);
   assert.match(reconciliationPage, /reconciliations\.list/);

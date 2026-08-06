@@ -3,7 +3,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { TursoHttpClient } from "../api/_lib/db/httpClient.js";
 import { readSchemaStatus } from "../api/_lib/db/schema.js";
-import { CORE_RUNTIME_ENV_KEYS, environmentStatus } from "./runtime-environment.mjs";
+import { CORE_RUNTIME_ENV_KEYS, environmentStatus, validateWebPushEnvironment } from "./runtime-environment.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 try { process.loadEnvFile(path.join(root, ".env.local")); } catch (error) { if (error.code !== "ENOENT") throw error; }
@@ -11,6 +11,11 @@ const { missing } = environmentStatus(process.env);
 console.log("Saldo Bersama runtime diagnostic");
 console.log(`Node: ${process.version}`);
 for (const key of CORE_RUNTIME_ENV_KEYS) console.log(`- ${key}: ${String(process.env[key] || "").trim() ? "set" : "MISSING"}`);
+const webPush = validateWebPushEnvironment(process.env);
+if (!webPush.enabled) console.log("Web Push: optional/not configured");
+else if (!webPush.complete) console.error(`Web Push: INCOMPLETE (${webPush.missing.join(", ")})`);
+else if (!webPush.valid) console.error(`Web Push: INVALID (${webPush.invalid.join(", ")})`);
+else console.log("Web Push: ready");
 
 if (!missing.includes("TURSO_DATABASE_URL") && !missing.includes("TURSO_AUTH_TOKEN")) {
   try {
@@ -19,6 +24,16 @@ if (!missing.includes("TURSO_DATABASE_URL") && !missing.includes("TURSO_AUTH_TOK
     const schema = healthy ? await readSchemaStatus(db, { force: true }) : null;
     console.log(`Turso: ${healthy ? "reachable" : "UNREACHABLE"}`);
     console.log(`Schema: ${schema?.ready ? `ready v${schema.version}` : JSON.stringify(schema || {})}`);
+    if (healthy) {
+      const latestPushTest = await db.one(`SELECT timestamp,result,new_value FROM audit_log
+        WHERE action='notifications.test' ORDER BY timestamp DESC LIMIT 1`);
+      if (latestPushTest) {
+        let detail = {};
+        try { detail = latestPushTest.new_value ? JSON.parse(latestPushTest.new_value) : {}; } catch { detail = {}; }
+        const safeCode = String(detail?.errorCode || "").replace(/[^A-Z0-9_]/g, "").slice(0, 80);
+        console.log(`Web Push latest verification: ${latestPushTest.result}${safeCode ? ` (${safeCode})` : ""} at ${latestPushTest.timestamp}`);
+      } else console.log("Web Push latest verification: not available");
+    }
   } catch (error) { console.error(`Turso: FAILED (${error.code || error.message})`); }
 }
 

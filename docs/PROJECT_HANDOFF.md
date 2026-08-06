@@ -1,8 +1,65 @@
-## Current task — Merge UI/Menu/Anggaran dan Web Push readiness
+## Current task — Lint, build budget, dan browser regression
 
 **Tanggal:** 2026-08-06  
-**Base terbaru:** `saldo-bersama-clean(20260806-023043).zip`  
-**Patch:** `saldo-bersama-ui-menu-anggaran-patch-20260806(1).zip` dan `saldo-bersama-patch-web-push-readiness(1).zip`  
+**Source:** `saldo-bersama-clean(20260806-045332).zip`  
+**Schema:** tetap version 6
+
+### Implementasi
+
+1. Menghapus variabel tidak terpakai pada kartu rekening dan menstabilkan fallback array Rekonsiliasi agar ESLint tidak lagi menemukan error/warning tersebut.
+2. Menghapus selector dashboard `.premium-*` yang tidak digunakan dari CSS global.
+3. Memuat panel rekening mobile dan `TransactionForm` dashboard secara lazy agar bundle route tidak membawa modal yang belum dibuka.
+4. Memperbaiki browser test owner agar hanya mengirim string ke CDP, browser test member agar mengikuti alur pemilihan rekening aktual, dan breakpoint test agar memakai selector dashboard runtime.
+5. Menambahkan guard helper CDP terhadap expression non-string dan unit test tanpa browser.
+
+### Hasil test
+
+- Frontend static/contract: 80/80 lulus.
+- Backend/business/security/tooling: 130/130 lulus dengan stub module-resolution `web-push` sementara; stub tidak masuk source/artifact.
+- Browser helper: 5/5 lulus.
+- Source validation: 343 file. Node syntax: 95 file. CSS parser: 19 file. Apps Script: 6 file dan 2 urutan load.
+- Lint ESLint, Vite build, build budget, dan authenticated browser runtime belum dijalankan di sandbox karena dependency `vite@7.3.6` tidak tersedia. Jalankan ulang dengan Node 24.x pada komputer lokal.
+
+### Guarded areas
+
+Schema, migration, auth/allowlist/role, saldo, transaksi, transfer, audit, backup/restore, Apps Script, environment, secret, VAPID key, dependency, dan deployment configuration tidak diubah.
+
+---
+
+## Current task — Modal mobile, Kategori, dan Pengaturan terpisah
+
+**Tanggal:** 2026-08-06
+**Source:** `saldo-bersama-clean(20260806-035043).zip`
+**Schema:** tetap version 6
+
+### Implementasi
+
+1. Modal mobile tidak dapat bergeser horizontal. Scroll vertikal, focus trap, safe area footer, pinch zoom, dan accessibility tetap dipertahankan.
+2. Filter Transaksi dan kelompok ikon Kategori tidak lagi memakai carousel horizontal. Carousel rekening tetap menjadi satu-satunya gesture horizontal yang disengaja.
+3. Label Kategori dibuat ramah pengguna. Sifat hanya untuk Uang keluar, `savings` baru ditolak backend, dan data legacy tetap kompatibel.
+4. Pengaturan dipecah menjadi route internal agar query, error, hasil aksi, dan authorization tidak tercampur.
+5. Notifikasi, Google Sheets, dan Google Calendar masing-masing hanya memiliki satu interface. Verifikasi Push berjalan otomatis setelah aktivasi dan tombol uji manual dihapus.
+6. Form akses pengguna dipisah dari daftar pengguna. Export, Import, Backup, Pemulihan, Periode, dan Audit memiliki halaman sendiri dengan workflow guarded existing.
+7. Jadwal rutin menegaskan alur Transfer rekening sumber ke rekening auto-debit dan pencatatan pengeluaran aktual satu kali.
+
+### Hasil test
+
+- Frontend static/contract: 80/80 lulus.
+- Backend/business/security/tooling: 130/130 lulus dengan stub module-resolution `web-push` sementara; stub tidak masuk source/artifact.
+- Source validation: 341 file lulus. Node syntax: 95 file. Parser frontend/test: 129 file. CSS: 19 file. Apps Script: 6 file dan 2 urutan load.
+- Build dan browser runtime belum boleh diklaim lulus sampai `npm ci`, ESLint, Vite build, build budget, dan browser smoke dijalankan pada Node 24.x dengan registry lengkap.
+
+### Guarded areas
+
+Schema, migration, auth/allowlist/role, perhitungan saldo, transfer, soft delete, backup/restore contract, Apps Script, VAPID key, secret, dependency, dan deployment configuration tidak diubah.
+
+---
+
+## Current task — Merge UI/Menu/Anggaran dan Web Push readiness
+
+**Tanggal:** 2026-08-06
+**Base terbaru:** `saldo-bersama-clean(20260806-023043).zip`
+**Patch:** `saldo-bersama-ui-menu-anggaran-patch-20260806(1).zip` dan `saldo-bersama-patch-web-push-readiness(1).zip`
 **Schema:** tetap version 6
 
 ### Keputusan merge
@@ -21,7 +78,7 @@ Tidak ada perubahan schema/migration, auth/allowlist/role, kontrak transaksi ata
 
 ## 2026-08-06 — Web Push readiness dan status backend Pengaturan
 
-**Source:** `saldo-bersama-clean(20260806-011618).zip`  
+**Source:** `saldo-bersama-clean(20260806-011618).zip`
 **Scope:** koreksi presentasi `system.health`, accessibility status, fixture schema v6, browser regression, dan release checklist Web Push.
 
 Perubahan source:

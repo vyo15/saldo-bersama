@@ -4,7 +4,7 @@ import https from "node:https";
 import net from "node:net";
 import webpush from "web-push";
 import { appendAudit } from "./audit.js";
-import { appError, nowIso, publicRow, sanitizeText, todayJakarta, uuid } from "./core.js";
+import { appError, nowIso, parseJson, publicRow, sanitizeText, todayJakarta, uuid } from "./core.js";
 import { goalProjection } from "./planning/goals.js";
 
 const WEB_PUSH_ENV_KEYS = ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"];
@@ -62,19 +62,24 @@ export const isPublicPushAddress = (value) => {
   return !PUSH_ADDRESS_BLOCKLIST.check(address, family === 4 ? "ipv4" : "ipv6");
 };
 
-const safePushLookup = (hostname, options, callback) => {
-  const requestedFamily = typeof options === "number" ? Number(options || 0) : Number(options?.family || 0);
-  const hints = typeof options === "object" ? Number(options?.hints || 0) : 0;
-  dns.lookup(hostname, { all: true, verbatim: true, family: requestedFamily, hints }, (error, addresses) => {
+export const createSafePushLookup = (lookup = dns.lookup) => (hostname, options, callback) => {
+  const normalizedOptions = typeof options === "object" && options !== null ? options : {};
+  const requestedFamily = typeof options === "number" ? Number(options || 0) : Number(normalizedOptions.family || 0);
+  const hints = Number(normalizedOptions.hints || 0);
+  const returnAll = normalizedOptions.all === true;
+  lookup(hostname, { all: true, verbatim: true, family: requestedFamily, hints }, (error, addresses) => {
     if (error) return callback(error);
-    if (!addresses?.length || addresses.some((entry) => !isPublicPushAddress(entry.address))) {
+    const candidates = Array.isArray(addresses) ? addresses : [];
+    if (!candidates.length || candidates.some((entry) => !isPublicPushAddress(entry.address))) {
       return callback(Object.assign(new Error("Alamat push service tidak diizinkan."), { code: "PUSH_ENDPOINT_PRIVATE_ADDRESS" }));
     }
-    const selected = addresses.find((entry) => !requestedFamily || entry.family === requestedFamily) || addresses[0];
+    if (returnAll) return callback(null, candidates);
+    const selected = candidates.find((entry) => !requestedFamily || entry.family === requestedFamily) || candidates[0];
     return callback(null, selected.address, selected.family);
   });
 };
 
+export const safePushLookup = createSafePushLookup();
 const PUSH_HTTPS_AGENT = new https.Agent({ keepAlive: true, maxSockets: 10, lookup: safePushLookup });
 export const webPushRequestOptions = (ttlSeconds) => ({
   TTL: ttlSeconds,
@@ -97,7 +102,13 @@ const validVapidSubject = (value) => {
   if (/^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(subject)) return true;
   try {
     const url = new URL(subject);
-    return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password && !url.hash;
+    const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    const publicHostname = hostname
+      && hostname !== "localhost"
+      && hostname.includes(".")
+      && net.isIP(hostname) === 0
+      && !BLOCKED_ENDPOINT_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+    return url.protocol === "https:" && publicHostname && !url.username && !url.password && !url.hash;
   } catch {
     return false;
   }
@@ -286,6 +297,10 @@ export const notificationStatus = async (db, context) => {
   const lastTest = currentSubscriptionId ? await db.one(`SELECT timestamp FROM audit_log
     WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='success'
     ORDER BY timestamp DESC LIMIT 1`, [context.actor.user_id, currentSubscriptionId]) : null;
+  const lastTestFailureRow = currentSubscriptionId && !lastTest ? await db.one(`SELECT timestamp,new_value FROM audit_log
+    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='failed'
+    ORDER BY timestamp DESC LIMIT 1`, [context.actor.user_id, currentSubscriptionId]) : null;
+  const lastTestFailureValue = parseJson(lastTestFailureRow?.new_value, {});
   const lastDelivery = await db.one(`SELECT notification_type,status,attempt_count,last_attempt_at,created_at
     FROM notification_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 1`, [context.actor.user_id]);
   return {
@@ -293,6 +308,11 @@ export const notificationStatus = async (db, context) => {
     currentDevice,
     activeDeviceCount: Number(activeDevices?.count || 0),
     lastTestAt: lastTest?.timestamp || null,
+    lastTestFailure: lastTestFailureRow ? {
+      at: lastTestFailureRow.timestamp,
+      code: sanitizeText(lastTestFailureValue?.errorCode, 80) || "PUSH_DELIVERY_FAILED",
+      providerStatus: Number(lastTestFailureValue?.providerStatus || 0) || null,
+    } : null,
     lastDelivery: lastDelivery ? {
       type: lastDelivery.notification_type,
       status: lastDelivery.status,
@@ -314,6 +334,42 @@ const testRateLimit = async (db, actorId) => {
   throw Object.assign(appError("PUSH_TEST_RATE_LIMITED", `Tunggu ${retryAfterSeconds} detik sebelum mengirim notifikasi uji lagi.`, 429), { retryAfterSeconds });
 };
 
+const pushTransportFailure = (error) => {
+  const statusCode = Number(error?.statusCode || 0);
+  const transportCode = String(error?.code || "").toUpperCase();
+  const message = String(error?.message || "").toLowerCase();
+  if ([404, 410].includes(statusCode)) return { errorCode: "SUBSCRIPTION_EXPIRED", statusCode, terminalSubscription: true };
+  if (transportCode === "PUSH_ENDPOINT_PRIVATE_ADDRESS") return { errorCode: "PUSH_ENDPOINT_PRIVATE_ADDRESS", statusCode, terminalSubscription: true };
+  if ([401, 403].includes(statusCode)) return { errorCode: "PUSH_AUTH_REJECTED", statusCode, terminalSubscription: false };
+  if (statusCode === 400) return { errorCode: "PUSH_REQUEST_REJECTED", statusCode, terminalSubscription: false };
+  if (["ENOTFOUND", "EAI_AGAIN", "EAI_FAIL", "EAI_NONAME", "ERR_INVALID_IP_ADDRESS"].includes(transportCode)) {
+    return { errorCode: "PUSH_DNS_FAILED", statusCode, terminalSubscription: false };
+  }
+  if (["ETIMEDOUT", "ESOCKETTIMEDOUT", "UND_ERR_CONNECT_TIMEOUT"].includes(transportCode) || message.includes("socket timeout")) {
+    return { errorCode: "PUSH_TIMEOUT", statusCode, terminalSubscription: false };
+  }
+  if (transportCode.startsWith("ERR_TLS_") || transportCode.startsWith("CERT_") || transportCode === "UNABLE_TO_VERIFY_LEAF_SIGNATURE") {
+    return { errorCode: "PUSH_TLS_FAILED", statusCode, terminalSubscription: false };
+  }
+  if (["ECONNRESET", "ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH"].includes(transportCode)) {
+    return { errorCode: "PUSH_NETWORK_FAILED", statusCode, terminalSubscription: false };
+  }
+  if (statusCode) return { errorCode: `PUSH_HTTP_${statusCode}`, statusCode, terminalSubscription: false };
+  return { errorCode: "PUSH_DELIVERY_FAILED", statusCode, terminalSubscription: false };
+};
+
+const pushFailureAppError = ({ errorCode }) => {
+  if (errorCode === "SUBSCRIPTION_EXPIRED") return appError("PUSH_SUBSCRIPTION_EXPIRED", "Subscription perangkat sudah kedaluwarsa. Aktifkan ulang notifikasi.", 409);
+  if (errorCode === "PUSH_ENDPOINT_PRIVATE_ADDRESS") return appError("PUSH_ENDPOINT_BLOCKED", "Alamat push service perangkat tidak diizinkan. Daftarkan ulang perangkat setelah memeriksa browser dan jaringan.", 409);
+  if (errorCode === "PUSH_AUTH_REJECTED") return appError("PUSH_AUTH_REJECTED", "Push service menolak identitas VAPID. Periksa VAPID_SUBJECT dan pasangan key, lalu daftar ulang perangkat.", 502);
+  if (errorCode === "PUSH_REQUEST_REJECTED") return appError("PUSH_REQUEST_REJECTED", "Push service menolak subscription atau payload. Nonaktifkan lalu aktifkan kembali notifikasi perangkat.", 502);
+  if (errorCode === "PUSH_DNS_FAILED") return appError("PUSH_DNS_FAILED", "DNS push service gagal diakses dari server. Periksa koneksi atau DNS, lalu coba lagi.", 502);
+  if (errorCode === "PUSH_TIMEOUT") return appError("PUSH_TIMEOUT", "Push service tidak merespons sebelum batas waktu. Coba lagi setelah koneksi stabil.", 504);
+  if (errorCode === "PUSH_TLS_FAILED") return appError("PUSH_TLS_FAILED", "Koneksi TLS ke push service gagal diverifikasi. Periksa waktu sistem dan jaringan.", 502);
+  if (errorCode === "PUSH_NETWORK_FAILED") return appError("PUSH_NETWORK_FAILED", "Server belum dapat menjangkau push service. Periksa jaringan lalu coba lagi.", 502);
+  return appError("PUSH_DELIVERY_FAILED", "Push service belum menerima notifikasi uji. Periksa konfigurasi dan koneksi lalu coba lagi.", 502);
+};
+
 export const testPush = async (db, context, { pushClient = webpush } = {}) => {
   configureWebPushClient(pushClient);
   await testRateLimit(db, context.actor.user_id);
@@ -326,15 +382,12 @@ export const testPush = async (db, context, { pushClient = webpush } = {}) => {
   try {
     await pushClient.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
-      JSON.stringify({ notificationType: "test", targetPath: "/pengaturan", notificationId }),
+      JSON.stringify({ notificationType: "test", targetPath: "/pengaturan/notifikasi", notificationId }),
       webPushRequestOptions(300),
     );
   } catch (error) {
-    const statusCode = Number(error?.statusCode || 0);
-    const errorCode = [404, 410].includes(statusCode) ? "SUBSCRIPTION_EXPIRED"
-      : error?.code === "PUSH_ENDPOINT_PRIVATE_ADDRESS" ? "PUSH_ENDPOINT_PRIVATE_ADDRESS"
-        : statusCode ? `PUSH_HTTP_${statusCode}` : "PUSH_DELIVERY_FAILED";
-    const terminalSubscription = [404, 410].includes(statusCode) || errorCode === "PUSH_ENDPOINT_PRIVATE_ADDRESS";
+    const failure = pushTransportFailure(error);
+    const { errorCode, statusCode, terminalSubscription } = failure;
     const recordFailure = async (tx) => {
       if (terminalSubscription) {
         await tx.execute("UPDATE push_subscriptions SET status='inactive',updated_at=? WHERE subscription_id=?", [testedAt, subscription.subscription_id]);
@@ -345,19 +398,13 @@ export const testPush = async (db, context, { pushClient = webpush } = {}) => {
         entityType: "push_subscription",
         entityId: subscription.subscription_id,
         previous: null,
-        next: { testAcceptedAt: null, errorCode },
+        next: { testAcceptedAt: null, errorCode, providerStatus: statusCode || null },
         result: "failed",
       });
     };
     if (typeof db.transaction === "function") await db.transaction(recordFailure);
     else await recordFailure(db);
-    if ([404, 410].includes(statusCode)) {
-      throw appError("PUSH_SUBSCRIPTION_EXPIRED", "Subscription perangkat sudah kedaluwarsa. Aktifkan ulang notifikasi.", 409);
-    }
-    if (errorCode === "PUSH_ENDPOINT_PRIVATE_ADDRESS") {
-      throw appError("PUSH_ENDPOINT_BLOCKED", "Alamat push service perangkat tidak diizinkan. Daftarkan ulang perangkat setelah memeriksa browser dan jaringan.", 409);
-    }
-    throw appError("PUSH_DELIVERY_FAILED", "Push service belum menerima notifikasi uji. Coba lagi setelah memeriksa konfigurasi.", 502);
+    throw pushFailureAppError(failure);
   }
 
   await appendAudit(db, context, {

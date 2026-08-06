@@ -17,7 +17,7 @@ export class CdpSession {
         if (!deferred) return;
         this.pending.delete(message.id);
         clearTimeout(deferred.timer);
-        if (message.error) deferred.reject(new Error(`${message.error.message} (${message.error.code})`));
+        if (message.error) deferred.reject(new Error(`${deferred.method}: ${message.error.message} (${message.error.code})`));
         else deferred.resolve(message.result || {});
         return;
       }
@@ -42,7 +42,7 @@ export class CdpSession {
         this.pending.delete(id);
         reject(new Error(`CDP timeout: ${method}`));
       }, pendingTimeoutMs);
-      this.pending.set(id, { resolve, reject, timer });
+      this.pending.set(id, { resolve, reject, timer, method });
       this.socket.send(JSON.stringify({ id, method, params }));
     });
   }
@@ -58,6 +58,9 @@ export class CdpSession {
   }
 
   async evaluate(expression, { awaitPromise = true, returnByValue = true } = {}) {
+    if (typeof expression !== "string" || !expression.trim()) {
+      throw new TypeError("Ekspresi CDP harus berupa string JavaScript yang tidak kosong.");
+    }
     const result = await this.send("Runtime.evaluate", {
       expression,
       awaitPromise,

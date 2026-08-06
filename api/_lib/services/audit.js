@@ -1,4 +1,4 @@
-import { canonicalJson, nowIso, publicRow, uuid } from "./core.js";
+import { canonicalJson, nowIso, parseJson, publicRow, sanitizeText, uuid } from "./core.js";
 
 export const appendAudit = async (db, context, { action = context.action, entityType, entityId = "", previous = null, next = null, result = "success" }) => {
   const record = {
@@ -14,7 +14,13 @@ export const appendAudit = async (db, context, { action = context.action, entity
 
 export const listAudit = async (db, context) => {
   const limit = Math.min(200, Math.max(1, Number(context.payload?.limit || 50)));
-  const rows = await db.all(`SELECT audit_id,timestamp,actor_email,action,entity_type,entity_id,result
+  const rows = await db.all(`SELECT audit_id,timestamp,actor_email,action,entity_type,entity_id,result,new_value
     FROM audit_log ORDER BY timestamp DESC LIMIT ?`, [limit]);
-  return { items: rows.map((row) => publicRow(row)) };
+  return { items: rows.map((row) => {
+    const detail = row.action === "notifications.test" && row.result === "failed"
+      ? sanitizeText(parseJson(row.new_value, {})?.errorCode, 80)
+      : "";
+    const { new_value: _privateAuditValue, ...safeRow } = row;
+    return publicRow({ ...safeRow, detail_code: detail });
+  }) };
 };

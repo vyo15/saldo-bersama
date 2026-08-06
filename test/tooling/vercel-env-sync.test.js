@@ -142,6 +142,12 @@ test("sinkronisasi Production menolak grup integrasi parsial dan VAPID tidak val
   const mismatchedStatus = validateProductionEnvironment(mismatched);
   assert.equal(mismatchedStatus.valid, false);
   assert.deepEqual(mismatchedStatus.invalidWebPush, ["VAPID_KEY_PAIR"]);
+
+  const localSubject = canonicalValues();
+  localSubject.VAPID_SUBJECT = "https://localhost";
+  const localSubjectStatus = validateProductionEnvironment(localSubject);
+  assert.equal(localSubjectStatus.valid, false);
+  assert.deepEqual(localSubjectStatus.invalidWebPush, ["VAPID_SUBJECT"]);
 });
 
 test("runner Vercel memakai cmd.exe pada Windows agar npx.cmd tidak memicu spawn EINVAL", () => {

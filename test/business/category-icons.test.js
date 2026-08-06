@@ -40,9 +40,9 @@ test("backend memberi default, menerima katalog icon, dan menolak key icon bebas
     assert.equal(defaultCategory.icon, "shopping");
 
     const weddingCategory = await dispatch(db, "categories.create", {
-      name: "Tabungan nikah",
+      name: "Biaya pernikahan",
       transaction_type: "expense",
-      nature: "savings",
+      nature: "other",
       icon: "wedding_ring",
     });
     assert.equal(weddingCategory.icon, "wedding_ring");
@@ -65,6 +65,60 @@ test("backend memberi default, menerima katalog icon, dan menolak key icon bebas
         icon: "<svg onload=alert(1)>",
       }),
       (error) => error?.code === "INVALID_CATEGORY_ICON",
+    );
+  } finally {
+    db.close();
+  }
+});
+
+
+test("backend menormalkan sifat non-pengeluaran dan menolak kategori tabungan baru", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedOwner(db);
+
+    const income = await dispatch(db, "categories.create", {
+      name: "Bonus",
+      transaction_type: "income",
+      icon: "salary",
+    });
+    assert.equal(income.nature, "other");
+
+    const refund = await dispatch(db, "categories.create", {
+      name: "Refund belanja",
+      transaction_type: "refund",
+      nature: "other",
+      icon: "refund",
+    });
+    assert.equal(refund.nature, "other");
+
+    await db.execute("UPDATE categories SET nature='fixed' WHERE category_id=?", [income.category_id]);
+    const normalizedIncome = await dispatch(db, "categories.update", {
+      category_id: income.category_id,
+      name: "Bonus tahunan",
+      icon: income.icon,
+      row_version: income.row_version,
+    }, income.row_version);
+    assert.equal(normalizedIncome.nature, "other");
+
+    await assert.rejects(
+      () => dispatch(db, "categories.create", {
+        name: "Tabungan sendiri",
+        transaction_type: "expense",
+        nature: "savings",
+        icon: "savings",
+      }),
+      (error) => error?.code === "SAVINGS_CATEGORY_NOT_ALLOWED",
+    );
+
+    await assert.rejects(
+      () => dispatch(db, "categories.create", {
+        name: "Gaji salah klasifikasi",
+        transaction_type: "income",
+        nature: "fixed",
+        icon: "salary",
+      }),
+      (error) => error?.code === "CATEGORY_NATURE_NOT_APPLICABLE",
     );
   } finally {
     db.close();

@@ -4,6 +4,13 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Memperbaiki pengiriman Web Push nyata pada Node modern: custom DNS lookup kini menghormati callback `all: true` milik HTTPS Agent, VAPID subject lokal/internal ditolak, kegagalan DNS/TLS/network/auth dipetakan secara aman, status perangkat dan Audit menampilkan diagnosis tanpa membocorkan endpoint atau key, serta diagnostic runtime melaporkan kesiapan Web Push.
+- Memperbaiki lint Rekening/Rekonsiliasi, menghapus CSS dashboard legacy yang tidak memiliki pemilik runtime, memecah panel rekening mobile dan form transaksi dashboard menjadi lazy chunk, serta memperbaiki tiga browser regression agar source memenuhi kontrak lint, build budget, dan journey owner/member/breakpoint aktual.
+- Menghilangkan horizontal overflow pada modal mobile, filter Transaksi, kelompok ikon Kategori, dan native file input tanpa mengunci scroll vertikal; carousel rekening desktop/mobile yang memang merupakan kontrol pemilihan tetap dipertahankan.
+- Memecah Pengaturan menjadi route internal Ringkasan, Notifikasi, Integrasi Google, Anggota, Export, Import, Backup, Pemulihan, Periode, dan Audit agar setiap halaman hanya memuat resource terkait dan error/hasil tindakan tampil lokal.
+- Menghapus interface Notifikasi/Sheets/Calendar yang duplikat. Tile Notifikasi meminta izin melalui ketukan pengguna, mendaftarkan subscription, dan menjalankan verifikasi otomatis tanpa tombol uji terpisah; penonaktifan tetap membutuhkan konfirmasi.
+- Memperjelas klasifikasi Kategori menjadi Uang keluar, Uang masuk, dan Pengembalian dana. Sifat hanya berlaku untuk pengeluaran, kategori `savings` baru ditolak backend, dan pemindahan dana sendiri diarahkan ke Transfer atau Target agar laporan tidak menggandakan pengeluaran.
+- Menambahkan panduan Jadwal rutin untuk alur Transfer BNI/BCA ke BTN dan auto-debit aktual: jadwal tidak mengubah saldo sebelum pembayaran aktual dikonfirmasi server.
 - Memperbaiki status backend pada Pengaturan agar memakai kontrak `system.health` aktual (`status`, `schemaVersion`, `maintenanceMode`) dan tidak lagi menampilkan `Degraded` palsu; status Web Push dan backend kini diumumkan melalui live region yang aksesibel.
 - Menyelaraskan fixture dan browser regression schema v6 serta mendokumentasikan aktivasi Web Push Production untuk desktop, Android, dan iPhone/iPad tanpa menyimpan private VAPID key di source atau arsip.
 - Memisahkan pengelolaan Anggaran dari Laporan melalui route `/anggaran`; Laporan kini read-only untuk perbandingan anggaran vs aktual, sedangkan create/update/archive tetap memakai action backend existing, idempotency key, `row_version`, dan authorization owner.

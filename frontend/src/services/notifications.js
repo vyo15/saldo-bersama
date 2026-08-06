@@ -103,6 +103,7 @@ export const getPushNotificationState = async () => {
       enabled: false,
       server: null,
       activeDeviceCount: 0,
+      lastTestFailure: null,
       lastDelivery: null,
     };
   }
@@ -126,6 +127,7 @@ export const getPushNotificationState = async () => {
       keyMismatch,
       server: null,
       activeDeviceCount: 0,
+      lastTestFailure: null,
       lastDelivery: null,
       error,
     };
@@ -151,6 +153,7 @@ export const getPushNotificationState = async () => {
     currentDevice: remote.currentDevice || null,
     activeDeviceCount: Number(remote.activeDeviceCount || 0),
     lastTestAt: remote.lastTestAt || null,
+    lastTestFailure: remote.lastTestFailure || null,
     lastDelivery: remote.lastDelivery || null,
   };
 };
@@ -221,8 +224,19 @@ export const enablePushNotifications = async () => {
 
   try {
     const result = await registerRemote(subscription);
+    let verification = null;
+    let verificationError = null;
+    try {
+      verification = await apiClient.request(
+        "notifications.test",
+        { endpoint: subscription.endpoint },
+        { idempotencyKey: createIdempotencyKey() },
+      );
+    } catch (error) {
+      verificationError = { code: error?.code || "PUSH_VERIFICATION_FAILED", message: error?.message || "Verifikasi otomatis belum berhasil." };
+    }
     apiClient.invalidate("notifications.status");
-    return { ...result, subscription };
+    return { ...result, subscription, verification, verificationError };
   } catch (error) {
     if (created) await subscription.unsubscribe().catch(() => {});
     throw error;

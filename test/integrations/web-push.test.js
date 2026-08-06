@@ -2,8 +2,10 @@ import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { processPush } from "../../api/jobs.js";
+import { listAudit } from "../../api/_lib/services/audit.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/index.js";
 import {
+  createSafePushLookup,
   isPublicPushAddress,
   notificationStatus,
   normalizePushEndpoint,
@@ -97,6 +99,10 @@ test("konfigurasi Web Push menolak grup parsial dan key yang tidak valid", () =>
     ["VAPID_KEY_PAIR"],
   );
   assert.equal(webPushConfigurationStatus(validPushEnvironment).code, "READY");
+  assert.deepEqual(
+    webPushConfigurationStatus({ ...validPushEnvironment, VAPID_SUBJECT: "https://localhost" }).invalid,
+    ["VAPID_SUBJECT"],
+  );
 });
 
 test("endpoint push dan target route dibatasi ke HTTPS publik serta path same-origin", () => {
@@ -128,6 +134,39 @@ test("endpoint push dan target route dibatasi ke HTTPS publik serta path same-or
   for (const target of ["//evil.example", "/pengaturan?tab=push", "/../admin", "/a\\b"]) {
     assert.equal(safeNotificationTargetPath(target), "/");
   }
+});
+
+test("custom DNS lookup Web Push menghormati kontrak callback Node untuk mode all dan single", async () => {
+  const addresses = [
+    { address: "8.8.8.8", family: 4 },
+    { address: "2606:4700:4700::1111", family: 6 },
+  ];
+  const calls = [];
+  const lookup = createSafePushLookup((hostname, options, callback) => {
+    calls.push({ hostname, options });
+    callback(null, addresses);
+  });
+
+  const all = await new Promise((resolve, reject) => lookup("push.example.net", { all: true, hints: 32 }, (error, result) => {
+    if (error) reject(error);
+    else resolve(result);
+  }));
+  assert.deepEqual(all, addresses);
+
+  const single = await new Promise((resolve, reject) => lookup("push.example.net", { family: 4 }, (error, address, family) => {
+    if (error) reject(error);
+    else resolve({ address, family });
+  }));
+  assert.deepEqual(single, addresses[0]);
+  assert.equal(calls.every((call) => call.options.all === true), true);
+
+  const blockedLookup = createSafePushLookup((_hostname, _options, callback) => callback(null, [
+    { address: "127.0.0.1", family: 4 },
+  ]));
+  await assert.rejects(
+    () => new Promise((resolve, reject) => blockedLookup("push.example.net", { all: true }, (error, result) => error ? reject(error) : resolve(result))),
+    (error) => error?.code === "PUSH_ENDPOINT_PRIVATE_ADDRESS",
+  );
 });
 
 test("registrasi sinkron dengan backend dan transfer akun memerlukan bukti subscription yang cocok", async () => {
@@ -214,7 +253,7 @@ test("notifikasi uji hanya menuju perangkat aktor, memakai payload privat, dan t
     assert.equal(sent.subscription.endpoint, endpoint);
     assert.deepEqual(Object.keys(sent.payload).sort(), ["notificationId", "notificationType", "targetPath"]);
     assert.equal(sent.payload.notificationType, "test");
-    assert.equal(sent.payload.targetPath, "/pengaturan");
+    assert.equal(sent.payload.targetPath, "/pengaturan/notifikasi");
     assert.equal(sent.options.timeout, 8_000);
     assert.equal(typeof sent.options.agent?.options?.lookup, "function");
 
@@ -224,6 +263,39 @@ test("notifikasi uji hanya menuju perangkat aktor, memakai payload privat, dan t
       () => withPushEnvironment(() => testPush(db, contextFor(owner, "notifications.test", { endpoint }, "push-test-twice"), { pushClient })),
       (error) => error?.code === "PUSH_TEST_RATE_LIMITED" && error?.status === 429,
     );
+  } finally {
+    db.close();
+  }
+});
+
+test("kegagalan DNS notifikasi uji tetap menjaga subscription aktif dan memberi diagnosis aman", async () => {
+  const db = await createSqliteTestDatabase();
+  const endpoint = "https://fcm.googleapis.com/fcm/send/dns-device";
+  try {
+    await seedUsers(db);
+    await register(db, owner, endpoint);
+    const pushClient = {
+      setVapidDetails: () => {},
+      sendNotification: async () => { throw Object.assign(new Error("temporary dns failure"), { code: "EAI_AGAIN" }); },
+    };
+    await assert.rejects(
+      () => withPushEnvironment(() => testPush(db, contextFor(owner, "notifications.test", { endpoint }, "push-dns-failure"), { pushClient })),
+      (error) => error?.code === "PUSH_DNS_FAILED" && error?.status === 502,
+    );
+    const subscription = await db.one("SELECT status FROM push_subscriptions WHERE endpoint=?", [endpoint]);
+    assert.equal(subscription.status, "active");
+    const status = await withPushEnvironment(() => notificationStatus(db, contextFor(owner, "notifications.status", { endpoint })));
+    assert.equal(status.lastTestAt, null);
+    assert.deepEqual(status.lastTestFailure, {
+      at: status.lastTestFailure.at,
+      code: "PUSH_DNS_FAILED",
+      providerStatus: null,
+    });
+    assert.match(status.lastTestFailure.at, /^\d{4}-\d{2}-\d{2}T/);
+    const audit = await listAudit(db, contextFor(owner, "audit.list", { limit: 20 }));
+    const failure = audit.items.find((item) => item.action === "notifications.test" && item.result === "failed");
+    assert.equal(failure.detail_code, "PUSH_DNS_FAILED");
+    assert.equal(Object.hasOwn(failure, "new_value"), false);
   } finally {
     db.close();
   }

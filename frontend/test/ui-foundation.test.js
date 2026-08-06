@@ -79,21 +79,22 @@ test("design tokens expose shared control, motion, and layer contracts", async (
 });
 
 test("halaman data utama memiliki representasi card mobile dan filter transaksi canonical", async () => {
-  const [transactions, reports, accounts, reconciliation, settings] = await Promise.all([
+  const [transactions, reports, accounts, accountSheets, reconciliation, settings] = await Promise.all([
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/accounts/components/MobileAccountSheets.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
-    read("src/features/settings/SettingsPage.jsx"),
+    read("src/features/settings/AuditPage.jsx"),
   ]);
 
   assert.match(transactions, /desktop-data-table/);
   assert.match(transactions, /transaction-mobile-list/);
   assert.match(reports, /budget-mobile-list/);
-  assert.match(accounts, /paymentHistoryList/);
+  assert.match(accounts + accountSheets, /paymentHistoryList/);
   assert.match(reconciliation, /reconciliation-mobile-list/);
-  assert.match(settings, /audit-mobile-list/);
-  assert.match(settings, /owner-admin-section/);
+  assert.match(settings, /mobile-data-list/);
+  assert.match(settings, /audit\.list/);
   assert.match(transactions, /account_id:\s*filters\.account/);
   assert.match(transactions, /category_id:\s*filters\.category/);
   assert.match(transactions, /created_by:\s*filters\.creator/);
@@ -151,6 +152,9 @@ test("stylesheet global tidak menghidupkan kembali selector legacy tanpa pemilik
     ".attention-list",
     ".chip-list",
     ".premium-detail-panel",
+    ".premium-dashboard",
+    ".premium-filterbar",
+    ".premium-alert-panel",
     ".progress__track",
     ".account-card",
     ".account-grid",
@@ -190,6 +194,7 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   ]);
 
   assert.equal((page.match(/<TransactionForm/g) || []).length, 1, "Dashboard hanya boleh memiliki satu form transaksi shared.");
+  assert.match(page, /const TransactionForm = lazy\(\(\) => import\("\.\.\/transactions\/TransactionForm\.jsx"\)\)/, "Form transaksi dashboard harus dimuat hanya saat modal dibuka.");
   assert.match(desktop, /aria-label=\{balanceVisible \? "Sembunyikan seluruh nominal"/);
   assert.match(desktop, /Pilih rekening untuk melihat aktivitasnya/);
   assert.match(desktop, /accountTransactionDelta/);
@@ -201,15 +206,25 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.match(filters, /<form className="mobile-dashboard-filter-form"/);
   assert.match(detail, /<Modal/);
   assert.match(detail, /<dl>/);
-  assert.doesNotMatch(responsive, /\.premium-filterbar > \.premium-select:nth-of-type\(3\) \{ display: none; \}/);
+  assert.doesNotMatch(responsive, /\.premium-/);
 });
 
 test("pengaturan memakai kontrak system.health aktual dan status notifikasi aksesibel", async () => {
-  const settings = await read("src/features/settings/SettingsPage.jsx");
-  assert.match(settings, /healthResource\.data\?\.status === "ok"/);
-  assert.match(settings, /healthResource\.data\?\.schemaVersion/);
-  assert.doesNotMatch(settings, /healthResource\.data\?\.database/);
-  assert.doesNotMatch(settings, /healthResource\.data\?\.schema\?\.ready/);
-  assert.match(settings, /<h2>Notifikasi perangkat<\/h2>[\s\S]*role="status" aria-live="polite"/);
-  assert.match(settings, /<h2>Status backend<\/h2>[\s\S]*role="status" aria-live="polite"/);
+  const [overview, presentation, notifications, notificationService, audit] = await Promise.all([
+    read("src/features/settings/SettingsPage.jsx"),
+    read("src/features/settings/settingsPresentation.js"),
+    read("src/features/settings/DeviceNotificationsPage.jsx"),
+    read("src/services/notifications.js"),
+    read("src/features/settings/AuditPage.jsx"),
+  ]);
+  assert.match(overview, /backendPresentation\(healthResource\)/);
+  assert.match(overview, /role="status" aria-live="polite"/);
+  assert.match(presentation, /data\.status === "ok"/);
+  assert.match(presentation, /data\.schemaVersion/);
+  assert.doesNotMatch(overview + presentation, /healthResource\.data\?\.database|schema\?\.ready/);
+  assert.match(notifications, /<h3>Notifikasi perangkat<\/h3>[\s\S]*role="status" aria-live="polite"/);
+  assert.doesNotMatch(notifications, /Uji notifikasi/);
+  assert.match(notificationService, /lastTestFailure/);
+  assert.match(presentation, /PUSH_DNS_FAILED/);
+  assert.match(audit, /auditDetailLabel\(entry\.detail_code\)/);
 });

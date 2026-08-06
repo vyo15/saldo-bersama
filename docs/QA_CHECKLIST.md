@@ -17,11 +17,17 @@
 - [ ] PWA iOS/Android, push, safe area, focus, contrast, tap target diuji.
 - [ ] Status backend Pengaturan memakai kontrak `system.health` aktual dan tidak menampilkan `Degraded` palsu.
 - [ ] Schema v6, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
-- [ ] Desktop dan Android lulus Aktifkan → Uji → Nonaktifkan; iPhone/iPad diuji dari aplikasi Home Screen.
+- [ ] Desktop dan Android lulus Aktifkan → verifikasi otomatis → Nonaktifkan; iPhone/iPad diuji dari aplikasi Home Screen.
 - [ ] Monitoring health/integration queue tidak membocorkan secret.
 
 - [ ] Action registry/policy, authorization map, dan API docs tetap sinkron.
 - [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.
+
+- [ ] Modal Tambah Transaksi, Kategori, Rekening, Import, Restore, dan Tutup Periode tidak memiliki nested horizontal overflow pada 320–430px; scroll vertikal tetap bekerja.
+- [ ] Filter Transaksi dan kelompok ikon Kategori membungkus tanpa swipe horizontal; carousel rekening tetap menjadi pengecualian yang disengaja.
+- [ ] Kategori Uang masuk/Refund memakai nature internal yang kompatibel, sifat pengeluaran tidak ditampilkan, dan kategori `savings` baru ditolak backend.
+- [ ] Transfer BNI/BCA ke BTN tidak masuk income/expense; jadwal auto-debit tidak mengubah saldo sampai transaksi aktual tersimpan satu kali.
+- [ ] Route internal Pengaturan hanya memuat resource terkait; member dapat membuka Notifikasi/Integrasi status dan ditolak pada deep link owner-only.
 
 ## Product-control alignment
 
@@ -56,7 +62,7 @@
 - [ ] `prefers-reduced-motion` mengurangi rotasi/durasi, focus-visible tetap jelas, dan live region hanya mengumumkan nama rekening aktif.
 - [ ] Detail rekening sticky cukup besar pada desktop dan menjadi overlay/fullscreen dengan focus trap, Escape, body scroll lock, serta focus restoration pada tablet/mobile.
 - [ ] Nomor rekening lebih dari 16 digit tidak overflow pada muka kartu; nomor lengkap tetap tersedia di detail dan clipboard.
-- [ ] Pada 390px, `Tagihan periode ini`, `Penerimaan yang diharapkan`, halaman Anggaran, seluruh chart laporan, Notifikasi perangkat, Akses/Integrasi, serta owner Export/Backup/Restore/Audit memiliki bounding rect nonzero.
+- [ ] Pada 390px, `Tagihan periode ini`, `Penerimaan yang diharapkan`, halaman Anggaran, seluruh chart laporan, serta route Pengaturan Notifikasi/Integrasi/Anggota/Export/Backup/Pemulihan/Audit memiliki bounding rect nonzero.
 - [ ] Pada ≤580px, action terakhir `.settings-card` menempati `grid-column: 1 / -1`.
 - [ ] Breakpoint 580/581, 820/821, 940/941 tidak menghasilkan overflow atau capability hilang.
 - [ ] Ikon navigasi sesuai fungsi dan menu mobile tidak bergantung pada indeks array.

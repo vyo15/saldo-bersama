@@ -76,6 +76,6 @@ Saat deploy Web App, pilih **Execute as me/deployer** dan **Anyone/anonymous**. 
 - Android/desktop: gunakan prompt Pasang Saldo Bersama atau jalankan dari browser HTTPS yang mendukung Push API.
 - Desktop `http://localhost` dapat dipakai untuk development. Alamat LAN seperti `http://192.168.x.x` tidak aman dan harus ditolak. Pengujian ponsel memakai deployment HTTPS.
 - Push permission hanya diminta setelah pengguna menekan Aktifkan.
-- Status aktif memerlukan subscription browser dan registrasi backend yang cocok. Tombol Uji notifikasi memeriksa penerimaan oleh layanan push. Pengguna tetap harus memeriksa panel notifikasi perangkat.
+- Status aktif memerlukan subscription browser dan registrasi backend yang cocok. Setelah aktivasi, backend mengirim notifikasi verifikasi otomatis. Pengguna tetap harus memeriksa status pada `/pengaturan/notifikasi` dan memastikan notifikasi benar-benar muncul pada perangkat.
 - Bila permission ditolak, aktifkan kembali dari pengaturan browser atau sistem operasi.
 - `/api/*` tidak dicache dan write offline ditolak.
