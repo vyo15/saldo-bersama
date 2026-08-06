@@ -4,6 +4,7 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Memenuhi route chunk budget tanpa menaikkan batas: dialog tambah/edit Rekening dipindahkan ke lazy chunk, filter dan detail transaksi mobile Dashboard dimuat hanya saat dibuka, serta Node project dipin melalui `.node-version` dan panduan `fnm` untuk Windows Git Bash.
 - Memperbaiki pengiriman Web Push nyata pada Node modern: custom DNS lookup kini menghormati callback `all: true` milik HTTPS Agent, VAPID subject lokal/internal ditolak, kegagalan DNS/TLS/network/auth dipetakan secara aman, status perangkat dan Audit menampilkan diagnosis tanpa membocorkan endpoint atau key, serta diagnostic runtime melaporkan kesiapan Web Push.
 - Memperbaiki lint Rekening/Rekonsiliasi, menghapus CSS dashboard legacy yang tidak memiliki pemilik runtime, memecah panel rekening mobile dan form transaksi dashboard menjadi lazy chunk, serta memperbaiki tiga browser regression agar source memenuhi kontrak lint, build budget, dan journey owner/member/breakpoint aktual.
 - Menghilangkan horizontal overflow pada modal mobile, filter Transaksi, kelompok ikon Kategori, dan native file input tanpa mengunci scroll vertikal; carousel rekening desktop/mobile yang memang merupakan kontrol pemilihan tetap dipertahankan.

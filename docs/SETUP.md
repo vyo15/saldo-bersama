@@ -2,7 +2,25 @@
 
 ## 1. Runtime
 
-Gunakan Node 24.x dan npm 10+. `npm run dev` dapat menjalankan `npm ci` otomatis ketika dependency workspace belum tersedia, tetapi `npm ci` tetap menjadi command canonical untuk CI dan quality gate.
+Gunakan Node 24.x dan npm 10+. Versi project dipin pada `.node-version` ke Node 24.18.1. `npm run dev` dapat menjalankan `npm ci` otomatis ketika dependency workspace belum tersedia, tetapi `npm ci` tetap menjadi command canonical untuk CI dan quality gate.
+
+### Windows Git Bash
+
+Gunakan `fnm` agar Node project tidak bertabrakan dengan instalasi Node global Windows:
+
+```bash
+winget install -e --id Schniz.fnm
+grep -qxF 'eval "$(fnm env --use-on-cd --shell bash)"' ~/.bashrc || echo 'eval "$(fnm env --use-on-cd --shell bash)"' >> ~/.bashrc
+source ~/.bashrc
+fnm install 24.18.1
+fnm default 24.18.1
+fnm use
+hash -r
+node -v
+npm -v
+```
+
+Hasil `node -v` harus `v24.18.1`. `fnm env --use-on-cd` membaca `.node-version` setiap kali Git Bash masuk ke repository.
 
 ## 2. Onboarding
 

@@ -39,7 +39,22 @@ Jangan menggunakan chat/memory sebagai source of truth ketika repository tersedi
 
 ## Menjalankan lokal
 
-Persyaratan canonical: Node.js 24.x dan npm 10 atau lebih baru.
+Persyaratan canonical: Node.js 24.x dan npm 10 atau lebih baru. Repository menyertakan `.node-version` agar `fnm` memilih Node 24.18.1 secara konsisten.
+
+Untuk Windows Git Bash, pasang dan aktifkan `fnm` satu kali:
+
+```bash
+winget install -e --id Schniz.fnm
+grep -qxF 'eval "$(fnm env --use-on-cd --shell bash)"' ~/.bashrc || echo 'eval "$(fnm env --use-on-cd --shell bash)"' >> ~/.bashrc
+source ~/.bashrc
+fnm install 24.18.1
+fnm default 24.18.1
+fnm use
+node -v
+npm -v
+```
+
+Setelah `fnm env --use-on-cd` aktif, masuk ke folder repository akan mengikuti `.node-version` secara otomatis.
 
 Pada clone baru cukup jalankan:
 

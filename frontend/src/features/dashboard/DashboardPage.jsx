@@ -7,11 +7,11 @@ import { TRANSACTION_LABELS } from "../transactions/transactionPresentation.js";
 import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import DesktopFinanceDashboard from "./components/DesktopFinanceDashboard.jsx";
 import MobileFinanceDashboard from "./components/MobileFinanceDashboard.jsx";
-import MobileDashboardFilters from "./components/MobileDashboardFilters.jsx";
-import MobileTransactionDetail from "./components/MobileTransactionDetail.jsx";
 import { absoluteAmount } from "./dashboardPresentation.js";
 
 const TransactionForm = lazy(() => import("../transactions/TransactionForm.jsx"));
+const MobileDashboardFilters = lazy(() => import("./components/MobileDashboardFilters.jsx"));
+const MobileTransactionDetail = lazy(() => import("./components/MobileTransactionDetail.jsx"));
 
 const DashboardPage = () => {
   const { overview, bootstrap, status, error, refreshOverview, refreshAll } = useFinance();
@@ -196,38 +196,46 @@ const DashboardPage = () => {
         onRefresh={refreshOverview}
         onOpenTransaction={() => setFormOpen(true)}
       />
-      <MobileDashboardFilters
-        open={mobileFiltersOpen}
-        onClose={() => setMobileFiltersOpen(false)}
-        accounts={dashboardViewModel.accountBalances}
-        categories={(bootstrap?.categories || []).filter((item) => item.status === "active")}
-        accountFilter={accountFilter}
-        onAccountFilterChange={setAccountFilter}
-        categoryFilter={categoryFilter}
-        onCategoryFilterChange={setCategoryFilter}
-        typeFilter={typeFilter}
-        onTypeFilterChange={setTypeFilter}
-        searchTerm={searchTerm}
-        onSearchTermChange={setSearchTerm}
-        activeFilterCount={dashboardViewModel.activeFilterCount}
-        onReset={resetDashboardFilters}
-      />
-      <MobileTransactionDetail
-        open={mobileTransactionDetailOpen}
-        onClose={() => setMobileTransactionDetailOpen(false)}
-        transaction={dashboardViewModel.selectedTransaction}
-        title={dashboardViewModel.selectedTitle}
-        category={dashboardViewModel.selectedCategory}
-        accountLabel={dashboardViewModel.transactionAccountLabel(dashboardViewModel.selectedTransaction)}
-        envelope={dashboardViewModel.selectedEnvelope}
-        envelopeNote={dashboardViewModel.selectedEnvelopeNote}
-        lastSyncedAt={dashboardViewModel.lastSyncedAt}
-        balanceVisible={balanceVisible}
-        onOpenTransaction={() => {
-          setMobileTransactionDetailOpen(false);
-          setFormOpen(true);
-        }}
-      />
+      {mobileFiltersOpen ? (
+        <Suspense fallback={null}>
+          <MobileDashboardFilters
+            open
+            onClose={() => setMobileFiltersOpen(false)}
+            accounts={dashboardViewModel.accountBalances}
+            categories={(bootstrap?.categories || []).filter((item) => item.status === "active")}
+            accountFilter={accountFilter}
+            onAccountFilterChange={setAccountFilter}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            activeFilterCount={dashboardViewModel.activeFilterCount}
+            onReset={resetDashboardFilters}
+          />
+        </Suspense>
+      ) : null}
+      {mobileTransactionDetailOpen ? (
+        <Suspense fallback={null}>
+          <MobileTransactionDetail
+            open
+            onClose={() => setMobileTransactionDetailOpen(false)}
+            transaction={dashboardViewModel.selectedTransaction}
+            title={dashboardViewModel.selectedTitle}
+            category={dashboardViewModel.selectedCategory}
+            accountLabel={dashboardViewModel.transactionAccountLabel(dashboardViewModel.selectedTransaction)}
+            envelope={dashboardViewModel.selectedEnvelope}
+            envelopeNote={dashboardViewModel.selectedEnvelopeNote}
+            lastSyncedAt={dashboardViewModel.lastSyncedAt}
+            balanceVisible={balanceVisible}
+            onOpenTransaction={() => {
+              setMobileTransactionDetailOpen(false);
+              setFormOpen(true);
+            }}
+          />
+        </Suspense>
+      ) : null}
       {formOpen ? (
         <Suspense fallback={null}>
           <TransactionForm open onClose={() => setFormOpen(false)} />

@@ -62,9 +62,10 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
 });
 
 test("halaman rekening fokus pada rekening, detail besar, capability, dan form nomor rekening", async () => {
-  const [page, accountSheets, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
+  const [page, accountSheets, accountEditors, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
+    read("src/features/accounts/components/AccountEditorDialogs.jsx"),
     read("src/features/accounts/components/AccountFinancialCard.jsx"),
     read("src/features/accounts/AccountsPage.module.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
@@ -72,10 +73,13 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
   ]);
   const accountPageSource = `${page}
-${accountSheets}`;
+${accountSheets}
+${accountEditors}`;
 
   assert.match(accountPageSource, /title="Rekening"/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
+  assert.match(page, /lazy\(\(\) => import\("\.\/components\/AccountEditorDialogs\.jsx"\)\)/);
+  assert.match(page, /\(createDialogOpen \|\| editAccount\) \? \(/);
   assert.match(accountSheets, /title="Daftar rekening"/);
   assert.match(accountPageSource, /aria-label="Tambah rekening"/);
   assert.match(accountPageSource, /title="Tambah rekening"/);

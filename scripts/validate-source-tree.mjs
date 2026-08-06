@@ -21,6 +21,7 @@ const allowedRootEntries = new Set([
   ".github",
   ".gitignore",
   ".npmrc",
+  ".node-version",
   "AGENTS.md",
   "CHANGELOG.md",
   "CONTRIBUTING.md",

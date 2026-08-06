@@ -1,3 +1,31 @@
+## Current task — Route budget dan runtime Git Bash
+
+**Tanggal:** 2026-08-06
+**Source:** `saldo-bersama-clean-web-push-delivery-fix-20260806.zip`
+**Schema:** tetap version 6
+
+### Implementasi
+
+1. Dialog tambah/edit Rekening dipindahkan ke lazy chunk `AccountEditorDialogs.jsx` dan hanya dimuat saat create/edit dibuka.
+2. Filter dan detail transaksi mobile Dashboard dipindahkan ke lazy chunk dan hanya dimuat saat pengguna membukanya.
+3. Batas route chunk 8 KiB gzip tidak dinaikkan.
+4. Repository menambahkan `.node-version` `24.18.1` dan panduan `fnm` untuk Windows Git Bash.
+5. Source validator dan governance test mengunci file versi Node agar tidak drift dari `package.json`.
+
+### Hasil test
+
+- Frontend static/contract: 80/80 lulus.
+- Governance focused: 3/3 lulus.
+- Source validation: 345 file lulus.
+- Syntax Node: 96 file lulus. Apps Script: 6 file dan 2 urutan load lulus.
+- Vite build, build budget, full ESLint, dan authenticated browser journey wajib diulang pada Node 24.x di komputer lokal karena registry sandbox tidak menyediakan `vite@7.3.6`.
+
+### Guarded areas
+
+Schema, migration, auth/allowlist/role, saldo, transaksi, transfer, audit, backup/restore, Apps Script, environment, secret, VAPID key, dependency, dan Vercel configuration tidak diubah.
+
+---
+
 ## Current task — Lint, build budget, dan browser regression
 
 **Tanggal:** 2026-08-06  

@@ -9,9 +9,7 @@ import { useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
-import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
-import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -29,12 +27,12 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
-import { parseRupiah } from "../../domain/money.js";
 import AccountFinancialCard, { AccountVisual } from "./components/AccountFinancialCard.jsx";
-import { accountCardholderName, BANK_TEMPLATE_OPTIONS, detectBankTemplate } from "./accountPresentation.js";
+import { accountCardholderName, detectBankTemplate } from "./accountPresentation.js";
 import styles from "./AccountsPage.module.css";
 
 const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));
+const AccountEditorDialogs = lazy(() => import("./components/AccountEditorDialogs.jsx"));
 
 const emptyAccountForm = () => ({
   name: "",
@@ -47,10 +45,6 @@ const emptyAccountForm = () => ({
   initial_balance_date: todayInJakarta(),
   allow_negative: false,
 });
-
-const previewBalance = (value) => {
-  try { return parseRupiah(value || "0"); } catch { return 0; }
-};
 
 const MOBILE_STACK_SLOT_STYLES = Object.freeze({
   "-2": Object.freeze({ x: 72, y: -238, z: -285, rx: 68, ry: -10, rz: 24, opacity: 0, brightness: 0.63, saturate: 0.68, shadow: 0.1 }),
@@ -137,7 +131,6 @@ const AccountsPage = () => {
   const mobileStackAnimatingRef = useRef(false);
   const detailContainerRef = useRef(null);
   const detailCloseRef = useRef(null);
-  const createNameInputRef = useRef(null);
 
   const reloadAccounts = async () => {
     invalidate([
@@ -540,19 +533,7 @@ const AccountsPage = () => {
   const currentDatabaseUser = activeUsers.find((item) => item.is_current) || null;
   const currentOwnerLabel = currentDatabaseUser?.name || user?.name || "Pengguna aktif";
   const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) || accounts[0] || null;
-  const accountPreview = {
-    name: accountForm.name || "Nama rekening",
-    account_type: accountForm.account_type,
-    account_number: accountForm.account_number,
-    bank_template: accountForm.account_type === "bank" ? accountForm.bank_template : "generic",
-    owner_scope: accountForm.owner_scope,
-    owner_user_id: accountForm.owner_scope === "personal" ? accountForm.owner_user_id || currentDatabaseUser?.user_id || "" : "",
-    owner_name: accountForm.owner_scope === "personal"
-      ? activeUsers.find((item) => item.user_id === (accountForm.owner_user_id || currentDatabaseUser?.user_id))?.name || currentOwnerLabel
-      : "",
-    balance: previewBalance(accountForm.initial_balance),
-    status: "active",
-  };
+
 
   return (
     <div className={`page-stack ${styles.accountsPage}`}>
@@ -744,56 +725,25 @@ const AccountsPage = () => {
         </Suspense>
       ) : null}
 
-      <Modal open={createDialogOpen} onClose={closeCreateDialog} title="Tambah rekening" description="Isi identitas rekening dan saldo awal. Nomor rekening tidak pernah diperlakukan sebagai nomor kartu debit." size="lg" initialFocusRef={createNameInputRef} footer={<><Button onClick={closeCreateDialog} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={dialogState.status === "submitting"}>Simpan rekening</Button></>}>
-        <div className={styles.createAccountLayout}>
-          <AccountFinancialCard account={accountPreview} variant="preview" templateOverride={accountForm.account_type === "bank" ? accountForm.bank_template : "generic"} />
-          <form id="create-account-form" className="form-grid" onSubmit={createAccount}>
-            <label className="field form-grid__full"><span>Nama rekening *</span><input ref={createNameInputRef} required maxLength="100" placeholder="Contoh: Tabungan nikah" value={accountForm.name} onChange={(event) => setAccountForm((current) => ({ ...current, name: event.target.value }))} /><small>Gunakan nama sesuai tujuan rekening. Nama bank dipilih terpisah melalui template kartu.</small></label>
-            {accountForm.account_type === "bank" ? <label className="field form-grid__full"><span>No rekening *</span><input required inputMode="numeric" autoComplete="off" maxLength="34" pattern="[0-9 ]{6,34}" placeholder="Contoh: 1234567890123456" value={accountForm.account_number} onChange={(event) => setAccountForm((current) => ({ ...current, account_number: event.target.value.replace(/\D/g, "").slice(0, 34) }))} /><small>Disimpan sebagai digit saja dan hanya ditampilkan kepada pengguna yang terotorisasi.</small></label> : null}
-            <label className="field"><span>Jenis</span><select value={accountForm.account_type} onChange={(event) => setAccountForm((current) => ({ ...current, account_type: event.target.value, account_number: event.target.value === "bank" ? current.account_number : "", bank_template: event.target.value === "bank" ? current.bank_template : "generic" }))}><option value="bank">Bank</option><option value="cash">Tunai</option><option value="ewallet">E-wallet</option><option value="savings">Tabungan</option><option value="emergency_fund">Dana darurat</option><option value="sinking_fund">Dana berkala</option><option value="investment">Investasi</option><option value="other">Lainnya</option></select></label>
-            <label className="field"><span>Kepemilikan</span><select value={accountForm.owner_scope} onChange={(event) => setAccountForm((current) => ({ ...current, owner_scope: event.target.value, owner_user_id: event.target.value === "personal" ? current.owner_user_id || currentDatabaseUser?.user_id || "" : "" }))}><option value="shared">Bersama</option><option value="personal">Pribadi</option></select></label>
-            {accountForm.owner_scope === "personal" ? (
-              <label className="field">
-                <span>Pemilik rekening *</span>
-                {activeUsers.length ? (
-                  <select required value={accountForm.owner_user_id || currentDatabaseUser?.user_id || ""} onChange={(event) => setAccountForm((current) => ({ ...current, owner_user_id: event.target.value }))}>
-                    {activeUsers.map((member) => <option key={member.user_id} value={member.user_id}>{member.name || "Pengguna"}{member.is_current ? " · saya" : ""}</option>)}
-                  </select>
-                ) : <input value={currentOwnerLabel} disabled aria-label="Pemilik rekening aktif" />}
-                <small>{activeUsers.length ? "Nama pemilik ditampilkan kepada pasangan. Hak transaksi rekening personal tetap mengikuti pemilik." : "Daftar anggota belum dapat dimuat. Rekening pribadi baru akan dimiliki pengguna aktif dan tetap divalidasi oleh server."}</small>
-              </label>
-            ) : null}
-            {accountForm.account_type === "bank" ? <label className="field form-grid__full"><span>Template kartu bank</span><select value={accountForm.bank_template} onChange={(event) => setAccountForm((current) => ({ ...current, bank_template: event.target.value }))}>{BANK_TEMPLATE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select><small>Template hanya mengubah tampilan kartu dan tidak menambahkan nama bank ke nama rekening. PIN, CVV, nomor kartu debit, dan masa berlaku tidak disimpan.</small></label> : null}
-            <MoneyInput id="initial-balance" label="Saldo awal" value={accountForm.initial_balance} onChange={(value) => setAccountForm((current) => ({ ...current, initial_balance: value }))} />
-            <label className="field"><span>Tanggal saldo awal</span><input type="date" value={accountForm.initial_balance_date} onChange={(event) => setAccountForm((current) => ({ ...current, initial_balance_date: event.target.value }))} /></label>
-            <label className="checkbox-field form-grid__full"><input type="checkbox" checked={accountForm.allow_negative} onChange={(event) => setAccountForm((current) => ({ ...current, allow_negative: event.target.checked }))} /><span>Izinkan saldo negatif</span></label>
-            {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
-          </form>
-        </div>
-      </Modal>
+      {(createDialogOpen || editAccount) ? (
+        <Suspense fallback={null}>
+          <AccountEditorDialogs
+            createDialogOpen={createDialogOpen}
+            onCloseCreate={closeCreateDialog}
+            accountForm={accountForm}
+            setAccountForm={setAccountForm}
+            onCreateAccount={createAccount}
+            editAccount={editAccount}
+            setEditAccount={setEditAccount}
+            onSaveAccount={saveAccount}
+            dialogState={dialogState}
+            activeUsers={activeUsers}
+            currentDatabaseUser={currentDatabaseUser}
+            currentOwnerLabel={currentOwnerLabel}
+          />
+        </Suspense>
+      ) : null}
 
-
-      <Modal open={Boolean(editAccount)} onClose={() => dialogState.status !== "submitting" && setEditAccount(null)} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={() => setEditAccount(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={dialogState.status === "submitting"}>{dialogState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
-        <form id="edit-account-form" className="form-grid" onSubmit={saveAccount}>
-          <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" value={editAccount?.name || ""} onChange={(event) => setEditAccount((current) => ({ ...current, name: event.target.value }))} /></label>
-          {editAccount?.account_type === "bank" ? <label className="field form-grid__full"><span>No rekening *</span><input required inputMode="numeric" autoComplete="off" maxLength="34" pattern="[0-9 ]{6,34}" value={editAccount?.account_number || ""} onChange={(event) => setEditAccount((current) => ({ ...current, account_number: event.target.value.replace(/\D/g, "").slice(0, 34) }))} /></label> : null}
-          {editAccount?.account_type === "bank" ? <label className="field form-grid__full"><span>Template kartu bank</span><select value={editAccount?.bank_template || "generic"} onChange={(event) => setEditAccount((current) => ({ ...current, bank_template: event.target.value }))}>{BANK_TEMPLATE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select><small>Template tersimpan sebagai tampilan kartu dan tidak mengubah nama rekening.</small></label> : null}
-          <label className="field"><span>Kepemilikan</span><select value={editAccount?.owner_scope || "shared"} onChange={(event) => setEditAccount((current) => ({ ...current, owner_scope: event.target.value, owner_user_id: event.target.value === "personal" ? current.owner_user_id || currentDatabaseUser?.user_id || "" : "" }))}><option value="shared">Bersama</option><option value="personal">Pribadi</option></select></label>
-          {editAccount?.owner_scope === "personal" ? (
-            <label className="field">
-              <span>Pemilik rekening *</span>
-              {activeUsers.length ? (
-                <select required value={editAccount?.owner_user_id || currentDatabaseUser?.user_id || ""} onChange={(event) => setEditAccount((current) => ({ ...current, owner_user_id: event.target.value }))}>
-                  {activeUsers.map((member) => <option key={member.user_id} value={member.user_id}>{member.name || "Pengguna"}{member.is_current ? " · saya" : ""}</option>)}
-                </select>
-              ) : <input value={editAccount?.owner_name || currentOwnerLabel} disabled aria-label="Pemilik rekening saat ini" />}
-              <small>{activeUsers.length ? "Kepemilikan hanya dapat dipindahkan bila rekening belum memiliki data terkait." : "Daftar anggota belum dapat dimuat. Pemilik rekening saat ini dipertahankan."}</small>
-            </label>
-          ) : null}
-          <label className="checkbox-field"><input type="checkbox" checked={Boolean(editAccount?.allow_negative)} onChange={(event) => setEditAccount((current) => ({ ...current, allow_negative: event.target.checked }))} /><span>Izinkan saldo negatif</span></label>
-          {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
-        </form>
-      </Modal>
 
       <ConfirmationModal
         open={Boolean(archiveTarget)}

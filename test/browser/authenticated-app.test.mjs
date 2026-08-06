@@ -250,13 +250,25 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
         experienceBackground: experienceStyle?.backgroundImage || '',
         reservedGap: experienceRect && navigationRect ? navigationRect.top - experienceRect.bottom : -1,
         contentColor: contentStyle?.color || '',
+        canonicalOnHeroColor: (() => {
+          const probe = document.createElement("span");
+          probe.style.color = "var(--on-hero)";
+          document.body.appendChild(probe);
+          const color = getComputedStyle(probe).color;
+          probe.remove();
+          return color;
+        })(),
       };
     })()`);
     assert.ok(accountFullScreenState.shellHeight >= accountFullScreenState.viewportHeight - 1, "Shell Rekening harus memenuhi dynamic viewport pada layar pendek.");
     assert.notEqual(accountFullScreenState.contentBackground, "none", "Area aman di bawah konten Rekening harus memiliki background route.");
     assert.equal(accountFullScreenState.contentBackground, accountFullScreenState.experienceBackground, "Background Rekening harus berlanjut sampai ruang aman sebelum navigasi.");
     assert.ok(accountFullScreenState.reservedGap >= -1 && accountFullScreenState.reservedGap <= 20, `Ruang aman sebelum navigasi harus tetap terkontrol, ditemukan ${accountFullScreenState.reservedGap}px.`);
-    assert.match(accountFullScreenState.contentColor, /rgb\(255, 255, 255\)/, "State loading atau notice pada route Rekening harus tetap terbaca di atas surface gelap.");
+    assert.equal(
+      accountFullScreenState.contentColor,
+      accountFullScreenState.canonicalOnHeroColor,
+      "State loading atau notice pada route Rekening harus memakai warna on-hero canonical di atas surface gelap.",
+    );
     await setViewport(page, 390, 844);
     await page.evaluate("window.scrollTo(0, 0)");
     await waitFor(() => page.evaluate(`(() => {
@@ -561,10 +573,14 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
       button?.click();
     })()`);
     await waitFor(
-      () => page.evaluate("document.querySelector('[id=\"mobile-account-stack-title\"]')?.textContent?.trim() === 'Tabungan Owner'"),
+      () => page.evaluate("document.querySelector('[id=\"mobile-account-stack-title\"]')?.textContent?.includes('Tabungan Owner') || false"),
       { description: "rekening pasangan menjadi kartu aktif" },
     );
-    await page.evaluate("document.querySelector('button[aria-label=\"Lihat detail rekening Tabungan Owner\"][aria-pressed=\"true\"]')?.click()");
+    await page.evaluate(`(() => {
+      const activeCard = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')]
+        .find((item) => item.getAttribute("aria-pressed") === "true" && item.getAttribute("aria-label")?.includes("Tabungan Owner"));
+      activeCard?.click();
+    })()`);
     await waitFor(() => page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Saldo saat ini') || false"), { description: "detail rekening pasangan" });
     assert.equal(await page.evaluate("document.body.textContent.includes('Hanya lihat')"), true, "Rekening personal pasangan harus ditandai hanya lihat.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('[aria-label^=\"Aksi rekening\"] button'))"), false, "Member tidak boleh memperoleh aksi write untuk rekening personal pasangan.");

@@ -49,6 +49,8 @@ test("tooling kualitas dan lifecycle dokumentasi terhubung dari package canonica
   assert.equal(packageJson.scripts["lint:backend"], "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js");
   assert.match(packageJson.scripts.lint, /npm run lint:backend/);
   assert.match(packageJson.scripts.check, /build:budget/);
+  assert.equal(packageJson.engines.node, "24.x");
+  assert.equal((await source(".node-version")).trim(), "24.18.1");
 
   const backendLint = await source("eslint.backend.config.js");
   assert.match(backendLint, /"no-undef": "error"/);

@@ -195,6 +195,10 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
 
   assert.equal((page.match(/<TransactionForm/g) || []).length, 1, "Dashboard hanya boleh memiliki satu form transaksi shared.");
   assert.match(page, /const TransactionForm = lazy\(\(\) => import\("\.\.\/transactions\/TransactionForm\.jsx"\)\)/, "Form transaksi dashboard harus dimuat hanya saat modal dibuka.");
+  assert.match(page, /const MobileDashboardFilters = lazy\(\(\) => import\("\.\/components\/MobileDashboardFilters\.jsx"\)\)/);
+  assert.match(page, /const MobileTransactionDetail = lazy\(\(\) => import\("\.\/components\/MobileTransactionDetail\.jsx"\)\)/);
+  assert.match(page, /mobileFiltersOpen \? \(/);
+  assert.match(page, /mobileTransactionDetailOpen \? \(/);
   assert.match(desktop, /aria-label=\{balanceVisible \? "Sembunyikan seluruh nominal"/);
   assert.match(desktop, /Pilih rekening untuk melihat aktivitasnya/);
   assert.match(desktop, /accountTransactionDelta/);
