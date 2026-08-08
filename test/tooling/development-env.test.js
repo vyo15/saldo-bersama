@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -5,9 +6,27 @@ import path from "node:path";
 import test from "node:test";
 import { ensureDevelopmentDependencies } from "../../scripts/bootstrap-development-dependencies.mjs";
 import { ensureDevelopmentEnvironment } from "../../scripts/bootstrap-development-env.mjs";
-import { REQUIRED_RUNTIME_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
+import { CORE_RUNTIME_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
 
-const completeEnvironment = () => `${REQUIRED_RUNTIME_ENV_KEYS.map((key) => `${key}=${key.toLowerCase()}-value`).join("\n")}\n`;
+const validWebPushEnvironment = () => {
+  const ecdh = crypto.createECDH("prime256v1");
+  ecdh.generateKeys();
+  return {
+    VITE_VAPID_PUBLIC_KEY: ecdh.getPublicKey().toString("base64url"),
+    VAPID_PRIVATE_KEY: ecdh.getPrivateKey().toString("base64url"),
+    VAPID_SUBJECT: "mailto:owner@example.com",
+  };
+};
+
+const completeEnvironment = () => {
+  const values = {
+    ...Object.fromEntries(CORE_RUNTIME_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`])),
+    ...validWebPushEnvironment(),
+  };
+  return `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n")}\n`;
+};
+
+const coreOnlyEnvironment = () => `${CORE_RUNTIME_ENV_KEYS.map((key) => `${key}=${key.toLowerCase()}-value`).join("\n")}\n`;
 
 const withTempRoot = async (callback) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "saldo-local-env-"));
@@ -15,11 +34,24 @@ const withTempRoot = async (callback) => {
   finally { await rm(root, { recursive: true, force: true }); }
 };
 
-test("bootstrap memakai .env.local lengkap tanpa menghubungi Vercel", async () => withTempRoot(async (root) => {
+const successfulRefreshRunner = (environmentSource, calls = []) => async ({ args, stdio }) => {
+  calls.push({ args: [...args], stdio });
+  if (args[0] === "whoami") return { code: 0 };
+  if (args[0] === "link") return { code: 0 };
+  if (args[0] === "env" && args[1] === "ls") return { code: 0 };
+  if (args[0] === "env" && args[1] === "pull") {
+    await writeFile(args[2], environmentSource);
+    return { code: 0 };
+  }
+  return { code: 1 };
+};
+
+test("bootstrap non-interaktif memakai .env.local lengkap tanpa menghubungi Vercel", async () => withTempRoot(async (root) => {
   await writeFile(path.join(root, ".env.local"), completeEnvironment());
   let calls = 0;
   const result = await ensureDevelopmentEnvironment({
     projectRoot: root,
+    interactive: false,
     runner: async () => { calls += 1; return { code: 0 }; },
   });
   assert.equal(result.source, "local");
@@ -27,12 +59,29 @@ test("bootstrap memakai .env.local lengkap tanpa menghubungi Vercel", async () =
   assert.equal(calls, 0);
 }));
 
-test("bootstrap membersihkan OIDC dari .env.local lengkap tanpa menghubungi Vercel", async () => withTempRoot(async (root) => {
+test("bootstrap interaktif selalu refresh Vercel Development walau .env.local lengkap", async () => withTempRoot(async (root) => {
+  const envPath = path.join(root, ".env.local");
+  const local = completeEnvironment();
+  const remote = completeEnvironment();
+  await writeFile(envPath, local);
+  const calls = [];
+  const result = await ensureDevelopmentEnvironment({
+    projectRoot: root,
+    interactive: true,
+    runner: successfulRefreshRunner(remote, calls),
+  });
+  assert.equal(result.source, "vercel-development");
+  assert.equal(calls.some(({ args }) => args[0] === "env" && args[1] === "pull"), true);
+  assert.equal(await readFile(envPath, "utf8"), remote);
+}));
+
+test("bootstrap membersihkan OIDC dari .env.local lengkap pada mode non-interaktif", async () => withTempRoot(async (root) => {
   const envPath = path.join(root, ".env.local");
   await writeFile(envPath, `${completeEnvironment()}VERCEL_OIDC_TOKEN=temporary\n`);
   let calls = 0;
   const result = await ensureDevelopmentEnvironment({
     projectRoot: root,
+    interactive: false,
     runner: async () => { calls += 1; return { code: 0 }; },
   });
   const source = await readFile(envPath, "utf8");
@@ -46,6 +95,17 @@ test("bootstrap fail closed tanpa terminal interaktif ketika .env.local tidak te
   await assert.rejects(
     ensureDevelopmentEnvironment({ projectRoot: root, interactive: false }),
     (error) => error.code === "LOCAL_ENV_NOT_FOUND" && error.envPath.endsWith(".env.local"),
+  );
+}));
+
+test("bootstrap menganggap Web Push wajib untuk canonical local testing", async () => withTempRoot(async (root) => {
+  await writeFile(path.join(root, ".env.local"), coreOnlyEnvironment());
+  await assert.rejects(
+    ensureDevelopmentEnvironment({ projectRoot: root, interactive: false }),
+    (error) => error.code === "LOCAL_ENV_INCOMPLETE"
+      && error.missing.includes("VITE_VAPID_PUBLIC_KEY")
+      && error.missing.includes("VAPID_PRIVATE_KEY")
+      && error.missing.includes("VAPID_SUBJECT"),
   );
 }));
 
@@ -81,6 +141,7 @@ test("bootstrap otomatis login, link, pull Development, sanitasi OIDC, dan menul
 
   assert.equal(result.source, "vercel-development");
   assert.match(local, /TURSO_DATABASE_URL=/);
+  assert.match(local, /VITE_VAPID_PUBLIC_KEY=/);
   assert.doesNotMatch(local, /VERCEL_OIDC_TOKEN/);
   assert.equal(calls.some(({ args }) => args[0] === "login"), true);
   assert.equal(calls.some(({ args }) => args[0] === "link" && args.includes("saldo-bersama")), true);
@@ -90,7 +151,7 @@ test("bootstrap otomatis login, link, pull Development, sanitasi OIDC, dan menul
 
 test("bootstrap mempertahankan .env.local lama bila pull Development gagal", async () => withTempRoot(async (root) => {
   const envPath = path.join(root, ".env.local");
-  const original = "VITE_GOOGLE_CLIENT_ID=client-id\n";
+  const original = completeEnvironment();
   await writeFile(envPath, original);
 
   const runner = async ({ args }) => {
@@ -111,7 +172,21 @@ test("bootstrap mempertahankan .env.local lama bila pull Development gagal", asy
   assert.equal(await readFile(envPath, "utf8"), original);
 }));
 
-test("bootstrap menolak hasil pull Development yang tidak lengkap tanpa membuat .env.local", async () => withTempRoot(async (root) => {
+test("bootstrap menolak hasil pull Development yang tidak memiliki Web Push tanpa mengganti local lama", async () => withTempRoot(async (root) => {
+  const envPath = path.join(root, ".env.local");
+  const original = completeEnvironment();
+  await writeFile(envPath, original);
+  const runner = successfulRefreshRunner(coreOnlyEnvironment());
+
+  await assert.rejects(
+    ensureDevelopmentEnvironment({ projectRoot: root, interactive: true, runner }),
+    (error) => error.code === "VERCEL_DEVELOPMENT_ENV_INCOMPLETE"
+      && error.missing.includes("VITE_VAPID_PUBLIC_KEY"),
+  );
+  assert.equal(await readFile(envPath, "utf8"), original);
+}));
+
+test("bootstrap menolak hasil pull Development yang core-nya tidak lengkap tanpa membuat .env.local", async () => withTempRoot(async (root) => {
   const runner = async ({ args }) => {
     if (args[0] === "whoami") return { code: 0 };
     if (args[0] === "link") return { code: 0 };

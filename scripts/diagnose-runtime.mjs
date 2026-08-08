@@ -12,7 +12,7 @@ console.log("Saldo Bersama runtime diagnostic");
 console.log(`Node: ${process.version}`);
 for (const key of CORE_RUNTIME_ENV_KEYS) console.log(`- ${key}: ${String(process.env[key] || "").trim() ? "set" : "MISSING"}`);
 const webPush = validateWebPushEnvironment(process.env);
-if (!webPush.enabled) console.log("Web Push: optional/not configured");
+if (!webPush.enabled) console.error("Web Push: MISSING (required for canonical local testing)");
 else if (!webPush.complete) console.error(`Web Push: INCOMPLETE (${webPush.missing.join(", ")})`);
 else if (!webPush.valid) console.error(`Web Push: INVALID (${webPush.invalid.join(", ")})`);
 else console.log("Web Push: ready");
@@ -51,7 +51,5 @@ if (bridge) {
   } catch (error) { console.error(`Google bridge: FAILED (${error.name === "AbortError" ? "timeout" : error.message})`); }
 } else console.log("Google bridge: optional/not configured");
 
-if (missing.length) {
-  console.error(`Konfigurasi inti belum lengkap: ${missing.join(", ")}`);
-  process.exitCode = 1;
-}
+if (missing.length) console.error(`Konfigurasi inti belum lengkap: ${missing.join(", ")}`);
+if (missing.length || !webPush.enabled || !webPush.complete || !webPush.valid) process.exitCode = 1;

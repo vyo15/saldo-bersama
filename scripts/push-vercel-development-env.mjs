@@ -6,6 +6,7 @@ import {
   CORE_RUNTIME_ENV_KEYS,
   GOOGLE_BRIDGE_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
+  SETTINGS_ENV_KEYS,
   WEB_PUSH_ENV_KEYS,
   optionalGroupStatus,
   parseEnvironmentText,
@@ -29,6 +30,8 @@ export const DEVELOPMENT_ENV_KEYS = Object.freeze([
   ...WEB_PUSH_ENV_KEYS,
 ]);
 
+export const DEVELOPMENT_SETTINGS_ENV_KEYS = SETTINGS_ENV_KEYS;
+
 const FORBIDDEN_DEVELOPMENT_KEYS = Object.freeze([
   "INTERNAL_SHARED_SECRET",
   "APPS_SCRIPT_WEB_APP_URL",
@@ -44,21 +47,44 @@ const FORBIDDEN_DEVELOPMENT_KEYS = Object.freeze([
   "VERCEL_OIDC_TOKEN",
 ]);
 
-export const validateDevelopmentEnvironment = (values = {}) => {
-  const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
-  const forbidden = FORBIDDEN_DEVELOPMENT_KEYS.filter((key) => Object.hasOwn(values, key));
+const groupValidation = (values = {}) => {
   const googleBridge = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);
   const webPush = validateWebPushEnvironment(values);
   const incompleteGoogleBridge = googleBridge.enabled && !googleBridge.complete ? googleBridge.missing : [];
   const incompleteWebPush = webPush.enabled && !webPush.complete ? webPush.missing : [];
+  const missingWebPush = webPush.enabled ? [] : [...WEB_PUSH_ENV_KEYS];
   const invalidWebPush = webPush.complete ? webPush.invalid : [];
+  return { googleBridge, webPush, incompleteGoogleBridge, incompleteWebPush, missingWebPush, invalidWebPush };
+};
+
+export const validateDevelopmentEnvironment = (values = {}) => {
+  const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
+  const forbidden = FORBIDDEN_DEVELOPMENT_KEYS.filter((key) => Object.hasOwn(values, key));
+  const groups = groupValidation(values);
   return {
-    valid: !missing.length && !forbidden.length && !incompleteGoogleBridge.length && !incompleteWebPush.length && !invalidWebPush.length,
+    valid: !missing.length
+      && !forbidden.length
+      && !groups.incompleteGoogleBridge.length
+      && !groups.incompleteWebPush.length
+      && !groups.missingWebPush.length
+      && !groups.invalidWebPush.length,
     missing,
     forbidden,
-    incompleteGoogleBridge,
-    incompleteWebPush,
-    invalidWebPush,
+    ...groups,
+  };
+};
+
+export const validateDevelopmentSettingsEnvironment = (values = {}) => {
+  const forbidden = FORBIDDEN_DEVELOPMENT_KEYS.filter((key) => Object.hasOwn(values, key));
+  const groups = groupValidation(values);
+  return {
+    valid: !forbidden.length
+      && !groups.incompleteGoogleBridge.length
+      && !groups.incompleteWebPush.length
+      && !groups.missingWebPush.length
+      && !groups.invalidWebPush.length,
+    forbidden,
+    ...groups,
   };
 };
 
@@ -96,11 +122,23 @@ const runEnvAdd = ({ cwd, key, value }) => new Promise((resolve, reject) => {
   child.stdin.end(value);
 });
 
+const validationError = (status, { settingsOnly }) => {
+  const messages = [];
+  if (!settingsOnly && status.missing?.length) messages.push(`key wajib belum lengkap: ${status.missing.join(", ")}`);
+  if (status.forbidden.length) messages.push(`key legacy/forbidden terdeteksi: ${status.forbidden.join(", ")}`);
+  if (status.incompleteGoogleBridge.length) messages.push(`Google bridge belum lengkap: ${status.incompleteGoogleBridge.join(", ")}`);
+  if (status.missingWebPush.length) messages.push(`Web Push wajib belum tersedia: ${status.missingWebPush.join(", ")}`);
+  if (status.incompleteWebPush.length) messages.push(`Web Push belum lengkap: ${status.incompleteWebPush.join(", ")}`);
+  if (status.invalidWebPush.length) messages.push(`Web Push tidak valid: ${status.invalidWebPush.join(", ")}`);
+  return messages;
+};
+
 export const pushDevelopmentEnvironment = async ({
   cwd = projectRoot,
   envPath = path.join(cwd, ".env.local"),
   projectRunner = runProjectCheck,
   runner = runEnvAdd,
+  settingsOnly = false,
 } = {}) => {
   const source = await readFile(envPath, "utf8").catch((error) => {
     if (error?.code === "ENOENT") {
@@ -111,21 +149,18 @@ export const pushDevelopmentEnvironment = async ({
   const cleanedSource = cleanEnvironmentText(source);
   if (cleanedSource.text !== source) await writeEnvironmentFileAtomic(envPath, cleanedSource.text);
   const values = parseEnvironmentText(cleanedSource.text);
-  const status = validateDevelopmentEnvironment(values);
+  const status = settingsOnly
+    ? validateDevelopmentSettingsEnvironment(values)
+    : validateDevelopmentEnvironment(values);
   if (!status.valid) {
-    const messages = [];
-    if (status.missing.length) messages.push(`key wajib belum lengkap: ${status.missing.join(", ")}`);
-    if (status.forbidden.length) messages.push(`key legacy/forbidden terdeteksi: ${status.forbidden.join(", ")}`);
-    if (status.incompleteGoogleBridge.length) messages.push(`Google bridge belum lengkap: ${status.incompleteGoogleBridge.join(", ")}`);
-    if (status.incompleteWebPush.length) messages.push(`Web Push belum lengkap: ${status.incompleteWebPush.join(", ")}`);
-    if (status.invalidWebPush.length) messages.push(`Web Push tidak valid: ${status.invalidWebPush.join(", ")}`);
     throw Object.assign(
-      new Error(`Environment Development tidak valid — ${messages.join("; ")}.`),
+      new Error(`Environment Development tidak valid — ${validationError(status, { settingsOnly }).join("; ")}.`),
       { code: "DEVELOPMENT_ENV_INVALID", ...status },
     );
   }
 
-  const keysToSync = DEVELOPMENT_ENV_KEYS.filter((key) => String(values[key] ?? "").trim());
+  const keysToSync = (settingsOnly ? DEVELOPMENT_SETTINGS_ENV_KEYS : DEVELOPMENT_ENV_KEYS)
+    .filter((key) => String(values[key] ?? "").trim());
   try {
     await projectRunner({ cwd });
     for (const key of keysToSync) {
@@ -136,13 +171,13 @@ export const pushDevelopmentEnvironment = async ({
     await cleanEnvironmentFile({ file: envPath, allowMissing: true });
   }
 
-  console.log(`Selesai: ${keysToSync.length} environment canonical tersinkron ke Development.`);
-  console.log("Komputer baru kini dapat membuat .env.local otomatis melalui npm run dev.");
-  return { synced: [...keysToSync] };
+  console.log(`Selesai: ${keysToSync.length} environment ${settingsOnly ? "settings" : "canonical"} tersinkron ke Development.`);
+  console.log("npm run dev pada komputer tepercaya akan menarik Development terbaru secara otomatis.");
+  return { synced: [...keysToSync], settingsOnly };
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  pushDevelopmentEnvironment().catch((error) => {
+  pushDevelopmentEnvironment({ settingsOnly: process.argv.includes("--settings-only") }).catch((error) => {
     console.error(error?.message || "Sinkronisasi Development environment gagal.");
     process.exitCode = 1;
   });

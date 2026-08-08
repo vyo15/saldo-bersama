@@ -98,9 +98,11 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /account_id:\s*filters\.account/);
   assert.match(transactions, /category_id:\s*filters\.category/);
   assert.match(transactions, /created_by:\s*filters\.creator/);
+  assert.match(transactions, /location\.state\?\.creatorId/);
+  assert.match(transactions, /location\.state\?\.period/);
 });
 
-test("login mobile memakai brand resmi, dekorasi rupiah aman, dan auth provider canonical", async () => {
+test("login memakai brand resmi, layout logo-first, LinkedIn aman, dan auth provider canonical", async () => {
   const [login, pages, auth] = await Promise.all([
     read("src/features/auth/LoginPage.jsx"),
     read("src/styles/pages.css"),
@@ -110,9 +112,15 @@ test("login mobile memakai brand resmi, dekorasi rupiah aman, dan auth provider 
   assert.match(login, /<Brand \/>/);
   assert.match(login, /MONEY_NOTES/);
   assert.match(login, /aria-hidden="true"/);
-  assert.match(login, /Created by <strong>Vio Yusup Iskandar<\/strong>/);
+  assert.match(login, /className="sr-only">Saldo Bersama<\/h1>/);
+  assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
+  assert.match(login, /rel="noopener noreferrer"/);
+  assert.doesNotMatch(login, /Selamat datang!/);
+  assert.doesNotMatch(login, /login-trust-strip|login-card__privacy|Akun yang diizinkan/);
   assert.equal((login.match(/className="google-login-button"/g) || []).length, 1);
   assert.match(auth, /identity\.renderButton\(element/);
+  assert.match(pages, /\.google-login-button \{[\s\S]*width:\s*min\(100%, 21\.25rem\);/);
+  assert.match(pages, /\.login-creator a \{[\s\S]*min-height:\s*var\(--control-height-md\);[\s\S]*display:\s*inline-flex;/);
   assert.match(pages, /@keyframes login-money-fall/);
   assert.match(pages, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
 });

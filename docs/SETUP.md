@@ -36,24 +36,24 @@ cd saldo-bersama
 npm run dev
 ```
 
-Alur `npm run dev`:
+Alur `npm run dev` pada terminal interaktif:
 
 1. Memeriksa `vite`, `react`, dan `@mantine/core` dari workspace frontend.
 2. Menjalankan `npm ci` hanya bila dependency tersebut belum tersedia.
-3. Membersihkan token OIDC sementara/key legacy lalu memakai `.env.local` langsung bila delapan key core lengkap.
-4. Bila file hilang/tidak lengkap dan terminal interaktif, menjalankan Vercel CLI melalui `npx --yes`.
-5. Meminta login Vercel hanya bila sesi belum ada.
-6. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
-7. Menarik hanya **Vercel Development Environment** ke file sementara.
-8. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, serta grup opsional parsial.
-9. Memvalidasi delapan key core sebelum mengganti `.env.local` secara atomik.
+3. Membersihkan token OIDC sementara dan key legacy dari `.env.local` bila file sudah ada.
+4. Meminta login Vercel hanya bila sesi belum ada.
+5. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
+6. Menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
+7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, serta grup opsional parsial.
+8. Memvalidasi delapan key core dan satu grup Web Push lengkap/valid.
+9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
 10. Menjalankan server lokal setelah dependency dan environment valid.
 
-Nilai canonical `.env.local` lama dipertahankan bila login, link, pull, atau validasi gagal; token OIDC sementara/key legacy tetap dibersihkan. Terminal non-interaktif fail closed dan tidak membuka prompt.
+Refresh Development setiap start disengaja agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Bila login, link, pull, atau validasi gagal, `.env.local` lama dipertahankan tetapi server tidak dijalankan. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
 ## 4. Seed Vercel Development satu kali
 
-Dari komputer tepercaya yang sudah memiliki `.env.local` lengkap:
+Dari komputer tepercaya yang sudah memiliki `.env.local` canonical lengkap:
 
 ```bash
 npm run env:clean
@@ -61,7 +61,15 @@ npm run env:check
 npm run env:push:development
 ```
 
-Command tersebut mengirim key canonical ke scope **Development**, bukan Production. Sebelum validasi dan setelah `vercel link`, script membersihkan `VERCEL_OIDC_TOKEN` secara otomatis sehingga command aman dijalankan ulang. Nilai Development harus dapat dibaca kembali oleh collaborator Vercel yang berwenang karena dipakai oleh `vercel env pull`.
+Untuk kebutuhan settings saja, gunakan command scoped berikut agar Turso, allowlist, Firebase, dan session tidak disentuh:
+
+```bash
+npm run env:push:development:settings
+```
+
+Command settings selalu menyinkronkan pasangan Web Push yang valid dan ikut menyinkronkan Google bridge bila grup tersebut sudah aktif di `.env.local`. Gunakan komputer yang sudah memakai pasangan VAPID canonical. Jangan generate VAPID baru per laptop atau browser.
+
+Setelah Development terisi, komputer lain cukup menjalankan `npm run dev`. Tidak perlu copy/edit `.env.local` per perangkat. Izin notifikasi browser tetap harus diberikan satu kali oleh pengguna pada setiap browser/perangkat.
 
 Production tetap terpisah:
 

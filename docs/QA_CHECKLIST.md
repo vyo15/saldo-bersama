@@ -19,6 +19,10 @@
 - [ ] Schema v6, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
 - [ ] Desktop dan Android lulus Aktifkan → verifikasi otomatis → Nonaktifkan; iPhone/iPad diuji dari aplikasi Home Screen.
 - [ ] Monitoring health/integration queue tidak membocorkan secret.
+- [ ] `npm run env:check` menolak Development local testing bila Web Push hilang, parsial, invalid, atau pasangan key tidak cocok.
+- [ ] `npm run env:push:development:settings` hanya menyentuh Web Push dan Google bridge yang aktif; Turso, allowlist, Firebase, dan session tidak ikut berubah.
+- [ ] Setelah settings disinkronkan ke Vercel Development, laptop/PC tepercaya lain cukup menjalankan `npm run dev` dan menerima konfigurasi terbaru tanpa copy/edit `.env.local`.
+- [ ] Google bridge tetap opsional; bila dinonaktifkan, Integrasi/backup/restore external menampilkan status belum siap tanpa memblokir fitur Turso lain.
 
 - [ ] Action registry/policy, authorization map, dan API docs tetap sinkron.
 - [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.

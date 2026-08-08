@@ -72,8 +72,10 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(layout, /ownerOnly/);
   assert.match(notifications, /Setiap pengguna mendaftarkan perangkatnya sendiri/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
-  assert.match(members, /Tambah atau ubah akses/);
-  assert.match(members, /Pengguna aplikasi/);
+  assert.match(members, /Tambah anggota/);
+  assert.match(members, /<Modal[\s\S]*title=\{editingMember \? "Ubah akses anggota" : "Tambah anggota"\}/);
+  assert.match(members, /Lihat aktivitas transaksi/);
+  assert.doesNotMatch(members, /Tambah atau ubah akses/);
   assert.match(members, /users\.upsert/);
   assert.match(members, /reactivateUser/);
   assert.match(recovery, /useApiResource\("archive\.list"/);

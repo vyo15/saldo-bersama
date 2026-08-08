@@ -14,8 +14,10 @@ import {
 } from "../../scripts/push-vercel-production-env.mjs";
 import {
   DEVELOPMENT_ENV_KEYS,
+  DEVELOPMENT_SETTINGS_ENV_KEYS,
   pushDevelopmentEnvironment,
   validateDevelopmentEnvironment,
+  validateDevelopmentSettingsEnvironment,
 } from "../../scripts/push-vercel-development-env.mjs";
 import {
   CORE_RUNTIME_ENV_KEYS,
@@ -165,6 +167,48 @@ test("runner Vercel memakai npx langsung pada platform non-Windows", () => {
   assert.deepEqual(invocation.args, ["--yes", "vercel", "env", "ls", "production"]);
 });
 
+
+test("Development canonical menolak Web Push yang belum tersedia", () => {
+  const status = validateDevelopmentEnvironment(coreValues());
+  assert.equal(status.valid, false);
+  assert.deepEqual(status.missingWebPush, ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"]);
+});
+
+test("sinkronisasi settings Development tidak menyentuh core environment", async () => withTempProject(async (root) => {
+  const values = {
+    GOOGLE_BRIDGE_WEB_APP_URL: "https://script.google.com/macros/s/test/exec",
+    GOOGLE_BRIDGE_SHARED_SECRET: "g".repeat(40),
+    JOBS_SHARED_SECRET: "j".repeat(40),
+    ...validWebPushValues(),
+  };
+  assert.equal(validateDevelopmentSettingsEnvironment(values).valid, true);
+  await writeFile(path.join(root, ".env.local"), serialize(values));
+  const calls = [];
+  const result = await pushDevelopmentEnvironment({
+    cwd: root,
+    settingsOnly: true,
+    projectRunner: async () => {},
+    runner: async (request) => calls.push(request),
+  });
+  assert.deepEqual(result.synced, [...DEVELOPMENT_SETTINGS_ENV_KEYS]);
+  assert.deepEqual(calls.map(({ key }) => key), [...DEVELOPMENT_SETTINGS_ENV_KEYS]);
+  assert.equal(calls.some(({ key }) => CORE_RUNTIME_ENV_KEYS.includes(key)), false);
+}));
+
+test("sinkronisasi settings Development mewajibkan Web Push tetapi Google bridge tetap opsional", async () => withTempProject(async (root) => {
+  const values = validWebPushValues();
+  assert.equal(validateDevelopmentSettingsEnvironment(values).valid, true);
+  await writeFile(path.join(root, ".env.local"), serialize(values));
+  const calls = [];
+  const result = await pushDevelopmentEnvironment({
+    cwd: root,
+    settingsOnly: true,
+    projectRunner: async () => {},
+    runner: async (request) => calls.push(request),
+  });
+  assert.deepEqual(result.synced, ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"]);
+  assert.equal(calls.some(({ key }) => key.startsWith("GOOGLE_BRIDGE") || key === "JOBS_SHARED_SECRET"), false);
+}));
 
 test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap", async () => withTempProject(async (root) => {
   const values = canonicalValues();

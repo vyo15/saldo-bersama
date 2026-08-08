@@ -184,8 +184,19 @@ Adopsi Mantine harus dilakukan bertahap:
 - Information architecture canonical: Perencanaan memuat Anggaran, Alokasi, Jadwal rutin, dan Target; Data keuangan memuat Rekening serta Kategori; Rekonsiliasi berada pada Kontrol saldo; Pengaturan berada pada Aplikasi.
 - `/anggaran` adalah route pengelolaan. `/laporan` bersifat analitis dan tidak memuat mutation anggaran. Route `/tagihan` dipertahankan, tetapi label UI canonical adalah `Jadwal rutin`.
 - Sidebar desktop mempertahankan mask melengkung brand Saldo Bersama. Ukurannya boleh diperbesar untuk tap target dan proporsi layar, tetapi bentuk/aset canonical tidak boleh diganti tanpa approval visual baru.
-- Kontrol utama desktop minimum 44×44px. Submenu grup memakai panel minimal satu tingkat, label satu baris, close button aksesibel, Escape, click-outside, dan focus restoration; hindari kartu di dalam kartu serta deskripsi panjang pada setiap route.
+- Kontrol utama desktop minimum 44×44px. Enam kontrol canonical dikelompokkan rapat di tengah rail tanpa mengubah mask organik. Submenu grup memakai anchored flyout di samping trigger, label satu baris, trigger-toggle, Escape, click-outside, route-close, dan focus restoration; tombol X tidak diperlukan untuk flyout navigasi.
 - Theme toggle hanya tampil pada kontrol shell yang canonical. Menu mobile “Menu lainnya” tidak menduplikasi dark/light toggle; logout berada pada footer terpisah dan bottom navigation tetap tersedia.
+
+## Login dan anggota
+
+- Login normal state memakai pola logo-first: brand, tagline singkat, satu host Google Identity Services, dan kredit creator. Pesan konfigurasi/login serta retry hanya muncul saat diperlukan. Jangan mengubah Google/Firebase flow hanya demi styling.
+- Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px.
+- Halaman Akses anggota tetap owner-only. Daftar memakai card profil yang mudah dipindai, search nama/email, filter role, dan Modal canonical untuk tambah/ubah. Destructive member action tetap memakai confirmation guarded dan backend authorization.
+- `UserAvatar` memakai foto Google hanya bila URL profil tersedia dari session/read model tepercaya. Jika `users.list` tidak menyediakan foto anggota lain, gunakan initials fallback; jangan mengambil foto dari Google Search atau mengarang URL.
+- Aktivitas anggota adalah audit-friendly view atas ledger existing berdasarkan `created_by`, bukan ledger baru dan bukan ukuran kontribusi finansial. Copy wajib menyebutnya sebagai pencatat, bukan pembayar/pemakai.
+- Desktop menampilkan aktivitas anggota sebagai right drawer read-only. Mobile ≤820px menampilkan full-screen detail dengan focus trap, tombol kembali, body scroll lock, safe area, dan focus restoration.
+- Ringkasan nominal per pencatat hanya boleh memakai agregasi backend exact. Total transaksi dapat memakai `transactions.list.total`; pengeluaran dapat memakai `reports.monthly.creatorExpenses`. Jangan menghitung agregasi dari page slice.
+- Shortcut ke daftar lengkap memakai route canonical `/transaksi` dan router state untuk initial filter `creatorId`/`period`; jangan menaruh user id atau data finansial pada URL.
 
 ## Review checklist UI
 

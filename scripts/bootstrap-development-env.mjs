@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
-import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { cleanEnvironmentFile, cleanEnvironmentText } from "./clean-local-environment.mjs";
+import { cleanEnvironmentFile, cleanEnvironmentText, writeEnvironmentFileAtomic } from "./clean-local-environment.mjs";
 import { buildVercelInvocation } from "./push-vercel-production-env.mjs";
 import {
-  environmentStatus,
+  developmentEnvironmentStatus,
   parseEnvironmentText,
 } from "./runtime-environment.mjs";
 
@@ -13,8 +13,8 @@ export const DEFAULT_VERCEL_PROJECT = "saldo-bersama";
 
 const localEnvironmentState = async (envPath) => {
   const cleaned = await cleanEnvironmentFile({ file: envPath, allowMissing: true });
-  if (!cleaned.exists) return { exists: false, source: "", complete: false, missing: [], removed: [] };
-  const status = environmentStatus(parseEnvironmentText(cleaned.text));
+  if (!cleaned.exists) return { exists: false, source: "", complete: false, missing: [], invalid: [], removed: [] };
+  const status = developmentEnvironmentStatus(parseEnvironmentText(cleaned.text));
   return { exists: true, source: cleaned.text, removed: cleaned.removed, ...status };
 };
 
@@ -89,6 +89,13 @@ const pullDevelopmentEnvironment = async ({ cwd, target, runner }) => {
   );
 };
 
+const developmentProblemMessage = (state) => {
+  const details = [];
+  if (state.missing?.length) details.push(`belum lengkap: ${state.missing.join(", ")}`);
+  if (state.invalid?.length) details.push(`tidak valid: ${state.invalid.join(", ")}`);
+  return details.join("; ");
+};
+
 export const ensureDevelopmentEnvironment = async ({
   projectRoot,
   projectName = DEFAULT_VERCEL_PROJECT,
@@ -99,21 +106,27 @@ export const ensureDevelopmentEnvironment = async ({
 
   const envPath = path.join(projectRoot, ".env.local");
   const local = await localEnvironmentState(envPath);
-  if (local.complete) return { source: "local", envPath, missing: [], removed: local.removed };
-
-  const localCode = local.exists ? "LOCAL_ENV_INCOMPLETE" : "LOCAL_ENV_NOT_FOUND";
-  const localMessage = local.exists
-    ? `.env.local belum lengkap: ${local.missing.join(", ")}.`
-    : ".env.local belum tersedia.";
 
   if (!interactive) {
+    if (local.complete) return { source: "local", envPath, missing: [], invalid: [], removed: local.removed };
+    const localCode = local.exists ? "LOCAL_ENV_INCOMPLETE" : "LOCAL_ENV_NOT_FOUND";
+    const localMessage = local.exists
+      ? `.env.local ${developmentProblemMessage(local)}.`
+      : ".env.local belum tersedia.";
     throw Object.assign(
       new Error(`${localMessage} Bootstrap Vercel memerlukan terminal interaktif.`),
-      { code: localCode, envPath, missing: local.missing },
+      { code: localCode, envPath, missing: local.missing, invalid: local.invalid },
     );
   }
 
-  console.log(`${localMessage} Menyiapkan environment otomatis dari Vercel Development...`);
+  if (local.complete) {
+    console.log("Memperbarui environment canonical dari Vercel Development...");
+  } else if (local.exists) {
+    console.log(`.env.local ${developmentProblemMessage(local)}. Menyiapkan environment otomatis dari Vercel Development...`);
+  } else {
+    console.log(".env.local belum tersedia. Menyiapkan environment otomatis dari Vercel Development...");
+  }
+
   const temporaryPath = path.join(projectRoot, `.env.local.vercel-${process.pid}-${Date.now()}.tmp`);
 
   try {
@@ -124,19 +137,19 @@ export const ensureDevelopmentEnvironment = async ({
     const pulledSource = await readFile(temporaryPath, "utf8");
     const cleaned = cleanEnvironmentText(pulledSource);
     const values = parseEnvironmentText(cleaned.text);
-    const status = environmentStatus(values);
+    const status = developmentEnvironmentStatus(values);
     if (!status.complete) {
+      const problem = developmentProblemMessage(status);
       throw Object.assign(
-        new Error(`Vercel Development belum memiliki environment core lengkap: ${status.missing.join(", ")}. Seed sekali dari komputer yang masih memiliki .env.local menggunakan npm run env:push:development.`),
-        { code: "VERCEL_DEVELOPMENT_ENV_INCOMPLETE", missing: status.missing },
+        new Error(`Vercel Development belum siap untuk runtime lokal: ${problem}. Seed konfigurasi settings dari komputer tepercaya menggunakan npm run env:push:development:settings, atau sinkronkan seluruh environment dengan npm run env:push:development.`),
+        { code: "VERCEL_DEVELOPMENT_ENV_INCOMPLETE", missing: status.missing, invalid: status.invalid },
       );
     }
 
     await writeFile(temporaryPath, cleaned.text, { encoding: "utf8", mode: 0o600 });
-    await chmod(temporaryPath, 0o600).catch(() => undefined);
-    await rename(temporaryPath, envPath);
-    console.log("Environment Development berhasil ditarik dan disimpan sebagai .env.local.");
-    return { source: "vercel-development", envPath, missing: [], removed: cleaned.removed };
+    await writeEnvironmentFileAtomic(envPath, cleaned.text);
+    console.log("Environment Development terbaru berhasil ditarik dan disimpan sebagai .env.local.");
+    return { source: "vercel-development", envPath, missing: [], invalid: [], removed: cleaned.removed };
   } finally {
     await rm(temporaryPath, { force: true }).catch(() => undefined);
     const cleanedLocal = await cleanEnvironmentFile({ file: envPath, allowMissing: true });

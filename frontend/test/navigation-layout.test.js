@@ -14,9 +14,10 @@ test("desktop mempertahankan module dock IMS melengkung dengan submenu minimal",
   assert.match(source, /aria-label="Navigasi utama Saldo Bersama"/);
   assert.match(source, /aria-label=\{`Buka \$\{label\}`\}/);
   assert.match(source, /aria-expanded=\{open\}/);
+  assert.match(source, /desktop-module-dock__group/);
   assert.match(source, /desktop-module-dock__flyout/);
-  assert.match(source, /desktop-module-dock__flyout-close/);
-  assert.match(source, /Tutup menu/);
+  assert.doesNotMatch(source, /desktop-module-dock__flyout-close/);
+  assert.doesNotMatch(source, /Tutup menu/);
   assert.doesNotMatch(source, /childDescription/);
   assert.match(source, /event\.key !== "Escape"/);
   assert.match(source, /data-label=\{label\}/);
@@ -107,8 +108,11 @@ test("geometri rail mengikuti IMS dan menyisakan navigasi mobile", async () => {
     read("src/components/navigation/MobileNavigation.jsx"),
   ]);
 
-  assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*width:\s*108px;[\s\S]*height:\s*clamp\(480px, 68dvh, 600px\);/);
-  assert.match(appCss, /\.desktop-module-dock__navigation\s*\{[\s\S]*inset-inline-start:\s*17px;/);
+  assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*--desktop-dock-width:\s*108px;[\s\S]*width:\s*var\(--desktop-dock-width\);[\s\S]*height:\s*clamp\(480px, 68dvh, 600px\);/);
+  assert.match(appCss, /\.desktop-module-dock__navigation\s*\{[\s\S]*inset-inline-start:\s*var\(--desktop-dock-nav-left\);[\s\S]*top:\s*50%;[\s\S]*gap:\s*12px;[\s\S]*transform:\s*translateY\(-50%\);/);
+  assert.match(appCss, /\.desktop-module-dock__group\s*\{[\s\S]*position:\s*relative;[\s\S]*width:\s*48px;[\s\S]*height:\s*48px;/);
+  assert.match(appCss, /\.desktop-module-dock__flyout\s*\{[\s\S]*top:\s*50%;[\s\S]*transform:\s*translateY\(-50%\);/);
+  assert.doesNotMatch(appCss, /\.desktop-module-dock__navigation\s*\{[^}]*justify-content:\s*space-between;/);
   assert.match(appCss, /\.desktop-module-dock__link\s*\{[\s\S]*width:\s*48px;[\s\S]*height:\s*48px;/);
   assert.match(appCss, /\.desktop-module-dock__link\.is-active::after/);
   assert.match(appCss, /height:\s*26px;/);

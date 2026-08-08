@@ -1,5 +1,48 @@
 # Project Status
 
+## Login, sidebar, anggota, dan aktivitas pencatat 2026-08-08
+
+- **Source diverifikasi:** `saldo-bersama-clean(20260808-035320).zip`, root `saldo-bersama/`. Source aktual tetap React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso; Apps Script tetap integration bridge.
+- Login normal state sekarang logo-first dan compact. Google Identity Services/Firebase exchange, config error, login error, dan retry session tetap canonical. Kredit `Vio Yusup Iskandar` menuju LinkedIn dengan `noopener noreferrer` dan target sentuh 44px.
+- Sidebar desktop tetap memakai `sidebar-rail-mask.svg`/`sidebar-rail-mask-dark.svg` tanpa perubahan asset. Enam kontrol utama dirapatkan di tengah rail; submenu Perencanaan/Data keuangan menjadi anchored flyout pada trigger, ditutup melalui trigger, click-outside, route navigation, atau Escape dengan focus restoration.
+- Akses anggota tetap owner-only dan memakai `users.list`/`users.upsert`/deactivate/reactivate guarded. UI berubah menjadi grid profil, search/filter role, modal tambah/ubah, dan action disclosure; destructive action tetap memakai confirmation canonical.
+- Foto Google hanya digunakan untuk current session yang memang membawa `photoURL`; `users.list` dan schema v6 belum menyimpan foto anggota lain, sehingga fallback inisial tetap canonical dan tidak ada URL foto yang diarang.
+- Aktivitas anggota memakai read-path existing `transactions.list.created_by` dan `reports.monthly.creatorExpenses`. Panel bersifat read-only, transfer tidak dijumlahkan sebagai pemasukan/pengeluaran, dan tombol `Lihat semua` membuka `/transaksi` dengan `location.state` untuk initial creator/period tanpa query URL. Desktop memakai right drawer; ≤820px memakai full-screen detail dengan focus trap dan safe area.
+- Tidak ada perubahan schema, API contract, saldo, transaction write flow, Firebase auth, allowlist, role, backup/restore, environment, dependency, route canonical, atau asset rail. Playwright tidak ditambahkan; browser regression tetap Node test runner + Chromium/CDP.
+
+### Verifikasi patch
+
+- `npm run validate:source`: lulus, 346 file diperiksa pada source patch sebelumnya; verifikasi ulang terhadap baseline `035320` dilakukan sebelum distribusi patch kompatibel ini.
+- Frontend static/contract patch sebelumnya: 83/83 lulus.
+- `npm run test` patch sebelumnya: frontend lulus; full backend/business/security/tooling 141/141 lulus setelah stub `web-push` sementara hanya untuk module resolution. Stub dihapus dan tidak menjadi bagian source/artifact.
+- `npm ci` pada sandbox sebelumnya terblokir karena Node 22.16.0 berada di bawah baseline Node 24.x/React Router dan registry sandbox tidak menyediakan `vite@7.3.6`. ESLint, Vite build, build budget, dan authenticated browser runtime tetap wajib diulang pada Node 24.x dengan registry npm lengkap setelah patch diterapkan.
+
+## Centralized Settings environment 2026-08-08
+
+- **Source diverifikasi:** `saldo-bersama-clean(20260808-025809).zip`, root `saldo-bersama/`.
+- Vercel Development sekarang menjadi sumber environment lokal untuk komputer tepercaya. `npm run dev` interaktif selalu menarik Development terbaru sebelum server mulai.
+- Baseline Development mewajibkan delapan core key dan Web Push lengkap/valid. Google bridge tetap opsional karena resource Apps Script/Sheets/Calendar/Drive belum dikonfigurasi pada environment yang dibuktikan saat review. Bila diaktifkan, tiga key bridge harus lengkap dan akan ikut tersinkron terpusat.
+- `npm run env:push:development:settings` hanya menyinkronkan Web Push dan Google bridge yang aktif. Command ini tidak menyentuh Turso, allowlist, Firebase, session, role, schema, saldo, transaksi, backup contract, atau Production.
+- Pengaturan yang hanya memakai API/Turso, yaitu Ringkasan, Akses anggota, Export, Import, Periode dan integritas, serta Audit, sudah portable melalui environment core dan database canonical. Backup/Pemulihan full backup dan Integrasi Google tetap bergantung pada Google bridge pusat, bukan konfigurasi per browser.
+- `.env.local` lama tidak ditimpa jika pull/validasi Development gagal. Interactive dev fail closed agar komputer tidak berjalan diam-diam dengan konfigurasi pusat yang stale.
+- Pesan UI Notifikasi dan Integrasi Google menjelaskan bahwa konfigurasi eksternal dikelola terpusat. Izin Web Push browser tetap memerlukan tindakan pengguna satu kali per browser/perangkat.
+- Dokumen `README.md`, `ENVIRONMENT_VARIABLES.md`, `SETUP.md`, `DEPLOYMENT.md`, `GOOGLE_INTEGRATIONS.md`, `IMPLEMENTATION_MATRIX.md`, `QA_CHECKLIST.md`, `TEST_PLAN.md`, ADR-0007, dan ADR-0010 telah diselaraskan dengan source ini.
+
+### Verifikasi patch
+
+- Frontend static/contract: 82/82 lulus.
+- Environment/tooling/governance focused: 54/54 lulus.
+- Backend/business/security/tooling: 141/141 lulus dengan stub `web-push` sementara hanya untuk module resolution; stub sudah dihapus dan tidak menjadi bagian source/artifact.
+- Source validation: 345 file lulus. Syntax Node: 96 file lulus. Apps Script: 6 file dan 2 urutan load lulus.
+- `npm ci` terblokir pada sandbox: Node 22.16.0 berada di bawah baseline Node 24.x/React Router dan registry sandbox tidak menyediakan `vite@7.3.6`. Karena dependency lengkap tidak tersedia, ESLint, Vite build, dan build budget belum dapat diklaim.
+- Browser test: 5/9 helper/contract lulus; 4 journey terblokir karena `frontend/dist/index.html` belum dapat dibangun di sandbox. Ulangi full gate pada Node 24.18.1 dengan registry npm lengkap.
+
+### Operasional berikutnya
+
+1. Dari PC tepercaya yang masih memiliki pasangan VAPID canonical, jalankan `npm run env:check` lalu `npm run env:push:development:settings` satu kali. Jangan membuat pasangan VAPID baru per komputer.
+2. Di laptop/PC lain tarik source terbaru dan jalankan `npm run dev`. Expected log: Web Push `set`; tidak perlu copy/edit `.env.local`.
+3. Jika Google bridge akan dipakai, konfigurasikan grup bridge secara pusat lalu ulangi settings-only sync. Jangan invent atau menaruh secret di frontend.
+4. Sebelum merge/deploy, jalankan Node 24.18.1: `npm ci`, `npm run lint`, `npm run test`, `npm run build`, `npm run build:budget`, dan `npm run test:browser`.
 
 ## CSS token, auto-zoom, contrast, dan archive tooling 2026-08-06
 
@@ -29,9 +72,9 @@
 - Schema, saldo, transaksi, auth, role, delivery per perangkat, backup, restore, dan Apps Script tidak berubah.
 
 
-**Last source verification:** 2026-08-06
+**Last source verification:** 2026-08-08
 **Repository:** `vyo15/saldo-bersama`
-**Source baseline:** `saldo-bersama-clean(20260806-094714).zip` + patch CSS/accessibility/archive tooling 2026-08-06
+**Source baseline:** `saldo-bersama-clean(20260808-035320).zip` + login/sidebar/member activity patch 2026-08-08
 **Schema:** version 6, migrations `001_initial_schema.sql` sampai `004_notification_deliveries.sql`
 **Runtime baseline:** Node 24.x, npm 10+
 
@@ -312,7 +355,7 @@ Tidak ada perubahan pada API, authorization, saldo, schema, atau business rule.
 
 1. Runtime lokal dan Vercel Production memakai satu database Turso sesuai keputusan pemilik. Jangan menjalankan data dummy atau operasi destruktif.
 2. Vercel Development menjadi source bootstrap `.env.local` untuk komputer tepercaya; Production tetap runtime deployment dan Preview tetap kosong.
-3. Environment canonical terdiri dari delapan key core wajib, satu logging opsional, serta grup integrasi opsional yang harus lengkap.
+3. Environment canonical terdiri dari delapan key core wajib, satu logging opsional, Web Push wajib untuk Development local testing, serta Google bridge opsional yang harus lengkap bila diaktifkan.
 4. Rate limit runtime masih best-effort per instance.
 5. Backup teknis terkompresi dan ber-checksum; enkripsi aplikasi belum menjadi baseline yang terbukti.
 6. Mantine tetap staged dependency dan hanya boleh dipakai melalui wrapper shared.

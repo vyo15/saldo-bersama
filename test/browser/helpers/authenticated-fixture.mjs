@@ -160,6 +160,45 @@ const recentTransactions = Object.freeze([
   },
 ]);
 
+const memberTransactions = Object.freeze([
+  {
+    transaction_id: "txn-member-expense-1",
+    transaction_type: "expense",
+    amount: 85_000,
+    transaction_date: "2026-08-03",
+    source_account_id: "acc-shared-cash",
+    destination_account_id: null,
+    category_id: "cat-food",
+    envelope_period_id: null,
+    description: "Makan bersama dicatat member",
+    merchant: "Warung",
+    status: "active",
+    row_version: 1,
+    can_edit: false,
+    can_cancel: false,
+    created_by: "browser-member",
+  },
+  {
+    transaction_id: "txn-member-transfer-1",
+    transaction_type: "transfer",
+    amount: 250_000,
+    transaction_date: "2026-08-02",
+    source_account_id: "acc-shared-cash",
+    destination_account_id: "acc-shared-bank",
+    category_id: null,
+    envelope_period_id: null,
+    description: "Pindah dana dicatat member",
+    merchant: "",
+    status: "active",
+    row_version: 1,
+    can_edit: false,
+    can_cancel: false,
+    created_by: "browser-member",
+  },
+]);
+
+const ledgerTransactions = Object.freeze([...recentTransactions, ...memberTransactions]);
+
 const envelopes = Object.freeze([
   {
     envelope_id: "env-food",
@@ -284,7 +323,10 @@ const reportFixture = Object.freeze({
   budgets,
   categoryExpenses: overviewFixture.categoryExpenses.map((item) => ({ label: item.name, value: item.amount, name: item.name, amount: item.amount })),
   accountExpenses: [{ label: "Rekening Bersama", value: 125_000, name: "Rekening Bersama", amount: 125_000 }],
-  creatorExpenses: [{ label: "Owner Browser", value: 125_000, name: "Owner Browser", amount: 125_000 }],
+  creatorExpenses: [
+    { user_id: ownerSession.uid, label: "Owner Browser", value: 125_000, name: "Owner Browser", amount: 125_000, transaction_count: 1 },
+    { user_id: memberSession.uid, label: "Member Browser", value: 85_000, name: "Member Browser", amount: 85_000, transaction_count: 1 },
+  ],
   natureExpenses: [{ label: "Variabel", value: 125_000, name: "Variabel", amount: 125_000 }],
   trend: {
     months: 6,
@@ -311,17 +353,33 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
     "app.initialState": { bootstrap: sessionBootstrap, overview: sessionOverview },
     "bootstrap.get": sessionBootstrap,
     "dashboard.overview": sessionOverview,
-    "transactions.list": {
-      items: recentTransactions,
-      filterOptions: {
-        accounts: sessionAccounts.map(({ account_id, name, owner_scope, owner_name }) => ({ account_id, name, owner_scope, owner_name })),
-        categories: categories.map(({ category_id, name }) => ({ category_id, name })),
-        creators: [{ user_id: session.uid, name: session.name, email: session.email }],
-      },
-      total: recentTransactions.length,
-      limit: 100,
-      offset: 0,
-      periodLocked: false,
+    "transactions.list": (payload = {}) => {
+      const type = String(payload.transaction_type || "all");
+      const creator = String(payload.created_by || "all");
+      const limit = Math.max(1, Number(payload.limit || 100));
+      const offset = Math.max(0, Number(payload.offset || 0));
+      const filtered = ledgerTransactions.filter((item) => {
+        if (type !== "all" && item.transaction_type !== type) return false;
+        if (creator !== "all" && creator !== "" && item.created_by !== (creator === "me" ? session.uid : creator)) return false;
+        return true;
+      });
+      return {
+        items: filtered.slice(offset, offset + limit),
+        filterOptions: {
+          accounts: sessionAccounts.map(({ account_id, name, owner_scope, owner_name }) => ({ account_id, name, owner_scope, owner_name })),
+          categories: categories.map(({ category_id, name }) => ({ category_id, name })),
+          creators: [
+            { user_id: ownerSession.uid, name: ownerSession.name, email: ownerSession.email },
+            { user_id: memberSession.uid, name: memberSession.name, email: memberSession.email },
+          ],
+        },
+        total: filtered.length,
+        limit,
+        offset,
+        hasMore: offset + limit < filtered.length,
+        nextOffset: offset + Math.min(limit, filtered.length - offset),
+        periodLocked: false,
+      };
     },
     "envelopes.list": { items: envelopes },
     "recurring.list": { items: recurring },

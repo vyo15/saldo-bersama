@@ -49,6 +49,25 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.equal((notifications.match(/Notifikasi perangkat/g) || []).length, 1);
   assert.equal((integrations.match(/<h3>Google Sheets<\/h3>/g) || []).length, 1);
   assert.equal((integrations.match(/<h3>Google Calendar<\/h3>/g) || []).length, 1);
-  assert.match(members, /Tambah atau ubah akses/);
-  assert.match(members, /Pengguna aplikasi/);
+  assert.match(members, /Tambah anggota/);
+  assert.match(members, /Lihat aktivitas transaksi/);
+  assert.match(members, /MemberActivityPanel/);
+});
+
+test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pada breakpoint mobile", async () => {
+  const [members, activity, styles] = await Promise.all([
+    read("src/features/settings/MembersSettingsPage.jsx"),
+    read("src/features/settings/components/MemberActivityPanel.jsx"),
+    read("src/features/settings/Settings.module.css"),
+  ]);
+
+  assert.match(members, /UserAvatar/);
+  assert.match(members, /photoURL:\s*user\?\.photoURL/);
+  assert.match(members, /roleFilter/);
+  assert.match(activity, /created_by:\s*member\?\.user_id/);
+  assert.match(activity, /reports\.monthly/);
+  assert.match(activity, /navigate\("\/transaksi", \{ state: \{ creatorId: member\.user_id, period \} \}\)/);
+  assert.match(styles, /\.memberGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /@media \(max-width: 51\.25rem\)[\s\S]*\.memberGrid \{ grid-template-columns:\s*1fr;/);
+  assert.match(styles, /@media \(max-width: 51\.25rem\)[\s\S]*\.memberActivityPanel \{ width:\s*100%; min-width:\s*0; height:\s*100vh; height:\s*100dvh;/);
 });

@@ -67,17 +67,20 @@ npm run dev
 `npm run dev` melakukan preflight terjaga:
 
 1. bila dependency workspace belum tersedia, menjalankan `npm ci`;
-2. bila `.env.local` lengkap, langsung memakainya tanpa menghubungi Vercel;
-3. bila `.env.local` hilang/tidak lengkap, memeriksa login Vercel, menghubungkan project `saldo-bersama`, lalu menarik **Development Environment** ke file sementara;
-4. membuang `VERCEL_OIDC_TOKEN`/key legacy, memvalidasi delapan key core, lalu mengganti `.env.local` secara atomik;
-5. menjalankan frontend dan lima endpoint API lokal.
+2. pada terminal interaktif, memeriksa login Vercel dan memastikan repository terhubung ke project `saldo-bersama`;
+3. menarik **Development Environment** terbaru ke file sementara pada setiap start agar konfigurasi antar-komputer tidak drift;
+4. membuang `VERCEL_OIDC_TOKEN`/key legacy, memvalidasi delapan key core dan grup Web Push yang wajib lengkap/valid, lalu mengganti `.env.local` secara atomik;
+5. mempertahankan `.env.local` lama jika refresh gagal, tetapi tidak menjalankan server dengan konfigurasi yang belum diverifikasi;
+6. menjalankan frontend dan lima endpoint API lokal.
 
-Vercel Development harus di-seed satu kali dari komputer tepercaya yang masih memiliki `.env.local` lengkap:
+Vercel Development di-seed dari komputer tepercaya. Untuk bootstrap penuh gunakan `npm run env:push:development`. Untuk perubahan Pengaturan eksternal tanpa menyentuh Turso, allowlist, Firebase, atau session gunakan command scoped:
 
 ```bash
 npm run env:check
-npm run env:push:development
+npm run env:push:development:settings
 ```
+
+Command settings mewajibkan pasangan Web Push canonical dan ikut menyinkronkan Google bridge bila grup tersebut sudah diaktifkan. Setelah seed, komputer tepercaya lain cukup menjalankan `npm run dev`. Izin notifikasi browser tetap diberikan satu kali per browser/perangkat.
 
 Production tetap disinkronkan secara eksplisit dan terpisah:
 

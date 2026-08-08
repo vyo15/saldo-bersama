@@ -160,6 +160,7 @@ test("every canonical environment key is documented and classifications use one 
     ...WEB_PUSH_ENV_KEYS,
   ]);
   assert.match(environmentDocs, /delapan key core wajib dan satu key logging opsional/);
+  assert.match(environmentDocs, /Web Push wajib lengkap dan valid/i);
   assert.doesNotMatch(environmentDocs, /sembilan key core/i);
 });
 
@@ -179,6 +180,8 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.match(bootstrap, /cleanEnvironmentText/);
   assert.match(bootstrap, /VERCEL_DEVELOPMENT_ENV_INCOMPLETE/);
   assert.match(packageJson, /env:push:development/);
+  assert.match(packageJson, /env:push:development:settings/);
+  assert.match(bootstrap, /Memperbarui environment canonical dari Vercel Development/);
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 

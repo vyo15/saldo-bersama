@@ -25,7 +25,7 @@ const SettingsLayout = () => {
   const ownerMode = user?.role === "owner";
   return (
     <div className="page-stack settings-page">
-      <PageHeader title="Pengaturan" description="Setiap bagian hanya memuat data yang dibutuhkan. Tindakan berisiko tetap dilindungi backend, konfirmasi, audit, dan row version." />
+      <PageHeader title="Pengaturan" description="Setiap bagian hanya memuat data yang dibutuhkan. Konfigurasi eksternal dikelola terpusat, sedangkan tindakan berisiko tetap dilindungi backend, konfirmasi, audit, dan row version." />
       <nav className={styles.settingsNavigation} aria-label="Menu pengaturan">
         {SETTINGS_NAVIGATION.filter((item) => !item.ownerOnly || ownerMode).map(({ to, end, label, description, icon: Icon }) => (
           <NavLink key={to} to={to} end={end} className={({ isActive }) => `${styles.settingsNavigationLink}${isActive ? ` ${styles.isActive}` : ""}`}>

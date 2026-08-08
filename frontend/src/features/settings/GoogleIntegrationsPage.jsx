@@ -45,7 +45,7 @@ const GoogleIntegrationsPage = () => {
   const handleTile = (provider) => {
     const configured = integrations.configured?.[provider];
     if (!configured) {
-      setResult({ status: "warning", text: "Integrasi ini memerlukan GOOGLE_BRIDGE_WEB_APP_URL dan GOOGLE_BRIDGE_SHARED_SECRET pada server. Secret tidak boleh dimasukkan dari browser." });
+      setResult({ status: "warning", text: "Integrasi Google belum aktif pada runtime ini. Konfigurasi bridge dikelola terpusat di environment server dan tidak diisi ulang pada browser atau perangkat." });
       return;
     }
     if (!ownerMode) {

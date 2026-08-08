@@ -32,16 +32,24 @@ const TransactionsPage = () => {
   const location = useLocation();
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const [draftQuery, setDraftQuery] = useState("");
-  const [filters, setFilters] = useState(() => ({
-    period: currentMonthInJakarta(),
-    query: "",
-    type: "all",
-    allocation: "all",
-    account: typeof location.state?.accountId === "string" && location.state.accountId ? location.state.accountId : "all",
-    category: "all",
-    creator: "all",
-    offset: 0,
-  }));
+  const [filters, setFilters] = useState(() => {
+    const requestedPeriod = typeof location.state?.period === "string" && /^\d{4}-\d{2}$/.test(location.state.period)
+      ? location.state.period
+      : currentMonthInJakarta();
+    const requestedCreator = typeof location.state?.creatorId === "string" && location.state.creatorId.trim()
+      ? location.state.creatorId.trim()
+      : "all";
+    return {
+      period: requestedPeriod,
+      query: "",
+      type: "all",
+      allocation: "all",
+      account: typeof location.state?.accountId === "string" && location.state.accountId ? location.state.accountId : "all",
+      category: "all",
+      creator: requestedCreator,
+      offset: 0,
+    };
+  });
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);

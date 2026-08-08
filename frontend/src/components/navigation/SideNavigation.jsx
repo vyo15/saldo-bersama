@@ -1,5 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { FiX } from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router";
 import { useTheme } from "../../app/ThemeContext.jsx";
 import sidebarRailMask from "../../assets/layout/sidebar-rail-mask.svg";
@@ -71,7 +70,7 @@ const SideNavigation = () => {
           const panelId = `desktop-navigation-${id}`;
 
           return (
-            <Fragment key={id}>
+            <div className="desktop-module-dock__group" key={id}>
               <button
                 ref={(node) => {
                   if (node) triggerRefs.current.set(id, node);
@@ -94,9 +93,6 @@ const SideNavigation = () => {
                 <div id={panelId} className="desktop-module-dock__flyout" aria-labelledby={`${panelId}-title`}>
                   <div className="desktop-module-dock__flyout-heading">
                     <h2 id={`${panelId}-title`}>{label}</h2>
-                    <button type="button" className="desktop-module-dock__flyout-close" aria-label={`Tutup menu ${label}`} onClick={() => setOpenGroupId("")}>
-                      <FiX aria-hidden="true" />
-                    </button>
                   </div>
                   <div className="desktop-module-dock__flyout-links">
                     {items.map(({ to, label: childLabel, icon: ChildIcon, end }) => (
@@ -108,12 +104,13 @@ const SideNavigation = () => {
                       >
                         <span className="desktop-module-dock__flyout-icon"><ChildIcon aria-hidden="true" /></span>
                         <strong>{childLabel}</strong>
+                        <span className="desktop-module-dock__flyout-chevron" aria-hidden="true">›</span>
                       </NavLink>
                     ))}
                   </div>
                 </div>
               ) : null}
-            </Fragment>
+            </div>
           );
         })}
       </nav>

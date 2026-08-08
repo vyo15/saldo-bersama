@@ -21,6 +21,7 @@
     "db:import-legacy": "node scripts/migrate-legacy-json.mjs",
     "env:check": "node scripts/check-environment.mjs",
     "env:push:development": "node scripts/push-vercel-development-env.mjs",
+    "env:push:development:settings": "node scripts/push-vercel-development-env.mjs --settings-only",
     "env:push:production": "node scripts/push-vercel-production-env.mjs",
     "env:clean": "node scripts/clean-local-environment.mjs",
     "clean": "node scripts/clean-generated-artifacts.mjs",

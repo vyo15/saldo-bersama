@@ -28,6 +28,16 @@ export const WEB_PUSH_ENV_KEYS = Object.freeze([
   "VAPID_SUBJECT",
 ]);
 
+export const DEVELOPMENT_REQUIRED_ENV_KEYS = Object.freeze([
+  ...CORE_RUNTIME_ENV_KEYS,
+  ...WEB_PUSH_ENV_KEYS,
+]);
+
+export const SETTINGS_ENV_KEYS = Object.freeze([
+  ...GOOGLE_BRIDGE_ENV_KEYS,
+  ...WEB_PUSH_ENV_KEYS,
+]);
+
 export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
   ...CORE_RUNTIME_ENV_KEYS,
   ...OPTIONAL_LOGGING_ENV_KEYS,
@@ -35,7 +45,7 @@ export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
   ...WEB_PUSH_ENV_KEYS,
 ]);
 
-// Backward-compatible alias for existing bootstrap/diagnostic imports.
+// Backward-compatible alias for existing imports that mean the eight core keys.
 export const REQUIRED_RUNTIME_ENV_KEYS = CORE_RUNTIME_ENV_KEYS;
 
 const BLOCKED_VAPID_SUBJECT_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".example", ".invalid", ".onion"];
@@ -130,4 +140,19 @@ export const validateWebPushEnvironment = (values = {}) => {
 export const environmentStatus = (values = {}) => {
   const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !present(values, key));
   return { complete: missing.length === 0, missing };
+};
+
+export const developmentEnvironmentStatus = (values = {}) => {
+  const core = environmentStatus(values);
+  const webPush = validateWebPushEnvironment(values);
+  const missingWebPush = webPush.enabled ? webPush.missing : [...WEB_PUSH_ENV_KEYS];
+  const invalid = webPush.complete ? [...webPush.invalid] : [];
+  const missing = [...core.missing, ...missingWebPush];
+  return {
+    complete: core.complete && webPush.enabled && webPush.complete && webPush.valid,
+    missing,
+    invalid,
+    core,
+    webPush,
+  };
 };

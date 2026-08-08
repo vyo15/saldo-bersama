@@ -5,18 +5,19 @@ Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development 
 ## Kebijakan environment
 
 - Project saat ini memakai satu database Turso untuk runtime lokal dan Vercel Production sesuai keputusan pemilik.
-- Vercel **Development** menjadi source bootstrap `.env.local` untuk komputer tepercaya. Vercel Development hanya boleh diakses collaborator yang disetujui.
+- Vercel **Development** menjadi source of truth bootstrap `.env.local` untuk komputer tepercaya. `npm run dev` pada terminal interaktif selalu menarik ulang Development sebelum server dimulai agar konfigurasi antar-PC tidak drift.
 - Vercel **Production** menjadi runtime deployment production.
 - Vercel **Preview** dibiarkan kosong agar preview tidak pernah menulis ke database aktif secara tidak sengaja.
 - Nama key dapat terlihat dua kali di dashboard karena scope Development dan Production memang terpisah; itu bukan duplikat konflik.
-- `.env.local` tidak pernah di-commit, dimasukkan ZIP, log, issue, atau chat.
+- `.env.local` hanya cache lokal terjaga. File ini tidak pernah di-commit, dimasukkan ZIP, log, issue, atau chat.
 - Variable `VITE_*` bersifat publik dan masuk ke bundle browser.
 - Setelah variable Production berubah, buat deployment Production baru.
-- Hanya collaborator Vercel yang dipercaya boleh memiliki akses project karena Development Environment dapat ditarik ke komputer lokal.
+- Hanya collaborator Vercel yang dipercaya boleh memiliki akses project. Vercel Development dapat ditarik ke komputer lokal dan tidak mendukung mode Sensitive seperti Production/Preview.
+- Karena runtime lokal dan Production memakai database yang sama, Web Push Development memakai pasangan VAPID yang sama dengan Production. Jangan membuat pasangan VAPID per perangkat.
 
 ## Scope Development canonical
 
-Development menyimpan delapan key core wajib dan satu key logging opsional, ditambah grup integrasi opsional yang lengkap. Nilainya harus sesuai runtime lokal yang disetujui.
+Development menyimpan delapan key core wajib dan satu key logging opsional. Web Push wajib lengkap dan valid untuk baseline local testing. Google bridge tetap opsional karena bergantung pada resource Apps Script/Sheets/Calendar/Drive yang diaktifkan terpisah.
 
 ### Core — wajib
 
@@ -37,6 +38,16 @@ Development menyimpan delapan key core wajib dan satu key logging opsional, dita
 |---|---|
 | `LOG_LEVEL` | `info` |
 
+### Web Push — wajib untuk Development canonical
+
+| Key | Validasi |
+|---|---|
+| `VITE_VAPID_PUBLIC_KEY` | Base64url uncompressed P-256 public key, 65 byte dan diawali byte `0x04` |
+| `VAPID_PRIVATE_KEY` | Base64url private key, 32 byte |
+| `VAPID_SUBJECT` | URI `mailto:` valid atau URL HTTPS publik. `https://localhost`, IP literal, dan hostname internal tidak diterima. |
+
+Public dan private key harus berasal dari pasangan VAPID yang sama. `npm run env:check`, bootstrap Development, dan script sinkronisasi menolak pasangan yang tidak cocok. Rotasi key membuat subscription lama perlu didaftarkan ulang.
+
 ### Google bridge — opsional sebagai satu grup
 
 | Key |
@@ -45,17 +56,7 @@ Development menyimpan delapan key core wajib dan satu key logging opsional, dita
 | `GOOGLE_BRIDGE_SHARED_SECRET` |
 | `JOBS_SHARED_SECRET` |
 
-### Web Push — opsional sebagai satu grup
-
-| Key | Validasi |
-|---|---|
-| `VITE_VAPID_PUBLIC_KEY` | Base64url uncompressed P-256 public key, 65 byte dan diawali byte `0x04` |
-| `VAPID_PRIVATE_KEY` | Base64url private key, 32 byte |
-| `VAPID_SUBJECT` | URI `mailto:` valid atau URL HTTPS publik. `https://localhost`, IP literal, dan hostname internal tidak diterima. |
-
-Public dan private key harus berasal dari pasangan VAPID yang sama. `npm run env:check` dan script sinkronisasi menolak pasangan yang tidak cocok. Rotasi key membuat subscription lama perlu didaftarkan ulang.
-
-Grup opsional harus lengkap atau seluruh grup dibiarkan kosong. Development variables sengaja dapat ditarik oleh collaborator yang berwenang; jangan memberikan akses project Vercel kepada pihak yang tidak perlu melihat secret development.
+Jika Google bridge diaktifkan, ketiga key harus lengkap. Satu konfigurasi pusat melayani halaman Integrasi Google, backup teknis, restore Drive, dan scheduler. Secret tidak pernah dimasukkan dari browser.
 
 ## Scope Production canonical
 
@@ -65,34 +66,37 @@ Secret/token Production harus diperlakukan sebagai secret deployment. `npm run e
 
 ## `.env.local` canonical
 
-`.env.local` memakai key canonical yang sama dengan Development. Pada kondisi database tunggal saat ini, nilai Turso/allowlist/session yang aktif harus sesuai keputusan owner. Jangan membuat fallback, token dummy, atau database lokal kedua secara diam-diam.
+`.env.local` memakai key canonical yang sama dengan Development. Pada kondisi database tunggal saat ini, nilai Turso, allowlist, session, Web Push, dan integrasi aktif harus mengikuti konfigurasi pusat yang disetujui. Jangan membuat fallback, token dummy, database lokal kedua, atau pasangan VAPID baru per komputer.
 
 `npm run dev` berperilaku sebagai berikut:
 
 ```text
-.env.local lengkap
-  → bersihkan OIDC/key legacy secara lokal
-  → gunakan lokal, tanpa network Vercel
-
-.env.local hilang/tidak lengkap + terminal interaktif
-  → cek/login Vercel
+terminal interaktif
+  → bersihkan OIDC/key legacy lokal
+  → cek/login Vercel bila diperlukan
   → cek/link project saldo-bersama
   → vercel env pull <temporary-file> dari scope Development
-  → hapus VERCEL_OIDC_TOKEN/key legacy
-  → validasi core
+  → hapus VERCEL_OIDC_TOKEN/key legacy dan grup parsial
+  → validasi delapan core + Web Push wajib
   → atomic replace .env.local
   → start server
 
 pull/login/link/validasi gagal
-  → pertahankan file lama
-  → server tidak dijalankan
+  → pertahankan .env.local lama
+  → fail closed; server tidak dijalankan
+
+terminal non-interaktif
+  → tidak membuka login/network bootstrap
+  → hanya menerima .env.local yang sudah valid
 ```
 
-Vercel mendokumentasikan `vercel env pull <file>` sebagai export Development Environment ke file lokal. Script tidak menarik scope Production.
+Refresh setiap start interaktif disengaja. Tujuannya agar perubahan allowlist, session, VAPID, atau konfigurasi settings pusat tidak tertinggal pada laptop/PC lain.
 
 ## Seed/sinkronisasi Development
 
-Dari komputer yang memiliki `.env.local` valid:
+### Seluruh environment canonical
+
+Dari komputer tepercaya yang memiliki `.env.local` valid:
 
 ```bash
 npm run env:clean
@@ -100,7 +104,30 @@ npm run env:check
 npm run env:push:development
 ```
 
-Command mengirim core, `LOG_LEVEL`, dan grup opsional lengkap ke Development tanpa mencetak nilai. `vercel link` dapat menambahkan `VERCEL_OIDC_TOKEN`; script membersihkannya pada jalur sukses maupun gagal sehingga sinkronisasi tetap idempotent. Jalankan kembali hanya setelah perubahan environment lokal memang disetujui.
+Command mengirim core, `LOG_LEVEL`, Web Push, dan Google bridge bila aktif ke Development tanpa mencetak nilai.
+
+### Settings saja
+
+Untuk menyalin konfigurasi settings tanpa menyentuh Turso, allowlist, Firebase, atau session:
+
+```bash
+npm run env:push:development:settings
+```
+
+Command ini selalu memerlukan Web Push valid dan hanya menyinkronkan:
+
+```text
+VITE_VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY
+VAPID_SUBJECT
+GOOGLE_BRIDGE_WEB_APP_URL       # bila grup Google bridge aktif
+GOOGLE_BRIDGE_SHARED_SECRET     # bila grup Google bridge aktif
+JOBS_SHARED_SECRET              # bila grup Google bridge aktif
+```
+
+Gunakan command settings dari komputer yang sudah memiliki pasangan VAPID canonical, misalnya PC yang notifikasinya sudah berfungsi. Jangan generate pasangan baru hanya untuk mengisi Development. Setelah seed selesai, komputer lain cukup menjalankan `npm run dev`.
+
+`vercel link` dapat menambahkan `VERCEL_OIDC_TOKEN`; script membersihkannya pada jalur sukses maupun gagal. Development variable dapat dibaca collaborator project yang berwenang, sehingga akses Vercel harus dibatasi ketat.
 
 ## Sinkronisasi Production
 
@@ -110,6 +137,8 @@ npm run env:push:production
 ```
 
 Command mengirim core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap ke Production tanpa mencetak nilai secret. Jalankan deployment Production baru setelah sinkronisasi.
+
+Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sensitive. Simpan sumber canonical secret hanya pada workflow tepercaya dan rotasi bila sumber tersebut hilang.
 
 ## Apps Script Properties canonical
 

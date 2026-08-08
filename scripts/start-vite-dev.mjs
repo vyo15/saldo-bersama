@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { ensureDevelopmentDependencies } from "./bootstrap-development-dependencies.mjs";
 import { ensureDevelopmentEnvironment } from "./bootstrap-development-env.mjs";
+import { validateWebPushEnvironment } from "./runtime-environment.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 await ensureDevelopmentDependencies({ projectRoot });
@@ -162,14 +163,16 @@ await new Promise((resolve, reject) => {
   httpServer.listen(port, host, resolve);
 });
 
+const webPushStatus = validateWebPushEnvironment(process.env);
 const runtimeConfiguration = Object.freeze({
   databaseConfigured: Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
   googleBridgeConfigured: Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET),
   scheduledJobsConfigured: Boolean(process.env.JOBS_SHARED_SECRET),
+  webPushConfigured: Boolean(webPushStatus.enabled && webPushStatus.complete && webPushStatus.valid),
 });
 console.log(`\n  Saldo Bersama lokal siap di http://localhost:${port}`);
 console.log("  Frontend dan lima endpoint /api berjalan dalam satu proses. Tekan Ctrl+C untuk berhenti.");
-console.log(`  Turso: ${runtimeConfiguration.databaseConfigured ? "set" : "MISSING"}; Google bridge: ${runtimeConfiguration.googleBridgeConfigured ? "set/optional" : "not configured"}`);
+console.log(`  Turso: ${runtimeConfiguration.databaseConfigured ? "set" : "MISSING"}; Web Push: ${runtimeConfiguration.webPushConfigured ? "set" : "MISSING"}; Google bridge: ${runtimeConfiguration.googleBridgeConfigured ? "set/optional" : "not configured"}`);
 console.log("  Diagnostik aman: npm run diagnose\n");
 logEvent("info", "local.server.started", {
   port,

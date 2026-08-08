@@ -1,3 +1,41 @@
+## Current task - Centralized Settings environment
+
+**Tanggal:** 2026-08-08  
+**Source:** `saldo-bersama-clean(20260808-025809).zip`  
+**Schema:** tetap version 6
+
+### Implementasi
+
+1. `npm run dev` interaktif selalu me-refresh Vercel Development ke file sementara, membersihkan key transient/legacy, memvalidasi delapan core + Web Push, lalu mengganti `.env.local` secara atomik.
+2. Web Push menjadi baseline wajib untuk Development canonical. Pair VAPID tidak dibuat per laptop karena local dan Production memakai subscription database Turso yang sama.
+3. Google bridge tetap opsional. Jika grup diaktifkan secara pusat, bootstrap yang sama membawanya ke seluruh komputer tepercaya untuk Integrasi Google, backup Drive, restore Drive, dan scheduled integration.
+4. Menambah `npm run env:push:development:settings` untuk menyinkronkan hanya Web Push dan Google bridge yang aktif tanpa mengubah Turso, allowlist, Firebase, session, atau core lainnya.
+5. `env:check`, runtime diagnostic, startup log, UI Notifikasi, dan UI Integrasi Google diselaraskan dengan model environment terpusat.
+6. README, setup, environment, deployment, Google integration, matrix, QA/test plan, ADR-0007, dan ADR-0010 diselaraskan agar tidak ada instruksi lama yang menyatakan `.env.local` lengkap akan melewati Vercel refresh.
+
+### Hasil test
+
+- Frontend static/contract: 82/82 lulus.
+- Environment/tooling/governance focused: 54/54 lulus.
+- Backend/business/security/tooling: 141/141 lulus memakai stub `web-push` sementara hanya untuk module resolution. Stub sudah dihapus.
+- Source validation: 345 file. Syntax Node: 96 file. Apps Script: 6 file dan 2 urutan load. Semua lulus.
+- `npm ci` gagal di sandbox karena runtime Node 22.16.0 tidak memenuhi baseline Node 24.x/React Router dan registry internal tidak menyediakan `vite@7.3.6`. Full ESLint, Vite build, dan build budget belum dapat dijalankan.
+- Browser test: 5/9 lulus dan 4/9 terblokir karena `frontend/dist/index.html` tidak tersedia tanpa Vite build.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role contract, API action contract, saldo, transaksi, transfer, soft delete, audit semantics, import/export semantics, backup/restore semantics, Apps Script endpoint, dependency, VAPID value, atau Vercel Production value. Patch hanya mengubah policy/bootstrap/sinkronisasi Development, status UI terkait, test, dan dokumentasi.
+
+### Langkah operator setelah merge
+
+1. Pada PC tepercaya yang Web Push-nya sudah memakai pair canonical: `npm run env:check`, lalu `npm run env:push:development:settings`.
+2. Pastikan `npx vercel env ls development` menampilkan `VITE_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, dan `VAPID_SUBJECT`. Jangan membagikan nilainya.
+3. Pada laptop/PC lain: `npm run dev`. Bootstrap akan menarik Development terbaru otomatis.
+4. Berikan permission notifikasi satu kali pada browser/perangkat. Permission browser tidak boleh dan tidak dapat diberikan otomatis oleh aplikasi.
+5. Jika Google bridge belum ada, Integrasi Google/backup Drive/full restore tetap menampilkan belum siap sampai bridge dikonfigurasi secara pusat. Fitur Turso lain tetap berjalan.
+
+---
+
 ## Current task — Route budget dan runtime Git Bash
 
 **Tanggal:** 2026-08-06

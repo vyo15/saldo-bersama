@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import {
   CORE_RUNTIME_ENV_KEYS,
   GOOGLE_BRIDGE_ENV_KEYS,
-  WEB_PUSH_ENV_KEYS,
   optionalGroupStatus,
   parseEnvironmentText,
   validateWebPushEnvironment,
@@ -17,6 +16,7 @@ const forbidden = [
   "INTERNAL_SHARED_SECRET", "APPS_SCRIPT_WEB_APP_URL", "FIREBASE_WEB_API_KEY",
   "VAPID_PUBLIC_KEY", "VITE_DEV_MODE", "SPREADSHEET_ID", "MIRROR_SPREADSHEET_ID",
   "GOOGLE_CALENDAR_ID", "BACKUP_FOLDER_ID", "JOBS_ENDPOINT_URL",
+  "VITE_DEMO_MODE", "VERCEL_OIDC_TOKEN",
 ];
 
 let source;
@@ -32,16 +32,22 @@ const legacy = forbidden.filter((key) => key in values);
 const google = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);
 const webPush = validateWebPushEnvironment(values);
 
-const groupLabel = (group) => {
+const optionalGroupLabel = (group) => {
   if (!group.enabled) return "disabled";
   if (!group.complete) return `INCOMPLETE (${group.missing.join(", ")})`;
-  if (group.invalid?.length) return `INVALID (${group.invalid.join(", ")})`;
+  return "complete";
+};
+
+const webPushLabel = () => {
+  if (!webPush.enabled) return "MISSING (required for canonical local testing)";
+  if (!webPush.complete) return `INCOMPLETE (${webPush.missing.join(", ")})`;
+  if (webPush.invalid?.length) return `INVALID (${webPush.invalid.join(", ")})`;
   return "complete";
 };
 
 console.log(`Environment: ${envPath}`);
 console.log(`Core: ${missingCore.length ? `INCOMPLETE (${missingCore.join(", ")})` : "complete"}`);
-console.log(`Google bridge: ${groupLabel(google)}`);
-console.log(`Web Push: ${groupLabel(webPush)}`);
+console.log(`Google bridge: ${optionalGroupLabel(google)}`);
+console.log(`Web Push: ${webPushLabel()}`);
 console.log(`Legacy/forbidden: ${legacy.length ? legacy.join(", ") : "none"}`);
-if (missingCore.length || legacy.length || (google.enabled && !google.complete) || !webPush.valid) process.exitCode = 1;
+if (missingCore.length || legacy.length || (google.enabled && !google.complete) || !webPush.enabled || !webPush.valid) process.exitCode = 1;

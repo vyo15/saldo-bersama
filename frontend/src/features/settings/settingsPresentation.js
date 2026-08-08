@@ -48,7 +48,7 @@ export const pushPresentation = (state) => {
     insecure_context: { text: "Notifikasi memerlukan HTTPS. Pengujian lokal dapat memakai localhost, bukan alamat IP jaringan.", tone: "danger", label: "Perlu HTTPS", canEnable: false },
     ios_install_required: { text: "Pada iPhone atau iPad, tambahkan aplikasi ke Home Screen lalu buka dari ikon aplikasi.", tone: "warning", label: "Pasang aplikasi", canEnable: false },
     permission_denied: { text: "Izin notifikasi diblokir. Aktifkan kembali melalui pengaturan browser atau perangkat.", tone: "danger", label: "Izin diblokir", canEnable: false },
-    client_not_configured: { text: "Notifikasi belum diaktifkan pada deployment ini. Konfigurasikan Web Push lalu deploy ulang.", tone: "danger", label: "Belum siap", canEnable: false },
+    client_not_configured: { text: "Web Push belum tersedia pada runtime ini. Sinkronkan environment terpusat, lalu restart development atau deploy ulang Production.", tone: "danger", label: "Belum siap", canEnable: false },
     client_configuration_invalid: { text: "VAPID public key pada frontend tidak valid.", tone: "danger", label: "Konfigurasi salah", canEnable: false },
     server_not_configured: { text: "Konfigurasi Web Push belum tersedia pada server Production.", tone: "danger", label: "Server belum siap", canEnable: false },
     server_configuration_invalid: { text: "Konfigurasi Web Push pada server belum lengkap atau tidak valid.", tone: "danger", label: "Konfigurasi salah", canEnable: false },

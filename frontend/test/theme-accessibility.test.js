@@ -138,14 +138,15 @@ test("semua CSS custom property statis terdefinisi dan alias semantic yang salah
   }
 });
 
-test("gradient avatar dan shield memakai endpoint yang kontras di light serta dark theme", async () => {
+test("gradient avatar dan login logo-first tetap memiliki kontras serta focus state", async () => {
   const [app, pages] = await Promise.all([
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
   ]);
   assert.match(app, /\.desktop-user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
   assert.match(app, /\.user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
-  assert.match(pages, /\.login-card__illustration \.login-card__shield \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
+  assert.match(pages, /\.login-creator a:focus-visible/);
+  assert.match(pages, /:root\[data-theme="dark"\] \.login-brand-lockup \.brand-wordmark span:first-child \{ color:\s*var\(--text\); \}/);
   assert.doesNotMatch(app, /\.desktop-user-avatar \{[^}]*var\(--secondary\)/s);
   assert.doesNotMatch(app, /\.user-avatar \{[^}]*var\(--secondary\)/s);
 });
