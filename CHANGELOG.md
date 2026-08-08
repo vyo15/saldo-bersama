@@ -4,6 +4,10 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Memperketat signed `integration.health` agar memverifikasi akses nyata ke Spreadsheet, Calendar, dan Drive serta format HTTPS/secret scheduler; Script Property yang terisi tetapi salah tidak lagi menghasilkan readiness false-positive.
+- Menambahkan guard target mirror: hanya spreadsheet kosong atau mirror existing dengan `_Mirror_Metadata` canonical yang boleh ditulis; metadata dibuat sebelum data pada adopsi pertama dan `Sheet1` default hanya dihapus bila kosong setelah sync berhasil.
+- Menjaga histori outbox tanpa alarm palsu: successful full snapshot Sheets/Calendar menyupersede `failed/dead_letter` lama untuk status aktif, sedangkan row histori tetap tersimpan dan failure yang lebih baru tetap tampil.
+- Menegaskan konfigurasi Google sebagai konfigurasi server-side satu kali; komputer tepercaya lain cukup memakai Vercel Development melalui `npm run dev` tanpa mengulang resource ID/secret per perangkat.
 - Menutup provisioning Google bridge end-to-end pada baseline `063919`: signed `integration.health` melaporkan Mirror/Calendar/Backup/Jobs/Trigger siap, Vercel Development/Production memakai grup bridge lengkap, Production `/api/jobs` lolos HMAC dengan HTTP 200, dan satu trigger scheduler aktif.
 - Memperbaiki `BACKUP_NAME_INVALID` setelah schema v6 dengan mengganti validator Drive backup yang hardcode `v3` menjadi nama canonical versioned `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz`; regression tetap menolak nama malformed/conflict dan description mengikuti schema aktual.
 - Mendokumentasikan semantics deployment Apps Script yang tervalidasi: `clasp push` memperbarui source tetapi tidak otomatis mempromosikan Web App versioned; deployment existing harus di-update ke **New version** tanpa mengganti URL `/exec`.

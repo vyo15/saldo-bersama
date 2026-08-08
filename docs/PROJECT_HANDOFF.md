@@ -1,45 +1,41 @@
-## Current task - Verifikasi operasional final setelah Google bridge provisioning
+## Current task - Deploy dan verifikasi Google integration hardening final
 
 **Tanggal:** 2026-08-08
-**Source baseline:** `saldo-bersama-clean(20260808-063919).zip`
+**Source baseline:** `saldo-bersama-clean(20260808-075946).zip`
 **Root project:** `saldo-bersama/`
 **Schema:** tetap version 6
 
 ### Kondisi operator terbaru
 
-- `npm run validate:source`: **346 file PASS**; clean ZIP canonical berhasil dibuat.
-- `npm run lint`: **PASS, 0 error/0 warning**; syntax Node **96 file PASS** dan Apps Script **6 file/2 load order PASS**.
-- `npm run test`: frontend **84/84 PASS**; backend/business/security/tooling **146/146 PASS**.
-- `npm run build`: PASS. `npm run build:budget`: PASS, main JS **101012 B gzip**, global CSS **17940 B gzip**, **53 asset** diperiksa.
-- `npm run test:browser`: **9/9 PASS** untuk owner, member, breakpoint 820/821/940/941, private-route smoke, resolver, dan CDP helper.
-- Git hygiene: hanya perubahan source yang disengaja yang terlihat; `.env.local`, `.clasp.json`, shared-secret/resource-ID/Web-App-URL temporary files tidak dilacak Git.
+- Source canonical 351 file; Turso tetap source of truth dan tidak ada perubahan schema/auth/saldo/transaction contract.
+- Baseline operator sebelum patch: frontend 84/84 PASS; backend/business/security/tooling 147/147 PASS; build/budget PASS; browser 9/9 PASS.
+- Production `/api/jobs` sudah HTTP 200 dengan HMAC scheduler.
+- Sheets dedicated sudah menghasilkan tab canonical dan full `system:sync` terbaru pernah `completed`.
+- Error Sheets sebelumnya berasal dari `MIRROR_SPREADSHEET_ID` salah; ID dedicated sudah dikoreksi pada project bridge Production.
+- Calendar queue sudah pernah `completed`; Drive backup name/version regression sudah lulus.
+- Verifikasi sandbox patch: source validation 351 file PASS, Apps Script syntax/boot 6 file/2 load order PASS, integration/governance focused 41/41 PASS. Full lint/build/browser pasca-patch tetap dijalankan operator pada Node 24.x.
 
-### Google bridge / scheduler
+### Hardening source
 
-- Source Apps Script canonical tetap 6 file: `Code.gs`, `Security.gs`, `MirrorService.gs`, `CalendarService.gs`, `DriveBackupService.gs`, `Scheduler.gs`, plus `appsscript.json`. Apps Script bukan financial database atau business-logic authority.
-- Signed `integration.health`: **Bridge OK; Mirror SIAP; Calendar SIAP; Backup SIAP; Jobs SIAP; Trigger SIAP**.
-- Vercel Development dan Production memiliki grup bridge lengkap. Production `/api/jobs` sudah melewati signature guard dan mengembalikan **HTTP 200 / ok=true**.
-- Satu trigger `runScheduledJobs` aktif. `installScheduledTrigger()` bersifat idempotent terhadap trigger function ini karena menghapus trigger lama sebelum membuat satu trigger baru; jangan membuat trigger manual tambahan.
-- Bug `BACKUP_NAME_INVALID` sudah ditutup: Apps Script tidak lagi hardcode backup `v3`; nama canonical versioned menerima schema aktif, termasuk v6, dengan timestamp UTC compact dan suffix 8-hex.
-- Setelah perubahan Apps Script, `clasp push` **belum cukup** untuk Web App versioned. Update deployment existing yang URL `/exec`-nya dipakai Vercel melalui **Manage deployments -> Edit -> New version -> Deploy**.
+1. `integration.health` memverifikasi akses nyata ke Spreadsheet, Calendar, dan Drive serta format konfigurasi Jobs; boolean `Siap` tidak lagi cukup berdasarkan property yang sekadar terisi.
+2. Mirror target guard hanya menerima spreadsheet baru yang benar-benar kosong atau mirror existing dengan `_Mirror_Metadata` canonical. Target non-kosong tanpa marker ditolak sebelum `clearContents()`.
+3. Metadata ditulis sebelum tab data pada adopsi awal untuk membuat retry aman; `Sheet1` default hanya dihapus bila kosong setelah sync berhasil.
+4. `integrations.status` tetap mempertahankan row historical `failed/dead_letter`, tetapi successful full snapshot `system:sync`/`system:rebuild` menyupersede failure yang lebih lama pada status aktif.
+5. Tidak ada perubahan resource ID, secret, Vercel env value, schema v6, Firebase Auth, allowlist/role, saldo, transfer, audit semantics, import/restore contract, VAPID, dependency, atau route.
 
-### Yang masih harus diverifikasi secara operasional
+### Langkah operator setelah merge
 
-1. Buka `/pengaturan/integrasi`; pastikan Sheets/Calendar/Drive menunjukkan readiness sesuai signed health dan queue tidak memiliki `failed`/`dead_letter`.
-2. Buka Spreadsheet mirror baru; pastikan tab canonical muncul dan data hanya mirror shared/read-only. Jangan gunakan spreadsheet database legacy sebagai target mirror.
-3. Buka Calendar khusus Saldo Bersama; pastikan hanya recurring `shared`, stable entity ID mencegah duplikasi, dan tidak ada transaksi personal. Kalender kosong sah bila memang tidak ada recurring shared aktif.
-4. Buka folder Drive backup; pastikan ada backup canonical `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz` dengan hasil server yang sudah berstatus verified.
-5. Setelah satu siklus scheduler, verifikasi queue mencapai `completed` dan tidak berkembang menjadi `failed`/`dead_letter`.
-
-### Keputusan
-
-- **Code/source release-green.** Jangan refactor runtime lagi tanpa temuan baru yang direproduksi dari source/operator.
-- Provisioning Google dinyatakan **configured dan scheduler-ready**, tetapi verifikasi isi resource nyata tetap outstanding sampai langkah operasional di atas dicatat.
-- Jangan mengirim shared secret, Script Properties value, resource ID, token, `.env.local`, `.clasp.json`, atau private VAPID/Turso credential ke chat/repository.
+1. Jalankan full quality gate Node 24.x dan pastikan hanya file patch yang staged.
+2. Push commit ke `main`; tunggu Vercel Production deployment baru `Ready`.
+3. Salin `apps-script/Code.gs` dan `apps-script/MirrorService.gs` ke workspace clasp, `clasp push --force`, lalu update **existing Web App** ke **New version**. URL `/exec` harus tetap sama.
+4. Jangan membuat trigger baru. Jika signed health setelah deployment melaporkan `Trigger BELUM`, baru jalankan `installScheduledTrigger()` sekali; jika `SIAP`, biarkan trigger existing.
+5. Jalankan `/api/jobs` satu kali, buka `/pengaturan/integrasi`, dan pastikan Sheets/Calendar tidak memiliki failure aktif. Failure lama yang sudah disupersede tetap berada di database untuk histori tetapi tidak muncul sebagai tindakan aktif.
+6. Verifikasi resource nyata sekali: `_Mirror_Metadata.schema_version=6`, `Sheet1` kosong sudah hilang, Calendar hanya recurring shared tanpa duplikasi, dan folder Drive memiliki backup canonical v6/versi schema aktif.
+7. Setelah langkah 1-6 lulus, provisioning dianggap final; komputer tepercaya berikutnya cukup menarik source dan menjalankan `npm run dev` tanpa setup Google/VAPID ulang.
 
 ### Guarded areas
 
-Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role, saldo, transaction/transfer/reconciliation business logic, import/restore contract, resource ID, VAPID value, dependency, route, atau deployment architecture pada finalisasi dokumentasi ini.
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role, perhitungan saldo, transaksi/transfer/reconciliation, import/export contract, backup/restore contract, resource ID, secret, VAPID value, dependency, atau deployment architecture.
 
 ---
 

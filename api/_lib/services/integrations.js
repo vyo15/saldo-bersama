@@ -82,7 +82,19 @@ const probeGoogleBridgeHealth = async (fetchImpl) => {
 };
 
 export const integrationStatus = async (db, context = null) => {
-  const rows = await db.all("SELECT provider,status,COUNT(*) AS count,MAX(updated_at) AS last_updated_at,MAX(completed_at) AS last_completed_at FROM integration_outbox GROUP BY provider,status");
+  const rows = await db.all(`WITH latest_full_sync AS (
+      SELECT provider,MAX(completed_at) AS resolved_at
+      FROM integration_outbox
+      WHERE status='completed' AND entity_type='system' AND event_type IN ('sync','rebuild') AND completed_at IS NOT NULL
+      GROUP BY provider
+    )
+    SELECT o.provider,o.status,COUNT(*) AS count,MAX(o.updated_at) AS last_updated_at,MAX(o.completed_at) AS last_completed_at
+    FROM integration_outbox o
+    LEFT JOIN latest_full_sync f ON f.provider=o.provider
+    WHERE o.status NOT IN ('failed','dead_letter')
+      OR f.resolved_at IS NULL
+      OR o.updated_at>f.resolved_at
+    GROUP BY o.provider,o.status`);
   const providers = {};
   for (const row of rows) {
     const item = providers[row.provider] || {

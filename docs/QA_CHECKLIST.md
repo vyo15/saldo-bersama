@@ -1,15 +1,15 @@
 # QA Checklist
 
-- [x] Source terbaru dan migration version diverifikasi (`063919`, schema v6).
+- [x] Source terbaru dan migration version diverifikasi (`075946`, 351 file canonical, schema v6).
 - [ ] Node/npm sesuai engines.
 - [ ] `npm run clean:dry-run` ditinjau; tidak ada secret, dump, `.env`, backup, token, dependency, atau generated output dalam clean ZIP.
-- [x] Build, build budget, lint, frontend test, backend test, dan browser smoke lulus (84/84 frontend; 146/146 backend/tooling; 9/9 browser).
+- [x] Baseline operator sebelum hardening Google lulus: build, build budget, lint, frontend 84/84, backend/tooling 147/147, browser 9/9.
 - [x] Owner/member/unauthorized diuji melalui authenticated journey dan private-route browser smoke.
 - [ ] Seluruh nominal integer dan timezone Asia/Jakarta.
 - [x] Transfer tidak masuk income/expense.
 - [x] Soft cancel, audit, idempotency, dan row-version conflict lulus.
 - [x] Rekening personal pasangan mengikuti transparency policy: readable dengan label pemilik, tetapi write capability/edit/arsip/transaksi/rekonsiliasi yang tidak diizinkan tetap ditolak frontend dan backend.
-- [ ] Sheets hanya mirror satu arah dan view-only.
+- [x] Sheets canonical tetap satu arah `Turso -> Sheets`; full sync nyata sudah `completed` dan tab mirror dedicated terbentuk. Verifikasi final sesudah hardening tetap perlu untuk metadata/Sheet1.
 - [ ] Calendar hanya data shared.
 - [x] Excel netral terhadap formula injection.
 - [ ] Backup checksum dan restore drill pada salinan terisolasi sementara lulus.
@@ -24,13 +24,14 @@
 - [x] `npm run env:push:development:settings` hanya menyentuh Web Push dan Google bridge yang aktif; Turso, allowlist, Firebase, dan session tidak ikut berubah.
 - [ ] Setelah settings disinkronkan ke Vercel Development, laptop/PC tepercaya lain cukup menjalankan `npm run dev` dan menerima konfigurasi terbaru tanpa copy/edit `.env.local`.
 - [x] Google bridge tetap fail-closed/opsional terhadap fitur Turso; bila bridge tidak tersedia, Integrasi/backup/restore external belum siap tanpa memblokir read/write Turso yang tidak bergantung bridge.
-- [x] `/pengaturan/integrasi` tidak menampilkan `Siap` hanya karena bridge env tersedia; signed `integration.health` memverifikasi resource provider, scheduled jobs, dan satu trigger untuk Sheets/Calendar.
-- [x] Queue Integrasi Google menampilkan `pending`, `processing`, `failed`, `dead_letter`, dan `completed` secara terpisah; kegagalan tidak dihitung sebagai antrean biasa.
+- [x] `/pengaturan/integrasi` tidak menampilkan `Siap` hanya karena env/property tersedia; signed `integration.health` memverifikasi akses nyata Spreadsheet/Calendar/Drive, konfigurasi Jobs, dan trigger.
+- [x] Queue Integrasi Google memisahkan `pending`, `processing`, `failed`, `dead_letter`, dan `completed`; successful full snapshot menyupersede failure historis untuk status aktif tanpa menghapus row histori.
 - [x] Waktu sukses terakhir berasal dari `completed_at`; kegagalan yang lebih baru tidak mengganti label keberhasilan terakhir.
 - [x] Health response ke browser tidak memuat shared secret, Spreadsheet/Calendar/Drive ID, endpoint scheduler internal, atau payload finansial.
 - [x] Signed `integration.health` operator melaporkan Mirror/Calendar/Backup/Jobs/Trigger `SIAP`, dan Production `/api/jobs` sudah HTTP 200 dengan HMAC scheduler.
 - [x] Validator Drive backup menerima nama canonical versioned v6 dan regression menolak format malformed; `BACKUP_NAME_INVALID` akibat hardcode v3 tidak kembali.
-- [ ] Resource Google nyata diverifikasi manual: tab/data Spreadsheet mirror, event Calendar shared tanpa duplikasi, file Drive backup versioned, serta queue `completed` tanpa `failed/dead_letter`.
+- [x] Mirror target guard menolak spreadsheet non-kosong tanpa metadata canonical dan hanya membersihkan `Sheet1` default bila kosong.
+- [ ] Verifikasi final resource nyata setelah hardening: `_Mirror_Metadata.schema_version=6`, `Sheet1` kosong hilang, event Calendar hanya shared tanpa duplikasi, file Drive backup versioned ada, dan queue tidak memiliki failure aktif setelah full sync.
 
 - [x] Action registry/policy, authorization map, dan API docs tetap sinkron.
 - [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.

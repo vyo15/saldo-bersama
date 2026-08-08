@@ -22,7 +22,7 @@ Google bridge tidak dikonfigurasi per laptop/browser. Nilai `GOOGLE_BRIDGE_WEB_A
 npm run env:push:development:settings
 ```
 
-`npm run dev` kemudian menarik Development terbaru pada setiap start interaktif. Jika bridge belum diaktifkan secara pusat, halaman Integrasi Google tetap menampilkan status belum siap, sedangkan fitur Turso lain tetap dapat berjalan.
+`npm run dev` kemudian menarik Development terbaru pada setiap start interaktif. Resource ID Google tetap berada satu kali di Apps Script Properties pada project bridge Production; laptop/PC lain tidak perlu mengisi Spreadsheet/Calendar/Drive ID atau secret secara manual. Jika bridge belum diaktifkan secara pusat, halaman Integrasi Google tetap menampilkan status belum siap, sedangkan fitur Turso lain tetap dapat berjalan.
 
 ## Readiness dan health check
 
@@ -30,16 +30,22 @@ npm run env:push:development:settings
 
 Kriteria readiness:
 
-- **Sheets**: bridge dapat dijangkau, `MIRROR_SPREADSHEET_ID` tersedia, konfigurasi scheduled jobs lengkap, dan tepat satu trigger `runScheduledJobs` aktif.
-- **Calendar**: bridge dapat dijangkau, `GOOGLE_CALENDAR_ID` tersedia, konfigurasi scheduled jobs lengkap, dan tepat satu trigger `runScheduledJobs` aktif.
-- **Drive**: bridge dapat dijangkau dan `BACKUP_FOLDER_ID` tersedia. Trigger tidak menjadi syarat untuk backup manual, tetapi tetap wajib untuk backup terjadwal.
+- **Sheets**: bridge dapat dijangkau, Spreadsheet target benar-benar dapat dibuka oleh akun Apps Script, target merupakan mirror Saldo Bersama yang sudah memiliki metadata canonical atau spreadsheet baru yang benar-benar kosong, konfigurasi scheduled jobs valid, dan tepat satu trigger `runScheduledJobs` aktif.
+- **Calendar**: bridge dapat dijangkau, Calendar target benar-benar dapat diakses oleh akun Apps Script, konfigurasi scheduled jobs valid, dan tepat satu trigger `runScheduledJobs` aktif.
+- **Drive**: bridge dapat dijangkau dan folder backup benar-benar dapat diakses oleh akun Apps Script. Trigger tidak menjadi syarat untuk backup manual, tetapi tetap wajib untuk backup terjadwal.
+- **Jobs**: `JOBS_ENDPOINT_URL` harus berupa HTTPS URL valid dan `JOBS_SHARED_SECRET` minimal 32 karakter; property yang hanya terisi tetapi malformed tidak dianggap siap.
 
-Jika health check gagal, UI harus menampilkan belum siap/gangguan dan tidak menjalankan sinkronisasi. Queue tetap dibedakan menjadi `pending`, `processing`, `failed`, `dead_letter`, dan `completed`; `failed` tidak boleh ditampilkan sebagai sekadar antrean. `lastCompletedAt` adalah waktu sukses terakhir dan tidak boleh diganti oleh timestamp kegagalan terbaru.
+Health check bersifat read-only terhadap resource Google. Jika health check gagal, UI harus menampilkan belum siap/gangguan dan tidak menjalankan sinkronisasi. Secret, resource ID, endpoint internal, dan payload finansial tetap tidak dikembalikan ke browser.
+
+Queue tetap dibedakan menjadi `pending`, `processing`, `failed`, `dead_letter`, dan `completed`. Untuk Sheets/Calendar, successful full snapshot `system:sync`/`system:rebuild` menyupersede kegagalan lama yang terjadi sebelum snapshot tersebut: row historis tetap tersimpan di `integration_outbox`, tetapi tidak lagi dihitung sebagai `failed`/`dead_letter` aktif. Kegagalan yang lebih baru dari full snapshot terakhir tetap tampil sebagai masalah aktif. `lastCompletedAt` selalu berasal dari `completed_at`.
 
 ## Google Sheets mirror
 
 - Sinkronisasi hanya `Turso -> Sheets`.
 - Spreadsheet mirror harus baru, terpisah dari spreadsheet database lama.
+- Bridge hanya mengadopsi target yang benar-benar kosong atau target yang sudah memiliki `_Mirror_Metadata` canonical (`source_of_truth=Turso`, `mode=read-only mirror`). Spreadsheet non-kosong tanpa marker ditolak dengan `MIRROR_TARGET_UNSAFE`.
+- Metadata canonical ditulis sebelum tab data pada adopsi pertama agar retry tetap aman bila sinkronisasi terputus di tengah proses.
+- `Sheet1` default hanya dihapus setelah sinkronisasi berhasil dan hanya bila benar-benar kosong; custom sheet/non-kosong tidak dihapus.
 - Bagikan hanya kepada dua akun sebagai viewer; editor hanya akun pemilik bridge bila diperlukan.
 - Manual edit dapat tertimpa saat reconcile dan tidak pernah diimpor kembali.
 - Mirror tidak memuat Firebase UID, token, push endpoint/key, idempotency response, raw audit payload, atau secret.

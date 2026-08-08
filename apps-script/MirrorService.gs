@@ -4,6 +4,30 @@ function getMirrorSpreadsheet_() {
   return SpreadsheetApp.openById(id);
 }
 
+function mirrorSheetBlank_(sheet) {
+  return Number(sheet.getLastRow() || 0) === 0 && Number(sheet.getLastColumn() || 0) === 0;
+}
+
+function mirrorMetadataMap_(metadata) {
+  var values = metadata.getRange(1, 1, 5, 2).getValues();
+  var result = {};
+  values.forEach(function(row) { result[String(row[0] || "")] = row[1]; });
+  return result;
+}
+
+function mirrorTargetState_(spreadsheet) {
+  var metadata = spreadsheet.getSheetByName("_Mirror_Metadata");
+  if (metadata) {
+    var map = mirrorMetadataMap_(metadata);
+    if (String(map.source_of_truth || "") === "Turso" && String(map.mode || "") === "read-only mirror") return "managed";
+    throw sbError_("MIRROR_TARGET_UNSAFE", "Spreadsheet target bukan mirror Saldo Bersama yang valid.", 409);
+  }
+
+  var sheets = spreadsheet.getSheets();
+  if (sheets.length === 1 && mirrorSheetBlank_(sheets[0])) return "blank";
+  throw sbError_("MIRROR_TARGET_UNSAFE", "Spreadsheet target berisi data dan belum ditandai sebagai mirror Saldo Bersama.", 409);
+}
+
 function valuesForRows_(rows) {
   if (!rows || !rows.length) return { headers: ["Keterangan"], values: [["Tidak ada data"]] };
   var headers = Object.keys(rows[0]);
@@ -24,6 +48,27 @@ function writeMirrorSheet_(spreadsheet, name, rows) {
   if (data.values.length) sheet.getRange(1, 1, data.values.length + 1, data.headers.length).createFilter();
 }
 
+function writeMirrorMetadata_(spreadsheet, payload, schemaVersion) {
+  var metadata = spreadsheet.getSheetByName("_Mirror_Metadata") || spreadsheet.insertSheet("_Mirror_Metadata");
+  metadata.clearContents();
+  metadata.getRange(1, 1, 5, 2).setValues([
+    ["source_of_truth", "Turso"],
+    ["mode", "read-only mirror"],
+    ["generated_at", cleanText_(payload.generatedAt || new Date().toISOString(), 50)],
+    ["schema_version", schemaVersion],
+    ["warning", "Perubahan manual akan ditimpa saat sinkronisasi berikutnya."]
+  ]);
+  metadata.hideSheet();
+  return metadata;
+}
+
+function cleanupDefaultMirrorSheet_(spreadsheet) {
+  var sheet = spreadsheet.getSheetByName("Sheet1");
+  if (!sheet || !mirrorSheetBlank_(sheet) || spreadsheet.getSheets().length <= 1) return false;
+  spreadsheet.deleteSheet(sheet);
+  return true;
+}
+
 function mirrorSchemaVersion_(payload) {
   var schemaVersion = payload && payload.schemaVersion;
   if (typeof schemaVersion !== "number" || !isFinite(schemaVersion) || Math.floor(schemaVersion) !== schemaVersion || schemaVersion < 1) {
@@ -40,17 +85,11 @@ function rebuildMirror_(payload) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) throw sbError_("MIRROR_BUSY", "Mirror sedang diperbarui oleh job lain.", 409);
   try {
+    mirrorTargetState_(spreadsheet);
+    writeMirrorMetadata_(spreadsheet, payload, schemaVersion);
     SB_MIRROR_SHEETS.forEach(function(name) { writeMirrorSheet_(spreadsheet, name, Array.isArray(sheets[name]) ? sheets[name] : []); });
-    var metadata = spreadsheet.getSheetByName("_Mirror_Metadata") || spreadsheet.insertSheet("_Mirror_Metadata");
-    metadata.clearContents();
-    metadata.getRange(1, 1, 5, 2).setValues([
-      ["source_of_truth", "Turso"],
-      ["mode", "read-only mirror"],
-      ["generated_at", cleanText_(payload.generatedAt || new Date().toISOString(), 50)],
-      ["schema_version", schemaVersion],
-      ["warning", "Perubahan manual akan ditimpa saat sinkronisasi berikutnya."]
-    ]);
-    metadata.hideSheet();
+    writeMirrorMetadata_(spreadsheet, payload, schemaVersion);
+    cleanupDefaultMirrorSheet_(spreadsheet);
     SpreadsheetApp.flush();
     return { spreadsheetId: spreadsheet.getId(), sheets: SB_MIRROR_SHEETS.length, syncedAt: new Date().toISOString() };
   } finally { lock.releaseLock(); }

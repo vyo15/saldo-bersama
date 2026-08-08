@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import vm from "node:vm";
 import test from "node:test";
+import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const loadBridge = async () => {
   const root = new URL("../../apps-script/", import.meta.url);
@@ -16,6 +17,18 @@ const loadBridge = async () => {
     ["JOBS_SHARED_SECRET", "j".repeat(64)],
   ]);
   const cache = new Map();
+  const healthState = { mirror: true, calendar: true, backup: true };
+  const managedMetadata = {
+    getRange: () => ({
+      getValues: () => [
+        ["source_of_truth", "Turso"],
+        ["mode", "read-only mirror"],
+        ["generated_at", "2026-08-08T00:00:00.000Z"],
+        ["schema_version", 6],
+        ["warning", "managed"],
+      ],
+    }),
+  };
   const context = {
     console,
     Date,
@@ -29,29 +42,62 @@ const loadBridge = async () => {
     PropertiesService: { getScriptProperties: () => ({ getProperty: (key) => properties.get(key) || "" }) },
     CacheService: { getScriptCache: () => ({ get: (key) => cache.get(key) || null, put: (key, value) => cache.set(key, value) }) },
     ScriptApp: { getProjectTriggers: () => [{ getHandlerFunction: () => "runScheduledJobs" }] },
+    SpreadsheetApp: {
+      openById: () => {
+        if (!healthState.mirror) throw new Error("mirror unavailable");
+        return {
+          getId: () => "mirror-id",
+          getSheetByName: (name) => name === "_Mirror_Metadata" ? managedMetadata : null,
+          getSheets: () => [],
+        };
+      },
+      flush() {},
+    },
+    CalendarApp: { getCalendarById: () => healthState.calendar ? { getId: () => "calendar-id" } : null },
+    DriveApp: {
+      getFolderById: () => {
+        if (!healthState.backup) throw new Error("backup unavailable");
+        return { getId: () => "backup-id" };
+      },
+    },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: "application/json" }, createTextOutput: (text) => ({ text, setMimeType() { return this; } }) },
   };
+  context.__properties = properties;
+  context.__healthState = healthState;
   vm.createContext(context);
   for (const file of files) vm.runInContext(await readFile(new URL(file, root), "utf8"), context, { filename: file });
   return context;
 };
-
 test("bridge hanya mengekspos action Google integration dan tidak memiliki router finansial", async () => {
   const context = await loadBridge();
   for (const name of ["doGet", "doPost", "rebuildMirror_", "rebuildCalendar_", "storeBackup_", "readBackup_", "runScheduledJobs"]) assert.equal(typeof context[name], "function", name);
   for (const name of ["createTransaction_", "rows_", "setupSaldoBersama", "routeAction_"]) assert.equal(typeof context[name], "undefined", name);
 });
 
-test("health bridge hanya mengungkap readiness resource dan scheduler", async () => {
+test("health bridge memverifikasi akses resource nyata dan konfigurasi scheduler tanpa membocorkan ID", async () => {
   const context = await loadBridge();
-  const health = JSON.parse(JSON.stringify(context.integrationHealth_()));
-  assert.equal(health.mirrorConfigured, true);
-  assert.equal(health.calendarConfigured, true);
-  assert.equal(health.backupConfigured, true);
-  assert.equal(health.jobsConfigured, true);
-  assert.equal(health.triggerReady, true);
-  assert.match(health.timestamp, /^\d{4}-\d{2}-\d{2}T/);
-  assert.deepEqual(Object.keys(health).sort(), ["backupConfigured", "calendarConfigured", "jobsConfigured", "mirrorConfigured", "timestamp", "triggerReady"]);
+  const ready = JSON.parse(JSON.stringify(context.integrationHealth_()));
+  assert.equal(ready.mirrorConfigured, true);
+  assert.equal(ready.calendarConfigured, true);
+  assert.equal(ready.backupConfigured, true);
+  assert.equal(ready.jobsConfigured, true);
+  assert.equal(ready.triggerReady, true);
+  assert.match(ready.timestamp, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(Object.keys(ready).sort(), ["backupConfigured", "calendarConfigured", "jobsConfigured", "mirrorConfigured", "timestamp", "triggerReady"]);
+
+  context.__healthState.mirror = false;
+  context.__healthState.calendar = false;
+  context.__healthState.backup = false;
+  context.__properties.set("JOBS_ENDPOINT_URL", "[https://invalid](https://invalid)");
+  context.__properties.set("JOBS_SHARED_SECRET", "short");
+  const unavailable = JSON.parse(JSON.stringify(context.integrationHealth_()));
+  assert.equal(unavailable.mirrorConfigured, false);
+  assert.equal(unavailable.calendarConfigured, false);
+  assert.equal(unavailable.backupConfigured, false);
+  assert.equal(unavailable.jobsConfigured, false);
+  assert.equal(unavailable.triggerReady, true);
+  assert.deepEqual(Object.keys(unavailable).sort(), ["backupConfigured", "calendarConfigured", "jobsConfigured", "mirrorConfigured", "timestamp", "triggerReady"]);
 });
 
 test("signature bridge menolak replay dan formula mirror dinetralkan", async () => {
@@ -74,6 +120,45 @@ test("mirror metadata memakai schema canonical dari backend dan menolak versi in
   assert.match(jobsSource, /schemaVersion:\s*DATABASE_SCHEMA_VERSION/);
   assert.match(mirrorSource, /\["schema_version",\s*schemaVersion\]/);
   assert.doesNotMatch(mirrorSource, /\["schema_version",\s*3\]/);
+});
+
+
+test("mirror hanya mengadopsi spreadsheet kosong atau target yang memiliki metadata canonical dan membersihkan Sheet1 kosong", async () => {
+  const context = await loadBridge();
+  const blankSheet = { getLastRow: () => 0, getLastColumn: () => 0 };
+  const nonEmptySheet = { getLastRow: () => 2, getLastColumn: () => 2 };
+  const blankSpreadsheet = { getSheetByName: () => null, getSheets: () => [blankSheet] };
+  assert.equal(context.mirrorTargetState_(blankSpreadsheet), "blank");
+
+  const metadata = {
+    getRange: () => ({
+      getValues: () => [
+        ["source_of_truth", "Turso"],
+        ["mode", "read-only mirror"],
+        ["generated_at", "2026-08-08T00:00:00.000Z"],
+        ["schema_version", 6],
+        ["warning", "managed"],
+      ],
+    }),
+  };
+  const managedSpreadsheet = { getSheetByName: (name) => name === "_Mirror_Metadata" ? metadata : null, getSheets: () => [nonEmptySheet] };
+  assert.equal(context.mirrorTargetState_(managedSpreadsheet), "managed");
+
+  const unsafeSpreadsheet = { getSheetByName: () => null, getSheets: () => [nonEmptySheet] };
+  assert.throws(() => context.mirrorTargetState_(unsafeSpreadsheet), (error) => error.code === "MIRROR_TARGET_UNSAFE");
+
+  let deleted = null;
+  const cleanupSpreadsheet = {
+    getSheetByName: (name) => name === "Sheet1" ? blankSheet : null,
+    getSheets: () => [blankSheet, nonEmptySheet],
+    deleteSheet: (sheet) => { deleted = sheet; },
+  };
+  assert.equal(context.cleanupDefaultMirrorSheet_(cleanupSpreadsheet), true);
+  assert.equal(deleted, blankSheet);
+
+  const mirrorSource = await readFile(new URL("../../apps-script/MirrorService.gs", import.meta.url), "utf8");
+  assert.ok(mirrorSource.indexOf("writeMirrorMetadata_(spreadsheet, payload, schemaVersion);") < mirrorSource.indexOf("SB_MIRROR_SHEETS.forEach"));
+  assert.match(mirrorSource, /cleanupDefaultMirrorSheet_\(spreadsheet\)/);
 });
 
 test("Drive backup menerima nama versioned canonical tanpa hardcode schema lama", async () => {
@@ -111,9 +196,9 @@ test("status integrasi membedakan queue, hasil sukses, dan kesiapan resource Goo
     const db = {
       all: async () => [
         { provider: "sheets", status: "pending", count: 2, last_updated_at: "2026-08-08T03:00:00.000Z", last_completed_at: null },
-        { provider: "sheets", status: "failed", count: 1, last_updated_at: "2026-08-08T03:02:00.000Z", last_completed_at: null },
-        { provider: "sheets", status: "dead_letter", count: 1, last_updated_at: "2026-08-08T03:03:00.000Z", last_completed_at: null },
         { provider: "sheets", status: "completed", count: 3, last_updated_at: "2026-08-08T03:04:00.000Z", last_completed_at: "2026-08-08T03:04:00.000Z" },
+        { provider: "sheets", status: "failed", count: 1, last_updated_at: "2026-08-08T03:06:00.000Z", last_completed_at: null },
+        { provider: "sheets", status: "dead_letter", count: 1, last_updated_at: "2026-08-08T03:07:00.000Z", last_completed_at: null },
       ],
     };
     const fetchImpl = async () => ({
@@ -140,11 +225,57 @@ test("status integrasi membedakan queue, hasil sukses, dan kesiapan resource Goo
       failed: 1,
       dead_letter: 1,
       completed: 3,
-      lastUpdatedAt: "2026-08-08T03:04:00.000Z",
+      lastUpdatedAt: "2026-08-08T03:07:00.000Z",
       lastCompletedAt: "2026-08-08T03:04:00.000Z",
-      lastFailureAt: "2026-08-08T03:03:00.000Z",
+      lastFailureAt: "2026-08-08T03:07:00.000Z",
     });
   } finally {
+    if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
+    else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET;
+    else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
+  }
+});
+
+
+test("full snapshot sukses menyupersede failed dan dead_letter lama tanpa menghapus histori outbox", async () => {
+  const { integrationStatus } = await import("../../api/_lib/services/integrations.js");
+  const db = await createSqliteTestDatabase();
+  const previous = {
+    url: process.env.GOOGLE_BRIDGE_WEB_APP_URL,
+    secret: process.env.GOOGLE_BRIDGE_SHARED_SECRET,
+  };
+  delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
+  delete process.env.GOOGLE_BRIDGE_SHARED_SECRET;
+  const insert = async ({ id, eventType, entityType, entityId, status, updatedAt, completedAt = null }) => {
+    await db.execute(`INSERT INTO integration_outbox(
+      outbox_id,provider,event_type,entity_type,entity_id,event_key,payload_json,status,attempt_count,next_attempt_at,locked_at,locked_by,
+      last_error_code,last_error_message,created_at,updated_at,completed_at
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+      id, "sheets", eventType, entityType, entityId, `sheets:${eventType}:${entityType}:${entityId}`, "{}", status,
+      status === "dead_letter" ? 5 : 1, updatedAt, null, null,
+      status === "completed" ? "" : "BRIDGE_ERROR", status === "completed" ? "" : "Integrasi Google gagal.",
+      updatedAt, updatedAt, completedAt,
+    ]);
+  };
+  try {
+    await insert({ id: "old-failed", eventType: "upsert", entityType: "account", entityId: "a1", status: "failed", updatedAt: "2026-08-08T03:00:00.000Z" });
+    await insert({ id: "old-dead", eventType: "upsert", entityType: "category", entityId: "c1", status: "dead_letter", updatedAt: "2026-08-08T03:01:00.000Z" });
+    await insert({ id: "full-sync", eventType: "sync", entityType: "system", entityId: "mirror", status: "completed", updatedAt: "2026-08-08T03:05:00.000Z", completedAt: "2026-08-08T03:05:00.000Z" });
+
+    const reconciled = await integrationStatus(db);
+    assert.equal(reconciled.providers.sheets.failed, 0);
+    assert.equal(reconciled.providers.sheets.dead_letter, 0);
+    assert.equal(reconciled.providers.sheets.completed, 1);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM integration_outbox WHERE status='dead_letter'").then((row) => Number(row.count)), 1);
+
+    await insert({ id: "new-failed", eventType: "rebuild", entityType: "system", entityId: "mirror", status: "failed", updatedAt: "2026-08-08T03:06:00.000Z" });
+    const activeFailure = await integrationStatus(db);
+    assert.equal(activeFailure.providers.sheets.failed, 1);
+    assert.equal(activeFailure.providers.sheets.dead_letter, 0);
+    assert.equal(activeFailure.providers.sheets.lastFailureAt, "2026-08-08T03:06:00.000Z");
+  } finally {
+    db.close();
     if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
     else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
     if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET;

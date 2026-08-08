@@ -1,21 +1,23 @@
 # Project Status
 
-## Release-green baseline dan Google bridge terprovision 2026-08-08
+## Google integration hardening final 2026-08-08
 
-- **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-063919).zip`, root `saldo-bersama/`, schema tetap v6. Stack aktual: React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso sebagai source of truth; Apps Script tetap integration bridge untuk Sheets/Calendar/Drive dan scheduler.
-- Full quality gate operator pada Node 24.18.1: `validate:source` PASS **346 file**, `npm run lint` PASS **0 error/0 warning**, frontend **84/84 PASS**, backend/business/security/tooling **146/146 PASS**, Vite build PASS, build budget PASS (**main JS 101012 B gzip; global CSS 17940 B gzip; 53 asset**), dan browser **9/9 PASS** untuk owner/member/breakpoint/smoke/CDP.
-- `npm run zip` menghasilkan clean archive canonical 346 file. `git ls-files` juga membuktikan `.env.local`, `.clasp.json`, shared-secret temporary files, resource-ID temporary files, dan Web App URL temporary file tidak dilacak Git.
-- Google bridge sudah terkonfigurasi pada Development dan Production. Signed `integration.health` mengembalikan `Mirror/Calendar/Backup/Jobs/Trigger: SIAP`; startup lokal melaporkan Turso, Web Push, Google bridge, dan scheduled jobs terkonfigurasi; `integrations.status` merespons 200.
-- Production `/api/jobs` sudah lolos HMAC scheduler dan mengembalikan HTTP 200. Satu trigger `runScheduledJobs` aktif sesuai kontrak health. Jangan membuat trigger kedua.
-- Bug operasional `BACKUP_NAME_INVALID` terverifikasi berasal dari validator Apps Script yang masih hardcode `v3`, sementara runtime schema v6 membuat `saldo-bersama-backup-v6-...json.gz`. `DriveBackupService.gs` sekarang menerima nama canonical versioned `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz`, tetap menolak nama malformed/path-like, dan menyimpan description mengikuti schema version aktual. Regression test terkait lulus dalam suite backend 146/146.
-- Workflow deployment Apps Script yang tervalidasi: `clasp push` hanya memperbarui source project; Web App `/exec` existing harus di-update melalui **Manage deployments -> Edit -> New version -> Deploy** agar kode baru benar-benar dipakai tanpa mengganti URL.
-- Boundary konfigurasi tetap: `MIRROR_SPREADSHEET_ID`, `GOOGLE_CALENDAR_ID`, `BACKUP_FOLDER_ID`, dan `JOBS_ENDPOINT_URL` hanya di Apps Script Properties; `GOOGLE_BRIDGE_SHARED_SECRET` dan `JOBS_SHARED_SECRET` berada di Apps Script Properties dan Vercel dengan nilai yang sama. Turso/Firebase private credential tidak masuk Apps Script.
+- **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-075946).zip`, root `saldo-bersama/`, **351 file canonical**, schema tetap v6. Stack aktual: React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso sebagai source of truth; Apps Script hanya bridge Sheets/Calendar/Drive + scheduler.
+- Baseline operator sebelum hardening ini pada Node 24.18.1 tetap hijau: source validation 351 file, lint/syntax PASS, frontend **84/84**, backend/business/security/tooling **147/147**, Vite build PASS, build budget PASS (**main JS 102139 B gzip; global CSS 17928 B gzip; 53 asset**), dan browser **9/9 PASS**.
+- Production `/api/jobs` sudah lolos HMAC scheduler dengan HTTP 200. Mirror Sheets nyata sudah menghasilkan tab canonical dan full sync `system:sync` terbaru berstatus `completed`; histori `failed/dead_letter` sebelumnya berasal dari target Spreadsheet yang salah dan tidak mengubah Turso.
+- Hardening final membuat signed `integration.health` memverifikasi **akses resource nyata**, bukan sekadar keberadaan Script Property: Spreadsheet harus dapat dibuka dan aman sebagai target mirror, Calendar harus dapat diakses, Drive folder harus dapat diakses, dan konfigurasi Jobs harus HTTPS + secret minimal 32 karakter.
+- `MirrorService.gs` sekarang fail-closed terhadap spreadsheet non-kosong yang belum memiliki metadata canonical, menulis metadata sebelum data pada adopsi pertama, dan hanya menghapus `Sheet1` default bila kosong setelah sinkronisasi berhasil.
+- Status Integrasi tidak menghapus histori outbox. Successful full snapshot Sheets/Calendar menyupersede failure lama untuk perhitungan status aktif; failure yang lebih baru tetap tampil sebagai `failed/dead_letter`.
+- Konfigurasi lintas perangkat tetap terpusat: laptop/PC tepercaya cukup `npm run dev` untuk menarik Vercel Development. Resource ID Google hanya disetel satu kali pada Apps Script Properties; tidak perlu copy/edit `.env.local` atau mengulang setup Google per perangkat.
+- Workflow deployment Apps Script tetap: `clasp push` memperbarui source, lalu Web App existing harus **Manage deployments -> Edit -> New version -> Deploy**. Jangan membuat URL `/exec` baru atau trigger kedua.
+- Verifikasi sandbox hardening: `validate:source` **351 file PASS**, Apps Script syntax/boot **6 file/2 load order PASS**, `api/_lib/services/integrations.js` syntax PASS, dan focused integration + governance/source tests **41/41 PASS**. Full lint/build/browser setelah patch tetap wajib diulang pada Node 24.x operator karena clean ZIP tidak membawa `node_modules`.
 
-### Status release dan verifikasi operasional tersisa
+### Status verifikasi operasional
 
-- Source/code quality gate **release-green**. Tidak ada alasan untuk mengubah saldo, transaksi, transfer, schema v6, auth/role, Turso, atau deployment logic hanya untuk menutup provisioning Google.
-- Health `SIAP` membuktikan konfigurasi bridge/resource property/scheduler, tetapi **belum menjadi bukti isi resource**. Sebelum menutup verifikasi operasional, inspeksi Spreadsheet mirror nyata (tab + data shared-only), Calendar nyata (recurring shared saja, tanpa duplikasi), Drive backup nyata (file canonical v6/versi schema aktual), serta queue Integrasi (`completed` tanpa `failed/dead_letter`).
-- Sampai inspeksi resource nyata tersebut dicatat, dokumentasi tidak boleh mengklaim isi Sheets/Calendar/Drive sudah tervalidasi end-to-end.
+- **Sheets:** full snapshot sudah pernah `completed` dan tab canonical terlihat pada resource dedicated. Setelah hardening dideploy, verifikasi `_Mirror_Metadata.schema_version=6`, `Sheet1` kosong hilang, dan UI tidak lagi menghitung failure historis sebagai masalah aktif.
+- **Calendar:** queue sudah pernah `completed`, tetapi isi Calendar nyata tetap harus dicek sekali untuk memastikan hanya recurring `shared` dan tidak ada duplikasi/personal item.
+- **Drive:** backup v6 contract dan regression sudah lulus; file backup nyata di folder Drive tetap harus dicek sekali sebelum verifikasi operasional ditutup.
+- Jangan mengirim shared secret, Script Properties value, resource ID, token, `.env.local`, `.clasp.json`, atau private VAPID/Turso credential ke chat/repository.
 
 > **Catatan histori:** seluruh section setelah blok current status ini adalah checkpoint pekerjaan sebelumnya. Angka test, baseline ZIP, dan status provisioning di section historis dipertahankan untuk audit trail dan tidak menggantikan status current di atas.
 

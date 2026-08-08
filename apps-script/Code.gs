@@ -21,13 +21,38 @@ function doPost(event) {
   }
 }
 
-function integrationHealth_() {
+function resourceHealthReady_(name, getter, validator) {
+  try {
+    var resource = getter();
+    if (!resource) return false;
+    if (validator && validator(resource) !== true) return false;
+    return true;
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "integration.health.resource_unavailable", resource: name, code: cleanText_(error && error.code || "RESOURCE_UNAVAILABLE", 80) }));
+    return false;
+  }
+}
+
+function jobsConfigurationReady_() {
   var properties = PropertiesService.getScriptProperties();
+  var endpoint = cleanText_(properties.getProperty("JOBS_ENDPOINT_URL") || "", 500);
+  var secret = String(properties.getProperty("JOBS_SHARED_SECRET") || "");
+  return secret.length >= 32 && /^https:\/\/[A-Za-z0-9.-]+(?::[0-9]+)?(?:\/[^\s]*)?$/.test(endpoint);
+}
+
+function integrationHealth_() {
   return {
-    mirrorConfigured: Boolean(properties.getProperty("MIRROR_SPREADSHEET_ID")),
-    calendarConfigured: Boolean(properties.getProperty("GOOGLE_CALENDAR_ID")),
-    backupConfigured: Boolean(properties.getProperty("BACKUP_FOLDER_ID")),
-    jobsConfigured: Boolean(properties.getProperty("JOBS_ENDPOINT_URL") && properties.getProperty("JOBS_SHARED_SECRET")),
+    mirrorConfigured: resourceHealthReady_("mirror", getMirrorSpreadsheet_, function(spreadsheet) {
+      mirrorTargetState_(spreadsheet);
+      return true;
+    }),
+    calendarConfigured: resourceHealthReady_("calendar", getManagedCalendar_, function(calendar) {
+      return typeof calendar.getId !== "function" || Boolean(calendar.getId());
+    }),
+    backupConfigured: resourceHealthReady_("backup", backupFolder_, function(folder) {
+      return typeof folder.getId !== "function" || Boolean(folder.getId());
+    }),
+    jobsConfigured: jobsConfigurationReady_(),
     triggerReady: scheduledTriggerHealth_().ready,
     timestamp: new Date().toISOString()
   };
