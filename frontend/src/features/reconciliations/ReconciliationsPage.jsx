@@ -9,7 +9,6 @@ import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { parseRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { accountDisplayLabel } from "../accounts/accountPresentation.js";
@@ -63,8 +62,11 @@ const ReconciliationsPage = () => {
 
     let actualBalance;
     try {
-      actualBalance = parseRupiah(form.actual_balance);
-      if (actualBalance < 0) throw new RangeError("Saldo aktual tidak boleh negatif.");
+      const raw = String(form.actual_balance || "").trim();
+      const negative = raw.startsWith("-");
+      actualBalance = parseRupiah(negative ? raw.slice(1) : raw);
+      if (negative) actualBalance *= -1;
+      if (actualBalance < 0 && !selectedAccount.allow_negative) throw new RangeError("Saldo aktual rekening ini tidak boleh negatif.");
     } catch (error) {
       setSubmitState({ status: "error", error });
       return;
@@ -76,7 +78,7 @@ const ReconciliationsPage = () => {
         account_id: selectedAccount.account_id,
         actual_balance: actualBalance,
         notes: form.notes,
-      }, { idempotencyKey: createIdempotencyKey() });
+      }, {});
 
       setForm((current) => ({ ...current, actual_balance: "" }));
       setSubmitState({ status: "idle", error: null });
@@ -134,16 +136,35 @@ const ReconciliationsPage = () => {
                   ))}
                 </select>
               </label>
-              <MoneyInput
-                id="reconciliation-actual-balance"
-                label="Saldo aktual"
-                required
-                value={form.actual_balance}
-                onChange={(value) => {
-                  setForm((current) => ({ ...current, actual_balance: value }));
-                  setSubmitState({ status: "idle", error: null });
-                }}
-              />
+              {selectedAccount?.allow_negative ? (
+                <label className="field" htmlFor="reconciliation-actual-balance">
+                  <span>Saldo aktual *</span>
+                  <input
+                    id="reconciliation-actual-balance"
+                    inputMode="numeric"
+                    required
+                    value={form.actual_balance}
+                    onChange={(event) => {
+                      const raw = event.target.value.replace(/[^0-9-]/g, "").replace(/(?!^)-/g, "");
+                      setForm((current) => ({ ...current, actual_balance: raw }));
+                      setSubmitState({ status: "idle", error: null });
+                    }}
+                    aria-describedby="reconciliation-negative-help"
+                  />
+                  <small id="reconciliation-negative-help">Rekening ini mengizinkan saldo negatif; gunakan tanda minus bila diperlukan.</small>
+                </label>
+              ) : (
+                <MoneyInput
+                  id="reconciliation-actual-balance"
+                  label="Saldo aktual"
+                  required
+                  value={form.actual_balance}
+                  onChange={(value) => {
+                    setForm((current) => ({ ...current, actual_balance: value }));
+                    setSubmitState({ status: "idle", error: null });
+                  }}
+                />
+              )}
               <div className={styles.systemBalance} aria-live="polite">
                 <span>Saldo sistem saat halaman dimuat</span>
                 <strong>{selectedAccount ? <Money value={selectedAccount.balance || 0} /> : "Pilih rekening"}</strong>

@@ -105,7 +105,7 @@ export const envelopeItems = async (db, actor, { period = null, includeClosed = 
   const args = [...access.args];
   if (!includeClosed) conditions.push("p.status='active'");
   if (period) { const bounds = monthBounds(period); conditions.push("p.period_start <= ? AND p.period_end >= ?"); args.push(bounds.end, bounds.start); }
-  const rows = await db.all(`SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,
+  const rows = await db.all(`SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
     COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0) AS used_amount
     FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
     WHERE r.status='active' AND ${conditions.join(" AND ")}

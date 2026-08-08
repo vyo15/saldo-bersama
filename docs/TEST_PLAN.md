@@ -4,9 +4,11 @@
 
 ```bash
 npm run validate:source
+- Archive target, aturan rutin, dan anggaran memakai action eksplisit owner-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
 npm run lint
 npm run lint:backend
 npm run test
+npm run test:guard
 npm run build
 npm run build:budget
 npm run check
@@ -23,13 +25,15 @@ Cakupan wajib:
 - income/expense/transfer/refund/adjustment;
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
 - row-version conflict dan idempotency replay;
+- guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage`, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
+- browser human-error journey pada network lambat: double-click create target harus menghasilkan satu request mutation;
 - personal/shared authorization dan IDOR;
-- recurring, envelope, budget, goal, reconciliation, close/reopen period;
-- read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, dan duplicate Calendar prevention;
+- recurring, envelope, budget, goal, reconciliation, close/reopen period; archive/restore envelope rule dan reverse reallocation; restore Target/Jadwal rutin/Anggaran arsip; negative actual reconciliation hanya untuk account `allow_negative`;
+- read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, Calendar ScriptLock, dan duplicate managed-event self-healing;
 - formula injection dan valid XLSX;
-- backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, dan push credential exclusion;
+- backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, push credential exclusion, serta preservation reservation `restore.apply` agar retry key yang sama mereplay hasil dan tidak menjalankan restore kedua;
 - service worker tanpa API cache dan tanpa offline write queue;
-- Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, payload lock-screen privat, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
+- Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, payload lock-screen privat, recurring shortage H-2 + completion notification tanpa detail finansial, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output; penggantian archive bersifat atomik, variasi clean lama dibersihkan dengan allowlist, dan ZIP patch/unrelated tidak disentuh;
 - browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
 - browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
@@ -40,12 +44,27 @@ Cakupan wajib:
 - menu `Lainnya` tidak boleh menduplikasi `Tambah transaksi`; route `/rekonsiliasi` harus tersedia di kelompok Kontrol saldo dan form hanya muncul berdasarkan capability backend;
 - default metode pembayaran transaksi harus kosong, bukan nilai `transfer` tersembunyi; selector rekening utama harus memakai formatter provider/nama/pemilik yang konsisten;
 - browser smoke memblokir script Google Identity Services eksternal sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
-- login mobile wajib memakai logo resmi, tepat satu host `.google-login-button`, background rupiah dekoratif `aria-hidden`, target sentuh minimum, dark/light theme, serta `prefers-reduced-motion` tanpa mengganti flow Google Identity Services/Firebase;
+- login desktop wajib memilih artwork approved light/dark berdasarkan theme, mempertahankan rasio 1672×941, dan hanya memakai satu host `.google-login-button` runtime tanpa mengganti flow Google Identity Services/Firebase; login mobile ≤820px wajib memiliki tepat tiga slide total (dua onboarding + login), artwork 941×1672, hotspot `Lanjut` minimum 44px, swipe/ArrowLeft/ArrowRight, creator link aman, theme toggle DOM asli pada slide login, serta `prefers-reduced-motion` untuk transisi carousel;
 - authenticated route journey wajib menunggu `document.readyState` selesai dan heading canonical route yang tepat; pathname saja tidak boleh dianggap bukti render karena DOM lama/loading dapat masih aktif saat full navigation;
 - route readiness wajib menolak `main.loading-screen`, memverifikasi heading canonical secara stabil dua kali, dan selector browser harus menunjuk class runtime aktual;
 - resource enabled pada initial `idle` wajib dipresentasikan sebagai loading agar page tidak berkedip dari konten kosong ke loading screen;
 - workflow CI membangun frontend browser smoke dengan nilai public dummy untuk `VITE_GOOGLE_CLIENT_ID` dan `VITE_FIREBASE_API_KEY`; nilai ini bukan secret dan hanya mencegah guard konfigurasi menghentikan render mock login;
 - gzip bundle dan source archive tetap di bawah budget.
+
+## Definition of Done human-error guard
+
+Perubahan write baru belum boleh dianggap selesai bila belum membuktikan:
+
+1. satu intent logis menghasilkan satu idempotency key sampai hasil definitif;
+2. double-click/Enter berulang tidak membuat mutation kedua;
+3. network putus setelah request dikirim menghasilkan `OUTCOME_UNKNOWN`, bukan pesan “gagal menyimpan” yang mendorong intent baru;
+4. retry payload + `rowVersion` yang sama memakai key yang sama;
+5. same-key concurrent external action tidak menjalankan side effect dua kali; `restore.apply` tetap memiliki reservation setelah snapshot mengembalikan tabel idempotency;
+6. refresh read-model yang gagal setelah server success hanya menjadi refresh warning;
+7. destructive action memiliki local reentrancy lock + backend idempotency;
+8. human error dipulihkan melalui cancel/archive/restore/reverse, termasuk Kantong/Target/Jadwal rutin/Anggaran, bukan hard delete atau SQL manual;
+9. role/ownership/row-version/audit tetap diperiksa backend;
+10. test browser, unit/service, source validation, build budget, dan clean archive tetap hijau.
 
 ## Manual
 
@@ -53,7 +72,7 @@ Uji dua browser/perangkat dengan owner dan member:
 
 1. Login/logout dan redirect route; uji dari sesi bersih, pastikan login/logout berhasil tanpa reload dan tidak muncul error parser seperti `i.json is not a function`.
 2. Edit record yang sama untuk memastikan 409 conflict jelas.
-3. Double-click/retry menggunakan idempotency yang sama.
+3. Ulangi smoke manusia: double-click/Enter spam/retry pada koneksi lambat dan pastikan hasil sama dengan automated guard suite (satu intent/satu mutation).
 4. Putus jaringan sebelum write; UI harus menolak tanpa menyatakan sukses.
 5. Install PWA iPhone/Android dan update app shell. Aktifkan Push pada HTTPS, pastikan verifikasi otomatis muncul, lalu periksa panel sistem. Uji dua perangkat saat satu delivery gagal sementara dan pastikan perangkat sukses tidak menerima duplikat. Pada Safari iPhone pastikan aplikasi dibuka dari Home Screen, fokus input tidak memicu auto-zoom, modal tidak bergeser horizontal, dan scroll vertikal tetap bekerja.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.

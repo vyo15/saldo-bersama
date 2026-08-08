@@ -4,3 +4,6 @@ export const createGoal = (payload, options) => apiClient.request("goals.create"
 export const updateGoal = (payload, options) => apiClient.request("goals.update", payload, options);
 export const moveGoal = (payload, options) => apiClient.request("goals.move", payload, options);
 export const reverseGoalMovement = (payload, options) => apiClient.request("goals.reverseMovement", payload, options);
+
+export const archiveGoal = (payload, options) => apiClient.request("goals.archive", payload, options);
+export const restoreGoal = (payload, options) => apiClient.request("goals.restore", payload, options);

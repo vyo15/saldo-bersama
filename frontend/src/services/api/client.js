@@ -1,18 +1,89 @@
 import {
   clearReadState, invalidateActions, isReadAction, readRequest, seedRead, setReadSessionScope,
 } from "./cache.js";
-import { ApiError } from "./errors.js";
+import { createSecureRandomId } from "../../domain/security.js";
+import { ApiError, isOutcomeUnknownError } from "./errors.js";
 import { createServerSession, destroyServerSession, downloadExcel, gatewayFetch, readSession } from "./transport.js";
 
-export { ApiError, isAbortError, parseResponse, shouldInvalidateSession } from "./errors.js";
+export { ApiError, isAbortError, isOutcomeUnknownError, parseResponse, shouldInvalidateSession } from "./errors.js";
 export { stableQueryKey } from "./cache.js";
 
 const SESSION_CACHE_TTL_MS = 2_000;
 let sessionCache = { expiresAt: 0, value: null, promise: null };
+const inFlightMutations = new Map();
+const memoryMutationIntents = new Map();
+
+const stableValue = (value) => {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableValue(value[key])]));
+  }
+  return value;
+};
+
+const fnv1a64 = (value) => {
+  let hash = 0xcbf29ce484222325n;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= BigInt(text.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return hash.toString(16).padStart(16, "0");
+};
+
+export const mutationIntentFingerprint = (action, payload = {}, rowVersion = null) => fnv1a64(JSON.stringify([
+  String(action || ""),
+  stableValue(payload || {}),
+  rowVersion ?? null,
+]));
+
+const readPersistedIntent = (fingerprint) => memoryMutationIntents.get(fingerprint) || null;
+
+const persistIntent = (fingerprint, idempotencyKey) => {
+  memoryMutationIntents.set(fingerprint, { idempotencyKey });
+};
+
+const clearIntent = (fingerprint) => {
+  memoryMutationIntents.delete(fingerprint);
+};
+
+const clearMutationState = () => {
+  inFlightMutations.clear();
+  memoryMutationIntents.clear();
+};
 
 const clearClientState = () => {
   clearReadState();
+  clearMutationState();
   sessionCache = { expiresAt: 0, value: null, promise: null };
+};
+
+const guardedMutationRequest = (action, payload, options = {}) => {
+  const fingerprint = mutationIntentFingerprint(action, payload, options.rowVersion ?? null);
+  if (!options.newIntent) {
+    const existingFlight = inFlightMutations.get(fingerprint);
+    if (existingFlight) return existingFlight;
+  } else {
+    clearIntent(fingerprint);
+  }
+  const persisted = readPersistedIntent(fingerprint);
+  const idempotencyKey = persisted?.idempotencyKey || options.idempotencyKey || createSecureRandomId();
+  const requestOptions = { ...options, idempotencyKey, outcomeSensitive: true };
+  const promise = gatewayFetch(action, payload, requestOptions, options.signal)
+    .then((result) => {
+      clearIntent(fingerprint);
+      return result;
+    })
+    .catch((error) => {
+      if (isOutcomeUnknownError(error)) persistIntent(fingerprint, idempotencyKey);
+      else clearIntent(fingerprint);
+      throw error;
+    })
+    .finally(() => {
+      if (inFlightMutations.get(fingerprint) === promise) inFlightMutations.delete(fingerprint);
+    });
+  inFlightMutations.set(fingerprint, promise);
+  return promise;
 };
 
 export const apiClient = {
@@ -46,7 +117,10 @@ export const apiClient = {
   },
 
   setSessionScope(nextScope) {
-    if (setReadSessionScope(nextScope)) sessionCache = { expiresAt: 0, value: null, promise: null };
+    if (setReadSessionScope(nextScope)) {
+      clearMutationState();
+      sessionCache = { expiresAt: 0, value: null, promise: null };
+    }
   },
 
   invalidate(actions) {
@@ -61,12 +135,16 @@ export const apiClient = {
     clearClientState();
   },
 
+  startNewMutationIntent(action, payload = {}, rowVersion = null) {
+    clearIntent(mutationIntentFingerprint(action, payload, rowVersion));
+  },
+
   async request(action, payload = {}, options = {}) {
     const isRead = isReadAction(action) && !options.idempotencyKey;
     if (!isRead && typeof navigator !== "undefined" && navigator.onLine === false) {
       throw new ApiError("Perubahan tidak dapat disimpan saat perangkat offline.", { code: "OFFLINE", status: 503 });
     }
-    return isRead ? readRequest(action, payload, options) : gatewayFetch(action, payload, options, options.signal);
+    return isRead ? readRequest(action, payload, options) : guardedMutationRequest(action, payload, options);
   },
 
   downloadExcel,

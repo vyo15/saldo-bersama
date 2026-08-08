@@ -1,6 +1,6 @@
 import { appendAudit } from "../audit.js";
 import { accountBalanceAsOf, envelopeItems } from "../readModels.js";
-import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
+import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
@@ -45,14 +45,30 @@ const assertAllocationAvailable = async (db, sourceAccount, amount, excludePerio
   });
 };
 export const listEnvelopes = async (db, context) => {
-  const items = await envelopeItems(db, context.actor, {
-    includeClosed: true
-  });
+  const items = await envelopeItems(db, context.actor, { includeClosed: true });
+  const access = visibleScopeSql(context.actor, "fr");
+  const recentMovements = await db.all(`SELECT m.*,fp.name AS from_name,tp.name AS to_name,fp.row_version AS from_row_version,tp.row_version AS to_row_version,
+      fr.scope,fr.owner_user_id
+    FROM envelope_movements m
+    JOIN envelope_periods fp ON fp.envelope_period_id=m.from_envelope_period_id
+    JOIN envelope_periods tp ON tp.envelope_period_id=m.to_envelope_period_id
+    JOIN envelope_rules fr ON fr.envelope_rule_id=fp.envelope_rule_id
+    WHERE m.status='active' AND m.movement_type='reallocation' AND ${access.sql}
+    ORDER BY m.created_at DESC LIMIT 20`, access.args);
+  const archivedRules = context.actor.role === "owner"
+    ? await db.all("SELECT * FROM envelope_rules WHERE status='archived' ORDER BY updated_at DESC LIMIT 50")
+    : [];
   return {
     items: items.map(item => ({
       ...item,
-      can_close: context.actor.role === "owner" && item.status === "active"
-    }))
+      can_close: context.actor.role === "owner" && item.status === "active",
+      can_archive_rule: context.actor.role === "owner" && item.status === "active"
+    })),
+    recentMovements: recentMovements.map((movement) => ({
+      ...publicRow(movement),
+      can_reverse: context.actor.role === "owner" || movement.created_by === context.actor.user_id,
+    })),
+    archivedRules: archivedRules.map((row) => publicRow(row)),
   };
 };
 export const createEnvelopeRule = async (db, context, payload = context.payload || {}) => {
@@ -270,4 +286,77 @@ export const closeEnvelope = async (db, context) => {
   });
   await context.enqueueMirror?.(db, "envelope", period.envelope_period_id);
   return response;
+};
+
+export const archiveEnvelopeRule = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
+  if (!current) throw appError("NOT_FOUND", "Aturan kantong aktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip kantong wajib diisi.", 400);
+  const timestamp = nowIso();
+  const next = { ...current, status: "archived", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: timestamp };
+  const update = await db.execute("UPDATE envelope_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.envelope_rule_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan kantong berubah di perangkat lain.", 409);
+  await db.execute("UPDATE envelope_periods SET status='archived',row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND status='active'", [context.actor.user_id, timestamp, current.envelope_rule_id]);
+  await appendAudit(db, context, { entityType: "envelope_rule", entityId: current.envelope_rule_id, previous: publicRow(current), next: { ...publicRow(next), reason } });
+  await context.enqueueMirror?.(db, "envelope", current.envelope_rule_id);
+  return publicRow(next);
+};
+
+export const restoreEnvelopeRule = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='archived'", [payload.envelope_rule_id]);
+  if (!current) throw appError("NOT_FOUND", "Aturan kantong arsip tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan kantong wajib diisi.", 400);
+  if (current.source_account_id) {
+    const account = await db.one("SELECT status FROM accounts WHERE account_id=?", [current.source_account_id]);
+    if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening sumber kantong harus aktif sebelum dipulihkan.", 409);
+  }
+  const timestamp = nowIso();
+  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: timestamp };
+  const update = await db.execute("UPDATE envelope_rules SET status='active',row_version=?,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.envelope_rule_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan kantong berubah di perangkat lain.", 409);
+  await db.execute("UPDATE envelope_periods SET status='active',row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND status='archived' AND updated_at=?", [context.actor.user_id, timestamp, current.envelope_rule_id, current.updated_at]);
+  await appendAudit(db, context, { entityType: "envelope_rule", entityId: current.envelope_rule_id, previous: publicRow(current), next: { ...publicRow(next), reason } });
+  await context.enqueueMirror?.(db, "envelope", current.envelope_rule_id);
+  return publicRow(next);
+};
+
+export const reverseEnvelopeMovement = async (db, context) => {
+  const payload = context.payload || {};
+  const movement = await db.one("SELECT * FROM envelope_movements WHERE movement_id=? AND movement_type='reallocation' AND status='active'", [payload.movement_id]);
+  if (!movement) throw appError("NOT_FOUND", "Mutasi alokasi aktif tidak ditemukan.", 404);
+  if (context.actor.role !== "owner" && movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi alokasi yang dibuat sendiri.", 403);
+  assertVersion(movement, context.rowVersion ?? payload.row_version);
+  const [from, to] = await Promise.all([
+    db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.from_envelope_period_id]),
+    db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.to_envelope_period_id]),
+  ]);
+  if (!from || !to) throw appError("ENVELOPE_MOVEMENT_LOCKED", "Mutasi hanya dapat dibatalkan ketika kedua kantong masih aktif.", 409);
+  assertOwnedAccess(context.actor, from);
+  assertOwnedAccess(context.actor, to);
+  assertVersion(from, payload.from_row_version);
+  assertVersion(to, payload.to_row_version);
+  const usage = await db.one("SELECT COALESCE(SUM(amount),0) AS used FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id=?", [to.envelope_period_id]);
+  const removable = Number(to.allocated_amount) - Number(to.reserved_amount) - Number(usage?.used || 0);
+  if (Number(movement.amount) > removable) throw appError("ENVELOPE_MOVEMENT_IN_USE", "Dana hasil realokasi sudah terpakai atau dipesan sehingga mutasi tidak dapat dibatalkan.", 409, { removableAmount: removable });
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan pembatalan mutasi wajib diisi.", 400);
+  const timestamp = nowIso();
+  const fromUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount+?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [movement.amount, context.actor.user_id, timestamp, from.envelope_period_id, from.row_version]);
+  if (fromUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong sumber berubah di perangkat lain.", 409);
+  const toUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount-?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [movement.amount, context.actor.user_id, timestamp, to.envelope_period_id, to.row_version]);
+  if (toUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong tujuan berubah di perangkat lain.", 409);
+  const next = { ...movement, status: "reversed", row_version: Number(movement.row_version) + 1 };
+  const movementUpdate = await db.execute("UPDATE envelope_movements SET status='reversed',row_version=? WHERE movement_id=? AND row_version=? AND status='active'", [next.row_version, movement.movement_id, movement.row_version]);
+  if (movementUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Mutasi alokasi berubah di perangkat lain.", 409);
+  await appendAudit(db, context, { entityType: "envelope_movement", entityId: movement.movement_id, previous: publicRow(movement), next: { ...publicRow(next), reversal_reason: reason } });
+  await context.enqueueMirror?.(db, "envelope", from.envelope_period_id);
+  return publicRow(next);
 };

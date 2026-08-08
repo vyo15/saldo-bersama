@@ -18,7 +18,7 @@ test("halaman Anggaran memisahkan pengelolaan dari Laporan dengan guard owner da
   assert.match(page, /useApiResource\("budgets\.list", \{ period \}\)/);
   assert.match(page, /user\?\.role === "owner" && period === currentPeriod/);
   assert.match(page, /row_version: existingBudget\?\.row_version/);
-  assert.match(page, /idempotencyKey: createIdempotencyKey\(\)/);
+  assert.doesNotMatch(page, /createIdempotencyKey|idempotencyKey:/, "Anggaran harus memakai mutation intent canonical dari apiClient, bukan membuat key per klik");
   assert.match(page, /Promise\.allSettled\(\[resource\.reload\(\), refreshOverview\(\)\]\)/);
   assert.match(page, /Transfer internal tidak dihitung/);
   assert.match(page, /Anggota dapat memantau anggaran/);

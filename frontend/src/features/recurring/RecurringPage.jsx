@@ -11,8 +11,8 @@ import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { createRecurringRule, payRecurringOccurrence, reverseRecurringPayment, updateRecurringRule } from "./recurring.api.js";
-import { createIdempotencyKey } from "../../domain/security.js";
+import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
+import { archiveRecurringRule, createRecurringRule, payRecurringOccurrence, reverseRecurringPayment, updateRecurringRule } from "./recurring.api.js";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
@@ -26,6 +26,8 @@ const RecurringPage = () => {
   const resource = useApiResource("recurring.list", { period });
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
+  const createMutation = useGuardedMutation();
+  const paymentMutation = useGuardedMutation();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState({ name: "", kind: "expense", expected_amount: "", due_day: 20, category_id: "", default_account_id: "", payment_method: "transfer", frequency: "monthly", start_date: todayInJakarta(), auto_debit: false });
   const [payment, setPayment] = useState({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
@@ -41,16 +43,16 @@ const RecurringPage = () => {
   const editCategories = bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === editRule?.kind) || [];
   const paymentAccounts = filterByOwnership(accounts, payment.item);
 
-  const createRule = async (event) => {
+  const createRule = (event) => {
     event.preventDefault();
     setMessage(null);
-    try {
-      await createRecurringRule({ ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, { idempotencyKey: createIdempotencyKey() });
+    return createMutation.run(async () => {
+      await createRecurringRule({ ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, {});
       setForm((current) => ({ ...current, name: "", expected_amount: "" }));
       setMessage({ type: "success", text: "Jadwal rutin berhasil dibuat." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
-    } catch (error) { setMessage({ type: "danger", text: error.message }); }
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
+    }).catch((error) => setMessage({ type: "danger", text: error.message }));
   };
 
 
@@ -80,29 +82,29 @@ const RecurringPage = () => {
     if (!editRule) return;
     setEditState({ status: "submitting", error: null });
     try {
-      await updateRecurringRule({ ...editRule, expected_amount: assertPositiveRupiah(editRule.expected_amount) }, { rowVersion: editRule.row_version, idempotencyKey: createIdempotencyKey() });
+      await updateRecurringRule({ ...editRule, expected_amount: assertPositiveRupiah(editRule.expected_amount) }, { rowVersion: editRule.row_version });
       setEditRule(null);
       setEditState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Aturan rutin berhasil diperbarui." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setEditState({ status: "error", error }); }
   };
 
-  const archiveRule = async () => {
+  const archiveRule = async (reason) => {
     if (!archiveRuleTarget) return;
     setEditState({ status: "submitting", error: null });
     try {
-      await updateRecurringRule({
+      await archiveRecurringRule({
         recurring_rule_id: archiveRuleTarget.recurring_rule_id,
         row_version: archiveRuleTarget.rule_row_version,
-        status: "archived",
-      }, { rowVersion: archiveRuleTarget.rule_row_version, idempotencyKey: createIdempotencyKey() });
+        reason,
+      }, { rowVersion: archiveRuleTarget.rule_row_version });
       setArchiveRuleTarget(null);
       setEditState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Aturan rutin berhasil diarsipkan. Transaksi historis tetap tersimpan." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setEditState({ status: "error", error }); }
   };
 
@@ -118,33 +120,33 @@ const RecurringPage = () => {
     if (!transactionId) return;
     setReverseState({ status: "submitting", error: null });
     try {
-      await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version });
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setReverseState({ status: "error", error }); }
   };
 
-  const completeOccurrence = async (event) => {
+  const completeOccurrence = (event) => {
     event.preventDefault();
     if (!payment.item) return;
     setPaymentState({ status: "submitting", error: null });
-    try {
+    return paymentMutation.run(async () => {
       await payRecurringOccurrence({
         occurrence_id: payment.item.occurrence_id,
         row_version: payment.item.row_version,
         account_id: payment.account_id,
         amount: assertPositiveRupiah(payment.amount),
         transaction_date: payment.transaction_date,
-      }, { rowVersion: payment.item.row_version, idempotencyKey: createIdempotencyKey() });
+      }, { rowVersion: payment.item.row_version });
       setPayment({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
       setPaymentState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
-    } catch (error) { setPaymentState({ status: "error", error }); }
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
+    }).catch((error) => setPaymentState({ status: "error", error }));
   };
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
@@ -192,7 +194,7 @@ const RecurringPage = () => {
             <label className="field"><span>Tanggal mulai</span><input required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
             <label className="checkbox-field form-grid__full"><input type="checkbox" checked={form.auto_debit} onChange={(event) => setForm((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Biasanya dibayar otomatis (hanya penanda, aplikasi tidak menarik uang)</span></label>
             <div className="notice notice--info form-grid__full"><span>Contoh cicilan: pindahkan dana BNI/BCA ke BTN sebagai Transfer. Jadwal ini baru mengurangi saldo BTN setelah pembayaran aktual disimpan.</span></div>
-            <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit">Tambah jadwal</Button></div>
+            <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit" loading={createMutation.busy}>Tambah jadwal</Button></div>
           </form>
         </Card>
       ) : null}
@@ -204,7 +206,7 @@ const RecurringPage = () => {
         onClose={() => paymentState.status !== "submitting" && setPayment((current) => ({ ...current, item: null }))}
         title={payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual"}
         description={payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : ""}
-        footer={<><Button type="button" disabled={paymentState.status === "submitting"} onClick={() => setPayment((current) => ({ ...current, item: null }))}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" disabled={paymentState.status === "submitting"}>{paymentState.status === "submitting" ? "Menyimpan..." : "Simpan aktual"}</Button></>}
+        footer={<><Button type="button" disabled={paymentState.status === "submitting"} onClick={() => setPayment((current) => ({ ...current, item: null }))}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={paymentState.status === "submitting"}>Simpan aktual</Button></>}
       >
         <form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}>
           <MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(value) => setPayment((current) => ({ ...current, amount: value }))} />
@@ -241,6 +243,8 @@ const RecurringPage = () => {
         title="Arsipkan aturan rutin?"
         description={archiveRuleTarget ? `${archiveRuleTarget.name} tidak akan membuat occurrence baru. Riwayat pembayaran tetap tersimpan.` : ""}
         confirmLabel="Arsipkan aturan"
+        reasonLabel="Alasan pengarsipan"
+        requireReason
         busy={editState.status === "submitting"}
         error={editState.error}
         onCancel={() => editState.status !== "submitting" && setArchiveRuleTarget(null)}

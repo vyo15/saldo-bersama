@@ -1,6 +1,6 @@
 import { appendAudit } from "../audit.js";
 import { accountBalanceAsOf } from "../readModels.js";
-import { appError, nonNegativeInteger, nowIso, publicRow, operableAccountSql, readableAccountSql, sanitizeText, todayJakarta, uuid } from "../core.js";
+import { appError, nowIso, publicRow, operableAccountSql, readableAccountSql, sanitizeText, todayJakarta, uuid } from "../core.js";
 
 export const listReconciliations = async (db, context) => {
   const access = readableAccountSql(context.actor, "a");
@@ -23,7 +23,9 @@ export const createReconciliation = async (db, context) => {
   const access = operableAccountSql(context.actor, "a");
   const account = await db.one(`SELECT a.* FROM accounts a WHERE a.account_id=? AND a.status='active' AND ${access.sql}`, [p.account_id, ...access.args]);
   if (!account) throw appError("INVALID_ACCOUNT", "Rekening tidak ditemukan atau tidak dapat diakses.", 404);
-  const actual = nonNegativeInteger(p.actual_balance, "Saldo aktual");
+  const actual = Number(p.actual_balance);
+  if (!Number.isSafeInteger(actual)) throw appError("INVALID_AMOUNT", "Saldo aktual harus berupa bilangan bulat Rupiah.", 400);
+  if (!Boolean(account.allow_negative) && actual < 0) throw appError("INVALID_AMOUNT", "Saldo aktual rekening ini tidak boleh negatif.", 400);
   const system = await accountBalanceAsOf(db, account, todayJakarta());
   const timestamp = nowIso();
   const record = { reconciliation_id: uuid(), account_id: account.account_id, reconciled_at: timestamp, system_balance: system, actual_balance: actual, difference: actual - system, notes: sanitizeText(p.notes, 250), status: actual === system ? "matched" : "difference", created_by: context.actor.user_id, created_at: timestamp };

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { FiDownloadCloud } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { runSettingsAction } from "./settings.api.js";
@@ -16,7 +15,7 @@ const BackupPage = () => {
     setBusy(true);
     setResult({ status: "loading", text: "Membuat dan memverifikasi backup teknis..." });
     try {
-      const data = await runSettingsAction("backup.create", { type: "manual" }, { idempotencyKey: createIdempotencyKey() });
+      const data = await runSettingsAction("backup.create", { type: "manual" }, {});
       setResult({ status: "success", text: `Backup teknis terverifikasi: ${data.fileName}`, fileLink: data.fileId ? `https://drive.google.com/open?id=${encodeURIComponent(data.fileId)}` : null });
     } catch (error) {
       setResult({ status: "danger", text: error.message });

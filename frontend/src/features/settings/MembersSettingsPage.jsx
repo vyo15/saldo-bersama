@@ -7,7 +7,6 @@ import Modal from "../../components/common/Modal.jsx";
 import UserAvatar from "../../components/common/UserAvatar.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import MemberActivityPanel from "./components/MemberActivityPanel.jsx";
@@ -97,12 +96,12 @@ const MembersSettingsPage = () => {
     setSaving(true);
     setResult({ status: "loading", text: "Menyimpan akses..." });
     try {
-      await runSettingsAction("users.upsert", { ...memberForm, email, row_version: existing?.row_version }, { rowVersion: existing?.row_version, idempotencyKey: createIdempotencyKey() });
+      await runSettingsAction("users.upsert", { ...memberForm, email, row_version: existing?.row_version }, { rowVersion: existing?.row_version });
       setMemberForm({ ...EMPTY_MEMBER_FORM });
       setEditingMember(null);
       setMemberFormOpen(false);
       setResult({ status: "success", text: "Akses pengguna berhasil disimpan dan diverifikasi backend." });
-      await resource.reload();
+      await Promise.allSettled([resource.reload()]);
     } catch (error) {
       setResult({ status: "danger", text: error.message });
     } finally {
@@ -115,13 +114,13 @@ const MembersSettingsPage = () => {
     setActionState({ status: "submitting", error: null });
     try {
       const payload = { user_id: target.member.user_id, row_version: target.member.row_version, reason };
-      const options = { rowVersion: target.member.row_version, idempotencyKey: createIdempotencyKey() };
+      const options = { rowVersion: target.member.row_version };
       if (target.action === "deactivate") await deactivateUser(payload, options);
       else await reactivateUser(payload, options);
       setResult({ status: "success", text: target.action === "deactivate" ? "Pengguna dinonaktifkan. Selaraskan ALLOWED_USERS_JSON sebelum deployment berikutnya." : "Pengguna diaktifkan kembali setelah allowlist diverifikasi backend." });
       setTarget(null);
       setActionState({ status: "idle", error: null });
-      await resource.reload();
+      await Promise.allSettled([resource.reload()]);
     } catch (error) {
       setActionState({ status: "error", error });
     }

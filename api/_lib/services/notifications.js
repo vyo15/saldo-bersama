@@ -4,7 +4,8 @@ import https from "node:https";
 import net from "node:net";
 import webpush from "web-push";
 import { appendAudit } from "./audit.js";
-import { appError, nowIso, parseJson, publicRow, sanitizeText, todayJakarta, uuid } from "./core.js";
+import { addDays, appError, nowIso, parseJson, publicRow, sanitizeText, todayJakarta, uuid } from "./core.js";
+import { accountBalanceAsOf } from "./readModels.js";
 import { goalProjection } from "./planning/goals.js";
 
 const WEB_PUSH_ENV_KEYS = ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"];
@@ -472,8 +473,12 @@ export const queueActionableNotifications = async (db) => {
   const users = await db.all("SELECT user_id FROM users WHERE status='active'");
   let queued = 0;
 
-  const recurring = await db.all(`SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,r.name,r.kind,r.scope,r.owner_user_id
-    FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
+  const recurring = await db.all(`SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
+      r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,
+      a.account_id,a.name AS account_name,a.initial_balance,a.initial_balance_date,a.allow_negative,a.owner_scope,a.owner_user_id AS account_owner_user_id,a.status AS account_status
+    FROM recurring_occurrences o
+    JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
+    JOIN accounts a ON a.account_id=r.default_account_id
     WHERE r.status='active' AND o.status NOT IN ('paid','cancelled') AND o.due_date BETWEEN ? AND ?`, [today, dueEndDate]);
   for (const item of recurring) {
     queued += await queueForRecipients(db, users, item, {
@@ -482,6 +487,39 @@ export const queueActionableNotifications = async (db) => {
       body: "Ada jadwal keuangan yang perlu diperiksa di aplikasi.",
       targetPath: "/tagihan",
       dedupeKey: `recurring:${item.occurrence_id}:${item.due_date}`,
+    });
+    const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0));
+    if (item.kind === "expense" && remaining > 0 && item.account_status === "active" && item.due_date <= addDays(today, 2)) {
+      const balance = await accountBalanceAsOf(db, {
+        account_id: item.account_id,
+        initial_balance: item.initial_balance,
+        initial_balance_date: item.initial_balance_date,
+        allow_negative: item.allow_negative,
+        owner_scope: item.owner_scope,
+        owner_user_id: item.account_owner_user_id,
+      }, today);
+      if (Number(balance) < remaining) {
+        queued += await queueForRecipients(db, users, item, {
+          type: "recurring_funding_shortage",
+          title: "Pengingat keuangan",
+          body: "Dana untuk jadwal pembayaran yang dekat jatuh tempo perlu diperiksa di aplikasi.",
+          targetPath: "/tagihan",
+          dedupeKey: `recurring-shortage:${item.occurrence_id}:${item.due_date}`,
+        });
+      }
+    }
+  }
+
+  const recentlyCompletedRecurring = await db.all(`SELECT o.occurrence_id,o.due_date,o.updated_at,r.kind,r.scope,r.owner_user_id
+    FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
+    WHERE r.status='active' AND o.status='paid' AND substr(o.updated_at,1,10) BETWEEN ? AND ?`, [addDays(today, -3), today]);
+  for (const item of recentlyCompletedRecurring) {
+    queued += await queueForRecipients(db, users, item, {
+      type: "recurring_completed",
+      title: "Pengingat keuangan",
+      body: "Satu jadwal keuangan sudah tercatat selesai di aplikasi.",
+      targetPath: "/tagihan",
+      dedupeKey: `recurring-completed:${item.occurrence_id}`,
     });
   }
 

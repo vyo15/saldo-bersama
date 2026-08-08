@@ -116,7 +116,7 @@ export const updateGoal = async (db, context) => {
   const status = String(p.status ?? current.status);
   const goalType = String(p.goal_type ?? current.goal_type);
   const priority = String(p.priority ?? current.priority);
-  if (!["active", "completed", "archived"].includes(status) || !["savings", "emergency_fund", "sinking_fund"].includes(goalType) || !["low", "normal", "high"].includes(priority)) throw appError("INVALID_GOAL", "Data target tidak valid.", 400);
+  if (!["active", "completed"].includes(status) || !["savings", "emergency_fund", "sinking_fund"].includes(goalType) || !["low", "normal", "high"].includes(priority)) throw appError("INVALID_GOAL", "Data target tidak valid.", 400);
   if (status === "completed" && (await goalProgress(db, current.goal_id)) < Number(p.target_amount ?? current.target_amount)) throw appError("GOAL_NOT_REACHED", "Target belum mencapai nominal tujuan.", 409);
   const movements = await db.one("SELECT COUNT(*) AS count FROM goal_movements WHERE goal_id=?", [current.goal_id]);
   if (Number(movements?.count || 0) && (account.account_id !== current.account_id || owned.scope !== current.scope || String(owned.owner_user_id || "") !== String(current.owner_user_id || ""))) throw appError("GOAL_ACCOUNT_LOCKED", "Rekening dan kepemilikan target tidak dapat diubah setelah memiliki mutasi.", 409);
@@ -147,6 +147,41 @@ export const updateGoal = async (db, context) => {
   await context.enqueueMirror?.(db, "goal", current.goal_id);
   return publicRow(next);
 };
+export const archiveGoal = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const current = await db.one("SELECT * FROM savings_goals WHERE goal_id=? AND status<>'archived'", [p.goal_id]);
+  if (!current) throw appError("NOT_FOUND", "Target aktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? p.row_version);
+  const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip target wajib diisi.", 400);
+  const next = { ...current, status: "archived", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const update = await db.execute("UPDATE savings_goals SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=? AND status<>'archived'", [next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
+  await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: { ...publicRow(next), archive_reason: reason } });
+  await context.enqueueMirror?.(db, "goal", current.goal_id);
+  return publicRow(next);
+};
+export const restoreGoal = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const current = await db.one("SELECT * FROM savings_goals WHERE goal_id=? AND status='archived'", [p.goal_id]);
+  if (!current) throw appError("NOT_FOUND", "Target arsip tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? p.row_version);
+  const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan target wajib diisi.", 400);
+  const account = await db.one("SELECT status FROM accounts WHERE account_id=?", [current.account_id]);
+  if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening target harus aktif sebelum target dipulihkan.", 409);
+  const currentAmount = await goalProgress(db, current.goal_id);
+  const nextStatus = currentAmount >= Number(current.target_amount) ? "completed" : "active";
+  const next = { ...current, status: nextStatus, row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const update = await db.execute("UPDATE savings_goals SET status=?,row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=? AND status='archived'", [next.status, next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
+  await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: { ...publicRow(next), restore_reason: reason } });
+  await context.enqueueMirror?.(db, "goal", current.goal_id);
+  return publicRow(next);
+};
+
 export const moveGoal = async (db, context) => {
   const p = context.payload || {};
   const goal = await db.one("SELECT * FROM savings_goals WHERE goal_id=? AND status='active'", [p.goal_id]);

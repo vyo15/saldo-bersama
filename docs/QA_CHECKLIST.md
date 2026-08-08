@@ -1,16 +1,20 @@
 # QA Checklist
 
-- [x] Source terbaru dan migration version diverifikasi (`075946`, 351 file canonical, schema v6).
+- [x] Source terbaru dan migration version diverifikasi (`111504`, 351 file canonical sebelum patch, schema v6).
 - [ ] Node/npm sesuai engines.
 - [ ] `npm run clean:dry-run` ditinjau; tidak ada secret, dump, `.env`, backup, token, dependency, atau generated output dalam clean ZIP.
 - [x] Baseline operator sebelum hardening Google lulus: build, build budget, lint, frontend 84/84, backend/tooling 147/147, browser 9/9.
+- Archive target, aturan rutin, dan anggaran memakai action eksplisit owner-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
 - [x] Owner/member/unauthorized diuji melalui authenticated journey dan private-route browser smoke.
 - [ ] Seluruh nominal integer dan timezone Asia/Jakarta.
 - [x] Transfer tidak masuk income/expense.
 - [x] Soft cancel, audit, idempotency, dan row-version conflict lulus.
+- [x] Guarded mutation coordinator meng-coalesce request identik, mempertahankan same-intent idempotency key saat outcome network tidak pasti hanya di private-memory, tidak memakai `localStorage`/`sessionStorage`, dan ConfirmationModal memiliki synchronous submit lock.
+- [x] External action mereservasi idempotency sebelum side effect; concurrent same-key, payload conflict, outcome unknown non-resumable, durable same-key resume, dan preservation reservation `restore.apply` memiliki regression test.
+- [x] `import.preview`/`restore.preview` tidak lagi diklasifikasikan sebagai pure read; frontend/backend read-action map dikunci agar tidak drift.
 - [x] Rekening personal pasangan mengikuti transparency policy: readable dengan label pemilik, tetapi write capability/edit/arsip/transaksi/rekonsiliasi yang tidak diizinkan tetap ditolak frontend dan backend.
 - [x] Sheets canonical tetap satu arah `Turso -> Sheets`; full sync nyata sudah `completed` dan tab mirror dedicated terbentuk. Verifikasi final sesudah hardening tetap perlu untuk metadata/Sheet1.
-- [ ] Calendar hanya data shared.
+- [ ] Calendar resource nyata diverifikasi hanya data shared. Source/test sudah mengunci recurring shared, ScriptLock, dan self-heal duplicate managed event.
 - [x] Excel netral terhadap formula injection.
 - [ ] Backup checksum dan restore drill pada salinan terisolasi sementara lulus.
 - [x] Offline write ditolak.
@@ -50,6 +54,7 @@
 - [x] Peringatan anggaran, kantong, recurring, target, transaksi tanpa alokasi, dan rekonsiliasi diuji; alert anggaran membuka `/anggaran`.
 - [x] Proyeksi target tidak membagi dengan nol dan menangani tanpa tanggal, lewat jatuh tempo, serta target selesai.
 - [x] Notification dedupe mencegah antrean ganda pada job retry.
+- [x] Recurring expense H-2 dengan saldo rekening default di bawah sisa kewajiban mengantre alert privacy-safe; occurrence paid mengantre completion notification tanpa nama/nominal/rekening di payload.
 - [x] Semua `REQ-*` terlacak pada implementation matrix.
 - [ ] Perubahan schema setelah v6 hanya dilakukan melalui RFC/approval terpisah, backup terverifikasi, migration, integrity check, dan rollback plan.
 
@@ -88,6 +93,17 @@
 - [x] Menu mobile tidak menduplikasi dark/light toggle; logout tetap tersedia pada footer dan theme toggle shell di luar menu tetap dapat dijangkau.
 - [ ] Input dialog tambah rekening mempertahankan fokus selama beberapa ketikan; Tab trap, Escape, body lock, serta focus restoration setelah dialog ditutup tetap lulus.
 - [x] Mengganti template kartu tidak mengubah nama rekening; create/update/list/backup/restore mempertahankan `bank_template` canonical.
+
+## Guard mutation otomatis terbaru
+
+- [x] Frontend API test membuktikan mutation identik concurrent menghasilkan satu request dan retry setelah network putus memakai idempotency key yang sama.
+- [x] High-risk create Goal/Jadwal/Kantong memakai `useGuardedMutation` dan loading state; direct `createIdempotencyKey()` dibatasi ke TransactionForm yang memang mempertahankan intent lokal.
+- [x] Kantong duplikat dapat diarsipkan/dipulihkan dan realokasi salah dapat dibalik satu kali tanpa hard delete/audit loss. Target, Jadwal rutin, dan Anggaran arsip juga dapat dipulihkan owner dengan reason + `row_version` + dependency/conflict guard.
+- [x] Rekonsiliasi menerima saldo aktual negatif hanya untuk rekening dengan `allow_negative=true`.
+- [x] Browser regression baru mensimulasikan double-click create target pada response lambat dan menuntut satu mutation request; Device Notification/browser subscription juga memakai synchronous mutation guard.
+- [x] `integrity.run` sekarang mengikuti idempotency write canonical; double-submit/retry tidak membuat integrity execution baru secara diam-diam.
+- [x] Governance test membandingkan action mode, kewajiban idempotency, dan permission owner/member pada docs dengan policy/source canonical.
+- [ ] Jalankan full `npm run check`, `npm run test:guard`, `npm run test:browser`, dan `npm run zip` pada Node 24.x setelah patch diterapkan di laptop operator.
 
 ## Proteksi human error dan penghapusan
 

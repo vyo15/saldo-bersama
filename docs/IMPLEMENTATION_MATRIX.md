@@ -8,7 +8,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-FIN-002` | Saldo dari ledger aktif | Implemented | balance projection, finance tests | Real bank reconciliation wajib |
 | `REQ-FIN-003` | Transfer netral income/expense | Implemented | finance service/report tests | Production smoke wajib |
 | `REQ-FIN-004` | Soft cancel/archive | Implemented | transaction status, audit, tests | Retention policy operation |
-| `REQ-FIN-005` | Idempotency + audit append-only | Implemented | idempotency/audit services + triggers | Operational audit review |
+| `REQ-FIN-005` | Idempotency + audit append-only | Implemented | internal transaction replay + external pre-side-effect reservation + restore reservation preservation + private-memory frontend mutation intent + integrity-run idempotency + audit triggers | Full Node 24 guard/browser gate pada patch terbaru |
 | `REQ-FIN-006` | Optimistic row version | Implemented | version guards/conflict tests | Multi-device smoke |
 | `REQ-SEC-001`–`REQ-SEC-002` | Auth/authorization | Implemented | `security.js`, session, ownership query | Real owner/member smoke |
 | `REQ-DATA-001`–`REQ-DATA-002` | Turso/recovery | Implemented | migration, maintenance services | Restore drill nyata |
@@ -19,20 +19,20 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v5 account number + `bank_template` terpisah + list/detail financial-card UI + owner label/capability + route rekening terpisah | Mode privacy granular pending RFC-0015; real-resource owner/member smoke pending |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
 | `REQ-PROD-03` | Kategori | Partial | route `/kategori`, facade feature, categories + `nature` | hierarchy pending RFC-0014 |
-| `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods | Real-device UX verification |
+| `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods + archive/restore rule + reverse reallocation | Full device regression setelah patch terbaru |
 | `REQ-PROD-05` | Anggaran multi-cadence | Partial | envelope cadence + monthly budgets + alerts | recurring budget rules belum ada |
-| `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection | split/stages pending RFC-0013/0014 |
-| `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences | assignee/receipt pending RFC-0011/0013 |
-| `REQ-PROD-08` | Kalender keuangan | Partial | shared recurring Calendar bridge | internal multi-event calendar belum ada |
+| `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection, owner restore arsip | split/stages pending RFC-0013/0014 |
+| `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences + owner restore arsip + H-2/completion notification | assignee/receipt pending RFC-0011/0013 |
+| `REQ-PROD-08` | Kalender keuangan | Partial | shared recurring Calendar bridge + ScriptLock + duplicate managed-event self-heal | internal multi-event calendar belum ada |
 | `REQ-PROD-09` | Dashboard pasangan | Implemented | shared dashboard view model, mobile/desktop filters, detail, alerts, privacy | Production/device smoke |
 | `REQ-PROD-10` | Kontribusi/split | Planned | hanya aktivitas pencatatan | RFC-0013 |
 | `REQ-PROD-11` | Quick/draft transaction | Partial | quick form, duplicate guard, unallocated alerts | draft/template pending RFC-0011 |
 | `REQ-PROD-12` | Utang/piutang | Planned | tidak ada runtime table/action | RFC-0012 |
 | `REQ-PROD-13` | Laporan | Partial | monthly report + 3/6/12 trend + breakdown | contribution/debt model pending |
-| `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts | Cadence configurable belum ada |
+| `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
-| `REQ-PROD-16` | Notifikasi | Partial | secure-context guard, backend status/test, privacy-safe payload, per-device delivery/retry, Development env auto-refresh | VAPID Production tersedia dan desktop operator smoke dilaporkan; real Android/iOS + scheduler verification masih pending |
-| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/idempotency/version/backup/export | external alerting + operational drills |
+| `REQ-PROD-16` | Notifikasi | Partial | recurring due + H-2 funding shortage + recurring completed + budget/envelope/goal/unallocated alerts, privacy-safe payload, per-device delivery/retry | Real Android/iOS masih pending; fitur configurable lanjutan belum ada |
+| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + planning recovery lifecycle + confirmation/browser-side single-flight | Full operator gate patch terbaru + external alerting/operational drills |
 
 ## Infrastruktur dan deployment
 
@@ -44,6 +44,6 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |
 | Backup/restore | Implemented | Real-resource restore drill required |
-| PWA/Web Push | Partial | Source contract + VAPID Development bootstrap implemented; desktop Production operator smoke reported, real Android/iOS dan scheduler delivery test tetap required |
+| PWA/Web Push | Partial | Source contract + centralized VAPID + privacy-safe smart recurring alerts; desktop Production operator smoke reported, real Android/iOS tetap required |
 | Browser smoke/build budget | Implemented | Enforced after successful local/CI install |
 | External alerting | Not implemented | RFC/approved provider pending |

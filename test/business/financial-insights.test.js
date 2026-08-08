@@ -4,7 +4,7 @@ import { listTransactions } from "../../api/_lib/services/finance.js";
 import { listGoals } from "../../api/_lib/services/planning/goals.js";
 import { monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
 import { queueActionableNotifications } from "../../api/_lib/services/notifications.js";
-import { todayJakarta } from "../../api/_lib/services/core.js";
+import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const owner = {
@@ -184,4 +184,43 @@ test("notifikasi aksi penting idempotent untuk budget dan transaksi belum dialok
   } finally {
     db.close();
   }
+});
+
+test("notifikasi recurring memberi peringatan dana kurang H-2 dan status selesai tanpa membocorkan detail finansial", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const today = todayJakarta();
+    const dueDate = addDays(today, 2);
+    await db.execute(
+      "INSERT INTO recurring_rules(recurring_rule_id,name,kind,category_id,expected_amount,frequency,due_day,default_account_id,payment_method,auto_debit,start_date,end_date,priority,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["recurring-house", "Pembayaran Rumah", "expense", "category-food", 6_000_000, "monthly", Number(dueDate.slice(-2)), "account-bank", "transfer", 0, today, null, "high", "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
+    );
+    await db.execute(
+      "INSERT INTO recurring_occurrences(occurrence_id,recurring_rule_id,period_key,due_date,expected_amount,actual_amount,status,transaction_ids_json,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+      ["occurrence-house", "recurring-house", dueDate.slice(0, 7), dueDate, 6_000_000, 0, "expected", "[]", 1, now, now],
+    );
+
+    const first = await queueActionableNotifications(db);
+    assert.equal(first, 4, "shared due + shortage harus dibuat untuk dua user");
+    const shortage = await db.all("SELECT user_id,notification_type,title,body,target_path,dedupe_key FROM notification_queue WHERE notification_type='recurring_funding_shortage' ORDER BY user_id");
+    assert.equal(shortage.length, 2);
+    assert.deepEqual(shortage.map((item) => item.user_id).sort(), [member.user_id, owner.user_id].sort());
+    for (const item of shortage) {
+      assert.equal(item.target_path, "/tagihan");
+      assert.doesNotMatch(item.body, /Pembayaran Rumah|6[.]?000[.]?000|Bank Bersama/i);
+      assert.doesNotMatch(item.title, /Pembayaran Rumah|Rp/i);
+    }
+    assert.equal(await queueActionableNotifications(db), 0, "dedupe mencegah push berulang untuk occurrence yang sama");
+
+    await db.execute("UPDATE recurring_occurrences SET status='paid',actual_amount=expected_amount,row_version=row_version+1,updated_at=? WHERE occurrence_id=?", [new Date().toISOString(), "occurrence-house"]);
+    const completionQueued = await queueActionableNotifications(db);
+    assert.equal(completionQueued, 2, "completion shared dikirim sekali ke dua user");
+    const completed = await db.all("SELECT user_id,title,body,target_path FROM notification_queue WHERE notification_type='recurring_completed'");
+    assert.equal(completed.length, 2);
+    for (const item of completed) {
+      assert.equal(item.target_path, "/tagihan");
+      assert.doesNotMatch(item.body, /Pembayaran Rumah|6[.]?000[.]?000|Bank Bersama/i);
+    }
+  } finally { db.close(); }
 });

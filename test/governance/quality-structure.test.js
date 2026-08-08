@@ -15,12 +15,13 @@ const exists = async (relative) => {
   }
 };
 
-test("quality workflow menjalankan check, browser smoke, dan verifikasi clean archive", async () => {
+test("quality workflow menjalankan check, guard regression, browser journey, dan verifikasi clean archive", async () => {
   const workflow = await source(".github/workflows/quality.yml");
   assert.match(workflow, /actions\/checkout@v5/);
   assert.match(workflow, /actions\/setup-node@v5/);
   assert.match(workflow, /node-version:\s*24/);
-  assert.match(workflow, /Browser smoke[\s\S]*timeout-minutes:\s*2/);
+  assert.match(workflow, /Guarded mutation regression[\s\S]*npm run test:guard/);
+  assert.match(workflow, /Browser smoke and human-error journey[\s\S]*timeout-minutes:\s*3/);
   assert.match(workflow, /npm ci/);
   assert.match(workflow, /VITE_GOOGLE_CLIENT_ID:\s*ci-browser-smoke\.apps\.googleusercontent\.com/);
   assert.match(workflow, /VITE_FIREBASE_API_KEY:\s*ci-browser-smoke-public-key/);
@@ -75,6 +76,7 @@ test("test backend terkelompok berdasarkan tanggung jawab dan namespace runtime 
     "test/security",
     "test/tooling",
     "test/browser",
+    "test/guards",
   ]) {
     assert.equal(await exists(directory), true, `Missing test boundary: ${directory}`);
   }

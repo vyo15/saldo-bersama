@@ -1,7 +1,8 @@
-const definePolicy = (mode, { maintenanceAllowed = false, idempotencyRequired = false } = {}) => Object.freeze({
+const definePolicy = (mode, { maintenanceAllowed = false, idempotencyRequired = false, retryUnknownSafe = false } = {}) => Object.freeze({
   mode,
   maintenanceAllowed,
   idempotencyRequired,
+  retryUnknownSafe,
 });
 
 const read = (options) => definePolicy("read", options);
@@ -41,19 +42,27 @@ export const ACTION_POLICIES = Object.freeze({
   "envelopes.create": write(),
   "envelopes.move": write(),
   "envelopes.close": write(),
+  "envelopes.archiveRule": write(),
+  "envelopes.restoreRule": write(),
+  "envelopes.reverseMovement": write(),
   "recurring.list": read(),
   "recurring.createRule": write(),
   "recurring.updateRule": write(),
+  "recurring.archiveRule": write(),
   "recurring.payOccurrence": write(),
   "recurring.reversePayment": write(),
+  "recurring.restoreRule": write(),
   "budgets.list": read(),
   "budgets.upsert": write(),
   "budgets.archive": write(),
+  "budgets.restore": write(),
   "goals.list": read(),
   "goals.create": write(),
   "goals.update": write(),
+  "goals.archive": write(),
   "goals.move": write(),
   "goals.reverseMovement": write(),
+  "goals.restore": write(),
   "reports.monthly": read(),
   "reconciliations.list": read(),
   "reconciliations.create": write(),
@@ -69,12 +78,12 @@ export const ACTION_POLICIES = Object.freeze({
   "mirror.sync": write(),
   "mirror.rebuild": write(),
   "integrations.status": read({ maintenanceAllowed: true }),
-  "backup.create": external({ maintenanceAllowed: true }),
-  "import.preview": read(),
-  "import.apply": external(),
-  "restore.preview": read({ maintenanceAllowed: true }),
-  "restore.apply": external({ maintenanceAllowed: true }),
-  "integrity.run": write({ maintenanceAllowed: true, idempotencyRequired: false }),
+  "backup.create": external({ maintenanceAllowed: true, retryUnknownSafe: true }),
+  "import.preview": write(),
+  "import.apply": external({ retryUnknownSafe: true }),
+  "restore.preview": external({ maintenanceAllowed: true, retryUnknownSafe: true }),
+  "restore.apply": external({ maintenanceAllowed: true, retryUnknownSafe: true }),
+  "integrity.run": write({ maintenanceAllowed: true }),
 });
 
 export const getActionPolicy = (action) => ACTION_POLICIES[action] || null;

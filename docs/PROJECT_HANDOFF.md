@@ -1,4 +1,49 @@
-## Current task - Deploy dan verifikasi Google integration hardening final
+## Current task - Guarded mutation, recovery human error, Calendar self-heal, dan smart recurring alert
+
+**Tanggal:** 2026-08-08
+**Source baseline:** `saldo-bersama-clean(20260808-111504).zip`
+**Root project:** `saldo-bersama/`
+**Schema:** tetap version 6
+- Archive target, aturan rutin, dan anggaran memakai action eksplisit owner-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
+
+### Scope implementasi
+
+1. Mutation intent frontend canonical: coalescing double-submit, stable idempotency retry, `OUTCOME_UNKNOWN`, offline deny, dan refresh-failure separation.
+2. External idempotency reservation sebelum side effect dengan durable unknown-resume hanya untuk backup/import/restore.
+3. Recovery human error: Kantong archive/restore + reverse reallocation, serta restore owner untuk Target/Jadwal rutin/Anggaran arsip tanpa hard delete.
+4. Bug rekonsiliasi `allow_negative`.
+5. Calendar ScriptLock + duplicate managed-event self-healing.
+6. Recurring notification H-2 shortage + completion, privacy-safe.
+7. Guard regression: frontend mutation behavior, external concurrency, restore same-key replay, recovery planning, Google bridge, policy parity, dan browser double-click journey.
+8. Governance contract diperketat agar mode action, idempotency, owner/member permission, docs/API/authorization/QA/CI tidak drift dari source.
+9. Mutation intent tetap private-memory; `integrity.run` ikut idempotent dan flow Web Push browser memakai synchronous guard.
+
+### Guarded areas
+
+Tidak ada migration/schema, perubahan formula saldo, Firebase Auth, perubahan allowlist/role baseline, resource ID Google, env/secret, format backup/restore, atau dependency baru. Jika implementasi lanjutan membutuhkan area tersebut, hentikan dan minta approval baru.
+
+### Validasi sandbox
+
+- Sandbox patch final: source **356 PASS**, syntax Node **100 PASS**, Apps Script **6 file/2 load order PASS**, frontend **89/89**, backend **164/164**, focused guard+bridge **42/42**, governance **38/38**, dan `test:guard` **36/36**. Full lint/Vite/build/browser tetap wajib pada Node 24.x operator.
+
+### Operator gate sesudah patch
+
+```bash
+npm run validate:source
+npm run lint
+npm run test
+npm run test:guard
+npm run build
+npm run build:budget
+npm run test:browser
+npm run zip
+```
+
+Target: seluruh suite hijau, browser guard double-click ikut PASS, `git diff --check` kosong, lalu review manual owner/member pada Goal/Jadwal/Kantong/Rekonsiliasi/Notifikasi.
+
+---
+
+## Previous task - Deploy dan verifikasi Google integration hardening final
 
 **Tanggal:** 2026-08-08
 **Source baseline:** `saldo-bersama-clean(20260808-075946).zip`

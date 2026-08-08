@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FiBell } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import useGuardedMutation from "../../hooks/useGuardedMutation.js";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import {
   disablePushNotifications,
@@ -16,7 +17,8 @@ const initialPushState = { status: "loading", supported: true, permission: "defa
 
 const DeviceNotificationsPage = () => {
   const [pushState, setPushState] = useState(initialPushState);
-  const [busy, setBusy] = useState(false);
+  const pushMutation = useGuardedMutation();
+  const busy = pushMutation.busy;
   const [result, setResult] = useState(null);
   const [disableOpen, setDisableOpen] = useState(false);
 
@@ -33,35 +35,30 @@ const DeviceNotificationsPage = () => {
 
   useEffect(() => { refreshPushState(); }, [refreshPushState]);
 
-  const runPushAction = async (action) => {
-    setBusy(true);
+  const runPushAction = (action) => pushMutation.run(async () => {
     setResult({ status: "loading", text: "Memproses perangkat..." });
-    try {
-      if (action === "enable") {
-        const data = await enablePushNotifications();
-        const verified = data.verification?.accepted === true;
-        setResult({
-          status: verified ? "success" : "warning",
-          text: verified
-            ? "Notifikasi aktif dan verifikasi otomatis berhasil dikirim ke perangkat ini."
-            : `Perangkat berhasil didaftarkan, tetapi ${pushFailurePresentation({ code: data.verificationError?.code }).toLowerCase()}`,
-        });
-      } else if (action === "verify") {
-        await testPushNotification();
-        setResult({ status: "success", text: "Verifikasi notifikasi berhasil dikirim ke perangkat ini." });
-      } else {
-        await disablePushNotifications();
-        setDisableOpen(false);
-        setResult({ status: "success", text: "Notifikasi dinonaktifkan pada perangkat ini." });
-      }
-      await refreshPushState();
-    } catch (error) {
-      setResult({ status: "danger", text: error.message });
-      await refreshPushState();
-    } finally {
-      setBusy(false);
+    if (action === "enable") {
+      const data = await enablePushNotifications();
+      const verified = data.verification?.accepted === true;
+      setResult({
+        status: verified ? "success" : "warning",
+        text: verified
+          ? "Notifikasi aktif dan verifikasi otomatis berhasil dikirim ke perangkat ini."
+          : `Perangkat berhasil didaftarkan, tetapi ${pushFailurePresentation({ code: data.verificationError?.code }).toLowerCase()}`,
+      });
+    } else if (action === "verify") {
+      await testPushNotification();
+      setResult({ status: "success", text: "Verifikasi notifikasi berhasil dikirim ke perangkat ini." });
+    } else {
+      await disablePushNotifications();
+      setDisableOpen(false);
+      setResult({ status: "success", text: "Notifikasi dinonaktifkan pada perangkat ini." });
     }
-  };
+    await Promise.allSettled([refreshPushState()]);
+  }).catch(async (error) => {
+    setResult({ status: "danger", text: error.message });
+    await Promise.allSettled([refreshPushState()]);
+  });
 
   const view = pushPresentation(pushState);
   const tileAction = view.canEnable ? "enable" : pushState.reason === "ready_unverified" ? "verify" : null;

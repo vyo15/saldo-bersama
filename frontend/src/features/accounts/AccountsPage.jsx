@@ -25,7 +25,6 @@ import {
 } from "./accounts.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import AccountFinancialCard, { AccountVisual } from "./components/AccountFinancialCard.jsx";
 import { accountCardholderName, detectBankTemplate } from "./accountPresentation.js";
@@ -164,7 +163,7 @@ const AccountsPage = () => {
     event.preventDefault();
     setDialogState({ status: "submitting", error: null });
     try {
-      await requestCreateAccount({ ...accountForm, initial_balance: Number(accountForm.initial_balance || 0) }, { idempotencyKey: createIdempotencyKey() });
+      await requestCreateAccount({ ...accountForm, initial_balance: Number(accountForm.initial_balance || 0) }, {});
       setAccountForm(emptyAccountForm());
       setCreateDialogOpen(false);
       setDialogState({ status: "idle", error: null });
@@ -187,7 +186,7 @@ const AccountsPage = () => {
         owner_user_id: editAccount.owner_scope === "personal" ? editAccount.owner_user_id || "" : "",
         allow_negative: Boolean(editAccount.allow_negative),
         row_version: editAccount.row_version,
-      }, { rowVersion: editAccount.row_version, idempotencyKey: createIdempotencyKey() });
+      }, { rowVersion: editAccount.row_version });
       setEditAccount(null);
       setDialogState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Rekening berhasil diperbarui." });
@@ -238,9 +237,9 @@ const AccountsPage = () => {
           reason,
           confirmation: confirmationState.confirmation,
           acknowledged: confirmationState.acknowledged,
-        }, { rowVersion: account.row_version, idempotencyKey: createIdempotencyKey() });
+        }, { rowVersion: account.row_version });
       } else {
-        await archiveAccount({ account_id: account.account_id, row_version: account.row_version }, { rowVersion: account.row_version, idempotencyKey: createIdempotencyKey() });
+        await archiveAccount({ account_id: account.account_id, row_version: account.row_version }, { rowVersion: account.row_version });
       }
       setArchiveTarget(null);
       setDialogState({ status: "idle", error: null });

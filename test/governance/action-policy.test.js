@@ -3,6 +3,7 @@ import test from "node:test";
 import { ACTION_POLICIES, actionNames, requiresIdempotencyKey } from "../../api/_lib/actions/policy.js";
 import { ACTION_REGISTRY } from "../../api/_lib/actions/registry.js";
 import { ACTION_PERMISSIONS } from "../../api/_lib/security.js";
+import { READ_CACHE_TTL_MS } from "../../frontend/src/services/api/cache.js";
 
 test("action policy, handler registry, dan authorization tetap satu-ke-satu", () => {
   const policyNames = actionNames().sort();
@@ -18,21 +19,24 @@ test("action policy, handler registry, dan authorization tetap satu-ke-satu", ()
 test("read action tidak meminta idempotency dan perubahan kritis tetap guarded", () => {
   for (const [action, policy] of Object.entries(ACTION_POLICIES)) {
     if (policy.mode === "read") assert.equal(requiresIdempotencyKey(action), false, action);
+    else assert.equal(requiresIdempotencyKey(action), true, `${action} adalah mutation/external dan wajib idempotent`);
   }
   for (const action of [
     "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
     "accounts.archive", "accounts.restore", "accounts.deleteUnused",
     "categories.archive", "categories.restore", "users.deactivate", "users.reactivate",
-    "envelopes.move", "recurring.payOccurrence", "goals.move", "periods.close",
-    "backup.create", "import.apply", "restore.apply",
+    "envelopes.move", "envelopes.archiveRule", "envelopes.restoreRule", "envelopes.reverseMovement",
+    "recurring.archiveRule", "recurring.payOccurrence", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.move", "goals.restore", "periods.close",
+    "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply",
   ]) assert.equal(requiresIdempotencyKey(action), true, action);
-  assert.equal(requiresIdempotencyKey("integrity.run"), false);
+  assert.equal(requiresIdempotencyKey("integrity.run"), true);
 });
 
 test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", () => {
   const ownerOnly = [
     "archive.list", "accounts.previewLifecycle", "accounts.restore", "accounts.deleteUnused",
     "categories.previewArchive", "categories.restore", "transactions.restore", "users.reactivate", "periods.previewClose",
+    "envelopes.archiveRule", "envelopes.restoreRule", "recurring.archiveRule", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.restore",
   ];
   for (const action of ownerOnly) {
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
@@ -43,4 +47,20 @@ test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", 
     assert.equal(ACTION_REGISTRY[forbidden], undefined, `${forbidden} tidak boleh memiliki handler`);
   }
   assert.equal(ACTION_POLICIES["accounts.deleteUnused"].maintenanceAllowed, false);
+});
+
+
+test("preview yang menulis state tidak menyamar sebagai read dan retry external hanya diaktifkan untuk workflow recoverable", () => {
+  assert.equal(ACTION_POLICIES["import.preview"].mode, "write");
+  assert.equal(ACTION_POLICIES["restore.preview"].mode, "external");
+  assert.equal(ACTION_POLICIES["notifications.test"].retryUnknownSafe, false);
+  for (const action of ["backup.create", "import.apply", "restore.preview", "restore.apply"]) {
+    assert.equal(ACTION_POLICIES[action].retryUnknownSafe, true, `${action} wajib punya durable recovery sebelum retry outcome unknown`);
+  }
+});
+
+
+test("frontend read transport tidak drift dari backend action policy", () => {
+  const backendReads = Object.entries(ACTION_POLICIES).filter(([, policy]) => policy.mode === "read").map(([action]) => action).sort();
+  assert.deepEqual(Object.keys(READ_CACHE_TTL_MS).sort(), backendReads);
 });

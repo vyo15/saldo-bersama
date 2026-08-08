@@ -6,7 +6,6 @@ import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { currentMonthInJakarta, previousMonthInJakarta } from "../../domain/dates.js";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
@@ -32,7 +31,7 @@ const PeriodControlPage = () => {
     setIntegrityBusy(true);
     setResult({ status: "loading", text: "Menjalankan integrity check..." });
     try {
-      const data = await runSettingsAction("integrity.run", {}, { idempotencyKey: createIdempotencyKey() });
+      const data = await runSettingsAction("integrity.run", {}, {});
       setResult({ status: data.ok ? "success" : "warning", text: data.ok ? "Integrity check lulus." : `Integrity check menemukan ${data.issues?.length || 0} masalah.` });
     } catch (error) {
       setResult({ status: "danger", text: error.message });
@@ -65,12 +64,12 @@ const PeriodControlPage = () => {
     if (!closePreview) return;
     setCloseState({ status: "submitting", error: null });
     try {
-      await runSettingsAction("periods.close", { ...form, confirmation: confirmationState.confirmation }, { idempotencyKey: createIdempotencyKey() });
+      await runSettingsAction("periods.close", { ...form, confirmation: confirmationState.confirmation }, {});
       setResult({ status: "success", text: `Periode ${form.period_key} berhasil ditutup setelah validasi ulang backend.` });
       setClosePreview(null);
       setCloseState({ status: "idle", error: null });
       invalidate(["audit.list"]);
-      await Promise.all([refreshAll(), resource.reload()]);
+      await Promise.allSettled([refreshAll(), resource.reload()]);
     } catch (error) {
       setCloseState({ status: "error", error });
     }
@@ -80,13 +79,13 @@ const PeriodControlPage = () => {
     if (!reopenTarget) return;
     setReopenState({ status: "submitting", error: null });
     try {
-      await requestReopenPeriod({ closure_id: reopenTarget.closure_id, row_version: reopenTarget.row_version, reason }, { rowVersion: reopenTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      await requestReopenPeriod({ closure_id: reopenTarget.closure_id, row_version: reopenTarget.row_version, reason }, { rowVersion: reopenTarget.row_version });
       const key = reopenTarget.period_key;
       setReopenTarget(null);
       setReopenState({ status: "idle", error: null });
       setResult({ status: "success", text: `Periode ${key} berhasil dibuka kembali dan tercatat di audit.` });
       invalidate(["audit.list"]);
-      await Promise.all([refreshAll(), resource.reload()]);
+      await Promise.allSettled([refreshAll(), resource.reload()]);
     } catch (error) {
       setReopenState({ status: "error", error });
     }

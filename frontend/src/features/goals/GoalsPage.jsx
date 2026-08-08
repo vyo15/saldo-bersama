@@ -11,11 +11,11 @@ import ProgressBar from "../../components/common/ProgressBar.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { createGoal as requestCreateGoal, moveGoal as requestMoveGoal, reverseGoalMovement, updateGoal as requestUpdateGoal } from "./goals.api.js";
+import { archiveGoal as requestArchiveGoal, createGoal as requestCreateGoal, moveGoal as requestMoveGoal, reverseGoalMovement, updateGoal as requestUpdateGoal } from "./goals.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
 import { filterByOwnership } from "../../domain/ownership.js";
 import { accountDisplayLabel } from "../accounts/accountPresentation.js";
@@ -33,6 +33,8 @@ const GoalsPage = () => {
   const resource = useApiResource("goals.list");
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
+  const createMutation = useGuardedMutation();
+  const movementMutation = useGuardedMutation();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
   const [movement, setMovement] = useState({ goal: null, movement_type: "deposit", amount: "", source_account_id: "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "" });
@@ -47,15 +49,16 @@ const GoalsPage = () => {
   const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
   const compatibleMovementAccounts = filterByOwnership(accounts, goalAccount);
 
-  const createGoal = async (event) => {
+  const createGoal = (event) => {
     event.preventDefault();
-    try {
-      await requestCreateGoal({ ...form, target_amount: assertPositiveRupiah(form.target_amount) }, { idempotencyKey: createIdempotencyKey() });
+    setMessage(null);
+    return createMutation.run(async () => {
+      await requestCreateGoal({ ...form, target_amount: assertPositiveRupiah(form.target_amount) }, {});
       setForm({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
       setMessage({ type: "success", text: "Target keuangan berhasil dibuat." });
       invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
-    } catch (error) { setMessage({ type: "danger", text: error.message }); }
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
+    }).catch((error) => setMessage({ type: "danger", text: error.message }));
   };
 
   const openMovement = (goal, movementType) => {
@@ -71,7 +74,7 @@ const GoalsPage = () => {
     setMovementState({ status: "idle", error: null });
   };
 
-  const submitMovement = async (event) => {
+  const submitMovement = (event) => {
     event.preventDefault();
     if (!movement.goal) return;
     if (!movement.source_account_id || !movement.destination_account_id) {
@@ -83,7 +86,7 @@ const GoalsPage = () => {
       return;
     }
     setMovementState({ status: "submitting", error: null });
-    try {
+    return movementMutation.run(async () => {
       await requestMoveGoal({
         goal_id: movement.goal.goal_id,
         movement_type: movement.movement_type,
@@ -92,13 +95,13 @@ const GoalsPage = () => {
         destination_account_id: movement.destination_account_id,
         transaction_date: movement.transaction_date,
         reason: movement.reason,
-      }, { idempotencyKey: createIdempotencyKey() });
+      }, {});
       setMovement((current) => ({ ...current, goal: null }));
       setMovementState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Mutasi target dan transfer rekening berhasil dicatat." });
       invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
-    } catch (error) { setMovementState({ status: "error", error }); }
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
+    }).catch((error) => setMovementState({ status: "error", error }));
   };
 
   const saveGoal = async (event) => {
@@ -114,31 +117,31 @@ const GoalsPage = () => {
         target_date: editGoal.target_date,
         priority: editGoal.priority || "normal",
         status: editGoal.status || "active",
-      }, { idempotencyKey: createIdempotencyKey(), rowVersion: editGoal.row_version });
+      }, { rowVersion: editGoal.row_version });
       setEditGoal(null);
       setEditState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Target berhasil diperbarui." });
       invalidate(["goals.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {
       setEditState({ status: "error", error });
     }
   };
 
-  const archiveGoal = async () => {
+  const archiveGoal = async (reason) => {
     if (!archiveTarget) return;
     setArchiveState({ status: "submitting", error: null });
     try {
-      await requestUpdateGoal({
+      await requestArchiveGoal({
         goal_id: archiveTarget.goal_id,
         row_version: archiveTarget.row_version,
-        status: "archived",
-      }, { idempotencyKey: createIdempotencyKey(), rowVersion: archiveTarget.row_version });
+        reason,
+      }, { rowVersion: archiveTarget.row_version });
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Target berhasil diarsipkan. Riwayat mutasi dan transaksi tetap tersimpan." });
       invalidate(["goals.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {
       setArchiveState({ status: "error", error });
     }
@@ -148,12 +151,12 @@ const GoalsPage = () => {
     if (!reverseTarget?.last_movement_id) return;
     setReverseState({ status: "submitting", error: null });
     try {
-      await reverseGoalMovement({ goal_movement_id: reverseTarget.last_movement_id, reason }, { idempotencyKey: createIdempotencyKey() });
+      await reverseGoalMovement({ goal_movement_id: reverseTarget.last_movement_id, reason }, {});
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan." });
       invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setReverseState({ status: "error", error }); }
   };
 
@@ -197,7 +200,7 @@ const GoalsPage = () => {
             <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
             <label className="field"><span>Tanggal target</span><input required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
             <label className="field"><span>Rekening tujuan</span><select required value={form.account_id} onChange={(event) => setForm((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label>
-            <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit">Buat target</Button></div>
+            <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit" loading={createMutation.busy}>Buat target</Button></div>
           </form>
         </Card>
       ) : null}
@@ -224,7 +227,7 @@ const GoalsPage = () => {
         onClose={() => movementState.status !== "submitting" && setMovement((current) => ({ ...current, goal: null }))}
         title={movement.movement_type === "withdrawal" ? "Tarik dana target" : "Tambah kontribusi"}
         description={movement.goal ? `${movement.goal.name} · saldo target saat ini tercatat ${movement.goal.current_amount}` : ""}
-        footer={<><Button type="button" disabled={movementState.status === "submitting"} onClick={() => setMovement((current) => ({ ...current, goal: null }))}>Batal</Button><Button type="submit" form="goal-movement-form" variant="primary" disabled={movementState.status === "submitting"}>{movementState.status === "submitting" ? "Menyimpan..." : "Simpan transfer"}</Button></>}
+        footer={<><Button type="button" disabled={movementState.status === "submitting"} onClick={() => setMovement((current) => ({ ...current, goal: null }))}>Batal</Button><Button type="submit" form="goal-movement-form" variant="primary" loading={movementMutation.busy} disabled={movementState.status === "submitting"}>Simpan transfer</Button></>}
       >
         <form id="goal-movement-form" className="form-grid" onSubmit={submitMovement}>
           <MoneyInput id="goal-movement-amount" label="Nominal" value={movement.amount} onChange={(value) => setMovement((current) => ({ ...current, amount: value }))} />
@@ -254,6 +257,8 @@ const GoalsPage = () => {
         title="Arsipkan target?"
         description={archiveTarget ? `${archiveTarget.name} tidak lagi menerima mutasi baru. Riwayat dan transaksi tidak dihapus.` : ""}
         confirmLabel="Arsipkan target"
+        reasonLabel="Alasan pengarsipan"
+        requireReason
         busy={archiveState.status === "submitting"}
         error={archiveState.error}
         onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)}

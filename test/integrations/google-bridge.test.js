@@ -308,3 +308,56 @@ test("status integrasi fail closed ketika health bridge tidak dapat dijangkau", 
     else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
   }
 });
+
+test("Calendar memakai ScriptLock dan self-heal event managed duplikat berdasarkan entityId", async () => {
+  const context = await loadBridge();
+  const makeEvent = (entityId) => {
+    const tags = new Map([["saldo_bersama_managed", "true"], ["saldo_bersama_entity_id", entityId]]);
+    return {
+      deleted: false,
+      title: "lama",
+      getTag: (key) => tags.get(key) || "",
+      setTag: (key, value) => tags.set(key, value),
+      setTitle(value) { this.title = value; },
+      setTime() {},
+      setDescription() {},
+      deleteEvent() { this.deleted = true; },
+    };
+  };
+  const canonical = makeEvent("occurrence-1");
+  const duplicate = makeEvent("occurrence-1");
+  const stale = makeEvent("stale-occurrence");
+  const blank = makeEvent("");
+  const created = [];
+  const calendar = {
+    getEvents: () => [canonical, duplicate, stale, blank],
+    createEvent: (title) => {
+      const event = makeEvent("");
+      event.title = title;
+      created.push(event);
+      return event;
+    },
+  };
+  let released = false;
+  context.CalendarApp = { getCalendarById: () => calendar };
+  context.LockService = { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => { released = true; } }) };
+
+  const result = JSON.parse(JSON.stringify(context.rebuildCalendar_({ items: [
+    { entityId: "occurrence-1", date: "2026-08-07", title: "Pembayaran rumah", description: "Reminder" },
+    { entityId: "occurrence-2", date: "2026-08-08", title: "Internet", description: "Reminder" },
+  ] })));
+
+  assert.equal(result.updated, 1);
+  assert.equal(result.created, 1);
+  assert.equal(result.removed, 3);
+  assert.equal(canonical.title, "Pembayaran rumah");
+  assert.equal(duplicate.deleted, true);
+  assert.equal(stale.deleted, true);
+  assert.equal(blank.deleted, true);
+  assert.equal(created.length, 1);
+  assert.equal(created[0].getTag("saldo_bersama_entity_id"), "occurrence-2");
+  assert.equal(released, true);
+
+  context.LockService = { getScriptLock: () => ({ tryLock: () => false, releaseLock() {} }) };
+  assert.throws(() => context.rebuildCalendar_({ items: [] }), (error) => error.code === "CALENDAR_BUSY");
+});

@@ -1,5 +1,11 @@
 # Google Integrations
 
+## Concurrency dan self-healing Calendar
+
+- `CalendarService.gs` memakai `LockService` agar dua scheduler/sync tidak membangun event managed secara bersamaan.
+- Event Saldo Bersama menggunakan stable `entityId`. Jika histori lama sudah memiliki lebih dari satu managed event untuk entity yang sama, sync memilih satu event canonical dan menghapus duplikat managed; event pengguna yang tidak memiliki marker Saldo Bersama tidak disentuh.
+- Calendar tetap bukan source of truth pembayaran. Status `paid` berasal dari recurring occurrence/ledger Turso dan sinkronisasi hanya merefleksikannya.
+
 ## Peran Apps Script
 
 Folder `apps-script/` hanya integration bridge. Ia tidak menyimpan saldo resmi, tidak menerima create/update transaksi, dan tidak memutuskan role pengguna.

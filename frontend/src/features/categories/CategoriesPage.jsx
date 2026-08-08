@@ -11,7 +11,6 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { createIdempotencyKey } from "../../domain/security.js";
 import {
   CATEGORY_ICON_GROUPS,
   CATEGORY_ICON_OPTIONS,
@@ -165,7 +164,7 @@ const CategoriesPage = () => {
     event.preventDefault();
     setDialogState({ status: "submitting", error: null });
     try {
-      await requestCreateCategory(form, { idempotencyKey: createIdempotencyKey() });
+      await requestCreateCategory(form, {});
       setForm(emptyCategoryForm());
       setCreateOpen(false);
       setDialogState({ status: "idle", error: null });
@@ -185,7 +184,7 @@ const CategoriesPage = () => {
         ...(editCategory.transaction_type === "expense" ? { nature: editCategory.nature } : {}),
         icon: editCategory.icon,
         row_version: editCategory.row_version,
-      }, { rowVersion: editCategory.row_version, idempotencyKey: createIdempotencyKey() });
+      }, { rowVersion: editCategory.row_version });
       setEditCategory(null);
       setDialogState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Kategori berhasil diperbarui." });
@@ -215,7 +214,7 @@ const CategoriesPage = () => {
     const category = archiveTarget.category;
     setDialogState({ status: "submitting", error: null });
     try {
-      await archiveCategory({ category_id: category.category_id, row_version: category.row_version }, { rowVersion: category.row_version, idempotencyKey: createIdempotencyKey() });
+      await archiveCategory({ category_id: category.category_id, row_version: category.row_version }, { rowVersion: category.row_version });
       setArchiveTarget(null);
       setDialogState({ status: "idle", error: null });
       setMessage({ type: "success", text: "Kategori berhasil diarsipkan." });

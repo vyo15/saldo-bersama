@@ -115,15 +115,15 @@ Owner/member, shared/personal, ownership query, dan backend authorization tersed
 
 ### `REQ-PROD-16` Notifikasi berguna — Partial
 
-Queue idempotent dan Web Push mendukung recurring due, budget threshold, kantong threshold, target tertinggal, dan transaksi belum dialokasikan. Push hanya aktif bila VAPID lengkap.
+Queue idempotent dan Web Push mendukung recurring due, budget threshold, kantong threshold, target tertinggal, transaksi belum dialokasikan, **peringatan dana recurring expense kurang pada H-2**, dan notifikasi generik ketika occurrence recurring tercatat selesai. Saldo untuk shortage dihitung dari ledger Turso melalui read-model canonical; push lock-screen tetap tidak memuat nama tagihan, rekening, atau nominal. Push hanya aktif bila VAPID lengkap.
 
-**Gap:** transaksi besar, saldo rendah configurable, perubahan pasangan, dan cadence rekonsiliasi configurable belum tersedia.
+**Gap:** transaksi besar configurable, saldo rendah umum configurable, perubahan pasangan, cadence rekonsiliasi configurable, dan verifikasi real Android/iOS masih belum tersedia.
 
 ### `REQ-PROD-17` Keamanan dan anti-kesalahan — Implemented
 
-Google login, signed session, allowlist, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia.
+Google login, signed session, allowlist, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation sekarang memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Kantong memiliki archive/restore rule dan reverse movement tanpa hard delete.
 
-**Operasional yang belum terbukti:** migration parity production, real-resource restore drill, external alerting, dan rotasi secret yang pernah ikut ZIP manual.
+**Operasional yang belum terbukti:** full quality gate Node 24 pada patch terbaru, migration parity production, real-resource restore drill, external alerting, dan rotasi secret yang pernah ikut ZIP manual.
 
 ## Alur produk
 

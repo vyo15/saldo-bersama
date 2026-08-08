@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { dispatchAction } from "../../api/_lib/actionDispatcher.js";
-import { createTechnicalBackup, integrityWithMaintenanceRecovery, previewRestore, applyRestore } from "../../api/_lib/services/maintenance/index.js";
+import { createTechnicalBackup, integrityWithMaintenanceRecovery, previewRestore } from "../../api/_lib/services/maintenance/index.js";
 import { listSubscriptionsForUser } from "../../api/_lib/services/notifications.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 import { todayJakarta } from "../../api/_lib/services/core.js";
@@ -319,6 +319,7 @@ test("import, restore, dan integrity recovery menjalankan dependency hasil pemec
           }]
         },
         requestId: "test:import-preview",
+        idempotencyKey: "test-import-preview",
         database: db
       });
       assert.equal(preview.acceptable, true);
@@ -335,12 +336,32 @@ test("import, restore, dan integrity recovery menjalankan dependency hasil pemec
 
       const backup = await createTechnicalBackup(db, contextFor("backup.create", { type: "manual" }), { type: "manual" });
       const restorePreview = await previewRestore(db, contextFor("restore.preview", { backupFileId: backup.fileId }));
-      const restored = await applyRestore(db, contextFor("restore.apply", {
-        previewToken: restorePreview.previewToken,
-        backupFileId: backup.fileId,
-        confirmation: "RESTORE SALDO BERSAMA"
-      }));
+      const restored = await dispatchAction({
+        signedActor,
+        action: "restore.apply",
+        payload: {
+          previewToken: restorePreview.previewToken,
+          backupFileId: backup.fileId,
+          confirmation: "RESTORE SALDO BERSAMA"
+        },
+        requestId: "test:restore-apply",
+        idempotencyKey: "test-restore-apply",
+        database: db
+      });
       assert.equal(restored.restored, true);
+      const restoreReplay = await dispatchAction({
+        signedActor,
+        action: "restore.apply",
+        payload: {
+          previewToken: restorePreview.previewToken,
+          backupFileId: backup.fileId,
+          confirmation: "RESTORE SALDO BERSAMA"
+        },
+        requestId: "test:restore-apply-replay",
+        idempotencyKey: "test-restore-apply",
+        database: db
+      });
+      assert.deepEqual(restoreReplay, restored, "Reservation restore harus bertahan setelah idempotency table dipulihkan agar retry same-key menjadi replay, bukan restore kedua.");
 
       await db.execute("UPDATE system_config SET value='true' WHERE key='maintenance_mode'");
       const integrity = await integrityWithMaintenanceRecovery(db, contextFor("integrity.run", { clearMaintenance: true }));

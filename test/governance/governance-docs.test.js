@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { ACTION_POLICIES } from "../../api/_lib/actions/policy.js";
+import { ACTION_PERMISSIONS } from "../../api/_lib/security.js";
 import {
   CORE_RUNTIME_ENV_KEYS,
   GOOGLE_BRIDGE_ENV_KEYS,
@@ -128,6 +130,46 @@ test("every canonical action is documented in API and authorization contracts", 
     assert.ok(authorization.includes(`\`${action}\``), `Action missing from authorization matrix: ${action}`);
   });
 });
+
+
+
+test("API contract mode dan idempotency mengikuti canonical action policy", () => {
+  const apiContract = read("docs/API_CONTRACT.md");
+  const rows = new Map();
+  for (const line of apiContract.split(/\r?\n/)) {
+    const match = line.match(/^\| `([^`]+)` \| (Ya|Tidak) \| (Ya|Tidak) \| ([^|]+?) \| (Wajib|Tidak) \|/);
+    if (match) rows.set(match[1], { mode: match[4].trim(), idempotency: match[5] });
+  }
+  const modeLabel = { read: "Read", write: "Write/operation", external: "External/operation" };
+  for (const [action, policy] of Object.entries(ACTION_POLICIES)) {
+    const row = rows.get(action);
+    assert.ok(row, `API contract row missing for ${action}`);
+    assert.equal(row.mode, modeLabel[policy.mode], `API mode drift for ${action}`);
+    assert.equal(row.idempotency, policy.idempotencyRequired ? "Wajib" : "Tidak", `API idempotency drift for ${action}`);
+  }
+});
+
+test("API dan authorization docs mengikuti canonical owner/member permissions", () => {
+  const parseRows = (source) => {
+    const rows = new Map();
+    for (const line of source.split(/\r?\n/)) {
+      const match = line.match(/^\| `([^`]+)` \| (Ya|Tidak) \| (Ya|Tidak) \|/);
+      if (match) rows.set(match[1], { owner: match[2], member: match[3] });
+    }
+    return rows;
+  };
+  const apiRows = parseRows(read("docs/API_CONTRACT.md"));
+  const authorizationRows = parseRows(read("docs/AUTHORIZATION_MATRIX.md"));
+  for (const action of Object.keys(ACTION_POLICIES)) {
+    const expected = {
+      owner: ACTION_PERMISSIONS.owner.has(action) ? "Ya" : "Tidak",
+      member: ACTION_PERMISSIONS.member.has(action) ? "Ya" : "Tidak",
+    };
+    assert.deepEqual(apiRows.get(action), expected, `API permission drift for ${action}`);
+    assert.deepEqual(authorizationRows.get(action), expected, `Authorization matrix drift for ${action}`);
+  }
+});
+
 
 test("every migration table is documented in both schema overview and data dictionary", () => {
   const migration = read("database/migrations/001_initial_schema.sql");

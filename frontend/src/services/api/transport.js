@@ -1,7 +1,26 @@
 import { createSecureRandomId } from "../../domain/security.js";
-import { ApiError, parseResponse } from "./errors.js";
+import { ApiError, isAbortError, outcomeUnknownError, parseResponse } from "./errors.js";
 
-export const gatewayFetch = async (action, payload, options, signal) => parseResponse(await fetch("/api/gateway", {
+const fetchJson = async (url, options, { outcomeSensitive = false } = {}) => {
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    if (outcomeSensitive) throw outcomeUnknownError(error);
+    throw new ApiError("Tidak dapat terhubung ke server.", { code: "NETWORK_ERROR", status: 0, cause: error });
+  }
+  try {
+    return await parseResponse(response);
+  } catch (error) {
+    if (outcomeSensitive && error?.code === "INVALID_RESPONSE" && response?.ok) {
+      throw outcomeUnknownError(error, { requestId: error.requestId });
+    }
+    throw error;
+  }
+};
+
+export const gatewayFetch = async (action, payload, options, signal) => fetchJson("/api/gateway", {
   method: "POST",
   credentials: "include",
   headers: {
@@ -15,26 +34,26 @@ export const gatewayFetch = async (action, payload, options, signal) => parseRes
     rowVersion: options.rowVersion,
   }),
   signal,
-}));
+}, { outcomeSensitive: Boolean(options.outcomeSensitive) });
 
 export const readSession = async () => {
   const response = await fetch("/api/session", { credentials: "include" });
   return response.status === 401 ? null : parseResponse(response);
 };
 
-export const createServerSession = async (firebaseIdToken) => parseResponse(await fetch("/api/session", {
+export const createServerSession = async (firebaseIdToken) => fetchJson("/api/session", {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ action: "login", firebaseIdToken }),
-}));
+});
 
-export const destroyServerSession = async () => parseResponse(await fetch("/api/session", {
+export const destroyServerSession = async () => fetchJson("/api/session", {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ action: "logout" }),
-}));
+});
 
 const fileNameFromDisposition = (value, fallback) => {
   const match = String(value || "").match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);

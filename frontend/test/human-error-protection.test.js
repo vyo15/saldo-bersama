@@ -82,10 +82,59 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(recovery, /Purge umum tetap dinonaktifkan/);
   assert.match(recovery, /restore\.preview/);
   assert.match(recovery, /restore\.apply/);
+  for (const action of ["envelopes.restoreRule", "goals.restore", "recurring.restoreRule", "budgets.restore"]) {
+    assert.match(recovery, new RegExp(action.replace(".", "\\.")), `${action} harus tersedia dari pemulihan item owner`);
+  }
   assert.match(period, /runSettingsAction\("periods\.previewClose"/);
   assert.match(period, /expectedConfirmation=\{closePreview\?\.confirmation/);
   assert.match(audit, /audit-mobile-list|mobile-data-list/);
   assert.match(audit, /Audit tidak dapat diedit atau dihapus/);
   assert.match(api, /users\.reactivate/);
   assert.doesNotMatch([layout, notifications, members, recovery, period, audit].join("\n"), /data\.purge|transactions\.delete|accounts\.delete(?!Unused)/);
+});
+
+test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry, dan membatasi key manual ke form transaksi", async () => {
+  const [client, hook, modal, goals, recurring, allocations, transactionForm, notifications] = await Promise.all([
+    read("src/services/api/client.js"),
+    read("src/hooks/useGuardedMutation.js"),
+    read("src/components/common/ConfirmationModal.jsx"),
+    read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/recurring/RecurringPage.jsx"),
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/transactions/TransactionForm.jsx"),
+    read("src/features/settings/DeviceNotificationsPage.jsx"),
+  ]);
+  assert.match(client, /memoryMutationIntents/);
+  assert.match(client, /readPersistedIntent/);
+  assert.doesNotMatch(client, /localStorage|sessionStorage|MUTATION_INTENT_STORAGE_PREFIX/, "mutation intent tidak boleh persisten di browser storage; state finansial/cache tetap private-memory");
+  assert.match(client, /if \(isOutcomeUnknownError\(error\)\) persistIntent/);
+  assert.match(client, /const existingFlight = inFlightMutations\.get\(fingerprint\)/);
+  assert.match(hook, /if \(inFlightRef\.current && promiseRef\.current\) return promiseRef\.current/);
+  assert.match(modal, /submitLockRef\.current/);
+  assert.match(modal, /submitLockRef\.current\) return/);
+  assert.match(transactionForm, /Promise\.allSettled\(\[refreshOverview\(\), Promise\.resolve\(\)\.then/, "refresh gagal setelah transaksi tersimpan tidak boleh dilaporkan sebagai save gagal");
+  assert.match(notifications, /useGuardedMutation/, "aksi subscription/push browser wajib punya synchronous reentrancy guard");
+  for (const [name, source] of [["goals", goals], ["recurring", recurring], ["allocations", allocations]]) {
+    assert.match(source, /useGuardedMutation/, `${name} wajib memakai mutation guard canonical`);
+    assert.match(source, /loading=\{[^}]*Mutation\.busy\}/, `${name} wajib memberi feedback busy pada mutation utama`);
+  }
+
+  const { readdir } = await import("node:fs/promises");
+  const root = new URL("../src/", import.meta.url);
+  const files = [];
+  const walk = async (url) => {
+    for (const entry of await readdir(url, { withFileTypes: true })) {
+      const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, url);
+      if (entry.isDirectory()) await walk(child);
+      else if (/\.(jsx?|mjs)$/.test(entry.name)) files.push(child);
+    }
+  };
+  await walk(root);
+  const manualKeyUsers = [];
+  for (const file of files) {
+    const source = await readFile(file, "utf8");
+    if (/createIdempotencyKey\s*\(/.test(source) && !file.pathname.endsWith("/domain/security.js")) manualKeyUsers.push(file.pathname);
+  }
+  assert.equal(manualKeyUsers.length, 1, `hanya TransactionForm boleh mengelola key intent lokal: ${manualKeyUsers.join(", ")}`);
+  assert.match(manualKeyUsers[0], /TransactionForm\.jsx$/);
 });

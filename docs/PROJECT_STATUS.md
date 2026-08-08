@@ -1,5 +1,27 @@
 # Project Status
 
+## Human-error mutation hardening + smart recurring alerts 2026-08-08
+
+- **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-111504).zip`, root `saldo-bersama/`, **351 file canonical sebelum patch**, schema tetap v6. Tidak ada migration, perubahan formula saldo, Firebase Auth, allowlist/role dasar, resource ID, secret, atau dependency baru.
+- Baseline operator sebelum patch besar ini tetap hijau pada Node 24.x: frontend **84/84**, backend/business/security/tooling **149/149**, build/budget PASS, dan browser **9/9**. Full gate sesudah patch ini **belum** diklaim sampai dijalankan kembali pada laptop operator.
+- Archive target, aturan rutin, dan anggaran memakai action eksplisit owner-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
+- Frontend kini memakai mutation-intent coordinator: request write identik dikoaleskan, outcome network yang tidak pasti mempertahankan key **hanya di private-memory** untuk retry intent yang sama, dan refresh read-model dipisahkan dari keberhasilan mutation. High-risk create Goal/Jadwal/Kantong memakai `useGuardedMutation`; `ConfirmationModal` memiliki synchronous reentrancy lock. Browser `localStorage`/`sessionStorage` tetap tidak dipakai untuk cache/state finansial.
+- Dispatcher external action sekarang mereservasi idempotency key sebelum side effect. `notifications.test` fail closed pada outcome unknown; backup/import/restore yang mempunyai durable recovery boleh melanjutkan retry dengan key yang sama. `import.preview` dan `restore.preview` tidak lagi menyamar sebagai pure read.
+- Recovery human error tidak lagi berhenti pada rekening/kategori/transaksi: Kantong mendukung archive/restore rule + reverse reallocation, sedangkan Target/Jadwal rutin/Anggaran arsip dapat dipulihkan owner dari Pemulihan data. Semua memakai reason, `row_version`, authorization, audit, idempotency, serta validasi dependency/conflict; tidak ada hard delete baru.
+- Rekonsiliasi menerima saldo aktual negatif hanya bila rekening `allow_negative=true`.
+- Calendar bridge memakai ScriptLock dan self-heal managed event duplikat berdasarkan stable `entityId`.
+- Notification scheduler menambahkan shortage alert recurring expense pada H-2 bila saldo resmi default account kurang dari sisa kewajiban, serta completion alert ketika occurrence paid. Payload lock-screen tetap generik dan tidak membawa nama tagihan/rekening/nominal.
+- Regression baru mencakup same-intent frontend retry, concurrent external idempotency, envelope recovery, signed negative reconciliation, Calendar duplicate self-heal, smart recurring notification privacy/dedupe, serta browser double-click create target pada response lambat.
+- Temuan tambahan yang ditutup saat implementasi: `integrations.status` sebelumnya backend-read tetapi tidak terdaftar pada frontend read map; sekarang TTL 0 dan governance test mengunci parity read-action frontend/backend. `restore.preview` menulis preview secara transaction setelah fetch Drive. `restore.apply` juga mempertahankan reservation idempotency aktif ketika tabel `idempotency_keys` dipulihkan dari snapshot, lalu same-key replay diverifikasi agar full restore tidak berjalan dua kali. `integrity.run` sekarang ikut mensyaratkan idempotency.
+- **Validasi sandbox patch final:** source validation **356 file PASS**, syntax Node **100 file PASS**, Apps Script syntax/boot **6 file/2 load order PASS**, frontend source/unit **89/89 PASS**, backend/business/security/tooling **164/164 PASS** memakai stub `web-push` sementara hanya untuk module resolution (stub kemudian dihapus), focused guard+bridge **42/42 PASS**, governance **38/38 PASS**, dan `test:guard` **36/36 PASS**. Runtime container tetap Node 22.16.0 dan tidak memiliki dependency project lengkap, sehingga full ESLint/Vite/build/browser harus diulang pada Node 24.x operator.
+
+### Sisa non-blocking / task terpisah
+
+- Full quality gate operator patch terbaru.
+- Real-device Android/iOS Web Push dan restore drill nyata.
+- Privacy quick-lock security-grade membutuhkan threat model/auth decision terpisah.
+- Retention operational metadata, N+1/performance, dan refactor file besar dilakukan sesudah behavior safety ini stabil; tidak dicampur ke patch integrity untuk menghindari refactor luas berisiko.
+
 ## Google integration hardening final 2026-08-08
 
 - **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-075946).zip`, root `saldo-bersama/`, **351 file canonical**, schema tetap v6. Stack aktual: React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso sebagai source of truth; Apps Script hanya bridge Sheets/Calendar/Drive + scheduler.

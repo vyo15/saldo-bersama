@@ -137,7 +137,7 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
         rowVersion: transaction?.row_version,
       });
       invalidate(["transactions.list", "envelopes.list", "reports.monthly", "app.initialState"]);
-      await Promise.all([refreshOverview(), Promise.resolve(onSaved?.(saved))]);
+      await Promise.allSettled([refreshOverview(), Promise.resolve().then(() => onSaved?.(saved))]);
       setSubmitState({ status: "success", error: null });
       onClose();
     } catch (error) {

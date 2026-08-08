@@ -78,11 +78,13 @@ test("transport sesi meneruskan error API terstruktur, bukan TypeError parser", 
   }
 });
 
-test("transport API tidak memberikan Promise fetch langsung kepada parseResponse", async () => {
+test("transport API menunggu Response, mengklasifikasikan outcome write, dan tidak mem-parse Promise fetch langsung", async () => {
   const source = await readFile(new URL("../src/services/api/transport.js", import.meta.url), "utf8");
   assert.doesNotMatch(source, /parseResponse\s*\(\s*fetch\s*\(/);
-  assert.match(source, /createServerSession\s*=\s*async[\s\S]*parseResponse\(await fetch\("\/api\/session"/);
-  assert.match(source, /destroyServerSession\s*=\s*async[\s\S]*parseResponse\(await fetch\("\/api\/session"/);
+  assert.match(source, /const fetchJson = async/);
+  assert.match(source, /if \(outcomeSensitive\) throw outcomeUnknownError/);
+  assert.match(source, /createServerSession\s*=\s*async[\s\S]*fetchJson\("\/api\/session"/);
+  assert.match(source, /destroyServerSession\s*=\s*async[\s\S]*fetchJson\("\/api\/session"/);
 });
 
 test("frontend hanya mengakhiri sesi untuk UNAUTHENTICATED dari API sendiri", () => {
@@ -207,4 +209,91 @@ test("preview lifecycle dan arsip owner tetap diklasifikasikan sebagai read tanp
   }
   assert.equal(isReadAction("archive.list"), true);
   assert.equal(READ_CACHE_TTL_MS["archive.list"], 30_000);
+  assert.equal(isReadAction("integrations.status"), true);
+  assert.equal(READ_CACHE_TTL_MS["integrations.status"], 0);
+});
+
+test("mutation identik yang dikirim bersamaan dikoaleskan menjadi satu write dan satu idempotency intent", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (_url, options) => {
+    requests.push(JSON.parse(options.body));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    return successfulResponse({ created: true });
+  };
+  try {
+    const { apiClient } = await import("../src/services/api/client.js");
+    apiClient.clearCache();
+    apiClient.setSessionScope("mutation-coalesce");
+    const payload = { name: "Dana darurat", target_amount: 1_000_000, account_id: "a1" };
+    const [left, right] = await Promise.all([
+      apiClient.request("goals.create", payload, { idempotencyKey: "caller-key-a" }),
+      apiClient.request("goals.create", payload, { idempotencyKey: "caller-key-b" }),
+    ]);
+    assert.deepEqual(left, { created: true });
+    assert.deepEqual(right, { created: true });
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].idempotencyKey, "caller-key-a");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("network putus saat write mempertahankan idempotency key untuk retry intent yang sama", async () => {
+  const originalFetch = globalThis.fetch;
+  const keys = [];
+  let attempt = 0;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    keys.push(body.idempotencyKey);
+    attempt += 1;
+    if (attempt === 1) throw new Error("connection reset after request");
+    return successfulResponse({ created: true });
+  };
+  try {
+    const { apiClient, isOutcomeUnknownError } = await import("../src/services/api/client.js");
+    apiClient.clearCache();
+    apiClient.setSessionScope("mutation-retry");
+    const payload = { name: "Jatah rumah", default_amount: 750_000 };
+    await assert.rejects(() => apiClient.request("envelopes.create", payload, {}), isOutcomeUnknownError);
+    assert.deepEqual(await apiClient.request("envelopes.create", payload, {}), { created: true });
+    assert.equal(keys.length, 2);
+    assert.ok(keys[0]);
+    assert.equal(keys[1], keys[0], "retry logical intent wajib memakai key yang sama");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("success HTTP dengan body rusak dianggap outcome write tidak pasti dan bukan aman untuk intent baru", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => "req-malformed-write" },
+    json: async () => { throw new SyntaxError("invalid json"); },
+  });
+  try {
+    const { apiClient, isOutcomeUnknownError } = await import("../src/services/api/client.js");
+    apiClient.clearCache();
+    apiClient.setSessionScope("mutation-malformed");
+    await assert.rejects(
+      () => apiClient.request("goals.create", { name: "Target" }, {}),
+      (error) => isOutcomeUnknownError(error) && error.requestId === "req-malformed-write",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("parseResponse menolak HTTP sukses yang tidak memenuhi envelope kontrak", async () => {
+  await assert.rejects(
+    () => parseResponse({
+      ok: true,
+      status: 200,
+      headers: { get: () => "req-invalid-envelope" },
+      json: async () => ({ result: { unexpected: true } }),
+    }),
+    (error) => error.code === "INVALID_RESPONSE" && error.requestId === "req-invalid-envelope",
+  );
 });

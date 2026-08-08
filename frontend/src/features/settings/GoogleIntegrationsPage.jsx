@@ -3,7 +3,6 @@ import { FiCalendar, FiFileText } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { runSettingsAction } from "./settings.api.js";
@@ -28,7 +27,7 @@ const GoogleIntegrationsPage = () => {
     setBusyAction(action);
     setResult({ status: "loading", text: "Mengirim permintaan sinkronisasi..." });
     try {
-      await runSettingsAction(action, {}, { idempotencyKey: createIdempotencyKey() });
+      await runSettingsAction(action, {}, {});
       setResult({
         status: "success",
         text: action === "mirror.rebuild"
@@ -36,7 +35,7 @@ const GoogleIntegrationsPage = () => {
           : action === "mirror.sync" ? "Sinkronisasi Google Sheets sudah masuk antrean." : "Sinkronisasi dan rekonsiliasi Google Calendar sudah masuk antrean.",
       });
       setRebuildOpen(false);
-      await resource.reload();
+      await Promise.allSettled([resource.reload()]);
     } catch (error) {
       setResult({ status: "danger", text: error.message });
     } finally {

@@ -95,19 +95,27 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `envelopes.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.archiveRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `recurring.createRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.updateRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.archiveRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.payOccurrence` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.reversePayment` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `budgets.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `budgets.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `goals.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `reports.monthly` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `reconciliations.list` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `reconciliations.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/reporting/` |
@@ -123,12 +131,27 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `notifications.register` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.unregister` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.test` | Ya | Ya | External/operation | Wajib | `api/_lib/services/notifications.js` |
-| `backup.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
-| `import.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance/` |
-| `import.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
-| `restore.preview` | Ya | Tidak | Preview | Tidak | `api/_lib/services/maintenance/` |
-| `restore.apply` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
-| `integrity.run` | Ya | Tidak | Write/operation | Tidak | `api/_lib/services/maintenance/` |
+| `backup.create` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
+| `import.preview` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
+| `import.apply` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
+| `restore.preview` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
+| `restore.apply` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
+| `integrity.run` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
+
+
+### Kontrak idempotency dan outcome mutation
+
+- Setiap `Write/operation` dan `External/operation` yang mensyaratkan idempotency diperlakukan sebagai **satu intent logis**. Double-click dan retry untuk payload + `rowVersion` yang sama wajib memakai idempotency key yang sama sampai server memberi hasil definitif.
+- Client membedakan kegagalan definitif dari `OUTCOME_UNKNOWN`. Jika koneksi putus setelah write mungkin sudah mencapai server, intent dipertahankan **hanya di private-memory selama halaman/sesi aktif** dan retry payload yang sama menggunakan key yang sama; UI tidak boleh memulai operasi baru secara diam-diam atau menaruh state finansial pada browser storage.
+- External action mereservasi idempotency key **sebelum** side effect. Request same-key yang masih berjalan ditolak sebagai `IDEMPOTENCY_IN_PROGRESS`.
+- `notifications.test` tidak boleh diulang otomatis setelah outcome 5xx/unknown karena delivery eksternal mungkin sudah terjadi. `backup.create`, `import.apply`, `restore.preview`, dan `restore.apply` boleh melanjutkan same-key unknown intent hanya karena service masing-masing memiliki durable recovery/idempotent claim.
+- Refresh read-model setelah mutation dipisahkan dari konfirmasi write: kegagalan refresh tidak boleh dilaporkan sebagai kegagalan penyimpanan yang sudah dikonfirmasi server.
+
+### Recovery human error planning
+
+- `envelopes.archiveRule` dan `envelopes.restoreRule` owner-only, memakai alasan + `row_version`, tidak menghapus period/movement/audit.
+- `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan `budgets.archive`/`budgets.restore` owner-only; lifecycle eksplisit membutuhkan `row_version`, aksi archive/restore recovery membutuhkan alasan, dan tidak melakukan hard delete.
+- `envelopes.reverseMovement` dapat dipakai owner atau member untuk movement yang dibuatnya sendiri, hanya selama kedua kantong masih aktif dan nominal hasil realokasi belum terpakai/reserved. Reversal mengubah status movement menjadi `reversed`; tidak hard delete.
 
 ### Kontrak Web Push
 

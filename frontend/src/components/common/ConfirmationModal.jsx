@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Button from "./Button.jsx";
 import Modal from "./Modal.jsx";
 
@@ -31,6 +31,7 @@ const ConfirmationModal = ({
   const [acknowledged, setAcknowledged] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [validationError, setValidationError] = useState("");
+  const submitLockRef = useRef(false);
   const isPending = pending || busy;
   const mustProvideReason = reasonRequired || requireReason;
   const close = onCancel || onClose || (() => {});
@@ -42,6 +43,7 @@ const ConfirmationModal = ({
     setReason("");
     setConfirmation("");
     setAcknowledged(false);
+    submitLockRef.current = false;
     setValidationError("");
     setRemainingSeconds(Math.max(0, Number(countdownSeconds || 0)));
     if (!countdownSeconds) return undefined;
@@ -76,9 +78,14 @@ const ConfirmationModal = ({
       setValidationError("Pernyataan pemahaman wajib dicentang.");
       return;
     }
-    if (remainingSeconds > 0) return;
+    if (remainingSeconds > 0 || submitLockRef.current) return;
+    submitLockRef.current = true;
     setValidationError("");
-    await onConfirm(normalized, { confirmation, acknowledged });
+    try {
+      await onConfirm(normalized, { confirmation, acknowledged });
+    } finally {
+      submitLockRef.current = false;
+    }
   };
 
   const blockAccidentalEnter = (event) => {

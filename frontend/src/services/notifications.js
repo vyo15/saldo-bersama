@@ -1,6 +1,5 @@
 import { env } from "../config/env.js";
 import { apiClient } from "./api/client.js";
-import { createIdempotencyKey } from "../domain/security.js";
 
 const urlBase64ToUint8Array = (value) => {
   const candidate = String(value || "").trim();
@@ -200,7 +199,7 @@ export const enablePushNotifications = async () => {
   const registerRemote = (value) => apiClient.request(
     "notifications.register",
     subscriptionPayload(value),
-    { idempotencyKey: createIdempotencyKey() },
+    {},
   );
 
   if (subscription && initialState.keyMismatch) {
@@ -209,7 +208,7 @@ export const enablePushNotifications = async () => {
       await apiClient.request(
         "notifications.unregister",
         { endpoint: subscription.endpoint },
-        { idempotencyKey: createIdempotencyKey() },
+        {},
       );
     }
     await subscription.unsubscribe();
@@ -230,7 +229,7 @@ export const enablePushNotifications = async () => {
       verification = await apiClient.request(
         "notifications.test",
         { endpoint: subscription.endpoint },
-        { idempotencyKey: createIdempotencyKey() },
+        {},
       );
     } catch (error) {
       verificationError = { code: error?.code || "PUSH_VERIFICATION_FAILED", message: error?.message || "Verifikasi otomatis belum berhasil." };
@@ -251,7 +250,7 @@ export const testPushNotification = async () => {
   const result = await apiClient.request(
     "notifications.test",
     { endpoint: subscription.endpoint },
-    { idempotencyKey: createIdempotencyKey() },
+    {},
   );
   apiClient.invalidate("notifications.status");
   return result;
@@ -263,7 +262,7 @@ export const disablePushNotifications = async ({ bestEffort = false, localOnly =
     if (!subscription) return { disabled: true, hadSubscription: false };
     if (!localOnly) {
       try {
-        await apiClient.request("notifications.unregister", { endpoint: subscription.endpoint }, { idempotencyKey: createIdempotencyKey() });
+        await apiClient.request("notifications.unregister", { endpoint: subscription.endpoint }, {});
       } catch (error) {
         if (error?.code !== "NOT_FOUND" && !bestEffort) throw error;
       }

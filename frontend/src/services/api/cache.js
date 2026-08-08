@@ -23,8 +23,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "users.list": 30_000,
   "audit.list": 5_000,
   "notifications.status": 0,
-  "restore.preview": 0,
-  "import.preview": 0,
+  "integrations.status": 0,
 });
 
 const ABORT_GRACE_MS = 40;

@@ -24,8 +24,10 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ci-browser-smoke.apps.googleusercontent.com
           VITE_FIREBASE_API_KEY: ci-browser-smoke-public-key
         run: npm run check
-      - name: Browser smoke
-        timeout-minutes: 2
+      - name: Guarded mutation regression
+        run: npm run test:guard
+      - name: Browser smoke and human-error journey
+        timeout-minutes: 3
         run: npm run test:browser
       - name: Verify clean source archive
         run: npm run zip -- "$RUNNER_TEMP/saldo-bersama-clean.zip"

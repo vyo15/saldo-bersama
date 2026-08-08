@@ -13,7 +13,6 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { archiveBudget as requestArchiveBudget, upsertBudget } from "./budgets.api.js";
@@ -78,7 +77,7 @@ const BudgetsPage = () => {
         amount: assertPositiveRupiah(form.amount),
         scope: "shared",
         row_version: existingBudget?.row_version,
-      }, { idempotencyKey: createIdempotencyKey(), rowVersion: existingBudget?.row_version });
+      }, { rowVersion: existingBudget?.row_version });
       setForm(emptyForm());
       setSaveState({ status: "idle", error: null });
       setMessage({ type: "success", text: existingBudget ? "Anggaran berhasil diperbarui." : "Anggaran berhasil dibuat." });
@@ -89,7 +88,7 @@ const BudgetsPage = () => {
     }
   };
 
-  const archiveBudget = async () => {
+  const archiveBudget = async (reason) => {
     if (!archiveTarget) return;
     const target = archiveTarget;
     setArchiveState({ status: "submitting", error: null });
@@ -97,7 +96,8 @@ const BudgetsPage = () => {
       await requestArchiveBudget({
         budget_id: target.budget_id,
         row_version: target.row_version,
-      }, { idempotencyKey: createIdempotencyKey(), rowVersion: target.row_version });
+        reason,
+      }, { rowVersion: target.row_version });
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
       setForm((current) => current.category_id === target.category_id ? emptyForm() : current);
@@ -211,6 +211,8 @@ const BudgetsPage = () => {
         title="Arsipkan anggaran?"
         description={archiveTarget ? `${archiveTarget.name || archiveTarget.category_id} tidak lagi menjadi batas aktif periode ini.` : ""}
         confirmLabel="Arsipkan anggaran"
+        reasonLabel="Alasan pengarsipan"
+        requireReason
         busy={archiveState.status === "submitting"}
         error={archiveState.error}
         onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)}

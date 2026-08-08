@@ -1,9 +1,25 @@
 # Changelog
 
+- Human-error lifecycle: archive target, aturan rutin, dan anggaran kini memakai action eksplisit beralasan (`goals.archive`, `recurring.archiveRule`); generic update tidak lagi menerima status `archived`, sehingga audit dan recovery konsisten.
 Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi production harus menunjuk commit SHA yang sudah diuji.
 
 ## [Unreleased]
 
+- Menambahkan guarded mutation intent canonical: write identik dikoaleskan, retry outcome-network-unknown memakai idempotency key yang sama, offline write tetap ditolak, dan refresh failure tidak lagi mengubah mutation yang sudah berhasil menjadi error semu.
+- Mereservasi idempotency external action sebelum side effect; same-key concurrent diproteksi, payload conflict ditolak, `notifications.test` tidak blind-retry setelah outcome unknown, sedangkan backup/import/restore hanya melanjutkan same-key retry karena memiliki durable recovery.
+- Mengoreksi policy `import.preview`/`restore.preview` yang sebelumnya dianggap read walau menulis preview state; `restore.preview` menyimpan preview DB secara transaction setelah backup Drive berhasil dibaca.
+- Menambahkan recovery Kantong tanpa hard delete: archive/restore rule dan reverse movement dengan reason, `row_version`, authorization, audit, dan idempotency.
+- Memperluas recovery owner untuk Target, Jadwal rutin, dan Anggaran yang terarsip melalui action restore eksplisit; referensi aktif, konflik business-key, `row_version`, alasan, audit, dan mirror/calendar rebuild diperiksa sebelum reaktivasi.
+- Menjaga reservation idempotency `restore.apply` tetap hidup ketika snapshot memulihkan tabel `idempotency_keys`; same-key retry sesudah restore kini mereplay hasil final dan tidak dapat menjalankan full restore kedua.
+- Menjadikan `integrity.run` idempotent seperti write canonical lain agar double-submit/retry tidak membuat integrity run kedua; maintenance allowance tetap dipertahankan.
+- Menjaga mutation intent frontend hanya di private-memory. Percobaan menyimpan intent ke `sessionStorage` ditolak regression performance/privacy agar cache atau state keuangan tidak menjadi storage browser persisten.
+- Memperbaiki rekonsiliasi rekening yang mengizinkan saldo minus agar actual balance signed safe-integer diterima hanya saat `allow_negative=true`.
+- Memperkuat Google Calendar bridge dengan ScriptLock serta self-heal duplicate managed event berdasarkan stable entity ID.
+- Menambahkan recurring alert H-2 untuk kekurangan dana pada default account dan completion notification saat occurrence paid, tetap memakai payload lock-screen generik tanpa nama rekening/tagihan/nominal.
+- Menambahkan `npm run test:guard`, browser regression double-click create target pada network lambat, serta parity guard agar action read backend tidak drift dari frontend read transport.
+- Memperketat governance docs: mode `read/write/external`, kewajiban idempotency, dan permission owner/member pada `API_CONTRACT.md`/`AUTHORIZATION_MATRIX.md` kini dibandingkan otomatis dengan action policy/permission canonical.
+- Memperbaiki drift `integrations.status` yang backend-read namun sebelumnya dianggap mutation oleh frontend client karena belum ada pada read map.
+- Memisahkan mutation success dari refresh callback pada TransactionForm dan menambahkan synchronous single-flight pada flow subscription Web Push; refresh/browser side-effect failure tidak lagi mendorong submit finansial ulang atau subscription ganda.
 - Memperketat signed `integration.health` agar memverifikasi akses nyata ke Spreadsheet, Calendar, dan Drive serta format HTTPS/secret scheduler; Script Property yang terisi tetapi salah tidak lagi menghasilkan readiness false-positive.
 - Menambahkan guard target mirror: hanya spreadsheet kosong atau mirror existing dengan `_Mirror_Metadata` canonical yang boleh ditulis; metadata dibuat sebelum data pada adopsi pertama dan `Sheet1` default hanya dihapus bila kosong setelah sync berhasil.
 - Menjaga histori outbox tanpa alarm palsu: successful full snapshot Sheets/Calendar menyupersede `failed/dead_letter` lama untuk status aktif, sedangkan row histori tetap tersimpan dan failure yang lebih baru tetap tampil.

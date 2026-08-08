@@ -116,15 +116,23 @@ export const listAccounts = async (db, context) => ({ items: await visibleAccoun
 
 export const listArchivedData = async (db, context) => {
   assertOwner(context.actor);
-  const [allAccounts, categories, users] = await Promise.all([
+  const [allAccounts, categories, users, envelopeRules, goals, recurringRules, budgets] = await Promise.all([
     visibleAccounts(db, context.actor, { includeArchived: true }),
     db.all("SELECT * FROM categories WHERE status='archived' ORDER BY updated_at DESC,name COLLATE NOCASE"),
     db.all("SELECT user_id,email,name,role,status,row_version,created_at,updated_at FROM users WHERE status='inactive' ORDER BY updated_at DESC,email"),
+    db.all("SELECT r.*,a.name AS source_account_name,a.status AS source_account_status FROM envelope_rules r LEFT JOIN accounts a ON a.account_id=r.source_account_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50"),
+    db.all("SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE g.status='archived' ORDER BY g.updated_at DESC LIMIT 50"),
+    db.all("SELECT r.*,a.name AS account_name,a.status AS account_status,c.name AS category_name,c.status AS category_status FROM recurring_rules r JOIN accounts a ON a.account_id=r.default_account_id JOIN categories c ON c.category_id=r.category_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50"),
+    db.all("SELECT b.*,COALESCE(c.name,b.name) AS display_name,c.status AS category_status FROM budgets b LEFT JOIN categories c ON c.category_id=b.category_id WHERE b.status='archived' ORDER BY b.updated_at DESC LIMIT 100"),
   ]);
   return {
     accounts: allAccounts.filter((item) => item.status === "archived"),
     categories: categories.map((row) => publicRow(row)),
     users: users.map((row) => publicRow(row)),
+    envelopeRules: envelopeRules.map((row) => publicRow(row)),
+    goals: goals.map((row) => publicRow(row)),
+    recurringRules: recurringRules.map((row) => publicRow(row, ["auto_debit"])),
+    budgets: budgets.map((row) => ({ ...publicRow(row), name: row.display_name })),
   };
 };
 

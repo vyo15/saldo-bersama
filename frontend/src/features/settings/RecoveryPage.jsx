@@ -5,7 +5,6 @@ import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -14,6 +13,15 @@ import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { runSettingsAction } from "./settings.api.js";
 import styles from "./Settings.module.css";
+
+const RECOVERY_TYPES = Object.freeze({
+  account: { action: "accounts.restore", idKey: "account_id", label: "Rekening" },
+  category: { action: "categories.restore", idKey: "category_id", label: "Kategori" },
+  envelopeRule: { action: "envelopes.restoreRule", idKey: "envelope_rule_id", label: "Kantong" },
+  goal: { action: "goals.restore", idKey: "goal_id", label: "Target" },
+  recurringRule: { action: "recurring.restoreRule", idKey: "recurring_rule_id", label: "Aturan rutin" },
+  budget: { action: "budgets.restore", idKey: "budget_id", label: "Anggaran" },
+});
 
 const RecoveryPage = () => {
   const { user } = useAuth();
@@ -30,19 +38,19 @@ const RecoveryPage = () => {
 
   const restoreArchivedItem = async (reason) => {
     if (!archiveTarget) return;
+    const config = RECOVERY_TYPES[archiveTarget.type];
+    if (!config) return;
     setArchiveState({ status: "submitting", error: null });
     try {
-      const action = archiveTarget.type === "account" ? "accounts.restore" : "categories.restore";
-      const idKey = archiveTarget.type === "account" ? "account_id" : "category_id";
-      await runSettingsAction(action, { [idKey]: archiveTarget.item[idKey], row_version: archiveTarget.item.row_version, reason }, { rowVersion: archiveTarget.item.row_version, idempotencyKey: createIdempotencyKey() });
+      await runSettingsAction(config.action, { [config.idKey]: archiveTarget.item[config.idKey], row_version: archiveTarget.item.row_version, reason }, { rowVersion: archiveTarget.item.row_version });
       invalidate([
-        archiveTarget.type === "account" ? "accounts.list" : "categories.list",
+        "accounts.list", "categories.list", "envelopes.list", "goals.list", "recurring.list", "budgets.list",
         "archive.list", "app.initialState", "dashboard.overview", "reports.monthly",
       ]);
-      setResult({ status: "success", text: `${archiveTarget.type === "account" ? "Rekening" : "Kategori"} berhasil dipulihkan.` });
+      setResult({ status: "success", text: `${config.label} berhasil dipulihkan.` });
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
-      await Promise.all([archiveResource.reload(), refreshAll()]);
+      await Promise.allSettled([archiveResource.reload(), refreshAll()]);
     } catch (error) {
       setArchiveState({ status: "error", error });
     }
@@ -52,7 +60,7 @@ const RecoveryPage = () => {
     setRestoreBusy(true);
     setResult({ status: "loading", text: "Memvalidasi backup teknis..." });
     try {
-      const data = await runSettingsAction("restore.preview", { backupFileId: backupFileId.trim() }, { idempotencyKey: createIdempotencyKey() });
+      const data = await runSettingsAction("restore.preview", { backupFileId: backupFileId.trim() }, {});
       setRestorePreview(data);
       setResult({ status: "warning", text: `Backup schema ${data.schemaVersion} valid. Preview berlaku 10 menit.` });
     } catch (error) {
@@ -68,11 +76,11 @@ const RecoveryPage = () => {
     setRestoreBusy(true);
     setResult({ status: "loading", text: "Membuat safety backup dan menjalankan restore guarded..." });
     try {
-      await runSettingsAction("restore.apply", { backupFileId: backupFileId.trim(), previewToken: restorePreview.previewToken, confirmation: restoreConfirmation }, { idempotencyKey: createIdempotencyKey() });
+      await runSettingsAction("restore.apply", { backupFileId: backupFileId.trim(), previewToken: restorePreview.previewToken, confirmation: restoreConfirmation }, {});
       setRestorePreview(null);
       setRestoreConfirmation("");
       setResult({ status: "success", text: "Restore selesai setelah safety backup, transaction, dan integrity check backend." });
-      await refreshAll();
+      await Promise.allSettled([refreshAll()]);
     } catch (error) {
       setResult({ status: "danger", text: error.message });
     } finally {
@@ -98,7 +106,11 @@ const RecoveryPage = () => {
             <div className="compact-list compact-list--stacked">
               {(archiveResource.data?.accounts || []).map((account) => <div key={account.account_id}><span><strong>{accountDisplayLabel(account)}</strong><small>Rekening diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "account", item: account }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
               {(archiveResource.data?.categories || []).map((category) => <div key={category.category_id}><span><strong>{category.name}</strong><small>Kategori · {categoryTypeLabel(category.transaction_type)}</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "category", item: category }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
-              {!archiveResource.data?.accounts?.length && !archiveResource.data?.categories?.length ? <p className="empty-inline-message">Belum ada rekening atau kategori dalam arsip.</p> : null}
+              {(archiveResource.data?.envelopeRules || []).map((rule) => <div key={rule.envelope_rule_id}><span><strong>{rule.name}</strong><small>Kantong/alokasi diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "envelopeRule", item: rule }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
+              {(archiveResource.data?.goals || []).map((goal) => <div key={goal.goal_id}><span><strong>{goal.name}</strong><small>Target tabungan diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "goal", item: goal }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
+              {(archiveResource.data?.recurringRules || []).map((rule) => <div key={rule.recurring_rule_id}><span><strong>{rule.name}</strong><small>Aturan rutin diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "recurringRule", item: rule }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
+              {(archiveResource.data?.budgets || []).map((budget) => <div key={budget.budget_id}><span><strong>{budget.name}</strong><small>Anggaran {budget.period_key} diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "budget", item: budget }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
+              {!archiveResource.data?.accounts?.length && !archiveResource.data?.categories?.length && !archiveResource.data?.envelopeRules?.length && !archiveResource.data?.goals?.length && !archiveResource.data?.recurringRules?.length && !archiveResource.data?.budgets?.length ? <p className="empty-inline-message">Belum ada data dalam arsip.</p> : null}
             </div>
           ) : null}
         </Card>
@@ -115,8 +127,8 @@ const RecoveryPage = () => {
         <div className="notice notice--warning"><FiShield aria-hidden="true" /><span>Jangan menjalankan full restore untuk kesalahan arsip biasa. Pilih item di atas agar dampak tetap terbatas.</span></div>
         <ConfirmationModal
           open={Boolean(archiveTarget)}
-          title={archiveTarget?.type === "account" ? "Pulihkan rekening?" : "Pulihkan kategori?"}
-          description={archiveTarget ? `${archiveTarget.item.name} akan aktif kembali setelah backend memeriksa konflik, kepemilikan, dan row version terbaru.` : ""}
+          title={archiveTarget ? `Pulihkan ${RECOVERY_TYPES[archiveTarget.type]?.label?.toLowerCase() || "data"}?` : "Pulihkan data?"}
+          description={archiveTarget ? `${archiveTarget.item.name} akan aktif kembali setelah backend memeriksa dependensi, konflik, kepemilikan, dan row version terbaru.` : ""}
           confirmLabel="Pulihkan data"
           reasonLabel="Alasan pemulihan"
           requireReason

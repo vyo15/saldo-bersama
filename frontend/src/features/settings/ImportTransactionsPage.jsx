@@ -3,7 +3,6 @@ import { FiUploadCloud } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { readTransactionImportFile } from "../../services/importer.js";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
@@ -23,7 +22,7 @@ const ImportTransactionsPage = () => {
     setResult({ status: "loading", text: "Memvalidasi file import..." });
     try {
       const records = await readTransactionImportFile(file);
-      const data = await runSettingsAction("import.preview", { records }, { idempotencyKey: createIdempotencyKey() });
+      const data = await runSettingsAction("import.preview", { records }, {});
       setPreview(data);
       setResult({ status: "warning", text: `Preview selesai. Valid ${data.validCount}, invalid ${data.invalid.length}, duplikat ${data.duplicates.length}.` });
     } catch (error) {
@@ -39,12 +38,12 @@ const ImportTransactionsPage = () => {
     setBusy(true);
     setResult({ status: "loading", text: "Menerapkan import secara atomik..." });
     try {
-      await runSettingsAction("import.apply", { previewToken: preview.previewToken, confirmation }, { idempotencyKey: createIdempotencyKey() });
+      await runSettingsAction("import.apply", { previewToken: preview.previewToken, confirmation }, {});
       setPreview(null);
       setConfirmation("");
       setFile(null);
       setResult({ status: "success", text: "Import transaksi berhasil diterapkan dan tercatat di audit." });
-      await refreshAll();
+      await Promise.allSettled([refreshAll()]);
     } catch (error) {
       setResult({ status: "danger", text: error.message });
     } finally {

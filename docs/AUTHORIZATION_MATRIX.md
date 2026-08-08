@@ -46,19 +46,27 @@
 | `envelopes.create` | Ya | Tidak |
 | `envelopes.move` | Ya | Ya |
 | `envelopes.close` | Ya | Tidak |
+| `envelopes.archiveRule` | Ya | Tidak |
+| `envelopes.restoreRule` | Ya | Tidak |
+| `envelopes.reverseMovement` | Ya | Ya |
 | `recurring.list` | Ya | Ya |
 | `recurring.createRule` | Ya | Tidak |
 | `recurring.updateRule` | Ya | Tidak |
+| `recurring.archiveRule` | Ya | Tidak |
 | `recurring.payOccurrence` | Ya | Ya |
 | `recurring.reversePayment` | Ya | Ya |
+| `recurring.restoreRule` | Ya | Tidak |
 | `budgets.list` | Ya | Ya |
 | `budgets.upsert` | Ya | Tidak |
 | `budgets.archive` | Ya | Tidak |
+| `budgets.restore` | Ya | Tidak |
 | `goals.list` | Ya | Ya |
 | `goals.create` | Ya | Tidak |
 | `goals.update` | Ya | Tidak |
+| `goals.archive` | Ya | Tidak |
 | `goals.move` | Ya | Ya |
 | `goals.reverseMovement` | Ya | Ya |
+| `goals.restore` | Ya | Tidak |
 | `reports.monthly` | Ya | Ya |
 | `reconciliations.list` | Ya | Ya |
 | `reconciliations.create` | Ya | Ya |
@@ -80,6 +88,12 @@
 | `restore.preview` | Ya | Tidak |
 | `restore.apply` | Ya | Tidak |
 | `integrity.run` | Ya | Tidak |
+
+## Guard recovery kantong
+
+- Archive/restore aturan kantong tetap owner-only karena mengubah master planning.
+- Member boleh membatalkan `envelopes.reverseMovement` hanya untuk movement miliknya dan tetap tunduk pada ownership scope, `row_version`, ketersediaan nominal di kantong tujuan, idempotency, dan audit backend.
+- Tidak ada hard delete kantong/movement dari UI normal.
 
 ## Ownership penting
 

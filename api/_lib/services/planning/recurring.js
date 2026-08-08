@@ -139,7 +139,7 @@ export const updateRecurringRule = async (db, context) => {
   if (!current) throw appError("NOT_FOUND", "Aturan rutin tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
   const status = p.status === undefined ? current.status : String(p.status);
-  if (!["active", "archived"].includes(status)) throw appError("INVALID_STATUS", "Status aturan tidak valid.", 400);
+  if (status !== "active") throw appError("INVALID_STATUS", "Status aturan hanya dapat diubah melalui aksi arsip/pulihkan.", 400);
   let account = await accountWithAccess(db, context.actor, p.default_account_id ?? current.default_account_id);
   const owned = ruleScopeFromAccount(account);
   const kind = String(p.kind ?? current.kind),
@@ -184,6 +184,45 @@ export const updateRecurringRule = async (db, context) => {
   await context.enqueueMirror?.(db, "recurring", current.recurring_rule_id);
   return publicRow(next, ["auto_debit"]);
 };
+export const archiveRecurringRule = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=? AND status='active'", [p.recurring_rule_id]);
+  if (!current) throw appError("NOT_FOUND", "Aturan rutin aktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? p.row_version);
+  const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip aturan rutin wajib diisi.", 400);
+  const next = { ...current, status: "archived", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const update = await db.execute("UPDATE recurring_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
+  await removeUnpaidFutureOccurrences(db, current.recurring_rule_id);
+  await appendAudit(db, context, { entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]), next: { ...publicRow(next, ["auto_debit"]), archive_reason: reason } });
+  await context.enqueueCalendar?.(db, "recurring", current.recurring_rule_id);
+  await context.enqueueMirror?.(db, "recurring", current.recurring_rule_id);
+  return publicRow(next, ["auto_debit"]);
+};
+export const restoreRecurringRule = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=? AND status='archived'", [p.recurring_rule_id]);
+  if (!current) throw appError("NOT_FOUND", "Aturan rutin arsip tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? p.row_version);
+  const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan aturan rutin wajib diisi.", 400);
+  const category = await db.one("SELECT status,transaction_type FROM categories WHERE category_id=?", [current.category_id]);
+  if (!category || category.status !== "active" || category.transaction_type !== current.kind) throw appError("CATEGORY_INACTIVE", "Kategori aturan rutin harus aktif dan sesuai jenis sebelum dipulihkan.", 409);
+  const account = await db.one("SELECT status FROM accounts WHERE account_id=?", [current.default_account_id]);
+  if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening default aturan rutin harus aktif sebelum dipulihkan.", 409);
+  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const update = await db.execute("UPDATE recurring_rules SET status='active',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
+  await ensureRuleOccurrences(db, next);
+  await appendAudit(db, context, { entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]), next: { ...publicRow(next, ["auto_debit"]), restore_reason: reason } });
+  await context.enqueueCalendar?.(db, "recurring", current.recurring_rule_id);
+  await context.enqueueMirror?.(db, "recurring", current.recurring_rule_id);
+  return publicRow(next, ["auto_debit"]);
+};
+
 export const listRecurring = async (db, context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "r");
@@ -191,22 +230,21 @@ export const listRecurring = async (db, context) => {
     FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
     WHERE o.period_key=? AND ${access.sql} ORDER BY o.due_date,r.name`, [period, ...access.args]);
   const today = todayJakarta();
-  return {
-    items: rows.map(row => {
-      const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
-      const status = Number(row.actual_amount) >= Number(row.expected_amount) ? row.kind === "income" ? "received" : "paid" : Number(row.actual_amount) > 0 ? "partial" : row.due_date < today ? "overdue" : "expected";
-      return {
-        ...publicRow(row, ["auto_debit"]),
-        status,
-        transaction_ids: transactionIds.join(","),
-        can_pay: row.rule_status === "active" && Number(row.actual_amount) < Number(row.expected_amount),
-        can_reverse: transactionIds.length > 0,
-        can_edit_rule: context.actor.role === "owner",
-        can_archive_rule: context.actor.role === "owner" && row.rule_status === "active",
-        transaction_type: row.kind
-      };
-    })
-  };
+  const items = rows.map(row => {
+    const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
+    const status = Number(row.actual_amount) >= Number(row.expected_amount) ? row.kind === "income" ? "received" : "paid" : Number(row.actual_amount) > 0 ? "partial" : row.due_date < today ? "overdue" : "expected";
+    return {
+      ...publicRow(row, ["auto_debit"]),
+      status,
+      transaction_ids: transactionIds.join(","),
+      can_pay: row.rule_status === "active" && Number(row.actual_amount) < Number(row.expected_amount),
+      can_reverse: transactionIds.length > 0,
+      can_edit_rule: context.actor.role === "owner" && row.rule_status === "active",
+      can_archive_rule: context.actor.role === "owner" && row.rule_status === "active",
+      transaction_type: row.kind
+    };
+  });
+  return { items };
 };
 export const payOccurrence = async (db, context) => {
   const p = context.payload || {};

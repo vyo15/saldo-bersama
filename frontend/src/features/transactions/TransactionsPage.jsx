@@ -21,7 +21,6 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { cancelTransaction as requestCancelTransaction, restoreTransaction as requestRestoreTransaction } from "./transactions.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
-import { createIdempotencyKey } from "../../domain/security.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../accounts/accountPresentation.js";
 import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionTone } from "./transactionPresentation.js";
@@ -102,11 +101,11 @@ const TransactionsPage = () => {
         transactionId: cancelTarget.transaction_id,
         rowVersion: cancelTarget.row_version,
         reason,
-      }, { rowVersion: cancelTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      }, { rowVersion: cancelTarget.row_version });
       setCancelTarget(null);
       setCancelState({ status: "idle", error: null });
       invalidate(["transactions.list", "accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState", "archive.list"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {
       setCancelState({ status: "error", error });
     }
@@ -120,11 +119,11 @@ const TransactionsPage = () => {
         transaction_id: restoreTarget.transaction_id,
         row_version: restoreTarget.row_version,
         reason,
-      }, { rowVersion: restoreTarget.row_version, idempotencyKey: createIdempotencyKey() });
+      }, { rowVersion: restoreTarget.row_version });
       setRestoreTarget(null);
       setRestoreState({ status: "idle", error: null });
       invalidate(["transactions.list", "accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState", "archive.list"]);
-      await Promise.all([resource.reload(), refreshOverview()]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {
       setRestoreState({ status: "error", error });
     }

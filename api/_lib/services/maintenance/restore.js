@@ -36,8 +36,10 @@ export const previewRestore = async (db, context) => {
   };
   const previewId = uuid();
   const createdAt = nowIso();
-  await db.execute("DELETE FROM restore_previews WHERE expires_at<?", [createdAt]);
-  await db.execute("INSERT INTO restore_previews(preview_id,backup_id,actor_id,checksum,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,'pending',NULL,NULL,?,?)", [previewId, run.backup_id, context.actor.user_id, checksum, canonicalJson(summary), expiry(10), createdAt]);
+  await db.transaction(async (tx) => {
+    await tx.execute("DELETE FROM restore_previews WHERE expires_at<?", [createdAt]);
+    await tx.execute("INSERT INTO restore_previews(preview_id,backup_id,actor_id,checksum,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,'pending',NULL,NULL,?,?)", [previewId, run.backup_id, context.actor.user_id, checksum, canonicalJson(summary), expiry(10), createdAt]);
+  });
   return {
     previewToken: previewId,
     ...summary
@@ -51,6 +53,9 @@ export const applyRestore = async (db, context) => {
   if (!preview) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore tidak ditemukan.", 409);
   if (preview.status === "applied" && preview.result_json) return JSON.parse(preview.result_json);
   if (preview.expires_at <= nowIso()) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore sudah kedaluwarsa.", 409);
+  const activeIdempotencyReservation = context.idempotencyKey
+    ? await db.one("SELECT actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND idempotency_key=?", [context.actor.user_id, context.idempotencyKey])
+    : null;
   const {
     run,
     snapshot,
@@ -110,6 +115,21 @@ export const applyRestore = async (db, context) => {
       }
       for (const table of ["accounts", "categories", "envelope_rules", "envelope_periods", "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements", "budgets", "goal_movements", "reconciliations", "period_closures", "idempotency_keys"]) {
         await insertRows(tx, table, normalizeRestoredRows(table, snapshot.tables[table]));
+      }
+      if (activeIdempotencyReservation) {
+        await tx.execute(`INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at)
+          VALUES(?,?,?,?,?,?,?,?)
+          ON CONFLICT(actor_id,idempotency_key) DO UPDATE SET action=excluded.action,request_fingerprint=excluded.request_fingerprint,entity_id=excluded.entity_id,response_json=excluded.response_json,created_at=excluded.created_at,expires_at=excluded.expires_at`,
+        [
+          activeIdempotencyReservation.actor_id,
+          activeIdempotencyReservation.idempotency_key,
+          activeIdempotencyReservation.action,
+          activeIdempotencyReservation.request_fingerprint,
+          activeIdempotencyReservation.entity_id,
+          activeIdempotencyReservation.response_json,
+          activeIdempotencyReservation.created_at,
+          activeIdempotencyReservation.expires_at,
+        ]);
       }
       await insertRows(tx, "audit_log", snapshot.tables.audit_log, {
         mode: "INSERT OR IGNORE"
