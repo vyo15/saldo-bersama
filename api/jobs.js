@@ -46,6 +46,7 @@ const mirrorSnapshot = async (db) => {
     FROM accounts a WHERE a.status='active' AND a.owner_scope='shared'`, [todayJakarta(), todayJakarta()]);
   return {
     generatedAt: nowIso(),
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     sheets: {
       Ringkasan: safeRows([{ generated_at: nowIso(), schema_version: DATABASE_SCHEMA_VERSION, approximate_total_balance: Number(total?.approximate_total || 0), note: "Mirror read-only. Saldo resmi berada di Turso dan aplikasi Saldo Bersama." }]),
       Transaksi: safeRows(transactions), Rekening: safeRows(accounts), Kategori: safeRows(categories), Anggaran: safeRows(budgets), Kantong: safeRows(envelopes), Tagihan: safeRows(recurring), Target: safeRows(goals), Rekonsiliasi: safeRows(reconciliations),

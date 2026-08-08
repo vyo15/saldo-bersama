@@ -63,6 +63,19 @@ test("signature bridge menolak replay dan formula mirror dinetralkan", async () 
   assert.equal(context.safeCell_("=SUM(A1:A2)"), "'=SUM(A1:A2)");
 });
 
+test("mirror metadata memakai schema canonical dari backend dan menolak versi invalid", async () => {
+  const context = await loadBridge();
+  assert.equal(context.mirrorSchemaVersion_({ schemaVersion: 6 }), 6);
+  assert.throws(() => context.mirrorSchemaVersion_({ schemaVersion: 0 }), (error) => error.code === "MIRROR_SCHEMA_INVALID");
+  assert.throws(() => context.mirrorSchemaVersion_({ schemaVersion: "6" }), (error) => error.code === "MIRROR_SCHEMA_INVALID");
+
+  const mirrorSource = await readFile(new URL("../../apps-script/MirrorService.gs", import.meta.url), "utf8");
+  const jobsSource = await readFile(new URL("../../api/jobs.js", import.meta.url), "utf8");
+  assert.match(jobsSource, /schemaVersion:\s*DATABASE_SCHEMA_VERSION/);
+  assert.match(mirrorSource, /\["schema_version",\s*schemaVersion\]/);
+  assert.doesNotMatch(mirrorSource, /\["schema_version",\s*3\]/);
+});
+
 test("Drive backup menerima nama versioned canonical tanpa hardcode schema lama", async () => {
   const context = await loadBridge();
   const v3 = "saldo-bersama-backup-v3-20260808T061235Z-deadbeef.json.gz";

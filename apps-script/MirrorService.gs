@@ -24,7 +24,16 @@ function writeMirrorSheet_(spreadsheet, name, rows) {
   if (data.values.length) sheet.getRange(1, 1, data.values.length + 1, data.headers.length).createFilter();
 }
 
+function mirrorSchemaVersion_(payload) {
+  var schemaVersion = payload && payload.schemaVersion;
+  if (typeof schemaVersion !== "number" || !isFinite(schemaVersion) || Math.floor(schemaVersion) !== schemaVersion || schemaVersion < 1) {
+    throw sbError_("MIRROR_SCHEMA_INVALID", "Versi schema mirror tidak valid.", 400);
+  }
+  return schemaVersion;
+}
+
 function rebuildMirror_(payload) {
+  var schemaVersion = mirrorSchemaVersion_(payload);
   var spreadsheet = getMirrorSpreadsheet_();
   if (payload.spreadsheetId && payload.spreadsheetId !== spreadsheet.getId()) throw sbError_("MIRROR_ID_MISMATCH", "Spreadsheet mirror tidak sesuai konfigurasi.", 409);
   var sheets = payload.sheets || {};
@@ -38,7 +47,7 @@ function rebuildMirror_(payload) {
       ["source_of_truth", "Turso"],
       ["mode", "read-only mirror"],
       ["generated_at", cleanText_(payload.generatedAt || new Date().toISOString(), 50)],
-      ["schema_version", 3],
+      ["schema_version", schemaVersion],
       ["warning", "Perubahan manual akan ditimpa saat sinkronisasi berikutnya."]
     ]);
     metadata.hideSheet();
