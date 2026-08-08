@@ -151,6 +151,8 @@ JOBS_ENDPOINT_URL
 JOBS_SHARED_SECRET
 ```
 
+`MIRROR_SPREADSHEET_ID`, `GOOGLE_CALENDAR_ID`, `BACKUP_FOLDER_ID`, dan `JOBS_ENDPOINT_URL` hanya berada di Apps Script Properties. `GOOGLE_BRIDGE_SHARED_SECRET` dan `JOBS_SHARED_SECRET` juga berada di Vercel dengan nilai yang sama; jangan menyalin resource ID Google ke Vercel atau `.env.local`.
+
 `JOBS_ENDPOINT_URL` harus bernilai:
 
 ```text
@@ -167,10 +169,10 @@ VAPID_PUBLIC_KEY
 VITE_DEV_MODE
 VITE_DEMO_MODE
 SPREADSHEET_ID
-MIRROR_SPREADSHEET_ID        # dari Vercel saja; tetap ada di Apps Script Properties
-GOOGLE_CALENDAR_ID           # dari Vercel saja; tetap ada di Apps Script Properties
-BACKUP_FOLDER_ID             # dari Vercel saja; tetap ada di Apps Script Properties
-JOBS_ENDPOINT_URL            # dari Vercel saja; tetap ada di Apps Script Properties
+MIRROR_SPREADSHEET_ID        # hapus jika ada di Vercel/.env.local; hanya Apps Script Properties
+GOOGLE_CALENDAR_ID           # hapus jika ada di Vercel/.env.local; hanya Apps Script Properties
+BACKUP_FOLDER_ID             # hapus jika ada di Vercel/.env.local; hanya Apps Script Properties
+JOBS_ENDPOINT_URL            # hapus jika ada di Vercel/.env.local; hanya Apps Script Properties
 VERCEL_OIDC_TOKEN            # token sementara hasil CLI; tidak boleh disimpan di .env.local
 ```
 

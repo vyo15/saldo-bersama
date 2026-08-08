@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { appError, canonicalJson, nowIso, sanitizeText, uuid } from "./core.js";
 
 const OUTBOX_PROVIDERS = new Set(["sheets", "calendar", "drive"]);
+const BRIDGE_HEALTH_TIMEOUT_MS = 5_000;
 
 export const enqueueIntegration = async (db, provider, eventType, entityType, entityId, payload = {}) => {
   if (!OUTBOX_PROVIDERS.has(provider)) throw appError("INTEGRATION_PROVIDER_INVALID", "Provider integrasi tidak valid.", 500);
@@ -22,28 +23,15 @@ export const integrationEnqueuers = (context) => ({
   enqueueCalendar: (db, entityType, entityId) => enqueueIntegration(db, "calendar", "upsert", entityType, entityId, { requestId: context.requestId || "" }),
 });
 
-export const integrationStatus = async (db) => {
-  const rows = await db.all("SELECT provider,status,COUNT(*) AS count,MAX(updated_at) AS last_updated_at FROM integration_outbox GROUP BY provider,status");
-  const providers = {};
-  for (const row of rows) {
-    const item = providers[row.provider] || { pending: 0, processing: 0, failed: 0, dead_letter: 0, completed: 0, lastUpdatedAt: null };
-    item[row.status] = Number(row.count || 0);
-    if (!item.lastUpdatedAt || String(row.last_updated_at) > item.lastUpdatedAt) item.lastUpdatedAt = row.last_updated_at;
-    providers[row.provider] = item;
-  }
-  const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);
-  return { providers, configured: { sheets: bridgeConfigured, calendar: bridgeConfigured, drive: bridgeConfigured } };
-};
-
 const signature = (message, secret) => crypto.createHmac("sha256", secret).update(message).digest("hex");
 
-export const callGoogleBridge = async (action, payload, { fetchImpl = globalThis.fetch } = {}) => {
+export const callGoogleBridge = async (action, payload, { fetchImpl = globalThis.fetch, timeoutMs = 15_000 } = {}) => {
   const url = String(process.env.GOOGLE_BRIDGE_WEB_APP_URL || "").trim();
   const secret = String(process.env.GOOGLE_BRIDGE_SHARED_SECRET || "").trim();
   if (!url || !secret) throw appError("GOOGLE_BRIDGE_NOT_CONFIGURED", "Integrasi Google belum dikonfigurasi.", 503);
   const message = canonicalJson({ action, payload, timestamp: Date.now(), nonce: crypto.randomUUID() });
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), Math.max(1, Number(timeoutMs) || 15_000));
   try {
     const response = await fetchImpl(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, signature: signature(message, secret) }), signal: controller.signal });
     const text = await response.text();
@@ -56,6 +44,76 @@ export const callGoogleBridge = async (action, payload, { fetchImpl = globalThis
     if (error?.code) throw error;
     throw appError("GOOGLE_BRIDGE_UNAVAILABLE", "Integrasi Google tidak dapat dihubungi.", 503);
   } finally { clearTimeout(timer); }
+};
+
+const normalizeBridgeHealth = (value = {}) => ({
+  mirrorConfigured: value?.mirrorConfigured === true,
+  calendarConfigured: value?.calendarConfigured === true,
+  backupConfigured: value?.backupConfigured === true,
+  jobsConfigured: value?.jobsConfigured === true,
+  triggerReady: value?.triggerReady === true,
+  timestamp: sanitizeText(value?.timestamp || "", 80) || null,
+});
+
+const bridgeReadiness = (bridgeConfigured, bridge) => {
+  if (!bridgeConfigured) return { sheets: false, calendar: false, drive: false };
+  if (!bridge?.checked) return { sheets: true, calendar: true, drive: true };
+  if (!bridge.reachable || !bridge.health) return { sheets: false, calendar: false, drive: false };
+  const schedulerReady = bridge.health.jobsConfigured && bridge.health.triggerReady;
+  return {
+    sheets: bridge.health.mirrorConfigured && schedulerReady,
+    calendar: bridge.health.calendarConfigured && schedulerReady,
+    drive: bridge.health.backupConfigured,
+  };
+};
+
+const probeGoogleBridgeHealth = async (fetchImpl) => {
+  try {
+    const health = normalizeBridgeHealth(await callGoogleBridge("integration.health", {}, { fetchImpl, timeoutMs: BRIDGE_HEALTH_TIMEOUT_MS }));
+    return { checked: true, reachable: true, errorCode: null, health };
+  } catch (error) {
+    return {
+      checked: true,
+      reachable: false,
+      errorCode: sanitizeText(error?.code || "GOOGLE_BRIDGE_UNAVAILABLE", 80),
+      health: null,
+    };
+  }
+};
+
+export const integrationStatus = async (db, context = null) => {
+  const rows = await db.all("SELECT provider,status,COUNT(*) AS count,MAX(updated_at) AS last_updated_at,MAX(completed_at) AS last_completed_at FROM integration_outbox GROUP BY provider,status");
+  const providers = {};
+  for (const row of rows) {
+    const item = providers[row.provider] || {
+      pending: 0,
+      processing: 0,
+      failed: 0,
+      dead_letter: 0,
+      completed: 0,
+      lastUpdatedAt: null,
+      lastCompletedAt: null,
+      lastFailureAt: null,
+    };
+    item[row.status] = Number(row.count || 0);
+    if (!item.lastUpdatedAt || String(row.last_updated_at) > item.lastUpdatedAt) item.lastUpdatedAt = row.last_updated_at;
+    if (row.status === "completed" && row.last_completed_at && (!item.lastCompletedAt || String(row.last_completed_at) > item.lastCompletedAt)) item.lastCompletedAt = row.last_completed_at;
+    if (["failed", "dead_letter"].includes(row.status) && row.last_updated_at && (!item.lastFailureAt || String(row.last_updated_at) > item.lastFailureAt)) item.lastFailureAt = row.last_updated_at;
+    providers[row.provider] = item;
+  }
+
+  const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);
+  const shouldProbe = context?.action === "integrations.status";
+  const bridgeProbe = shouldProbe && bridgeConfigured
+    ? await probeGoogleBridgeHealth(context?.fetchImpl || globalThis.fetch)
+    : { checked: false, reachable: null, errorCode: null, health: null };
+  const bridge = { configured: bridgeConfigured, ...bridgeProbe };
+
+  return {
+    providers,
+    bridge,
+    configured: bridgeReadiness(bridgeConfigured, bridge),
+  };
 };
 
 export const markIntegrationResult = async (db, row, error = null) => {

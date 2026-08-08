@@ -31,13 +31,14 @@ test("filter transaksi dan kelompok ikon kategori tidak menjadi carousel horizon
 });
 
 test("pengaturan memakai route internal dan tidak memuat semua domain pada ringkasan", async () => {
-  const [app, overview, layout, notifications, integrations, members] = await Promise.all([
+  const [app, overview, layout, notifications, integrations, members, presentation] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/features/settings/SettingsPage.jsx"),
     read("src/features/settings/SettingsLayout.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
     read("src/features/settings/GoogleIntegrationsPage.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
+    read("src/features/settings/settingsPresentation.js"),
   ]);
   for (const route of ["notifikasi", "integrasi", "anggota", "export", "import", "backup", "pemulihan", "periode", "audit"]) {
     assert.match(app, new RegExp(`path="${route}"`));
@@ -49,6 +50,14 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.equal((notifications.match(/Notifikasi perangkat/g) || []).length, 1);
   assert.equal((integrations.match(/<h3>Google Sheets<\/h3>/g) || []).length, 1);
   assert.equal((integrations.match(/<h3>Google Calendar<\/h3>/g) || []).length, 1);
+  assert.match(integrations, /menunggu \{sheets\.pending\}/);
+  assert.match(integrations, /diproses \{sheets\.processing\}/);
+  assert.match(integrations, /gagal \{sheets\.failed\}/);
+  assert.match(integrations, /perlu tindakan \{sheets\.deadLetter\}/);
+  assert.doesNotMatch(integrations, /antrean \{sheets\.pending\}/);
+  assert.match(presentation, /integrationProviderPresentation/);
+  assert.match(presentation, /Trigger belum siap/);
+  assert.match(presentation, /health check belum dapat dijangkau/);
   assert.match(members, /Tambah anggota/);
   assert.match(members, /Lihat aktivitas transaksi/);
   assert.match(members, /MemberActivityPanel/);
@@ -70,4 +79,42 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
   assert.match(styles, /\.memberGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(styles, /@media \(max-width: 51\.25rem\)[\s\S]*\.memberGrid \{ grid-template-columns:\s*1fr;/);
   assert.match(styles, /@media \(max-width: 51\.25rem\)[\s\S]*\.memberActivityPanel \{ width:\s*100%; min-width:\s*0; height:\s*100vh; height:\s*100dvh;/);
+});
+
+test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provider", async () => {
+  const { integrationProviderPresentation, providerSummary } = await import("../src/features/settings/settingsPresentation.js");
+  const integration = {
+    providers: {
+      calendar: {
+        pending: 2,
+        processing: 1,
+        failed: 3,
+        dead_letter: 4,
+        completed: 5,
+        lastUpdatedAt: "2026-08-08T03:06:00.000Z",
+        lastCompletedAt: "2026-08-08T03:05:00.000Z",
+        lastFailureAt: "2026-08-08T03:06:00.000Z",
+      },
+    },
+    bridge: {
+      configured: true,
+      checked: true,
+      reachable: true,
+      health: { calendarConfigured: true, jobsConfigured: true, triggerReady: false },
+    },
+    configured: { calendar: false },
+  };
+  assert.deepEqual(providerSummary(integration, "calendar"), {
+    pending: 2,
+    processing: 1,
+    failed: 3,
+    deadLetter: 4,
+    completed: 5,
+    lastUpdatedAt: "2026-08-08T03:06:00.000Z",
+    lastCompletedAt: "2026-08-08T03:05:00.000Z",
+    lastFailureAt: "2026-08-08T03:06:00.000Z",
+  });
+  const readiness = integrationProviderPresentation(integration, "calendar");
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.label, "Trigger belum siap");
 });

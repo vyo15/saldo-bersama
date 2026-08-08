@@ -87,6 +87,20 @@ test("Google bridge memakai deployment server-to-server dan scheduler nonce pers
   assert.match(jobs, /REPLAY_DENIED/);
 });
 
+
+test("status Integrasi Google memverifikasi health Apps Script tanpa memindahkan resource ID ke Vercel", async () => {
+  const [bridge, integrations] = await Promise.all([source("apps-script/Code.gs"), source("api/_lib/services/integrations.js")]);
+  for (const field of ["mirrorConfigured", "calendarConfigured", "backupConfigured", "jobsConfigured", "triggerReady"]) {
+    assert.match(bridge, new RegExp(field));
+    assert.match(integrations, new RegExp(field));
+  }
+  assert.match(integrations, /callGoogleBridge\("integration\.health"/);
+  assert.match(integrations, /context\?\.action === "integrations\.status"/);
+  for (const key of ["MIRROR_SPREADSHEET_ID", "GOOGLE_CALENDAR_ID", "BACKUP_FOLDER_ID", "JOBS_ENDPOINT_URL"]) {
+    assert.doesNotMatch(integrations, new RegExp(`process\.env\.${key}`));
+  }
+});
+
 test("maintenance mode tetap menyediakan read-only UI dan hanya memblokir write biasa", async () => {
   const [dispatcher, policy] = await Promise.all([
     source("api/_lib/actionDispatcher.js"),

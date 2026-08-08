@@ -1,5 +1,48 @@
 # Project Status
 
+## Quality gate alignment dan Google provisioning handoff 2026-08-08
+
+- **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-045654).zip`, root `saldo-bersama/`, schema tetap v6. Stack aktual tetap React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso; Apps Script tetap integration bridge.
+- Full quality gate operator terbaru sebelum follow-up ini: `validate:source` PASS 346 file, frontend 84/84 PASS, backend/business/security/tooling 145/145 PASS, Vite build PASS, build budget PASS, ESLint **0 error/0 warning**, browser **8/9 PASS**. Journey member PASS.
+- Route 404 mobile yang sebelumnya gagal sudah PASS setelah assertion memakai inner content box computed style. Failure owner terbaru berada pada geometri flyout Perencanaan: CSS canonical memakai `--desktop-dock-flyout-gap: 10px`, tetapi `dock-flyout-in` selama 180ms menggeser flyout dari `translateX(-.35rem)` menuju posisi final. Browser test sebelumnya membaca `getBoundingClientRect()` segera setelah elemen terlihat, sehingga menangkap gap transisi sekitar 6.2px sebelum animasi selesai.
+- Browser regression sekarang menunggu Web Animations API pada flyout selesai sebelum mengukur gap/center alignment. Audit timing menemukan pola yang sama pada drawer Aktivitas anggota (`member-activity-in`), sehingga geometry drawer juga menunggu animasi selesai sebelum assertion. Runtime CSS dan komponen tidak diubah.
+- Audit assertion owner setelah titik flyout dilakukan sampai akhir journey. Setelah motion settle, kontrak href Perencanaan/Data keuangan, Escape/focus restoration, click-outside, drawer kanan, dashboard account selector, statistik, anggaran, tagihan, target, dan pergantian transaksi per rekening konsisten dengan source aktual.
+- Perbaikan sebelumnya tetap dipertahankan: Rekonsiliasi diuji melalui struktur runtime, flyout Perencanaan memakai href canonical, Aktivitas anggota menunggu ledger asynchronous, capability rekening personal pasangan memisahkan read-only dari write action, Pembayaran keluar memilih rekening fixture BNI secara eksplisit, periode fixture deterministik `2026-08`, dan fixture `transactions.list` menghormati filter `period`/`account_id`.
+- Boundary dokumentasi Google tetap: Spreadsheet ID, Calendar ID, Drive folder ID, dan `JOBS_ENDPOINT_URL` hanya berada di Apps Script Properties; dua shared secret berada di Apps Script Properties **dan** Vercel dengan nilai yang sama.
+- Runtime operator terakhir masih melaporkan `Google bridge: not configured`; provisioning resource Google, Apps Script Web App, shared secret, dan satu trigger `runScheduledJobs` tetap langkah operasional terpisah.
+
+### Quality gate follow-up
+
+- Follow-up ini tidak mengubah runtime production, authorization, saldo, transaksi, schema, API contract, environment, Apps Script contract, atau dependency. Perubahan hanya pada browser regression dan dokumentasi status/QA.
+- Browser 9/9 belum diklaim sampai operator menjalankan ulang `npm run test:browser` pada Node 24.18.1.
+- Target release tetap lint 0 error/0 warning dan browser 9/9 PASS. Jangan nyatakan Google Sheets/Calendar sinkron sebelum health resource nyata, trigger, dan queue completion diverifikasi.
+
+## Google integration readiness dan observability 2026-08-08
+
+- **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-035858).zip`, root `saldo-bersama/`, schema tetap v6. Stack aktual React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso; Apps Script tetap Google integration bridge.
+- Baseline lokal pemilik sebelum patch ini: source validation 346 file lulus, frontend test 83/83 lulus, backend/business/security/tooling 141/141 lulus, Vite build dan build budget lulus. Browser suite 7/9 lulus; dua kegagalan berada pada journey Aktivitas anggota dan capability rekening personal pasangan. ESLint memiliki satu warning `react-hooks/exhaustive-deps` pada `MembersSettingsPage.jsx`. Tiga temuan tersebut berada di luar scope patch Integrasi Google ini dan belum diubah.
+- `integrations.status` sekarang melakukan signed health probe hanya saat route status Integrasi Google diminta. `system.health` tetap tidak melakukan network probe eksternal.
+- Provider tidak lagi diberi status `Siap` hanya berdasarkan bridge URL/secret. Sheets memerlukan mirror resource + jobs + satu trigger; Calendar memerlukan Calendar resource + jobs + satu trigger; Drive memerlukan folder backup. Health failure bersifat fail closed untuk UI dan tidak mengubah write Turso.
+- Ringkasan queue memisahkan pending, processing, failed, dead-letter, dan completed. Timestamp sukses terakhir berasal dari `completed_at`, sehingga kegagalan terbaru tidak disalahartikan sebagai sinkronisasi berhasil.
+- Resource ID Google tetap hanya berada pada Apps Script Properties. Tidak ada perubahan schema, auth, allowlist, role, saldo, transaksi, transfer, backup/restore contract, VAPID value, atau dependency.
+- Google Calendar/Sheets nyata tetap belum dapat dinyatakan sinkron sampai bridge, Script Properties, deployment Apps Script, dan trigger operator dikonfigurasi serta health resource nyata lulus.
+
+### Quality gate baseline operator
+
+- `npm run validate:source`: PASS, 346 file.
+- `npm run test`: frontend 83/83 PASS; backend/business/security/tooling 141/141 PASS.
+- `npm run build`: PASS; `npm run build:budget`: PASS.
+- `npm run test:browser`: 7/9 PASS, 2 FAIL pada area anggota/rekening yang tidak disentuh patch ini.
+- `npm run lint`: 0 error, 1 warning pada `frontend/src/features/settings/MembersSettingsPage.jsx`; warning tersebut tidak disentuh karena berada di luar plan file-by-file yang disetujui.
+
+### Verifikasi patch Integrasi Google
+
+- Frontend static/contract setelah patch: 84/84 PASS.
+- Backend/business/security/tooling setelah patch: 145/145 PASS memakai stub `web-push` sementara hanya untuk module resolution; stub sudah dihapus dan tidak masuk source/artifact.
+- Source validation: 346 file PASS. Syntax Node: 96 file PASS. Apps Script syntax/boot: 6 file, 2 urutan load PASS.
+- Focused Google bridge: 6/6 PASS, termasuk health resource, queue breakdown, dan fail-closed saat bridge tidak dapat dijangkau.
+- Full ESLint/Vite build/build budget/browser suite belum diulang pada sandbox setelah patch karena runtime sandbox Node 22.16.0 dan dependency project tidak tersedia. Gunakan hasil baseline operator sebagai pembanding dan ulangi full gate pada Node 24.18.1 setelah patch diterapkan.
+
 ## Login, sidebar, anggota, dan aktivitas pencatat 2026-08-08
 
 - **Source diverifikasi:** `saldo-bersama-clean(20260808-035320).zip`, root `saldo-bersama/`. Source aktual tetap React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso; Apps Script tetap integration bridge.
@@ -39,9 +82,9 @@
 
 ### Operasional berikutnya
 
-1. Dari PC tepercaya yang masih memiliki pasangan VAPID canonical, jalankan `npm run env:check` lalu `npm run env:push:development:settings` satu kali. Jangan membuat pasangan VAPID baru per komputer.
-2. Di laptop/PC lain tarik source terbaru dan jalankan `npm run dev`. Expected log: Web Push `set`; tidak perlu copy/edit `.env.local`.
-3. Jika Google bridge akan dipakai, konfigurasikan grup bridge secara pusat lalu ulangi settings-only sync. Jangan invent atau menaruh secret di frontend.
+1. VAPID telah dipusatkan melalui scope Development/Production pada sesi operator 2026-08-08; jangan membuat pasangan VAPID per komputer dan jangan menaruh private key di source/dokumen. Deployment Production tetap harus diverifikasi setelah setiap rotasi environment.
+2. Di laptop/PC tepercaya lain tarik source terbaru dan jalankan `npm run dev`. Expected log: Web Push `set`; tidak perlu copy/edit `.env.local`.
+3. Google bridge masih harus diprovision terpisah: isi resource ID hanya pada Apps Script Properties, sinkronkan tiga key bridge secara pusat, deploy Apps Script, instal satu trigger, lalu pastikan `/pengaturan/integrasi` health-check `Siap`.
 4. Sebelum merge/deploy, jalankan Node 24.18.1: `npm ci`, `npm run lint`, `npm run test`, `npm run build`, `npm run build:budget`, dan `npm run test:browser`.
 
 ## CSS token, auto-zoom, contrast, dan archive tooling 2026-08-06

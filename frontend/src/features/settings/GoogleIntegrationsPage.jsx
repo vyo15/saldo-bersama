@@ -8,7 +8,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { runSettingsAction } from "./settings.api.js";
 import SettingsNotice from "./SettingsNotice.jsx";
-import { providerSummary } from "./settingsPresentation.js";
+import { integrationProviderPresentation, providerSummary } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
 const GoogleIntegrationsPage = () => {
@@ -21,6 +21,8 @@ const GoogleIntegrationsPage = () => {
   const integrations = resource.data || {};
   const sheets = providerSummary(integrations, "sheets");
   const calendar = providerSummary(integrations, "calendar");
+  const sheetsReadiness = integrationProviderPresentation(integrations, "sheets");
+  const calendarReadiness = integrationProviderPresentation(integrations, "calendar");
 
   const run = async (action) => {
     setBusyAction(action);
@@ -43,9 +45,9 @@ const GoogleIntegrationsPage = () => {
   };
 
   const handleTile = (provider) => {
-    const configured = integrations.configured?.[provider];
-    if (!configured) {
-      setResult({ status: "warning", text: "Integrasi Google belum aktif pada runtime ini. Konfigurasi bridge dikelola terpusat di environment server dan tidak diisi ulang pada browser atau perangkat." });
+    const readiness = provider === "sheets" ? sheetsReadiness : calendarReadiness;
+    if (!readiness.ready) {
+      setResult({ status: readiness.tone === "danger" ? "danger" : "warning", text: readiness.text });
       return;
     }
     if (!ownerMode) {
@@ -70,21 +72,21 @@ const GoogleIntegrationsPage = () => {
           <span className={styles.serviceCopy}>
             <h3>Google Sheets</h3>
             <p>Mirror baca. Edit manual tidak mengubah saldo resmi.</p>
-            <small>{sheets.lastUpdatedAt || "Belum pernah diproses"} · antrean {sheets.pending} · selesai {sheets.completed}</small>
+            <small>{sheets.lastCompletedAt ? `Berhasil terakhir ${sheets.lastCompletedAt}` : sheets.lastUpdatedAt ? `Aktivitas terakhir ${sheets.lastUpdatedAt}` : "Belum pernah diproses"} · menunggu {sheets.pending} · diproses {sheets.processing} · gagal {sheets.failed} · perlu tindakan {sheets.deadLetter} · selesai {sheets.completed}</small>
           </span>
-          <span className={`status-badge status-badge--${integrations.configured?.sheets ? "active" : "warning"}`}>{integrations.configured?.sheets ? "Siap" : "Belum siap"}</span>
+          <span className={`status-badge status-badge--${sheetsReadiness.tone}`}>{sheetsReadiness.label}</span>
         </button>
         <button type="button" className={styles.serviceTile} onClick={() => handleTile("calendar")} disabled={Boolean(busyAction)} aria-label="Kelola integrasi Google Calendar">
           <span className={styles.serviceIcon}><FiCalendar aria-hidden="true" /></span>
           <span className={styles.serviceCopy}>
             <h3>Google Calendar</h3>
             <p>Pengingat jadwal. Status dibayar tetap berasal dari ledger.</p>
-            <small>{calendar.lastUpdatedAt || "Belum pernah diproses"} · antrean {calendar.pending} · selesai {calendar.completed}</small>
+            <small>{calendar.lastCompletedAt ? `Berhasil terakhir ${calendar.lastCompletedAt}` : calendar.lastUpdatedAt ? `Aktivitas terakhir ${calendar.lastUpdatedAt}` : "Belum pernah diproses"} · menunggu {calendar.pending} · diproses {calendar.processing} · gagal {calendar.failed} · perlu tindakan {calendar.deadLetter} · selesai {calendar.completed}</small>
           </span>
-          <span className={`status-badge status-badge--${integrations.configured?.calendar ? "active" : "warning"}`}>{integrations.configured?.calendar ? "Siap" : "Belum siap"}</span>
+          <span className={`status-badge status-badge--${calendarReadiness.tone}`}>{calendarReadiness.label}</span>
         </button>
       </div>
-      {ownerMode && integrations.configured?.sheets ? (
+      {ownerMode && sheetsReadiness.ready ? (
         <div className={styles.serviceActions}>
           <Button type="button" disabled={Boolean(busyAction)} onClick={() => setRebuildOpen(true)}>Bangun ulang mirror Sheets</Button>
         </div>

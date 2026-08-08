@@ -1,7 +1,48 @@
 export const providerSummary = (integration, provider) => {
   const item = integration?.providers?.[provider] || {};
-  const pending = Number(item.pending || 0) + Number(item.processing || 0) + Number(item.failed || 0);
-  return { pending, completed: Number(item.completed || 0), lastUpdatedAt: item.lastUpdatedAt || null };
+  return {
+    pending: Number(item.pending || 0),
+    processing: Number(item.processing || 0),
+    failed: Number(item.failed || 0),
+    deadLetter: Number(item.dead_letter || 0),
+    completed: Number(item.completed || 0),
+    lastUpdatedAt: item.lastUpdatedAt || null,
+    lastCompletedAt: item.lastCompletedAt || null,
+    lastFailureAt: item.lastFailureAt || null,
+  };
+};
+
+export const integrationProviderPresentation = (integration, provider) => {
+  const configured = integration?.configured?.[provider] === true;
+  const bridge = integration?.bridge;
+  if (!bridge) {
+    return configured
+      ? { ready: true, label: "Siap", tone: "active", text: "Integrasi siap digunakan." }
+      : { ready: false, label: "Belum siap", tone: "warning", text: "Integrasi Google belum aktif pada runtime ini." };
+  }
+  if (!bridge.configured) {
+    return { ready: false, label: "Belum siap", tone: "warning", text: "Bridge Google belum dikonfigurasi pada environment server." };
+  }
+  if (bridge.checked && !bridge.reachable) {
+    return { ready: false, label: "Gangguan", tone: "danger", text: "Bridge Google sudah dikonfigurasi, tetapi health check belum dapat dijangkau. Periksa deployment Apps Script dan koneksi server." };
+  }
+  const health = bridge.health || {};
+  if (bridge.checked) {
+    const resourceKey = provider === "sheets" ? "mirrorConfigured" : provider === "calendar" ? "calendarConfigured" : "backupConfigured";
+    if (!health[resourceKey]) {
+      const resourceLabel = provider === "sheets" ? "Spreadsheet mirror" : provider === "calendar" ? "Google Calendar" : "folder Google Drive";
+      return { ready: false, label: "Belum siap", tone: "warning", text: `${resourceLabel} belum dikonfigurasi pada Apps Script Properties.` };
+    }
+    if (["sheets", "calendar"].includes(provider) && !health.jobsConfigured) {
+      return { ready: false, label: "Scheduler belum siap", tone: "warning", text: "Endpoint scheduled jobs atau shared secret scheduler pada Apps Script belum lengkap." };
+    }
+    if (["sheets", "calendar"].includes(provider) && !health.triggerReady) {
+      return { ready: false, label: "Trigger belum siap", tone: "warning", text: "Scheduled trigger Apps Script belum siap. Pastikan hanya satu trigger runScheduledJobs yang aktif." };
+    }
+  }
+  return configured
+    ? { ready: true, label: "Siap", tone: "active", text: "Resource Google dan scheduler sudah terverifikasi." }
+    : { ready: false, label: "Belum terverifikasi", tone: "warning", text: "Kesiapan integrasi Google belum dapat diverifikasi." };
 };
 
 export const backendPresentation = (resource) => {

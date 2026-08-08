@@ -15,6 +15,7 @@
 - [ ] Backup checksum dan restore drill pada salinan terisolasi sementara lulus.
 - [ ] Offline write ditolak.
 - [ ] PWA iOS/Android, push, safe area, focus, contrast, tap target diuji.
+- [ ] Route 404 mobile mengisi inner content box setelah padding/safe-area canonical; regression tidak boleh menghitung reserved `--mobile-navigation-content-gap` sebagai gap layout yang salah.
 - [ ] Status backend Pengaturan memakai kontrak `system.health` aktual dan tidak menampilkan `Degraded` palsu.
 - [ ] Schema v6, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
 - [ ] Desktop dan Android lulus Aktifkan → verifikasi otomatis → Nonaktifkan; iPhone/iPad diuji dari aplikasi Home Screen.
@@ -23,6 +24,10 @@
 - [ ] `npm run env:push:development:settings` hanya menyentuh Web Push dan Google bridge yang aktif; Turso, allowlist, Firebase, dan session tidak ikut berubah.
 - [ ] Setelah settings disinkronkan ke Vercel Development, laptop/PC tepercaya lain cukup menjalankan `npm run dev` dan menerima konfigurasi terbaru tanpa copy/edit `.env.local`.
 - [ ] Google bridge tetap opsional; bila dinonaktifkan, Integrasi/backup/restore external menampilkan status belum siap tanpa memblokir fitur Turso lain.
+- [ ] `/pengaturan/integrasi` tidak menampilkan `Siap` hanya karena bridge env tersedia; signed `integration.health` harus memverifikasi resource provider, scheduled jobs, dan satu trigger untuk Sheets/Calendar.
+- [ ] Queue Integrasi Google menampilkan `pending`, `processing`, `failed`, `dead_letter`, dan `completed` secara terpisah; kegagalan tidak dihitung sebagai antrean biasa.
+- [ ] Waktu sukses terakhir berasal dari `completed_at`; kegagalan yang lebih baru tidak boleh mengganti label keberhasilan terakhir.
+- [ ] Health response ke browser tidak memuat shared secret, Spreadsheet/Calendar/Drive ID, endpoint scheduler internal, atau payload finansial.
 
 - [ ] Action registry/policy, authorization map, dan API docs tetap sinkron.
 - [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.
@@ -55,7 +60,7 @@
 - [ ] Owner dan member dapat mengelola subscription notifikasi perangkat masing-masing.
 - [ ] `/rekening` hanya memuat rekening; `/kategori` hanya memuat kategori. Kegagalan kategori tidak memblokir rekening.
 - [ ] Owner dan member melihat rekening personal pasangan dengan label `Pribadi · <nama pemilik>`.
-- [ ] Member tidak memperoleh tombol transaksi/rekonsiliasi/edit/archive pada rekening personal pasangan; request manual juga ditolak backend, termasuk transaksi legacy yang pernah dibuat member.
+- [ ] Member dapat membuka `Lihat transaksi` untuk ledger rekening personal pasangan yang readable, tetapi tidak memperoleh aksi edit/arsip rekening, create/update/cancel transaksi, atau rekonsiliasi pada scope tersebut; request write manual juga ditolak backend, termasuk transaksi legacy yang pernah dibuat member.
 - [ ] `totalBalance` mencakup semua rekening readable, tetapi `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` tidak memasukkan rekening personal pasangan yang read-only.
 - [ ] Label pemilik konsisten pada daftar/filter transaksi, breakdown laporan, riwayat rekonsiliasi, serta alert rekening.
 - [ ] Owner dapat memilih pemilik rekening personal; fallback saat daftar user gagal tidak mengubah ownership secara diam-diam.
@@ -63,6 +68,10 @@
 - [ ] Semua asset kartu BCA/BNI/BTN/Mandiri/Permata memakai rasio 1.586:1 dan ukuran container identik.
 - [ ] Stack rekening mobile menampilkan 1 kartu untuk 1 rekening, 2 kartu untuk 2 rekening, dan maksimal 3 kartu untuk 3+ rekening tanpa wrapper berbeda ukuran.
 - [ ] Swipe vertikal pada kartu aktif menggerakkan seluruh stack secara kontinu, menyelesaikan satu perpindahan per gesture, dan kembali saat threshold tidak tercapai. Gesture horizontal tidak mengganti rekening, area kosong stack tetap menggulir halaman, wheel tidak mengubah rekening, serta Arrow Up/Down bekerja tanpa auto-rotate.
+- [ ] Browser regression `Pembayaran keluar` memilih rekening fixture secara eksplisit, menetapkan periode deterministik, menunggu resource selesai dimuat, dan fixture `transactions.list` menghormati filter `period` serta `account_id` seperti backend canonical.
+- [ ] Browser regression Rekonsiliasi memverifikasi tujuan proses, input saldo aktual, saldo sistem, guard selisih audit, dan panduan pemeriksaan saat ada selisih; jangan mengikat test ke copy singkat konfigurasi navigasi.
+- [ ] Flyout Perencanaan desktop menyediakan href canonical `/anggaran`, `/alokasi`, `/tagihan`, dan `/target`; capability route diuji melalui destination, bukan copy heading halaman.
+- [ ] Assertion geometry untuk flyout/drawer yang memiliki entrance animation menunggu Web Animations API selesai (`running`/`pending` tidak tersisa) sebelum membaca `getBoundingClientRect()`.
 - [ ] `prefers-reduced-motion` mengurangi rotasi/durasi, focus-visible tetap jelas, dan live region hanya mengumumkan nama rekening aktif.
 - [ ] Detail rekening sticky cukup besar pada desktop dan menjadi overlay/fullscreen dengan focus trap, Escape, body scroll lock, serta focus restoration pada tablet/mobile.
 - [ ] Nomor rekening lebih dari 16 digit tidak overflow pada muka kartu; nomor lengkap tetap tersedia di detail dan clipboard.

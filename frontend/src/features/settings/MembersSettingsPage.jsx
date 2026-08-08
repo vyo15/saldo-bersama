@@ -17,6 +17,7 @@ import SettingsNotice from "./SettingsNotice.jsx";
 import { roleLabel, userStatusLabel } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
+const EMPTY_MEMBERS = Object.freeze([]);
 const EMPTY_MEMBER_FORM = Object.freeze({ email: "", name: "", role: "member" });
 
 const MembersSettingsPage = () => {
@@ -37,7 +38,7 @@ const MembersSettingsPage = () => {
   const activeMenuRef = useRef(null);
   const menuTriggerRefs = useRef(new Map());
 
-  const members = resource.data?.items || [];
+  const members = resource.data?.items || EMPTY_MEMBERS;
   const filteredMembers = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase("id-ID");
     return members.filter((member) => {

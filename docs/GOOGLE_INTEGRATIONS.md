@@ -24,6 +24,18 @@ npm run env:push:development:settings
 
 `npm run dev` kemudian menarik Development terbaru pada setiap start interaktif. Jika bridge belum diaktifkan secara pusat, halaman Integrasi Google tetap menampilkan status belum siap, sedangkan fitur Turso lain tetap dapat berjalan.
 
+## Readiness dan health check
+
+`integrations.status` tidak lagi menganggap provider siap hanya karena `GOOGLE_BRIDGE_WEB_APP_URL` dan `GOOGLE_BRIDGE_SHARED_SECRET` tersedia. Saat halaman Integrasi Google dibuka, backend memanggil action signed `integration.health` dengan timeout terbatas dan hanya mengembalikan boolean readiness serta timestamp aman. Secret, resource ID, endpoint internal, dan payload finansial tidak dikembalikan ke browser.
+
+Kriteria readiness:
+
+- **Sheets**: bridge dapat dijangkau, `MIRROR_SPREADSHEET_ID` tersedia, konfigurasi scheduled jobs lengkap, dan tepat satu trigger `runScheduledJobs` aktif.
+- **Calendar**: bridge dapat dijangkau, `GOOGLE_CALENDAR_ID` tersedia, konfigurasi scheduled jobs lengkap, dan tepat satu trigger `runScheduledJobs` aktif.
+- **Drive**: bridge dapat dijangkau dan `BACKUP_FOLDER_ID` tersedia. Trigger tidak menjadi syarat untuk backup manual, tetapi tetap wajib untuk backup terjadwal.
+
+Jika health check gagal, UI harus menampilkan belum siap/gangguan dan tidak menjalankan sinkronisasi. Queue tetap dibedakan menjadi `pending`, `processing`, `failed`, `dead_letter`, dan `completed`; `failed` tidak boleh ditampilkan sebagai sekadar antrean. `lastCompletedAt` adalah waktu sukses terakhir dan tidak boleh diganti oleh timestamp kegagalan terbaru.
+
 ## Google Sheets mirror
 
 - Sinkronisasi hanya `Turso -> Sheets`.
@@ -48,7 +60,7 @@ Backup teknis berupa JSON terkompresi dengan manifest, schema version, row count
 
 ## Script Properties
 
-Enam nilai berikut hanya disimpan di Apps Script Properties. Jangan menduplikasi ID resource atau `JOBS_ENDPOINT_URL` di Vercel.
+Enam nilai berikut disimpan di Apps Script Properties. `MIRROR_SPREADSHEET_ID`, `GOOGLE_CALENDAR_ID`, `BACKUP_FOLDER_ID`, dan `JOBS_ENDPOINT_URL` hanya boleh berada di Apps Script Properties. `GOOGLE_BRIDGE_SHARED_SECRET` dan `JOBS_SHARED_SECRET` juga harus tersedia di Vercel dengan nilai yang sama untuk autentikasi server-to-server.
 
 
 ```text

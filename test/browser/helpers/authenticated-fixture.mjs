@@ -354,13 +354,17 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
     "bootstrap.get": sessionBootstrap,
     "dashboard.overview": sessionOverview,
     "transactions.list": (payload = {}) => {
+      const period = String(payload.period || periodKey);
       const type = String(payload.transaction_type || "all");
       const creator = String(payload.created_by || "all");
+      const accountId = String(payload.account_id || "all");
       const limit = Math.max(1, Number(payload.limit || 100));
       const offset = Math.max(0, Number(payload.offset || 0));
       const filtered = ledgerTransactions.filter((item) => {
+        if (period && item.transaction_date.slice(0, 7) !== period) return false;
         if (type !== "all" && item.transaction_type !== type) return false;
         if (creator !== "all" && creator !== "" && item.created_by !== (creator === "me" ? session.uid : creator)) return false;
+        if (accountId !== "all" && accountId !== "" && item.source_account_id !== accountId && item.destination_account_id !== accountId) return false;
         return true;
       });
       return {

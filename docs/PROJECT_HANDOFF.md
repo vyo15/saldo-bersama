@@ -1,4 +1,98 @@
-## Current task - Centralized Settings environment
+## Current task - Final browser gate sebelum provisioning Google
+
+**Tanggal:** 2026-08-08  
+**Source baseline:** `saldo-bersama-clean(20260808-045654).zip`  
+**Schema:** tetap version 6
+
+### Kondisi operator terbaru
+
+- `npm run validate:source`: 346 file PASS.
+- `npm run lint`: PASS, 0 error dan 0 warning.
+- `npm run test`: frontend 84/84 PASS; backend/business/security/tooling 145/145 PASS.
+- `npm run build` dan `npm run build:budget`: PASS; main JS 101012 B gzip dan global CSS 17940 B gzip.
+- `npm run test:browser`: 8/9 PASS. Journey member PASS. Route 404 yang sebelumnya gagal sudah PASS. Satu failure owner terbaru berada pada geometri flyout Perencanaan.
+- `npm run zip`: PASS, 346 file canonical.
+
+### Root cause yang diverifikasi
+
+1. CSS canonical menetapkan `--desktop-dock-flyout-gap: 10px` dan posisi final flyout memang berada sekitar 10px dari rail.
+2. `dock-flyout-in` berjalan 180ms dari `translate(-.35rem, -50%)` menuju `translate(0, -50%)`.
+3. Browser test lama hanya menunggu flyout terlihat. `visibleExpression()` menjadi true saat animation masih berjalan, lalu `getBoundingClientRect()` menangkap posisi transisi. Log operator menunjukkan gap sekitar `6.2px`, tepat konsisten dengan elemen yang belum mencapai posisi final.
+4. Pola race yang sama ada pada drawer Aktivitas anggota karena `member-activity-in` juga mengubah `transform` saat masuk. Journey terakhir berhenti sebelum assertion drawer, jadi temuan ini diperbaiki proaktif pada patch yang sama.
+5. Runtime CSS/navigation tidak perlu diubah. Mengubah gap CSS untuk membuat test yang membaca frame transisi lulus justru akan merusak posisi final canonical.
+
+### Implementasi follow-up
+
+1. Browser test menunggu `Element.getAnimations()` tidak lagi memiliki state `running`/`pending` sebelum mengukur geometry flyout.
+2. Drawer Aktivitas anggota memakai guard motion-settle yang sama sebelum assertion width/right.
+3. Assertion 404, Rekonsiliasi, Pembayaran keluar, capability rekening personal pasangan, dan filter fixture sebelumnya tetap dipertahankan.
+4. Assertion owner setelah flyout diaudit sampai akhir: focus restoration, click-outside, child navigation, drawer aktivitas, dashboard account selector, statistik, anggaran, tagihan, target, dan pergantian transaksi per rekening tidak menunjukkan stale selector/copy lain pada source ini.
+
+### Verifikasi patch
+
+- `node --check test/browser/authenticated-app.test.mjs`: PASS.
+- Source/runtime production tidak diubah.
+- Authenticated browser 9/9 belum diklaim sebelum operator menjalankan ulang pada Node 24.18.1.
+
+### Verifikasi yang masih wajib di komputer project
+
+1. Jalankan `npm run test:browser`; target **9/9 PASS**.
+2. Jika 9/9, konfirmasi final gate sekali dengan `npm run validate:source && npm run lint && npm run test && npm run build && npm run build:budget && npm run test:browser`.
+3. Setelah semua hijau, lanjut provisioning Google bridge sesuai `docs/GOOGLE_INTEGRATIONS.md`.
+4. Jangan kirim shared secret, resource ID privat, VAPID private key, token Turso, atau `.env.local` ke chat/repository.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role, saldo, transaction/transfer/reconciliation business logic, import/export, backup/restore contract, Apps Script action contract, resource ID, VAPID value, dependency, CSS runtime, navigation runtime, atau deployment configuration dalam follow-up ini.
+
+---
+
+## Previous task - Google integration readiness dan observability
+
+**Tanggal:** 2026-08-08  
+**Source baseline:** `saldo-bersama-clean(20260808-035858).zip`  
+**Schema:** tetap version 6
+
+### Implementasi
+
+1. `integrations.status` membedakan bridge env dari health resource Apps Script. Signed `integration.health` dipanggil hanya untuk halaman status Integrasi Google, bukan pada `system.health`.
+2. Sheets baru `Siap` bila mirror resource, jobs configuration, dan tepat satu `runScheduledJobs` trigger terverifikasi. Calendar memakai guard yang sama dengan `GOOGLE_CALENDAR_ID`. Drive hanya memerlukan folder backup untuk readiness manual.
+3. UI memisahkan `menunggu`, `diproses`, `gagal`, `perlu tindakan` (`dead_letter`), dan `selesai`. Label keberhasilan terakhir memakai `completed_at`.
+4. Health failure tidak mengubah Turso dan tidak mengeksekusi sinkronisasi; user mendapat diagnosis aman tanpa resource ID atau secret.
+5. Dokumentasi deployment, Google integration, QA, status, handoff, dan changelog diselaraskan dengan kontrak readiness baru.
+
+### Baseline quality gate dari operator sebelum patch
+
+- Source validation 346 file: lulus.
+- Frontend test 83/83: lulus. Backend/business/security/tooling 141/141: lulus.
+- Vite build dan build budget: lulus.
+- Browser: 7/9 lulus. Dua fail existing berada pada Aktivitas anggota dan write action rekening personal pasangan.
+- ESLint: 0 error, 1 warning `react-hooks/exhaustive-deps` di `MembersSettingsPage.jsx`.
+- Fail/warning tersebut berada di luar plan patch ini dan tidak diubah.
+
+### Verifikasi patch
+
+- Frontend static/contract: 84/84 lulus.
+- Backend/business/security/tooling: 145/145 lulus dengan stub `web-push` sementara hanya untuk module resolution; stub sudah dihapus.
+- Focused Google bridge: 6/6 lulus.
+- Source validation 346 file, syntax Node 96 file, Apps Script 6 file/2 load order: lulus.
+- Full lint/build/build budget/browser belum diulang di sandbox setelah patch. Jalankan kembali di Node 24.18.1 pada komputer lokal.
+
+### Guarded areas
+
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role, saldo, transaction/transfer logic, import/export, backup/restore contract, Apps Script resource ID, VAPID value, secret, dependency, atau deployment configuration. Resource Google nyata masih harus diprovision operator dan tidak diarang dari source.
+
+### Langkah operator setelah merge
+
+1. Konfigurasikan Apps Script Properties sesuai `docs/GOOGLE_INTEGRATIONS.md`, termasuk `MIRROR_SPREADSHEET_ID`, `GOOGLE_CALENDAR_ID`, `BACKUP_FOLDER_ID`, `JOBS_ENDPOINT_URL`, dan secret yang sesuai.
+2. Deploy Web App Apps Script, sinkronkan grup bridge Vercel Development/Production secara terjaga, lalu redeploy Production bila environment berubah.
+3. Jalankan `installScheduledTrigger()` sekali. Target health: `jobsConfigured=true`, `triggerReady=true`, dan tepat satu trigger.
+4. Buka `/pengaturan/integrasi`; verifikasi Sheets/Calendar tidak `Siap` sebelum resource dan scheduler benar-benar ready. Setelah ready, jalankan sinkronisasi dan pastikan queue mencapai `completed` tanpa `failed/dead_letter`.
+5. Jalankan ulang full quality gate lokal. Dua browser failure dan satu lint warning existing harus ditangani melalui plan terpisah sebelum status release dinyatakan hijau.
+
+---
+
+## Previous task - Centralized Settings environment
 
 **Tanggal:** 2026-08-08  
 **Source:** `saldo-bersama-clean(20260808-025809).zip`  
