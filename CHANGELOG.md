@@ -4,6 +4,10 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Menutup provisioning Google bridge end-to-end pada baseline `063919`: signed `integration.health` melaporkan Mirror/Calendar/Backup/Jobs/Trigger siap, Vercel Development/Production memakai grup bridge lengkap, Production `/api/jobs` lolos HMAC dengan HTTP 200, dan satu trigger scheduler aktif.
+- Memperbaiki `BACKUP_NAME_INVALID` setelah schema v6 dengan mengganti validator Drive backup yang hardcode `v3` menjadi nama canonical versioned `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz`; regression tetap menolak nama malformed/conflict dan description mengikuti schema aktual.
+- Mendokumentasikan semantics deployment Apps Script yang tervalidasi: `clasp push` memperbarui source tetapi tidak otomatis mempromosikan Web App versioned; deployment existing harus di-update ke **New version** tanpa mengganti URL `/exec`.
+- Mencatat quality gate release-green terbaru: source 346 file, lint 0/0, frontend 84/84, backend/business/security/tooling 146/146, build/budget PASS, dan browser 9/9 PASS; verifikasi isi resource Google nyata tetap dipisahkan dari readiness health.
 - Menstabilkan browser geometry regression dengan menunggu entrance animation flyout desktop dan drawer Aktivitas anggota selesai sebelum membaca `getBoundingClientRect()`, sehingga posisi final 10px tidak dibandingkan ketika elemen masih berada pada transform transisi.
 - Memperbaiki false failure browser 404 mobile dengan mengukur inner content box setelah top/bottom padding dan safe-area canonical; test tidak lagi menganggap `--mobile-navigation-content-gap` yang disengaja sebagai gap vertikal cacat.
 - Menutup stale browser assertions setelah audit owner journey: Rekonsiliasi kini diuji melalui struktur tujuan/saldo/selisih runtime, dan flyout Perencanaan diuji melalui href canonical sehingga tidak gagal hanya karena copy navigasi berbeda dari heading halaman.

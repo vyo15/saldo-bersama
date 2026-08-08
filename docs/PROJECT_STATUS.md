@@ -1,21 +1,23 @@
 # Project Status
 
-## Quality gate alignment dan Google provisioning handoff 2026-08-08
+## Release-green baseline dan Google bridge terprovision 2026-08-08
 
-- **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-045654).zip`, root `saldo-bersama/`, schema tetap v6. Stack aktual tetap React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso; Apps Script tetap integration bridge.
-- Full quality gate operator terbaru sebelum follow-up ini: `validate:source` PASS 346 file, frontend 84/84 PASS, backend/business/security/tooling 145/145 PASS, Vite build PASS, build budget PASS, ESLint **0 error/0 warning**, browser **8/9 PASS**. Journey member PASS.
-- Route 404 mobile yang sebelumnya gagal sudah PASS setelah assertion memakai inner content box computed style. Failure owner terbaru berada pada geometri flyout Perencanaan: CSS canonical memakai `--desktop-dock-flyout-gap: 10px`, tetapi `dock-flyout-in` selama 180ms menggeser flyout dari `translateX(-.35rem)` menuju posisi final. Browser test sebelumnya membaca `getBoundingClientRect()` segera setelah elemen terlihat, sehingga menangkap gap transisi sekitar 6.2px sebelum animasi selesai.
-- Browser regression sekarang menunggu Web Animations API pada flyout selesai sebelum mengukur gap/center alignment. Audit timing menemukan pola yang sama pada drawer Aktivitas anggota (`member-activity-in`), sehingga geometry drawer juga menunggu animasi selesai sebelum assertion. Runtime CSS dan komponen tidak diubah.
-- Audit assertion owner setelah titik flyout dilakukan sampai akhir journey. Setelah motion settle, kontrak href Perencanaan/Data keuangan, Escape/focus restoration, click-outside, drawer kanan, dashboard account selector, statistik, anggaran, tagihan, target, dan pergantian transaksi per rekening konsisten dengan source aktual.
-- Perbaikan sebelumnya tetap dipertahankan: Rekonsiliasi diuji melalui struktur runtime, flyout Perencanaan memakai href canonical, Aktivitas anggota menunggu ledger asynchronous, capability rekening personal pasangan memisahkan read-only dari write action, Pembayaran keluar memilih rekening fixture BNI secara eksplisit, periode fixture deterministik `2026-08`, dan fixture `transactions.list` menghormati filter `period`/`account_id`.
-- Boundary dokumentasi Google tetap: Spreadsheet ID, Calendar ID, Drive folder ID, dan `JOBS_ENDPOINT_URL` hanya berada di Apps Script Properties; dua shared secret berada di Apps Script Properties **dan** Vercel dengan nilai yang sama.
-- Runtime operator terakhir masih melaporkan `Google bridge: not configured`; provisioning resource Google, Apps Script Web App, shared secret, dan satu trigger `runScheduledJobs` tetap langkah operasional terpisah.
+- **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-063919).zip`, root `saldo-bersama/`, schema tetap v6. Stack aktual: React 19 + Vite 7 + Firebase Google session + Vercel Functions + Turso sebagai source of truth; Apps Script tetap integration bridge untuk Sheets/Calendar/Drive dan scheduler.
+- Full quality gate operator pada Node 24.18.1: `validate:source` PASS **346 file**, `npm run lint` PASS **0 error/0 warning**, frontend **84/84 PASS**, backend/business/security/tooling **146/146 PASS**, Vite build PASS, build budget PASS (**main JS 101012 B gzip; global CSS 17940 B gzip; 53 asset**), dan browser **9/9 PASS** untuk owner/member/breakpoint/smoke/CDP.
+- `npm run zip` menghasilkan clean archive canonical 346 file. `git ls-files` juga membuktikan `.env.local`, `.clasp.json`, shared-secret temporary files, resource-ID temporary files, dan Web App URL temporary file tidak dilacak Git.
+- Google bridge sudah terkonfigurasi pada Development dan Production. Signed `integration.health` mengembalikan `Mirror/Calendar/Backup/Jobs/Trigger: SIAP`; startup lokal melaporkan Turso, Web Push, Google bridge, dan scheduled jobs terkonfigurasi; `integrations.status` merespons 200.
+- Production `/api/jobs` sudah lolos HMAC scheduler dan mengembalikan HTTP 200. Satu trigger `runScheduledJobs` aktif sesuai kontrak health. Jangan membuat trigger kedua.
+- Bug operasional `BACKUP_NAME_INVALID` terverifikasi berasal dari validator Apps Script yang masih hardcode `v3`, sementara runtime schema v6 membuat `saldo-bersama-backup-v6-...json.gz`. `DriveBackupService.gs` sekarang menerima nama canonical versioned `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz`, tetap menolak nama malformed/path-like, dan menyimpan description mengikuti schema version aktual. Regression test terkait lulus dalam suite backend 146/146.
+- Workflow deployment Apps Script yang tervalidasi: `clasp push` hanya memperbarui source project; Web App `/exec` existing harus di-update melalui **Manage deployments -> Edit -> New version -> Deploy** agar kode baru benar-benar dipakai tanpa mengganti URL.
+- Boundary konfigurasi tetap: `MIRROR_SPREADSHEET_ID`, `GOOGLE_CALENDAR_ID`, `BACKUP_FOLDER_ID`, dan `JOBS_ENDPOINT_URL` hanya di Apps Script Properties; `GOOGLE_BRIDGE_SHARED_SECRET` dan `JOBS_SHARED_SECRET` berada di Apps Script Properties dan Vercel dengan nilai yang sama. Turso/Firebase private credential tidak masuk Apps Script.
 
-### Quality gate follow-up
+### Status release dan verifikasi operasional tersisa
 
-- Follow-up ini tidak mengubah runtime production, authorization, saldo, transaksi, schema, API contract, environment, Apps Script contract, atau dependency. Perubahan hanya pada browser regression dan dokumentasi status/QA.
-- Browser 9/9 belum diklaim sampai operator menjalankan ulang `npm run test:browser` pada Node 24.18.1.
-- Target release tetap lint 0 error/0 warning dan browser 9/9 PASS. Jangan nyatakan Google Sheets/Calendar sinkron sebelum health resource nyata, trigger, dan queue completion diverifikasi.
+- Source/code quality gate **release-green**. Tidak ada alasan untuk mengubah saldo, transaksi, transfer, schema v6, auth/role, Turso, atau deployment logic hanya untuk menutup provisioning Google.
+- Health `SIAP` membuktikan konfigurasi bridge/resource property/scheduler, tetapi **belum menjadi bukti isi resource**. Sebelum menutup verifikasi operasional, inspeksi Spreadsheet mirror nyata (tab + data shared-only), Calendar nyata (recurring shared saja, tanpa duplikasi), Drive backup nyata (file canonical v6/versi schema aktual), serta queue Integrasi (`completed` tanpa `failed/dead_letter`).
+- Sampai inspeksi resource nyata tersebut dicatat, dokumentasi tidak boleh mengklaim isi Sheets/Calendar/Drive sudah tervalidasi end-to-end.
+
+> **Catatan histori:** seluruh section setelah blok current status ini adalah checkpoint pekerjaan sebelumnya. Angka test, baseline ZIP, dan status provisioning di section historis dipertahankan untuk audit trail dan tidak menggantikan status current di atas.
 
 ## Google integration readiness dan observability 2026-08-08
 

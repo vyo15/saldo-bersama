@@ -45,7 +45,7 @@ Jika health check gagal, UI harus menampilkan belum siap/gangguan dan tidak menj
 - Mirror tidak memuat Firebase UID, token, push endpoint/key, idempotency response, raw audit payload, atau secret.
 - Formula-like input dinetralkan sebelum ditulis.
 
-Tab publik: Ringkasan, Transaksi, Rekening, Anggaran, Kantong, Tagihan, Target, Rekonsiliasi.
+Tab mirror canonical: Ringkasan, Transaksi, Rekening, Kategori, Anggaran, Kantong, Tagihan, Target, Rekonsiliasi.
 
 ## Google Calendar
 
@@ -56,7 +56,7 @@ Tab publik: Ringkasan, Transaksi, Rekening, Anggaran, Kantong, Tagihan, Target, 
 
 ## Google Drive backup
 
-Backup teknis berupa JSON terkompresi dengan manifest, schema version, row counts, dan checksum. Nama unik dan tidak overwrite. Excel tidak digunakan untuk restore.
+Backup teknis berupa JSON terkompresi dengan manifest, schema version, row counts, dan checksum. Nama canonical adalah `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz`; validator bridge harus version-aware dan tidak boleh hardcode versi schema lama. Nama unik tidak overwrite; nama sama dengan checksum/backup ID berbeda ditolak. Excel tidak digunakan untuk restore.
 
 ## Script Properties
 
@@ -83,3 +83,24 @@ Mirror bersifat **shared-only**. Data dengan scope `personal`, rekening personal
 ## Deployment Web App
 
 Gunakan **Execute as: user deploying** dan **Who has access: anyone/anonymous** untuk panggilan server-to-server dari Vercel. Akses anonim tidak memberi akses finansial langsung: bridge hanya menerima action allowlist yang memiliki HMAC, timestamp, dan nonce valid.
+
+Source canonical tetap berada di repository `apps-script/`. Untuk sinkronisasi via `clasp`, gunakan working directory di luar repository agar `.clasp.json` tidak pernah masuk Git/clean ZIP. Setelah `clasp push`, verifikasi file tracked hanya enam `.gs` canonical dan `appsscript.json`.
+
+**Penting:** `clasp push` hanya memperbarui source project Apps Script. Web App yang sudah dideploy memakai versi deployment tersendiri. Setelah perubahan source bridge:
+
+1. Buka **Deploy -> Manage deployments**.
+2. Pilih deployment Web App existing yang URL `/exec`-nya sama dengan `GOOGLE_BRIDGE_WEB_APP_URL`.
+3. **Edit -> Version: New version -> Deploy**.
+4. Pertahankan URL `/exec` existing; bila URL berubah, Vercel harus diperbarui dan redeploy Production dilakukan sebelum scheduler diaktifkan.
+5. Uji signed `integration.health`, lalu uji `/api/jobs` hingga HTTP 200 sebelum memasang/menjaga trigger scheduler.
+
+Jangan menganggap source yang sudah ter-push otomatis aktif pada deployment `/exec`.
+
+## Verifikasi resource nyata
+
+Readiness health adalah guard konfigurasi, bukan bukti isi resource. Sebelum menyatakan integrasi selesai end-to-end:
+
+- Spreadsheet: pastikan seluruh tab canonical terbentuk, data bersifat shared-only/read-only mirror, dan queue mencapai `completed` tanpa `failed`/`dead_letter`.
+- Calendar: pastikan hanya recurring `shared`, tidak ada event personal, dan stable entity ID tidak menghasilkan duplikasi.
+- Drive: pastikan file backup canonical versioned benar-benar ada dan backup run server berstatus verified.
+- Scheduler: pastikan tepat satu trigger `runScheduledJobs` aktif dan panggilan Production `/api/jobs` lolos HMAC.

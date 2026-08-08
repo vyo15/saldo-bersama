@@ -4,10 +4,15 @@ function backupFolder_() {
   return DriveApp.getFolderById(id);
 }
 
-function safeBackupName_(name) {
+function backupNameDetails_(name) {
   var clean = cleanText_(name, 160).replace(/[^a-zA-Z0-9._-]/g, "-");
-  if (!/^saldo-bersama-backup-v3-.*\.json\.gz$/.test(clean)) throw sbError_("BACKUP_NAME_INVALID", "Nama backup tidak valid.", 400);
-  return clean;
+  var match = clean.match(/^saldo-bersama-backup-v([1-9][0-9]*)-(\d{8}T\d{6}Z)-([a-fA-F0-9]{8})\.json\.gz$/);
+  if (!match) throw sbError_("BACKUP_NAME_INVALID", "Nama backup tidak valid.", 400);
+  return { fileName: clean, schemaVersion: Number(match[1]) };
+}
+
+function safeBackupName_(name) {
+  return backupNameDetails_(name).fileName;
 }
 
 function fileInBackupFolder_(file, folder) {
@@ -18,7 +23,8 @@ function fileInBackupFolder_(file, folder) {
 
 function storeBackup_(payload) {
   var folder = backupFolder_();
-  var fileName = safeBackupName_(payload.fileName);
+  var backupName = backupNameDetails_(payload.fileName);
+  var fileName = backupName.fileName;
   var bytes;
   try { bytes = Utilities.base64Decode(String(payload.contentBase64 || "")); } catch (ignored) { throw sbError_("BACKUP_CONTENT_INVALID", "Isi backup tidak valid.", 400); }
   if (!bytes.length || bytes.length > 20 * 1024 * 1024) throw sbError_("BACKUP_SIZE_INVALID", "Ukuran backup tidak valid.", 413);
@@ -34,7 +40,7 @@ function storeBackup_(payload) {
     throw sbError_("BACKUP_NAME_CONFLICT", "Nama backup sudah dipakai oleh isi yang berbeda.", 409);
   }
   var file = folder.createFile(Utilities.newBlob(bytes, "application/gzip", fileName));
-  file.setDescription("Saldo Bersama backup v3\nChecksum: " + expectedChecksum + "\nBackup ID: " + expectedBackupId);
+  file.setDescription("Saldo Bersama backup v" + backupName.schemaVersion + "\nChecksum: " + expectedChecksum + "\nBackup ID: " + expectedBackupId);
   return { fileId: file.getId(), fileName: file.getName(), size: file.getSize(), createdAt: new Date().toISOString(), reused: false };
 }
 

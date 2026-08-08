@@ -63,13 +63,27 @@ test("signature bridge menolak replay dan formula mirror dinetralkan", async () 
   assert.equal(context.safeCell_("=SUM(A1:A2)"), "'=SUM(A1:A2)");
 });
 
+test("Drive backup menerima nama versioned canonical tanpa hardcode schema lama", async () => {
+  const context = await loadBridge();
+  const v3 = "saldo-bersama-backup-v3-20260808T061235Z-deadbeef.json.gz";
+  const v6 = "saldo-bersama-backup-v6-20260808T061235Z-cafebabe.json.gz";
+
+  assert.equal(context.safeBackupName_(v3), v3);
+  assert.equal(context.safeBackupName_(v6), v6);
+  assert.equal(context.backupNameDetails_(v6).schemaVersion, 6);
+  assert.throws(() => context.safeBackupName_("saldo-bersama-backup-v6-anything.json.gz"), (error) => error.code === "BACKUP_NAME_INVALID");
+  assert.throws(() => context.safeBackupName_("../saldo-bersama-backup-v6-20260808T061235Z-cafebabe.json.gz"), (error) => error.code === "BACKUP_NAME_INVALID");
+});
+
 test("Drive backup memakai nama deterministik, checksum, ukuran maksimal, dan reuse idempotent", async () => {
   const source = await readFile(new URL("../../apps-script/DriveBackupService.gs", import.meta.url), "utf8");
   assert.match(source, /getFilesByName\(fileName\)/);
+  assert.match(source, /Saldo Bersama backup v" \+ backupName\.schemaVersion/);
   assert.match(source, /Checksum:/);
   assert.match(source, /Backup ID:/);
   assert.match(source, /20 \* 1024 \* 1024/);
   assert.match(source, /BACKUP_NAME_CONFLICT/);
+  assert.doesNotMatch(source, /saldo-bersama-backup-v3-\.\*/);
 });
 
 test("status integrasi membedakan queue, hasil sukses, dan kesiapan resource Google nyata", async () => {

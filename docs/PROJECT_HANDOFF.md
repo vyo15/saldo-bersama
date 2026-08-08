@@ -1,56 +1,52 @@
-## Current task - Final browser gate sebelum provisioning Google
+## Current task - Verifikasi operasional final setelah Google bridge provisioning
 
-**Tanggal:** 2026-08-08  
-**Source baseline:** `saldo-bersama-clean(20260808-045654).zip`  
+**Tanggal:** 2026-08-08
+**Source baseline:** `saldo-bersama-clean(20260808-063919).zip`
+**Root project:** `saldo-bersama/`
 **Schema:** tetap version 6
 
 ### Kondisi operator terbaru
 
-- `npm run validate:source`: 346 file PASS.
-- `npm run lint`: PASS, 0 error dan 0 warning.
-- `npm run test`: frontend 84/84 PASS; backend/business/security/tooling 145/145 PASS.
-- `npm run build` dan `npm run build:budget`: PASS; main JS 101012 B gzip dan global CSS 17940 B gzip.
-- `npm run test:browser`: 8/9 PASS. Journey member PASS. Route 404 yang sebelumnya gagal sudah PASS. Satu failure owner terbaru berada pada geometri flyout Perencanaan.
-- `npm run zip`: PASS, 346 file canonical.
+- `npm run validate:source`: **346 file PASS**; clean ZIP canonical berhasil dibuat.
+- `npm run lint`: **PASS, 0 error/0 warning**; syntax Node **96 file PASS** dan Apps Script **6 file/2 load order PASS**.
+- `npm run test`: frontend **84/84 PASS**; backend/business/security/tooling **146/146 PASS**.
+- `npm run build`: PASS. `npm run build:budget`: PASS, main JS **101012 B gzip**, global CSS **17940 B gzip**, **53 asset** diperiksa.
+- `npm run test:browser`: **9/9 PASS** untuk owner, member, breakpoint 820/821/940/941, private-route smoke, resolver, dan CDP helper.
+- Git hygiene: hanya perubahan source yang disengaja yang terlihat; `.env.local`, `.clasp.json`, shared-secret/resource-ID/Web-App-URL temporary files tidak dilacak Git.
 
-### Root cause yang diverifikasi
+### Google bridge / scheduler
 
-1. CSS canonical menetapkan `--desktop-dock-flyout-gap: 10px` dan posisi final flyout memang berada sekitar 10px dari rail.
-2. `dock-flyout-in` berjalan 180ms dari `translate(-.35rem, -50%)` menuju `translate(0, -50%)`.
-3. Browser test lama hanya menunggu flyout terlihat. `visibleExpression()` menjadi true saat animation masih berjalan, lalu `getBoundingClientRect()` menangkap posisi transisi. Log operator menunjukkan gap sekitar `6.2px`, tepat konsisten dengan elemen yang belum mencapai posisi final.
-4. Pola race yang sama ada pada drawer Aktivitas anggota karena `member-activity-in` juga mengubah `transform` saat masuk. Journey terakhir berhenti sebelum assertion drawer, jadi temuan ini diperbaiki proaktif pada patch yang sama.
-5. Runtime CSS/navigation tidak perlu diubah. Mengubah gap CSS untuk membuat test yang membaca frame transisi lulus justru akan merusak posisi final canonical.
+- Source Apps Script canonical tetap 6 file: `Code.gs`, `Security.gs`, `MirrorService.gs`, `CalendarService.gs`, `DriveBackupService.gs`, `Scheduler.gs`, plus `appsscript.json`. Apps Script bukan financial database atau business-logic authority.
+- Signed `integration.health`: **Bridge OK; Mirror SIAP; Calendar SIAP; Backup SIAP; Jobs SIAP; Trigger SIAP**.
+- Vercel Development dan Production memiliki grup bridge lengkap. Production `/api/jobs` sudah melewati signature guard dan mengembalikan **HTTP 200 / ok=true**.
+- Satu trigger `runScheduledJobs` aktif. `installScheduledTrigger()` bersifat idempotent terhadap trigger function ini karena menghapus trigger lama sebelum membuat satu trigger baru; jangan membuat trigger manual tambahan.
+- Bug `BACKUP_NAME_INVALID` sudah ditutup: Apps Script tidak lagi hardcode backup `v3`; nama canonical versioned menerima schema aktif, termasuk v6, dengan timestamp UTC compact dan suffix 8-hex.
+- Setelah perubahan Apps Script, `clasp push` **belum cukup** untuk Web App versioned. Update deployment existing yang URL `/exec`-nya dipakai Vercel melalui **Manage deployments -> Edit -> New version -> Deploy**.
 
-### Implementasi follow-up
+### Yang masih harus diverifikasi secara operasional
 
-1. Browser test menunggu `Element.getAnimations()` tidak lagi memiliki state `running`/`pending` sebelum mengukur geometry flyout.
-2. Drawer Aktivitas anggota memakai guard motion-settle yang sama sebelum assertion width/right.
-3. Assertion 404, Rekonsiliasi, Pembayaran keluar, capability rekening personal pasangan, dan filter fixture sebelumnya tetap dipertahankan.
-4. Assertion owner setelah flyout diaudit sampai akhir: focus restoration, click-outside, child navigation, drawer aktivitas, dashboard account selector, statistik, anggaran, tagihan, target, dan pergantian transaksi per rekening tidak menunjukkan stale selector/copy lain pada source ini.
+1. Buka `/pengaturan/integrasi`; pastikan Sheets/Calendar/Drive menunjukkan readiness sesuai signed health dan queue tidak memiliki `failed`/`dead_letter`.
+2. Buka Spreadsheet mirror baru; pastikan tab canonical muncul dan data hanya mirror shared/read-only. Jangan gunakan spreadsheet database legacy sebagai target mirror.
+3. Buka Calendar khusus Saldo Bersama; pastikan hanya recurring `shared`, stable entity ID mencegah duplikasi, dan tidak ada transaksi personal. Kalender kosong sah bila memang tidak ada recurring shared aktif.
+4. Buka folder Drive backup; pastikan ada backup canonical `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz` dengan hasil server yang sudah berstatus verified.
+5. Setelah satu siklus scheduler, verifikasi queue mencapai `completed` dan tidak berkembang menjadi `failed`/`dead_letter`.
 
-### Verifikasi patch
+### Keputusan
 
-- `node --check test/browser/authenticated-app.test.mjs`: PASS.
-- Source/runtime production tidak diubah.
-- Authenticated browser 9/9 belum diklaim sebelum operator menjalankan ulang pada Node 24.18.1.
-
-### Verifikasi yang masih wajib di komputer project
-
-1. Jalankan `npm run test:browser`; target **9/9 PASS**.
-2. Jika 9/9, konfirmasi final gate sekali dengan `npm run validate:source && npm run lint && npm run test && npm run build && npm run build:budget && npm run test:browser`.
-3. Setelah semua hijau, lanjut provisioning Google bridge sesuai `docs/GOOGLE_INTEGRATIONS.md`.
-4. Jangan kirim shared secret, resource ID privat, VAPID private key, token Turso, atau `.env.local` ke chat/repository.
+- **Code/source release-green.** Jangan refactor runtime lagi tanpa temuan baru yang direproduksi dari source/operator.
+- Provisioning Google dinyatakan **configured dan scheduler-ready**, tetapi verifikasi isi resource nyata tetap outstanding sampai langkah operasional di atas dicatat.
+- Jangan mengirim shared secret, Script Properties value, resource ID, token, `.env.local`, `.clasp.json`, atau private VAPID/Turso credential ke chat/repository.
 
 ### Guarded areas
 
-Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role, saldo, transaction/transfer/reconciliation business logic, import/export, backup/restore contract, Apps Script action contract, resource ID, VAPID value, dependency, CSS runtime, navigation runtime, atau deployment configuration dalam follow-up ini.
+Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role, saldo, transaction/transfer/reconciliation business logic, import/restore contract, resource ID, VAPID value, dependency, route, atau deployment architecture pada finalisasi dokumentasi ini.
 
 ---
 
 ## Previous task - Google integration readiness dan observability
 
-**Tanggal:** 2026-08-08  
-**Source baseline:** `saldo-bersama-clean(20260808-035858).zip`  
+**Tanggal:** 2026-08-08
+**Source baseline:** `saldo-bersama-clean(20260808-035858).zip`
 **Schema:** tetap version 6
 
 ### Implementasi
@@ -94,8 +90,8 @@ Tidak ada perubahan schema/migration, Firebase Auth, allowlist/role, saldo, tran
 
 ## Previous task - Centralized Settings environment
 
-**Tanggal:** 2026-08-08  
-**Source:** `saldo-bersama-clean(20260808-025809).zip`  
+**Tanggal:** 2026-08-08
+**Source:** `saldo-bersama-clean(20260808-025809).zip`
 **Schema:** tetap version 6
 
 ### Implementasi
@@ -160,8 +156,8 @@ Schema, migration, auth/allowlist/role, saldo, transaksi, transfer, audit, backu
 
 ## Current task — Lint, build budget, dan browser regression
 
-**Tanggal:** 2026-08-06  
-**Source:** `saldo-bersama-clean(20260806-045332).zip`  
+**Tanggal:** 2026-08-06
+**Source:** `saldo-bersama-clean(20260806-045332).zip`
 **Schema:** tetap version 6
 
 ### Implementasi
