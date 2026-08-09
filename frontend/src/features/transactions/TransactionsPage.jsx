@@ -22,7 +22,7 @@ import { cancelTransaction as requestCancelTransaction, restoreTransaction as re
 import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
-import { accountDisplayLabel } from "../accounts/accountPresentation.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionTone } from "./transactionPresentation.js";
 
 const PAGE_SIZE = 100;

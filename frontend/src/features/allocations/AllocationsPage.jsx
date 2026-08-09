@@ -9,6 +9,7 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import {
@@ -22,7 +23,7 @@ import {
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { accountDisplayLabel } from "../accounts/accountPresentation.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { currentMonthBoundsInJakarta } from "../../domain/dates.js";
 import { filterByOwnership } from "../../domain/ownership.js";
 
@@ -30,6 +31,7 @@ const AllocationsPage = () => {
   const resource = useApiResource("envelopes.list");
   const { refreshOverview, invalidate, bootstrap } = useFinance();
   const { user } = useAuth();
+  const { notify } = useFeedback();
   const createMutation = useGuardedMutation();
   const moveMutation = useGuardedMutation();
   const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
@@ -64,7 +66,7 @@ const AllocationsPage = () => {
       const amount = assertPositiveRupiah(createForm.default_amount);
       await requestCreateEnvelope({ ...createForm, default_amount: amount, allocated_amount: amount }, {});
       setCreateForm((current) => ({ ...current, name: "", default_amount: "" }));
-      setMessage({ type: "success", text: "Kantong dan periode aktif berhasil dibuat." });
+      notify({ message: "Kantong dan periode aktif berhasil dibuat." });
       await refreshAfterMutation();
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
   };
@@ -80,9 +82,8 @@ const AllocationsPage = () => {
       setCloseTarget(null);
       setCloseState({ status: "idle", error: null });
       const rolloverAmount = Number(result?.rollover?.amount || 0);
-      setMessage({
-        type: "success",
-        text: rolloverAmount > 0
+      notify({
+        message: rolloverAmount > 0
           ? `Periode berhasil ditutup. Sisa Rp ${rolloverAmount.toLocaleString("id-ID")} dibawa ke periode berikutnya.`
           : "Periode kantong berhasil ditutup. Sisa alokasi kembali menjadi dana belum dialokasikan.",
       });
@@ -109,7 +110,7 @@ const AllocationsPage = () => {
         to_row_version: to.row_version,
       }, {});
       setMove({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
-      setMessage({ type: "success", text: "Alokasi berhasil dipindahkan tanpa mengubah total saldo." });
+      notify({ message: "Alokasi berhasil dipindahkan tanpa mengubah total saldo." });
       await refreshAfterMutation();
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
   };
@@ -125,7 +126,7 @@ const AllocationsPage = () => {
       }, { rowVersion: archiveTarget.rule_row_version });
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Aturan kantong diarsipkan. Riwayat periode dan mutasi tetap tersimpan." });
+      notify({ message: "Aturan kantong diarsipkan. Riwayat periode dan mutasi tetap tersimpan." });
       await refreshAfterMutation();
     } catch (error) { setArchiveState({ status: "error", error }); }
   };
@@ -141,7 +142,7 @@ const AllocationsPage = () => {
       }, { rowVersion: restoreTarget.row_version });
       setRestoreTarget(null);
       setRestoreState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Aturan kantong berhasil dipulihkan." });
+      notify({ message: "Aturan kantong berhasil dipulihkan." });
       await refreshAfterMutation();
     } catch (error) { setRestoreState({ status: "error", error }); }
   };
@@ -159,7 +160,7 @@ const AllocationsPage = () => {
       }, { rowVersion: reverseTarget.row_version });
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Mutasi alokasi berhasil dibatalkan tanpa menghapus riwayat audit." });
+      notify({ message: "Mutasi alokasi berhasil dibatalkan tanpa menghapus riwayat audit." });
       await refreshAfterMutation();
     } catch (error) { setReverseState({ status: "error", error }); }
   };

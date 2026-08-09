@@ -59,7 +59,7 @@ test("outbox membatasi claim, merebut kembali worker macet, dan mengelompokkan r
 test("push notification diklaim atomik sebelum network untuk mencegah kirim ganda", async () => {
   const jobs = await source("api/jobs.js");
   assert.match(jobs, /status='processing'[\s\S]*notification_id=\?[\s\S]*status IN \('pending','failed'\)/);
-  assert.match(jobs, /claim\.rowsAffected !== 1/);
+  assert.match(jobs, /return claim\.rowsAffected === 1/);
   assert.match(jobs, /status='processing' AND last_attempt_at<\?/);
   assert.match(jobs, /locked_by=\?/);
   assert.match(jobs, /notification_id=\? AND status='processing' AND locked_by=\?/);

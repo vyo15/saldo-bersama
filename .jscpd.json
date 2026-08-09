@@ -1,0 +1,16 @@
+{
+  "mode": "strict",
+  "minLines": 6,
+  "minTokens": 50,
+  "reporters": [
+    "console"
+  ],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/*.module.css",
+    "database/migrations/**"
+  ]
+}

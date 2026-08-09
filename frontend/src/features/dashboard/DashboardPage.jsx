@@ -2,21 +2,21 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import ErrorState from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { TRANSACTION_LABELS } from "../transactions/transactionPresentation.js";
-import { accountDisplayLabel } from "../accounts/accountPresentation.js";
+import { TRANSACTION_LABELS } from "../../shared/presentation/transaction.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import DesktopFinanceDashboard from "./components/DesktopFinanceDashboard.jsx";
 import MobileFinanceDashboard from "./components/MobileFinanceDashboard.jsx";
 import { absoluteAmount } from "./dashboardPresentation.js";
 
-const TransactionForm = lazy(() => import("../transactions/TransactionForm.jsx"));
 const MobileDashboardFilters = lazy(() => import("./components/MobileDashboardFilters.jsx"));
 const MobileTransactionDetail = lazy(() => import("./components/MobileTransactionDetail.jsx"));
 
 const DashboardPage = () => {
   const { overview, bootstrap, status, error, refreshOverview, refreshAll } = useFinance();
+  const { openTransactionComposer } = useTransactionComposer();
   const { user } = useAuth();
-  const [formOpen, setFormOpen] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [accountFilter, setAccountFilter] = useState("all");
@@ -169,7 +169,7 @@ const DashboardPage = () => {
         balanceVisible={balanceVisible}
         onToggleBalance={() => setBalanceVisible((current) => !current)}
         onRefresh={refreshOverview}
-        onOpenTransaction={() => setFormOpen(true)}
+        onOpenTransaction={() => openTransactionComposer()}
         onOpenFilters={() => setMobileFiltersOpen(true)}
         onOpenTransactionDetail={openMobileTransactionDetail}
       />
@@ -194,7 +194,7 @@ const DashboardPage = () => {
         balanceVisible={balanceVisible}
         onToggleBalance={() => setBalanceVisible((current) => !current)}
         onRefresh={refreshOverview}
-        onOpenTransaction={() => setFormOpen(true)}
+        onOpenTransaction={() => openTransactionComposer()}
       />
       {mobileFiltersOpen ? (
         <Suspense fallback={null}>
@@ -231,14 +231,9 @@ const DashboardPage = () => {
             balanceVisible={balanceVisible}
             onOpenTransaction={() => {
               setMobileTransactionDetailOpen(false);
-              setFormOpen(true);
+              openTransactionComposer();
             }}
           />
-        </Suspense>
-      ) : null}
-      {formOpen ? (
-        <Suspense fallback={null}>
-          <TransactionForm open onClose={() => setFormOpen(false)} />
         </Suspense>
       ) : null}
     </div>

@@ -102,27 +102,39 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /location\.state\?\.period/);
 });
 
-test("login memakai brand resmi, layout logo-first, LinkedIn aman, dan auth provider canonical", async () => {
-  const [login, pages, auth] = await Promise.all([
+test("login memakai artwork approved penuh, onboarding mobile, animasi uang, feedback tombol, LinkedIn aman, dan auth provider canonical", async () => {
+  const [login, pages, auth, desktopLight, desktopDark, saving, budget, mobileLogin] = await Promise.all([
     read("src/features/auth/LoginPage.jsx"),
     read("src/styles/pages.css"),
     read("src/services/auth/googleFirebaseAuth.js"),
+    readFile(new URL("../public/login/desktop-light.webp", import.meta.url)),
+    readFile(new URL("../public/login/desktop-dark.webp", import.meta.url)),
+    readFile(new URL("../public/login/mobile-onboarding-saving.webp", import.meta.url)),
+    readFile(new URL("../public/login/mobile-onboarding-budget.webp", import.meta.url)),
+    readFile(new URL("../public/login/mobile-login.webp", import.meta.url)),
   ]);
 
-  assert.match(login, /<Brand \/>/);
+  assert.match(login, /MOBILE_LOGIN_QUERY = "\(max-width: 820px\)"/);
+  assert.match(login, /MOBILE_SLIDE_COUNT = 3/);
+  assert.match(login, /mobile-onboarding-saving\.webp/);
+  assert.match(login, /mobile-onboarding-budget\.webp/);
+  assert.match(login, /mobile-login\.webp/);
+  assert.match(login, /desktop-light\.webp/);
+  assert.match(login, /desktop-dark\.webp/);
   assert.match(login, /MONEY_NOTES/);
-  assert.match(login, /aria-hidden="true"/);
-  assert.match(login, /className="sr-only">Saldo Bersama<\/h1>/);
+  assert.match(login, /MoneyRain/);
+  assert.match(login, /aria-roledescription="carousel"/);
+  assert.match(login, /ThemeToggle className="login-mobile-theme-toggle"/);
   assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
   assert.match(login, /rel="noopener noreferrer"/);
-  assert.doesNotMatch(login, /Selamat datang!/);
-  assert.doesNotMatch(login, /login-trust-strip|login-card__privacy|Akun yang diizinkan/);
   assert.equal((login.match(/className="google-login-button"/g) || []).length, 1);
   assert.match(auth, /identity\.renderButton\(element/);
-  assert.match(pages, /\.google-login-button \{[\s\S]*width:\s*min\(100%, 21\.25rem\);/);
-  assert.match(pages, /\.login-creator a \{[\s\S]*min-height:\s*var\(--control-height-md\);[\s\S]*display:\s*inline-flex;/);
+  assert.match(pages, /\.login-desktop-stage,[\s\S]*height:\s*100dvh;/);
+  assert.match(pages, /\.login-desktop-artwork,[\s\S]*object-fit:\s*cover;/);
+  assert.match(pages, /\.login-mobile-next:active[\s\S]*transform:\s*scale\(\.975\);/);
   assert.match(pages, /@keyframes login-money-fall/);
   assert.match(pages, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
+  for (const asset of [desktopLight, desktopDark, saving, budget, mobileLogin]) assert.ok(asset.length > 20_000);
 });
 
 test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", async () => {
@@ -201,8 +213,9 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
     read("src/styles/responsive.css"),
   ]);
 
-  assert.equal((page.match(/<TransactionForm/g) || []).length, 1, "Dashboard hanya boleh memiliki satu form transaksi shared.");
-  assert.match(page, /const TransactionForm = lazy\(\(\) => import\("\.\.\/transactions\/TransactionForm\.jsx"\)\)/, "Form transaksi dashboard harus dimuat hanya saat modal dibuka.");
+  assert.equal((page.match(/<TransactionForm/g) || []).length, 0, "Dashboard tidak boleh memiliki implementasi form transaksi sendiri.");
+  assert.match(page, /useTransactionComposer/, "Dashboard harus membuka composer transaksi milik application context.");
+  assert.doesNotMatch(page, /transactions\/TransactionForm\.jsx/, "Dashboard tidak boleh mengimpor implementation detail TransactionForm.");
   assert.match(page, /const MobileDashboardFilters = lazy\(\(\) => import\("\.\/components\/MobileDashboardFilters\.jsx"\)\)/);
   assert.match(page, /const MobileTransactionDetail = lazy\(\(\) => import\("\.\/components\/MobileTransactionDetail\.jsx"\)\)/);
   assert.match(page, /mobileFiltersOpen \? \(/);

@@ -45,123 +45,146 @@ export const previewRestore = async (db, context) => {
     ...summary
   };
 };
+const restoredDataTables = Object.freeze([
+  "notification_preferences", "accounts", "categories", "envelope_rules", "envelope_periods",
+  "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements",
+  "budgets", "goal_movements", "reconciliations", "period_closures", "idempotency_keys",
+]);
+
+const loadRestorePreview = async (db, context, payload) => {
+  if (payload.confirmation !== "RESTORE SALDO BERSAMA") throw appError("CONFIRMATION_REQUIRED", "Konfirmasi restore tidak sesuai.", 400);
+  const preview = await db.one("SELECT * FROM restore_previews WHERE preview_id=? AND actor_id=?", [payload.previewToken, context.actor.user_id]);
+  if (!preview) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore tidak ditemukan.", 409);
+  if (preview.status === "applied" && preview.result_json) return { preview, appliedResult: JSON.parse(preview.result_json) };
+  if (preview.expires_at <= nowIso()) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore sudah kedaluwarsa.", 409);
+  return { preview, appliedResult: null };
+};
+
+const loadRestoreIdentityState = async (db, context) => {
+  const currentUsers = await db.all("SELECT user_id,email,firebase_uid,role,status,row_version FROM users");
+  return {
+    currentUsers,
+    currentByEmail: new Map(currentUsers.map((user) => [String(user.email || "").toLowerCase(), user])),
+    allowedRoleByEmail: new Map((context.allowedUsers || []).map((user) => [String(user.email || "").toLowerCase(), user.role])),
+  };
+};
+
+const assertRestoreIdentityCompatibility = (snapshot, currentByEmail) => {
+  for (const backupUser of snapshot.tables.users) {
+    const current = currentByEmail.get(String(backupUser.email || "").toLowerCase());
+    if (current && current.user_id !== backupUser.user_id) {
+      throw appError("RESTORE_IDENTITY_CONFLICT", "Backup memakai ID pengguna berbeda untuk email yang masih aktif. Restore dibatalkan agar referensi kepemilikan tidak tertukar.", 409, {
+        email: backupUser.email,
+      });
+    }
+  }
+};
+
+const restoreUsers = async (tx, context, snapshot, identityState) => {
+  const { currentUsers, currentByEmail, allowedRoleByEmail } = identityState;
+  for (const user of snapshot.tables.users) {
+    const email = String(user.email || "").trim().toLowerCase();
+    const current = currentByEmail.get(email);
+    const allowedRole = allowedRoleByEmail.get(email);
+    const isActor = email === String(context.actor.email || "").toLowerCase();
+    const firebaseUid = isActor ? context.signedActor.uid : current?.firebase_uid || null;
+    const role = isActor ? context.actor.role : allowedRole || current?.role || user.role;
+    const status = isActor ? "active" : allowedRole ? current?.status || user.status : "inactive";
+    const rowVersion = Math.max(Number(user.row_version || 1), Number(current?.row_version || 0)) + 1;
+    await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,name=excluded.name,role=excluded.role,status=excluded.status,row_version=excluded.row_version,updated_at=excluded.updated_at`, [user.user_id, firebaseUid, email, user.name, role, status, rowVersion, user.created_at, nowIso()]);
+  }
+
+  const restoredUserIds = new Set(snapshot.tables.users.map((user) => user.user_id));
+  for (const current of currentUsers) {
+    if (restoredUserIds.has(current.user_id) || current.user_id === context.actor.user_id) continue;
+    const allowedRole = allowedRoleByEmail.get(String(current.email || "").toLowerCase());
+    const nextStatus = allowedRole ? current.status : "inactive";
+    const nextRole = allowedRole || current.role;
+    await tx.execute("UPDATE users SET role=?,status=?,row_version=row_version+1,updated_at=? WHERE user_id=?", [nextRole, nextStatus, nowIso(), current.user_id]);
+  }
+};
+
+const restoreSnapshotTables = async (tx, snapshot) => {
+  for (const table of restoredDataTables) {
+    await insertRows(tx, table, normalizeRestoredRows(table, snapshot.tables[table] || []));
+  }
+  await insertRows(tx, "audit_log", snapshot.tables.audit_log, { mode: "INSERT OR IGNORE" });
+};
+
+const restoreIdempotencyReservation = async (tx, reservation) => {
+  if (!reservation) return;
+  await tx.execute(`INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at)
+    VALUES(?,?,?,?,?,?,?,?)
+    ON CONFLICT(actor_id,idempotency_key) DO UPDATE SET action=excluded.action,request_fingerprint=excluded.request_fingerprint,entity_id=excluded.entity_id,response_json=excluded.response_json,created_at=excluded.created_at,expires_at=excluded.expires_at`,
+  [
+    reservation.actor_id,
+    reservation.idempotency_key,
+    reservation.action,
+    reservation.request_fingerprint,
+    reservation.entity_id,
+    reservation.response_json,
+    reservation.created_at,
+    reservation.expires_at,
+  ]);
+};
+
+const restoreSystemConfig = async (tx, snapshot) => {
+  for (const row of snapshot.tables.system_config) {
+    if (row.key === "maintenance_mode" || row.key === "schema_version") continue;
+    await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [row.key, row.value, row.updated_at]);
+  }
+  await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES('schema_version',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [String(DATABASE_SCHEMA_VERSION), nowIso()]);
+};
+
+const finalizeRestore = async (tx, context, { preview, run, checksum, safety, result }) => {
+  const issues = await integrityIssues(tx);
+  if (issues.length) throw appError("RESTORE_INTEGRITY_FAILED", "Restore dibatalkan karena integrity check gagal.", 409, issues);
+  await appendAudit(tx, { ...context, action: "restore.apply" }, {
+    entityType: "restore",
+    entityId: run.backup_id,
+    next: { checksum, safetyBackupId: safety.backupId },
+  });
+  await enqueueIntegration(tx, "sheets", "rebuild", "system", "mirror", { reason: "restore", backupId: run.backup_id });
+  await enqueueIntegration(tx, "calendar", "rebuild", "system", "calendar", { reason: "restore", backupId: run.backup_id });
+  await tx.execute("UPDATE restore_previews SET status='applied',result_json=?,applied_at=?,expires_at=? WHERE preview_id=? AND status='applying'", [canonicalJson(result), nowIso(), expiry(30 * 24 * 60), preview.preview_id]);
+  await tx.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+};
+
 export const applyRestore = async (db, context) => {
   assertOwner(context.actor);
-  const p = context.payload || {};
-  if (p.confirmation !== "RESTORE SALDO BERSAMA") throw appError("CONFIRMATION_REQUIRED", "Konfirmasi restore tidak sesuai.", 400);
-  const preview = await db.one("SELECT * FROM restore_previews WHERE preview_id=? AND actor_id=?", [p.previewToken, context.actor.user_id]);
-  if (!preview) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore tidak ditemukan.", 409);
-  if (preview.status === "applied" && preview.result_json) return JSON.parse(preview.result_json);
-  if (preview.expires_at <= nowIso()) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore sudah kedaluwarsa.", 409);
+  const payload = context.payload || {};
+  const { preview, appliedResult } = await loadRestorePreview(db, context, payload);
+  if (appliedResult) return appliedResult;
+
   const activeIdempotencyReservation = context.idempotencyKey
     ? await db.one("SELECT actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND idempotency_key=?", [context.actor.user_id, context.idempotencyKey])
     : null;
-  const {
-    run,
-    snapshot,
-    checksum
-  } = await readBackupFromDrive(db, sanitizeText(p.backupFileId, 200));
-  if (run.backup_id !== preview.backup_id || checksum !== preview.checksum) throw appError("RESTORE_PREVIEW_CHANGED", "Backup berbeda dari preview yang disetujui.", 409);
-  const safety = await createTechnicalBackup(db, {
-    ...context,
-    action: "backup.safety"
-  }, {
-    type: "pre-restore",
-    audit: true
-  });
-  const currentUsers = await db.all("SELECT user_id,email,firebase_uid,role,status,row_version FROM users");
-  const currentByEmail = new Map(currentUsers.map(user => [String(user.email || "").toLowerCase(), user]));
-  const allowedRoleByEmail = new Map((context.allowedUsers || []).map(user => [String(user.email || "").toLowerCase(), user.role]));
-  for (const backupUser of snapshot.tables.users) {
-    const current = currentByEmail.get(String(backupUser.email || "").toLowerCase());
-    if (current && current.user_id !== backupUser.user_id) throw appError("RESTORE_IDENTITY_CONFLICT", "Backup memakai ID pengguna berbeda untuk email yang masih aktif. Restore dibatalkan agar referensi kepemilikan tidak tertukar.", 409, {
-      email: backupUser.email
-    });
+  const { run, snapshot, checksum } = await readBackupFromDrive(db, sanitizeText(payload.backupFileId, 200));
+  if (run.backup_id !== preview.backup_id || checksum !== preview.checksum) {
+    throw appError("RESTORE_PREVIEW_CHANGED", "Backup berbeda dari preview yang disetujui.", 409);
   }
+
+  const safety = await createTechnicalBackup(db, { ...context, action: "backup.safety" }, { type: "pre-restore", audit: true });
+  const identityState = await loadRestoreIdentityState(db, context);
+  assertRestoreIdentityCompatibility(snapshot, identityState.currentByEmail);
+
   const maintenanceLock = await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode' AND value='false'", [nowIso()]);
-  if (maintenanceLock.rowsAffected !== 1) throw appError("MAINTENANCE_MODE", "Restore lain atau proses pemulihan sedang aktif. Selesaikan integrity recovery sebelum mencoba lagi.", 409);
-  const result = {
-    restored: true,
-    backupId: run.backup_id,
-    safetyBackupId: safety.backupId,
-    checksum
-  };
+  if (maintenanceLock.rowsAffected !== 1) {
+    throw appError("MAINTENANCE_MODE", "Restore lain atau proses pemulihan sedang aktif. Selesaikan integrity recovery sebelum mencoba lagi.", 409);
+  }
+
+  const result = { restored: true, backupId: run.backup_id, safetyBackupId: safety.backupId, checksum };
   try {
-    await db.transaction(async tx => {
+    await db.transaction(async (tx) => {
       const claim = await tx.execute("UPDATE restore_previews SET status='applying' WHERE preview_id=? AND status='pending'", [preview.preview_id]);
       if (claim.rowsAffected !== 1) throw appError("RESTORE_IN_PROGRESS", "Preview restore sudah diproses oleh request lain.", 409);
-      await tx.batch(RESTORE_DELETE_ORDER.map(table => ({
-        sql: `DELETE FROM ${quoted(table)}`
-      })));
-      for (const user of snapshot.tables.users) {
-        const email = String(user.email || "").trim().toLowerCase();
-        const current = currentByEmail.get(email);
-        const allowedRole = allowedRoleByEmail.get(email);
-        const isActor = email === String(context.actor.email || "").toLowerCase();
-        const firebaseUid = isActor ? context.signedActor.uid : current?.firebase_uid || null;
-        const role = isActor ? context.actor.role : allowedRole || current?.role || user.role;
-        const status = isActor ? "active" : allowedRole ? current?.status || user.status : "inactive";
-        const rowVersion = Math.max(Number(user.row_version || 1), Number(current?.row_version || 0)) + 1;
-        await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
-          VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,name=excluded.name,role=excluded.role,status=excluded.status,row_version=excluded.row_version,updated_at=excluded.updated_at`, [user.user_id, firebaseUid, email, user.name, role, status, rowVersion, user.created_at, nowIso()]);
-      }
-      const restoredUserIds = new Set(snapshot.tables.users.map(user => user.user_id));
-      for (const current of currentUsers) {
-        if (restoredUserIds.has(current.user_id) || current.user_id === context.actor.user_id) continue;
-        const allowedRole = allowedRoleByEmail.get(String(current.email || "").toLowerCase());
-        const nextStatus = allowedRole ? current.status : "inactive";
-        const nextRole = allowedRole || current.role;
-        await tx.execute("UPDATE users SET role=?,status=?,row_version=row_version+1,updated_at=? WHERE user_id=?", [nextRole, nextStatus, nowIso(), current.user_id]);
-      }
-      for (const table of ["accounts", "categories", "envelope_rules", "envelope_periods", "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements", "budgets", "goal_movements", "reconciliations", "period_closures", "idempotency_keys"]) {
-        await insertRows(tx, table, normalizeRestoredRows(table, snapshot.tables[table]));
-      }
-      if (activeIdempotencyReservation) {
-        await tx.execute(`INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at)
-          VALUES(?,?,?,?,?,?,?,?)
-          ON CONFLICT(actor_id,idempotency_key) DO UPDATE SET action=excluded.action,request_fingerprint=excluded.request_fingerprint,entity_id=excluded.entity_id,response_json=excluded.response_json,created_at=excluded.created_at,expires_at=excluded.expires_at`,
-        [
-          activeIdempotencyReservation.actor_id,
-          activeIdempotencyReservation.idempotency_key,
-          activeIdempotencyReservation.action,
-          activeIdempotencyReservation.request_fingerprint,
-          activeIdempotencyReservation.entity_id,
-          activeIdempotencyReservation.response_json,
-          activeIdempotencyReservation.created_at,
-          activeIdempotencyReservation.expires_at,
-        ]);
-      }
-      await insertRows(tx, "audit_log", snapshot.tables.audit_log, {
-        mode: "INSERT OR IGNORE"
-      });
-      for (const row of snapshot.tables.system_config) {
-        if (row.key === "maintenance_mode" || row.key === "schema_version") continue;
-        await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [row.key, row.value, row.updated_at]);
-      }
-      await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES('schema_version',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [String(DATABASE_SCHEMA_VERSION), nowIso()]);
-      const issues = await integrityIssues(tx);
-      if (issues.length) throw appError("RESTORE_INTEGRITY_FAILED", "Restore dibatalkan karena integrity check gagal.", 409, issues);
-      await appendAudit(tx, {
-        ...context,
-        action: "restore.apply"
-      }, {
-        entityType: "restore",
-        entityId: run.backup_id,
-        next: {
-          checksum,
-          safetyBackupId: safety.backupId
-        }
-      });
-      await enqueueIntegration(tx, "sheets", "rebuild", "system", "mirror", {
-        reason: "restore",
-        backupId: run.backup_id
-      });
-      await enqueueIntegration(tx, "calendar", "rebuild", "system", "calendar", {
-        reason: "restore",
-        backupId: run.backup_id
-      });
-      await tx.execute("UPDATE restore_previews SET status='applied',result_json=?,applied_at=?,expires_at=? WHERE preview_id=? AND status='applying'", [canonicalJson(result), nowIso(), expiry(30 * 24 * 60), preview.preview_id]);
-      await tx.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+      await tx.batch(RESTORE_DELETE_ORDER.map((table) => ({ sql: `DELETE FROM ${quoted(table)}` })));
+      await restoreUsers(tx, context, snapshot, identityState);
+      await restoreSnapshotTables(tx, snapshot);
+      await restoreIdempotencyReservation(tx, activeIdempotencyReservation);
+      await restoreSystemConfig(tx, snapshot);
+      await finalizeRestore(tx, context, { preview, run, checksum, safety, result });
     });
     return result;
   } catch (error) {

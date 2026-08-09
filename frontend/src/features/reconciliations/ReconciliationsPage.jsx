@@ -11,8 +11,8 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { parseRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { accountDisplayLabel } from "../accounts/accountPresentation.js";
-import { createReconciliation } from "../accounts/accounts.api.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import { createReconciliation } from "./reconciliations.api.js";
 import styles from "./ReconciliationsPage.module.css";
 
 const INITIAL_FORM = Object.freeze({ account_id: "", actual_balance: "", notes: "Cocokkan dengan mutasi bank atau uang tunai." });

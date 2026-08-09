@@ -3,7 +3,7 @@ import test from "node:test";
 import { listTransactions } from "../../api/_lib/services/finance.js";
 import { listGoals } from "../../api/_lib/services/planning/goals.js";
 import { monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
-import { queueActionableNotifications } from "../../api/_lib/services/notifications.js";
+import { notificationPreferences, queueActionableNotifications, updateNotificationPreference } from "../../api/_lib/services/notifications.js";
 import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
@@ -186,6 +186,60 @@ test("notifikasi aksi penting idempotent untuk budget dan transaksi belum dialok
   }
 });
 
+test("preferensi notifikasi default aktif, per pengguna, row-version guarded, dan mencegah queue baru untuk jenis yang dimute", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const period = todayJakarta().slice(0, 7);
+    const defaults = await notificationPreferences(db, { actor: owner, payload: {} });
+    assert.equal(defaults.items.length, 7);
+    assert.equal(defaults.items.every((item) => item.enabled === true && item.row_version === null), true);
+
+    const muted = await updateNotificationPreference(db, {
+      actor: owner,
+      action: "notifications.updatePreference",
+      requestId: "preference-mute-budget",
+      payload: { notification_type: "budget_threshold", enabled: false },
+    });
+    assert.equal(muted.enabled, false);
+    assert.equal(muted.row_version, 1);
+    await updateNotificationPreference(db, {
+      actor: owner,
+      action: "notifications.updatePreference",
+      requestId: "preference-payload-user-ignored",
+      rowVersion: muted.row_version,
+      payload: { notification_type: "budget_threshold", enabled: false, row_version: muted.row_version, user_id: member.user_id },
+    });
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM notification_preferences WHERE user_id=? AND notification_type='budget_threshold'", [member.user_id]).then((row) => Number(row.count)), 0, "payload user_id tidak boleh mengubah preference pasangan");
+    const ownerPreferenceAfterIgnoredUser = await db.one("SELECT row_version FROM notification_preferences WHERE user_id=? AND notification_type='budget_threshold'", [owner.user_id]);
+
+    await db.execute(
+      "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["budget-preference", period, "category-food", null, "Makan", 100_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
+    );
+    await insertTransaction(db, { id: "expense-preference", date: `${period}-02`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food" });
+    await queueActionableNotifications(db);
+    const budgetRecipients = await db.all("SELECT user_id FROM notification_queue WHERE notification_type='budget_threshold' ORDER BY user_id");
+    assert.deepEqual(budgetRecipients.map((item) => item.user_id), [member.user_id], "mute owner tidak boleh mematikan alert pasangan");
+    const unallocatedRecipients = await db.all("SELECT user_id FROM notification_queue WHERE notification_type='unallocated_expense' ORDER BY user_id");
+    assert.deepEqual(unallocatedRecipients.map((item) => item.user_id).sort(), [member.user_id, owner.user_id].sort(), "jenis notifikasi lain tetap aktif");
+
+    await assert.rejects(
+      updateNotificationPreference(db, { actor: owner, action: "notifications.updatePreference", requestId: "stale-preference", rowVersion: 99, payload: { notification_type: "budget_threshold", enabled: true, row_version: 99 } }),
+      (error) => error?.code === "CONFLICT",
+    );
+    const enabled = await updateNotificationPreference(db, {
+      actor: owner,
+      action: "notifications.updatePreference",
+      requestId: "preference-enable-budget",
+      rowVersion: Number(ownerPreferenceAfterIgnoredUser.row_version),
+      payload: { notification_type: "budget_threshold", enabled: true, row_version: Number(ownerPreferenceAfterIgnoredUser.row_version) },
+    });
+    assert.equal(enabled.enabled, true);
+    assert.equal(enabled.row_version, 3);
+  } finally { db.close(); }
+});
+
 test("notifikasi recurring memberi peringatan dana kurang H-2 dan status selesai tanpa membocorkan detail finansial", async () => {
   const db = await createSqliteTestDatabase();
   try {
@@ -199,6 +253,10 @@ test("notifikasi recurring memberi peringatan dana kurang H-2 dan status selesai
     await db.execute(
       "INSERT INTO recurring_occurrences(occurrence_id,recurring_rule_id,period_key,due_date,expected_amount,actual_amount,status,transaction_ids_json,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
       ["occurrence-house", "recurring-house", dueDate.slice(0, 7), dueDate, 6_000_000, 0, "expected", "[]", 1, now, now],
+    );
+    await db.execute(
+      "INSERT INTO recurring_occurrences(occurrence_id,recurring_rule_id,period_key,due_date,expected_amount,actual_amount,status,transaction_ids_json,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+      ["occurrence-skipped", "recurring-house", addDays(today, 1).slice(0, 7), addDays(today, 1), 6_000_000, 0, "cancelled", "[]", 1, now, now],
     );
 
     const first = await queueActionableNotifications(db);

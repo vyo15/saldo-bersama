@@ -11,8 +11,8 @@ import { useFinance } from "../../../app/FinanceContext.jsx";
 import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { useFocusTrap } from "../../../hooks/useFocusTrap.js";
-import { accountDisplayLabel } from "../../accounts/accountPresentation.js";
-import { formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionTone } from "../../transactions/transactionPresentation.js";
+import { accountDisplayLabel } from "../../../shared/presentation/account.js";
+import { formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionTone } from "../../../shared/presentation/transaction.js";
 import { roleLabel } from "../settingsPresentation.js";
 import styles from "../Settings.module.css";
 

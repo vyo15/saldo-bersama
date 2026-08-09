@@ -169,19 +169,22 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
 
 
 test("Web Push memakai secure context, status backend, payload privat, dan delivery per perangkat", async () => {
-  const [frontendNotifications, notificationsPage, serviceWorker, backendNotifications, jobs, deliveryMigration] = await Promise.all([
+  const [frontendNotifications, notificationsPage, serviceWorker, backendNotifications, jobs, deliveryMigration, preferenceMigration] = await Promise.all([
     source("frontend/src/services/notifications.js"),
     source("frontend/src/features/settings/DeviceNotificationsPage.jsx"),
     source("frontend/public/sw.js"),
     source("api/_lib/services/notifications.js"),
     source("api/jobs.js"),
     source("database/migrations/004_notification_deliveries.sql"),
+    source("database/migrations/005_notification_preferences.sql"),
   ]);
   assert.doesNotMatch(frontendNotifications, /import\.meta\.env\.DEV/);
   assert.match(frontendNotifications, /window\.isSecureContext/);
   assert.match(frontendNotifications, /ios_install_required/);
   assert.match(frontendNotifications, /notifications\.status/);
   assert.match(frontendNotifications, /notifications\.test/);
+  assert.match(frontendNotifications, /notifications\.preferences/);
+  assert.match(frontendNotifications, /notifications\.updatePreference/);
   assert.match(frontendNotifications, /verification = await apiClient\.request/);
   assert.doesNotMatch(notificationsPage, /Uji notifikasi/);
   assert.match(notificationsPage, /Ketuk tile/);
@@ -193,6 +196,9 @@ test("Web Push memakai secure context, status backend, payload privat, dan deliv
   assert.match(jobs, /webPushRequestOptions\(3_600\)/);
   assert.match(backendNotifications, /PUSH_ENDPOINT_PRIVATE_ADDRESS/);
   assert.match(deliveryMigration, /UNIQUE\(notification_id, subscription_id\)/);
+  assert.match(preferenceMigration, /CREATE TABLE IF NOT EXISTS notification_preferences/);
+  assert.match(preferenceMigration, /PRIMARY KEY \(user_id, notification_type\)/);
+  assert.match(backendNotifications, /enabled=0/);
 });
 
 test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah dihapus", async () => {
@@ -225,4 +231,92 @@ test("runtime memakai satu Firebase public key dan tidak menduplikasi resource I
   assert.match(environmentDoc, /Scope Development canonical/i);
   assert.match(environmentDoc, /Preview.*kosong/i);
   assert.doesNotMatch(environmentDoc, /Development \+ Production|Production \+ Development/);
+});
+
+test("frontend menjaga dependency direction, bebas cycle relatif, dan helper stable payload tidak terduplikasi", async () => {
+  const sourceRoot = path.join(root, "frontend/src");
+  const sourceFiles = [];
+  const collect = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const candidate = path.join(directory, entry.name);
+      if (entry.isDirectory()) await collect(candidate);
+      else if (entry.isFile() && /\.(?:js|jsx|mjs)$/.test(entry.name)) sourceFiles.push(candidate);
+    }
+  };
+  await collect(sourceRoot);
+
+  const knownFiles = new Set(sourceFiles.map((file) => path.resolve(file)));
+  const resolveRelativeImport = (fromFile, specifier) => {
+    const base = path.resolve(path.dirname(fromFile), specifier);
+    const candidates = [base, `${base}.js`, `${base}.jsx`, `${base}.mjs`, path.join(base, "index.js"), path.join(base, "index.jsx")];
+    return candidates.find((candidate) => knownFiles.has(candidate)) || null;
+  };
+  const importSpecifiers = (text) => {
+    const values = [];
+    const patterns = [
+      /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
+      /\bimport\(\s*["']([^"']+)["']\s*\)/g,
+    ];
+    for (const pattern of patterns) {
+      for (const match of text.matchAll(pattern)) values.push(match[1]);
+    }
+    return values;
+  };
+
+  const graph = new Map();
+  const boundaryViolations = [];
+  let stableValueDefinitions = 0;
+  for (const file of sourceFiles) {
+    const text = await readFile(file, "utf8");
+    stableValueDefinitions += (text.match(/\b(?:const|let|var|function)\s+stableValue\b/g) || []).length;
+    const relativeFile = path.relative(root, file).split(path.sep).join("/");
+    const dependencies = [];
+    for (const specifier of importSpecifiers(text).filter((value) => value.startsWith("."))) {
+      const target = resolveRelativeImport(file, specifier);
+      if (!target) continue;
+      dependencies.push(target);
+      const relativeTarget = path.relative(root, target).split(path.sep).join("/");
+
+      if (relativeFile.startsWith("frontend/src/shared/") && relativeTarget.startsWith("frontend/src/features/")) {
+        boundaryViolations.push(`${relativeFile} -> ${relativeTarget}: shared tidak boleh bergantung pada feature`);
+      }
+      if (relativeFile.startsWith("frontend/src/domain/") && /^frontend\/src\/(?:features|components|layouts)\//.test(relativeTarget)) {
+        boundaryViolations.push(`${relativeFile} -> ${relativeTarget}: domain tidak boleh bergantung pada UI/feature`);
+      }
+      if (relativeFile.startsWith("frontend/src/layouts/") && relativeTarget.startsWith("frontend/src/features/") && !relativeTarget.endsWith("/auth/AuthContext.jsx")) {
+        boundaryViolations.push(`${relativeFile} -> ${relativeTarget}: layout hanya boleh memakai application boundary, bukan implementasi feature`);
+      }
+
+      const sourceFeature = relativeFile.match(/^frontend\/src\/features\/([^/]+)\//)?.[1];
+      const targetFeature = relativeTarget.match(/^frontend\/src\/features\/([^/]+)\//)?.[1];
+      if (sourceFeature && targetFeature && sourceFeature !== targetFeature && /(?:\.api\.js|Presentation\.js)$/.test(relativeTarget)) {
+        boundaryViolations.push(`${relativeFile} -> ${relativeTarget}: API/presentation lintas feature harus melalui shared/application boundary`);
+      }
+    }
+    graph.set(file, dependencies);
+  }
+
+  assert.deepEqual(boundaryViolations, []);
+  assert.equal(stableValueDefinitions, 1, "stableValue harus memiliki satu implementasi canonical");
+
+  const visiting = new Set();
+  const visited = new Set();
+  const cycles = [];
+  const stack = [];
+  const visit = (file) => {
+    if (visiting.has(file)) {
+      const index = stack.indexOf(file);
+      cycles.push([...stack.slice(index), file].map((item) => path.relative(root, item).split(path.sep).join("/")));
+      return;
+    }
+    if (visited.has(file)) return;
+    visiting.add(file);
+    stack.push(file);
+    for (const dependency of graph.get(file) || []) visit(dependency);
+    stack.pop();
+    visiting.delete(file);
+    visited.add(file);
+  };
+  for (const file of sourceFiles) visit(file);
+  assert.deepEqual(cycles, [], `Circular dependency ditemukan: ${JSON.stringify(cycles)}`);
 });

@@ -10,10 +10,10 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
     read("src/config/navigation.js"),
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/categories/CategoriesPage.module.css"),
-    read("src/features/transactions/transactionPresentation.js"),
+    read("src/shared/presentation/transaction.js"),
     read("src/features/categories/categories.api.js"),
     read("src/features/accounts/AccountsPage.jsx"),
-    read("src/features/categories/categoryPresentation.js"),
+    read("src/shared/presentation/category.js"),
   ]);
 
   assert.match(app, /path="kategori"/);

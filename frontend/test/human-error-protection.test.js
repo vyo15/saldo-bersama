@@ -138,3 +138,57 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
   assert.equal(manualKeyUsers.length, 1, `hanya TransactionForm boleh mengelola key intent lokal: ${manualKeyUsers.join(", ")}`);
   assert.match(manualKeyUsers[0], /TransactionForm\.jsx$/);
 });
+
+test("recurring skip/restore dan feedback global memakai guard canonical tanpa hard rollback", async () => {
+  const [recurring, recurringApi, feedback, feedbackContext, providers, notifications] = await Promise.all([
+    read("src/features/recurring/RecurringPage.jsx"),
+    read("src/features/recurring/recurring.api.js"),
+    read("src/components/feedback/FeedbackProvider.jsx"),
+    read("src/components/feedback/feedbackContext.js"),
+    read("src/app/AppProviders.jsx"),
+    read("src/features/settings/DeviceNotificationsPage.jsx"),
+  ]);
+  assert.match(recurringApi, /recurring\.cancelOccurrence/);
+  assert.match(recurringApi, /recurring\.restoreOccurrence/);
+  assert.match(recurring, /Lewati periode/);
+  assert.match(recurring, /Pulihkan periode/);
+  assert.match(recurring, /Ledger dan saldo tidak berubah/);
+  assert.match(recurring, /useGuardedMutation/);
+  assert.match(feedback, /aria-live="polite"/);
+  assert.match(feedback, /dedupeKey/);
+  assert.match(feedbackContext, /useFeedback/);
+  assert.doesNotMatch(feedback, /undo|rollback|deleteTransaction|DELETE FROM/i);
+  assert.match(providers, /FeedbackProvider/);
+  assert.match(notifications, /role="switch"/);
+  assert.match(notifications, /berlaku untuk akun ini di semua perangkat/i);
+  assert.match(notifications, /antrean yang sudah diproses/i);
+});
+
+test("feedback transient konsisten tanpa mengganti notice persisten untuk operasi kritis", async () => {
+  const transientPages = await Promise.all([
+    "src/features/goals/GoalsPage.jsx",
+    "src/features/budgets/BudgetsPage.jsx",
+    "src/features/categories/CategoriesPage.jsx",
+    "src/features/accounts/AccountsPage.jsx",
+    "src/features/settings/ExportDataPage.jsx",
+  ].map(read));
+  for (const source of transientPages) {
+    assert.match(source, /useFeedback/);
+    assert.match(source, /notify\(\{[\s\S]*tone:\s*"success"/);
+  }
+
+  const persistentPages = await Promise.all([
+    "src/features/settings/BackupPage.jsx",
+    "src/features/settings/RecoveryPage.jsx",
+    "src/features/settings/PeriodControlPage.jsx",
+    "src/features/settings/GoogleIntegrationsPage.jsx",
+    "src/features/settings/ImportTransactionsPage.jsx",
+    "src/features/settings/MembersSettingsPage.jsx",
+  ].map(read));
+  for (const source of persistentPages) {
+    assert.match(source, /SettingsNotice/, "workflow kritis/status wajib tetap mempunyai notice persisten");
+  }
+
+  const feedback = await read("src/components/feedback/FeedbackProvider.jsx");
+  assert.doesNotMatch(feedback, /undo|rollback|hardDelete|DELETE FROM/i, "feedback global tidak boleh menjadi generic rollback finansial");
+});

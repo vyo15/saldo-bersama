@@ -1,8 +1,8 @@
 import { FiFilter, FiRotateCcw } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
-import { accountDisplayLabel } from "../../accounts/accountPresentation.js";
-import { TRANSACTION_LABELS } from "../../transactions/transactionPresentation.js";
+import { accountDisplayLabel } from "../../../shared/presentation/account.js";
+import { TRANSACTION_LABELS } from "../../../shared/presentation/transaction.js";
 
 const MobileDashboardFilters = ({
   open,

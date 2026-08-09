@@ -26,6 +26,7 @@ test("quality workflow menjalankan check, guard regression, browser journey, dan
   assert.match(workflow, /VITE_GOOGLE_CLIENT_ID:\s*ci-browser-smoke\.apps\.googleusercontent\.com/);
   assert.match(workflow, /VITE_FIREBASE_API_KEY:\s*ci-browser-smoke-public-key/);
   assert.match(workflow, /npm run check/);
+  assert.match(workflow, /Duplication report \(non-blocking\)[\s\S]*continue-on-error:\s*true[\s\S]*npm run check:duplicates/);
   assert.match(workflow, /npm run test:browser/);
   assert.match(workflow, /npm run zip --/);
 
@@ -46,12 +47,29 @@ test("tooling kualitas dan lifecycle dokumentasi terhubung dari package canonica
   assert.equal(packageJson.scripts.clean, "node scripts/clean-generated-artifacts.mjs");
   assert.equal(packageJson.scripts["clean:dry-run"], "node scripts/clean-generated-artifacts.mjs --dry-run");
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
-  assert.equal(packageJson.scripts["test:browser"], "node --test test/browser/*.test.mjs");
+  assert.equal(packageJson.scripts["test:browser"], "node scripts/prepare-browser-test-build.mjs && node --test test/browser/*.test.mjs");
+  assert.equal(packageJson.scripts["audit:production"], "npm audit --omit=dev --audit-level=high");
+  assert.equal(packageJson.scripts["audit:all"], "npm audit --audit-level=high");
+  assert.equal(packageJson.scripts["check:duplicates"], "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test");
   assert.equal(packageJson.scripts["lint:backend"], "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js");
   assert.match(packageJson.scripts.lint, /npm run lint:backend/);
   assert.match(packageJson.scripts.check, /build:budget/);
   assert.equal(packageJson.engines.node, "24.x");
   assert.equal((await source(".node-version")).trim(), "24.18.1");
+  const duplicationConfig = JSON.parse(await source(".jscpd.json"));
+  assert.equal(duplicationConfig.threshold, undefined, "duplikasi masih report-only dan tidak boleh menjadi gate angka buta");
+  assert.ok(duplicationConfig.ignore.includes("database/migrations/**"));
+  assert.ok(duplicationConfig.ignore.includes("**/*.module.css"));
+
+  const dependencyAudit = await source(".github/workflows/dependency-audit.yml");
+  assert.match(dependencyAudit, /workflow_dispatch/);
+  assert.match(dependencyAudit, /schedule:/);
+  assert.match(dependencyAudit, /node-version:\s*24/);
+  assert.match(dependencyAudit, /npm run audit:production/);
+  assert.match(dependencyAudit, /npm run audit:all/);
+  const dependabot = await source(".github/dependabot.yml");
+  assert.match(dependabot, /package-ecosystem:\s*npm/);
+  assert.match(dependabot, /interval:\s*weekly/);
 
   const backendLint = await source("eslint.backend.config.js");
   assert.match(backendLint, /"no-undef": "error"/);

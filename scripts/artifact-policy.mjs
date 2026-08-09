@@ -76,13 +76,19 @@ export const FORBIDDEN_ARCHIVE_FILE_PATTERNS = Object.freeze([
   /\.(?:log|tmp|temp|bak|zip|rar|7z|db|sqlite|sqlite3|dump|gz)$/i,
 ]);
 
-export const IGNORED_LOCAL_FILE_PATTERNS = Object.freeze([
+export const LOCAL_ONLY_FILE_PATTERNS = Object.freeze([
   /^\.env$/i,
   /^\.env\.(?!example$).+/i,
   /^\.clasp\.json$/i,
   /^(?:npm-debug|yarn-error|pnpm-debug|firebase-debug)\.log$/i,
+  /^npm-audit-\d{8}(?:-\d{6})?\.json$/i,
   /\.(?:log|tmp|temp|bak|zip|rar|7z)$/i,
 ]);
+
+// Backward-compatible alias for existing imports; both validator and packager
+// must use the same local-only policy so a locally ignored diagnostic can never
+// leak into the canonical clean archive.
+export const IGNORED_LOCAL_FILE_PATTERNS = LOCAL_ONLY_FILE_PATTERNS;
 
 export const isWithinRoot = (root, candidate) => {
   const relative = path.relative(root, candidate);

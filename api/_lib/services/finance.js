@@ -118,47 +118,106 @@ export const assertAffectedBalances = async (db, current, candidate = null) => {
   }
 };
 
-export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false } = {}) => {
-  assertNoReservedFields(payload, allowInternalLinks);
-  const type = String(payload.transaction_type ?? current?.transaction_type ?? "expense");
+const validateTransactionTypePolicy = (context, payload, current, type) => {
   if (!TRANSACTION_TYPES.has(type)) throw appError("INVALID_TRANSACTION_TYPE", "Jenis transaksi tidak valid.", 400);
   if (type === "adjustment") {
     if (context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat dibuat owner.", 403);
     if (!sanitizeText(payload.description ?? current?.description, 250)) throw appError("ADJUSTMENT_REASON_REQUIRED", "Alasan penyesuaian saldo wajib diisi.", 400);
   }
-  if (current && type !== current.transaction_type && (type === "adjustment" || current.transaction_type === "adjustment")) throw appError("ADJUSTMENT_TYPE_IMMUTABLE", "Jenis adjustment tidak dapat diubah. Batalkan lalu buat koreksi baru.", 409);
+  if (current && type !== current.transaction_type && (type === "adjustment" || current.transaction_type === "adjustment")) {
+    throw appError("ADJUSTMENT_TYPE_IMMUTABLE", "Jenis adjustment tidak dapat diubah. Batalkan lalu buat koreksi baru.", 409);
+  }
+};
+
+const resolveTransactionAccounts = async (db, context, { type, sourceId, destinationId, transactionDate }) => {
+  const source = ["income", "refund"].includes(type) ? null : await activeAccount(db, context.actor, sourceId);
+  const destination = ["income", "refund", "transfer"].includes(type) ? await activeAccount(db, context.actor, destinationId) : null;
+  if (type === "transfer" && source.account_id === destination.account_id) {
+    throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
+  }
+  if (source) assertAccountDate(source, transactionDate);
+  if (destination) assertAccountDate(destination, transactionDate);
+  return { source, destination, ownership: scopeFromAccountPair(source, destination) };
+};
+
+const resolveTransactionCategory = async (db, payload, current, type) => {
+  const categoryId = ["transfer", "adjustment"].includes(type)
+    ? null
+    : String(payload.category_id ?? current?.category_id ?? "") || null;
+  if (["income", "expense", "refund"].includes(type) && !categoryId) {
+    throw appError("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
+  }
+  await activeCategory(db, categoryId, type);
+  return categoryId;
+};
+
+const buildNormalizedTransactionRecord = ({
+  payload,
+  current,
+  allowInternalLinks,
+  type,
+  transactionDate,
+  amount,
+  source,
+  destination,
+  ownership,
+  categoryId,
+}) => ({
+  transaction_date: transactionDate,
+  transaction_type: type,
+  source_account_id: source?.account_id || null,
+  destination_account_id: destination?.account_id || null,
+  category_id: categoryId,
+  envelope_period_id: type === "expense" ? (String(payload.envelope_period_id ?? current?.envelope_period_id ?? "") || null) : null,
+  recurring_occurrence_id: allowInternalLinks ? (String(payload.recurring_occurrence_id ?? current?.recurring_occurrence_id ?? "") || null) : current?.recurring_occurrence_id || null,
+  goal_id: allowInternalLinks ? (String(payload.goal_id ?? current?.goal_id ?? "") || null) : current?.goal_id || null,
+  amount,
+  description: sanitizeText(payload.description ?? current?.description, 250),
+  overspend_reason: sanitizeText(payload.overspend_reason ?? current?.overspend_reason, 180),
+  merchant: sanitizeText(payload.merchant ?? current?.merchant, 120),
+  payment_method: sanitizeText(payload.payment_method ?? current?.payment_method, 40),
+  scope: ownership.scope,
+  owner_user_id: ownership.owner_user_id,
+});
+
+export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false } = {}) => {
+  assertNoReservedFields(payload, allowInternalLinks);
+  const type = String(payload.transaction_type ?? current?.transaction_type ?? "expense");
+  validateTransactionTypePolicy(context, payload, current, type);
+
   const transactionDate = dateValue(payload.transaction_date ?? current?.transaction_date ?? context.today, "Tanggal transaksi");
   await assertTransactionDateUnlocked(db, transactionDate);
   if (current) await assertTransactionDateUnlocked(db, current.transaction_date);
+
   const amount = positiveInteger(payload.amount ?? current?.amount, "Nominal transaksi");
   const sourceId = String(payload.source_account_id ?? current?.source_account_id ?? "") || null;
   const destinationId = String(payload.destination_account_id ?? current?.destination_account_id ?? "") || null;
-  let source = null; let destination = null;
-  if (!["income", "refund"].includes(type)) source = await activeAccount(db, context.actor, sourceId);
-  if (["income", "refund", "transfer"].includes(type)) destination = await activeAccount(db, context.actor, destinationId);
-  if (type === "transfer" && source.account_id === destination.account_id) throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
-  if (source) assertAccountDate(source, transactionDate);
-  if (destination) assertAccountDate(destination, transactionDate);
-  const owned = scopeFromAccountPair(source, destination);
-  const categoryId = ["transfer", "adjustment"].includes(type) ? null : String(payload.category_id ?? current?.category_id ?? "") || null;
-  if (["income", "expense", "refund"].includes(type) && !categoryId) throw appError("CATEGORY_REQUIRED", "Kategori transaksi wajib dipilih.", 400);
-  await activeCategory(db, categoryId, type);
-  const record = {
-    transaction_date: transactionDate, transaction_type: type,
-    source_account_id: source?.account_id || null, destination_account_id: destination?.account_id || null,
-    category_id: categoryId, envelope_period_id: type === "expense" ? (String(payload.envelope_period_id ?? current?.envelope_period_id ?? "") || null) : null,
-    recurring_occurrence_id: allowInternalLinks ? (String(payload.recurring_occurrence_id ?? current?.recurring_occurrence_id ?? "") || null) : current?.recurring_occurrence_id || null,
-    goal_id: allowInternalLinks ? (String(payload.goal_id ?? current?.goal_id ?? "") || null) : current?.goal_id || null,
-    amount, description: sanitizeText(payload.description ?? current?.description, 250),
-    overspend_reason: sanitizeText(payload.overspend_reason ?? current?.overspend_reason, 180),
-    merchant: sanitizeText(payload.merchant ?? current?.merchant, 120),
-    payment_method: sanitizeText(payload.payment_method ?? current?.payment_method, 40),
-    scope: owned.scope, owner_user_id: owned.owner_user_id,
-  };
+  const { source, destination, ownership } = await resolveTransactionAccounts(db, context, {
+    type,
+    sourceId,
+    destinationId,
+    transactionDate,
+  });
+  const categoryId = await resolveTransactionCategory(db, payload, current, type);
+  const record = buildNormalizedTransactionRecord({
+    payload,
+    current,
+    allowInternalLinks,
+    type,
+    transactionDate,
+    amount,
+    source,
+    destination,
+    ownership,
+    categoryId,
+  });
+
   await validateEnvelope(db, context, record, { excludeTransactionId: current?.transaction_id || null });
   await assertSufficientBalance(db, source, { ...record, status: "active" }, current?.transaction_id || null);
   const duplicate = await duplicateTransaction(db, record, current?.transaction_id || null);
-  if (duplicate && payload.confirm_duplicate !== true) throw appError("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
+  if (duplicate && payload.confirm_duplicate !== true) {
+    throw appError("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
+  }
   return record;
 };
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { FiAlertTriangle, FiCheck, FiChevronDown } from "react-icons/fi";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
@@ -10,7 +11,7 @@ import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
 import { filterByOwnership, hasSameOwnership } from "../../domain/ownership.js";
-import { accountDisplayLabel } from "../accounts/accountPresentation.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
 
 const emptyForm = () => ({
@@ -32,6 +33,7 @@ const OPTIONAL_FIELDS = ["payment_method", "merchant", "description", "overspend
 
 const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENSE, transaction = null, onSaved }) => {
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
+  const { notify } = useFeedback();
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [confirmation, setConfirmation] = useState(null);
@@ -139,6 +141,7 @@ const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENS
       invalidate(["transactions.list", "envelopes.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([refreshOverview(), Promise.resolve().then(() => onSaved?.(saved))]);
       setSubmitState({ status: "success", error: null });
+      notify({ message: transaction ? "Perubahan transaksi berhasil disimpan." : "Transaksi berhasil disimpan." });
       onClose();
     } catch (error) {
       if (error.code === "POSSIBLE_DUPLICATE") {

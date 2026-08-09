@@ -67,7 +67,7 @@ Target menyimpan nominal, tanggal, rekening, prioritas, saldo terkumpul, sisa, p
 
 ### `REQ-PROD-07` Tagihan dan kewajiban rutin — Partial
 
-Recurring rule/occurrence mendukung nominal, frekuensi, jatuh tempo, rekening, metode, auto-debit, priority, payment/reversal, overdue, dan status pembayaran.
+Recurring rule/occurrence mendukung nominal, frekuensi, jatuh tempo, rekening, metode, auto-debit, priority, payment/reversal, overdue, status pembayaran, serta **skip/restore satu occurrence** tanpa membuat ledger entry atau mengubah saldo.
 
 **Gap:** penanggung jawab eksplisit dan receipt terhubung menunggu RFC-0011/RFC-0013.
 
@@ -115,7 +115,7 @@ Owner/member, shared/personal, ownership query, dan backend authorization tersed
 
 ### `REQ-PROD-16` Notifikasi berguna — Partial
 
-Queue idempotent dan Web Push mendukung recurring due, budget threshold, kantong threshold, target tertinggal, transaksi belum dialokasikan, **peringatan dana recurring expense kurang pada H-2**, dan notifikasi generik ketika occurrence recurring tercatat selesai. Saldo untuk shortage dihitung dari ledger Turso melalui read-model canonical; push lock-screen tetap tidak memuat nama tagihan, rekening, atau nominal. Push hanya aktif bila VAPID lengkap.
+Queue idempotent dan Web Push mendukung recurring due, budget threshold, kantong threshold, target tertinggal, transaksi belum dialokasikan, **peringatan dana recurring expense kurang pada H-2**, dan notifikasi generik ketika occurrence recurring tercatat selesai. Saldo untuk shortage dihitung dari ledger Turso melalui read-model canonical; push lock-screen tetap tidak memuat nama tagihan, rekening, atau nominal. Push hanya aktif bila VAPID lengkap. Setiap user dapat mengaktifkan/mematikan tujuh tipe alert canonical secara account-level; preference disimpan backend dan berlaku lintas perangkat, sementara item yang sudah terlanjur masuk queue dapat terkirim satu kali.
 
 **Gap:** transaksi besar configurable, saldo rendah umum configurable, perubahan pasangan, cadence rekonsiliasi configurable, dan verifikasi real Android/iOS masih belum tersedia.
 

@@ -9,6 +9,7 @@ import {
   ARCHIVE_IGNORED_SEGMENTS,
   DEPENDENCY_CLEAN_TARGETS,
   GENERATED_CLEAN_TARGETS,
+  LOCAL_ONLY_FILE_PATTERNS,
   MAX_SOURCE_ARCHIVE_BYTES,
   isCleanSourceArchiveFilename,
 } from "../../scripts/artifact-policy.mjs";
@@ -95,6 +96,52 @@ test("cleanup archive lama hanya menghapus variasi clean canonical", async () =>
     await mkdir(invalid);
     await assert.rejects(() => cleanupLegacyCleanArchives(temp, keep), /non-file atau symlink/);
   } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+
+
+test("source validator mengabaikan metadata Git baik file maupun directory pada linked worktree", async () => {
+  const validator = await readFile(path.join(root, "scripts/validate-source-tree.mjs"), "utf8");
+  assert.match(validator, /entry\.isSymbolicLink\(\) \|\| ignoredSegments\.has\(entry\.name\)/);
+});
+
+test("browser test membangun fixture public sendiri dan tidak bergantung pada env lokal", async () => {
+  const [packageJson, prepare] = await Promise.all([
+    readFile(path.join(root, "package.json"), "utf8"),
+    readFile(path.join(root, "scripts/prepare-browser-test-build.mjs"), "utf8"),
+  ]);
+  const scripts = JSON.parse(packageJson).scripts;
+  assert.match(scripts["test:browser"], /prepare-browser-test-build\.mjs/);
+  assert.match(prepare, /VITE_GOOGLE_CLIENT_ID/);
+  assert.match(prepare, /VITE_FIREBASE_API_KEY/);
+  assert.match(prepare, /npm_execpath/);
+  assert.match(prepare, /process\.execPath/);
+  assert.doesNotMatch(prepare, /spawnSync\(\s*["\']npm\.cmd["\']/);
+  assert.doesNotMatch(prepare, /SESSION_SECRET|TURSO_AUTH_TOKEN|VAPID_PRIVATE_KEY|GOOGLE_BRIDGE_SHARED_SECRET/);
+});
+
+
+
+test("laporan npm audit lokal diabaikan validator dan tidak pernah masuk clean ZIP", async () => {
+  const auditName = "npm-audit-20991231.json";
+  const gitignore = await readFile(path.join(root, ".gitignore"), "utf8");
+  assert.match(gitignore, /^npm-audit-\*\.json$/m);
+  const auditPath = path.join(root, auditName);
+  const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-audit-local-"));
+  const output = path.join(temp, "saldo-bersama-clean.zip");
+  try {
+    assert.equal(LOCAL_ONLY_FILE_PATTERNS.some((pattern) => pattern.test(auditName)), true);
+    await writeFile(auditPath, JSON.stringify({ auditReportVersion: 2, vulnerabilities: {} }));
+    const validation = runNode("scripts/validate-source-tree.mjs");
+    assert.equal(validation.status, 0, `${validation.stdout}\n${validation.stderr}`);
+    const archive = runNode("scripts/create-clean-archive.mjs", [output]);
+    assert.equal(archive.status, 0, `${archive.stdout}\n${archive.stderr}`);
+    const binary = await readFile(output);
+    assert.equal(binary.includes(Buffer.from(auditName)), false, "Laporan npm audit lokal tidak boleh masuk clean ZIP");
+  } finally {
+    await rm(auditPath, { force: true });
     await rm(temp, { recursive: true, force: true });
   }
 });

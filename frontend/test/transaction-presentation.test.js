@@ -6,7 +6,7 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 
 test("transaksi memakai icon kategori terkontrol dengan fallback jenis transaksi", async () => {
   const [presentation, transactions, dashboard, mobileDashboard, desktopDashboard] = await Promise.all([
-    read("src/features/transactions/transactionPresentation.js"),
+    read("src/shared/presentation/transaction.js"),
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/dashboard/DashboardPage.jsx"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),

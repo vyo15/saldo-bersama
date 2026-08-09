@@ -34,6 +34,7 @@ logs/
 *.local.json
 *.log
 *.zip
+npm-audit-*.json
 
 # Secrets and local configuration
 .env
@@ -44,9 +45,3 @@ logs/
 # Operating system files
 .DS_Store
 Thumbs.db
-
-.vercel
-.env*
-
-.vercel
-.env*

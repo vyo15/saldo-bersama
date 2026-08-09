@@ -10,15 +10,16 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
-import { archiveRecurringRule, createRecurringRule, payRecurringOccurrence, reverseRecurringPayment, updateRecurringRule } from "./recurring.api.js";
+import { archiveRecurringRule, cancelRecurringOccurrence, createRecurringRule, payRecurringOccurrence, restoreRecurringOccurrence, reverseRecurringPayment, updateRecurringRule } from "./recurring.api.js";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { filterByOwnership } from "../../domain/ownership.js";
-import { accountDisplayLabel } from "../accounts/accountPresentation.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
 
 
 const RecurringPage = () => {
@@ -26,6 +27,7 @@ const RecurringPage = () => {
   const resource = useApiResource("recurring.list", { period });
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
+  const { notify } = useFeedback();
   const createMutation = useGuardedMutation();
   const paymentMutation = useGuardedMutation();
   const [message, setMessage] = useState(null);
@@ -37,6 +39,12 @@ const RecurringPage = () => {
   const [editRule, setEditRule] = useState(null);
   const [editState, setEditState] = useState({ status: "idle", error: null });
   const [archiveRuleTarget, setArchiveRuleTarget] = useState(null);
+  const skipMutation = useGuardedMutation();
+  const restoreOccurrenceMutation = useGuardedMutation();
+  const [skipTarget, setSkipTarget] = useState(null);
+  const [skipError, setSkipError] = useState(null);
+  const [restoreOccurrenceTarget, setRestoreOccurrenceTarget] = useState(null);
+  const [restoreOccurrenceError, setRestoreOccurrenceError] = useState(null);
 
   const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
   const categories = bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === form.kind) || [];
@@ -49,7 +57,7 @@ const RecurringPage = () => {
     return createMutation.run(async () => {
       await createRecurringRule({ ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, {});
       setForm((current) => ({ ...current, name: "", expected_amount: "" }));
-      setMessage({ type: "success", text: "Jadwal rutin berhasil dibuat." });
+      notify({ message: "Jadwal rutin berhasil dibuat." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
@@ -85,7 +93,7 @@ const RecurringPage = () => {
       await updateRecurringRule({ ...editRule, expected_amount: assertPositiveRupiah(editRule.expected_amount) }, { rowVersion: editRule.row_version });
       setEditRule(null);
       setEditState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Aturan rutin berhasil diperbarui." });
+      notify({ message: "Aturan rutin berhasil diperbarui." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setEditState({ status: "error", error }); }
@@ -102,7 +110,7 @@ const RecurringPage = () => {
       }, { rowVersion: archiveRuleTarget.rule_row_version });
       setArchiveRuleTarget(null);
       setEditState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Aturan rutin berhasil diarsipkan. Transaksi historis tetap tersimpan." });
+      notify({ message: "Aturan rutin berhasil diarsipkan. Transaksi historis tetap tersimpan." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setEditState({ status: "error", error }); }
@@ -123,10 +131,34 @@ const RecurringPage = () => {
       await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version });
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." });
+      notify({ message: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setReverseState({ status: "error", error }); }
+  };
+
+  const skipOccurrence = (reason) => {
+    if (!skipTarget) return Promise.resolve();
+    setSkipError(null);
+    return skipMutation.run(async () => {
+      await cancelRecurringOccurrence({ occurrence_id: skipTarget.occurrence_id, row_version: skipTarget.row_version, reason }, { rowVersion: skipTarget.row_version });
+      setSkipTarget(null);
+      notify({ message: "Periode rutin dilewati. Ledger dan saldo tidak berubah.", tone: "info" });
+      invalidate(["recurring.list", "app.initialState"]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
+    }).catch((error) => setSkipError(error));
+  };
+
+  const restoreSkippedOccurrence = (reason) => {
+    if (!restoreOccurrenceTarget) return Promise.resolve();
+    setRestoreOccurrenceError(null);
+    return restoreOccurrenceMutation.run(async () => {
+      await restoreRecurringOccurrence({ occurrence_id: restoreOccurrenceTarget.occurrence_id, row_version: restoreOccurrenceTarget.row_version, reason }, { rowVersion: restoreOccurrenceTarget.row_version });
+      setRestoreOccurrenceTarget(null);
+      notify({ message: "Periode rutin berhasil dipulihkan.", tone: "info" });
+      invalidate(["recurring.list", "app.initialState"]);
+      await Promise.allSettled([resource.reload(), refreshOverview()]);
+    }).catch((error) => setRestoreOccurrenceError(error));
   };
 
   const completeOccurrence = (event) => {
@@ -143,7 +175,7 @@ const RecurringPage = () => {
       }, { rowVersion: payment.item.row_version });
       setPayment({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
       setPaymentState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." });
+      notify({ message: "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." });
       invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     }).catch((error) => setPaymentState({ status: "error", error }));
@@ -163,6 +195,8 @@ const RecurringPage = () => {
       <div className="button-group">
         {item.status === "paid" || item.status === "received" ? <FiCheckCircle className="schedule-item__done" aria-label="Selesai" /> : item.can_pay ? <Button onClick={() => openPayment(item)}>Catat aktual</Button> : null}
         {item.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); }}>Batalkan aktual terakhir</Button> : null}
+        {item.can_cancel_occurrence ? <Button onClick={() => { setSkipTarget(item); setSkipError(null); }}>Lewati periode</Button> : null}
+        {item.can_restore_occurrence ? <Button icon={FiRotateCcw} onClick={() => { setRestoreOccurrenceTarget(item); setRestoreOccurrenceError(null); }}>Pulihkan periode</Button> : null}
         {item.can_edit_rule ? <button type="button" className="icon-button" onClick={() => openRuleEditor(item)} aria-label={`Edit aturan ${item.name}`}><FiEdit2 /></button> : null}
         {item.can_archive_rule ? <button type="button" className="icon-button icon-button--danger" onClick={() => { setArchiveRuleTarget(item); setEditState({ status: "idle", error: null }); }} aria-label={`Arsipkan aturan ${item.name}`}><FiArchive /></button> : null}
       </div>
@@ -249,6 +283,32 @@ const RecurringPage = () => {
         error={editState.error}
         onCancel={() => editState.status !== "submitting" && setArchiveRuleTarget(null)}
         onConfirm={archiveRule}
+      />
+
+      <ConfirmationModal
+        open={Boolean(skipTarget)}
+        title="Lewati periode ini?"
+        description={skipTarget ? `${skipTarget.name} untuk ${skipTarget.due_date} ditandai dilewati. Tidak ada transaksi dibuat dan saldo tidak berubah. Periode berikutnya tetap aktif.` : ""}
+        confirmLabel="Lewati periode"
+        reasonLabel="Alasan melewati periode"
+        requireReason
+        busy={skipMutation.busy}
+        error={skipError}
+        onCancel={() => !skipMutation.busy && setSkipTarget(null)}
+        onConfirm={skipOccurrence}
+      />
+
+      <ConfirmationModal
+        open={Boolean(restoreOccurrenceTarget)}
+        title="Pulihkan periode yang dilewati?"
+        description={restoreOccurrenceTarget ? `${restoreOccurrenceTarget.name} untuk ${restoreOccurrenceTarget.due_date} akan kembali menjadi jadwal aktif tanpa membuat transaksi.` : ""}
+        confirmLabel="Pulihkan periode"
+        reasonLabel="Alasan pemulihan"
+        requireReason
+        busy={restoreOccurrenceMutation.busy}
+        error={restoreOccurrenceError}
+        onCancel={() => !restoreOccurrenceMutation.busy && setRestoreOccurrenceTarget(null)}
+        onConfirm={restoreSkippedOccurrence}
       />
 
       <ConfirmationModal

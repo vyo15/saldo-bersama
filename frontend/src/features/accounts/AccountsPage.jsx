@@ -14,6 +14,7 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
@@ -78,6 +79,7 @@ const stackStyleAtDifference = (difference) => {
 };
 
 const AccountsPage = () => {
+  const { notify } = useFeedback();
   const navigate = useNavigate();
   const accountsResource = useApiResource("accounts.list");
   const { bootstrap, refreshAll, invalidate } = useFinance();
@@ -167,7 +169,7 @@ const AccountsPage = () => {
       setAccountForm(emptyAccountForm());
       setCreateDialogOpen(false);
       setDialogState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Rekening berhasil dibuat dan daftar telah diperbarui." });
+      notify({ message: "Rekening berhasil dibuat dan daftar telah diperbarui.", tone: "success", dedupeKey: "accounts:create" });
       await reloadAccounts();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
@@ -189,7 +191,7 @@ const AccountsPage = () => {
       }, { rowVersion: editAccount.row_version });
       setEditAccount(null);
       setDialogState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Rekening berhasil diperbarui." });
+      notify({ message: "Rekening berhasil diperbarui.", tone: "success", dedupeKey: "accounts:update" });
       await reloadAccounts();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
@@ -243,11 +245,12 @@ const AccountsPage = () => {
       }
       setArchiveTarget(null);
       setDialogState({ status: "idle", error: null });
-      setMessage({
-        type: "success",
-        text: preview.canDeleteUnused
+      notify({
+        message: preview.canDeleteUnused
           ? "Rekening yang belum pernah digunakan berhasil dihapus. Jejak audit tetap disimpan."
           : "Rekening berhasil diarsipkan dan dapat dipulihkan oleh owner.",
+        tone: "success",
+        dedupeKey: preview.canDeleteUnused ? "accounts:delete-unused" : "accounts:archive",
       });
       await reloadAccounts();
     } catch (error) { setDialogState({ status: "error", error }); }

@@ -102,6 +102,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `recurring.createRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.updateRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.archiveRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.cancelOccurrence` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.restoreOccurrence` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.payOccurrence` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.reversePayment` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -128,6 +130,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `mirror.rebuild` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
 | `integrations.status` | Ya | Ya | Read | Tidak | `api/_lib/services/integrations.js` / dispatcher |
 | `notifications.status` | Ya | Ya | Read | Tidak | `api/_lib/services/notifications.js` |
+| `notifications.preferences` | Ya | Ya | Read | Tidak | `api/_lib/services/notifications.js` |
+| `notifications.updatePreference` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.register` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.unregister` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.test` | Ya | Ya | External/operation | Wajib | `api/_lib/services/notifications.js` |
@@ -151,11 +155,13 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 
 - `envelopes.archiveRule` dan `envelopes.restoreRule` owner-only, memakai alasan + `row_version`, tidak menghapus period/movement/audit.
 - `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan `budgets.archive`/`budgets.restore` owner-only; lifecycle eksplisit membutuhkan `row_version`, aksi archive/restore recovery membutuhkan alasan, dan tidak melakukan hard delete.
+- `recurring.cancelOccurrence` melewati tepat satu occurrence tanpa membuat/membatalkan transaksi dan tanpa mengubah saldo. Hanya occurrence tanpa pembayaran aktif/aktual yang boleh dilewati. `recurring.restoreOccurrence` memulihkan occurrence tersebut menjadi `expected` atau `overdue` berdasarkan tanggal saat pemulihan. Keduanya owner-only, beralasan, memakai `row_version`, idempotency, audit, dan tidak menghapus histori.
 - `envelopes.reverseMovement` dapat dipakai owner atau member untuk movement yang dibuatnya sendiri, hanya selama kedua kantong masih aktif dan nominal hasil realokasi belum terpakai/reserved. Reversal mengubah status movement menjadi `reversed`; tidak hard delete.
 
 ### Kontrak Web Push
 
 - `notifications.status` membandingkan subscription browser dengan registrasi backend milik actor. Status aktif tidak boleh ditentukan hanya dari browser.
+- `notifications.preferences` mengembalikan tujuh tipe alert canonical untuk actor. Belum adanya row berarti `enabled=true`. `notifications.updatePreference` hanya dapat mengubah preference milik actor sendiri, wajib `row_version` setelah row pertama tercipta, dan hanya memengaruhi alert terjadwal yang belum diantrikan; notification yang sudah masuk queue dapat tetap terkirim satu kali.
 - `notifications.register` menerima endpoint HTTPS publik serta key `p256dh` dan `auth` yang valid. Endpoint milik akun lain, baik aktif maupun nonaktif, hanya dapat dipindahkan ketika client membuktikan subscription browser yang sama melalui kedua key yang persis cocok. Mismatch menghasilkan `PUSH_ENDPOINT_OWNERSHIP_CONFLICT`.
 - Endpoint dengan port nonstandar, IP literal, hostname lokal/internal, dan alamat DNS yang mengarah ke jaringan nonpublik ditolak. Lookup terjaga dipakai sebagai agent request agar koneksi tidak melakukan resolusi DNS kedua yang tidak tervalidasi. Jika hostname berubah dan mengarah ke alamat privat saat pengiriman, subscription dinonaktifkan serta seluruh delivery tertundanya diakhiri agar tidak terus di-retry.
 - `notifications.test` hanya mengirim ke endpoint aktif milik actor, wajib idempotency key, memakai cooldown, timeout, target `/pengaturan/notifikasi`, dan payload generik tanpa detail finansial. Frontend menjalankannya otomatis setelah registrasi; penerimaan oleh push service tidak membuktikan sistem operasi menampilkan notifikasi.

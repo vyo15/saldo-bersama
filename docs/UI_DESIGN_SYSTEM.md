@@ -189,8 +189,10 @@ Adopsi Mantine harus dilakukan bertahap:
 
 ## Login dan anggota
 
-- Login normal state memakai pola logo-first: brand, tagline singkat, satu host Google Identity Services, dan kredit creator. Pesan konfigurasi/login serta retry hanya muncul saat diperlukan. Jangan mengubah Google/Firebase flow hanya demi styling.
-- Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px.
+- Login desktop memakai artwork approved sebagai visual layer utuh agar komposisi light/dark konsisten dengan desain referensi. Artwork mempertahankan rasio 1672×941 dan ditampilkan tanpa menggambar ulang ilustrasi dengan CSS. Area autentikasi tetap menampilkan satu host Google Identity Services canonical di atas artwork; error konfigurasi/login dan retry hanya muncul saat diperlukan.
+- Login mobile ≤820px memakai tiga slide total: onboarding “Rajin menabung, bijak belanja”, onboarding “Atur anggaran, hindari boros”, lalu slide login. Artwork mempertahankan rasio 941×1672, tombol `Lanjut` menggunakan hotspot semantik, swipe horizontal dan ArrowLeft/ArrowRight tersedia, dan `prefers-reduced-motion` mematikan transisi slide.
+- Artwork tidak boleh menggantikan kontrol autentikasi. Tombol Google tetap dirender oleh Google Identity Services/Firebase flow existing. Karena Google membatasi tampilan provider, area tombol boleh berbeda sedikit dari artwork referensi; jangan menyamarkan iframe provider dengan tombol palsu.
+- Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px. Theme toggle mobile adalah kontrol DOM asli yang ditempatkan di atas artwork login; artwork onboarding mobile yang disetujui saat ini tetap light agar pixel-match dengan referensi.
 - Halaman Akses anggota tetap owner-only. Daftar memakai card profil yang mudah dipindai, search nama/email, filter role, dan Modal canonical untuk tambah/ubah. Destructive member action tetap memakai confirmation guarded dan backend authorization.
 - `UserAvatar` memakai foto Google hanya bila URL profil tersedia dari session/read model tepercaya. Jika `users.list` tidak menyediakan foto anggota lain, gunakan initials fallback; jangan mengambil foto dari Google Search atau mengarang URL.
 - Aktivitas anggota adalah audit-friendly view atas ledger existing berdasarkan `created_by`, bukan ledger baru dan bukan ukuran kontribusi finansial. Copy wajib menyebutnya sebagai pencatat, bukan pembayar/pemakai.
@@ -207,6 +209,13 @@ Adopsi Mantine harus dilakukan bertahap:
 - Apakah perubahan memengaruhi transaksi, saldo, authorization, atau data flow?
 - Apakah screenshot/preview mencakup mobile dan desktop?
 - Apakah docs, changelog, status, serta handoff diperbarui?
+
+## Feedback dan status aksi
+
+- Success/info/warning yang transient memakai `FeedbackProvider`/`useFeedback` dengan `aria-live=polite`, dedupe, safe-area mobile, dan reduced-motion.
+- Error mutation, `row_version` conflict, outcome write yang tidak pasti, maintenance/read-only, backup/restore/import, dan status integrasi yang perlu ditindaklanjuti **tidak boleh** hanya berupa toast yang auto-dismiss; gunakan notice/error state persisten.
+- Aksi destructive tetap memakai modal/confirmation guard. Label “undo” hanya boleh memanggil compensating action domain yang audited (mis. cancel/reverse), bukan hard rollback atau penghapusan histori.
+- Halaman baru tidak boleh membuat toast/snackbar implementation sendiri; gunakan primitive feedback canonical.
 
 ## Kontrak capability desktop dan mobile
 

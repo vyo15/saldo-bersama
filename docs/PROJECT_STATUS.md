@@ -1,5 +1,50 @@
 # Project Status
 
+## Maintainability patch merge 2026-08-09
+
+- Baseline merge: `saldo-bersama-clean(20260809-040450).zip`, root `saldo-bersama/`, 367 file canonical, schema target tetap v7. Patch maintainability 50-file direkonsiliasi per file, **bukan** dioverlay mentah karena beberapa bagiannya berbasis source sebelum feedback/serializer/hotfix terakhir.
+- Hasil source merge menjadi 374 file canonical. `stableValue.js` dari patch tidak ditambahkan karena `frontend/src/services/api/serialization.js` yang lebih baru sudah menjadi canonical superset; `cache.js`/`client.js` dan test equivalence yang lebih kuat dipertahankan. Perubahan Categories/Goals hanya mengambil dependency-direction refactor sehingga toast feedback terbaru tidak mundur ke inline success lama.
+- Transaction composer sekarang application-owned, shared presentation tidak lagi memaksa feature mengimpor implementation feature lain, dan Rekonsiliasi memakai facade API lokal. Governance memeriksa relative import cycle serta dependency direction.
+- Refactor backend pada finance/restore/notifications/push worker bersifat structural; test runtime tetap menjaga transaction normalization, restore safety, push claim/delivery retry, idempotency, saldo, dan audit semantics.
+- `npm run check` sekarang juga menjalankan backend coverage gate (lines 80%, branches 55%, functions 78%). `npm run check:duplicates` tetap tersedia dan tetap non-blocking di CI.
+- Validasi merge sandbox: source 374 PASS, syntax Node 105 PASS, Apps Script 6 file/2 load order PASS, frontend 93/93 PASS, backend 174/174 PASS, guard 40/40 PASS, backend coverage PASS (all files: 87.32% lines / 71.00% branches / 87.40% functions), Web Push flaky regression 20/20 PASS, governance/source-architecture PASS. Build/browser final tetap dibuktikan pada laptop Node 24 karena dependency binary sandbox berasal dari platform berbeda.
+
+
+## Recurring skip, notification preferences, feedback, dan release QA 2026-08-09
+
+### Web Push fixture determinism hotfix 2026-08-09
+
+- Flaky Web Push configuration regression ditutup pada test fixture: scalar private key P-256 hasil `crypto.createECDH()` dinormalisasi menjadi 32 byte sebelum Base64URL agar leading-zero scalar tidak salah diklasifikasikan sebagai `VAPID_PRIVATE_KEY` invalid. Runtime validator dan VAPID Production tidak diubah.
+- Source baseline hotfix: `saldo-bersama-clean(20260809-035739).zip`, root `saldo-bersama/`, 367 file canonical, schema target tetap v7.
+- Operator gate sebelum hotfix: source 367 PASS, frontend 92/92, guard 39/39, build/budget PASS, browser 10/10, audit 0/0; satu backend failure berasal dari fixture Web Push acak ini.
+
+### Maintainability + artifact hygiene follow-up 2026-08-09
+
+- Diagnostic `npm-audit-*.json` sekarang local-only secara canonical: Git/source validator mengabaikannya, tetapi clean packager memakai policy yang sama dan tetap menolaknya masuk archive. Ini menutup failure berantai `validate:source` -> artifact hygiene -> `npm run zip` tanpa melonggarkan guard secret/env.
+- Stable payload serialization dipusatkan untuk cache key dan mutation fingerprint agar dua infrastruktur API tidak drift.
+- Metadata optimistic update yang identik dipusatkan pada helper versioning domain-neutral; business transition, ownership, reversal, dan optimistic SQL guard tetap explicit.
+- Recurring pay/reverse/skip/restore memakai satu identitas sinkronisasi occurrence: Calendar memakai occurrence ID dan mirror recurring memakai rule ID, mencegah outbox key yang berbeda antar transition.
+- Feedback transient success diselaraskan pada flow harian (Rekening, Kategori, Anggaran, Target, Export) sementara error/conflict/maintenance/backup/restore/integrasi tetap persistent.
+- jscpd ditambahkan sebagai report-only non-blocking yang dipin versinya; migration SQL dan CSS module deklaratif dikecualikan dari target refactor angka.
+- Gate operator terakhir sebelum follow-up: dependency audit production/all **0 vulnerability**, frontend **90/90**, guard **37/37**, build/budget PASS, dan browser **10/10**; satu backend/artifact failure hanya berasal dari file diagnostic `npm-audit-20260809.json` yang kini ditangani policy.
+- Validasi sandbox follow-up: source **367 file PASS**, frontend **92/92**, backend/business/security/tooling **171/171**, guard **39/39**, recurring runtime smoke **4/4**, artifact/governance focused PASS, dan lint source melalui executable Node PASS. Sandbox memakai Node 22 sehingga build/browser final tetap dibuktikan operator di Node 24.
+
+- **Source baseline:** `saldo-bersama-clean(20260808-194612).zip`, root `saldo-bersama/`, **356 file canonical sebelum patch**. Runtime target tetap Node 24.x.
+- Schema canonical naik **v6 -> v7** melalui migration additive `005_notification_preferences.sql`. Tabel baru hanya menyimpan preference tujuh tipe alert per user dengan `row_version`; row yang belum ada berarti aktif, sehingga existing user tidak kehilangan notifikasi.
+- Recurring occurrence `cancelled` bukan lagi dead branch: owner dapat melewati satu occurrence tanpa ledger/saldo change dan memulihkannya kembali; payment, regeneration, dashboard, Push, Calendar, mirror, audit, row-version, dan idempotency mengikuti status persisted.
+- Preference notifikasi kini account-level dan sinkron lintas perangkat. Owner/member hanya dapat mengubah preference actor sendiri; Push payload tetap generik dan preference tidak memperluas authorization data.
+- Feedback transient memakai satu `FeedbackProvider` canonical untuk success/info/warning. Error penting tetap persistent. Tidak ada generic rollback/undo; reversal finansial tetap melalui action domain audited seperti cancel transaction atau reverse movement.
+- Release tooling diperbaiki agar Git linked worktree dengan `.git` berbentuk file tidak dianggap source sensitif, dan `npm run test:browser` membangun fixture public Firebase/Google yang aman secara mandiri.
+- Dependency hygiene menambahkan Dependabot weekly serta `audit:production`/`audit:all`. Operator sudah mengunci `brace-expansion@5.0.9` dan `nanoid@3.3.18`; audit production dan seluruh dependency sama-sama 0 vulnerability tanpa `--force`.
+- Deployment v7 wajib: backup terverifikasi -> maintenance window singkat -> `npm run db:migrate` -> `npm run db:integrity` -> deploy runtime v7 -> smoke owner/member/notification preference -> verify Google mirror metadata mengikuti schema 7.
+
+### Gate yang masih harus dibuktikan operator untuk patch ini
+
+- Node 24: `validate:source`, lint, test, `test:guard`, build, build budget, browser suite, clean ZIP.
+- `npm audit --omit=dev --audit-level=high` dan, bila gagal, simpan `npm audit --json` untuk triage tanpa auto-fix.
+- Production schema v7 + runtime v7 harus cutover terkoordinasi; runtime v6 dan v7 tidak boleh berjalan lama terhadap schema mismatch.
+
+
 ## Human-error mutation hardening + smart recurring alerts 2026-08-08
 
 - **Source baseline diverifikasi:** `saldo-bersama-clean(20260808-111504).zip`, root `saldo-bersama/`, **351 file canonical sebelum patch**, schema tetap v6. Tidak ada migration, perubahan formula saldo, Firebase Auth, allowlist/role dasar, resource ID, secret, atau dependency baru.
@@ -36,7 +81,7 @@
 
 ### Status verifikasi operasional
 
-- **Sheets:** full snapshot sudah pernah `completed` dan tab canonical terlihat pada resource dedicated. Setelah hardening dideploy, verifikasi `_Mirror_Metadata.schema_version=6`, `Sheet1` kosong hilang, dan UI tidak lagi menghitung failure historis sebagai masalah aktif.
+- **Sheets:** full snapshot sudah pernah `completed` dan tab canonical terlihat pada resource dedicated. Pada release v6 historis, verifikasi memakai `_Mirror_Metadata.schema_version=6`; setelah cutover v7, metadata mirror wajib mengikuti schema aktif (7). `Sheet1` kosong harus hilang dan UI tidak menghitung failure historis sebagai masalah aktif.
 - **Calendar:** queue sudah pernah `completed`, tetapi isi Calendar nyata tetap harus dicek sekali untuk memastikan hanya recurring `shared` dan tidak ada duplikasi/personal item.
 - **Drive:** backup v6 contract dan regression sudah lulus; file backup nyata di folder Drive tetap harus dicek sekali sebelum verifikasi operasional ditutup.
 - Jangan mengirim shared secret, Script Properties value, resource ID, token, `.env.local`, `.clasp.json`, atau private VAPID/Turso credential ke chat/repository.

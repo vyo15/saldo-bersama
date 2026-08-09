@@ -26,6 +26,12 @@ const ACCOUNT_TYPE_OPTIONS = Object.freeze([
   ["other", "Lainnya"],
 ]);
 
+const AccountOwnerOptions = ({ activeUsers }) => activeUsers.map((member) => (
+  <option key={member.user_id} value={member.user_id}>
+    {member.name || "Pengguna"}{member.is_current ? " · saya" : ""}
+  </option>
+));
+
 const AccountEditorDialogs = ({
   createDialogOpen,
   onCloseCreate,
@@ -161,11 +167,7 @@ const AccountEditorDialogs = ({
                     value={accountForm.owner_user_id || defaultOwnerUserId}
                     onChange={(event) => updateAccountForm({ owner_user_id: event.target.value })}
                   >
-                    {activeUsers.map((member) => (
-                      <option key={member.user_id} value={member.user_id}>
-                        {member.name || "Pengguna"}{member.is_current ? " · saya" : ""}
-                      </option>
-                    ))}
+                    <AccountOwnerOptions activeUsers={activeUsers} />
                   </select>
                 ) : <input value={currentOwnerLabel} disabled aria-label="Pemilik rekening aktif" />}
                 <small>{activeUsers.length ? "Nama pemilik ditampilkan kepada pasangan. Hak transaksi rekening personal tetap mengikuti pemilik." : "Daftar anggota belum dapat dimuat. Rekening pribadi baru akan dimiliki pengguna aktif dan tetap divalidasi oleh server."}</small>
@@ -267,11 +269,7 @@ const AccountEditorDialogs = ({
                   value={editAccount?.owner_user_id || defaultOwnerUserId}
                   onChange={(event) => updateEditAccount({ owner_user_id: event.target.value })}
                 >
-                  {activeUsers.map((member) => (
-                    <option key={member.user_id} value={member.user_id}>
-                      {member.name || "Pengguna"}{member.is_current ? " · saya" : ""}
-                    </option>
-                  ))}
+                  <AccountOwnerOptions activeUsers={activeUsers} />
                 </select>
               ) : <input value={editAccount?.owner_name || currentOwnerLabel} disabled aria-label="Pemilik rekening saat ini" />}
               <small>{activeUsers.length ? "Kepemilikan hanya dapat dipindahkan bila rekening belum memiliki data terkait." : "Daftar anggota belum dapat dimuat. Pemilik rekening saat ini dipertahankan."}</small>

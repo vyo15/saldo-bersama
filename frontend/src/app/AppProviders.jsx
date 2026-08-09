@@ -1,12 +1,18 @@
 import { AuthProvider } from "../features/auth/AuthContext.jsx";
 import { FinanceProvider } from "./FinanceContext.jsx";
 import { ThemeProvider } from "./ThemeContext.jsx";
+import FeedbackProvider from "../components/feedback/FeedbackProvider.jsx";
+import TransactionComposerProvider from "./TransactionComposerContext.jsx";
 
 const AppProviders = ({ children }) => (
   <ThemeProvider>
-    <AuthProvider>
-      <FinanceProvider>{children}</FinanceProvider>
-    </AuthProvider>
+    <FeedbackProvider>
+      <AuthProvider>
+        <FinanceProvider>
+          <TransactionComposerProvider>{children}</TransactionComposerProvider>
+        </FinanceProvider>
+      </AuthProvider>
+    </FeedbackProvider>
   </ThemeProvider>
 );
 

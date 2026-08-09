@@ -290,7 +290,7 @@ const alerts = Object.freeze([
 export const bootstrapFixture = Object.freeze({
   accounts,
   categories,
-  config: { schemaVersion: 6, timezone: "Asia/Jakarta", maintenanceMode: false },
+  config: { schemaVersion: 7, timezone: "Asia/Jakarta", maintenanceMode: false },
 });
 
 export const overviewFixture = Object.freeze({
@@ -398,8 +398,19 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
       { user_id: memberSession.uid, email: memberSession.email, name: memberSession.name, role: "member", status: "active", is_current: session.uid === memberSession.uid, row_version: 1 },
     ] },
     "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
-    "system.health": { status: "ok", schemaVersion: 6, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR", integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
+    "system.health": { status: "ok", schemaVersion: 7, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR", integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
     "integrations.status": { configured: { sheets: false, calendar: false }, providers: { sheets: {}, calendar: {} } },
+    "notifications.preferences": {
+      items: [
+        { type: "recurring_due", enabled: true, row_version: null, source: "default" },
+        { type: "recurring_funding_shortage", enabled: true, row_version: null, source: "default" },
+        { type: "recurring_completed", enabled: true, row_version: null, source: "default" },
+        { type: "budget_threshold", enabled: true, row_version: null, source: "default" },
+        { type: "envelope_threshold", enabled: true, row_version: null, source: "default" },
+        { type: "goal_behind", enabled: true, row_version: null, source: "default" },
+        { type: "unallocated_expense", enabled: true, row_version: null, source: "default" }
+      ],
+    },
     "periods.list": { items: [] },
   };
 };

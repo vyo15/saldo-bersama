@@ -16,6 +16,10 @@ npm run test:browser
 npm run zip
 ```
 
+### Backend coverage gate
+
+`npm run check` juga menjalankan `npm run test:coverage:backend` dengan Node built-in test coverage. Minimum canonical saat ini: **80% lines, 55% branches, 78% functions**. Coverage adalah blocking quality gate; jscpd tetap report-only/non-blocking dan tidak menggantikan behavioral test.
+
 Cakupan wajib:
 
 - schema STRICT, FK, integer Rupiah, ownership, bentuk transaksi, cancellation metadata, dan saldo awal negatif;
@@ -27,8 +31,12 @@ Cakupan wajib:
 - row-version conflict dan idempotency replay;
 - guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage`, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
 - browser human-error journey pada network lambat: double-click create target harus menghasilkan satu request mutation;
+- linked worktree release check: `.git` berbentuk file tidak gagal source validator; `npm run test:browser` membangun fixture public sendiri tanpa `.env.local`;
 - personal/shared authorization dan IDOR;
 - recurring, envelope, budget, goal, reconciliation, close/reopen period; archive/restore envelope rule dan reverse reallocation; restore Target/Jadwal rutin/Anggaran arsip; negative actual reconciliation hanya untuk account `allow_negative`;
+- recurring occurrence skip/restore: hanya owner, reason + row_version + idempotency, tidak mengubah ledger/saldo, status cancelled persisted, pay ditolak sampai dipulihkan, archive/restore rule tidak menghapus skip;
+- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v7;
+- feedback global: `aria-live`, dedupe, mobile safe-area, reduced motion, tanpa generic hard rollback/undo;
 - read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, Calendar ScriptLock, dan duplicate managed-event self-healing;
 - formula injection dan valid XLSX;
 - backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, push credential exclusion, serta preservation reservation `restore.apply` agar retry key yang sama mereplay hasil dan tidak menjalankan restore kedua;
@@ -159,7 +167,7 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
-- Migration v5 menerima enum template valid, menolak template invalid/non-bank, dan menjaga nama legacy tetap sama. Migration v6 menambah delivery Web Push per subscription. Restore runtime v6 tetap menerima backup schema v3/v4/v5.
+- Migration v5 menerima enum template valid, migration v6 menambah delivery Web Push per subscription, dan migration v7 menambah notification preference actor-scoped. Restore runtime v7 tetap menerima backup schema v3/v4/v5/v6 dengan preference default aktif untuk backup lama.
 - Sidebar melengkung harus tetap terlihat, target sentuh minimal 44px, submenu minimal dapat ditutup, dan menu mobile tidak menduplikasi theme toggle.
 
 ## Regression rekening transparan dan capability mobile
@@ -195,6 +203,15 @@ Regression wajib membuktikan:
 - generic purge tidak ada pada action registry, permission, API, atau UI.
 
 
+## Maintainability, artifact hygiene, dan duplicate-report policy
+
+- `npm-audit-YYYYMMDD.json` adalah diagnostic lokal: boleh berada sementara di working directory, wajib di-ignore Git/source validator, dan **tidak boleh** masuk clean ZIP. Validator dan packager memakai policy local-only yang sama.
+- `cache.js` dan `client.js` wajib memakai serializer canonical yang sama agar query key dan mutation fingerprint tidak drift ketika urutan property payload berubah.
+- Helper versioning hanya mengekstrak stamp `row_version`/`updated_at`/`updated_by` yang benar-benar identik; ownership guard, optimistic `WHERE row_version=?`, reversal metadata, dan business transition tetap eksplisit di service domain.
+- `npm run check:duplicates` memakai jscpd pinned dan **report-only/non-blocking**. Prioritas refactor adalah clone JavaScript/JSX yang berisiko drift; migration SQL dan CSS module deklaratif tidak dikejar hanya demi persentase.
+- Feedback transient success/info/warning memakai `FeedbackProvider`; error mutation, conflict, maintenance/read-only, backup/restore/import, dan status integrasi yang perlu tetap terlihat memakai notice persisten. Generic hard undo/rollback tidak tersedia; reversal finansial tetap action domain audited.
+- Recurring occurrence mutation wajib enqueue Calendar dengan `recurring_occurrence:<occurrence_id>` dan mirror recurring melalui `<recurring_rule_id>`; pay/reverse/skip/restore harus memakai identitas sinkronisasi yang sama.
+
 ## Modal, Kategori, dan route Pengaturan
 
 - Ukur `scrollWidth <= clientWidth + 1` pada dialog dan `.modal__body` untuk Tambah Transaksi, Tambah/Edit Kategori, Rekening, Import, Restore, serta konfirmasi periode pada 320, 360, 390, 414, dan 430px.
@@ -208,7 +225,7 @@ Regression wajib membuktikan:
 ## Web Push desktop dan mobile
 
 - `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
-- Schema Production harus versi 6 dan `npm run db:integrity` harus lulus sebelum register subscription.
+- Schema Production harus versi 7 dan `npm run db:integrity` harus lulus sebelum register subscription.
 - `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
 - Bootstrap Development interaktif wajib menarik ulang Vercel Development walaupun `.env.local` lama terlihat lengkap; hasil pull mengganti file hanya setelah delapan core + Web Push lolos validasi.
 - Mode non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.

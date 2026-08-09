@@ -1,6 +1,6 @@
 # Data Dictionary
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, termasuk `001_initial_schema.sql`, `002_account_number.sql`, dan `003_account_bank_template.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, termasuk `001_initial_schema.sql` sampai `005_notification_preferences.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -41,6 +41,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `integration_links` | Pemetaan entity internal dengan resource integrasi eksternal. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `notification_queue` | Antrean notifikasi per pengguna yang diproses worker. | Sedang | Service/API; data operasional, dibersihkan hanya melalui workflow maintenance |
 | `notification_deliveries` | Status pengiriman per notification dan subscription untuk retry tanpa duplikasi perangkat sukses. | Tinggi | Service/API; endpoint tidak disalin ke backup finansial |
+| `notification_preferences` | Preferensi tujuh tipe alert canonical untuk setiap pengguna. Row yang belum ada berarti tipe aktif; perubahan memakai `row_version` dan audit actor server-side. | Sedang | Service/API; ikut backup/restore, tidak menyimpan endpoint/credential Push |
 | `push_subscriptions` | Subscription Web Push per pengguna/perangkat. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `backup_runs` | Metadata backup teknis dan statusnya. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `import_previews` | Preview import yang memiliki fingerprint dan masa berlaku. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
@@ -68,7 +69,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - budget/kantong threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v6
+## Model planned — belum ada di schema v7
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 

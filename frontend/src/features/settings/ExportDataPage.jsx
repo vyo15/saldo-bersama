@@ -2,12 +2,14 @@ import { useState } from "react";
 import { FiDownload } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { downloadFinanceExcel } from "./settings.api.js";
 import styles from "./Settings.module.css";
 
 const ExportDataPage = () => {
+  const { notify } = useFeedback();
   const [exporting, setExporting] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -16,7 +18,8 @@ const ExportDataPage = () => {
     setResult({ status: "loading", text: "Menyiapkan Excel..." });
     try {
       const data = await downloadFinanceExcel();
-      setResult({ status: "success", text: `${data.fileName} berhasil diunduh.` });
+      setResult(null);
+      notify({ message: `${data.fileName} berhasil diunduh.`, tone: "success", dedupeKey: "settings:export" });
     } catch (error) {
       setResult({ status: "danger", text: error.message });
     } finally {

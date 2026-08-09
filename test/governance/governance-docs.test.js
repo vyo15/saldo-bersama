@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -172,8 +172,11 @@ test("API dan authorization docs mengikuti canonical owner/member permissions", 
 
 
 test("every migration table is documented in both schema overview and data dictionary", () => {
-  const migration = read("database/migrations/001_initial_schema.sql");
-  const tables = [...migration.matchAll(/CREATE TABLE IF NOT EXISTS\s+([a-zA-Z0-9_]+)/g)].map((match) => match[1]);
+  const migrationFiles = readdirSync(path.join(root, "database/migrations"))
+    .filter((name) => /^\d+_.+\.sql$/.test(name))
+    .sort();
+  const migrations = migrationFiles.map((name) => read(`database/migrations/${name}`)).join("\n");
+  const tables = [...new Set([...migrations.matchAll(/CREATE TABLE IF NOT EXISTS\s+([a-zA-Z0-9_]+)/g)].map((match) => match[1]))];
   const dictionary = read("docs/DATA_DICTIONARY.md");
   const schemaOverview = read("docs/TURSO_SCHEMA.md");
   assert.ok(tables.length > 0, "No migration tables extracted");
@@ -229,7 +232,7 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
 
 test("project status records active schema version and guarded shared database decision", () => {
   const status = read("docs/PROJECT_STATUS.md");
-  assert.match(status, /Schema:\*\* version 6/);
+  assert.match(status, /Schema canonical naik \*\*v6 -> v7\*\*/);
   assert.match(status, /Runtime lokal dan Vercel Production memakai satu database Turso/);
 });
 

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   ARCHIVE_IGNORED_SEGMENTS,
   FORBIDDEN_ARCHIVE_FILE_PATTERNS,
+  LOCAL_ONLY_FILE_PATTERNS,
   MAX_SOURCE_ARCHIVE_BYTES,
   isCleanSourceArchiveFilename,
 } from "./artifact-policy.mjs";
@@ -17,6 +18,7 @@ const archivePrefix = "saldo-bersama/";
 
 const ignoredSegments = ARCHIVE_IGNORED_SEGMENTS;
 const forbiddenFilePatterns = FORBIDDEN_ARCHIVE_FILE_PATTERNS;
+const localOnlyFilePatterns = LOCAL_ONLY_FILE_PATTERNS;
 
 const run = (command, args, options = {}) =>
   execFileSync(command, args, {
@@ -44,6 +46,7 @@ const shouldCopy = (source, excludedOutputs) => {
 
   const name = path.basename(source);
   if (name === ".env.example") return true;
+  if (localOnlyFilePatterns.some((pattern) => pattern.test(name))) return false;
   if (forbiddenFilePatterns.some((pattern) => pattern.test(name))) return false;
 
   return !excludedOutputs.has(path.resolve(source));
@@ -62,6 +65,9 @@ const auditStaging = async (directory, relative = "") => {
       }
       files.push(...await auditStaging(path.join(directory, entry.name), rel));
     } else if (entry.isFile()) {
+      if (entry.name !== ".env.example" && localOnlyFilePatterns.some((pattern) => pattern.test(entry.name))) {
+        throw new Error(`Packaging menyertakan file local-only: ${rel}`);
+      }
       if (entry.name !== ".env.example" && forbiddenFilePatterns.some((pattern) => pattern.test(entry.name))) {
         throw new Error(`Packaging menyertakan file terlarang: ${rel}`);
       }

@@ -4,9 +4,16 @@ import Button from "../../../components/common/Button.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import ThemeToggle from "../../../components/common/ThemeToggle.jsx";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
-import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../transactions/transactionPresentation.js";
+import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { formatPeriod, QUICK_ACTIONS } from "../dashboardPresentation.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
+
+const MobileAlertItems = ({ alerts }) => alerts.map((alert) => (
+  <li key={alert.id} data-severity={alert.severity}>
+    <div><strong>{alert.title}</strong><span>{alert.message}</span></div>
+    <Link to={alert.targetPath || "/"}>Tinjau</Link>
+  </li>
+));
 
 const MobileFinanceDashboard = ({
   overview,
@@ -119,23 +126,13 @@ const MobileFinanceDashboard = ({
               <span>{overview.alerts.length} item</span>
             </div>
             <ul className="financial-alert-list financial-alert-list--mobile">
-              {visibleAlerts.map((alert) => (
-                <li key={alert.id} data-severity={alert.severity}>
-                  <div><strong>{alert.title}</strong><span>{alert.message}</span></div>
-                  <Link to={alert.targetPath || "/"}>Tinjau</Link>
-                </li>
-              ))}
+              <MobileAlertItems alerts={visibleAlerts} />
             </ul>
             {additionalAlerts.length ? (
               <details className="mobile-alert-more">
                 <summary>Lihat {additionalAlerts.length} peringatan lainnya</summary>
                 <ul className="financial-alert-list financial-alert-list--mobile">
-                  {additionalAlerts.map((alert) => (
-                    <li key={alert.id} data-severity={alert.severity}>
-                      <div><strong>{alert.title}</strong><span>{alert.message}</span></div>
-                      <Link to={alert.targetPath || "/"}>Tinjau</Link>
-                    </li>
-                  ))}
+                  <MobileAlertItems alerts={additionalAlerts} />
                 </ul>
               </details>
             ) : null}

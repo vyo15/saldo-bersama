@@ -8,6 +8,7 @@ const initialMigrationUrl = new URL("001_initial_schema.sql", migrationDirectory
 const accountNumberMigrationUrl = new URL("002_account_number.sql", migrationDirectory);
 const bankTemplateMigrationUrl = new URL("003_account_bank_template.sql", migrationDirectory);
 const notificationDeliveriesMigrationUrl = new URL("004_notification_deliveries.sql", migrationDirectory);
+const notificationPreferencesMigrationUrl = new URL("005_notification_preferences.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -84,9 +85,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v6 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v7 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "6");
+  assert.equal(result.schema_version, "7");
   assert.ok(result.table_count >= 25);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -145,5 +146,17 @@ test("migration v6 menambahkan delivery per subscription untuk retry Web Push ta
   assert.match(sql, /status IN \('pending','processing','sent','failed','expired','dead_letter'\)/);
   assert.match(sql, /idx_notification_deliveries_ready/);
   assert.match(sql, /value = '6'/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+
+test("migration v7 menambah preferensi notifikasi per pengguna tanpa menyimpan preference di client", async () => {
+  const sql = await readFile(notificationPreferencesMigrationUrl, "utf8");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS notification_preferences/);
+  assert.match(sql, /PRIMARY KEY \(user_id, notification_type\)/);
+  assert.match(sql, /enabled INTEGER NOT NULL DEFAULT 1/);
+  assert.match(sql, /row_version INTEGER NOT NULL DEFAULT 1/);
+  assert.match(sql, /recurring_funding_shortage/);
+  assert.match(sql, /value = '7'/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
 });

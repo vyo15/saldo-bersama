@@ -88,18 +88,18 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "categories.list", "categories.create", "categories.update", "categories.previewArchive", "categories.archive", "categories.restore",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
     "envelopes.list", "envelopes.create", "envelopes.move", "envelopes.close", "envelopes.archiveRule", "envelopes.restoreRule", "envelopes.reverseMovement",
-    "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.archiveRule", "recurring.payOccurrence", "recurring.reversePayment", "recurring.restoreRule",
+    "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.archiveRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.reversePayment", "recurring.restoreRule",
     "budgets.list", "budgets.upsert", "budgets.archive", "budgets.restore", "goals.list", "goals.create", "goals.update", "goals.archive", "goals.move", "goals.reverseMovement", "goals.restore", "reports.monthly",
     "reconciliations.list", "reconciliations.create", "periods.list", "periods.previewClose", "periods.close", "periods.reopen",
     "calendar.sync", "mirror.sync", "mirror.rebuild", "integrations.status",
-    "notifications.status", "notifications.register", "notifications.unregister", "notifications.test", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
+    "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
   ]),
   member: new Set([
     "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.move", "envelopes.reverseMovement", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",
-    "notifications.status", "notifications.register", "notifications.unregister", "notifications.test", "integrations.status",
+    "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "integrations.status",
   ]),
 });
 export const authorizeAction = (session, action) => Boolean(session && ACTION_PERMISSIONS[session.role]?.has(action));

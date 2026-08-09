@@ -10,6 +10,7 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
@@ -18,7 +19,7 @@ import { archiveGoal as requestArchiveGoal, createGoal as requestCreateGoal, mov
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
 import { filterByOwnership } from "../../domain/ownership.js";
-import { accountDisplayLabel } from "../accounts/accountPresentation.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
 
 
 const GOAL_PACE_LABELS = Object.freeze({
@@ -33,6 +34,7 @@ const GoalsPage = () => {
   const resource = useApiResource("goals.list");
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
+  const { notify } = useFeedback();
   const createMutation = useGuardedMutation();
   const movementMutation = useGuardedMutation();
   const [message, setMessage] = useState(null);
@@ -55,7 +57,7 @@ const GoalsPage = () => {
     return createMutation.run(async () => {
       await requestCreateGoal({ ...form, target_amount: assertPositiveRupiah(form.target_amount) }, {});
       setForm({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
-      setMessage({ type: "success", text: "Target keuangan berhasil dibuat." });
+      notify({ message: "Target keuangan berhasil dibuat.", tone: "success", dedupeKey: "goals:create" });
       invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
@@ -98,7 +100,7 @@ const GoalsPage = () => {
       }, {});
       setMovement((current) => ({ ...current, goal: null }));
       setMovementState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Mutasi target dan transfer rekening berhasil dicatat." });
+      notify({ message: "Mutasi target dan transfer rekening berhasil dicatat.", tone: "success", dedupeKey: "goals:move" });
       invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     }).catch((error) => setMovementState({ status: "error", error }));
@@ -120,7 +122,7 @@ const GoalsPage = () => {
       }, { rowVersion: editGoal.row_version });
       setEditGoal(null);
       setEditState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Target berhasil diperbarui." });
+      notify({ message: "Target berhasil diperbarui.", tone: "success", dedupeKey: "goals:update" });
       invalidate(["goals.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {
@@ -139,7 +141,7 @@ const GoalsPage = () => {
       }, { rowVersion: archiveTarget.row_version });
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Target berhasil diarsipkan. Riwayat mutasi dan transaksi tetap tersimpan." });
+      notify({ message: "Target berhasil diarsipkan. Riwayat mutasi dan transaksi tetap tersimpan.", tone: "success", dedupeKey: "goals:archive" });
       invalidate(["goals.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {
@@ -154,7 +156,7 @@ const GoalsPage = () => {
       await reverseGoalMovement({ goal_movement_id: reverseTarget.last_movement_id, reason }, {});
       setReverseTarget(null);
       setReverseState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan." });
+      notify({ message: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan.", tone: "success", dedupeKey: "goals:reverse" });
       invalidate(["goals.list", "transactions.list", "reports.monthly", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) { setReverseState({ status: "error", error }); }

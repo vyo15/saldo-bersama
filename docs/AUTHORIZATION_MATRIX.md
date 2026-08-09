@@ -53,6 +53,8 @@
 | `recurring.createRule` | Ya | Tidak |
 | `recurring.updateRule` | Ya | Tidak |
 | `recurring.archiveRule` | Ya | Tidak |
+| `recurring.cancelOccurrence` | Ya | Tidak |
+| `recurring.restoreOccurrence` | Ya | Tidak |
 | `recurring.payOccurrence` | Ya | Ya |
 | `recurring.reversePayment` | Ya | Ya |
 | `recurring.restoreRule` | Ya | Tidak |
@@ -79,6 +81,8 @@
 | `mirror.rebuild` | Ya | Tidak |
 | `integrations.status` | Ya | Ya |
 | `notifications.status` | Ya | Ya |
+| `notifications.preferences` | Ya | Ya |
+| `notifications.updatePreference` | Ya | Ya |
 | `notifications.register` | Ya | Ya |
 | `notifications.unregister` | Ya | Ya |
 | `notifications.test` | Ya | Ya |
@@ -88,6 +92,13 @@
 | `restore.preview` | Ya | Tidak |
 | `restore.apply` | Ya | Tidak |
 | `integrity.run` | Ya | Tidak |
+
+
+## Recurring occurrence dan preferensi notifikasi
+
+- Melewati atau memulihkan satu occurrence (`recurring.cancelOccurrence` / `recurring.restoreOccurrence`) adalah keputusan planning owner-only. Aksi ini tidak membuat ledger entry dan tidak mengubah saldo.
+- Owner dan member boleh membaca serta mengubah **preference notifikasi miliknya sendiri**. `user_id`, actor, role, timestamp, dan audit identity tetap ditentukan backend; client tidak dapat mengubah preference pengguna lain.
+- Hak menerima alert tidak memperluas hak membaca data: payload Push tetap generik dan preference hanya memfilter tipe alert sebelum queue dibuat.
 
 ## Guard recovery kantong
 

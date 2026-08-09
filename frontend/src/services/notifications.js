@@ -275,3 +275,15 @@ export const disablePushNotifications = async ({ bestEffort = false, localOnly =
     throw error;
   }
 };
+
+export const getNotificationPreferences = async () => apiClient.request("notifications.preferences", {}, { force: true });
+
+export const updateNotificationPreference = async ({ type, enabled, rowVersion = null }) => {
+  const result = await apiClient.request(
+    "notifications.updatePreference",
+    { notification_type: type, enabled, row_version: rowVersion },
+    { rowVersion },
+  );
+  apiClient.invalidate("notifications.preferences");
+  return result;
+};

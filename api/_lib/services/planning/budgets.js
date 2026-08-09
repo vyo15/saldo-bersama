@@ -1,5 +1,6 @@
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
+import { nextVersionStamp } from "../versioning.js";
 export const listBudgets = async (db, context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "b");
@@ -31,9 +32,7 @@ export const upsertBudget = async (db, context) => {
       amount,
       warning_threshold: threshold,
       status: "active",
-      row_version: Number(current.row_version) + 1,
-      updated_by: context.actor.user_id,
-      updated_at: now
+      ...nextVersionStamp(current, context.actor.user_id, now)
     };
     const result = await db.execute("UPDATE budgets SET name=?,amount=?,warning_threshold=?,status='active',row_version=?,updated_by=?,updated_at=? WHERE budget_id=? AND row_version=?", [next.name, amount, threshold, next.row_version, next.updated_by, next.updated_at, current.budget_id, current.row_version]);
     if (result.rowsAffected !== 1) throw appError("CONFLICT", "Budget berubah di perangkat lain.", 409);
@@ -77,9 +76,7 @@ export const archiveBudget = async (db, context) => {
   const next = {
     ...current,
     status: "archived",
-    row_version: Number(current.row_version) + 1,
-    updated_by: context.actor.user_id,
-    updated_at: nowIso()
+    ...nextVersionStamp(current, context.actor.user_id)
   };
   const r = await db.execute("UPDATE budgets SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE budget_id=? AND row_version=?", [next.row_version, next.updated_by, next.updated_at, current.budget_id, current.row_version]);
   if (r.rowsAffected !== 1) throw appError("CONFLICT", "Budget berubah di perangkat lain.", 409);
@@ -104,7 +101,7 @@ export const restoreBudget = async (db, context) => {
   if (!category || category.status !== "active" || category.transaction_type !== "expense") throw appError("CATEGORY_INACTIVE", "Kategori pengeluaran harus aktif sebelum anggaran dipulihkan.", 409);
   const duplicate = await db.one("SELECT budget_id FROM budgets WHERE budget_id<>? AND period_key=? AND category_id=? AND scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'') AND status='active' LIMIT 1", [current.budget_id, current.period_key, current.category_id, current.scope, current.owner_user_id]);
   if (duplicate) throw appError("DUPLICATE_BUDGET", "Sudah ada anggaran aktif untuk kategori, periode, dan kepemilikan yang sama.", 409);
-  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE budgets SET status='active',row_version=?,updated_by=?,updated_at=? WHERE budget_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.budget_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Anggaran berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "budget", entityId: current.budget_id, previous: publicRow(current), next: { ...publicRow(next), restore_reason: reason } });

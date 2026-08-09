@@ -278,9 +278,21 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
       true,
       "Browser smoke harus memakai mock Google Identity lokal, bukan script provider eksternal.",
     );
+    assert.equal(
+      await page.evaluate("Boolean(document.querySelector('.login-mobile-stage'))"),
+      true,
+      "Viewport smoke 390px harus memakai onboarding mobile artwork-first.",
+    );
+    assert.equal(
+      await page.evaluate("document.querySelectorAll('.login-mobile-slide').length"),
+      3,
+      "Login mobile harus memiliki dua onboarding dan slide login sebagai slide ketiga.",
+    );
+    await page.evaluate("document.querySelector('.login-mobile-slide:nth-child(1) .login-mobile-next')?.click()");
+    await page.evaluate("document.querySelector('.login-mobile-slide:nth-child(2) .login-mobile-next')?.click()");
     await waitFor(
       () => page.evaluate("Boolean(document.querySelector('.google-login-button button, .google-login-button iframe'))"),
-      { timeoutMs: 5_000, description: "widget login Google mock selesai dirender" },
+      { timeoutMs: 5_000, description: "widget login Google mock selesai dirender setelah onboarding" },
     );
 
     const result = await page.evaluate(`(() => {

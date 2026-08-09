@@ -1,6 +1,6 @@
 # QA Checklist
 
-- [x] Source terbaru dan migration version diverifikasi (`111504`, 351 file canonical sebelum patch, schema v6).
+- [x] Source terbaru dan migration version diverifikasi (`194612`, 356 file canonical sebelum patch, schema v7 setelah migration additive).
 - [ ] Node/npm sesuai engines.
 - [ ] `npm run clean:dry-run` ditinjau; tidak ada secret, dump, `.env`, backup, token, dependency, atau generated output dalam clean ZIP.
 - [x] Baseline operator sebelum hardening Google lulus: build, build budget, lint, frontend 84/84, backend/tooling 147/147, browser 9/9.
@@ -21,7 +21,7 @@
 - [ ] PWA iOS/Android, push, safe area, focus, contrast, tap target diuji.
 - [x] Route 404 mobile mengisi inner content box setelah padding/safe-area canonical; regression tidak menghitung reserved `--mobile-navigation-content-gap` sebagai gap layout yang salah.
 - [x] Status backend Pengaturan memakai kontrak `system.health` aktual dan tidak menampilkan `Degraded` palsu.
-- [ ] Schema v6, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
+- [ ] Schema v7, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
 - [ ] Desktop dan Android lulus Aktifkan → verifikasi otomatis → Nonaktifkan; iPhone/iPad diuji dari aplikasi Home Screen.
 - [x] Monitoring health/integration queue tidak membocorkan secret.
 - [x] `npm run env:check` dan regression environment menolak Development local testing bila Web Push hilang, parsial, invalid, atau pasangan key tidak cocok.
@@ -33,9 +33,9 @@
 - [x] Waktu sukses terakhir berasal dari `completed_at`; kegagalan yang lebih baru tidak mengganti label keberhasilan terakhir.
 - [x] Health response ke browser tidak memuat shared secret, Spreadsheet/Calendar/Drive ID, endpoint scheduler internal, atau payload finansial.
 - [x] Signed `integration.health` operator melaporkan Mirror/Calendar/Backup/Jobs/Trigger `SIAP`, dan Production `/api/jobs` sudah HTTP 200 dengan HMAC scheduler.
-- [x] Validator Drive backup menerima nama canonical versioned v6 dan regression menolak format malformed; `BACKUP_NAME_INVALID` akibat hardcode v3 tidak kembali.
+- [x] Validator Drive backup menerima nama canonical versioned mengikuti schema aktif dan regression menolak format malformed; `BACKUP_NAME_INVALID` akibat hardcode v3 tidak kembali.
 - [x] Mirror target guard menolak spreadsheet non-kosong tanpa metadata canonical dan hanya membersihkan `Sheet1` default bila kosong.
-- [ ] Verifikasi final resource nyata setelah hardening: `_Mirror_Metadata.schema_version=6`, `Sheet1` kosong hilang, event Calendar hanya shared tanpa duplikasi, file Drive backup versioned ada, dan queue tidak memiliki failure aktif setelah full sync.
+- [ ] Verifikasi final resource nyata setelah hardening: `_Mirror_Metadata.schema_version=7`, `Sheet1` kosong hilang, event Calendar hanya shared tanpa duplikasi, file Drive backup versioned v7 ada, dan queue tidak memiliki failure aktif setelah full sync.
 
 - [x] Action registry/policy, authorization map, dan API docs tetap sinkron.
 - [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.
@@ -46,6 +46,15 @@
 - [ ] Transfer BNI/BCA ke BTN tidak masuk income/expense; jadwal auto-debit tidak mengubah saldo sampai transaksi aktual tersimpan satu kali.
 - [x] Route internal Pengaturan hanya memuat resource terkait; member dapat membuka Notifikasi/Integrasi status dan ditolak pada deep link owner-only.
 
+## Maintainability dan artifact hygiene
+
+- [x] `npm-audit-*.json` diperlakukan sebagai diagnostic lokal: di-ignore Git/validator dan fail-closed agar tidak pernah masuk clean ZIP.
+- [x] Serializer canonical dipakai bersama oleh cache key dan mutation fingerprint; property ordering tidak menghasilkan identitas berbeda.
+- [x] Version stamp backend diekstrak hanya untuk metadata update yang identik; guard ownership, transition domain, dan optimistic row-version tetap eksplisit.
+- [x] Feedback transient sukses memakai provider canonical pada flow harian; error/conflict/maintenance/backup/restore/status kritis tetap persisten.
+- [x] jscpd tersedia sebagai report non-blocking; tidak ada threshold persentase yang memaksa refactor SQL/CSS deklaratif.
+- [x] Queue recurring occurrence memakai entity identity konsisten untuk skip/restore/pay/reverse: Calendar occurrence-id, mirror rule-id.
+
 ## Product-control alignment
 
 - [x] Filter transaksi rekening/kategori/pencatat diuji untuk owner dan member.
@@ -55,8 +64,11 @@
 - [x] Proyeksi target tidak membagi dengan nol dan menangani tanpa tanggal, lewat jatuh tempo, serta target selesai.
 - [x] Notification dedupe mencegah antrean ganda pada job retry.
 - [x] Recurring expense H-2 dengan saldo rekening default di bawah sisa kewajiban mengantre alert privacy-safe; occurrence paid mengantre completion notification tanpa nama/nominal/rekening di payload.
+- [x] Owner dapat melewati satu recurring occurrence tanpa ledger/saldo change dan memulihkannya; cancelled tidak dibayar, tidak nag dashboard/Push/Calendar, tidak hilang saat rule diarsipkan, dan tetap diaudit.
+- [x] Owner/member dapat mengatur tujuh tipe notifikasi miliknya sendiri; default tanpa row tetap aktif, stale row_version ditolak, dan mute satu user tidak mematikan alert pasangan.
+- [x] Micro-feedback global hanya untuk success/info/warning dan tidak menyediakan generic hard undo; reversal finansial tetap action audited.
 - [x] Semua `REQ-*` terlacak pada implementation matrix.
-- [ ] Perubahan schema setelah v6 hanya dilakukan melalui RFC/approval terpisah, backup terverifikasi, migration, integrity check, dan rollback plan.
+- [x] Migration v7 notification preference disetujui untuk patch ini, additive, dibackup/restored, dan memiliki rollback plan; perubahan schema berikutnya tetap memerlukan approval terpisah.
 
 ## Rekening, kategori, dan responsive parity
 
@@ -104,6 +116,7 @@
 - [x] `integrity.run` sekarang mengikuti idempotency write canonical; double-submit/retry tidak membuat integrity execution baru secara diam-diam.
 - [x] Governance test membandingkan action mode, kewajiban idempotency, dan permission owner/member pada docs dengan policy/source canonical.
 - [ ] Jalankan full `npm run check`, `npm run test:guard`, `npm run test:browser`, dan `npm run zip` pada Node 24.x setelah patch diterapkan di laptop operator.
+- [ ] `npm run test:coverage:backend` memenuhi minimum 80% lines / 55% branches / 78% functions.
 
 ## Proteksi human error dan penghapusan
 

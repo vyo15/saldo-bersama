@@ -209,7 +209,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.ok(visibleReportPanels >= 7, `Chart laporan mobile harus terlihat, ditemukan ${visibleReportPanels} panel.`);
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
-    assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v6')"), true, "Status backend harus memakai kontrak system.health aktual.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v7')"), true, "Status backend harus memakai kontrak system.health aktual.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Degraded')"), false, "Status backend siap tidak boleh salah ditampilkan sebagai Degraded.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/notifikasi\"]')) && Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), true, "Owner harus memperoleh navigasi internal Pengaturan.");
 

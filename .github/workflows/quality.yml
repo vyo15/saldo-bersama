@@ -26,6 +26,9 @@ jobs:
         run: npm run check
       - name: Guarded mutation regression
         run: npm run test:guard
+      - name: Duplication report (non-blocking)
+        continue-on-error: true
+        run: npm run check:duplicates
       - name: Browser smoke and human-error journey
         timeout-minutes: 3
         run: npm run test:browser

@@ -18,15 +18,17 @@ test("backup memakai snapshot transaction, checksum, gzip limit, nama unik, dan 
   assert.match(maintenance, /MAX_BACKUP_COMPRESSED_BYTES/);
   assert.match(maintenance, /maxOutputLength: MAX_BACKUP_JSON_BYTES/);
   assert.match(maintenance, /digest\(canonicalJson\(payload\)\)/);
+  assert.match(maintenance, /"notification_preferences"/);
   assert.match(maintenance, /backupId\.slice\(-8\)/);
   assert.match(maintenance, /callGoogleBridge\("backup\.store"/);
 });
 
 test("restore melakukan preview, safety backup, maintenance fail-closed, transaction, integrity, dan rebuild integration", async () => {
   const maintenance = await maintenanceSource();
-  const safetyIndex = maintenance.indexOf("pre-restore");
-  const maintenanceIndex = maintenance.indexOf("maintenance_mode");
-  const transactionIndex = maintenance.indexOf("await db.transaction", safetyIndex);
+  const applyRestoreSource = maintenance.slice(maintenance.indexOf("export const applyRestore"));
+  const safetyIndex = applyRestoreSource.indexOf("pre-restore");
+  const maintenanceIndex = applyRestoreSource.indexOf("maintenance_mode");
+  const transactionIndex = applyRestoreSource.indexOf("await db.transaction", safetyIndex);
   assert.ok(safetyIndex >= 0 && maintenanceIndex > safetyIndex && transactionIndex > maintenanceIndex);
   assert.match(maintenance, /RESTORE SALDO BERSAMA/);
   assert.match(maintenance, /integrityIssues\(tx\)/);
@@ -75,7 +77,23 @@ test("normalisasi restore template menurunkan enum uppercase dan menolak templat
   );
 });
 
-test("backup schema v3/v4/v5 tetap dapat dimuat ke schema v6 dengan default field additive", async () => {
+
+
+test("backup schema v7 menyimpan notification preferences dan backup lama tetap default aktif", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = "2026-08-09T00:00:00.000Z";
+    await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-pref", "firebase-pref", "pref@example.com", "Preference", "owner", "active", 1, now, now]);
+    await db.execute("INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", ["u-pref", "budget_threshold", 0, 1, now, now]);
+    const snapshot = await snapshotDatabase(db);
+    assert.equal(snapshot.manifest.schemaVersion, 7);
+    assert.equal(snapshot.manifest.tables.notification_preferences, 1);
+    assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
+    assert.equal(validateSnapshot(snapshot), snapshot.checksum);
+  } finally { db.close(); }
+});
+
+test("backup schema v3/v4/v5/v6 tetap dapat dimuat ke schema v7 dengan default field additive", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -85,8 +103,11 @@ test("backup schema v3/v4/v5 tetap dapat dimuat ke schema v6 dengan default fiel
 
     const current = await snapshotDatabase(sourceDb);
     const legacyTables = structuredClone(current.tables);
+    delete legacyTables.notification_preferences;
     legacyTables.accounts = legacyTables.accounts.map(({ account_number: _accountNumber, bank_template: _bankTemplate, ...row }) => row);
-    const manifest = { ...current.manifest, version: 3, schemaVersion: 3, tables: { ...current.manifest.tables } };
+    const legacyManifestTables = { ...current.manifest.tables };
+    delete legacyManifestTables.notification_preferences;
+    const manifest = { ...current.manifest, version: 3, schemaVersion: 3, tables: legacyManifestTables };
     const legacy = { manifest, tables: legacyTables };
     legacy.checksum = digest(canonicalJson(legacy));
     assert.equal(validateSnapshot(legacy), legacy.checksum);
@@ -101,8 +122,18 @@ test("backup schema v3/v4/v5 tetap dapat dimuat ke schema v6 dengan default fiel
     const v5 = structuredClone(current);
     v5.manifest.version = 5;
     v5.manifest.schemaVersion = 5;
+    delete v5.tables.notification_preferences;
+    delete v5.manifest.tables.notification_preferences;
     v5.checksum = digest(canonicalJson({ manifest: v5.manifest, tables: v5.tables }));
     assert.equal(validateSnapshot(v5), v5.checksum);
+
+    const v6 = structuredClone(current);
+    v6.manifest.version = 6;
+    v6.manifest.schemaVersion = 6;
+    delete v6.tables.notification_preferences;
+    delete v6.manifest.tables.notification_preferences;
+    v6.checksum = digest(canonicalJson({ manifest: v6.manifest, tables: v6.tables }));
+    assert.equal(validateSnapshot(v6), v6.checksum);
 
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);

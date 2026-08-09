@@ -1,10 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { FiAlertCircle } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
-import Brand from "../../components/common/Brand.jsx";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
+import { useTheme } from "../../app/ThemeContext.jsx";
 import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
 import { useAuth } from "./AuthContext.jsx";
+
+const MOBILE_LOGIN_QUERY = "(max-width: 820px)";
+const MOBILE_SLIDE_COUNT = 3;
+const MOBILE_LOGIN_SLIDE = MOBILE_SLIDE_COUNT - 1;
+const MOBILE_ARTWORK = Object.freeze([
+  "/login/mobile-onboarding-saving.webp",
+  "/login/mobile-onboarding-budget.webp",
+  "/login/mobile-login.webp",
+]);
+const DESKTOP_ARTWORK = Object.freeze({
+  light: "/login/desktop-light.webp",
+  dark: "/login/desktop-dark.webp",
+});
 
 const MONEY_NOTES = Object.freeze([
   { denomination: "100000", tone: "red", left: "5%", rotation: "-14deg", duration: "22s", delay: "-15s", drift: "24px" },
@@ -15,90 +28,249 @@ const MONEY_NOTES = Object.freeze([
   { denomination: "50000", tone: "blue", left: "-4%", rotation: "16deg", duration: "29s", delay: "-5s", drift: "36px" },
 ]);
 
+const readMobileLayout = () => typeof window !== "undefined"
+  && typeof window.matchMedia === "function"
+  && window.matchMedia(MOBILE_LOGIN_QUERY).matches;
+
+const MoneyRain = ({ compact = false }) => {
+  const notes = compact ? MONEY_NOTES.slice(0, 4) : MONEY_NOTES;
+  return (
+    <div className={`login-money-field${compact ? " login-money-field--compact" : ""}`} aria-hidden="true">
+      {notes.map((note, index) => (
+        <span
+          className={`login-money-note login-money-note--${note.tone}`}
+          key={`${note.denomination}-${index}`}
+          style={{
+            "--note-delay": note.delay,
+            "--note-drift": note.drift,
+            "--note-duration": note.duration,
+            "--note-left": note.left,
+            "--note-rotation": note.rotation,
+          }}
+        >
+          <strong>{note.denomination}</strong>
+          <small>RUPIAH</small>
+        </span>
+      ))}
+      <span className="login-spark login-spark--one" />
+      <span className="login-spark login-spark--two" />
+      <span className="login-spark login-spark--three" />
+    </div>
+  );
+};
+
+const LoginFeedback = ({ configErrors, error, buttonError, status, refreshSession }) => {
+  if (!configErrors.length && !error && !buttonError && status !== "error") return null;
+  return (
+    <div className="login-feedback" role="status">
+      {configErrors.length ? (
+        <div className="notice notice--danger login-feedback__notice" role="alert">
+          <FiAlertCircle aria-hidden="true" />
+          <div><strong>Konfigurasi belum lengkap.</strong>{configErrors.map((item) => <span key={item}>{item}</span>)}</div>
+        </div>
+      ) : null}
+
+      {(error || buttonError) ? (
+        <div className="notice notice--danger login-feedback__notice" role="alert">
+          <FiAlertCircle aria-hidden="true" />
+          <div><strong>Login belum berhasil.</strong><span>{(buttonError || error).message}</span></div>
+        </div>
+      ) : null}
+
+      {status === "error" ? (
+        <button className="button button--secondary button--wide" type="button" onClick={refreshSession}>
+          Coba periksa sesi lagi
+        </button>
+      ) : null}
+    </div>
+  );
+};
+
+const LoginProvider = ({ buttonRef, configErrors, error, buttonError, status, refreshSession }) => (
+  <>
+    <LoginFeedback
+      configErrors={configErrors}
+      error={error}
+      buttonError={buttonError}
+      status={status}
+      refreshSession={refreshSession}
+    />
+    <div className="google-login-button" ref={buttonRef} aria-label="Masuk menggunakan Google" />
+  </>
+);
+
 const LoginPage = () => {
   const { status, error, configErrors, loginWithFirebaseToken, refreshSession } = useAuth();
+  const { theme } = useTheme();
   const location = useLocation();
   const buttonRef = useRef(null);
+  const swipeStartXRef = useRef(null);
+  const swipeDeltaXRef = useRef(0);
   const [buttonError, setButtonError] = useState(null);
+  const [mobileLayout, setMobileLayout] = useState(readMobileLayout);
+  const [mobileSlide, setMobileSlide] = useState(0);
+
+  const showGoogleButton = status === "anonymous" && !configErrors.length && (!mobileLayout || mobileSlide === MOBILE_LOGIN_SLIDE);
 
   useEffect(() => {
-    if (status !== "anonymous" || configErrors.length) return undefined;
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const media = window.matchMedia(MOBILE_LOGIN_QUERY);
+    const syncLayout = (event) => {
+      setMobileLayout(event.matches);
+      if (event.matches) setMobileSlide(0);
+    };
+    setMobileLayout(media.matches);
+    media.addEventListener?.("change", syncLayout);
+    return () => media.removeEventListener?.("change", syncLayout);
+  }, []);
+
+  useEffect(() => {
+    if (!showGoogleButton) return undefined;
     let cleanup = () => {};
+    setButtonError(null);
     renderGoogleLoginButton({
       element: buttonRef.current,
       onFirebaseToken: loginWithFirebaseToken,
       onError: setButtonError,
     }).then((dispose) => { cleanup = dispose; }).catch(setButtonError);
     return () => cleanup();
-  }, [configErrors.length, loginWithFirebaseToken, status]);
+  }, [loginWithFirebaseToken, mobileLayout, showGoogleButton]);
 
   const requestedPath = typeof location.state?.from === "string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")
     ? location.state.from
     : "/";
   if (status === "authenticated") return <Navigate to={requestedPath} replace />;
 
-  return (
-    <main className="login-page">
-      <div className="login-money-field" aria-hidden="true">
-        {MONEY_NOTES.map((note, index) => (
-          <span
-            className={`login-money-note login-money-note--${note.tone}`}
-            key={`${note.denomination}-${index}`}
-            style={{
-              "--note-delay": note.delay,
-              "--note-drift": note.drift,
-              "--note-duration": note.duration,
-              "--note-left": note.left,
-              "--note-rotation": note.rotation,
-            }}
-          >
-            <strong>{note.denomination}</strong>
-            <small>RUPIAH</small>
-          </span>
-        ))}
-        <span className="login-spark login-spark--one" />
-        <span className="login-spark login-spark--two" />
-        <span className="login-spark login-spark--three" />
-      </div>
+  const moveMobileSlide = (nextSlide) => {
+    setMobileSlide(Math.max(0, Math.min(MOBILE_LOGIN_SLIDE, nextSlide)));
+  };
 
-      <ThemeToggle className="login-theme-toggle" />
+  const finishSwipe = () => {
+    const delta = swipeDeltaXRef.current;
+    if (Math.abs(delta) >= 46) moveMobileSlide(mobileSlide + (delta < 0 ? 1 : -1));
+    swipeStartXRef.current = null;
+    swipeDeltaXRef.current = 0;
+  };
 
-      <div className="login-experience">
-        <h1 id="login-title" className="sr-only">Saldo Bersama</h1>
-        <header className="login-brand-lockup">
-          <Brand />
-          <div className="login-brand-divider" aria-hidden="true" />
-          <p>Kelola keuangan pribadi dan bersama.</p>
-        </header>
+  if (mobileLayout) {
+    return (
+      <main className="login-page login-page--mobile-artwork">
+        <h1 className="sr-only">Saldo Bersama</h1>
+        <section
+          className="login-mobile-stage"
+          aria-roledescription="carousel"
+          aria-label="Pengenalan dan login Saldo Bersama"
+          onPointerDown={(event) => {
+            if (event.target.closest?.("button, a, .google-login-button")) return;
+            swipeStartXRef.current = event.clientX;
+            swipeDeltaXRef.current = 0;
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            if (swipeStartXRef.current === null) return;
+            swipeDeltaXRef.current = event.clientX - swipeStartXRef.current;
+          }}
+          onPointerUp={finishSwipe}
+          onPointerCancel={finishSwipe}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowRight") moveMobileSlide(mobileSlide + 1);
+            if (event.key === "ArrowLeft") moveMobileSlide(mobileSlide - 1);
+          }}
+          tabIndex={0}
+        >
+          <div className="login-mobile-track" style={{ "--login-mobile-slide": mobileSlide }}>
+            {MOBILE_ARTWORK.map((src, index) => (
+              <article className="login-mobile-slide" key={src} aria-hidden={index !== mobileSlide}>
+                <p className="sr-only">{index === 0 ? "Rajin menabung, bijak belanja. Catat pengeluaran, kurangi foya, dan jaga saldo tetap terkontrol." : index === 1 ? "Atur anggaran, hindari boros. Pantau pemasukan dan pengeluaran agar belanja tetap terencana." : "Login Saldo Bersama dengan akun Google yang diizinkan."}</p>
+                <img
+                  className="login-mobile-artwork"
+                  src={src}
+                  alt=""
+                  aria-hidden="true"
+                  draggable="false"
+                  loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : "auto"}
+                />
 
-        <section className="login-actions" aria-labelledby="login-title">
-          {configErrors.length ? (
-            <div className="notice notice--danger login-actions__notice" role="alert">
-              <FiAlertCircle aria-hidden="true" />
-              <div><strong>Konfigurasi belum lengkap.</strong>{configErrors.map((item) => <span key={item}>{item}</span>)}</div>
-            </div>
-          ) : null}
+                {index < MOBILE_LOGIN_SLIDE ? (
+                  <button
+                    type="button"
+                    className="login-artwork-hotspot login-mobile-next"
+                    aria-label={index === 0 ? "Lanjut ke pengaturan anggaran" : "Lanjut ke login"}
+                    onClick={() => moveMobileSlide(index + 1)}
+                    tabIndex={index === mobileSlide ? 0 : -1}
+                  />
+                ) : null}
 
-          {(error || buttonError) ? (
-            <div className="notice notice--danger login-actions__notice" role="alert">
-              <FiAlertCircle aria-hidden="true" />
-              <div><strong>Login belum berhasil.</strong><span>{(buttonError || error).message}</span></div>
-            </div>
-          ) : null}
-
-          {status === "error" ? (
-            <button className="button button--secondary button--wide" type="button" onClick={refreshSession}>
-              Coba periksa sesi lagi
-            </button>
-          ) : null}
-
-          <div className="google-login-button" ref={buttonRef} aria-label="Masuk menggunakan Google" />
+                {index === MOBILE_LOGIN_SLIDE && mobileSlide === MOBILE_LOGIN_SLIDE ? (
+                  <>
+                    <MoneyRain compact />
+                    <ThemeToggle className="login-mobile-theme-toggle" />
+                    <div className="login-provider-mask login-provider-mask--mobile" aria-hidden="true" />
+                    <section className="login-provider-slot login-provider-slot--mobile" aria-label="Masuk ke Saldo Bersama">
+                      <LoginProvider
+                        buttonRef={buttonRef}
+                        configErrors={configErrors}
+                        error={error}
+                        buttonError={buttonError}
+                        status={status}
+                        refreshSession={refreshSession}
+                      />
+                    </section>
+                    <a
+                      className="login-artwork-hotspot login-mobile-creator-link"
+                      href="https://www.linkedin.com/in/vio-yusup-iskandar/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Buka LinkedIn Vio Yusup Iskandar"
+                    />
+                  </>
+                ) : null}
+              </article>
+            ))}
+          </div>
+          <p className="sr-only" aria-live="polite">Slide {mobileSlide + 1} dari {MOBILE_SLIDE_COUNT}.</p>
         </section>
+      </main>
+    );
+  }
 
-        <p className="login-creator">
-          Created by <a href="https://www.linkedin.com/in/vio-yusup-iskandar/" target="_blank" rel="noopener noreferrer">Vio Yusup Iskandar <span aria-hidden="true">↗</span></a>
-        </p>
-      </div>
+  return (
+    <main className="login-page login-page--desktop-artwork">
+      <h1 className="sr-only">Saldo Bersama</h1>
+      <section className="login-desktop-stage" aria-label="Login Saldo Bersama">
+        <img
+          className="login-desktop-artwork"
+          src={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light}
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+          fetchPriority="high"
+        />
+        <MoneyRain />
+        <div className="login-provider-mask login-provider-mask--desktop" aria-hidden="true" />
+        <section className="login-provider-slot login-provider-slot--desktop" aria-label="Masuk ke Saldo Bersama">
+          <LoginProvider
+            buttonRef={buttonRef}
+            configErrors={configErrors}
+            error={error}
+            buttonError={buttonError}
+            status={status}
+            refreshSession={refreshSession}
+          />
+        </section>
+        <a
+          className="login-artwork-hotspot login-desktop-creator-link"
+          href="https://www.linkedin.com/in/vio-yusup-iskandar/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Buka LinkedIn Vio Yusup Iskandar"
+        />
+        <div className="sr-only">
+          <p>Kelola keuangan pribadi dan bersama.</p>
+          <p>Akun yang diizinkan. Akses terverifikasi. Sinkron antar perangkat.</p>
+        </div>
+      </section>
     </main>
   );
 };

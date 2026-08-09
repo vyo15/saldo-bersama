@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, dan `database/migrations/003_account_bank_template.sql`, dan `database/migrations/004_notification_deliveries.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, dan `database/migrations/005_notification_preferences.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -34,6 +34,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `integration_links`
 - `notification_queue`
 - `notification_deliveries`
+- `notification_preferences` — preference tujuh tipe alert canonical per pengguna; row yang belum ada berarti aktif secara default.
 - `push_subscriptions`
 - `backup_runs`
 - `import_previews`
@@ -80,15 +81,16 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `6`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `7`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
 
-### Migration v6 dan rollback
+### Migration v7 dan rollback
 
 - Sebelum `npm run db:migrate`, buat backup teknis terverifikasi dan catat database target.
-- `004_notification_deliveries.sql` bersifat additive. Tabel baru mencatat satu delivery untuk kombinasi notification dan subscription, beserta attempt, lock, status, dan error code tersanitasi.
-- Runtime v6 hanya mengulang delivery `pending` atau `failed`. Perangkat yang sudah `sent` tidak menerima ulang ketika perangkat lain gagal.
-- Queue, delivery, dan push subscription bersifat data operasional. Backup finansial tidak menyalin credential Push. Restore menghapus delivery, queue, dan subscription lama dalam urutan foreign key yang aman.
-- Runtime v6 tetap menerima backup schema v3, v4, dan v5. Hasil restore dinormalisasi ke schema v6 sebelum integrity check selesai.
-- Bila deployment runtime gagal, gunakan forward-fix v6. Rollback dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menjatuhkan tabel secara langsung pada database produksi.
+- `005_notification_preferences.sql` bersifat additive. Tabel baru menyimpan hanya preference jenis notifikasi per `user_id`, boolean `enabled`, dan `row_version`; tidak menyimpan endpoint Push, credential, nominal, atau payload finansial.
+- Belum adanya row preference berarti tipe tersebut aktif. Dengan demikian migration tidak mematikan alert pengguna existing.
+- Runtime v7 memfilter alert scheduled sebelum membuat queue. Item yang sudah masuk `notification_queue` sebelum preference dimatikan dapat tetap terkirim satu kali.
+- Backup schema v7 menyertakan `notification_preferences`. Runtime v7 tetap menerima backup schema v3, v4, v5, dan v6; backup lama dinormalisasi dengan preference default aktif sebelum integrity check selesai.
+- Migration v6 `004_notification_deliveries.sql` tetap menjadi dasar retry per perangkat: perangkat `sent` tidak dikirim ulang ketika perangkat lain gagal. Push credential/delivery tetap data operasional dan tidak ikut backup finansial.
+- Bila deployment runtime gagal, gunakan forward-fix v7. Rollback dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan menjatuhkan tabel secara langsung pada database produksi.
 
 Arti dan lifecycle tabel didokumentasikan di `DATA_DICTIONARY.md`; kebijakan perubahan schema berada di `DATABASE_MIGRATION_POLICY.md`.

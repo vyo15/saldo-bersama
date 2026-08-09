@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { ApiError, parseResponse, shouldInvalidateSession } from "../src/services/api/client.js";
 import { createServerSession, destroyServerSession } from "../src/services/api/transport.js";
+import { stableValue } from "../src/services/api/serialization.js";
 
 const successfulResponse = (data, requestId = "") => ({
   ok: true,
@@ -109,11 +110,32 @@ test("ApiError membawa kode dan request reference dari response header", async (
   );
 });
 
+
+test("stableValue menormalisasi object secara rekursif tanpa mengubah urutan array", () => {
+  assert.deepEqual(stableValue({ z: 1, a: { d: 4, b: 2 }, list: [{ y: 2, x: 1 }, 3] }), {
+    a: { b: 2, d: 4 },
+    list: [{ x: 1, y: 2 }, 3],
+    z: 1,
+  });
+});
+
 test("query key stabil untuk payload dengan urutan property berbeda", async () => {
   const { stableQueryKey } = await import("../src/services/api/client.js");
   assert.equal(
     stableQueryKey("transactions.list", { period: "2026-07", filter: { type: "all", query: "" } }, "u1"),
     stableQueryKey("transactions.list", { filter: { query: "", type: "all" }, period: "2026-07" }, "u1"),
+  );
+});
+
+
+test("cache key dan mutation fingerprint memakai serialisasi canonical yang sama", async () => {
+  const { mutationIntentFingerprint, stableQueryKey } = await import("../src/services/api/client.js");
+  const left = { period: "2026-08", filter: { query: "", type: "expense" }, ids: ["a", "b"] };
+  const right = { ids: ["a", "b"], filter: { type: "expense", query: "" }, period: "2026-08" };
+  assert.equal(stableQueryKey("transactions.list", left, "u-serial"), stableQueryKey("transactions.list", right, "u-serial"));
+  assert.equal(
+    mutationIntentFingerprint("reports.example", left, 3),
+    mutationIntentFingerprint("reports.example", right, 3),
   );
 });
 

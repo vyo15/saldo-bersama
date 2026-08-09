@@ -1,5 +1,6 @@
 import { abortError } from "./errors.js";
 import { gatewayFetch } from "./transport.js";
+import { stableStringify } from "./serialization.js";
 
 export const READ_CACHE_TTL_MS = Object.freeze({
   "app.initialState": 30_000,
@@ -23,6 +24,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "users.list": 30_000,
   "audit.list": 5_000,
   "notifications.status": 0,
+  "notifications.preferences": 0,
   "integrations.status": 0,
 });
 
@@ -32,17 +34,9 @@ const inFlightReads = new Map();
 const actionVersions = new Map();
 let sessionScope = "anonymous";
 
-const stableValue = (value) => {
-  if (Array.isArray(value)) return value.map(stableValue);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableValue(value[key])]));
-  }
-  return value;
-};
-
 export const stableQueryKey = (action, payload = {}, scope = sessionScope) => {
   const version = actionVersions.get(action) || 0;
-  return `${scope}:${action}:v${version}:${JSON.stringify(stableValue(payload))}`;
+  return `${scope}:${action}:v${version}:${stableStringify(payload)}`;
 };
 
 export const isReadAction = (action) => Object.prototype.hasOwnProperty.call(READ_CACHE_TTL_MS, action);

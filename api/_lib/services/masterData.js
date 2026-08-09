@@ -1,6 +1,7 @@
 import { appendAudit } from "./audit.js";
 import { accountBalanceAsOf, firstNegativeBalance, visibleAccounts } from "./readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "./core.js";
+import { nextVersionStamp } from "./versioning.js";
 
 const ACCOUNT_TYPES = new Set(["cash", "bank", "ewallet", "savings", "emergency_fund", "sinking_fund", "investment", "other"]);
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
@@ -190,7 +191,7 @@ export const updateAccount = async (db, context) => {
     bank_template: normalizeBankTemplate(payload.bank_template === undefined ? current.bank_template : payload.bank_template, nextAccountType),
     owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
     allow_negative: payload.allow_negative === undefined ? current.allow_negative : (strictBoolean(payload.allow_negative) ? 1 : 0),
-    row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso(),
+    ...nextVersionStamp(current, context.actor.user_id),
   };
   if (!next.name) throw appError("NAME_REQUIRED", "Nama rekening wajib diisi.", 400);
   if (!ACCOUNT_TYPES.has(next.account_type)) throw appError("INVALID_ACCOUNT_TYPE", "Jenis rekening tidak valid.", 400);
@@ -227,7 +228,7 @@ export const archiveAccount = async (db, context) => {
   }
   if (impact.currentBalance !== 0) throw appError("ACCOUNT_NON_ZERO_BALANCE", "Rekening hanya dapat diarsipkan setelah saldonya menjadi nol.", 409, { currentBalance: impact.currentBalance });
   if (!impact.canArchive) throw appError("ACCOUNT_ARCHIVE_BLOCKED", "Rekening belum dapat diarsipkan.", 409, impact);
-  const next = { ...current, status: "archived", row_version: Number(current.row_version)+1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
   const result = await db.execute("UPDATE accounts SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE account_id=? AND row_version=?", [next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Rekening berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: accountAuditRow(current), next: accountAuditRow(next) });
@@ -249,7 +250,7 @@ export const restoreAccount = async (db, context) => {
     const owner = await db.one("SELECT user_id FROM users WHERE user_id=? AND status='active'", [current.owner_user_id]);
     if (!owner) throw appError("ACCOUNT_OWNER_INACTIVE", "Pemilik rekening personal belum aktif.", 409);
   }
-  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id) };
   const result = await db.execute("UPDATE accounts SET status='active',row_version=?,updated_by=?,updated_at=? WHERE account_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.account_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Rekening berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: accountAuditRow(current), next: { ...accountAuditRow(next), restoration_reason: reason } });
@@ -331,7 +332,7 @@ export const updateCategory = async (db, context) => {
   const nextNature = nextType === "expense"
     ? (explicitNature ? String(payload.nature) : current.nature)
     : "other";
-  const next = { ...current, name: sanitizeText(payload.name === undefined ? current.name : payload.name,100), transaction_type: nextType, nature: nextNature, icon: payload.icon === undefined ? current.icon : categoryIconValue(payload.icon, nextType), row_version: Number(current.row_version)+1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, name: sanitizeText(payload.name === undefined ? current.name : payload.name,100), transaction_type: nextType, nature: nextNature, icon: payload.icon === undefined ? current.icon : categoryIconValue(payload.icon, nextType), ...nextVersionStamp(current, context.actor.user_id) };
   if (!next.name || !CATEGORY_TYPES.has(next.transaction_type) || !CATEGORY_NATURES.has(next.nature)) throw appError("INVALID_CATEGORY", "Data kategori tidak valid.", 400);
   const keepsLegacySavings = current.nature === LEGACY_SAVINGS_NATURE && next.nature === LEGACY_SAVINGS_NATURE;
   if (next.transaction_type === "expense" && !CURRENT_EXPENSE_CATEGORY_NATURES.has(next.nature) && !keepsLegacySavings) {
@@ -373,7 +374,7 @@ export const archiveCategory = async (db, context) => {
     (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND category_id=?) AS recurring,
     (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS budgets`, [current.category_id,current.category_id,current.category_id]);
   if (Object.values(dependencies).some((value) => Number(value)>0)) throw appError("CATEGORY_IN_USE", "Kategori masih dipakai data aktif.", 409, dependencies);
-  const next = { ...current, status:"archived", row_version:Number(current.row_version)+1, updated_by:context.actor.user_id, updated_at:nowIso() };
+  const next = { ...current, status:"archived", ...nextVersionStamp(current, context.actor.user_id) };
   const result = await db.execute("UPDATE categories SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE category_id=? AND row_version=?", [next.row_version,next.updated_by,next.updated_at,current.category_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Kategori berubah di perangkat lain.",409);
   await appendAudit(db, context, { entityType:"category", entityId:current.category_id, previous:publicRow(current), next:publicRow(next) });
@@ -391,7 +392,7 @@ export const restoreCategory = async (db, context) => {
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const duplicate = await db.one("SELECT category_id FROM categories WHERE category_id<>? AND lower(name)=lower(?) AND transaction_type=? AND status='active'", [current.category_id, current.name, current.transaction_type]);
   if (duplicate) throw appError("DUPLICATE_CATEGORY", "Kategori aktif dengan nama dan jenis yang sama sudah ada.", 409);
-  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id) };
   const result = await db.execute("UPDATE categories SET status='active',row_version=?,updated_by=?,updated_at=? WHERE category_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.category_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Kategori berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "category", entityId: current.category_id, previous: publicRow(current), next: { ...publicRow(next), restoration_reason: reason } });

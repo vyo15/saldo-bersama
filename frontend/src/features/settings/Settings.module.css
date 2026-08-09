@@ -323,3 +323,17 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 @media (max-width: 24rem) {
   .settingsNavigation { grid-template-columns: 1fr; }
 }
+
+.preferenceSection { display: grid; gap: var(--space-3); }
+.preferenceHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.preferenceHeading > div { min-width: 0; display: grid; gap: var(--space-1); }
+.preferenceHeading h3 { font-size: var(--font-size-body); }
+.preferenceHeading p { color: var(--text-soft); font-size: var(--font-size-sm); line-height: 1.5; }
+.preferenceList { display: grid; gap: var(--space-2); }
+.preferenceItem { min-height: 4rem; padding: var(--space-3); display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.preferenceCopy { min-width: 0; display: grid; gap: .2rem; }
+.preferenceCopy strong { font-size: var(--font-size-sm); }
+.preferenceCopy small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.preferenceItem input[role="switch"] { width: 2.75rem; height: 1.5rem; flex: 0 0 auto; accent-color: var(--primary); cursor: pointer; }
+.preferenceItem input[role="switch"]:disabled { cursor: wait; opacity: .65; }
+.preferenceItem input[role="switch"]:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }

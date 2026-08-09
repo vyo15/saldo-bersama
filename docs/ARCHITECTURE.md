@@ -47,7 +47,12 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 - Handler action canonical berada di `api/_lib/actions/registry.js`; operational metadata berada di `api/_lib/actions/policy.js`; authorization role/scope tetap canonical di `api/_lib/security.js`.
 - Business service besar dibagi ke `services/planning/`, `services/reporting/`, dan `services/maintenance/`; file facade lama mempertahankan compatibility import.
 - Frontend feature memakai `*.api.js`; transport/cache/error hanya berada di `frontend/src/services/api/`.
+- Dependency frontend mengalir `app -> feature/layout`, lalu `feature -> app context/shared/services`. `shared` dan `domain` tidak boleh mengimpor implementation `feature`.
+- Presentation murni yang dipakai lintas feature berada di `frontend/src/shared/presentation/`. File presentation lama di feature hanya compatibility re-export agar import lama tidak pecah sekaligus.
+- Quick transaction composer dimiliki application context (`TransactionComposerContext`) sehingga layout dan dashboard tidak mengimpor `TransactionForm` secara langsung.
+- Feature yang memerlukan action domain feature lain membuat adapter lokal ke `services/api/client.js`, bukan mengimpor `*.api.js` milik feature lain. Reuse komponen visual lintas feature harus eksplisit dan tidak boleh membawa business rule atau write API.
 - Feature/page tidak boleh mengimpor transport global untuk write dan tidak boleh mengimpor toolkit UI langsung.
+- `test/governance/source-architecture.test.js` menjaga relative-import cycle, dependency direction, dan canonical helper yang rawan copy-paste.
 
 ## Read model
 

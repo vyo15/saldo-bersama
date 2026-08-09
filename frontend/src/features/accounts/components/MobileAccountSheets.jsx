@@ -10,7 +10,7 @@ import {
   TRANSACTION_LABELS,
   transactionCategoryIcon,
   transactionTone,
-} from "../../transactions/transactionPresentation.js";
+} from "../../../shared/presentation/transaction.js";
 import { accountDisplayLabel } from "../accountPresentation.js";
 import styles from "../AccountsPage.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";

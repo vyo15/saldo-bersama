@@ -20,6 +20,7 @@ const allowedRootEntries = new Set([
   ".gitattributes",
   ".github",
   ".gitignore",
+  ".jscpd.json",
   ".npmrc",
   ".node-version",
   "AGENTS.md",
@@ -97,10 +98,10 @@ const ALLOWED_API_PRIVATE_DIRECTORIES = new Set(["_lib"]);
 const walk = async (directory = root, relative = "") => {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) continue;
+    if (entry.isSymbolicLink() || ignoredSegments.has(entry.name)) continue;
     const rel = path.posix.join(relative, entry.name);
     if (entry.isDirectory()) {
-      if (!ignoredSegments.has(entry.name)) files.push(...await walk(path.join(directory, entry.name), rel));
+      files.push(...await walk(path.join(directory, entry.name), rel));
     } else if (entry.isFile() && !isIgnoredLocalFile(rel)) {
       files.push(rel);
     }

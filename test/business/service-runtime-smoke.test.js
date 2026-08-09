@@ -213,7 +213,7 @@ test("rekening bank mewajibkan nomor digit dan audit hanya menyimpan empat digit
   }
 });
 
-test("budget dan recurring hasil pemecahan service tetap dapat create, update, pay, dan reverse", async () => {
+test("budget dan recurring tetap dapat create, update, pay, reverse, skip, dan restore occurrence", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedFinanceMaster(db);
@@ -295,6 +295,111 @@ test("budget dan recurring hasil pemecahan service tetap dapat create, update, p
       database: db
     });
     assert.equal(reversed.transaction.status, "cancelled");
+
+    const skipped = await dispatchAction({
+      signedActor,
+      action: "recurring.cancelOccurrence",
+      payload: { occurrence_id: occurrence.occurrence_id, reason: "Libur satu periode", row_version: reversed.occurrence.row_version },
+      rowVersion: reversed.occurrence.row_version,
+      requestId: "test:recurring-skip",
+      idempotencyKey: "test-recurring-skip",
+      database: db,
+    });
+    assert.equal(skipped.status, "cancelled");
+    assert.equal(skipped.actual_amount, 0);
+    const activeAfterSkip = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE recurring_occurrence_id=? AND status='active'", [occurrence.occurrence_id]);
+    assert.equal(Number(activeAfterSkip.count), 0);
+    const skippedList = await dispatchAction({
+      signedActor,
+      action: "recurring.list",
+      payload: { period: occurrence.due_date.slice(0, 7) },
+      requestId: "test:recurring-list-skipped",
+      database: db,
+    });
+    const skippedItem = skippedList.items.find((item) => item.occurrence_id === occurrence.occurrence_id);
+    assert.equal(skippedItem?.status, "cancelled");
+    assert.equal(skippedItem?.can_pay, false);
+    assert.equal(skippedItem?.can_restore_occurrence, true);
+
+    const archivedRule = await dispatchAction({
+      signedActor,
+      action: "recurring.archiveRule",
+      payload: { recurring_rule_id: recurring.recurring_rule_id, reason: "Uji arsip setelah skip", row_version: updated.row_version },
+      rowVersion: updated.row_version,
+      requestId: "test:recurring-archive-after-skip",
+      idempotencyKey: "test-recurring-archive-after-skip",
+      database: db,
+    });
+    const skippedAfterArchive = await db.one("SELECT status FROM recurring_occurrences WHERE occurrence_id=?", [occurrence.occurrence_id]);
+    assert.equal(skippedAfterArchive.status, "cancelled", "arsip rule tidak boleh menghapus occurrence yang sengaja dilewati");
+    const restoredRule = await dispatchAction({
+      signedActor,
+      action: "recurring.restoreRule",
+      payload: { recurring_rule_id: recurring.recurring_rule_id, reason: "Aktifkan kembali rule", row_version: archivedRule.row_version },
+      rowVersion: archivedRule.row_version,
+      requestId: "test:recurring-restore-rule-after-skip",
+      idempotencyKey: "test-recurring-restore-rule-after-skip",
+      database: db,
+    });
+    assert.equal(restoredRule.status, "active");
+    const skippedAfterRuleRestore = await db.one("SELECT status FROM recurring_occurrences WHERE occurrence_id=?", [occurrence.occurrence_id]);
+    assert.equal(skippedAfterRuleRestore.status, "cancelled", "restore rule tidak boleh membuat ulang periode skipped sebagai expected");
+
+    await assert.rejects(
+      () => dispatchAction({
+        signedActor,
+        action: "recurring.payOccurrence",
+        payload: { occurrence_id: occurrence.occurrence_id, account_id: "account-main", amount: 50_000, transaction_date: todayJakarta(), row_version: skipped.row_version },
+        rowVersion: skipped.row_version,
+        requestId: "test:recurring-pay-skipped",
+        idempotencyKey: "test-recurring-pay-skipped",
+        database: db,
+      }),
+      (error) => error?.code === "OCCURRENCE_CANCELLED",
+    );
+
+    // Defense-in-depth: bahkan jika metadata occurrence rusak dan tidak lagi mencantumkan
+    // transaction ID, restore harus fail closed bila ledger masih memiliki transaksi aktif.
+    await db.execute(
+      "UPDATE transactions SET status='active',cancelled_by=NULL,cancelled_at=NULL,cancellation_reason='' WHERE transaction_id=?",
+      [paid.transaction.transaction_id],
+    );
+    await assert.rejects(
+      () => dispatchAction({
+        signedActor,
+        action: "recurring.restoreOccurrence",
+        payload: { occurrence_id: occurrence.occurrence_id, reason: "Uji fail closed", row_version: skipped.row_version },
+        rowVersion: skipped.row_version,
+        requestId: "test:recurring-restore-occurrence-corrupt-link",
+        idempotencyKey: "test-recurring-restore-occurrence-corrupt-link",
+        database: db,
+      }),
+      (error) => error?.code === "INTEGRITY_ERROR",
+    );
+    await db.execute(
+      "UPDATE transactions SET status='cancelled',cancelled_by=?,cancelled_at=?,cancellation_reason=? WHERE transaction_id=?",
+      [reversed.transaction.cancelled_by, reversed.transaction.cancelled_at, reversed.transaction.cancellation_reason, paid.transaction.transaction_id],
+    );
+
+    const restoredOccurrence = await dispatchAction({
+      signedActor,
+      action: "recurring.restoreOccurrence",
+      payload: { occurrence_id: occurrence.occurrence_id, reason: "Jadwal aktif kembali", row_version: skipped.row_version },
+      rowVersion: skipped.row_version,
+      requestId: "test:recurring-restore-occurrence",
+      idempotencyKey: "test-recurring-restore-occurrence",
+      database: db,
+    });
+    assert.ok(["expected", "overdue"].includes(restoredOccurrence.status));
+    assert.equal(restoredOccurrence.actual_amount, 0);
+
+    const integrationKeys = await db.all("SELECT provider,event_key FROM integration_outbox WHERE status IN ('pending','failed') ORDER BY provider,event_key");
+    const eventKeys = integrationKeys.map((row) => row.event_key);
+    assert.ok(eventKeys.includes(`calendar:upsert:recurring:${recurring.recurring_rule_id}`));
+    assert.ok(eventKeys.includes(`calendar:upsert:recurring_occurrence:${occurrence.occurrence_id}`));
+    assert.ok(eventKeys.includes(`sheets:upsert:recurring:${recurring.recurring_rule_id}`));
+    assert.equal(eventKeys.includes(`calendar:upsert:recurring:${occurrence.occurrence_id}`), false, "occurrence tidak boleh memakai key calendar level-rule");
+    assert.equal(eventKeys.includes(`sheets:upsert:recurring:${occurrence.occurrence_id}`), false, "mirror recurring occurrence harus rebuild melalui rule id");
   } finally {
     db.close();
   }

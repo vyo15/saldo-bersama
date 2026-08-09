@@ -1,6 +1,7 @@
 import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal } from "../finance.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
+import { nextVersionStamp, nextVersionTimestamp } from "../versioning.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, dueDayValue, ruleScopeFromAccount } from "./shared.js";
 const FREQUENCIES = new Set(["daily", "weekly", "biweekly", "monthly", "bimonthly", "quarterly", "semiannual", "annual"]);
 const frequencyMonthStep = {
@@ -78,10 +79,30 @@ const removeUnpaidFutureOccurrences = async (db, ruleId, cutoff = todayJakarta()
       AND due_date>=?
       AND actual_amount=0
       AND transaction_ids_json='[]'
+      AND status<>'cancelled'
       AND NOT EXISTS (
         SELECT 1 FROM transactions t
         WHERE t.recurring_occurrence_id=recurring_occurrences.occurrence_id
       )`, [ruleId, cutoff]);
+};
+
+const recurringOccurrenceWithRule = (db, occurrenceId) => db.one(`SELECT o.*,r.status AS rule_status,r.scope,r.owner_user_id,r.recurring_rule_id
+  FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
+  WHERE o.occurrence_id=?`, [occurrenceId]);
+
+const activeOccurrenceTransactionCount = async (db, occurrenceId) => {
+  const linked = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE recurring_occurrence_id=? AND status='active'", [occurrenceId]);
+  return Number(linked?.count || 0);
+};
+
+const enqueueRecurringRuleSync = async (db, context, ruleId) => {
+  await context.enqueueCalendar?.(db, "recurring", ruleId);
+  await context.enqueueMirror?.(db, "recurring", ruleId);
+};
+
+const enqueueRecurringOccurrenceSync = async (db, context, occurrence) => {
+  await context.enqueueCalendar?.(db, "recurring_occurrence", occurrence.occurrence_id);
+  await context.enqueueMirror?.(db, "recurring", occurrence.recurring_rule_id);
 };
 export const createRecurringRule = async (db, context) => {
   assertOwner(context.actor);
@@ -128,8 +149,7 @@ export const createRecurringRule = async (db, context) => {
     entityId: rule.recurring_rule_id,
     next: publicRow(rule, ["auto_debit"])
   });
-  await context.enqueueCalendar?.(db, "recurring", rule.recurring_rule_id);
-  await context.enqueueMirror?.(db, "recurring", rule.recurring_rule_id);
+  await enqueueRecurringRuleSync(db, context, rule.recurring_rule_id);
   return publicRow(rule, ["auto_debit"]);
 };
 export const updateRecurringRule = async (db, context) => {
@@ -163,9 +183,7 @@ export const updateRecurringRule = async (db, context) => {
     status,
     scope: owned.scope,
     owner_user_id: owned.owner_user_id,
-    row_version: Number(current.row_version) + 1,
-    updated_by: context.actor.user_id,
-    updated_at: nowIso()
+    ...nextVersionStamp(current, context.actor.user_id)
   };
   if (!next.name || !["low", "normal", "high"].includes(next.priority) || next.end_date && next.end_date < next.start_date) throw appError("INVALID_RECURRING_RULE", "Aturan rutin tidak valid.", 400);
   const linked = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE recurring_occurrence_id IN (SELECT occurrence_id FROM recurring_occurrences WHERE recurring_rule_id=?)", [current.recurring_rule_id]);
@@ -180,8 +198,7 @@ export const updateRecurringRule = async (db, context) => {
     previous: publicRow(current),
     next: publicRow(next, ["auto_debit"])
   });
-  await context.enqueueCalendar?.(db, "recurring", current.recurring_rule_id);
-  await context.enqueueMirror?.(db, "recurring", current.recurring_rule_id);
+  await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
   return publicRow(next, ["auto_debit"]);
 };
 export const archiveRecurringRule = async (db, context) => {
@@ -192,13 +209,12 @@ export const archiveRecurringRule = async (db, context) => {
   assertVersion(current, context.rowVersion ?? p.row_version);
   const reason = sanitizeText(p.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip aturan rutin wajib diisi.", 400);
-  const next = { ...current, status: "archived", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE recurring_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
   await removeUnpaidFutureOccurrences(db, current.recurring_rule_id);
   await appendAudit(db, context, { entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]), next: { ...publicRow(next, ["auto_debit"]), archive_reason: reason } });
-  await context.enqueueCalendar?.(db, "recurring", current.recurring_rule_id);
-  await context.enqueueMirror?.(db, "recurring", current.recurring_rule_id);
+  await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
   return publicRow(next, ["auto_debit"]);
 };
 export const restoreRecurringRule = async (db, context) => {
@@ -213,13 +229,12 @@ export const restoreRecurringRule = async (db, context) => {
   if (!category || category.status !== "active" || category.transaction_type !== current.kind) throw appError("CATEGORY_INACTIVE", "Kategori aturan rutin harus aktif dan sesuai jenis sebelum dipulihkan.", 409);
   const account = await db.one("SELECT status FROM accounts WHERE account_id=?", [current.default_account_id]);
   if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening default aturan rutin harus aktif sebelum dipulihkan.", 409);
-  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE recurring_rules SET status='active',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
   await ensureRuleOccurrences(db, next);
   await appendAudit(db, context, { entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]), next: { ...publicRow(next, ["auto_debit"]), restore_reason: reason } });
-  await context.enqueueCalendar?.(db, "recurring", current.recurring_rule_id);
-  await context.enqueueMirror?.(db, "recurring", current.recurring_rule_id);
+  await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
   return publicRow(next, ["auto_debit"]);
 };
 
@@ -232,13 +247,27 @@ export const listRecurring = async (db, context) => {
   const today = todayJakarta();
   const items = rows.map(row => {
     const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
-    const status = Number(row.actual_amount) >= Number(row.expected_amount) ? row.kind === "income" ? "received" : "paid" : Number(row.actual_amount) > 0 ? "partial" : row.due_date < today ? "overdue" : "expected";
+    const persistedStatus = String(row.status || "");
+    const status = persistedStatus === "cancelled"
+      ? "cancelled"
+      : Number(row.actual_amount) >= Number(row.expected_amount)
+        ? row.kind === "income" ? "received" : "paid"
+        : Number(row.actual_amount) > 0
+          ? "partial"
+          : row.due_date < today ? "overdue" : "expected";
+    const canSkip = context.actor.role === "owner"
+      && row.rule_status === "active"
+      && status !== "cancelled"
+      && Number(row.actual_amount) === 0
+      && transactionIds.length === 0;
     return {
       ...publicRow(row, ["auto_debit"]),
       status,
       transaction_ids: transactionIds.join(","),
-      can_pay: row.rule_status === "active" && Number(row.actual_amount) < Number(row.expected_amount),
+      can_pay: row.rule_status === "active" && status !== "cancelled" && Number(row.actual_amount) < Number(row.expected_amount),
       can_reverse: transactionIds.length > 0,
+      can_cancel_occurrence: canSkip,
+      can_restore_occurrence: context.actor.role === "owner" && row.rule_status === "active" && status === "cancelled",
       can_edit_rule: context.actor.role === "owner" && row.rule_status === "active",
       can_archive_rule: context.actor.role === "owner" && row.rule_status === "active",
       transaction_type: row.kind
@@ -246,6 +275,56 @@ export const listRecurring = async (db, context) => {
   });
   return { items };
 };
+export const cancelOccurrence = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const occurrence = await recurringOccurrenceWithRule(db, p.occurrence_id);
+  if (!occurrence) throw appError("NOT_FOUND", "Occurrence rutin tidak ditemukan.", 404);
+  assertVersion(occurrence, context.rowVersion ?? p.row_version);
+  if (occurrence.rule_status !== "active") throw appError("RECURRING_RULE_ARCHIVED", "Aturan rutin sudah diarsipkan.", 409);
+  if (occurrence.status === "cancelled") throw appError("OCCURRENCE_ALREADY_CANCELLED", "Occurrence ini sudah dilewati.", 409);
+  const transactionIds = JSON.parse(occurrence.transaction_ids_json || "[]");
+  if (Number(occurrence.actual_amount) !== 0 || transactionIds.length) {
+    throw appError("OCCURRENCE_HAS_PAYMENT", "Occurrence yang sudah memiliki pembayaran harus dibalik terlebih dahulu sebelum dilewati.", 409);
+  }
+  if (await activeOccurrenceTransactionCount(db, occurrence.occurrence_id) > 0) throw appError("OCCURRENCE_HAS_PAYMENT", "Occurrence masih memiliki transaksi aktif. Balikkan pembayaran terlebih dahulu sebelum melewati periode.", 409);
+  const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan melewati periode wajib diisi.", 400);
+  const next = { ...occurrence, status: "cancelled", ...nextVersionTimestamp(occurrence) };
+  const update = await db.execute("UPDATE recurring_occurrences SET status='cancelled',row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=? AND status<>'cancelled' AND actual_amount=0 AND transaction_ids_json='[]'", [next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
+  const response = { ...publicRow(next), skip_reason: reason };
+  await appendAudit(db, context, { entityType: "recurring_occurrence", entityId: occurrence.occurrence_id, previous: publicRow(occurrence), next: response });
+  await enqueueRecurringOccurrenceSync(db, context, occurrence);
+  return response;
+};
+
+export const restoreOccurrence = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const occurrence = await recurringOccurrenceWithRule(db, p.occurrence_id);
+  if (!occurrence) throw appError("NOT_FOUND", "Occurrence rutin tidak ditemukan.", 404);
+  assertVersion(occurrence, context.rowVersion ?? p.row_version);
+  if (occurrence.rule_status !== "active") throw appError("RECURRING_RULE_ARCHIVED", "Pulihkan aturan rutin terlebih dahulu sebelum memulihkan periode.", 409);
+  if (occurrence.status !== "cancelled") throw appError("OCCURRENCE_NOT_CANCELLED", "Occurrence ini tidak berstatus dilewati.", 409);
+  if (Number(occurrence.actual_amount) !== 0 || JSON.parse(occurrence.transaction_ids_json || "[]").length) {
+    throw appError("INTEGRITY_ERROR", "Occurrence dilewati memiliki pembayaran terkait dan tidak aman dipulihkan.", 409);
+  }
+  if (await activeOccurrenceTransactionCount(db, occurrence.occurrence_id) > 0) {
+    throw appError("INTEGRITY_ERROR", "Occurrence dilewati masih memiliki transaksi aktif dan tidak aman dipulihkan.", 409);
+  }
+  const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan periode wajib diisi.", 400);
+  const status = occurrence.due_date < todayJakarta() ? "overdue" : "expected";
+  const next = { ...occurrence, status, ...nextVersionTimestamp(occurrence) };
+  const update = await db.execute("UPDATE recurring_occurrences SET status=?,row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=? AND status='cancelled'", [next.status, next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
+  const response = { ...publicRow(next), restore_reason: reason };
+  await appendAudit(db, context, { entityType: "recurring_occurrence", entityId: occurrence.occurrence_id, previous: publicRow(occurrence), next: response });
+  await enqueueRecurringOccurrenceSync(db, context, occurrence);
+  return response;
+};
+
 export const payOccurrence = async (db, context) => {
   const p = context.payload || {};
   const occurrence = await db.one("SELECT * FROM recurring_occurrences WHERE occurrence_id=?", [p.occurrence_id]);
@@ -255,6 +334,7 @@ export const payOccurrence = async (db, context) => {
   assertOwnedAccess(context.actor, rule);
   assertVersion(occurrence, context.rowVersion ?? p.row_version);
   if (rule.status !== "active") throw appError("RECURRING_RULE_ARCHIVED", "Aturan rutin sudah diarsipkan.", 409);
+  if (occurrence.status === "cancelled") throw appError("OCCURRENCE_CANCELLED", "Occurrence ini sudah dilewati. Pulihkan periode sebelum mencatat pembayaran.", 409);
   const account = await accountWithAccess(db, context.actor, p.account_id || rule.default_account_id);
   const owned = ruleScopeFromAccount(account);
   if (owned.scope !== rule.scope || String(owned.owner_user_id || "") !== String(rule.owner_user_id || "")) {
@@ -289,8 +369,7 @@ export const payOccurrence = async (db, context) => {
     actual_amount: actual,
     status,
     transaction_ids_json: JSON.stringify(ids),
-    row_version: Number(occurrence.row_version) + 1,
-    updated_at: nowIso()
+    ...nextVersionTimestamp(occurrence)
   };
   const result = await db.execute("UPDATE recurring_occurrences SET actual_amount=?,status=?,transaction_ids_json=?,row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=?", [next.actual_amount, next.status, next.transaction_ids_json, next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
@@ -307,8 +386,7 @@ export const payOccurrence = async (db, context) => {
     previous: publicRow(occurrence),
     next: response
   });
-  await context.enqueueCalendar?.(db, "recurring_occurrence", occurrence.occurrence_id);
-  await context.enqueueMirror?.(db, "recurring", occurrence.recurring_rule_id);
+  await enqueueRecurringOccurrenceSync(db, context, occurrence);
   return response;
 };
 export const reverseOccurrencePayment = async (db, context) => {
@@ -333,8 +411,7 @@ export const reverseOccurrencePayment = async (db, context) => {
     actual_amount: actual,
     status,
     transaction_ids_json: JSON.stringify(ids),
-    row_version: Number(occurrence.row_version) + 1,
-    updated_at: nowIso()
+    ...nextVersionTimestamp(occurrence)
   };
   const update = await db.execute("UPDATE recurring_occurrences SET actual_amount=?,status=?,transaction_ids_json=?,row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=?", [actual, status, next.transaction_ids_json, next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
@@ -348,7 +425,6 @@ export const reverseOccurrencePayment = async (db, context) => {
     previous: publicRow(occurrence),
     next: response
   });
-  await context.enqueueCalendar?.(db, "recurring", occurrence.recurring_rule_id);
-  await context.enqueueMirror?.(db, "recurring", occurrence.occurrence_id);
+  await enqueueRecurringOccurrenceSync(db, context, occurrence);
   return response;
 };

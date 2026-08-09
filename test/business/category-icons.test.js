@@ -127,7 +127,7 @@ test("backend menormalkan sifat non-pengeluaran dan menolak kategori tabungan ba
 
 test("katalog icon frontend dan whitelist backend tidak drift", async () => {
   const [frontendSource, backendSource] = await Promise.all([
-    readFile(new URL("../../frontend/src/features/transactions/transactionPresentation.js", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/src/shared/presentation/transaction.js", import.meta.url), "utf8"),
     readFile(new URL("../../api/_lib/services/masterData.js", import.meta.url), "utf8"),
   ]);
   const frontendBlock = frontendSource.match(/CATEGORY_ICON_OPTIONS = Object\.freeze\(\[([\s\S]*?)\]\);/)?.[1] || "";

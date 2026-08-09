@@ -22,7 +22,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods + archive/restore rule + reverse reallocation | Full device regression setelah patch terbaru |
 | `REQ-PROD-05` | Anggaran multi-cadence | Partial | envelope cadence + monthly budgets + alerts | recurring budget rules belum ada |
 | `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection, owner restore arsip | split/stages pending RFC-0013/0014 |
-| `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences + owner restore arsip + H-2/completion notification | assignee/receipt pending RFC-0011/0013 |
+| `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences + skip/restore satu occurrence + owner restore arsip + H-2/completion notification | assignee/receipt pending RFC-0011/0013 |
 | `REQ-PROD-08` | Kalender keuangan | Partial | shared recurring Calendar bridge + ScriptLock + duplicate managed-event self-heal | internal multi-event calendar belum ada |
 | `REQ-PROD-09` | Dashboard pasangan | Implemented | shared dashboard view model, mobile/desktop filters, detail, alerts, privacy | Production/device smoke |
 | `REQ-PROD-10` | Kontribusi/split | Planned | hanya aktivitas pencatatan | RFC-0013 |
@@ -31,7 +31,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-13` | Laporan | Partial | monthly report + 3/6/12 trend + breakdown | contribution/debt model pending |
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
-| `REQ-PROD-16` | Notifikasi | Partial | recurring due + H-2 funding shortage + recurring completed + budget/envelope/goal/unallocated alerts, privacy-safe payload, per-device delivery/retry | Real Android/iOS masih pending; fitur configurable lanjutan belum ada |
+| `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert + preference per user + recurring due/H-2/completed + budget/envelope/goal/unallocated, privacy-safe payload, per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
 | `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + planning recovery lifecycle + confirmation/browser-side single-flight | Full operator gate patch terbaru + external alerting/operational drills |
 
 ## Infrastruktur dan deployment
@@ -39,7 +39,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Production smoke after env/deploy changes |
-| Turso schema v6 | Implemented | Migration additive delivery Web Push; production migration/parity evidence pending |
+| Turso schema v7 | Implemented | Migration additive notification preference; production migration/parity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

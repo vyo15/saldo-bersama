@@ -40,5 +40,15 @@ export default [
         }
       ]
     }
+  },
+  {
+    files: ["api/**/*.js"],
+    rules: {
+      complexity: ["warn", 20],
+      "max-lines-per-function": [
+        "warn",
+        { max: 100, skipBlankLines: true, skipComments: true }
+      ]
+    }
   }
 ];

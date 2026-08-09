@@ -1,6 +1,7 @@
 import { appendAudit } from "../audit.js";
 import { accountBalanceAsOf, envelopeItems } from "../readModels.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid, visibleScopeSql } from "../core.js";
+import { nextVersionStamp } from "../versioning.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
@@ -217,12 +218,13 @@ export const closeEnvelope = async (db, context) => {
     const bounds = nextEnvelopeBounds(period);
     let next = await db.one("SELECT * FROM envelope_periods WHERE envelope_rule_id=? AND period_start=? AND period_end=?", [period.envelope_rule_id, bounds.start, bounds.end]);
     if (next) {
-      const nextUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount+?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [remaining, context.actor.user_id, nowIso(), next.envelope_period_id, next.row_version]);
+      const timestamp = nowIso();
+      const nextUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount+?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [remaining, context.actor.user_id, timestamp, next.envelope_period_id, next.row_version]);
       if (nextUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong rollover berubah di perangkat lain.", 409);
       next = {
         ...next,
         allocated_amount: Number(next.allocated_amount) + remaining,
-        row_version: Number(next.row_version) + 1
+        ...nextVersionStamp(next, context.actor.user_id, timestamp)
       };
     } else {
       const timestamp = nowIso();
@@ -263,14 +265,13 @@ export const closeEnvelope = async (db, context) => {
       to_envelope_period_id: next.envelope_period_id
     };
   }
+  const timestamp = nowIso();
   const next = {
     ...period,
     status: "closed",
     closed_by: context.actor.user_id,
-    closed_at: nowIso(),
-    row_version: Number(period.row_version) + 1,
-    updated_by: context.actor.user_id,
-    updated_at: nowIso()
+    closed_at: timestamp,
+    ...nextVersionStamp(period, context.actor.user_id, timestamp)
   };
   const result = await db.execute("UPDATE envelope_periods SET status='closed',closed_by=?,closed_at=?,row_version=?,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [next.closed_by, next.closed_at, next.row_version, next.updated_by, next.updated_at, period.envelope_period_id, period.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Periode kantong berubah di perangkat lain.", 409);
@@ -297,7 +298,7 @@ export const archiveEnvelopeRule = async (db, context) => {
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip kantong wajib diisi.", 400);
   const timestamp = nowIso();
-  const next = { ...current, status: "archived", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: timestamp };
+  const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id, timestamp) };
   const update = await db.execute("UPDATE envelope_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.envelope_rule_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan kantong berubah di perangkat lain.", 409);
   await db.execute("UPDATE envelope_periods SET status='archived',row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND status='active'", [context.actor.user_id, timestamp, current.envelope_rule_id]);
@@ -319,7 +320,7 @@ export const restoreEnvelopeRule = async (db, context) => {
     if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening sumber kantong harus aktif sebelum dipulihkan.", 409);
   }
   const timestamp = nowIso();
-  const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: timestamp };
+  const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id, timestamp) };
   const update = await db.execute("UPDATE envelope_rules SET status='active',row_version=?,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.envelope_rule_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan kantong berubah di perangkat lain.", 409);
   await db.execute("UPDATE envelope_periods SET status='active',row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND status='archived' AND updated_at=?", [context.actor.user_id, timestamp, current.envelope_rule_id, current.updated_at]);

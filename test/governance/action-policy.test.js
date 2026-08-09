@@ -26,8 +26,8 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
     "accounts.archive", "accounts.restore", "accounts.deleteUnused",
     "categories.archive", "categories.restore", "users.deactivate", "users.reactivate",
     "envelopes.move", "envelopes.archiveRule", "envelopes.restoreRule", "envelopes.reverseMovement",
-    "recurring.archiveRule", "recurring.payOccurrence", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.move", "goals.restore", "periods.close",
-    "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply",
+    "recurring.archiveRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.move", "goals.restore", "periods.close",
+    "notifications.updatePreference", "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply",
   ]) assert.equal(requiresIdempotencyKey(action), true, action);
   assert.equal(requiresIdempotencyKey("integrity.run"), true);
 });
@@ -36,7 +36,7 @@ test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", 
   const ownerOnly = [
     "archive.list", "accounts.previewLifecycle", "accounts.restore", "accounts.deleteUnused",
     "categories.previewArchive", "categories.restore", "transactions.restore", "users.reactivate", "periods.previewClose",
-    "envelopes.archiveRule", "envelopes.restoreRule", "recurring.archiveRule", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.restore",
+    "envelopes.archiveRule", "envelopes.restoreRule", "recurring.archiveRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.restore",
   ];
   for (const action of ownerOnly) {
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);

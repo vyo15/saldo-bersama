@@ -1,10 +1,29 @@
 # Changelog
 
+
+## 2026-08-09 — Maintainability patch merge
+
+- Merekonsiliasi `saldo-bersama-maintainability-patch-20260809` ke baseline clean 367-file tanpa menimpa mutation guard, feedback semantics, Web Push deterministic fixture, serializer canonical, jscpd report-only, atau notification-preference schema v7 yang lebih baru.
+- Quick transaction composer dipusatkan pada application context; presentation lintas feature dipindahkan ke `frontend/src/shared/presentation/` dengan compatibility re-export; Rekonsiliasi memiliki API facade lokal.
+- Backend memecah normalisasi transaksi, restore, notification scheduler, dan push worker menjadi helper yang lebih sempit tanpa mengubah ledger/saldo, authorization, idempotency, backup/restore contract, atau delivery semantics.
+- Base64URL decoder server-side dipusatkan, backend coverage gate ditambahkan ke `npm run check`, dan architecture governance kini memeriksa dependency direction/circular import. `check:duplicates` yang sudah ada tetap dipertahankan sebagai report-only.
+
 - Human-error lifecycle: archive target, aturan rutin, dan anggaran kini memakai action eksplisit beralasan (`goals.archive`, `recurring.archiveRule`); generic update tidak lagi menerima status `archived`, sehingga audit dan recovery konsisten.
 Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi production harus menunjuk commit SHA yang sudah diuji.
 
 ## [Unreleased]
 
+- Menstabilkan fixture Web Push P-256 dengan left-padding private scalar test menjadi 32 byte sebelum Base64URL; test tidak lagi flaky ketika `crypto.createECDH()` menghasilkan scalar dengan leading zero, tanpa mengubah validator/runtime VAPID Production.
+- Menyatukan artifact policy untuk diagnostic lokal `npm-audit-*.json`: file di-ignore Git/source validator tetapi selalu dikeluarkan dan diaudit dari clean ZIP, sehingga laporan audit lokal tidak lagi mematahkan packager atau bocor ke artifact.
+- Memusatkan stable serialization API agar cache key dan mutation fingerprint memakai canonical property ordering yang sama, serta mengekstrak version stamp backend domain-neutral tanpa menyembunyikan ownership/business transition/optimistic SQL guard.
+- Menyeragamkan recurring occurrence integration identity: pay/reverse/skip/restore mengantre Calendar berdasarkan occurrence ID dan mirror berdasarkan recurring rule ID.
+- Menyelesaikan semantics micro-feedback pada flow harian Rekening/Kategori/Anggaran/Target/Export sambil mempertahankan notice persisten untuk error/conflict/maintenance/backup/restore/integrasi.
+- Menambahkan jscpd pinned sebagai duplication report non-blocking; migration SQL dan CSS module deklaratif tidak dijadikan sasaran threshold angka.
+- Mengaktifkan lifecycle `recurring_occurrences.cancelled`: owner dapat melewati satu occurrence tanpa mengubah ledger/saldo dan memulihkannya kembali; payment pada occurrence cancelled ditolak, skip bertahan saat rule diarsipkan/dipulihkan, dan semua transisi guarded oleh reason, `row_version`, idempotency, audit, Calendar, serta mirror.
+- Menaikkan schema canonical ke v7 melalui `005_notification_preferences.sql` untuk preference tujuh tipe alert per pengguna. Row yang belum ada berarti aktif; preference actor-only memakai optimistic version, ikut backup/restore, dan memfilter scheduled queue tanpa membocorkan data finansial.
+- Menambahkan micro-feedback global `FeedbackProvider` untuk success/info/warning dengan live region, dedupe, safe-area, dan reduced-motion; tidak ada generic hard undo/rollback, sehingga reversal finansial tetap melalui action domain audited.
+- Membuat release QA linked-worktree aware: validator mengabaikan metadata `.git` baik file maupun directory, sementara `npm run test:browser` membangun fixture public Google/Firebase sendiri sehingga exact-commit check tidak bergantung pada `.env.local`.
+- Menambahkan Dependabot weekly dan workflow dependency audit manual/weekly. Audit otomatis tidak melakukan `npm audit fix`; advisory high harus ditriage sebelum dependency tree berubah.
 - Menambahkan guarded mutation intent canonical: write identik dikoaleskan, retry outcome-network-unknown memakai idempotency key yang sama, offline write tetap ditolak, dan refresh failure tidak lagi mengubah mutation yang sudah berhasil menjadi error semu.
 - Mereservasi idempotency external action sebelum side effect; same-key concurrent diproteksi, payload conflict ditolak, `notifications.test` tidak blind-retry setelah outcome unknown, sedangkan backup/import/restore hanya melanjutkan same-key retry karena memiliki durable recovery.
 - Mengoreksi policy `import.preview`/`restore.preview` yang sebelumnya dianggap read walau menulis preview state; `restore.preview` menyimpan preview DB secara transaction setelah backup Drive berhasil dibaca.

@@ -116,7 +116,7 @@ test("tipografi memakai system font yang tersedia dan bobot standar tanpa synthe
 test("semua CSS custom property statis terdefinisi dan alias semantic yang salah tidak kembali", async () => {
   const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
   const defined = new Set();
-  const runtimeProperties = new Set(["--note-delay", "--note-drift", "--note-duration", "--note-left", "--note-rotation"]);
+  const runtimeProperties = new Set(["--note-delay", "--note-drift", "--note-duration", "--note-left", "--note-rotation", "--login-mobile-slide"]);
 
   for (const file of cssFiles) {
     for (const match of file.source.matchAll(/(?<![\w-])(--[A-Za-z0-9_-]+)\s*:/g)) defined.add(match[1]);
@@ -138,15 +138,19 @@ test("semua CSS custom property statis terdefinisi dan alias semantic yang salah
   }
 });
 
-test("gradient avatar dan login logo-first tetap memiliki kontras serta focus state", async () => {
-  const [app, pages] = await Promise.all([
+test("gradient avatar dan login artwork menjaga focus, motion preference, dan full-screen shell", async () => {
+  const [app, pages, login] = await Promise.all([
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/auth/LoginPage.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(app, /\.desktop-user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
   assert.match(app, /\.user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
-  assert.match(pages, /\.login-creator a:focus-visible/);
-  assert.match(pages, /:root\[data-theme="dark"\] \.login-brand-lockup \.brand-wordmark span:first-child \{ color:\s*var\(--text\); \}/);
+  assert.match(pages, /\.login-artwork-hotspot:focus-visible/);
+  assert.match(pages, /\.login-mobile-stage:focus-visible/);
+  assert.match(pages, /min-height:\s*100dvh/);
+  assert.match(pages, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
+  assert.match(login, /DESKTOP_ARTWORK\[theme\]/);
   assert.doesNotMatch(app, /\.desktop-user-avatar \{[^}]*var\(--secondary\)/s);
   assert.doesNotMatch(app, /\.user-avatar \{[^}]*var\(--secondary\)/s);
 });

@@ -62,21 +62,20 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    npm run env:check
    ```
 
-5. Pastikan database sudah memakai schema v6 dan integrity check lulus:
+5. Pastikan database sudah memakai schema v7 dan integrity check lulus:
 
    ```bash
    npm run db:migrate
    npm run db:integrity
    ```
 
-6. Sinkronkan environment dan buat deployment Production baru:
+6. Jika dan hanya jika nilai environment memang berubah, sinkronkan environment Production secara eksplisit:
 
    ```bash
    npm run env:push:production
-   npx vercel --prod
    ```
 
-   Environment baru tidak berlaku pada deployment lama.
+   Setelah itu commit/push source yang sudah lolos quality gate dan tunggu deployment Git-connected Vercel untuk commit tersebut berstatus `Ready`. Jangan menjalankan `npx vercel --prod` dari working tree yang masih memiliki perubahan lokal karena file yang belum dikomit dapat ikut terdeploy. Environment baru juga tidak berlaku pada deployment lama sebelum redeploy.
 7. Dari komputer tepercaya yang memakai pasangan VAPID yang sama, seed konfigurasi settings ke Vercel Development tanpa menyentuh Turso/allowlist/session:
 
    ```bash
@@ -85,29 +84,30 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 
    Langkah ini dilakukan satu kali setelah aktivasi/rotasi settings. Laptop atau PC lain kemudian cukup menjalankan `npm run dev`; bootstrap menarik Development terbaru secara otomatis.
 8. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
-9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v6. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
+9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v7. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
 10. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 11. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
-## 6. Migration schema v6
+## 6. Migration schema v7
 
-Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v6 menerima traffic:
+Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v7 menerima traffic:
 
 ```bash
 npm run db:migrate
 npm run db:integrity
 ```
 
-Migration `004_notification_deliveries.sql` bersifat additive. Ia menambah delivery per subscription agar retry tidak mengirim ulang ke perangkat yang sudah sukses. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel langsung pada database aktif.
+Migration `005_notification_preferences.sql` bersifat additive. Ia menambah preference tujuh jenis alert per pengguna dengan default efektif aktif ketika row belum ada, sehingga user existing tidak kehilangan notifikasi. Backup schema v7 menyertakan preference ini; runtime v7 tetap dapat membaca backup v3/v4/v5/v6. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel langsung pada database aktif.
 
 ## 7. Release gate
 
 ```bash
 npm ci
 npm run env:check
-npm run env:push:production
 npm run check
+npm run test:guard
+npm run test:browser
 npm run db:integrity
 ```
 
-Lanjutkan smoke test login owner/member, create/update/cancel transaksi, transfer, conflict, Excel, status/register/test/unregister Web Push, retry dua perangkat, mirror, Calendar, backup, restore drill, dan PWA iOS/Android.
+`npm run env:push:production` hanya dijalankan ketika perubahan environment memang menjadi bagian release yang sudah direview; jangan menjadikannya efek samping setiap release. Lanjutkan smoke test login owner/member, create/update/cancel transaksi, transfer, conflict, Excel, status/register/test/unregister Web Push, retry dua perangkat, mirror, Calendar, backup, restore drill, dan PWA iOS/Android.

@@ -2,7 +2,7 @@ import { FiCreditCard, FiExternalLink, FiShield } from "react-icons/fi";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
-import { formatTransactionDate, TRANSACTION_LABELS, transactionTone } from "../../transactions/transactionPresentation.js";
+import { formatTransactionDate, TRANSACTION_LABELS, transactionTone } from "../../../shared/presentation/transaction.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
 const MobileTransactionDetail = ({

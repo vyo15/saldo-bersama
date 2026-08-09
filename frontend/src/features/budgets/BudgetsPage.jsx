@@ -10,6 +10,7 @@ import ProgressBar from "../../components/common/ProgressBar.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
@@ -26,6 +27,7 @@ const BudgetsPage = () => {
   const resource = useApiResource("budgets.list", { period });
   const { bootstrap, invalidate, refreshOverview } = useFinance();
   const { user } = useAuth();
+  const { notify } = useFeedback();
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState(null);
   const [saveState, setSaveState] = useState({ status: "idle", error: null });
@@ -80,7 +82,7 @@ const BudgetsPage = () => {
       }, { rowVersion: existingBudget?.row_version });
       setForm(emptyForm());
       setSaveState({ status: "idle", error: null });
-      setMessage({ type: "success", text: existingBudget ? "Anggaran berhasil diperbarui." : "Anggaran berhasil dibuat." });
+      notify({ message: existingBudget ? "Anggaran berhasil diperbarui." : "Anggaran berhasil dibuat.", tone: "success", dedupeKey: existingBudget ? "budgets:update" : "budgets:create" });
       invalidate(["budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {
@@ -101,7 +103,7 @@ const BudgetsPage = () => {
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
       setForm((current) => current.category_id === target.category_id ? emptyForm() : current);
-      setMessage({ type: "success", text: "Anggaran berhasil diarsipkan. Transaksi dan laporan historis tetap tersimpan." });
+      notify({ message: "Anggaran berhasil diarsipkan. Transaksi dan laporan historis tetap tersimpan.", tone: "success", dedupeKey: "budgets:archive" });
       invalidate(["budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     } catch (error) {

@@ -4,7 +4,6 @@ import { NavLink, Outlet, useLocation } from "react-router";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import SideNavigation from "../components/navigation/SideNavigation.jsx";
 import MobileNavigation from "../components/navigation/MobileNavigation.jsx";
-import TransactionForm from "../features/transactions/TransactionForm.jsx";
 import Brand from "../components/common/Brand.jsx";
 import Modal from "../components/common/Modal.jsx";
 import Button from "../components/common/Button.jsx";
@@ -12,6 +11,7 @@ import ThemeToggle from "../components/common/ThemeToggle.jsx";
 import UserAvatar from "../components/common/UserAvatar.jsx";
 import { MOBILE_SECONDARY_GROUPS } from "../config/navigation.js";
 import { useFinance } from "../app/FinanceContext.jsx";
+import { useTransactionComposer } from "../app/TransactionComposerContext.jsx";
 import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
 import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
 import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
@@ -22,8 +22,8 @@ import UpdateAvailableNotice from "../components/pwa/UpdateAvailableNotice.jsx";
 const AppShell = () => {
   const { user, logout } = useAuth();
   const { isRefreshing, refreshError, refreshAll } = useFinance();
+  const { openTransactionComposer } = useTransactionComposer();
   const location = useLocation();
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const dashboardRoute = location.pathname === "/";
@@ -78,9 +78,8 @@ const AppShell = () => {
         </div>
       </div>
 
-      {!dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={() => setQuickAddOpen(true)} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
-      <MobileNavigation onQuickAdd={() => setQuickAddOpen(true)} onMore={() => setMobileMenuOpen(true)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
-      <TransactionForm open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
+      {!dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
+      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuOpen(true)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
 
       <Modal
         open={mobileMenuOpen}

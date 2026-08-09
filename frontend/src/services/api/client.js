@@ -4,6 +4,7 @@ import {
 import { createSecureRandomId } from "../../domain/security.js";
 import { ApiError, isOutcomeUnknownError } from "./errors.js";
 import { createServerSession, destroyServerSession, downloadExcel, gatewayFetch, readSession } from "./transport.js";
+import { stableValue } from "./serialization.js";
 
 export { ApiError, isAbortError, isOutcomeUnknownError, parseResponse, shouldInvalidateSession } from "./errors.js";
 export { stableQueryKey } from "./cache.js";
@@ -12,14 +13,6 @@ const SESSION_CACHE_TTL_MS = 2_000;
 let sessionCache = { expiresAt: 0, value: null, promise: null };
 const inFlightMutations = new Map();
 const memoryMutationIntents = new Map();
-
-const stableValue = (value) => {
-  if (Array.isArray(value)) return value.map(stableValue);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableValue(value[key])]));
-  }
-  return value;
-};
 
 const fnv1a64 = (value) => {
   let hash = 0xcbf29ce484222325n;

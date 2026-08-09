@@ -1,4 +1,46 @@
-## Current task - Guarded mutation, recovery human error, Calendar self-heal, dan smart recurring alert
+
+## Handoff terkini — maintainability merge 2026-08-09
+
+- Source dasar yang harus dipakai: clean 367-file `saldo-bersama-clean(20260809-040450).zip` ditambah merged maintainability patch hasil rekonsiliasi; target source setelah overlay: **374 file canonical**, schema target **v7**.
+- Jangan overlay `saldo-bersama-maintainability-patch-20260809` mentah di atas source terbaru. Merge final sengaja mempertahankan `serialization.js`, jscpd report-only, feedback toast Categories/Goals, Web Push deterministic fixture, mutation guards, dan dependency lock yang lebih baru.
+- Gate sandbox merged source: frontend **93/93**, backend **174/174**, guard **40/40**, coverage backend PASS, source/syntax/governance PASS. Operator wajib mengulang Node 24 `npm run check`, `npm run test:guard`, `npm run test:browser`, audit dependency, dan `npm run zip` sebelum migration/deploy.
+- Migration Production tetap hanya `005_notification_preferences.sql` (v6 -> v7). Jangan migrate sebelum merged source final hijau pada laptop dan backup v6 VERIFIED.
+
+## Handoff current — Web Push fixture determinism hotfix
+
+**Baseline kerja:** `saldo-bersama-clean(20260809-035739).zip`, 367 file canonical, schema target v7. Seluruh gate operator sudah hijau kecuali satu regression `test/integrations/web-push.test.js` yang kadang menghasilkan private key P-256 kurang dari 32 byte karena leading zero scalar.
+
+**Perubahan:** hanya fixture test Web Push yang menormalisasi private key test menjadi 32 byte. Runtime Web Push, VAPID env, API, auth, saldo, schema, dan Google integration tidak berubah.
+
+**Gate setelah hotfix:** ulang `npm run test`, `npm run test:guard`, `npm run build`, `npm run build:budget`, `npm run test:browser`, audit, `npm run zip`, dan `git diff --check`. Setelah hijau, lanjut staging + cutover schema v7 yang sudah disetujui.
+
+---
+
+## Handoff current — maintainability, artifact hygiene, dan duplicate-report follow-up
+
+**Baseline kerja:** patch v7 recurring/notification/feedback yang sudah lolos operator frontend 90/90, guard 37/37, build/budget PASS, browser 10/10, serta dependency audit 0/0. Migration Production v7 masih mengikuti cutover guarded dan belum boleh didorong sebelum full gate follow-up hijau.
+
+**Scope approved:** tutup local `npm-audit-*.json` artifact leak/failure, satukan stable serialization API, ekstrak version stamp yang benar-benar identik, konsistenkan recurring outbox identity, selesaikan feedback semantics tanpa menghapus persistent critical notice, dan tambah jscpd report-only non-blocking. Tidak ada auth/role/saldo/transfer/Google resource/secret baru dan tidak ada migration tambahan di luar v7 yang sudah disetujui.
+
+**Guard:** jangan membuat `usePlanningResource` generik besar, jangan mengejar clone SQL/CSS hanya untuk persentase, dan jangan mengubah domain transition atau optimistic SQL guard saat mengekstrak helper. Clean ZIP wajib mengecualikan local diagnostic sekalipun validator mengabaikannya.
+
+**Operator gate:** `validate:source`, lint, full test, `test:guard`, build, budget, browser, `audit:production`, `audit:all`, `npm run zip`, lalu `git diff --check`. jscpd hanya report; failure download/report tidak memblokir release.
+
+**Validasi sandbox follow-up:** source 367 PASS; frontend 92/92; backend/business/security/tooling 171/171; guard 39/39; recurring runtime smoke 4/4; artifact + quality focused PASS. Node sandbox bukan Node 24 canonical, jadi build/browser operator tetap authoritative.
+
+---
+
+## Previous handoff — recurring skip + notification preferences + QA hardening
+
+**Baseline:** `saldo-bersama-clean(20260808-194612).zip` (356 file canonical sebelum patch), schema v6 sebelum migration; patch ini memperkenalkan schema v7 additive.
+
+**Scope approved:** menutup lifecycle `recurring_occurrences.cancelled`, preference notifikasi per tipe, micro-feedback canonical tanpa hard rollback, exact-worktree QA, dependency monitoring, backup/restore parity, docs, dan regression test. Account pin/reorder tetap ditunda karena prioritas rendah.
+
+**Guard:** migration v7 harus didahului backup verified dan diikuti integrity check. Jangan mengubah Firebase Auth, allowlist/role, saldo/transfer formula, Google resource ID, VAPID value, secret, atau deployment URL. Notification preference selalu actor-scoped di backend.
+
+**Cutover:** backup -> maintenance -> migrate v7 -> integrity -> deploy runtime -> owner/member smoke -> `/pengaturan/notifikasi` smoke -> jobs/mirror verification. Rollback memakai restore backup pra-migration pada database terpisah; jangan drop table produksi.
+
+## Previous task - Guarded mutation, recovery human error, Calendar self-heal, dan smart recurring alert
 
 **Tanggal:** 2026-08-08
 **Source baseline:** `saldo-bersama-clean(20260808-111504).zip`

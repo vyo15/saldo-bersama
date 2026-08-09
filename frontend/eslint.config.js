@@ -25,11 +25,13 @@ export default [
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
       "no-unused-vars": ["error", { "varsIgnorePattern": "^[A-Z_]", "argsIgnorePattern": "^(?:_|[A-Z])" }],
-      "react-refresh/only-export-components": ["warn", { "allowConstantExport": true }]
+      "react-refresh/only-export-components": ["warn", { "allowConstantExport": true }],
+      "complexity": ["warn", 20],
+      "max-lines-per-function": ["warn", { "max": 100, "skipBlankLines": true, "skipComments": true }]
     }
   },
   {
-    files: ["src/app/FinanceContext.jsx", "src/app/ThemeContext.jsx", "src/features/auth/AuthContext.jsx"],
+    files: ["src/app/FinanceContext.jsx", "src/app/ThemeContext.jsx", "src/app/TransactionComposerContext.jsx", "src/features/auth/AuthContext.jsx"],
     rules: { "react-refresh/only-export-components": "off" }
   },
   {

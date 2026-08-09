@@ -2,6 +2,7 @@ import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal, assertTransactionDateUnlocked } from "../finance.js";
 import { goalProgress } from "../readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, todayJakarta, uuid, visibleScopeSql } from "../core.js";
+import { nextVersionStamp } from "../versioning.js";
 import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 
 export const goalProjection = (row, currentAmount) => {
@@ -131,9 +132,7 @@ export const updateGoal = async (db, context) => {
     status,
     scope: owned.scope,
     owner_user_id: owned.owner_user_id,
-    row_version: Number(current.row_version) + 1,
-    updated_by: context.actor.user_id,
-    updated_at: nowIso()
+    ...nextVersionStamp(current, context.actor.user_id)
   };
   if (!next.name) throw appError("NAME_REQUIRED", "Nama target wajib diisi.", 400);
   const r = await db.execute("UPDATE savings_goals SET name=?,goal_type=?,target_amount=?,target_date=?,account_id=?,priority=?,status=?,scope=?,owner_user_id=?,row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=?", [next.name, next.goal_type, next.target_amount, next.target_date, next.account_id, next.priority, next.status, next.scope, next.owner_user_id, next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
@@ -155,7 +154,7 @@ export const archiveGoal = async (db, context) => {
   assertVersion(current, context.rowVersion ?? p.row_version);
   const reason = sanitizeText(p.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip target wajib diisi.", 400);
-  const next = { ...current, status: "archived", row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE savings_goals SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=? AND status<>'archived'", [next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: { ...publicRow(next), archive_reason: reason } });
@@ -174,7 +173,7 @@ export const restoreGoal = async (db, context) => {
   if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening target harus aktif sebelum target dipulihkan.", 409);
   const currentAmount = await goalProgress(db, current.goal_id);
   const nextStatus = currentAmount >= Number(current.target_amount) ? "completed" : "active";
-  const next = { ...current, status: nextStatus, row_version: Number(current.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const next = { ...current, status: nextStatus, ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE savings_goals SET status=?,row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=? AND status='archived'", [next.status, next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: { ...publicRow(next), restore_reason: reason } });

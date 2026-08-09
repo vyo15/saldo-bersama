@@ -8,6 +8,7 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
@@ -18,7 +19,7 @@ import {
   categoryIcon,
   categoryIconKey,
   categoryIconOption,
-} from "../transactions/transactionPresentation.js";
+} from "../../shared/presentation/transaction.js";
 import { archiveCategory, createCategory as requestCreateCategory, previewCategoryArchive, updateCategory as requestUpdateCategory } from "./categories.api.js";
 import {
   CATEGORY_TYPE_OPTIONS,
@@ -123,6 +124,7 @@ const CategoryIconPicker = ({ value, onChange, transactionType, nature, name }) 
 };
 
 const CategoriesPage = () => {
+  const { notify } = useFeedback();
   const resource = useApiResource("categories.list");
   const { invalidate, refreshAll } = useFinance();
   const { user } = useAuth();
@@ -168,7 +170,7 @@ const CategoriesPage = () => {
       setForm(emptyCategoryForm());
       setCreateOpen(false);
       setDialogState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Kategori berhasil dibuat." });
+      notify({ message: "Kategori berhasil dibuat.", tone: "success", dedupeKey: "categories:create" });
       await reloadCategories();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
@@ -187,7 +189,7 @@ const CategoriesPage = () => {
       }, { rowVersion: editCategory.row_version });
       setEditCategory(null);
       setDialogState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Kategori berhasil diperbarui." });
+      notify({ message: "Kategori berhasil diperbarui.", tone: "success", dedupeKey: "categories:update" });
       await reloadCategories();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
@@ -217,7 +219,7 @@ const CategoriesPage = () => {
       await archiveCategory({ category_id: category.category_id, row_version: category.row_version }, { rowVersion: category.row_version });
       setArchiveTarget(null);
       setDialogState({ status: "idle", error: null });
-      setMessage({ type: "success", text: "Kategori berhasil diarsipkan." });
+      notify({ message: "Kategori berhasil diarsipkan.", tone: "success", dedupeKey: "categories:archive" });
       await reloadCategories();
     } catch (error) { setDialogState({ status: "error", error }); }
   };

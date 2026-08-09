@@ -12,10 +12,10 @@ import {
   applyImport, applyRestore, createTechnicalBackup, integrityWithMaintenanceRecovery, previewImport,
   previewRestore,
 } from "../services/maintenance/index.js";
-import { notificationStatus, registerPush, testPush, unregisterPush } from "../services/notifications.js";
+import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
 import {
-  archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, closeEnvelope, createEnvelope, createGoal, createRecurringRule, listBudgets,
-  listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreRecurringRule,
+  archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createEnvelope, createGoal, createRecurringRule, listBudgets,
+  listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
   reverseEnvelopeMovement, reverseGoalMovement, reverseOccurrencePayment, updateGoal, updateRecurringRule, upsertBudget,
 } from "../services/planning/index.js";
 import {
@@ -96,6 +96,8 @@ const ACTION_HANDLERS = Object.freeze({
   "recurring.createRule": createRecurringRule,
   "recurring.updateRule": updateRecurringRule,
   "recurring.archiveRule": archiveRecurringRule,
+  "recurring.cancelOccurrence": cancelOccurrence,
+  "recurring.restoreOccurrence": restoreOccurrence,
   "recurring.payOccurrence": payOccurrence,
   "recurring.reversePayment": reverseOccurrencePayment,
   "recurring.restoreRule": restoreRecurringRule,
@@ -118,6 +120,8 @@ const ACTION_HANDLERS = Object.freeze({
   "periods.close": closePeriod,
   "periods.reopen": reopenPeriod,
   "notifications.status": notificationStatus,
+  "notifications.preferences": notificationPreferences,
+  "notifications.updatePreference": updateNotificationPreference,
   "notifications.register": registerPush,
   "notifications.unregister": unregisterPush,
   "notifications.test": testPush,

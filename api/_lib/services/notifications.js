@@ -1,16 +1,27 @@
 import crypto from "node:crypto";
+import { decodeBase64Url } from "../encoding.js";
 import dns from "node:dns";
 import https from "node:https";
 import net from "node:net";
 import webpush from "web-push";
 import { appendAudit } from "./audit.js";
-import { addDays, appError, nowIso, parseJson, publicRow, sanitizeText, todayJakarta, uuid } from "./core.js";
+import { addDays, appError, assertVersion, nowIso, parseJson, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid } from "./core.js";
 import { accountBalanceAsOf } from "./readModels.js";
 import { goalProjection } from "./planning/goals.js";
 
 const WEB_PUSH_ENV_KEYS = ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"];
 const BLOCKED_ENDPOINT_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".example", ".invalid", ".onion"];
 const TEST_COOLDOWN_MS = 30_000;
+export const NOTIFICATION_TYPES = Object.freeze([
+  "recurring_due",
+  "recurring_funding_shortage",
+  "recurring_completed",
+  "budget_threshold",
+  "envelope_threshold",
+  "goal_behind",
+  "unallocated_expense",
+]);
+const NOTIFICATION_TYPE_SET = new Set(NOTIFICATION_TYPES);
 export const PUSH_REQUEST_TIMEOUT_MS = 8_000;
 
 const PUSH_ADDRESS_BLOCKLIST = new net.BlockList();
@@ -88,16 +99,6 @@ export const webPushRequestOptions = (ttlSeconds) => ({
   agent: PUSH_HTTPS_AGENT,
 });
 
-const base64UrlBuffer = (value) => {
-  const candidate = String(value || "").trim();
-  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(candidate)) return null;
-  try {
-    return Buffer.from(candidate.replace(/=+$/, ""), "base64url");
-  } catch {
-    return null;
-  }
-};
-
 const validVapidSubject = (value) => {
   const subject = String(value || "").trim();
   if (/^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(subject)) return true;
@@ -122,8 +123,8 @@ export const webPushConfigurationStatus = (environment = process.env) => {
   const missing = WEB_PUSH_ENV_KEYS.filter((key) => !values[key]);
   if (missing.length) return { configured: true, ready: false, code: "INCOMPLETE", missing, invalid: [] };
 
-  const publicKey = base64UrlBuffer(values.VITE_VAPID_PUBLIC_KEY);
-  const privateKey = base64UrlBuffer(values.VAPID_PRIVATE_KEY);
+  const publicKey = decodeBase64Url(values.VITE_VAPID_PUBLIC_KEY);
+  const privateKey = decodeBase64Url(values.VAPID_PRIVATE_KEY);
   const invalid = [];
   const publicKeyValid = Boolean(publicKey && publicKey.length === 65 && publicKey[0] === 4);
   const privateKeyValid = Boolean(privateKey && privateKey.length === 32);
@@ -190,8 +191,8 @@ export const normalizePushEndpoint = (value) => {
 const normalizeSubscriptionKeys = (keys) => {
   const p256dh = String(keys?.p256dh || "").trim();
   const auth = String(keys?.auth || "").trim();
-  const p256dhBuffer = base64UrlBuffer(p256dh);
-  const authBuffer = base64UrlBuffer(auth);
+  const p256dhBuffer = decodeBase64Url(p256dh);
+  const authBuffer = decodeBase64Url(auth);
   if (!p256dhBuffer || p256dhBuffer.length !== 65 || p256dhBuffer[0] !== 4 || !authBuffer || authBuffer.length !== 16) {
     throw appError("INVALID_SUBSCRIPTION", "Push subscription tidak valid.", 400);
   }
@@ -277,6 +278,58 @@ export const unregisterPush = async (db, context) => {
     next: { status: "inactive" },
   });
   return { unregistered: true, unregisteredAt: timestamp };
+};
+
+export const notificationPreferences = async (db, context) => {
+  const rows = await db.all("SELECT notification_type,enabled,row_version,updated_at FROM notification_preferences WHERE user_id=?", [context.actor.user_id]);
+  const stored = new Map(rows.map((row) => [row.notification_type, row]));
+  return {
+    items: NOTIFICATION_TYPES.map((type) => {
+      const row = stored.get(type);
+      return {
+        type,
+        enabled: row ? Number(row.enabled) === 1 : true,
+        row_version: row ? Number(row.row_version) : null,
+        updated_at: row?.updated_at || null,
+        source: row ? "stored" : "default",
+      };
+    }),
+  };
+};
+
+export const updateNotificationPreference = async (db, context) => {
+  const p = context.payload || {};
+  const type = String(p.notification_type || "").trim();
+  if (!NOTIFICATION_TYPE_SET.has(type)) throw appError("INVALID_NOTIFICATION_TYPE", "Jenis notifikasi tidak valid.", 400);
+  if (p.enabled === undefined || p.enabled === null || p.enabled === "") throw appError("INVALID_BOOLEAN", "Status notifikasi wajib diisi.", 400);
+  const enabled = strictBoolean(p.enabled) ? 1 : 0;
+  const current = await db.one("SELECT * FROM notification_preferences WHERE user_id=? AND notification_type=?", [context.actor.user_id, type]);
+  const timestamp = nowIso();
+  let next;
+  if (current) {
+    assertVersion(current, context.rowVersion ?? p.row_version);
+    next = { ...current, enabled, row_version: Number(current.row_version) + 1, updated_at: timestamp };
+    const result = await db.execute("UPDATE notification_preferences SET enabled=?,row_version=?,updated_at=? WHERE user_id=? AND notification_type=? AND row_version=?", [enabled, next.row_version, timestamp, context.actor.user_id, type, current.row_version]);
+    if (result.rowsAffected !== 1) throw appError("CONFLICT", "Preferensi notifikasi berubah di perangkat lain.", 409);
+  } else {
+    if (context.rowVersion !== undefined && context.rowVersion !== null || p.row_version !== undefined && p.row_version !== null) {
+      throw appError("CONFLICT", "Preferensi notifikasi belum memiliki versi yang dapat diperbarui.", 409);
+    }
+    next = { user_id: context.actor.user_id, notification_type: type, enabled, row_version: 1, created_at: timestamp, updated_at: timestamp };
+    try {
+      await db.execute("INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", [next.user_id, next.notification_type, next.enabled, next.row_version, next.created_at, next.updated_at]);
+    } catch (error) {
+      if (String(error?.message || "").toLowerCase().includes("unique")) throw appError("CONFLICT", "Preferensi notifikasi berubah di perangkat lain. Muat ulang sebelum menyimpan.", 409);
+      throw error;
+    }
+  }
+  await appendAudit(db, context, {
+    entityType: "notification_preference",
+    entityId: `${context.actor.user_id}:${type}`,
+    previous: current ? { type, enabled: Number(current.enabled) === 1, row_version: Number(current.row_version) } : null,
+    next: { type, enabled: Boolean(enabled), row_version: Number(next.row_version) },
+  });
+  return { type, enabled: Boolean(enabled), row_version: Number(next.row_version), updated_at: next.updated_at };
 };
 
 export const notificationStatus = async (db, context) => {
@@ -447,9 +500,10 @@ const highestUsageThreshold = (percentage, customThreshold = 75) => {
   return 0;
 };
 
-const queueForRecipients = async (db, users, item, notification) => {
+const queueForRecipients = async (db, users, item, notification, disabledPreferences = new Set()) => {
   let queued = 0;
   for (const user of notificationRecipients(users, item)) {
+    if (disabledPreferences.has(`${user.user_id}:${notification.type}`)) continue;
     const result = await queueNotification(db, {
       userId: user.user_id,
       type: notification.type,
@@ -464,15 +518,9 @@ const queueForRecipients = async (db, users, item, notification) => {
   return queued;
 };
 
-export const queueActionableNotifications = async (db) => {
-  const today = todayJakarta();
-  const period = today.slice(0, 7);
-  const dueEnd = new Date(`${today}T00:00:00+07:00`);
-  dueEnd.setUTCDate(dueEnd.getUTCDate() + 3);
-  const dueEndDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(dueEnd);
-  const users = await db.all("SELECT user_id FROM users WHERE status='active'");
+const queueRecurringDueNotifications = async (db, state) => {
+  const { today, dueEndDate, users, disabledPreferences } = state;
   let queued = 0;
-
   const recurring = await db.all(`SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
       r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,
       a.account_id,a.name AS account_name,a.initial_balance,a.initial_balance_date,a.allow_negative,a.owner_scope,a.owner_user_id AS account_owner_user_id,a.status AS account_status
@@ -487,42 +535,50 @@ export const queueActionableNotifications = async (db) => {
       body: "Ada jadwal keuangan yang perlu diperiksa di aplikasi.",
       targetPath: "/tagihan",
       dedupeKey: `recurring:${item.occurrence_id}:${item.due_date}`,
-    });
+    }, disabledPreferences);
     const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0));
-    if (item.kind === "expense" && remaining > 0 && item.account_status === "active" && item.due_date <= addDays(today, 2)) {
-      const balance = await accountBalanceAsOf(db, {
-        account_id: item.account_id,
-        initial_balance: item.initial_balance,
-        initial_balance_date: item.initial_balance_date,
-        allow_negative: item.allow_negative,
-        owner_scope: item.owner_scope,
-        owner_user_id: item.account_owner_user_id,
-      }, today);
-      if (Number(balance) < remaining) {
-        queued += await queueForRecipients(db, users, item, {
-          type: "recurring_funding_shortage",
-          title: "Pengingat keuangan",
-          body: "Dana untuk jadwal pembayaran yang dekat jatuh tempo perlu diperiksa di aplikasi.",
-          targetPath: "/tagihan",
-          dedupeKey: `recurring-shortage:${item.occurrence_id}:${item.due_date}`,
-        });
-      }
-    }
+    if (item.kind !== "expense" || remaining <= 0 || item.account_status !== "active" || item.due_date > addDays(today, 2)) continue;
+    const balance = await accountBalanceAsOf(db, {
+      account_id: item.account_id,
+      initial_balance: item.initial_balance,
+      initial_balance_date: item.initial_balance_date,
+      allow_negative: item.allow_negative,
+      owner_scope: item.owner_scope,
+      owner_user_id: item.account_owner_user_id,
+    }, today);
+    if (Number(balance) >= remaining) continue;
+    queued += await queueForRecipients(db, users, item, {
+      type: "recurring_funding_shortage",
+      title: "Pengingat keuangan",
+      body: "Dana untuk jadwal pembayaran yang dekat jatuh tempo perlu diperiksa di aplikasi.",
+      targetPath: "/tagihan",
+      dedupeKey: `recurring-shortage:${item.occurrence_id}:${item.due_date}`,
+    }, disabledPreferences);
   }
+  return queued;
+};
 
-  const recentlyCompletedRecurring = await db.all(`SELECT o.occurrence_id,o.due_date,o.updated_at,r.kind,r.scope,r.owner_user_id
+const queueRecurringCompletedNotifications = async (db, state) => {
+  const { today, users, disabledPreferences } = state;
+  let queued = 0;
+  const items = await db.all(`SELECT o.occurrence_id,o.due_date,o.updated_at,r.kind,r.scope,r.owner_user_id
     FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
     WHERE r.status='active' AND o.status='paid' AND substr(o.updated_at,1,10) BETWEEN ? AND ?`, [addDays(today, -3), today]);
-  for (const item of recentlyCompletedRecurring) {
+  for (const item of items) {
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_completed",
       title: "Pengingat keuangan",
       body: "Satu jadwal keuangan sudah tercatat selesai di aplikasi.",
       targetPath: "/tagihan",
       dedupeKey: `recurring-completed:${item.occurrence_id}`,
-    });
+    }, disabledPreferences);
   }
+  return queued;
+};
 
+const queueBudgetNotifications = async (db, state) => {
+  const { period, users, disabledPreferences } = state;
+  let queued = 0;
   const budgets = await db.all(`SELECT b.*,COALESCE((SELECT SUM(t.amount) FROM transactions t
       WHERE t.status='active' AND t.transaction_type='expense' AND t.category_id=b.category_id
         AND substr(t.transaction_date,1,7)=b.period_key
@@ -538,9 +594,14 @@ export const queueActionableNotifications = async (db) => {
       body: "Ada batas anggaran yang perlu diperiksa di aplikasi.",
       targetPath: "/anggaran",
       dedupeKey: `budget:${item.budget_id}:${period}:${threshold}`,
-    });
+    }, disabledPreferences);
   }
+  return queued;
+};
 
+const queueEnvelopeNotifications = async (db, state) => {
+  const { today, users, disabledPreferences } = state;
+  let queued = 0;
   const envelopes = await db.all(`SELECT p.envelope_period_id,p.name,p.allocated_amount,p.reserved_amount,r.scope,r.owner_user_id,
       COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0) AS used_amount
     FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
@@ -556,9 +617,14 @@ export const queueActionableNotifications = async (db) => {
       body: "Ada kantong alokasi yang perlu diperiksa di aplikasi.",
       targetPath: "/alokasi",
       dedupeKey: `envelope:${item.envelope_period_id}:${threshold}`,
-    });
+    }, disabledPreferences);
   }
+  return queued;
+};
 
+const queueGoalNotifications = async (db, state) => {
+  const { period, users, disabledPreferences } = state;
+  let queued = 0;
   const goals = await db.all(`SELECT g.*,COALESCE((SELECT SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END)
       FROM goal_movements m WHERE m.goal_id=g.goal_id AND m.status='active'),0) AS current_amount
     FROM savings_goals g WHERE g.status='active' AND g.target_date IS NOT NULL`);
@@ -571,13 +637,18 @@ export const queueActionableNotifications = async (db) => {
       body: "Ada target keuangan yang perlu diperiksa di aplikasi.",
       targetPath: "/target",
       dedupeKey: `goal:${item.goal_id}:${period}:${projection.pace_status}`,
-    });
+    }, disabledPreferences);
   }
+  return queued;
+};
 
-  const unallocated = await db.all(`SELECT scope,owner_user_id,COUNT(*) AS count
+const queueUnallocatedExpenseNotifications = async (db, state) => {
+  const { today, period, users, disabledPreferences } = state;
+  let queued = 0;
+  const items = await db.all(`SELECT scope,owner_user_id,COUNT(*) AS count
     FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?
     GROUP BY scope,owner_user_id`, [period]);
-  for (const item of unallocated) {
+  for (const item of items) {
     if (Number(item.count || 0) < 1) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "unallocated_expense",
@@ -585,8 +656,31 @@ export const queueActionableNotifications = async (db) => {
       body: "Ada transaksi yang perlu diperiksa di aplikasi.",
       targetPath: "/transaksi",
       dedupeKey: `unallocated:${item.scope}:${item.owner_user_id || "shared"}:${today}`,
-    });
+    }, disabledPreferences);
   }
+  return queued;
+};
 
+export const queueActionableNotifications = async (db) => {
+  const today = todayJakarta();
+  const dueEnd = new Date(`${today}T00:00:00+07:00`);
+  dueEnd.setUTCDate(dueEnd.getUTCDate() + 3);
+  const users = await db.all("SELECT user_id FROM users WHERE status='active'");
+  const preferenceRows = await db.all("SELECT user_id,notification_type FROM notification_preferences WHERE enabled=0");
+  const state = {
+    today,
+    period: today.slice(0, 7),
+    dueEndDate: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(dueEnd),
+    users,
+    disabledPreferences: new Set(preferenceRows.map((row) => `${row.user_id}:${row.notification_type}`)),
+  };
+
+  let queued = 0;
+  queued += await queueRecurringDueNotifications(db, state);
+  queued += await queueRecurringCompletedNotifications(db, state);
+  queued += await queueBudgetNotifications(db, state);
+  queued += await queueEnvelopeNotifications(db, state);
+  queued += await queueGoalNotifications(db, state);
+  queued += await queueUnallocatedExpenseNotifications(db, state);
   return queued;
 };

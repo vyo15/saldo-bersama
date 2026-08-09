@@ -22,13 +22,13 @@ import {
 import { Link } from "react-router";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
-import { accountOwnershipLabel } from "../../accounts/accountPresentation.js";
+import { accountOwnershipLabel } from "../../../shared/presentation/account.js";
 import {
   formatTransactionDate,
   transactionCategoryIcon,
   TRANSACTION_LABELS,
   transactionTone,
-} from "../../transactions/transactionPresentation.js";
+} from "../../../shared/presentation/transaction.js";
 import { formatPeriod } from "../dashboardPresentation.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 

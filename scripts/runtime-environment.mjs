@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import net from "node:net";
+import { decodeBase64Url } from "../api/_lib/encoding.js";
 
 export const CORE_RUNTIME_ENV_KEYS = Object.freeze([
   "VITE_APP_NAME",
@@ -84,24 +85,14 @@ export const optionalGroupStatus = (values, keys) => {
   };
 };
 
-const decodedBase64Url = (value) => {
-  const candidate = String(value || "").trim();
-  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(candidate)) return null;
-  try {
-    return Buffer.from(candidate.replace(/=+$/, ""), "base64url");
-  } catch {
-    return null;
-  }
-};
-
 export const validateWebPushEnvironment = (values = {}) => {
   const group = optionalGroupStatus(values, WEB_PUSH_ENV_KEYS);
   if (!group.enabled) return { ...group, valid: true, invalid: [] };
   if (!group.complete) return { ...group, valid: false, invalid: [] };
 
   const invalid = [];
-  const publicKey = decodedBase64Url(values.VITE_VAPID_PUBLIC_KEY);
-  const privateKey = decodedBase64Url(values.VAPID_PRIVATE_KEY);
+  const publicKey = decodeBase64Url(values.VITE_VAPID_PUBLIC_KEY);
+  const privateKey = decodeBase64Url(values.VAPID_PRIVATE_KEY);
   const subject = String(values.VAPID_SUBJECT || "").trim();
 
   const publicKeyValid = Boolean(publicKey && publicKey.length === 65 && publicKey[0] === 4);

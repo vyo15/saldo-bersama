@@ -4,19 +4,19 @@ import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
 
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "envelope_rules", "envelope_periods",
   "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements",
-  "budgets", "goal_movements", "reconciliations", "period_closures", "audit_log", "idempotency_keys",
+  "budgets", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "audit_log", "idempotency_keys",
 ];
 
 export const RESTORE_DELETE_ORDER = [
   "notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces", "goal_movements", "budgets", "envelope_movements",
   "transactions", "recurring_occurrences", "recurring_rules", "envelope_periods", "envelope_rules", "savings_goals",
-  "reconciliations", "period_closures", "categories", "accounts", "push_subscriptions", "idempotency_keys",
+  "reconciliations", "period_closures", "categories", "accounts", "notification_preferences", "push_subscriptions", "idempotency_keys",
 ];
 
 const MAX_BACKUP_COMPRESSED_BYTES = 20 * 1024 * 1024;
@@ -73,9 +73,16 @@ export const validateSnapshot = (snapshot) => {
   if (!snapshot || snapshot.manifest?.format !== "saldo-bersama-backup" || !SUPPORTED_BACKUP_SCHEMA_VERSIONS.has(Number(snapshot.manifest?.schemaVersion)) || !snapshot.tables) {
     throw appError("BACKUP_SCHEMA_UNSUPPORTED", "Format atau versi backup tidak didukung.", 409);
   }
+  const schemaVersion = Number(snapshot.manifest.schemaVersion);
   for (const table of BACKUP_TABLES) {
-    if (!Array.isArray(snapshot.tables[table])) throw appError("BACKUP_TABLE_MISSING", `Tabel ${table} tidak tersedia pada backup.`, 409);
-    if (Number(snapshot.manifest.tables?.[table]) !== snapshot.tables[table].length) throw appError("BACKUP_COUNT_INVALID", `Jumlah baris tabel ${table} tidak sesuai manifest.`, 409);
+    const legacyOptional = schemaVersion < 7 && table === "notification_preferences";
+    if (!Array.isArray(snapshot.tables[table])) {
+      if (legacyOptional) continue;
+      throw appError("BACKUP_TABLE_MISSING", `Tabel ${table} tidak tersedia pada backup.`, 409);
+    }
+    if (!legacyOptional || snapshot.manifest.tables?.[table] !== undefined) {
+      if (Number(snapshot.manifest.tables?.[table]) !== snapshot.tables[table].length) throw appError("BACKUP_COUNT_INVALID", `Jumlah baris tabel ${table} tidak sesuai manifest.`, 409);
+    }
     if (snapshot.tables[table].some((row) => !row || typeof row !== "object" || Array.isArray(row))) throw appError("BACKUP_ROW_INVALID", `Isi tabel ${table} tidak valid.`, 409);
   }
   const checksum = snapshot.checksum;
