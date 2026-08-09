@@ -2,17 +2,17 @@
 
 ## Mulai di sini
 
-- `../AGENTS.md` — bootstrap instruction untuk AI/coding agent.
-- `WORKFLOW.md` — team, task lifecycle, dependency, checkpoint, QA, dan integration workflow canonical.
+- `../AGENTS.md` — instruksi AI/coding agent.
+- `WORKFLOW.md` — workflow review, patch, validation, dan delivery canonical.
+- `GIT_WORKFLOW.md` — Git direct-main yang sederhana.
 - `PROJECT_STATUS.md` — snapshot kondisi project sekarang.
-- `tasks/README.md` — task registry dan cara membaca antrean pekerjaan.
 - `DOCUMENT_LIFECYCLE.md` — lifecycle dokumen.
 - `../CONTRIBUTING.md` — kebijakan kontribusi.
 - `ARCHITECTURE.md` — arsitektur runtime.
 - `product/PRODUCT_REQUIREMENTS.md` — kebutuhan produk.
 - `product/GLOSSARY.md` — istilah canonical.
-- `product/OUT_OF_SCOPE.md` — batas fitur yang tidak dikerjakan.
-- `product/ROADMAP.md` — urutan pengembangan produk.
+- `product/OUT_OF_SCOPE.md` — batas fitur.
+- `product/ROADMAP.md` — roadmap.
 
 ## Contract
 
@@ -28,15 +28,15 @@
 ## Delivery dan governance
 
 - `WORKFLOW.md`
-- `tasks/README.md`
-- `templates/TASK_TEMPLATE.md`
+- `GIT_WORKFLOW.md`
 - `DEFINITION_OF_READY.md`
 - `DEFINITION_OF_DONE.md`
-- `GIT_WORKFLOW.md`
-- `rfc/README.md` — index RFC Proposed; template berada di `rfc/RFC_TEMPLATE.md`.
-- `adr/README.md` — index ADR.
+- `rfc/README.md`
+- `adr/README.md`
 - `RELEASE_CHECKLIST.md`
 - `ROLLBACK_RUNBOOK.md`
+
+Historical task records dari workflow lama tetap berada di `tasks/archive/`, tetapi bukan workflow aktif.
 
 ## Security dan operasi
 

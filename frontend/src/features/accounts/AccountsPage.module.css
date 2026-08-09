@@ -27,28 +27,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.accountWorkspace {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(32rem, 1fr) minmax(28rem, 32rem);
-  align-items: start;
-  gap: clamp(1.25rem, 2.4vw, 2rem);
-}
-
-.accountGrid {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
-  gap: var(--space-3);
-}
-
-.detailColumn {
-  min-width: 0;
-  position: sticky;
-  top: calc(var(--topbar-height, 4.5rem) + var(--space-4));
-}
-
 .emptyPanel {
   min-height: 12rem;
   padding: var(--space-6);
@@ -73,30 +51,6 @@
 }
 
 @media (max-width: 1280px) {
-  .accountWorkspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .detailColumn {
-    display: none;
-  }
-
-  .detailColumnOpen {
-    position: fixed;
-    z-index: 80;
-    inset: var(--topbar-height, 4.5rem) 0 0;
-    padding: var(--space-4);
-    display: grid;
-    place-items: start center;
-    overflow-y: auto;
-    background: color-mix(in srgb, var(--page) 84%, transparent);
-    backdrop-filter: blur(12px);
-  }
-
-  .detailColumnOpen > * {
-    width: min(100%, 32rem);
-  }
-
   .createAccountLayout {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
@@ -188,8 +142,7 @@
     gap: var(--space-3);
   }
 
-  .sectionHeading,
-  .desktopAccountWorkspace {
+  .sectionHeading {
     display: none;
   }
 

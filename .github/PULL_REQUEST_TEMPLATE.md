@@ -1,27 +1,23 @@
-## Task guarded / high-risk
+## Ringkasan
 
-- Task ID: `SB-___`
-- Team: `COORD / FE / BE`
-- Task Card: `docs/tasks/active/SB-___.md`
 - Objective:
-- Guarded/Risk:
-- Write Scope:
+- Area terdampak:
+- Guarded/high-risk: `Ya / Tidak`
 
 ## Validation aktual
 
 ```text
-npm run task:check:
 npm run check:
+npm run test:browser (bila frontend):
 test khusus:
 ```
 
 ## Review wajib
 
-- [ ] Branch dan Task ID cocok
-- [ ] Diff hanya dalam Write Scope
-- [ ] Guarded approval tercatat
-- [ ] Tidak ada secret/data finansial nyata
+- [ ] Diff hanya dalam scope yang disetujui
+- [ ] Approval guarded tersedia bila diperlukan
+- [ ] Tidak ada secret/data finansial nyata/generated artifact
 - [ ] Dampak schema/auth/API/saldo/backup/deployment diperiksa sesuai scope
-- [ ] Rollback/forward-fix jelas bila perubahan berisiko
+- [ ] Rollback/forward-fix jelas untuk perubahan berisiko
 
-PR hanya dipakai bila user meminta review tambahan atau ketika direct push `main` ditolak repository rules.
+PR bersifat opsional; workflow default project adalah direct push ke `main` setelah validation PASS.

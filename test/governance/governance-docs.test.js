@@ -1,7 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -14,7 +12,6 @@ import {
   PRODUCTION_SYNC_ENV_KEYS,
   WEB_PUSH_ENV_KEYS,
 } from "../../scripts/runtime-environment.mjs";
-import { TEAM_CODES, TASK_STATUSES, validateTaskRelationships, validateTaskRepository } from "../../scripts/validate-task.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (relative) => readFileSync(path.join(root, relative), "utf8");
@@ -32,12 +29,11 @@ const requiredFiles = [
   "docs/DOCUMENT_LIFECYCLE.md",
   "docs/PROJECT_STATUS.md",
   "docs/WORKFLOW.md",
-  "docs/tasks/README.md",
+  "docs/GIT_WORKFLOW.md",
   "docs/ARCHITECTURE.md",
   "docs/ENVIRONMENT_VARIABLES.md",
   "docs/TURSO_SCHEMA.md",
   "docs/SETUP.md",
-  "docs/GIT_WORKFLOW.md",
   "docs/DEFINITION_OF_READY.md",
   "docs/DEFINITION_OF_DONE.md",
   "docs/product/PRODUCT_REQUIREMENTS.md",
@@ -60,12 +56,10 @@ const requiredFiles = [
   "docs/adr/README.md",
   "docs/rfc/README.md",
   "docs/rfc/RFC_TEMPLATE.md",
-  "docs/rfc/0011-transaction-lifecycle-receipts-and-usage.md",
-  "docs/rfc/0012-debt-receivable-ledger.md",
-  "docs/rfc/0013-contribution-and-cost-sharing.md",
-  "docs/rfc/0014-category-hierarchy-and-goal-stages.md",
-  "docs/rfc/0015-granular-personal-privacy.md",
-  "docs/rfc/0016-partner-planning-permissions.md",
+];
+
+const retiredTaskFiles = [
+  "docs/tasks/README.md",
   "docs/templates/TASK_TEMPLATE.md",
   "scripts/validate-task.mjs",
   "scripts/list-tasks.mjs",
@@ -86,9 +80,7 @@ const referencedMarkdownFiles = (relative) => {
 };
 
 test("governance foundation and required-reading files exist", () => {
-  requiredFiles.forEach((relative) => {
-    assert.equal(exists(relative), true, `Missing governance file: ${relative}`);
-  });
+  requiredFiles.forEach((relative) => assert.equal(exists(relative), true, `Missing governance file: ${relative}`));
 });
 
 test("README, AGENTS, and documentation index contain no broken local Markdown references", () => {
@@ -99,31 +91,24 @@ test("README, AGENTS, and documentation index contain no broken local Markdown r
   }
 });
 
-test("README and agent instructions point to canonical workflow and task registry", () => {
-  const readme = read("README.md");
-  const agents = read("AGENTS.md");
-  ["AGENTS.md", "docs/WORKFLOW.md", "docs/PROJECT_STATUS.md", "docs/tasks/README.md", "docs/INDEX.md"]
-    .forEach((reference) => assert.match(readme, new RegExp(escapeRegExp(reference))));
-  ["docs/WORKFLOW.md", "docs/PROJECT_STATUS.md", "docs/tasks/README.md", "npm run task:check", "npm run task:list"]
-    .forEach((reference) => assert.match(agents, new RegExp(escapeRegExp(reference))));
+test("direct Git workflow is canonical and retired task automation stays absent", () => {
+  const packageJson = JSON.parse(read("package.json"));
+  const combined = [read("README.md"), read("AGENTS.md"), read("docs/WORKFLOW.md"), read("docs/GIT_WORKFLOW.md")].join("\n");
+  assert.match(combined, /git add -A/);
+  assert.match(combined, /git push origin main/);
+  assert.equal(packageJson.scripts["task:check"], undefined);
+  assert.equal(packageJson.scripts["task:list"], undefined);
+  assert.equal(packageJson.scripts["task:finish"], undefined);
+  assert.doesNotMatch(packageJson.scripts.check, /task:check/);
+  retiredTaskFiles.forEach((relative) => assert.equal(exists(relative), false, `Retired task file returned: ${relative}`));
 });
 
-test("legacy global handoff and team ownership files are retired", () => {
-  assert.equal(exists("docs/PROJECT_HANDOFF.md"), false);
-  assert.equal(exists("docs/TEAM_OWNERSHIP.md"), false);
-  assert.equal(exists("docs/templates/TASK_HANDOFF_TEMPLATE.md"), false);
-});
-
-test("documentation index exposes product boundaries, roadmap, and task workflow", () => {
+test("documentation index exposes product boundaries and direct delivery workflow", () => {
   const index = read("docs/INDEX.md");
-  for (const reference of [
-    "product/OUT_OF_SCOPE.md",
-    "product/ROADMAP.md",
-    "WORKFLOW.md",
-    "tasks/README.md",
-    "templates/TASK_TEMPLATE.md",
-    "UI_DESIGN_SYSTEM.md",
-  ]) assert.match(index, new RegExp(escapeRegExp(reference)));
+  for (const reference of ["product/OUT_OF_SCOPE.md", "product/ROADMAP.md", "WORKFLOW.md", "GIT_WORKFLOW.md", "UI_DESIGN_SYSTEM.md"]) {
+    assert.match(index, new RegExp(escapeRegExp(reference)));
+  }
+  assert.doesNotMatch(index, /tasks\/README|TASK_TEMPLATE/);
 });
 
 test("contribution policy and Git workflow cross-reference each other", () => {
@@ -131,109 +116,11 @@ test("contribution policy and Git workflow cross-reference each other", () => {
   assert.match(read("docs/GIT_WORKFLOW.md"), /\.\.\/CONTRIBUTING\.md/);
 });
 
-test("solo multi-tab workflow and task registry use one canonical vocabulary", () => {
-  assert.deepEqual(TEAM_CODES, ["COORD", "FE", "BE"]);
-  assert.deepEqual(TASK_STATUSES, ["DRAFT", "APPROVED", "IN_PROGRESS", "ON_HOLD", "DONE"]);
-  const workflow = read("docs/WORKFLOW.md");
-  const template = read("docs/templates/TASK_TEMPLATE.md");
-  TEAM_CODES.forEach((team) => assert.match(workflow, new RegExp(`\`${team}\``)));
-  TASK_STATUSES.forEach((status) => assert.match(workflow, new RegExp(status)));
-  assert.match(template, /\| Status \| `DRAFT` \|/);
-  assert.match(template, /\| Team \| `COORD` \|/);
-  for (const field of ["Task ID", "Team", "Depends On", "Write Scope", "Resume From", "Guard Approval"]) {
-    assert.match(template, new RegExp(escapeRegExp(field)));
-  }
-  assert.match(workflow, /normalisasi metadata closure task/);
-  assert.match(template, /closure helper menandai Acceptance Criteria selesai/);
-  const gitWorkflow = read("docs/GIT_WORKFLOW.md");
-  assert.match(gitWorkflow, /normalisasi closure metadata/);
-  assert.match(gitWorkflow, /Validator menolak archive `DONE`/);
-  const { errors } = validateTaskRepository();
-  assert.deepEqual(errors, [], errors.join("\n"));
-});
-
-test("task relationship guard allows parallel same-team work but rejects dependency and scope conflicts", () => {
-  const makeTask = (overrides) => ({
-    id: "SB-901",
-    relative: "docs/tasks/active/SB-901.md",
-    status: "IN_PROGRESS",
-    team: "FE",
-    dependsOn: [],
-    writeScope: ["frontend/src/features/login/**"],
-    ...overrides,
-  });
-  const buildRegistry = (tasks) => ({
-    active: tasks,
-    archive: [],
-    all: tasks,
-    byId: new Map(tasks.map((task) => [task.id, task])),
-  });
-
-  const unresolved = [
-    makeTask({ id: "SB-901", status: "DRAFT", team: "BE", writeScope: ["api/**"] }),
-    makeTask({ id: "SB-902", status: "APPROVED", dependsOn: ["SB-901"] }),
-  ];
-  assert.match(validateTaskRelationships(buildRegistry(unresolved)).join("\n"), /dependency unresolved/);
-
-  const cycle = [
-    makeTask({ id: "SB-903", status: "ON_HOLD", dependsOn: ["SB-904"] }),
-    makeTask({ id: "SB-904", status: "ON_HOLD", team: "BE", writeScope: ["api/**"], dependsOn: ["SB-903"] }),
-  ];
-  assert.match(validateTaskRelationships(buildRegistry(cycle)).join("\n"), /Dependency cycle/);
-
-  const parallelSameTeam = [
-    makeTask({ id: "SB-905", writeScope: ["frontend/src/features/login/**"] }),
-    makeTask({ id: "SB-906", writeScope: ["frontend/src/features/accounts/**"] }),
-  ];
-  assert.deepEqual(validateTaskRelationships(buildRegistry(parallelSameTeam)), []);
-
-  const overlap = [
-    makeTask({ id: "SB-907", team: "FE", writeScope: ["frontend/src/features/login/**"] }),
-    makeTask({ id: "SB-908", team: "FE", writeScope: ["frontend/src/features/login/LoginPage.jsx"] }),
-  ];
-  assert.match(validateTaskRelationships(buildRegistry(overlap)).join("\n"), /Write Scope overlap/);
-});
-
-test("task tooling fails closed for an unregistered branch and renders the simplified queue", () => {
-  const sandbox = mkdtempSync(path.join(os.tmpdir(), "saldo-bersama-task-guard-"));
-  try {
-    mkdirSync(path.join(sandbox, "scripts"), { recursive: true });
-    mkdirSync(path.join(sandbox, "docs/tasks/active"), { recursive: true });
-    mkdirSync(path.join(sandbox, "docs/tasks/archive"), { recursive: true });
-    copyFileSync(path.join(root, "scripts/validate-task.mjs"), path.join(sandbox, "scripts/validate-task.mjs"));
-    writeFileSync(path.join(sandbox, "README.md"), "task guard fixture\n");
-    for (const args of [
-      ["init", "-q"],
-      ["config", "user.name", "Task Guard Test"],
-      ["config", "user.email", "task-guard@example.test"],
-      ["add", "-A"],
-      ["commit", "-qm", "fixture"],
-      ["branch", "-M", "main"],
-    ]) {
-      const git = spawnSync("git", args, { cwd: sandbox, encoding: "utf8" });
-      assert.equal(git.status, 0, git.stderr);
-    }
-    const invalid = spawnSync(process.execPath, ["scripts/validate-task.mjs"], {
-      cwd: sandbox,
-      encoding: "utf8",
-      env: { ...process.env, TASK_BRANCH: "fix/SB-999-unregistered", TASK_BASE_REF: "main" },
-    });
-    assert.notEqual(invalid.status, 0);
-    assert.match(`${invalid.stdout}\n${invalid.stderr}`, /tidak memiliki task card aktif SB-999/);
-  } finally {
-    rmSync(sandbox, { recursive: true, force: true });
-  }
-
-  const list = spawnSync(process.execPath, ["scripts/list-tasks.mjs"], {
-    cwd: root,
-    encoding: "utf8",
-  });
-  assert.equal(list.status, 0, list.stderr);
-  assert.match(list.stdout, /SALDO BERSAMA TASK QUEUE/);
-  assert.match(list.stdout, /IN PROGRESS/);
-  assert.match(list.stdout, /READY TO START/);
-  assert.match(list.stdout, /BLOCKED \/ HOLD/);
-  assert.match(list.stdout, /COORD RECOMMENDED NEXT/);
+test("legacy global handoff files remain retired and task archives are historical only", () => {
+  assert.equal(exists("docs/PROJECT_HANDOFF.md"), false);
+  assert.equal(exists("docs/TEAM_OWNERSHIP.md"), false);
+  assert.equal(exists("docs/templates/TASK_HANDOFF_TEMPLATE.md"), false);
+  assert.match(read("docs/DOCUMENT_LIFECYCLE.md"), /docs\/tasks\/archive\/.*workflow lama/i);
 });
 
 test("every canonical action is documented in API and authorization contracts", () => {
@@ -354,7 +241,7 @@ test("project status is a current-state snapshot with schema v7 and shared datab
   const status = read("docs/PROJECT_STATUS.md");
   assert.match(status, /Active schema contract:\*\* v7/);
   assert.match(status, /Runtime lokal dan Vercel Production dirancang memakai database Turso bersama/);
-  assert.match(status, /tidak lagi menjadi jurnal task/i);
+  assert.match(status, /bukan jurnal perubahan/i);
 });
 
 

@@ -2,24 +2,12 @@ import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { LEGACY_ENV_KEYS } from "./runtime-environment.mjs";
+
+export { LEGACY_ENV_KEYS };
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = process.argv[2] ? path.resolve(process.argv[2]) : path.join(projectRoot, ".env.local");
-
-export const LEGACY_ENV_KEYS = Object.freeze([
-  "INTERNAL_SHARED_SECRET",
-  "APPS_SCRIPT_WEB_APP_URL",
-  "FIREBASE_WEB_API_KEY",
-  "VAPID_PUBLIC_KEY",
-  "VITE_DEV_MODE",
-  "VITE_DEMO_MODE",
-  "SPREADSHEET_ID",
-  "MIRROR_SPREADSHEET_ID",
-  "GOOGLE_CALENDAR_ID",
-  "BACKUP_FOLDER_ID",
-  "JOBS_ENDPOINT_URL",
-  "VERCEL_OIDC_TOKEN",
-]);
 
 export const OPTIONAL_ENV_GROUPS = Object.freeze([
   Object.freeze([

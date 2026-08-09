@@ -1,16 +1,14 @@
 # Definition of Done
 
-Task `DONE` bila:
+Perubahan dianggap selesai bila:
 
-- acceptance criteria terpenuhi;
-- perubahan tetap dalam `Write Scope`;
-- validation yang relevan benar-benar dijalankan dan hasilnya dicatat;
-- security, privacy, data integrity, accessibility, dan compatibility diperiksa sesuai scope;
-- docs/contract/runbook yang benar-benar terdampak diperbarui;
-- perubahan sudah masuk `main`;
-- task card dipindahkan ke `docs/tasks/archive/`;
-- tidak ada secret, raw error, generated artifact, atau data nyata dalam commit/ZIP.
+- acceptance criteria/request terpenuhi;
+- diff tetap dalam scope yang disetujui;
+- validation relevan benar-benar dijalankan dan PASS;
+- security, privacy, data integrity, accessibility, compatibility, dan performance diperiksa sesuai scope;
+- docs/contract/runbook terdampak diperbarui;
+- tidak ada secret, data finansial nyata, raw stack trace, dependency, build/generated artifact, atau file lokal dalam commit/ZIP;
+- perubahan sudah di-commit dan dipush ke `main` bila user meminta delivery Git;
+- clean/changed-files ZIP dibuat bila diperlukan.
 
-Normal task dapat ditutup otomatis oleh `npm run task:finish`.
-
-Guarded/HIGH/CRITICAL hanya `DONE` setelah Guard Approval APPROVED, local validation PASS, merge ke `main` berhasil, dan status task di-archive.
+Untuk guarded/high-risk, Done juga mensyaratkan approval eksplisit dan evidence test domain yang sesuai. Tidak ada task-card/archive requirement.

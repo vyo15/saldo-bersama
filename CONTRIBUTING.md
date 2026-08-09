@@ -1,47 +1,37 @@
 # Contributing
 
-Repository ini digunakan oleh satu user dengan bantuan beberapa tab/chat ChatGPT.
+Repository ini private dan workflow default sengaja sederhana.
 
-## Sebelum perubahan
+## Sebelum mengubah source
 
-1. Gunakan source terbaru.
-2. Baca `AGENTS.md`, `docs/WORKFLOW.md`, dan task card terkait.
-3. Pastikan Task ID, branch, dan `Write Scope` jelas.
-4. Review source aktual dan buat plan.
-5. Coding hanya setelah user approve.
+1. Baca `AGENTS.md`, `docs/WORKFLOW.md`, dan `docs/GIT_WORKFLOW.md`.
+2. Gunakan source terbaru dan review path aktual.
+3. Untuk area guarded/high-risk, dapatkan approval eksplisit terlebih dahulu.
+4. Jangan memasukkan secret, data finansial nyata, dependency/generated output, atau perubahan di luar scope.
 
-Team hanya:
-- `COORD`
-- `FE`
-- `BE`
-
-Banyak task boleh berjalan paralel selama `Write Scope` tidak overlap.
-
-## Normal task
-
-Setelah changed-files ZIP direplace saat masih di `main`:
+## Validation
 
 ```bash
-npm run task:finish -- "fix(SB-123): deskripsi perubahan"
+npm run check
 ```
 
-Tooling otomatis membuat/revisi branch task, melakukan validation, commit, sinkronisasi `main`, merge, push, archive task, lalu kembali ke `main`.
+Untuk perubahan frontend/browser:
 
-## Guarded/high-risk
+```bash
+npm run test:browser
+```
 
-Database/schema, auth/authorization, saldo/transfer, API contract, backup/restore, environment/deployment, dependency, dan governance global tetap membutuhkan approval eksplisit.
+Jalankan test khusus domain bila perubahan menyentuh auth, saldo, transfer, idempotency, import, backup/restore, notifikasi, atau security.
 
-Task `Guarded=YES` atau Risk `HIGH/CRITICAL` wajib `Guard Approval=APPROVED`. Setelah approval dan local validation PASS, `task:finish` memakai flow yang sama; PR hanya pengecualian bila diminta atau repository rules menolak direct push `main`.
+## Commit dan push
 
-## Scope
+Setelah validation PASS:
 
-- Jangan menyentuh file di luar `Write Scope`.
-- Jangan mencampur refactor lain.
-- Jangan formatting massal.
-- Jangan memasukkan secret, data finansial nyata, build output, atau dependency ke commit.
+```bash
+git status --short
+git add -A
+git commit -m "type: deskripsi perubahan"
+git push origin main
+```
 
-## Test
-
-Laporkan command yang benar-benar dijalankan. Jangan mengklaim PASS bila tidak dieksekusi.
-
-Ikuti `docs/GIT_WORKFLOW.md` untuk flow Git dan `docs/DEFINITION_OF_DONE.md` untuk kriteria selesai.
+PR/branch bersifat opsional dan dipakai hanya bila user meminta review tambahan atau repository rules mengharuskannya. Panduan lengkap ada di `docs/GIT_WORKFLOW.md`.

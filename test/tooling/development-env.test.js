@@ -5,7 +5,9 @@ import path from "node:path";
 import test from "node:test";
 import { ensureDevelopmentDependencies } from "../../scripts/bootstrap-development-dependencies.mjs";
 import { ensureDevelopmentEnvironment } from "../../scripts/bootstrap-development-env.mjs";
-import { CORE_RUNTIME_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
+import { CORE_RUNTIME_ENV_KEYS, LEGACY_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
+import { cleanEnvironmentText } from "../../scripts/clean-local-environment.mjs";
+import { validateDevelopmentEnvironment } from "../../scripts/push-vercel-development-env.mjs";
 import { createVapidTestEnvironment } from "../helpers/vapid-test-keys.js";
 
 const validWebPushEnvironment = () => createVapidTestEnvironment();
@@ -25,6 +27,23 @@ const withTempRoot = async (callback) => {
   try { return await callback(root); }
   finally { await rm(root, { recursive: true, force: true }); }
 };
+
+
+
+test("legacy environment key memakai satu registry canonical untuk cleaner dan validator Development", () => {
+  const legacyValues = Object.fromEntries(LEGACY_ENV_KEYS.map((key) => [key, "legacy-value"]));
+  const validation = validateDevelopmentEnvironment({
+    ...Object.fromEntries(CORE_RUNTIME_ENV_KEYS.map((key) => [key, "runtime-value"])),
+    ...validWebPushEnvironment(),
+    ...legacyValues,
+  });
+  assert.deepEqual([...validation.forbidden].sort(), [...LEGACY_ENV_KEYS].sort());
+
+  const source = `${Object.entries(legacyValues).map(([key, value]) => `${key}=${value}`).join("\n")}\nSAFE_KEY=keep\n`;
+  const cleaned = cleanEnvironmentText(source);
+  assert.deepEqual(cleaned.removed, [...LEGACY_ENV_KEYS].sort());
+  assert.equal(cleaned.text, "SAFE_KEY=keep\n");
+});
 
 const successfulRefreshRunner = (environmentSource, calls = []) => async ({ args, stdio }) => {
   calls.push({ args: [...args], stdio });

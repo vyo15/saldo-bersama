@@ -1,31 +1,27 @@
 # Document Lifecycle
 
-Dokumen project memakai status berikut agar informasi lama tidak terlihat sebagai kontrak aktif.
-
 | Status | Arti | Perlakuan |
 |---|---|---|
-| Canonical | Sumber aturan/kontrak aktif | Wajib diperbarui bersama source yang terdampak dan dijaga test drift. |
-| Snapshot | Kondisi project saat ini | Ringkas, tidak menjadi jurnal histori, diganti saat current state berubah. |
-| Runbook | Prosedur operasional | Harus diuji saat drill/perubahan tooling; langkah berbahaya wajib fail closed. |
-| Historical | Catatan keputusan/proses selesai | Dipertahankan hanya bila masih berguna untuk audit/history; Git/CHANGELOG menjadi histori utama perubahan biasa. |
+| Canonical | Sumber aturan/kontrak aktif | Diperbarui bersama source terdampak dan dijaga drift test. |
+| Snapshot | Kondisi project saat ini | Ringkas; diganti saat current state berubah. |
+| Runbook | Prosedur operasional | Diuji saat drill/perubahan tooling; langkah berbahaya fail-closed. |
+| Historical | Catatan keputusan/proses selesai | Dipertahankan bila berguna untuk audit/history; Git/CHANGELOG adalah histori utama. |
 | Template | Kerangka dokumen baru | Tidak boleh berisi status project aktual. |
 
-## Klasifikasi saat ini
+## Klasifikasi
 
-- Canonical: architecture, contracts, security model, environment, schema, data dictionary, UI design system, `WORKFLOW.md`, Git workflow, contribution policy, dan `tasks/README.md`.
+- Canonical: architecture, contracts, security model, environment, schema, data dictionary, UI design system, `WORKFLOW.md`, `GIT_WORKFLOW.md`, dan contribution policy.
 - Snapshot: `PROJECT_STATUS.md` dan `IMPLEMENTATION_MATRIX.md`.
-- Task record aktif: `tasks/active/SB-xxx.md`; setelah `DONE` menjadi historical record di `tasks/archive/`.
 - Runbook: deployment, release, rollback, recovery, incident, operations, legacy cutover.
-- Historical: ADR yang superseded, RFC/keputusan lama, dan task archive. Jangan membuat snapshot global handoff baru.
-- Template: seluruh file di `docs/templates/` dan template RFC.
+- Historical: ADR/RFC superseded dan `docs/tasks/archive/` dari workflow lama. Archive task tidak lagi mengontrol delivery saat ini.
+- Template: template RFC dan dokumen template lain yang masih dipakai.
 
 ## Aturan perubahan
 
-1. Source aktual selalu mengalahkan snapshot yang tertinggal; drift harus dijelaskan dan diperbaiki.
-2. `PROJECT_STATUS.md` hanya menjawab kondisi sekarang, bukan menyalin kronologi task.
-3. Progress/handoff pekerjaan disimpan pada task card masing-masing untuk mencegah shared-file conflict.
-4. `CHANGELOG.md` menyimpan release history; Git/PR menyimpan detail diff. Jangan menduplikasi histori lengkap ke status snapshot.
-5. Dokumen canonical tidak boleh dihapus tanpa memigrasikan contract/aturan yang masih relevan.
-6. Dokumen historical yang menjadi bukti audit, migration, recovery, atau keputusan arsitektur tidak boleh dihapus hanya untuk merapikan folder.
-7. `docs/INDEX.md` wajib menunjuk dokumen canonical dan lifecycle ini.
-8. Governance test wajib memastikan local Markdown reference penting tidak rusak dan workflow/task tooling tetap sinkron.
+1. Source aktual mengalahkan snapshot yang tertinggal; drift diperbaiki.
+2. `PROJECT_STATUS.md` menjawab kondisi sekarang, bukan kronologi commit.
+3. `CHANGELOG.md` dan Git menyimpan history perubahan.
+4. Dokumen canonical tidak dihapus tanpa memigrasikan contract yang masih relevan.
+5. Historical evidence yang berguna untuk audit/migration/recovery/arsitektur tidak dihapus hanya untuk merapikan folder.
+6. `docs/INDEX.md` wajib menunjuk dokumen canonical dan lifecycle ini.
+7. Governance test memastikan reference Markdown penting dan workflow direct-Git tidak drift.

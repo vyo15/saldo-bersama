@@ -4,11 +4,12 @@ import vm from "node:vm";
 const root = new URL("../apps-script/", import.meta.url);
 const files = (await readdir(root)).filter((name) => name.endsWith(".gs")).sort();
 const sources = new Map();
+const compiledScripts = new Map();
 
 for (const file of files) {
   const source = await readFile(new URL(file, root), "utf8");
   sources.set(file, source);
-  try { new Function(source); }
+  try { compiledScripts.set(file, new vm.Script(source, { filename: file })); }
   catch (error) {
     error.message = `${file}: ${error.message}`;
     throw error;
@@ -47,7 +48,7 @@ const RETIRED_PUBLIC_FUNCTIONS = ["setupSaldoBersama", "routeAction_", "rows_", 
 const assertProjectBoots = (order, label) => {
   const context = createContext();
   for (const file of order) {
-    try { new vm.Script(sources.get(file), { filename: file }).runInContext(context); }
+    try { compiledScripts.get(file).runInContext(context); }
     catch (error) {
       error.message = `${label} gagal saat memuat ${file}: ${error.message}`;
       throw error;
