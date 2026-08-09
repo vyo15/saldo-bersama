@@ -27,7 +27,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { AccountVisual } from "./components/AccountFinancialCard.jsx";
-import { accountCardholderName, detectBankTemplate } from "../../shared/presentation/account.js";
+import { accountCardholderName, accountOwnershipLabel, detectBankTemplate } from "../../shared/presentation/account.js";
 import styles from "./AccountsPage.module.css";
 
 const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));
@@ -586,7 +586,7 @@ const AccountsPage = () => {
                         <small>Saldo rekening</small>
                         <strong><Money value={account.balance || 0} /></strong>
                       </span>
-                      <span className={styles.mobileStackOwnership}>{account.owner_scope === "shared" ? "Bersama" : "Pribadi"}</span>
+                      <span className={styles.mobileStackOwnership}>{accountOwnershipLabel(account)}</span>
                     </button>
                   ))}
                 </div>

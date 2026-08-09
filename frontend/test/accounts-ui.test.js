@@ -163,6 +163,8 @@ ${accountEditors}`;
   assert.match(accountPageSource, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
   assert.match(accountPageSource, /Geser kartu aktif ke atas atau bawah/);
   assert.match(accountPageSource, /<AccountVisual account=\{account\} stack \/>/);
+  assert.match(page, /accountOwnershipLabel\(account\)/);
+  assert.doesNotMatch(page, /account\.owner_scope === "shared" \? "Bersama" : "Pribadi"/);
   assert.match(accountPageSource, /setMobileAccountSheet\("detail"\)/);
   assert.match(accountPageSource, /title="Pembayaran keluar"/);
   assert.match(accountPageSource, /Pengeluaran dan transfer keluar yang menggunakan/);
