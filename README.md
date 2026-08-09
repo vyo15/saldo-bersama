@@ -13,7 +13,7 @@ Baca berurutan:
 5. `docs/INDEX.md`
 6. Source dan test aktual pada area task
 
-Gunakan `npm run task:list` untuk melihat pekerjaan aktif/dependency dan `npm run task:check` sebelum patch. Jangan menggunakan nama chat atau memory sebagai source of truth ketika repository tersedia.
+Gunakan `npm run task:list` untuk melihat task aktif dan `npm run task:check` sebagai guard scope. Workflow harian adalah **replace changed-files ZIP saat masih di `main` -> `npm run task:finish -- "<commit message>"`**; helper mengurus branch, validation, commit, merge, push, archive, kembali ke `main`, lalu membuat clean ZIP terbaru secara otomatis. Jangan menggunakan nama chat atau memory sebagai source of truth ketika repository tersedia.
 
 ## Stack
 

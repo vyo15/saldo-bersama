@@ -5,23 +5,13 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-export const TEAM_CODES = Object.freeze(["COORD", "UIUX", "FE", "BE", "DB", "QA"]);
-export const TASK_STATUSES = Object.freeze([
-  "DRAFT",
-  "READY",
-  "APPROVED",
-  "IN_PROGRESS",
-  "ON_HOLD",
-  "READY_FOR_QA",
-  "READY_FOR_MERGE",
-  "DONE",
-]);
+export const TEAM_CODES = Object.freeze(["COORD", "FE", "BE"]);
+export const TASK_STATUSES = Object.freeze(["DRAFT", "APPROVED", "IN_PROGRESS", "ON_HOLD", "DONE"]);
 export const TASK_PRIORITIES = Object.freeze(["P0", "P1", "P2", "P3"]);
 export const TASK_RISKS = Object.freeze(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
-export const TASK_RESULTS = Object.freeze(["NOT_RUN", "PENDING", "PASS", "FAIL"]);
 export const ACTIVE_CODING_STATUSES = new Set(["APPROVED", "IN_PROGRESS"]);
 
-const GUARDED_PATH_PATTERNS = Object.freeze([
+export const GUARDED_PATH_PATTERNS = Object.freeze([
   "AGENTS.md",
   "package.json",
   "package-lock.json",
@@ -48,6 +38,7 @@ const GUARDED_PATH_PATTERNS = Object.freeze([
   "apps-script/**",
   "scripts/validate-task.mjs",
   "scripts/list-tasks.mjs",
+  "scripts/finish-task.mjs",
   "scripts/db-*.mjs",
   "scripts/*vercel*.mjs",
   "scripts/runtime-environment.mjs",
@@ -56,7 +47,7 @@ const GUARDED_PATH_PATTERNS = Object.freeze([
 
 const TASK_FILE_PATTERN = /^SB-\d{3,4}\.md$/;
 const TASK_ID_PATTERN = /^SB-\d{3,4}$/;
-const BRANCH_PATTERN = /^(?:feat|fix|security|perf|docs|test|chore)\/(SB-\d{3,4})-[a-z0-9][a-z0-9-]*$/;
+export const BRANCH_PATTERN = /^(?:feat|fix|security|perf|docs|test|chore)\/(SB-\d{3,4})-[a-z0-9][a-z0-9-]*$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const normalizePath = (value) => value.replaceAll("\\", "/").replace(/^\.\//, "");
@@ -103,9 +94,12 @@ const parseTable = (source) => {
 
 const parseListSection = (source, heading) => {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = source.match(new RegExp(`^## ${escaped}\\s*$([\\s\\S]*?)(?=^## |\\Z)`, "m"));
-  if (!match) return [];
-  return [...match[1].matchAll(/^\s*-\s+`([^`]+)`\s*$/gm)].map((item) => normalizePath(item[1]));
+  const headingMatch = new RegExp(`^## ${escaped}\\s*$`, "m").exec(source);
+  if (!headingMatch) return [];
+  const remainder = source.slice(headingMatch.index + headingMatch[0].length);
+  const nextHeading = /^## /m.exec(remainder);
+  const section = nextHeading ? remainder.slice(0, nextHeading.index) : remainder;
+  return [...section.matchAll(/^\s*-\s+`([^`]+)`\s*$/gm)].map((item) => normalizePath(item[1]));
 };
 
 const parseTaskFile = (relative, location) => {
@@ -120,24 +114,16 @@ const parseTaskFile = (relative, location) => {
     id: fields.get("Task ID") || "",
     status: fields.get("Status") || "",
     priority: fields.get("Priority") || "",
-    team: fields.get("Primary Team") || "",
-    supportingTeams: splitIds((fields.get("Supporting Teams") || "").replaceAll(" ", "")),
-    workPackage: fields.get("Work Package") || "",
-    parent: fields.get("Parent") || "NONE",
-    requiredForParent: fields.get("Required For Parent") || "",
+    team: fields.get("Team") || "",
     dependsOn: splitIds(fields.get("Depends On")),
-    related: splitIds(fields.get("Related")),
     risk: fields.get("Risk") || "",
     guarded: fields.get("Guarded") || "",
     guardApproval: fields.get("Guard Approval") || "",
     branch: fields.get("Branch") || "",
     base: fields.get("Base") || "",
     updated: fields.get("Updated") || "",
-    holdReason: fields.get("Hold Reason") || "",
-    resumeCondition: fields.get("Resume Condition") || "",
-    qaResult: fields.get("QA Result") || "",
-    integrationResult: fields.get("Integration Result") || "",
-    postMergeResult: fields.get("Post-Merge Result") || "",
+    holdReason: fields.get("Hold Reason") || "NONE",
+    resumeCondition: fields.get("Resume Condition") || "NONE",
     writeScope: parseListSection(source, "Write Scope"),
     readOnly: parseListSection(source, "Read Only"),
     forbidden: parseListSection(source, "Forbidden"),
@@ -167,53 +153,43 @@ const validateTaskShape = (task, errors) => {
     "Task ID",
     "Status",
     "Priority",
-    "Primary Team",
-    "Supporting Teams",
-    "Work Package",
-    "Parent",
-    "Required For Parent",
+    "Team",
     "Depends On",
-    "Related",
     "Risk",
     "Guarded",
     "Guard Approval",
     "Branch",
     "Base",
     "Updated",
-    "Hold Reason",
-    "Resume Condition",
-    "QA Result",
-    "Integration Result",
-    "Post-Merge Result",
   ];
+
   for (const field of requiredFields) {
     if (!task.fields.has(field) || !task.fields.get(field)) errors.push(`${task.relative}: field '${field}' wajib diisi.`);
   }
+
   if (task.id !== expectedId) errors.push(`${task.relative}: Task ID harus ${expectedId}, ditemukan ${task.id || "kosong"}.`);
   if (!TASK_ID_PATTERN.test(task.id)) errors.push(`${task.relative}: Task ID invalid: ${task.id}.`);
   if (!TASK_STATUSES.includes(task.status)) errors.push(`${task.relative}: status invalid: ${task.status}.`);
   if (!TASK_PRIORITIES.includes(task.priority)) errors.push(`${task.relative}: priority invalid: ${task.priority}.`);
-  if (!TEAM_CODES.includes(task.team)) errors.push(`${task.relative}: Primary Team invalid: ${task.team}.`);
-  for (const team of task.supportingTeams) {
-    if (!TEAM_CODES.includes(team)) errors.push(`${task.relative}: Supporting Team invalid: ${team}.`);
-  }
-  if (!task.workPackage || !/^[A-Z0-9][A-Z0-9_-]*$/.test(task.workPackage)) {
-    errors.push(`${task.relative}: Work Package harus label uppercase sederhana.`);
-  }
-  if (!(task.parent === "NONE" || TASK_ID_PATTERN.test(task.parent))) errors.push(`${task.relative}: Parent invalid: ${task.parent}.`);
-  if (!['YES', 'NO'].includes(task.requiredForParent)) errors.push(`${task.relative}: Required For Parent harus YES atau NO.`);
-  if (task.requiredForParent === "YES" && task.parent === "NONE") errors.push(`${task.relative}: Required For Parent YES membutuhkan Parent.`);
+  if (!TEAM_CODES.includes(task.team)) errors.push(`${task.relative}: Team invalid: ${task.team}.`);
   if (!TASK_RISKS.includes(task.risk)) errors.push(`${task.relative}: Risk invalid: ${task.risk}.`);
-  if (!['YES', 'NO'].includes(task.guarded)) errors.push(`${task.relative}: Guarded harus YES atau NO.`);
-  if (task.guarded === "YES" && task.guardApproval !== "APPROVED") errors.push(`${task.relative}: guarded task membutuhkan Guard Approval APPROVED.`);
-  if (task.guarded === "NO" && !["NOT_REQUIRED", "APPROVED"].includes(task.guardApproval)) errors.push(`${task.relative}: Guard Approval harus NOT_REQUIRED atau APPROVED.`);
-  if (!BRANCH_PATTERN.test(task.branch) || !task.branch.includes(task.id)) errors.push(`${task.relative}: branch invalid atau tidak memuat Task ID: ${task.branch}.`);
-  if (!task.base) errors.push(`${task.relative}: Base wajib diisi.`);
-  if (!DATE_PATTERN.test(task.updated) || Number.isNaN(Date.parse(`${task.updated}T00:00:00Z`))) errors.push(`${task.relative}: Updated harus YYYY-MM-DD valid.`);
-  for (const [label, result] of [["QA Result", task.qaResult], ["Integration Result", task.integrationResult], ["Post-Merge Result", task.postMergeResult]]) {
-    if (!TASK_RESULTS.includes(result)) errors.push(`${task.relative}: ${label} invalid: ${result}.`);
+  if (!["YES", "NO"].includes(task.guarded)) errors.push(`${task.relative}: Guarded harus YES atau NO.`);
+  if (task.guarded === "YES" && task.guardApproval !== "APPROVED") {
+    errors.push(`${task.relative}: guarded task membutuhkan Guard Approval APPROVED.`);
   }
-  if (task.supportingTeams.includes(task.team)) errors.push(`${task.relative}: Primary Team tidak perlu diulang sebagai Supporting Team.`);
+  if (task.guarded === "NO" && !["NOT_REQUIRED", "APPROVED"].includes(task.guardApproval)) {
+    errors.push(`${task.relative}: Guard Approval harus NOT_REQUIRED atau APPROVED.`);
+  }
+  if (["HIGH", "CRITICAL"].includes(task.risk) && task.guarded !== "YES") {
+    errors.push(`${task.relative}: Risk ${task.risk} wajib Guarded YES.`);
+  }
+  if (!BRANCH_PATTERN.test(task.branch) || !task.branch.includes(task.id)) {
+    errors.push(`${task.relative}: branch invalid atau tidak memuat Task ID: ${task.branch}.`);
+  }
+  if (!task.base) errors.push(`${task.relative}: Base wajib diisi.`);
+  if (!DATE_PATTERN.test(task.updated) || Number.isNaN(Date.parse(`${task.updated}T00:00:00Z`))) {
+    errors.push(`${task.relative}: Updated harus YYYY-MM-DD valid.`);
+  }
   if (task.writeScope.length === 0) errors.push(`${task.relative}: Write Scope tidak boleh kosong.`);
   if (task.status === "ON_HOLD") {
     if (!task.holdReason || task.holdReason === "NONE") errors.push(`${task.relative}: ON_HOLD membutuhkan Hold Reason.`);
@@ -221,16 +197,19 @@ const validateTaskShape = (task, errors) => {
   }
   if (task.location === "active" && task.status === "DONE") errors.push(`${task.relative}: task DONE harus dipindah ke archive.`);
   if (task.location === "archive" && task.status !== "DONE") errors.push(`${task.relative}: task archive harus berstatus DONE.`);
-  if (task.status === "READY_FOR_MERGE" && (task.qaResult !== "PASS" || task.integrationResult !== "PASS")) {
-    errors.push(`${task.relative}: READY_FOR_MERGE membutuhkan QA Result PASS dan Integration Result PASS.`);
+  for (const id of task.dependsOn) {
+    if (!TASK_ID_PATTERN.test(id)) errors.push(`${task.relative}: dependency task invalid: ${id}.`);
   }
-  if (task.status === "DONE" && (task.qaResult !== "PASS" || task.integrationResult !== "PASS" || task.postMergeResult !== "PASS")) {
-    errors.push(`${task.relative}: DONE membutuhkan QA, Integration, dan Post-Merge PASS.`);
-  }
-  for (const id of [...task.dependsOn, ...task.related]) {
-    if (!TASK_ID_PATTERN.test(id)) errors.push(`${task.relative}: referensi task invalid: ${id}.`);
-  }
-  if (task.parent === task.id || task.dependsOn.includes(task.id)) errors.push(`${task.relative}: task tidak boleh mereferensikan dirinya sendiri sebagai parent/dependency.`);
+  if (task.dependsOn.includes(task.id)) errors.push(`${task.relative}: task tidak boleh bergantung pada dirinya sendiri.`);
+};
+
+const staticPrefix = (pattern) => normalizePath(pattern).split("*")[0].replace(/\/$/, "");
+const patternsMayOverlap = (left, right) => {
+  if (left === right) return true;
+  const leftPrefix = staticPrefix(left);
+  const rightPrefix = staticPrefix(right);
+  if (!leftPrefix || !rightPrefix) return true;
+  return leftPrefix.startsWith(rightPrefix) || rightPrefix.startsWith(leftPrefix);
 };
 
 const validateRegistryLinks = (registry, errors) => {
@@ -239,15 +218,12 @@ const validateRegistryLinks = (registry, errors) => {
   for (const [id, count] of idCounts) if (id && count > 1) errors.push(`Task ID duplikat: ${id}.`);
 
   for (const task of registry.all) {
-    const refs = [
-      ...(task.parent !== "NONE" ? [task.parent] : []),
-      ...task.dependsOn,
-      ...task.related,
-    ];
-    for (const id of refs) if (!registry.byId.has(id)) errors.push(`${task.relative}: referensi ${id} tidak ditemukan di active/archive.`);
+    for (const id of task.dependsOn) {
+      if (!registry.byId.has(id)) errors.push(`${task.relative}: dependency ${id} tidak ditemukan di active/archive.`);
+    }
 
     const unresolved = task.dependsOn.filter((id) => registry.byId.get(id)?.status !== "DONE");
-    if (["APPROVED", "IN_PROGRESS", "READY_FOR_QA", "READY_FOR_MERGE"].includes(task.status) && unresolved.length > 0) {
+    if (ACTIVE_CODING_STATUSES.has(task.status) && unresolved.length > 0) {
       errors.push(`${task.relative}: status ${task.status} tidak boleh memiliki dependency unresolved: ${unresolved.join(", ")}.`);
     }
   }
@@ -268,41 +244,21 @@ const validateRegistryLinks = (registry, errors) => {
   };
   for (const task of registry.all) visit(task.id);
 
-  const actionableStatuses = new Set(["APPROVED", "IN_PROGRESS", "READY_FOR_QA", "READY_FOR_MERGE"]);
-  const actionable = registry.active.filter((task) => actionableStatuses.has(task.status));
-  const staticPrefix = (pattern) => normalizePath(pattern).split("*")[0].replace(/\/$/, "");
-  const patternsMayOverlap = (left, right) => {
-    if (left === right) return true;
-    const leftPrefix = staticPrefix(left);
-    const rightPrefix = staticPrefix(right);
-    if (!leftPrefix || !rightPrefix) return true;
-    return leftPrefix.startsWith(rightPrefix) || rightPrefix.startsWith(leftPrefix);
-  };
+  // Banyak tab/task boleh aktif bersamaan, termasuk dari team yang sama.
+  // Yang dilarang hanya dua task coding aktif menulis area yang berpotensi sama.
+  const actionable = registry.active.filter((task) => ACTIVE_CODING_STATUSES.has(task.status));
   for (let leftIndex = 0; leftIndex < actionable.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < actionable.length; rightIndex += 1) {
       const left = actionable[leftIndex];
       const right = actionable[rightIndex];
-      const overlap = left.writeScope.some((leftPattern) => right.writeScope.some((rightPattern) => patternsMayOverlap(leftPattern, rightPattern)));
+      const overlap = left.writeScope.some((leftPattern) =>
+        right.writeScope.some((rightPattern) => patternsMayOverlap(leftPattern, rightPattern)));
       if (overlap) {
-        errors.push(`Write Scope overlap antara ${left.id} (${left.team}) dan ${right.id} (${right.team}). Task paralel harus dipisah atau salah satunya ON_HOLD sampai task lain DONE.`);
+        errors.push(
+          `Write Scope overlap antara ${left.id} (${left.team}) dan ${right.id} (${right.team}). `
+          + "Task paralel boleh banyak, tetapi path yang sama harus diselesaikan bergantian.",
+        );
       }
-    }
-  }
-
-  const inProgressByTeam = new Map();
-  for (const task of registry.active.filter((item) => item.status === "IN_PROGRESS")) {
-    const list = inProgressByTeam.get(task.team) || [];
-    list.push(task.id);
-    inProgressByTeam.set(task.team, list);
-  }
-  for (const [team, ids] of inProgressByTeam) {
-    if (ids.length > 1) errors.push(`WIP limit: ${team} memiliki lebih dari satu IN_PROGRESS: ${ids.join(", ")}.`);
-  }
-
-  for (const parent of registry.archive) {
-    const requiredActiveChildren = registry.active.filter((child) => child.parent === parent.id && child.requiredForParent === "YES");
-    if (requiredActiveChildren.length > 0) {
-      errors.push(`${parent.relative}: parent DONE masih memiliki required child aktif: ${requiredActiveChildren.map((child) => child.id).join(", ")}.`);
     }
   }
 };
@@ -344,8 +300,8 @@ const resolveBaseRef = () => {
     process.env.TASK_BASE_REF,
     process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "",
     process.env.GITHUB_BASE_REF,
-    "main",
     "origin/main",
+    "main",
   ].filter(Boolean);
   return candidates.find(refExists) || "";
 };
@@ -357,11 +313,19 @@ const changedFilesFromGit = (baseRef) => {
     .split(/\r?\n/)
     .filter(Boolean)
     .map(normalizePath);
+  const working = git(["diff", "--name-only", "--diff-filter=ACMRDTUXB"])
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map(normalizePath);
+  const staged = git(["diff", "--cached", "--name-only", "--diff-filter=ACMRDTUXB"])
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map(normalizePath);
   const untracked = git(["ls-files", "--others", "--exclude-standard"])
     .split(/\r?\n/)
     .filter(Boolean)
     .map(normalizePath);
-  return [...new Set([...tracked, ...untracked])].sort();
+  return [...new Set([...tracked, ...working, ...staged, ...untracked])].sort();
 };
 
 const validateBranchScope = (registry, errors) => {
@@ -389,6 +353,9 @@ const validateBranchScope = (registry, errors) => {
     return { branch, baseRef: "", changedFiles: [] };
   }
   if (task.branch !== branch) errors.push(`${task.relative}: branch task '${task.branch}' tidak cocok dengan branch aktif '${branch}'.`);
+  if (!ACTIVE_CODING_STATUSES.has(task.status)) {
+    errors.push(`${task.relative}: status ${task.status} belum mengizinkan perubahan pada branch task.`);
+  }
 
   const baseRef = resolveBaseRef();
   if (!baseRef) {
@@ -403,7 +370,8 @@ const validateBranchScope = (registry, errors) => {
     if (!allowed) errors.push(`${task.id}: modified path di luar Write Scope: ${file}.`);
   }
 
-  const guardedChanged = changedFiles.filter((file) => GUARDED_PATH_PATTERNS.some((pattern) => matchesPathPattern(file, pattern)));
+  const guardedChanged = changedFiles.filter((file) =>
+    GUARDED_PATH_PATTERNS.some((pattern) => matchesPathPattern(file, pattern)));
   if (guardedChanged.length > 0 && task.guarded !== "YES") {
     errors.push(`${task.id}: guarded path berubah tetapi Guarded bukan YES: ${guardedChanged.join(", ")}.`);
   }
@@ -411,7 +379,7 @@ const validateBranchScope = (registry, errors) => {
     errors.push(`${task.id}: guarded path berubah tanpa Guard Approval APPROVED.`);
   }
 
-  return { branch, baseRef, changedFiles, task };
+  return { branch, baseRef, changedFiles, task, guardedChanged };
 };
 
 export const validateTaskRepository = () => {

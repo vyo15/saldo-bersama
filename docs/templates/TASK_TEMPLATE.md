@@ -5,13 +5,8 @@
 | Task ID | `SB-000` |
 | Status | `DRAFT` |
 | Priority | `P2` |
-| Primary Team | `COORD` |
-| Supporting Teams | `NONE` |
-| Work Package | `GENERAL` |
-| Parent | `NONE` |
-| Required For Parent | `NO` |
+| Team | `COORD` |
 | Depends On | `NONE` |
-| Related | `NONE` |
 | Risk | `LOW` |
 | Guarded | `NO` |
 | Guard Approval | `NOT_REQUIRED` |
@@ -20,21 +15,16 @@
 | Updated | `YYYY-MM-DD` |
 | Hold Reason | `NONE` |
 | Resume Condition | `NONE` |
-| QA Result | `NOT_RUN` |
-| Integration Result | `NOT_RUN` |
-| Post-Merge Result | `NOT_RUN` |
 
 ## Objective
 
-Jelaskan satu outcome yang harus dicapai.
+Satu outcome yang jelas.
 
 ## Acceptance Criteria
 
 - [ ] Kriteria dapat diuji.
 
 ## Write Scope
-
-Task card ini sendiri otomatis writable dan tidak perlu dimasukkan ke daftar.
 
 - `path/yang/boleh-diubah`
 
@@ -48,10 +38,9 @@ Task card ini sendiri otomatis writable dan tidak perlu dimasukkan ke daftar.
 
 ## Source Validation
 
-- Archive/repository:
-- Root:
+- Source/root:
 - Paths inspected:
-- Important missing files/limitations:
+- Limitation:
 
 ## Plan
 
@@ -69,29 +58,14 @@ Task card ini sendiri otomatis writable dan tidak perlu dimasukkan ke daftar.
 
 ### Resume From
 
-Mulai dari validasi source dan task preflight.
-
-### Last Verified Commit
-
-`<commit>`
+Mulai dari source/task preflight.
 
 ### Validation Actually Run
 
 ```text
-command: NOT_RUN
+NOT_RUN
 ```
 
 ### Known Risks
 
 - Belum ada.
-
-## Hold
-
-**Hold Reason:** `NONE`  
-**Resume Condition:** `NONE`
-
-## QA and Integration
-
-- QA result: `NOT_RUN`
-- Integration result: `NOT_RUN`
-- Post-merge result: `NOT_RUN`
