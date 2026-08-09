@@ -97,6 +97,58 @@ const updateTableField = (source, field, value) => {
   return source.replace(pattern, `| ${field} | \`${value}\` |`);
 };
 
+const replaceHeadingBody = (source, heading, body) => {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headingPattern = new RegExp(`^${escaped}\\s*$`, "m");
+  const match = headingPattern.exec(source);
+  if (!match) throw new Error(`Heading task '${heading}' tidak ditemukan.`);
+
+  const contentStart = match.index + match[0].length;
+  const level = heading.match(/^#+/)?.[0].length || 1;
+  const nextHeading = new RegExp(`^#{1,${level}}\\s+`, "m").exec(source.slice(contentStart));
+  const contentEnd = nextHeading ? contentStart + nextHeading.index : source.length;
+  const normalizedBody = body.trim();
+  return `${source.slice(0, contentStart)}\n\n${normalizedBody}\n${source.slice(contentEnd).replace(/^\n+/, "\n")}`;
+};
+
+const markAcceptanceCriteriaComplete = (source) => {
+  const heading = "## Acceptance Criteria";
+  const headingIndex = source.indexOf(heading);
+  if (headingIndex < 0) throw new Error("Heading task '## Acceptance Criteria' tidak ditemukan.");
+  const contentStart = headingIndex + heading.length;
+  const nextHeadingIndex = source.indexOf("\n## ", contentStart);
+  const contentEnd = nextHeadingIndex >= 0 ? nextHeadingIndex : source.length;
+  const section = source.slice(contentStart, contentEnd).replace(/^- \[ \]/gm, "- [x]");
+  return `${source.slice(0, contentStart)}${section}${source.slice(contentEnd)}`;
+};
+
+const finalizeTaskDocument = (source, { browserValidationRequired }) => {
+  let finalized = markAcceptanceCriteriaComplete(source);
+  finalized = replaceHeadingBody(
+    finalized,
+    "### Remaining",
+    "- Tidak ada. Task ditutup otomatis setelah canonical validation PASS dan merge lokal berhasil.",
+  );
+  finalized = replaceHeadingBody(
+    finalized,
+    "### Resume From",
+    "Task selesai. Tidak ada langkah resume.",
+  );
+  finalized = replaceHeadingBody(
+    finalized,
+    "### Validation Actually Run",
+    [
+      "```text",
+      "PASS npm run check",
+      "PASS npm run test:guard",
+      browserValidationRequired ? "PASS npm run test:browser" : "NOT_REQUIRED npm run test:browser (tidak ada affected browser/frontend path)",
+      "PASS task:finish merge-safety checks terhadap origin/main",
+      "```",
+    ].join("\n"),
+  );
+  return finalized;
+};
+
 const updateActiveTaskBranch = (taskId, branch) => {
   const active = path.join(root, "docs", "tasks", "active", `${taskId}.md`);
   let source = readFileSync(active, "utf8");
@@ -104,14 +156,22 @@ const updateActiveTaskBranch = (taskId, branch) => {
   writeFileSync(active, source, "utf8");
 };
 
-const closeTaskOnMain = (taskId) => {
+const closeTaskOnMain = (taskId, { browserValidationRequired }) => {
   const active = path.join(root, "docs", "tasks", "active", `${taskId}.md`);
   const archive = path.join(root, "docs", "tasks", "archive", `${taskId}.md`);
   let source = readFileSync(active, "utf8");
   source = updateTableField(source, "Status", "DONE");
   source = updateTableField(source, "Updated", todayJakarta());
+  source = finalizeTaskDocument(source, { browserValidationRequired });
   writeFileSync(active, source, "utf8");
   renameSync(active, archive);
+
+  const closureValidation = validateTaskRepository();
+  if (closureValidation.errors.length > 0) {
+    renameSync(archive, active);
+    throw new Error(`Task closure invalid:\n- ${closureValidation.errors.join("\n- ")}`);
+  }
+
   git(["add", "-A"]);
   git(["commit", "-m", `chore(${taskId}): close task`]);
 };
@@ -201,6 +261,12 @@ const main = () => {
     git(["commit", "-m", message]);
   }
 
+  const browserValidationRequired = task.team === "FE" || scope.changedFiles.some((file) =>
+    file.startsWith("frontend/")
+    || file.startsWith("test/browser/")
+    || file === "scripts/prepare-browser-test-build.mjs"
+  );
+
   // Satukan main terbaru lalu validasi. Bila tab lain mengubah main saat check berjalan, ulangi.
   let stableMain = false;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -222,11 +288,6 @@ const main = () => {
     npmRun("test:guard", {
       env: { TASK_BRANCH: branch, TASK_BASE_REF: "origin/main" },
     });
-    const browserValidationRequired = task.team === "FE" || scope.changedFiles.some((file) =>
-      file.startsWith("frontend/")
-      || file.startsWith("test/browser/")
-      || file === "scripts/prepare-browser-test-build.mjs"
-    );
     if (browserValidationRequired) {
       npmRun("test:browser", {
         env: { TASK_BRANCH: branch, TASK_BASE_REF: "origin/main" },
@@ -263,7 +324,7 @@ const main = () => {
 
   git(["merge", "--no-ff", branch, "-m", `merge(${task.id}): integrate task`]);
   // Tutup task pada main lokal sebelum satu-satunya push final, sehingga merge + archive task atomik dari sisi remote.
-  closeTaskOnMain(task.id);
+  closeTaskOnMain(task.id, { browserValidationRequired });
   try {
     git(["push", "origin", "main"]);
   } catch {

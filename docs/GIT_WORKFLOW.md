@@ -54,7 +54,7 @@ detect task from commit message
  -> push task branch
  -> merge ke main
  -> push main
- -> archive task
+ -> normalisasi closure metadata + archive task
  -> delete branch
  -> npm run zip otomatis
 ```
@@ -62,6 +62,10 @@ detect task from commit message
 Jika `main` berubah selama proses, branch task di-update dan check diulang. Jika ada conflict, proses berhenti di branch task dan `main` tetap aman.
 
 Jika repository rules menolak direct push `main` atau remote berubah pada saat terakhir, helper mengembalikan `main` lokal ke `origin/main`, kembali ke branch task, dan berhenti aman. Jalankan command yang sama lagi setelah kondisi stabil. PR hanya digunakan sebagai pengecualian bila repository memang mewajibkannya atau user meminta review tambahan.
+
+
+
+Saat task berhasil ditutup, helper juga memastikan archive tidak menyimpan state basi: Acceptance Criteria menjadi checked, `Remaining` dan `Resume From` menjadi state selesai, dan `Validation Actually Run` diganti dengan evidence canonical yang benar-benar dijalankan oleh `task:finish`. Validator menolak archive `DONE` yang masih memiliki checklist kosong, pekerjaan tersisa aktif, atau `NOT_RUN`.
 
 Guarded/HIGH/CRITICAL memakai command yang sama setelah `Guard Approval=APPROVED`. Tidak ada command Git tambahan yang perlu dihafal. Setelah main berhasil dipush, helper juga menjalankan `npm run zip` otomatis agar source terbaru siap di-upload ke ChatGPT.
 

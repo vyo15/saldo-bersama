@@ -143,6 +143,11 @@ test("solo multi-tab workflow and task registry use one canonical vocabulary", (
   for (const field of ["Task ID", "Team", "Depends On", "Write Scope", "Resume From", "Guard Approval"]) {
     assert.match(template, new RegExp(escapeRegExp(field)));
   }
+  assert.match(workflow, /normalisasi metadata closure task/);
+  assert.match(template, /closure helper menandai Acceptance Criteria selesai/);
+  const gitWorkflow = read("docs/GIT_WORKFLOW.md");
+  assert.match(gitWorkflow, /normalisasi closure metadata/);
+  assert.match(gitWorkflow, /Validator menolak archive `DONE`/);
   const { errors } = validateTaskRepository();
   assert.deepEqual(errors, [], errors.join("\n"));
 });
