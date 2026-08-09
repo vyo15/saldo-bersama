@@ -187,7 +187,7 @@ const main = () => {
     git(["fetch", "origin", "main"]);
   }
 
-  const { task } = ensureCleanTaskPolicy(branch);
+  const { task, scope } = ensureCleanTaskPolicy(branch);
 
   const hasCommittedTaskWork = Number(git(["rev-list", "--count", "origin/main..HEAD"], { capture: true })) > 0;
   if (!hasWorkingChanges() && !hasCommittedTaskWork) {
@@ -222,7 +222,12 @@ const main = () => {
     npmRun("test:guard", {
       env: { TASK_BRANCH: branch, TASK_BASE_REF: "origin/main" },
     });
-    if (task.team === "FE") {
+    const browserValidationRequired = task.team === "FE" || scope.changedFiles.some((file) =>
+      file.startsWith("frontend/")
+      || file.startsWith("test/browser/")
+      || file === "scripts/prepare-browser-test-build.mjs"
+    );
+    if (browserValidationRequired) {
       npmRun("test:browser", {
         env: { TASK_BRANCH: branch, TASK_BASE_REF: "origin/main" },
       });

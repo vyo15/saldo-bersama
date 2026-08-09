@@ -27,7 +27,7 @@ import {
   categoryNatureLabel,
   categoryTypeLabel,
   expenseNatureOptions,
-} from "./categoryPresentation.js";
+} from "../../shared/presentation/category.js";
 import styles from "./CategoriesPage.module.css";
 
 const emptyCategoryForm = () => ({

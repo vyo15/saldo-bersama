@@ -23,7 +23,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
-import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionTone } from "./transactionPresentation.js";
+import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionTone } from "../../shared/presentation/transaction.js";
 
 const PAGE_SIZE = 100;
 

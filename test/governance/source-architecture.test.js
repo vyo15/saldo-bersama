@@ -233,6 +233,57 @@ test("runtime memakai satu Firebase public key dan tidak menduplikasi resource I
   assert.doesNotMatch(environmentDoc, /Development \+ Production|Production \+ Development/);
 });
 
+test("VAPID validation memiliki satu implementation canonical untuk runtime dan backend", async () => {
+  const [shared, runtimeEnvironment, notifications] = await Promise.all([
+    source("api/_lib/webPushConfiguration.js"),
+    source("scripts/runtime-environment.mjs"),
+    source("api/_lib/services/notifications.js"),
+  ]);
+  assert.match(shared, /validateVapidConfiguration/);
+  assert.match(shared, /VAPID_KEY_PAIR/);
+  assert.match(runtimeEnvironment, /validateVapidConfiguration/);
+  assert.match(notifications, /validateVapidConfiguration/);
+  assert.doesNotMatch(runtimeEnvironment, /createECDH|timingSafeEqual|BLOCKED_VAPID_SUBJECT_SUFFIXES/);
+  assert.doesNotMatch(notifications, /createECDH|timingSafeEqual|validVapidSubject/);
+});
+
+test("presentation compatibility wrappers sudah dipensiunkan dan feature memakai shared presentation langsung", async () => {
+  const retired = [
+    "frontend/src/features/accounts/accountPresentation.js",
+    "frontend/src/features/categories/categoryPresentation.js",
+    "frontend/src/features/transactions/transactionPresentation.js",
+  ];
+  for (const relative of retired) {
+    assert.equal(await exists(relative), false, `${relative} harus sudah dipensiunkan`);
+  }
+  const files = [
+    "frontend/src/features/accounts/AccountsPage.jsx",
+    "frontend/src/features/accounts/components/AccountEditorDialogs.jsx",
+    "frontend/src/features/accounts/components/AccountFinancialCard.jsx",
+    "frontend/src/features/accounts/components/MobileAccountSheets.jsx",
+    "frontend/src/features/categories/CategoriesPage.jsx",
+    "frontend/src/features/transactions/TransactionsPage.jsx",
+  ];
+  for (const relative of files) {
+    const text = await source(relative);
+    assert.match(text, /shared\/presentation\//, `${relative} harus memakai shared presentation canonical`);
+    assert.doesNotMatch(text, /(?:account|category|transaction)Presentation\.js/);
+  }
+});
+
+test("backend stable serialization memiliki satu implementasi canonical", async () => {
+  const [gateway, core, serialization] = await Promise.all([
+    source("api/gateway.js"),
+    source("api/_lib/services/core.js"),
+    source("api/_lib/serialization.js"),
+  ]);
+  assert.match(gateway, /from "\.\/_lib\/serialization\.js"/);
+  assert.match(core, /from "\.\.\/serialization\.js"/);
+  assert.match(serialization, /export const stableValue/);
+  assert.doesNotMatch(gateway, /const stableValue/);
+  assert.doesNotMatch(core, /const stableValue|export const stableValue/);
+});
+
 test("frontend menjaga dependency direction, bebas cycle relatif, dan helper stable payload tidak terduplikasi", async () => {
   const sourceRoot = path.join(root, "frontend/src");
   const sourceFiles = [];

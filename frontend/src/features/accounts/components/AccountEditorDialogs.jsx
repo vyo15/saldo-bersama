@@ -3,7 +3,7 @@ import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { parseRupiah } from "../../../domain/money.js";
-import { BANK_TEMPLATE_OPTIONS } from "../accountPresentation.js";
+import { BANK_TEMPLATE_OPTIONS } from "../../../shared/presentation/account.js";
 import styles from "../AccountsPage.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";
 

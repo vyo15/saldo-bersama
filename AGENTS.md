@@ -15,6 +15,7 @@ BE    | Backend
 - `COORD` mengatur task, scope, dependency, konflik antar-tab, prioritas, integration, serta memberi saran pekerjaan berikutnya.
 
 Task lintas area dimulai sebagai `COORD`, lalu diarahkan ke `FE` atau `BE` bila root cause sudah jelas.
+Jika user secara eksplisit meminta satu patch lintas-area, COORD boleh menjadi owner integrasi dengan FE/BE sebagai supporting scope, selama satu Task Card mencantumkan semua file yang boleh berubah.
 
 ## Urutan kerja
 
@@ -86,7 +87,7 @@ Tidak ada lagi WIP limit per-team. Banyak tab boleh aktif.
 
 ## Area guarded
 
-Approval eksplisit tetap wajib untuk:
+Secara tooling, seluruh `api/**`, `database/**`, dan `apps-script/**` guarded secara default. Ini mencegah policy drift ketika file backend/data baru ditambahkan. Approval eksplisit tetap wajib untuk:
 
 - schema/migration Turso;
 - Firebase Auth, allowlist, role, authorization, session/security guard;

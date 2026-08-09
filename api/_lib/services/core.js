@@ -1,4 +1,7 @@
 import crypto from "node:crypto";
+import { canonicalJson, stableValue } from "../serialization.js";
+
+export { canonicalJson, stableValue };
 
 export const appError = (code, message, status = 400, details = null) => Object.assign(new Error(message), { code, status, details });
 export const uuid = () => crypto.randomUUID();
@@ -73,12 +76,6 @@ export const strictBoolean = (value, fallback = false) => {
   throw appError("INVALID_BOOLEAN", "Nilai boolean tidak valid.", 400);
 };
 
-export const stableValue = (value) => {
-  if (Array.isArray(value)) return value.map(stableValue);
-  if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableValue(value[key])]));
-  return value;
-};
-export const canonicalJson = (value) => JSON.stringify(stableValue(value));
 export const sha256 = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");
 
 export const parseJson = (value, fallback) => {

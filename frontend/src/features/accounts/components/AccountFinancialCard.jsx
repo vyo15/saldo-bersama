@@ -36,7 +36,7 @@ import {
   accountTypeLabel,
   detectBankTemplate,
   formatAccountNumber,
-} from "../accountPresentation.js";
+} from "../../../shared/presentation/account.js";
 import styles from "./AccountFinancialCard.module.css";
 
 const BANK_IMAGES = Object.freeze({ bca: bcaCard, bni: bniCard, btn: btnCard, mandiri: mandiriCard, permata: permataCard });

@@ -6,4 +6,3 @@ export const previewAccountLifecycle = (payload, options) => apiClient.request("
 export const archiveAccount = (payload, options) => apiClient.request("accounts.archive", payload, options);
 export const restoreAccount = (payload, options) => apiClient.request("accounts.restore", payload, options);
 export const deleteUnusedAccount = (payload, options) => apiClient.request("accounts.deleteUnused", payload, options);
-export const createReconciliation = (payload, options) => apiClient.request("reconciliations.create", payload, options);
