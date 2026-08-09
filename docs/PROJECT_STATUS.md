@@ -28,8 +28,9 @@ Dokumen ini hanya menjawab kondisi project sekarang. Histori perubahan berada di
 - Team hanya `COORD`, `FE`, `BE`.
 - Banyak task/tab boleh aktif selama branch dan `Write Scope` berbeda.
 - Normal task diselesaikan lokal melalui `npm run task:finish`.
+- `task:finish` fail cepat bila major Node tidak sesuai `.node-version`; perubahan dependency-sensitive menjalankan clean `npm ci` sebelum quality gate.
 - Guarded/HIGH/CRITICAL tetap memerlukan approval eksplisit; setelah approved memakai local validation + task:finish yang sama. PR hanya pengecualian.
-- `npm run zip` menyaring secret/dependency/build tetapi tidak lagi berhenti hanya karena root file/folder diagnosis non-canonical.
+- `npm run zip` hanya menerima source canonical dan fail-closed terhadap root/path non-canonical, export/data privat, patch/diff, secret, dependency, dan build artifact.
 - COORD mengatur prioritas, scope conflict, dan rekomendasi next step.
 
 ## Open operational risks

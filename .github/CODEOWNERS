@@ -6,24 +6,30 @@ api/ @vyo15
 database/ @vyo15
 apps-script/ @vyo15
 
-# Workflow dan konfigurasi repository.
+# Workflow, dependency, dan konfigurasi repository.
 .github/ @vyo15
 package.json @vyo15
 package-lock.json @vyo15
+frontend/package.json @vyo15
+frontend/vite.config.js @vyo15
+frontend/eslint.config.js @vyo15
 vercel.json @vyo15
 .env.example @vyo15
+.node-version @vyo15
+.npmrc @vyo15
+.jscpd.json @vyo15
+eslint.backend.config.js @vyo15
 
-# Tooling yang dapat memengaruhi source hygiene, task guard, database, atau environment.
-scripts/validate-task.mjs @vyo15
-scripts/list-tasks.mjs @vyo15
-scripts/finish-task.mjs @vyo15
-scripts/artifact-policy.mjs @vyo15
-scripts/create-clean-archive.mjs @vyo15
-scripts/clean-development-dependencies.mjs @vyo15
-scripts/db-*.mjs @vyo15
-scripts/*vercel*.mjs @vyo15
-scripts/runtime-environment.mjs @vyo15
-scripts/bootstrap-development-env.mjs @vyo15
+# Frontend trust boundary. UI feature biasa tetap terbuka, tetapi auth, API transport,
+# domain money/date/security/validation, dan finance bootstrap selalu guarded.
+frontend/src/features/auth/ @vyo15
+frontend/src/services/auth/ @vyo15
+frontend/src/services/api/ @vyo15
+frontend/src/domain/ @vyo15
+frontend/src/app/FinanceContext.jsx @vyo15
+
+# Semua scripts dapat mengubah quality gate, packaging, environment, atau release flow.
+scripts/ @vyo15
 
 # Governance, environment, deployment, recovery, dan design decisions.
 AGENTS.md @vyo15

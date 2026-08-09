@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile, stat } from "node:fs/promises";
 import test from "node:test";
+import * as featherIcons from "react-icons/fi";
 import {
   accountCardholderName,
   accountCardNumberGroups,
@@ -61,11 +62,13 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
   assert.deepEqual(accountCardNumberGroups("123456789012345678901234"), ["••••", "3456", "7890", "1234"]);
 });
 
-test("halaman rekening fokus pada rekening, detail besar, capability, dan form nomor rekening", async () => {
-  const [page, accountSheets, accountEditors, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
+test("halaman rekening desktop memakai Concept A tanpa mengubah pengalaman mobile", async () => {
+  const [page, accountSheets, accountEditors, desktopWorkspace, desktopStyles, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
     read("src/features/accounts/components/AccountEditorDialogs.jsx"),
+    read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
+    read("src/features/accounts/components/DesktopAccountsWorkspace.module.css"),
     read("src/features/accounts/components/AccountFinancialCard.jsx"),
     read("src/features/accounts/AccountsPage.module.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
@@ -80,6 +83,8 @@ ${accountEditors}`;
   assert.match(accountPageSource, /title="Rekening"/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/AccountEditorDialogs\.jsx"\)\)/);
+  assert.match(page, /lazy\(\(\) => import\("\.\/components\/DesktopAccountsWorkspace\.jsx"\)\)/);
+  assert.doesNotMatch(page, /import DesktopAccountsWorkspace from "\.\/components\/DesktopAccountsWorkspace\.jsx";/);
   assert.match(page, /\(createDialogOpen \|\| editAccount\) \? \(/);
   assert.match(accountSheets, /title="Daftar rekening"/);
   assert.match(accountPageSource, /aria-label="Tambah rekening"/);
@@ -99,7 +104,40 @@ ${accountEditors}`;
   assert.match(accountPageSource, /Promise\.allSettled\(\[accountsResource\.reload\(\), refreshAll\(\)\]\)/);
   assert.doesNotMatch(accountPageSource, /accountsResult\.status === "rejected"/);
   assert.match(accountPageSource, /selectedAccountId/);
-  assert.match(accountPageSource, /mobileDetailOpen/);
+  assert.match(page, /DesktopAccountsWorkspace/);
+  assert.match(page, /selectedAccount=\{selectedAccount\}/);
+  assert.match(page, /onSelectAccount=\{setSelectedAccountId\}/);
+  assert.doesNotMatch(page, /mobileDetailOpen|detailColumnOpen|useFocusTrap/);
+  assert.match(desktopWorkspace, /useApiResource\("transactions\.list"/);
+  assert.match(desktopWorkspace, /useApiResource\("reports\.monthly"/);
+  assert.match(desktopWorkspace, /DESKTOP_QUERY = "\(min-width: 821px\)"/);
+  const featherImportBlock = desktopWorkspace.match(/import\s*\{([\s\S]*?)\}\s*from "react-icons\/fi";/)?.[1] || "";
+  const featherIconNames = [...featherImportBlock.matchAll(/\b(Fi[A-Za-z0-9]+)\b/g)].map((match) => match[1]);
+  assert.ok(featherIconNames.length > 0, "Concept A harus mendeklarasikan icon Feather yang dipakai.");
+  for (const iconName of featherIconNames) {
+    assert.equal(typeof featherIcons[iconName], "function", `${iconName} harus merupakan export react-icons/fi yang valid.`);
+  }
+  assert.match(desktopWorkspace, /enabled: desktopEnabled && Boolean\(selectedId\)/);
+  assert.match(desktopWorkspace, /<AccountVisual account=\{account\} carousel \/>/);
+  assert.match(desktopWorkspace, /Rekening utama/);
+  assert.match(desktopWorkspace, /Rekening lain/);
+  assert.match(desktopWorkspace, /Belum ada rekening lain untuk dipilih/);
+  assert.match(desktopWorkspace, /Transaksi terbaru bulan ini/);
+  assert.match(desktopWorkspace, /Total saldo/);
+  assert.match(desktopWorkspace, /Tren saldo/);
+  assert.match(desktopWorkspace, /Distribusi rekening/);
+  assert.match(desktopWorkspace, /magnitudo saldo/);
+  assert.match(desktopWorkspace, /onEditAccount\(account\)/);
+  assert.match(desktopWorkspace, /onArchiveAccount\(account\)/);
+  assert.match(desktopWorkspace, /onViewTransactions\(account\)/);
+  assert.match(desktopStyles, /grid-template-columns: minmax\(0, 1\.55fr\) minmax\(20rem, \.72fr\)/);
+  assert.match(desktopStyles, /position: sticky/);
+  assert.match(desktopStyles, /@media \(max-width: 820px\) \{[^}]*\.desktopWorkspace \{ display: none; \}/s);
+  assert.match(desktopStyles, /accountSelectorGrid/);
+  assert.match(desktopStyles, /transactionList/);
+  assert.match(desktopStyles, /distributionList/);
+  assert.match(desktopWorkspace, /<progress className=\{styles\.distributionProgress\}/);
+  assert.doesNotMatch(desktopStyles, /overflow-x:\s*auto|scroll-snap-type/);
   assert.match(accountPageSource, /mobileAccountSheet/);
   assert.match(accountPageSource, /paymentHistoryPeriod/);
   assert.match(accountPageSource, /useApiResource\("transactions\.list"/);
@@ -131,12 +169,6 @@ ${accountEditors}`;
   assert.match(accountPageSource, /embedded/);
   assert.doesNotMatch(accountPageSource, /ref=\{mobileDetailRef\}/);
   assert.doesNotMatch(accountPageSource, /mobilePagination|mobileCarousel|setInterval\(/);
-  assert.match(accountPageSource, /buttonRef=/);
-  assert.match(accountPageSource, /useFocusTrap/);
-  assert.match(accountPageSource, /closeButtonRef=\{detailCloseRef\}/);
-  assert.match(accountPageSource, /bodyClassName: "modal-open"/);
-  assert.match(accountPageSource, /aria-modal=\{mobileDetailOpen \|\| undefined\}/);
-  assert.match(accountPageSource, /variant="detail"/);
   assert.doesNotMatch(accountPageSource, /aria-label="Baca penjelasan rekonsiliasi"/);
   assert.doesNotMatch(accountPageSource, /title="Tentang rekonsiliasi"/);
   assert.match(reconciliationPage, /title="Rekonsiliasi"/);
@@ -146,9 +178,6 @@ ${accountEditors}`;
   assert.doesNotMatch(accountsApi, /reconciliations\.create/, "Rekonsiliasi hanya boleh dimiliki feature reconciliations.");
   assert.match(reconciliationPage, /Sistem tidak membuat transaksi penyesuaian secara otomatis/);
   assert.doesNotMatch(pageStyles, /reconciliationInfoButton|reconciliationToggle|reconciliationPanel/);
-  assert.match(pageStyles, /grid-template-columns: minmax\(32rem, 1fr\) minmax\(28rem, 32rem\)/);
-  assert.match(pageStyles, /position: sticky/);
-  assert.match(pageStyles, /detailColumnOpen/);
   assert.match(pageStyles, /mobileStackPanel/);
   assert.match(pageStyles, /mobileQuickActions/);
   assert.match(pageStyles, /\.mobileStackSummary \{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s);

@@ -16,7 +16,6 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   archiveAccount,
   createAccount as requestCreateAccount,
@@ -27,11 +26,12 @@ import {
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
-import AccountFinancialCard, { AccountVisual } from "./components/AccountFinancialCard.jsx";
+import { AccountVisual } from "./components/AccountFinancialCard.jsx";
 import { accountCardholderName, detectBankTemplate } from "../../shared/presentation/account.js";
 import styles from "./AccountsPage.module.css";
 
 const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));
+const DesktopAccountsWorkspace = lazy(() => import("./components/DesktopAccountsWorkspace.jsx"));
 const AccountEditorDialogs = lazy(() => import("./components/AccountEditorDialogs.jsx"));
 
 const emptyAccountForm = () => ({
@@ -93,7 +93,6 @@ const AccountsPage = () => {
   const [dialogState, setDialogState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [selectedAccountId, setSelectedAccountId] = useState("");
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [mobileAccountSheet, setMobileAccountSheet] = useState(null);
   const [paymentHistoryPeriod, setPaymentHistoryPeriod] = useState(currentMonthInJakarta);
   const paymentHistoryResource = useApiResource("transactions.list", {
@@ -107,7 +106,6 @@ const AccountsPage = () => {
     category_id: "all",
     created_by: "all",
   }, { enabled: mobileAccountSheet === "history" && Boolean(selectedAccountId) });
-  const accountButtonRefs = useRef(new Map());
   const mobileStackCardRefs = useRef(new Map());
   const mobileStackStageRef = useRef(null);
   const mobileStackStatusRef = useRef(null);
@@ -130,8 +128,6 @@ const AccountsPage = () => {
     suppressClick: false,
   });
   const mobileStackAnimatingRef = useRef(false);
-  const detailContainerRef = useRef(null);
-  const detailCloseRef = useRef(null);
 
   const reloadAccounts = async () => {
     invalidate([
@@ -260,32 +256,11 @@ const AccountsPage = () => {
     const items = accountsResource.data?.items || [];
     if (!items.length) {
       setSelectedAccountId("");
-      setMobileDetailOpen(false);
       setMobileAccountSheet(null);
       return;
     }
     if (!items.some((account) => account.account_id === selectedAccountId)) setSelectedAccountId(items[0].account_id);
   }, [accountsResource.data, selectedAccountId]);
-
-  const closeMobileDetail = useCallback(() => setMobileDetailOpen(false), []);
-
-  useFocusTrap({
-    open: mobileDetailOpen,
-    containerRef: detailContainerRef,
-    initialFocusRef: detailCloseRef,
-    onEscape: closeMobileDetail,
-    bodyClassName: "modal-open",
-  });
-
-  useEffect(() => {
-    if (!mobileDetailOpen) return undefined;
-    const compactLayout = window.matchMedia("(min-width: 821px) and (max-width: 1280px)");
-    const closeWhenDesktop = (event) => {
-      if (!event.matches) closeMobileDetail();
-    };
-    compactLayout.addEventListener("change", closeWhenDesktop);
-    return () => compactLayout.removeEventListener("change", closeWhenDesktop);
-  }, [closeMobileDetail, mobileDetailOpen]);
 
   const setMobileStackWillChange = useCallback((enabled) => {
     for (const element of mobileStackCardRefs.current.values()) {
@@ -643,46 +618,18 @@ const AccountsPage = () => {
               ) : null}
             </div>
 
-            <div className={`${styles.accountWorkspace} ${styles.desktopAccountWorkspace}`}>
-              <div className={styles.accountGrid} aria-label="Daftar rekening">
-                {accounts.map((account) => (
-                  <AccountFinancialCard
-                    key={account.account_id}
-                    account={account}
-                    selected={account.account_id === selectedAccount?.account_id}
-                    buttonRef={(node) => {
-                      if (node) accountButtonRefs.current.set(account.account_id, node);
-                      else accountButtonRefs.current.delete(account.account_id);
-                    }}
-                    onSelect={(item) => {
-                      setSelectedAccountId(item.account_id);
-                      if (window.matchMedia("(min-width: 821px) and (max-width: 1280px)").matches) setMobileDetailOpen(true);
-                    }}
-                  />
-                ))}
-              </div>
-              {selectedAccount ? (
-                <div
-                  ref={detailContainerRef}
-                  className={`${styles.detailColumn} ${mobileDetailOpen ? styles.detailColumnOpen : ""}`}
-                  role={mobileDetailOpen ? "dialog" : undefined}
-                  tabIndex={mobileDetailOpen ? -1 : undefined}
-                  aria-modal={mobileDetailOpen || undefined}
-                  aria-label={mobileDetailOpen ? `Detail rekening ${selectedAccount.name}` : undefined}
-                >
-                  <AccountFinancialCard
-                    account={selectedAccount}
-                    variant="detail"
-                    ownerMode={ownerMode}
-                    closeButtonRef={detailCloseRef}
-                    onClose={closeMobileDetail}
-                    onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
-                    onEdit={openEditAccount}
-                    onArchive={openAccountLifecycle}
-                  />
-                </div>
-              ) : null}
-            </div>
+            <Suspense fallback={null}>
+              <DesktopAccountsWorkspace
+                accounts={accounts}
+                selectedAccount={selectedAccount}
+                ownerMode={ownerMode}
+                bootstrap={bootstrap}
+                onSelectAccount={setSelectedAccountId}
+                onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
+                onEditAccount={openEditAccount}
+                onArchiveAccount={openAccountLifecycle}
+              />
+            </Suspense>
           </>
         ) : (
           <Card className={styles.emptyPanel}>

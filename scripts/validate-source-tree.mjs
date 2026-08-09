@@ -2,7 +2,12 @@ import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ARCHIVE_IGNORED_SEGMENTS, IGNORED_LOCAL_FILE_PATTERNS } from "./artifact-policy.mjs";
+import {
+  ARCHIVE_IGNORED_SEGMENTS,
+  CANONICAL_ROOT_ENTRIES,
+  IGNORED_LOCAL_FILE_PATTERNS,
+  isCanonicalSourceFile,
+} from "./artifact-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -15,31 +20,7 @@ const isIgnoredLocalFile = (file) => {
     && ignoredLocalFilePatterns.some((pattern) => pattern.test(name));
 };
 
-const allowedRootEntries = new Set([
-  ".env.example",
-  ".gitattributes",
-  ".github",
-  ".gitignore",
-  ".jscpd.json",
-  ".npmrc",
-  ".node-version",
-  "AGENTS.md",
-  "CHANGELOG.md",
-  "CONTRIBUTING.md",
-  "README.md",
-  "SECURITY.md",
-  "api",
-  "apps-script",
-  "database",
-  "docs",
-  "eslint.backend.config.js",
-  "frontend",
-  "package-lock.json",
-  "package.json",
-  "scripts",
-  "test",
-  "vercel.json",
-]);
+const allowedRootEntries = CANONICAL_ROOT_ENTRIES;
 
 const retiredRootEntries = new Set([
   ".openai",
@@ -141,13 +122,13 @@ const unexpectedRootEntries = rootEntries
   .filter((entry) => !ignoredSegments.has(entry.name))
   .filter((entry) => !isIgnoredLocalFile(entry.name))
   .filter((entry) => !allowedRootEntries.has(entry.name));
-const diagnosticRootEntries = unexpectedRootEntries
-  .map((entry) => entry.name)
-  .sort();
+const unexpectedRootEntryNames = unexpectedRootEntries.map((entry) => entry.name).sort();
 
 const trackedFiles = getTracked() || [];
 const files = await walk();
-const pathViolations = [...new Set([...files, ...trackedFiles])].filter((file) => {
+const allSourceFiles = [...new Set([...files, ...trackedFiles])];
+const nonCanonicalSourceFiles = allSourceFiles.filter((file) => !isCanonicalSourceFile(file));
+const pathViolations = allSourceFiles.filter((file) => {
   const firstSegment = file.split("/")[0];
   const hasGeneratedSegment = file.split("/").some((segment) => ignoredSegments.has(segment));
   return retiredRootEntries.has(firstSegment)
@@ -188,6 +169,8 @@ for (const file of files.filter((item) => !["scripts/validate-source-tree.mjs", 
 
 const hasVercelFunctionLimitViolation = vercelFunctionCandidates.length > VERCEL_FUNCTION_LIMIT;
 const hasViolation = missingRootEntries.length
+  || unexpectedRootEntryNames.length
+  || nonCanonicalSourceFiles.length
   || pathViolations.length
   || legacyViolations.length
   || apiNamespaceViolations.length
@@ -197,15 +180,11 @@ const hasViolation = missingRootEntries.length
   || hasVercelFunctionLimitViolation
   || vercelFunctionConfigMismatch;
 
-if (diagnosticRootEntries.length > 0) {
-  console.warn(
-    `Warning: root entry non-canonical tetap diizinkan dan akan ikut ZIP bila lolos policy archive: ${diagnosticRootEntries.join(", ")}.`,
-  );
-}
-
 if (hasViolation) {
   console.error("Source tree belum bersih.");
   missingRootEntries.forEach((entry) => console.error(`Root entry wajib tidak ditemukan: ${entry}`));
+  unexpectedRootEntryNames.forEach((entry) => console.error(`Root entry non-canonical tidak diizinkan: ${entry}`));
+  nonCanonicalSourceFiles.forEach((file) => console.error(`File source non-canonical tidak diizinkan: ${file}`));
   pathViolations.forEach((file) => console.error(`Path generated, retired, atau sensitif: ${file}`));
   legacyViolations.forEach((file) => console.error(`Referensi legacy: ${file}`));
   apiNamespaceViolations.forEach((file) => console.error(`File tidak diizinkan di namespace runtime api/: ${file}`));

@@ -13,7 +13,10 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
-- Mengganti global handoff workflow dengan task-driven multi-team governance: team canonical `COORD/UIUX/FE/BE/DB/QA`, status task terjaga, task card per pekerjaan, dependency/WIP/checkpoint/resume flow, branch `SB-xxx`, serta executable `task:check` dan `task:list` agar pekerjaan paralel tidak bergantung pada memory chat atau shared handoff file.
+- Memperketat clean-source archive menjadi canonical-only/fail-closed agar export/data privat, patch/diff, diagnostic/handoff file, dependency, build, dan secret tidak dapat ikut ZIP; guarded policy juga mencakup frontend auth/API/domain, dependency/config, serta quality/deployment tooling.
+- Memperketat `task:finish` dengan preflight major Node dari `.node-version` dan clean `npm ci` untuk perubahan dependency-sensitive sebelum quality gate.
+- Menata ulang Rekening desktop ke workspace Konsep A berbasis data `overview` existing tanpa API/schema/saldo baru; pengalaman mobile tetap memakai implementasi existing.
+- Menyederhanakan task-driven governance ke team canonical `COORD/FE/BE`; UI/UX, QA, security, dan data-integrity tetap menjadi disiplin review di dalam ownership tersebut. Task card, dependency/checkpoint/resume flow, branch `SB-xxx`, serta executable `task:check` dan `task:list` menjaga pekerjaan paralel tidak bergantung pada memory chat atau shared handoff file.
 
 - Menstabilkan fixture Web Push P-256 dengan left-padding private scalar test menjadi 32 byte sebelum Base64URL; test tidak lagi flaky ketika `crypto.createECDH()` menghasilkan scalar dengan leading zero, tanpa mengubah validator/runtime VAPID Production.
 - Menyatukan artifact policy untuk diagnostic lokal `npm-audit-*.json`: file di-ignore Git/source validator tetapi selalu dikeluarkan dan diaudit dari clean ZIP, sehingga laporan audit lokal tidak lagi mematahkan packager atau bocor ke artifact.
