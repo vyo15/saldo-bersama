@@ -151,6 +151,30 @@ const resolveTransactionCategory = async (db, payload, current, type) => {
   return categoryId;
 };
 
+const transactionField = (payload, current, key, fallback = undefined) => {
+  if (payload[key] !== undefined && payload[key] !== null) return payload[key];
+  if (current && current[key] !== undefined && current[key] !== null) return current[key];
+  return fallback;
+};
+
+const optionalTransactionId = (value) => String(value ?? "") || null;
+const accountIdOrNull = (account) => account ? account.account_id : null;
+const currentTransactionId = (current) => current ? (current.transaction_id || null) : null;
+
+const internalLinkId = (payload, current, key, allowInternalLinks) => {
+  if (allowInternalLinks) return optionalTransactionId(transactionField(payload, current, key, ""));
+  return current ? (current[key] || null) : null;
+};
+
+const envelopePeriodId = (payload, current, type) => {
+  if (type !== "expense") return null;
+  return optionalTransactionId(transactionField(payload, current, "envelope_period_id", ""));
+};
+
+const normalizedTransactionText = (payload, current, key, maxLength) => (
+  sanitizeText(transactionField(payload, current, key), maxLength)
+);
+
 const buildNormalizedTransactionRecord = ({
   payload,
   current,
@@ -165,59 +189,61 @@ const buildNormalizedTransactionRecord = ({
 }) => ({
   transaction_date: transactionDate,
   transaction_type: type,
-  source_account_id: source?.account_id || null,
-  destination_account_id: destination?.account_id || null,
+  source_account_id: accountIdOrNull(source),
+  destination_account_id: accountIdOrNull(destination),
   category_id: categoryId,
-  envelope_period_id: type === "expense" ? (String(payload.envelope_period_id ?? current?.envelope_period_id ?? "") || null) : null,
-  recurring_occurrence_id: allowInternalLinks ? (String(payload.recurring_occurrence_id ?? current?.recurring_occurrence_id ?? "") || null) : current?.recurring_occurrence_id || null,
-  goal_id: allowInternalLinks ? (String(payload.goal_id ?? current?.goal_id ?? "") || null) : current?.goal_id || null,
+  envelope_period_id: envelopePeriodId(payload, current, type),
+  recurring_occurrence_id: internalLinkId(payload, current, "recurring_occurrence_id", allowInternalLinks),
+  goal_id: internalLinkId(payload, current, "goal_id", allowInternalLinks),
   amount,
-  description: sanitizeText(payload.description ?? current?.description, 250),
-  overspend_reason: sanitizeText(payload.overspend_reason ?? current?.overspend_reason, 180),
-  merchant: sanitizeText(payload.merchant ?? current?.merchant, 120),
-  payment_method: sanitizeText(payload.payment_method ?? current?.payment_method, 40),
+  description: normalizedTransactionText(payload, current, "description", 250),
+  overspend_reason: normalizedTransactionText(payload, current, "overspend_reason", 180),
+  merchant: normalizedTransactionText(payload, current, "merchant", 120),
+  payment_method: normalizedTransactionText(payload, current, "payment_method", 40),
   scope: ownership.scope,
   owner_user_id: ownership.owner_user_id,
 });
 
-export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false } = {}) => {
-  assertNoReservedFields(payload, allowInternalLinks);
-  const type = String(payload.transaction_type ?? current?.transaction_type ?? "expense");
-  validateTransactionTypePolicy(context, payload, current, type);
+const resolveTransactionInput = (context, payload, current) => ({
+  type: String(transactionField(payload, current, "transaction_type", "expense")),
+  transactionDate: dateValue(transactionField(payload, current, "transaction_date", context.today), "Tanggal transaksi"),
+  amount: positiveInteger(transactionField(payload, current, "amount"), "Nominal transaksi"),
+  sourceId: optionalTransactionId(transactionField(payload, current, "source_account_id", "")),
+  destinationId: optionalTransactionId(transactionField(payload, current, "destination_account_id", "")),
+});
 
-  const transactionDate = dateValue(payload.transaction_date ?? current?.transaction_date ?? context.today, "Tanggal transaksi");
+const assertTransactionDatesUnlocked = async (db, transactionDate, current) => {
   await assertTransactionDateUnlocked(db, transactionDate);
   if (current) await assertTransactionDateUnlocked(db, current.transaction_date);
+};
 
-  const amount = positiveInteger(payload.amount ?? current?.amount, "Nominal transaksi");
-  const sourceId = String(payload.source_account_id ?? current?.source_account_id ?? "") || null;
-  const destinationId = String(payload.destination_account_id ?? current?.destination_account_id ?? "") || null;
-  const { source, destination, ownership } = await resolveTransactionAccounts(db, context, {
-    type,
-    sourceId,
-    destinationId,
-    transactionDate,
-  });
-  const categoryId = await resolveTransactionCategory(db, payload, current, type);
+const assertNoUnconfirmedDuplicate = async (db, payload, record, excludeTransactionId) => {
+  const duplicate = await duplicateTransaction(db, record, excludeTransactionId);
+  if (!duplicate || payload.confirm_duplicate === true) return;
+  throw appError("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
+};
+
+export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false } = {}) => {
+  assertNoReservedFields(payload, allowInternalLinks);
+  const input = resolveTransactionInput(context, payload, current);
+  validateTransactionTypePolicy(context, payload, current, input.type);
+  await assertTransactionDatesUnlocked(db, input.transactionDate, current);
+  const accounts = await resolveTransactionAccounts(db, context, input);
+  const categoryId = await resolveTransactionCategory(db, payload, current, input.type);
   const record = buildNormalizedTransactionRecord({
     payload,
     current,
     allowInternalLinks,
-    type,
-    transactionDate,
-    amount,
-    source,
-    destination,
-    ownership,
+    type: input.type,
+    transactionDate: input.transactionDate,
+    amount: input.amount,
+    ...accounts,
     categoryId,
   });
-
-  await validateEnvelope(db, context, record, { excludeTransactionId: current?.transaction_id || null });
-  await assertSufficientBalance(db, source, { ...record, status: "active" }, current?.transaction_id || null);
-  const duplicate = await duplicateTransaction(db, record, current?.transaction_id || null);
-  if (duplicate && payload.confirm_duplicate !== true) {
-    throw appError("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
-  }
+  const excludeTransactionId = currentTransactionId(current);
+  await validateEnvelope(db, context, record, { excludeTransactionId });
+  await assertSufficientBalance(db, accounts.source, { ...record, status: "active" }, excludeTransactionId);
+  await assertNoUnconfirmedDuplicate(db, payload, record, excludeTransactionId);
   return record;
 };
 

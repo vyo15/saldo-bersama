@@ -4,7 +4,7 @@ import { nowIso, todayJakarta } from "../services/core.js";
 import { createTransaction, updateTransaction, cancelTransaction, restoreTransaction, listTransactions } from "../services/finance.js";
 import { integrationStatus, enqueueIntegration } from "../services/integrations.js";
 import {
-  archiveAccount, archiveCategory, createAccount, createCategory, deleteUnusedAccount, listAccounts, listArchivedData,
+  archiveAccount, archiveCategory, createAccount, createCategory, deleteUnusedAccount, deleteUnusedCategory, listAccounts, listArchivedData,
   listCategories, previewAccountLifecycle, previewCategoryArchive, restoreAccount, restoreCategory, updateAccount,
   updateCategory,
 } from "../services/masterData.js";
@@ -14,8 +14,9 @@ import {
 } from "../services/maintenance/index.js";
 import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
 import {
-  archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createEnvelope, createGoal, createRecurringRule, listBudgets,
-  listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
+  archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createEnvelope, createGoal, createRecurringRule, deleteUnusedBudget,
+  deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence,
+  previewBudgetLifecycle, previewEnvelopeRuleLifecycle, previewGoalLifecycle, previewRecurringRuleLifecycle, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
   reverseEnvelopeMovement, reverseGoalMovement, reverseOccurrencePayment, updateGoal, updateRecurringRule, upsertBudget,
 } from "../services/planning/index.js";
 import {
@@ -80,6 +81,7 @@ const ACTION_HANDLERS = Object.freeze({
   "categories.previewArchive": previewCategoryArchive,
   "categories.archive": archiveCategory,
   "categories.restore": restoreCategory,
+  "categories.deleteUnused": deleteUnusedCategory,
   "transactions.list": listTransactions,
   "transactions.create": createTransaction,
   "transactions.update": updateTransaction,
@@ -89,13 +91,17 @@ const ACTION_HANDLERS = Object.freeze({
   "envelopes.create": createEnvelope,
   "envelopes.move": moveEnvelope,
   "envelopes.close": closeEnvelope,
+  "envelopes.previewRuleLifecycle": previewEnvelopeRuleLifecycle,
   "envelopes.archiveRule": archiveEnvelopeRule,
+  "envelopes.deleteUnusedRule": deleteUnusedEnvelopeRule,
   "envelopes.restoreRule": restoreEnvelopeRule,
   "envelopes.reverseMovement": reverseEnvelopeMovement,
   "recurring.list": listRecurring,
   "recurring.createRule": createRecurringRule,
   "recurring.updateRule": updateRecurringRule,
+  "recurring.previewRuleLifecycle": previewRecurringRuleLifecycle,
   "recurring.archiveRule": archiveRecurringRule,
+  "recurring.deleteUnusedRule": deleteUnusedRecurringRule,
   "recurring.cancelOccurrence": cancelOccurrence,
   "recurring.restoreOccurrence": restoreOccurrence,
   "recurring.payOccurrence": payOccurrence,
@@ -103,12 +109,16 @@ const ACTION_HANDLERS = Object.freeze({
   "recurring.restoreRule": restoreRecurringRule,
   "budgets.list": listBudgets,
   "budgets.upsert": upsertBudget,
+  "budgets.previewLifecycle": previewBudgetLifecycle,
   "budgets.archive": archiveBudget,
+  "budgets.deleteUnused": deleteUnusedBudget,
   "budgets.restore": restoreBudget,
   "goals.list": listGoals,
   "goals.create": createGoal,
   "goals.update": updateGoal,
+  "goals.previewLifecycle": previewGoalLifecycle,
   "goals.archive": archiveGoal,
+  "goals.deleteUnused": deleteUnusedGoal,
   "goals.move": moveGoal,
   "goals.reverseMovement": reverseGoalMovement,
   "goals.restore": restoreGoal,

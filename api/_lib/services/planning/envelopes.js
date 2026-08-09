@@ -1,6 +1,6 @@
 import { appendAudit } from "../audit.js";
 import { accountBalanceAsOf, envelopeItems } from "../readModels.js";
-import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid, visibleScopeSql } from "../core.js";
+import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
@@ -45,6 +45,37 @@ const assertAllocationAvailable = async (db, sourceAccount, amount, excludePerio
     accountBalance: balance
   });
 };
+const envelopeRuleLifecycleImpact = async (db, current) => {
+  const row = await db.one(`SELECT
+    COUNT(*) AS periods,
+    SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active_periods,
+    SUM(CASE WHEN status='closed' OR closed_at IS NOT NULL THEN 1 ELSE 0 END) AS closed_periods,
+    SUM(CASE WHEN status='archived' THEN 1 ELSE 0 END) AS archived_periods,
+    SUM(CASE WHEN reserved_amount>0 THEN 1 ELSE 0 END) AS reserved_periods,
+    (SELECT COUNT(*) FROM transactions WHERE envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)) AS transactions,
+    (SELECT COUNT(*) FROM envelope_movements WHERE from_envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?) OR to_envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)) AS movements,
+    (SELECT COUNT(*) FROM budgets WHERE envelope_rule_id=?) AS budgets
+    FROM envelope_periods WHERE envelope_rule_id=?`, [current.envelope_rule_id, current.envelope_rule_id, current.envelope_rule_id, current.envelope_rule_id, current.envelope_rule_id]);
+  const dependencies = Object.fromEntries(Object.entries(row || {}).map(([key, value]) => [key, Number(value || 0)]));
+  const deleteBlockers = [];
+  if (current.status !== "active") deleteBlockers.push("Hanya aturan kantong aktif yang dapat dihapus sebagai data belum dipakai.");
+  if (dependencies.periods !== 1 || dependencies.active_periods !== 1) deleteBlockers.push("Kantong harus hanya memiliki satu periode awal aktif yang belum menjadi histori.");
+  if (dependencies.closed_periods) deleteBlockers.push("Kantong pernah memiliki periode yang ditutup.");
+  if (dependencies.archived_periods) deleteBlockers.push("Kantong pernah memiliki periode yang diarsipkan.");
+  if (dependencies.reserved_periods) deleteBlockers.push("Kantong masih atau pernah memiliki dana yang dipesan pada periode aktif.");
+  if (dependencies.transactions) deleteBlockers.push("Kantong pernah digunakan transaksi, termasuk transaksi cancelled atau archived.");
+  if (dependencies.movements) deleteBlockers.push("Kantong pernah terlibat mutasi atau rollover.");
+  if (dependencies.budgets) deleteBlockers.push("Kantong pernah atau masih direferensikan anggaran.");
+  return {
+    rule: publicRow(current),
+    dependencies,
+    canArchive: current.status === "active",
+    canDeleteUnused: deleteBlockers.length === 0,
+    archiveBlockers: [],
+    deleteBlockers,
+  };
+};
+
 export const listEnvelopes = async (db, context) => {
   const items = await envelopeItems(db, context.actor, { includeClosed: true });
   const access = visibleScopeSql(context.actor, "fr");
@@ -287,6 +318,42 @@ export const closeEnvelope = async (db, context) => {
   });
   await context.enqueueMirror?.(db, "envelope", period.envelope_period_id);
   return response;
+};
+
+export const previewEnvelopeRuleLifecycle = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
+  if (!current) throw appError("NOT_FOUND", "Aturan kantong aktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  return envelopeRuleLifecycleImpact(db, current);
+};
+
+export const deleteUnusedEnvelopeRule = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
+  if (!current) throw appError("NOT_FOUND", "Aturan kantong aktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan kantong wajib diisi.", 400);
+  if (!strictBoolean(payload.acknowledged, false)) throw appError("ACKNOWLEDGEMENT_REQUIRED", "Konfirmasi pemahaman penghapusan kantong wajib dicentang.", 400);
+  const impact = await envelopeRuleLifecycleImpact(db, current);
+  if (!impact.canDeleteUnused) throw appError("ENVELOPE_DELETE_BLOCKED", "Kantong tidak memenuhi syarat sebagai kantong belum pernah digunakan.", 409, impact);
+  const period = await db.one("SELECT * FROM envelope_periods WHERE envelope_rule_id=?", [current.envelope_rule_id]);
+  if (!period || period.status !== "active") throw appError("ENVELOPE_DELETE_BLOCKED", "Periode awal kantong tidak lagi aman untuk dihapus.", 409, impact);
+  await appendAudit(db, context, {
+    entityType: "envelope_rule",
+    entityId: current.envelope_rule_id,
+    previous: { rule: publicRow(current), period: publicRow(period) },
+    next: { deleted: true, deletion_type: "unused_envelope_only", reason, dependencies: impact.dependencies, audit_preserved: true },
+  });
+  const periodDelete = await db.execute("DELETE FROM envelope_periods WHERE envelope_period_id=? AND envelope_rule_id=? AND row_version=? AND status='active'", [period.envelope_period_id, current.envelope_rule_id, period.row_version]);
+  if (periodDelete.rowsAffected !== 1) throw appError("CONFLICT", "Periode kantong berubah atau baru saja digunakan di perangkat lain.", 409);
+  const ruleDelete = await db.execute("DELETE FROM envelope_rules WHERE envelope_rule_id=? AND row_version=? AND status='active'", [current.envelope_rule_id, current.row_version]);
+  if (ruleDelete.rowsAffected !== 1) throw appError("CONFLICT", "Aturan kantong berubah di perangkat lain.", 409);
+  await context.enqueueMirror?.(db, "envelope", current.envelope_rule_id);
+  return { envelope_rule_id: current.envelope_rule_id, deleted: true, audit_preserved: true };
 };
 
 export const archiveEnvelopeRule = async (db, context) => {

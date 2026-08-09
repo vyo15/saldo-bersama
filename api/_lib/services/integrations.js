@@ -25,25 +25,46 @@ export const integrationEnqueuers = (context) => ({
 
 const signature = (message, secret) => crypto.createHmac("sha256", secret).update(message).digest("hex");
 
-export const callGoogleBridge = async (action, payload, { fetchImpl = globalThis.fetch, timeoutMs = 15_000 } = {}) => {
+const googleBridgeConfiguration = () => {
   const url = String(process.env.GOOGLE_BRIDGE_WEB_APP_URL || "").trim();
   const secret = String(process.env.GOOGLE_BRIDGE_SHARED_SECRET || "").trim();
   if (!url || !secret) throw appError("GOOGLE_BRIDGE_NOT_CONFIGURED", "Integrasi Google belum dikonfigurasi.", 503);
+  return { url, secret };
+};
+
+const parseBridgeResponse = async (response) => {
+  const text = await response.text();
+  let body = {};
+  try { body = text ? JSON.parse(text) : {}; } catch {}
+  if (response.ok && body.ok !== false) return body.data ?? body;
+  const error = body && body.error ? body.error : {};
+  throw appError(String(error.code || "GOOGLE_BRIDGE_FAILED"), sanitizeText(error.message || "Integrasi Google gagal.", 200), 503);
+};
+
+const normalizeBridgeCallError = (error) => {
+  if (error?.name === "AbortError") return appError("GOOGLE_BRIDGE_TIMEOUT", "Integrasi Google melewati batas waktu.", 503);
+  if (error?.code) return error;
+  return appError("GOOGLE_BRIDGE_UNAVAILABLE", "Integrasi Google tidak dapat dihubungi.", 503);
+};
+
+export const callGoogleBridge = async (action, payload, { fetchImpl = globalThis.fetch, timeoutMs = 15_000 } = {}) => {
+  const { url, secret } = googleBridgeConfiguration();
   const message = canonicalJson({ action, payload, timestamp: Date.now(), nonce: crypto.randomUUID() });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1, Number(timeoutMs) || 15_000));
   try {
-    const response = await fetchImpl(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, signature: signature(message, secret) }), signal: controller.signal });
-    const text = await response.text();
-    let body = {};
-    try { body = text ? JSON.parse(text) : {}; } catch {}
-    if (!response.ok || body.ok === false) throw appError(String(body?.error?.code || "GOOGLE_BRIDGE_FAILED"), sanitizeText(body?.error?.message || "Integrasi Google gagal.", 200), 503);
-    return body.data ?? body;
+    const response = await fetchImpl(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, signature: signature(message, secret) }),
+      signal: controller.signal,
+    });
+    return await parseBridgeResponse(response);
   } catch (error) {
-    if (error?.name === "AbortError") throw appError("GOOGLE_BRIDGE_TIMEOUT", "Integrasi Google melewati batas waktu.", 503);
-    if (error?.code) throw error;
-    throw appError("GOOGLE_BRIDGE_UNAVAILABLE", "Integrasi Google tidak dapat dihubungi.", 503);
-  } finally { clearTimeout(timer); }
+    throw normalizeBridgeCallError(error);
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 const normalizeBridgeHealth = (value = {}) => ({
@@ -81,6 +102,43 @@ const probeGoogleBridgeHealth = async (fetchImpl) => {
   }
 };
 
+const emptyProviderStatus = () => ({
+  pending: 0,
+  processing: 0,
+  failed: 0,
+  dead_letter: 0,
+  completed: 0,
+  lastUpdatedAt: null,
+  lastCompletedAt: null,
+  lastFailureAt: null,
+});
+
+const newerTimestamp = (current, candidate) => (!current || String(candidate) > current ? candidate : current);
+
+const accumulateProviderRows = (rows) => {
+  const providers = {};
+  for (const row of rows) {
+    const item = providers[row.provider] || emptyProviderStatus();
+    item[row.status] = Number(row.count || 0);
+    item.lastUpdatedAt = newerTimestamp(item.lastUpdatedAt, row.last_updated_at);
+    if (row.status === "completed" && row.last_completed_at) {
+      item.lastCompletedAt = newerTimestamp(item.lastCompletedAt, row.last_completed_at);
+    }
+    if (["failed", "dead_letter"].includes(row.status) && row.last_updated_at) {
+      item.lastFailureAt = newerTimestamp(item.lastFailureAt, row.last_updated_at);
+    }
+    providers[row.provider] = item;
+  }
+  return providers;
+};
+
+const resolveBridgeProbe = async (context, bridgeConfigured) => {
+  if (bridgeConfigured && context?.action === "integrations.status") {
+    return probeGoogleBridgeHealth(context?.fetchImpl || globalThis.fetch);
+  }
+  return { checked: false, reachable: null, errorCode: null, health: null };
+};
+
 export const integrationStatus = async (db, context = null) => {
   const rows = await db.all(`WITH latest_full_sync AS (
       SELECT provider,MAX(completed_at) AS resolved_at
@@ -95,37 +153,11 @@ export const integrationStatus = async (db, context = null) => {
       OR f.resolved_at IS NULL
       OR o.updated_at>f.resolved_at
     GROUP BY o.provider,o.status`);
-  const providers = {};
-  for (const row of rows) {
-    const item = providers[row.provider] || {
-      pending: 0,
-      processing: 0,
-      failed: 0,
-      dead_letter: 0,
-      completed: 0,
-      lastUpdatedAt: null,
-      lastCompletedAt: null,
-      lastFailureAt: null,
-    };
-    item[row.status] = Number(row.count || 0);
-    if (!item.lastUpdatedAt || String(row.last_updated_at) > item.lastUpdatedAt) item.lastUpdatedAt = row.last_updated_at;
-    if (row.status === "completed" && row.last_completed_at && (!item.lastCompletedAt || String(row.last_completed_at) > item.lastCompletedAt)) item.lastCompletedAt = row.last_completed_at;
-    if (["failed", "dead_letter"].includes(row.status) && row.last_updated_at && (!item.lastFailureAt || String(row.last_updated_at) > item.lastFailureAt)) item.lastFailureAt = row.last_updated_at;
-    providers[row.provider] = item;
-  }
-
+  const providers = accumulateProviderRows(rows);
   const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);
-  const shouldProbe = context?.action === "integrations.status";
-  const bridgeProbe = shouldProbe && bridgeConfigured
-    ? await probeGoogleBridgeHealth(context?.fetchImpl || globalThis.fetch)
-    : { checked: false, reachable: null, errorCode: null, health: null };
+  const bridgeProbe = await resolveBridgeProbe(context, bridgeConfigured);
   const bridge = { configured: bridgeConfigured, ...bridgeProbe };
-
-  return {
-    providers,
-    bridge,
-    configured: bridgeReadiness(bridgeConfigured, bridge),
-  };
+  return { providers, bridge, configured: bridgeReadiness(bridgeConfigured, bridge) };
 };
 
 export const markIntegrationResult = async (db, row, error = null) => {

@@ -99,6 +99,34 @@ const LoginProvider = ({ buttonRef, configErrors, error, buttonError, status, re
   </>
 );
 
+const MOBILE_SLIDE_COPY = Object.freeze([
+  "Rajin menabung, bijak belanja. Catat pengeluaran, kurangi foya, dan jaga saldo tetap terkontrol.",
+  "Atur anggaran, hindari boros. Pantau pemasukan dan pengeluaran agar belanja tetap terencana.",
+  "Login Saldo Bersama dengan akun Google yang diizinkan.",
+]);
+
+const CreatorLink = ({ mobile = false }) => <a className={`login-artwork-hotspot ${mobile ? "login-mobile-creator-link" : "login-desktop-creator-link"}`} href="https://www.linkedin.com/in/vio-yusup-iskandar/" target="_blank" rel="noopener noreferrer" aria-label="Buka LinkedIn Vio Yusup Iskandar" />;
+
+const MobileLoginProvider = (props) => <><MoneyRain compact /><ThemeToggle className="login-mobile-theme-toggle" /><div className="login-provider-mask login-provider-mask--mobile" aria-hidden="true" /><section className="login-provider-slot login-provider-slot--mobile" aria-label="Masuk ke Saldo Bersama"><LoginProvider {...props} /></section><CreatorLink mobile /></>;
+
+const MobileArtworkSlide = ({ src, index, mobileSlide, moveMobileSlide, providerProps }) => {
+  const isLogin = index === MOBILE_LOGIN_SLIDE;
+  const active = index === mobileSlide;
+  return <article className="login-mobile-slide" aria-hidden={!active}><p className="sr-only">{MOBILE_SLIDE_COPY[index]}</p><img className="login-mobile-artwork" src={src} alt="" aria-hidden="true" draggable="false" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "auto"} />{!isLogin ? <button type="button" className="login-artwork-hotspot login-mobile-next" aria-label={index === 0 ? "Lanjut ke pengaturan anggaran" : "Lanjut ke login"} onClick={() => moveMobileSlide(index + 1)} tabIndex={active ? 0 : -1} /> : null}{isLogin && active ? <MobileLoginProvider {...providerProps} /> : null}</article>;
+};
+
+const MobileLoginLayout = ({ mobileSlide, moveMobileSlide, finishSwipe, swipeStartXRef, swipeDeltaXRef, providerProps }) => <main className="login-page login-page--mobile-artwork">
+  <h1 className="sr-only">Saldo Bersama</h1>
+  <section className="login-mobile-stage" aria-roledescription="carousel" aria-label="Pengenalan dan login Saldo Bersama" onPointerDown={(event) => { if (event.target.closest?.("button, a, .google-login-button")) return; swipeStartXRef.current = event.clientX; swipeDeltaXRef.current = 0; event.currentTarget.setPointerCapture?.(event.pointerId); }} onPointerMove={(event) => { if (swipeStartXRef.current !== null) swipeDeltaXRef.current = event.clientX - swipeStartXRef.current; }} onPointerUp={finishSwipe} onPointerCancel={finishSwipe} onKeyDown={(event) => { if (event.key === "ArrowRight") moveMobileSlide(mobileSlide + 1); if (event.key === "ArrowLeft") moveMobileSlide(mobileSlide - 1); }} tabIndex={0}>
+    <div className="login-mobile-track" style={{ "--login-mobile-slide": mobileSlide }}>{MOBILE_ARTWORK.map((src, index) => <MobileArtworkSlide key={src} src={src} index={index} mobileSlide={mobileSlide} moveMobileSlide={moveMobileSlide} providerProps={providerProps} />)}</div>
+    <p className="sr-only" aria-live="polite">Slide {mobileSlide + 1} dari {MOBILE_SLIDE_COUNT}.</p>
+  </section>
+</main>;
+
+const DesktopLoginLayout = ({ theme, providerProps }) => <main className="login-page login-page--desktop-artwork">
+  <h1 className="sr-only">Saldo Bersama</h1><section className="login-desktop-stage" aria-label="Login Saldo Bersama"><img className="login-desktop-artwork" src={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light} alt="" aria-hidden="true" draggable="false" fetchPriority="high" /><MoneyRain /><div className="login-provider-mask login-provider-mask--desktop" aria-hidden="true" /><section className="login-provider-slot login-provider-slot--desktop" aria-label="Masuk ke Saldo Bersama"><LoginProvider {...providerProps} /></section><CreatorLink /><div className="sr-only"><p>Kelola keuangan pribadi dan bersama.</p><p>Akun yang diizinkan. Akses terverifikasi. Sinkron antar perangkat.</p></div></section>
+</main>;
+
 const LoginPage = () => {
   const { status, error, configErrors, loginWithFirebaseToken, refreshSession } = useAuth();
   const { theme } = useTheme();
@@ -152,127 +180,9 @@ const LoginPage = () => {
     swipeDeltaXRef.current = 0;
   };
 
-  if (mobileLayout) {
-    return (
-      <main className="login-page login-page--mobile-artwork">
-        <h1 className="sr-only">Saldo Bersama</h1>
-        <section
-          className="login-mobile-stage"
-          aria-roledescription="carousel"
-          aria-label="Pengenalan dan login Saldo Bersama"
-          onPointerDown={(event) => {
-            if (event.target.closest?.("button, a, .google-login-button")) return;
-            swipeStartXRef.current = event.clientX;
-            swipeDeltaXRef.current = 0;
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-          }}
-          onPointerMove={(event) => {
-            if (swipeStartXRef.current === null) return;
-            swipeDeltaXRef.current = event.clientX - swipeStartXRef.current;
-          }}
-          onPointerUp={finishSwipe}
-          onPointerCancel={finishSwipe}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowRight") moveMobileSlide(mobileSlide + 1);
-            if (event.key === "ArrowLeft") moveMobileSlide(mobileSlide - 1);
-          }}
-          tabIndex={0}
-        >
-          <div className="login-mobile-track" style={{ "--login-mobile-slide": mobileSlide }}>
-            {MOBILE_ARTWORK.map((src, index) => (
-              <article className="login-mobile-slide" key={src} aria-hidden={index !== mobileSlide}>
-                <p className="sr-only">{index === 0 ? "Rajin menabung, bijak belanja. Catat pengeluaran, kurangi foya, dan jaga saldo tetap terkontrol." : index === 1 ? "Atur anggaran, hindari boros. Pantau pemasukan dan pengeluaran agar belanja tetap terencana." : "Login Saldo Bersama dengan akun Google yang diizinkan."}</p>
-                <img
-                  className="login-mobile-artwork"
-                  src={src}
-                  alt=""
-                  aria-hidden="true"
-                  draggable="false"
-                  loading={index === 0 ? "eager" : "lazy"}
-                  fetchPriority={index === 0 ? "high" : "auto"}
-                />
-
-                {index < MOBILE_LOGIN_SLIDE ? (
-                  <button
-                    type="button"
-                    className="login-artwork-hotspot login-mobile-next"
-                    aria-label={index === 0 ? "Lanjut ke pengaturan anggaran" : "Lanjut ke login"}
-                    onClick={() => moveMobileSlide(index + 1)}
-                    tabIndex={index === mobileSlide ? 0 : -1}
-                  />
-                ) : null}
-
-                {index === MOBILE_LOGIN_SLIDE && mobileSlide === MOBILE_LOGIN_SLIDE ? (
-                  <>
-                    <MoneyRain compact />
-                    <ThemeToggle className="login-mobile-theme-toggle" />
-                    <div className="login-provider-mask login-provider-mask--mobile" aria-hidden="true" />
-                    <section className="login-provider-slot login-provider-slot--mobile" aria-label="Masuk ke Saldo Bersama">
-                      <LoginProvider
-                        buttonRef={buttonRef}
-                        configErrors={configErrors}
-                        error={error}
-                        buttonError={buttonError}
-                        status={status}
-                        refreshSession={refreshSession}
-                      />
-                    </section>
-                    <a
-                      className="login-artwork-hotspot login-mobile-creator-link"
-                      href="https://www.linkedin.com/in/vio-yusup-iskandar/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Buka LinkedIn Vio Yusup Iskandar"
-                    />
-                  </>
-                ) : null}
-              </article>
-            ))}
-          </div>
-          <p className="sr-only" aria-live="polite">Slide {mobileSlide + 1} dari {MOBILE_SLIDE_COUNT}.</p>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="login-page login-page--desktop-artwork">
-      <h1 className="sr-only">Saldo Bersama</h1>
-      <section className="login-desktop-stage" aria-label="Login Saldo Bersama">
-        <img
-          className="login-desktop-artwork"
-          src={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light}
-          alt=""
-          aria-hidden="true"
-          draggable="false"
-          fetchPriority="high"
-        />
-        <MoneyRain />
-        <div className="login-provider-mask login-provider-mask--desktop" aria-hidden="true" />
-        <section className="login-provider-slot login-provider-slot--desktop" aria-label="Masuk ke Saldo Bersama">
-          <LoginProvider
-            buttonRef={buttonRef}
-            configErrors={configErrors}
-            error={error}
-            buttonError={buttonError}
-            status={status}
-            refreshSession={refreshSession}
-          />
-        </section>
-        <a
-          className="login-artwork-hotspot login-desktop-creator-link"
-          href="https://www.linkedin.com/in/vio-yusup-iskandar/"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Buka LinkedIn Vio Yusup Iskandar"
-        />
-        <div className="sr-only">
-          <p>Kelola keuangan pribadi dan bersama.</p>
-          <p>Akun yang diizinkan. Akses terverifikasi. Sinkron antar perangkat.</p>
-        </div>
-      </section>
-    </main>
-  );
+  const providerProps = { buttonRef, configErrors, error, buttonError, status, refreshSession };
+  if (mobileLayout) return <MobileLoginLayout mobileSlide={mobileSlide} moveMobileSlide={moveMobileSlide} finishSwipe={finishSwipe} swipeStartXRef={swipeStartXRef} swipeDeltaXRef={swipeDeltaXRef} providerProps={providerProps} />;
+  return <DesktopLoginLayout theme={theme} providerProps={providerProps} />;
 };
 
 export default LoginPage;

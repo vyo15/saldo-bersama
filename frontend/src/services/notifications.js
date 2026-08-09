@@ -86,67 +86,50 @@ const localReason = (capability) => {
   return null;
 };
 
-export const getPushNotificationState = async () => {
-  const capability = notificationCapability();
-  const subscription = capability.supported && capability.secureContext
-    ? await currentPushSubscription().catch(() => null)
-    : null;
+const readLocalPushSubscription = async (capability) => {
+  if (!capability.supported || !capability.secureContext) return null;
+  return currentPushSubscription().catch(() => null);
+};
+
+const unavailablePushState = (capability, reason, browserSubscribed, extras = {}) => ({
+  ...capability,
+  reason,
+  browserSubscribed,
+  registered: false,
+  enabled: false,
+  server: null,
+  activeDeviceCount: 0,
+  lastTestFailure: null,
+  lastDelivery: null,
+  ...extras,
+});
+
+const fetchRemotePushState = async (subscription) => apiClient.request(
+  "notifications.status",
+  subscription ? { endpoint: subscription.endpoint } : {},
+  { force: true },
+);
+
+const pushReadyReason = ({ remote, keyMismatch, browserSubscribed, registered }) => {
+  if (!remote.server?.configured) return "server_not_configured";
+  if (!remote.server?.ready) return "server_configuration_invalid";
+  if (keyMismatch) return "vapid_key_changed";
+  if (remote.currentDevice?.state === "owned_by_other") return "account_conflict";
+  if (browserSubscribed && !registered) return "registration_required";
+  if (!browserSubscribed || !registered) return "not_subscribed";
+  return remote.lastTestAt ? "ready_tested" : "ready_unverified";
+};
+
+const presentRemotePushState = (capability, remote, subscription, keyMismatch) => {
   const browserSubscribed = Boolean(subscription);
-  const blockedReason = localReason(capability);
-  if (blockedReason) {
-    return {
-      ...capability,
-      reason: blockedReason,
-      browserSubscribed,
-      registered: false,
-      enabled: false,
-      server: null,
-      activeDeviceCount: 0,
-      lastTestFailure: null,
-      lastDelivery: null,
-    };
-  }
-
-
-  const keyMismatch = browserSubscribed && !subscriptionKeyMatches(subscription);
-  let remote;
-  try {
-    remote = await apiClient.request(
-      "notifications.status",
-      subscription ? { endpoint: subscription.endpoint } : {},
-      { force: true },
-    );
-  } catch (error) {
-    return {
-      ...capability,
-      reason: "server_status_unavailable",
-      browserSubscribed,
-      registered: false,
-      enabled: false,
-      keyMismatch,
-      server: null,
-      activeDeviceCount: 0,
-      lastTestFailure: null,
-      lastDelivery: null,
-      error,
-    };
-  }
-
   const registered = remote.currentDevice?.registered === true;
-  let reason = "not_subscribed";
-  if (!remote.server?.configured) reason = "server_not_configured";
-  else if (!remote.server?.ready) reason = "server_configuration_invalid";
-  else if (keyMismatch) reason = "vapid_key_changed";
-  else if (remote.currentDevice?.state === "owned_by_other") reason = "account_conflict";
-  else if (browserSubscribed && !registered) reason = "registration_required";
-  else if (browserSubscribed && registered) reason = remote.lastTestAt ? "ready_tested" : "ready_unverified";
-
+  const reason = pushReadyReason({ remote, keyMismatch, browserSubscribed, registered });
   return {
     ...capability,
     reason,
     browserSubscribed,
     registered,
-    enabled: reason === "ready_tested" || reason === "ready_unverified",
+    enabled: ["ready_tested", "ready_unverified"].includes(reason),
     keyMismatch,
     server: remote.server || null,
     currentDevice: remote.currentDevice || null,
@@ -155,6 +138,21 @@ export const getPushNotificationState = async () => {
     lastTestFailure: remote.lastTestFailure || null,
     lastDelivery: remote.lastDelivery || null,
   };
+};
+
+export const getPushNotificationState = async () => {
+  const capability = notificationCapability();
+  const subscription = await readLocalPushSubscription(capability);
+  const browserSubscribed = Boolean(subscription);
+  const blockedReason = localReason(capability);
+  if (blockedReason) return unavailablePushState(capability, blockedReason, browserSubscribed);
+  const keyMismatch = browserSubscribed && !subscriptionKeyMatches(subscription);
+  try {
+    const remote = await fetchRemotePushState(subscription);
+    return presentRemotePushState(capability, remote, subscription, keyMismatch);
+  } catch (error) {
+    return unavailablePushState(capability, "server_status_unavailable", browserSubscribed, { keyMismatch, error });
+  }
 };
 
 const stateError = (state) => {

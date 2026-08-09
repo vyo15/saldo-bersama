@@ -62,10 +62,12 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
   assert.deepEqual(accountCardNumberGroups("123456789012345678901234"), ["••••", "3456", "7890", "1234"]);
 });
 
-test("halaman rekening desktop memakai Concept A tanpa mengubah pengalaman mobile", async () => {
-  const [page, accountSheets, accountEditors, desktopWorkspace, desktopStyles, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
+test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta grafik pada mobile", async () => {
+  const [page, accountSheets, mobileExperience, mobileActivity, accountEditors, desktopWorkspace, desktopStyles, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
+    read("src/features/accounts/components/MobileAccountsExperience.jsx"),
+    read("src/features/accounts/components/MobileAccountActivity.jsx"),
     read("src/features/accounts/components/AccountEditorDialogs.jsx"),
     read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
     read("src/features/accounts/components/DesktopAccountsWorkspace.module.css"),
@@ -77,11 +79,15 @@ test("halaman rekening desktop memakai Concept A tanpa mengubah pengalaman mobil
   ]);
   const accountPageSource = `${page}
 ${accountSheets}
+${mobileExperience}
+${mobileActivity}
 ${accountEditors}`;
   const accountsApi = await read("src/features/accounts/accounts.api.js");
 
   assert.match(accountPageSource, /title="Rekening"/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
+  assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountsExperience\.jsx"\)\)/);
+  assert.match(mobileExperience, /lazy\(\(\) => import\("\.\/MobileAccountActivity\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/AccountEditorDialogs\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/DesktopAccountsWorkspace\.jsx"\)\)/);
   assert.doesNotMatch(page, /import DesktopAccountsWorkspace from "\.\/components\/DesktopAccountsWorkspace\.jsx";/);
@@ -145,10 +151,24 @@ ${accountEditors}`;
     assert.equal(declaredDesktopClasses.has(className), true, `DesktopAccountsWorkspace memakai styles.${className} tetapi CSS Module tidak mendeklarasikannya.`);
   }
   assert.match(accountPageSource, /mobileAccountSheet/);
-  assert.match(accountPageSource, /paymentHistoryPeriod/);
-  assert.match(accountPageSource, /useApiResource\("transactions\.list"/);
-  assert.match(accountPageSource, /enabled: mobileAccountSheet === "history"/);
-  assert.match(accountPageSource, /account_id: selectedAccountId \|\| "all"/);
+  assert.match(mobileActivity, /role="tab"/);
+  assert.match(mobileActivity, /tabIndex=\{activeTab === "history" \? 0 : -1\}/);
+  assert.match(mobileActivity, /event\.key === "Home"/);
+  assert.match(mobileActivity, /event\.key === "End"/);
+  assert.match(mobileActivity, /requestAnimationFrame/);
+  assert.match(mobileActivity, />\s*Riwayat\s*</);
+  assert.match(mobileActivity, />\s*Grafik\s*</);
+  assert.match(mobileActivity, /TREND_OPTIONS = Object\.freeze\(\[3, 6, 12\]\)/);
+  assert.match(mobileActivity, /useApiResource\("transactions\.list"/);
+  assert.match(mobileActivity, /account_id: selectedAccountId \|\| "all"/);
+  assert.match(mobileActivity, /enabled: mobileEnabled && activeTab === "history"/);
+  assert.match(mobileActivity, /Transfer antar rekening tidak dihitung sebagai pengeluaran/);
+  assert.match(accountsApi, /loadAccountExpenseTrend/);
+  assert.match(accountsApi, /apiClient\.request\("reports\.monthly", \{ period, trend_months: 3 \}/);
+  assert.match(accountsApi, /report\?\.accountExpenses/);
+  assert.match(accountsApi, /item\.account_id === accountId/);
+  assert.doesNotMatch(accountsApi, /transaction_type: "expense"|limit: 200|hasMore/);
+  assert.doesNotMatch(accountPageSource, /paymentHistoryPeriod|paymentHistoryResource|sheet === "history"/);
   assert.match(accountPageSource, /mobileStackCardRefs/);
   assert.match(accountPageSource, /MOBILE_STACK_SLOT_STYLES/);
   assert.match(accountPageSource, /shortestCircularDifference/);
@@ -164,14 +184,13 @@ ${accountEditors}`;
   assert.match(accountPageSource, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
   assert.match(accountPageSource, /Geser kartu aktif ke atas atau bawah/);
   assert.match(accountPageSource, /<AccountVisual account=\{account\} stack \/>/);
-  assert.match(page, /accountOwnershipLabel\(account\)/);
+  assert.match(mobileExperience, /accountOwnershipLabel\(account\)/);
   assert.doesNotMatch(page, /account\.owner_scope === "shared" \? "Bersama" : "Pribadi"/);
   assert.match(accountPageSource, /setMobileAccountSheet\("detail"\)/);
-  assert.match(accountPageSource, /title="Pembayaran keluar"/);
-  assert.match(accountPageSource, /Pengeluaran dan transfer keluar yang menggunakan/);
-  assert.doesNotMatch(accountPageSource, />Bayar tagihan</);
-  assert.match(accountPageSource, />Pembayaran keluar</);
+  assert.doesNotMatch(accountPageSource, /title="Pembayaran keluar"|>Pembayaran keluar</);
   assert.match(accountPageSource, /title="Daftar rekening"/);
+  assert.match(mobileExperience, /<MobileAccountActivity/);
+  assert.match(mobileExperience, /state: \{ accountId: item\.account_id, period \}/);
   assert.match(accountPageSource, /state: \{ accountId:/);
   assert.match(accountPageSource, /variant="mobileDetail"/);
   assert.match(accountPageSource, /embedded/);
@@ -187,11 +206,12 @@ ${accountEditors}`;
   assert.match(reconciliationPage, /Sistem tidak membuat transaksi penyesuaian secara otomatis/);
   assert.doesNotMatch(pageStyles, /reconciliationInfoButton|reconciliationToggle|reconciliationPanel/);
   assert.match(pageStyles, /mobileStackPanel/);
-  assert.match(pageStyles, /mobileQuickActions/);
+  assert.match(pageStyles, /mobileAccountActivity/);
+  assert.match(pageStyles, /mobileActivityTabs/);
+  assert.match(pageStyles, /mobileTransactionList/);
+  assert.match(pageStyles, /mobileExpenseChart/);
   assert.match(pageStyles, /\.mobileStackSummary \{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s);
-  assert.match(pageStyles, /\.mobileQuickActions \{[^}]*border-top:\s*0;/s);
-  assert.match(pageStyles, /paymentHistoryList/);
-  assert.match(pageStyles, /paymentHistoryItem/);
+  assert.doesNotMatch(pageStyles, /mobileQuickActions|paymentHistoryList|paymentHistoryItem/);
   assert.match(pageStyles, /perspective: 93\.75rem/);
   assert.match(pageStyles, /transform-style: preserve-3d/);
   assert.match(pageStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
@@ -200,7 +220,7 @@ ${accountEditors}`;
   assert.match(pageStyles, /width: min\(78vw, 19\.1rem\)/);
   assert.doesNotMatch(pageStyles, /mobilePagination|scroll-snap-type/);
   assert.equal((pageStyles.match(/@media \(max-width: 820px\)/g) || []).length, 1);
-  assert.match(pageStyles, /\.paymentHistoryToolbar input \{[^}]*font-size:\s*var\(--font-size-body\);/s);
+  assert.match(pageStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid var\(--border\);[^}]*background:\s*var\(--surface-soft\);/s);
   assert.match(pageStyles, /\.impactSummary strong \{ color:\s*var\(--text\);/);
   assert.doesNotMatch(pageStyles, /var\(--(?:border-subtle|surface-muted|text-primary)\)/);

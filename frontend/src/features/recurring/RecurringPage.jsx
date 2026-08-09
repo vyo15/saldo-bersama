@@ -13,7 +13,7 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
-import { archiveRecurringRule, cancelRecurringOccurrence, createRecurringRule, payRecurringOccurrence, restoreRecurringOccurrence, reverseRecurringPayment, updateRecurringRule } from "./recurring.api.js";
+import { archiveRecurringRule, cancelRecurringOccurrence, createRecurringRule, deleteUnusedRecurringRule, payRecurringOccurrence, previewRecurringRuleLifecycle, restoreRecurringOccurrence, reverseRecurringPayment, updateRecurringRule } from "./recurring.api.js";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
@@ -21,310 +21,105 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { filterByOwnership } from "../../domain/ownership.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 
+const recurringRefreshKeys = Object.freeze(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
+const initialRuleForm = () => ({ name: "", kind: "expense", expected_amount: "", due_day: 20, category_id: "", default_account_id: "", payment_method: "transfer", frequency: "monthly", start_date: todayInJakarta(), auto_debit: false });
+const initialPayment = () => ({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
+const activeAccounts = (bootstrap) => bootstrap?.accounts?.filter((item) => item.status === "active") || [];
+const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === kind) || [];
+const refreshRecurring = async ({ invalidate, resource, refreshOverview, keys = recurringRefreshKeys }) => { invalidate(keys); await Promise.allSettled([resource.reload(), refreshOverview()]); };
+
+const ScheduleActions = ({ item, actions }) => (
+  <div className="button-group">
+    {item.status === "paid" || item.status === "received" ? <FiCheckCircle className="schedule-item__done" aria-label="Selesai" /> : item.can_pay ? <Button onClick={() => actions.openPayment(item)}>Catat aktual</Button> : null}
+    {item.can_reverse ? <Button icon={FiRotateCcw} onClick={() => actions.openReverse(item)}>Batalkan aktual terakhir</Button> : null}
+    {item.can_cancel_occurrence ? <Button onClick={() => actions.openSkip(item)}>Lewati periode</Button> : null}
+    {item.can_restore_occurrence ? <Button icon={FiRotateCcw} onClick={() => actions.openRestore(item)}>Pulihkan periode</Button> : null}
+    {item.can_edit_rule ? <button type="button" className="icon-button" onClick={() => actions.openRuleEditor(item)} aria-label={`Edit aturan ${item.name}`}><FiEdit2 /></button> : null}
+    {item.can_archive_rule ? <button type="button" className="icon-button icon-button--danger" onClick={() => actions.openArchive(item)} aria-label={`Hapus atau arsipkan aturan ${item.name}`}><FiArchive /></button> : null}
+  </div>
+);
+
+const ScheduleItem = ({ item, actions }) => <article className="schedule-item"><div className="schedule-item__date"><FiCalendar /><time>{item.due_date}</time></div><div><h3>{item.name}</h3><p>Rencana <Money value={item.expected_amount} />{item.actual_amount ? <> · aktual <Money value={item.actual_amount} /></> : null}</p></div><StatusBadge status={item.status} /><ScheduleActions item={item} actions={actions} /></article>;
+const ScheduleList = ({ items, emptyText, actions }) => <div className="schedule-list">{items.length ? items.map((item) => <ScheduleItem key={item.occurrence_id} item={item} actions={actions} />) : <p>{emptyText}</p>}</div>;
+const SchedulePanels = ({ items, actions }) => { const expenses = items.filter((item) => item.kind === "expense"); const income = items.filter((item) => item.kind === "income"); return <section className="two-column-grid"><Card className="panel"><div className="panel__header"><div><p className="eyebrow">Pengeluaran tetap</p><h2>Tagihan periode ini</h2></div></div><ScheduleList items={expenses} actions={actions} emptyText="Belum ada tagihan aktif pada periode ini." /></Card><Card className="panel"><div className="panel__header"><div><p className="eyebrow">Pemasukan tetap</p><h2>Penerimaan yang diharapkan</h2></div></div><ScheduleList items={income} actions={actions} emptyText="Belum ada pemasukan rutin pada periode ini." /></Card></section>; };
+
+const FrequencyField = ({ value, onChange }) => <label className="field"><span>Frekuensi</span><select value={value} onChange={(event) => onChange(event.target.value)}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="bimonthly">Dua bulanan</option><option value="quarterly">Tiga bulanan</option><option value="semiannual">Semester</option><option value="annual">Tahunan</option></select></label>;
+const PaymentMethodField = ({ value, onChange }) => <label className="field"><span>Metode</span><select value={value} onChange={(event) => onChange(event.target.value)}><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="autodebit">Auto-debit</option><option value="ewallet">E-wallet</option></select></label>;
+const AccountField = ({ label = "Rekening default", value, accounts, onChange }) => <label className="field"><span>{label}{label.includes("pembayaran") || label.includes("penerima") ? " *" : ""}</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>;
+const CategoryField = ({ value, categories, onChange }) => <label className="field"><span>Kategori</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih kategori</option>{categories.map((item) => <option value={item.category_id} key={item.category_id}>{item.name}</option>)}</select></label>;
+
+const CreateRulePanel = ({ visible, form, setForm, categories, accounts, createRule, createMutation }) => visible ? (
+  <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Aturan rutin</p><h2>Tambah tagihan atau pemasukan tetap</h2></div></div><form className="form-grid" onSubmit={createRule}>
+    <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
+    <label className="field"><span>Jenis</span><select value={form.kind} onChange={(event) => setForm((current) => ({ ...current, kind: event.target.value, category_id: "" }))}><option value="expense">Pengeluaran tetap</option><option value="income">Pemasukan tetap</option></select></label>
+    <MoneyInput id="recurring-amount" label="Nominal perkiraan" value={form.expected_amount} onChange={(value) => setForm((current) => ({ ...current, expected_amount: value }))} />
+    <FrequencyField value={form.frequency} onChange={(frequency) => setForm((current) => ({ ...current, frequency }))} />
+    <label className="field"><span>Tanggal jatuh tempo/masuk</span><input type="number" min="1" max="31" value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: Number(event.target.value) }))} /><small>Untuk jadwal mingguan/harian, pola mengikuti tanggal mulai.</small></label>
+    <CategoryField value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => ({ ...current, category_id }))} />
+    <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => ({ ...current, default_account_id }))} />
+    <PaymentMethodField value={form.payment_method} onChange={(payment_method) => setForm((current) => ({ ...current, payment_method }))} />
+    <label className="field"><span>Tanggal mulai</span><input required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
+    <label className="checkbox-field form-grid__full"><input type="checkbox" checked={form.auto_debit} onChange={(event) => setForm((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Biasanya dibayar otomatis (hanya penanda, aplikasi tidak menarik uang)</span></label>
+    <div className="notice notice--info form-grid__full"><span>Contoh cicilan: pindahkan dana BNI/BCA ke BTN sebagai Transfer. Jadwal ini baru mengurangi saldo BTN setelah pembayaran aktual disimpan.</span></div>
+    <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit" loading={createMutation.busy}>Tambah jadwal</Button></div>
+  </form></Card>
+) : null;
+
+const PaymentModal = ({ payment, setPayment, paymentState, paymentMutation, paymentAccounts, completeOccurrence }) => { const close = () => paymentState.status !== "submitting" && setPayment((current) => ({ ...current, item: null })); const accountLabel = payment.item?.kind === "income" ? "Rekening penerima" : "Rekening pembayaran"; return <Modal open={Boolean(payment.item)} onClose={close} title={payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual"} description={payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : ""} footer={<><Button type="button" disabled={paymentState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={paymentState.status === "submitting"}>Simpan aktual</Button></>}><form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}><MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(amount) => setPayment((current) => ({ ...current, amount }))} /><AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id }))} /><label className="field"><span>Tanggal aktual *</span><input required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value }))} /></label>{paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}</form></Modal>; };
+
+const EditRuleFields = ({ editRule, setEditRule, editCategories, accounts }) => <>
+  <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={editRule?.name || ""} onChange={(event) => setEditRule((current) => ({ ...current, name: event.target.value }))} /></label>
+  <MoneyInput id="edit-recurring-amount" label="Nominal perkiraan" value={editRule?.expected_amount || ""} onChange={(expected_amount) => setEditRule((current) => ({ ...current, expected_amount }))} />
+  <FrequencyField value={editRule?.frequency || "monthly"} onChange={(frequency) => setEditRule((current) => ({ ...current, frequency }))} />
+  <label className="field"><span>Tanggal jatuh tempo/masuk</span><input type="number" min="1" max="31" value={editRule?.due_day || 1} onChange={(event) => setEditRule((current) => ({ ...current, due_day: Number(event.target.value) }))} /></label>
+  <CategoryField value={editRule?.category_id || ""} categories={editCategories} onChange={(category_id) => setEditRule((current) => ({ ...current, category_id }))} />
+  <AccountField value={editRule?.default_account_id || ""} accounts={accounts} onChange={(default_account_id) => setEditRule((current) => ({ ...current, default_account_id }))} />
+  <PaymentMethodField value={editRule?.payment_method || "transfer"} onChange={(payment_method) => setEditRule((current) => ({ ...current, payment_method }))} />
+  <label className="field"><span>Tanggal mulai</span><input required type="date" value={editRule?.start_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, start_date: event.target.value }))} /></label>
+  <label className="field"><span>Tanggal akhir</span><input type="date" value={editRule?.end_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, end_date: event.target.value }))} /></label>
+  <label className="checkbox-field form-grid__full"><input type="checkbox" checked={Boolean(editRule?.auto_debit)} onChange={(event) => setEditRule((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Penanda auto-debit (tidak mengubah saldo sebelum aktual disimpan)</span></label>
+</>;
+
+const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategories, accounts }) => <Modal open={Boolean(editRule)} onClose={() => editState.status !== "submitting" && setEditRule(null)} title="Edit aturan rutin" description={editRule ? `${editRule.name} · perubahan berlaku untuk occurrence yang dibuat berikutnya.` : ""} footer={<><Button onClick={() => setEditRule(null)} disabled={editState.status === "submitting"}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}><form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}><EditRuleFields editRule={editRule} setEditRule={setEditRule} editCategories={editCategories} accounts={accounts} />{editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}</form></Modal>;
+
+const RecurringConfirmations = (p) => <><ConfirmationModal open={Boolean(p.archiveRuleTarget)} title={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus aturan rutin yang belum dipakai?" : "Arsipkan aturan rutin?"} description={p.archiveRuleTarget ? (p.archiveRuleTarget.preview.canDeleteUnused ? `${p.archiveRuleTarget.item.name} hanya memiliki jadwal masa depan hasil generate dan belum pernah dibayar, dilewati, atau terhubung transaksi.` : `${p.archiveRuleTarget.item.name} sudah memiliki histori. Aturan tidak dihapus permanen dan riwayat pembayaran tetap tersimpan.`) : ""} confirmLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan aturan"} reasonLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Saya memahami hanya projection masa depan yang belum terealisasi yang akan dibersihkan bersama aturan ini." : ""} busy={p.editState.status === "submitting"} error={p.editState.error} onCancel={() => p.editState.status !== "submitting" && p.setArchiveRuleTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveRuleTarget ? <div className="notice notice--info">Jadwal total {p.archiveRuleTarget.preview.dependencies.occurrences} · projection masa depan yang aman diregenerate {p.archiveRuleTarget.preview.dependencies.reproducible_future_occurrences} · histori masa lalu {p.archiveRuleTarget.preview.dependencies.past_occurrences} · dilewati/dibatalkan {p.archiveRuleTarget.preview.dependencies.cancelled_occurrences} · terhubung transaksi {p.archiveRuleTarget.preview.dependencies.transactions}.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.skipTarget)} title="Lewati periode ini?" description={p.skipTarget ? `${p.skipTarget.name} untuk ${p.skipTarget.due_date} ditandai dilewati. Tidak ada transaksi dibuat dan saldo tidak berubah. Periode berikutnya tetap aktif.` : ""} confirmLabel="Lewati periode" reasonLabel="Alasan melewati periode" requireReason busy={p.skipMutation.busy} error={p.skipError} onCancel={() => !p.skipMutation.busy && p.setSkipTarget(null)} onConfirm={p.skipOccurrence} /><ConfirmationModal open={Boolean(p.restoreOccurrenceTarget)} title="Pulihkan periode yang dilewati?" description={p.restoreOccurrenceTarget ? `${p.restoreOccurrenceTarget.name} untuk ${p.restoreOccurrenceTarget.due_date} akan kembali menjadi jadwal aktif tanpa membuat transaksi.` : ""} confirmLabel="Pulihkan periode" reasonLabel="Alasan pemulihan" requireReason busy={p.restoreOccurrenceMutation.busy} error={p.restoreOccurrenceError} onCancel={() => !p.restoreOccurrenceMutation.busy && p.setRestoreOccurrenceTarget(null)} onConfirm={p.restoreSkippedOccurrence} /><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan aktual terakhir?" description={p.reverseTarget ? `${p.reverseTarget.name} · transaksi ledger terkait akan dibatalkan dan status jadwal dihitung ulang.` : ""} confirmLabel="Batalkan aktual" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reversePayment} /></>;
+
+const useRecurringRuleActions = (shared) => {
+  const createMutation = useGuardedMutation(); const [message, setMessage] = useState(null); const [form, setForm] = useState(initialRuleForm);
+  const [editRule, setEditRule] = useState(null); const [editState, setEditState] = useState({ status: "idle", error: null }); const [archiveRuleTarget, setArchiveRuleTarget] = useState(null);
+  const createRule = (event) => { event.preventDefault(); setMessage(null); return createMutation.run(async () => { await createRecurringRule({ ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, {}); setForm((current) => ({ ...current, name: "", expected_amount: "" })); shared.notify({ message: "Jadwal rutin berhasil dibuat." }); await refreshRecurring(shared); }).catch((error) => setMessage({ type: "danger", text: error.message })); };
+  const openRuleEditor = (item) => { setEditRule({ recurring_rule_id: item.recurring_rule_id, row_version: item.rule_row_version, name: item.name, kind: item.kind, expected_amount: String(item.expected_amount || ""), frequency: item.frequency, due_day: Number(String(item.due_date || "").slice(-2) || 1), category_id: item.category_id, default_account_id: item.default_account_id, payment_method: item.payment_method || "transfer", auto_debit: Boolean(item.auto_debit), start_date: item.start_date || todayInJakarta(), end_date: item.end_date || "", priority: item.priority || "normal", status: item.rule_status || "active" }); setEditState({ status: "idle", error: null }); };
+  const saveRule = async (event) => { event.preventDefault(); if (!editRule) return; setEditState({ status: "submitting", error: null }); try { await updateRecurringRule({ ...editRule, expected_amount: assertPositiveRupiah(editRule.expected_amount) }, { rowVersion: editRule.row_version }); setEditRule(null); setEditState({ status: "idle", error: null }); shared.notify({ message: "Aturan rutin berhasil diperbarui." }); await refreshRecurring(shared); } catch (error) { setEditState({ status: "error", error }); } };
+  const openArchive = async (item) => { setEditState({ status: "submitting", error: null }); try { const preview = await previewRecurringRuleLifecycle({ recurring_rule_id: item.recurring_rule_id, row_version: item.rule_row_version }, { force: true }); setArchiveRuleTarget({ item, preview }); setEditState({ status: "idle", error: null }); } catch (error) { setEditState({ status: "idle", error: null }); shared.notify({ message: error.message || "Status aturan rutin gagal diperiksa.", tone: "danger", dedupeKey: "recurring:lifecycle-preview-error" }); } };
+  const applyRuleLifecycle = async (reason, confirmation) => { if (!archiveRuleTarget) return; const { item, preview } = archiveRuleTarget; setEditState({ status: "submitting", error: null }); try { if (preview.canDeleteUnused) { await deleteUnusedRecurringRule({ recurring_rule_id: item.recurring_rule_id, row_version: item.rule_row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: item.rule_row_version }); shared.notify({ message: "Aturan rutin yang belum pernah digunakan berhasil dihapus permanen." }); } else { await archiveRecurringRule({ recurring_rule_id: item.recurring_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version }); shared.notify({ message: "Aturan rutin berhasil diarsipkan. Transaksi historis tetap tersimpan." }); } setArchiveRuleTarget(null); setEditState({ status: "idle", error: null }); await refreshRecurring(shared); } catch (error) { setEditState({ status: "error", error }); } };
+  return { createMutation, message, form, setForm, editRule, setEditRule, editState, archiveRuleTarget, setArchiveRuleTarget, createRule, openRuleEditor, saveRule, applyRuleLifecycle, openArchive };
+};
+
+const useRecurringPaymentActions = (shared) => {
+  const paymentMutation = useGuardedMutation(); const [payment, setPayment] = useState(initialPayment); const [paymentState, setPaymentState] = useState({ status: "idle", error: null }); const [reverseTarget, setReverseTarget] = useState(null); const [reverseState, setReverseState] = useState({ status: "idle", error: null });
+  const openPayment = (item) => { const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""; setPayment({ item, account_id: item.default_account_id || "", amount: String(remaining), transaction_date: todayInJakarta() }); setPaymentState({ status: "idle", error: null }); };
+  const completeOccurrence = (event) => { event.preventDefault(); if (!payment.item) return; setPaymentState({ status: "submitting", error: null }); return paymentMutation.run(async () => { await payRecurringOccurrence({ occurrence_id: payment.item.occurrence_id, row_version: payment.item.row_version, account_id: payment.account_id, amount: assertPositiveRupiah(payment.amount), transaction_date: payment.transaction_date }, { rowVersion: payment.item.row_version }); setPayment(initialPayment()); setPaymentState({ status: "idle", error: null }); shared.notify({ message: "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." }); await refreshRecurring(shared); }).catch((error) => setPaymentState({ status: "error", error })); };
+  const reversePayment = async (reason) => { if (!reverseTarget) return; const transactionId = String(reverseTarget.transaction_ids || "").split(",").map((value) => value.trim()).filter(Boolean).at(-1); if (!transactionId) return; setReverseState({ status: "submitting", error: null }); try { await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version }); setReverseTarget(null); setReverseState({ status: "idle", error: null }); shared.notify({ message: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." }); await refreshRecurring(shared); } catch (error) { setReverseState({ status: "error", error }); } };
+  const openReverse = (item) => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); };
+  return { paymentMutation, payment, setPayment, paymentState, reverseTarget, setReverseTarget, reverseState, openPayment, completeOccurrence, reversePayment, openReverse };
+};
+
+const useRecurringOccurrenceRecovery = (shared) => {
+  const skipMutation = useGuardedMutation(); const restoreOccurrenceMutation = useGuardedMutation(); const [skipTarget, setSkipTarget] = useState(null); const [skipError, setSkipError] = useState(null); const [restoreOccurrenceTarget, setRestoreOccurrenceTarget] = useState(null); const [restoreOccurrenceError, setRestoreOccurrenceError] = useState(null);
+  const skipOccurrence = (reason) => { if (!skipTarget) return Promise.resolve(); setSkipError(null); return skipMutation.run(async () => { await cancelRecurringOccurrence({ occurrence_id: skipTarget.occurrence_id, row_version: skipTarget.row_version, reason }, { rowVersion: skipTarget.row_version }); setSkipTarget(null); shared.notify({ message: "Periode rutin dilewati. Ledger dan saldo tidak berubah.", tone: "info" }); await refreshRecurring({ ...shared, keys: ["recurring.list", "app.initialState"] }); }).catch(setSkipError); };
+  const restoreSkippedOccurrence = (reason) => { if (!restoreOccurrenceTarget) return Promise.resolve(); setRestoreOccurrenceError(null); return restoreOccurrenceMutation.run(async () => { await restoreRecurringOccurrence({ occurrence_id: restoreOccurrenceTarget.occurrence_id, row_version: restoreOccurrenceTarget.row_version, reason }, { rowVersion: restoreOccurrenceTarget.row_version }); setRestoreOccurrenceTarget(null); shared.notify({ message: "Periode rutin berhasil dipulihkan.", tone: "info" }); await refreshRecurring({ ...shared, keys: ["recurring.list", "app.initialState"] }); }).catch(setRestoreOccurrenceError); };
+  const openSkip = (item) => { setSkipTarget(item); setSkipError(null); }; const openRestore = (item) => { setRestoreOccurrenceTarget(item); setRestoreOccurrenceError(null); };
+  return { skipMutation, restoreOccurrenceMutation, skipTarget, setSkipTarget, skipError, restoreOccurrenceTarget, setRestoreOccurrenceTarget, restoreOccurrenceError, skipOccurrence, restoreSkippedOccurrence, openSkip, openRestore };
+};
 
 const RecurringPage = () => {
-  const [period, setPeriod] = useState(currentMonthInJakarta());
-  const resource = useApiResource("recurring.list", { period });
-  const { bootstrap, refreshOverview, invalidate } = useFinance();
-  const { user } = useAuth();
-  const { notify } = useFeedback();
-  const createMutation = useGuardedMutation();
-  const paymentMutation = useGuardedMutation();
-  const [message, setMessage] = useState(null);
-  const [form, setForm] = useState({ name: "", kind: "expense", expected_amount: "", due_day: 20, category_id: "", default_account_id: "", payment_method: "transfer", frequency: "monthly", start_date: todayInJakarta(), auto_debit: false });
-  const [payment, setPayment] = useState({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
-  const [paymentState, setPaymentState] = useState({ status: "idle", error: null });
-  const [reverseTarget, setReverseTarget] = useState(null);
-  const [reverseState, setReverseState] = useState({ status: "idle", error: null });
-  const [editRule, setEditRule] = useState(null);
-  const [editState, setEditState] = useState({ status: "idle", error: null });
-  const [archiveRuleTarget, setArchiveRuleTarget] = useState(null);
-  const skipMutation = useGuardedMutation();
-  const restoreOccurrenceMutation = useGuardedMutation();
-  const [skipTarget, setSkipTarget] = useState(null);
-  const [skipError, setSkipError] = useState(null);
-  const [restoreOccurrenceTarget, setRestoreOccurrenceTarget] = useState(null);
-  const [restoreOccurrenceError, setRestoreOccurrenceError] = useState(null);
-
-  const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
-  const categories = bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === form.kind) || [];
-  const editCategories = bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === editRule?.kind) || [];
-  const paymentAccounts = filterByOwnership(accounts, payment.item);
-
-  const createRule = (event) => {
-    event.preventDefault();
-    setMessage(null);
-    return createMutation.run(async () => {
-      await createRecurringRule({ ...form, expected_amount: assertPositiveRupiah(form.expected_amount) }, {});
-      setForm((current) => ({ ...current, name: "", expected_amount: "" }));
-      notify({ message: "Jadwal rutin berhasil dibuat." });
-      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    }).catch((error) => setMessage({ type: "danger", text: error.message }));
-  };
-
-
-  const openRuleEditor = (item) => {
-    setEditRule({
-      recurring_rule_id: item.recurring_rule_id,
-      row_version: item.rule_row_version,
-      name: item.name,
-      kind: item.kind,
-      expected_amount: String(item.expected_amount || ""),
-      frequency: item.frequency,
-      due_day: Number(String(item.due_date || "").slice(-2) || 1),
-      category_id: item.category_id,
-      default_account_id: item.default_account_id,
-      payment_method: item.payment_method || "transfer",
-      auto_debit: Boolean(item.auto_debit),
-      start_date: item.start_date || todayInJakarta(),
-      end_date: item.end_date || "",
-      priority: item.priority || "normal",
-      status: item.rule_status || "active",
-    });
-    setEditState({ status: "idle", error: null });
-  };
-
-  const saveRule = async (event) => {
-    event.preventDefault();
-    if (!editRule) return;
-    setEditState({ status: "submitting", error: null });
-    try {
-      await updateRecurringRule({ ...editRule, expected_amount: assertPositiveRupiah(editRule.expected_amount) }, { rowVersion: editRule.row_version });
-      setEditRule(null);
-      setEditState({ status: "idle", error: null });
-      notify({ message: "Aturan rutin berhasil diperbarui." });
-      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    } catch (error) { setEditState({ status: "error", error }); }
-  };
-
-  const archiveRule = async (reason) => {
-    if (!archiveRuleTarget) return;
-    setEditState({ status: "submitting", error: null });
-    try {
-      await archiveRecurringRule({
-        recurring_rule_id: archiveRuleTarget.recurring_rule_id,
-        row_version: archiveRuleTarget.rule_row_version,
-        reason,
-      }, { rowVersion: archiveRuleTarget.rule_row_version });
-      setArchiveRuleTarget(null);
-      setEditState({ status: "idle", error: null });
-      notify({ message: "Aturan rutin berhasil diarsipkan. Transaksi historis tetap tersimpan." });
-      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    } catch (error) { setEditState({ status: "error", error }); }
-  };
-
-  const openPayment = (item) => {
-    setPayment({ item, account_id: item.default_account_id || "", amount: String(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""), transaction_date: todayInJakarta() });
-    setPaymentState({ status: "idle", error: null });
-  };
-
-  const reversePayment = async (reason) => {
-    if (!reverseTarget) return;
-    const transactionIds = String(reverseTarget.transaction_ids || "").split(",").map((value) => value.trim()).filter(Boolean);
-    const transactionId = transactionIds.at(-1);
-    if (!transactionId) return;
-    setReverseState({ status: "submitting", error: null });
-    try {
-      await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version });
-      setReverseTarget(null);
-      setReverseState({ status: "idle", error: null });
-      notify({ message: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." });
-      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    } catch (error) { setReverseState({ status: "error", error }); }
-  };
-
-  const skipOccurrence = (reason) => {
-    if (!skipTarget) return Promise.resolve();
-    setSkipError(null);
-    return skipMutation.run(async () => {
-      await cancelRecurringOccurrence({ occurrence_id: skipTarget.occurrence_id, row_version: skipTarget.row_version, reason }, { rowVersion: skipTarget.row_version });
-      setSkipTarget(null);
-      notify({ message: "Periode rutin dilewati. Ledger dan saldo tidak berubah.", tone: "info" });
-      invalidate(["recurring.list", "app.initialState"]);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    }).catch((error) => setSkipError(error));
-  };
-
-  const restoreSkippedOccurrence = (reason) => {
-    if (!restoreOccurrenceTarget) return Promise.resolve();
-    setRestoreOccurrenceError(null);
-    return restoreOccurrenceMutation.run(async () => {
-      await restoreRecurringOccurrence({ occurrence_id: restoreOccurrenceTarget.occurrence_id, row_version: restoreOccurrenceTarget.row_version, reason }, { rowVersion: restoreOccurrenceTarget.row_version });
-      setRestoreOccurrenceTarget(null);
-      notify({ message: "Periode rutin berhasil dipulihkan.", tone: "info" });
-      invalidate(["recurring.list", "app.initialState"]);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    }).catch((error) => setRestoreOccurrenceError(error));
-  };
-
-  const completeOccurrence = (event) => {
-    event.preventDefault();
-    if (!payment.item) return;
-    setPaymentState({ status: "submitting", error: null });
-    return paymentMutation.run(async () => {
-      await payRecurringOccurrence({
-        occurrence_id: payment.item.occurrence_id,
-        row_version: payment.item.row_version,
-        account_id: payment.account_id,
-        amount: assertPositiveRupiah(payment.amount),
-        transaction_date: payment.transaction_date,
-      }, { rowVersion: payment.item.row_version });
-      setPayment({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
-      setPaymentState({ status: "idle", error: null });
-      notify({ message: "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." });
-      invalidate(["recurring.list", "transactions.list", "reports.monthly", "app.initialState"]);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    }).catch((error) => setPaymentState({ status: "error", error }));
-  };
-
-  if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
-  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
-  const items = resource.data?.items || [];
-  const expenses = items.filter((item) => item.kind === "expense");
-  const income = items.filter((item) => item.kind === "income");
-
-  const renderItems = (list) => list.map((item) => (
-    <article className="schedule-item" key={item.occurrence_id}>
-      <div className="schedule-item__date"><FiCalendar /><time>{item.due_date}</time></div>
-      <div><h3>{item.name}</h3><p>Rencana <Money value={item.expected_amount} />{item.actual_amount ? <> · aktual <Money value={item.actual_amount} /></> : null}</p></div>
-      <StatusBadge status={item.status} />
-      <div className="button-group">
-        {item.status === "paid" || item.status === "received" ? <FiCheckCircle className="schedule-item__done" aria-label="Selesai" /> : item.can_pay ? <Button onClick={() => openPayment(item)}>Catat aktual</Button> : null}
-        {item.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); }}>Batalkan aktual terakhir</Button> : null}
-        {item.can_cancel_occurrence ? <Button onClick={() => { setSkipTarget(item); setSkipError(null); }}>Lewati periode</Button> : null}
-        {item.can_restore_occurrence ? <Button icon={FiRotateCcw} onClick={() => { setRestoreOccurrenceTarget(item); setRestoreOccurrenceError(null); }}>Pulihkan periode</Button> : null}
-        {item.can_edit_rule ? <button type="button" className="icon-button" onClick={() => openRuleEditor(item)} aria-label={`Edit aturan ${item.name}`}><FiEdit2 /></button> : null}
-        {item.can_archive_rule ? <button type="button" className="icon-button icon-button--danger" onClick={() => { setArchiveRuleTarget(item); setEditState({ status: "idle", error: null }); }} aria-label={`Arsipkan aturan ${item.name}`}><FiArchive /></button> : null}
-      </div>
-    </article>
-  ));
-
-  return (
-    <div className="page-stack">
-      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      <PageHeader title="Jadwal rutin" description="Kelola tagihan, pengeluaran tetap, pemasukan rutin, dan penerimaan yang diharapkan tanpa mencampurnya dengan transaksi aktual." actions={<label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label>} />
-      {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
-      <section className="two-column-grid">
-        <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Pengeluaran tetap</p><h2>Tagihan periode ini</h2></div></div><div className="schedule-list">{expenses.length ? renderItems(expenses) : <p>Belum ada tagihan aktif pada periode ini.</p>}</div></Card>
-        <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Pemasukan tetap</p><h2>Penerimaan yang diharapkan</h2></div></div><div className="schedule-list">{income.length ? renderItems(income) : <p>Belum ada pemasukan rutin pada periode ini.</p>}</div></Card>
-      </section>
-
-      {user?.role === "owner" ? (
-        <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Aturan rutin</p><h2>Tambah tagihan atau pemasukan tetap</h2></div></div>
-          <form className="form-grid" onSubmit={createRule}>
-            <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-            <label className="field"><span>Jenis</span><select value={form.kind} onChange={(event) => setForm((current) => ({ ...current, kind: event.target.value, category_id: "" }))}><option value="expense">Pengeluaran tetap</option><option value="income">Pemasukan tetap</option></select></label>
-            <MoneyInput id="recurring-amount" label="Nominal perkiraan" value={form.expected_amount} onChange={(value) => setForm((current) => ({ ...current, expected_amount: value }))} />
-            <label className="field"><span>Frekuensi</span><select value={form.frequency} onChange={(event) => setForm((current) => ({ ...current, frequency: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="bimonthly">Dua bulanan</option><option value="quarterly">Tiga bulanan</option><option value="semiannual">Semester</option><option value="annual">Tahunan</option></select></label>
-            <label className="field"><span>Tanggal jatuh tempo/masuk</span><input type="number" min="1" max="31" value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: Number(event.target.value) }))} /><small>Untuk jadwal mingguan/harian, pola mengikuti tanggal mulai.</small></label>
-            <label className="field"><span>Kategori</span><select required value={form.category_id} onChange={(event) => setForm((current) => ({ ...current, category_id: event.target.value }))}><option value="">Pilih kategori</option>{categories.map((item) => <option value={item.category_id} key={item.category_id}>{item.name}</option>)}</select></label>
-            <label className="field"><span>Rekening default</span><select required value={form.default_account_id} onChange={(event) => setForm((current) => ({ ...current, default_account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>
-            <label className="field"><span>Metode</span><select value={form.payment_method} onChange={(event) => setForm((current) => ({ ...current, payment_method: event.target.value }))}><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="autodebit">Auto-debit</option><option value="ewallet">E-wallet</option></select></label>
-            <label className="field"><span>Tanggal mulai</span><input required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
-            <label className="checkbox-field form-grid__full"><input type="checkbox" checked={form.auto_debit} onChange={(event) => setForm((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Biasanya dibayar otomatis (hanya penanda, aplikasi tidak menarik uang)</span></label>
-            <div className="notice notice--info form-grid__full"><span>Contoh cicilan: pindahkan dana BNI/BCA ke BTN sebagai Transfer. Jadwal ini baru mengurangi saldo BTN setelah pembayaran aktual disimpan.</span></div>
-            <div className="form-grid__full form-actions"><Button variant="primary" icon={FiPlus} type="submit" loading={createMutation.busy}>Tambah jadwal</Button></div>
-          </form>
-        </Card>
-      ) : null}
-
-      <div className="notice notice--info"><strong>Google Calendar adalah pengingat.</strong><span>Status dibayar atau diterima hanya berubah setelah transaksi aktual tersimpan di ledger.</span></div>
-
-      <Modal
-        open={Boolean(payment.item)}
-        onClose={() => paymentState.status !== "submitting" && setPayment((current) => ({ ...current, item: null }))}
-        title={payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual"}
-        description={payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : ""}
-        footer={<><Button type="button" disabled={paymentState.status === "submitting"} onClick={() => setPayment((current) => ({ ...current, item: null }))}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={paymentState.status === "submitting"}>Simpan aktual</Button></>}
-      >
-        <form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}>
-          <MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(value) => setPayment((current) => ({ ...current, amount: value }))} />
-          <label className="field"><span>{payment.item?.kind === "income" ? "Rekening penerima" : "Rekening pembayaran"} *</span><select required value={payment.account_id} onChange={(event) => setPayment((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{paymentAccounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label>
-          <label className="field"><span>Tanggal aktual *</span><input required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value }))} /></label>
-          {paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}
-        </form>
-      </Modal>
-
-      <Modal
-        open={Boolean(editRule)}
-        onClose={() => editState.status !== "submitting" && setEditRule(null)}
-        title="Edit aturan rutin"
-        description={editRule ? `${editRule.name} · perubahan berlaku untuk occurrence yang dibuat berikutnya.` : ""}
-        footer={<><Button onClick={() => setEditRule(null)} disabled={editState.status === "submitting"}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}
-      >
-        <form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}>
-          <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={editRule?.name || ""} onChange={(event) => setEditRule((current) => ({ ...current, name: event.target.value }))} /></label>
-          <MoneyInput id="edit-recurring-amount" label="Nominal perkiraan" value={editRule?.expected_amount || ""} onChange={(value) => setEditRule((current) => ({ ...current, expected_amount: value }))} />
-          <label className="field"><span>Frekuensi</span><select value={editRule?.frequency || "monthly"} onChange={(event) => setEditRule((current) => ({ ...current, frequency: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="bimonthly">Dua bulanan</option><option value="quarterly">Tiga bulanan</option><option value="semiannual">Semester</option><option value="annual">Tahunan</option></select></label>
-          <label className="field"><span>Tanggal jatuh tempo/masuk</span><input type="number" min="1" max="31" value={editRule?.due_day || 1} onChange={(event) => setEditRule((current) => ({ ...current, due_day: Number(event.target.value) }))} /></label>
-          <label className="field"><span>Kategori</span><select required value={editRule?.category_id || ""} onChange={(event) => setEditRule((current) => ({ ...current, category_id: event.target.value }))}><option value="">Pilih kategori</option>{editCategories.map((item) => <option value={item.category_id} key={item.category_id}>{item.name}</option>)}</select></label>
-          <label className="field"><span>Rekening default</span><select required value={editRule?.default_account_id || ""} onChange={(event) => setEditRule((current) => ({ ...current, default_account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>
-          <label className="field"><span>Metode</span><select value={editRule?.payment_method || "transfer"} onChange={(event) => setEditRule((current) => ({ ...current, payment_method: event.target.value }))}><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="autodebit">Auto-debit</option><option value="ewallet">E-wallet</option></select></label>
-          <label className="field"><span>Tanggal mulai</span><input required type="date" value={editRule?.start_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, start_date: event.target.value }))} /></label>
-          <label className="field"><span>Tanggal akhir</span><input type="date" value={editRule?.end_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, end_date: event.target.value }))} /></label>
-          <label className="checkbox-field form-grid__full"><input type="checkbox" checked={Boolean(editRule?.auto_debit)} onChange={(event) => setEditRule((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Penanda auto-debit (tidak mengubah saldo sebelum aktual disimpan)</span></label>
-          {editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}
-        </form>
-      </Modal>
-
-      <ConfirmationModal
-        open={Boolean(archiveRuleTarget)}
-        title="Arsipkan aturan rutin?"
-        description={archiveRuleTarget ? `${archiveRuleTarget.name} tidak akan membuat occurrence baru. Riwayat pembayaran tetap tersimpan.` : ""}
-        confirmLabel="Arsipkan aturan"
-        reasonLabel="Alasan pengarsipan"
-        requireReason
-        busy={editState.status === "submitting"}
-        error={editState.error}
-        onCancel={() => editState.status !== "submitting" && setArchiveRuleTarget(null)}
-        onConfirm={archiveRule}
-      />
-
-      <ConfirmationModal
-        open={Boolean(skipTarget)}
-        title="Lewati periode ini?"
-        description={skipTarget ? `${skipTarget.name} untuk ${skipTarget.due_date} ditandai dilewati. Tidak ada transaksi dibuat dan saldo tidak berubah. Periode berikutnya tetap aktif.` : ""}
-        confirmLabel="Lewati periode"
-        reasonLabel="Alasan melewati periode"
-        requireReason
-        busy={skipMutation.busy}
-        error={skipError}
-        onCancel={() => !skipMutation.busy && setSkipTarget(null)}
-        onConfirm={skipOccurrence}
-      />
-
-      <ConfirmationModal
-        open={Boolean(restoreOccurrenceTarget)}
-        title="Pulihkan periode yang dilewati?"
-        description={restoreOccurrenceTarget ? `${restoreOccurrenceTarget.name} untuk ${restoreOccurrenceTarget.due_date} akan kembali menjadi jadwal aktif tanpa membuat transaksi.` : ""}
-        confirmLabel="Pulihkan periode"
-        reasonLabel="Alasan pemulihan"
-        requireReason
-        busy={restoreOccurrenceMutation.busy}
-        error={restoreOccurrenceError}
-        onCancel={() => !restoreOccurrenceMutation.busy && setRestoreOccurrenceTarget(null)}
-        onConfirm={restoreSkippedOccurrence}
-      />
-
-      <ConfirmationModal
-        open={Boolean(reverseTarget)}
-        title="Batalkan aktual terakhir?"
-        description={reverseTarget ? `${reverseTarget.name} · transaksi ledger terkait akan dibatalkan dan status jadwal dihitung ulang.` : ""}
-        confirmLabel="Batalkan aktual"
-        reasonLabel="Alasan pembatalan"
-        requireReason
-        busy={reverseState.status === "submitting"}
-        error={reverseState.error}
-        onCancel={() => reverseState.status !== "submitting" && setReverseTarget(null)}
-        onConfirm={reversePayment}
-      />
-    </div>
-  );
+  const [period, setPeriod] = useState(currentMonthInJakarta()); const resource = useApiResource("recurring.list", { period }); const { bootstrap, refreshOverview, invalidate } = useFinance(); const { user } = useAuth(); const { notify } = useFeedback();
+  const shared = { resource, refreshOverview, invalidate, notify }; const rules = useRecurringRuleActions(shared); const payments = useRecurringPaymentActions(shared); const recovery = useRecurringOccurrenceRecovery(shared);
+  const accounts = activeAccounts(bootstrap); const categories = activeCategories(bootstrap, rules.form.kind); const editCategories = activeCategories(bootstrap, rules.editRule?.kind); const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
+  if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />; if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  const actions = { openPayment: payments.openPayment, openReverse: payments.openReverse, openSkip: recovery.openSkip, openRestore: recovery.openRestore, openRuleEditor: rules.openRuleEditor, openArchive: rules.openArchive };
+  const confirmations = { archiveRuleTarget: rules.archiveRuleTarget, setArchiveRuleTarget: rules.setArchiveRuleTarget, editState: rules.editState, applyRuleLifecycle: rules.applyRuleLifecycle, skipTarget: recovery.skipTarget, setSkipTarget: recovery.setSkipTarget, skipMutation: recovery.skipMutation, skipError: recovery.skipError, skipOccurrence: recovery.skipOccurrence, restoreOccurrenceTarget: recovery.restoreOccurrenceTarget, setRestoreOccurrenceTarget: recovery.setRestoreOccurrenceTarget, restoreOccurrenceMutation: recovery.restoreOccurrenceMutation, restoreOccurrenceError: recovery.restoreOccurrenceError, restoreSkippedOccurrence: recovery.restoreSkippedOccurrence, reverseTarget: payments.reverseTarget, setReverseTarget: payments.setReverseTarget, reverseState: payments.reverseState, reversePayment: payments.reversePayment };
+  return <div className="page-stack"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} /><PageHeader title="Jadwal rutin" description="Kelola tagihan, pengeluaran tetap, pemasukan rutin, dan penerimaan yang diharapkan tanpa mencampurnya dengan transaksi aktual." actions={<label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} /></label>} />{rules.message ? <div className={`notice notice--${rules.message.type}`} role="status">{rules.message.text}</div> : null}<SchedulePanels items={resource.data?.items || []} actions={actions} /><CreateRulePanel visible={user?.role === "owner"} form={rules.form} setForm={rules.setForm} categories={categories} accounts={accounts} createRule={rules.createRule} createMutation={rules.createMutation} /><div className="notice notice--info"><strong>Google Calendar adalah pengingat.</strong><span>Status dibayar atau diterima hanya berubah setelah transaksi aktual tersimpan di ledger.</span></div><PaymentModal payment={payments.payment} setPayment={payments.setPayment} paymentState={payments.paymentState} paymentMutation={payments.paymentMutation} paymentAccounts={paymentAccounts} completeOccurrence={payments.completeOccurrence} /><EditRuleModal editRule={rules.editRule} setEditRule={rules.setEditRule} editState={rules.editState} saveRule={rules.saveRule} editCategories={editCategories} accounts={accounts} /><RecurringConfirmations {...confirmations} /></div>;
 };
 
 export default RecurringPage;

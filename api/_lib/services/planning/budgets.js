@@ -65,6 +65,80 @@ export const upsertBudget = async (db, context) => {
   await context.enqueueMirror?.(db, "budget", next.budget_id);
   return publicRow(next);
 };
+const budgetLifecycleImpact = async (db, current) => {
+  const transactionCount = current.category_id
+    ? await db.one(`SELECT COUNT(*) AS count FROM transactions
+        WHERE category_id=?
+          AND substr(transaction_date,1,7)=?
+          AND scope=?
+          AND COALESCE(owner_user_id,'')=COALESCE(?,'')`, [current.category_id, current.period_key, current.scope, current.owner_user_id])
+    : await db.one(`SELECT COUNT(*) AS count FROM transactions
+        WHERE envelope_period_id IN (
+          SELECT envelope_period_id FROM envelope_periods
+          WHERE envelope_rule_id=?
+        )
+          AND substr(transaction_date,1,7)=?
+          AND scope=?
+          AND COALESCE(owner_user_id,'')=COALESCE(?,'')`, [current.envelope_rule_id, current.period_key, current.scope, current.owner_user_id]);
+  const closures = await db.one("SELECT COUNT(*) AS count FROM period_closures WHERE period_key=?", [current.period_key]);
+  const dependencies = {
+    transactions: Number(transactionCount?.count || 0),
+    period_closures: Number(closures?.count || 0)
+  };
+  const canDeleteUnused = current.status === "active"
+    && dependencies.transactions === 0
+    && dependencies.period_closures === 0;
+  return {
+    budget_id: current.budget_id,
+    status: current.status,
+    row_version: current.row_version,
+    canDeleteUnused,
+    canArchive: current.status === "active",
+    dependencies,
+    blockers: canDeleteUnused ? [] : [
+      ...(dependencies.transactions ? ["Anggaran sudah berada pada periode/kategori yang memiliki histori transaksi."] : []),
+      ...(dependencies.period_closures ? ["Periode anggaran sudah pernah ditutup dan merupakan histori perencanaan."] : [])
+    ]
+  };
+};
+
+export const previewBudgetLifecycle = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const current = await db.one("SELECT * FROM budgets WHERE budget_id=?", [p.budget_id]);
+  if (!current) throw appError("NOT_FOUND", "Anggaran tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? p.row_version);
+  return budgetLifecycleImpact(db, current);
+};
+
+export const deleteUnusedBudget = async (db, context) => {
+  assertOwner(context.actor);
+  const p = context.payload || {};
+  const current = await db.one("SELECT * FROM budgets WHERE budget_id=? AND status='active'", [p.budget_id]);
+  if (!current) throw appError("NOT_FOUND", "Anggaran aktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? p.row_version);
+  const reason = sanitizeText(p.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan anggaran wajib diisi.", 400);
+  const impact = await budgetLifecycleImpact(db, current);
+  if (!impact.canDeleteUnused) throw appError("BUDGET_HAS_HISTORY", "Anggaran sudah menjadi bagian histori dan hanya dapat diarsipkan.", 409, { lifecycle: impact });
+  await appendAudit(db, context, {
+    entityType: "budget",
+    entityId: current.budget_id,
+    previous: publicRow(current),
+    next: {
+      deleted: true,
+      deletion_type: "unused_budget_only",
+      reason,
+      dependencies: impact.dependencies,
+      audit_preserved: true
+    }
+  });
+  const deleted = await db.execute("DELETE FROM budgets WHERE budget_id=? AND row_version=? AND status='active'", [current.budget_id, current.row_version]);
+  if (deleted.rowsAffected !== 1) throw appError("CONFLICT", "Anggaran berubah di perangkat lain.", 409);
+  await context.enqueueMirror?.(db, "budget", current.budget_id);
+  return { budget_id: current.budget_id, deleted: true, audit_preserved: true };
+};
+
 export const archiveBudget = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};

@@ -24,9 +24,10 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
   for (const action of [
     "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
     "accounts.archive", "accounts.restore", "accounts.deleteUnused",
-    "categories.archive", "categories.restore", "users.deactivate", "users.reactivate",
-    "envelopes.move", "envelopes.archiveRule", "envelopes.restoreRule", "envelopes.reverseMovement",
-    "recurring.archiveRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.move", "goals.restore", "periods.close",
+    "categories.archive", "categories.restore", "categories.deleteUnused", "users.deactivate", "users.reactivate",
+    "envelopes.move", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
+    "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.restoreRule",
+    "budgets.deleteUnused", "budgets.restore", "goals.archive", "goals.deleteUnused", "goals.move", "goals.restore", "periods.close",
     "notifications.updatePreference", "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply",
   ]) assert.equal(requiresIdempotencyKey(action), true, action);
   assert.equal(requiresIdempotencyKey("integrity.run"), true);
@@ -35,8 +36,10 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
 test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", () => {
   const ownerOnly = [
     "archive.list", "accounts.previewLifecycle", "accounts.restore", "accounts.deleteUnused",
-    "categories.previewArchive", "categories.restore", "transactions.restore", "users.reactivate", "periods.previewClose",
-    "envelopes.archiveRule", "envelopes.restoreRule", "recurring.archiveRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.restoreRule", "budgets.restore", "goals.archive", "goals.restore",
+    "categories.previewArchive", "categories.restore", "categories.deleteUnused", "transactions.restore", "users.reactivate", "periods.previewClose",
+    "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule",
+    "recurring.previewRuleLifecycle", "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.restoreRule",
+    "budgets.previewLifecycle", "budgets.deleteUnused", "budgets.restore", "goals.previewLifecycle", "goals.archive", "goals.deleteUnused", "goals.restore",
   ];
   for (const action of ownerOnly) {
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
@@ -46,7 +49,9 @@ test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", 
     assert.equal(ACTION_POLICIES[forbidden], undefined, `${forbidden} tidak boleh terdaftar`);
     assert.equal(ACTION_REGISTRY[forbidden], undefined, `${forbidden} tidak boleh memiliki handler`);
   }
-  assert.equal(ACTION_POLICIES["accounts.deleteUnused"].maintenanceAllowed, false);
+  for (const action of ["accounts.deleteUnused", "categories.deleteUnused", "envelopes.deleteUnusedRule", "recurring.deleteUnusedRule", "budgets.deleteUnused", "goals.deleteUnused"]) {
+    assert.equal(ACTION_POLICIES[action].maintenanceAllowed, false);
+  }
 });
 
 

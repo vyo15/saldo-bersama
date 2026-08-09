@@ -194,29 +194,17 @@ const reconciliationAlerts = async (db, actor, accounts) => {
   return alerts;
 };
 
-const buildFinancialAlerts = async (db, context, {
-  period,
-  historical,
-  accounts,
-  envelopes,
-  recurring,
-  goals,
-  budgets,
-  unallocatedCount,
-}) => {
-  if (historical) return [];
-  const alerts = [];
-  if (unallocatedCount > 0) {
-    alerts.push({
-      id: `unallocated:${period}`,
-      type: "unallocated_expense",
-      severity: "warning",
-      title: `${unallocatedCount} transaksi belum dialokasikan`,
-      message: "Lengkapi kantong sebelum menutup periode agar sisa dana dapat dipercaya.",
-      targetPath: "/transaksi",
-    });
-  }
+const unallocatedAlerts = (period, count) => count > 0 ? [{
+  id: `unallocated:${period}`,
+  type: "unallocated_expense",
+  severity: "warning",
+  title: `${count} transaksi belum dialokasikan`,
+  message: "Lengkapi kantong sebelum menutup periode agar sisa dana dapat dipercaya.",
+  targetPath: "/transaksi",
+}] : [];
 
+const budgetAlerts = (budgets) => {
+  const alerts = [];
   for (const item of budgets) {
     const amount = Number(item.amount || 0);
     if (!amount) continue;
@@ -232,7 +220,11 @@ const buildFinancialAlerts = async (db, context, {
       targetPath: "/anggaran",
     });
   }
+  return alerts;
+};
 
+const envelopeAlerts = (envelopes) => {
+  const alerts = [];
   for (const item of envelopes) {
     const allocated = Number(item.allocated_amount || 0);
     if (!allocated) continue;
@@ -249,46 +241,62 @@ const buildFinancialAlerts = async (db, context, {
       targetPath: "/alokasi",
     });
   }
+  return alerts;
+};
 
+const recurringAlerts = (recurring) => {
+  const alerts = [];
   const today = todayJakarta();
   for (const item of recurring) {
     if (["paid", "received", "cancelled"].includes(item.status)) continue;
     const dueInDays = dayDifference(today, item.due_date);
     if (item.status === "overdue" || dueInDays < 0) {
-      alerts.push({
-        id: `recurring-overdue:${item.occurrence_id}`,
-        type: "recurring_overdue",
-        severity: "danger",
-        title: `${item.name} terlambat`,
-        message: `Jatuh tempo ${item.due_date} dan belum diselesaikan.`,
-        targetPath: "/tagihan",
-      });
-    } else if (dueInDays <= 7) {
-      alerts.push({
-        id: `recurring-due:${item.occurrence_id}`,
-        type: "recurring_due",
-        severity: "warning",
-        title: `${item.name} segera jatuh tempo`,
-        message: `Jatuh tempo ${item.due_date}.`,
-        targetPath: "/tagihan",
-      });
+      alerts.push({ id: `recurring-overdue:${item.occurrence_id}`, type: "recurring_overdue", severity: "danger", title: `${item.name} terlambat`, message: `Jatuh tempo ${item.due_date} dan belum diselesaikan.`, targetPath: "/tagihan" });
+      continue;
+    }
+    if (dueInDays <= 7) {
+      alerts.push({ id: `recurring-due:${item.occurrence_id}`, type: "recurring_due", severity: "warning", title: `${item.name} segera jatuh tempo`, message: `Jatuh tempo ${item.due_date}.`, targetPath: "/tagihan" });
     }
   }
+  return alerts;
+};
 
-  for (const item of goals) {
-    if (item.pace_status !== "behind") continue;
-    alerts.push({
-      id: `goal-behind:${item.goal_id}`,
-      type: "goal_behind",
-      severity: "warning",
-      title: `${item.name} tertinggal dari rencana`,
-      message: `Perkiraan kebutuhan setoran bulanan ${Number(item.required_monthly_amount || 0)} Rupiah.`,
-      targetPath: "/target",
-    });
-  }
+const goalAlerts = (goals) => goals
+  .filter((item) => item.pace_status === "behind")
+  .map((item) => ({
+    id: `goal-behind:${item.goal_id}`,
+    type: "goal_behind",
+    severity: "warning",
+    title: `${item.name} tertinggal dari rencana`,
+    message: `Perkiraan kebutuhan setoran bulanan ${Number(item.required_monthly_amount || 0)} Rupiah.`,
+    targetPath: "/target",
+  }));
 
-  alerts.push(...await reconciliationAlerts(db, context.actor, accounts));
-  return alerts.sort((left, right) => (ALERT_PRIORITY[right.severity] || 0) - (ALERT_PRIORITY[left.severity] || 0) || left.title.localeCompare(right.title, "id"));
+const sortFinancialAlerts = (alerts) => alerts.sort((left, right) => (
+  (ALERT_PRIORITY[right.severity] || 0) - (ALERT_PRIORITY[left.severity] || 0)
+  || left.title.localeCompare(right.title, "id")
+));
+
+const buildFinancialAlerts = async (db, context, {
+  period,
+  historical,
+  accounts,
+  envelopes,
+  recurring,
+  goals,
+  budgets,
+  unallocatedCount,
+}) => {
+  if (historical) return [];
+  const reconciliation = await reconciliationAlerts(db, context.actor, accounts);
+  return sortFinancialAlerts([
+    ...unallocatedAlerts(period, unallocatedCount),
+    ...budgetAlerts(budgets),
+    ...envelopeAlerts(envelopes),
+    ...recurringAlerts(recurring),
+    ...goalAlerts(goals),
+    ...reconciliation,
+  ]);
 };
 
 export const dashboardOverview = async (db, context) => {

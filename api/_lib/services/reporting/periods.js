@@ -115,32 +115,40 @@ export const listPeriods = async db => {
   };
 };
 
-const periodCloseImpact = async (db, period) => {
-  const current = todayJakarta().slice(0, 7);
-  const bounds = monthBounds(period);
+const assertPeriodCanBePreviewed = (period, current, bounds) => {
   if (period > current) throw appError("FUTURE_PERIOD", "Periode masa depan belum dapat ditutup.", 400);
-  if (period === current && todayJakarta() < bounds.end) throw appError("PERIOD_NOT_ENDED", "Periode berjalan baru dapat ditutup pada hari terakhir bulan.", 409, {
-    earliestCloseDate: bounds.end
-  });
-  const existing = await db.one("SELECT * FROM period_closures WHERE period_key=? AND scope='shared'", [period]);
-  if (existing?.status === "closed") throw appError("PERIOD_ALREADY_CLOSED", "Periode sudah ditutup.", 409);
-  const [integrity, unallocated, statistics] = await Promise.all([
-    integrityIssues(db),
-    db.one("SELECT COUNT(*) AS count FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?", [period]),
-    db.one(`SELECT
+  if (period === current && todayJakarta() < bounds.end) {
+    throw appError("PERIOD_NOT_ENDED", "Periode berjalan baru dapat ditutup pada hari terakhir bulan.", 409, { earliestCloseDate: bounds.end });
+  }
+};
+
+const periodStatistics = async (db, period) => Promise.all([
+  integrityIssues(db),
+  db.one("SELECT COUNT(*) AS count FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?", [period]),
+  db.one(`SELECT
       COUNT(*) AS transaction_count,
       SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active_count,
       SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
       COALESCE(SUM(CASE WHEN status='active' AND transaction_type IN ('income','refund') THEN amount ELSE 0 END),0) AS income_total,
       COALESCE(SUM(CASE WHEN status='active' AND transaction_type='expense' THEN amount ELSE 0 END),0) AS expense_total
       FROM transactions WHERE substr(transaction_date,1,7)=?`, [period]),
-  ]);
+]);
+
+const closeIssues = (integrity, unallocated, period) => {
   const issues = [...integrity];
-  if (Number(unallocated?.count || 0)) issues.push({
-    code: "UNALLOCATED_EXPENSE",
-    count: Number(unallocated.count),
-    periodKey: period
-  });
+  const count = Number(unallocated?.count || 0);
+  if (count) issues.push({ code: "UNALLOCATED_EXPENSE", count, periodKey: period });
+  return issues;
+};
+
+const periodCloseImpact = async (db, period) => {
+  const current = todayJakarta().slice(0, 7);
+  const bounds = monthBounds(period);
+  assertPeriodCanBePreviewed(period, current, bounds);
+  const existing = await db.one("SELECT * FROM period_closures WHERE period_key=? AND scope='shared'", [period]);
+  if (existing?.status === "closed") throw appError("PERIOD_ALREADY_CLOSED", "Periode sudah ditutup.", 409);
+  const [integrity, unallocated, statistics] = await periodStatistics(db, period);
+  const issues = closeIssues(integrity, unallocated, period);
   return {
     periodKey: period,
     canClose: issues.length === 0,

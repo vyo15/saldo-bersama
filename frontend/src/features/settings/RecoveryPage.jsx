@@ -23,6 +23,49 @@ const RECOVERY_TYPES = Object.freeze({
   budget: { action: "budgets.restore", idKey: "budget_id", label: "Anggaran" },
 });
 
+const archiveGroups = (data = {}) => [
+  ["account", data.accounts || [], (item) => accountDisplayLabel(item), () => "Rekening diarsipkan"],
+  ["category", data.categories || [], (item) => item.name, (item) => `Kategori · ${categoryTypeLabel(item.transaction_type)}`],
+  ["envelopeRule", data.envelopeRules || [], (item) => item.name, () => "Kantong/alokasi diarsipkan"],
+  ["goal", data.goals || [], (item) => item.name, () => "Target tabungan diarsipkan"],
+  ["recurringRule", data.recurringRules || [], (item) => item.name, () => "Aturan rutin diarsipkan"],
+  ["budget", data.budgets || [], (item) => item.name, (item) => `Anggaran ${item.period_key} diarsipkan`],
+];
+
+const archivedItemId = (type, item) => item[RECOVERY_TYPES[type].idKey];
+
+const ArchiveItems = ({ data, openRestore }) => {
+  const groups = archiveGroups(data);
+  const empty = groups.every(([, items]) => items.length === 0);
+  return <div className="compact-list compact-list--stacked">{groups.flatMap(([type, items, title, detail]) => items.map((item) => <div key={`${type}-${archivedItemId(type, item)}`}><span><strong>{title(item)}</strong><small>{detail(item)}</small></span><Button icon={FiRotateCcw} type="button" onClick={() => openRestore(type, item)}>Pulihkan</Button></div>))}{empty ? <p className="empty-inline-message">Belum ada data dalam arsip.</p> : null}</div>;
+};
+
+const ArchivePanel = ({ resource, openRestore }) => <Card className="panel">
+  <div className="panel__header"><div><p className="eyebrow">Data arsip</p><h2>Pulihkan satu per satu</h2><p>Data yang pernah dipakai tidak dihapus permanen. Purge umum tetap dinonaktifkan.</p></div><FiArchive aria-hidden="true" /></div>
+  {resource.status === "loading" ? <p className="empty-inline-message" role="status">Memuat data arsip...</p> : null}
+  {resource.status === "error" ? <div className="notice notice--danger" role="alert"><span>{resource.error?.message || "Data arsip belum dapat dimuat."}</span><Button type="button" onClick={resource.reload}>Coba lagi</Button></div> : null}
+  {resource.status === "ready" ? <ArchiveItems data={resource.data} openRestore={openRestore} /> : null}
+</Card>;
+
+const RestorePanel = ({ backupFileId, setBackupFileId, restorePreview, setRestorePreview, restoreConfirmation, setRestoreConfirmation, restoreBusy, previewRestore, applyRestore }) => <Card className="panel">
+  <div className="panel__header"><div><p className="eyebrow">Restore guarded</p><h2>Pulihkan backup teknis Turso</h2><p>Excel dan Google Sheets tidak dapat dipakai untuk restore.</p></div><FiDownloadCloud aria-hidden="true" /></div>
+  <div className="form-grid">
+    <label className="field form-grid__full"><span>Google Drive file ID backup teknis</span><input value={backupFileId} onChange={(event) => { setBackupFileId(event.target.value); setRestorePreview(null); setRestoreConfirmation(""); }} /></label>
+    <div className="form-grid__full"><Button onClick={previewRestore} loading={restoreBusy && !restorePreview} disabled={!backupFileId.trim()}>Validasi dan preview</Button></div>
+    {restorePreview ? <div className="notice notice--warning form-grid__full"><span>Schema {restorePreview.schemaVersion} valid. Preview berlaku 10 menit.</span></div> : null}
+    {restorePreview ? <label className="field form-grid__full"><span>Ketik RESTORE SALDO BERSAMA</span><input value={restoreConfirmation} onChange={(event) => setRestoreConfirmation(event.target.value)} /></label> : null}
+    {restorePreview ? <div className="form-grid__full form-actions"><Button variant="primary" onClick={applyRestore} loading={restoreBusy} disabled={restoreConfirmation !== "RESTORE SALDO BERSAMA"}>Terapkan restore</Button></div> : null}
+  </div>
+</Card>;
+
+const RecoveryView = ({ resource, result, openRestore, restoreProps, archiveTarget, archiveState, setArchiveTarget, restoreArchivedItem }) => <OwnerSettingsGuard><section className={styles.pageContent} aria-labelledby="recovery-settings-title">
+  <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+  <div className={styles.pageHeading}><p className="eyebrow">Pemulihan data</p><h2 id="recovery-settings-title">Pulihkan item arsip atau backup teknis</h2><p>Gunakan pemulihan per item untuk salah arsip. Full restore hanya untuk insiden terverifikasi dan tetap melalui preview, safety backup, maintenance lock, apply atomik, integrity check, dan audit.</p></div>
+  <SettingsNotice result={result} /><ArchivePanel resource={resource} openRestore={openRestore} /><RestorePanel {...restoreProps} />
+  <div className="notice notice--warning"><FiShield aria-hidden="true" /><span>Jangan menjalankan full restore untuk kesalahan arsip biasa. Pilih item di atas agar dampak tetap terbatas.</span></div>
+  <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget ? `Pulihkan ${RECOVERY_TYPES[archiveTarget.type]?.label?.toLowerCase() || "data"}?` : "Pulihkan data?"} description={archiveTarget ? `${archiveTarget.item.name} akan aktif kembali setelah backend memeriksa dependensi, konflik, kepemilikan, dan row version terbaru.` : ""} confirmLabel="Pulihkan data" reasonLabel="Alasan pemulihan" requireReason tone="primary" busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={restoreArchivedItem} />
+</section></OwnerSettingsGuard>;
+
 const RecoveryPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -88,59 +131,9 @@ const RecoveryPage = () => {
     }
   };
 
-  return (
-    <OwnerSettingsGuard>
-      <section className={styles.pageContent} aria-labelledby="recovery-settings-title">
-        <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} />
-        <div className={styles.pageHeading}>
-          <p className="eyebrow">Pemulihan data</p>
-          <h2 id="recovery-settings-title">Pulihkan item arsip atau backup teknis</h2>
-          <p>Gunakan pemulihan per item untuk salah arsip. Full restore hanya untuk insiden terverifikasi dan tetap melalui preview, safety backup, maintenance lock, apply atomik, integrity check, dan audit.</p>
-        </div>
-        <SettingsNotice result={result} />
-        <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Data arsip</p><h2>Pulihkan satu per satu</h2><p>Data yang pernah dipakai tidak dihapus permanen. Purge umum tetap dinonaktifkan.</p></div><FiArchive aria-hidden="true" /></div>
-          {archiveResource.status === "loading" ? <p className="empty-inline-message" role="status">Memuat data arsip...</p> : null}
-          {archiveResource.status === "error" ? <div className="notice notice--danger" role="alert"><span>{archiveResource.error?.message || "Data arsip belum dapat dimuat."}</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}
-          {archiveResource.status === "ready" ? (
-            <div className="compact-list compact-list--stacked">
-              {(archiveResource.data?.accounts || []).map((account) => <div key={account.account_id}><span><strong>{accountDisplayLabel(account)}</strong><small>Rekening diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "account", item: account }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
-              {(archiveResource.data?.categories || []).map((category) => <div key={category.category_id}><span><strong>{category.name}</strong><small>Kategori · {categoryTypeLabel(category.transaction_type)}</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "category", item: category }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
-              {(archiveResource.data?.envelopeRules || []).map((rule) => <div key={rule.envelope_rule_id}><span><strong>{rule.name}</strong><small>Kantong/alokasi diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "envelopeRule", item: rule }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
-              {(archiveResource.data?.goals || []).map((goal) => <div key={goal.goal_id}><span><strong>{goal.name}</strong><small>Target tabungan diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "goal", item: goal }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
-              {(archiveResource.data?.recurringRules || []).map((rule) => <div key={rule.recurring_rule_id}><span><strong>{rule.name}</strong><small>Aturan rutin diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "recurringRule", item: rule }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
-              {(archiveResource.data?.budgets || []).map((budget) => <div key={budget.budget_id}><span><strong>{budget.name}</strong><small>Anggaran {budget.period_key} diarsipkan</small></span><Button icon={FiRotateCcw} type="button" onClick={() => { setArchiveTarget({ type: "budget", item: budget }); setArchiveState({ status: "idle", error: null }); }}>Pulihkan</Button></div>)}
-              {!archiveResource.data?.accounts?.length && !archiveResource.data?.categories?.length && !archiveResource.data?.envelopeRules?.length && !archiveResource.data?.goals?.length && !archiveResource.data?.recurringRules?.length && !archiveResource.data?.budgets?.length ? <p className="empty-inline-message">Belum ada data dalam arsip.</p> : null}
-            </div>
-          ) : null}
-        </Card>
-        <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Restore guarded</p><h2>Pulihkan backup teknis Turso</h2><p>Excel dan Google Sheets tidak dapat dipakai untuk restore.</p></div><FiDownloadCloud aria-hidden="true" /></div>
-          <div className="form-grid">
-            <label className="field form-grid__full"><span>Google Drive file ID backup teknis</span><input value={backupFileId} onChange={(event) => { setBackupFileId(event.target.value); setRestorePreview(null); setRestoreConfirmation(""); }} /></label>
-            <div className="form-grid__full"><Button onClick={previewRestore} loading={restoreBusy && !restorePreview} disabled={!backupFileId.trim()}>Validasi dan preview</Button></div>
-            {restorePreview ? <div className="notice notice--warning form-grid__full"><span>Schema {restorePreview.schemaVersion} valid. Preview berlaku 10 menit.</span></div> : null}
-            {restorePreview ? <label className="field form-grid__full"><span>Ketik RESTORE SALDO BERSAMA</span><input value={restoreConfirmation} onChange={(event) => setRestoreConfirmation(event.target.value)} /></label> : null}
-            {restorePreview ? <div className="form-grid__full form-actions"><Button variant="primary" onClick={applyRestore} loading={restoreBusy} disabled={restoreConfirmation !== "RESTORE SALDO BERSAMA"}>Terapkan restore</Button></div> : null}
-          </div>
-        </Card>
-        <div className="notice notice--warning"><FiShield aria-hidden="true" /><span>Jangan menjalankan full restore untuk kesalahan arsip biasa. Pilih item di atas agar dampak tetap terbatas.</span></div>
-        <ConfirmationModal
-          open={Boolean(archiveTarget)}
-          title={archiveTarget ? `Pulihkan ${RECOVERY_TYPES[archiveTarget.type]?.label?.toLowerCase() || "data"}?` : "Pulihkan data?"}
-          description={archiveTarget ? `${archiveTarget.item.name} akan aktif kembali setelah backend memeriksa dependensi, konflik, kepemilikan, dan row version terbaru.` : ""}
-          confirmLabel="Pulihkan data"
-          reasonLabel="Alasan pemulihan"
-          requireReason
-          tone="primary"
-          busy={archiveState.status === "submitting"}
-          error={archiveState.error}
-          onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)}
-          onConfirm={restoreArchivedItem}
-        />
-      </section>
-    </OwnerSettingsGuard>
-  );
+  const openRestore = (type, item) => { setArchiveTarget({ type, item }); setArchiveState({ status: "idle", error: null }); };
+  const restoreProps = { backupFileId, setBackupFileId, restorePreview, setRestorePreview, restoreConfirmation, setRestoreConfirmation, restoreBusy, previewRestore, applyRestore };
+  return <RecoveryView resource={archiveResource} result={result} openRestore={openRestore} restoreProps={restoreProps} archiveTarget={archiveTarget} archiveState={archiveState} setArchiveTarget={setArchiveTarget} restoreArchivedItem={restoreArchivedItem} />;
 };
 
 export default RecoveryPage;

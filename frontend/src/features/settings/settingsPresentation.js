@@ -12,33 +12,47 @@ export const providerSummary = (integration, provider) => {
   };
 };
 
+const unavailableIntegration = (configured) => configured
+  ? { ready: true, label: "Siap", tone: "active", text: "Integrasi siap digunakan." }
+  : { ready: false, label: "Belum siap", tone: "warning", text: "Integrasi Google belum aktif pada runtime ini." };
+
+const providerResourceDescriptor = (provider) => {
+  const descriptors = {
+    sheets: { healthKey: "mirrorConfigured", label: "Spreadsheet mirror", needsScheduler: true },
+    calendar: { healthKey: "calendarConfigured", label: "Google Calendar", needsScheduler: true },
+    drive: { healthKey: "backupConfigured", label: "folder Google Drive", needsScheduler: false },
+  };
+  return descriptors[provider] || descriptors.drive;
+};
+
+const checkedBridgePresentation = (bridge, provider) => {
+  const descriptor = providerResourceDescriptor(provider);
+  const health = bridge.health || {};
+  if (!health[descriptor.healthKey]) {
+    return { ready: false, label: "Belum siap", tone: "warning", text: `${descriptor.label} belum dikonfigurasi pada Apps Script Properties.` };
+  }
+  if (descriptor.needsScheduler && !health.jobsConfigured) {
+    return { ready: false, label: "Scheduler belum siap", tone: "warning", text: "Endpoint scheduled jobs atau shared secret scheduler pada Apps Script belum lengkap." };
+  }
+  if (descriptor.needsScheduler && !health.triggerReady) {
+    return { ready: false, label: "Trigger belum siap", tone: "warning", text: "Scheduled trigger Apps Script belum siap. Pastikan hanya satu trigger runScheduledJobs yang aktif." };
+  }
+  return null;
+};
+
 export const integrationProviderPresentation = (integration, provider) => {
   const configured = integration?.configured?.[provider] === true;
   const bridge = integration?.bridge;
-  if (!bridge) {
-    return configured
-      ? { ready: true, label: "Siap", tone: "active", text: "Integrasi siap digunakan." }
-      : { ready: false, label: "Belum siap", tone: "warning", text: "Integrasi Google belum aktif pada runtime ini." };
-  }
+  if (!bridge) return unavailableIntegration(configured);
   if (!bridge.configured) {
     return { ready: false, label: "Belum siap", tone: "warning", text: "Bridge Google belum dikonfigurasi pada environment server." };
   }
   if (bridge.checked && !bridge.reachable) {
     return { ready: false, label: "Gangguan", tone: "danger", text: "Bridge Google sudah dikonfigurasi, tetapi health check belum dapat dijangkau. Periksa deployment Apps Script dan koneksi server." };
   }
-  const health = bridge.health || {};
   if (bridge.checked) {
-    const resourceKey = provider === "sheets" ? "mirrorConfigured" : provider === "calendar" ? "calendarConfigured" : "backupConfigured";
-    if (!health[resourceKey]) {
-      const resourceLabel = provider === "sheets" ? "Spreadsheet mirror" : provider === "calendar" ? "Google Calendar" : "folder Google Drive";
-      return { ready: false, label: "Belum siap", tone: "warning", text: `${resourceLabel} belum dikonfigurasi pada Apps Script Properties.` };
-    }
-    if (["sheets", "calendar"].includes(provider) && !health.jobsConfigured) {
-      return { ready: false, label: "Scheduler belum siap", tone: "warning", text: "Endpoint scheduled jobs atau shared secret scheduler pada Apps Script belum lengkap." };
-    }
-    if (["sheets", "calendar"].includes(provider) && !health.triggerReady) {
-      return { ready: false, label: "Trigger belum siap", tone: "warning", text: "Scheduled trigger Apps Script belum siap. Pastikan hanya satu trigger runScheduledJobs yang aktif." };
-    }
+    const blocked = checkedBridgePresentation(bridge, provider);
+    if (blocked) return blocked;
   }
   return configured
     ? { ready: true, label: "Siap", tone: "active", text: "Resource Google dan scheduler sudah terverifikasi." }

@@ -79,11 +79,12 @@ test("design tokens expose shared control, motion, and layer contracts", async (
 });
 
 test("halaman data utama memiliki representasi card mobile dan filter transaksi canonical", async () => {
-  const [transactions, reports, accounts, accountSheets, reconciliation, settings] = await Promise.all([
+  const [transactions, reports, accounts, accountSheets, mobileActivity, reconciliation, settings] = await Promise.all([
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
+    read("src/features/accounts/components/MobileAccountActivity.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
     read("src/features/settings/AuditPage.jsx"),
   ]);
@@ -91,7 +92,7 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /desktop-data-table/);
   assert.match(transactions, /transaction-mobile-list/);
   assert.match(reports, /budget-mobile-list/);
-  assert.match(accounts + accountSheets, /paymentHistoryList/);
+  assert.match(accounts + accountSheets + mobileActivity, /mobileTransactionList/);
   assert.match(reconciliation, /reconciliation-mobile-list/);
   assert.match(settings, /mobile-data-list/);
   assert.match(settings, /audit\.list/);
@@ -146,7 +147,10 @@ test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", 
   const quickActionEntries = presentation.match(/\{ to: "\/(?:rekening|alokasi|tagihan|target)"/g) || [];
 
   assert.equal(quickActionEntries.length, 4);
-  assert.match(dashboard, /MobileFinanceDashboard/);
+  assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/MobileFinanceDashboard\.jsx"\)\)/);
+  assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/DesktopFinanceDashboard\.jsx"\)\)/);
+  assert.doesNotMatch(dashboard, /import MobileFinanceDashboard from "\.\/components\/MobileFinanceDashboard\.jsx";/);
+  assert.doesNotMatch(dashboard, /import DesktopFinanceDashboard from "\.\/components\/DesktopFinanceDashboard\.jsx";/);
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.match(mobile, /ThemeToggle tone="hero"/);

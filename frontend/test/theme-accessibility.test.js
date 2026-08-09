@@ -168,7 +168,7 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
 
   assert.match(tokenSource, /--font-size-body:\s*16px;/);
   assert.match(components, /\.field input,\s*\n\.field select,\s*\n\.field textarea,\s*\n\.toolbar select,\s*\n\.search-field \{[^}]*font-size:\s*var\(--font-size-body\);/s);
-  assert.match(accountStyles, /\.paymentHistoryToolbar input \{[^}]*font-size:\s*var\(--font-size-body\);/s);
+  assert.match(accountStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(pages, /\.shared-transaction-tools input,\s*\n\.shared-transaction-tools select \{[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(pages, /\.shared-transaction-tools label \{[^}]*min-height:\s*var\(--control-height-md\);/s);
   assert.match(responsive, /scrollbar-width:\s*none;/);

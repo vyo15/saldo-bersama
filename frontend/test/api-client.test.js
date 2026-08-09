@@ -225,7 +225,10 @@ test("useApiResource memperlakukan idle enabled sebagai initial loading agar hal
 
 test("preview lifecycle dan arsip owner tetap diklasifikasikan sebagai read tanpa cache stale", async () => {
   const { isReadAction, READ_CACHE_TTL_MS } = await import("../src/services/api/cache.js");
-  for (const action of ["accounts.previewLifecycle", "categories.previewArchive", "periods.previewClose"]) {
+  for (const action of [
+    "accounts.previewLifecycle", "categories.previewArchive", "envelopes.previewRuleLifecycle",
+    "recurring.previewRuleLifecycle", "budgets.previewLifecycle", "goals.previewLifecycle", "periods.previewClose",
+  ]) {
     assert.equal(isReadAction(action), true, `${action} harus memakai transport read`);
     assert.equal(READ_CACHE_TTL_MS[action], 0, `${action} tidak boleh memakai hasil preview stale`);
   }

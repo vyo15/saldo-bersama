@@ -85,6 +85,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `categories.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.previewArchive` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `categories.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `categories.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `transactions.list` | Ya | Ya | Read | Tidak | `api/_lib/services/finance.js` |
 | `transactions.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
@@ -95,13 +96,17 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `envelopes.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.previewRuleLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
 | `envelopes.archiveRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.deleteUnusedRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `recurring.createRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.updateRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.previewRuleLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
 | `recurring.archiveRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.deleteUnusedRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.cancelOccurrence` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.restoreOccurrence` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.payOccurrence` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -109,12 +114,16 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `recurring.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `budgets.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `budgets.previewLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
 | `budgets.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `budgets.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `goals.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.previewLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
 | `goals.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -153,8 +162,11 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 
 ### Recovery human error planning
 
-- `envelopes.archiveRule` dan `envelopes.restoreRule` owner-only, memakai alasan + `row_version`, tidak menghapus period/movement/audit.
-- `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan `budgets.archive`/`budgets.restore` owner-only; lifecycle eksplisit membutuhkan `row_version`, aksi archive/restore recovery membutuhkan alasan, dan tidak melakukan hard delete.
+- Master/config owner-only memakai server lifecycle preview. `accounts`, `categories`, envelope rule, recurring rule, goal, dan budget hanya boleh hard-delete melalui action `deleteUnused` masing-masing ketika backend membuktikan seluruh histori/dependensi domain = 0. Begitu pernah dipakai, jalurnya hanya archive/restore.
+- `envelopes.archiveRule` dan `envelopes.restoreRule` owner-only, memakai alasan + `row_version`, dan tidak menghapus movement/audit. `envelopes.deleteUnusedRule` hanya boleh menghapus rule baru bersama satu initial empty period yang belum pernah menjadi histori.
+- `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan `budgets.archive`/`budgets.restore` owner-only; lifecycle eksplisit membutuhkan `row_version` dan alasan. `goals.deleteUnused`, `recurring.deleteUnusedRule`, dan `budgets.deleteUnused` hanya untuk entity history-free sesuai preview backend.
+- `recurring.archiveRule` boleh membersihkan future generated projections berstatus `expected` yang reproducible dan belum materialized. Paid/partial/past/cancelled/transaction-linked occurrence adalah histori dan tidak boleh hard-delete.
+- `goals.list` mengembalikan `last_movement_row_version` bersama `last_movement_id`; `goals.reverseMovement` wajib membawa versi movement yang dilihat client melalui `rowVersion` atau `payload.row_version` sebelum linked transaction dibatalkan.
 - `recurring.cancelOccurrence` melewati tepat satu occurrence tanpa membuat/membatalkan transaksi dan tanpa mengubah saldo. Hanya occurrence tanpa pembayaran aktif/aktual yang boleh dilewati. `recurring.restoreOccurrence` memulihkan occurrence tersebut menjadi `expected` atau `overdue` berdasarkan tanggal saat pemulihan. Keduanya owner-only, beralasan, memakai `row_version`, idempotency, audit, dan tidak menghapus histori.
 - `envelopes.reverseMovement` dapat dipakai owner atau member untuk movement yang dibuatnya sendiri, hanya selama kedua kantong masih aktif dan nominal hasil realokasi belum terpakai/reserved. Reversal mengubah status movement menjadi `reversed`; tidak hard delete.
 
@@ -188,9 +200,9 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - `dashboard.overview.totalBalance` membaca seluruh rekening transparan. Metrik actionable `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` hanya menghitung rekening/scope yang `can_transact` bagi actor, supaya saldo personal pasangan tidak salah dianggap dapat digunakan atau dialokasikan member.
 - Audit create/update hanya mencatat bentuk bertopeng empat digit terakhir. Nomor rekening tidak ditambahkan ke Sheets mirror atau export baca. Backup teknis tetap memuat kolom tersebut untuk recovery terjaga.
 - Field ini adalah nomor rekening transfer, bukan nomor kartu debit. PIN, CVV, masa berlaku, serta nomor kartu debit tidak diterima.
-- `accounts.previewLifecycle` menghitung saldo dan seluruh dependensi sebelum owner memilih arsip atau penghapusan rekening belum dipakai.
+- Lifecycle preview (`accounts.previewLifecycle`, `categories.previewArchive`, `envelopes.previewRuleLifecycle`, `recurring.previewRuleLifecycle`, `goals.previewLifecycle`, `budgets.previewLifecycle`) menghitung kondisi terbaru dan dependency semua status sebelum owner memilih hard delete unused atau archive.
 - `accounts.deleteUnused` bukan purge umum. Action ini hanya berhasil bila rekening aktif mempunyai saldo awal Rp0, saldo saat ini Rp0, tidak pernah memiliki transaksi dalam status apa pun, tidak memiliki rekonsiliasi, dan tidak pernah direferensikan kantong, tagihan, atau target. Alasan, acknowledgement, frasa konfirmasi, `row_version`, idempotency, dan audit wajib.
-- Rekening yang pernah digunakan hanya boleh memakai `accounts.archive`; pemulihannya memakai `accounts.restore` dengan alasan dan validasi ulang backend.
+- Rekening yang pernah digunakan hanya boleh memakai `accounts.archive`; `accounts.archive` sekarang juga membutuhkan alasan. Prinsip yang sama berlaku pada master/config lain: history memblokir hard delete tetapi tetap dipertahankan saat archive selama future-active dependency domain tidak membuat archive tidak valid.
 
 ## Read payload dan response penting
 

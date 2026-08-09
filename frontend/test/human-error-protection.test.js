@@ -31,10 +31,12 @@ test("rekening memakai preview server dan hanya menghapus permanen rekening belu
   assert.match(page, /acknowledgementLabel=/);
   assert.match(page, /countdownSeconds=\{archiveTarget\?\.preview\.canDeleteUnused \? 5 : 0\}/);
   assert.match(page, /Jejak audit tetap disimpan/);
+  assert.match(page, /archiveAccount\(\{ account_id: account\.account_id, row_version: account\.row_version, reason \}/);
+  assert.match(page, /reasonLabel=\{archiveTarget\?\.preview\.canDeleteUnused \? "Alasan penghapusan" : "Alasan pengarsipan"\}/);
   assert.match(page, /await reloadAccounts\(\)/);
 });
 
-test("kategori dan transaksi menampilkan preview atau pemulihan berlabel", async () => {
+test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap memakai cancel/restore", async () => {
   const [categories, categoryApi, transactions, transactionApi] = await Promise.all([
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/categories/categories.api.js"),
@@ -42,16 +44,51 @@ test("kategori dan transaksi menampilkan preview atau pemulihan berlabel", async
     read("src/features/transactions/transactions.api.js"),
   ]);
   assert.match(categoryApi, /categories\.previewArchive/);
+  assert.match(categoryApi, /categories\.deleteUnused/);
   assert.match(categoryApi, /categories\.restore/);
   assert.match(categories, /previewCategoryArchive/);
-  assert.match(categories, /dependencies\.active_transactions/);
-  assert.match(categories, /aria-label=\{`Arsipkan kategori \$\{category\.name\}`\}/);
+  assert.match(categories, /preview\.canDeleteUnused/);
+  assert.match(categories, /dependencies\.transactions/);
+  assert.match(categories, /dependencies\.recurring/);
+  assert.match(categories, /dependencies\.budgets/);
+  assert.match(categories, /aria-label=\{`Hapus atau arsipkan kategori \$\{category\.name\}`\}/);
+  assert.match(categories, /reasonLabel=\{archiveTarget\?\.preview\.canDeleteUnused \? "Alasan penghapusan" : "Alasan pengarsipan"\}/);
   assert.match(categories, /"archive\.list"/);
   assert.match(transactionApi, /transactions\.restore/);
+  assert.doesNotMatch(transactionApi, /transactions\.delete/);
   assert.match(transactions, /restoreTransaction/);
   assert.match(transactions, />\s*Pulihkan\s*<\/Button>/);
   assert.match(transactions, /reasonLabel="Alasan pemulihan"/);
   assert.match(transactions, /can_restore/);
+});
+
+test("planning master memakai server lifecycle preview sebelum hard-delete unused", async () => {
+  const [allocations, allocationsApi, recurring, recurringApi, goals, goalsApi, budgets, budgetsApi] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/allocations.api.js"),
+    read("src/features/recurring/RecurringPage.jsx"),
+    read("src/features/recurring/recurring.api.js"),
+    read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/goals/goals.api.js"),
+    read("src/features/budgets/BudgetsPage.jsx"),
+    read("src/features/budgets/budgets.api.js"),
+  ]);
+  for (const [page, api, previewAction, deleteAction] of [
+    [allocations, allocationsApi, "envelopes.previewRuleLifecycle", "envelopes.deleteUnusedRule"],
+    [recurring, recurringApi, "recurring.previewRuleLifecycle", "recurring.deleteUnusedRule"],
+    [goals, goalsApi, "goals.previewLifecycle", "goals.deleteUnused"],
+    [budgets, budgetsApi, "budgets.previewLifecycle", "budgets.deleteUnused"],
+  ]) {
+    assert.match(api, new RegExp(previewAction.replace(".", "\\.")));
+    assert.match(api, new RegExp(deleteAction.replace(".", "\\.")));
+    assert.match(page, /preview\.canDeleteUnused/);
+    assert.match(page, /Hapus permanen/);
+  }
+  assert.match(allocations, /acknowledgementLabel=\{(?:p\.)?archiveTarget\?\.preview\.canDeleteUnused/);
+  assert.match(recurring, /acknowledgementLabel=\{(?:p\.)?archiveRuleTarget\?\.preview\.canDeleteUnused/);
+  assert.match(goals, /last_movement_row_version/);
+  assert.match(goals, /rowVersion: reverseTarget\.last_movement_row_version/);
+  assert.doesNotMatch([allocationsApi, recurringApi, goalsApi, budgetsApi].join("\n"), /transactions\.delete|goal_movements\.delete|envelope_movements\.delete/);
 });
 
 test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode per route", async () => {

@@ -13,6 +13,21 @@ import SettingsNotice from "./SettingsNotice.jsx";
 import { reopenPeriod as requestReopenPeriod, runSettingsAction } from "./settings.api.js";
 import styles from "./Settings.module.css";
 
+const PeriodPanels = ({ resource, form, setForm, previewPeriodClose, runIntegrity, integrityBusy, closeState, setReopenTarget, setReopenState }) => <>
+  <div className="two-column-grid">
+    <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Integritas database</p><h2>Periksa konsistensi data</h2><p>Validasi referensi, saldo, queue, schema, dan kondisi operasional penting.</p></div><FiCheckCircle aria-hidden="true" /></div><Button variant="primary" onClick={runIntegrity} loading={integrityBusy} disabled={integrityBusy}>Periksa integritas</Button></Card>
+    <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Tutup buku</p><h2>Kunci periode bulanan</h2><p>Periode ditutup setelah transaksi teralokasi dan integrity check lulus.</p></div><FiLock aria-hidden="true" /></div><form className="form-grid" onSubmit={previewPeriodClose}><label className="field"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={form.period_key} onChange={(event) => setForm((current) => ({ ...current, period_key: event.target.value }))} /></label><label className="field form-grid__full"><span>Catatan penutupan</span><input required maxLength="200" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} /></label><div className="form-grid__full form-actions"><Button variant="primary" type="submit" loading={closeState.status === "submitting"} disabled={closeState.status === "submitting"}>Validasi dan tutup periode</Button></div></form></Card>
+  </div>
+  <Card className="panel"><div className="panel__header"><div><p className="eyebrow">Riwayat periode</p><h2>Periode yang pernah ditutup</h2><p>Pembukaan kembali dilakukan secara eksplisit dan berurutan.</p></div><FiUnlock aria-hidden="true" /></div><div className="compact-list compact-list--stacked">{(resource.data?.items || []).map((period) => <div key={period.closure_id}><span><strong>{period.period_key}</strong><small>{period.status === "closed" ? "Tertutup" : period.status} · {period.reason || "Tanpa catatan"}</small></span>{period.status === "closed" ? <button type="button" className="icon-button" onClick={() => { setReopenTarget(period); setReopenState({ status: "idle", error: null }); }} aria-label={`Buka kembali periode ${period.period_key}`}><FiUnlock aria-hidden="true" /></button> : null}</div>)}</div></Card>
+</>;
+
+const PeriodModals = ({ closePreview, closeState, setClosePreview, closePeriod, reopenTarget, reopenState, setReopenTarget, reopenPeriod }) => <>
+  <ConfirmationModal open={Boolean(closePreview)} title="Tutup periode setelah validasi?" description={closePreview ? `Periode ${closePreview.periodKey} akan dikunci. Transaksi hanya dapat diubah setelah pemilik membuka kembali periode secara berurutan.` : ""} confirmLabel="Tutup periode" expectedConfirmation={closePreview?.confirmation || ""} acknowledgementLabel="Saya sudah memeriksa jumlah transaksi, pemasukan, pengeluaran, dan memahami periode akan terkunci." countdownSeconds={5} busy={closeState.status === "submitting"} error={closeState.error} onCancel={() => closeState.status !== "submitting" && setClosePreview(null)} onConfirm={closePeriod}>
+    {closePreview ? <div className="compact-list compact-list--stacked"><div><span><strong>Transaksi aktif</strong></span><strong>{closePreview.activeTransactionCount}</strong></div><div><span><strong>Transaksi dibatalkan</strong></span><strong>{closePreview.cancelledTransactionCount}</strong></div><div><span><strong>Total pemasukan</strong></span><strong>Rp{closePreview.incomeTotal.toLocaleString("id-ID")}</strong></div><div><span><strong>Total pengeluaran</strong></span><strong>Rp{closePreview.expenseTotal.toLocaleString("id-ID")}</strong></div></div> : null}
+  </ConfirmationModal>
+  <ConfirmationModal open={Boolean(reopenTarget)} title="Buka kembali periode?" description={reopenTarget ? `Periode ${reopenTarget.period_key} akan menerima perubahan lagi. Snapshot lama tetap berada di audit.` : ""} confirmLabel="Buka periode" reasonLabel="Alasan membuka kembali" requireReason tone="primary" busy={reopenState.status === "submitting"} error={reopenState.error} onCancel={() => reopenState.status !== "submitting" && setReopenTarget(null)} onConfirm={reopenPeriod} />
+</>;
+
 const PeriodControlPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -91,53 +106,13 @@ const PeriodControlPage = () => {
     }
   };
 
-  return (
-    <OwnerSettingsGuard>
-      <section className={styles.pageContent} aria-labelledby="period-settings-title">
-        <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-        <div className={styles.pageHeading}>
-          <p className="eyebrow">Periode dan integritas</p>
-          <h2 id="period-settings-title">Validasi dan tutup buku bulanan</h2>
-          <p>Integrity check dilakukan sebelum periode dikunci. Buka kembali periode hanya melalui konfirmasi pemilik dan audit append-only.</p>
-        </div>
-        <SettingsNotice result={result} />
-        <div className="two-column-grid">
-          <Card className="panel">
-            <div className="panel__header"><div><p className="eyebrow">Integritas database</p><h2>Periksa konsistensi data</h2><p>Validasi referensi, saldo, queue, schema, dan kondisi operasional penting.</p></div><FiCheckCircle aria-hidden="true" /></div>
-            <Button variant="primary" onClick={runIntegrity} loading={integrityBusy} disabled={integrityBusy}>Periksa integritas</Button>
-          </Card>
-          <Card className="panel">
-            <div className="panel__header"><div><p className="eyebrow">Tutup buku</p><h2>Kunci periode bulanan</h2><p>Periode ditutup setelah transaksi teralokasi dan integrity check lulus.</p></div><FiLock aria-hidden="true" /></div>
-            <form className="form-grid" onSubmit={previewPeriodClose}>
-              <label className="field"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={form.period_key} onChange={(event) => setForm((current) => ({ ...current, period_key: event.target.value }))} /></label>
-              <label className="field form-grid__full"><span>Catatan penutupan</span><input required maxLength="200" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} /></label>
-              <div className="form-grid__full form-actions"><Button variant="primary" type="submit" loading={closeState.status === "submitting"} disabled={closeState.status === "submitting"}>Validasi dan tutup periode</Button></div>
-            </form>
-          </Card>
-        </div>
-        <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Riwayat periode</p><h2>Periode yang pernah ditutup</h2><p>Pembukaan kembali dilakukan secara eksplisit dan berurutan.</p></div><FiUnlock aria-hidden="true" /></div>
-          <div className="compact-list compact-list--stacked">{(resource.data?.items || []).map((period) => <div key={period.closure_id}><span><strong>{period.period_key}</strong><small>{period.status === "closed" ? "Tertutup" : period.status} · {period.reason || "Tanpa catatan"}</small></span>{period.status === "closed" ? <button type="button" className="icon-button" onClick={() => { setReopenTarget(period); setReopenState({ status: "idle", error: null }); }} aria-label={`Buka kembali periode ${period.period_key}`}><FiUnlock aria-hidden="true" /></button> : null}</div>)}</div>
-        </Card>
-        <ConfirmationModal
-          open={Boolean(closePreview)}
-          title="Tutup periode setelah validasi?"
-          description={closePreview ? `Periode ${closePreview.periodKey} akan dikunci. Transaksi hanya dapat diubah setelah pemilik membuka kembali periode secara berurutan.` : ""}
-          confirmLabel="Tutup periode"
-          expectedConfirmation={closePreview?.confirmation || ""}
-          acknowledgementLabel="Saya sudah memeriksa jumlah transaksi, pemasukan, pengeluaran, dan memahami periode akan terkunci."
-          countdownSeconds={5}
-          busy={closeState.status === "submitting"}
-          error={closeState.error}
-          onCancel={() => closeState.status !== "submitting" && setClosePreview(null)}
-          onConfirm={closePeriod}
-        >
-          {closePreview ? <div className="compact-list compact-list--stacked"><div><span><strong>Transaksi aktif</strong></span><strong>{closePreview.activeTransactionCount}</strong></div><div><span><strong>Transaksi dibatalkan</strong></span><strong>{closePreview.cancelledTransactionCount}</strong></div><div><span><strong>Total pemasukan</strong></span><strong>Rp{closePreview.incomeTotal.toLocaleString("id-ID")}</strong></div><div><span><strong>Total pengeluaran</strong></span><strong>Rp{closePreview.expenseTotal.toLocaleString("id-ID")}</strong></div></div> : null}
-        </ConfirmationModal>
-        <ConfirmationModal open={Boolean(reopenTarget)} title="Buka kembali periode?" description={reopenTarget ? `Periode ${reopenTarget.period_key} akan menerima perubahan lagi. Snapshot lama tetap berada di audit.` : ""} confirmLabel="Buka periode" reasonLabel="Alasan membuka kembali" requireReason tone="primary" busy={reopenState.status === "submitting"} error={reopenState.error} onCancel={() => reopenState.status !== "submitting" && setReopenTarget(null)} onConfirm={reopenPeriod} />
-      </section>
-    </OwnerSettingsGuard>
-  );
+  return <OwnerSettingsGuard><section className={styles.pageContent} aria-labelledby="period-settings-title">
+    <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+    <div className={styles.pageHeading}><p className="eyebrow">Periode dan integritas</p><h2 id="period-settings-title">Validasi dan tutup buku bulanan</h2><p>Integrity check dilakukan sebelum periode dikunci. Buka kembali periode hanya melalui konfirmasi pemilik dan audit append-only.</p></div>
+    <SettingsNotice result={result} />
+    <PeriodPanels resource={resource} form={form} setForm={setForm} previewPeriodClose={previewPeriodClose} runIntegrity={runIntegrity} integrityBusy={integrityBusy} closeState={closeState} setReopenTarget={setReopenTarget} setReopenState={setReopenState} />
+    <PeriodModals closePreview={closePreview} closeState={closeState} setClosePreview={setClosePreview} closePeriod={closePeriod} reopenTarget={reopenTarget} reopenState={reopenState} setReopenTarget={setReopenTarget} reopenPeriod={reopenPeriod} />
+  </section></OwnerSettingsGuard>;
 };
 
 export default PeriodControlPage;

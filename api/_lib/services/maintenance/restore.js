@@ -80,22 +80,28 @@ const assertRestoreIdentityCompatibility = (snapshot, currentByEmail) => {
   }
 };
 
-const restoreUsers = async (tx, context, snapshot, identityState) => {
-  const { currentUsers, currentByEmail, allowedRoleByEmail } = identityState;
-  for (const user of snapshot.tables.users) {
+const restoredUserValues = (context, user, current, allowedRole) => {
+  const email = String(user.email || "").trim().toLowerCase();
+  const isActor = email === String(context.actor.email || "").toLowerCase();
+  const firebaseUid = isActor ? context.signedActor.uid : (current?.firebase_uid || null);
+  const role = isActor ? context.actor.role : (allowedRole || current?.role || user.role);
+  const status = isActor ? "active" : (allowedRole ? (current?.status || user.status) : "inactive");
+  const rowVersion = Math.max(Number(user.row_version || 1), Number(current?.row_version || 0)) + 1;
+  return { email, firebaseUid, role, status, rowVersion };
+};
+
+const upsertRestoredUsers = async (tx, context, users, currentByEmail, allowedRoleByEmail) => {
+  for (const user of users) {
     const email = String(user.email || "").trim().toLowerCase();
     const current = currentByEmail.get(email);
     const allowedRole = allowedRoleByEmail.get(email);
-    const isActor = email === String(context.actor.email || "").toLowerCase();
-    const firebaseUid = isActor ? context.signedActor.uid : current?.firebase_uid || null;
-    const role = isActor ? context.actor.role : allowedRole || current?.role || user.role;
-    const status = isActor ? "active" : allowedRole ? current?.status || user.status : "inactive";
-    const rowVersion = Math.max(Number(user.row_version || 1), Number(current?.row_version || 0)) + 1;
+    const values = restoredUserValues(context, user, current, allowedRole);
     await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,name=excluded.name,role=excluded.role,status=excluded.status,row_version=excluded.row_version,updated_at=excluded.updated_at`, [user.user_id, firebaseUid, email, user.name, role, status, rowVersion, user.created_at, nowIso()]);
+      VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,name=excluded.name,role=excluded.role,status=excluded.status,row_version=excluded.row_version,updated_at=excluded.updated_at`, [user.user_id, values.firebaseUid, values.email, user.name, values.role, values.status, values.rowVersion, user.created_at, nowIso()]);
   }
+};
 
-  const restoredUserIds = new Set(snapshot.tables.users.map((user) => user.user_id));
+const reconcileCurrentUsers = async (tx, context, currentUsers, restoredUserIds, allowedRoleByEmail) => {
   for (const current of currentUsers) {
     if (restoredUserIds.has(current.user_id) || current.user_id === context.actor.user_id) continue;
     const allowedRole = allowedRoleByEmail.get(String(current.email || "").toLowerCase());
@@ -103,6 +109,14 @@ const restoreUsers = async (tx, context, snapshot, identityState) => {
     const nextRole = allowedRole || current.role;
     await tx.execute("UPDATE users SET role=?,status=?,row_version=row_version+1,updated_at=? WHERE user_id=?", [nextRole, nextStatus, nowIso(), current.user_id]);
   }
+};
+
+const restoreUsers = async (tx, context, snapshot, identityState) => {
+  const { currentUsers, currentByEmail, allowedRoleByEmail } = identityState;
+  const backupUsers = snapshot.tables.users;
+  await upsertRestoredUsers(tx, context, backupUsers, currentByEmail, allowedRoleByEmail);
+  const restoredUserIds = new Set(backupUsers.map((user) => user.user_id));
+  await reconcileCurrentUsers(tx, context, currentUsers, restoredUserIds, allowedRoleByEmail);
 };
 
 const restoreSnapshotTables = async (tx, snapshot) => {

@@ -295,48 +295,69 @@ export const updateNotificationPreference = async (db, context) => {
   return { type, enabled: Boolean(enabled), row_version: Number(next.row_version), updated_at: next.updated_at };
 };
 
+const deviceStateFromSubscription = (current, actorId) => {
+  if (!current) return { state: "not_registered", registered: false, updatedAt: null };
+  if (current.user_id !== actorId) return { state: "owned_by_other", registered: false, updatedAt: null };
+  const active = current.status === "active";
+  return { state: active ? "active" : "inactive", registered: active, updatedAt: current.updated_at || null };
+};
+
+const resolveCurrentDevice = async (db, endpointValue, actorId) => {
+  if (!endpointValue) return { currentDevice: { state: "not_subscribed", registered: false, updatedAt: null }, subscriptionId: null };
+  const endpoint = normalizePushEndpoint(endpointValue);
+  const current = await db.one("SELECT subscription_id,user_id,status,updated_at FROM push_subscriptions WHERE endpoint=?", [endpoint]);
+  const subscriptionId = current?.user_id === actorId ? current.subscription_id : null;
+  return { currentDevice: deviceStateFromSubscription(current, actorId), subscriptionId };
+};
+
+const readLastPushTest = async (db, actorId, subscriptionId) => {
+  if (!subscriptionId) return { lastTest: null, failureRow: null };
+  const lastTest = await db.one(`SELECT timestamp FROM audit_log
+    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='success'
+    ORDER BY timestamp DESC LIMIT 1`, [actorId, subscriptionId]);
+  if (lastTest) return { lastTest, failureRow: null };
+  const failureRow = await db.one(`SELECT timestamp,new_value FROM audit_log
+    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='failed'
+    ORDER BY timestamp DESC LIMIT 1`, [actorId, subscriptionId]);
+  return { lastTest: null, failureRow };
+};
+
+const presentLastTestFailure = (row) => {
+  if (!row) return null;
+  const value = parseJson(row.new_value, {});
+  return {
+    at: row.timestamp,
+    code: sanitizeText(value?.errorCode, 80) || "PUSH_DELIVERY_FAILED",
+    providerStatus: Number(value?.providerStatus || 0) || null,
+  };
+};
+
+const presentLastDelivery = (row) => row ? {
+  type: row.notification_type,
+  status: row.status,
+  attemptCount: Number(row.attempt_count || 0),
+  lastAttemptAt: row.last_attempt_at || null,
+  createdAt: row.created_at,
+} : null;
+
 export const notificationStatus = async (db, context) => {
   const configuration = webPushConfigurationStatus();
+  const actorId = context.actor.user_id;
   const endpointValue = String(context.payload?.endpoint || "").trim();
-  let currentDevice = { state: "not_subscribed", registered: false, updatedAt: null };
-  let currentSubscriptionId = null;
-  if (endpointValue) {
-    const endpoint = normalizePushEndpoint(endpointValue);
-    const current = await db.one("SELECT subscription_id,user_id,status,updated_at FROM push_subscriptions WHERE endpoint=?", [endpoint]);
-    if (current?.user_id === context.actor.user_id) currentSubscriptionId = current.subscription_id;
-    currentDevice = !current
-      ? { state: "not_registered", registered: false, updatedAt: null }
-      : current.user_id !== context.actor.user_id
-        ? { state: "owned_by_other", registered: false, updatedAt: null }
-        : { state: current.status === "active" ? "active" : "inactive", registered: current.status === "active", updatedAt: current.updated_at || null };
-  }
-  const activeDevices = await db.one("SELECT COUNT(*) AS count FROM push_subscriptions WHERE user_id=? AND status='active'", [context.actor.user_id]);
-  const lastTest = currentSubscriptionId ? await db.one(`SELECT timestamp FROM audit_log
-    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='success'
-    ORDER BY timestamp DESC LIMIT 1`, [context.actor.user_id, currentSubscriptionId]) : null;
-  const lastTestFailureRow = currentSubscriptionId && !lastTest ? await db.one(`SELECT timestamp,new_value FROM audit_log
-    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='failed'
-    ORDER BY timestamp DESC LIMIT 1`, [context.actor.user_id, currentSubscriptionId]) : null;
-  const lastTestFailureValue = parseJson(lastTestFailureRow?.new_value, {});
-  const lastDelivery = await db.one(`SELECT notification_type,status,attempt_count,last_attempt_at,created_at
-    FROM notification_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 1`, [context.actor.user_id]);
+  const { currentDevice, subscriptionId } = await resolveCurrentDevice(db, endpointValue, actorId);
+  const [activeDevices, testState, lastDelivery] = await Promise.all([
+    db.one("SELECT COUNT(*) AS count FROM push_subscriptions WHERE user_id=? AND status='active'", [actorId]),
+    readLastPushTest(db, actorId, subscriptionId),
+    db.one(`SELECT notification_type,status,attempt_count,last_attempt_at,created_at
+      FROM notification_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 1`, [actorId]),
+  ]);
   return {
     server: { configured: configuration.configured, ready: configuration.ready, code: configuration.code },
     currentDevice,
     activeDeviceCount: Number(activeDevices?.count || 0),
-    lastTestAt: lastTest?.timestamp || null,
-    lastTestFailure: lastTestFailureRow ? {
-      at: lastTestFailureRow.timestamp,
-      code: sanitizeText(lastTestFailureValue?.errorCode, 80) || "PUSH_DELIVERY_FAILED",
-      providerStatus: Number(lastTestFailureValue?.providerStatus || 0) || null,
-    } : null,
-    lastDelivery: lastDelivery ? {
-      type: lastDelivery.notification_type,
-      status: lastDelivery.status,
-      attemptCount: Number(lastDelivery.attempt_count || 0),
-      lastAttemptAt: lastDelivery.last_attempt_at || null,
-      createdAt: lastDelivery.created_at,
-    } : null,
+    lastTestAt: testState.lastTest?.timestamp || null,
+    lastTestFailure: presentLastTestFailure(testState.failureRow),
+    lastDelivery: presentLastDelivery(lastDelivery),
   };
 };
 

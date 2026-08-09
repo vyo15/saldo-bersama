@@ -13,37 +13,57 @@ export const shouldInvalidateSession = (responseStatus, errorCode) => (
   responseStatus === 401 && errorCode === "UNAUTHENTICATED"
 );
 
-export const parseResponse = async (response) => {
-  let body;
+const responseRequestId = (response, body = null) => {
+  const headerValue = response?.headers?.get?.("x-request-id");
+  if (headerValue) return headerValue;
+  return body?.error?.details?.requestId || "";
+};
+
+const parseJsonBody = async (response) => {
   try {
-    body = await response.json();
+    return await response.json();
   } catch (cause) {
     throw new ApiError("Respons server tidak dapat dibaca.", {
       code: "INVALID_RESPONSE",
       status: Number(response?.status || 0),
-      requestId: response?.headers?.get?.("x-request-id") || "",
+      requestId: responseRequestId(response),
       cause,
     });
   }
-  if (!response.ok || body?.ok === false) {
-    const errorCode = body?.error?.code || "UNKNOWN";
-    if (shouldInvalidateSession(response.status, errorCode) && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("saldo-bersama:unauthorized"));
-    }
-    throw new ApiError(body?.error?.message || "Permintaan tidak dapat diproses.", {
-      code: errorCode,
-      status: body?.error?.status || response.status,
-      details: body?.error?.details,
-      requestId: response.headers?.get?.("x-request-id") || body?.error?.details?.requestId,
-    });
+};
+
+const responseFailure = (response, body) => {
+  if (!response.ok) return true;
+  return body?.ok === false;
+};
+
+const throwResponseError = (response, body) => {
+  const error = body?.error || {};
+  const errorCode = error.code || "UNKNOWN";
+  if (shouldInvalidateSession(response.status, errorCode) && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("saldo-bersama:unauthorized"));
   }
-  if (body?.ok !== true || !("data" in body)) {
-    throw new ApiError("Respons server tidak sesuai kontrak aplikasi.", {
-      code: "INVALID_RESPONSE",
-      status: Number(response?.status || 0),
-      requestId: response?.headers?.get?.("x-request-id") || "",
-    });
-  }
+  throw new ApiError(error.message || "Permintaan tidak dapat diproses.", {
+    code: errorCode,
+    status: error.status || response.status,
+    details: error.details,
+    requestId: responseRequestId(response, body),
+  });
+};
+
+const assertResponseEnvelope = (response, body) => {
+  if (body?.ok === true && body && "data" in body) return;
+  throw new ApiError("Respons server tidak sesuai kontrak aplikasi.", {
+    code: "INVALID_RESPONSE",
+    status: Number(response?.status || 0),
+    requestId: responseRequestId(response),
+  });
+};
+
+export const parseResponse = async (response) => {
+  const body = await parseJsonBody(response);
+  if (responseFailure(response, body)) throwResponseError(response, body);
+  assertResponseEnvelope(response, body);
   return body.data;
 };
 

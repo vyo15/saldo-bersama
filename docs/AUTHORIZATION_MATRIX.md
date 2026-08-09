@@ -36,6 +36,7 @@
 | `categories.update` | Ya | Tidak |
 | `categories.previewArchive` | Ya | Tidak |
 | `categories.archive` | Ya | Tidak |
+| `categories.deleteUnused` | Ya | Tidak |
 | `categories.restore` | Ya | Tidak |
 | `transactions.list` | Ya | Ya |
 | `transactions.create` | Ya | Ya |
@@ -46,13 +47,17 @@
 | `envelopes.create` | Ya | Tidak |
 | `envelopes.move` | Ya | Ya |
 | `envelopes.close` | Ya | Tidak |
+| `envelopes.previewRuleLifecycle` | Ya | Tidak |
 | `envelopes.archiveRule` | Ya | Tidak |
+| `envelopes.deleteUnusedRule` | Ya | Tidak |
 | `envelopes.restoreRule` | Ya | Tidak |
 | `envelopes.reverseMovement` | Ya | Ya |
 | `recurring.list` | Ya | Ya |
 | `recurring.createRule` | Ya | Tidak |
 | `recurring.updateRule` | Ya | Tidak |
+| `recurring.previewRuleLifecycle` | Ya | Tidak |
 | `recurring.archiveRule` | Ya | Tidak |
+| `recurring.deleteUnusedRule` | Ya | Tidak |
 | `recurring.cancelOccurrence` | Ya | Tidak |
 | `recurring.restoreOccurrence` | Ya | Tidak |
 | `recurring.payOccurrence` | Ya | Ya |
@@ -60,12 +65,16 @@
 | `recurring.restoreRule` | Ya | Tidak |
 | `budgets.list` | Ya | Ya |
 | `budgets.upsert` | Ya | Tidak |
+| `budgets.previewLifecycle` | Ya | Tidak |
 | `budgets.archive` | Ya | Tidak |
+| `budgets.deleteUnused` | Ya | Tidak |
 | `budgets.restore` | Ya | Tidak |
 | `goals.list` | Ya | Ya |
 | `goals.create` | Ya | Tidak |
 | `goals.update` | Ya | Tidak |
+| `goals.previewLifecycle` | Ya | Tidak |
 | `goals.archive` | Ya | Tidak |
+| `goals.deleteUnused` | Ya | Tidak |
 | `goals.move` | Ya | Ya |
 | `goals.reverseMovement` | Ya | Ya |
 | `goals.restore` | Ya | Tidak |
@@ -104,7 +113,7 @@
 
 - Archive/restore aturan kantong tetap owner-only karena mengubah master planning.
 - Member boleh membatalkan `envelopes.reverseMovement` hanya untuk movement miliknya dan tetap tunduk pada ownership scope, `row_version`, ketersediaan nominal di kantong tujuan, idempotency, dan audit backend.
-- Tidak ada hard delete kantong/movement dari UI normal.
+- Movement kantong tidak pernah hard-delete. Envelope rule baru boleh memakai `envelopes.deleteUnusedRule` hanya bila server membuktikan rule belum pernah dipakai dan satu-satunya child adalah initial empty period; selain itu gunakan archive/restore.
 
 ## Ownership penting
 
@@ -112,7 +121,7 @@
 - Rekening personal selalu membawa `owner_name` dari join backend serta capability server-side. Frontend tidak boleh menentukan pemilik atau hak akses dari nama rekening, email client, atau role yang dikirim browser.
 - Hak operasi tetap lebih sempit: member hanya dapat bertransaksi dan merekonsiliasi rekening shared atau rekening personal miliknya. Rekening personal pasangan memiliki `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
-- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap owner-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap owner-only.
+- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap owner-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga owner-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap owner-only.
 - User management, master create/update/archive, budget management, period close/reopen, mirror/calendar manual sync, backup/import/restore/integrity adalah owner-only sesuai action matrix.
 - Export lengkap owner-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.

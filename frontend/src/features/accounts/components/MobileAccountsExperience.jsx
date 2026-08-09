@@ -1,0 +1,270 @@
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { FiArrowLeft, FiList, FiPlus } from "react-icons/fi";
+import { useNavigate } from "react-router";
+import Money from "../../../components/common/Money.jsx";
+import { accountOwnershipLabel } from "../../../shared/presentation/account.js";
+import { AccountVisual } from "./AccountFinancialCard.jsx";
+import styles from "../AccountsPage.module.css";
+
+const MobileAccountActivity = lazy(() => import("./MobileAccountActivity.jsx"));
+
+const MOBILE_STACK_SLOT_STYLES = Object.freeze({
+  "-2": Object.freeze({ x: 72, y: -238, z: -285, rx: 68, ry: -10, rz: 24, opacity: 0, brightness: 0.63, saturate: 0.68, shadow: 0.1 }),
+  "-1": Object.freeze({ x: 58, y: -126, z: -118, rx: 31, ry: -8, rz: 18, opacity: 0.82, brightness: 0.75, saturate: 0.76, shadow: 0.28 }),
+  0: Object.freeze({ x: 0, y: 0, z: 150, rx: 0, ry: 0, rz: 0, opacity: 1, brightness: 1, saturate: 1, shadow: 0.58 }),
+  1: Object.freeze({ x: 54, y: 132, z: -122, rx: -31, ry: 8, rz: -17, opacity: 0.72, brightness: 0.68, saturate: 0.72, shadow: 0.22 }),
+  2: Object.freeze({ x: 70, y: 244, z: -300, rx: -68, ry: 10, rz: -24, opacity: 0, brightness: 0.6, saturate: 0.66, shadow: 0.08 }),
+});
+
+const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
+const modulo = (value, divisor) => ((value % divisor) + divisor) % divisor;
+const interpolate = (from, to, progress) => from + (to - from) * progress;
+const easeOutQuint = (progress) => 1 - ((1 - progress) ** 5);
+
+const shortestCircularDifference = (index, virtualPosition, count) => {
+  let difference = index - virtualPosition;
+  while (difference > count / 2) difference -= count;
+  while (difference < -count / 2) difference += count;
+  return difference;
+};
+
+const stackStyleAtDifference = (difference) => {
+  if (difference <= -2) return MOBILE_STACK_SLOT_STYLES["-2"];
+  if (difference >= 2) return MOBILE_STACK_SLOT_STYLES[2];
+  const lower = Math.floor(difference);
+  const upper = Math.ceil(difference);
+  if (lower === upper) return MOBILE_STACK_SLOT_STYLES[lower];
+  const from = MOBILE_STACK_SLOT_STYLES[lower];
+  const to = MOBILE_STACK_SLOT_STYLES[upper];
+  const progress = difference - lower;
+  return Object.fromEntries(Object.keys(from).map((key) => [key, interpolate(from[key], to[key], progress)]));
+};
+
+const useMobileStackRefs = () => {
+  const mobileStackCardRefs = useRef(new Map());
+  const mobileStackStageRef = useRef(null);
+  const mobileStackStatusRef = useRef(null);
+  const mobileStackAccountsRef = useRef([]);
+  const mobileStackPositionRef = useRef(0);
+  const mobileStackSettledIndexRef = useRef(0);
+  const mobileStackAnimationRef = useRef(0);
+  const mobileStackAnimatingRef = useRef(false);
+  const mobileStackGestureRef = useRef({
+    tracking: false, dragging: false, rejected: false, pointerId: null, captureElement: null,
+    startX: 0, startY: 0, startTime: 0, lastY: 0, lastTime: 0, velocityY: 0, suppressClick: false,
+  });
+  return {
+    cardRefs: mobileStackCardRefs, stageRef: mobileStackStageRef, statusRef: mobileStackStatusRef, accountsRef: mobileStackAccountsRef,
+    positionRef: mobileStackPositionRef, settledIndexRef: mobileStackSettledIndexRef, animationRef: mobileStackAnimationRef, animatingRef: mobileStackAnimatingRef,
+    gestureRef: mobileStackGestureRef,
+  };
+};
+
+const useMobileStackAnimation = (refs, setSelectedAccountId) => {
+  const setMobileStackWillChange = useCallback((enabled) => {
+    for (const element of refs.cardRefs.current.values()) element.style.willChange = enabled ? "transform, opacity, filter, box-shadow" : "";
+  }, [refs.cardRefs]);
+  const applyMobileStackPosition = useCallback(() => {
+    const stackAccounts = refs.accountsRef.current;
+    const count = stackAccounts.length;
+    if (!count) return;
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    stackAccounts.forEach((account, index) => {
+      const element = refs.cardRefs.current.get(account.account_id);
+      if (!element) return;
+      const difference = shortestCircularDifference(index, refs.positionRef.current, count);
+      const visual = stackStyleAtDifference(difference);
+      const rotationFactor = reducedMotion ? 0.16 : 1;
+      const tiltFactor = reducedMotion ? 0.22 : 1;
+      element.style.transform = [
+        "translate(-50%, -50%)", `translate3d(${visual.x}px, ${visual.y}px, ${visual.z}px)`,
+        `rotateX(${visual.rx * rotationFactor}deg)`, `rotateY(${visual.ry * rotationFactor}deg)`, `rotateZ(${visual.rz * tiltFactor}deg)`,
+      ].join(" ");
+      element.style.opacity = String(visual.opacity);
+      element.style.filter = `brightness(${visual.brightness}) saturate(${visual.saturate})`;
+      element.style.boxShadow = `0 1.75rem 3.9rem rgb(0 0 0 / ${visual.shadow})`;
+      element.style.zIndex = String(Math.round(1000 + visual.z));
+      element.style.pointerEvents = Math.abs(difference) <= 0.5 ? "auto" : "none";
+      element.tabIndex = Math.abs(difference) <= 0.5 ? 0 : -1;
+      element.setAttribute("aria-hidden", Math.abs(difference) <= 0.5 ? "false" : "true");
+      element.setAttribute("aria-pressed", Math.abs(difference) <= 0.5 ? "true" : "false");
+    });
+  }, [refs.accountsRef, refs.cardRefs, refs.positionRef]);
+  const animateMobileStackTo = useCallback((targetIndex, { announce = true, selectAtStart = false } = {}) => {
+    const stackAccounts = refs.accountsRef.current;
+    const count = stackAccounts.length;
+    if (!count) return;
+    window.cancelAnimationFrame(refs.animationRef.current);
+    refs.animatingRef.current = true;
+    setMobileStackWillChange(true);
+    const normalizedTarget = modulo(targetIndex, count);
+    const startPosition = refs.positionRef.current;
+    let difference = normalizedTarget - startPosition;
+    if (difference > count / 2) difference -= count;
+    if (difference < -count / 2) difference += count;
+    const finalPosition = startPosition + difference;
+    const duration = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 140 : 520;
+    const startedAt = performance.now();
+    if (selectAtStart) setSelectedAccountId(stackAccounts[normalizedTarget].account_id);
+    const finish = () => {
+      refs.settledIndexRef.current = normalizedTarget;
+      refs.positionRef.current = normalizedTarget;
+      applyMobileStackPosition();
+      setMobileStackWillChange(false);
+      refs.animatingRef.current = false;
+      if (!selectAtStart) setSelectedAccountId(stackAccounts[normalizedTarget].account_id);
+      if (announce && refs.statusRef.current) refs.statusRef.current.textContent = `Rekening aktif ${stackAccounts[normalizedTarget].name}`;
+    };
+    const frame = (now) => {
+      const progress = clamp((now - startedAt) / duration, 0, 1);
+      refs.positionRef.current = interpolate(startPosition, finalPosition, easeOutQuint(progress));
+      applyMobileStackPosition();
+      if (progress < 1) refs.animationRef.current = window.requestAnimationFrame(frame);
+      else finish();
+    };
+    refs.animationRef.current = window.requestAnimationFrame(frame);
+  }, [applyMobileStackPosition, refs, setMobileStackWillChange, setSelectedAccountId]);
+  return { applyMobileStackPosition, animateMobileStackTo, setMobileStackWillChange };
+};
+
+const useMobileStackGestures = ({ refs, animation }) => {
+  const resetMobileStackGesture = useCallback(() => {
+    const gesture = refs.gestureRef.current;
+    Object.assign(gesture, { tracking: false, dragging: false, rejected: false, pointerId: null, captureElement: null });
+    refs.stageRef.current?.classList.remove(styles.mobileStackDragging);
+    animation.setMobileStackWillChange(false);
+  }, [animation, refs.gestureRef, refs.stageRef]);
+  const handleMobileStackPointerDown = useCallback((event) => {
+    if (refs.animatingRef.current || refs.accountsRef.current.length <= 1) return;
+    const now = performance.now();
+    refs.gestureRef.current = {
+      tracking: true, dragging: false, rejected: false, pointerId: event.pointerId, captureElement: event.currentTarget,
+      startX: event.clientX, startY: event.clientY, startTime: now, lastY: event.clientY, lastTime: now, velocityY: 0, suppressClick: false,
+    };
+  }, [refs.accountsRef, refs.animatingRef, refs.gestureRef]);
+  const handleMobileStackPointerMove = useCallback((event) => {
+    const gesture = refs.gestureRef.current;
+    if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+    if (gesture.rejected) return;
+    if (!gesture.dragging) {
+      if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) { gesture.rejected = true; gesture.suppressClick = true; return; }
+      if (Math.abs(deltaY) < 8 || Math.abs(deltaY) <= Math.abs(deltaX) * 1.15) return;
+      gesture.dragging = true;
+      gesture.suppressClick = true;
+      refs.stageRef.current?.classList.add(styles.mobileStackDragging);
+      gesture.captureElement?.setPointerCapture(event.pointerId);
+      animation.setMobileStackWillChange(true);
+    }
+    const now = performance.now();
+    const elapsed = Math.max(1, now - gesture.lastTime);
+    gesture.velocityY = (event.clientY - gesture.lastY) / elapsed;
+    gesture.lastY = event.clientY;
+    gesture.lastTime = now;
+    const progress = clamp(-deltaY / 154, -0.92, 0.92);
+    refs.positionRef.current = refs.settledIndexRef.current + progress;
+    animation.applyMobileStackPosition();
+  }, [animation, refs.gestureRef, refs.positionRef, refs.settledIndexRef, refs.stageRef]);
+  const finishMobileStackPointer = useCallback((event) => {
+    const gesture = refs.gestureRef.current;
+    if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
+    if (gesture.rejected) { resetMobileStackGesture(); window.setTimeout(() => { refs.gestureRef.current.suppressClick = false; }, 0); return; }
+    if (!gesture.dragging) { resetMobileStackGesture(); return; }
+    const totalDeltaY = event.clientY - gesture.startY;
+    const averageVelocity = totalDeltaY / Math.max(1, performance.now() - gesture.startTime);
+    const progress = refs.positionRef.current - refs.settledIndexRef.current;
+    if (gesture.captureElement?.hasPointerCapture(event.pointerId)) gesture.captureElement.releasePointerCapture(event.pointerId);
+    resetMobileStackGesture();
+    const fastSwipe = Math.abs(gesture.velocityY) > 0.48 || Math.abs(averageVelocity) > 0.42;
+    const passedThreshold = Math.abs(progress) >= 0.28;
+    const direction = progress !== 0 ? Math.sign(progress) : (totalDeltaY < 0 ? 1 : -1);
+    animation.animateMobileStackTo(refs.settledIndexRef.current + (fastSwipe || passedThreshold ? direction : 0), { announce: fastSwipe || passedThreshold });
+    window.setTimeout(() => { refs.gestureRef.current.suppressClick = false; }, 0);
+  }, [animation, refs.gestureRef, refs.positionRef, refs.settledIndexRef, resetMobileStackGesture]);
+  return { resetMobileStackGesture, handleMobileStackPointerDown, handleMobileStackPointerMove, finishMobileStackPointer };
+};
+
+const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet }) => {
+  const refs = useMobileStackRefs();
+  const animation = useMobileStackAnimation(refs, setSelectedAccountId);
+  const gestures = useMobileStackGestures({ refs, animation });
+  const moveMobileStack = useCallback((step) => {
+    if (refs.animatingRef.current || refs.accountsRef.current.length <= 1) return;
+    animation.animateMobileStackTo(refs.settledIndexRef.current + step);
+  }, [animation, refs.accountsRef, refs.animatingRef, refs.settledIndexRef]);
+  const handleMobileStackKeyDown = useCallback((event) => {
+    if (event.key === "ArrowUp") { event.preventDefault(); moveMobileStack(-1); }
+    if (event.key === "ArrowDown") { event.preventDefault(); moveMobileStack(1); }
+  }, [moveMobileStack]);
+  const selectMobileStackAccount = useCallback((account, index) => {
+    if (refs.gestureRef.current.suppressClick) return;
+    if (index !== refs.settledIndexRef.current) { animation.animateMobileStackTo(index, { selectAtStart: true }); return; }
+    setSelectedAccountId(account.account_id);
+    setMobileAccountSheet("detail");
+  }, [animation, refs.gestureRef, refs.settledIndexRef, setMobileAccountSheet, setSelectedAccountId]);
+  const cancelMobileStackPointer = useCallback((event) => {
+    const gesture = refs.gestureRef.current;
+    if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
+    if (gesture.captureElement?.hasPointerCapture(event.pointerId)) gesture.captureElement.releasePointerCapture(event.pointerId);
+    const wasDragging = gesture.dragging;
+    const shouldSuppressClick = gesture.suppressClick;
+    gestures.resetMobileStackGesture();
+    if (wasDragging) animation.animateMobileStackTo(refs.settledIndexRef.current, { announce: false });
+    if (shouldSuppressClick) window.setTimeout(() => { refs.gestureRef.current.suppressClick = false; }, 0);
+  }, [animation, gestures, refs.gestureRef, refs.settledIndexRef]);
+  useLayoutEffect(() => {
+    refs.accountsRef.current = accounts;
+    if (!accounts.length) return;
+    const selectedIndex = Math.max(0, accounts.findIndex((account) => account.account_id === selectedAccountId));
+    if (!refs.animatingRef.current && !refs.gestureRef.current.dragging) {
+      refs.settledIndexRef.current = selectedIndex;
+      refs.positionRef.current = selectedIndex;
+      animation.applyMobileStackPosition();
+    }
+  }, [accounts, animation, refs.accountsRef, refs.animatingRef, refs.gestureRef, refs.positionRef, refs.settledIndexRef, selectedAccountId]);
+  useEffect(() => () => { window.cancelAnimationFrame(refs.animationRef.current); animation.setMobileStackWillChange(false); }, [animation, refs.animationRef]);
+  return { refs, ...gestures, cancelMobileStackPointer, handleMobileStackKeyDown, selectMobileStackAccount };
+};
+
+const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap }) => {
+  const navigate = useNavigate();
+  const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
+  const {
+    refs: { cardRefs: mobileStackCardRefs, stageRef: mobileStackStageRef, statusRef: mobileStackStatusRef },
+    handleMobileStackPointerDown, handleMobileStackPointerMove, finishMobileStackPointer, cancelMobileStackPointer,
+    handleMobileStackKeyDown, selectMobileStackAccount,
+  } = stack;
+  return <div className={styles.mobileAccountExperience}>
+    <section className={styles.mobileStackPanel} aria-labelledby="mobile-account-stack-title">
+      <header className={styles.mobileStackHeader}>
+        <button type="button" className={styles.mobileStackHeaderButton} onClick={() => navigate("/")}><FiArrowLeft aria-hidden="true" /><span>Beranda</span></button>
+        <div className={styles.mobileStackHeaderActions}>
+          {ownerMode ? <button type="button" className={styles.mobileStackAddButton} onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /></button> : null}
+          <button type="button" className={styles.mobileStackHeaderButton} onClick={() => setMobileAccountSheet("accounts")} aria-label={`Buka daftar ${accounts.length} rekening aktif`}>
+            <span>Daftar rekening</span><FiList aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+      <div ref={mobileStackStageRef} className={styles.mobileStackStage} tabIndex={0} aria-label="Geser ke atas atau bawah untuk mengganti rekening" aria-describedby="mobile-account-stack-hint" onKeyDown={handleMobileStackKeyDown}>
+        <div className={styles.mobileStackAmbient} aria-hidden="true" />
+        {accounts.map((account, index) => (
+          <button key={`mobile-stack-${account.account_id}`} ref={(node) => { if (node) mobileStackCardRefs.current.set(account.account_id, node); else mobileStackCardRefs.current.delete(account.account_id); }}
+            type="button" className={styles.mobileStackCard} aria-label={`Lihat detail rekening ${account.name}`} aria-pressed={account.account_id === selectedAccount?.account_id}
+            onPointerDown={handleMobileStackPointerDown} onPointerMove={handleMobileStackPointerMove} onPointerUp={finishMobileStackPointer}
+            onPointerCancel={cancelMobileStackPointer} onClick={() => selectMobileStackAccount(account, index)}>
+            <AccountVisual account={account} stack />
+            <span className={styles.mobileStackBalance}><small>Saldo rekening</small><strong><Money value={account.balance || 0} /></strong></span>
+            <span className={styles.mobileStackOwnership}>{accountOwnershipLabel(account)}</span>
+          </button>
+        ))}
+      </div>
+      {selectedAccount ? <div className={styles.mobileStackSummary}><div><small>Rekening aktif</small><h2 id="mobile-account-stack-title">{selectedAccount.name}</h2></div><span>{Math.max(1, accounts.findIndex((account) => account.account_id === selectedAccount.account_id) + 1)} dari {accounts.length}</span></div> : null}
+      <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser kartu aktif ke atas atau bawah untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
+      <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />
+    </section>
+    {selectedAccount ? <Suspense fallback={null}><MobileAccountActivity selectedAccount={selectedAccount} bootstrap={bootstrap} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
+  </div>;
+};
+
+export default MobileAccountsExperience;

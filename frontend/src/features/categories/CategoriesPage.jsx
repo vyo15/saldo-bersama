@@ -20,7 +20,7 @@ import {
   categoryIconKey,
   categoryIconOption,
 } from "../../shared/presentation/transaction.js";
-import { archiveCategory, createCategory as requestCreateCategory, previewCategoryArchive, updateCategory as requestUpdateCategory } from "./categories.api.js";
+import { archiveCategory, createCategory as requestCreateCategory, deleteUnusedCategory, previewCategoryArchive, updateCategory as requestUpdateCategory } from "./categories.api.js";
 import {
   CATEGORY_TYPE_OPTIONS,
   categoryNatureForType,
@@ -123,6 +123,27 @@ const CategoryIconPicker = ({ value, onChange, transactionType, nature, name }) 
   );
 };
 
+const CategoryItem = ({ category, ownerMode, openEdit, openArchivePreview }) => { const Icon = categoryIcon(category.icon, category.transaction_type); return <article className={styles.categoryItem}><span className={`${styles.categoryIcon} ${categoryIconToneClass(category.transaction_type)}`}><Icon aria-hidden="true" /></span><div className={styles.categoryCopy}><strong>{category.name}</strong><small>{categoryNatureLabel(category.nature, category.transaction_type)}</small></div><div className={styles.categoryActions}><StatusBadge status={category.status} />{ownerMode && category.status === "active" ? <button type="button" className={`icon-button ${styles.categoryActionButton}`} onClick={() => openEdit(category)} aria-label={`Edit kategori ${category.name}`} title="Edit kategori"><FiEdit2 aria-hidden="true" /></button> : null}{ownerMode && category.status === "active" ? <button type="button" className={`icon-button ${styles.categoryActionButton} ${styles.archiveAction}`} onClick={() => openArchivePreview(category)} aria-label={`Hapus atau arsipkan kategori ${category.name}`} title="Hapus atau arsipkan kategori"><FiArchive aria-hidden="true" /></button> : null}</div></article>; };
+
+const CategoryList = ({ items, grouped, ownerMode, openCreate, openEdit, openArchivePreview }) => items.length ? <Card className={styles.categoryPanel}><div className={styles.categoryGroups}>{Object.entries(grouped).map(([type, categories]) => <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}><div className={styles.categoryGroupHeading}><h2 id={`category-${type}`}>{categoryTypeLabel(type)}</h2><span>{categories.length}</span></div><div className={styles.categoryList}>{categories.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div></section>)}</div></Card> : <Card className={styles.emptyPanel}><h2>Belum ada kategori</h2><p>Tambahkan kategori dengan ikon yang sesuai agar transaksi lebih mudah dikenali.</p>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null}</Card>;
+
+const CategoryTypeField = ({ form, setForm }) => <label className="field"><span>Dipakai untuk transaksi</span><select value={form.transaction_type} onChange={(event) => { const nextType = event.target.value; setForm((current) => ({ ...current, transaction_type: nextType, nature: categoryNatureForType(nextType, current.nature), icon: current.icon === DEFAULT_CATEGORY_ICON_BY_TYPE[current.transaction_type] ? DEFAULT_CATEGORY_ICON_BY_TYPE[nextType] : current.icon })); }}>{CATEGORY_TYPE_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select><small>Transfer antar rekening tidak memakai kategori dan dibuat dari form Transaksi.</small></label>;
+
+const ExpenseNatureField = ({ value, onChange, legacy = false }) => <label className="field"><span>Sifat pengeluaran</span><select value={value} onChange={(event) => onChange(event.target.value)}>{expenseNatureOptions({ includeLegacySavings: legacy }).map((item) => <option value={item.value} key={item.value}>{item.label}{item.example ? ` · ${item.example}` : ""}</option>)}</select><small>{legacy ? "Kategori lama ini masih kompatibel. Pilih klasifikasi baru saat sudah siap; dana ke tabungan sendiri tetap memakai Transfer atau Target." : "Untuk memindahkan dana ke rekening tabungan sendiri, gunakan Transfer atau Target agar tidak dihitung sebagai pengeluaran."}</small></label>;
+
+const CreateCategoryModal = ({ open, close, form, setForm, createCategory, dialogState }) => <Modal open={open} onClose={close} title="Tambah kategori" description="Pilih kegunaan transaksi, klasifikasi pengeluaran bila relevan, dan ikon dari katalog terkontrol." size="lg" footer={<><Button onClick={close} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-category-form" loading={dialogState.status === "submitting"}>Simpan kategori</Button></>}><form id="create-category-form" className="form-grid" onSubmit={createCategory}><label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" placeholder="Contoh: Cicilan rumah" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label><CategoryTypeField form={form} setForm={setForm} />{form.transaction_type === "expense" ? <ExpenseNatureField value={form.nature} onChange={(nature) => setForm((current) => ({ ...current, nature }))} /> : <div className="notice notice--info form-grid__full"><span>Sifat pengeluaran tidak diperlukan untuk {categoryTypeLabel(form.transaction_type).toLowerCase()}.</span></div>}<CategoryIconPicker value={form.icon} onChange={(icon) => setForm((current) => ({ ...current, icon }))} transactionType={form.transaction_type} nature={form.nature} name={form.name} />{dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}</form></Modal>;
+
+const EditCategoryModal = ({ editCategory, setEditCategory, saveCategory, dialogState }) => <Modal open={Boolean(editCategory)} onClose={() => dialogState.status !== "submitting" && setEditCategory(null)} title="Edit kategori" description={editCategory ? `Kegunaan ${categoryTypeLabel(editCategory.transaction_type)} dipertahankan untuk menjaga konsistensi transaksi.` : ""} size="lg" footer={<><Button onClick={() => setEditCategory(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-category-form" loading={dialogState.status === "submitting"}>Simpan perubahan</Button></>}><form id="edit-category-form" className="form-grid" onSubmit={saveCategory}><label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" value={editCategory?.name || ""} onChange={(event) => setEditCategory((current) => ({ ...current, name: event.target.value }))} /></label>{editCategory?.transaction_type === "expense" ? <ExpenseNatureField value={editCategory?.nature || "variable"} legacy={editCategory?.nature === "savings"} onChange={(nature) => setEditCategory((current) => ({ ...current, nature }))} /> : <div className="notice notice--info form-grid__full"><span>{categoryTypeLabel(editCategory?.transaction_type)} tidak memakai sifat pengeluaran.</span></div>}{editCategory ? <CategoryIconPicker value={editCategory.icon} onChange={(icon) => setEditCategory((current) => ({ ...current, icon }))} transactionType={editCategory.transaction_type} nature={editCategory.nature} name={editCategory.name} /> : null}{dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}</form></Modal>;
+
+const ArchiveCategoryModal = ({ archiveTarget, dialogState, setArchiveTarget, applyCategoryLifecycle }) => <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus kategori yang belum dipakai?" : "Arsipkan kategori?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.category.name} belum pernah digunakan dan dapat dihapus permanen.` : `${archiveTarget.category.name} pernah digunakan atau masih memiliki dependency. Riwayat lama tetap disimpan dan kategori hanya diarsipkan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : archiveTarget ? `Arsipkan ${archiveTarget.category.name}` : "Arsipkan kategori"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason busy={dialogState.status === "submitting"} error={dialogState.error} onCancel={() => dialogState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyCategoryLifecycle}>{archiveTarget ? <dl className={styles.impactSummary}><div><dt>Transaksi</dt><dd>{archiveTarget.preview.dependencies.transactions}</dd></div><div><dt>Tagihan rutin</dt><dd>{archiveTarget.preview.dependencies.recurring}</dd></div><div><dt>Anggaran</dt><dd>{archiveTarget.preview.dependencies.budgets}</dd></div></dl> : null}</ConfirmationModal>;
+
+const groupCategories = (items) => items.reduce((groups, category) => {
+  const key = category.transaction_type || "other";
+  groups[key] ||= [];
+  groups[key].push(category);
+  return groups;
+}, {});
+
 const CategoriesPage = () => {
   const { notify } = useFeedback();
   const resource = useApiResource("categories.list");
@@ -155,12 +176,7 @@ const CategoriesPage = () => {
     return { categoriesResult, financeResult };
   };
 
-  const grouped = useMemo(() => (resource.data?.items || []).reduce((groups, category) => {
-    const key = category.transaction_type || "other";
-    groups[key] ||= [];
-    groups[key].push(category);
-    return groups;
-  }, {}), [resource.data]);
+  const grouped = useMemo(() => groupCategories(resource.data?.items || []), [resource.data]);
 
   const createCategory = async (event) => {
     event.preventDefault();
@@ -211,15 +227,20 @@ const CategoriesPage = () => {
     }
   };
 
-  const archiveSelectedCategory = async () => {
+  const applyCategoryLifecycle = async (reason) => {
     if (!archiveTarget) return;
-    const category = archiveTarget.category;
+    const { category, preview } = archiveTarget;
     setDialogState({ status: "submitting", error: null });
     try {
-      await archiveCategory({ category_id: category.category_id, row_version: category.row_version }, { rowVersion: category.row_version });
+      if (preview.canDeleteUnused) {
+        await deleteUnusedCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version });
+        notify({ message: "Kategori yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "categories:delete-unused" });
+      } else {
+        await archiveCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version });
+        notify({ message: "Kategori berhasil diarsipkan.", tone: "success", dedupeKey: "categories:archive" });
+      }
       setArchiveTarget(null);
       setDialogState({ status: "idle", error: null });
-      notify({ message: "Kategori berhasil diarsipkan.", tone: "success", dedupeKey: "categories:archive" });
       await reloadCategories();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
@@ -228,104 +249,9 @@ const CategoriesPage = () => {
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
   const items = resource.data?.items || [];
-  const closeCreate = () => {
-    if (dialogState.status === "submitting") return;
-    setCreateOpen(false);
-    setDialogState({ status: "idle", error: null });
-  };
+  const closeCreate = () => { if (dialogState.status !== "submitting") { setCreateOpen(false); setDialogState({ status: "idle", error: null }); } };
 
-  return (
-    <div className="page-stack">
-      <RefreshWarning error={resource.refreshError} onRetry={reloadCategories} />
-      <PageHeader title="Kategori transaksi" description="Kelola klasifikasi dan pilih ikon agar transaksi lebih cepat dikenali di dashboard maupun laporan." actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />
-      {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
-
-      {items.length ? (
-        <Card className={styles.categoryPanel}>
-          <div className={styles.categoryGroups}>
-            {Object.entries(grouped).map(([type, categories]) => (
-              <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}>
-                <div className={styles.categoryGroupHeading}>
-                  <h2 id={`category-${type}`}>{categoryTypeLabel(type)}</h2>
-                  <span>{categories.length}</span>
-                </div>
-                <div className={styles.categoryList}>
-                  {categories.map((category) => {
-                    const Icon = categoryIcon(category.icon, category.transaction_type);
-                    return (
-                      <article className={styles.categoryItem} key={category.category_id}>
-                        <span className={`${styles.categoryIcon} ${categoryIconToneClass(category.transaction_type)}`}><Icon aria-hidden="true" /></span>
-                        <div className={styles.categoryCopy}>
-                          <strong>{category.name}</strong>
-                          <small>{categoryNatureLabel(category.nature, category.transaction_type)}</small>
-                        </div>
-                        <div className={styles.categoryActions}>
-                          <StatusBadge status={category.status} />
-                          {ownerMode && category.status === "active" ? <button type="button" className={`icon-button ${styles.categoryActionButton}`} onClick={() => openEdit(category)} aria-label={`Edit kategori ${category.name}`} title="Edit kategori"><FiEdit2 aria-hidden="true" /></button> : null}
-                          {ownerMode && category.status === "active" ? <button type="button" className={`icon-button ${styles.categoryActionButton} ${styles.archiveAction}`} onClick={() => openArchivePreview(category)} aria-label={`Arsipkan kategori ${category.name}`} title="Arsipkan kategori"><FiArchive aria-hidden="true" /></button> : null}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-        </Card>
-      ) : (
-        <Card className={styles.emptyPanel}><h2>Belum ada kategori</h2><p>Tambahkan kategori dengan ikon yang sesuai agar transaksi lebih mudah dikenali.</p>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null}</Card>
-      )}
-
-      <Modal open={createOpen} onClose={closeCreate} title="Tambah kategori" description="Pilih kegunaan transaksi, klasifikasi pengeluaran bila relevan, dan ikon dari katalog terkontrol." size="lg" footer={<><Button onClick={closeCreate} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-category-form" loading={dialogState.status === "submitting"}>Simpan kategori</Button></>}>
-        <form id="create-category-form" className="form-grid" onSubmit={createCategory}>
-          <label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" placeholder="Contoh: Cicilan rumah" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-          <label className="field"><span>Dipakai untuk transaksi</span><select value={form.transaction_type} onChange={(event) => {
-            const nextType = event.target.value;
-            setForm((current) => ({
-              ...current,
-              transaction_type: nextType,
-              nature: categoryNatureForType(nextType, current.nature),
-              icon: current.icon === DEFAULT_CATEGORY_ICON_BY_TYPE[current.transaction_type]
-                ? DEFAULT_CATEGORY_ICON_BY_TYPE[nextType]
-                : current.icon,
-            }));
-          }}>{CATEGORY_TYPE_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select><small>Transfer antar rekening tidak memakai kategori dan dibuat dari form Transaksi.</small></label>
-          {form.transaction_type === "expense" ? <label className="field"><span>Sifat pengeluaran</span><select value={form.nature} onChange={(event) => setForm((current) => ({ ...current, nature: event.target.value }))}>{expenseNatureOptions().map((item) => <option value={item.value} key={item.value}>{item.label} · {item.example}</option>)}</select><small>Untuk memindahkan dana ke rekening tabungan sendiri, gunakan Transfer atau Target agar tidak dihitung sebagai pengeluaran.</small></label> : <div className="notice notice--info form-grid__full"><span>Sifat pengeluaran tidak diperlukan untuk {categoryTypeLabel(form.transaction_type).toLowerCase()}.</span></div>}
-          <CategoryIconPicker value={form.icon} onChange={(icon) => setForm((current) => ({ ...current, icon }))} transactionType={form.transaction_type} nature={form.nature} name={form.name} />
-          {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
-        </form>
-      </Modal>
-
-      <Modal open={Boolean(editCategory)} onClose={() => dialogState.status !== "submitting" && setEditCategory(null)} title="Edit kategori" description={editCategory ? `Kegunaan ${categoryTypeLabel(editCategory.transaction_type)} dipertahankan untuk menjaga konsistensi transaksi.` : ""} size="lg" footer={<><Button onClick={() => setEditCategory(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-category-form" loading={dialogState.status === "submitting"}>Simpan perubahan</Button></>}>
-        <form id="edit-category-form" className="form-grid" onSubmit={saveCategory}>
-          <label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" value={editCategory?.name || ""} onChange={(event) => setEditCategory((current) => ({ ...current, name: event.target.value }))} /></label>
-          {editCategory?.transaction_type === "expense" ? <label className="field"><span>Sifat pengeluaran</span><select value={editCategory?.nature || "variable"} onChange={(event) => setEditCategory((current) => ({ ...current, nature: event.target.value }))}>{expenseNatureOptions({ includeLegacySavings: editCategory?.nature === "savings" }).map((item) => <option value={item.value} key={item.value}>{item.label}{item.example ? ` · ${item.example}` : ""}</option>)}</select>{editCategory?.nature === "savings" ? <small>Kategori lama ini masih kompatibel. Pilih klasifikasi baru saat sudah siap; dana ke tabungan sendiri tetap memakai Transfer atau Target.</small> : null}</label> : <div className="notice notice--info form-grid__full"><span>{categoryTypeLabel(editCategory?.transaction_type)} tidak memakai sifat pengeluaran.</span></div>}
-          {editCategory ? <CategoryIconPicker value={editCategory.icon} onChange={(icon) => setEditCategory((current) => ({ ...current, icon }))} transactionType={editCategory.transaction_type} nature={editCategory.nature} name={editCategory.name} /> : null}
-          {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
-        </form>
-      </Modal>
-
-      <ConfirmationModal
-        open={Boolean(archiveTarget)}
-        title="Arsipkan kategori?"
-        description={archiveTarget ? `${archiveTarget.category.name} tidak dapat dipakai untuk data baru setelah diarsipkan. Riwayat lama tetap tersimpan.` : ""}
-        confirmLabel={archiveTarget ? `Arsipkan ${archiveTarget.category.name}` : "Arsipkan kategori"}
-        busy={dialogState.status === "submitting"}
-        error={dialogState.error}
-        onCancel={() => dialogState.status !== "submitting" && setArchiveTarget(null)}
-        onConfirm={archiveSelectedCategory}
-      >
-        {archiveTarget ? (
-          <dl className={styles.impactSummary}>
-            <div><dt>Transaksi aktif</dt><dd>{archiveTarget.preview.dependencies.active_transactions}</dd></div>
-            <div><dt>Tagihan aktif</dt><dd>{archiveTarget.preview.dependencies.active_recurring}</dd></div>
-            <div><dt>Anggaran aktif</dt><dd>{archiveTarget.preview.dependencies.active_budgets}</dd></div>
-            <div><dt>Riwayat transaksi</dt><dd>{archiveTarget.preview.dependencies.transactions}</dd></div>
-          </dl>
-        ) : null}
-      </ConfirmationModal>
-    </div>
-  );
+  return <div className="page-stack"><RefreshWarning error={resource.refreshError} onRetry={reloadCategories} /><PageHeader title="Kategori transaksi" description="Kelola klasifikasi dan pilih ikon agar transaksi lebih cepat dikenali di dashboard maupun laporan." actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />{message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}<CategoryList items={items} grouped={grouped} ownerMode={ownerMode} openCreate={openCreate} openEdit={openEdit} openArchivePreview={openArchivePreview} /><CreateCategoryModal open={createOpen} close={closeCreate} form={form} setForm={setForm} createCategory={createCategory} dialogState={dialogState} /><EditCategoryModal editCategory={editCategory} setEditCategory={setEditCategory} saveCategory={saveCategory} dialogState={dialogState} /><ArchiveCategoryModal archiveTarget={archiveTarget} dialogState={dialogState} setArchiveTarget={setArchiveTarget} applyCategoryLifecycle={applyCategoryLifecycle} /></div>;
 };
 
 export default CategoriesPage;

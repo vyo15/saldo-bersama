@@ -7,7 +7,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-FIN-001` | Integer Rupiah | Implemented | migration constraints, validation, tests | Real-data parity wajib |
 | `REQ-FIN-002` | Saldo dari ledger aktif | Implemented | balance projection, finance tests | Real bank reconciliation wajib |
 | `REQ-FIN-003` | Transfer netral income/expense | Implemented | finance service/report tests | Production smoke wajib |
-| `REQ-FIN-004` | Soft cancel/archive | Implemented | transaction status, audit, tests | Retention policy operation |
+| `REQ-FIN-004` | Soft cancel/archive + guarded delete-unused | Implemented | transaction status, master/config lifecycle preview, exact hard-delete allowlist, audit, tests | Backup/operational retention policy tetap terpisah |
 | `REQ-FIN-005` | Idempotency + audit append-only | Implemented | internal transaction replay + external pre-side-effect reservation + restore reservation preservation + private-memory frontend mutation intent + integrity-run idempotency + audit triggers | Full Node 24 guard/browser gate pada patch terbaru |
 | `REQ-FIN-006` | Optimistic row version | Implemented | version guards/conflict tests | Multi-device smoke |
 | `REQ-SEC-001`–`REQ-SEC-002` | Auth/authorization | Implemented | `security.js`, session, ownership query | Real owner/member smoke |
@@ -32,7 +32,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
 | `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert + preference per user + recurring due/H-2/completed + budget/envelope/goal/unallocated, privacy-safe payload, per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
-| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + planning recovery lifecycle + confirmation/browser-side single-flight | Full operator gate patch terbaru + external alerting/operational drills |
+| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + confirmation/browser-side single-flight | Full operator gate patch terbaru + external alerting/operational drills |
 
 ## Infrastruktur dan deployment
 

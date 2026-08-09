@@ -250,6 +250,7 @@ test("rekening, kategori, dan transaksi cancelled dapat dipulihkan satu per satu
     const archivedCategory = await dispatch(db, "categories.archive", {
       category_id: category.category_id,
       row_version: category.row_version,
+      reason: "Kategori tidak dipakai untuk transaksi baru",
     }, { rowVersion: category.row_version });
     const restoredCategory = await dispatch(db, "categories.restore", {
       category_id: archivedCategory.category_id,
@@ -262,6 +263,7 @@ test("rekening, kategori, dan transaksi cancelled dapat dipulihkan satu per satu
     const archivedAccount = await dispatch(db, "accounts.archive", {
       account_id: emptyAccount.account_id,
       row_version: emptyAccount.row_version,
+      reason: "Rekening tidak dipakai lagi",
     }, { rowVersion: emptyAccount.row_version });
     assert.equal(archivedAccount.status, "archived");
     const restoredAccount = await dispatch(db, "accounts.restore", {

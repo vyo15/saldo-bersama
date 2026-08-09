@@ -323,9 +323,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(await page.evaluate("document.body.textContent.includes('Pribadi · Owner Browser') && document.body.textContent.includes('Pribadi · Member Browser')"), true, "Label pemilik rekening personal harus tampil transparan.");
 
     await setViewport(page, 351, 590);
-    await page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)");
-    await new Promise((resolve) => setTimeout(resolve, 120));
-    const accountFullScreenState = await page.evaluate(`(() => {
+    const readAccountFullScreenState = () => page.evaluate(`(() => {
       const stage = document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]');
       const experience = stage?.closest('section')?.parentElement;
       const content = document.querySelector('.app-shell--accounts .app-content');
@@ -352,6 +350,12 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
         })(),
       };
     })()`);
+    await waitFor(async () => {
+      await page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)");
+      const state = await readAccountFullScreenState();
+      return state.reservedGap >= -1 && state.reservedGap <= 20;
+    }, { description: "ruang aman Rekening stabil setelah konten mobile selesai bertambah" });
+    const accountFullScreenState = await readAccountFullScreenState();
     assert.ok(accountFullScreenState.shellHeight >= accountFullScreenState.viewportHeight - 1, "Shell Rekening harus memenuhi dynamic viewport pada layar pendek.");
     assert.notEqual(accountFullScreenState.contentBackground, "none", "Area aman di bawah konten Rekening harus memiliki background route.");
     assert.equal(accountFullScreenState.contentBackground, accountFullScreenState.experienceBackground, "Background Rekening harus berlanjut sampai ruang aman sebelum navigasi.");

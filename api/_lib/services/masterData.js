@@ -113,6 +113,29 @@ const categoryDependencyCounts = async (db, categoryId) => numericCounts(await d
   (SELECT COUNT(*) FROM budgets WHERE category_id=?) AS budgets,
   (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS active_budgets`, [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId]));
 
+const categoryLifecycleImpact = async (db, current) => {
+  const dependencies = await categoryDependencyCounts(db, current.category_id);
+  const archiveBlockers = [];
+  if (current.status !== "active") archiveBlockers.push("Kategori tidak aktif.");
+  if (dependencies.active_recurring) archiveBlockers.push("Masih digunakan tagihan rutin aktif.");
+  if (dependencies.active_budgets) archiveBlockers.push("Masih digunakan anggaran aktif.");
+
+  const deleteBlockers = [];
+  if (current.status !== "active") deleteBlockers.push("Hanya kategori aktif yang dapat dihapus sebagai data belum dipakai.");
+  if (dependencies.transactions) deleteBlockers.push("Kategori pernah digunakan transaksi, termasuk transaksi cancelled atau archived.");
+  if (dependencies.recurring) deleteBlockers.push("Kategori pernah atau masih digunakan tagihan rutin.");
+  if (dependencies.budgets) deleteBlockers.push("Kategori pernah atau masih digunakan anggaran.");
+
+  return {
+    category: publicRow(current),
+    dependencies,
+    canArchive: archiveBlockers.length === 0,
+    canDeleteUnused: deleteBlockers.length === 0,
+    archiveBlockers,
+    deleteBlockers,
+  };
+};
+
 export const listAccounts = async (db, context) => ({ items: await visibleAccounts(db, context.actor) });
 
 export const listArchivedData = async (db, context) => {
@@ -135,6 +158,85 @@ export const listArchivedData = async (db, context) => {
     recurringRules: recurringRules.map((row) => publicRow(row, ["auto_debit"])),
     budgets: budgets.map((row) => ({ ...publicRow(row), name: row.display_name })),
   };
+};
+
+
+const accountScopeChanged = (current, owned) => current.owner_scope !== owned.scope
+  || String(current.owner_user_id || "") !== String(owned.owner_user_id || "");
+
+const hasActiveAccountDependencies = (dependencies) => Object.values(dependencies).some((value) => Number(value) > 0);
+
+const buildUpdatedAccount = (current, payload, owned, actorUserId) => {
+  const nextAccountType = payload.account_type === undefined ? current.account_type : String(payload.account_type);
+  const rawName = payload.name === undefined ? current.name : payload.name;
+  const rawAccountNumber = payload.account_number === undefined ? current.account_number : payload.account_number;
+  const rawBankTemplate = payload.bank_template === undefined ? current.bank_template : payload.bank_template;
+  const allowNegative = payload.allow_negative === undefined
+    ? current.allow_negative
+    : (strictBoolean(payload.allow_negative) ? 1 : 0);
+  return {
+    ...current,
+    name: sanitizeText(rawName, 120),
+    account_type: nextAccountType,
+    account_number: payload.account_number === undefined
+      ? String(rawAccountNumber || "")
+      : normalizeAccountNumber(rawAccountNumber, nextAccountType, { required: nextAccountType === "bank" }),
+    bank_template: normalizeBankTemplate(rawBankTemplate, nextAccountType),
+    owner_scope: owned.scope,
+    owner_user_id: owned.owner_user_id,
+    allow_negative: allowNegative,
+    ...nextVersionStamp(current, actorUserId),
+  };
+};
+
+const assertAccountUpdateValid = async (db, current, next) => {
+  if (!next.name) throw appError("NAME_REQUIRED", "Nama rekening wajib diisi.", 400);
+  if (!ACCOUNT_TYPES.has(next.account_type)) throw appError("INVALID_ACCOUNT_TYPE", "Jenis rekening tidak valid.", 400);
+  const duplicate = await db.one("SELECT account_id FROM accounts WHERE account_id<>? AND lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [current.account_id, next.name, next.owner_scope, next.owner_user_id]);
+  if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);
+  if (Number(current.allow_negative) !== 1 || Number(next.allow_negative) !== 0) return;
+  const negative = await firstNegativeBalance(db, current, { fromDate: current.initial_balance_date });
+  if (negative) throw appError("ACCOUNT_HAS_NEGATIVE_HISTORY", "Izin saldo minus tidak dapat dimatikan karena histori rekening pernah negatif.", 409, negative);
+};
+
+const resolveCategoryNature = (payload, current, nextType) => {
+  const explicitNature = payload.nature !== undefined;
+  if (nextType !== "expense" && explicitNature && String(payload.nature) !== "other") {
+    throw appError("CATEGORY_NATURE_NOT_APPLICABLE", "Sifat pengeluaran tidak dapat diubah untuk kategori uang masuk atau pengembalian dana.", 400);
+  }
+  if (nextType !== "expense") return "other";
+  return explicitNature ? String(payload.nature) : current.nature;
+};
+
+const buildUpdatedCategory = (current, payload, actorUserId) => {
+  const nextType = payload.transaction_type === undefined ? current.transaction_type : String(payload.transaction_type);
+  const nextNature = resolveCategoryNature(payload, current, nextType);
+  const rawName = payload.name === undefined ? current.name : payload.name;
+  const icon = payload.icon === undefined ? current.icon : categoryIconValue(payload.icon, nextType);
+  return {
+    ...current,
+    name: sanitizeText(rawName, 100),
+    transaction_type: nextType,
+    nature: nextNature,
+    icon,
+    ...nextVersionStamp(current, actorUserId),
+  };
+};
+
+const assertCategoryUpdateShape = (current, next) => {
+  if (!next.name || !CATEGORY_TYPES.has(next.transaction_type) || !CATEGORY_NATURES.has(next.nature)) {
+    throw appError("INVALID_CATEGORY", "Data kategori tidak valid.", 400);
+  }
+  const keepsLegacySavings = current.nature === LEGACY_SAVINGS_NATURE && next.nature === LEGACY_SAVINGS_NATURE;
+  if (next.transaction_type === "expense" && !CURRENT_EXPENSE_CATEGORY_NATURES.has(next.nature) && !keepsLegacySavings) {
+    throw appError("SAVINGS_CATEGORY_NOT_ALLOWED", "Pemindahan dana ke tabungan sendiri harus dicatat sebagai Transfer atau Target, bukan kategori pengeluaran.", 400);
+  }
+};
+
+const assertCategoryTypeChangeAllowed = async (db, current, next) => {
+  if (next.transaction_type === current.transaction_type) return;
+  const usage = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE category_id=?", [current.category_id]);
+  if (Number(usage?.count || 0)) throw appError("CATEGORY_TYPE_LOCKED", "Jenis kategori tidak dapat diubah setelah digunakan transaksi.", 409);
 };
 
 export const createAccount = async (db, context) => {
@@ -173,34 +275,22 @@ export const updateAccount = async (db, context) => {
   const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? payload.row_version);
-  const owned = await normalizeOwnedScope(db, context.actor, { scope: payload.owner_scope, owner_user_id: payload.owner_user_id }, { scope: current.owner_scope, owner_user_id: current.owner_user_id });
+  const owned = await normalizeOwnedScope(
+    db,
+    context.actor,
+    { scope: payload.owner_scope, owner_user_id: payload.owner_user_id },
+    { scope: current.owner_scope, owner_user_id: current.owner_user_id },
+  );
   const dependencies = await db.one(`SELECT
     (SELECT COUNT(*) FROM transactions WHERE status='active' AND (source_account_id=? OR destination_account_id=?)) AS transactions,
     (SELECT COUNT(*) FROM envelope_rules WHERE status='active' AND source_account_id=?) AS envelopes,
     (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND default_account_id=?) AS recurring,
     (SELECT COUNT(*) FROM savings_goals WHERE status='active' AND account_id=?) AS goals`, [current.account_id,current.account_id,current.account_id,current.account_id,current.account_id]);
-  if ((current.owner_scope !== owned.scope || String(current.owner_user_id || "") !== String(owned.owner_user_id || "")) && Object.values(dependencies).some((value) => Number(value) > 0)) {
+  if (accountScopeChanged(current, owned) && hasActiveAccountDependencies(dependencies)) {
     throw appError("ACCOUNT_SCOPE_LOCKED", "Kepemilikan rekening tidak dapat diubah karena sudah memiliki data terkait.", 409, dependencies);
   }
-  const nextAccountType = payload.account_type === undefined ? current.account_type : String(payload.account_type);
-  const next = {
-    ...current,
-    name: sanitizeText(payload.name === undefined ? current.name : payload.name, 120),
-    account_type: nextAccountType,
-    account_number: payload.account_number === undefined ? String(current.account_number || "") : normalizeAccountNumber(payload.account_number, nextAccountType, { required: nextAccountType === "bank" }),
-    bank_template: normalizeBankTemplate(payload.bank_template === undefined ? current.bank_template : payload.bank_template, nextAccountType),
-    owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
-    allow_negative: payload.allow_negative === undefined ? current.allow_negative : (strictBoolean(payload.allow_negative) ? 1 : 0),
-    ...nextVersionStamp(current, context.actor.user_id),
-  };
-  if (!next.name) throw appError("NAME_REQUIRED", "Nama rekening wajib diisi.", 400);
-  if (!ACCOUNT_TYPES.has(next.account_type)) throw appError("INVALID_ACCOUNT_TYPE", "Jenis rekening tidak valid.", 400);
-  const duplicate = await db.one("SELECT account_id FROM accounts WHERE account_id<>? AND lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [current.account_id, next.name, next.owner_scope, next.owner_user_id]);
-  if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);
-  if (Number(current.allow_negative) === 1 && Number(next.allow_negative) === 0) {
-    const negative = await firstNegativeBalance(db, current, { fromDate: current.initial_balance_date });
-    if (negative) throw appError("ACCOUNT_HAS_NEGATIVE_HISTORY", "Izin saldo minus tidak dapat dimatikan karena histori rekening pernah negatif.", 409, negative);
-  }
+  const next = buildUpdatedAccount(current, payload, owned, context.actor.user_id);
+  await assertAccountUpdateValid(db, current, next);
   const result = await db.execute(`UPDATE accounts SET name=?,account_type=?,account_number=?,bank_template=?,owner_scope=?,owner_user_id=?,allow_negative=?,row_version=?,updated_by=?,updated_at=?
     WHERE account_id=? AND row_version=?`, [next.name,next.account_type,next.account_number,next.bank_template,next.owner_scope,next.owner_user_id,next.allow_negative,next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Rekening berubah di perangkat lain.", 409);
@@ -219,9 +309,12 @@ export const previewAccountLifecycle = async (db, context) => {
 
 export const archiveAccount = async (db, context) => {
   assertOwner(context.actor);
-  const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [context.payload?.account_id]);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
-  assertVersion(current, context.rowVersion ?? context.payload?.row_version);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip rekening wajib diisi.", 400);
   const impact = await accountLifecycleImpact(db, current, context.today || nowIso().slice(0, 10));
   if (impact.dependencies.active_transactions || impact.dependencies.active_envelopes || impact.dependencies.active_recurring || impact.dependencies.active_goals) {
     throw appError("ACCOUNT_IN_USE", "Rekening masih dipakai data aktif.", 409, impact);
@@ -231,7 +324,7 @@ export const archiveAccount = async (db, context) => {
   const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
   const result = await db.execute("UPDATE accounts SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE account_id=? AND row_version=?", [next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Rekening berubah di perangkat lain.", 409);
-  await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: accountAuditRow(current), next: accountAuditRow(next) });
+  await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: accountAuditRow(current), next: { ...accountAuditRow(next), archive_reason: reason } });
   await context.enqueueMirror?.(db, "account", current.account_id);
   return publicRow(next, ["allow_negative"]);
 };
@@ -324,26 +417,11 @@ export const updateCategory = async (db, context) => {
   const current = await db.one("SELECT * FROM categories WHERE category_id=?", [payload.category_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Kategori aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? payload.row_version);
-  const nextType = payload.transaction_type === undefined ? current.transaction_type : String(payload.transaction_type);
-  const explicitNature = payload.nature !== undefined;
-  if (nextType !== "expense" && explicitNature && String(payload.nature) !== "other") {
-    throw appError("CATEGORY_NATURE_NOT_APPLICABLE", "Sifat pengeluaran tidak dapat diubah untuk kategori uang masuk atau pengembalian dana.", 400);
-  }
-  const nextNature = nextType === "expense"
-    ? (explicitNature ? String(payload.nature) : current.nature)
-    : "other";
-  const next = { ...current, name: sanitizeText(payload.name === undefined ? current.name : payload.name,100), transaction_type: nextType, nature: nextNature, icon: payload.icon === undefined ? current.icon : categoryIconValue(payload.icon, nextType), ...nextVersionStamp(current, context.actor.user_id) };
-  if (!next.name || !CATEGORY_TYPES.has(next.transaction_type) || !CATEGORY_NATURES.has(next.nature)) throw appError("INVALID_CATEGORY", "Data kategori tidak valid.", 400);
-  const keepsLegacySavings = current.nature === LEGACY_SAVINGS_NATURE && next.nature === LEGACY_SAVINGS_NATURE;
-  if (next.transaction_type === "expense" && !CURRENT_EXPENSE_CATEGORY_NATURES.has(next.nature) && !keepsLegacySavings) {
-    throw appError("SAVINGS_CATEGORY_NOT_ALLOWED", "Pemindahan dana ke tabungan sendiri harus dicatat sebagai Transfer atau Target, bukan kategori pengeluaran.", 400);
-  }
+  const next = buildUpdatedCategory(current, payload, context.actor.user_id);
+  assertCategoryUpdateShape(current, next);
   const duplicate = await db.one("SELECT category_id FROM categories WHERE category_id<>? AND lower(name)=lower(?) AND transaction_type=? AND status='active'", [current.category_id, next.name, next.transaction_type]);
   if (duplicate) throw appError("DUPLICATE_CATEGORY", "Kategori aktif dengan nama dan jenis yang sama sudah ada.", 409);
-  if (next.transaction_type !== current.transaction_type) {
-    const usage = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE category_id=?", [current.category_id]);
-    if (Number(usage?.count || 0)) throw appError("CATEGORY_TYPE_LOCKED", "Jenis kategori tidak dapat diubah setelah digunakan transaksi.", 409);
-  }
+  await assertCategoryTypeChangeAllowed(db, current, next);
   const result = await db.execute("UPDATE categories SET name=?,transaction_type=?,nature=?,icon=?,row_version=?,updated_by=?,updated_at=? WHERE category_id=? AND row_version=?", [next.name,next.transaction_type,next.nature,next.icon,next.row_version,next.updated_by,next.updated_at,current.category_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Kategori berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "category", entityId: current.category_id, previous: publicRow(current), next: publicRow(next) });
@@ -356,30 +434,47 @@ export const previewCategoryArchive = async (db, context) => {
   const current = await db.one("SELECT * FROM categories WHERE category_id=?", [context.payload?.category_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Kategori aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? context.payload?.row_version);
-  const dependencies = await categoryDependencyCounts(db, current.category_id);
-  const blockers = [];
-  if (dependencies.active_transactions) blockers.push("Masih digunakan transaksi aktif.");
-  if (dependencies.active_recurring) blockers.push("Masih digunakan tagihan rutin aktif.");
-  if (dependencies.active_budgets) blockers.push("Masih digunakan anggaran aktif.");
-  return { category: publicRow(current), dependencies, canArchive: blockers.length === 0, blockers };
+  return categoryLifecycleImpact(db, current);
 };
 
 export const archiveCategory = async (db, context) => {
   assertOwner(context.actor);
-  const current = await db.one("SELECT * FROM categories WHERE category_id=?", [context.payload?.category_id]);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM categories WHERE category_id=?", [payload.category_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Kategori aktif tidak ditemukan.", 404);
-  assertVersion(current, context.rowVersion ?? context.payload?.row_version);
-  const dependencies = await db.one(`SELECT
-    (SELECT COUNT(*) FROM transactions WHERE status='active' AND category_id=?) AS transactions,
-    (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND category_id=?) AS recurring,
-    (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS budgets`, [current.category_id,current.category_id,current.category_id]);
-  if (Object.values(dependencies).some((value) => Number(value)>0)) throw appError("CATEGORY_IN_USE", "Kategori masih dipakai data aktif.", 409, dependencies);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip kategori wajib diisi.", 400);
+  const impact = await categoryLifecycleImpact(db, current);
+  if (!impact.canArchive) throw appError("CATEGORY_IN_USE", "Kategori masih dipakai data aktif.", 409, impact);
   const next = { ...current, status:"archived", ...nextVersionStamp(current, context.actor.user_id) };
-  const result = await db.execute("UPDATE categories SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE category_id=? AND row_version=?", [next.row_version,next.updated_by,next.updated_at,current.category_id,current.row_version]);
+  const result = await db.execute("UPDATE categories SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE category_id=? AND row_version=? AND status='active'", [next.row_version,next.updated_by,next.updated_at,current.category_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Kategori berubah di perangkat lain.",409);
-  await appendAudit(db, context, { entityType:"category", entityId:current.category_id, previous:publicRow(current), next:publicRow(next) });
+  await appendAudit(db, context, { entityType:"category", entityId:current.category_id, previous:publicRow(current), next:{ ...publicRow(next), archive_reason: reason } });
   await context.enqueueMirror?.(db,"category",current.category_id);
   return publicRow(next);
+};
+
+export const deleteUnusedCategory = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM categories WHERE category_id=?", [payload.category_id]);
+  if (!current || current.status !== "active") throw appError("NOT_FOUND", "Kategori aktif tidak ditemukan.", 404);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan kategori wajib diisi.", 400);
+  const impact = await categoryLifecycleImpact(db, current);
+  if (!impact.canDeleteUnused) throw appError("CATEGORY_DELETE_BLOCKED", "Kategori tidak memenuhi syarat sebagai kategori belum pernah digunakan.", 409, impact);
+  await appendAudit(db, context, {
+    entityType: "category",
+    entityId: current.category_id,
+    previous: publicRow(current),
+    next: { deleted: true, deletion_type: "unused_category_only", reason, dependencies: impact.dependencies, audit_preserved: true },
+  });
+  const result = await db.execute("DELETE FROM categories WHERE category_id=? AND row_version=? AND status='active'", [current.category_id, current.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Kategori berubah atau baru saja digunakan di perangkat lain.", 409);
+  await context.enqueueMirror?.(db, "category", current.category_id);
+  return { category_id: current.category_id, deleted: true, audit_preserved: true };
 };
 
 export const restoreCategory = async (db, context) => {

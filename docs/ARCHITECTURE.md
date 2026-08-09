@@ -53,6 +53,7 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 - Feature yang memerlukan action domain feature lain membuat adapter lokal ke `services/api/client.js`, bukan mengimpor `*.api.js` milik feature lain. Reuse komponen visual lintas feature harus eksplisit dan tidak boleh membawa business rule atau write API.
 - Feature/page tidak boleh mengimpor transport global untuk write dan tidak boleh mengimpor toolkit UI langsung.
 - `test/governance/source-architecture.test.js` menjaga relative-import cycle, dependency direction, dan canonical helper yang rawan copy-paste.
+- `test/governance/data-deletion-policy.test.js` menjaga inventaris exact seluruh hard-delete production. DELETE baru di luar allowlist gagal CI; ledger normal, audit, movement, rekonsiliasi, dan period closure tidak boleh memperoleh business hard-delete. Master/config hanya dapat hard-delete melalui server-proven `deleteUnused`, sedangkan histori memakai archive/cancel/reverse.
 
 ## Read model
 
