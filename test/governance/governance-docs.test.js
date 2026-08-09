@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -189,13 +190,34 @@ test("task relationship guard allows parallel same-team work but rejects depende
 });
 
 test("task tooling fails closed for an unregistered branch and renders the simplified queue", () => {
-  const invalid = spawnSync(process.execPath, ["scripts/validate-task.mjs"], {
-    cwd: root,
-    encoding: "utf8",
-    env: { ...process.env, TASK_BRANCH: "fix/SB-999-unregistered" },
-  });
-  assert.notEqual(invalid.status, 0);
-  assert.match(`${invalid.stdout}\n${invalid.stderr}`, /tidak memiliki task card aktif SB-999/);
+  const sandbox = mkdtempSync(path.join(os.tmpdir(), "saldo-bersama-task-guard-"));
+  try {
+    mkdirSync(path.join(sandbox, "scripts"), { recursive: true });
+    mkdirSync(path.join(sandbox, "docs/tasks/active"), { recursive: true });
+    mkdirSync(path.join(sandbox, "docs/tasks/archive"), { recursive: true });
+    copyFileSync(path.join(root, "scripts/validate-task.mjs"), path.join(sandbox, "scripts/validate-task.mjs"));
+    writeFileSync(path.join(sandbox, "README.md"), "task guard fixture\n");
+    for (const args of [
+      ["init", "-q"],
+      ["config", "user.name", "Task Guard Test"],
+      ["config", "user.email", "task-guard@example.test"],
+      ["add", "-A"],
+      ["commit", "-qm", "fixture"],
+      ["branch", "-M", "main"],
+    ]) {
+      const git = spawnSync("git", args, { cwd: sandbox, encoding: "utf8" });
+      assert.equal(git.status, 0, git.stderr);
+    }
+    const invalid = spawnSync(process.execPath, ["scripts/validate-task.mjs"], {
+      cwd: sandbox,
+      encoding: "utf8",
+      env: { ...process.env, TASK_BRANCH: "fix/SB-999-unregistered", TASK_BASE_REF: "main" },
+    });
+    assert.notEqual(invalid.status, 0);
+    assert.match(`${invalid.stdout}\n${invalid.stderr}`, /tidak memiliki task card aktif SB-999/);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 
   const list = spawnSync(process.execPath, ["scripts/list-tasks.mjs"], {
     cwd: root,

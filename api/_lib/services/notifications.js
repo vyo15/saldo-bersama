@@ -1,5 +1,5 @@
-import crypto from "node:crypto";
 import { decodeBase64Url } from "../encoding.js";
+import { WEB_PUSH_ENV_KEYS, validateVapidConfiguration } from "../webPushConfiguration.js";
 import dns from "node:dns";
 import https from "node:https";
 import net from "node:net";
@@ -9,7 +9,6 @@ import { addDays, appError, assertVersion, nowIso, parseJson, publicRow, sanitiz
 import { accountBalanceAsOf } from "./readModels.js";
 import { goalProjection } from "./planning/goals.js";
 
-const WEB_PUSH_ENV_KEYS = ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"];
 const BLOCKED_ENDPOINT_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".example", ".invalid", ".onion"];
 const TEST_COOLDOWN_MS = 30_000;
 export const NOTIFICATION_TYPES = Object.freeze([
@@ -99,48 +98,12 @@ export const webPushRequestOptions = (ttlSeconds) => ({
   agent: PUSH_HTTPS_AGENT,
 });
 
-const validVapidSubject = (value) => {
-  const subject = String(value || "").trim();
-  if (/^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(subject)) return true;
-  try {
-    const url = new URL(subject);
-    const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
-    const publicHostname = hostname
-      && hostname !== "localhost"
-      && hostname.includes(".")
-      && net.isIP(hostname) === 0
-      && !BLOCKED_ENDPOINT_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
-    return url.protocol === "https:" && publicHostname && !url.username && !url.password && !url.hash;
-  } catch {
-    return false;
-  }
-};
-
 export const webPushConfigurationStatus = (environment = process.env) => {
   const values = Object.fromEntries(WEB_PUSH_ENV_KEYS.map((key) => [key, String(environment[key] || "").trim()]));
-  const present = WEB_PUSH_ENV_KEYS.filter((key) => values[key]);
-  if (!present.length) return { configured: false, ready: false, code: "DISABLED", missing: [...WEB_PUSH_ENV_KEYS], invalid: [] };
-  const missing = WEB_PUSH_ENV_KEYS.filter((key) => !values[key]);
-  if (missing.length) return { configured: true, ready: false, code: "INCOMPLETE", missing, invalid: [] };
-
-  const publicKey = decodeBase64Url(values.VITE_VAPID_PUBLIC_KEY);
-  const privateKey = decodeBase64Url(values.VAPID_PRIVATE_KEY);
-  const invalid = [];
-  const publicKeyValid = Boolean(publicKey && publicKey.length === 65 && publicKey[0] === 4);
-  const privateKeyValid = Boolean(privateKey && privateKey.length === 32);
-  if (!publicKeyValid) invalid.push("VITE_VAPID_PUBLIC_KEY");
-  if (!privateKeyValid) invalid.push("VAPID_PRIVATE_KEY");
-  if (publicKeyValid && privateKeyValid) {
-    try {
-      const ecdh = crypto.createECDH("prime256v1");
-      ecdh.setPrivateKey(privateKey);
-      if (!crypto.timingSafeEqual(ecdh.getPublicKey(), publicKey)) invalid.push("VAPID_KEY_PAIR");
-    } catch {
-      invalid.push("VAPID_KEY_PAIR");
-    }
-  }
-  if (!validVapidSubject(values.VAPID_SUBJECT)) invalid.push("VAPID_SUBJECT");
-  if (invalid.length) return { configured: true, ready: false, code: "INVALID", missing: [], invalid: [...new Set(invalid)] };
+  const status = validateVapidConfiguration(values);
+  if (!status.enabled) return { configured: false, ready: false, code: "DISABLED", missing: [...WEB_PUSH_ENV_KEYS], invalid: [] };
+  if (!status.complete) return { configured: true, ready: false, code: "INCOMPLETE", missing: status.missing, invalid: [] };
+  if (!status.valid) return { configured: true, ready: false, code: "INVALID", missing: [], invalid: status.invalid };
   return { configured: true, ready: true, code: "READY", missing: [], invalid: [] };
 };
 

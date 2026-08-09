@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -7,16 +6,9 @@ import test from "node:test";
 import { ensureDevelopmentDependencies } from "../../scripts/bootstrap-development-dependencies.mjs";
 import { ensureDevelopmentEnvironment } from "../../scripts/bootstrap-development-env.mjs";
 import { CORE_RUNTIME_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
+import { createVapidTestEnvironment } from "../helpers/vapid-test-keys.js";
 
-const validWebPushEnvironment = () => {
-  const ecdh = crypto.createECDH("prime256v1");
-  ecdh.generateKeys();
-  return {
-    VITE_VAPID_PUBLIC_KEY: ecdh.getPublicKey().toString("base64url"),
-    VAPID_PRIVATE_KEY: ecdh.getPrivateKey().toString("base64url"),
-    VAPID_SUBJECT: "mailto:owner@example.com",
-  };
-};
+const validWebPushEnvironment = () => createVapidTestEnvironment();
 
 const completeEnvironment = () => {
   const values = {

@@ -11,6 +11,7 @@ Workflow ini dibuat untuk satu user yang bekerja bersama beberapa tab/chat ChatG
 | `BE` | API/backend, Firebase Auth/session/authorization, Turso/database, migration, saldo, transaksi, audit, concurrency, Apps Script, backup/restore, integrasi server-side |
 
 Tidak ada team `UIUX`, `DB`, atau `QA` terpisah. Tanggung jawab tersebut masuk ke `FE`, `BE`, dan validation oleh owner/COORD.
+Task lintas FE+BE boleh dikemas sebagai satu task integrasi `COORD` hanya setelah user menyetujui satu paket gabungan; `Write Scope` tetap eksplisit dan tidak boleh overlap dengan task aktif lain.
 
 ## Status task
 
@@ -116,7 +117,7 @@ Script menangani:
 4. fetch `origin/main` dan validasi task/scope;
 5. `git add -A` dan commit;
 6. merge `origin/main` ke branch task;
-7. `npm run check` + guard regression; FE juga menjalankan browser test;
+7. `npm run check` + guard regression; browser test juga wajib bila task menyentuh `frontend/**`, `test/browser/**`, atau browser build helper, termasuk task integrasi milik COORD;
 8. push branch sebagai backup;
 9. merge task ke `main`;
 10. push `main`;
@@ -127,6 +128,8 @@ Script menangani:
 Jika direct push ke `main` ditolak repository rules atau `origin/main` berubah pada saat terakhir, script mengembalikan `main` lokal ke kondisi remote lalu kembali ke branch task. Pekerjaan tidak hilang dan command yang sama dapat diulang setelah kondisi stabil.
 
 ## Guarded/high-risk
+
+Backend runtime (`api/**`), database (`database/**`), Apps Script, repository workflow, deployment/environment tooling, dan governance global dianggap guarded secara default. Kebijakan ini sengaja broad/fail-closed agar task tidak dapat salah diklasifikasikan aman hanya karena satu path baru belum ditambahkan ke denylist granular.
 
 Guarded/HIGH/CRITICAL tidak memakai flow Git yang berbeda. Pengamannya ada **sebelum** merge:
 - task wajib `Guarded=YES`;

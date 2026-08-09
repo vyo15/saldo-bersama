@@ -28,7 +28,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import AccountFinancialCard, { AccountVisual } from "./components/AccountFinancialCard.jsx";
-import { accountCardholderName, detectBankTemplate } from "./accountPresentation.js";
+import { accountCardholderName, detectBankTemplate } from "../../shared/presentation/account.js";
 import styles from "./AccountsPage.module.css";
 
 const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));

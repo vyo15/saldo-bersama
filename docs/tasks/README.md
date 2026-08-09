@@ -16,6 +16,7 @@ docs/tasks/
 
 - Satu task = satu Task ID + satu branch.
 - Team hanya `COORD`, `FE`, atau `BE`.
+- Satu patch lintas FE+BE boleh memakai Primary Team `COORD` bila user menyetujui paket gabungan; seluruh path tetap harus tercantum di `Write Scope`.
 - Banyak task boleh `IN_PROGRESS` sekaligus.
 - `Write Scope` task `APPROVED`/`IN_PROGRESS` tidak boleh overlap.
 - Dependency ditulis hanya bila benar-benar diperlukan.

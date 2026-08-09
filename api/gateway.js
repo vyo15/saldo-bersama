@@ -3,6 +3,7 @@ import { dispatchAction } from "./_lib/actionDispatcher.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
 import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, enforceBestEffortRateLimit, readSession, requiresIdempotencyKey } from "./_lib/security.js";
+import { stableValue } from "./_lib/serialization.js";
 
 const COALESCED_READ_ACTIONS = new Set([
   "app.initialState", "system.health", "users.list", "audit.list", "dashboard.overview", "accounts.list",
@@ -10,8 +11,6 @@ const COALESCED_READ_ACTIONS = new Set([
   "reports.monthly", "reconciliations.list", "periods.list", "integrations.status", "notifications.status",
 ]);
 const inFlightReads = new Map();
-const stableValue = (value) => Array.isArray(value) ? value.map(stableValue) : value && typeof value === "object"
-  ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableValue(value[key])])) : value;
 const coalescedReadKey = (session, action, payload) => crypto.createHash("sha256").update(JSON.stringify([session.uid, session.role, action, stableValue(payload || {})])).digest("hex");
 
 const dispatch = (session, action, payload, options, requestId) => {

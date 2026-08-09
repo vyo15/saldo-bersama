@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -24,17 +23,10 @@ import {
   OPTIONAL_LOGGING_ENV_KEYS,
   PRODUCTION_SYNC_ENV_KEYS,
 } from "../../scripts/runtime-environment.mjs";
+import { createVapidTestEnvironment, createVapidTestKeyPair } from "../helpers/vapid-test-keys.js";
 
 const coreValues = () => Object.fromEntries([...CORE_RUNTIME_ENV_KEYS, ...OPTIONAL_LOGGING_ENV_KEYS].map((key) => [key, `${key.toLowerCase()}-value`]));
-const validWebPushValues = () => {
-  const ecdh = crypto.createECDH("prime256v1");
-  ecdh.generateKeys();
-  return {
-    VITE_VAPID_PUBLIC_KEY: ecdh.getPublicKey().toString("base64url"),
-    VAPID_PRIVATE_KEY: ecdh.getPrivateKey().toString("base64url"),
-    VAPID_SUBJECT: "mailto:owner@example.com",
-  };
-};
+const validWebPushValues = () => createVapidTestEnvironment();
 const canonicalValues = () => ({
   ...coreValues(),
   GOOGLE_BRIDGE_WEB_APP_URL: "https://script.google.com/macros/s/test/exec",
@@ -52,6 +44,13 @@ const withTempProject = async (callback) => {
     await rm(root, { recursive: true, force: true });
   }
 };
+
+test("fixture VAPID selalu menghasilkan private scalar 32 byte", () => {
+  for (let index = 0; index < 256; index += 1) {
+    const values = validWebPushValues();
+    assert.equal(Buffer.from(values.VAPID_PRIVATE_KEY, "base64url").length, 32);
+  }
+});
 
 test("sinkronisasi Vercel mencakup core, logging, dan grup integrasi Production", () => {
   assert.equal(CORE_RUNTIME_ENV_KEYS.length, 8);
@@ -138,9 +137,7 @@ test("sinkronisasi Production menolak grup integrasi parsial dan VAPID tidak val
   assert.deepEqual(invalidStatus.invalidWebPush, ["VAPID_PRIVATE_KEY"]);
 
   const mismatched = canonicalValues();
-  const otherPair = crypto.createECDH("prime256v1");
-  otherPair.generateKeys();
-  mismatched.VAPID_PRIVATE_KEY = otherPair.getPrivateKey().toString("base64url");
+  mismatched.VAPID_PRIVATE_KEY = createVapidTestKeyPair().privateKey;
   const mismatchedStatus = validateProductionEnvironment(mismatched);
   assert.equal(mismatchedStatus.valid, false);
   assert.deepEqual(mismatchedStatus.invalidWebPush, ["VAPID_KEY_PAIR"]);

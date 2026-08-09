@@ -11,7 +11,7 @@ import {
   detectBankTemplate,
   formatAccountNumber,
   normalizeAccountNumber,
-} from "../src/features/accounts/accountPresentation.js";
+} from "../src/shared/presentation/account.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -75,6 +75,7 @@ test("halaman rekening fokus pada rekening, detail besar, capability, dan form n
   const accountPageSource = `${page}
 ${accountSheets}
 ${accountEditors}`;
+  const accountsApi = await read("src/features/accounts/accounts.api.js");
 
   assert.match(accountPageSource, /title="Rekening"/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
@@ -142,6 +143,7 @@ ${accountEditors}`;
   assert.match(reconciliationPage, /account\.can_reconcile === true/);
   assert.match(reconciliationPage, /reconciliations\.list/);
   assert.match(reconciliationPage, /createReconciliation/);
+  assert.doesNotMatch(accountsApi, /reconciliations\.create/, "Rekonsiliasi hanya boleh dimiliki feature reconciliations.");
   assert.match(reconciliationPage, /Sistem tidak membuat transaksi penyesuaian secara otomatis/);
   assert.doesNotMatch(pageStyles, /reconciliationInfoButton|reconciliationToggle|reconciliationPanel/);
   assert.match(pageStyles, /grid-template-columns: minmax\(32rem, 1fr\) minmax\(28rem, 32rem\)/);

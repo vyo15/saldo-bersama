@@ -1,31 +1,38 @@
 # Fallback owner sampai tim GitHub/alias khusus dibuat.
 * @vyo15
 
-# Guarded areas tetap membutuhkan review owner.
-database/migrations/ @vyo15
-api/_lib/security.js @vyo15
-api/_lib/actions/ @vyo15
-api/_lib/services/finance.js @vyo15
-api/_lib/services/maintenance.js @vyo15
-api/_lib/services/maintenance/ @vyo15
-api/_lib/services/planning/ @vyo15
-api/_lib/services/reporting/ @vyo15
-api/_lib/services/audit.js @vyo15
-api/session.js @vyo15
-api/gateway.js @vyo15
+# Backend, data, auth, integrations, dan deployment-adjacent runtime selalu guarded.
+api/ @vyo15
+database/ @vyo15
 apps-script/ @vyo15
+
+# Workflow dan konfigurasi repository.
+.github/ @vyo15
+package.json @vyo15
+package-lock.json @vyo15
+vercel.json @vyo15
+.env.example @vyo15
+
+# Tooling yang dapat memengaruhi source hygiene, task guard, database, atau environment.
+scripts/validate-task.mjs @vyo15
+scripts/list-tasks.mjs @vyo15
+scripts/finish-task.mjs @vyo15
 scripts/artifact-policy.mjs @vyo15
 scripts/create-clean-archive.mjs @vyo15
 scripts/clean-development-dependencies.mjs @vyo15
-.github/workflows/ @vyo15
+scripts/db-*.mjs @vyo15
+scripts/*vercel*.mjs @vyo15
+scripts/runtime-environment.mjs @vyo15
+scripts/bootstrap-development-env.mjs @vyo15
+
+# Governance, environment, deployment, recovery, dan design decisions.
+AGENTS.md @vyo15
+docs/WORKFLOW.md @vyo15
+docs/ENVIRONMENT_VARIABLES.md @vyo15
+docs/DEPLOYMENT.md @vyo15
+docs/DATABASE_MIGRATION_POLICY.md @vyo15
+docs/RECOVERY_RUNBOOK.md @vyo15
+docs/ROLLBACK_RUNBOOK.md @vyo15
 docs/adr/ @vyo15
 docs/rfc/ @vyo15
-
-# Shared governance / human-error guards.
-AGENTS.md @vyo15
-CONTRIBUTING.md @vyo15
-docs/WORKFLOW.md @vyo15
 docs/tasks/ @vyo15
-scripts/validate-task.mjs @vyo15
-scripts/list-tasks.mjs @vyo15
-.github/PULL_REQUEST_TEMPLATE.md @vyo15

@@ -33,12 +33,19 @@ test("quality workflow menjalankan check, guard regression, browser journey, dan
   assert.match(workflow, /npm run test:browser/);
   assert.match(workflow, /npm run zip --/);
 
-  const browserSmoke = await source("test/browser/browser-smoke.test.mjs");
-  assert.match(browserSmoke, /detached:\s*process\.platform !== "win32"/);
-  assert.match(browserSmoke, /stdio:\s*"ignore"/);
-  assert.match(browserSmoke, /terminateChromiumTree/);
-  assert.match(browserSmoke, /Network\.setBlockedURLs/);
-  assert.match(browserSmoke, /accounts\.google\.com\/gsi\/client/);
+  const [browserSmoke, browserRuntime] = await Promise.all([
+    source("test/browser/browser-smoke.test.mjs"),
+    source("test/browser/helpers/app-runtime.mjs"),
+  ]);
+  assert.match(browserSmoke, /startBrowserAppServer/);
+  assert.match(browserSmoke, /startChromium/);
+  assert.match(browserSmoke, /openBrowserPage/);
+  assert.doesNotMatch(browserSmoke, /createServer\(|spawn\(|terminateChromiumTree|findFreePort/);
+  assert.match(browserRuntime, /detached:\s*process\.platform !== "win32"/);
+  assert.match(browserRuntime, /stdio:\s*"ignore"/);
+  assert.match(browserRuntime, /terminateChromiumTree/);
+  assert.match(browserRuntime, /Network\.setBlockedURLs/);
+  assert.match(browserRuntime, /accounts\.google\.com\/gsi\/client/);
   assert.ok(
     browserSmoke.indexOf("await chromium?.close()") < browserSmoke.indexOf("await page?.close()"),
     "Chromium process tree harus ditutup sebelum koneksi CDP agar tidak meninggalkan handle pada runner.",
@@ -119,6 +126,33 @@ test("quality runs only on main and pull requests; normal task branches validate
   assert.equal(await exists(".github/workflows/task-submit.yml"), false);
 });
 
+test("guarded policy fail-closed mencakup seluruh backend/data runtime dan selaras dengan CODEOWNERS", async () => {
+  const [{ GUARDED_PATH_PATTERNS, matchesPathPattern }, codeowners] = await Promise.all([
+    import("../../scripts/validate-task.mjs"),
+    source(".github/CODEOWNERS"),
+  ]);
+  for (const file of [
+    "api/_lib/db/schema.js",
+    "api/_lib/firebase.js",
+    "api/_lib/idempotency.js",
+    "api/_lib/services/planning/recurring.js",
+    "api/_lib/services/reporting/periods.js",
+    "api/_lib/services/users.js",
+    "api/jobs.js",
+    "database/migrations/007_notification_preferences.sql",
+    "apps-script/Code.js",
+  ]) {
+    assert.equal(
+      GUARDED_PATH_PATTERNS.some((pattern) => matchesPathPattern(file, pattern)),
+      true,
+      `${file} wajib guarded`,
+    );
+  }
+  for (const ownerPath of ["api/", "database/", "apps-script/", ".github/"]) {
+    assert.match(codeowners, new RegExp(`^${ownerPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+@vyo15$`, "m"));
+  }
+});
+
 test("task finish supports replace-first on main and one local validated merge flow after approval", async () => {
   const finish = await source("scripts/finish-task.mjs");
   assert.match(finish, /prepareTaskBranchFromMain/);
@@ -127,7 +161,7 @@ test("task finish supports replace-first on main and one local validated merge f
   assert.match(finish, /git\(\["switch", "-c", branch\]\)/);
   assert.match(finish, /npmRun\("check"/);
   assert.match(finish, /npmRun\("test:guard"/);
-  assert.match(finish, /task\.team === "FE"[\s\S]*npmRun\("test:browser"/);
+  assert.match(finish, /browserValidationRequired[\s\S]*scope\.changedFiles[\s\S]*npmRun\("test:browser"/);
   assert.match(finish, /git\(\["merge", "--no-edit", "origin\/main"\]\)/);
   assert.match(finish, /git\(\["push", "-u", "origin", "HEAD"\]\)/);
   assert.doesNotMatch(finish, /gh.*pr.*create/s);

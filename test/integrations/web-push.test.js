@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { processPush } from "../../api/jobs.js";
@@ -17,17 +16,11 @@ import {
   webPushConfigurationStatus,
 } from "../../api/_lib/services/notifications.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
+import { createVapidTestKeyPair } from "../helpers/vapid-test-keys.js";
 
-const p256PrivateKeyBase64Url = (ecdh) => {
-  const privateKey = ecdh.getPrivateKey();
-  if (privateKey.length > 32) throw new Error("Private key P-256 test melebihi 32 byte.");
-  return Buffer.concat([Buffer.alloc(32 - privateKey.length), privateKey]).toString("base64url");
-};
-
-const vapidEcdh = crypto.createECDH("prime256v1");
-vapidEcdh.generateKeys();
-const vapidPublicKey = vapidEcdh.getPublicKey().toString("base64url");
-const vapidPrivateKey = p256PrivateKeyBase64Url(vapidEcdh);
+const vapidPair = createVapidTestKeyPair();
+const vapidPublicKey = vapidPair.publicKey;
+const vapidPrivateKey = vapidPair.privateKey;
 const subscriptionKeys = {
   p256dh: Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 5)]).toString("base64url"),
   auth: Buffer.alloc(16, 3).toString("base64url"),
@@ -98,10 +91,9 @@ test("konfigurasi Web Push menolak grup parsial dan key yang tidak valid", () =>
   assert.equal(webPushConfigurationStatus({}).code, "DISABLED");
   assert.equal(webPushConfigurationStatus({ VITE_VAPID_PUBLIC_KEY: vapidPublicKey }).code, "INCOMPLETE");
   assert.equal(webPushConfigurationStatus({ ...validPushEnvironment, VAPID_PRIVATE_KEY: "invalid" }).code, "INVALID");
-  const otherPair = crypto.createECDH("prime256v1");
-  otherPair.generateKeys();
+  const otherPair = createVapidTestKeyPair();
   assert.deepEqual(
-    webPushConfigurationStatus({ ...validPushEnvironment, VAPID_PRIVATE_KEY: p256PrivateKeyBase64Url(otherPair) }).invalid,
+    webPushConfigurationStatus({ ...validPushEnvironment, VAPID_PRIVATE_KEY: otherPair.privateKey }).invalid,
     ["VAPID_KEY_PAIR"],
   );
   assert.equal(webPushConfigurationStatus(validPushEnvironment).code, "READY");

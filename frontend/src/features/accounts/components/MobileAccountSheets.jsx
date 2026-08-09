@@ -11,7 +11,7 @@ import {
   transactionCategoryIcon,
   transactionTone,
 } from "../../../shared/presentation/transaction.js";
-import { accountDisplayLabel } from "../accountPresentation.js";
+import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import styles from "../AccountsPage.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";
 
