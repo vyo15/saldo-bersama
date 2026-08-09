@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { access, readFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -54,6 +56,7 @@ test("tooling kualitas dan lifecycle dokumentasi terhubung dari package canonica
   assert.equal(packageJson.scripts["check:duplicates"], "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test");
   assert.equal(packageJson.scripts["task:check"], "node scripts/validate-task.mjs");
   assert.equal(packageJson.scripts["task:list"], "node scripts/list-tasks.mjs");
+  assert.equal(packageJson.scripts["task:finish"], "node scripts/finish-task.mjs");
   assert.match(packageJson.scripts.check, /^npm run task:check && /);
   assert.equal(packageJson.scripts["lint:backend"], "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js");
   assert.match(packageJson.scripts.lint, /npm run lint:backend/);
@@ -105,34 +108,126 @@ test("test backend terkelompok berdasarkan tanggung jawab dan namespace runtime 
 });
 
 
-test("quality runs read-only on canonical task pushes", async () => {
+test("quality runs only on main and pull requests; normal task branches validate locally", async () => {
   const workflow = await source(".github/workflows/quality.yml");
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /push:[\s\S]*branches:[\s\S]*- main/);
   assert.match(workflow, /permissions:\s*\n\s*contents:\s*read/);
   for (const prefix of ["feat", "fix", "security", "perf", "docs", "test", "chore"]) {
-    assert.match(workflow, new RegExp(`${prefix}/SB-\\*`));
+    assert.doesNotMatch(workflow, new RegExp(`${prefix}/SB-\\*`));
   }
-  assert.match(workflow, /TASK_BRANCH:\s*\$\{\{ github\.event_name == 'push'/);
-  assert.match(workflow, /TASK_BASE_REF:[\s\S]*origin\/main/);
+  assert.equal(await exists(".github/workflows/task-submit.yml"), false);
 });
 
-test("privileged task submit is workflow_run-only and never executes branch code", async () => {
-  const workflow = await source(".github/workflows/task-submit.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows:\s*\[Quality\]/);
-  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /github\.event\.workflow_run\.event == 'push'/);
-  assert.match(workflow, /contents:\s*write/);
-  assert.match(workflow, /pull-requests:\s*write/);
-  assert.doesNotMatch(workflow, /actions\/checkout/);
-  assert.doesNotMatch(workflow, /node scripts\//);
-  assert.match(workflow, /gh api/);
-  assert.match(workflow, /GUARDED_PATH_PATTERNS/);
-  assert.match(workflow, /compare\/\$base_sha\.\.\.\$HEAD_SHA/);
-  assert.match(workflow, /behind_by/);
-  assert.match(workflow, /current_main/);
-  assert.match(workflow, /headRefOid/);
-  assert.match(workflow, /--match-head-commit/);
-  assert.match(workflow, /gh pr create/);
-  assert.match(workflow, /gh pr merge/);
-  assert.match(workflow, /Auto-merge sengaja ditahan/);
+test("task finish supports replace-first on main and one local validated merge flow after approval", async () => {
+  const finish = await source("scripts/finish-task.mjs");
+  assert.match(finish, /prepareTaskBranchFromMain/);
+  assert.match(finish, /taskIdFromMessage/);
+  assert.match(finish, /availableTaskBranch/);
+  assert.match(finish, /git\(\["switch", "-c", branch\]\)/);
+  assert.match(finish, /npmRun\("check"/);
+  assert.match(finish, /npmRun\("test:guard"/);
+  assert.match(finish, /task\.team === "FE"[\s\S]*npmRun\("test:browser"/);
+  assert.match(finish, /git\(\["merge", "--no-edit", "origin\/main"\]\)/);
+  assert.match(finish, /git\(\["push", "-u", "origin", "HEAD"\]\)/);
+  assert.doesNotMatch(finish, /gh.*pr.*create/s);
+  assert.match(finish, /git\(\["merge", "--no-ff", branch/);
+  assert.match(finish, /closeTaskOnMain/);
+  assert.match(finish, /Push main ditolak atau origin\/main berubah/);
+  assert.match(finish, /rev-list.*origin\/main\.\.HEAD/s);
+  assert.match(finish, /npmRun\("zip"\)/);
+  assert.match(finish, /cleanupTaskBranchFamily/);
+});
+
+
+test("task finish end-to-end accepts replace-first on main, revisions stale branch, and merges without PR", async () => {
+  const sandbox = await mkdtemp(path.join(os.tmpdir(), "saldo-bersama-task-finish-"));
+  const project = path.join(sandbox, "project");
+  const remote = path.join(sandbox, "remote.git");
+  const { TASK_BRANCH: _taskBranch, TASK_BASE_REF: _taskBaseRef, ...isolatedEnv } = process.env;
+  const run = (command, args, cwd = project) => {
+    const result = spawnSync(command, args, { cwd, encoding: "utf8", env: isolatedEnv });
+    assert.equal(result.status, 0, `${command} ${args.join(" ")} failed:\n${result.stdout}\n${result.stderr}`);
+    return result;
+  };
+
+  try {
+    await mkdir(path.join(project, "scripts"), { recursive: true });
+    await mkdir(path.join(project, "docs/tasks/active"), { recursive: true });
+    await mkdir(path.join(project, "docs/tasks/archive"), { recursive: true });
+    await writeFile(path.join(project, "scripts/finish-task.mjs"), await source("scripts/finish-task.mjs"));
+    await writeFile(path.join(project, "scripts/validate-task.mjs"), await source("scripts/validate-task.mjs"));
+    await writeFile(path.join(project, "package.json"), JSON.stringify({
+      name: "task-finish-integration",
+      version: "1.0.0",
+      type: "module",
+      scripts: {
+        check: "node -e \"console.log('check-pass')\"",
+        "test:guard": "node -e \"console.log('guard-pass')\"",
+        "test:browser": "node -e \"console.log('browser-pass')\"",
+        zip: "node -e \"console.log('zip-pass')\"",
+      },
+    }, null, 2));
+    await writeFile(path.join(project, "README.md"), "base\n");
+
+    run("git", ["init", "--bare", "-q", remote], sandbox);
+    run("git", ["init", "-q"]);
+    run("git", ["config", "user.name", "Task Finish Test"]);
+    run("git", ["config", "user.email", "task-finish@example.test"]);
+    run("git", ["branch", "-M", "main"]);
+    run("git", ["add", "-A"]);
+    run("git", ["commit", "-qm", "base"]);
+    run("git", ["remote", "add", "origin", remote]);
+    run("git", ["push", "-q", "-u", "origin", "main"]);
+
+    // Simulasikan branch task lama yang sudah pernah dibuat pada percobaan sebelumnya.
+    run("git", ["switch", "-q", "-c", "chore/SB-900-helper-test"]);
+    run("git", ["push", "-q", "-u", "origin", "HEAD"]);
+    run("git", ["switch", "-q", "main"]);
+
+    // User tetap di main, lalu replace changed-files ZIP terlebih dahulu.
+    await writeFile(path.join(project, "docs/tasks/active/SB-900.md"), `# SB-900 - helper integration test
+
+| Field | Value |
+|---|---|
+| Task ID | \`SB-900\` |
+| Status | \`IN_PROGRESS\` |
+| Priority | \`P1\` |
+| Team | \`COORD\` |
+| Depends On | \`NONE\` |
+| Risk | \`HIGH\` |
+| Guarded | \`YES\` |
+| Guard Approval | \`APPROVED\` |
+| Branch | \`chore/SB-900-helper-test\` |
+| Base | \`main@test\` |
+| Updated | \`2026-08-09\` |
+| Hold Reason | \`NONE\` |
+| Resume Condition | \`NONE\` |
+
+## Write Scope
+- \`README.md\`
+`);
+    await writeFile(path.join(project, "README.md"), "base\ntask change\n");
+
+    const result = run(process.execPath, ["scripts/finish-task.mjs", "chore(SB-900): integration test"]);
+    assert.match(result.stdout, /Menggunakan revision aman chore\/SB-900-helper-test-r2/);
+    assert.match(result.stdout, /zip-pass/);
+    assert.match(result.stdout, /SB-900 selesai/);
+    assert.equal(run("git", ["branch", "--show-current"]).stdout.trim(), "main");
+    await access(path.join(project, "docs/tasks/archive/SB-900.md"));
+    await assert.rejects(access(path.join(project, "docs/tasks/active/SB-900.md")));
+    const archivedTask = await readFile(path.join(project, "docs/tasks/archive/SB-900.md"), "utf8");
+    assert.match(archivedTask, /\| Status \| `DONE` \|/);
+    assert.match(archivedTask, /\| Branch \| `chore\/SB-900-helper-test-r2` \|/);
+    assert.match(await readFile(path.join(project, "README.md"), "utf8"), /task change/);
+
+    const remoteTask = spawnSync("git", ["--git-dir", remote, "show-ref", "--verify", "--quiet", "refs/heads/chore/SB-900-helper-test-r2"]);
+    assert.notEqual(remoteTask.status, 0, "selected revision branch should be deleted after successful merge");
+    const staleTask = spawnSync("git", ["--git-dir", remote, "show-ref", "--verify", "--quiet", "refs/heads/chore/SB-900-helper-test"]);
+    assert.notEqual(staleTask.status, 0, "older stale task branches should be cleaned after the task is DONE");
+    const remoteArchive = run("git", ["--git-dir", remote, "show", "main:docs/tasks/archive/SB-900.md"], sandbox);
+    assert.match(remoteArchive.stdout, /\| Status \| `DONE` \|/);
+  } finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
 });

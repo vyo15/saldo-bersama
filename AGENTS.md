@@ -1,50 +1,48 @@
 # Instruksi untuk AI dan Coding Agent
 
-File ini berlaku untuk seluruh repository. Tujuannya agar pekerjaan dapat dilanjutkan oleh ChatGPT, coding agent, atau anggota tim lain tanpa mengulang konteks dari awal, menebak ownership, atau mencampur task paralel.
+File ini berlaku untuk seluruh repository Saldo Bersama. Tujuannya sederhana: beberapa chat/tab boleh mengerjakan task berbeda tanpa saling menimpa, sementara perubahan berisiko tetap dijaga.
 
-## Identitas wajib di awal respons
-
-Untuk setiap task baru atau saat ownership berubah, respons substantif pertama wajib diawali identitas team:
+## Tiga team saja
 
 ```text
-COORD | Oke, saya tim Coordinator.
-UIUX  | Oke, saya tim UI/UX.
-FE    | Oke, saya tim Frontend.
-BE    | Oke, saya tim Backend.
-DB    | Oke, saya tim Database.
-QA    | Oke, saya tim QA.
+COORD | Coordinator
+FE    | Frontend
+BE    | Backend
 ```
 
-Jika task card sudah ada, `Primary Team` pada task card menentukan identitas. Nama chat, memory, atau role percakapan lama tidak boleh mengalahkan task card. Scope ambigu atau lintas team dimulai sebagai `COORD`.
+- `FE` mencakup React, routing, state, form, CSS, responsive, UI/UX, accessibility, dan browser behavior.
+- `BE` mencakup Vercel Functions, API, Firebase Auth/session/authorization, Turso/database, migration, saldo, transaksi, idempotency, concurrency, audit, Apps Script, backup/restore, dan integrasi server-side.
+- `COORD` mengatur task, scope, dependency, konflik antar-tab, prioritas, integration, serta memberi saran pekerjaan berikutnya.
 
-## Urutan baca wajib
+Task lintas area dimulai sebagai `COORD`, lalu diarahkan ke `FE` atau `BE` bila root cause sudah jelas.
 
-Sebelum review resmi atau perubahan apa pun:
+## Urutan kerja
 
-1. `docs/WORKFLOW.md` — routing team, status, dependency, WIP, checkpoint, QA, integration, dan STOP conditions.
-2. `docs/PROJECT_STATUS.md` — snapshot kondisi project sekarang, bukan histori task.
-3. `docs/tasks/README.md` — aturan task registry.
-4. Task card `docs/tasks/active/` (file sesuai Task ID) bila Task ID sudah ada.
-5. `README.md` dan `docs/INDEX.md`.
-6. `docs/ARCHITECTURE.md`, `docs/product/PRODUCT_REQUIREMENTS.md`, dan `docs/product/GLOSSARY.md`.
-7. Dokumen kontrak yang relevan: API, authorization, environment, data, security, observability, migration, release, atau recovery.
-8. Source aktual dan test pada area yang akan disentuh.
+1. Gunakan source/ZIP terbaru.
+2. Review source aktual dan path yang relevan.
+3. Temukan root cause dan buat plan.
+4. Setelah user approve, task boleh dikerjakan.
+5. Satu task memakai satu Task ID dan satu branch.
+6. Beberapa task boleh `IN_PROGRESS` bersamaan, termasuk dari team yang sama, selama `Write Scope` tidak overlap.
+7. Patch hanya file dalam `Write Scope`.
+8. User boleh replace changed-files ZIP saat masih di `main`; jangan memaksa `git switch` sebelum replace.
+9. Setelah patch selesai, normal task diselesaikan melalui satu command `npm run task:finish -- "<commit message>"`; helper membuat/revisi branch task otomatis lalu menjalankan validation.
+10. Guarded/HIGH/CRITICAL wajib approval eksplisit pada task card, tetapi setelah approved dapat memakai local validation + task:finish yang sama. PR hanya pengecualian bila diminta atau direct push main ditolak.
+11. `DONE` berarti perubahan sudah masuk `main` dan task card sudah di-archive.
 
-Jika user meminta pekerjaan tetapi belum ada Task ID, lakukan intake/routing. Review/plan boleh dilakukan, tetapi **no task, no patch**.
+## Sumber kebenaran
 
-## Priority sumber kebenaran
-
-Gunakan urutan berikut saat ada konflik:
+Urutan prioritas:
 
 1. source dan test aktual;
-2. task card aktif;
+2. task card dan `docs/tasks/README.md`;
 3. contract/ADR/RFC canonical;
 4. `docs/WORKFLOW.md`;
 5. `docs/PROJECT_STATUS.md`;
 6. percakapan;
 7. memory.
 
-Screenshot, chat lama, memory, dan snapshot docs bukan pengganti source. Bila docs berbeda dengan source, jelaskan drift dan perbaiki docs yang memang terdampak.
+Jika docs berbeda dengan source, source menang dan drift dijelaskan.
 
 ## Source of truth teknis
 
@@ -57,96 +55,73 @@ Screenshot, chat lama, memory, dan snapshot docs bukan pengganti source. Bila do
 | Route UI | `frontend/src/app/App.jsx` |
 | UI/design system | `docs/UI_DESIGN_SYSTEM.md` + `frontend/src/styles/tokens.css` + shared components |
 | Environment | `.env.example` + `docs/ENVIRONMENT_VARIABLES.md` |
-| Multi-team workflow | `docs/WORKFLOW.md` |
-| Progress task | `docs/tasks/active/` (file sesuai Task ID) |
+| Workflow | `docs/WORKFLOW.md` |
+| Task aktif | `docs/tasks/active/` |
 | Status project | `docs/PROJECT_STATUS.md` |
-| Keputusan arsitektur | `docs/adr/` |
-| Riwayat release | `CHANGELOG.md` |
 
-## Startup/preflight check
+## Task dan branch
 
-Sebelum coding, agent wajib memverifikasi dan menyebutkan secara ringkas:
+Branch wajib membawa Task ID:
 
 ```text
-Task
-Team
-Status
-Branch
-Baseline
-Write scope
-Guarded area
-Dependencies
-Decision: SAFE TO START / STOP
+fix/SB-123-login-button
+feat/SB-124-budget-filter
+chore/SB-125-workflow
+security/SB-126-session-guard
 ```
 
-Jangan menyatakan `SAFE TO START` jika task, source, branch, status, approval, dependency, atau write scope belum dapat diverifikasi.
+Satu task = satu branch. Jangan mengerjakan dua task pada branch yang sama.
 
-Gunakan:
+`npm run task:list` menampilkan task aktif dan rekomendasi COORD.
 
-```bash
-npm run task:check
-```
+`npm run task:check` adalah guard otomatis untuk:
+- Task ID/branch cocok;
+- status mengizinkan coding;
+- dependency clear;
+- modified path masih dalam `Write Scope`;
+- guarded path memiliki approval;
+- task aktif paralel tidak memiliki `Write Scope` yang overlap.
 
-sebagai executable guard. Jangan mengubah file di luar `Write Scope` task card.
-
-## Workflow perubahan
-
-1. Validasi ZIP/source terbaru dan sebutkan root serta path aktual.
-2. Audit usage, import/export, service, schema, test, config, dan docs terkait.
-3. Temukan root cause; jangan menutup bug data dengan UI.
-4. Pastikan task card dan plan file-by-file sudah `READY`.
-5. Tunggu approval user; setelah disetujui ubah menjadi `APPROVED`.
-6. Gunakan branch/worktree task dan jalankan preflight.
-7. Ubah status menjadi `IN_PROGRESS`, lalu patch kecil dan terarah tanpa formatting massal.
-8. Update checkpoint setelah milestone penting. Progress penting tidak boleh hanya tersimpan di chat.
-9. Jalankan `npm run task:check`, `npm run validate:source`, `npm run lint`, `npm run test`, `npm run build`, dan test khusus yang relevan.
-10. Setelah patch selesai gunakan `READY_FOR_QA`; setelah QA/integration check lulus gunakan `READY_FOR_MERGE`.
-11. `COORD` menangani integration/merge order. `DONE` hanya setelah post-merge verification dan task card dipindahkan ke archive.
-12. Perbarui contract/ADR/RFC/runbook hanya bila perilaku/keputusan terkait memang berubah. `docs/PROJECT_STATUS.md` dan `CHANGELOG.md` bukan jurnal yang wajib diedit oleh setiap team.
-
-## Batch dan temuan baru
-
-Perbaikan boleh dibatch dalam task yang sama hanya bila masih **same feature + same primary team + same root area + same risk class + same write scope**.
-
-Jika menemukan kebutuhan lintas team, guarded area baru, root cause berbeda, atau file di luar plan/write scope:
-
-- jangan patch area itu;
-- catat sebagai linked/candidate task;
-- routing melalui `COORD`;
-- jika perubahan file tambahan memang diperlukan untuk task aktif, hentikan dan minta approval scope baru.
+Tidak ada lagi WIP limit per-team. Banyak tab boleh aktif.
 
 ## Area guarded
 
-Jangan mengubah tanpa approval eksplisit:
+Approval eksplisit tetap wajib untuk:
 
 - schema/migration Turso;
 - Firebase Auth, allowlist, role, authorization, session/security guard;
-- action/API contract;
-- perhitungan saldo, transfer, audit, soft cancel, idempotency, `row_version`;
-- import, export, backup, restore, purge, migration/recovery;
+- API/action contract;
+- saldo, transfer, audit, soft lifecycle, idempotency, `row_version`;
+- import/export, backup/restore, purge, migration/recovery;
 - environment, secret, deployment, scheduler, GitHub Actions;
-- timezone Asia/Jakarta dan format Rupiah integer;
-- dependency atau stack utama;
-- governance global seperti file ini, `docs/WORKFLOW.md`, task validator, dan repository rules.
+- timezone Asia/Jakarta dan Rupiah integer;
+- dependency/stack utama;
+- governance global.
 
-## Aturan keamanan dan data
+## Keamanan dan data
 
-- Browser tidak tepercaya; actor, role, UID, timestamp, audit field, scope, dan status berasal dari server.
-- Turso token, session secret, Google bridge secret, jobs secret, VAPID private key, dan credential tidak boleh masuk frontend, Git, ZIP, log, issue, task card, atau chat.
-- Jangan gunakan `eval`, `new Function`, dynamic script injection, command execution, atau `dangerouslySetInnerHTML` tanpa audit dan approval.
+- Browser tidak tepercaya.
+- Secret/token/credential tidak boleh masuk frontend, Git, ZIP, log, task card, atau chat.
 - Data finansial normal tidak dihapus permanen.
-- Jangan membuat offline write queue.
-- Jangan membaca/menulis Google Sheets sebagai database.
+- Saldo dihitung dari sumber data canonical, bukan ditutup dengan CSS.
+- Jangan memakai `eval`, `new Function`, dynamic script injection, command execution, atau `dangerouslySetInnerHTML` tanpa audit dan approval.
+- Google Sheets bukan source of truth database.
 
-## Resume antar-chat/perangkat
+## ZIP/source
 
-Saat melanjutkan task lama:
+`npm run zip` harus praktis:
+- secret, env lokal, dependency, build, cache, `.git`, `.vercel`, dan file local-only tetap tidak masuk archive;
+- file/folder non-canonical yang aman cukup diberi warning dan boleh ikut archive agar dapat direview ChatGPT;
+- denylist security tetap fail-closed.
 
+## Resume antar-chat
+
+Saat melanjutkan task:
 1. baca task card;
-2. baca checkpoint `Completed`, `Remaining`, dan `Resume From`;
-3. bandingkan baseline/Last Verified Commit dengan source dan `main` sekarang;
-4. revalidate bila area relevan berubah atau task ditinggalkan lebih dari 72 jam;
-5. jalankan `npm run task:check`;
-6. lanjut hanya bila dependency clear dan status mengizinkan.
+2. cek branch dan source terbaru;
+3. cek `Write Scope`;
+4. lanjut bila tidak overlap dengan task aktif lain;
+5. jika user masih di `main`, `task:finish` membuat branch task dari working tree hasil replace; jika branch lama sudah ada, gunakan revision aman;
+6. jika main sudah berubah, `task:finish` mengintegrasikan `origin/main` sebelum final validation.
 
-Waktu tidak pernah menutup task otomatis. Bila user lupa posisi pekerjaan, gunakan task registry dan `npm run task:list`, bukan memory percakapan.
+COORD menjadi titik koordinasi dan selalu memberi rekomendasi apa yang sebaiknya dikerjakan berikutnya.

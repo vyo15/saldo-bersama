@@ -133,13 +133,17 @@ const isVercelFunctionCandidate = (file) => {
   return !segments.some((segment, index) => index < segments.length - 1 && segment.startsWith("_"));
 };
 
-const rootEntries = await readdir(root);
+const rootEntries = await readdir(root, { withFileTypes: true });
+const rootEntryNames = rootEntries.map((entry) => entry.name);
 const requiredRootEntries = [".env.example", "README.md", "package.json", "package-lock.json"];
-const missingRootEntries = requiredRootEntries.filter((entry) => !rootEntries.includes(entry));
+const missingRootEntries = requiredRootEntries.filter((entry) => !rootEntryNames.includes(entry));
 const unexpectedRootEntries = rootEntries
-  .filter((entry) => !ignoredSegments.has(entry))
-  .filter((entry) => !isIgnoredLocalFile(entry))
-  .filter((entry) => !allowedRootEntries.has(entry));
+  .filter((entry) => !ignoredSegments.has(entry.name))
+  .filter((entry) => !isIgnoredLocalFile(entry.name))
+  .filter((entry) => !allowedRootEntries.has(entry.name));
+const diagnosticRootEntries = unexpectedRootEntries
+  .map((entry) => entry.name)
+  .sort();
 
 const trackedFiles = getTracked() || [];
 const files = await walk();
@@ -184,7 +188,6 @@ for (const file of files.filter((item) => !["scripts/validate-source-tree.mjs", 
 
 const hasVercelFunctionLimitViolation = vercelFunctionCandidates.length > VERCEL_FUNCTION_LIMIT;
 const hasViolation = missingRootEntries.length
-  || unexpectedRootEntries.length
   || pathViolations.length
   || legacyViolations.length
   || apiNamespaceViolations.length
@@ -194,10 +197,15 @@ const hasViolation = missingRootEntries.length
   || hasVercelFunctionLimitViolation
   || vercelFunctionConfigMismatch;
 
+if (diagnosticRootEntries.length > 0) {
+  console.warn(
+    `Warning: root entry non-canonical tetap diizinkan dan akan ikut ZIP bila lolos policy archive: ${diagnosticRootEntries.join(", ")}.`,
+  );
+}
+
 if (hasViolation) {
   console.error("Source tree belum bersih.");
   missingRootEntries.forEach((entry) => console.error(`Root entry wajib tidak ditemukan: ${entry}`));
-  unexpectedRootEntries.forEach((entry) => console.error(`Root entry tidak dikenal: ${entry}`));
   pathViolations.forEach((file) => console.error(`Path generated, retired, atau sensitif: ${file}`));
   legacyViolations.forEach((file) => console.error(`Referensi legacy: ${file}`));
   apiNamespaceViolations.forEach((file) => console.error(`File tidak diizinkan di namespace runtime api/: ${file}`));

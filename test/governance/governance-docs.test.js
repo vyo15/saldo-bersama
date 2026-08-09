@@ -68,6 +68,7 @@ const requiredFiles = [
   "docs/templates/TASK_TEMPLATE.md",
   "scripts/validate-task.mjs",
   "scripts/list-tasks.mjs",
+  "scripts/finish-task.mjs",
 ];
 
 const quotedStrings = (source) => [...source.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
@@ -129,41 +130,29 @@ test("contribution policy and Git workflow cross-reference each other", () => {
   assert.match(read("docs/GIT_WORKFLOW.md"), /\.\.\/CONTRIBUTING\.md/);
 });
 
-test("multi-team workflow and task registry use one canonical vocabulary", () => {
-  assert.deepEqual(TEAM_CODES, ["COORD", "UIUX", "FE", "BE", "DB", "QA"]);
-  assert.deepEqual(TASK_STATUSES, [
-    "DRAFT",
-    "READY",
-    "APPROVED",
-    "IN_PROGRESS",
-    "ON_HOLD",
-    "READY_FOR_QA",
-    "READY_FOR_MERGE",
-    "DONE",
-  ]);
+test("solo multi-tab workflow and task registry use one canonical vocabulary", () => {
+  assert.deepEqual(TEAM_CODES, ["COORD", "FE", "BE"]);
+  assert.deepEqual(TASK_STATUSES, ["DRAFT", "APPROVED", "IN_PROGRESS", "ON_HOLD", "DONE"]);
   const workflow = read("docs/WORKFLOW.md");
   const template = read("docs/templates/TASK_TEMPLATE.md");
   TEAM_CODES.forEach((team) => assert.match(workflow, new RegExp(`\`${team}\``)));
   TASK_STATUSES.forEach((status) => assert.match(workflow, new RegExp(status)));
   assert.match(template, /\| Status \| `DRAFT` \|/);
-  assert.match(template, /\| Primary Team \| `COORD` \|/);
-  for (const field of ["Task ID", "Primary Team", "Depends On", "Write Scope", "Resume From", "Guard Approval"]) {
+  assert.match(template, /\| Team \| `COORD` \|/);
+  for (const field of ["Task ID", "Team", "Depends On", "Write Scope", "Resume From", "Guard Approval"]) {
     assert.match(template, new RegExp(escapeRegExp(field)));
   }
   const { errors } = validateTaskRepository();
   assert.deepEqual(errors, [], errors.join("\n"));
 });
 
-test("task relationship guard rejects unresolved, cycle, WIP, and overlapping parallel scope", () => {
+test("task relationship guard allows parallel same-team work but rejects dependency and scope conflicts", () => {
   const makeTask = (overrides) => ({
     id: "SB-901",
     relative: "docs/tasks/active/SB-901.md",
     status: "IN_PROGRESS",
     team: "FE",
     dependsOn: [],
-    related: [],
-    parent: "NONE",
-    requiredForParent: "NO",
     writeScope: ["frontend/src/features/login/**"],
     ...overrides,
   });
@@ -175,7 +164,7 @@ test("task relationship guard rejects unresolved, cycle, WIP, and overlapping pa
   });
 
   const unresolved = [
-    makeTask({ id: "SB-901", status: "READY", team: "BE", writeScope: ["api/**"] }),
+    makeTask({ id: "SB-901", status: "DRAFT", team: "BE", writeScope: ["api/**"] }),
     makeTask({ id: "SB-902", status: "APPROVED", dependsOn: ["SB-901"] }),
   ];
   assert.match(validateTaskRelationships(buildRegistry(unresolved)).join("\n"), /dependency unresolved/);
@@ -186,20 +175,20 @@ test("task relationship guard rejects unresolved, cycle, WIP, and overlapping pa
   ];
   assert.match(validateTaskRelationships(buildRegistry(cycle)).join("\n"), /Dependency cycle/);
 
-  const wip = [
-    makeTask({ id: "SB-905" }),
+  const parallelSameTeam = [
+    makeTask({ id: "SB-905", writeScope: ["frontend/src/features/login/**"] }),
     makeTask({ id: "SB-906", writeScope: ["frontend/src/features/accounts/**"] }),
   ];
-  assert.match(validateTaskRelationships(buildRegistry(wip)).join("\n"), /WIP limit/);
+  assert.deepEqual(validateTaskRelationships(buildRegistry(parallelSameTeam)), []);
 
   const overlap = [
-    makeTask({ id: "SB-907", team: "UIUX", writeScope: ["frontend/src/features/login/**"] }),
+    makeTask({ id: "SB-907", team: "FE", writeScope: ["frontend/src/features/login/**"] }),
     makeTask({ id: "SB-908", team: "FE", writeScope: ["frontend/src/features/login/LoginPage.jsx"] }),
   ];
   assert.match(validateTaskRelationships(buildRegistry(overlap)).join("\n"), /Write Scope overlap/);
 });
 
-test("task tooling fails closed for an unregistered branch and renders derived queue", () => {
+test("task tooling fails closed for an unregistered branch and renders the simplified queue", () => {
   const invalid = spawnSync(process.execPath, ["scripts/validate-task.mjs"], {
     cwd: root,
     encoding: "utf8",
@@ -214,11 +203,10 @@ test("task tooling fails closed for an unregistered branch and renders derived q
   });
   assert.equal(list.status, 0, list.stderr);
   assert.match(list.stdout, /SALDO BERSAMA TASK QUEUE/);
-  assert.match(list.stdout, /AVAILABLE NOW/);
-  assert.match(list.stdout, /RESUME REVIEW/);
-  assert.match(list.stdout, /READY FOR QA/);
-  assert.match(list.stdout, /READY FOR MERGE/);
-  assert.match(list.stdout, /RECOMMENDED NEXT/);
+  assert.match(list.stdout, /IN PROGRESS/);
+  assert.match(list.stdout, /READY TO START/);
+  assert.match(list.stdout, /BLOCKED \/ HOLD/);
+  assert.match(list.stdout, /COORD RECOMMENDED NEXT/);
 });
 
 test("every canonical action is documented in API and authorization contracts", () => {

@@ -146,6 +146,54 @@ test("laporan npm audit lokal diabaikan validator dan tidak pernah masuk clean Z
   }
 });
 
+
+test("regular root file non-canonical hanya warning dan tetap ikut clean ZIP", async () => {
+  const diagnosticName = "chatgpt-review-artifact.patch";
+  const diagnosticPath = path.join(root, diagnosticName);
+  const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-diagnostic-root-"));
+  const output = path.join(temp, "saldo-bersama-clean.zip");
+  try {
+    await writeFile(diagnosticPath, "diagnostic patch marker");
+
+    const validation = runNode("scripts/validate-source-tree.mjs");
+    assert.equal(validation.status, 0, `${validation.stdout}\n${validation.stderr}`);
+    assert.match(`${validation.stdout}\n${validation.stderr}`, /root entry non-canonical tetap diizinkan/i);
+    assert.match(`${validation.stdout}\n${validation.stderr}`, new RegExp(diagnosticName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+    const archive = runNode("scripts/create-clean-archive.mjs", [output]);
+    assert.equal(archive.status, 0, `${archive.stdout}\n${archive.stderr}`);
+    const binary = await readFile(output);
+    assert.equal(binary.includes(Buffer.from(diagnosticName)), true, "File diagnosis root harus terlihat di clean ZIP");
+    assert.equal(binary.includes(Buffer.from("diagnostic patch marker")), true, "Isi file diagnosis harus ikut untuk review");
+  } finally {
+    await rm(diagnosticPath, { force: true });
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("unknown root directory aman hanya warning dan tetap dapat direview dari clean ZIP", async () => {
+  const unknownDirectory = path.join(root, "chatgpt-review-folder");
+  const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-diagnostic-folder-"));
+  const output = path.join(temp, "saldo-bersama-clean.zip");
+  try {
+    await mkdir(unknownDirectory);
+    await writeFile(path.join(unknownDirectory, "note.txt"), "diagnostic folder marker");
+
+    const validation = runNode("scripts/validate-source-tree.mjs");
+    assert.equal(validation.status, 0, `${validation.stdout}\n${validation.stderr}`);
+    assert.match(`${validation.stdout}\n${validation.stderr}`, /root entry non-canonical tetap diizinkan/i);
+
+    const archive = runNode("scripts/create-clean-archive.mjs", [output]);
+    assert.equal(archive.status, 0, `${archive.stdout}\n${archive.stderr}`);
+    const binary = await readFile(output);
+    assert.equal(binary.includes(Buffer.from("chatgpt-review-folder/note.txt")), true);
+    assert.equal(binary.includes(Buffer.from("diagnostic folder marker")), true);
+  } finally {
+    await rm(unknownDirectory, { recursive: true, force: true });
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("clean source archive tervalidasi, kecil, dan tidak memuat env lokal", async () => {
   const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-archive-test-"));
   const output = path.join(temp, "saldo-bersama-clean.zip");
