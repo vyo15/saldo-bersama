@@ -193,7 +193,7 @@ const DesktopAccountsWorkspace = ({ accounts, selectedAccount, ownerMode, bootst
     return items.length ? items.map((item) => ({ label: item.label, value: item.totalBalance })) : [{ label: "Saat ini", value: totalBalance }];
   }, [reportResource.data, totalBalance]);
   const categoryLookup = useMemo(() => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])), [bootstrap?.categories]);
-  if (!selectedAccount) return null;
+  if (!desktopEnabled || !selectedAccount) return null;
 
   return (
     <div className={styles.desktopWorkspace}>

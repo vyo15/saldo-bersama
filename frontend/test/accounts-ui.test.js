@@ -118,6 +118,7 @@ ${accountEditors}`;
     assert.equal(typeof featherIcons[iconName], "function", `${iconName} harus merupakan export react-icons/fi yang valid.`);
   }
   assert.match(desktopWorkspace, /enabled: desktopEnabled && Boolean\(selectedId\)/);
+  assert.match(desktopWorkspace, /if \(!desktopEnabled \|\| !selectedAccount\) return null;/);
   assert.match(desktopWorkspace, /<AccountVisual account=\{account\} carousel \/>/);
   assert.match(desktopWorkspace, /Rekening utama/);
   assert.match(desktopWorkspace, /Rekening lain/);
@@ -223,7 +224,8 @@ ${accountEditors}`;
   assert.match(cardStyles, /font-family: var\(--font-mono\)/);
   assert.match(card, /stack = false/);
   assert.match(card, /embedded = false/);
-  assert.match(card, /embedded \? <h2/);
+  assert.match(card, /embedded \? \(/);
+  assert.match(card, /readOnly \? <div className=\{styles\.mobileDetailBadges\}><span className=\{styles\.readOnlyBadge\}><FiEye aria-hidden="true" \/>Hanya lihat<\/span><\/div> : null/);
   assert.match(card, /aria-label=\{`Detail rekening \$\{account\.name\}`\}/);
   assert.match(cardStyles, /stackVisual/);
   assert.match(cardStyles, /\.mobileSecondaryActions \.mobileDangerAction \{[^}]*color:\s*var\(--negative\);/s);

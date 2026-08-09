@@ -153,7 +153,12 @@ const AccountFinancialCard = ({
   if (variant === "mobileDetail") {
     return (
       <section className={styles.mobileDetail} aria-labelledby={`mobile-account-${account.account_id}`} aria-label={`Detail rekening ${account.name}`}>
-        {embedded ? <h2 id={`mobile-account-${account.account_id}`} className="sr-only">{account.name}</h2> : (
+        {embedded ? (
+          <>
+            <h2 id={`mobile-account-${account.account_id}`} className="sr-only">{account.name}</h2>
+            {readOnly ? <div className={styles.mobileDetailBadges}><span className={styles.readOnlyBadge}><FiEye aria-hidden="true" />Hanya lihat</span></div> : null}
+          </>
+        ) : (
           <header className={styles.mobileDetailHeading}>
             <div>
               <p>Detail rekening</p>
