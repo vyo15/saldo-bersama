@@ -2,13 +2,14 @@
 
 ## Pre-release
 
+- [ ] Seluruh task release yang wajib sudah `READY_FOR_MERGE` dan `npm run task:check` lulus.
 - [ ] PR approved dan conversation resolved.
 - [ ] Commit SHA/version ditentukan.
 - [ ] `npm ci`, env check, full quality gate lulus pada Node 24.
 - [ ] Migration/schema impact direview.
 - [ ] Backup/parity/rollback tersedia bila data terdampak.
 - [ ] Environment change tervalidasi tanpa menampilkan secret.
-- [ ] Changelog, project status, handoff, docs/ADR diperbarui.
+- [ ] Changelog/current project status/docs/ADR diperbarui sesuai dampak aktual.
 - [ ] Security/privacy/accessibility/performance review relevan selesai.
 
 ## Deploy
@@ -26,4 +27,6 @@
 - [ ] Release tag/commit dicatat.
 - [ ] Monitoring window selesai.
 - [ ] Rollback window dan known issues dicatat.
-- [ ] `PROJECT_HANDOFF` menunjuk next safe step.
+- [ ] Post-merge verification task terkait `PASS`.
+- [ ] Task selesai dipindahkan dari `docs/tasks/active/` ke `docs/tasks/archive/`.
+- [ ] `PROJECT_STATUS.md` menunjukkan current state dan next operational risk tanpa menyalin histori release.

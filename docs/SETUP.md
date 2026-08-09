@@ -24,7 +24,7 @@ Hasil `node -v` harus `v24.18.1`. `fnm env --use-on-cd` membaca `.node-version` 
 
 ## 2. Onboarding
 
-Baca `../AGENTS.md`, `PROJECT_STATUS.md`, dan `PROJECT_HANDOFF.md` sebelum mengubah source.
+Baca `../AGENTS.md`, `WORKFLOW.md`, `PROJECT_STATUS.md`, dan task card aktif sebelum mengubah source. Jalankan `npm run task:check` sebelum patch.
 
 ## 3. Bootstrap lokal otomatis
 

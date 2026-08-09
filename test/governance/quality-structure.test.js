@@ -18,6 +18,7 @@ const exists = async (relative) => {
 test("quality workflow menjalankan check, guard regression, browser journey, dan verifikasi clean archive", async () => {
   const workflow = await source(".github/workflows/quality.yml");
   assert.match(workflow, /actions\/checkout@v5/);
+  assert.match(workflow, /fetch-depth:\s*0/);
   assert.match(workflow, /actions\/setup-node@v5/);
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /Guarded mutation regression[\s\S]*npm run test:guard/);
@@ -51,6 +52,9 @@ test("tooling kualitas dan lifecycle dokumentasi terhubung dari package canonica
   assert.equal(packageJson.scripts["audit:production"], "npm audit --omit=dev --audit-level=high");
   assert.equal(packageJson.scripts["audit:all"], "npm audit --audit-level=high");
   assert.equal(packageJson.scripts["check:duplicates"], "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test");
+  assert.equal(packageJson.scripts["task:check"], "node scripts/validate-task.mjs");
+  assert.equal(packageJson.scripts["task:list"], "node scripts/list-tasks.mjs");
+  assert.match(packageJson.scripts.check, /^npm run task:check && /);
   assert.equal(packageJson.scripts["lint:backend"], "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js");
   assert.match(packageJson.scripts.lint, /npm run lint:backend/);
   assert.match(packageJson.scripts.check, /build:budget/);

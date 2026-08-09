@@ -1,8 +1,26 @@
 # Git Workflow
 
-Dokumen ini adalah sumber canonical untuk command Git dan workflow harian. Kebijakan kontribusi, RFC/ADR, serta Definition of Ready/Done berada di `../CONTRIBUTING.md`.
+Dokumen ini adalah sumber canonical untuk command Git dan workflow branch/worktree. Lifecycle task berada di `WORKFLOW.md`; kebijakan kontribusi berada di `../CONTRIBUTING.md`.
+
+## Branch naming
+
+Branch wajib membawa Task ID:
+
+```text
+feat/SB-123-nama-fitur
+fix/SB-123-nama-bug
+security/SB-123-nama-guard
+perf/SB-123-nama-perf
+docs/SB-123-nama-doc
+test/SB-123-nama-test
+chore/SB-123-nama-maintenance
+```
+
+Jangan bekerja langsung di `main`.
 
 ## Mulai task
+
+Pastikan task card `docs/tasks/active/SB-123.md` sudah dibuat dan plan sudah disetujui sebelum coding.
 
 ```bash
 git checkout main
@@ -11,35 +29,48 @@ git status --short
 npm ci
 npm run env:check
 npm run check
-git checkout -b feat/nama-fitur
+git checkout -b fix/SB-123-nama-bug
+npm run task:check
 ```
 
-Prefix branch yang diizinkan:
+Untuk pekerjaan paralel, lebih aman memakai worktree per task:
 
-```text
-feat/
-fix/
-security/
-perf/
-docs/
-test/
-chore/
+```bash
+git checkout main
+git pull --rebase origin main
+git worktree add ../worktrees/SB-123 -b fix/SB-123-nama-bug main
+cd ../worktrees/SB-123
+npm ci
+npm run task:check
 ```
 
-Jangan bekerja langsung di `main`.
+Jangan memakai satu worktree untuk dua task `IN_PROGRESS`.
 
 ## Selama bekerja
 
-- Baca `../AGENTS.md`, `PROJECT_STATUS.md`, dan `PROJECT_HANDOFF.md`.
-- Satu task/branch harus memiliki scope jelas.
+- Baca `../AGENTS.md`, `WORKFLOW.md`, dan task card aktif.
+- Satu Primary Team maksimal satu `IN_PROGRESS` pada satu waktu.
+- Update checkpoint task setelah milestone penting atau sebelum pindah prioritas/perangkat.
 - Sync sebelum berpindah laptop/PC.
-- Jangan mengerjakan file sama di dua perangkat tanpa push/pull.
+- Jangan mengerjakan file sama di dua worktree tanpa dependency/ownership yang jelas.
+- Jika perlu file di luar `Write Scope`, STOP dan minta approval scope baru.
 - Gunakan RFC/ADR untuk perubahan guarded atau lintas arsitektur.
-- Perbarui dokumentasi pada patch yang sama dengan perubahan source.
+
+## Resume task lama
+
+```bash
+git status --short
+git fetch origin
+npm run task:check
+npm run task:list
+```
+
+Bandingkan baseline/checkpoint dengan `main` terbaru. Revalidation wajib bila area relevan berubah atau task tidak disentuh lebih dari 72 jam.
 
 ## Sebelum commit
 
 ```bash
+npm run task:check
 npm run check
 npm run test:browser
 npm run clean:dry-run
@@ -52,11 +83,11 @@ git diff --cached --check
 git diff --cached --stat
 ```
 
-Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, build output, credential, token, dump, backup, atau export berisi data nyata. Gunakan `npm run clean` untuk generated output; jangan menghapus `.git`, `.vercel`, atau `.env.local`. `npm run zip` menjaga archive lama sampai archive sementara valid, lalu mengganti file canonical secara atomik. Pada output default, hanya variasi nama clean canonical yang dihapus; ZIP patch dan arsip lain tetap dipertahankan.
+Pastikan tidak ada `.env`, `.vercel`, ZIP, `node_modules`, build output, credential, token, dump, backup, atau export berisi data nyata. Gunakan `npm run clean` untuk generated output; jangan menghapus `.git`, `.vercel`, atau `.env.local`.
 
 ## Commit dan pull request
 
-Prefix commit yang diizinkan:
+Prefix commit canonical:
 
 ```text
 feat:
@@ -74,17 +105,22 @@ chore:
 Contoh:
 
 ```bash
-git commit -m "feat: describe the change"
-git push -u origin feat/nama-fitur
+git commit -m "fix(SB-123): describe the change"
+git push -u origin fix/SB-123-nama-bug
 ```
 
-Buat PR ke `main`, isi template, tunggu code owner approval, quality gate, preview/smoke test yang relevan, dan resolve seluruh conversation. Direct push atau force push ke `main` harus dilarang melalui repository ruleset.
+Buat PR ke `main`, isi Task ID/Primary Team, tunggu code owner approval, quality gate, preview/smoke test yang relevan, dan resolve seluruh conversation. Direct push atau force push ke `main` harus dilarang melalui repository ruleset.
 
-## Handoff
+GitHub Actions memakai full history untuk menghitung scope diff terhadap base branch. `npm run task:check` harus lulus sebelum merge.
 
-Sebelum task ditutup, perbarui:
+## Handoff dan close
 
-- `PROJECT_STATUS.md`;
-- `PROJECT_HANDOFF.md`;
-- `../CHANGELOG.md`;
-- contract, ADR, RFC, matrix, atau runbook yang terdampak.
+Handoff harian ada pada task card, bukan satu file global. Sebelum berhenti:
+
+- update `Completed`;
+- update `Remaining`;
+- tulis `Resume From`;
+- catat `Last Verified Commit` dan test aktual;
+- gunakan `ON_HOLD` + reason/resume condition bila benar-benar berhenti sementara.
+
+Setelah QA lulus: `READY_FOR_MERGE`. Setelah merge dan post-merge verification: ubah `DONE` lalu `COORD` memindahkan task card ke `docs/tasks/archive/`.

@@ -13,6 +13,8 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Mengganti global handoff workflow dengan task-driven multi-team governance: team canonical `COORD/UIUX/FE/BE/DB/QA`, status task terjaga, task card per pekerjaan, dependency/WIP/checkpoint/resume flow, branch `SB-xxx`, serta executable `task:check` dan `task:list` agar pekerjaan paralel tidak bergantung pada memory chat atau shared handoff file.
+
 - Menstabilkan fixture Web Push P-256 dengan left-padding private scalar test menjadi 32 byte sebelum Base64URL; test tidak lagi flaky ketika `crypto.createECDH()` menghasilkan scalar dengan leading zero, tanpa mengubah validator/runtime VAPID Production.
 - Menyatukan artifact policy untuk diagnostic lokal `npm-audit-*.json`: file di-ignore Git/source validator tetapi selalu dikeluarkan dan diaudit dari clean ZIP, sehingga laporan audit lokal tidak lagi mematahkan packager atau bocor ke artifact.
 - Memusatkan stable serialization API agar cache key dan mutation fingerprint memakai canonical property ordering yang sama, serta mengekstrak version stamp backend domain-neutral tanpa menyembunyikan ownership/business transition/optimistic SQL guard.
