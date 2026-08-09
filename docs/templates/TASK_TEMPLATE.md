@@ -24,6 +24,8 @@ Satu outcome yang jelas.
 
 - [ ] Kriteria dapat diuji.
 
+> Saat `task:finish` sukses, closure helper menandai Acceptance Criteria selesai dan menulis evidence canonical sebelum archive.
+
 ## Write Scope
 
 - `path/yang/boleh-diubah`
@@ -54,11 +56,11 @@ Satu outcome yang jelas.
 
 ### Remaining
 
-- Lanjutkan sesuai plan.
+- Lanjutkan sesuai plan. Nilai ini otomatis menjadi `Tidak ada` saat task berhasil ditutup.
 
 ### Resume From
 
-Mulai dari source/task preflight.
+Mulai dari source/task preflight. Nilai ini otomatis menjadi state selesai saat task berhasil ditutup.
 
 ### Validation Actually Run
 

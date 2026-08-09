@@ -98,6 +98,43 @@ const parseListSection = (source, heading) => {
   return [...section.matchAll(/^\s*-\s+`([^`]+)`\s*$/gm)].map((item) => normalizePath(item[1]));
 };
 
+const extractHeadingBody = (source, heading) => {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headingPattern = new RegExp(`^${escaped}\\s*$`, "m");
+  const match = headingPattern.exec(source);
+  if (!match) return "";
+
+  const contentStart = match.index + match[0].length;
+  const level = heading.match(/^#+/)?.[0].length || 1;
+  const nextHeading = new RegExp(`^#{1,${level}}\\s+`, "m").exec(source.slice(contentStart));
+  const contentEnd = nextHeading ? contentStart + nextHeading.index : source.length;
+  return source.slice(contentStart, contentEnd).trim();
+};
+
+const validateArchivedClosure = (task, errors) => {
+  if (task.location !== "archive") return;
+
+  const acceptance = extractHeadingBody(task.source, "## Acceptance Criteria");
+  if (acceptance && /^- \[ \]/m.test(acceptance)) {
+    errors.push(`${task.relative}: task archive masih memiliki Acceptance Criteria yang belum ditutup.`);
+  }
+
+  const remaining = extractHeadingBody(task.source, "### Remaining");
+  if (remaining && !/(tidak ada|none|selesai)/i.test(remaining)) {
+    errors.push(`${task.relative}: task archive masih memiliki Remaining work yang aktif.`);
+  }
+
+  const resumeFrom = extractHeadingBody(task.source, "### Resume From");
+  if (resumeFrom && !/(task selesai|tidak ada|none)/i.test(resumeFrom)) {
+    errors.push(`${task.relative}: task archive masih memiliki Resume From yang aktif.`);
+  }
+
+  const validation = extractHeadingBody(task.source, "### Validation Actually Run");
+  if (validation && /\bNOT[ _-]?RUN\b/i.test(validation)) {
+    errors.push(`${task.relative}: task archive masih mencatat validation NOT RUN.`);
+  }
+};
+
 const parseTaskFile = (relative, location) => {
   const absolute = path.join(root, relative);
   const source = readFileSync(absolute, "utf8");
@@ -197,6 +234,7 @@ const validateTaskShape = (task, errors) => {
     if (!TASK_ID_PATTERN.test(id)) errors.push(`${task.relative}: dependency task invalid: ${id}.`);
   }
   if (task.dependsOn.includes(task.id)) errors.push(`${task.relative}: task tidak boleh bergantung pada dirinya sendiri.`);
+  validateArchivedClosure(task, errors);
 };
 
 const staticPrefix = (pattern) => normalizePath(pattern).split("*")[0].replace(/\/$/, "");

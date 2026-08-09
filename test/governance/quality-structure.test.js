@@ -167,6 +167,10 @@ test("task finish supports replace-first on main and one local validated merge f
   assert.doesNotMatch(finish, /gh.*pr.*create/s);
   assert.match(finish, /git\(\["merge", "--no-ff", branch/);
   assert.match(finish, /closeTaskOnMain/);
+  assert.match(finish, /finalizeTaskDocument/);
+  assert.match(finish, /markAcceptanceCriteriaComplete/);
+  assert.match(finish, /### Remaining/);
+  assert.match(finish, /### Validation Actually Run/);
   assert.match(finish, /Push main ditolak atau origin\/main berubah/);
   assert.match(finish, /rev-list.*origin\/main\.\.HEAD/s);
   assert.match(finish, /npmRun\("zip"\)/);
@@ -238,8 +242,37 @@ test("task finish end-to-end accepts replace-first on main, revisions stale bran
 | Hold Reason | \`NONE\` |
 | Resume Condition | \`NONE\` |
 
+## Acceptance Criteria
+
+- [ ] Helper integration selesai.
+- [ ] Canonical validation evidence tercatat.
+
 ## Write Scope
 - \`README.md\`
+
+## Checkpoint
+
+### Completed
+
+- Fixture dibuat.
+
+### Remaining
+
+- Jalankan helper.
+
+### Resume From
+
+Lanjutkan integration test.
+
+### Validation Actually Run
+
+\`\`\`text
+NOT_RUN
+\`\`\`
+
+### Known Risks
+
+- Tidak ada.
 `);
     await writeFile(path.join(project, "README.md"), "base\ntask change\n");
 
@@ -253,6 +286,14 @@ test("task finish end-to-end accepts replace-first on main, revisions stale bran
     const archivedTask = await readFile(path.join(project, "docs/tasks/archive/SB-900.md"), "utf8");
     assert.match(archivedTask, /\| Status \| `DONE` \|/);
     assert.match(archivedTask, /\| Branch \| `chore\/SB-900-helper-test-r2` \|/);
+    assert.doesNotMatch(archivedTask, /- \[ \]/);
+    assert.match(archivedTask, /- \[x\] Helper integration selesai\./);
+    assert.match(archivedTask, /### Remaining\s+\n\n- Tidak ada\./);
+    assert.match(archivedTask, /### Resume From\s+\n\nTask selesai\./);
+    assert.match(archivedTask, /PASS npm run check/);
+    assert.match(archivedTask, /PASS npm run test:guard/);
+    assert.match(archivedTask, /NOT_REQUIRED npm run test:browser/);
+    assert.doesNotMatch(archivedTask, /NOT_RUN/);
     assert.match(await readFile(path.join(project, "README.md"), "utf8"), /task change/);
 
     const remoteTask = spawnSync("git", ["--git-dir", remote, "show-ref", "--verify", "--quiet", "refs/heads/chore/SB-900-helper-test-r2"]);
@@ -261,6 +302,88 @@ test("task finish end-to-end accepts replace-first on main, revisions stale bran
     assert.notEqual(staleTask.status, 0, "older stale task branches should be cleaned after the task is DONE");
     const remoteArchive = run("git", ["--git-dir", remote, "show", "main:docs/tasks/archive/SB-900.md"], sandbox);
     assert.match(remoteArchive.stdout, /\| Status \| `DONE` \|/);
+    assert.match(remoteArchive.stdout, /- \[x\] Helper integration selesai\./);
+    assert.doesNotMatch(remoteArchive.stdout, /NOT_RUN/);
+  } finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
+
+test("task validator menolak archive DONE dengan closure metadata yang masih stale", async () => {
+  const sandbox = await mkdtemp(path.join(os.tmpdir(), "saldo-bersama-archive-closure-"));
+  try {
+    await mkdir(path.join(sandbox, "scripts"), { recursive: true });
+    await mkdir(path.join(sandbox, "docs/tasks/active"), { recursive: true });
+    await mkdir(path.join(sandbox, "docs/tasks/archive"), { recursive: true });
+    await writeFile(path.join(sandbox, "scripts/validate-task.mjs"), await source("scripts/validate-task.mjs"));
+    await writeFile(path.join(sandbox, "docs/tasks/archive/SB-901.md"), `# SB-901 - stale archive
+
+| Field | Value |
+|---|---|
+| Task ID | \`SB-901\` |
+| Status | \`DONE\` |
+| Priority | \`P2\` |
+| Team | \`COORD\` |
+| Depends On | \`NONE\` |
+| Risk | \`LOW\` |
+| Guarded | \`NO\` |
+| Guard Approval | \`NOT_REQUIRED\` |
+| Branch | \`chore/SB-901-stale-archive\` |
+| Base | \`main@test\` |
+| Updated | \`2026-08-09\` |
+| Hold Reason | \`NONE\` |
+| Resume Condition | \`NONE\` |
+
+## Acceptance Criteria
+
+- [ ] Belum ditutup.
+
+## Write Scope
+
+- \`README.md\`
+
+## Checkpoint
+
+### Remaining
+
+- Masih ada pekerjaan.
+
+### Resume From
+
+Lanjutkan task.
+
+### Validation Actually Run
+
+\`\`\`text
+NOT_RUN
+\`\`\`
+`);
+    await writeFile(path.join(sandbox, "README.md"), "fixture\n");
+
+    for (const args of [
+      ["init", "-q"],
+      ["config", "user.name", "Archive Closure Test"],
+      ["config", "user.email", "archive-closure@example.test"],
+      ["add", "-A"],
+      ["commit", "-qm", "fixture"],
+      ["branch", "-M", "main"],
+    ]) {
+      const gitResult = spawnSync("git", args, { cwd: sandbox, encoding: "utf8" });
+      assert.equal(gitResult.status, 0, gitResult.stderr);
+    }
+
+    const result = spawnSync(process.execPath, ["scripts/validate-task.mjs"], {
+      cwd: sandbox,
+      encoding: "utf8",
+      env: { ...process.env, TASK_BRANCH: "main", TASK_BASE_REF: "main" },
+    });
+    assert.notEqual(result.status, 0);
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert.match(output, /Acceptance Criteria yang belum ditutup/);
+    assert.match(output, /Remaining work yang aktif/);
+    assert.match(output, /Resume From yang aktif/);
+    assert.match(output, /validation NOT RUN/);
   } finally {
     await rm(sandbox, { recursive: true, force: true });
   }

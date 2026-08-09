@@ -123,7 +123,8 @@ Script menangani:
 10. push `main`;
 11. archive task;
 12. hapus branch revision yang selesai bila aman dan berakhir di `main`;
-13. jalankan `npm run zip` otomatis agar clean source terbaru siap di-upload.
+13. normalisasi metadata closure task (`Status=DONE`, Acceptance Criteria checked, `Remaining/Resume From` selesai, canonical validation evidence) lalu archive;
+14. jalankan `npm run zip` otomatis agar clean source terbaru siap di-upload.
 
 Jika direct push ke `main` ditolak repository rules atau `origin/main` berubah pada saat terakhir, script mengembalikan `main` lokal ke kondisi remote lalu kembali ke branch task. Pekerjaan tidak hilang dan command yang sama dapat diulang setelah kondisi stabil.
 
