@@ -1,0 +1,683 @@
+diff --git a/.github/workflows/quality.yml b/.github/workflows/quality.yml
+index c48fa90..c19fde1 100644
+--- a/.github/workflows/quality.yml
++++ b/.github/workflows/quality.yml
+@@ -3,7 +3,15 @@ name: Quality
+ on:
+   pull_request:
+   push:
+-    branches: [main]
++    branches:
++      - main
++      - 'feat/SB-*'
++      - 'fix/SB-*'
++      - 'security/SB-*'
++      - 'perf/SB-*'
++      - 'docs/SB-*'
++      - 'test/SB-*'
++      - 'chore/SB-*'
+ 
+ permissions:
+   contents: read
+@@ -23,6 +31,8 @@ jobs:
+       - run: npm ci
+       - name: Run project checks
+         env:
++          TASK_BRANCH: ${{ github.event_name == 'push' && github.ref_name != 'main' && github.ref_name || '' }}
++          TASK_BASE_REF: ${{ github.event_name == 'push' && github.ref_name != 'main' && 'origin/main' || '' }}
+           VITE_GOOGLE_CLIENT_ID: ci-browser-smoke.apps.googleusercontent.com
+           VITE_FIREBASE_API_KEY: ci-browser-smoke-public-key
+         run: npm run check
+diff --git a/.github/workflows/task-submit.yml b/.github/workflows/task-submit.yml
+new file mode 100644
+index 0000000..5df1912
+--- /dev/null
++++ b/.github/workflows/task-submit.yml
+@@ -0,0 +1,312 @@
++name: Task Submit
++
++on:
++  workflow_run:
++    workflows: [Quality]
++    types: [completed]
++
++permissions:
++  contents: write
++  pull-requests: write
++
++concurrency:
++  group: task-submit-${{ github.event.workflow_run.head_branch }}
++  cancel-in-progress: true
++
++jobs:
++  submit:
++    if: >-
++      ${{ github.event.workflow_run.conclusion == 'success' &&
++          github.event.workflow_run.event == 'push' &&
++          github.event.workflow_run.head_branch != 'main' }}
++    runs-on: ubuntu-latest
++    steps:
++      - id: task
++        name: Resolve validated task metadata without executing branch code
++        env:
++          GH_TOKEN: ${{ github.token }}
++          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
++          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
++        shell: bash
++        run: |
++          set -euo pipefail
++
++          if [[ ! "$HEAD_BRANCH" =~ ^(feat|fix|security|perf|docs|test|chore)/(SB-[0-9]{3,4})-[a-z0-9][a-z0-9-]*$ ]]; then
++            echo "Branch hasil Quality bukan branch task canonical: $HEAD_BRANCH" >&2
++            exit 1
++          fi
++
++          task_id="${BASH_REMATCH[2]}"
++          task_file="docs/tasks/active/$task_id.md"
++          task_snapshot="$RUNNER_TEMP/$task_id.md"
++          validator_snapshot="$RUNNER_TEMP/validate-task.mjs"
++          compare_snapshot="$RUNNER_TEMP/compare.json"
++          base_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
++
++          gh api \
++            -H "Accept: application/vnd.github+json" \
++            "repos/$GITHUB_REPOSITORY/contents/$task_file?ref=$HEAD_SHA" \
++            --jq .content | tr -d '\n' | base64 --decode > "$task_snapshot"
++
++          gh api \
++            -H "Accept: application/vnd.github+json" \
++            "repos/$GITHUB_REPOSITORY/contents/scripts/validate-task.mjs?ref=$base_sha" \
++            --jq .content | tr -d '\n' | base64 --decode > "$validator_snapshot"
++
++          gh api \
++            -H "Accept: application/vnd.github+json" \
++            "repos/$GITHUB_REPOSITORY/compare/$base_sha...$HEAD_SHA" > "$compare_snapshot"
++
++          python3 - \
++            "$task_snapshot" \
++            "$validator_snapshot" \
++            "$compare_snapshot" \
++            "$task_id" \
++            "$HEAD_BRANCH" \
++            "$base_sha" \
++            "$GITHUB_OUTPUT" <<'PY'
++          import json
++          import re
++          import sys
++
++          task_path, validator_path, compare_path, expected_id, expected_branch, base_sha, output_path = sys.argv[1:]
++          source = open(task_path, encoding="utf-8").read()
++          fields = {}
++          for line in source.splitlines():
++              match = re.match(r"^\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|$", line)
++              if not match:
++                  continue
++              key = match.group(1).strip()
++              if key in {"Field", "---"}:
++                  continue
++              fields[key] = match.group(2).strip().strip("`")
++
++          required = [
++              "Task ID", "Status", "Primary Team", "Risk", "Guarded",
++              "Guard Approval", "Branch", "QA Result", "Integration Result",
++              "Post-Merge Result",
++          ]
++          missing = [field for field in required if not fields.get(field)]
++          if missing:
++              raise SystemExit(f"Task metadata incomplete: {', '.join(missing)}")
++          if fields["Task ID"] != expected_id:
++              raise SystemExit("Task ID tidak cocok dengan branch.")
++          if fields["Branch"] != expected_branch:
++              raise SystemExit("Branch pada task card tidak cocok dengan Quality head branch.")
++          if fields["Status"] not in {"READY_FOR_QA", "READY_FOR_MERGE"}:
++              raise SystemExit(f"Status {fields['Status']} belum boleh disubmit.")
++          if fields["Guarded"] not in {"YES", "NO"}:
++              raise SystemExit("Guarded harus YES atau NO.")
++          if fields["Guarded"] == "YES" and fields["Guard Approval"] != "APPROVED":
++              raise SystemExit("Guarded task belum memiliki Guard Approval APPROVED.")
++          if fields["Risk"] not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
++              raise SystemExit("Risk task invalid.")
++          if fields["Status"] == "READY_FOR_MERGE":
++              if fields["QA Result"] != "PASS" or fields["Integration Result"] != "PASS":
++                  raise SystemExit("READY_FOR_MERGE membutuhkan QA dan Integration PASS.")
++          if fields["Post-Merge Result"] != "PENDING":
++              raise SystemExit("Post-Merge Result harus PENDING sebelum merge.")
++
++          validator = open(validator_path, encoding="utf-8").read()
++          block = re.search(r"const GUARDED_PATH_PATTERNS = Object\.freeze\(\[(.*?)\]\);", validator, re.S)
++          if not block:
++              raise SystemExit("Canonical GUARDED_PATH_PATTERNS tidak dapat dibaca dari main.")
++          guarded_patterns = re.findall(r'"([^"\n]+)"', block.group(1))
++          if not guarded_patterns:
++              raise SystemExit("Canonical guarded path registry kosong.")
++
++          compare = json.load(open(compare_path, encoding="utf-8"))
++          files = [item.get("filename", "") for item in compare.get("files", []) if item.get("filename")]
++          if not files:
++              raise SystemExit("Branch tidak memiliki changed file terhadap main.")
++          if len(files) >= 300:
++              raise SystemExit("Diff terlalu besar untuk auto-submit; review manual wajib.")
++
++          def glob_regex(pattern):
++              output = "^"
++              index = 0
++              while index < len(pattern):
++                  char = pattern[index]
++                  if char == "*":
++                      if index + 1 < len(pattern) and pattern[index + 1] == "*":
++                          output += ".*"
++                          index += 2
++                          continue
++                      output += "[^/]*"
++                  else:
++                      output += re.escape(char)
++                  index += 1
++              return re.compile(output + "$")
++
++          guarded_regex = [(pattern, glob_regex(pattern)) for pattern in guarded_patterns]
++          guarded_changed = sorted({
++              filename
++              for filename in files
++              if any(regex.match(filename) for _, regex in guarded_regex)
++          })
++
++          if guarded_changed and fields["Guarded"] != "YES":
++              preview = ", ".join(guarded_changed[:8])
++              raise SystemExit(f"Guarded path berubah tetapi task card Guarded bukan YES: {preview}")
++
++          behind_by = int(compare.get("behind_by", 0) or 0)
++          reasons = []
++          if fields["Guarded"] == "YES":
++              reasons.append("task termasuk guarded area")
++          if guarded_changed:
++              reasons.append("canonical guarded path berubah")
++          if fields["Risk"] in {"HIGH", "CRITICAL"}:
++              reasons.append(f"risk {fields['Risk']} membutuhkan review manual")
++          if behind_by > 0:
++              reasons.append(f"branch tertinggal {behind_by} commit dari main")
++
++          auto_merge = (
++              fields["Guarded"] == "NO"
++              and not guarded_changed
++              and fields["Risk"] in {"LOW", "MEDIUM"}
++              and behind_by == 0
++          )
++
++          outputs = {
++              "task_id": fields["Task ID"],
++              "team": fields["Primary Team"],
++              "risk": fields["Risk"],
++              "guarded": fields["Guarded"],
++              "auto_merge": str(auto_merge).lower(),
++              "manual_reason": "; ".join(reasons) or "NONE",
++              "base_sha": base_sha,
++              "behind_by": str(behind_by),
++              "guarded_changed": str(bool(guarded_changed)).lower(),
++          }
++          with open(output_path, "a", encoding="utf-8") as output:
++              for key, value in outputs.items():
++                  output.write(f"{key}={value}\n")
++          PY
++
++      - id: freshness
++        name: Verify Quality tested the current branch head
++        env:
++          GH_TOKEN: ${{ github.token }}
++          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
++          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
++          BASE_SHA: ${{ steps.task.outputs.base_sha }}
++        shell: bash
++        run: |
++          set -euo pipefail
++          current_head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$HEAD_BRANCH" --jq .object.sha)"
++          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
++          if [[ "$current_head" != "$HEAD_SHA" ]]; then
++            echo "Branch berubah setelah Quality run. Merge ditunda untuk run terbaru." >&2
++            exit 1
++          fi
++          if [[ "$current_main" != "$BASE_SHA" ]]; then
++            echo "Main berubah setelah policy snapshot. Merge ditunda untuk revalidation." >&2
++            exit 1
++          fi
++          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
++          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
++
++      - id: pr
++        name: Create or reuse pull request
++        env:
++          GH_TOKEN: ${{ github.token }}
++          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
++          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
++          TASK_ID: ${{ steps.task.outputs.task_id }}
++          TASK_TEAM: ${{ steps.task.outputs.team }}
++          TASK_GUARDED: ${{ steps.task.outputs.guarded }}
++          TASK_RISK: ${{ steps.task.outputs.risk }}
++        shell: bash
++        run: |
++          set -euo pipefail
++
++          pr_number="$(gh pr list \
++            --repo "$GITHUB_REPOSITORY" \
++            --head "$HEAD_BRANCH" \
++            --base main \
++            --state open \
++            --json number \
++            --jq '.[0].number // empty')"
++
++          if [[ -z "$pr_number" ]]; then
++            body_file="$RUNNER_TEMP/task-submit-pr.md"
++            cat > "$body_file" <<EOF
++          ## Automated task submission
++
++          - Task ID: \`$TASK_ID\`
++          - Primary Team: \`$TASK_TEAM\`
++          - Task Card: \`docs/tasks/active/$TASK_ID.md\`
++          - Source Branch: \`$HEAD_BRANCH\`
++          - Validated Head: \`$HEAD_SHA\`
++          - Guarded: \`$TASK_GUARDED\`
++          - Risk: \`$TASK_RISK\`
++
++          This PR was created after the read-only Quality workflow passed on the exact head commit above.
++          Repository rules remain authoritative. Guarded or HIGH/CRITICAL tasks are never auto-merged.
++          EOF
++
++            gh pr create \
++              --repo "$GITHUB_REPOSITORY" \
++              --base main \
++              --head "$HEAD_BRANCH" \
++              --title "$TASK_ID: automated task submission" \
++              --body-file "$body_file" >/dev/null
++
++            pr_number="$(gh pr list \
++              --repo "$GITHUB_REPOSITORY" \
++              --head "$HEAD_BRANCH" \
++              --base main \
++              --state open \
++              --json number \
++              --jq '.[0].number // empty')"
++          fi
++
++          if [[ -z "$pr_number" ]]; then
++            echo "Pull request tidak dapat dibuat atau ditemukan." >&2
++            exit 1
++          fi
++
++          pr_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)"
++          if [[ "$pr_head" != "$HEAD_SHA" ]]; then
++            echo "PR head berubah setelah Quality run. Merge ditunda." >&2
++            exit 1
++          fi
++
++          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
++
++      - name: Merge eligible task
++        if: ${{ steps.task.outputs.auto_merge == 'true' }}
++        env:
++          GH_TOKEN: ${{ github.token }}
++          PR_NUMBER: ${{ steps.pr.outputs.number }}
++          HEAD_SHA: ${{ steps.freshness.outputs.head_sha }}
++          BASE_SHA: ${{ steps.freshness.outputs.base_sha }}
++        shell: bash
++        run: |
++          set -euo pipefail
++          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
++          if [[ "$current_main" != "$BASE_SHA" ]]; then
++            echo "Main berubah tepat sebelum merge. Merge dibatalkan." >&2
++            exit 1
++          fi
++          if ! gh pr merge "$PR_NUMBER" \
++            --repo "$GITHUB_REPOSITORY" \
++            --merge \
++            --delete-branch \
++            --match-head-commit "$HEAD_SHA"; then
++            gh pr comment "$PR_NUMBER" \
++              --repo "$GITHUB_REPOSITORY" \
++              --body "Quality PASS pada head yang sama, tetapi repository rules/approval belum mengizinkan merge otomatis. Main tidak diubah." || true
++            exit 1
++          fi
++
++      - name: Keep guarded or high-risk task for manual approval
++        if: ${{ steps.task.outputs.auto_merge != 'true' }}
++        env:
++          GH_TOKEN: ${{ github.token }}
++          PR_NUMBER: ${{ steps.pr.outputs.number }}
++          MANUAL_REASON: ${{ steps.task.outputs.manual_reason }}
++        run: |
++          gh pr comment "$PR_NUMBER" \
++            --repo "$GITHUB_REPOSITORY" \
++            --body "Quality PASS pada head yang sama. Auto-merge sengaja ditahan: $MANUAL_REASON. Lakukan approval/merge manual setelah review selesai."
+diff --git a/docs/GIT_WORKFLOW.md b/docs/GIT_WORKFLOW.md
+index cb69bbe..cf894e8 100644
+--- a/docs/GIT_WORKFLOW.md
++++ b/docs/GIT_WORKFLOW.md
+@@ -18,6 +18,32 @@ chore/SB-123-nama-maintenance
+ 
+ Jangan bekerja langsung di `main`.
+ 
++
++## Alur harian user sederhana
++
++Setelah agent/engineer menyelesaikan patch dan menandai task minimal `READY_FOR_QA`, user tidak perlu mengulang quality command secara manual. Dari branch task cukup:
++
++```bash
++git add -A
++git commit -m "fix(SB-123): describe the change"
++git push -u origin HEAD
++```
++
++Push ke branch canonical langsung menjalankan `Quality` dengan permission read-only. Setelah Quality PASS, workflow `Task Submit` yang canonical-nya berada di `main` menerima event `workflow_run`, tidak checkout atau mengeksekusi kode branch, membaca metadata task pada SHA yang diuji melalui GitHub API, lalu membuat/reuse PR. Sebelum merge, workflow membaca registry guarded canonical dari `main`, membandingkannya dengan changed files, lalu memverifikasi SHA branch, SHA `main`, dan PR head tetap sama dengan snapshot yang divalidasi. Task non-guarded berisiko `LOW`/`MEDIUM` dicoba merge otomatis hanya bila repository rules mengizinkan; guarded atau risk `HIGH`/`CRITICAL` selalu berhenti pada PR untuk approval/merge manual. COORD merekonsiliasi task card saat post-merge close.
++
++Setelah PR benar-benar merged, sinkronkan laptop:
++
++```bash
++git switch main
++git pull origin main
++```
++
++`push` berarti laptop -> GitHub. `pull` berarti GitHub -> laptop. Local task branch boleh dibersihkan kemudian; keberadaannya tidak mengubah `main`.
++
++Repository harus mengizinkan `GITHUB_TOKEN` membuat/mengelola pull request sesuai policy organisasi/repository. Jika permission atau repository rule menolak create/merge, workflow gagal tertutup dan `main` tidak diubah.
++
++Saat pertama kali memasang `Task Submit`, workflow tersebut belum bisa memproses branch pemasangannya sendiri karena canonical workflow harus sudah tersedia di default branch. Task bootstrap itu dibuat PR dan di-merge manual satu kali; automation berlaku mulai task berikutnya setelah workflow ada di `main`.
++
+ ## Mulai task
+ 
+ Pastikan task card `docs/tasks/active/SB-123.md` sudah dibuat dan plan sudah disetujui sebelum coding.
+@@ -109,9 +135,9 @@ git commit -m "fix(SB-123): describe the change"
+ git push -u origin fix/SB-123-nama-bug
+ ```
+ 
+-Buat PR ke `main`, isi Task ID/Primary Team, tunggu code owner approval, quality gate, preview/smoke test yang relevan, dan resolve seluruh conversation. Direct push atau force push ke `main` harus dilarang melalui repository ruleset.
++Untuk branch canonical, `git push -u origin HEAD` adalah trigger submit. Workflow `Quality` berjalan read-only pada push branch task; setelah PASS, `Task Submit` dari `main` membuat/reuse PR tanpa menjalankan kode branch pada token write. Repository rules tetap authoritative. Guarded/HIGH/CRITICAL tidak pernah auto-merge; task non-guarded LOW/MEDIUM hanya dicoba auto-merge setelah quality PASS. Direct push atau force push ke `main` harus dilarang melalui repository ruleset.
+ 
+-GitHub Actions memakai full history untuk menghitung scope diff terhadap base branch. `npm run task:check` harus lulus sebelum merge.
++GitHub Actions memakai full history untuk menghitung scope diff terhadap base branch. `npm run task:check` tetap wajib lulus sebagai gate server-side walaupun user tidak perlu menjalankannya lagi secara manual sebelum setiap push.
+ 
+ ## Handoff dan close
+ 
+diff --git a/docs/WORKFLOW.md b/docs/WORKFLOW.md
+index 9c311a1..5bb5823 100644
+--- a/docs/WORKFLOW.md
++++ b/docs/WORKFLOW.md
+@@ -329,6 +329,8 @@ QA memakai acceptance criteria task, bukan hanya status build. Jika QA gagal, ta
+ 
+ `READY_FOR_MERGE` membutuhkan scope check, test wajib, task validator, guarded approval, source freshness, dan tidak ada dependency unresolved.
+ 
++Untuk branch task canonical, push menjalankan workflow `Quality` dengan token read-only. Hanya setelah Quality PASS, workflow `Task Submit` dari default branch boleh memproses `workflow_run`. Workflow privileged tersebut dilarang checkout atau mengeksekusi kode branch; metadata task dibaca sebagai data dari exact tested SHA melalui GitHub API. Sebelum create/merge PR, privileged workflow harus membaca guarded-path registry canonical dari `main`, menolak mismatch `Guarded`, dan memastikan branch head, base `main`, serta PR head tetap sama dengan snapshot yang divalidasi. Auto-merge hanya boleh untuk `Guarded=NO` dengan risk `LOW`/`MEDIUM`; guarded atau `HIGH`/`CRITICAL` selalu menunggu approval/merge manual. Repository rules tetap authoritative dan kegagalan permission/check/freshness/merge harus fail-closed tanpa mengubah `main`. Evidence QA/integration berada pada PR/Actions sampai COORD melakukan post-merge reconciliation dan close task.
++
+ `DONE` berarti perubahan sudah terintegrasi, diverifikasi, dan task card dipindahkan ke archive. Coding selesai saja belum cukup.
+ 
+ ## Shared critical dan guarded areas
+diff --git a/docs/tasks/active/SB-002.md b/docs/tasks/active/SB-002.md
+new file mode 100644
+index 0000000..1fb497b
+--- /dev/null
++++ b/docs/tasks/active/SB-002.md
+@@ -0,0 +1,145 @@
++# SB-002 - Automatic task PR submission after push
++
++| Field | Value |
++|---|---|
++| Task ID | `SB-002` |
++| Status | `READY_FOR_QA` |
++| Priority | `P1` |
++| Primary Team | `COORD` |
++| Supporting Teams | `QA` |
++| Work Package | `GOVERNANCE` |
++| Parent | `NONE` |
++| Required For Parent | `NO` |
++| Depends On | `SB-001` |
++| Related | `NONE` |
++| Risk | `HIGH` |
++| Guarded | `YES` |
++| Guard Approval | `APPROVED` |
++| Branch | `chore/SB-002-auto-task-submit` |
++| Base | `main@6c06457` |
++| Updated | `2026-08-09` |
++| Hold Reason | `NONE` |
++| Resume Condition | `NONE` |
++| QA Result | `PENDING` |
++| Integration Result | `PENDING` |
++| Post-Merge Result | `PENDING` |
++
++## Objective
++
++Membuat workflow Git harian user cukup `git add -A`, `git commit`, dan `git push -u origin HEAD`; sesudah push branch task, GitHub memvalidasi governance, membuat/reuse PR, menjalankan quality gate canonical, dan hanya melakukan merge otomatis untuk task non-guarded berisiko LOW/MEDIUM yang memenuhi seluruh syarat.
++
++## Acceptance Criteria
++
++- [x] Push ke branch canonical `*/SB-xxx-*` memicu `Quality` read-only.
++- [x] `task:check` berjalan di GitHub dengan branch/base eksplisit pada push task branch.
++- [x] `Task Submit` hanya berjalan melalui `workflow_run` setelah Quality PASS dan tidak checkout/execute kode branch dengan token write.
++- [x] Workflow membuat PR baru atau memakai ulang PR terbuka untuk branch yang sama.
++- [x] Privileged workflow membaca guarded-path registry dari `main` dan menolak task card yang menyatakan non-guarded saat guarded path berubah.
++- [x] Exact tested SHA dan base `main` diverifikasi terhadap current branch/PR head sebelum merge; branch yang tertinggal dari main tidak auto-merge.
++- [x] Auto-merge hanya diizinkan bila `Guarded=NO` dan risk `LOW/MEDIUM`; guarded/HIGH/CRITICAL tetap manual.
++- [x] Guarded/HIGH/CRITICAL selalu berhenti pada PR setelah quality PASS dan membutuhkan merge/approval manual.
++- [x] Repository rules tetap authoritative; kegagalan create/merge PR membuat workflow gagal tanpa mengubah `main`.
++- [x] Tidak ada perubahan schema, auth, API contract, saldo, backup/restore, dependency, atau runtime finansial.
++
++## Write Scope
++
++- `.github/workflows/quality.yml`
++- `.github/workflows/task-submit.yml`
++- `docs/GIT_WORKFLOW.md`
++- `docs/WORKFLOW.md`
++- `docs/tasks/active/SB-001.md`
++- `docs/tasks/archive/SB-001.md`
++- `test/governance/quality-structure.test.js`
++
++## Read Only
++
++- `api/**`
++- `frontend/**`
++- `database/**`
++- `apps-script/**`
++- `vercel.json`
++- `package.json`
++- `package-lock.json`
++
++## Forbidden
++
++- `.env*`
++- `.vercel/**`
++- `node_modules/**`
++- secret/credential files
++- runtime business logic outside the approved governance scope
++
++## Source Validation
++
++- Archive/repository: `saldo-bersama-clean(20260809-055846).zip`
++- Root: `saldo-bersama/`
++- Stack/dependency relevant: GitHub Actions, GitHub CLI pada runner, Node 24.x, npm workspaces, task validator existing.
++- Paths inspected: `.github/workflows/quality.yml`, `.github/CODEOWNERS`, `docs/WORKFLOW.md`, `docs/GIT_WORKFLOW.md`, `docs/tasks/**`, `scripts/validate-task.mjs`, governance tests, `package.json`.
++- Important missing/limitation: ZIP tidak membawa `.git` atau repository rules/settings GitHub. Git repository sementara dibuat di sandbox untuk menguji branch-aware validator. Permission GitHub Actions untuk membuat PR tetap tunduk pada settings/rules repository dan tidak dapat dibuktikan dari ZIP.
++
++## Plan
++
++1. Tutup SB-001 yang sudah merged berdasarkan source post-merge dan log aktual user.
++2. Jalankan `quality.yml` read-only pada push branch canonical selain PR/main yang sudah ada.
++3. Tambahkan `task-submit.yml` privileged berbasis `workflow_run` dari default branch tanpa checkout/execute kode task.
++4. Parse metadata task secara fail-closed dari exact tested SHA, baca guarded registry canonical dari `main`, dan verifikasi changed paths serta freshness branch/base/PR head.
++5. Auto-merge hanya non-guarded LOW/MEDIUM yang tidak tertinggal dari `main`, dengan `--match-head-commit`; guarded/HIGH/CRITICAL tetap manual.
++6. Selaraskan Git workflow/docs dan governance tests.
++7. Jalankan task validator, focused governance tests, source validation, lint/test/build yang tersedia pada environment.
++
++## Checkpoint
++
++### Completed
++
++- Source terbaru dan workflow SB-001 sudah divalidasi.
++- PR #11/SB-001 terkonfirmasi sudah merge dari log aktual user; task lama dipindahkan ke archive dalam patch ini.
++
++### Remaining
++
++- Jalankan canonical GitHub `Quality` pada Node 24 setelah branch didorong ke repository.
++- Karena task ini sendiri `Guarded=YES` dan risk `HIGH`, merge SB-002 tetap manual setelah Quality PASS.
++- Setelah merge, lakukan post-merge reconciliation/close task dari `main`.
++
++### Resume From
++
++Bootstrap SB-002 adalah pengecualian satu kali: push branch `chore/SB-002-auto-task-submit`, buat PR secara manual, tunggu `Quality` PASS, lalu merge manual karena task ini guarded/high-risk. `Task Submit` berbasis `workflow_run` baru dapat menangani task berikutnya setelah workflow tersebut sudah berada di default branch `main`.
++
++### Last Verified Commit
++
++`main@6c06457` berdasarkan log merge user; source snapshot `saldo-bersama-clean(20260809-055846).zip`.
++
++### Validation Actually Run
++
++```text
++pre-patch task:check (Git sandbox): PASS
++pre-patch focused governance: PASS — 21/21
++YAML parse quality.yml + task-submit.yml: PASS
++final focused governance + task-submit/quality tests: PASS — 23/23
++validate:source: PASS — 381 file; 5/12 Vercel Functions canonical
++Node syntax: PASS — 108 file
++Apps Script syntax/boot: PASS — 6 file, 2 urutan load
++task:list: PASS — SB-002 tampil pada READY FOR QA dan direkomendasikan ke QA
++npm ci: BLOCKED — sandbox Node 22.16.0 bukan canonical Node 24.x dan internal npm mirror mengembalikan 404 untuk vite-7.3.6.tgz
++full npm run check/lint/test/build/browser: NOT_RUN karena npm ci tidak selesai
++```
++
++### Known Risks
++
++- GitHub repository setting dapat membatasi `GITHUB_TOKEN` untuk membuat/merge PR. Workflow harus gagal tertutup bila permission tidak tersedia.
++- Auto-merge yang terlalu luas berisiko melewati review; karena itu guarded dan HIGH/CRITICAL selalu manual.
++- Auto-created PR dengan `GITHUB_TOKEN` tidak diandalkan untuk memicu workflow PR lain; Quality sudah lulus lebih dahulu pada push exact head SHA.
++- Privileged `workflow_run` tidak boleh checkout/execute branch code; perubahan desain ke arah tersebut harus dianggap security regression.
++- Auto-merge juga ditahan bila canonical guarded path berubah atau branch tertinggal dari `main`, walau task card mencoba menyatakan risiko rendah.
++- Task card tidak dimutasi otomatis setelah Quality PASS agar head SHA/check tidak menjadi stale; COORD wajib melakukan post-merge reconciliation pada lifecycle task.
++- Full Node 24 quality gate belum dapat dijalankan di sandbox karena dependency install terblokir registry internal.
++
++## Hold
++
++**Hold Reason:** `NONE`
++**Resume Condition:** `NONE`
++
++## QA and Integration
++
++- QA result: `PENDING`
++- Integration result: `PENDING`
++- Post-merge result: `PENDING`
+diff --git a/docs/tasks/active/SB-001.md b/docs/tasks/archive/SB-001.md
+similarity index 81%
+rename from docs/tasks/active/SB-001.md
+rename to docs/tasks/archive/SB-001.md
+index 2a9732b..05266ac 100644
+--- a/docs/tasks/active/SB-001.md
++++ b/docs/tasks/archive/SB-001.md
+@@ -3,7 +3,7 @@
+ | Field | Value |
+ |---|---|
+ | Task ID | `SB-001` |
+-| Status | `READY_FOR_QA` |
++| Status | `DONE` |
+ | Priority | `P1` |
+ | Primary Team | `COORD` |
+ | Supporting Teams | `QA` |
+@@ -20,9 +20,9 @@
+ | Updated | `2026-08-09` |
+ | Hold Reason | `NONE` |
+ | Resume Condition | `NONE` |
+-| QA Result | `PENDING` |
+-| Integration Result | `PENDING` |
+-| Post-Merge Result | `PENDING` |
++| QA Result | `PASS` |
++| Integration Result | `PASS` |
++| Post-Merge Result | `PASS` |
+ 
+ ## Objective
+ 
+@@ -118,17 +118,15 @@ Mengganti global handoff workflow dengan task-driven multi-team workflow yang da
+ 
+ ### Remaining
+ 
+-- Jalankan `npm ci && npm run check && npm run test:browser` pada Node 24 canonical dengan dependency yang di-install untuk platform tersebut.
+-- Setelah QA canonical PASS, ubah `QA Result` dan `Integration Result` menjadi `PASS`, lalu status ke `READY_FOR_MERGE`.
+-- Setelah merge, jalankan post-merge verification, ubah `DONE`, dan pindahkan task card ke archive.
++- Tidak ada. PR #11 sudah merge ke `main` dan task ditutup setelah verifikasi source hasil merge.
+ 
+ ### Resume From
+ 
+-Pada environment Node 24.18.1 canonical: install dependency bersih untuk platform lokal, jalankan `npm run task:check`, `npm run check`, dan `npm run test:browser`. Jika hijau, lanjutkan QA/integration gate tanpa mengubah runtime domain.
++Task selesai. Gunakan task baru untuk perubahan lanjutan.
+ 
+ ### Last Verified Commit
+ 
+-`e9b818f1a0f929b80d6f823a419a2ad741ac5304` + working tree `chore/SB-001-multi-team-governance`
++`main@6c06457` setelah PR #11 (`chore/SB-001-multi-team-governance`) merge.
+ 
+ ### Validation Actually Run
+ 
+@@ -147,14 +145,16 @@ npm run check: FAIL at build only — @rollup/rollup-linux-x64-gnu tidak tersedi
+ npm run build: BLOCKED by same platform dependency mismatch
+ npm run test:browser: BLOCKED during prerequisite Vite build by same platform dependency mismatch
+ npm run build:budget: NOT_RUN because build artifact tidak tersedia
++PR #11: MERGED — user log menunjukkan merge ke main commit 6c06457 dan branch task dihapus
++post-merge source snapshot: PASS — governance files hasil SB-001 tersedia pada saldo-bersama-clean(20260809-055846).zip
++focused governance di sandbox Git sementara: PASS — 21/21
+ ```
+ 
+ ### Known Risks
+ 
+-- Sandbox memakai Node 22.16.0, sedangkan project canonical Node 24.18.1.
+-- `node_modules` dari ZIP bukan install Linux canonical; Rollup optional native package Linux tidak tersedia. Dependency/source tidak diubah untuk mengakali environment test.
+-- CI `fetch-depth: 0` sengaja ditambahkan agar scope diff terhadap base branch dapat dihitung deterministik.
+-- Task tetap `READY_FOR_QA`, bukan `READY_FOR_MERGE`, sampai build/browser Node 24 terbukti.
++- Source ZIP post-merge tidak membawa `.git`; sandbox memakai Git repository sementara hanya untuk memverifikasi governance behavior.
++- Sandbox runtime Node 22.16.0, sedangkan project canonical Node 24.18.1; hasil full Node 24 sebelum merge berasal dari log aktual user.
++- Tidak ada runtime finansial yang diubah oleh SB-001.
+ 
+ ## Hold
+ 
+@@ -163,6 +163,6 @@ npm run build:budget: NOT_RUN because build artifact tidak tersedia
+ 
+ ## QA and Integration
+ 
+-- QA result: `PENDING`
+-- Integration result: `PENDING`
+-- Post-merge result: `PENDING`
++- QA result: `PASS`
++- Integration result: `PASS`
++- Post-merge result: `PASS`
+diff --git a/test/governance/quality-structure.test.js b/test/governance/quality-structure.test.js
+index 192d1f8..23339f7 100644
+--- a/test/governance/quality-structure.test.js
++++ b/test/governance/quality-structure.test.js
+@@ -103,3 +103,36 @@ test("test backend terkelompok berdasarkan tanggung jawab dan namespace runtime
+     assert.equal(await exists(directory), true, `Missing test boundary: ${directory}`);
+   }
+ });
++
++
++test("quality runs read-only on canonical task pushes", async () => {
++  const workflow = await source(".github/workflows/quality.yml");
++  assert.match(workflow, /permissions:\s*\n\s*contents:\s*read/);
++  for (const prefix of ["feat", "fix", "security", "perf", "docs", "test", "chore"]) {
++    assert.match(workflow, new RegExp(`${prefix}/SB-\\*`));
++  }
++  assert.match(workflow, /TASK_BRANCH:\s*\$\{\{ github\.event_name == 'push'/);
++  assert.match(workflow, /TASK_BASE_REF:[\s\S]*origin\/main/);
++});
++
++test("privileged task submit is workflow_run-only and never executes branch code", async () => {
++  const workflow = await source(".github/workflows/task-submit.yml");
++  assert.match(workflow, /workflow_run:/);
++  assert.match(workflow, /workflows:\s*\[Quality\]/);
++  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
++  assert.match(workflow, /github\.event\.workflow_run\.event == 'push'/);
++  assert.match(workflow, /contents:\s*write/);
++  assert.match(workflow, /pull-requests:\s*write/);
++  assert.doesNotMatch(workflow, /actions\/checkout/);
++  assert.doesNotMatch(workflow, /node scripts\//);
++  assert.match(workflow, /gh api/);
++  assert.match(workflow, /GUARDED_PATH_PATTERNS/);
++  assert.match(workflow, /compare\/\$base_sha\.\.\.\$HEAD_SHA/);
++  assert.match(workflow, /behind_by/);
++  assert.match(workflow, /current_main/);
++  assert.match(workflow, /headRefOid/);
++  assert.match(workflow, /--match-head-commit/);
++  assert.match(workflow, /gh pr create/);
++  assert.match(workflow, /gh pr merge/);
++  assert.match(workflow, /Auto-merge sengaja ditahan/);
++});

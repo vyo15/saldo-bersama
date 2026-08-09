@@ -103,3 +103,36 @@ test("test backend terkelompok berdasarkan tanggung jawab dan namespace runtime 
     assert.equal(await exists(directory), true, `Missing test boundary: ${directory}`);
   }
 });
+
+
+test("quality runs read-only on canonical task pushes", async () => {
+  const workflow = await source(".github/workflows/quality.yml");
+  assert.match(workflow, /permissions:\s*\n\s*contents:\s*read/);
+  for (const prefix of ["feat", "fix", "security", "perf", "docs", "test", "chore"]) {
+    assert.match(workflow, new RegExp(`${prefix}/SB-\\*`));
+  }
+  assert.match(workflow, /TASK_BRANCH:\s*\$\{\{ github\.event_name == 'push'/);
+  assert.match(workflow, /TASK_BASE_REF:[\s\S]*origin\/main/);
+});
+
+test("privileged task submit is workflow_run-only and never executes branch code", async () => {
+  const workflow = await source(".github/workflows/task-submit.yml");
+  assert.match(workflow, /workflow_run:/);
+  assert.match(workflow, /workflows:\s*\[Quality\]/);
+  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /github\.event\.workflow_run\.event == 'push'/);
+  assert.match(workflow, /contents:\s*write/);
+  assert.match(workflow, /pull-requests:\s*write/);
+  assert.doesNotMatch(workflow, /actions\/checkout/);
+  assert.doesNotMatch(workflow, /node scripts\//);
+  assert.match(workflow, /gh api/);
+  assert.match(workflow, /GUARDED_PATH_PATTERNS/);
+  assert.match(workflow, /compare\/\$base_sha\.\.\.\$HEAD_SHA/);
+  assert.match(workflow, /behind_by/);
+  assert.match(workflow, /current_main/);
+  assert.match(workflow, /headRefOid/);
+  assert.match(workflow, /--match-head-commit/);
+  assert.match(workflow, /gh pr create/);
+  assert.match(workflow, /gh pr merge/);
+  assert.match(workflow, /Auto-merge sengaja ditahan/);
+});

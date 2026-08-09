@@ -1,0 +1,312 @@
+name: Task Submit
+
+on:
+  workflow_run:
+    workflows: [Quality]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: task-submit-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  submit:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch != 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: task
+        name: Resolve validated task metadata without executing branch code
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$HEAD_BRANCH" =~ ^(feat|fix|security|perf|docs|test|chore)/(SB-[0-9]{3,4})-[a-z0-9][a-z0-9-]*$ ]]; then
+            echo "Branch hasil Quality bukan branch task canonical: $HEAD_BRANCH" >&2
+            exit 1
+          fi
+
+          task_id="${BASH_REMATCH[2]}"
+          task_file="docs/tasks/active/$task_id.md"
+          task_snapshot="$RUNNER_TEMP/$task_id.md"
+          validator_snapshot="$RUNNER_TEMP/validate-task.mjs"
+          compare_snapshot="$RUNNER_TEMP/compare.json"
+          base_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/contents/$task_file?ref=$HEAD_SHA" \
+            --jq .content | tr -d '\n' | base64 --decode > "$task_snapshot"
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/contents/scripts/validate-task.mjs?ref=$base_sha" \
+            --jq .content | tr -d '\n' | base64 --decode > "$validator_snapshot"
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/compare/$base_sha...$HEAD_SHA" > "$compare_snapshot"
+
+          python3 - \
+            "$task_snapshot" \
+            "$validator_snapshot" \
+            "$compare_snapshot" \
+            "$task_id" \
+            "$HEAD_BRANCH" \
+            "$base_sha" \
+            "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import re
+          import sys
+
+          task_path, validator_path, compare_path, expected_id, expected_branch, base_sha, output_path = sys.argv[1:]
+          source = open(task_path, encoding="utf-8").read()
+          fields = {}
+          for line in source.splitlines():
+              match = re.match(r"^\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|$", line)
+              if not match:
+                  continue
+              key = match.group(1).strip()
+              if key in {"Field", "---"}:
+                  continue
+              fields[key] = match.group(2).strip().strip("`")
+
+          required = [
+              "Task ID", "Status", "Primary Team", "Risk", "Guarded",
+              "Guard Approval", "Branch", "QA Result", "Integration Result",
+              "Post-Merge Result",
+          ]
+          missing = [field for field in required if not fields.get(field)]
+          if missing:
+              raise SystemExit(f"Task metadata incomplete: {', '.join(missing)}")
+          if fields["Task ID"] != expected_id:
+              raise SystemExit("Task ID tidak cocok dengan branch.")
+          if fields["Branch"] != expected_branch:
+              raise SystemExit("Branch pada task card tidak cocok dengan Quality head branch.")
+          if fields["Status"] not in {"READY_FOR_QA", "READY_FOR_MERGE"}:
+              raise SystemExit(f"Status {fields['Status']} belum boleh disubmit.")
+          if fields["Guarded"] not in {"YES", "NO"}:
+              raise SystemExit("Guarded harus YES atau NO.")
+          if fields["Guarded"] == "YES" and fields["Guard Approval"] != "APPROVED":
+              raise SystemExit("Guarded task belum memiliki Guard Approval APPROVED.")
+          if fields["Risk"] not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
+              raise SystemExit("Risk task invalid.")
+          if fields["Status"] == "READY_FOR_MERGE":
+              if fields["QA Result"] != "PASS" or fields["Integration Result"] != "PASS":
+                  raise SystemExit("READY_FOR_MERGE membutuhkan QA dan Integration PASS.")
+          if fields["Post-Merge Result"] != "PENDING":
+              raise SystemExit("Post-Merge Result harus PENDING sebelum merge.")
+
+          validator = open(validator_path, encoding="utf-8").read()
+          block = re.search(r"const GUARDED_PATH_PATTERNS = Object\.freeze\(\[(.*?)\]\);", validator, re.S)
+          if not block:
+              raise SystemExit("Canonical GUARDED_PATH_PATTERNS tidak dapat dibaca dari main.")
+          guarded_patterns = re.findall(r'"([^"\n]+)"', block.group(1))
+          if not guarded_patterns:
+              raise SystemExit("Canonical guarded path registry kosong.")
+
+          compare = json.load(open(compare_path, encoding="utf-8"))
+          files = [item.get("filename", "") for item in compare.get("files", []) if item.get("filename")]
+          if not files:
+              raise SystemExit("Branch tidak memiliki changed file terhadap main.")
+          if len(files) >= 300:
+              raise SystemExit("Diff terlalu besar untuk auto-submit; review manual wajib.")
+
+          def glob_regex(pattern):
+              output = "^"
+              index = 0
+              while index < len(pattern):
+                  char = pattern[index]
+                  if char == "*":
+                      if index + 1 < len(pattern) and pattern[index + 1] == "*":
+                          output += ".*"
+                          index += 2
+                          continue
+                      output += "[^/]*"
+                  else:
+                      output += re.escape(char)
+                  index += 1
+              return re.compile(output + "$")
+
+          guarded_regex = [(pattern, glob_regex(pattern)) for pattern in guarded_patterns]
+          guarded_changed = sorted({
+              filename
+              for filename in files
+              if any(regex.match(filename) for _, regex in guarded_regex)
+          })
+
+          if guarded_changed and fields["Guarded"] != "YES":
+              preview = ", ".join(guarded_changed[:8])
+              raise SystemExit(f"Guarded path berubah tetapi task card Guarded bukan YES: {preview}")
+
+          behind_by = int(compare.get("behind_by", 0) or 0)
+          reasons = []
+          if fields["Guarded"] == "YES":
+              reasons.append("task termasuk guarded area")
+          if guarded_changed:
+              reasons.append("canonical guarded path berubah")
+          if fields["Risk"] in {"HIGH", "CRITICAL"}:
+              reasons.append(f"risk {fields['Risk']} membutuhkan review manual")
+          if behind_by > 0:
+              reasons.append(f"branch tertinggal {behind_by} commit dari main")
+
+          auto_merge = (
+              fields["Guarded"] == "NO"
+              and not guarded_changed
+              and fields["Risk"] in {"LOW", "MEDIUM"}
+              and behind_by == 0
+          )
+
+          outputs = {
+              "task_id": fields["Task ID"],
+              "team": fields["Primary Team"],
+              "risk": fields["Risk"],
+              "guarded": fields["Guarded"],
+              "auto_merge": str(auto_merge).lower(),
+              "manual_reason": "; ".join(reasons) or "NONE",
+              "base_sha": base_sha,
+              "behind_by": str(behind_by),
+              "guarded_changed": str(bool(guarded_changed)).lower(),
+          }
+          with open(output_path, "a", encoding="utf-8") as output:
+              for key, value in outputs.items():
+                  output.write(f"{key}={value}\n")
+          PY
+
+      - id: freshness
+        name: Verify Quality tested the current branch head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          BASE_SHA: ${{ steps.task.outputs.base_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$HEAD_BRANCH" --jq .object.sha)"
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          if [[ "$current_head" != "$HEAD_SHA" ]]; then
+            echo "Branch berubah setelah Quality run. Merge ditunda untuk run terbaru." >&2
+            exit 1
+          fi
+          if [[ "$current_main" != "$BASE_SHA" ]]; then
+            echo "Main berubah setelah policy snapshot. Merge ditunda untuk revalidation." >&2
+            exit 1
+          fi
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - id: pr
+        name: Create or reuse pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          TASK_ID: ${{ steps.task.outputs.task_id }}
+          TASK_TEAM: ${{ steps.task.outputs.team }}
+          TASK_GUARDED: ${{ steps.task.outputs.guarded }}
+          TASK_RISK: ${{ steps.task.outputs.risk }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pr_number="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$HEAD_BRANCH" \
+            --base main \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          if [[ -z "$pr_number" ]]; then
+            body_file="$RUNNER_TEMP/task-submit-pr.md"
+            cat > "$body_file" <<EOF
+          ## Automated task submission
+
+          - Task ID: \`$TASK_ID\`
+          - Primary Team: \`$TASK_TEAM\`
+          - Task Card: \`docs/tasks/active/$TASK_ID.md\`
+          - Source Branch: \`$HEAD_BRANCH\`
+          - Validated Head: \`$HEAD_SHA\`
+          - Guarded: \`$TASK_GUARDED\`
+          - Risk: \`$TASK_RISK\`
+
+          This PR was created after the read-only Quality workflow passed on the exact head commit above.
+          Repository rules remain authoritative. Guarded or HIGH/CRITICAL tasks are never auto-merged.
+          EOF
+
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$HEAD_BRANCH" \
+              --title "$TASK_ID: automated task submission" \
+              --body-file "$body_file" >/dev/null
+
+            pr_number="$(gh pr list \
+              --repo "$GITHUB_REPOSITORY" \
+              --head "$HEAD_BRANCH" \
+              --base main \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty')"
+          fi
+
+          if [[ -z "$pr_number" ]]; then
+            echo "Pull request tidak dapat dibuat atau ditemukan." >&2
+            exit 1
+          fi
+
+          pr_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)"
+          if [[ "$pr_head" != "$HEAD_SHA" ]]; then
+            echo "PR head berubah setelah Quality run. Merge ditunda." >&2
+            exit 1
+          fi
+
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+
+      - name: Merge eligible task
+        if: ${{ steps.task.outputs.auto_merge == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          HEAD_SHA: ${{ steps.freshness.outputs.head_sha }}
+          BASE_SHA: ${{ steps.freshness.outputs.base_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          if [[ "$current_main" != "$BASE_SHA" ]]; then
+            echo "Main berubah tepat sebelum merge. Merge dibatalkan." >&2
+            exit 1
+          fi
+          if ! gh pr merge "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --merge \
+            --delete-branch \
+            --match-head-commit "$HEAD_SHA"; then
+            gh pr comment "$PR_NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "Quality PASS pada head yang sama, tetapi repository rules/approval belum mengizinkan merge otomatis. Main tidak diubah." || true
+            exit 1
+          fi
+
+      - name: Keep guarded or high-risk task for manual approval
+        if: ${{ steps.task.outputs.auto_merge != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          MANUAL_REASON: ${{ steps.task.outputs.manual_reason }}
+        run: |
+          gh pr comment "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Quality PASS pada head yang sama. Auto-merge sengaja ditahan: $MANUAL_REASON. Lakukan approval/merge manual setelah review selesai."
