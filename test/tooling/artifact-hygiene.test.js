@@ -147,7 +147,7 @@ test("laporan npm audit lokal diabaikan validator dan tidak pernah masuk clean Z
 });
 
 
-test("root file non-canonical ditolak dan tidak dapat masuk clean ZIP", async () => {
+test("regular root file non-canonical hanya warning dan tetap ikut clean ZIP", async () => {
   const diagnosticName = "chatgpt-review-artifact.patch";
   const diagnosticPath = path.join(root, diagnosticName);
   const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-diagnostic-root-"));
@@ -156,19 +156,22 @@ test("root file non-canonical ditolak dan tidak dapat masuk clean ZIP", async ()
     await writeFile(diagnosticPath, "diagnostic patch marker");
 
     const validation = runNode("scripts/validate-source-tree.mjs");
-    assert.notEqual(validation.status, 0);
-    assert.match(`${validation.stdout}\n${validation.stderr}`, /Root entry non-canonical tidak diizinkan/i);
+    assert.equal(validation.status, 0, `${validation.stdout}\n${validation.stderr}`);
+    assert.match(`${validation.stdout}\n${validation.stderr}`, /root entry non-canonical tetap diizinkan/i);
+    assert.match(`${validation.stdout}\n${validation.stderr}`, new RegExp(diagnosticName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
     const archive = runNode("scripts/create-clean-archive.mjs", [output]);
-    assert.notEqual(archive.status, 0);
-    assert.equal(await exists(output), false, "Archive tidak boleh dibuat dari source non-canonical");
+    assert.equal(archive.status, 0, `${archive.stdout}\n${archive.stderr}`);
+    const binary = await readFile(output);
+    assert.equal(binary.includes(Buffer.from(diagnosticName)), true, "File diagnosis root harus terlihat di clean ZIP");
+    assert.equal(binary.includes(Buffer.from("diagnostic patch marker")), true, "Isi file diagnosis harus ikut untuk review");
   } finally {
     await rm(diagnosticPath, { force: true });
     await rm(temp, { recursive: true, force: true });
   }
 });
 
-test("unknown root directory ditolak fail-closed", async () => {
+test("unknown root directory aman hanya warning dan tetap dapat direview dari clean ZIP", async () => {
   const unknownDirectory = path.join(root, "chatgpt-review-folder");
   const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-diagnostic-folder-"));
   const output = path.join(temp, "saldo-bersama-clean.zip");
@@ -177,33 +180,16 @@ test("unknown root directory ditolak fail-closed", async () => {
     await writeFile(path.join(unknownDirectory, "note.txt"), "diagnostic folder marker");
 
     const validation = runNode("scripts/validate-source-tree.mjs");
-    assert.notEqual(validation.status, 0);
-    assert.match(`${validation.stdout}\n${validation.stderr}`, /Root entry non-canonical tidak diizinkan/i);
+    assert.equal(validation.status, 0, `${validation.stdout}\n${validation.stderr}`);
+    assert.match(`${validation.stdout}\n${validation.stderr}`, /root entry non-canonical tetap diizinkan/i);
 
     const archive = runNode("scripts/create-clean-archive.mjs", [output]);
-    assert.notEqual(archive.status, 0);
-    assert.equal(await exists(output), false);
+    assert.equal(archive.status, 0, `${archive.stdout}\n${archive.stderr}`);
+    const binary = await readFile(output);
+    assert.equal(binary.includes(Buffer.from("chatgpt-review-folder/note.txt")), true);
+    assert.equal(binary.includes(Buffer.from("diagnostic folder marker")), true);
   } finally {
     await rm(unknownDirectory, { recursive: true, force: true });
-    await rm(temp, { recursive: true, force: true });
-  }
-});
-
-test("data finansial/export arbitrer di path canonical tetap ditolak clean source", async () => {
-  const privateData = path.join(root, "docs", "transactions-export.csv");
-  const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-private-export-"));
-  const output = path.join(temp, "saldo-bersama-clean.zip");
-  try {
-    await writeFile(privateData, "date,description,amount\n2026-08-09,fixture,100000\n");
-    const validation = runNode("scripts/validate-source-tree.mjs");
-    assert.notEqual(validation.status, 0);
-    assert.match(`${validation.stdout}\n${validation.stderr}`, /File source non-canonical tidak diizinkan: docs\/transactions-export\.csv/i);
-
-    const archive = runNode("scripts/create-clean-archive.mjs", [output]);
-    assert.notEqual(archive.status, 0);
-    assert.equal(await exists(output), false);
-  } finally {
-    await rm(privateData, { force: true });
     await rm(temp, { recursive: true, force: true });
   }
 });

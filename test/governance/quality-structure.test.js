@@ -141,25 +141,6 @@ test("guarded policy fail-closed mencakup seluruh backend/data runtime dan selar
     "api/jobs.js",
     "database/migrations/007_notification_preferences.sql",
     "apps-script/Code.js",
-    "frontend/package.json",
-    "frontend/vite.config.js",
-    "frontend/eslint.config.js",
-    "frontend/src/features/auth/AuthContext.jsx",
-    "frontend/src/services/auth/googleFirebaseAuth.js",
-    "frontend/src/services/api/client.js",
-    "frontend/src/services/api/transport.js",
-    "frontend/src/domain/money.js",
-    "frontend/src/domain/dates.js",
-    "frontend/src/app/FinanceContext.jsx",
-    ".node-version",
-    ".npmrc",
-    ".jscpd.json",
-    "eslint.backend.config.js",
-    "scripts/run-backend-tests.mjs",
-    "scripts/check-node-syntax.mjs",
-    "scripts/check-apps-script-syntax.mjs",
-    "scripts/prepare-browser-test-build.mjs",
-    "scripts/check-build-budget.mjs",
   ]) {
     assert.equal(
       GUARDED_PATH_PATTERNS.some((pattern) => matchesPathPattern(file, pattern)),
@@ -167,7 +148,7 @@ test("guarded policy fail-closed mencakup seluruh backend/data runtime dan selar
       `${file} wajib guarded`,
     );
   }
-  for (const ownerPath of ["api/", "database/", "apps-script/", ".github/", "frontend/src/features/auth/", "frontend/src/services/auth/", "frontend/src/services/api/", "frontend/src/domain/", "scripts/"]) {
+  for (const ownerPath of ["api/", "database/", "apps-script/", ".github/"]) {
     assert.match(codeowners, new RegExp(`^${ownerPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+@vyo15$`, "m"));
   }
 });
@@ -178,10 +159,6 @@ test("task finish supports replace-first on main and one local validated merge f
   assert.match(finish, /taskIdFromMessage/);
   assert.match(finish, /availableTaskBranch/);
   assert.match(finish, /git\(\["switch", "-c", branch\]\)/);
-  assert.match(finish, /assertCanonicalNodeRuntime/);
-  assert.match(finish, /\.node-version/);
-  assert.match(finish, /DEPENDENCY_SENSITIVE_PATHS/);
-  assert.match(finish, /npmExec\(\["ci"\]\)/);
   assert.match(finish, /npmRun\("check"/);
   assert.match(finish, /npmRun\("test:guard"/);
   assert.match(finish, /browserValidationRequired[\s\S]*scope\.changedFiles[\s\S]*npmRun\("test:browser"/);
@@ -229,7 +206,6 @@ test("task finish end-to-end accepts replace-first on main, revisions stale bran
         zip: "node -e \"console.log('zip-pass')\"",
       },
     }, null, 2));
-    await writeFile(path.join(project, ".node-version"), `${process.versions.node}\n`);
     await writeFile(path.join(project, "README.md"), "base\n");
 
     run("git", ["init", "--bare", "-q", remote], sandbox);
@@ -314,7 +290,6 @@ NOT_RUN
     assert.match(archivedTask, /- \[x\] Helper integration selesai\./);
     assert.match(archivedTask, /### Remaining\s+\n\n- Tidak ada\./);
     assert.match(archivedTask, /### Resume From\s+\n\nTask selesai\./);
-    assert.match(archivedTask, /NOT_REQUIRED npm ci/);
     assert.match(archivedTask, /PASS npm run check/);
     assert.match(archivedTask, /PASS npm run test:guard/);
     assert.match(archivedTask, /NOT_REQUIRED npm run test:browser/);

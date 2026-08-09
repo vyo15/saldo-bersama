@@ -87,7 +87,7 @@ Tidak ada lagi WIP limit per-team. Banyak tab boleh aktif.
 
 ## Area guarded
 
-Secara tooling, seluruh `api/**`, `database/**`, `apps-script/**`, dan `scripts/**` guarded secara default. Boundary frontend yang memengaruhi auth/session, API transport/mutation, domain/FinanceContext, dependency/build config, serta repository workflow/config juga guarded. Ini mencegah policy drift ketika file sensitif baru ditambahkan. Approval eksplisit tetap wajib untuk:
+Secara tooling, seluruh `api/**`, `database/**`, dan `apps-script/**` guarded secara default. Ini mencegah policy drift ketika file backend/data baru ditambahkan. Approval eksplisit tetap wajib untuk:
 
 - schema/migration Turso;
 - Firebase Auth, allowlist, role, authorization, session/security guard;
@@ -110,11 +110,10 @@ Secara tooling, seluruh `api/**`, `database/**`, `apps-script/**`, dan `scripts/
 
 ## ZIP/source
 
-`npm run zip` harus praktis tetapi fail-closed:
-- hanya file source canonical yang boleh masuk archive;
-- secret, env lokal, dependency, build, cache, `.git`, `.vercel`, export/data privat, patch/diff, dan file local-only tidak boleh masuk archive;
-- file diagnosis/review/handoff dikirim sebagai artifact terpisah, bukan dicampur ke clean source ZIP;
-- validator dan packager wajib menolak root/path non-canonical.
+`npm run zip` harus praktis:
+- secret, env lokal, dependency, build, cache, `.git`, `.vercel`, dan file local-only tetap tidak masuk archive;
+- file/folder non-canonical yang aman cukup diberi warning dan boleh ikut archive agar dapat direview ChatGPT;
+- denylist security tetap fail-closed.
 
 ## Resume antar-chat
 

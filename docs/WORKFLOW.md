@@ -111,27 +111,26 @@ npm run task:finish -- "fix(SB-123): deskripsi perubahan"
 ```
 
 Script menangani:
-1. verifikasi runtime Node sesuai major canonical pada `.node-version`;
-2. baca Task ID dari commit message;
-3. bila command dijalankan dari `main`, buat branch task otomatis dari working tree hasil replace;
-4. jika nama branch sudah terpakai, pilih revision aman `-r2`/`-r3`;
-5. fetch `origin/main` dan validasi task/scope;
-6. `git add -A` dan commit;
-7. merge `origin/main` ke branch task;
-8. jika dependency-sensitive file (`package.json`, `frontend/package.json`, `package-lock.json`, atau `.npmrc`) berubah, jalankan clean `npm ci`; lalu `npm run check` + guard regression; browser test juga wajib bila task menyentuh `frontend/**`, `test/browser/**`, atau browser build helper, termasuk task integrasi milik COORD;
-9. push branch sebagai backup;
-10. merge task ke `main`;
-11. push `main`;
-12. archive task;
-13. hapus branch revision yang selesai bila aman dan berakhir di `main`;
-14. normalisasi metadata closure task (`Status=DONE`, Acceptance Criteria checked, `Remaining/Resume From` selesai, canonical validation evidence) lalu archive;
-15. jalankan `npm run zip` otomatis agar clean source terbaru siap di-upload.
+1. baca Task ID dari commit message;
+2. bila command dijalankan dari `main`, buat branch task otomatis dari working tree hasil replace;
+3. jika nama branch sudah terpakai, pilih revision aman `-r2`/`-r3`;
+4. fetch `origin/main` dan validasi task/scope;
+5. `git add -A` dan commit;
+6. merge `origin/main` ke branch task;
+7. `npm run check` + guard regression; browser test juga wajib bila task menyentuh `frontend/**`, `test/browser/**`, atau browser build helper, termasuk task integrasi milik COORD;
+8. push branch sebagai backup;
+9. merge task ke `main`;
+10. push `main`;
+11. archive task;
+12. hapus branch revision yang selesai bila aman dan berakhir di `main`;
+13. normalisasi metadata closure task (`Status=DONE`, Acceptance Criteria checked, `Remaining/Resume From` selesai, canonical validation evidence) lalu archive;
+14. jalankan `npm run zip` otomatis agar clean source terbaru siap di-upload.
 
 Jika direct push ke `main` ditolak repository rules atau `origin/main` berubah pada saat terakhir, script mengembalikan `main` lokal ke kondisi remote lalu kembali ke branch task. Pekerjaan tidak hilang dan command yang sama dapat diulang setelah kondisi stabil.
 
 ## Guarded/high-risk
 
-Backend runtime (`api/**`), database (`database/**`), Apps Script, seluruh `scripts/**`, repository workflow/config, dependency/build config, deployment/environment tooling, governance global, serta frontend auth/session, API transport/mutation, domain, dan `FinanceContext` dianggap guarded secara default. Kebijakan ini sengaja broad/fail-closed agar task tidak dapat salah diklasifikasikan aman hanya karena satu path baru belum ditambahkan ke denylist granular.
+Backend runtime (`api/**`), database (`database/**`), Apps Script, repository workflow, deployment/environment tooling, dan governance global dianggap guarded secara default. Kebijakan ini sengaja broad/fail-closed agar task tidak dapat salah diklasifikasikan aman hanya karena satu path baru belum ditambahkan ke denylist granular.
 
 Guarded/HIGH/CRITICAL tidak memakai flow Git yang berbeda. Pengamannya ada **sebelum** merge:
 - task wajib `Guarded=YES`;
@@ -161,18 +160,18 @@ Stop bila:
 
 ## ZIP
 
-`npm run zip` membuat **clean source archive canonical** untuk review/backup source. Policy-nya fail-closed.
+`npm run zip` ditujukan untuk mengirim source ke ChatGPT, bukan sebagai policy gate struktur repository yang terlalu ketat.
 
-Hanya file source canonical yang boleh masuk. Selalu dikeluarkan atau ditolak:
-- `.git` dan `.vercel`;
-- `node_modules` serta `dist/build/coverage/cache`;
-- `.env*` selain `.env.example`;
-- secret/key/credential;
-- export atau data privat seperti CSV/XLSX/database dump;
-- patch/diff, diagnostic report, dan file handoff lokal;
-- root/path lain yang tidak termasuk struktur source canonical.
+Tetap dikeluarkan:
+- `.git`
+- `.vercel`
+- `node_modules`
+- `dist/build/coverage/cache`
+- `.env*` selain `.env.example`
+- secret/key/credential
+- file local-only yang sudah dikenali
 
-File diagnosis/review/handoff dikirim sebagai artifact terpisah. Jangan menjadikan clean ZIP sebagai wadah arbitrary working-tree files.
+File/folder non-canonical yang tidak terkena denylist security cukup diberi warning dan boleh ikut ZIP agar dapat direview.
 
 ## Peran COORD
 

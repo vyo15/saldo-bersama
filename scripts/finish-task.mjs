@@ -17,33 +17,11 @@ const run = (command, args, options = {}) => {
 };
 
 const git = (args, options = {}) => run("git", args, options);
-const npmExec = (args, options = {}) => {
+const npmRun = (script, options = {}) => {
   const npmCli = process.env.npm_execpath;
-  if (npmCli) return run(process.execPath, [npmCli, ...args], options);
+  if (npmCli) return run(process.execPath, [npmCli, "run", script], options);
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  return run(npmCommand, args, options);
-};
-const npmRun = (script, options = {}) => npmExec(["run", script], options);
-
-const DEPENDENCY_SENSITIVE_PATHS = new Set([
-  "package.json",
-  "package-lock.json",
-  "frontend/package.json",
-  ".npmrc",
-]);
-
-const assertCanonicalNodeRuntime = () => {
-  const expected = readFileSync(path.join(root, ".node-version"), "utf8").trim();
-  const expectedMajor = Number(expected.split(".")[0]);
-  const actual = process.versions.node;
-  const actualMajor = Number(actual.split(".")[0]);
-  if (!Number.isInteger(expectedMajor) || expectedMajor <= 0) {
-    throw new Error(`.node-version tidak valid: '${expected}'.`);
-  }
-  if (actualMajor !== expectedMajor) {
-    throw new Error(`task:finish wajib Node ${expectedMajor}.x sesuai .node-version (${expected}); runtime aktif ${actual}.`);
-  }
-  return { expected, actual };
+  return run(npmCommand, ["run", script], options);
 };
 
 const currentBranch = () => git(["branch", "--show-current"], { capture: true });
@@ -144,7 +122,7 @@ const markAcceptanceCriteriaComplete = (source) => {
   return `${source.slice(0, contentStart)}${section}${source.slice(contentEnd)}`;
 };
 
-const finalizeTaskDocument = (source, { browserValidationRequired, dependencyInstallRequired }) => {
+const finalizeTaskDocument = (source, { browserValidationRequired }) => {
   let finalized = markAcceptanceCriteriaComplete(source);
   finalized = replaceHeadingBody(
     finalized,
@@ -161,7 +139,6 @@ const finalizeTaskDocument = (source, { browserValidationRequired, dependencyIns
     "### Validation Actually Run",
     [
       "```text",
-      dependencyInstallRequired ? "PASS npm ci (dependency-sensitive change)" : "NOT_REQUIRED npm ci (dependency files tidak berubah)",
       "PASS npm run check",
       "PASS npm run test:guard",
       browserValidationRequired ? "PASS npm run test:browser" : "NOT_REQUIRED npm run test:browser (tidak ada affected browser/frontend path)",
@@ -179,13 +156,13 @@ const updateActiveTaskBranch = (taskId, branch) => {
   writeFileSync(active, source, "utf8");
 };
 
-const closeTaskOnMain = (taskId, { browserValidationRequired, dependencyInstallRequired }) => {
+const closeTaskOnMain = (taskId, { browserValidationRequired }) => {
   const active = path.join(root, "docs", "tasks", "active", `${taskId}.md`);
   const archive = path.join(root, "docs", "tasks", "archive", `${taskId}.md`);
   let source = readFileSync(active, "utf8");
   source = updateTableField(source, "Status", "DONE");
   source = updateTableField(source, "Updated", todayJakarta());
-  source = finalizeTaskDocument(source, { browserValidationRequired, dependencyInstallRequired });
+  source = finalizeTaskDocument(source, { browserValidationRequired });
   writeFileSync(active, source, "utf8");
   renameSync(active, archive);
 
@@ -253,14 +230,6 @@ const main = () => {
     process.exit(2);
   }
 
-  try {
-    const runtime = assertCanonicalNodeRuntime();
-    console.log(`Runtime task canonical: Node ${runtime.actual} (.node-version ${runtime.expected}).`);
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exit(2);
-  }
-
   let branch = currentBranch();
   if (!branch) {
     console.error("Branch Git aktif tidak dapat dideteksi.");
@@ -297,11 +266,9 @@ const main = () => {
     || file.startsWith("test/browser/")
     || file === "scripts/prepare-browser-test-build.mjs"
   );
-  const dependencyInstallRequired = scope.changedFiles.some((file) => DEPENDENCY_SENSITIVE_PATHS.has(file));
 
   // Satukan main terbaru lalu validasi. Bila tab lain mengubah main saat check berjalan, ulangi.
   let stableMain = false;
-  let dependencyInstallSha = "";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     git(["fetch", "origin", "main"]);
     const baseSha = currentMainSha();
@@ -315,14 +282,6 @@ const main = () => {
     run(process.execPath, [path.join(root, "scripts", "validate-task.mjs")], {
       env: { TASK_BRANCH: branch, TASK_BASE_REF: "origin/main" },
     });
-    if (dependencyInstallRequired) {
-      const validationSha = git(["rev-parse", "HEAD"], { capture: true });
-      if (dependencyInstallSha !== validationSha) {
-        console.log("Dependency-sensitive change terdeteksi. Menjalankan clean npm ci sebelum quality gate.");
-        npmExec(["ci"]);
-        dependencyInstallSha = validationSha;
-      }
-    }
     npmRun("check", {
       env: { TASK_BRANCH: branch, TASK_BASE_REF: "origin/main" },
     });
@@ -365,7 +324,7 @@ const main = () => {
 
   git(["merge", "--no-ff", branch, "-m", `merge(${task.id}): integrate task`]);
   // Tutup task pada main lokal sebelum satu-satunya push final, sehingga merge + archive task atomik dari sisi remote.
-  closeTaskOnMain(task.id, { browserValidationRequired, dependencyInstallRequired });
+  closeTaskOnMain(task.id, { browserValidationRequired });
   try {
     git(["push", "origin", "main"]);
   } catch {

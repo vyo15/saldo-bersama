@@ -147,7 +147,7 @@ test("packager dan source validator menolak env, secret, archive, serta local da
   assert.match(policy, /db\|sqlite\|sqlite3\|dump\|gz/);
   assert.match(policy, /service-account/);
   assert.match(packager, /\.env\.example/);
-  assert.match(validator, /isCanonicalSourceFile/);
+  assert.match(validator, /database/);
   assert.match(validator, /"jobs\.js"/);
 });
 

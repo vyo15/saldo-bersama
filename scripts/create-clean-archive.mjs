@@ -10,7 +10,6 @@ import {
   LOCAL_ONLY_FILE_PATTERNS,
   MAX_SOURCE_ARCHIVE_BYTES,
   isCleanSourceArchiveFilename,
-  isCanonicalSourceFile,
 } from "./artifact-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -71,9 +70,6 @@ const auditStaging = async (directory, relative = "") => {
       }
       if (entry.name !== ".env.example" && forbiddenFilePatterns.some((pattern) => pattern.test(entry.name))) {
         throw new Error(`Packaging menyertakan file terlarang: ${rel}`);
-      }
-      if (!isCanonicalSourceFile(rel)) {
-        throw new Error(`Packaging menyertakan file source non-canonical: ${rel}`);
       }
       files.push(rel);
     }
