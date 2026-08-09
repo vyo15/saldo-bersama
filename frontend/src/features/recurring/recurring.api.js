@@ -10,4 +10,3 @@ export const reverseRecurringPayment = (payload, options) => apiClient.request("
 export const previewRecurringRuleLifecycle = (payload, options) => apiClient.request("recurring.previewRuleLifecycle", payload, options);
 export const archiveRecurringRule = (payload, options) => apiClient.request("recurring.archiveRule", payload, options);
 export const deleteUnusedRecurringRule = (payload, options) => apiClient.request("recurring.deleteUnusedRule", payload, options);
-export const restoreRecurringRule = (payload, options) => apiClient.request("recurring.restoreRule", payload, options);

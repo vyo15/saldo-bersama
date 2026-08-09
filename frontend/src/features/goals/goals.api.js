@@ -8,4 +8,3 @@ export const reverseGoalMovement = (payload, options) => apiClient.request("goal
 export const previewGoalLifecycle = (payload, options) => apiClient.request("goals.previewLifecycle", payload, options);
 export const archiveGoal = (payload, options) => apiClient.request("goals.archive", payload, options);
 export const deleteUnusedGoal = (payload, options) => apiClient.request("goals.deleteUnused", payload, options);
-export const restoreGoal = (payload, options) => apiClient.request("goals.restore", payload, options);

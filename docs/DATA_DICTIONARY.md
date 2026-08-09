@@ -21,7 +21,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `schema_migrations` | Riwayat migration yang sudah diterapkan. | Sedang | Migration-only |
 | `system_config` | Konfigurasi runtime internal seperti schema version, maintenance, timezone, dan currency. | Sedang | Migration-only |
 | `users` | Identitas aplikasi yang terikat pada Firebase UID, email, role, dan status. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
-| `accounts` | Rekening shared/personal beserta nomor rekening bank, template visual kartu, saldo awal, dan kebijakan saldo negatif. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `accounts` | Rekening shared/personal beserta nomor rekening bank, template visual bank/E-wallet, saldo awal, dan kebijakan saldo negatif. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `categories` | Kategori pemasukan/pengeluaran. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `envelope_rules` | Definisi kantong/alokasi berkala. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `envelope_periods` | Instance kantong per periode dan alokasi aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
@@ -52,7 +52,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 
 - `transactions.amount`, `accounts.initial_balance`, budget, envelope, goal, occurrence, reconciliation: integer Rupiah.
 - `accounts.account_number`: string 6–34 digit untuk rekening bank. Backend menormalisasi spasi/tanda hubung, UI hanya menampilkan kepada actor yang lolos scope authorization, audit menyimpan empat digit terakhir, dan Sheets/export baca tidak menyertakannya.
-- `accounts.bank_template`: template visual kartu yang tidak mengubah nama rekening. Enum rekening bank: `generic`, `bca`, `bni`, `btn`, `mandiri`, `permata`; rekening non-bank wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
+- `accounts.bank_template`: template visual kartu bank yang tidak mengubah nama rekening. Enum rekening bank: `generic`, `bca`, `bni`, `btn`, `mandiri`, `permata`; rekening non-bank wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
+- `accounts.ewallet_template`: provider visual E-wallet yang tidak mengubah nama rekening. Enum E-wallet: `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`; rekening non-E-wallet wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
 - Transfer wajib source dan destination berbeda.
 - `transactions.status` menentukan dampak saldo; cancelled/archived tidak dihitung.
@@ -69,7 +70,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - budget/kantong threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v7
+## Model planned — belum ada di schema v8
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 

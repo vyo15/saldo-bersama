@@ -81,7 +81,12 @@
   color: color-mix(in srgb, white 24%, transparent);
 }
 
-.visual[data-bank-template="generic"]::after { background: none; }
+.visual[data-bank-template="generic"]::after,
+.visual[data-has-image="false"]::after { background: none; }
+
+.visual[data-visual-kind="ewallet"]::after {
+  background: linear-gradient(180deg, transparent 52%, rgba(3, 8, 12, .08) 62%, rgba(3, 8, 12, .7) 100%);
+}
 
 .genericCard svg { width: 30%; height: 30%; }
 
@@ -148,6 +153,33 @@
   text-shadow: 0 2px 6px rgba(0,0,0,.74);
   white-space: nowrap;
 }
+
+.ewalletOwnership {
+  position: absolute;
+  z-index: 5;
+  right: 4%;
+  bottom: 5.2%;
+  width: 29%;
+  min-height: 12%;
+  padding: .42em .72em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.72);
+  border-radius: var(--radius-pill);
+  background: rgba(5, 17, 15, .94);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: clamp(.46rem, 2.1vw, .7rem);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 0 0 .42rem rgba(5, 17, 15, .86);
+}
+
+.visual[data-visual-kind="ewallet"] .holderName { right: 43%; }
 
 .rowSummary {
   min-width: 0;

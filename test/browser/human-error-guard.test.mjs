@@ -70,3 +70,124 @@ await test("double-click create target pada network lambat hanya menghasilkan sa
     await appServer?.close?.().catch(() => {});
   }
 });
+
+await test("confirmation modal mempertahankan alasan, frasa, checkbox, countdown, lalu reset saat dibuka ulang", { timeout: 45_000 }, async () => {
+  let appServer;
+  let chromium;
+  let page;
+  try {
+    const responses = createAuthenticatedGatewayResponses(ownerSession);
+    responses["accounts.previewLifecycle"] = {
+      currentBalance: 0,
+      initialBalance: 0,
+      dependencies: { transactions: 0, reconciliations: 0, envelopes: 0, recurring: 0, goals: 0 },
+      canArchive: true,
+      canDeleteUnused: true,
+      archiveBlockers: [],
+      deleteBlockers: [],
+      deleteConfirmation: "HAPUS REKENING REKENING BERSAMA · BNI",
+    };
+    appServer = await startBrowserAppServer({ session: ownerSession, gatewayResponses: responses });
+    chromium = await startChromium();
+    page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/rekening`, { width: 1280, height: 900 });
+    await waitForAppRoute(page, "/rekening", { heading: "Rekening" });
+
+    const openDeleteConfirmation = async () => {
+      const clicked = await page.evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Arsipkan');
+        if (!button) return false;
+        button.click();
+        return true;
+      })()`);
+      assert.equal(clicked, true, "Aksi lifecycle rekening harus tersedia pada desktop owner.");
+      await waitFor(
+        () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Hapus rekening belum dipakai?'"),
+        { description: "modal hapus rekening belum dipakai" },
+      );
+    };
+
+    await openDeleteConfirmation();
+    const initialCountdown = await page.evaluate(`(() => {
+      const text = [...document.querySelectorAll('[role=status]')].map((item) => item.textContent || '').find((value) => value.includes('Konfirmasi aktif dalam')) || '';
+      return Number(text.match(/(\\d+) detik/)?.[1] || 0);
+    })()`);
+    assert.ok(initialCountdown > 0, "Countdown destructive confirmation harus aktif saat modal dibuka.");
+
+    const filled = await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      const reason = dialog?.querySelector('textarea');
+      const confirmation = dialog?.querySelector('input:not([type="checkbox"])');
+      const acknowledgement = dialog?.querySelector('input[type="checkbox"]');
+      const textareaSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      const inputSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      const checkedSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked')?.set;
+      if (!reason || !confirmation || !acknowledgement || !textareaSetter || !inputSetter || !checkedSetter) return false;
+      textareaSetter.call(reason, 'Fixture alasan hapus rekening');
+      reason.dispatchEvent(new Event('input', { bubbles: true }));
+      reason.dispatchEvent(new Event('change', { bubbles: true }));
+      inputSetter.call(confirmation, confirmation.placeholder);
+      confirmation.dispatchEvent(new Event('input', { bubbles: true }));
+      confirmation.dispatchEvent(new Event('change', { bubbles: true }));
+      checkedSetter.call(acknowledgement, true);
+      acknowledgement.dispatchEvent(new Event('input', { bubbles: true }));
+      acknowledgement.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    assert.equal(filled, true, "Field destructive confirmation harus dapat diisi secara deterministik.");
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const persisted = await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      const reason = dialog?.querySelector('textarea');
+      const confirmation = dialog?.querySelector('input:not([type="checkbox"])');
+      const acknowledgement = dialog?.querySelector('input[type="checkbox"]');
+      return {
+        reason: reason?.value || '',
+        confirmation: confirmation?.value || '',
+        expectedConfirmation: confirmation?.placeholder || '',
+        acknowledged: Boolean(acknowledgement?.checked),
+      };
+    })()`);
+    assert.equal(persisted.reason, "Fixture alasan hapus rekening", "Textarea alasan tidak boleh di-reset saat controlled state menyebabkan render ulang.");
+    assert.equal(persisted.confirmation, persisted.expectedConfirmation, "Frasa konfirmasi tidak boleh di-reset saat controlled state menyebabkan render ulang.");
+    assert.equal(persisted.acknowledged, true, "Checkbox acknowledgement tidak boleh kembali false setelah render ulang.");
+
+    await waitFor(async () => {
+      const remaining = await page.evaluate(`(() => {
+        const text = [...document.querySelectorAll('[role=status]')].map((item) => item.textContent || '').find((value) => value.includes('Konfirmasi aktif dalam')) || '';
+        return Number(text.match(/(\\d+) detik/)?.[1] || 0);
+      })()`);
+      return remaining >= 0 && remaining < initialCountdown;
+    }, { timeoutMs: 2_500, description: "countdown confirmation tetap berjalan setelah field diedit" });
+
+    await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      [...(dialog?.querySelectorAll('button') || [])].find((item) => item.textContent.trim() === 'Batal')?.click();
+    })()`);
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "confirmation modal ditutup" });
+
+    await openDeleteConfirmation();
+    await waitFor(
+      () => page.evaluate(`(() => {
+        const dialog = document.querySelector('[role=dialog]');
+        return (dialog?.querySelector('textarea')?.value || '') === ''
+          && (dialog?.querySelector('input:not([type="checkbox"])')?.value || '') === ''
+          && !dialog?.querySelector('input[type="checkbox"]')?.checked;
+      })()`),
+      { description: "state confirmation di-reset saat modal dibuka ulang" },
+    );
+    const resetState = await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      return {
+        reason: dialog?.querySelector('textarea')?.value || '',
+        confirmation: dialog?.querySelector('input:not([type="checkbox"])')?.value || '',
+        acknowledged: Boolean(dialog?.querySelector('input[type="checkbox"]')?.checked),
+      };
+    })()`);
+    assert.deepEqual(resetState, { reason: "", confirmation: "", acknowledged: false }, "State confirmation harus bersih hanya saat modal dibuka sebagai intent baru.");
+  } finally {
+    await chromium?.close?.().catch(() => {});
+    await page?.close?.().catch(() => {});
+    await appServer?.close?.().catch(() => {});
+  }
+});

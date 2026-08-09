@@ -19,11 +19,18 @@ import {
   FiWifi,
   FiX,
 } from "react-icons/fi";
+import cashCard from "../../../assets/account-cards/cash.webp";
+import savingsCard from "../../../assets/account-cards/savings.webp";
 import bcaCard from "../../../assets/bank-cards/bca.webp";
 import bniCard from "../../../assets/bank-cards/bni.webp";
 import btnCard from "../../../assets/bank-cards/btn.webp";
 import mandiriCard from "../../../assets/bank-cards/mandiri.webp";
 import permataCard from "../../../assets/bank-cards/permata.webp";
+import danaCard from "../../../assets/ewallet-cards/dana.webp";
+import gopayCard from "../../../assets/ewallet-cards/gopay.webp";
+import linkajaCard from "../../../assets/ewallet-cards/linkaja.webp";
+import ovoCard from "../../../assets/ewallet-cards/ovo.webp";
+import shopeepayCard from "../../../assets/ewallet-cards/shopeepay.webp";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
@@ -35,11 +42,14 @@ import {
   accountProviderLabel,
   accountTypeLabel,
   detectBankTemplate,
+  detectEwalletTemplate,
   formatAccountNumber,
 } from "../../../shared/presentation/account.js";
 import styles from "./AccountFinancialCard.module.css";
 
 const BANK_IMAGES = Object.freeze({ bca: bcaCard, bni: bniCard, btn: btnCard, mandiri: mandiriCard, permata: permataCard });
+const EWALLET_IMAGES = Object.freeze({ shopeepay: shopeepayCard, dana: danaCard, gopay: gopayCard, ovo: ovoCard, linkaja: linkajaCard });
+const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, savings: savingsCard });
 const ACCOUNT_ICONS = Object.freeze({
   bank: FiCreditCard,
   cash: FiDollarSign,
@@ -64,17 +74,28 @@ const maskedAccountNumber = (value) => {
 };
 
 const visualModel = (account, templateOverride) => {
-  const template = templateOverride || detectBankTemplate(account);
   const isBank = account.account_type === "bank";
+  const isEwallet = account.account_type === "ewallet";
+  const template = isBank ? templateOverride || detectBankTemplate(account) : "generic";
+  const ewalletTemplate = isEwallet ? templateOverride || detectEwalletTemplate(account) : "generic";
+  const hasEwalletImage = isEwallet && Boolean(EWALLET_IMAGES[ewalletTemplate]);
+  const image = isBank
+    ? BANK_IMAGES[template]
+    : hasEwalletImage
+      ? EWALLET_IMAGES[ewalletTemplate]
+      : ACCOUNT_TYPE_IMAGES[account.account_type];
   return {
     template,
-    image: isBank ? BANK_IMAGES[template] : null,
+    ewalletTemplate,
+    image: image || null,
     Icon: ACCOUNT_ICONS[account.account_type] || FiCreditCard,
     numberGroups: isBank ? accountCardNumberGroups(account.account_number) : [],
     holderName: accountCardholderName(account.name) || "Nama rekening",
     ownershipLabel: accountOwnershipLabel(account),
     typeLabel: accountTypeLabel(account.account_type),
+    visualKind: isBank ? "bank" : hasEwalletImage ? "ewallet" : image ? account.account_type : "generic",
     isBank,
+    hasEwalletImage,
   };
 };
 
@@ -95,14 +116,21 @@ export const AccountVisual = ({ account, templateOverride, detail = false, carou
   const model = visualModel(account, templateOverride);
   const eager = detail || carousel || stack;
   return (
-    <div className={visualClassName({ detail, carousel, stack })} data-bank-template={model.template}>
+    <div
+      className={visualClassName({ detail, carousel, stack })}
+      data-bank-template={model.isBank ? model.template : undefined}
+      data-ewallet-template={account.account_type === "ewallet" ? model.ewalletTemplate : undefined}
+      data-visual-kind={model.visualKind}
+      data-has-image={model.image ? "true" : "false"}
+    >
       {model.image ? <img className={styles.cardImage} src={model.image} alt="" aria-hidden="true" loading={eager ? "eager" : "lazy"} /> : <div className={styles.genericCard} aria-hidden="true"><model.Icon /></div>}
       <div className={styles.cardFace}>
-        {carousel ? <span className={styles.cardOwnership}>{model.ownershipLabel}</span> : null}
-        {model.image ? <FiWifi className={styles.contactless} aria-hidden="true" /> : null}
+        {carousel && !model.hasEwalletImage ? <span className={styles.cardOwnership}>{model.ownershipLabel}</span> : null}
+        {model.hasEwalletImage ? <span className={styles.ewalletOwnership}>{model.ownershipLabel}</span> : null}
+        {model.isBank && model.image ? <FiWifi className={styles.contactless} aria-hidden="true" /> : null}
         {model.isBank ? <AccountNumberFace account={account} numberGroups={model.numberGroups} /> : <div className={styles.accountType}>{model.typeLabel}</div>}
         <strong className={styles.holderName}>{model.holderName}</strong>
-        {carousel ? <span className={styles.cardTypeLabel}>{model.typeLabel}</span> : null}
+        {carousel && !model.hasEwalletImage ? <span className={styles.cardTypeLabel}>{model.typeLabel}</span> : null}
       </div>
     </div>
   );

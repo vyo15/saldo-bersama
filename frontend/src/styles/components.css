@@ -83,6 +83,56 @@ input[type="file"] {
 .centered-page,
 .app-content > .loading-screen,
 .app-content > .fatal-error { min-height: calc(100vh - 168px); min-height: calc(100dvh - 168px); }
+
+.fatal-error {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 28%),
+    radial-gradient(circle at 92% 100%, color-mix(in srgb, var(--primary) 9%, transparent), transparent 30%),
+    var(--page);
+}
+.fatal-error > * { position: relative; z-index: 1; }
+.fatal-error .brand-lockup { margin-bottom: -2px; }
+.fatal-error h1 { margin: 0; max-width: 760px; font-size: clamp(30px, 4vw, 38px); line-height: 1.12; letter-spacing: -.035em; }
+.fatal-error > p { margin: 0; max-width: 650px; color: var(--text); font-size: var(--font-size-body); line-height: 1.55; }
+.fatal-error > .button { margin-top: 2px; }
+.fatal-error__illustration { position: relative; width: min(390px, 82vw); margin: -8px 0 -4px; }
+.fatal-error__illustration svg { display: block; width: 100%; height: auto; overflow: visible; }
+.fatal-error__blob { fill: color-mix(in srgb, var(--surface-strong) 82%, var(--primary-deep)); opacity: .68; }
+.fatal-error__shadow { fill: color-mix(in srgb, var(--page) 72%, var(--palette-rich-black)); opacity: .58; }
+.fatal-error__wallet-inside { fill: color-mix(in srgb, var(--page) 78%, var(--palette-rich-black)); stroke-width: 7; stroke-linejoin: round; }
+.fatal-error__wallet-body { stroke: var(--primary); stroke-width: 4; }
+.fatal-error__stitch { fill: none; stroke: color-mix(in srgb, var(--palette-mint) 72%, var(--primary)); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 6 8; opacity: .46; }
+.fatal-error__wallet-strap { fill: color-mix(in srgb, var(--primary-deep) 80%, var(--secondary)); stroke: color-mix(in srgb, var(--secondary) 72%, var(--primary)); stroke-width: 4; }
+.fatal-error__wallet-button { fill: color-mix(in srgb, var(--secondary) 70%, var(--palette-mint)); stroke: color-mix(in srgb, var(--primary-deep) 72%, var(--palette-rich-black)); stroke-width: 5; }
+.fatal-error__wallet-button-glint { fill: var(--palette-anti-flash-white); opacity: .82; }
+.fatal-error__wallet-logo { position: absolute; left: 33.8%; bottom: 18.8%; width: 14.5%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 4px 8px rgb(0 0 0 / .18)); }
+.fatal-error__fly { transform-box: fill-box; transform-origin: center; animation: fatal-error-fly 2.8s ease-in-out infinite; }
+.fatal-error__fly--b { animation-delay: -.8s; }
+.fatal-error__fly--c { animation-delay: -1.5s; }
+.fatal-error__fly-trail { fill: none; stroke: color-mix(in srgb, var(--palette-mint) 70%, var(--secondary)); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 5 7; }
+.fatal-error__fly-body { fill: color-mix(in srgb, var(--primary) 76%, var(--secondary)); }
+.fatal-error__fly-wing { fill: var(--palette-anti-flash-white); }
+.fatal-error__fly-eye { fill: var(--palette-rich-black); }
+.fatal-error__fly-glint { fill: var(--palette-anti-flash-white); }
+.fatal-error__fly-cheek { fill: color-mix(in srgb, var(--negative) 68%, var(--palette-anti-flash-white)); opacity: .8; }
+.fatal-error__fly-smile { fill: none; stroke: var(--palette-rich-black); stroke-width: 1.3; stroke-linecap: round; }
+.fatal-error__spark { fill: color-mix(in srgb, var(--palette-mint) 78%, var(--secondary)); opacity: .86; }
+.fatal-error__spark--small { opacity: .72; }
+@keyframes fatal-error-fly {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-5px) rotate(2deg); }
+}
+@media (max-width: 600px) {
+  .fatal-error { gap: 14px; padding: 24px 18px; }
+  .fatal-error__illustration { width: min(315px, 92vw); margin-block: -10px -5px; }
+  .fatal-error h1 { font-size: 28px; }
+  .fatal-error > p { max-width: 390px; font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fatal-error__fly { animation: none; }
+}
 .spinner { width: 28px; height: 28px; border: 3px solid var(--surface-strong); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .empty-state, .error-state { min-height: 300px; padding: 36px; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; background: var(--surface); border: 1px dashed var(--border); border-radius: 18px; }

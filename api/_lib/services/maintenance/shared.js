@@ -4,8 +4,9 @@ import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
+const EWALLET_TEMPLATES = new Set(["generic", "shopeepay", "dana", "gopay", "ovo", "linkaja"]);
 
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "envelope_rules", "envelope_periods",
@@ -101,18 +102,39 @@ const legacyBankTemplate = (row = {}) => {
   return "generic";
 };
 
+const legacyEwalletTemplate = (row = {}) => {
+  if (String(row.account_type || "") !== "ewallet") return "generic";
+  const name = String(row.name || "").trim();
+  if (/\bshopee\s*pay\b|\bshopeepay\b/i.test(name)) return "shopeepay";
+  if (/\bDANA\b/.test(name)) return "dana";
+  if (/\bgo\s*pay\b|\bgopay\b/i.test(name)) return "gopay";
+  if (/\bovo\b/i.test(name)) return "ovo";
+  if (/\blink\s*aja!?\b|\blinkaja\b/i.test(name)) return "linkaja";
+  return "generic";
+};
+
+const normalizedStoredTemplate = ({ row, accountType, field, allowed, requiredType, legacyValue, label }) => {
+  if (!Object.hasOwn(row, field)) return legacyValue;
+  const template = String(row[field] || "").toLowerCase();
+  if (!allowed.has(template) || (accountType !== requiredType && template !== "generic")) {
+    throw appError("BACKUP_ROW_INVALID", `${label} pada backup tidak valid untuk jenis rekening.`, 409);
+  }
+  return template;
+};
+
 export const normalizeRestoredRows = (table, rows) => {
   if (table !== "accounts") return rows;
   return rows.map((row) => {
     const accountType = String(row.account_type || "");
-    if (Object.hasOwn(row, "bank_template")) {
-      const template = String(row.bank_template || "").toLowerCase();
-      if (!BANK_TEMPLATES.has(template) || (accountType !== "bank" && template !== "generic")) {
-        throw appError("BACKUP_ROW_INVALID", "Template kartu pada backup tidak valid untuk jenis rekening.", 409);
-      }
-      return { ...row, bank_template: template };
-    }
-    return { ...row, bank_template: legacyBankTemplate(row) };
+    const bankTemplate = normalizedStoredTemplate({
+      row, accountType, field: "bank_template", allowed: BANK_TEMPLATES, requiredType: "bank",
+      legacyValue: legacyBankTemplate(row), label: "Template kartu bank",
+    });
+    const ewalletTemplate = normalizedStoredTemplate({
+      row, accountType, field: "ewallet_template", allowed: EWALLET_TEMPLATES, requiredType: "ewallet",
+      legacyValue: legacyEwalletTemplate(row), label: "Provider E-wallet",
+    });
+    return { ...row, bank_template: bankTemplate, ewallet_template: ewalletTemplate };
   });
 };
 

@@ -1,6 +1,14 @@
 # Changelog
 
 
+## 10 Agustus 2026 — Schema v8 provider E-wallet canonical
+
+- Menambah migration additive `006_account_ewallet_template.sql` dan menaikkan schema canonical ke v8. `accounts.ewallet_template` menerima `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, atau `linkaja` hanya untuk rekening E-wallet; jenis rekening lain wajib `generic`.
+- Create/update/list rekening mempertahankan provider E-wallet canonical terpisah dari nama. Form tambah/edit menampilkan selector provider dan preview kartu memakai asset provider secara realtime tanpa mengubah saldo, ownership, authorization, atau business logic transaksi.
+- Backup/restore schema v8 menyimpan `ewallet_template` dan tetap menerima backup v3-v7. Backup lama dinormalisasi secara additive; migration/backfill tidak mengubah nama rekening, saldo, atau `bank_template`.
+- Dokumentasi schema, API, data dictionary, deployment, QA, test plan, UI design system, project status, dan implementation matrix disinkronkan ke v8.
+- Menutup gap validasi setelah migration v8: regression restore mengharuskan field additive `ewallet_template`, schema helper sepenuhnya mengharapkan v8, backup legacy membuktikan inferensi provider E-wallet, dan `accounts.update` menolak perubahan jenis rekening di backend.
+
 ## 2026-08-09 — Maintainability patch merge
 
 - Merekonsiliasi `saldo-bersama-maintainability-patch-20260809` ke baseline clean 367-file tanpa menimpa mutation guard, feedback semantics, Web Push deterministic fixture, serializer canonical, jscpd report-only, atau notification-preference schema v7 yang lebih baru.
@@ -13,6 +21,9 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Menambahkan asset kartu 768×484 untuk Tunai, Tabungan, ShopeePay, DANA, GoPay, OVO, dan LinkAja. Asset tersebut kini dipetakan melalui `accounts.ewallet_template` schema v8; deteksi nama hanya dipertahankan untuk kompatibilitas legacy dan provider yang tidak dikenali tetap memakai fallback generic.
+- Menutup false failure berulang pada authenticated browser journey `/rekening`: browser harness mendukung `readySelector` dan route mobile memiliki capability anchor terpusat, sehingga `MobileAccountsExperience` boleh tetap lazy untuk memenuhi chunk budget tetapi assertion owner/member baru berjalan setelah stack benar-benar visible.
+- Menyinkronkan dokumentasi QA/Test Plan/Release/Project Status dengan UI Rekening mobile aktual: Transfer adalah quick action, Riwayat/Grafik adalah tab informasi, dan browser gate wajib lulus terpisah untuk perubahan frontend.
 - Mengganti global handoff workflow dengan task-driven multi-team governance: team canonical `COORD/UIUX/FE/BE/DB/QA`, status task terjaga, task card per pekerjaan, dependency/WIP/checkpoint/resume flow, branch `SB-xxx`, serta executable `task:check` dan `task:list` agar pekerjaan paralel tidak bergantung pada memory chat atau shared handoff file.
 
 - Menstabilkan fixture Web Push P-256 dengan left-padding private scalar test menjadi 32 byte sebelum Base64URL; test tidak lagi flaky ketika `crypto.createECDH()` menghasilkan scalar dengan leading zero, tanpa mengubah validator/runtime VAPID Production.

@@ -24,6 +24,98 @@ const mimeTypes = {
   ".webp": "image/webp",
 };
 
+const compactDiagnosticText = (value, maxLength = 320) => String(value || "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .slice(0, maxLength);
+
+const safeDiagnosticUrl = (value) => {
+  if (!value) return "";
+  try {
+    const parsed = new URL(value);
+    return `${parsed.pathname}${parsed.hash || ""}`;
+  } catch {
+    return compactDiagnosticText(value, 180);
+  }
+};
+
+const attachBrowserDiagnostics = (session) => {
+  const requests = new Map();
+  session.on("Runtime.exceptionThrown", ({ exceptionDetails = {} }) => {
+    session.recordDiagnostic({
+      kind: "runtime-exception",
+      message: compactDiagnosticText(exceptionDetails.exception?.description || exceptionDetails.text || "Runtime exception"),
+      url: safeDiagnosticUrl(exceptionDetails.url),
+      line: Number(exceptionDetails.lineNumber || 0) + 1,
+      column: Number(exceptionDetails.columnNumber || 0) + 1,
+    });
+  });
+  session.on("Runtime.consoleAPICalled", ({ type, args = [] }) => {
+    if (type !== "error") return;
+    session.recordDiagnostic({
+      kind: "console-error",
+      message: compactDiagnosticText(args.map((item) => item.value ?? item.description ?? "").join(" ")),
+    });
+  });
+  session.on("Log.entryAdded", ({ entry = {} }) => {
+    if (!entry.level || !["error", "warning"].includes(entry.level)) return;
+    session.recordDiagnostic({
+      kind: `log-${entry.level}`,
+      message: compactDiagnosticText(entry.text),
+      url: safeDiagnosticUrl(entry.url),
+    });
+  });
+  session.on("Network.requestWillBeSent", ({ requestId, request = {} }) => {
+    if (requestId) requests.set(requestId, safeDiagnosticUrl(request.url));
+  });
+  session.on("Network.responseReceived", ({ requestId, response = {} }) => {
+    if (Number(response.status || 0) < 400) return;
+    session.recordDiagnostic({
+      kind: "http-error",
+      status: Number(response.status || 0),
+      url: safeDiagnosticUrl(response.url || requests.get(requestId)),
+    });
+  });
+  session.on("Network.loadingFailed", ({ requestId, errorText, canceled, type }) => {
+    if (canceled) return;
+    session.recordDiagnostic({
+      kind: "network-failed",
+      message: compactDiagnosticText(errorText || "Network loading failed"),
+      resourceType: type || "",
+      url: requests.get(requestId) || "",
+    });
+    if (requestId) requests.delete(requestId);
+  });
+  session.on("Network.loadingFinished", ({ requestId }) => {
+    if (requestId) requests.delete(requestId);
+  });
+};
+
+const readRouteDiagnosticState = (page) => page.evaluate(`(() => {
+  const main = document.querySelector("main");
+  const alerts = [...document.querySelectorAll("[role='alert']")].map((element) => element.textContent || "").filter(Boolean);
+  return {
+    readyState: document.readyState,
+    pathname: location.pathname,
+    heading: main?.querySelector("h1")?.textContent?.replace(/\\s+/g, " ").trim() || "",
+    mainPresent: Boolean(main),
+    loading: Boolean(document.querySelector("main.loading-screen")),
+    alerts: alerts.slice(0, 3).map((text) => text.replace(/\\s+/g, " ").trim().slice(0, 220)),
+    mainText: (main?.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 260),
+  };
+})()`);
+
+const routeFailureError = async (page, error, pathname, heading, readySelector = null) => {
+  const state = await readRouteDiagnosticState(page).catch((diagnosticError) => ({ diagnosticError: compactDiagnosticText(diagnosticError.message) }));
+  const diagnostics = typeof page.getDiagnostics === "function" ? page.getDiagnostics().slice(-12) : [];
+  const details = {
+    expected: { pathname, heading, readySelector },
+    actual: state,
+    events: diagnostics,
+  };
+  return new Error(`${error.message}\nDiagnostik browser: ${JSON.stringify(details, null, 2)}`);
+};
+
 const findFreePort = () => new Promise((resolvePort, reject) => {
   const server = createServer();
   server.once("error", reject);
@@ -220,6 +312,7 @@ export const openBrowserPage = async (debuggingPort, url, {
   await Promise.all([
     session.send("Page.enable"),
     session.send("Runtime.enable"),
+    session.send("Log.enable"),
     session.send("Accessibility.enable"),
     session.send("Network.enable"),
     session.send("Emulation.setDeviceMetricsOverride", {
@@ -231,6 +324,7 @@ export const openBrowserPage = async (debuggingPort, url, {
       screenHeight: height,
     }),
   ]);
+  attachBrowserDiagnostics(session);
   await session.send("Network.setBlockedURLs", { urls: ["*://accounts.google.com/gsi/client*"] });
   await session.send("Page.addScriptToEvaluateOnNewDocument", {
     source: `
@@ -255,18 +349,44 @@ export const setViewport = (page, width, height) => page.send("Emulation.setDevi
   screenHeight: height,
 });
 
-export const waitForAppRoute = async (page, pathname, { heading = null } = {}) => {
+export const waitForAppRoute = async (page, pathname, { heading = null, readySelector = null } = {}) => {
   const expectedPathname = JSON.stringify(pathname);
   const expectedHeading = JSON.stringify(heading);
-  const routeReady = () => page.evaluate(`(() => {
+  const routeMounted = () => page.evaluate(`(() => {
     if (document.readyState !== "complete" || location.pathname !== ${expectedPathname}) return false;
-    if (document.querySelector("main.loading-screen")) return false;
-    const currentHeading = document.querySelector("main h1")?.textContent?.trim() || "";
-    if (${expectedHeading} !== null) return currentHeading === ${expectedHeading};
-    return Boolean(currentHeading || document.querySelector("main [aria-label='Ringkasan keuangan mobile']"));
+    const main = document.querySelector("main");
+    return Boolean(main && !main.classList.contains("loading-screen"));
   })()`);
-  const description = `route ${pathname}${heading ? ` dengan heading ${heading}` : ""} stabil`;
-  await waitFor(routeReady, { description });
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  await waitFor(routeReady, { description });
+  const contentReady = () => page.evaluate(`(() => {
+    const main = document.querySelector("main");
+    if (!main || location.pathname !== ${expectedPathname}) return false;
+    const currentHeading = main.querySelector("h1")?.textContent?.replace(/\\s+/g, " ").trim() || "";
+    if (${expectedHeading} !== null) return currentHeading === ${expectedHeading};
+    return Boolean(currentHeading || main.querySelector("[aria-label='Ringkasan keuangan mobile']"));
+  })()`);
+
+  try {
+    await waitFor(routeMounted, { description: `route ${pathname} selesai mount` });
+    const description = heading
+      ? `heading ${heading} tersedia pada route ${pathname}`
+      : `konten utama tersedia pada route ${pathname}`;
+    await waitFor(contentReady, { description });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await waitFor(contentReady, { description: `${description} dan stabil` });
+    if (readySelector) {
+      const selector = JSON.stringify(readySelector);
+      await waitFor(
+        () => page.evaluate(`(() => {
+          const element = document.querySelector(${selector});
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+        })()`),
+        { description: `capability ${readySelector} tersedia pada route ${pathname}` },
+      );
+    }
+  } catch (error) {
+    throw await routeFailureError(page, error, pathname, heading, readySelector);
+  }
 };

@@ -24,6 +24,7 @@ const accounts = Object.freeze([
     name: "Rekening Bersama · BNI",
     account_type: "bank",
     bank_template: "bni",
+    ewallet_template: "generic",
     account_number: "1234567890123456",
     initial_balance: 5000000,
     initial_balance_date: "2026-01-01",
@@ -40,6 +41,7 @@ const accounts = Object.freeze([
     name: "Tunai Bersama",
     account_type: "cash",
     bank_template: "generic",
+    ewallet_template: "generic",
     account_number: "",
     initial_balance: 1000000,
     initial_balance_date: "2026-01-01",
@@ -56,6 +58,7 @@ const accounts = Object.freeze([
     name: "Tabungan Owner · BCA",
     account_type: "bank",
     bank_template: "bca",
+    ewallet_template: "generic",
     account_number: "9876543210123456",
     initial_balance: 2000000,
     initial_balance_date: "2026-01-01",
@@ -72,6 +75,7 @@ const accounts = Object.freeze([
     name: "Tabungan Member · Mandiri",
     account_type: "bank",
     bank_template: "mandiri",
+    ewallet_template: "generic",
     account_number: "1111222233334444",
     initial_balance: 1250000,
     initial_balance_date: "2026-01-01",
@@ -290,7 +294,7 @@ const alerts = Object.freeze([
 export const bootstrapFixture = Object.freeze({
   accounts,
   categories,
-  config: { schemaVersion: 7, timezone: "Asia/Jakarta", maintenanceMode: false },
+  config: { schemaVersion: 8, timezone: "Asia/Jakarta", maintenanceMode: false },
 });
 
 export const overviewFixture = Object.freeze({
@@ -398,7 +402,7 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
       { user_id: memberSession.uid, email: memberSession.email, name: memberSession.name, role: "member", status: "active", is_current: session.uid === memberSession.uid, row_version: 1 },
     ] },
     "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
-    "system.health": { status: "ok", schemaVersion: 7, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR", integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
+    "system.health": { status: "ok", schemaVersion: 8, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR", integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
     "integrations.status": { configured: { sheets: false, calendar: false }, providers: { sheets: {}, calendar: {} } },
     "notifications.preferences": {
       items: [

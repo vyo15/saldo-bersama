@@ -20,7 +20,7 @@ import {
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { todayInJakarta } from "../../domain/dates.js";
-import { accountCardholderName, detectBankTemplate } from "../../shared/presentation/account.js";
+import { accountCardholderName, detectBankTemplate, detectEwalletTemplate } from "../../shared/presentation/account.js";
 import styles from "./AccountsPage.module.css";
 
 const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));
@@ -31,7 +31,7 @@ const AccountEditorDialogs = lazy(() => import("./components/AccountEditorDialog
 const EMPTY_ACCOUNTS = Object.freeze([]);
 
 const emptyAccountForm = () => ({
-  name: "", account_type: "bank", bank_template: "generic", account_number: "", owner_scope: "shared", owner_user_id: "",
+  name: "", account_type: "bank", bank_template: "generic", ewallet_template: "generic", account_number: "", owner_scope: "shared", owner_user_id: "",
   initial_balance: "", initial_balance_date: todayInJakarta(), allow_negative: false,
 });
 
@@ -40,6 +40,7 @@ const accountUpdatePayload = (account) => ({
   name: account.name,
   account_number: account.account_number || "",
   bank_template: account.account_type === "bank" ? account.bank_template || "generic" : "generic",
+  ewallet_template: account.account_type === "ewallet" ? account.ewallet_template || "generic" : "generic",
   owner_scope: account.owner_scope,
   owner_user_id: account.owner_scope === "personal" ? account.owner_user_id || "" : "",
   allow_negative: Boolean(account.allow_negative),
@@ -67,7 +68,7 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
     } catch (error) { setDialogState({ status: "error", error }); }
   };
   const openEditAccount = (account) => {
-    setEditAccount({ ...account, name: accountCardholderName(account.name) || account.name, bank_template: detectBankTemplate(account) });
+    setEditAccount({ ...account, name: accountCardholderName(account.name) || account.name, bank_template: detectBankTemplate(account), ewallet_template: detectEwalletTemplate(account) });
     setDialogState({ status: "idle", error: null });
   };
   const saveAccount = async (event) => {
@@ -132,12 +133,12 @@ const useAccountLifecycleActions = ({ archiveTarget, setArchiveTarget, setDialog
   return { openAccountLifecycle, archiveSelectedAccount };
 };
 
-const AccountListSection = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, navigate, bootstrap, setSelectedAccountId, openEditAccount, openAccountLifecycle }) => (
+const AccountListSection = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, navigate, bootstrap, setSelectedAccountId, openEditAccount, openAccountLifecycle, onTransferSaved }) => (
   <section aria-labelledby="account-list-title" className={styles.accountSection}>
     <div className={styles.sectionHeading}><div><p className="eyebrow">Rekening aktif</p><h2 id="account-list-title">Tempat uang tersimpan</h2></div><span>{accounts.length} rekening</span></div>
     {accounts.length ? <>
       <Suspense fallback={null}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownerMode={ownerMode}
-        openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} /></Suspense>
+        openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} /></Suspense>
       <Suspense fallback={null}><DesktopAccountsWorkspace accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode} bootstrap={bootstrap}
         onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
         onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>
@@ -242,7 +243,7 @@ const AccountsPage = () => {
     <AccountsPageFeedback accountsResource={accountsResource} usersResource={usersResource} ownerMode={ownerMode} reloadAccounts={reloadAccounts} message={message} />
     <AccountsPageHeading accounts={accounts} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} />
     <AccountListSection accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
-      navigate={navigate} bootstrap={bootstrap} setSelectedAccountId={setSelectedAccountId} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} />
+      navigate={navigate} bootstrap={bootstrap} setSelectedAccountId={setSelectedAccountId} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} onTransferSaved={reloadAccounts} />
     <AccountSheets mobileAccountSheet={mobileAccountSheet} setMobileAccountSheet={setMobileAccountSheet} accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode}
       setSelectedAccountId={setSelectedAccountId} navigate={navigate} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} />
     <AccountEditors createDialogOpen={crud.createDialogOpen} editAccount={editAccount} closeCreateDialog={crud.closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}

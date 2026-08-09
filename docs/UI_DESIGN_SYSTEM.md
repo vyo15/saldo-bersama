@@ -119,7 +119,7 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 ## Pola kartu rekening
 
 - Daftar rekening memakai komponen domain `AccountFinancialCard`, bukan card generik yang ditata ulang di page.
-- BCA, BNI, BTN, Mandiri, dan Permata memakai asset WebP 768×484 sebagai base visual. Wordmark dan chip dekoratif hanya berasal dari asset; HTML tidak boleh menggambarnya kembali.
+- BCA, BNI, BTN, Mandiri, dan Permata memakai asset WebP 768×484 sebagai base visual. Tunai dan Tabungan memakai asset non-bank 768×484; E-wallet dapat memakai asset ShopeePay, DANA, GoPay, OVO, atau LinkAja ketika provider dapat dikenali dari nama rekening. Wordmark/logo dekoratif hanya berasal dari asset; HTML tidak boleh menggambarnya kembali.
 - Semua kartu memakai rasio 1.586:1, container, radius, dan object sizing yang sama. Tidak boleh ada bank yang tampak lebih panjang, pendek, atau terbungkus panel dekoratif tambahan.
 - Card face menambahkan contactless, nomor rekening yang sudah dinormalisasi, dan nama rekening. Pada stack mobile terautentikasi, saldo saat ini dan label kepemilikan boleh tampil sebagai overlay ringkas; status, timestamp, nomor lengkap, dan aksi tetap berada pada panel detail.
 - Nomor rekening berasal dari `accounts.account_number`, dikelompokkan empat digit, dan hanya ditampilkan setelah authentication serta binding user backend. Kedua pengguna terotorisasi dapat membacanya; tombol salin berada di panel detail dan memiliki accessible name.
@@ -129,9 +129,9 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Area kosong stack wajib memakai `touch-action: pan-y pinch-zoom`. Kartu aktif memakai `touch-action: pan-x pinch-zoom` agar gesture vertikal mengubah rekening tanpa mematikan pinch zoom. Gesture horizontal harus ditolak dan tidak boleh membuka detail atau mengubah rekening.
 - Selama gesture, seluruh tumpukan mengikuti jari menggunakan `transform`/`opacity`; kartu depan bergerak ke belakang dan kartu berikutnya maju ke depan. Swipe pendek kembali ke posisi semula, reduced-motion mengurangi rotasi dan durasi, dan rekening aktif diumumkan tanpa membacakan saldo.
 - Nomor rekening panjang boleh dipadatkan hanya pada muka kartu agar tidak overflow; panel detail, accessible copy action, dan data backend tetap memakai nomor lengkap.
-- Bank yang tidak dikenali serta rekening non-bank memakai fallback flat berbasis satu design token, tanpa radial/linear gradient atau overlay glossy, dan tidak bergantung pada asset pihak ketiga.
+- Bank yang tidak dikenali, E-wallet yang providernya tidak dikenali, serta tipe non-bank tanpa asset khusus memakai fallback flat berbasis satu design token. Tunai dan Tabungan adalah pengecualian karena memiliki asset internal khusus. Provider E-wallet canonical berasal dari `accounts.ewallet_template`; deteksi nama hanya fallback legacy dan tetap bukan authorization signal.
 - Rekening dan kategori tidak dicampur dalam satu halaman. `/rekening` memakai aksi `Tambah rekening`; `/kategori` memakai aksi `Tambah kategori`. Masing-masing membuka dialog desktop atau bottom sheet mobile tanpa tab domain lain. Field `No rekening` wajib untuk rekening bank dan memperbarui preview langsung.
-- Template bank disimpan pada `accounts.bank_template` schema v5 dan tetap bersifat presentational. Mengubah template tidak mengubah nama, saldo, atau aturan transaksi.
+- Template bank disimpan pada `accounts.bank_template` schema v5 dan provider E-wallet disimpan pada `accounts.ewallet_template` schema v8. Keduanya bersifat presentational: perubahan template/provider tidak mengubah nama, saldo, ownership, atau aturan transaksi.
 
 ## Mobile dan PWA
 

@@ -10,9 +10,11 @@ import {
   accountNumberGroups,
   accountOwnershipLabel,
   detectBankTemplate,
+  detectEwalletTemplate,
   formatAccountNumber,
   normalizeAccountNumber,
 } from "../src/shared/presentation/account.js";
+import { accountTransactionDirection } from "../src/shared/presentation/transaction.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -47,6 +49,21 @@ test("template kartu memakai field bank_template dan fallback nama hanya untuk d
   assert.equal(detectBankTemplate({ account_type: "bank", bank_template: "tidak-valid", name: "Bank lainnya" }), "generic");
 });
 
+
+test("template e-wallet memprioritaskan ewallet_template dan nama hanya menjadi fallback legacy", () => {
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", ewallet_template: "dana", name: "Belanja harian" }), "dana");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", ewallet_template: "generic", name: "ShopeePay belanja" }), "generic");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", ewallet_template: "tidak-valid", name: "OVO pribadi" }), "generic");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", name: "ShopeePay belanja" }), "shopeepay");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", name: "Dompet DANA" }), "dana");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", name: "Go Pay utama" }), "gopay");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", name: "OVO pribadi" }), "ovo");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", name: "Link Aja kebutuhan" }), "linkaja");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", name: "Dompet digital" }), "generic");
+  assert.equal(detectEwalletTemplate({ account_type: "ewallet", name: "Dana darurat" }), "generic");
+  assert.equal(detectEwalletTemplate({ account_type: "cash", ewallet_template: "dana", name: "DANA kas" }), "generic");
+});
+
 test("nama pemegang kartu membersihkan suffix legacy tanpa menambahkan bank baru", () => {
   assert.equal(accountCardholderName("Vio Yusup Iskandar · BNI"), "Vio Yusup Iskandar");
   assert.equal(accountCardholderName("Vio Yusup Iskandar - BCA"), "Vio Yusup Iskandar");
@@ -62,12 +79,22 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
   assert.deepEqual(accountCardNumberGroups("123456789012345678901234"), ["••••", "3456", "7890", "1234"]);
 });
 
+test("arah transaksi rekening konsisten untuk desktop dan mobile", () => {
+  assert.deepEqual(accountTransactionDirection({ transaction_type: "expense", status: "active" }, "acc-1"), { prefix: "−", tone: "negative" });
+  assert.deepEqual(accountTransactionDirection({ transaction_type: "income", status: "active" }, "acc-1"), { prefix: "+", tone: "positive" });
+  assert.deepEqual(accountTransactionDirection({ transaction_type: "refund", status: "active" }, "acc-1"), { prefix: "+", tone: "positive" });
+  assert.deepEqual(accountTransactionDirection({ transaction_type: "transfer", status: "active", source_account_id: "acc-1", destination_account_id: "acc-2" }, "acc-1"), { prefix: "−", tone: "negative" });
+  assert.deepEqual(accountTransactionDirection({ transaction_type: "transfer", status: "active", source_account_id: "acc-1", destination_account_id: "acc-2" }, "acc-2"), { prefix: "+", tone: "positive" });
+  assert.deepEqual(accountTransactionDirection({ transaction_type: "expense", status: "cancelled" }, "acc-1"), { prefix: "", tone: "neutral" });
+});
+
 test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta grafik pada mobile", async () => {
-  const [page, accountSheets, mobileExperience, mobileActivity, accountEditors, desktopWorkspace, desktopStyles, card, pageStyles, cardStyles, categoryPage, reconciliationPage] = await Promise.all([
+  const [page, accountSheets, mobileExperience, mobileActivity, mobileTransfer, accountEditors, desktopWorkspace, desktopStyles, card, pageStyles, cardStyles, categoryPage, reconciliationPage, transactionPresentation] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
     read("src/features/accounts/components/MobileAccountsExperience.jsx"),
     read("src/features/accounts/components/MobileAccountActivity.jsx"),
+    read("src/features/accounts/components/MobileAccountTransferAction.jsx"),
     read("src/features/accounts/components/AccountEditorDialogs.jsx"),
     read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
     read("src/features/accounts/components/DesktopAccountsWorkspace.module.css"),
@@ -76,11 +103,13 @@ test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta g
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
+    read("src/shared/presentation/transaction.js"),
   ]);
   const accountPageSource = `${page}
 ${accountSheets}
 ${mobileExperience}
 ${mobileActivity}
+${mobileTransfer}
 ${accountEditors}`;
   const accountsApi = await read("src/features/accounts/accounts.api.js");
 
@@ -88,6 +117,10 @@ ${accountEditors}`;
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountsExperience\.jsx"\)\)/);
   assert.match(mobileExperience, /lazy\(\(\) => import\("\.\/MobileAccountActivity\.jsx"\)\)/);
+  assert.match(mobileExperience, /return useMemo\(\(\) => \(\{/);
+  assert.match(mobileExperience, /cancelMobileStackAnimation/);
+  assert.match(mobileExperience, /refs\.animatingRef\.current = false/);
+  assert.match(mobileExperience, /useEffect\(\(\) => \(\) => animation\.cancelMobileStackAnimation\(\), \[animation\.cancelMobileStackAnimation\]\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/AccountEditorDialogs\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/DesktopAccountsWorkspace\.jsx"\)\)/);
   assert.doesNotMatch(page, /import DesktopAccountsWorkspace from "\.\/components\/DesktopAccountsWorkspace\.jsx";/);
@@ -99,6 +132,8 @@ ${accountEditors}`;
   assert.doesNotMatch(accountPageSource, /create-category-form|categories\.list|Kategori transaksi/);
   assert.match(accountPageSource, /account_number/);
   assert.match(accountPageSource, /bank_template/);
+  assert.match(accountPageSource, /ewallet_template/);
+  assert.match(accountPageSource, /Provider E-wallet/);
   assert.match(accountPageSource, /initialFocusRef=\{createNameInputRef\}/);
   assert.match(accountPageSource, /Nama bank dipilih terpisah melalui template kartu/);
   assert.doesNotMatch(accountPageSource, /applyBankTemplateToName/);
@@ -126,6 +161,11 @@ ${accountEditors}`;
   assert.match(desktopWorkspace, /enabled: desktopEnabled && Boolean\(selectedId\)/);
   assert.match(desktopWorkspace, /if \(!desktopEnabled \|\| !selectedAccount\) return null;/);
   assert.match(desktopWorkspace, /<AccountVisual account=\{account\} carousel \/>/);
+  assert.match(transactionPresentation, /export const accountTransactionDirection/);
+  assert.match(desktopWorkspace, /accountTransactionDirection\(item, selectedAccountId\)/);
+  assert.match(mobileActivity, /accountTransactionDirection\(item, selectedAccountId\)/);
+  assert.doesNotMatch(desktopWorkspace, /const transactionDirection/);
+  assert.doesNotMatch(mobileActivity, /const transactionDirection/);
   assert.match(desktopWorkspace, /Rekening utama/);
   assert.match(desktopWorkspace, /Rekening lain/);
   assert.match(desktopWorkspace, /Belum ada rekening lain untuk dipilih/);
@@ -156,8 +196,21 @@ ${accountEditors}`;
   assert.match(mobileActivity, /event\.key === "Home"/);
   assert.match(mobileActivity, /event\.key === "End"/);
   assert.match(mobileActivity, /requestAnimationFrame/);
-  assert.match(mobileActivity, />\s*Riwayat\s*</);
-  assert.match(mobileActivity, />\s*Grafik\s*</);
+  assert.match(mobileActivity, /<span>Riwayat<\/span>/);
+  assert.match(mobileActivity, /<span>Grafik<\/span>/);
+  assert.match(mobileActivity, /MobileAccountTransferAction/);
+  assert.match(mobileTransfer, /Transfer/);
+  assert.match(mobileTransfer, /lazy\(\(\) => import\("\.\.\/\.\.\/transactions\/TransactionForm\.jsx"\)\)/);
+  assert.match(mobileTransfer, /TransactionForm/);
+  assert.match(mobileTransfer, /initialType=\{TRANSACTION_TYPES\.TRANSFER\}/);
+  assert.match(mobileTransfer, /initialSourceAccountId=\{selectedAccount\?\.account_id \|\| ""\}/);
+  assert.match(mobileTransfer, /lockType/);
+  assert.match(mobileTransfer, /notifyOnSuccess=\{false\}/);
+  assert.match(mobileTransfer, /pendingSavedRef/);
+  assert.match(mobileTransfer, /onTransferSaved/);
+  assert.match(mobileTransfer, /Transfer memerlukan rekening sumber aktif/);
+  assert.match(mobileTransfer, /mobileTransferSuccess/);
+  assert.doesNotMatch(mobileTransfer, /createTransaction|transactions\.create/);
   assert.match(mobileActivity, /TREND_OPTIONS = Object\.freeze\(\[3, 6, 12\]\)/);
   assert.match(mobileActivity, /useApiResource\("transactions\.list"/);
   assert.match(mobileActivity, /account_id: selectedAccountId \|\| "all"/);
@@ -192,6 +245,8 @@ ${accountEditors}`;
   assert.match(mobileExperience, /<MobileAccountActivity/);
   assert.match(mobileExperience, /state: \{ accountId: item\.account_id, period \}/);
   assert.match(accountPageSource, /state: \{ accountId:/);
+  assert.match(page, /onTransferSaved=\{reloadAccounts\}/);
+  assert.match(mobileExperience, /onTransferSaved=\{onTransferSaved\}/);
   assert.match(accountPageSource, /variant="mobileDetail"/);
   assert.match(accountPageSource, /embedded/);
   assert.doesNotMatch(accountPageSource, /ref=\{mobileDetailRef\}/);
@@ -207,11 +262,14 @@ ${accountEditors}`;
   assert.doesNotMatch(pageStyles, /reconciliationInfoButton|reconciliationToggle|reconciliationPanel/);
   assert.match(pageStyles, /mobileStackPanel/);
   assert.match(pageStyles, /mobileAccountActivity/);
+  assert.match(pageStyles, /mobileTransferQuickAction/);
   assert.match(pageStyles, /mobileActivityTabs/);
+  assert.match(pageStyles, /mobileActivityTabIcon/);
+  assert.match(pageStyles, /mobileTransferSuccessCheck/);
   assert.match(pageStyles, /mobileTransactionList/);
   assert.match(pageStyles, /mobileExpenseChart/);
   assert.match(pageStyles, /\.mobileStackSummary \{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s);
-  assert.doesNotMatch(pageStyles, /mobileQuickActions|paymentHistoryList|paymentHistoryItem/);
+  assert.doesNotMatch(pageStyles, /paymentHistoryList|paymentHistoryItem/);
   assert.match(pageStyles, /perspective: 93\.75rem/);
   assert.match(pageStyles, /transform-style: preserve-3d/);
   assert.match(pageStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
@@ -225,12 +283,19 @@ ${accountEditors}`;
   assert.match(pageStyles, /\.impactSummary strong \{ color:\s*var\(--text\);/);
   assert.doesNotMatch(pageStyles, /var\(--(?:border-subtle|surface-muted|text-primary)\)/);
 
-  for (const asset of ["bca", "bni", "btn", "mandiri", "permata"]) assert.match(card, new RegExp(`${asset}\.webp`));
+  for (const asset of ["bca", "bni", "btn", "mandiri", "permata", "shopeepay", "dana", "gopay", "ovo", "linkaja", "cash", "savings"]) assert.match(card, new RegExp(`${asset}\.webp`));
+  assert.match(card, /detectEwalletTemplate/);
+  assert.match(card, /data-visual-kind/);
+  assert.match(card, /ewalletOwnership/);
+  assert.match(card, /model\.isBank && model\.image/);
   assert.match(card, /accountOwnershipLabel/);
   assert.match(card, /accountProviderLabel/);
   assert.doesNotMatch(card, /const BANK_LABELS/);
   assert.match(cardStyles, /\.genericCard \{[^}]*background:\s*var\(--primary-deep\);/s);
-  assert.match(cardStyles, /\.visual\[data-bank-template="generic"\]::after \{ background:\s*none; \}/);
+  assert.match(cardStyles, /\.visual\[data-bank-template="generic"\]::after,/);
+  assert.match(cardStyles, /\.visual\[data-has-image="false"\]::after \{ background:\s*none; \}/);
+  assert.match(cardStyles, /\.visual\[data-visual-kind="ewallet"\]::after/);
+  assert.match(cardStyles, /\.ewalletOwnership/);
   const genericCardBlock = cardStyles.match(/\.genericCard \{[^}]*\}/s)?.[0] || "";
   assert.doesNotMatch(genericCardBlock, /gradient\(/);
   assert.doesNotMatch(card, /account\.can_reconcile/);
@@ -238,6 +303,8 @@ ${accountEditors}`;
   assert.match(card, /account\.can_manage/);
   assert.match(card, /account\.read_only/);
   assert.match(card, /navigator\.clipboard\.writeText\(account\.account_number\)/);
+  assert.match(card, /data-ewallet-template/);
+  assert.match(card, /templateOverride \|\| detectEwalletTemplate\(account\)/);
   assert.match(cardStyles, /aspect-ratio: 1\.586 \/ 1/);
   assert.match(cardStyles, /object-fit: cover/);
   assert.match(cardStyles, /width: min\(100%, 26\.5rem\)/);
@@ -258,7 +325,12 @@ ${accountEditors}`;
 test("label rekening memprioritaskan provider dan tetap membedakan pemilik personal", () => {
   assert.equal(accountProviderLabel({ account_type: "bank", bank_template: "bca", name: "Tabungan bulanan" }), "BCA");
   assert.equal(accountProviderLabel({ account_type: "bank", bank_template: "generic", name: "Rekening BNI" }), "BNI");
+  assert.equal(accountProviderLabel({ account_type: "ewallet", ewallet_template: "dana", name: "Belanja harian" }), "DANA");
+  assert.equal(accountProviderLabel({ account_type: "ewallet", ewallet_template: "generic", name: "DANA belanja" }), "E-wallet");
+  assert.equal(accountProviderLabel({ account_type: "ewallet", name: "DANA belanja" }), "DANA");
+  assert.equal(accountProviderLabel({ account_type: "ewallet", name: "Dompet digital" }), "E-wallet");
   assert.equal(accountDisplayLabel({ account_type: "bank", bank_template: "bca", name: "Tabungan bulanan", owner_scope: "shared" }), "BCA · Tabungan bulanan");
+  assert.equal(accountDisplayLabel({ account_type: "ewallet", ewallet_template: "dana", name: "Belanja harian", owner_scope: "shared" }), "DANA · Belanja harian");
   assert.equal(accountDisplayLabel({ account_type: "cash", name: "Dompet", owner_scope: "personal", owner_name: "Vio" }), "Tunai · Dompet · Vio");
 });
 
@@ -268,9 +340,14 @@ test("label kepemilikan rekening personal selalu menyebut pemilik", () => {
   assert.equal(accountOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
 });
 
-test("semua asset kartu bank memakai kanvas dan rasio yang sama", async () => {
-  for (const name of ["bca", "bni", "btn", "mandiri", "permata"]) {
-    const url = new URL(`../src/assets/bank-cards/${name}.webp`, import.meta.url);
+test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () => {
+  const assets = [
+    ...["bca", "bni", "btn", "mandiri", "permata"].map((name) => ["bank-cards", name]),
+    ...["shopeepay", "dana", "gopay", "ovo", "linkaja"].map((name) => ["ewallet-cards", name]),
+    ...["cash", "savings"].map((name) => ["account-cards", name]),
+  ];
+  for (const [directory, name] of assets) {
+    const url = new URL(`../src/assets/${directory}/${name}.webp`, import.meta.url);
     const file = await access(url).then(() => url);
     const [info, dimensions] = await Promise.all([stat(file), webpSize(file)]);
     assert.ok(file, `${name}.webp harus tersedia`);

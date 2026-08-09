@@ -14,6 +14,9 @@ test("confirmation modal mendukung alasan, exact phrase, acknowledgement, countd
   assert.match(modal, /blockAccidentalEnter/);
   assert.match(modal, /event\.preventDefault\(\)/);
   assert.match(modal, /onConfirm\(normalized, \{ confirmation, acknowledged \}\)/);
+  assert.doesNotMatch(modal, /const\s+setters\s*=\s*\{/, "setter state tidak boleh dibungkus object transient yang memicu reset ulang setiap render");
+  assert.doesNotMatch(modal, /\[[^\]]*\bsetters\b[^\]]*\]/, "effect reset tidak boleh bergantung pada object setter transient");
+  assert.match(modal, /useCountdownReset\(\{[\s\S]*setReason,[\s\S]*setConfirmation,[\s\S]*setAcknowledged,[\s\S]*setRemainingSeconds,[\s\S]*setValidationError,[\s\S]*submitLockRef/);
 });
 
 test("rekening memakai preview server dan hanya menghapus permanen rekening belum dipakai", async () => {
@@ -23,7 +26,6 @@ test("rekening memakai preview server dan hanya menghapus permanen rekening belu
   ]);
   assert.match(api, /accounts\.previewLifecycle/);
   assert.match(api, /accounts\.deleteUnused/);
-  assert.match(api, /accounts\.restore/);
   assert.match(page, /previewAccountLifecycle/);
   assert.match(page, /preview\.canDeleteUnused/);
   assert.match(page, /deleteUnusedAccount/);
@@ -45,7 +47,6 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
   ]);
   assert.match(categoryApi, /categories\.previewArchive/);
   assert.match(categoryApi, /categories\.deleteUnused/);
-  assert.match(categoryApi, /categories\.restore/);
   assert.match(categories, /previewCategoryArchive/);
   assert.match(categories, /preview\.canDeleteUnused/);
   assert.match(categories, /dependencies\.transactions/);
@@ -88,11 +89,14 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
   assert.match(recurring, /acknowledgementLabel=\{(?:p\.)?archiveRuleTarget\?\.preview\.canDeleteUnused/);
   assert.match(goals, /last_movement_row_version/);
   assert.match(goals, /rowVersion: reverseTarget\.last_movement_row_version/);
+  assert.match(allocationsApi, /envelopes\.reverseMovement/);
+  assert.doesNotMatch(allocations, /Pulihkan aturan kantong|restoreTarget|restoreState|restoreRule|archivedRules/);
+  assert.doesNotMatch(allocationsApi, /envelopes\.restoreRule/);
   assert.doesNotMatch([allocationsApi, recurringApi, goalsApi, budgetsApi].join("\n"), /transactions\.delete|goal_movements\.delete|envelope_movements\.delete/);
 });
 
 test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode per route", async () => {
-  const [layout, notifications, members, recovery, period, audit, api] = await Promise.all([
+  const [layout, notifications, members, recovery, period, audit, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi] = await Promise.all([
     read("src/features/settings/SettingsLayout.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
@@ -100,6 +104,11 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
     read("src/features/settings/PeriodControlPage.jsx"),
     read("src/features/settings/AuditPage.jsx"),
     read("src/features/settings/settings.api.js"),
+    read("src/features/accounts/accounts.api.js"),
+    read("src/features/categories/categories.api.js"),
+    read("src/features/allocations/allocations.api.js"),
+    read("src/features/goals/goals.api.js"),
+    read("src/features/recurring/recurring.api.js"),
   ]);
   assert.match(layout, /\/pengaturan\/notifikasi/);
   assert.match(layout, /\/pengaturan\/anggota/);
@@ -119,9 +128,14 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(recovery, /Purge umum tetap dinonaktifkan/);
   assert.match(recovery, /restore\.preview/);
   assert.match(recovery, /restore\.apply/);
-  for (const action of ["envelopes.restoreRule", "goals.restore", "recurring.restoreRule", "budgets.restore"]) {
+  for (const action of ["accounts.restore", "categories.restore", "envelopes.restoreRule", "goals.restore", "recurring.restoreRule", "budgets.restore"]) {
     assert.match(recovery, new RegExp(action.replace(".", "\\.")), `${action} harus tersedia dari pemulihan item owner`);
   }
+  assert.doesNotMatch(
+    [accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi].join("\n"),
+    /accounts\.restore|categories\.restore|envelopes\.restoreRule|goals\.restore|recurring\.restoreRule/,
+    "Restore master arsip harus memiliki satu entry point UI melalui Pengaturan > Pemulihan data.",
+  );
   assert.match(period, /runSettingsAction\("periods\.previewClose"/);
   assert.match(period, /expectedConfirmation=\{closePreview\?\.confirmation/);
   assert.match(audit, /audit-mobile-list|mobile-data-list/);

@@ -66,45 +66,56 @@ test("import dibatasi 50 row, preview tervalidasi, safety backup, atomic apply, 
   assert.match(maintenance, /IMPORT TRANSAKSI/);
 });
 
-test("normalisasi restore template menurunkan enum uppercase dan menolak template non-bank", () => {
+test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase serta menjaga jenis rekening", () => {
   assert.deepEqual(
     normalizeRestoredRows("accounts", [{ account_id: "upper", account_type: "bank", bank_template: "BNI" }])[0],
-    { account_id: "upper", account_type: "bank", bank_template: "bni" },
+    { account_id: "upper", account_type: "bank", bank_template: "bni", ewallet_template: "generic" },
+  );
+  assert.deepEqual(
+    normalizeRestoredRows("accounts", [{ account_id: "wallet", account_type: "ewallet", bank_template: "generic", ewallet_template: "DANA" }])[0],
+    { account_id: "wallet", account_type: "ewallet", bank_template: "generic", ewallet_template: "dana" },
   );
   assert.throws(
-    () => normalizeRestoredRows("accounts", [{ account_id: "invalid", account_type: "cash", bank_template: "bca" }]),
-    /Template kartu pada backup tidak valid/,
+    () => normalizeRestoredRows("accounts", [{ account_id: "invalid", account_type: "cash", bank_template: "bca", ewallet_template: "generic" }]),
+    /Template kartu bank pada backup tidak valid/,
+  );
+  assert.throws(
+    () => normalizeRestoredRows("accounts", [{ account_id: "invalid-wallet", account_type: "cash", bank_template: "generic", ewallet_template: "dana" }]),
+    /Provider E-wallet pada backup tidak valid/,
   );
 });
 
 
 
-test("backup schema v7 menyimpan notification preferences dan backup lama tetap default aktif", async () => {
+test("backup schema v8 menyimpan notification preferences dan provider E-wallet canonical", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
     await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-pref", "firebase-pref", "pref@example.com", "Preference", "owner", "active", 1, now, now]);
     await db.execute("INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", ["u-pref", "budget_threshold", 0, 1, now, now]);
+    await db.execute("INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["wallet-v8", "Belanja", "ewallet", "", "generic", "gopay", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-pref", now, "u-pref", now]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 7);
+    assert.equal(snapshot.manifest.schemaVersion, 8);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
+    assert.equal(snapshot.tables.accounts[0].ewallet_template, "gopay");
     assert.equal(validateSnapshot(snapshot), snapshot.checksum);
   } finally { db.close(); }
 });
 
-test("backup schema v3/v4/v5/v6 tetap dapat dimuat ke schema v7 dengan default field additive", async () => {
+test("backup schema v3-v7 tetap dapat dimuat ke schema v8 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
     const now = "2026-08-03T00:00:00.000Z";
     await sourceDb.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-v3", "firebase-v3", "v3@example.com", "Legacy", "owner", "active", 1, now, now]);
     await sourceDb.execute("INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["a-v3", "Legacy · BNI", "bank", "1234567890", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-v3", now, "u-v3", now]);
+    await sourceDb.execute("INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["wallet-v3", "DANA Belanja", "ewallet", "", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-v3", now, "u-v3", now]);
 
     const current = await snapshotDatabase(sourceDb);
     const legacyTables = structuredClone(current.tables);
     delete legacyTables.notification_preferences;
-    legacyTables.accounts = legacyTables.accounts.map(({ account_number: _accountNumber, bank_template: _bankTemplate, ...row }) => row);
+    legacyTables.accounts = legacyTables.accounts.map(({ account_number: _accountNumber, bank_template: _bankTemplate, ewallet_template: _ewalletTemplate, ...row }) => row);
     const legacyManifestTables = { ...current.manifest.tables };
     delete legacyManifestTables.notification_preferences;
     const manifest = { ...current.manifest, version: 3, schemaVersion: 3, tables: legacyManifestTables };
@@ -115,11 +126,12 @@ test("backup schema v3/v4/v5/v6 tetap dapat dimuat ke schema v7 dengan default f
     const v4 = structuredClone(legacy);
     v4.manifest.version = 4;
     v4.manifest.schemaVersion = 4;
-    v4.tables.accounts = current.tables.accounts.map(({ bank_template: _bankTemplate, ...row }) => row);
+    v4.tables.accounts = current.tables.accounts.map(({ bank_template: _bankTemplate, ewallet_template: _ewalletTemplate, ...row }) => row);
     v4.checksum = digest(canonicalJson({ manifest: v4.manifest, tables: v4.tables }));
     assert.equal(validateSnapshot(v4), v4.checksum);
 
     const v5 = structuredClone(current);
+    v5.tables.accounts = v5.tables.accounts.map(({ ewallet_template: _ewalletTemplate, ...row }) => row);
     v5.manifest.version = 5;
     v5.manifest.schemaVersion = 5;
     delete v5.tables.notification_preferences;
@@ -128,6 +140,7 @@ test("backup schema v3/v4/v5/v6 tetap dapat dimuat ke schema v7 dengan default f
     assert.equal(validateSnapshot(v5), v5.checksum);
 
     const v6 = structuredClone(current);
+    v6.tables.accounts = v6.tables.accounts.map(({ ewallet_template: _ewalletTemplate, ...row }) => row);
     v6.manifest.version = 6;
     v6.manifest.schemaVersion = 6;
     delete v6.tables.notification_preferences;
@@ -135,14 +148,26 @@ test("backup schema v3/v4/v5/v6 tetap dapat dimuat ke schema v7 dengan default f
     v6.checksum = digest(canonicalJson({ manifest: v6.manifest, tables: v6.tables }));
     assert.equal(validateSnapshot(v6), v6.checksum);
 
+    const v7 = structuredClone(current);
+    v7.tables.accounts = v7.tables.accounts.map(({ ewallet_template: _ewalletTemplate, ...row }) => row);
+    v7.manifest.version = 7;
+    v7.manifest.schemaVersion = 7;
+    v7.checksum = digest(canonicalJson({ manifest: v7.manifest, tables: v7.tables }));
+    assert.equal(validateSnapshot(v7), v7.checksum);
+
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);
       await insertRows(tx, "accounts", normalizeRestoredRows("accounts", legacy.tables.accounts));
     });
-    const restored = await targetDb.one("SELECT account_number,bank_template,name FROM accounts WHERE account_id='a-v3'");
+    const restored = await targetDb.one("SELECT account_number,bank_template,ewallet_template,name FROM accounts WHERE account_id='a-v3'");
     assert.equal(restored.account_number, "");
     assert.equal(restored.bank_template, "bni");
+    assert.equal(restored.ewallet_template, "generic");
     assert.equal(restored.name, "Legacy · BNI");
+    const restoredWallet = await targetDb.one("SELECT bank_template,ewallet_template,name FROM accounts WHERE account_id='wallet-v3'");
+    assert.equal(restoredWallet.bank_template, "generic");
+    assert.equal(restoredWallet.ewallet_template, "dana");
+    assert.equal(restoredWallet.name, "DANA Belanja");
   } finally {
     sourceDb.close();
     targetDb.close();

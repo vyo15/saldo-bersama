@@ -184,6 +184,47 @@ test("rekening bank mewajibkan nomor digit dan audit hanya menyimpan empat digit
     });
     assert.equal(updated.name, "Tabungan nikah");
     assert.equal(updated.bank_template, "mandiri");
+    assert.equal(updated.ewallet_template, "generic");
+
+    const wallet = await dispatchAction({
+      signedActor,
+      action: "accounts.create",
+      payload: { name: "Belanja harian", account_type: "ewallet", ewallet_template: "dana", owner_scope: "shared", initial_balance: 0, initial_balance_date: todayJakarta() },
+      requestId: "test:account-ewallet-create", idempotencyKey: "test-account-ewallet-create", database: db,
+    });
+    assert.equal(wallet.ewallet_template, "dana");
+    assert.equal(wallet.bank_template, "generic");
+
+    const walletUpdated = await dispatchAction({
+      signedActor,
+      action: "accounts.update",
+      payload: { account_id: wallet.account_id, name: "Belanja harian", ewallet_template: "gopay", owner_scope: "shared", allow_negative: false, row_version: wallet.row_version },
+      rowVersion: wallet.row_version, requestId: "test:account-ewallet-update", idempotencyKey: "test-account-ewallet-update", database: db,
+    });
+    assert.equal(walletUpdated.ewallet_template, "gopay");
+
+    await assert.rejects(
+      () => dispatchAction({ signedActor, action: "accounts.create", payload: { name: "Wallet invalid", account_type: "ewallet", ewallet_template: "paypal", owner_scope: "shared", initial_balance: 0, initial_balance_date: todayJakarta() }, requestId: "test:account-ewallet-invalid", idempotencyKey: "test-account-ewallet-invalid", database: db }),
+      (error) => error?.code === "INVALID_EWALLET_TEMPLATE"
+    );
+
+    await assert.rejects(
+      () => dispatchAction({ signedActor, action: "accounts.create", payload: { name: "Cash invalid provider", account_type: "cash", ewallet_template: "dana", owner_scope: "shared", initial_balance: 0, initial_balance_date: todayJakarta() }, requestId: "test:account-ewallet-non-wallet", idempotencyKey: "test-account-ewallet-non-wallet", database: db }),
+      (error) => error?.code === "EWALLET_TEMPLATE_EWALLET_ONLY"
+    );
+
+    await assert.rejects(
+      () => dispatchAction({
+        signedActor,
+        action: "accounts.update",
+        payload: { account_id: wallet.account_id, account_type: "bank", name: wallet.name, owner_scope: "shared", allow_negative: false, row_version: walletUpdated.row_version },
+        rowVersion: walletUpdated.row_version,
+        requestId: "test:account-type-immutable",
+        idempotencyKey: "test-account-type-immutable",
+        database: db,
+      }),
+      (error) => error?.code === "ACCOUNT_TYPE_IMMUTABLE"
+    );
 
     await assert.rejects(
       () => dispatchAction({

@@ -9,18 +9,20 @@ const confirmationValidationMessage = ({ mustProvideReason, normalizedReason, co
   return "";
 };
 
-const useCountdownReset = (open, countdownSeconds, setters, submitLockRef) => {
+const useCountdownReset = ({
+  open, countdownSeconds, setReason, setConfirmation, setAcknowledged, setRemainingSeconds, setValidationError, submitLockRef,
+}) => {
   useEffect(() => {
     if (!open) return undefined;
-    setters.setReason("");
-    setters.setConfirmation("");
-    setters.setAcknowledged(false);
+    setReason("");
+    setConfirmation("");
+    setAcknowledged(false);
     submitLockRef.current = false;
-    setters.setValidationError("");
-    setters.setRemainingSeconds(Math.max(0, Number(countdownSeconds || 0)));
+    setValidationError("");
+    setRemainingSeconds(Math.max(0, Number(countdownSeconds || 0)));
     if (!countdownSeconds) return undefined;
     const timer = window.setInterval(() => {
-      setters.setRemainingSeconds((current) => {
+      setRemainingSeconds((current) => {
         if (current <= 1) {
           window.clearInterval(timer);
           return 0;
@@ -29,7 +31,7 @@ const useCountdownReset = (open, countdownSeconds, setters, submitLockRef) => {
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [countdownSeconds, open, setters, submitLockRef]);
+  }, [countdownSeconds, open, setAcknowledged, setConfirmation, setReason, setRemainingSeconds, setValidationError, submitLockRef]);
 };
 
 const ConfirmationFields = ({
@@ -144,8 +146,9 @@ const ConfirmationModal = (props) => {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [validationError, setValidationError] = useState("");
   const submitLockRef = useRef(false);
-  const setters = { setReason, setConfirmation, setAcknowledged, setRemainingSeconds, setValidationError };
-  useCountdownReset(open, countdownSeconds, setters, submitLockRef);
+  useCountdownReset({
+    open, countdownSeconds, setReason, setConfirmation, setAcknowledged, setRemainingSeconds, setValidationError, submitLockRef,
+  });
 
   const {
     isPending, mustProvideReason, close, requiresTypedConfirmation, requiresAcknowledgement,

@@ -21,9 +21,9 @@ import {
   formatAccountNumber,
 } from "../../../shared/presentation/account.js";
 import {
+  accountTransactionDirection,
   formatTransactionDate,
   transactionCategoryIcon,
-  transactionTone,
   TRANSACTION_LABELS,
 } from "../../../shared/presentation/transaction.js";
 import { AccountVisual } from "./AccountFinancialCard.jsx";
@@ -48,16 +48,10 @@ const useDesktopWorkspaceEnabled = () => {
 
 const balanceTone = (value) => Number(value || 0) < 0 ? "negative" : "default";
 
-const transactionDirection = (item, selectedAccountId) => {
-  if (item.transaction_type !== "transfer") return { prefix: "", tone: transactionTone(item.transaction_type) };
-  if (item.source_account_id === selectedAccountId) return { prefix: "−", tone: "negative" };
-  if (item.destination_account_id === selectedAccountId) return { prefix: "+", tone: "positive" };
-  return { prefix: "", tone: "default" };
-};
-
 const RecentTransactionRow = ({ item, category, selectedAccountId }) => {
   const Icon = transactionCategoryIcon(category, item.transaction_type);
-  const direction = transactionDirection(item, selectedAccountId);
+  const direction = accountTransactionDirection(item, selectedAccountId);
+  const inactive = Boolean(item.status && item.status !== "active");
   return (
     <li className={styles.transactionRow}>
       <span className={styles.transactionIcon} data-type={item.transaction_type || "default"}><Icon aria-hidden="true" /></span>
@@ -65,8 +59,8 @@ const RecentTransactionRow = ({ item, category, selectedAccountId }) => {
         <strong>{item.description || item.merchant || "Tanpa keterangan"}</strong>
         <small>{formatTransactionDate(item.transaction_date)} · {category?.name || TRANSACTION_LABELS[item.transaction_type] || "Transaksi"}</small>
       </span>
-      <span className={styles.transactionAmount} data-tone={direction.tone}>
-        {direction.prefix ? <span aria-hidden="true">{direction.prefix}</span> : null}<Money value={item.amount || 0} tone={direction.tone} />
+      <span className={styles.transactionAmount} data-tone={inactive ? "neutral" : direction.tone}>
+        {inactive || !direction.prefix ? null : <span aria-hidden="true">{direction.prefix}</span>}<Money value={item.amount || 0} tone={inactive ? "default" : direction.tone} />
       </span>
     </li>
   );

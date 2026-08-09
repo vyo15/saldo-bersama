@@ -21,14 +21,14 @@ const PAGE_SIZE = 100;
 const refreshKeys = Object.freeze(["transactions.list", "accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState", "archive.list"]);
 const defaultFilterOptions = Object.freeze({ accounts: [], categories: [], creators: [] });
 
-const initialFilters = (location) => ({
-  period: typeof location.state?.period === "string" && /^\d{4}-\d{2}$/.test(location.state.period) ? location.state.period : currentMonthInJakarta(),
+const initialFilters = (state) => ({
+  period: typeof state?.period === "string" && /^\d{4}-\d{2}$/.test(state.period) ? state.period : currentMonthInJakarta(),
   query: "",
   type: "all",
   allocation: "all",
-  account: typeof location.state?.accountId === "string" && location.state.accountId ? location.state.accountId : "all",
+  account: typeof state?.accountId === "string" && state.accountId ? state.accountId : "all",
   category: "all",
-  creator: typeof location.state?.creatorId === "string" && location.state.creatorId.trim() ? location.state.creatorId.trim() : "all",
+  creator: typeof state?.creatorId === "string" && state.creatorId.trim() ? state.creatorId.trim() : "all",
   offset: 0,
 });
 

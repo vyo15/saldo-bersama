@@ -7,6 +7,15 @@ export const BANK_TEMPLATE_OPTIONS = Object.freeze([
   { value: "permata", label: "Permata" },
 ]);
 
+export const EWALLET_PROVIDER_OPTIONS = Object.freeze([
+  { value: "generic", label: "E-wallet lainnya" },
+  { value: "shopeepay", label: "ShopeePay" },
+  { value: "dana", label: "DANA" },
+  { value: "gopay", label: "GoPay" },
+  { value: "ovo", label: "OVO" },
+  { value: "linkaja", label: "LinkAja" },
+]);
+
 export const ACCOUNT_TYPE_LABELS = Object.freeze({
   bank: "Bank",
   cash: "Tunai",
@@ -31,8 +40,17 @@ const TEMPLATE_MATCHERS = Object.freeze([
   ["permata", /\bpermata(?:bank)?\b/i],
 ]);
 
+const EWALLET_MATCHERS = Object.freeze([
+  ["shopeepay", /\bshopee\s*pay\b|\bshopeepay\b/i],
+  ["dana", /\bDANA\b/],
+  ["gopay", /\bgo\s*pay\b|\bgopay\b/i],
+  ["ovo", /\bovo\b/i],
+  ["linkaja", /\blink\s*aja!?\b|\blinkaja\b/i],
+]);
+
 const KNOWN_BANK_SUFFIX = /\s*(?:-|·)\s*(?:BCA|BNI|BTN|Mandiri|Permata)\s*$/i;
 const BANK_LABEL_BY_TEMPLATE = new Map(BANK_TEMPLATE_OPTIONS.map((option) => [option.value, option.label]));
+const EWALLET_LABEL_BY_TEMPLATE = new Map(EWALLET_PROVIDER_OPTIONS.map((option) => [option.value, option.label]));
 
 export const detectBankTemplate = (account = {}) => {
   if (account.account_type !== "bank") return "generic";
@@ -42,6 +60,16 @@ export const detectBankTemplate = (account = {}) => {
   }
   const name = String(account.name || "");
   return TEMPLATE_MATCHERS.find(([, matcher]) => matcher.test(name))?.[0] || "generic";
+};
+
+export const detectEwalletTemplate = (account = {}) => {
+  if (account.account_type !== "ewallet") return "generic";
+  if (Object.hasOwn(account, "ewallet_template")) {
+    const template = String(account.ewallet_template || "generic").toLowerCase();
+    return EWALLET_PROVIDER_OPTIONS.some((option) => option.value === template) ? template : "generic";
+  }
+  const name = String(account.account_name || account.name || "");
+  return EWALLET_MATCHERS.find(([, matcher]) => matcher.test(name))?.[0] || "generic";
 };
 
 export const accountCardholderName = (name) => String(name || "").replace(KNOWN_BANK_SUFFIX, "").trim();
@@ -58,6 +86,10 @@ export const accountOwnershipLabel = (account = {}) => {
 };
 
 export const accountProviderLabel = (account = {}) => {
+  if (account.account_type === "ewallet") {
+    const template = detectEwalletTemplate(account);
+    return template === "generic" ? accountTypeLabel(account.account_type) : EWALLET_LABEL_BY_TEMPLATE.get(template) || "E-wallet";
+  }
   if (account.account_type !== "bank") return accountTypeLabel(account.account_type);
   const configuredTemplate = detectBankTemplate(account);
   if (configuredTemplate !== "generic") return BANK_LABEL_BY_TEMPLATE.get(configuredTemplate) || "Bank lainnya";

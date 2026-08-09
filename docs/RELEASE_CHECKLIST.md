@@ -4,6 +4,7 @@
 
 - [ ] Semua task yang termasuk release sudah `DONE` atau guarded task yang relevan sudah merged.
 - [ ] `npm run check` lulus pada Node 24 canonical.
+- [ ] Untuk perubahan frontend/browser, `npm run test:browser` lulus penuh; PASS `npm run check` saja belum cukup untuk menyatakan merge-ready.
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Backup/rollback tersedia bila data terdampak.
 - [ ] Environment change tervalidasi tanpa menampilkan secret.

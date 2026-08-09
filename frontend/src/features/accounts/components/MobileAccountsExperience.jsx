@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { FiArrowLeft, FiList, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
@@ -53,11 +53,11 @@ const useMobileStackRefs = () => {
     tracking: false, dragging: false, rejected: false, pointerId: null, captureElement: null,
     startX: 0, startY: 0, startTime: 0, lastY: 0, lastTime: 0, velocityY: 0, suppressClick: false,
   });
-  return {
+  return useMemo(() => ({
     cardRefs: mobileStackCardRefs, stageRef: mobileStackStageRef, statusRef: mobileStackStatusRef, accountsRef: mobileStackAccountsRef,
     positionRef: mobileStackPositionRef, settledIndexRef: mobileStackSettledIndexRef, animationRef: mobileStackAnimationRef, animatingRef: mobileStackAnimatingRef,
     gestureRef: mobileStackGestureRef,
-  };
+  }), []);
 };
 
 const useMobileStackAnimation = (refs, setSelectedAccountId) => {
@@ -109,6 +109,7 @@ const useMobileStackAnimation = (refs, setSelectedAccountId) => {
     const finish = () => {
       refs.settledIndexRef.current = normalizedTarget;
       refs.positionRef.current = normalizedTarget;
+      refs.animationRef.current = 0;
       applyMobileStackPosition();
       setMobileStackWillChange(false);
       refs.animatingRef.current = false;
@@ -124,7 +125,18 @@ const useMobileStackAnimation = (refs, setSelectedAccountId) => {
     };
     refs.animationRef.current = window.requestAnimationFrame(frame);
   }, [applyMobileStackPosition, refs, setMobileStackWillChange, setSelectedAccountId]);
-  return { applyMobileStackPosition, animateMobileStackTo, setMobileStackWillChange };
+  const cancelMobileStackAnimation = useCallback(() => {
+    window.cancelAnimationFrame(refs.animationRef.current);
+    refs.animationRef.current = 0;
+    refs.animatingRef.current = false;
+    setMobileStackWillChange(false);
+  }, [refs.animationRef, refs.animatingRef, setMobileStackWillChange]);
+  return useMemo(() => ({
+    applyMobileStackPosition,
+    animateMobileStackTo,
+    cancelMobileStackAnimation,
+    setMobileStackWillChange,
+  }), [applyMobileStackPosition, animateMobileStackTo, cancelMobileStackAnimation, setMobileStackWillChange]);
 };
 
 const useMobileStackGestures = ({ refs, animation }) => {
@@ -223,11 +235,11 @@ const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAcco
       animation.applyMobileStackPosition();
     }
   }, [accounts, animation, refs.accountsRef, refs.animatingRef, refs.gestureRef, refs.positionRef, refs.settledIndexRef, selectedAccountId]);
-  useEffect(() => () => { window.cancelAnimationFrame(refs.animationRef.current); animation.setMobileStackWillChange(false); }, [animation, refs.animationRef]);
+  useEffect(() => () => animation.cancelMobileStackAnimation(), [animation.cancelMobileStackAnimation]);
   return { refs, ...gestures, cancelMobileStackPointer, handleMobileStackKeyDown, selectMobileStackAccount };
 };
 
-const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap }) => {
+const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved }) => {
   const navigate = useNavigate();
   const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
   const {
@@ -263,7 +275,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
       <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser kartu aktif ke atas atau bawah untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
       <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />
     </section>
-    {selectedAccount ? <Suspense fallback={null}><MobileAccountActivity selectedAccount={selectedAccount} bootstrap={bootstrap} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
+    {selectedAccount ? <Suspense fallback={null}><MobileAccountActivity selectedAccount={selectedAccount} bootstrap={bootstrap} onTransferSaved={onTransferSaved} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
   </div>;
 };
 

@@ -284,6 +284,18 @@ test("backend stable serialization memiliki satu implementasi canonical", async 
   assert.doesNotMatch(core, /const stableValue|export const stableValue/);
 });
 
+test("archive recovery tidak menduplikasi lifecycle user inactive", async () => {
+  const [masterData, recovery, members] = await Promise.all([
+    source("api/_lib/services/masterData.js"),
+    source("frontend/src/features/settings/RecoveryPage.jsx"),
+    source("frontend/src/features/settings/MembersSettingsPage.jsx"),
+  ]);
+  const archiveList = masterData.slice(masterData.indexOf("export const listArchivedData"), masterData.indexOf("const accountScopeChanged"));
+  assert.doesNotMatch(archiveList, /FROM users WHERE status='inactive'|users:\s*users\.map/);
+  assert.doesNotMatch(recovery, /\["user"|users\.reactivate/);
+  assert.match(members, /users\.reactivate|reactivateUser/);
+});
+
 test("frontend menjaga dependency direction, bebas cycle relatif, dan helper stable payload tidak terduplikasi", async () => {
   const sourceRoot = path.join(root, "frontend/src");
   const sourceFiles = [];

@@ -24,13 +24,13 @@ const editableTransactionForm = (transaction) => {
   return { ...emptyForm(), ...editable, amount: String(transaction.amount || ""), overspend_reason: transaction.overspend_reason || "" };
 };
 
-const useTransactionReset = ({ open, transaction, initialType, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef }) => {
+const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef }) => {
   useEffect(() => {
     if (!open) return;
-    setForm(transaction ? editableTransactionForm(transaction) : { ...emptyForm(), transaction_type: initialType });
+    setForm(transaction ? editableTransactionForm(transaction) : { ...emptyForm(), transaction_type: initialType, source_account_id: initialSourceAccountId });
     setDetailsOpen(transaction ? OPTIONAL_FIELDS.some((field) => Boolean(transaction[field])) : false);
     setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); idempotencyKeyRef.current = createIdempotencyKey();
-  }, [initialType, open, transaction, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef]);
+  }, [initialSourceAccountId, initialType, open, transaction, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef]);
 };
 
 const useTransactionData = (bootstrap, overview, form) => {
@@ -60,16 +60,18 @@ const handleTransactionError = (error, setters) => {
   if (error.details && !Array.isArray(error.details)) setters.setErrors((current) => ({ ...current, ...error.details }));
 };
 
-const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, refreshOverview, invalidate, onSaved, notify, onClose, setters, idempotencyKeyRef }) => async (event) => {
+const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault(); const validation = validateTransactionInput(transactionPreparedInput({ form, transaction, isIncome, confirmation }));
   if (!validation.ok) { setters.setErrors(validation.errors); return; }
   setters.setErrors({}); setters.setSubmitState({ status: "submitting", error: null });
   try {
     const saveTransaction = transaction ? updateTransaction : createTransaction;
     const saved = await saveTransaction(validation.value, { idempotencyKey: idempotencyKeyRef.current, rowVersion: transaction?.row_version });
-    invalidate(["transactions.list", "envelopes.list", "reports.monthly", "app.initialState"]);
+    invalidate(["transactions.list", "accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
     await Promise.allSettled([refreshOverview(), Promise.resolve().then(() => onSaved?.(saved))]);
-    setters.setSubmitState({ status: "success", error: null }); notify({ message: transaction ? "Perubahan transaksi berhasil disimpan." : "Transaksi berhasil disimpan." }); onClose();
+    setters.setSubmitState({ status: "success", error: null });
+    if (notifyOnSuccess) notify({ message: transaction ? "Perubahan transaksi berhasil disimpan." : "Transaksi berhasil disimpan." });
+    onClose();
   } catch (error) { handleTransactionError(error, setters); }
 };
 
@@ -90,15 +92,30 @@ const OptionalFields = ({ form, update, errors, detailsOpen, setDetailsOpen }) =
 
 const ImpactPreview = ({ impact, isTransfer }) => impact ? <div className="notice notice--info form-grid__full impact-preview" aria-live="polite"><strong>Preview dampak</strong>{impact.source ? <span>Saldo {impact.source.name}: {formatRupiah(impact.source.balance)} → {formatRupiah(impact.sourceAfter)}</span> : null}{impact.destination ? <span>Saldo {impact.destination.name}: {formatRupiah(impact.destination.balance)} → {formatRupiah(impact.destinationAfter)}</span> : null}{impact.envelope ? <span>Sisa {impact.envelope.name}: {formatRupiah(impact.envelope.remaining_amount)} → {formatRupiah(impact.envelopeAfter)}</span> : null}{isTransfer ? <span>Transfer internal tidak dihitung sebagai pemasukan atau pengeluaran total.</span> : null}</div> : null;
 
-const TransactionFields = (p) => <><TypeSelector form={p.form} update={p.update} /><AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} /><AccountCategoryFields {...p} /><div className="notice notice--info form-grid__full transaction-scope-note"><span>Ruang transaksi ditentukan otomatis dari kepemilikan rekening. Transfer lintas ruang ditolak agar saldo bersama tetap konsisten.</span></div><OptionalFields form={p.form} update={p.update} errors={p.errors} detailsOpen={p.detailsOpen} setDetailsOpen={p.setDetailsOpen} /><ImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
+const TransactionFields = (p) => <>{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} /><AccountCategoryFields {...p} /><div className="notice notice--info form-grid__full transaction-scope-note"><span>Ruang transaksi ditentukan otomatis dari kepemilikan rekening. Transfer lintas ruang ditolak agar saldo bersama tetap konsisten.</span></div><OptionalFields form={p.form} update={p.update} errors={p.errors} detailsOpen={p.detailsOpen} setDetailsOpen={p.setDetailsOpen} /><ImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
 
-const TransactionForm = ({ open, onClose, initialType = TRANSACTION_TYPES.EXPENSE, transaction = null, onSaved }) => {
+const TransactionForm = ({
+  open,
+  onClose,
+  initialType = TRANSACTION_TYPES.EXPENSE,
+  initialSourceAccountId = "",
+  lockType = false,
+  transaction = null,
+  onSaved,
+  title,
+  description = "Saldo dan sisa jatah baru berubah setelah server mengonfirmasi penyimpanan.",
+  submitLabel,
+  submittingLabel,
+  notifyOnSuccess = true,
+}) => {
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance(); const { notify } = useFeedback(); const [form, setForm] = useState(emptyForm); const [errors, setErrors] = useState({}); const [confirmation, setConfirmation] = useState(null); const [detailsOpen, setDetailsOpen] = useState(false); const [submitState, setSubmitState] = useState({ status: "idle", error: null }); const idempotencyKeyRef = useRef(createIdempotencyKey()); const amountRef = useRef(null);
-  useTransactionReset({ open, transaction, initialType, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef }); useEffect(() => { if (errors.overspend_reason) setDetailsOpen(true); }, [errors.overspend_reason]);
+  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef }); useEffect(() => { if (errors.overspend_reason) setDetailsOpen(true); }, [errors.overspend_reason]);
   const data = useTransactionData(bootstrap, overview, form); const { isIncome, isTransfer } = transactionMode(form); const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null; const compatibleDestinationAccounts = destinationAccounts(data.accounts, sourceAccount, isTransfer); const compatibleEnvelopes = sourceAccount ? filterByOwnership(data.envelopes, sourceAccount) : data.envelopes; const impact = useMemo(() => transactionImpact({ accountBalances: data.accountBalances, envelopes: data.envelopes, form }), [data.accountBalances, data.envelopes, form]);
-  const update = (field, value) => { setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => ({ ...current, [field]: value })); }; const setters = { setErrors, setConfirmation, setSubmitState }; const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, refreshOverview, invalidate, onSaved, notify, onClose, setters, idempotencyKeyRef }); const submitting = submitState.status === "submitting";
-  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, envelopes: data.envelopes, visibleCategories: data.visibleCategories, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, setConfirmation, setSubmitState, detailsOpen, setDetailsOpen, impact, confirmation, submitState };
-  return <Modal open={open} onClose={submitting ? () => {} : onClose} title={transaction ? "Edit transaksi" : "Tambah transaksi"} description="Saldo dan sisa jatah baru berubah setelah server mengonfirmasi penyimpanan." size="lg" initialFocusRef={amountRef} footer={<><Button type="button" onClick={onClose} disabled={submitting}>Batal</Button><Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{submitting ? "Menyimpan..." : confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : "Simpan transaksi"}</Button></>}><form id="transaction-form" className="form-grid transaction-form" onSubmit={handleSubmit} noValidate><TransactionFields {...fields} /></form></Modal>;
+  const update = (field, value) => { setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => ({ ...current, [field]: value })); }; const setters = { setErrors, setConfirmation, setSubmitState }; const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setters, idempotencyKeyRef }); const submitting = submitState.status === "submitting";
+  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, envelopes: data.envelopes, visibleCategories: data.visibleCategories, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, setConfirmation, setSubmitState, detailsOpen, setDetailsOpen, impact, confirmation, submitState, lockType };
+  const resolvedTitle = title || (transaction ? "Edit transaksi" : "Tambah transaksi");
+  const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
+  return <Modal open={open} onClose={submitting ? () => {} : onClose} title={resolvedTitle} description={description} size="lg" initialFocusRef={amountRef} footer={<><Button type="button" onClick={onClose} disabled={submitting}>Batal</Button><Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{submitting ? submittingLabel || "Menyimpan..." : idleSubmitLabel}</Button></>}><form id="transaction-form" className="form-grid transaction-form" onSubmit={handleSubmit} noValidate><TransactionFields {...fields} /></form></Modal>;
 };
 
 export default TransactionForm;

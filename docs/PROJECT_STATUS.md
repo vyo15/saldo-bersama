@@ -9,17 +9,24 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - **Database/source of truth:** Turso/SQLite HTTP pipeline.
 - **Auth:** Firebase Authentication Google + server session/authorization.
 - **Google integration:** Apps Script bridge; Sheets mirror satu arah, Calendar reminder bersama, Drive backup teknis.
-- **Active schema contract:** v7.
+- **Active schema contract:** v8.
 - Runtime lokal dan Vercel Production dirancang memakai database Turso bersama; operasi destructive/migration tetap guarded.
 
 ## Workflow saat ini
 
 - Source terbaru + test aktual adalah sumber kebenaran.
 - Tidak ada task card/Task ID/branch automation sebagai workflow wajib.
-- Quality gate utama: `npm run check`; frontend/browser ditambah `npm run test:browser`.
+- Quality gate utama: `npm run check`; frontend/browser ditambah `npm run test:browser`. Route readiness browser hanya menjamin shell/heading; assertion capability yang dimuat terpisah wajib menunggu selector capability yang terlihat.
 - Setelah PASS: `git add -A`, commit, dan `git push origin main`.
 - `npm run zip` membuat clean source canonical fail-closed.
 - Guarded/high-risk tetap membutuhkan approval eksplisit sebelum coding/operation.
+
+## Rekening mobile saat ini
+
+- `MobileAccountsExperience` tetap lazy untuk menjaga route-chunk budget. Browser journey `/rekening` menunggu stack mobile visible sebelum menguji capability owner/member, sehingga heading siap tidak disalahartikan sebagai seluruh nested UI siap.
+- Transfer adalah quick action, bukan tab. Form tetap memakai `TransactionForm` canonical dan sukses hanya ditampilkan setelah server mengonfirmasi write.
+- `Riwayat` dan `Grafik` adalah dua tab informasi. Transfer tetap tidak dihitung sebagai pemasukan/pengeluaran.
+- Kartu rekening memakai asset WebP 768×484 untuk bank, Tunai, Tabungan, serta provider E-wallet ShopeePay, DANA, GoPay, OVO, dan LinkAja. Provider E-wallet disimpan canonical pada `accounts.ewallet_template` schema v8; nama rekening hanya dipakai sebagai fallback untuk object/backup legacy yang belum memiliki field tersebut. Provider `generic` tetap aman untuk E-wallet lain.
 
 ## Open operational risks
 

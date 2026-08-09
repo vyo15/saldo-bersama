@@ -237,9 +237,9 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
-test("project status is a current-state snapshot with schema v7 and shared database guard", () => {
+test("project status is a current-state snapshot with schema v8 and shared database guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
-  assert.match(status, /Active schema contract:\*\* v7/);
+  assert.match(status, /Active schema contract:\*\* v8/);
   assert.match(status, /Runtime lokal dan Vercel Production dirancang memakai database Turso bersama/);
   assert.match(status, /bukan jurnal perubahan/i);
 });

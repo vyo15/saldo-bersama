@@ -1,9 +1,9 @@
 # QA Checklist
 
-- [x] Source terbaru dan migration version diverifikasi (`194612`, 356 file canonical sebelum patch, schema v7 setelah migration additive).
+- [x] Baseline source terbaru untuk patch schema v8 berasal dari clean source setelah asset rekening; patch ini menambah migration canonical dan seluruh perubahan schema/API/frontend/docs diuji sebagai satu unit.
 - [ ] Node/npm sesuai engines.
 - [ ] `npm run clean:dry-run` ditinjau; tidak ada secret, dump, `.env`, backup, token, dependency, atau generated output dalam clean ZIP.
-- [x] Baseline operator sebelum hardening Google lulus: build, build budget, lint, frontend 84/84, backend/tooling 147/147, browser 9/9.
+- [x] Baseline operator 9 Agustus 2026 sebelum patch browser-readiness: `npm run check` PASS, frontend 95/95, backend/tooling 212/212, coverage PASS, build/budget PASS; `npm run test:browser` 9/11 karena dua assertion Rekening berjalan sebelum capability mobile selesai dimuat.
 - Archive target, aturan rutin, dan anggaran memakai action eksplisit owner-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
 - [x] Owner/member/unauthorized diuji melalui authenticated journey dan private-route browser smoke.
 - [ ] Seluruh nominal integer dan timezone Asia/Jakarta.
@@ -21,7 +21,7 @@
 - [ ] PWA iOS/Android, push, safe area, focus, contrast, tap target diuji.
 - [x] Route 404 mobile mengisi inner content box setelah padding/safe-area canonical; regression tidak menghitung reserved `--mobile-navigation-content-gap` sebagai gap layout yang salah.
 - [x] Status backend Pengaturan memakai kontrak `system.health` aktual dan tidak menampilkan `Degraded` palsu.
-- [ ] Schema v7, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
+- [ ] Schema v8, backup pra-migration, integrity check, pasangan VAPID, redeploy Production, serta satu Apps Script trigger diverifikasi.
 - [ ] Desktop dan Android lulus Aktifkan → verifikasi otomatis → Nonaktifkan; iPhone/iPad diuji dari aplikasi Home Screen.
 - [x] Monitoring health/integration queue tidak membocorkan secret.
 - [x] `npm run env:check` dan regression environment menolak Development local testing bila Web Push hilang, parsial, invalid, atau pasangan key tidak cocok.
@@ -35,7 +35,7 @@
 - [x] Signed `integration.health` operator melaporkan Mirror/Calendar/Backup/Jobs/Trigger `SIAP`, dan Production `/api/jobs` sudah HTTP 200 dengan HMAC scheduler.
 - [x] Validator Drive backup menerima nama canonical versioned mengikuti schema aktif dan regression menolak format malformed; `BACKUP_NAME_INVALID` akibat hardcode v3 tidak kembali.
 - [x] Mirror target guard menolak spreadsheet non-kosong tanpa metadata canonical dan hanya membersihkan `Sheet1` default bila kosong.
-- [ ] Verifikasi final resource nyata setelah hardening: `_Mirror_Metadata.schema_version=7`, `Sheet1` kosong hilang, event Calendar hanya shared tanpa duplikasi, file Drive backup versioned v7 ada, dan queue tidak memiliki failure aktif setelah full sync.
+- [ ] Verifikasi final resource nyata setelah hardening: `_Mirror_Metadata.schema_version=8`, `Sheet1` kosong hilang, event Calendar hanya shared tanpa duplikasi, file Drive backup versioned v8 ada, dan queue tidak memiliki failure aktif setelah full sync.
 
 - [x] Action registry/policy, authorization map, dan API docs tetap sinkron.
 - [ ] Full axe/visual regression dijalankan bila perubahan UI kompleks atau dependency tersedia.
@@ -68,14 +68,14 @@
 - [x] Owner/member dapat mengatur tujuh tipe notifikasi miliknya sendiri; default tanpa row tetap aktif, stale row_version ditolak, dan mute satu user tidak mematikan alert pasangan.
 - [x] Micro-feedback global hanya untuk success/info/warning dan tidak menyediakan generic hard undo; reversal finansial tetap action audited.
 - [x] Semua `REQ-*` terlacak pada implementation matrix.
-- [x] Migration v7 notification preference disetujui untuk patch ini, additive, dibackup/restored, dan memiliki rollback plan; perubahan schema berikutnya tetap memerlukan approval terpisah.
+- [x] Migration v7 notification preference tetap additive dan dibackup/restored. Migration v8 `ewallet_template` juga additive, memiliki backup/restore compatibility v3-v7, dan rollback melalui backup pra-migration; perubahan schema berikutnya tetap memerlukan approval terpisah.
 
 ## Rekening, kategori, dan responsive parity
 
 - [x] `/anggaran` dapat dibuka owner dan member; hanya owner pada periode aktif memiliki form edit/arsip.
 - [x] `/laporan` tidak memuat mutation anggaran dan hanya menampilkan Anggaran vs aktual.
 - [ ] Menu Lainnya mengelompokkan Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi; Rekonsiliasi tidak bercampur dengan Rekening/Kategori.
-- [ ] Kartu generic flat; ringkasan dan quick action Rekening menyatu dengan background.
+- [x] Rekening mobile memakai quick action `Transfer` terpisah dari tab `Riwayat`/`Grafik`; business flow transfer tetap memakai form canonical dan saldo disegarkan setelah server mengonfirmasi write.
 - [x] Scrollbar mobile tidak terlihat, scroll vertikal tetap bekerja, input tidak auto-zoom, dan zoom manual tidak diblokir.
 - [ ] Dropdown rekening transaksi menampilkan provider/jenis dan nama tanpa suffix kepemilikan.
 - [ ] Owner dan member dapat mengelola subscription notifikasi perangkat masing-masing.
@@ -104,7 +104,8 @@
 - [x] Submenu desktop satu tingkat, dapat ditutup melalui trigger/Escape/click-outside, dan tidak memakai kartu di dalam kartu.
 - [x] Menu mobile tidak menduplikasi dark/light toggle; logout tetap tersedia pada footer dan theme toggle shell di luar menu tetap dapat dijangkau.
 - [ ] Input dialog tambah rekening mempertahankan fokus selama beberapa ketikan; Tab trap, Escape, body lock, serta focus restoration setelah dialog ditutup tetap lulus.
-- [x] Mengganti template kartu tidak mengubah nama rekening; create/update/list/backup/restore mempertahankan `bank_template` canonical.
+- [x] Mengganti template kartu bank atau provider E-wallet tidak mengubah nama rekening; create/update/list/backup/restore mempertahankan `bank_template` dan `ewallet_template` canonical.
+- [x] Backend menolak perubahan `account_type` pada `accounts.update`; jenis rekening hanya ditetapkan saat create dan form edit tidak menjadi satu-satunya guard.
 
 ## Guard mutation otomatis terbaru
 
@@ -113,10 +114,11 @@
 - [x] Kantong duplikat dapat diarsipkan/dipulihkan dan realokasi salah dapat dibalik satu kali tanpa hard delete/audit loss. Target, Jadwal rutin, dan Anggaran arsip juga dapat dipulihkan owner dengan reason + `row_version` + dependency/conflict guard.
 - [x] Rekonsiliasi menerima saldo aktual negatif hanya untuk rekening dengan `allow_negative=true`.
 - [x] Browser regression baru mensimulasikan double-click create target pada response lambat dan menuntut satu mutation request; Device Notification/browser subscription juga memakai synchronous mutation guard.
+- [x] Browser harness dapat menunggu selector capability setelah heading route stabil; journey Rekening owner/member memakai readiness stack mobile agar lazy rendering tidak menghasilkan assertion merah palsu.
 - [x] `integrity.run` sekarang mengikuti idempotency write canonical; double-submit/retry tidak membuat integrity execution baru secara diam-diam.
 - [x] Governance test membandingkan action mode, kewajiban idempotency, dan permission owner/member pada docs dengan policy/source canonical.
 - [ ] Jalankan full `npm run check`, `npm run test:guard`, `npm run test:browser`, dan `npm run zip` pada Node 24.x setelah patch diterapkan di laptop operator.
-- [ ] `npm run test:coverage:backend` memenuhi minimum 80% lines / 55% branches / 78% functions.
+- [x] Baseline operator `npm run test:coverage:backend` memenuhi gate: 84,98% lines / 62,95% branches / 82,33% functions.
 
 ## Proteksi human error dan penghapusan
 

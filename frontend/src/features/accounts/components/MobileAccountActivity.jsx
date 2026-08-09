@@ -12,14 +12,15 @@ import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { formatCompactRupiah } from "../../../domain/money.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import {
+  accountTransactionDirection,
   formatTransactionDate,
   TRANSACTION_LABELS,
   transactionCategoryIcon,
-  transactionTone,
 } from "../../../shared/presentation/transaction.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { loadAccountExpenseTrend } from "../accounts.api.js";
 import styles from "../AccountsPage.module.css";
+import MobileAccountTransferAction from "./MobileAccountTransferAction.jsx";
 
 const MOBILE_QUERY = "(max-width: 820px)";
 const HISTORY_LIMIT = 6;
@@ -56,19 +57,6 @@ const longPeriodLabel = (period) => {
     year: "numeric",
     timeZone: "Asia/Jakarta",
   }).format(new Date(Date.UTC(year, month - 1, 1)));
-};
-
-const transactionDirection = (item, selectedAccountId) => {
-  if (item.status && item.status !== "active") return { prefix: "", tone: "neutral" };
-  if (item.transaction_type !== "transfer") {
-    return {
-      prefix: item.transaction_type === "expense" ? "−" : ["income", "refund"].includes(item.transaction_type) ? "+" : "",
-      tone: transactionTone(item.transaction_type),
-    };
-  }
-  if (item.source_account_id === selectedAccountId) return { prefix: "−", tone: "negative" };
-  if (item.destination_account_id === selectedAccountId) return { prefix: "+", tone: "positive" };
-  return { prefix: "", tone: "neutral" };
 };
 
 const buildChartGeometry = (items) => {
@@ -134,10 +122,10 @@ const useAccountTrend = ({ activeTab, currentPeriod, mobileEnabled, selectedAcco
 const MobileActivityTabs = ({ activeTab, chartTabRef, handleTabKeyDown, historyTabRef, setActiveTab }) => (
   <div className={styles.mobileActivityTabs} role="tablist" aria-label="Informasi rekening">
     <button ref={historyTabRef} id="mobile-account-history-tab" type="button" role="tab" aria-controls="mobile-account-history-panel" aria-selected={activeTab === "history"} tabIndex={activeTab === "history" ? 0 : -1} className={activeTab === "history" ? styles.mobileActivityTabActive : ""} onClick={() => setActiveTab("history")} onKeyDown={handleTabKeyDown}>
-      Riwayat
+      <FiActivity className={styles.mobileActivityTabIcon} aria-hidden="true" /><span>Riwayat</span>
     </button>
     <button ref={chartTabRef} id="mobile-account-chart-tab" type="button" role="tab" aria-controls="mobile-account-chart-panel" aria-selected={activeTab === "chart"} tabIndex={activeTab === "chart" ? 0 : -1} className={activeTab === "chart" ? styles.mobileActivityTabActive : ""} onClick={() => setActiveTab("chart")} onKeyDown={handleTabKeyDown}>
-      Grafik
+      <FiBarChart2 className={styles.mobileActivityTabIcon} aria-hidden="true" /><span>Grafik</span>
     </button>
   </div>
 );
@@ -145,7 +133,7 @@ const MobileActivityTabs = ({ activeTab, chartTabRef, handleTabKeyDown, historyT
 const MobileTransactionItem = ({ accountLookup, categoryLookup, item, selectedAccountId }) => {
   const category = categoryLookup[item.category_id];
   const Icon = transactionCategoryIcon(category, item.transaction_type);
-  const direction = transactionDirection(item, selectedAccountId);
+  const direction = accountTransactionDirection(item, selectedAccountId);
   const inactive = Boolean(item.status && item.status !== "active");
   let counterparty = category?.name || TRANSACTION_LABELS[item.transaction_type] || "Transaksi";
   if (item.transaction_type === "transfer") {
@@ -238,7 +226,7 @@ const MobileChartPanel = ({ currentPeriod, onViewTransactions, selectedAccount, 
   );
 };
 
-const MobileAccountActivity = ({ selectedAccount, bootstrap, onViewTransactions }) => {
+const MobileAccountActivity = ({ selectedAccount, bootstrap, onTransferSaved, onViewTransactions }) => {
   const mobileEnabled = useMobileAccountActivityEnabled();
   const currentPeriod = currentMonthInJakarta();
   const [activeTab, setActiveTab] = useState("history");
@@ -267,6 +255,7 @@ const MobileAccountActivity = ({ selectedAccount, bootstrap, onViewTransactions 
   if (!selectedAccount) return null;
   return (
     <section className={styles.mobileAccountActivity} aria-label={`Aktivitas rekening ${selectedAccount.name}`}>
+      <MobileAccountTransferAction bootstrap={bootstrap} selectedAccount={selectedAccount} onTransferSaved={onTransferSaved} onViewTransactions={onViewTransactions} />
       <MobileActivityTabs activeTab={activeTab} chartTabRef={chartTabRef} handleTabKeyDown={handleTabKeyDown} historyTabRef={historyTabRef} setActiveTab={setActiveTab} />
       {activeTab === "history"
         ? <MobileHistoryPanel accountLookup={history.accountLookup} categoryLookup={history.categoryLookup} currentPeriod={currentPeriod} historyPeriod={historyPeriod} historyResource={history.historyResource} onViewTransactions={onViewTransactions} selectedAccount={selectedAccount} setHistoryPeriod={setHistoryPeriod} />

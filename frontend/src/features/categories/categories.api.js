@@ -5,4 +5,3 @@ export const updateCategory = (payload, options) => apiClient.request("categorie
 export const previewCategoryArchive = (payload, options) => apiClient.request("categories.previewArchive", payload, options);
 export const deleteUnusedCategory = (payload, options) => apiClient.request("categories.deleteUnused", payload, options);
 export const archiveCategory = (payload, options) => apiClient.request("categories.archive", payload, options);
-export const restoreCategory = (payload, options) => apiClient.request("categories.restore", payload, options);

@@ -440,28 +440,123 @@
     display: block;
   }
 
+  .mobileTransferQuickAction {
+    width: 100%;
+    min-height: 3.9rem;
+    padding: .58rem .72rem;
+    border: 1px solid rgb(255 255 255 / .075);
+    border-radius: 1rem;
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .65rem;
+    background: rgb(255 255 255 / .035);
+    color: #fff;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition:
+      border-color var(--motion-fast) var(--motion-easing),
+      background-color var(--motion-fast) var(--motion-easing),
+      transform var(--motion-fast) var(--motion-easing);
+  }
+
+  .mobileTransferQuickAction:hover:not(:disabled) {
+    border-color: rgb(22 199 132 / .3);
+    background: rgb(255 255 255 / .055);
+  }
+
+  .mobileTransferQuickAction:active:not(:disabled) { transform: scale(.99); }
+
+  .mobileTransferQuickAction:disabled {
+    cursor: not-allowed;
+    opacity: .58;
+  }
+
+  .mobileTransferQuickAction:focus-visible {
+    outline: 3px solid rgb(22 199 132 / .38);
+    outline-offset: 2px;
+  }
+
+  .mobileTransferQuickIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: grid;
+    place-items: center;
+    border-radius: .78rem;
+    background: var(--primary);
+    color: #06110d;
+    box-shadow: 0 .35rem 1rem rgb(22 199 132 / .16);
+  }
+
+  .mobileTransferQuickIcon svg { width: 1.05rem; height: 1.05rem; }
+
+  .mobileTransferQuickCopy {
+    min-width: 0;
+    display: grid;
+    gap: .18rem;
+  }
+
+  .mobileTransferQuickCopy strong,
+  .mobileTransferQuickCopy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobileTransferQuickCopy strong {
+    color: #fff;
+    font-size: .76rem;
+    font-weight: var(--font-weight-bold);
+  }
+
+  .mobileTransferQuickCopy small {
+    color: rgb(255 255 255 / .48);
+    font-size: .6rem;
+    font-weight: var(--font-weight-medium);
+  }
+
+  .mobileTransferQuickChevron {
+    width: 1rem;
+    height: 1rem;
+    color: rgb(255 255 255 / .4);
+  }
+
   .mobileActivityTabs {
     min-width: 0;
-    padding: .2rem;
+    margin-top: .8rem;
+    padding: 0;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .2rem;
-    border: 1px solid rgb(255 255 255 / .07);
-    border-radius: .85rem;
-    background: rgb(255 255 255 / .045);
+    border: 0;
+    border-bottom: 1px solid rgb(255 255 255 / .075);
+    border-radius: 0;
+    background: transparent;
   }
 
   .mobileActivityTabs > button {
-    min-height: 2.55rem;
-    padding: .4rem .75rem;
+    min-height: 2.8rem;
+    padding: .45rem .75rem;
     border: 0;
-    border-radius: .68rem;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
     background: transparent;
-    color: rgb(255 255 255 / .58);
-    font-size: var(--font-size-body-sm);
+    color: rgb(255 255 255 / .48);
+    font-size: .7rem;
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
     touch-action: manipulation;
+    transition: color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
+  }
+
+  .mobileActivityTabIcon {
+    width: .95rem;
+    height: .95rem;
+    color: currentColor;
   }
 
   .mobileActivityTabs > button:hover,
@@ -479,10 +574,13 @@
   }
 
   .mobileActivityTabs > .mobileActivityTabActive {
-    background: #f3f8f6;
-    color: #08120f;
-    box-shadow: 0 .25rem .8rem rgb(0 0 0 / .12);
+    border-bottom-color: var(--primary);
+    background: transparent;
+    color: #fff;
+    box-shadow: none;
   }
+
+  .mobileActivityTabs > .mobileActivityTabActive .mobileActivityTabIcon { color: var(--primary); }
 
   .mobileActivityPanel { min-width: 0; padding-top: 1rem; }
 
@@ -776,6 +874,169 @@
 
   .mobileChartAction svg { width: 1rem; height: 1rem; color: var(--primary); }
 
+  .mobileTransferSuccess {
+    min-width: 0;
+    display: grid;
+    justify-items: center;
+    gap: .8rem;
+    text-align: center;
+  }
+
+  .mobileTransferSuccessVisual {
+    width: 6.25rem;
+    height: 6.25rem;
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  .mobileTransferSuccessRing,
+  .mobileTransferSuccessRingDelayed {
+    position: absolute;
+    inset: .9rem;
+    border: 1px solid color-mix(in srgb, var(--primary) 38%, transparent);
+    border-radius: 50%;
+    opacity: 0;
+    animation: mobile-transfer-ring 1.15s .12s ease-out;
+  }
+
+  .mobileTransferSuccessRingDelayed { animation-delay: .3s; }
+
+  .mobileTransferSuccessCheck {
+    width: 4rem;
+    height: 4rem;
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--on-primary);
+    box-shadow: 0 0 0 .5rem color-mix(in srgb, var(--primary) 10%, transparent);
+    opacity: 0;
+    transform: scale(.5);
+    animation: mobile-transfer-check-pop .55s .16s cubic-bezier(.2, .9, .3, 1.3) forwards;
+  }
+
+  .mobileTransferSuccessCheck svg {
+    width: 2rem;
+    height: 2rem;
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: mobile-transfer-check-draw .42s .48s ease forwards;
+  }
+
+  .mobileTransferSuccessVisual > i {
+    width: .3rem;
+    height: .3rem;
+    position: absolute;
+    border-radius: 50%;
+    background: var(--primary);
+    opacity: 0;
+    animation: mobile-transfer-spark .65s .42s ease-out;
+  }
+
+  .mobileTransferSuccessVisual > i:nth-of-type(1) { top: .35rem; left: 50%; }
+  .mobileTransferSuccessVisual > i:nth-of-type(2) { top: 1.55rem; right: .35rem; animation-delay: .48s; }
+  .mobileTransferSuccessVisual > i:nth-of-type(3) { right: 1rem; bottom: .7rem; animation-delay: .54s; }
+  .mobileTransferSuccessVisual > i:nth-of-type(4) { left: .65rem; bottom: 1rem; animation-delay: .6s; }
+
+  .mobileTransferSuccessCopy {
+    min-width: 0;
+    opacity: 0;
+    transform: translateY(.45rem);
+    animation: mobile-transfer-rise .4s .4s ease forwards;
+  }
+
+  .mobileTransferSuccessCopy small {
+    display: block;
+    color: var(--primary);
+    font-size: .6rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: .1em;
+  }
+
+  .mobileTransferSuccessCopy > strong,
+  .mobileTransferSuccessCopy > strong :global(.money) {
+    display: block;
+    margin-top: .35rem;
+    color: var(--text);
+    font-size: 1.75rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -.04em;
+  }
+
+  .mobileTransferSuccessCopy p {
+    margin: .35rem auto 0;
+    max-width: 18rem;
+    color: var(--text-soft);
+    font-size: .72rem;
+    line-height: 1.5;
+  }
+
+  .mobileTransferSuccessCopy b { color: var(--text); }
+
+  .mobileTransferSuccessRoute {
+    width: 100%;
+    min-width: 0;
+    padding: .8rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1.75rem minmax(0, 1fr);
+    align-items: center;
+    gap: .45rem;
+    border: 1px solid var(--border);
+    border-radius: .9rem;
+    background: var(--surface-soft);
+    opacity: 0;
+    transform: translateY(.45rem);
+    animation: mobile-transfer-rise .4s .55s ease forwards;
+  }
+
+  .mobileTransferSuccessRoute > span { min-width: 0; display: grid; gap: .2rem; text-align: left; }
+  .mobileTransferSuccessRoute > span:last-child { text-align: right; }
+  .mobileTransferSuccessRoute small { color: var(--text-muted); font-size: .58rem; }
+  .mobileTransferSuccessRoute strong { overflow: hidden; color: var(--text); font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+  .mobileTransferSuccessRoute > svg { width: 1rem; height: 1rem; justify-self: center; color: var(--primary); }
+
+  .mobileTransferSuccessStatus {
+    width: 100%;
+    padding-top: .7rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: .65rem;
+    opacity: 0;
+    transform: translateY(.45rem);
+    animation: mobile-transfer-rise .4s .68s ease forwards;
+  }
+
+  .mobileTransferSuccessStatus strong { display: inline-flex; align-items: center; gap: .38rem; color: var(--positive); }
+  .mobileTransferSuccessStatus strong > i { width: .42rem; height: .42rem; border-radius: 50%; background: currentColor; }
+
+  @keyframes mobile-transfer-ring {
+    0% { opacity: .85; transform: scale(.58); }
+    100% { opacity: 0; transform: scale(1.48); }
+  }
+
+  @keyframes mobile-transfer-check-pop {
+    0% { opacity: 0; transform: scale(.5); }
+    72% { opacity: 1; transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes mobile-transfer-check-draw { to { stroke-dashoffset: 0; } }
+
+  @keyframes mobile-transfer-spark {
+    0% { opacity: 0; transform: scale(.3); }
+    38% { opacity: .9; transform: scale(1); }
+    100% { opacity: 0; transform: translateY(-.55rem) scale(.2); }
+  }
+
+  @keyframes mobile-transfer-rise { to { opacity: 1; transform: translateY(0); } }
+
   .mobileDetailContainer {
     min-width: 0;
     scroll-margin-top: calc(var(--topbar-height, 3.5rem) + var(--space-3));
@@ -849,9 +1110,23 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mobileStackCard {
-    scroll-behavior: auto;
+  .mobileStackCard { scroll-behavior: auto; }
+  .mobileActivityTabIcon,
+  .mobileTransferQuickAction,
+  .mobileTransferSuccessCheck,
+  .mobileTransferSuccessCheck svg,
+  .mobileTransferSuccessRing,
+  .mobileTransferSuccessRingDelayed,
+  .mobileTransferSuccessVisual > i,
+  .mobileTransferSuccessCopy,
+  .mobileTransferSuccessRoute,
+  .mobileTransferSuccessStatus {
+    animation: none;
+    transition: none;
   }
+
+  .mobileTransferSuccessCheck { opacity: 1; transform: none; }
+  .mobileTransferSuccessCheck svg { stroke-dashoffset: 0; }
 }
 
 .impactSummary {

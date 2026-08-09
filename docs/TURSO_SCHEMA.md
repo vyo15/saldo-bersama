@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, dan `database/migrations/005_notification_preferences.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, dan `database/migrations/006_account_ewallet_template.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -52,7 +52,8 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - Metadata cancellation harus konsisten dengan status transaksi.
 - Saldo awal negatif hanya diizinkan ketika `allow_negative=1`.
 - `accounts.account_number` kosong untuk data legacy/non-bank atau berisi 6–34 digit; service mewajibkannya untuk rekening bank baru dan menolak karakter selain angka, spasi, atau tanda hubung sebelum normalisasi.
-- `accounts.bank_template` menyimpan template visual kartu secara terpisah dari nama rekening. Nilai rekening bank dibatasi ke `generic`, `bca`, `bni`, `btn`, `mandiri`, atau `permata`; rekening non-bank wajib `generic`.
+- `accounts.bank_template` menyimpan template visual kartu bank secara terpisah dari nama rekening. Nilai rekening bank dibatasi ke `generic`, `bca`, `bni`, `btn`, `mandiri`, atau `permata`; rekening non-bank wajib `generic`.
+- `accounts.ewallet_template` menyimpan provider visual E-wallet secara terpisah dari nama rekening. Nilai rekening E-wallet dibatasi ke `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, atau `linkaja`; rekening non-E-wallet wajib `generic`.
 - Data finansial menggunakan `ON DELETE RESTRICT`.
 - Audit dicegah dari update/delete melalui trigger append-only.
 - Status transaksi normal berubah melalui soft cancel/archive, bukan hard delete.
@@ -81,16 +82,16 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `7`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `8`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
 
-### Migration v7 dan rollback
+### Migration v8 dan rollback
 
 - Sebelum `npm run db:migrate`, buat backup teknis terverifikasi dan catat database target.
-- `005_notification_preferences.sql` bersifat additive. Tabel baru menyimpan hanya preference jenis notifikasi per `user_id`, boolean `enabled`, dan `row_version`; tidak menyimpan endpoint Push, credential, nominal, atau payload finansial.
-- Belum adanya row preference berarti tipe tersebut aktif. Dengan demikian migration tidak mematikan alert pengguna existing.
-- Runtime v7 memfilter alert scheduled sebelum membuat queue. Item yang sudah masuk `notification_queue` sebelum preference dimatikan dapat tetap terkirim satu kali.
-- Backup schema v7 menyertakan `notification_preferences`. Runtime v7 tetap menerima backup schema v3, v4, v5, dan v6; backup lama dinormalisasi dengan preference default aktif sebelum integrity check selesai.
-- Migration v6 `004_notification_deliveries.sql` tetap menjadi dasar retry per perangkat: perangkat `sent` tidak dikirim ulang ketika perangkat lain gagal. Push credential/delivery tetap data operasional dan tidak ikut backup finansial.
-- Bila deployment runtime gagal, gunakan forward-fix v7. Rollback dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan menjatuhkan tabel secara langsung pada database produksi.
+- `006_account_ewallet_template.sql` bersifat additive: menambah `accounts.ewallet_template` dengan default `generic`, enum provider yang dibatasi, dan constraint bahwa provider non-generic hanya valid untuk `account_type='ewallet'`.
+- Migration melakukan backfill hanya pada rekening E-wallet existing untuk provider yang sudah dikenali oleh presentation layer (ShopeePay, DANA, GoPay, OVO, LinkAja). Nama rekening, saldo, ownership, transaksi, dan `bank_template` tidak diubah.
+- Runtime v8 memakai `ewallet_template` sebagai sumber canonical. Deteksi nama hanya dipertahankan untuk object/backup legacy tanpa field tersebut.
+- Backup schema v8 menyertakan `notification_preferences` dan `ewallet_template`. Runtime v8 tetap menerima backup schema v3, v4, v5, v6, dan v7; backup lama dinormalisasi dengan field additive dan preference notifikasi default aktif bila tabel preference belum ada.
+- Migration v7 `005_notification_preferences.sql` tetap menjadi dasar preference tujuh jenis notifikasi per pengguna, sedangkan migration v6 `004_notification_deliveries.sql` tetap menjadi dasar retry Web Push per perangkat.
+- Bila deployment runtime v8 gagal, gunakan forward-fix bila memungkinkan. Rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan menjatuhkan kolom/tabel secara langsung pada database produksi.
 
 Arti dan lifecycle tabel didokumentasikan di `DATA_DICTIONARY.md`; kebijakan perubahan schema berada di `DATABASE_MIGRATION_POLICY.md`.

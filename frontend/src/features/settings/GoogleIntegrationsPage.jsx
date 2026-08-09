@@ -43,19 +43,6 @@ const GoogleIntegrationsPage = () => {
     }
   };
 
-  const handleTile = (provider) => {
-    const readiness = provider === "sheets" ? sheetsReadiness : calendarReadiness;
-    if (!readiness.ready) {
-      setResult({ status: readiness.tone === "danger" ? "danger" : "warning", text: readiness.text });
-      return;
-    }
-    if (!ownerMode) {
-      setResult({ status: "warning", text: "Hanya pemilik yang dapat menjalankan sinkronisasi. Anggota tetap dapat melihat status integrasi." });
-      return;
-    }
-    run(provider === "sheets" ? "mirror.sync" : "calendar.sync");
-  };
-
   return (
     <section className={styles.pageContent} aria-labelledby="google-integrations-title">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
@@ -66,28 +53,32 @@ const GoogleIntegrationsPage = () => {
       </div>
       <SettingsNotice result={result} />
       <div className={styles.serviceGrid}>
-        <button type="button" className={styles.serviceTile} onClick={() => handleTile("sheets")} disabled={Boolean(busyAction)} aria-label="Kelola integrasi Google Sheets">
+        <article className={styles.serviceTile} aria-label="Status integrasi Google Sheets">
           <span className={styles.serviceIcon}><FiFileText aria-hidden="true" /></span>
           <span className={styles.serviceCopy}>
             <h3>Google Sheets</h3>
             <p>Mirror baca. Edit manual tidak mengubah saldo resmi.</p>
             <small>{sheets.lastCompletedAt ? `Berhasil terakhir ${sheets.lastCompletedAt}` : sheets.lastUpdatedAt ? `Aktivitas terakhir ${sheets.lastUpdatedAt}` : "Belum pernah diproses"} · menunggu {sheets.pending} · diproses {sheets.processing} · gagal {sheets.failed} · perlu tindakan {sheets.deadLetter} · selesai {sheets.completed}</small>
+            {!sheetsReadiness.ready ? <small>{sheetsReadiness.text}</small> : null}
           </span>
           <span className={`status-badge status-badge--${sheetsReadiness.tone}`}>{sheetsReadiness.label}</span>
-        </button>
-        <button type="button" className={styles.serviceTile} onClick={() => handleTile("calendar")} disabled={Boolean(busyAction)} aria-label="Kelola integrasi Google Calendar">
+        </article>
+        <article className={styles.serviceTile} aria-label="Status integrasi Google Calendar">
           <span className={styles.serviceIcon}><FiCalendar aria-hidden="true" /></span>
           <span className={styles.serviceCopy}>
             <h3>Google Calendar</h3>
             <p>Pengingat jadwal. Status dibayar tetap berasal dari ledger.</p>
             <small>{calendar.lastCompletedAt ? `Berhasil terakhir ${calendar.lastCompletedAt}` : calendar.lastUpdatedAt ? `Aktivitas terakhir ${calendar.lastUpdatedAt}` : "Belum pernah diproses"} · menunggu {calendar.pending} · diproses {calendar.processing} · gagal {calendar.failed} · perlu tindakan {calendar.deadLetter} · selesai {calendar.completed}</small>
+            {!calendarReadiness.ready ? <small>{calendarReadiness.text}</small> : null}
           </span>
           <span className={`status-badge status-badge--${calendarReadiness.tone}`}>{calendarReadiness.label}</span>
-        </button>
+        </article>
       </div>
-      {ownerMode && sheetsReadiness.ready ? (
+      {ownerMode ? (
         <div className={styles.serviceActions}>
-          <Button type="button" disabled={Boolean(busyAction)} onClick={() => setRebuildOpen(true)}>Bangun ulang mirror Sheets</Button>
+          <Button type="button" disabled={Boolean(busyAction) || !sheetsReadiness.ready} onClick={() => run("mirror.sync")}>Sinkronkan Sheets sekarang</Button>
+          <Button type="button" disabled={Boolean(busyAction) || !calendarReadiness.ready} onClick={() => run("calendar.sync")}>Sinkronkan Calendar sekarang</Button>
+          <Button type="button" disabled={Boolean(busyAction) || !sheetsReadiness.ready} onClick={() => setRebuildOpen(true)}>Bangun ulang mirror Sheets</Button>
         </div>
       ) : null}
       <ConfirmationModal

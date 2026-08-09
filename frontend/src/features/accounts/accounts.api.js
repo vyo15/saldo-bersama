@@ -4,7 +4,6 @@ export const createAccount = (payload, options) => apiClient.request("accounts.c
 export const updateAccount = (payload, options) => apiClient.request("accounts.update", payload, options);
 export const previewAccountLifecycle = (payload, options) => apiClient.request("accounts.previewLifecycle", payload, options);
 export const archiveAccount = (payload, options) => apiClient.request("accounts.archive", payload, options);
-export const restoreAccount = (payload, options) => apiClient.request("accounts.restore", payload, options);
 export const deleteUnusedAccount = (payload, options) => apiClient.request("accounts.deleteUnused", payload, options);
 
 const isValidPeriod = (period) => {

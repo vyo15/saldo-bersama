@@ -20,3 +20,16 @@ test("metode pembayaran tidak diasumsikan ketika detail tambahan belum dipilih",
   assert.match(text, /accountDisplayLabel/);
   assert.equal((text.match(/accountDisplayLabel\(item, \{ includeOwner: false \}\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label tanpa suffix pemilik.");
 });
+
+
+test("quick transfer dapat mengunci jenis, mengisi rekening sumber, dan menyegarkan saldo rekening", async () => {
+  const text = await source();
+  assert.match(text, /initialSourceAccountId = ""/);
+  assert.match(text, /source_account_id: initialSourceAccountId/);
+  assert.match(text, /lockType = false/);
+  assert.match(text, /p\.lockType \? null : <TypeSelector/);
+  assert.match(text, /submitLabel/);
+  assert.match(text, /submittingLabel/);
+  assert.match(text, /notifyOnSuccess = true/);
+  assert.match(text, /"transactions\.list", "accounts\.list", "envelopes\.list", "reports\.monthly", "dashboard\.overview", "app\.initialState"/);
+});

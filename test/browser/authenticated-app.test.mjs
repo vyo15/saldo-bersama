@@ -5,8 +5,6 @@ import { waitFor } from "./helpers/cdp.mjs";
 import { createAuthenticatedGatewayResponses, memberSession, ownerSession } from "./helpers/authenticated-fixture.mjs";
 
 const routeCases = Object.freeze([
-  ["/", "Ringkasan Keuangan"],
-  ["/transaksi", "Transaksi"],
   ["/anggaran", "Anggaran"],
   ["/alokasi", "Alokasi dana"],
   ["/tagihan", "Jadwal rutin"],
@@ -19,6 +17,10 @@ const routeCases = Object.freeze([
 ]);
 
 const secondaryRoutes = new Set(["/anggaran", "/alokasi", "/tagihan", "/target", "/rekening", "/rekonsiliasi", "/kategori", "/pengaturan"]);
+
+const mobileRouteReadySelectors = Object.freeze({
+  "/rekening": '[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]',
+});
 
 const authenticatedFixturePeriod = "2026-08";
 
@@ -59,9 +61,11 @@ const readPageState = (page) => page.evaluate(`(() => {
   };
 })()`);
 
-const navigateAndAssert = async (page, origin, pathname, expectedHeading, { mobile = true } = {}) => {
+const navigateAndAssert = async (page, origin, pathname, expectedHeading, { mobile = true, readySelector = null } = {}) => {
+  page.clearDiagnostics?.();
   await page.send("Page.navigate", { url: `${origin}${pathname}` });
-  await waitForAppRoute(page, pathname, { heading: expectedHeading });
+  const capabilitySelector = readySelector || (mobile ? mobileRouteReadySelectors[pathname] || null : null);
+  await waitForAppRoute(page, pathname, { heading: expectedHeading, readySelector: capabilitySelector });
   const state = await readPageState(page);
   assert.equal(state.pathname, pathname);
   assert.equal(state.heading, expectedHeading, `Heading route ${pathname} harus konsisten.`);
@@ -76,6 +80,19 @@ const navigateAndAssert = async (page, origin, pathname, expectedHeading, { mobi
   }
 };
 
+const assertAuthenticatedRoutePreflight = async (page, origin) => {
+  await navigateAndAssert(page, origin, "/transaksi", "Transaksi", { mobile: true });
+  const transactionState = await page.evaluate(`({
+    period: document.querySelector('input[aria-label="Periode transaksi"]')?.value || "",
+    account: document.querySelector('select[aria-label="Filter rekening"]')?.value || "",
+    creator: document.querySelector('select[aria-label="Filter pencatat"]')?.value || "",
+  })`);
+  assert.equal(transactionState.period, authenticatedFixturePeriod, "Route Transaksi langsung harus memiliki periode fixture yang valid.");
+  assert.equal(transactionState.account, "all", "Route Transaksi langsung tanpa state harus aman dan tidak memaksakan rekening.");
+  assert.equal(transactionState.creator, "all", "Route Transaksi langsung tanpa state harus aman dan tidak memaksakan pencatat.");
+  await navigateAndAssert(page, origin, "/", "Ringkasan Keuangan", { mobile: true });
+};
+
 await test("authenticated owner: seluruh route, dashboard capability, filter, detail, dan privacy tersedia pada mobile serta desktop", { timeout: 90_000 }, async () => {
   let appServer;
   let chromium;
@@ -88,6 +105,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     chromium = await startChromium();
     page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/`, { width: 390, height: 844 });
     await waitForAppRoute(page, "/", { heading: "Ringkasan Keuangan" });
+    await assertAuthenticatedRoutePreflight(page, appServer.origin);
 
     const dashboard = await page.evaluate(`(() => {
       const text = document.body.textContent || "";
@@ -209,7 +227,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.ok(visibleReportPanels >= 7, `Chart laporan mobile harus terlihat, ditemukan ${visibleReportPanels} panel.`);
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
-    assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v7')"), true, "Status backend harus memakai kontrak system.health aktual.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v8')"), true, "Status backend harus memakai kontrak system.health aktual.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Degraded')"), false, "Status backend siap tidak boleh salah ditampilkan sebagai Degraded.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/notifikasi\"]')) && Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), true, "Owner harus memperoleh navigasi internal Pengaturan.");
 
@@ -294,6 +312,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(mobileActivityState.ledger, true, "Aktivitas anggota harus memuat transaksi dari created_by yang sesuai.");
     assert.equal(mobileActivityState.explanation, true, "UI harus menjelaskan bahwa pencatat bukan berarti pihak yang membayar.");
     assert.equal(mobileActivityState.hasOpenAll, true, "Aktivitas anggota harus dapat diteruskan ke ledger transaksi canonical.");
+    page.clearDiagnostics?.();
     await page.evaluate("[...document.querySelectorAll('[role=dialog] button')].find((button) => button.textContent.includes('Lihat semua di halaman Transaksi'))?.click()");
     await waitForAppRoute(page, "/transaksi", { heading: "Transaksi" });
     const memberTransactionFilters = await page.evaluate(`({
@@ -449,6 +468,28 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       "Swipe vertikal pendek harus kembali ke rekening aktif tanpa berpindah.",
     );
 
+    const rerenderTarget = await page.evaluate(`(() => {
+      const cards = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')];
+      const activeIndex = cards.findIndex((item) => item.getAttribute('aria-pressed') === 'true');
+      const target = cards[(activeIndex + 1) % cards.length];
+      if (!target || target === cards[activeIndex]) return null;
+      const label = target.getAttribute('aria-label') || '';
+      target.click();
+      return label.replace(/^Lihat detail rekening\s+/, '');
+    })()`);
+    assert.ok(rerenderTarget, "Fixture harus memiliki rekening lain untuk regression rerender di tengah animasi.");
+    await waitFor(
+      () => page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim() === ${JSON.stringify(rerenderTarget)}`),
+      { description: "rekening target dipilih saat animasi memicu rerender" },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 620));
+    const accountBeforeKeyboardMove = await page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim()`);
+    await page.evaluate(`document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))`);
+    await waitFor(
+      () => page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim() !== ${JSON.stringify(accountBeforeKeyboardMove)}`),
+      { description: "stack rekening tetap dapat bergerak setelah rerender di tengah animasi" },
+    );
+
     assert.equal(await page.evaluate(`document.querySelectorAll('button[aria-label^="Pilih rekening"]').length`), 0, "Pagination carousel lama harus dihapus.");
     await page.evaluate(`(() => {
       const card = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')]
@@ -567,6 +608,26 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       return template?.value === 'bni';
     })()`), { description: "template BNI dipilih" });
     assert.equal(await page.evaluate(`document.querySelector(${JSON.stringify(nameSelector)})?.value`), "VIO", "Mengganti template tidak boleh mengubah nama rekening.");
+    await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      const type = [...dialog.querySelectorAll('label')].find((label) => label.querySelector('span')?.textContent?.trim() === 'Jenis')?.querySelector('select');
+      const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+      setValue.call(type, 'ewallet');
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await waitFor(() => page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      return [...dialog.querySelectorAll('label')].some((label) => label.textContent.includes('Provider E-wallet'));
+    })()`), { description: "provider E-wallet tersedia setelah jenis E-wallet dipilih" });
+    await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      const provider = [...dialog.querySelectorAll('label')].find((label) => label.textContent.includes('Provider E-wallet'))?.querySelector('select');
+      const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+      setValue.call(provider, 'dana');
+      provider.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await waitFor(() => page.evaluate(`Boolean(document.querySelector('[role=dialog] [data-ewallet-template="dana"][data-has-image="true"]'))`), { description: "preview asset DANA realtime" });
+    assert.equal(await page.evaluate(`document.querySelector(${JSON.stringify(nameSelector)})?.value`), "VIO", "Mengganti provider E-wallet tidak boleh mengubah nama rekening.");
     await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
     await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "dialog rekening ditutup" });
 
@@ -662,11 +723,13 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await waitFor(() => page.evaluate("!document.querySelector('.desktop-module-dock__flyout')"), { description: "flyout perencanaan ditutup dari klik luar" });
     await page.evaluate("document.querySelector('button[aria-label=\"Buka menu Perencanaan\"]')?.click()");
     await waitFor(() => page.evaluate(visibleExpression(".desktop-module-dock__flyout")), { description: "flyout perencanaan dibuka untuk navigasi" });
+    page.clearDiagnostics?.();
     await page.evaluate("document.querySelector('.desktop-module-dock__flyout a[href=\"/alokasi\"]')?.click()");
     await waitForAppRoute(page, "/alokasi", { heading: "Alokasi dana" });
     assert.equal(await page.evaluate("document.querySelector('button[aria-label=\"Buka menu Perencanaan\"]')?.classList.contains('is-active') || false"), true, "Parent Perencanaan harus aktif pada child route.");
     await page.evaluate("document.querySelector('button[aria-label=\"Buka menu Data keuangan\"]')?.click()");
     await waitFor(() => page.evaluate(visibleExpression(".desktop-module-dock__flyout")), { description: "flyout data keuangan" });
+    page.clearDiagnostics?.();
     await page.evaluate("document.querySelector('.desktop-module-dock__flyout a[href=\"/rekening\"]')?.click()");
     await waitForAppRoute(page, "/rekening", { heading: "Rekening" });
     assert.equal(await page.evaluate("document.querySelector('button[aria-label=\"Buka menu Data keuangan\"]')?.classList.contains('is-active') || false"), true, "Parent Data keuangan harus aktif pada child route.");
@@ -738,6 +801,7 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
     });
     chromium = await startChromium();
     page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/`, { width: 390, height: 844 });
+    await assertAuthenticatedRoutePreflight(page, appServer.origin);
     for (const [pathname, heading] of routeCases) {
       await navigateAndAssert(page, appServer.origin, pathname, heading, { mobile: true });
     }

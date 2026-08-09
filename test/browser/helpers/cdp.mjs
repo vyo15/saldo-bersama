@@ -8,6 +8,7 @@ export class CdpSession {
     this.nextId = 1;
     this.pending = new Map();
     this.listeners = new Map();
+    this.diagnostics = [];
     this.ready = once(this.socket, "open");
     this.closed = once(this.socket, "close");
     this.socket.addEventListener("message", (event) => {
@@ -55,6 +56,20 @@ export class CdpSession {
       callbacks.delete(callback);
       if (!callbacks.size) this.listeners.delete(method);
     };
+  }
+
+  recordDiagnostic(entry) {
+    if (!entry || typeof entry !== "object") return;
+    this.diagnostics.push(entry);
+    if (this.diagnostics.length > 40) this.diagnostics.splice(0, this.diagnostics.length - 40);
+  }
+
+  getDiagnostics() {
+    return [...this.diagnostics];
+  }
+
+  clearDiagnostics() {
+    this.diagnostics.length = 0;
   }
 
   async evaluate(expression, { awaitPromise = true, returnByValue = true } = {}) {

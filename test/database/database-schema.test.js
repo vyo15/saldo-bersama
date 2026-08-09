@@ -9,9 +9,18 @@ const accountNumberMigrationUrl = new URL("002_account_number.sql", migrationDir
 const bankTemplateMigrationUrl = new URL("003_account_bank_template.sql", migrationDirectory);
 const notificationDeliveriesMigrationUrl = new URL("004_notification_deliveries.sql", migrationDirectory);
 const notificationPreferencesMigrationUrl = new URL("005_notification_preferences.sql", migrationDirectory);
+const ewalletTemplateMigrationUrl = new URL("006_account_ewallet_template.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
+  const sources = await Promise.all(files.map((name) => readFile(new URL(name, migrationDirectory), "utf8")));
+  return sources.join("\n").replaceAll("-- migrate:split", "");
+};
+
+const migrationSqlThrough = async (lastName) => {
+  const files = (await readdir(migrationDirectory))
+    .filter((name) => /^\d+_.+\.sql$/.test(name) && name <= lastName)
+    .sort();
   const sources = await Promise.all(files.map((name) => readFile(new URL(name, migrationDirectory), "utf8")));
   return sources.join("\n").replaceAll("-- migrate:split", "");
 };
@@ -26,7 +35,9 @@ const validateWithSqlite = async () => {
     const accountInsert = "INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     db.prepare(accountInsert).run("a1", "Kas", "cash", "", "shared", null, 100000, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
     db.prepare(accountInsert).run("a2", "Bank", "bank", "1234567890", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
+    db.prepare(accountInsert).run("a3", "DANA Harian", "ewallet", "", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
     db.prepare("UPDATE accounts SET bank_template='bni' WHERE account_id='a2'").run();
+    db.prepare("UPDATE accounts SET ewallet_template='dana' WHERE account_id='a3'").run();
     db.prepare("INSERT INTO categories VALUES(?,?,?,?,?,?,?,?,?,?,?)").run("c1", "Makan", "expense", "variable", "", "active", 1, "u1", now, "u1", now);
 
     const rejected = (statement, args = []) => {
@@ -73,6 +84,9 @@ const validateWithSqlite = async () => {
       invalid_bank_template_rejected: rejected("UPDATE accounts SET bank_template='visa' WHERE account_id='a2'"),
       non_bank_template_rejected: rejected("UPDATE accounts SET bank_template='bca' WHERE account_id='a1'"),
       bank_template_saved: db.prepare("SELECT bank_template FROM accounts WHERE account_id='a2'").get().bank_template === "bni",
+      invalid_ewallet_template_rejected: rejected("UPDATE accounts SET ewallet_template='paypal' WHERE account_id='a3'"),
+      non_ewallet_template_rejected: rejected("UPDATE accounts SET ewallet_template='dana' WHERE account_id='a1'"),
+      ewallet_template_saved: db.prepare("SELECT ewallet_template FROM accounts WHERE account_id='a3'").get().ewallet_template === "dana",
       audit_update_rejected: rejected("UPDATE audit_log SET action='changed' WHERE audit_id='audit1'"),
       audit_delete_rejected: rejected("DELETE FROM audit_log WHERE audit_id='audit1'"),
       second_pending_rejected: rejected(outboxInsert, ["waiting2", "sheets", "upsert", "transaction", "t1", "sheets:upsert:transaction:t1", "{}", "pending", 0, now, null, null, "", "", now, now, null]),
@@ -85,9 +99,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v7 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v8 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "7");
+  assert.equal(result.schema_version, "8");
   assert.ok(result.table_count >= 25);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -95,7 +109,7 @@ test("schema Turso/SQLite v7 dapat dibuat lengkap dan foreign key aktif", async 
 
 test("constraint finansial, audit append-only, dan outbox coalescing ditegakkan database", async () => {
   const result = await validateWithSqlite();
-  for (const key of ["float_rejected", "same_account_rejected", "foreign_key_rejected", "duplicate_idempotency_rejected", "invalid_expense_shape_rejected", "invalid_cancellation_metadata_rejected", "negative_initial_without_permission_rejected", "invalid_account_number_rejected", "non_bank_account_number_rejected", "invalid_bank_template_rejected", "non_bank_template_rejected", "bank_template_saved", "audit_update_rejected", "audit_delete_rejected", "second_pending_rejected", "processing_and_pending_coexist"]) {
+  for (const key of ["float_rejected", "same_account_rejected", "foreign_key_rejected", "duplicate_idempotency_rejected", "invalid_expense_shape_rejected", "invalid_cancellation_metadata_rejected", "negative_initial_without_permission_rejected", "invalid_account_number_rejected", "non_bank_account_number_rejected", "invalid_bank_template_rejected", "non_bank_template_rejected", "bank_template_saved", "invalid_ewallet_template_rejected", "non_ewallet_template_rejected", "ewallet_template_saved", "audit_update_rejected", "audit_delete_rejected", "second_pending_rejected", "processing_and_pending_coexist"]) {
     assert.equal(result[key], true, key);
   }
 });
@@ -159,4 +173,58 @@ test("migration v7 menambah preferensi notifikasi per pengguna tanpa menyimpan p
   assert.match(sql, /recurring_funding_shortage/);
   assert.match(sql, /value = '7'/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+test("migration v8 meng-upgrade database v7 tanpa mengubah nama/saldo dan tanpa false-positive provider", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("005_notification_preferences.sql"));
+    const now = "2026-08-01T15:00:00.000Z";
+    db.prepare("INSERT INTO users VALUES(?,?,?,?,?,?,?,?,?)").run("u1", "firebase-1", "owner@example.com", "Owner", "owner", "active", 1, now, now);
+    const insert = "INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    const rows = [
+      ["w-dana", "DANA Belanja", "ewallet", 125000],
+      ["w-dana-lower", "Dana darurat", "ewallet", 50000],
+      ["w-ovo", "OVO - Harian", "ewallet", 75000],
+      ["w-novotel", "Novotel", "ewallet", 10000],
+      ["w-shopee", "ShopeePay Utama", "ewallet", 0],
+      ["w-gopay", "Go Pay Transport", "ewallet", 0],
+      ["w-linkaja", "Link Aja! Pulsa", "ewallet", 0],
+      ["cash-dana", "DANA Kas", "cash", 90000],
+    ];
+    for (const [id, name, type, balance] of rows) {
+      db.prepare(insert).run(id, name, type, "", "generic", "shared", null, balance, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
+    }
+
+    db.exec((await readFile(ewalletTemplateMigrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+    const provider = (id) => db.prepare("SELECT ewallet_template FROM accounts WHERE account_id=?").get(id).ewallet_template;
+    assert.equal(provider("w-dana"), "dana");
+    assert.equal(provider("w-dana-lower"), "generic");
+    assert.equal(provider("w-ovo"), "ovo");
+    assert.equal(provider("w-novotel"), "generic");
+    assert.equal(provider("w-shopee"), "shopeepay");
+    assert.equal(provider("w-gopay"), "gopay");
+    assert.equal(provider("w-linkaja"), "linkaja");
+    assert.equal(provider("cash-dana"), "generic");
+    const preserved = db.prepare("SELECT name,initial_balance FROM accounts WHERE account_id='w-dana'").get();
+    assert.equal(preserved.name, "DANA Belanja");
+    assert.equal(preserved.initial_balance, 125000);
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "8");
+  } finally {
+    db.close();
+  }
+});
+
+test("migration v8 menyimpan provider E-wallet terpisah dan hanya untuk rekening E-wallet", async () => {
+  const sql = await readFile(ewalletTemplateMigrationUrl, "utf8");
+  const chunks = sql.split(/^\s*-- migrate:split\s*$/m).map((item) => item.trim()).filter(Boolean);
+  assert.equal(chunks.length, 3);
+  assert.match(sql, /ALTER TABLE accounts[\s\S]*ADD COLUMN ewallet_template/);
+  assert.match(sql, /ewallet_template IN \('generic','shopeepay','dana','gopay','ovo','linkaja'\)/);
+  assert.match(sql, /GLOB '\* DANA \*'/);
+  assert.match(sql, /LIKE '% ovo %'/);
+  assert.match(sql, /WHERE account_type = 'ewallet'/);
+  assert.match(sql, /value = '8'/);
+  assert.doesNotMatch(sql, /UPDATE accounts\s+SET name/i);
 });

@@ -169,3 +169,16 @@ export const transactionTone = (type) => type === "expense"
 export const transactionSign = (type) => type === "expense"
   ? "−"
   : ["income", "refund"].includes(type) ? "+" : "";
+
+export const accountTransactionDirection = (item = {}, selectedAccountId = "") => {
+  if (item.status && item.status !== "active") return { prefix: "", tone: "neutral" };
+  if (item.transaction_type !== "transfer") {
+    return {
+      prefix: transactionSign(item.transaction_type),
+      tone: transactionTone(item.transaction_type),
+    };
+  }
+  if (item.source_account_id === selectedAccountId) return { prefix: "−", tone: "negative" };
+  if (item.destination_account_id === selectedAccountId) return { prefix: "+", tone: "positive" };
+  return { prefix: "", tone: "neutral" };
+};

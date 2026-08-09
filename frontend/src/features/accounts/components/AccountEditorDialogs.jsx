@@ -3,7 +3,7 @@ import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { parseRupiah } from "../../../domain/money.js";
-import { BANK_TEMPLATE_OPTIONS } from "../../../shared/presentation/account.js";
+import { BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS } from "../../../shared/presentation/account.js";
 import styles from "../AccountsPage.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";
 
@@ -32,6 +32,7 @@ const buildAccountPreview = ({ accountForm, activeUsers, defaultOwnerUserId, cur
     account_type: accountForm.account_type,
     account_number: accountForm.account_number,
     bank_template: accountForm.account_type === "bank" ? accountForm.bank_template : "generic",
+    ewallet_template: accountForm.account_type === "ewallet" ? accountForm.ewallet_template : "generic",
     owner_scope: accountForm.owner_scope,
     owner_user_id: ownerUserId,
     owner_name: personal ? activeUsers.find((item) => item.user_id === ownerUserId)?.name || currentOwnerLabel : "",
@@ -56,6 +57,14 @@ const BankTemplateField = ({ value, onChange, compact = false }) => (
   </label>
 );
 
+const EwalletProviderField = ({ value, onChange, compact = false }) => (
+  <label className="field form-grid__full">
+    <span>Provider E-wallet</span>
+    <select value={value} onChange={(event) => onChange(event.target.value)}>{EWALLET_PROVIDER_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select>
+    <small>{compact ? "Provider tersimpan terpisah dari nama rekening dan hanya menentukan identitas visual E-wallet." : "Pilih provider agar kartu memakai asset yang sesuai. Provider tidak mengubah nama, saldo, kepemilikan, atau aturan transaksi."}</small>
+  </label>
+);
+
 const OwnerField = ({ activeUsers, value, fallbackLabel, ariaLabel, help, onChange }) => (
   <label className="field">
     <span>Pemilik rekening *</span>
@@ -71,14 +80,20 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm, 
     <label className="field form-grid__full">
       <span>Nama rekening *</span>
       <input ref={createNameInputRef} required maxLength="100" placeholder="Contoh: Tabungan nikah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
-      <small>Gunakan nama sesuai tujuan rekening. Nama bank dipilih terpisah melalui template kartu.</small>
+      <small>{accountForm.account_type === "bank" ? "Gunakan nama sesuai tujuan rekening. Nama bank dipilih terpisah melalui template kartu." : accountForm.account_type === "ewallet" ? "Gunakan nama sesuai tujuan rekening. Provider E-wallet dipilih terpisah." : "Gunakan nama sesuai tujuan rekening."}</small>
     </label>
     {accountForm.account_type === "bank" ? <BankNumberField value={accountForm.account_number} onChange={(accountNumber) => updateAccountForm({ account_number: accountNumber })} /> : null}
     <label className="field">
       <span>Jenis</span>
       <select value={accountForm.account_type} onChange={(event) => {
         const accountType = event.target.value;
-        setAccountForm((current) => ({ ...current, account_type: accountType, account_number: accountType === "bank" ? current.account_number : "", bank_template: accountType === "bank" ? current.bank_template : "generic" }));
+        setAccountForm((current) => ({
+          ...current,
+          account_type: accountType,
+          account_number: accountType === "bank" ? current.account_number : "",
+          bank_template: accountType === "bank" ? current.bank_template : "generic",
+          ewallet_template: accountType === "ewallet" ? current.ewallet_template : "generic",
+        }));
       }}>
         {ACCOUNT_TYPE_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
@@ -108,6 +123,7 @@ const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, c
       />
     ) : null}
     {accountForm.account_type === "bank" ? <BankTemplateField value={accountForm.bank_template} onChange={(bankTemplate) => updateAccountForm({ bank_template: bankTemplate })} /> : null}
+    {accountForm.account_type === "ewallet" ? <EwalletProviderField value={accountForm.ewallet_template} onChange={(ewalletTemplate) => updateAccountForm({ ewallet_template: ewalletTemplate })} /> : null}
     <MoneyInput id="initial-balance" label="Saldo awal" value={accountForm.initial_balance} onChange={(value) => updateAccountForm({ initial_balance: value })} />
     <label className="field"><span>Tanggal saldo awal</span><input type="date" value={accountForm.initial_balance_date} onChange={(event) => updateAccountForm({ initial_balance_date: event.target.value })} /></label>
     <label className="checkbox-field form-grid__full"><input type="checkbox" checked={accountForm.allow_negative} onChange={(event) => updateAccountForm({ allow_negative: event.target.checked })} /><span>Izinkan saldo negatif</span></label>
@@ -125,7 +141,7 @@ const CreateAccountForm = (props) => (
 const CreateAccountModal = ({ open, onClose, submitting, accountPreview, accountForm, createNameInputRef, formProps }) => (
   <Modal open={open} onClose={onClose} title="Tambah rekening" description="Isi identitas rekening dan saldo awal. Nomor rekening tidak pernah diperlakukan sebagai nomor kartu debit." size="lg" initialFocusRef={createNameInputRef} footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting}>Simpan rekening</Button></>}>
     <div className={styles.createAccountLayout}>
-      <AccountFinancialCard account={accountPreview} variant="preview" templateOverride={accountForm.account_type === "bank" ? accountForm.bank_template : "generic"} />
+      <AccountFinancialCard account={accountPreview} variant="preview" templateOverride={accountForm.account_type === "bank" ? accountForm.bank_template : accountForm.account_type === "ewallet" ? accountForm.ewallet_template : "generic"} />
       <CreateAccountForm {...formProps} />
     </div>
   </Modal>
@@ -139,6 +155,11 @@ const EditBankFields = ({ editAccount, updateEditAccount }) => {
   </>;
 };
 
+const EditEwalletFields = ({ editAccount, updateEditAccount }) => {
+  if (editAccount?.account_type !== "ewallet") return null;
+  return <EwalletProviderField compact value={editAccount?.ewallet_template || "generic"} onChange={(ewalletTemplate) => updateEditAccount({ ewallet_template: ewalletTemplate })} />;
+};
+
 const EditOwnerField = ({ editAccount, activeUsers, defaultOwnerUserId, currentOwnerLabel, updateEditAccount }) => {
   if (editAccount?.owner_scope !== "personal") return null;
   const help = activeUsers.length ? "Kepemilikan hanya dapat dipindahkan bila rekening belum memiliki data terkait." : "Daftar anggota belum dapat dimuat. Pemilik rekening saat ini dipertahankan.";
@@ -149,6 +170,7 @@ const EditAccountFields = ({ editAccount, updateEditAccount, setEditAccount, act
   <>
     <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" value={editAccount?.name || ""} onChange={(event) => updateEditAccount({ name: event.target.value })} /></label>
     <EditBankFields editAccount={editAccount} updateEditAccount={updateEditAccount} />
+    <EditEwalletFields editAccount={editAccount} updateEditAccount={updateEditAccount} />
     <label className="field">
       <span>Kepemilikan</span>
       <select value={editAccount?.owner_scope || "shared"} onChange={(event) => {

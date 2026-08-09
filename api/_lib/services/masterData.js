@@ -5,6 +5,7 @@ import { nextVersionStamp } from "./versioning.js";
 
 const ACCOUNT_TYPES = new Set(["cash", "bank", "ewallet", "savings", "emergency_fund", "sinking_fund", "investment", "other"]);
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
+const EWALLET_TEMPLATES = new Set(["generic", "shopeepay", "dana", "gopay", "ovo", "linkaja"]);
 const CATEGORY_TYPES = new Set(["income", "expense", "refund"]);
 const CATEGORY_NATURES = new Set(["fixed", "variable", "unexpected", "discretionary", "emergency", "savings", "other"]);
 const CURRENT_EXPENSE_CATEGORY_NATURES = new Set(["fixed", "variable", "unexpected", "discretionary", "emergency", "other"]);
@@ -32,6 +33,13 @@ const normalizeBankTemplate = (value, accountType) => {
   if (!BANK_TEMPLATES.has(template)) throw appError("INVALID_BANK_TEMPLATE", "Template kartu bank tidak valid.", 400);
   if (accountType !== "bank" && template !== "generic") throw appError("BANK_TEMPLATE_BANK_ONLY", "Template kartu hanya dapat dipakai untuk rekening bank.", 400);
   return accountType === "bank" ? template : "generic";
+};
+
+const normalizeEwalletTemplate = (value, accountType) => {
+  const template = sanitizeText(value, 24).toLowerCase() || "generic";
+  if (!EWALLET_TEMPLATES.has(template)) throw appError("INVALID_EWALLET_TEMPLATE", "Provider E-wallet tidak valid.", 400);
+  if (accountType !== "ewallet" && template !== "generic") throw appError("EWALLET_TEMPLATE_EWALLET_ONLY", "Provider E-wallet hanya dapat dipakai untuk rekening E-wallet.", 400);
+  return accountType === "ewallet" ? template : "generic";
 };
 
 const normalizeAccountNumber = (value, accountType, { required = false } = {}) => {
@@ -140,10 +148,9 @@ export const listAccounts = async (db, context) => ({ items: await visibleAccoun
 
 export const listArchivedData = async (db, context) => {
   assertOwner(context.actor);
-  const [allAccounts, categories, users, envelopeRules, goals, recurringRules, budgets] = await Promise.all([
+  const [allAccounts, categories, envelopeRules, goals, recurringRules, budgets] = await Promise.all([
     visibleAccounts(db, context.actor, { includeArchived: true }),
     db.all("SELECT * FROM categories WHERE status='archived' ORDER BY updated_at DESC,name COLLATE NOCASE"),
-    db.all("SELECT user_id,email,name,role,status,row_version,created_at,updated_at FROM users WHERE status='inactive' ORDER BY updated_at DESC,email"),
     db.all("SELECT r.*,a.name AS source_account_name,a.status AS source_account_status FROM envelope_rules r LEFT JOIN accounts a ON a.account_id=r.source_account_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50"),
     db.all("SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE g.status='archived' ORDER BY g.updated_at DESC LIMIT 50"),
     db.all("SELECT r.*,a.name AS account_name,a.status AS account_status,c.name AS category_name,c.status AS category_status FROM recurring_rules r JOIN accounts a ON a.account_id=r.default_account_id JOIN categories c ON c.category_id=r.category_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50"),
@@ -152,7 +159,6 @@ export const listArchivedData = async (db, context) => {
   return {
     accounts: allAccounts.filter((item) => item.status === "archived"),
     categories: categories.map((row) => publicRow(row)),
-    users: users.map((row) => publicRow(row)),
     envelopeRules: envelopeRules.map((row) => publicRow(row)),
     goals: goals.map((row) => publicRow(row)),
     recurringRules: recurringRules.map((row) => publicRow(row, ["auto_debit"])),
@@ -171,6 +177,7 @@ const buildUpdatedAccount = (current, payload, owned, actorUserId) => {
   const rawName = payload.name === undefined ? current.name : payload.name;
   const rawAccountNumber = payload.account_number === undefined ? current.account_number : payload.account_number;
   const rawBankTemplate = payload.bank_template === undefined ? current.bank_template : payload.bank_template;
+  const rawEwalletTemplate = payload.ewallet_template === undefined ? current.ewallet_template : payload.ewallet_template;
   const allowNegative = payload.allow_negative === undefined
     ? current.allow_negative
     : (strictBoolean(payload.allow_negative) ? 1 : 0);
@@ -182,6 +189,7 @@ const buildUpdatedAccount = (current, payload, owned, actorUserId) => {
       ? String(rawAccountNumber || "")
       : normalizeAccountNumber(rawAccountNumber, nextAccountType, { required: nextAccountType === "bank" }),
     bank_template: normalizeBankTemplate(rawBankTemplate, nextAccountType),
+    ewallet_template: normalizeEwalletTemplate(rawEwalletTemplate, nextAccountType),
     owner_scope: owned.scope,
     owner_user_id: owned.owner_user_id,
     allow_negative: allowNegative,
@@ -254,16 +262,17 @@ export const createAccount = async (db, context) => {
   const initialDate = dateValue(payload.initial_balance_date || context.today, "Tanggal saldo awal");
   const accountNumber = normalizeAccountNumber(payload.account_number, type, { required: type === "bank" });
   const bankTemplate = normalizeBankTemplate(payload.bank_template, type);
+  const ewalletTemplate = normalizeEwalletTemplate(payload.ewallet_template, type);
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [name, owned.scope, owned.owner_user_id]);
   if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);
   const timestamp = nowIso();
   const record = {
-    account_id: uuid(), name, account_type: type, account_number: accountNumber, bank_template: bankTemplate, owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
+    account_id: uuid(), name, account_type: type, account_number: accountNumber, bank_template: bankTemplate, ewallet_template: ewalletTemplate, owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
     initial_balance: initialBalance, initial_balance_date: initialDate, allow_negative: allowNegative ? 1 : 0,
     status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp,
   };
-  await db.execute(`INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await db.execute(`INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   await appendAudit(db, context, { entityType: "account", entityId: record.account_id, next: accountAuditRow(record) });
   await context.enqueueMirror?.(db, "account", record.account_id);
   return publicRow(record, ["allow_negative"]);
@@ -275,6 +284,9 @@ export const updateAccount = async (db, context) => {
   const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? payload.row_version);
+  if (payload.account_type !== undefined && String(payload.account_type) !== current.account_type) {
+    throw appError("ACCOUNT_TYPE_IMMUTABLE", "Jenis rekening tidak dapat diubah setelah rekening dibuat.", 409);
+  }
   const owned = await normalizeOwnedScope(
     db,
     context.actor,
@@ -291,8 +303,8 @@ export const updateAccount = async (db, context) => {
   }
   const next = buildUpdatedAccount(current, payload, owned, context.actor.user_id);
   await assertAccountUpdateValid(db, current, next);
-  const result = await db.execute(`UPDATE accounts SET name=?,account_type=?,account_number=?,bank_template=?,owner_scope=?,owner_user_id=?,allow_negative=?,row_version=?,updated_by=?,updated_at=?
-    WHERE account_id=? AND row_version=?`, [next.name,next.account_type,next.account_number,next.bank_template,next.owner_scope,next.owner_user_id,next.allow_negative,next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
+  const result = await db.execute(`UPDATE accounts SET name=?,account_type=?,account_number=?,bank_template=?,ewallet_template=?,owner_scope=?,owner_user_id=?,allow_negative=?,row_version=?,updated_by=?,updated_at=?
+    WHERE account_id=? AND row_version=?`, [next.name,next.account_type,next.account_number,next.bank_template,next.ewallet_template,next.owner_scope,next.owner_user_id,next.allow_negative,next.row_version,next.updated_by,next.updated_at,current.account_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Rekening berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "account", entityId: current.account_id, previous: accountAuditRow(current), next: accountAuditRow(next) });
   await context.enqueueMirror?.(db, "account", current.account_id);

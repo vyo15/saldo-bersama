@@ -55,6 +55,11 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.match(integrations, /gagal \{sheets\.failed\}/);
   assert.match(integrations, /perlu tindakan \{sheets\.deadLetter\}/);
   assert.doesNotMatch(integrations, /antrean \{sheets\.pending\}/);
+  assert.match(integrations, /<article className=\{styles\.serviceTile\} aria-label="Status integrasi Google Sheets">/);
+  assert.match(integrations, /<article className=\{styles\.serviceTile\} aria-label="Status integrasi Google Calendar">/);
+  assert.match(integrations, />Sinkronkan Sheets sekarang<\/Button>/);
+  assert.match(integrations, />Sinkronkan Calendar sekarang<\/Button>/);
+  assert.doesNotMatch(integrations, /handleTile|onClick=\{\(\) => run\(provider/);
   assert.match(presentation, /integrationProviderPresentation/);
   assert.match(presentation, /Trigger belum siap/);
   assert.match(presentation, /health check belum dapat dijangkau/);
