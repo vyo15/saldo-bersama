@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -12,6 +13,7 @@ import {
   PRODUCTION_SYNC_ENV_KEYS,
   WEB_PUSH_ENV_KEYS,
 } from "../../scripts/runtime-environment.mjs";
+import { TEAM_CODES, TASK_STATUSES, validateTaskRelationships, validateTaskRepository } from "../../scripts/validate-task.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (relative) => readFileSync(path.join(root, relative), "utf8");
@@ -28,7 +30,8 @@ const requiredFiles = [
   "docs/INDEX.md",
   "docs/DOCUMENT_LIFECYCLE.md",
   "docs/PROJECT_STATUS.md",
-  "docs/PROJECT_HANDOFF.md",
+  "docs/WORKFLOW.md",
+  "docs/tasks/README.md",
   "docs/ARCHITECTURE.md",
   "docs/ENVIRONMENT_VARIABLES.md",
   "docs/TURSO_SCHEMA.md",
@@ -62,7 +65,9 @@ const requiredFiles = [
   "docs/rfc/0014-category-hierarchy-and-goal-stages.md",
   "docs/rfc/0015-granular-personal-privacy.md",
   "docs/rfc/0016-partner-planning-permissions.md",
-  "docs/templates/TASK_HANDOFF_TEMPLATE.md",
+  "docs/templates/TASK_TEMPLATE.md",
+  "scripts/validate-task.mjs",
+  "scripts/list-tasks.mjs",
 ];
 
 const quotedStrings = (source) => [...source.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
@@ -92,21 +97,29 @@ test("README, AGENTS, and documentation index contain no broken local Markdown r
   }
 });
 
-test("README and agent instructions point to canonical handoff", () => {
+test("README and agent instructions point to canonical workflow and task registry", () => {
   const readme = read("README.md");
   const agents = read("AGENTS.md");
-  ["AGENTS.md", "docs/PROJECT_STATUS.md", "docs/PROJECT_HANDOFF.md", "docs/INDEX.md"]
+  ["AGENTS.md", "docs/WORKFLOW.md", "docs/PROJECT_STATUS.md", "docs/tasks/README.md", "docs/INDEX.md"]
     .forEach((reference) => assert.match(readme, new RegExp(escapeRegExp(reference))));
-  ["docs/PROJECT_STATUS.md", "docs/PROJECT_HANDOFF.md", "CHANGELOG.md"]
+  ["docs/WORKFLOW.md", "docs/PROJECT_STATUS.md", "docs/tasks/README.md", "npm run task:check", "npm run task:list"]
     .forEach((reference) => assert.match(agents, new RegExp(escapeRegExp(reference))));
 });
 
-test("documentation index exposes product boundaries, roadmap, and task handoff template", () => {
+test("legacy global handoff and team ownership files are retired", () => {
+  assert.equal(exists("docs/PROJECT_HANDOFF.md"), false);
+  assert.equal(exists("docs/TEAM_OWNERSHIP.md"), false);
+  assert.equal(exists("docs/templates/TASK_HANDOFF_TEMPLATE.md"), false);
+});
+
+test("documentation index exposes product boundaries, roadmap, and task workflow", () => {
   const index = read("docs/INDEX.md");
   for (const reference of [
     "product/OUT_OF_SCOPE.md",
     "product/ROADMAP.md",
-    "templates/TASK_HANDOFF_TEMPLATE.md",
+    "WORKFLOW.md",
+    "tasks/README.md",
+    "templates/TASK_TEMPLATE.md",
     "UI_DESIGN_SYSTEM.md",
   ]) assert.match(index, new RegExp(escapeRegExp(reference)));
 });
@@ -114,6 +127,98 @@ test("documentation index exposes product boundaries, roadmap, and task handoff 
 test("contribution policy and Git workflow cross-reference each other", () => {
   assert.match(read("CONTRIBUTING.md"), /docs\/GIT_WORKFLOW\.md/);
   assert.match(read("docs/GIT_WORKFLOW.md"), /\.\.\/CONTRIBUTING\.md/);
+});
+
+test("multi-team workflow and task registry use one canonical vocabulary", () => {
+  assert.deepEqual(TEAM_CODES, ["COORD", "UIUX", "FE", "BE", "DB", "QA"]);
+  assert.deepEqual(TASK_STATUSES, [
+    "DRAFT",
+    "READY",
+    "APPROVED",
+    "IN_PROGRESS",
+    "ON_HOLD",
+    "READY_FOR_QA",
+    "READY_FOR_MERGE",
+    "DONE",
+  ]);
+  const workflow = read("docs/WORKFLOW.md");
+  const template = read("docs/templates/TASK_TEMPLATE.md");
+  TEAM_CODES.forEach((team) => assert.match(workflow, new RegExp(`\`${team}\``)));
+  TASK_STATUSES.forEach((status) => assert.match(workflow, new RegExp(status)));
+  assert.match(template, /\| Status \| `DRAFT` \|/);
+  assert.match(template, /\| Primary Team \| `COORD` \|/);
+  for (const field of ["Task ID", "Primary Team", "Depends On", "Write Scope", "Resume From", "Guard Approval"]) {
+    assert.match(template, new RegExp(escapeRegExp(field)));
+  }
+  const { errors } = validateTaskRepository();
+  assert.deepEqual(errors, [], errors.join("\n"));
+});
+
+test("task relationship guard rejects unresolved, cycle, WIP, and overlapping parallel scope", () => {
+  const makeTask = (overrides) => ({
+    id: "SB-901",
+    relative: "docs/tasks/active/SB-901.md",
+    status: "IN_PROGRESS",
+    team: "FE",
+    dependsOn: [],
+    related: [],
+    parent: "NONE",
+    requiredForParent: "NO",
+    writeScope: ["frontend/src/features/login/**"],
+    ...overrides,
+  });
+  const buildRegistry = (tasks) => ({
+    active: tasks,
+    archive: [],
+    all: tasks,
+    byId: new Map(tasks.map((task) => [task.id, task])),
+  });
+
+  const unresolved = [
+    makeTask({ id: "SB-901", status: "READY", team: "BE", writeScope: ["api/**"] }),
+    makeTask({ id: "SB-902", status: "APPROVED", dependsOn: ["SB-901"] }),
+  ];
+  assert.match(validateTaskRelationships(buildRegistry(unresolved)).join("\n"), /dependency unresolved/);
+
+  const cycle = [
+    makeTask({ id: "SB-903", status: "ON_HOLD", dependsOn: ["SB-904"] }),
+    makeTask({ id: "SB-904", status: "ON_HOLD", team: "BE", writeScope: ["api/**"], dependsOn: ["SB-903"] }),
+  ];
+  assert.match(validateTaskRelationships(buildRegistry(cycle)).join("\n"), /Dependency cycle/);
+
+  const wip = [
+    makeTask({ id: "SB-905" }),
+    makeTask({ id: "SB-906", writeScope: ["frontend/src/features/accounts/**"] }),
+  ];
+  assert.match(validateTaskRelationships(buildRegistry(wip)).join("\n"), /WIP limit/);
+
+  const overlap = [
+    makeTask({ id: "SB-907", team: "UIUX", writeScope: ["frontend/src/features/login/**"] }),
+    makeTask({ id: "SB-908", team: "FE", writeScope: ["frontend/src/features/login/LoginPage.jsx"] }),
+  ];
+  assert.match(validateTaskRelationships(buildRegistry(overlap)).join("\n"), /Write Scope overlap/);
+});
+
+test("task tooling fails closed for an unregistered branch and renders derived queue", () => {
+  const invalid = spawnSync(process.execPath, ["scripts/validate-task.mjs"], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, TASK_BRANCH: "fix/SB-999-unregistered" },
+  });
+  assert.notEqual(invalid.status, 0);
+  assert.match(`${invalid.stdout}\n${invalid.stderr}`, /tidak memiliki task card aktif SB-999/);
+
+  const list = spawnSync(process.execPath, ["scripts/list-tasks.mjs"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(list.status, 0, list.stderr);
+  assert.match(list.stdout, /SALDO BERSAMA TASK QUEUE/);
+  assert.match(list.stdout, /AVAILABLE NOW/);
+  assert.match(list.stdout, /RESUME REVIEW/);
+  assert.match(list.stdout, /READY FOR QA/);
+  assert.match(list.stdout, /READY FOR MERGE/);
+  assert.match(list.stdout, /RECOMMENDED NEXT/);
 });
 
 test("every canonical action is documented in API and authorization contracts", () => {
@@ -230,10 +335,11 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
-test("project status records active schema version and guarded shared database decision", () => {
+test("project status is a current-state snapshot with schema v7 and shared database guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
-  assert.match(status, /Schema canonical naik \*\*v6 -> v7\*\*/);
-  assert.match(status, /Runtime lokal dan Vercel Production memakai satu database Turso/);
+  assert.match(status, /Active schema contract:\*\* v7/);
+  assert.match(status, /Runtime lokal dan Vercel Production dirancang memakai database Turso bersama/);
+  assert.match(status, /tidak lagi menjadi jurnal task/i);
 });
 
 

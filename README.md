@@ -7,12 +7,13 @@ Aplikasi keuangan privat untuk dua akun Google, dipakai dari ponsel, tablet, dan
 Baca berurutan:
 
 1. `AGENTS.md`
-2. `docs/PROJECT_STATUS.md`
-3. `docs/PROJECT_HANDOFF.md`
-4. `docs/INDEX.md`
-5. Source dan test aktual pada area task
+2. `docs/WORKFLOW.md`
+3. `docs/PROJECT_STATUS.md`
+4. `docs/tasks/README.md` dan task card `docs/tasks/active/` (file sesuai Task ID) bila ada
+5. `docs/INDEX.md`
+6. Source dan test aktual pada area task
 
-Jangan menggunakan chat/memory sebagai source of truth ketika repository tersedia.
+Gunakan `npm run task:list` untuk melihat pekerjaan aktif/dependency dan `npm run task:check` sebelum patch. Jangan menggunakan nama chat atau memory sebagai source of truth ketika repository tersedia.
 
 ## Stack
 

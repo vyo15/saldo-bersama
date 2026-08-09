@@ -20,3 +20,12 @@ scripts/clean-development-dependencies.mjs @vyo15
 .github/workflows/ @vyo15
 docs/adr/ @vyo15
 docs/rfc/ @vyo15
+
+# Shared governance / human-error guards.
+AGENTS.md @vyo15
+CONTRIBUTING.md @vyo15
+docs/WORKFLOW.md @vyo15
+docs/tasks/ @vyo15
+scripts/validate-task.mjs @vyo15
+scripts/list-tasks.mjs @vyo15
+.github/PULL_REQUEST_TEMPLATE.md @vyo15
