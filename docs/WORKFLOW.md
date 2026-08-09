@@ -329,6 +329,8 @@ QA memakai acceptance criteria task, bukan hanya status build. Jika QA gagal, ta
 
 `READY_FOR_MERGE` membutuhkan scope check, test wajib, task validator, guarded approval, source freshness, dan tidak ada dependency unresolved.
 
+Untuk branch task canonical, push menjalankan workflow `Quality` dengan token read-only. Hanya setelah Quality PASS, workflow `Task Submit` dari default branch boleh memproses `workflow_run`. Workflow privileged tersebut dilarang checkout atau mengeksekusi kode branch; metadata task dibaca sebagai data dari exact tested SHA melalui GitHub API. Sebelum create/merge PR, privileged workflow harus membaca guarded-path registry canonical dari `main`, menolak mismatch `Guarded`, dan memastikan branch head, base `main`, serta PR head tetap sama dengan snapshot yang divalidasi. Auto-merge hanya boleh untuk `Guarded=NO` dengan risk `LOW`/`MEDIUM`; guarded atau `HIGH`/`CRITICAL` selalu menunggu approval/merge manual. Repository rules tetap authoritative dan kegagalan permission/check/freshness/merge harus fail-closed tanpa mengubah `main`. Evidence QA/integration berada pada PR/Actions sampai COORD melakukan post-merge reconciliation dan close task.
+
 `DONE` berarti perubahan sudah terintegrasi, diverifikasi, dan task card dipindahkan ke archive. Coding selesai saja belum cukup.
 
 ## Shared critical dan guarded areas

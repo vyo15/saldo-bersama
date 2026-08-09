@@ -3,7 +3,15 @@ name: Quality
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'feat/SB-*'
+      - 'fix/SB-*'
+      - 'security/SB-*'
+      - 'perf/SB-*'
+      - 'docs/SB-*'
+      - 'test/SB-*'
+      - 'chore/SB-*'
 
 permissions:
   contents: read
@@ -23,6 +31,8 @@ jobs:
       - run: npm ci
       - name: Run project checks
         env:
+          TASK_BRANCH: ${{ github.event_name == 'push' && github.ref_name != 'main' && github.ref_name || '' }}
+          TASK_BASE_REF: ${{ github.event_name == 'push' && github.ref_name != 'main' && 'origin/main' || '' }}
           VITE_GOOGLE_CLIENT_ID: ci-browser-smoke.apps.googleusercontent.com
           VITE_FIREBASE_API_KEY: ci-browser-smoke-public-key
         run: npm run check

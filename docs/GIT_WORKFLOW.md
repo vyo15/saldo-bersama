@@ -18,6 +18,32 @@ chore/SB-123-nama-maintenance
 
 Jangan bekerja langsung di `main`.
 
+
+## Alur harian user sederhana
+
+Setelah agent/engineer menyelesaikan patch dan menandai task minimal `READY_FOR_QA`, user tidak perlu mengulang quality command secara manual. Dari branch task cukup:
+
+```bash
+git add -A
+git commit -m "fix(SB-123): describe the change"
+git push -u origin HEAD
+```
+
+Push ke branch canonical langsung menjalankan `Quality` dengan permission read-only. Setelah Quality PASS, workflow `Task Submit` yang canonical-nya berada di `main` menerima event `workflow_run`, tidak checkout atau mengeksekusi kode branch, membaca metadata task pada SHA yang diuji melalui GitHub API, lalu membuat/reuse PR. Sebelum merge, workflow membaca registry guarded canonical dari `main`, membandingkannya dengan changed files, lalu memverifikasi SHA branch, SHA `main`, dan PR head tetap sama dengan snapshot yang divalidasi. Task non-guarded berisiko `LOW`/`MEDIUM` dicoba merge otomatis hanya bila repository rules mengizinkan; guarded atau risk `HIGH`/`CRITICAL` selalu berhenti pada PR untuk approval/merge manual. COORD merekonsiliasi task card saat post-merge close.
+
+Setelah PR benar-benar merged, sinkronkan laptop:
+
+```bash
+git switch main
+git pull origin main
+```
+
+`push` berarti laptop -> GitHub. `pull` berarti GitHub -> laptop. Local task branch boleh dibersihkan kemudian; keberadaannya tidak mengubah `main`.
+
+Repository harus mengizinkan `GITHUB_TOKEN` membuat/mengelola pull request sesuai policy organisasi/repository. Jika permission atau repository rule menolak create/merge, workflow gagal tertutup dan `main` tidak diubah.
+
+Saat pertama kali memasang `Task Submit`, workflow tersebut belum bisa memproses branch pemasangannya sendiri karena canonical workflow harus sudah tersedia di default branch. Task bootstrap itu dibuat PR dan di-merge manual satu kali; automation berlaku mulai task berikutnya setelah workflow ada di `main`.
+
 ## Mulai task
 
 Pastikan task card `docs/tasks/active/SB-123.md` sudah dibuat dan plan sudah disetujui sebelum coding.
@@ -109,9 +135,9 @@ git commit -m "fix(SB-123): describe the change"
 git push -u origin fix/SB-123-nama-bug
 ```
 
-Buat PR ke `main`, isi Task ID/Primary Team, tunggu code owner approval, quality gate, preview/smoke test yang relevan, dan resolve seluruh conversation. Direct push atau force push ke `main` harus dilarang melalui repository ruleset.
+Untuk branch canonical, `git push -u origin HEAD` adalah trigger submit. Workflow `Quality` berjalan read-only pada push branch task; setelah PASS, `Task Submit` dari `main` membuat/reuse PR tanpa menjalankan kode branch pada token write. Repository rules tetap authoritative. Guarded/HIGH/CRITICAL tidak pernah auto-merge; task non-guarded LOW/MEDIUM hanya dicoba auto-merge setelah quality PASS. Direct push atau force push ke `main` harus dilarang melalui repository ruleset.
 
-GitHub Actions memakai full history untuk menghitung scope diff terhadap base branch. `npm run task:check` harus lulus sebelum merge.
+GitHub Actions memakai full history untuk menghitung scope diff terhadap base branch. `npm run task:check` tetap wajib lulus sebagai gate server-side walaupun user tidak perlu menjalankannya lagi secara manual sebelum setiap push.
 
 ## Handoff dan close
 
