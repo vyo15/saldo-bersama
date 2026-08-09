@@ -223,6 +223,27 @@ test("useApiResource memperlakukan idle enabled sebagai initial loading agar hal
   assert.match(source, /return \{[\s\S]*status,[\s\S]*isRefreshing: status === "refreshing"/);
 });
 
+
+test("resource aktif berlangganan invalidation action agar mutation global tidak meninggalkan state stale", async () => {
+  const source = await readFile(new URL("../src/hooks/useApiResource.js", import.meta.url), "utf8");
+  assert.match(source, /subscribeToInvalidation\(action/);
+  assert.match(source, /load\(\{ force: true \}\)\.catch/);
+
+  const { apiClient, subscribeToInvalidation } = await import("../src/services/api/client.js");
+  apiClient.clearCache();
+  let transactions = 0;
+  let accounts = 0;
+  const unsubscribeTransactions = subscribeToInvalidation("transactions.list", () => { transactions += 1; });
+  const unsubscribeAccounts = subscribeToInvalidation("accounts.list", () => { accounts += 1; });
+  apiClient.invalidate(["transactions.list", "accounts.list"]);
+  assert.equal(transactions, 1);
+  assert.equal(accounts, 1);
+  unsubscribeTransactions();
+  apiClient.invalidate("transactions.list");
+  assert.equal(transactions, 1, "listener yang sudah dilepas tidak boleh menerima invalidation baru");
+  unsubscribeAccounts();
+});
+
 test("preview lifecycle dan arsip owner tetap diklasifikasikan sebagai read tanpa cache stale", async () => {
   const { isReadAction, READ_CACHE_TTL_MS } = await import("../src/services/api/cache.js");
   for (const action of [

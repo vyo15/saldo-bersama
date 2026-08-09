@@ -22,6 +22,13 @@ const RECOVERY_TYPES = Object.freeze({
   recurringRule: { action: "recurring.restoreRule", idKey: "recurring_rule_id", label: "Aturan rutin" },
   budget: { action: "budgets.restore", idKey: "budget_id", label: "Anggaran" },
 });
+const RESTORE_REFRESH_KEYS = Object.freeze([
+  "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
+  "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly",
+  "periods.list", "reconciliations.list", "users.list", "audit.list", "archive.list",
+  "notifications.status", "notifications.preferences", "integrations.status",
+]);
+
 
 const archiveGroups = (data = {}) => [
   ["account", data.accounts || [], (item) => accountDisplayLabel(item), () => "Rekening diarsipkan"],
@@ -123,6 +130,7 @@ const RecoveryPage = () => {
       setRestorePreview(null);
       setRestoreConfirmation("");
       setResult({ status: "success", text: "Restore selesai setelah safety backup, transaction, dan integrity check backend." });
+      invalidate(RESTORE_REFRESH_KEYS);
       await Promise.allSettled([refreshAll()]);
     } catch (error) {
       setResult({ status: "danger", text: error.message });

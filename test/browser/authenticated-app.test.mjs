@@ -853,7 +853,7 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
       return {
         canViewTransactions: labels.includes('Lihat transaksi'),
         canEdit: labels.some((label) => label === 'Edit' || label === 'Edit rekening'),
-        canArchive: labels.includes('Arsipkan'),
+        canArchive: labels.includes('Hapus / Arsipkan'),
       };
     })()`);
     assert.equal(partnerAccountActions.canViewTransactions, true, "Member tetap harus dapat membaca ledger rekening personal pasangan yang transparan.");

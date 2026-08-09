@@ -115,7 +115,7 @@ const SelectedAccountHero = ({ account, ownerMode, onViewTransactions, onEditAcc
         <div className={styles.heroActions}>
           <Button variant="primary" icon={FiFileText} onClick={() => onViewTransactions(account)}>Lihat transaksi</Button>
           {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
-          {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Arsipkan</Button> : null}
+          {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Hapus / Arsipkan</Button> : null}
         </div>
       </div>
       <div className={styles.heroVisual} aria-hidden="true"><AccountVisual account={account} carousel /></div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiClient, isAbortError } from "../services/api/client.js";
+import { apiClient, isAbortError, subscribeToInvalidation } from "../services/api/client.js";
 
 export const useApiResource = (action, payload = {}, { enabled = true } = {}) => {
   const [state, setState] = useState({ status: "idle", data: null, error: null, refreshError: null });
@@ -44,6 +44,13 @@ export const useApiResource = (action, payload = {}, { enabled = true } = {}) =>
     load({ force: false }).catch(() => {});
     return () => activeController.current?.abort();
   }, [enabled, load]);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    return subscribeToInvalidation(action, () => {
+      load({ force: true }).catch(() => {});
+    });
+  }, [action, enabled, load]);
 
   const status = enabled && state.status === "idle" ? "loading" : state.status;
 

@@ -1,17 +1,30 @@
 import { env } from "../../config/env.js";
 
-const waitForGoogleIdentity = (timeoutMs = 8000) => new Promise((resolve, reject) => {
+const googleIdentityAbortError = () => Object.assign(new Error("Inisialisasi Google Identity dibatalkan."), { name: "AbortError" });
+
+const waitForGoogleIdentity = (timeoutMs = 8000, signal) => new Promise((resolve, reject) => {
   const startedAt = Date.now();
-  const timer = window.setInterval(() => {
+  let timer = null;
+  let settled = false;
+  const finish = (callback, value) => {
+    if (settled) return;
+    settled = true;
+    if (timer !== null) window.clearInterval(timer);
+    signal?.removeEventListener("abort", onAbort);
+    callback(value);
+  };
+  const onAbort = () => finish(reject, googleIdentityAbortError());
+  if (signal?.aborted) {
+    onAbort();
+    return;
+  }
+  signal?.addEventListener("abort", onAbort, { once: true });
+  timer = window.setInterval(() => {
     if (window.google?.accounts?.id) {
-      window.clearInterval(timer);
-      resolve(window.google.accounts.id);
+      finish(resolve, window.google.accounts.id);
       return;
     }
-    if (Date.now() - startedAt > timeoutMs) {
-      window.clearInterval(timer);
-      reject(new Error("Google Identity Services gagal dimuat."));
-    }
+    if (Date.now() - startedAt > timeoutMs) finish(reject, new Error("Google Identity Services gagal dimuat."));
   }, 100);
 });
 
@@ -68,9 +81,10 @@ const initializeGoogleIdentityOnce = (identity) => {
   return state;
 };
 
-export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onError }) => {
-  if (!element) return () => {};
-  const identity = await waitForGoogleIdentity();
+export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onError, signal }) => {
+  if (!element || signal?.aborted) return () => {};
+  const identity = await waitForGoogleIdentity(8000, signal);
+  if (signal?.aborted) return () => {};
   const state = initializeGoogleIdentityOnce(identity);
   const callbacks = { onFirebaseToken, onError };
   state.callbacks = callbacks;

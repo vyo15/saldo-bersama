@@ -243,3 +243,70 @@ test("feedback transient konsisten tanpa mengganti notice persisten untuk operas
   const feedback = await read("src/components/feedback/FeedbackProvider.jsx");
   assert.doesNotMatch(feedback, /undo|rollback|hardDelete|DELETE FROM/i, "feedback global tidak boleh menjadi generic rollback finansial");
 });
+
+
+test("editor jadwal rutin memakai master rule, bukan snapshot occurrence, dan menandai input wajib", async () => {
+  const [page, backend] = await Promise.all([
+    read("src/features/recurring/RecurringPage.jsx"),
+    readFile(new URL("../../api/_lib/services/planning/recurring.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(backend, /r\.expected_amount AS rule_expected_amount/);
+  assert.match(backend, /r\.due_day AS rule_due_day/);
+  assert.match(page, /expected_amount: String\(item\.rule_expected_amount \|\| ""\)/);
+  assert.match(page, /due_day: Number\(item\.rule_due_day \|\| 1\)/);
+  assert.doesNotMatch(page, /due_day: Number\(String\(item\.due_date/);
+  assert.match(page, /label="Nominal perkiraan"[\s\S]*required/);
+  assert.match(page, /<span>Kategori \*<\/span>/);
+  assert.match(page, /<span>\{label\} \*<\/span>/);
+  assert.match(page, /Tanggal jatuh tempo\/masuk \*/);
+  assert.match(page, /Tanggal mulai \*/);
+});
+
+test("aksi lifecycle rekening memakai label jujur sebelum server menentukan hapus atau arsip", async () => {
+  const [desktop, card] = await Promise.all([
+    read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
+    read("src/features/accounts/components/AccountFinancialCard.jsx"),
+  ]);
+  assert.match(desktop, />Hapus \/ Arsipkan<\/Button>/);
+  assert.equal((card.match(/Hapus \/ Arsipkan/g) || []).length, 2);
+  assert.doesNotMatch(`${desktop}\n${card}`, />Arsipkan<\/(?:Button|button)>/);
+});
+
+test("inisialisasi Google Login dapat dibatalkan saat layout atau effect berubah", async () => {
+  const [page, google] = await Promise.all([
+    read("src/features/auth/LoginPage.jsx"),
+    read("src/services/auth/googleFirebaseAuth.js"),
+  ]);
+  assert.match(page, /const controller = new AbortController\(\)/);
+  assert.match(page, /signal: controller\.signal/);
+  assert.match(page, /controller\.abort\(\)/);
+  assert.match(page, /error\?\.name !== "AbortError"/);
+  assert.match(google, /waitForGoogleIdentity\(8000, signal\)/);
+  assert.match(google, /signal\?\.aborted/);
+  assert.match(google, /removeEventListener\("abort", onAbort\)/);
+});
+
+
+test("mutation ledger terkelola menginvalidasi rekening dan turunan laporan yang ikut berubah", async () => {
+  const [goals, recurring] = await Promise.all([
+    read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/recurring/RecurringPage.jsx"),
+  ]);
+  assert.match(goals, /goalLedgerRefreshKeys = Object\.freeze\(\["goals\.list", "transactions\.list", "accounts\.list", "reports\.monthly", "app\.initialState"\]\)/);
+  assert.match(goals, /invalidate\(goalLedgerRefreshKeys\)/);
+  assert.match(goals, /refresh\(goalLedgerRefreshKeys\)/);
+  assert.match(recurring, /recurringLedgerRefreshKeys = Object\.freeze\(\["recurring\.list", "transactions\.list", "accounts\.list", "budgets\.list", "reports\.monthly", "app\.initialState"\]\)/);
+  assert.equal((recurring.match(/keys: recurringLedgerRefreshKeys/g) || []).length, 2, "bayar dan reverse pembayaran rutin harus menyegarkan semua read model ledger terkait");
+});
+
+
+test("import dan restore teknis menginvalidasi cache finansial sebelum refresh bootstrap", async () => {
+  const [importPage, recoveryPage] = await Promise.all([
+    read("src/features/settings/ImportTransactionsPage.jsx"),
+    read("src/features/settings/RecoveryPage.jsx"),
+  ]);
+  assert.match(importPage, /IMPORT_REFRESH_KEYS[\s\S]*"transactions\.list"[\s\S]*"accounts\.list"[\s\S]*"envelopes\.list"[\s\S]*"budgets\.list"[\s\S]*"reports\.monthly"/);
+  assert.match(importPage, /invalidate\(IMPORT_REFRESH_KEYS\);[\s\S]*refreshAll\(\)/);
+  assert.match(recoveryPage, /RESTORE_REFRESH_KEYS[\s\S]*"bootstrap\.get"[\s\S]*"transactions\.list"[\s\S]*"reconciliations\.list"[\s\S]*"users\.list"[\s\S]*"archive\.list"/);
+  assert.match(recoveryPage, /invalidate\(RESTORE_REFRESH_KEYS\);[\s\S]*refreshAll\(\)/);
+});

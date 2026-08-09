@@ -7,7 +7,7 @@ import { createServerSession, destroyServerSession, downloadExcel, gatewayFetch,
 import { stableValue } from "./serialization.js";
 
 export { ApiError, isAbortError, isOutcomeUnknownError, parseResponse, shouldInvalidateSession } from "./errors.js";
-export { stableQueryKey } from "./cache.js";
+export { stableQueryKey, subscribeToInvalidation } from "./cache.js";
 
 const SESSION_CACHE_TTL_MS = 2_000;
 let sessionCache = { expiresAt: 0, value: null, promise: null };

@@ -94,7 +94,7 @@ await test("confirmation modal mempertahankan alasan, frasa, checkbox, countdown
 
     const openDeleteConfirmation = async () => {
       const clicked = await page.evaluate(`(() => {
-        const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Arsipkan');
+        const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Hapus / Arsipkan');
         if (!button) return false;
         button.click();
         return true;

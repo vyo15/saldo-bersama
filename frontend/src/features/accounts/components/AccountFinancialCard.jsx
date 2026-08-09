@@ -224,7 +224,7 @@ const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTran
     </div>
     {account.status === "active" && canManage ? (
       <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
-        <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Arsipkan</button>
+        <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Hapus / Arsipkan</button>
       </div>
     ) : null}
   </>
@@ -254,7 +254,7 @@ const DetailActions = ({ account, canManage, onEdit, onArchive, onViewTransactio
   <div className={styles.detailActions} aria-label={`Aksi rekening ${account.name}`}>
     <Button variant="primary" icon={FiFileText} onClick={() => onViewTransactions?.(account)}>Lihat transaksi</Button>
     {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEdit?.(account)}>Edit</Button> : null}
-    {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchive?.(account)}>Arsipkan</Button> : null}
+    {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchive?.(account)}>Hapus / Arsipkan</Button> : null}
   </div>
 );
 

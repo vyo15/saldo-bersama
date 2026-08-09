@@ -154,14 +154,21 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (!showGoogleButton) return undefined;
+    const controller = new AbortController();
     let cleanup = () => {};
     setButtonError(null);
     renderGoogleLoginButton({
       element: buttonRef.current,
       onFirebaseToken: loginWithFirebaseToken,
       onError: setButtonError,
-    }).then((dispose) => { cleanup = dispose; }).catch(setButtonError);
-    return () => cleanup();
+      signal: controller.signal,
+    }).then((dispose) => {
+      if (controller.signal.aborted) { dispose(); return; }
+      cleanup = dispose;
+    }).catch((error) => {
+      if (error?.name !== "AbortError") setButtonError(error);
+    });
+    return () => { controller.abort(); cleanup(); };
   }, [loginWithFirebaseToken, mobileLayout, showGoogleButton]);
 
   const requestedPath = typeof location.state?.from === "string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")

@@ -5,6 +5,7 @@ import { addDays, dateValue, positiveInteger, safeSpreadsheetText, scopeFromAcco
 import { firstNegativeBalance, transactionImpact } from "../../api/_lib/services/readModels.js";
 import { assertAffectedBalances } from "../../api/_lib/services/finance.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/index.js";
+import { listRecurring } from "../../api/_lib/services/planning/recurring.js";
 
 const active = (values) => ({ status: "active", amount: 100_000, source_account_id: null, destination_account_id: null, ...values });
 
@@ -119,4 +120,29 @@ test("service menjaga budget exact-scope, recurring due-day, optimistic version,
   assert.match(masterData, /account_id<>\?/);
   assert.match(planning, /removeUnpaidFutureOccurrences/);
   assert.match(planning, /actual_amount=0[\s\S]*transaction_ids_json='\[\]'/);
+});
+
+
+test("recurring list memisahkan snapshot occurrence dari nilai master rule untuk editor", async () => {
+  let query = "";
+  const db = {
+    all: async (sql) => {
+      query = sql;
+      return [{
+        occurrence_id: "occ-feb", recurring_rule_id: "rule-31", period_key: "2026-02", due_date: "2026-02-28",
+        expected_amount: 300_000, actual_amount: 0, status: "expected", transaction_ids_json: "[]", row_version: 2,
+        created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z",
+        name: "Internet", kind: "expense", category_id: "cat-home", rule_expected_amount: 350_000, frequency: "monthly",
+        rule_due_day: 31, default_account_id: "account-1", payment_method: "transfer", auto_debit: 0, start_date: "2026-01-31",
+        end_date: null, priority: "normal", rule_status: "active", rule_row_version: 7, scope: "shared", owner_user_id: null,
+      }];
+    },
+  };
+  const result = await listRecurring(db, { actor: { role: "owner", user_id: "owner-1" }, payload: { period: "2026-02" } });
+  assert.match(query, /r\.expected_amount AS rule_expected_amount/);
+  assert.match(query, /r\.due_day AS rule_due_day/);
+  assert.equal(result.items[0].due_date, "2026-02-28", "occurrence Februari tetap memakai tanggal snapshot yang di-clamp");
+  assert.equal(result.items[0].expected_amount, 300_000, "nominal occurrence historis tidak boleh ditimpa master");
+  assert.equal(result.items[0].rule_due_day, 31, "editor harus menerima due_day master asli");
+  assert.equal(result.items[0].rule_expected_amount, 350_000, "editor harus menerima nominal master terbaru");
 });

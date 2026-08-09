@@ -36,6 +36,7 @@ const ABORT_GRACE_MS = 40;
 const readCache = new Map();
 const inFlightReads = new Map();
 const actionVersions = new Map();
+const invalidationListeners = new Map();
 let sessionScope = "anonymous";
 
 export const stableQueryKey = (action, payload = {}, scope = sessionScope) => {
@@ -44,6 +45,25 @@ export const stableQueryKey = (action, payload = {}, scope = sessionScope) => {
 };
 
 export const isReadAction = (action) => Object.prototype.hasOwnProperty.call(READ_CACHE_TTL_MS, action);
+
+export const subscribeToInvalidation = (action, listener) => {
+  if (!action || typeof listener !== "function") return () => {};
+  const listeners = invalidationListeners.get(action) || new Set();
+  listeners.add(listener);
+  invalidationListeners.set(action, listeners);
+  return () => {
+    listeners.delete(listener);
+    if (!listeners.size) invalidationListeners.delete(action);
+  };
+};
+
+const notifyInvalidation = (actions) => {
+  for (const action of actions) {
+    for (const listener of [...(invalidationListeners.get(action) || [])]) {
+      try { listener(action); } catch { /* listener failures must not break cache invalidation */ }
+    }
+  }
+};
 
 const subscribeToRead = (entry, signal) => {
   entry.subscribers += 1;
@@ -122,6 +142,7 @@ export const invalidateActions = (actions = []) => {
   for (const [key, cached] of readCache.entries()) {
     if (targets.has(cached.action)) readCache.delete(key);
   }
+  notifyInvalidation(targets);
 };
 
 export const seedRead = (action, payload = {}, data, { ttl } = {}) => {

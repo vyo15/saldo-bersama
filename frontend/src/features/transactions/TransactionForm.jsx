@@ -67,7 +67,7 @@ const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, refre
   try {
     const saveTransaction = transaction ? updateTransaction : createTransaction;
     const saved = await saveTransaction(validation.value, { idempotencyKey: idempotencyKeyRef.current, rowVersion: transaction?.row_version });
-    invalidate(["transactions.list", "accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
+    invalidate(["transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
     await Promise.allSettled([refreshOverview(), Promise.resolve().then(() => onSaved?.(saved))]);
     setters.setSubmitState({ status: "success", error: null });
     if (notifyOnSuccess) notify({ message: transaction ? "Perubahan transaksi berhasil disimpan." : "Transaksi berhasil disimpan." });

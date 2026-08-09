@@ -410,7 +410,7 @@ export const restoreRecurringRule = async (db, context) => {
 export const listRecurring = async (db, context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "r");
-  const rows = await db.all(`SELECT o.*,r.name,r.kind,r.category_id,r.frequency,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id
+  const rows = await db.all(`SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id
     FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
     WHERE o.period_key=? AND ${access.sql} ORDER BY o.due_date,r.name`, [period, ...access.args]);
   const today = todayJakarta();

@@ -31,5 +31,21 @@ test("quick transfer dapat mengunci jenis, mengisi rekening sumber, dan menyegar
   assert.match(text, /submitLabel/);
   assert.match(text, /submittingLabel/);
   assert.match(text, /notifyOnSuccess = true/);
-  assert.match(text, /"transactions\.list", "accounts\.list", "envelopes\.list", "reports\.monthly", "dashboard\.overview", "app\.initialState"/);
+  assert.match(text, /"transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly", "dashboard\.overview", "app\.initialState"/);
+});
+
+
+test("quick add memakai composer global dan invalidation transaksi mencakup resource finansial turunan", async () => {
+  const [form, page, hook] = await Promise.all([
+    readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionsPage.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/useApiResource.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(form, /invalidate\(\["transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly"/);
+  assert.match(page, /useTransactionComposer/);
+  assert.match(page, /onClick=\{openTransactionComposer\}>Tambah transaksi/);
+  assert.doesNotMatch(page, /formOpen|setFormOpen/, "halaman Transaksi tidak boleh memiliki composer create kedua");
+  assert.match(page, /<TransactionForm open=\{Boolean\(editingTransaction\)\} transaction=\{editingTransaction\}/, "form lokal hanya untuk edit transaksi");
+  assert.match(page, /"budgets\.list"/, "cancel/restore transaksi juga harus menginvalidasi pemakaian anggaran");
+  assert.match(hook, /subscribeToInvalidation\(action/);
 });

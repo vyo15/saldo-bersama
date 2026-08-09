@@ -9,8 +9,10 @@ import SettingsNotice from "./SettingsNotice.jsx";
 import { runSettingsAction } from "./settings.api.js";
 import styles from "./Settings.module.css";
 
+const IMPORT_REFRESH_KEYS = Object.freeze(["transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
+
 const ImportTransactionsPage = () => {
-  const { refreshAll } = useFinance();
+  const { invalidate, refreshAll } = useFinance();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [confirmation, setConfirmation] = useState("");
@@ -43,6 +45,7 @@ const ImportTransactionsPage = () => {
       setConfirmation("");
       setFile(null);
       setResult({ status: "success", text: "Import transaksi berhasil diterapkan dan tercatat di audit." });
+      invalidate(IMPORT_REFRESH_KEYS);
       await Promise.allSettled([refreshAll()]);
     } catch (error) {
       setResult({ status: "danger", text: error.message });
