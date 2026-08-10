@@ -3,7 +3,7 @@ import { assertDatabaseReady, DATABASE_SCHEMA_VERSION } from "./_lib/db/schema.j
 import { createXlsx } from "./_lib/export/xlsx.js";
 import { methodNotAllowed, fail } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
-import { assertAllowedOrigin, enforceBestEffortRateLimit, readSession } from "./_lib/security.js";
+import { assertAllowedOrigin, enforceBestEffortRateLimit, identityRateLimitKey, readSession } from "./_lib/security.js";
 import { resolveActor } from "./_lib/services/users.js";
 import { nowIso, todayJakarta } from "./_lib/services/core.js";
 
@@ -30,7 +30,7 @@ export default async function handler(request, response) {
     const session = readSession(request);
     if (!session) return fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir.", { requestId });
     if (session.role !== "owner") return fail(response, 403, "OWNER_ONLY", "Export lengkap hanya dapat dilakukan owner.", { requestId });
-    enforceBestEffortRateLimit(`export:${session.uid}`, { limit: 5, windowMs: 60_000 });
+    enforceBestEffortRateLimit(identityRateLimitKey("export", session.uid), { limit: 5, windowMs: 60_000 });
     const db = getDatabase(); await assertDatabaseReady(db); await resolveActor(db, session);
     const data = typeof db.readTransaction === "function" ? await db.readTransaction(exportData) : await exportData(db);
     const workbook = createXlsx(data);

@@ -93,6 +93,16 @@ await test("confirmation modal mempertahankan alasan, frasa, checkbox, countdown
     await waitForAppRoute(page, "/rekening", { heading: "Rekening" });
 
     const openDeleteConfirmation = async () => {
+      await waitFor(
+        () => page.evaluate(`(() => {
+          const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Hapus / Arsipkan');
+          if (!button || button.disabled) return false;
+          const style = getComputedStyle(button);
+          const rect = button.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        })()`),
+        { description: "aksi lifecycle rekening desktop owner selesai lazy-load" },
+      );
       const clicked = await page.evaluate(`(() => {
         const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Hapus / Arsipkan');
         if (!button) return false;

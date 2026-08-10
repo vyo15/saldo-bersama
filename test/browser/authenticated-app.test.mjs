@@ -449,6 +449,11 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       accountAfterVerticalSwipe.name,
       "Gesture horizontal tidak boleh mengganti rekening atau membuka detail.",
     );
+    assert.equal(
+      await page.evaluate("!document.querySelector('[role=dialog]')"),
+      true,
+      "Synthetic click setelah gesture horizontal tidak boleh membuka detail rekening.",
+    );
 
     await page.send("Input.dispatchTouchEvent", {
       type: "touchStart",
@@ -467,6 +472,11 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       accountAfterVerticalSwipe.name,
       "Swipe vertikal pendek harus kembali ke rekening aktif tanpa berpindah.",
     );
+    assert.equal(
+      await page.evaluate("!document.querySelector('[role=dialog]')"),
+      true,
+      "Synthetic click setelah swipe pendek tidak boleh membuka detail rekening.",
+    );
 
     const rerenderTarget = await page.evaluate(`(() => {
       const cards = [...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')];
@@ -483,6 +493,16 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       { description: "rekening target dipilih saat animasi memicu rerender" },
     );
     await new Promise((resolve) => setTimeout(resolve, 620));
+    assert.equal(
+      await page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim()`),
+      rerenderTarget,
+      "Pilihan rekening harus tetap stabil setelah animasi selesai.",
+    );
+    assert.equal(
+      await page.evaluate("!document.querySelector('[role=dialog]')"),
+      true,
+      "Pemilihan rekening nonaktif saat animasi tidak boleh membuka detail.",
+    );
     const accountBeforeKeyboardMove = await page.evaluate(`document.querySelector('[id="mobile-account-stack-title"]')?.textContent?.trim()`);
     await page.evaluate(`document.querySelector('[aria-label="Geser ke atas atau bawah untuk mengganti rekening"]')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))`);
     await waitFor(

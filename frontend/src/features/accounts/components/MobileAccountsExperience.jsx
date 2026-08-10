@@ -20,6 +20,7 @@ const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, v
 const modulo = (value, divisor) => ((value % divisor) + divisor) % divisor;
 const interpolate = (from, to, progress) => from + (to - from) * progress;
 const easeOutQuint = (progress) => 1 - ((1 - progress) ** 5);
+const MOBILE_SYNTHETIC_CLICK_GUARD_MS = 500;
 
 const shortestCircularDifference = (index, virtualPosition, count) => {
   let difference = index - virtualPosition;
@@ -48,15 +49,16 @@ const useMobileStackRefs = () => {
   const mobileStackPositionRef = useRef(0);
   const mobileStackSettledIndexRef = useRef(0);
   const mobileStackAnimationRef = useRef(0);
+  const mobileStackAnimationTokenRef = useRef(0);
   const mobileStackAnimatingRef = useRef(false);
   const mobileStackGestureRef = useRef({
     tracking: false, dragging: false, rejected: false, pointerId: null, captureElement: null,
-    startX: 0, startY: 0, startTime: 0, lastY: 0, lastTime: 0, velocityY: 0, suppressClick: false,
+    startX: 0, startY: 0, startTime: 0, lastY: 0, lastTime: 0, velocityY: 0, suppressClick: false, suppressClickUntil: 0,
   });
   return useMemo(() => ({
     cardRefs: mobileStackCardRefs, stageRef: mobileStackStageRef, statusRef: mobileStackStatusRef, accountsRef: mobileStackAccountsRef,
-    positionRef: mobileStackPositionRef, settledIndexRef: mobileStackSettledIndexRef, animationRef: mobileStackAnimationRef, animatingRef: mobileStackAnimatingRef,
-    gestureRef: mobileStackGestureRef,
+    positionRef: mobileStackPositionRef, settledIndexRef: mobileStackSettledIndexRef, animationRef: mobileStackAnimationRef,
+    animationTokenRef: mobileStackAnimationTokenRef, animatingRef: mobileStackAnimatingRef, gestureRef: mobileStackGestureRef,
   }), []);
 };
 
@@ -95,6 +97,8 @@ const useMobileStackAnimation = (refs, setSelectedAccountId) => {
     const count = stackAccounts.length;
     if (!count) return;
     window.cancelAnimationFrame(refs.animationRef.current);
+    const animationToken = refs.animationTokenRef.current + 1;
+    refs.animationTokenRef.current = animationToken;
     refs.animatingRef.current = true;
     setMobileStackWillChange(true);
     const normalizedTarget = modulo(targetIndex, count);
@@ -107,6 +111,7 @@ const useMobileStackAnimation = (refs, setSelectedAccountId) => {
     const startedAt = performance.now();
     if (selectAtStart) setSelectedAccountId(stackAccounts[normalizedTarget].account_id);
     const finish = () => {
+      if (refs.animationTokenRef.current !== animationToken) return;
       refs.settledIndexRef.current = normalizedTarget;
       refs.positionRef.current = normalizedTarget;
       refs.animationRef.current = 0;
@@ -117,6 +122,7 @@ const useMobileStackAnimation = (refs, setSelectedAccountId) => {
       if (announce && refs.statusRef.current) refs.statusRef.current.textContent = `Rekening aktif ${stackAccounts[normalizedTarget].name}`;
     };
     const frame = (now) => {
+      if (refs.animationTokenRef.current !== animationToken) return;
       const progress = clamp((now - startedAt) / duration, 0, 1);
       refs.positionRef.current = interpolate(startPosition, finalPosition, easeOutQuint(progress));
       applyMobileStackPosition();
@@ -126,11 +132,12 @@ const useMobileStackAnimation = (refs, setSelectedAccountId) => {
     refs.animationRef.current = window.requestAnimationFrame(frame);
   }, [applyMobileStackPosition, refs, setMobileStackWillChange, setSelectedAccountId]);
   const cancelMobileStackAnimation = useCallback(() => {
+    refs.animationTokenRef.current += 1;
     window.cancelAnimationFrame(refs.animationRef.current);
     refs.animationRef.current = 0;
     refs.animatingRef.current = false;
     setMobileStackWillChange(false);
-  }, [refs.animationRef, refs.animatingRef, setMobileStackWillChange]);
+  }, [refs.animationRef, refs.animationTokenRef, refs.animatingRef, setMobileStackWillChange]);
   return useMemo(() => ({
     applyMobileStackPosition,
     animateMobileStackTo,
@@ -140,6 +147,11 @@ const useMobileStackAnimation = (refs, setSelectedAccountId) => {
 };
 
 const useMobileStackGestures = ({ refs, animation }) => {
+  const armMobileStackClickGuard = useCallback(() => {
+    const gesture = refs.gestureRef.current;
+    gesture.suppressClick = true;
+    gesture.suppressClickUntil = performance.now() + MOBILE_SYNTHETIC_CLICK_GUARD_MS;
+  }, [refs.gestureRef]);
   const resetMobileStackGesture = useCallback(() => {
     const gesture = refs.gestureRef.current;
     Object.assign(gesture, { tracking: false, dragging: false, rejected: false, pointerId: null, captureElement: null });
@@ -151,7 +163,8 @@ const useMobileStackGestures = ({ refs, animation }) => {
     const now = performance.now();
     refs.gestureRef.current = {
       tracking: true, dragging: false, rejected: false, pointerId: event.pointerId, captureElement: event.currentTarget,
-      startX: event.clientX, startY: event.clientY, startTime: now, lastY: event.clientY, lastTime: now, velocityY: 0, suppressClick: false,
+      startX: event.clientX, startY: event.clientY, startTime: now, lastY: event.clientY, lastTime: now, velocityY: 0,
+      suppressClick: false, suppressClickUntil: 0,
     };
   }, [refs.accountsRef, refs.animatingRef, refs.gestureRef]);
   const handleMobileStackPointerMove = useCallback((event) => {
@@ -181,26 +194,27 @@ const useMobileStackGestures = ({ refs, animation }) => {
   const finishMobileStackPointer = useCallback((event) => {
     const gesture = refs.gestureRef.current;
     if (!gesture.tracking || gesture.pointerId !== event.pointerId) return;
-    if (gesture.rejected) { resetMobileStackGesture(); window.setTimeout(() => { refs.gestureRef.current.suppressClick = false; }, 0); return; }
+    if (gesture.rejected) { armMobileStackClickGuard(); resetMobileStackGesture(); return; }
     if (!gesture.dragging) { resetMobileStackGesture(); return; }
     const totalDeltaY = event.clientY - gesture.startY;
     const averageVelocity = totalDeltaY / Math.max(1, performance.now() - gesture.startTime);
     const progress = refs.positionRef.current - refs.settledIndexRef.current;
     if (gesture.captureElement?.hasPointerCapture(event.pointerId)) gesture.captureElement.releasePointerCapture(event.pointerId);
+    armMobileStackClickGuard();
     resetMobileStackGesture();
     const fastSwipe = Math.abs(gesture.velocityY) > 0.48 || Math.abs(averageVelocity) > 0.42;
     const passedThreshold = Math.abs(progress) >= 0.28;
     const direction = progress !== 0 ? Math.sign(progress) : (totalDeltaY < 0 ? 1 : -1);
     animation.animateMobileStackTo(refs.settledIndexRef.current + (fastSwipe || passedThreshold ? direction : 0), { announce: fastSwipe || passedThreshold });
-    window.setTimeout(() => { refs.gestureRef.current.suppressClick = false; }, 0);
-  }, [animation, refs.gestureRef, refs.positionRef, refs.settledIndexRef, resetMobileStackGesture]);
-  return { resetMobileStackGesture, handleMobileStackPointerDown, handleMobileStackPointerMove, finishMobileStackPointer };
+  }, [animation, armMobileStackClickGuard, refs.gestureRef, refs.positionRef, refs.settledIndexRef, resetMobileStackGesture]);
+  return { armMobileStackClickGuard, resetMobileStackGesture, handleMobileStackPointerDown, handleMobileStackPointerMove, finishMobileStackPointer };
 };
 
 const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet }) => {
   const refs = useMobileStackRefs();
   const animation = useMobileStackAnimation(refs, setSelectedAccountId);
   const gestures = useMobileStackGestures({ refs, animation });
+  const { cancelMobileStackAnimation } = animation;
   const moveMobileStack = useCallback((step) => {
     if (refs.animatingRef.current || refs.accountsRef.current.length <= 1) return;
     animation.animateMobileStackTo(refs.settledIndexRef.current + step);
@@ -210,7 +224,12 @@ const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAcco
     if (event.key === "ArrowDown") { event.preventDefault(); moveMobileStack(1); }
   }, [moveMobileStack]);
   const selectMobileStackAccount = useCallback((account, index) => {
-    if (refs.gestureRef.current.suppressClick) return;
+    const gesture = refs.gestureRef.current;
+    if (gesture.suppressClick) {
+      if (performance.now() < gesture.suppressClickUntil) return;
+      gesture.suppressClick = false;
+      gesture.suppressClickUntil = 0;
+    }
     if (index !== refs.settledIndexRef.current) { animation.animateMobileStackTo(index, { selectAtStart: true }); return; }
     setSelectedAccountId(account.account_id);
     setMobileAccountSheet("detail");
@@ -221,9 +240,9 @@ const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAcco
     if (gesture.captureElement?.hasPointerCapture(event.pointerId)) gesture.captureElement.releasePointerCapture(event.pointerId);
     const wasDragging = gesture.dragging;
     const shouldSuppressClick = gesture.suppressClick;
+    if (shouldSuppressClick) gestures.armMobileStackClickGuard();
     gestures.resetMobileStackGesture();
     if (wasDragging) animation.animateMobileStackTo(refs.settledIndexRef.current, { announce: false });
-    if (shouldSuppressClick) window.setTimeout(() => { refs.gestureRef.current.suppressClick = false; }, 0);
   }, [animation, gestures, refs.gestureRef, refs.settledIndexRef]);
   useLayoutEffect(() => {
     refs.accountsRef.current = accounts;
@@ -235,7 +254,7 @@ const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAcco
       animation.applyMobileStackPosition();
     }
   }, [accounts, animation, refs.accountsRef, refs.animatingRef, refs.gestureRef, refs.positionRef, refs.settledIndexRef, selectedAccountId]);
-  useEffect(() => () => animation.cancelMobileStackAnimation(), [animation.cancelMobileStackAnimation]);
+  useEffect(() => () => cancelMobileStackAnimation(), [cancelMobileStackAnimation]);
   return { refs, ...gestures, cancelMobileStackPointer, handleMobileStackKeyDown, selectMobileStackAccount };
 };
 

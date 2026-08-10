@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { dispatchAction } from "./_lib/actionDispatcher.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
-import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, enforceBestEffortRateLimit, readSession, requiresIdempotencyKey } from "./_lib/security.js";
+import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, enforceBestEffortRateLimit, identityRateLimitKey, readSession, requiresIdempotencyKey } from "./_lib/security.js";
 import { stableValue } from "./_lib/serialization.js";
 
 const COALESCED_READ_ACTIONS = new Set([
@@ -44,7 +44,7 @@ const processGatewayRequest = async (request, response, requestId, requestState)
   assertAllowedOrigin(request);
   const session = readSession(request);
   if (!session) return { action: "unknown", response: fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir. Silakan login kembali.", { requestId }) };
-  enforceBestEffortRateLimit(session.uid);
+  enforceBestEffortRateLimit(identityRateLimitKey("gateway", session.uid));
   const body = await readJsonBody(request, 1_500_000);
   requestState.action = String(body.action || "").slice(0, 120);
   const rejection = rejectGatewayRequest(response, session, body, requestId, requestState.action);

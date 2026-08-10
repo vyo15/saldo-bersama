@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { requiresIdempotencyKey } from "./actions/policy.js";
+import { RESERVED_TRANSACTION_FIELDS } from "./transactionContract.js";
 
 const SESSION_COOKIE = "sb_session";
 const encoder = (value) => Buffer.from(value).toString("base64url");
@@ -104,24 +105,8 @@ export const ACTION_PERMISSIONS = Object.freeze({
 });
 export const authorizeAction = (session, action) => Boolean(session && ACTION_PERMISSIONS[session.role]?.has(action));
 
-const RESERVED_TRANSACTION_FIELDS = new Set([
-  "recurring_occurrence_id",
-  "goal_id",
-  "scope",
-  "owner_user_id",
-  "idempotency_key",
-  "created_by",
-  "created_at",
-  "updated_by",
-  "updated_at",
-  "cancelled_by",
-  "cancelled_at",
-  "cancellation_reason",
-  "status",
-]);
-
 const assertNoReservedTransactionFields = (payload) => {
-  const field = Object.keys(payload || {}).find((key) => RESERVED_TRANSACTION_FIELDS.has(key));
+  const field = Object.keys(payload || {}).find((key) => RESERVED_TRANSACTION_FIELDS.includes(key));
   if (field) {
     throw Object.assign(new Error(`Field internal transaksi tidak boleh dikirim: ${field}.`), {
       status: 400,

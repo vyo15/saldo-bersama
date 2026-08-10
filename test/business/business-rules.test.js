@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import { addDays, dateValue, positiveInteger, safeSpreadsheetText, scopeFromAccountPair, strictBoolean } from "../../api/_lib/services/core.js";
-import { firstNegativeBalance, transactionImpact } from "../../api/_lib/services/readModels.js";
+import { accountBalanceAsOf, firstNegativeBalance, transactionImpact, visibleAccounts } from "../../api/_lib/services/readModels.js";
 import { assertAffectedBalances } from "../../api/_lib/services/finance.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/index.js";
 import { listRecurring } from "../../api/_lib/services/planning/recurring.js";
+import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const active = (values) => ({ status: "active", amount: 100_000, source_account_id: null, destination_account_id: null, ...values });
 
@@ -17,6 +18,79 @@ test("saldo rekening mengikuti income, expense, transfer, refund, adjustment, da
   assert.equal(transactionImpact("b", active({ transaction_type: "transfer", source_account_id: "a", destination_account_id: "b" })), 100_000);
   assert.equal(transactionImpact("a", active({ transaction_type: "adjustment", source_account_id: "a" })), 100_000);
   assert.equal(transactionImpact("a", { ...active({ transaction_type: "expense", source_account_id: "a" }), status: "cancelled" }), 0);
+});
+
+test("saldo agregat visibleAccounts selalu parity dengan accountBalanceAsOf", async () => {
+  const db = await createSqliteTestDatabase();
+  const actor = { user_id: "owner-parity", role: "owner" };
+  const timestamp = "2026-01-01T00:00:00.000Z";
+  try {
+    await db.execute(
+      "INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+      [actor.user_id, "firebase-owner-parity", "owner-parity@example.com", "Owner Parity", "owner", "active", 1, timestamp, timestamp],
+    );
+    await db.execute(
+      "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["a", "Kas A", "cash", "shared", null, 1_000, "2026-01-01", 0, "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
+    );
+    await db.execute(
+      "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["b", "Kas B", "cash", "shared", null, 500, "2026-01-03", 0, "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
+    );
+    await db.execute(
+      "INSERT INTO categories(category_id,name,transaction_type,nature,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+      ["income", "Gaji", "income", "fixed", "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
+    );
+    await db.execute(
+      "INSERT INTO categories(category_id,name,transaction_type,nature,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+      ["expense", "Belanja", "expense", "variable", "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
+    );
+    await db.execute(
+      "INSERT INTO categories(category_id,name,transaction_type,nature,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+      ["refund", "Refund", "refund", "variable", "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
+    );
+
+    const insertTransaction = (row) => db.execute(
+      `INSERT INTO transactions(
+        transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,amount,
+        scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,
+        cancelled_by,cancelled_at,cancellation_reason
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        row.transaction_id, row.transaction_date, row.transaction_type, row.source_account_id ?? null,
+        row.destination_account_id ?? null, row.category_id ?? null, row.amount, "shared", null, row.status ?? "active", 1,
+        `parity:${row.transaction_id}`, actor.user_id, `${row.transaction_date}T01:00:00.000Z`, actor.user_id,
+        `${row.transaction_date}T01:00:00.000Z`, row.cancelled_by ?? null, row.cancelled_at ?? null,
+        row.cancellation_reason ?? "",
+      ],
+    );
+
+    await insertTransaction({ transaction_id: "income-a", transaction_date: "2026-01-01", transaction_type: "income", destination_account_id: "a", category_id: "income", amount: 200 });
+    await insertTransaction({ transaction_id: "income-b-before-initial", transaction_date: "2026-01-02", transaction_type: "income", destination_account_id: "b", category_id: "income", amount: 77 });
+    await insertTransaction({ transaction_id: "expense-a", transaction_date: "2026-01-02", transaction_type: "expense", source_account_id: "a", category_id: "expense", amount: 50 });
+    await insertTransaction({ transaction_id: "transfer-a-b", transaction_date: "2026-01-03", transaction_type: "transfer", source_account_id: "a", destination_account_id: "b", amount: 100 });
+    await insertTransaction({ transaction_id: "refund-a", transaction_date: "2026-01-04", transaction_type: "refund", destination_account_id: "a", category_id: "refund", amount: 30 });
+    await insertTransaction({ transaction_id: "adjustment-b", transaction_date: "2026-01-05", transaction_type: "adjustment", source_account_id: "b", amount: 40 });
+    await insertTransaction({ transaction_id: "archived-expense", transaction_date: "2026-01-06", transaction_type: "expense", source_account_id: "a", category_id: "expense", amount: 999, status: "archived" });
+    await insertTransaction({
+      transaction_id: "cancelled-income", transaction_date: "2026-01-06", transaction_type: "income", destination_account_id: "b",
+      category_id: "income", amount: 999, status: "cancelled", cancelled_by: actor.user_id,
+      cancelled_at: "2026-01-06T02:00:00.000Z", cancellation_reason: "Fixture parity",
+    });
+
+    for (const cutoffDate of ["2025-12-31", "2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05", "2026-01-06"]) {
+      const accounts = await visibleAccounts(db, actor, { includeArchived: true, cutoffDate });
+      for (const account of accounts) {
+        assert.equal(
+          account.balance,
+          await accountBalanceAsOf(db, account, cutoffDate),
+          `saldo ${account.account_id} harus parity pada cutoff ${cutoffDate}`,
+        );
+      }
+    }
+  } finally {
+    db.close();
+  }
 });
 
 

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, clientRateLimitKey, createSessionCookie, enforceBestEffortRateLimit, parseAllowedUsers, readSession } from "../../api/_lib/security.js";
+import { readFile } from "node:fs/promises";
+import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, clientRateLimitKey, createSessionCookie, enforceBestEffortRateLimit, identityRateLimitKey, parseAllowedUsers, readSession } from "../../api/_lib/security.js";
+import { normalizeTransaction } from "../../api/_lib/services/finance.js";
+import { RESERVED_TRANSACTION_FIELDS } from "../../api/_lib/transactionContract.js";
 
 const withEnv = (values, fn) => {
   const previous = Object.fromEntries(Object.keys(values).map((key) => [key, process.env[key]]));
@@ -60,6 +63,26 @@ test("rate limit login memakai IP Vercel yang di-hash dan menolak request berleb
   );
 });
 
+test("identity rate-limit key memakai scope dan hash tanpa membocorkan UID", () => {
+  const uid = "firebase-uid-sensitive-example";
+  const gatewayKey = identityRateLimitKey("gateway", uid);
+  const exportKey = identityRateLimitKey("export", uid);
+  assert.match(gatewayKey, /^gateway:[A-Za-z0-9_-]+$/);
+  assert.match(exportKey, /^export:[A-Za-z0-9_-]+$/);
+  assert.doesNotMatch(gatewayKey, /firebase-uid-sensitive-example/);
+  assert.doesNotMatch(exportKey, /firebase-uid-sensitive-example/);
+  assert.notEqual(gatewayKey, exportKey);
+});
+
+test("gateway dan export memakai canonical identity rate-limit key", async () => {
+  const [gateway, exportSource] = await Promise.all([
+    readFile(new URL("../../api/gateway.js", import.meta.url), "utf8"),
+    readFile(new URL("../../api/export.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(gateway, /enforceBestEffortRateLimit\(identityRateLimitKey\("gateway", session\.uid\)\)/);
+  assert.match(exportSource, /enforceBestEffortRateLimit\(identityRateLimitKey\("export", session\.uid\), \{ limit: 5, windowMs: 60_000 \}\)/);
+});
+
 test("gateway menolak adjustment member dan field transaksi internal", () => {
   assert.throws(
     () => assertPayloadAuthorization({ role: "member" }, "transactions.create", { transaction_type: "adjustment" }),
@@ -73,4 +96,19 @@ test("gateway menolak adjustment member dan field transaksi internal", () => {
     () => assertPayloadAuthorization({ role: "owner" }, "import.preview", { records: [{ transaction_type: "expense", scope: "personal" }] }),
     (error) => error.code === "RESERVED_TRANSACTION_FIELD" && error.details.field === "scope",
   );
+});
+
+test("reserved transaction field contract dijaga konsisten di gateway dan finance service", async () => {
+  for (const field of RESERVED_TRANSACTION_FIELDS) {
+    assert.throws(
+      () => assertPayloadAuthorization({ role: "owner" }, "transactions.create", { transaction_type: "expense", [field]: "forged" }),
+      (error) => error.code === "RESERVED_TRANSACTION_FIELD" && error.details.field === field,
+      `gateway harus menolak reserved field ${field}`,
+    );
+    await assert.rejects(
+      normalizeTransaction({}, { actor: { role: "owner" } }, { transaction_type: "expense", [field]: "forged" }),
+      (error) => error.code === "RESERVED_TRANSACTION_FIELD" && error.details.field === field,
+      `finance service harus menolak reserved field ${field}`,
+    );
+  }
 });

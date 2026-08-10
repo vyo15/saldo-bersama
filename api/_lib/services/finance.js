@@ -1,16 +1,16 @@
 import { appendAudit } from "./audit.js";
 import { firstNegativeBalance } from "./readModels.js";
+import { isReservedTransactionField } from "../transactionContract.js";
 import {
   appError, assertOwner, assertVersion, boundedInteger, dateValue, nowIso, periodKey, positiveInteger, publicRow,
   readableLedgerSql, sanitizeText, scopeFromAccountPair, uuid,
 } from "./core.js";
 
 const TRANSACTION_TYPES = new Set(["income", "expense", "transfer", "refund", "adjustment"]);
-const RESERVED_FIELDS = new Set(["recurring_occurrence_id","goal_id","scope","owner_user_id","idempotency_key","created_by","created_at","updated_by","updated_at","cancelled_by","cancelled_at","cancellation_reason","status"]);
 
 const assertNoReservedFields = (payload, allowInternalLinks = false) => {
   if (allowInternalLinks) return;
-  const field = Object.keys(payload || {}).find((key) => RESERVED_FIELDS.has(key));
+  const field = Object.keys(payload || {}).find(isReservedTransactionField);
   if (field) throw appError("RESERVED_TRANSACTION_FIELD", `Field internal transaksi tidak boleh dikirim: ${field}.`, 400, { field });
 };
 
