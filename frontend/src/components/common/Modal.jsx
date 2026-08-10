@@ -10,7 +10,7 @@ const SIZE_STYLES = Object.freeze({
   lg: styles.large,
 });
 
-const Modal = ({ open, title, description, onClose, children, footer, size = "md", initialFocusRef }) => {
+const Modal = ({ open, title, description, onClose, children, footer, size = "md", initialFocusRef, className = "" }) => {
   const containerRef = useRef(null);
   const closeRef = useRef(null);
   const titleId = useId();
@@ -26,7 +26,7 @@ const Modal = ({ open, title, description, onClose, children, footer, size = "md
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <section
-        className={`${styles.dialog} ${sizeStyle} modal modal--${size}`}
+        className={`${styles.dialog} ${sizeStyle} modal modal--${size} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
