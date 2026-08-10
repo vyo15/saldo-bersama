@@ -338,9 +338,9 @@ test("label rekening memprioritaskan provider dan tetap membedakan pemilik perso
   assert.equal(accountDisplayLabel({ account_type: "cash", name: "Dompet", owner_scope: "personal", owner_name: "Vio" }), "Tunai · Dompet · Vio");
 });
 
-test("label kepemilikan rekening personal selalu menyebut pemilik", () => {
+test("label kepemilikan kartu tetap ringkas dan nama pemilik tersedia terpisah", () => {
   assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
-  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Vio Yusup" }), "Pribadi · Vio Yusup");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Vio Yusup" }), "Pribadi");
   assert.equal(accountOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
 });
 

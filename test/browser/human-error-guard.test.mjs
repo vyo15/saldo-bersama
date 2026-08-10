@@ -23,9 +23,17 @@ await test("double-click create target pada network lambat hanya menghasilkan sa
     page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/target`, { width: 1280, height: 900 });
     await waitForAppRoute(page, "/target", { heading: "Tabungan & target" });
 
+    const opened = await page.evaluate(`(() => {
+      const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Buat target' && !item.hasAttribute('form'));
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(opened, true, "Aksi Buat target harus membuka modal create.");
+    await waitFor(() => page.evaluate("Boolean(document.querySelector('#goal-create-form'))"), { description: "modal create target" });
+
     const filled = await page.evaluate(`(() => {
-      const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Buat target');
-      const form = button?.closest('form');
+      const form = document.querySelector('#goal-create-form');
       if (!form) return false;
       const inputs = form.querySelectorAll('input');
       const name = [...inputs].find((input) => input.type === 'text');
@@ -52,7 +60,7 @@ await test("double-click create target pada network lambat hanya menghasilkan sa
     assert.equal(filled, true, "Form target fixture harus dapat diisi secara deterministik.");
 
     await page.evaluate(`(() => {
-      const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Buat target');
+      const button = document.querySelector('button[form="goal-create-form"]');
       button?.click();
       button?.click();
     })()`);

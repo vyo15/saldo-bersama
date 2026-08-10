@@ -81,16 +81,26 @@ export const listGoals = async (db, context) => {
     const last = await db.one("SELECT goal_movement_id,transaction_id,row_version,created_at FROM goal_movements WHERE goal_id=? AND status='active' ORDER BY created_at DESC LIMIT 1", [row.goal_id]);
     const linked = last?.transaction_id ? await db.one("SELECT transaction_date FROM transactions WHERE transaction_id=?", [last.transaction_id]) : null;
     const locked = linked ? Boolean(await db.one("SELECT closure_id FROM period_closures WHERE status='closed' AND period_key>=substr(?,1,7) LIMIT 1", [linked.transaction_date])) : false;
+    const targetAmount = Number(row.target_amount || 0);
+    const reached = current >= targetAmount;
+    const activeMovement = row.status === "active" && row.account_status === "active";
+    const canDeposit = activeMovement && !reached;
+    const canWithdraw = activeMovement && current > 0;
+    const ownerMode = context.actor.role === "owner";
     items.push({
       ...publicRow(row),
       current_amount: current,
       ...goalProjection(row, current),
       last_movement_id: last?.goal_movement_id || "",
       last_movement_row_version: last?.row_version || null,
-      can_move: row.status === "active" && row.account_status === "active",
-      can_reverse: Boolean(last) && !locked,
-      can_update: context.actor.role === "owner",
-      can_archive: context.actor.role === "owner" && row.status !== "archived"
+      can_move: canDeposit || canWithdraw,
+      can_deposit: canDeposit,
+      can_withdraw: canWithdraw,
+      can_complete: ownerMode && row.status === "active" && reached,
+      can_reopen: ownerMode && row.status === "completed",
+      can_reverse: row.status === "active" && Boolean(last) && !locked,
+      can_update: ownerMode && row.status === "active",
+      can_archive: ownerMode && row.status !== "archived"
     });
   }
   return {
@@ -113,12 +123,42 @@ const assertGoalCompletionAllowed = async (db, current, status, targetAmount) =>
   }
 };
 
+const assertGoalTargetAmountAllowed = async (db, current, payload, targetAmount) => {
+  if (payload.target_amount === undefined) return;
+  const currentAmount = await goalProgress(db, current.goal_id);
+  if (Number(targetAmount) < currentAmount) {
+    throw appError("GOAL_TARGET_BELOW_PROGRESS", "Target nominal tidak boleh lebih kecil dari progress yang sudah terkumpul.", 409, { currentAmount, targetAmount: Number(targetAmount) });
+  }
+};
+
 const assertGoalAccountChangeAllowed = async (db, current, account, owned) => {
   const movements = await db.one("SELECT COUNT(*) AS count FROM goal_movements WHERE goal_id=?", [current.goal_id]);
   if (!Number(movements?.count || 0)) return;
   const sameOwner = owned.scope === current.scope && String(owned.owner_user_id || "") === String(current.owner_user_id || "");
   if (account.account_id === current.account_id && sameOwner) return;
   throw appError("GOAL_ACCOUNT_LOCKED", "Rekening dan kepemilikan target tidak dapat diubah setelah memiliki mutasi.", 409);
+};
+
+const GOAL_EDIT_FIELDS = Object.freeze(["name", "goal_type", "target_amount", "target_date", "account_id", "priority"]);
+
+const assertGoalLifecycleUpdateShape = (current, payload) => {
+  if (current.status === "archived") {
+    throw appError("GOAL_ARCHIVED_LOCKED", "Target arsip hanya dapat dipulihkan melalui aksi pemulihan.", 409);
+  }
+  if (payload.status === undefined) {
+    if (current.status === "completed") {
+      throw appError("GOAL_COMPLETED_LOCKED", "Target selesai harus dibuka kembali sebelum diedit.", 409);
+    }
+    return;
+  }
+  const nextStatus = String(payload.status);
+  const hasEditFields = GOAL_EDIT_FIELDS.some((key) => payload[key] !== undefined);
+  if (hasEditFields && nextStatus !== current.status) {
+    throw appError("GOAL_LIFECYCLE_MIXED", "Perubahan status target harus dilakukan terpisah dari perubahan data target.", 400);
+  }
+  if (current.status === "completed" && nextStatus === "completed" && hasEditFields) {
+    throw appError("GOAL_COMPLETED_LOCKED", "Target selesai harus dibuka kembali sebelum diedit.", 409);
+  }
 };
 
 const buildUpdatedGoal = (current, payload, account, owned, actorId) => {
@@ -158,7 +198,15 @@ const assertGoalMovementAccounts = (goal, type, source, destination) => {
   }
 };
 
-const assertGoalWithdrawalAmount = (type, amount, current) => {
+const assertGoalMovementAmount = (goal, type, amount, current) => {
+  const targetAmount = Number(goal.target_amount || 0);
+  const remainingAmount = Math.max(0, targetAmount - current);
+  if (type === "deposit" && remainingAmount <= 0) {
+    throw appError("GOAL_REACHED", "Target sudah mencapai nominal tujuan. Selesaikan target atau naikkan nominal target sebelum menambah dana.", 409, { currentAmount: current, targetAmount });
+  }
+  if (type === "deposit" && amount > remainingAmount) {
+    throw appError("GOAL_OVERFUND", "Nominal setoran melebihi sisa target.", 409, { currentAmount: current, targetAmount, remainingAmount });
+  }
   if (type === "withdrawal" && amount > current) {
     throw appError("GOAL_INSUFFICIENT", "Nominal penarikan melebihi progress target.", 409, { currentAmount: current });
   }
@@ -214,10 +262,12 @@ export const updateGoal = async (db, context) => {
   const current = await db.one("SELECT * FROM savings_goals WHERE goal_id=?", [p.goal_id]);
   if (!current) throw appError("NOT_FOUND", "Target tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
+  assertGoalLifecycleUpdateShape(current, p);
   const account = await accountWithAccess(db, context.actor, goalPayloadValue(p, current, "account_id"));
   const owned = ruleScopeFromAccount(account);
   const next = buildUpdatedGoal(current, p, account, owned, context.actor.user_id);
   assertGoalEnums({ status: next.status, goalType: next.goal_type, priority: next.priority });
+  await assertGoalTargetAmountAllowed(db, current, p, next.target_amount);
   await assertGoalCompletionAllowed(db, current, next.status, next.target_amount);
   await assertGoalAccountChangeAllowed(db, current, account, owned);
   if (!next.name) throw appError("NAME_REQUIRED", "Nama target wajib diisi.", 400);
@@ -309,7 +359,7 @@ export const moveGoal = async (db, context) => {
   ]);
   assertGoalMovementAccounts(goal, type, source, destination);
   const current = await goalProgress(db, goal.goal_id);
-  assertGoalWithdrawalAmount(type, amount, current);
+  assertGoalMovementAmount(goal, type, amount, current);
   const transaction = await createTransactionInternal(db, { ...context, action: "goals.move" }, {
     transaction_type: "transfer",
     transaction_date: p.transaction_date || todayJakarta(),
@@ -334,9 +384,11 @@ export const moveGoal = async (db, context) => {
 
 export const reverseGoalMovement = async (db, context) => {
   const p = context.payload || {};
-  const movement = await db.one(`SELECT m.*,g.scope,g.owner_user_id,g.name FROM goal_movements m JOIN savings_goals g ON g.goal_id=m.goal_id WHERE m.goal_movement_id=? AND m.status='active'`, [p.goal_movement_id]);
+  const movement = await db.one(`SELECT m.*,g.scope,g.owner_user_id,g.name,g.status AS goal_status FROM goal_movements m JOIN savings_goals g ON g.goal_id=m.goal_id WHERE m.goal_movement_id=? AND m.status='active'`, [p.goal_movement_id]);
   if (!movement) throw appError("NOT_FOUND", "Mutasi target aktif tidak ditemukan.", 404);
   assertOwnedAccess(context.actor, movement);
+  if (movement.goal_status === "completed") throw appError("GOAL_COMPLETED_LOCKED", "Target harus dibuka kembali sebelum mutasi terakhir dibatalkan.", 409);
+  if (movement.goal_status === "archived") throw appError("GOAL_ARCHIVED_LOCKED", "Target harus dipulihkan sebelum mutasi terakhir dibatalkan.", 409);
   if (context.actor.role !== "owner" && movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi target yang dibuat sendiri.", 403);
   assertVersion(movement, context.rowVersion ?? p.row_version);
   const reason = sanitizeText(p.reason, 180);

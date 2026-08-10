@@ -1,0 +1,162 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { applyTrialDataReset, previewTrialDataReset, TRIAL_RESET_CONFIRMATION } from "../../api/_lib/services/maintenance/reset.js";
+import { decodeBackup } from "../../api/_lib/services/maintenance/shared.js";
+import { nowIso } from "../../api/_lib/services/core.js";
+import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
+
+const owner = {
+  user_id: "reset-owner", firebase_uid: "firebase-reset-owner", email: "reset-owner@example.com",
+  name: "Reset Owner", role: "owner", status: "active", row_version: 1,
+};
+const member = { ...owner, user_id: "reset-member", firebase_uid: "firebase-reset-member", email: "reset-member@example.com", role: "member" };
+
+const context = (actor, action, payload = {}) => ({
+  actor,
+  signedActor: { uid: actor.firebase_uid, email: actor.email, name: actor.name },
+  action,
+  payload,
+  requestId: `test:${action}`,
+  idempotencyKey: `test:${action}`,
+  rowVersion: null,
+  allowedUsers: [{ email: owner.email, role: "owner" }, { email: member.email, role: "member" }],
+});
+
+const seed = async (db) => {
+  const now = nowIso();
+  for (const user of [owner, member]) {
+    await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", [user.user_id, user.firebase_uid, user.email, user.name, user.role, user.status, 1, now, now]);
+  }
+  await db.execute(`INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at,account_number,bank_template,ewallet_template)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["account-reset", "BTN", "bank", "shared", null, 0, "2026-08-01", 0, "active", 1, owner.user_id, now, owner.user_id, now, "", "btn", "generic"]);
+  await db.execute("INSERT INTO categories(category_id,name,transaction_type,nature,icon,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", ["category-salary", "Gaji", "income", "fixed", "salary", "active", 1, owner.user_id, now, owner.user_id, now]);
+  await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["tx-reset", "2026-08-10", "income", null, "account-reset", "category-salary", null, null, null, 1_300_000, "Gaji uji", "", "", "transfer", "shared", null, "active", 1, "tx-reset-key", owner.user_id, now, owner.user_id, now, null, null, ""]);
+  await db.execute("INSERT INTO reconciliations(reconciliation_id,account_id,reconciled_at,system_balance,actual_balance,difference,notes,status,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["recon-reset", "account-reset", now, 1_300_000, 1_250_000, -50_000, "Uji", "difference", owner.user_id, now]);
+};
+
+const withBridgeStub = async (fn) => {
+  const previous = {
+    url: process.env.GOOGLE_BRIDGE_WEB_APP_URL,
+    secret: process.env.GOOGLE_BRIDGE_SHARED_SECRET,
+    fetch: globalThis.fetch,
+  };
+  const calls = [];
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://bridge.invalid.test";
+  process.env.GOOGLE_BRIDGE_SHARED_SECRET = "reset-test-secret-at-least-thirty-two-characters";
+  globalThis.fetch = async (_url, options) => {
+    const envelope = JSON.parse(options.body);
+    const message = JSON.parse(envelope.message);
+    calls.push(message);
+    return new Response(JSON.stringify({ ok: true, data: { fileId: "drive-reset-backup" } }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try { return await fn(calls); }
+  finally {
+    if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL; else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET; else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
+    globalThis.fetch = previous.fetch;
+  }
+};
+
+test("reset data percobaan owner-only, preview-aware, membuat safety backup, purge terarah, dan mempertahankan master/audit", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await assert.rejects(() => previewTrialDataReset(db, context(member, "reset.preview")), (error) => error.code === "OWNER_ONLY");
+
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
+    assert.equal(preview.summary.transactions, 1);
+    assert.equal(preview.summary.reconciliations, 1);
+    assert.equal(preview.preserved.accounts, 1);
+    assert.equal(preview.preserved.categories, 1);
+
+    await assert.rejects(
+      () => applyTrialDataReset(db, context(owner, "reset.apply", { previewFingerprint: preview.previewFingerprint, confirmation: "SALAH", acknowledged: true, reason: "Data uji" })),
+      (error) => error.code === "RESET_CONFIRMATION_REQUIRED",
+    );
+
+    await withBridgeStub(async (calls) => {
+      const result = await applyTrialDataReset(db, context(owner, "reset.apply", {
+        previewFingerprint: preview.previewFingerprint,
+        confirmation: TRIAL_RESET_CONFIRMATION,
+        acknowledged: true,
+        reason: "Membersihkan data uji",
+      }));
+      assert.equal(result.reset, true);
+      assert.equal(result.safetyBackupFileId, "drive-reset-backup");
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].action, "backup.store");
+      const safetySnapshot = decodeBackup(calls[0].payload.contentBase64);
+      assert.equal(safetySnapshot.tables.transactions.length, 1, "Safety backup harus dibuat sebelum purge.");
+      assert.equal(safetySnapshot.tables.reconciliations.length, 1);
+    });
+
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 0);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM reconciliations")).count, 0);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM accounts")).count, 1);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM categories")).count, 1);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM users")).count, 2);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='reset.apply'")).count, 1);
+    assert.equal((await db.one("SELECT value FROM system_config WHERE key='maintenance_mode'")).value, "false");
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM integration_outbox WHERE event_type='rebuild'")).count, 2);
+  } finally {
+    db.close();
+  }
+});
+
+test("reset ditolak jika data berubah setelah preview", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
+    await db.execute("UPDATE transactions SET amount=amount+1,row_version=row_version+1 WHERE transaction_id='tx-reset'");
+    await assert.rejects(
+      () => applyTrialDataReset(db, context(owner, "reset.apply", {
+        previewFingerprint: preview.previewFingerprint,
+        confirmation: TRIAL_RESET_CONFIRMATION,
+        acknowledged: true,
+        reason: "Membersihkan data uji",
+      })),
+      (error) => error.code === "RESET_PREVIEW_CHANGED",
+    );
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM backup_runs")).count, 0, "Backup tidak boleh dibuat jika preview sudah stale.");
+  } finally {
+    db.close();
+  }
+});
+
+test("reset melepaskan maintenance jika data berubah saat safety backup sebelum purge dimulai", async () => {
+  const db = await createSqliteTestDatabase();
+  const previous = {
+    url: process.env.GOOGLE_BRIDGE_WEB_APP_URL,
+    secret: process.env.GOOGLE_BRIDGE_SHARED_SECRET,
+    fetch: globalThis.fetch,
+  };
+  try {
+    await seed(db);
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
+    process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://bridge.invalid.test";
+    process.env.GOOGLE_BRIDGE_SHARED_SECRET = "reset-test-secret-at-least-thirty-two-characters";
+    globalThis.fetch = async () => {
+      await db.execute("UPDATE transactions SET amount=amount+1,row_version=row_version+1 WHERE transaction_id='tx-reset'");
+      return new Response(JSON.stringify({ ok: true, data: { fileId: "drive-race-backup" } }), { status: 200, headers: { "content-type": "application/json" } });
+    };
+
+    await assert.rejects(
+      () => applyTrialDataReset(db, context(owner, "reset.apply", {
+        previewFingerprint: preview.previewFingerprint,
+        confirmation: TRIAL_RESET_CONFIRMATION,
+        acknowledged: true,
+        reason: "Membersihkan data uji",
+      })),
+      (error) => error.code === "RESET_PREVIEW_CHANGED",
+    );
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 1);
+    assert.equal((await db.one("SELECT value FROM system_config WHERE key='maintenance_mode'")).value, "false");
+  } finally {
+    if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL; else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET; else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
+    globalThis.fetch = previous.fetch;
+    db.close();
+  }
+});

@@ -45,7 +45,7 @@ const BankNumberField = ({ value, onChange }) => (
   <label className="field form-grid__full">
     <span>No rekening *</span>
     <input required inputMode="numeric" autoComplete="off" maxLength="34" pattern="[0-9 ]{6,34}" placeholder="Contoh: 1234567890123456" value={value} onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 34))} />
-    <small>Disimpan sebagai digit saja dan hanya ditampilkan kepada pengguna yang terotorisasi.</small>
+    <small>Hanya digit. Data tampil untuk pengguna yang terotorisasi.</small>
   </label>
 );
 
@@ -53,7 +53,7 @@ const BankTemplateField = ({ value, onChange, compact = false }) => (
   <label className="field form-grid__full">
     <span>Template kartu bank</span>
     <select value={value} onChange={(event) => onChange(event.target.value)}>{BANK_TEMPLATE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select>
-    <small>{compact ? "Template tersimpan sebagai tampilan kartu dan tidak mengubah nama rekening." : "Template hanya mengubah tampilan kartu dan tidak menambahkan nama bank ke nama rekening. PIN, CVV, nomor kartu debit, dan masa berlaku tidak disimpan."}</small>
+    <small>{compact ? "Template tersimpan sebagai tampilan kartu dan tidak mengubah nama rekening." : "Template hanya mengubah tampilan. PIN, CVV, nomor kartu debit, dan masa berlaku tidak disimpan."}</small>
   </label>
 );
 
@@ -61,7 +61,7 @@ const EwalletProviderField = ({ value, onChange, compact = false }) => (
   <label className="field form-grid__full">
     <span>Provider E-wallet</span>
     <select value={value} onChange={(event) => onChange(event.target.value)}>{EWALLET_PROVIDER_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select>
-    <small>{compact ? "Provider tersimpan terpisah dari nama rekening dan hanya menentukan identitas visual E-wallet." : "Pilih provider agar kartu memakai asset yang sesuai. Provider tidak mengubah nama, saldo, kepemilikan, atau aturan transaksi."}</small>
+    <small>{compact ? "Provider tersimpan terpisah dari nama rekening dan hanya menentukan identitas visual E-wallet." : "Provider hanya menentukan identitas visual E-wallet."}</small>
   </label>
 );
 
@@ -80,7 +80,7 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm, 
     <label className="field form-grid__full">
       <span>Nama rekening *</span>
       <input ref={createNameInputRef} required maxLength="100" placeholder="Contoh: Tabungan nikah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
-      <small>{accountForm.account_type === "bank" ? "Gunakan nama sesuai tujuan rekening. Nama bank dipilih terpisah melalui template kartu." : accountForm.account_type === "ewallet" ? "Gunakan nama sesuai tujuan rekening. Provider E-wallet dipilih terpisah." : "Gunakan nama sesuai tujuan rekening."}</small>
+      <small>Gunakan nama sesuai tujuan rekening.</small>
     </label>
     {accountForm.account_type === "bank" ? <BankNumberField value={accountForm.account_number} onChange={(accountNumber) => updateAccountForm({ account_number: accountNumber })} /> : null}
     <label className="field">
@@ -118,7 +118,7 @@ const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, c
         value={accountForm.owner_user_id || defaultOwnerUserId}
         fallbackLabel={currentOwnerLabel}
         ariaLabel="Pemilik rekening aktif"
-        help={activeUsers.length ? "Nama pemilik ditampilkan kepada pasangan. Hak transaksi rekening personal tetap mengikuti pemilik." : "Daftar anggota belum dapat dimuat. Rekening pribadi baru akan dimiliki pengguna aktif dan tetap divalidasi oleh server."}
+        help={activeUsers.length ? "Nama pemilik terlihat oleh pasangan. Hak transaksi tetap mengikuti pemilik." : "Daftar anggota belum tersedia. Server tetap menetapkan pengguna aktif sebagai pemilik."}
         onChange={(ownerUserId) => updateAccountForm({ owner_user_id: ownerUserId })}
       />
     ) : null}

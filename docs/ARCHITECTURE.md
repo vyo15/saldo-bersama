@@ -34,7 +34,7 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 ## Data flow write
 
 1. Client membuat idempotency key.
-2. Gateway memeriksa session, origin, rate limit, action, dan reserved fields.
+2. Gateway memeriksa session, origin, rate limit, action, dan reserved fields. Daftar exact reserved field transaksi bersifat canonical di `api/_lib/transactionContract.js`; gateway authorization dan finance service menegakkan contract yang sama secara independen sebagai defense in depth.
 3. Backend membaca actor canonical dari Turso.
 4. Service melakukan validasi dan optimistic version check.
 5. Perubahan utama, audit, idempotency response, dan outbox commit dalam transaction yang sama.
@@ -45,10 +45,10 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 
 - Lima endpoint di `api/` hanya melakukan HTTP/session orchestration.
 - Handler action canonical berada di `api/_lib/actions/registry.js`; operational metadata berada di `api/_lib/actions/policy.js`; authorization role/scope tetap canonical di `api/_lib/security.js`.
-- Business service besar dibagi ke `services/planning/`, `services/reporting/`, dan `services/maintenance/`; file facade lama mempertahankan compatibility import.
+- Business service besar dibagi ke `services/planning/`, `services/reporting/`, dan `services/maintenance/`; `index.js` pada masing-masing area menjadi stable public barrel untuk import lintas service.
 - Frontend feature memakai `*.api.js`; transport/cache/error hanya berada di `frontend/src/services/api/`.
 - Dependency frontend mengalir `app -> feature/layout`, lalu `feature -> app context/shared/services`. `shared` dan `domain` tidak boleh mengimpor implementation `feature`.
-- Presentation murni yang dipakai lintas feature berada di `frontend/src/shared/presentation/`. File presentation lama di feature hanya compatibility re-export agar import lama tidak pecah sekaligus.
+- Presentation murni yang dipakai lintas feature berada di `frontend/src/shared/presentation/`. Wrapper presentation lama di feature telah dipensiunkan dan harus tetap tidak ada; governance test menjaga agar helper lintas feature tidak kembali terduplikasi.
 - Quick transaction composer dimiliki application context (`TransactionComposerContext`) sehingga layout dan dashboard tidak mengimpor `TransactionForm` secara langsung.
 - Feature yang memerlukan action domain feature lain membuat adapter lokal ke `services/api/client.js`, bukan mengimpor `*.api.js` milik feature lain. Reuse komponen visual lintas feature harus eksplisit dan tidak boleh membawa business rule atau write API.
 - Feature/page tidak boleh mengimpor transport global untuk write dan tidak boleh mengimpor toolkit UI langsung.
@@ -68,6 +68,8 @@ saldo awal + dampak transaksi aktif hingga cutoff date
 - transfer mengurangi sumber dan menambah tujuan;
 - adjustment hanya owner dan mengikuti rekening yang divalidasi;
 - cancelled/archived tidak memengaruhi saldo.
+
+`visibleAccounts()` sengaja menghitung aggregate saldo dengan `CASE` SQL untuk menghindari N+1, sedangkan validasi point-in-time memakai `transactionImpact()`/`accountBalanceAsOf()`. Kedua implementasi wajib tetap parity dan dijaga oleh regression test di `test/business/business-rules.test.js`.
 
 ## Concurrency
 

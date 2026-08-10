@@ -17,6 +17,9 @@ test("confirmation modal mendukung alasan, exact phrase, acknowledgement, countd
   assert.doesNotMatch(modal, /const\s+setters\s*=\s*\{/, "setter state tidak boleh dibungkus object transient yang memicu reset ulang setiap render");
   assert.doesNotMatch(modal, /\[[^\]]*\bsetters\b[^\]]*\]/, "effect reset tidak boleh bergantung pada object setter transient");
   assert.match(modal, /useCountdownReset\(\{[\s\S]*setReason,[\s\S]*setConfirmation,[\s\S]*setAcknowledged,[\s\S]*setRemainingSeconds,[\s\S]*setValidationError,[\s\S]*submitLockRef/);
+  assert.match(modal, /confirmationRequirementHint/);
+  assert.match(modal, /Selesaikan frasa konfirmasi untuk mengaktifkan tombol/);
+  assert.match(modal, /Centang pernyataan pemahaman untuk mengaktifkan tombol/);
 });
 
 test("rekening memakai preview server dan hanya menghapus permanen rekening belum dipakai", async () => {
@@ -89,6 +92,16 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
   assert.match(recurring, /acknowledgementLabel=\{(?:p\.)?archiveRuleTarget\?\.preview\.canDeleteUnused/);
   assert.match(goals, /last_movement_row_version/);
   assert.match(goals, /rowVersion: reverseTarget\.last_movement_row_version/);
+  assert.match(goals, /const GoalCreateModal/);
+  assert.match(goals, /id="goal-create-form"/);
+  assert.match(recurring, /const CreateRuleModal/);
+  assert.match(recurring, /id="create-recurring-form"/);
+  assert.match(allocations, /const CreateEnvelopeModal/);
+  assert.match(allocations, /const MoveEnvelopeModal/);
+  assert.match(budgets, /const BudgetModal/);
+  assert.doesNotMatch(recurring, /const CreateRulePanel/);
+  assert.doesNotMatch(allocations, /const CreateEnvelopePanel|const MoveEnvelopePanel/);
+  assert.doesNotMatch(budgets, /const BudgetForm/);
   assert.match(allocationsApi, /envelopes\.reverseMovement/);
   assert.doesNotMatch(allocations, /Pulihkan aturan kantong|restoreTarget|restoreState|restoreRule|archivedRules/);
   assert.doesNotMatch(allocationsApi, /envelopes\.restoreRule/);
@@ -96,13 +109,14 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
 });
 
 test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode per route", async () => {
-  const [layout, notifications, members, recovery, period, audit, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi] = await Promise.all([
+  const [layout, notifications, members, recovery, period, audit, reset, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi] = await Promise.all([
     read("src/features/settings/SettingsLayout.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/settings/RecoveryPage.jsx"),
     read("src/features/settings/PeriodControlPage.jsx"),
     read("src/features/settings/AuditPage.jsx"),
+    read("src/features/settings/ResetDataPage.jsx"),
     read("src/features/settings/settings.api.js"),
     read("src/features/accounts/accounts.api.js"),
     read("src/features/categories/categories.api.js"),
@@ -115,7 +129,15 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(layout, /\/pengaturan\/pemulihan/);
   assert.match(layout, /\/pengaturan\/periode/);
   assert.match(layout, /\/pengaturan\/audit/);
+  assert.match(layout, /\/pengaturan\/reset-data/);
+  assert.match(layout, /Reset data percobaan/);
   assert.match(layout, /ownerOnly/);
+  assert.match(reset, /<OwnerSettingsGuard>/);
+  assert.match(reset, /runSettingsAction\("reset\.preview"/);
+  assert.match(reset, /runSettingsAction\("reset\.apply"/);
+  assert.match(reset, /expectedConfirmation=\{preview\?\.confirmationPhrase/);
+  assert.match(reset, /countdownSeconds=\{8\}/);
+  assert.match(reset, /safety backup/i);
   assert.match(notifications, /Setiap pengguna mendaftarkan perangkatnya sendiri/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
   assert.match(members, /Tambah anggota/);
@@ -141,7 +163,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(audit, /audit-mobile-list|mobile-data-list/);
   assert.match(audit, /Audit tidak dapat diedit atau dihapus/);
   assert.match(api, /users\.reactivate/);
-  assert.doesNotMatch([layout, notifications, members, recovery, period, audit].join("\n"), /data\.purge|transactions\.delete|accounts\.delete(?!Unused)/);
+  assert.doesNotMatch([layout, notifications, members, recovery, period, audit, reset].join("\n"), /data\.purge|transactions\.delete|accounts\.delete(?!Unused)/);
 });
 
 test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry, dan membatasi key manual ke form transaksi", async () => {

@@ -178,7 +178,7 @@ const AccountArchiveConfirmation = ({ archiveTarget, dialogState, setArchiveTarg
       <div><span>Seluruh transaksi</span><strong>{archiveTarget.preview.dependencies.transactions}</strong></div>
       <div><span>Rekonsiliasi</span><strong>{archiveTarget.preview.dependencies.reconciliations}</strong></div>
       <div><span>Referensi kantong/tagihan/target</span><strong>{archiveTarget.preview.dependencies.envelopes + archiveTarget.preview.dependencies.recurring + archiveTarget.preview.dependencies.goals}</strong></div>
-      <p>{archiveTarget.preview.canDeleteUnused ? "Semua pemeriksaan bernilai nol. Backend akan membaca ulang data tepat sebelum DELETE." : "Rekening pernah digunakan atau memiliki histori, sehingga data hanya diarsipkan dan tidak dihapus."}</p>
+      <p>{archiveTarget.preview.canDeleteUnused ? "Data rekening sudah lolos guard server. Lengkapi alasan, frasa konfirmasi, dan pernyataan pemahaman di bawah. Backend tetap membaca ulang data tepat sebelum DELETE." : "Rekening pernah digunakan atau memiliki histori, sehingga data hanya diarsipkan dan tidak dihapus."}</p>
     </div> : null}
   </ConfirmationModal>
 );

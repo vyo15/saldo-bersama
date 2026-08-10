@@ -93,7 +93,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "budgets.list", "budgets.upsert", "budgets.previewLifecycle", "budgets.archive", "budgets.deleteUnused", "budgets.restore", "goals.list", "goals.create", "goals.update", "goals.previewLifecycle", "goals.archive", "goals.deleteUnused", "goals.move", "goals.reverseMovement", "goals.restore", "reports.monthly",
     "reconciliations.list", "reconciliations.create", "periods.list", "periods.previewClose", "periods.close", "periods.reopen",
     "calendar.sync", "mirror.sync", "mirror.rebuild", "integrations.status",
-    "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "integrity.run",
+    "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "reset.preview", "reset.apply", "integrity.run",
   ]),
   member: new Set([
     "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",

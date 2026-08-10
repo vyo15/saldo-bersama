@@ -16,6 +16,7 @@ import LineChart from "../../../components/charts/LineChart.jsx";
 import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import {
+  accountOwnerName,
   accountOwnershipLabel,
   accountProviderLabel,
   formatAccountNumber,
@@ -110,6 +111,7 @@ const SelectedAccountHero = ({ account, ownerMode, onViewTransactions, onEditAcc
         <dl className={styles.heroFacts}>
           <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
           <div><dt>Saldo awal</dt><dd><Money value={account.initial_balance || 0} /></dd></div>
+          <div><dt>Pemilik</dt><dd>{account.owner_scope === "personal" ? accountOwnerName(account) || "Belum tersedia" : "Kedua pengguna"}</dd></div>
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>
         <div className={styles.heroActions}>

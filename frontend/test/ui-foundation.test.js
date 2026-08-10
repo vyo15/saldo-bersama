@@ -133,6 +133,10 @@ test("login memakai artwork approved penuh, onboarding mobile, animasi uang, fee
   assert.equal((login.match(/className="google-login-button"/g) || []).length, 1);
   assert.match(auth, /identity\.renderButton\(element/);
   assert.match(pages, /\.login-desktop-stage,[\s\S]*height:\s*100dvh;/);
+  assert.match(login, /login-desktop-artwork-frame/);
+  assert.match(login, /login-mobile-artwork-frame/);
+  assert.match(pages, /\.login-desktop-artwork-frame[\s\S]*width:\s*max\(100vw, calc\(100dvh \* 1672 \/ 941\)\)[\s\S]*aspect-ratio:\s*1672 \/ 941;/);
+  assert.match(pages, /\.login-mobile-artwork-frame[\s\S]*width:\s*max\(100vw, calc\(100dvh \* 941 \/ 1672\)\)[\s\S]*aspect-ratio:\s*941 \/ 1672;/);
   assert.match(pages, /\.login-desktop-artwork,[\s\S]*object-fit:\s*cover;/);
   assert.match(pages, /\.login-mobile-next:active[\s\S]*transform:\s*scale\(\.975\);/);
   assert.match(pages, /@keyframes login-money-fall/);

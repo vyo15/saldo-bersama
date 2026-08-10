@@ -1,12 +1,14 @@
 import { getDatabase } from "./_lib/db/httpClient.js";
 import { readSchemaStatus } from "./_lib/db/schema.js";
-import { ok } from "./_lib/http.js";
+import { methodNotAllowed, ok } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, runtimeBuildInfo } from "./_lib/observability.js";
 
 export default async function handler(request, response) {
   const startedAt = Date.now();
   const requestId = requestIdFrom(request);
   attachRequestId(response, requestId);
+  if (request.method !== "GET") return methodNotAllowed(response, ["GET"]);
+
   let databaseStatus = "unavailable";
   let schema = { ready: false, version: null };
   const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);

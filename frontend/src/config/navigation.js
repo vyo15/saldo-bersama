@@ -22,7 +22,7 @@ export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
   { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: FiCreditCard },
   { to: "/kategori", label: "Kategori", description: "Atur kategori transaksi yang digunakan.", icon: FiTag },
-  { to: "/rekonsiliasi", label: "Rekonsiliasi", description: "Cocokkan saldo sistem dengan saldo aktual.", icon: FiCheckCircle },
+  { to: "/rekonsiliasi", label: "Cocokkan saldo", description: "Periksa apakah saldo aplikasi sama dengan saldo aktual.", icon: FiCheckCircle },
   { to: "/pengaturan", label: "Pengaturan", description: "Atur aplikasi, integrasi, dan akses.", icon: FiSettings },
 ]);
 

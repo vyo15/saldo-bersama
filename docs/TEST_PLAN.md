@@ -101,6 +101,7 @@ Browser smoke wajib menutup process tree Chromium dan koneksi Chrome DevTools Pr
 Perubahan sistem pengendali uang bersama wajib mencakup skenario berikut:
 
 - filter transaksi berdasarkan rekening, kategori, dan pencatat tetap mengikuti projection personal/shared backend;
+- regression saldo wajib membandingkan aggregate SQL `visibleAccounts()` dengan `accountBalanceAsOf()` pada fixture income, expense, refund, transfer, adjustment, inactive transaction, initial-balance date, dan beberapa cutoff date; perubahan semantik `transactionImpact()` wajib menjaga parity ini;
 - laporan tren 3, 6, dan 12 bulan tidak menghitung transfer sebagai pemasukan atau pengeluaran;
 - `/anggaran` mengelola create/update/archive dengan idempotency dan `row_version`; `/laporan` hanya menampilkan analisis anggaran vs aktual tanpa mutation;
 - member dan periode historis melihat Anggaran secara read-only, sedangkan owner hanya dapat mengelola periode aktif;
@@ -228,7 +229,7 @@ Regression wajib membuktikan:
 ## Web Push desktop dan mobile
 
 - `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
-- Schema Production harus versi 7 dan `npm run db:integrity` harus lulus sebelum register subscription.
+- Schema Production harus versi 8 dan `npm run db:integrity` harus lulus sebelum register subscription.
 - `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
 - Bootstrap Development interaktif wajib menarik ulang Vercel Development walaupun `.env.local` lama terlihat lengkap; hasil pull mengganti file hanya setelah delapan core + Web Push lolos validasi.
 - Mode non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.

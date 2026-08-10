@@ -201,5 +201,5 @@ if (hasViolation) {
 }
 
 console.log(
-  `Source tree bersih: ${files.length} file diperiksa; ${vercelFunctionCandidates.length}/${VERCEL_FUNCTION_LIMIT} Vercel Functions canonical.`,
+  `Source tree bersih: ${files.length} file diperiksa; ${vercelFunctionCandidates.length} Vercel Functions canonical (batas maksimum: ${VERCEL_FUNCTION_LIMIT}).`,
 );

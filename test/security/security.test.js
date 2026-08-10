@@ -15,6 +15,10 @@ test("allowlist memetakan role secara deny by default", () => withEnv({ ALLOWED_
   assert.deepEqual(parseAllowedUsers(), [{ email: "owner@gmail.com", role: "owner" }]);
   assert.equal(authorizeAction({ role: "member" }, "backup.create"), false);
   assert.equal(authorizeAction({ role: "owner" }, "backup.create"), true);
+  assert.equal(authorizeAction({ role: "member" }, "reset.preview"), false);
+  assert.equal(authorizeAction({ role: "member" }, "reset.apply"), false);
+  assert.equal(authorizeAction({ role: "owner" }, "reset.preview"), true);
+  assert.equal(authorizeAction({ role: "owner" }, "reset.apply"), true);
 }));
 
 

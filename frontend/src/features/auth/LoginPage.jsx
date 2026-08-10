@@ -112,7 +112,7 @@ const MobileLoginProvider = (props) => <><MoneyRain compact /><ThemeToggle class
 const MobileArtworkSlide = ({ src, index, mobileSlide, moveMobileSlide, providerProps }) => {
   const isLogin = index === MOBILE_LOGIN_SLIDE;
   const active = index === mobileSlide;
-  return <article className="login-mobile-slide" aria-hidden={!active}><p className="sr-only">{MOBILE_SLIDE_COPY[index]}</p><img className="login-mobile-artwork" src={src} alt="" aria-hidden="true" draggable="false" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "auto"} />{!isLogin ? <button type="button" className="login-artwork-hotspot login-mobile-next" aria-label={index === 0 ? "Lanjut ke pengaturan anggaran" : "Lanjut ke login"} onClick={() => moveMobileSlide(index + 1)} tabIndex={active ? 0 : -1} /> : null}{isLogin && active ? <MobileLoginProvider {...providerProps} /> : null}</article>;
+  return <article className="login-mobile-slide" aria-hidden={!active}><p className="sr-only">{MOBILE_SLIDE_COPY[index]}</p><div className="login-mobile-artwork-frame"><img className="login-mobile-artwork" src={src} alt="" aria-hidden="true" draggable="false" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "auto"} />{!isLogin ? <button type="button" className="login-artwork-hotspot login-mobile-next" aria-label={index === 0 ? "Lanjut ke pengaturan anggaran" : "Lanjut ke login"} onClick={() => moveMobileSlide(index + 1)} tabIndex={active ? 0 : -1} /> : null}{isLogin && active ? <MobileLoginProvider {...providerProps} /> : null}</div></article>;
 };
 
 const MobileLoginLayout = ({ mobileSlide, moveMobileSlide, finishSwipe, swipeStartXRef, swipeDeltaXRef, providerProps }) => <main className="login-page login-page--mobile-artwork">
@@ -124,7 +124,7 @@ const MobileLoginLayout = ({ mobileSlide, moveMobileSlide, finishSwipe, swipeSta
 </main>;
 
 const DesktopLoginLayout = ({ theme, providerProps }) => <main className="login-page login-page--desktop-artwork">
-  <h1 className="sr-only">Saldo Bersama</h1><section className="login-desktop-stage" aria-label="Login Saldo Bersama"><img className="login-desktop-artwork" src={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light} alt="" aria-hidden="true" draggable="false" fetchPriority="high" /><MoneyRain /><div className="login-provider-mask login-provider-mask--desktop" aria-hidden="true" /><section className="login-provider-slot login-provider-slot--desktop" aria-label="Masuk ke Saldo Bersama"><LoginProvider {...providerProps} /></section><CreatorLink /><div className="sr-only"><p>Kelola keuangan pribadi dan bersama.</p><p>Akun yang diizinkan. Akses terverifikasi. Sinkron antar perangkat.</p></div></section>
+  <h1 className="sr-only">Saldo Bersama</h1><section className="login-desktop-stage" aria-label="Login Saldo Bersama"><div className="login-desktop-artwork-frame"><img className="login-desktop-artwork" src={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light} alt="" aria-hidden="true" draggable="false" fetchPriority="high" /><div className="login-provider-mask login-provider-mask--desktop" aria-hidden="true" /><section className="login-provider-slot login-provider-slot--desktop" aria-label="Masuk ke Saldo Bersama"><LoginProvider {...providerProps} /></section><CreatorLink /></div><MoneyRain /><div className="sr-only"><p>Kelola keuangan pribadi dan bersama.</p><p>Akun yang diizinkan. Akses terverifikasi. Sinkron antar perangkat.</p></div></section>
 </main>;
 
 const LoginPage = () => {

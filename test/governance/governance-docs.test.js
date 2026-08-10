@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { ACTION_POLICIES } from "../../api/_lib/actions/policy.js";
+import { DATABASE_SCHEMA_VERSION } from "../../api/_lib/db/schema.js";
 import { ACTION_PERMISSIONS } from "../../api/_lib/security.js";
 import {
   CORE_RUNTIME_ENV_KEYS,
@@ -105,7 +106,7 @@ test("direct Git workflow is canonical and retired task automation stays absent"
 
 test("documentation index exposes product boundaries and direct delivery workflow", () => {
   const index = read("docs/INDEX.md");
-  for (const reference of ["product/OUT_OF_SCOPE.md", "product/ROADMAP.md", "WORKFLOW.md", "GIT_WORKFLOW.md", "UI_DESIGN_SYSTEM.md"]) {
+  for (const reference of ["product/OUT_OF_SCOPE.md", "product/ROADMAP.md", "WORKFLOW.md", "GIT_WORKFLOW.md", "UI_DESIGN_SYSTEM.md", "../database/README.md", "../apps-script/README.md"]) {
     assert.match(index, new RegExp(escapeRegExp(reference)));
   }
   assert.doesNotMatch(index, /tasks\/README|TASK_TEMPLATE/);
@@ -121,6 +122,21 @@ test("legacy global handoff files remain retired and task archives are historica
   assert.equal(exists("docs/TEAM_OWNERSHIP.md"), false);
   assert.equal(exists("docs/templates/TASK_HANDOFF_TEMPLATE.md"), false);
   assert.match(read("docs/DOCUMENT_LIFECYCLE.md"), /docs\/tasks\/archive\/.*workflow lama/i);
+});
+
+
+test("active workflow docs do not require retired task-card lifecycle", () => {
+  const activeDocs = [
+    read("SECURITY.md"),
+    read("docs/DEFINITION_OF_READY.md"),
+    read("docs/RELEASE_CHECKLIST.md"),
+  ];
+  for (const source of activeDocs) {
+    assert.doesNotMatch(source, /Task ID dan branch jelas/i);
+    assert.doesNotMatch(source, /task menjadi `APPROVED` atau `IN_PROGRESS`/i);
+    assert.doesNotMatch(source, /Task terkait sudah di-archive/i);
+    assert.doesNotMatch(source, /dipatch pada branch terpisah/i);
+  }
 });
 
 test("every canonical action is documented in API and authorization contracts", () => {
@@ -191,6 +207,57 @@ test("every migration table is documented in both schema overview and data dicti
     assert.ok(dictionary.includes(`\`${table}\``), `Table missing from data dictionary: ${table}`);
     assert.ok(schemaOverview.includes(`\`${table}\``), `Table missing from Turso schema overview: ${table}`);
   });
+});
+
+
+test("schema docs track runtime version and latest migration", () => {
+  const migrationFiles = readdirSync(path.join(root, "database/migrations"))
+    .filter((name) => /^\d+_.+\.sql$/.test(name))
+    .sort();
+  const latestMigration = migrationFiles.at(-1);
+  assert.ok(latestMigration, "Latest migration not found");
+
+  const schemaOverview = read("docs/TURSO_SCHEMA.md");
+  const dictionary = read("docs/DATA_DICTIONARY.md");
+  const testPlan = read("docs/TEST_PLAN.md");
+  const projectStatus = read("docs/PROJECT_STATUS.md");
+
+  assert.ok(schemaOverview.includes(`\`${latestMigration}\``), `Latest migration missing from TURSO_SCHEMA: ${latestMigration}`);
+  assert.ok(dictionary.includes(`\`${latestMigration}\``), `Latest migration missing from DATA_DICTIONARY: ${latestMigration}`);
+  assert.ok(schemaOverview.includes(`Versi aktif: \`${DATABASE_SCHEMA_VERSION}\``));
+  assert.ok(testPlan.includes(`Schema Production harus versi ${DATABASE_SCHEMA_VERSION}`));
+  assert.ok(projectStatus.includes(`**Active schema contract:** v${DATABASE_SCHEMA_VERSION}`));
+});
+
+test("canonical transaction and balance parity contracts are documented", () => {
+  const apiContract = read("docs/API_CONTRACT.md");
+  const architecture = read("docs/ARCHITECTURE.md");
+  const securityModel = read("docs/SECURITY_MODEL.md");
+  const testPlan = read("docs/TEST_PLAN.md");
+
+  for (const source of [apiContract, architecture, securityModel]) {
+    assert.ok(source.includes("api/_lib/transactionContract.js"));
+  }
+  assert.match(securityModel, /identityRateLimitKey/);
+  assert.match(securityModel, /process-local/);
+  assert.match(testPlan, /visibleAccounts\(\)/);
+  assert.match(testPlan, /accountBalanceAsOf\(\)/);
+  assert.match(testPlan, /parity/i);
+});
+
+test("API action source mappings document registry-owned wrappers", () => {
+  const lines = read("docs/API_CONTRACT.md").split(/\r?\n/);
+  const actionRow = (action) => lines.find((line) => line.startsWith(`| \`${action}\` |`)) || "";
+
+  assert.ok(actionRow("system.health").includes("`api/_lib/actions/registry.js`"));
+  for (const action of ["calendar.sync", "mirror.sync", "mirror.rebuild"]) {
+    const row = actionRow(action);
+    assert.ok(row.includes("`api/_lib/actions/registry.js`"), `Registry source missing for ${action}`);
+    assert.ok(row.includes("`api/_lib/services/integrations.js`"), `Integration service source missing for ${action}`);
+  }
+  const integrationStatusRow = actionRow("integrations.status");
+  assert.ok(integrationStatusRow.includes("`api/_lib/services/integrations.js`"));
+  assert.doesNotMatch(integrationStatusRow, /dispatcher|actions\/registry/);
 });
 
 test("every canonical environment key is documented and classifications use one source", () => {

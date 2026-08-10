@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
 import { createEnvelopePeriod, createEnvelopeRule } from "../../api/_lib/services/planning/envelopes.js";
-import { createGoal, goalProjection, updateGoal } from "../../api/_lib/services/planning/goals.js";
+import { createGoal, goalProjection, listGoals, moveGoal, reverseGoalMovement, updateGoal } from "../../api/_lib/services/planning/goals.js";
 import { createRecurringRule, updateRecurringRule } from "../../api/_lib/services/planning/recurring.js";
 import { reopenPeriod } from "../../api/_lib/services/reporting/periods.js";
 import { deactivateUser, reactivateUser, resolveActor, upsertUser } from "../../api/_lib/services/users.js";
@@ -167,6 +167,135 @@ test("goal projection dan mutation menjaga target, ownership, status, dan accoun
       () => updateGoal(db, context(owner, "goals.update", { goal_id: goal.goal_id, row_version: 1, account_id: "goal-account-2" }, 1)),
       (error) => error.code === "GOAL_ACCOUNT_LOCKED",
     );
+  } finally {
+    db.close();
+  }
+});
+
+test("goal lifecycle mengunci setoran saat target tercapai, tetap mengizinkan penarikan, dan mencegah overfund", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner);
+    await seedAccount(db, { id: "goal-lifecycle-target", balance: 0 });
+    await seedAccount(db, { id: "goal-lifecycle-source", balance: 1_000_000 });
+    const goal = await createGoal(db, context(owner, "goals.create", {
+      name: "Dana Laptop",
+      goal_type: "savings",
+      account_id: "goal-lifecycle-target",
+      target_amount: 100_000,
+      target_date: addDays(todayJakarta(), 90),
+      priority: "normal",
+    }));
+
+    const initial = (await listGoals(db, { actor: owner, payload: {} })).items[0];
+    assert.equal(initial.can_deposit, true);
+    assert.equal(initial.can_withdraw, false);
+    assert.equal(initial.can_complete, false);
+
+    await assert.rejects(
+      () => moveGoal(db, context(owner, "goals.move", {
+        goal_id: goal.goal_id,
+        movement_type: "deposit",
+        amount: 100_001,
+        source_account_id: "goal-lifecycle-source",
+        destination_account_id: "goal-lifecycle-target",
+        transaction_date: todayJakarta(),
+        reason: "Setoran terlalu besar",
+      })),
+      (error) => error.code === "GOAL_OVERFUND" && Number(error.details?.remainingAmount) === 100_000,
+    );
+
+    const movementResult = await moveGoal(db, context(owner, "goals.move", {
+      goal_id: goal.goal_id,
+      movement_type: "deposit",
+      amount: 100_000,
+      source_account_id: "goal-lifecycle-source",
+      destination_account_id: "goal-lifecycle-target",
+      transaction_date: todayJakarta(),
+      reason: "Setoran target penuh",
+    }));
+    const reached = (await listGoals(db, { actor: owner, payload: {} })).items[0];
+    assert.equal(reached.current_amount, 100_000);
+    assert.equal(reached.can_deposit, false);
+    assert.equal(reached.can_withdraw, true);
+    assert.equal(reached.can_complete, true);
+    assert.equal(reached.can_reverse, true);
+
+    const completed = await updateGoal(db, context(owner, "goals.update", {
+      goal_id: goal.goal_id,
+      row_version: reached.row_version,
+      status: "completed",
+    }, reached.row_version));
+    const locked = (await listGoals(db, { actor: owner, payload: {} })).items[0];
+    assert.equal(locked.status, "completed");
+    assert.equal(locked.can_reopen, true);
+    assert.equal(locked.can_update, false);
+    assert.equal(locked.can_reverse, false);
+
+    await assert.rejects(
+      () => updateGoal(db, context(owner, "goals.update", {
+        goal_id: goal.goal_id,
+        row_version: completed.row_version,
+        name: "Edit terlarang",
+      }, completed.row_version)),
+      (error) => error.code === "GOAL_COMPLETED_LOCKED",
+    );
+    await assert.rejects(
+      () => reverseGoalMovement(db, context(owner, "goals.reverseMovement", {
+        goal_movement_id: movementResult.movement.goal_movement_id,
+        row_version: movementResult.movement.row_version,
+        reason: "Reverse saat selesai",
+      }, movementResult.movement.row_version)),
+      (error) => error.code === "GOAL_COMPLETED_LOCKED",
+    );
+
+    const reopened = await updateGoal(db, context(owner, "goals.update", {
+      goal_id: goal.goal_id,
+      row_version: completed.row_version,
+      status: "active",
+    }, completed.row_version));
+    const stillReached = (await listGoals(db, { actor: owner, payload: {} })).items[0];
+    assert.equal(stillReached.can_deposit, false);
+    assert.equal(stillReached.can_withdraw, true);
+    assert.equal(stillReached.can_complete, true);
+    assert.equal(stillReached.can_update, true);
+
+    const withdrawalContext = context(owner, "goals.move", {
+      goal_id: goal.goal_id,
+      movement_type: "withdrawal",
+      amount: 10_000,
+      source_account_id: "goal-lifecycle-target",
+      destination_account_id: "goal-lifecycle-source",
+      transaction_date: todayJakarta(),
+      reason: "Tarik sebagian setelah target dibuka kembali",
+    });
+    withdrawalContext.requestId = "character:goals.move:withdrawal";
+    withdrawalContext.idempotencyKey = "character:goals.move:withdrawal";
+    await moveGoal(db, withdrawalContext);
+    const withdrawn = (await listGoals(db, { actor: owner, payload: {} })).items[0];
+    assert.equal(withdrawn.current_amount, 90_000);
+    assert.equal(withdrawn.can_complete, false);
+    assert.equal(withdrawn.can_deposit, true);
+    assert.equal(withdrawn.can_withdraw, true);
+
+    await assert.rejects(
+      () => updateGoal(db, context(owner, "goals.update", {
+        goal_id: goal.goal_id,
+        row_version: reopened.row_version,
+        target_amount: 80_000,
+      }, reopened.row_version)),
+      (error) => error.code === "GOAL_TARGET_BELOW_PROGRESS" && Number(error.details?.currentAmount) === 90_000,
+    );
+
+    await updateGoal(db, context(owner, "goals.update", {
+      goal_id: goal.goal_id,
+      row_version: reopened.row_version,
+      target_amount: 120_000,
+    }, reopened.row_version));
+    const raised = (await listGoals(db, { actor: owner, payload: {} })).items[0];
+    assert.equal(raised.remaining_amount, 30_000);
+    assert.equal(raised.can_deposit, true);
+    assert.equal(raised.can_withdraw, true);
   } finally {
     db.close();
   }

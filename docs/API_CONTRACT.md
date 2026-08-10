@@ -12,6 +12,8 @@
 
 Frontend tidak boleh mengakses Turso atau Google bridge secara langsung.
 
+`/api/health` adalah endpoint HTTP `GET` untuk health teredaksi. `system.health` adalah action terautentikasi melalui `/api/gateway`; keduanya memiliki handler dan response contract yang berbeda.
+
 ## Gateway envelope
 
 Request:
@@ -56,13 +58,15 @@ Error:
 
 Server tidak menerima actor, role, UID, audit field, scope internal, timestamps, status, atau ownership dari client sebagai kebenaran.
 
+Daftar exact field transaksi yang server-owned/reserved bersifat canonical di `api/_lib/transactionContract.js`. Gateway dan finance service wajib memakai contract yang sama; daftar tersebut tidak boleh didefinisikan ulang secara independen.
+
 ## Action catalog
 
 Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `api/_lib/actions/registry.js`, operational policy di `api/_lib/actions/policy.js`, dan `api/_lib/actionDispatcher.js` hanya melakukan dispatch terjaga.
 
 | Action | Owner | Member | Mode | Idempotency | Source utama |
 |---|---:|---:|---|---|---|
-| `system.health` | Ya | Ya | Read | Tidak | `api/_lib/actionDispatcher.js` |
+| `system.health` | Ya | Ya | Read | Tidak | `api/_lib/actions/registry.js` |
 | `app.initialState` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `bootstrap.get` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `users.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/users.js` |
@@ -79,7 +83,6 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `accounts.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
-
 | `categories.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `categories.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
@@ -134,10 +137,10 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `periods.previewClose` | Ya | Tidak | Read | Tidak | `api/_lib/services/reporting/` |
 | `periods.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reporting/` |
 | `periods.reopen` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/reporting/` |
-| `calendar.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
-| `mirror.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
-| `mirror.rebuild` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/integrations.js` / dispatcher |
-| `integrations.status` | Ya | Ya | Read | Tidak | `api/_lib/services/integrations.js` / dispatcher |
+| `calendar.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/actions/registry.js` + `api/_lib/services/integrations.js` |
+| `mirror.sync` | Ya | Tidak | Write/operation | Wajib | `api/_lib/actions/registry.js` + `api/_lib/services/integrations.js` |
+| `mirror.rebuild` | Ya | Tidak | Write/operation | Wajib | `api/_lib/actions/registry.js` + `api/_lib/services/integrations.js` |
+| `integrations.status` | Ya | Ya | Read | Tidak | `api/_lib/services/integrations.js` |
 | `notifications.status` | Ya | Ya | Read | Tidak | `api/_lib/services/notifications.js` |
 | `notifications.preferences` | Ya | Ya | Read | Tidak | `api/_lib/services/notifications.js` |
 | `notifications.updatePreference` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
@@ -149,6 +152,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `import.apply` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
 | `restore.preview` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
 | `restore.apply` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
+| `reset.preview` | Ya | Tidak | Read | Tidak | `api/_lib/services/maintenance/reset.js` |
+| `reset.apply` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/reset.js` |
 | `integrity.run` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
 
 
@@ -157,11 +162,12 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - Setiap `Write/operation` dan `External/operation` yang mensyaratkan idempotency diperlakukan sebagai **satu intent logis**. Double-click dan retry untuk payload + `rowVersion` yang sama wajib memakai idempotency key yang sama sampai server memberi hasil definitif.
 - Client membedakan kegagalan definitif dari `OUTCOME_UNKNOWN`. Jika koneksi putus setelah write mungkin sudah mencapai server, intent dipertahankan **hanya di private-memory selama halaman/sesi aktif** dan retry payload yang sama menggunakan key yang sama; UI tidak boleh memulai operasi baru secara diam-diam atau menaruh state finansial pada browser storage.
 - External action mereservasi idempotency key **sebelum** side effect. Request same-key yang masih berjalan ditolak sebagai `IDEMPOTENCY_IN_PROGRESS`.
-- `notifications.test` tidak boleh diulang otomatis setelah outcome 5xx/unknown karena delivery eksternal mungkin sudah terjadi. `backup.create`, `import.apply`, `restore.preview`, dan `restore.apply` boleh melanjutkan same-key unknown intent hanya karena service masing-masing memiliki durable recovery/idempotent claim.
+- `notifications.test` dan `reset.apply` tidak boleh diulang otomatis setelah outcome 5xx/unknown karena side effect eksternal/destructive mungkin sudah terjadi. `backup.create`, `import.apply`, `restore.preview`, dan `restore.apply` boleh melanjutkan same-key unknown intent hanya karena service masing-masing memiliki durable recovery/idempotent claim.
 - Refresh read-model setelah mutation dipisahkan dari konfirmasi write: kegagalan refresh tidak boleh dilaporkan sebagai kegagalan penyimpanan yang sudah dikonfirmasi server.
 
 ### Recovery human error planning
 
+- `reset.preview` hanya menghitung data aktivitas/perencanaan yang akan dibersihkan dan menghasilkan fingerprint. `reset.apply` hanya owner, wajib fingerprint yang masih sama, alasan, acknowledgement, frasa `RESET DATA PERCOBAAN`, safety backup terverifikasi, maintenance lock, purge atomik, integrity check, rebuild integrasi, dan audit. Rekening, kategori, pengguna, konfigurasi, audit log, serta backup dipertahankan.
 - Master/config owner-only memakai server lifecycle preview. `accounts`, `categories`, envelope rule, recurring rule, goal, dan budget hanya boleh hard-delete melalui action `deleteUnused` masing-masing ketika backend membuktikan seluruh histori/dependensi domain = 0. Begitu pernah dipakai, jalurnya hanya archive/restore.
 - `envelopes.archiveRule` dan `envelopes.restoreRule` owner-only, memakai alasan + `row_version`, dan tidak menghapus movement/audit. `envelopes.deleteUnusedRule` hanya boleh menghapus rule baru bersama satu initial empty period yang belum pernah menjadi histori.
 - `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan `budgets.archive`/`budgets.restore` owner-only; lifecycle eksplisit membutuhkan `row_version` dan alasan. `goals.deleteUnused`, `recurring.deleteUnusedRule`, dan `budgets.deleteUnused` hanya untuk entity history-free sesuai preview backend.

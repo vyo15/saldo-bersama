@@ -2,9 +2,9 @@
 
 ## Pre-release
 
-- [ ] Semua task yang termasuk release sudah `DONE` atau guarded task yang relevan sudah merged.
+- [ ] Semua perubahan yang termasuk release sudah disetujui dan validation relevan sudah selesai.
 - [ ] `npm run check` lulus pada Node 24 canonical.
-- [ ] Untuk perubahan frontend/browser, `npm run test:browser` lulus penuh; PASS `npm run check` saja belum cukup untuk menyatakan merge-ready.
+- [ ] Untuk perubahan frontend/browser, `npm run test:browser` lulus penuh; PASS `npm run check` saja belum cukup untuk menyatakan release-ready.
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Backup/rollback tersedia bila data terdampak.
 - [ ] Environment change tervalidasi tanpa menampilkan secret.
@@ -21,5 +21,5 @@
 
 - [ ] Commit/tag release dicatat bila digunakan.
 - [ ] Known issue/rollback window dicatat.
-- [ ] Task terkait sudah di-archive.
+- [ ] Known issue, follow-up, atau pekerjaan tersisa dicatat bila ada.
 - [ ] `PROJECT_STATUS.md` mencerminkan kondisi aktual.

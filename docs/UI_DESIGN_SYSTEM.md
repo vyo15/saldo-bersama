@@ -181,7 +181,7 @@ Adopsi Mantine harus dilakukan bertahap:
 
 ## Navigasi shell
 
-- Information architecture canonical: Perencanaan memuat Anggaran, Alokasi, Jadwal rutin, dan Target; Data keuangan memuat Rekening serta Kategori; Rekonsiliasi berada pada Kontrol saldo; Pengaturan berada pada Aplikasi.
+- Information architecture canonical: Perencanaan memuat Anggaran, Alokasi, Jadwal rutin, dan Target; Data keuangan memuat Rekening serta Kategori; Cocokkan Saldo (rekonsiliasi) berada pada Kontrol saldo; Pengaturan berada pada Aplikasi.
 - `/anggaran` adalah route pengelolaan. `/laporan` bersifat analitis dan tidak memuat mutation anggaran. Route `/tagihan` dipertahankan, tetapi label UI canonical adalah `Jadwal rutin`.
 - Sidebar desktop mempertahankan mask melengkung brand Saldo Bersama. Ukurannya boleh diperbesar untuk tap target dan proporsi layar, tetapi bentuk/aset canonical tidak boleh diganti tanpa approval visual baru.
 - Kontrol utama desktop minimum 44×44px. Enam kontrol canonical dikelompokkan rapat di tengah rail tanpa mengubah mask organik. Submenu grup memakai anchored flyout di samping trigger, label satu baris, trigger-toggle, Escape, click-outside, route-close, dan focus restoration; tombol X tidak diperlukan untuk flyout navigasi.

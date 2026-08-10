@@ -62,3 +62,15 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 - Isi alasan, centang acknowledgement, dan ketik frasa yang diminta.
 - Bila muncul conflict, jangan retry dengan data lama; refresh lalu tinjau ulang.
 - Hasil hard delete tidak memiliki tombol undo karena row rekening sudah hilang. Audit tetap ada; bila rekening ternyata masih dibutuhkan, buat rekening baru. Jangan restore database hanya untuk rekening kosong yang belum pernah digunakan.
+
+## Reset data percobaan
+
+Gunakan hanya untuk membersihkan aktivitas uji saat setup atau trial, bukan untuk mengoreksi transaksi nyata.
+
+1. Owner membuka **Pengaturan → Reset data percobaan** dan menjalankan preview.
+2. Preview harus menunjukkan jumlah transaksi, pencocokan saldo, target, anggaran, alokasi, jadwal rutin, dan tutup buku yang akan dibersihkan.
+3. Rekening, kategori, pengguna, konfigurasi, audit log, dan backup tidak ikut dihapus.
+4. Apply wajib memakai fingerprint preview terbaru, alasan, acknowledgement, frasa `RESET DATA PERCOBAAN`, dan safety backup Google Drive yang terverifikasi.
+5. Backend mengaktifkan maintenance, menghapus data trial secara atomik, menjalankan integrity check, menulis audit, lalu mengantrekan rebuild Sheets/Calendar.
+6. Jika purge sudah dimulai dan proses gagal, maintenance tetap aktif. Jalankan integrity recovery sebelum membuka write normal.
+7. Setelah reset, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, dan halaman Cocokkan Saldo sebelum melanjutkan input data nyata.

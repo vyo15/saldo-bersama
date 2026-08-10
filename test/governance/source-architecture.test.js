@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import healthHandler from "../../api/health.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const source = (relative) => readFile(path.join(root, relative), "utf8");
@@ -119,6 +120,26 @@ test("export Excel memakai POST agar origin guard konsisten pada browser", async
   assert.match(endpoint, /assertAllowedOrigin\(request\)/);
   assert.match(transport, /fetch\("\/api\/export"/);
   assert.match(transport, /method: "POST"/);
+});
+
+
+test("health endpoint menolak method selain GET sebelum akses database", async () => {
+  const endpoint = await source("api/health.js");
+  assert.match(endpoint, /request\.method !== "GET"/);
+  assert.match(endpoint, /methodNotAllowed\(response, \["GET"\]\)/);
+
+  const headers = new Map();
+  const response = {
+    statusCode: 0,
+    body: "",
+    headersSent: false,
+    setHeader(name, value) { headers.set(name, value); },
+    end(value) { this.body = value; },
+  };
+  await healthHandler({ method: "POST", headers: { "x-request-id": "health-method-test" } }, response);
+  assert.equal(response.statusCode, 405);
+  assert.equal(headers.get("Allow"), "GET");
+  assert.equal(JSON.parse(response.body).error.code, "METHOD_NOT_ALLOWED");
 });
 
 test("action internal kantong tidak diekspos dan health publik tidak membocorkan aktivitas integrasi", async () => {

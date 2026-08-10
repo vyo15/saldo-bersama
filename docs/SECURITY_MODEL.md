@@ -13,6 +13,12 @@ Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel
 - Apps Script bridge memakai HMAC, timestamp, nonce, dan action allowlist.
 - Jobs memakai signature terpisah.
 
+## Request hardening
+
+- Rate-limit key yang berasal dari alamat client atau authenticated identity memakai SHA-256 dan scope prefix; raw UID/alamat tidak menjadi bucket key. Session memakai `clientRateLimitKey()` dan `identityRateLimitKey()`, sedangkan gateway dan export memakai `identityRateLimitKey()` dari `api/_lib/security.js`.
+- Rate limiter saat ini bersifat best-effort dan process-local. Distributed throttling/global quota lintas instance bukan jaminan dari control ini.
+- Exact reserved transaction-field contract berada di `api/_lib/transactionContract.js` dan ditegakkan kembali pada gateway serta finance service.
+
 ## Secret classes
 
 Server-only: `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_BRIDGE_SHARED_SECRET`, `JOBS_SHARED_SECRET`, `VAPID_PRIVATE_KEY`.  

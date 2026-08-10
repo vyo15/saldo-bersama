@@ -30,6 +30,7 @@ const APPROVED_SQL_DELETES = new Map([
   ["api/_lib/services/planning/budgets.js", new Set(["budgets"])],
   ["api/_lib/services/maintenance/import.js", new Set(["import_previews"])],
   ["api/_lib/services/maintenance/restore.js", new Set(["restore_previews", "__RESTORE_DELETE_ORDER__"])],
+  ["api/_lib/services/maintenance/reset.js", new Set(["__RESTORE_DELETE_ORDER__"])],
 ]);
 
 const destructiveSqlTargets = (source) => {
@@ -110,6 +111,20 @@ test("ledger dan audit tidak boleh di-hard-delete oleh business service", async 
     assert.doesNotMatch(source, /DELETE\s+FROM\s+audit_log\b/i, `${file} tidak boleh hard-delete audit`);
     assert.doesNotMatch(source, /DELETE\s+FROM\s+(goal_movements|envelope_movements|reconciliations|period_closures)\b/i, `${file} tidak boleh hard-delete histori finansial`);
   }
+});
+
+test("reset data percobaan hanya tersedia melalui maintenance guard owner, preview, backup, dan audit", async () => {
+  const reset = await readFile(path.join(root, "api/_lib/services/maintenance/reset.js"), "utf8");
+  assert.match(reset, /assertOwner\(context\.actor\)/);
+  assert.match(reset, /previewFingerprint/);
+  assert.match(reset, /createTechnicalBackup/);
+  assert.match(reset, /maintenance_mode/);
+  assert.match(reset, /integrityIssues/);
+  assert.match(reset, /appendAudit/);
+  assert.match(reset, /RESET DATA PERCOBAAN/);
+  assert.doesNotMatch(reset, /"audit_log"/);
+  assert.doesNotMatch(reset, /"accounts"\s*,\s*key/);
+  assert.doesNotMatch(reset, /"categories"\s*,\s*key/);
 });
 
 test("controlled restore reset memakai daftar tabel statis dan tidak menghapus audit_log", async () => {

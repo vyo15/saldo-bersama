@@ -40,6 +40,23 @@ test("cleanup dependency fail closed tanpa flag force", () => {
   assert.match(result.stderr, /--force/);
 });
 
+test("cleanup dependency memberi recovery Windows untuk native module yang terkunci", async () => {
+  const source = await readFile(path.join(root, "scripts/clean-development-dependencies.mjs"), "utf8");
+  assert.match(source, /EPERM/);
+  assert.match(source, /EBUSY/);
+  assert.match(source, /DEPENDENCY_LOCKED/);
+  assert.match(source, /Hentikan npm run dev\/Vite\/Node/);
+  assert.match(source, /npm run clean:dependencies -- --force/);
+  assert.match(source, /npm ci/);
+});
+
+test("source validator membedakan jumlah Vercel Function aktif dari batas maksimum", () => {
+  const result = runNode("scripts/validate-source-tree.mjs");
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /5 Vercel Functions canonical \(batas maksimum: 12\)\./);
+  assert.doesNotMatch(result.stdout, /5\/12 Vercel Functions canonical/);
+});
+
 test("policy archive clean hanya menerima nama canonical dan menolak patch atau ZIP lain", () => {
   for (const name of [
     "saldo-bersama-clean.zip",

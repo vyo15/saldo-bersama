@@ -145,6 +145,10 @@ test("arsip target dan aturan rutin memakai aksi eksplisit beralasan, bukan stat
     );
     const archivedGoal = await archiveGoal(db, context("goals.archive", { goal_id: "goal-active", row_version: 1, reason: "Duplikat akibat submit ganda" }, 1));
     assert.equal(archivedGoal.status, "archived");
+    await assert.rejects(
+      () => updateGoal(db, context("goals.update", { goal_id: "goal-active", row_version: archivedGoal.row_version, status: "active" }, archivedGoal.row_version)),
+      (error) => error.code === "GOAL_ARCHIVED_LOCKED",
+    );
     const restoredGoal = await restoreGoal(db, context("goals.restore", { goal_id: "goal-active", row_version: archivedGoal.row_version, reason: "Arsip salah" }, archivedGoal.row_version));
     assert.equal(restoredGoal.status, "active");
 

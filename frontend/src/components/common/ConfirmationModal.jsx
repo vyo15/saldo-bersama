@@ -9,6 +9,13 @@ const confirmationValidationMessage = ({ mustProvideReason, normalizedReason, co
   return "";
 };
 
+const confirmationRequirementHint = ({ remainingSeconds, confirmationReady, acknowledgementReady }) => {
+  if (remainingSeconds > 0) return `Konfirmasi aktif dalam ${remainingSeconds} detik.`;
+  if (!confirmationReady) return "Selesaikan frasa konfirmasi untuk mengaktifkan tombol.";
+  if (!acknowledgementReady) return "Centang pernyataan pemahaman untuk mengaktifkan tombol.";
+  return "";
+};
+
 const useCountdownReset = ({
   open, countdownSeconds, setReason, setConfirmation, setAcknowledged, setRemainingSeconds, setValidationError, submitLockRef,
 }) => {
@@ -51,7 +58,7 @@ const ConfirmationFields = ({
   setAcknowledged,
   acknowledgementLabel,
   requiresAcknowledgement,
-  remainingSeconds,
+  requirementHint,
   validationError,
   error,
 }) => (
@@ -76,7 +83,7 @@ const ConfirmationFields = ({
         <span>{acknowledgementLabel}</span>
       </label>
     ) : null}
-    {remainingSeconds > 0 ? <div className="notice notice--warning" role="status">Periksa kembali dampaknya. Konfirmasi aktif dalam {remainingSeconds} detik.</div> : null}
+    {requirementHint ? <div className="notice notice--warning" role="status">{requirementHint}</div> : null}
     {validationError ? <small className="field__error" role="alert">{validationError}</small> : null}
     {error ? <div className="notice notice--danger" role="alert">{error.message || String(error)}</div> : null}
   </>
@@ -158,6 +165,7 @@ const ConfirmationModal = (props) => {
     acknowledgementLabel, confirmation, acknowledged, remainingSeconds,
   });
 
+  const requirementHint = confirmationRequirementHint({ remainingSeconds, confirmationReady, acknowledgementReady });
   const submit = (event) => submitConfirmation({
     event, reason, mustProvideReason, confirmationReady, acknowledgementReady, reasonLabel,
     remainingSeconds, submitLockRef, setValidationError, onConfirm, confirmation, acknowledged,
@@ -191,7 +199,7 @@ const ConfirmationModal = (props) => {
           setAcknowledged={setAcknowledged}
           acknowledgementLabel={acknowledgementLabel}
           requiresAcknowledgement={requiresAcknowledgement}
-          remainingSeconds={remainingSeconds}
+          requirementHint={requirementHint}
           validationError={validationError}
           error={error}
         />

@@ -24,6 +24,6 @@ Jangan menguji pada data production dengan cara destruktif.
 
 ## Respons
 
-Temuan divalidasi, ditriage, dipatch pada branch terpisah, diuji, direview oleh code owner, lalu dirilis melalui release checklist. Rotasi secret dan verifikasi data wajib dilakukan bila credential atau integritas mungkin terdampak.
+Temuan divalidasi, ditriage, dipatch secara terisolasi, diuji, direview sesuai risiko dan aturan repository, lalu dirilis melalui release checklist. Branch atau Pull Request digunakan bila diminta oleh aturan repository atau kebutuhan review. Rotasi secret dan verifikasi data wajib dilakukan bila credential atau integritas mungkin terdampak.
 
 Lihat `docs/SECURITY_MODEL.md`, `docs/THREAT_MODEL.md`, dan `docs/INCIDENT_RESPONSE.md`.

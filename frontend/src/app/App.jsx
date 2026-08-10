@@ -24,6 +24,7 @@ const ExportDataPage = lazy(() => import("../features/settings/ExportDataPage.js
 const ImportTransactionsPage = lazy(() => import("../features/settings/ImportTransactionsPage.jsx"));
 const BackupPage = lazy(() => import("../features/settings/BackupPage.jsx"));
 const RecoveryPage = lazy(() => import("../features/settings/RecoveryPage.jsx"));
+const ResetDataPage = lazy(() => import("../features/settings/ResetDataPage.jsx"));
 const PeriodControlPage = lazy(() => import("../features/settings/PeriodControlPage.jsx"));
 const AuditPage = lazy(() => import("../features/settings/AuditPage.jsx"));
 const NotFoundPage = lazy(() => import("../features/settings/NotFoundPage.jsx"));
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="import" element={<ImportTransactionsPage />} />
             <Route path="backup" element={<BackupPage />} />
             <Route path="pemulihan" element={<RecoveryPage />} />
+            <Route path="reset-data" element={<ResetDataPage />} />
             <Route path="periode" element={<PeriodControlPage />} />
             <Route path="audit" element={<AuditPage />} />
           </Route>

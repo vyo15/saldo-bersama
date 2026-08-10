@@ -22,6 +22,27 @@ npm -v
 
 Hasil `node -v` harus `v24.18.1`. `fnm env --use-on-cd` membaca `.node-version` setiap kali Git Bash masuk ke repository.
 
+### Windows: `npm ci` gagal `EPERM` pada Rollup/esbuild/native module
+
+`npm ci` selalu membersihkan `node_modules` sebelum memasang dependency dari lockfile. Di Windows, proses Node/Vite yang masih berjalan dapat mengunci file native seperti `rollup.win32-x64-msvc.node`, sehingga npm gagal dengan `EPERM ... unlink`. Ini bukan alasan untuk mengganti `npm ci` dengan `npm install` atau mengubah lockfile.
+
+1. Hentikan semua `npm run dev`, Vite preview, atau proses Node yang sedang memakai repository ini. Tutup terminal development yang masih aktif.
+2. Jalankan cleanup dependency project:
+
+```bash
+npm run clean:dependencies -- --force
+```
+
+3. Setelah cleanup berhasil, install ulang secara canonical:
+
+```bash
+npm ci
+```
+
+4. Jika cleanup masih melaporkan `Dependency masih dikunci Windows`, tutup aplikasi yang memakai project ini. Bila lock tetap ada, restart Windows lalu ulangi langkah 2 dan 3. Jangan memakai `taskkill /F /IM node.exe` sebagai langkah default karena command tersebut dapat mematikan proses Node milik project lain.
+
+Validator source menampilkan jumlah endpoint Vercel yang benar-benar aktif dan batas maksimum secara terpisah. Baseline saat ini adalah **5 Vercel Functions canonical** (`gateway`, `export`, `health`, `jobs`, `session`) dengan **batas maksimum 12**. Angka 12 bukan target jumlah function.
+
 ## 2. Onboarding
 
 Baca `../AGENTS.md`, `WORKFLOW.md`, `GIT_WORKFLOW.md`, dan `PROJECT_STATUS.md` sebelum mengubah source. Validasi source aktual dan jalankan quality gate sesuai scope sebelum commit/push.

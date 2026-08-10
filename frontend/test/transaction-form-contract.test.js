@@ -49,3 +49,12 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   assert.match(page, /"budgets\.list"/, "cancel/restore transaksi juga harus menginvalidasi pemakaian anggaran");
   assert.match(hook, /subscribeToInvalidation\(action/);
 });
+
+
+test("pemasukan menjelaskan alur gajian ke rekening tujuan tanpa mengubah kontrak saldo", async () => {
+  const text = await source();
+  assert.match(text, /form\.transaction_type === TRANSACTION_TYPES\.INCOME/);
+  assert.match(text, /Contoh gajian:/);
+  assert.match(text, /rekening bank yang menerima gaji sebagai rekening tujuan/);
+  assert.match(text, /Saldo rekening akan bertambah setelah server mengonfirmasi transaksi/);
+});

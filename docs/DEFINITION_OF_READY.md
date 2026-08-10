@@ -1,16 +1,16 @@
 # Definition of Ready
 
-Task siap dikerjakan bila:
+Perubahan siap dikerjakan bila:
 
-- Task ID dan branch jelas;
-- team `COORD`, `FE`, atau `BE` sudah ditentukan;
 - objective dan acceptance criteria jelas;
-- `Write Scope` sudah ditentukan dan tidak overlap dengan task aktif lain;
+- area source yang terdampak sudah diidentifikasi;
 - source terbaru dan path aktual sudah diperiksa;
-- dependency dinilai;
-- risiko/guarded area dinilai;
-- plan sudah disetujui user.
+- dependency dan kemungkinan overlap perubahan sudah dinilai;
+- risiko terhadap auth, authorization, data finansial, schema, migration, backup/restore, integration, dan destructive action sudah dinilai;
+- validation yang diperlukan sudah ditentukan;
+- perubahan guarded sudah melalui source review;
+- plan sudah disetujui user bila approval diperlukan.
 
-`DRAFT` belum boleh coding. Setelah approval, task menjadi `APPROVED` atau `IN_PROGRESS`.
+Branch, Pull Request, atau task card tidak menjadi syarat universal. Gunakan mekanisme tersebut hanya bila diminta user, aturan repository, atau kebutuhan review spesifik.
 
-Task guarded tetap membutuhkan approval eksplisit setelah source review.
+Perubahan guarded tetap membutuhkan approval eksplisit setelah source review.

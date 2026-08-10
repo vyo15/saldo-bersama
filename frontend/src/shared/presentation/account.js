@@ -79,11 +79,7 @@ export const accountScopeLabel = (scope) => ACCOUNT_SCOPE_LABELS[scope] || Strin
 
 export const accountOwnerName = (account = {}) => String(account.owner_name || "").trim();
 
-export const accountOwnershipLabel = (account = {}) => {
-  if (account.owner_scope !== "personal") return "Bersama";
-  const ownerName = accountOwnerName(account);
-  return ownerName ? `Pribadi · ${ownerName}` : "Pribadi";
-};
+export const accountOwnershipLabel = (account = {}) => accountScopeLabel(account.owner_scope);
 
 export const accountProviderLabel = (account = {}) => {
   if (account.account_type === "ewallet") {

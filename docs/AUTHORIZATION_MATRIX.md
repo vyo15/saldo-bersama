@@ -100,6 +100,8 @@
 | `import.apply` | Ya | Tidak |
 | `restore.preview` | Ya | Tidak |
 | `restore.apply` | Ya | Tidak |
+| `reset.preview` | Ya | Tidak |
+| `reset.apply` | Ya | Tidak |
 | `integrity.run` | Ya | Tidak |
 
 
@@ -122,7 +124,7 @@
 - Hak operasi tetap lebih sempit: member hanya dapat bertransaksi dan merekonsiliasi rekening shared atau rekening personal miliknya. Rekening personal pasangan memiliki `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
 - `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap owner-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga owner-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap owner-only.
-- User management, master create/update/archive, budget management, period close/reopen, mirror/calendar manual sync, backup/import/restore/integrity adalah owner-only sesuai action matrix.
+- User management, master create/update/archive, budget management, period close/reopen, mirror/calendar manual sync, backup/import/restore/reset data percobaan/integrity adalah owner-only sesuai action matrix.
 - Export lengkap owner-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.
 - `totalBalance` adalah metrik readable/transparan. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` adalah metrik actionable sehingga hanya boleh memakai rekening/scope operable actor.

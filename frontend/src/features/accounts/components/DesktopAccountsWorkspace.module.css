@@ -59,7 +59,7 @@
 .heroBalance > strong :global(.money) { color: var(--text); font-size: clamp(2rem, 3.8vw, 3.45rem); font-weight: var(--font-weight-semibold); line-height: 1; letter-spacing: -.055em; }
 .heroBalance > strong :global(.money--negative) { color: var(--negative); }
 
-.heroFacts { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.heroFacts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .heroFacts > div { min-width: 0; padding-top: var(--space-3); display: grid; gap: .35rem; border-top: 1px solid var(--border); }
 .heroFacts dt { color: var(--text-muted); font-size: var(--font-size-sm); }
 .heroFacts dd { min-width: 0; margin: 0; overflow: hidden; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }

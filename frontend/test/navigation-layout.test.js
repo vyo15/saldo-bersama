@@ -173,7 +173,7 @@ test("navigasi mengelompokkan menu berdasarkan fungsi tanpa mengubah route lama"
   assert.match(source, /FiTag/);
   assert.match(source, /FiCheckCircle/);
   assert.match(source, /to: "\/kategori", label: "Kategori"/);
-  assert.match(source, /to: "\/rekonsiliasi", label: "Rekonsiliasi"/);
+  assert.match(source, /to: "\/rekonsiliasi", label: "Cocokkan saldo"/);
   assert.match(source, /label: "Perencanaan"/);
   assert.match(source, /to: "\/anggaran", label: "Anggaran"/);
   assert.match(source, /to: "\/tagihan", label: "Jadwal rutin"/);

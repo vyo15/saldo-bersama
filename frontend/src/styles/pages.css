@@ -82,6 +82,26 @@
   background: var(--page);
 }
 
+.login-desktop-artwork-frame,
+.login-mobile-artwork-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.login-desktop-artwork-frame {
+  width: max(100vw, calc(100vh * 1672 / 941));
+  width: max(100vw, calc(100dvh * 1672 / 941));
+  aspect-ratio: 1672 / 941;
+}
+
+.login-mobile-artwork-frame {
+  width: max(100vw, calc(100vh * 941 / 1672));
+  width: max(100vw, calc(100dvh * 941 / 1672));
+  aspect-ratio: 941 / 1672;
+}
+
 .login-desktop-artwork,
 .login-mobile-artwork {
   position: absolute;
@@ -564,6 +584,7 @@
 .goal-card__projection dd[data-pace="overdue"] { color: var(--negative); }
 .goal-card__projection dd[data-pace="on_track"],
 .goal-card__projection dd[data-pace="completed"] { color: var(--positive); }
+.goal-card__completion { margin: 0; padding: .65rem .75rem; border: 1px solid color-mix(in srgb, var(--positive) 28%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--positive) 8%, var(--surface-soft)); color: var(--text); font-size: 12px; line-height: 1.5; }
 
 /* Responsive dashboard capability parity */
 .mobile-finance-summary small { display: block; margin-top: 2px; color: rgba(255,255,255,.65); font-size: 9px; font-weight: var(--font-weight-medium); }

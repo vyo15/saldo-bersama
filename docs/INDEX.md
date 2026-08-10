@@ -56,5 +56,7 @@ Historical task records dari workflow lama tetap berada di `tasks/archive/`, tet
 - `TEST_PLAN.md`
 - `QA_CHECKLIST.md`
 - `GOOGLE_INTEGRATIONS.md`
+- `../database/README.md` — aturan source-of-truth migration database.
+- `../apps-script/README.md` — peran Apps Script sebagai integration bridge.
 - `IMPLEMENTATION_MATRIX.md`
 - `UI_DESIGN_SYSTEM.md`

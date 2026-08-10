@@ -28,7 +28,7 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
     "envelopes.move", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
     "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.restoreRule",
     "budgets.deleteUnused", "budgets.restore", "goals.archive", "goals.deleteUnused", "goals.move", "goals.restore", "periods.close",
-    "notifications.updatePreference", "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply",
+    "notifications.updatePreference", "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply", "reset.apply",
   ]) assert.equal(requiresIdempotencyKey(action), true, action);
   assert.equal(requiresIdempotencyKey("integrity.run"), true);
 });
@@ -40,6 +40,7 @@ test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", 
     "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule",
     "recurring.previewRuleLifecycle", "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.restoreRule",
     "budgets.previewLifecycle", "budgets.deleteUnused", "budgets.restore", "goals.previewLifecycle", "goals.archive", "goals.deleteUnused", "goals.restore",
+    "reset.preview", "reset.apply",
   ];
   for (const action of ownerOnly) {
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
@@ -59,6 +60,7 @@ test("preview yang menulis state tidak menyamar sebagai read dan retry external 
   assert.equal(ACTION_POLICIES["import.preview"].mode, "write");
   assert.equal(ACTION_POLICIES["restore.preview"].mode, "external");
   assert.equal(ACTION_POLICIES["notifications.test"].retryUnknownSafe, false);
+  assert.equal(ACTION_POLICIES["reset.apply"].retryUnknownSafe, false);
   for (const action of ["backup.create", "import.apply", "restore.preview", "restore.apply"]) {
     assert.equal(ACTION_POLICIES[action].retryUnknownSafe, true, `${action} wajib punya durable recovery sebelum retry outcome unknown`);
   }

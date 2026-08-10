@@ -96,6 +96,8 @@ export const ACTION_POLICIES = Object.freeze({
   "import.apply": external({ retryUnknownSafe: true }),
   "restore.preview": external({ maintenanceAllowed: true, retryUnknownSafe: true }),
   "restore.apply": external({ maintenanceAllowed: true, retryUnknownSafe: true }),
+  "reset.preview": read(),
+  "reset.apply": external(),
   "integrity.run": write({ maintenanceAllowed: true }),
 });
 

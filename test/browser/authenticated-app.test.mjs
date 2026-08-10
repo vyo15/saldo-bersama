@@ -11,7 +11,7 @@ const routeCases = Object.freeze([
   ["/target", "Tabungan & target"],
   ["/laporan", "Laporan"],
   ["/rekening", "Rekening"],
-  ["/rekonsiliasi", "Rekonsiliasi"],
+  ["/rekonsiliasi", "Cocokkan Saldo"],
   ["/kategori", "Kategori transaksi"],
   ["/pengaturan", "Pengaturan"],
 ]);
@@ -210,8 +210,19 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(await page.evaluate("document.body.textContent.includes('Tagihan periode ini') && document.body.textContent.includes('Penerimaan yang diharapkan')"), true, "Tagihan dan pemasukan rutin harus dapat dijangkau pada mobile.");
 
     await navigateAndAssert(page, appServer.origin, "/anggaran", "Anggaran", { mobile: true });
-    assert.equal(await page.evaluate(visibleExpression("#budget-form")), true, "Owner harus dapat mengelola anggaran periode aktif.");
-    assert.equal(await page.evaluate("document.body.textContent.includes('Anggaran dan pengeluaran aktual') && document.body.textContent.includes('Simpan anggaran')"), true, "Pemantauan dan form Anggaran harus tersedia pada route terpisah.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('#budget-form'))"), false, "Form anggaran tidak boleh memenuhi halaman sebelum diminta.");
+    const budgetOpened = await page.evaluate(`(() => {
+      const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Tambah anggaran');
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(budgetOpened, true, "Owner harus memperoleh aksi Tambah anggaran pada periode aktif.");
+    await waitFor(() => page.evaluate("Boolean(document.querySelector('#budget-form'))"), { description: "modal anggaran owner" });
+    assert.equal(await page.evaluate(visibleExpression("#budget-form")), true, "Owner harus dapat mengelola anggaran melalui modal.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Anggaran dan pengeluaran aktual') && document.body.textContent.includes('Simpan anggaran')"), true, "Pemantauan dan form Anggaran harus tersedia pada route terpisah setelah aksi create.");
+    await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "modal anggaran ditutup" });
 
     await navigateAndAssert(page, appServer.origin, "/laporan", "Laporan", { mobile: true });
     assert.equal(await page.evaluate("!document.body.textContent.includes('Simpan anggaran') && !document.body.textContent.includes('Arsipkan anggaran')"), true, "Laporan tidak boleh memuat mutation anggaran.");
@@ -339,7 +350,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
 
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     assert.equal(await page.evaluate(visibleExpression('button[aria-label="Tambah rekening"]')), true, "Owner mobile harus memiliki tombol tambah rekening.");
-    assert.equal(await page.evaluate("document.body.textContent.includes('Pribadi · Owner Browser') && document.body.textContent.includes('Pribadi · Member Browser')"), true, "Label pemilik rekening personal harus tampil transparan.");
+    assert.equal(await page.evaluate("[...document.querySelectorAll('button[aria-label^=\"Lihat detail rekening\"] span')].some((item) => item.textContent.trim() === 'Pribadi')"), true, "Badge kepemilikan rekening personal harus ringkas.");
 
     await setViewport(page, 351, 590);
     const readAccountFullScreenState = () => page.evaluate(`(() => {
@@ -567,15 +578,15 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "pembayaran keluar ditutup" });
     assert.equal(await page.evaluate("document.body.textContent.includes('Riwayat dimuat hanya saat dibuka agar halaman rekening tetap ringan.')"), false, "Detail implementasi tidak boleh memenuhi halaman rekening.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('button[aria-label=\"Baca penjelasan rekonsiliasi\"]'))"), false, "Penjelasan rekonsiliasi tidak boleh tetap tersebar di halaman Rekening.");
-    await navigateAndAssert(page, appServer.origin, "/rekonsiliasi", "Rekonsiliasi", { mobile: true });
+    await navigateAndAssert(page, appServer.origin, "/rekonsiliasi", "Cocokkan Saldo", { mobile: true });
     const reconciliationState = await page.evaluate(`(() => {
       const main = document.querySelector("main");
       const text = main?.textContent || "";
       return {
-        purpose: text.includes("Cocokkan saldo aplikasi dengan saldo bank atau uang tunai tanpa mengubah saldo secara otomatis."),
+        purpose: text.includes("Periksa apakah saldo aplikasi sama dengan saldo bank, e-wallet, atau uang tunai. Fitur ini tidak menambah saldo."),
         actualBalanceInput: Boolean(main?.querySelector("#reconciliation-actual-balance")),
         systemBalance: text.includes("Saldo sistem saat halaman dimuat"),
-        differenceGuard: text.includes("Selisih hanya dicatat untuk audit"),
+        differenceGuard: text.includes("Bukan untuk menambah saldo."),
         differenceGuidance: text.includes("Jika ada selisih, cari transaksi tertinggal atau transaksi ganda."),
       };
     })()`);
@@ -838,9 +849,9 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('button[aria-label=\"Tambah rekening\"]'))"), false, "Member tidak boleh memperoleh aksi master data owner.");
     assert.equal(
-      await page.evaluate("document.body.textContent.includes('Pribadi · Owner Browser')"),
+      await page.evaluate("[...document.querySelectorAll('button[aria-label^=\"Lihat detail rekening\"] span')].some((item) => item.textContent.trim() === 'Pribadi')"),
       true,
-      "Member harus melihat label rekening personal pasangan.",
+      "Member harus melihat scope rekening personal pasangan tanpa nama panjang pada badge.",
     );
     await page.evaluate("document.querySelector('button[aria-label^=\"Buka daftar\"]')?.click()");
     await waitFor(
@@ -866,6 +877,7 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
       activeCard?.click();
     })()`);
     await waitFor(() => page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Saldo saat ini') || false"), { description: "detail rekening pasangan" });
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Owner Browser') || false"), true, "Nama pemilik rekening personal pasangan harus tetap transparan di detail.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Hanya lihat')"), true, "Rekening personal pasangan harus ditandai hanya lihat.");
     const partnerAccountActions = await page.evaluate(`(() => {
       const dialog = document.querySelector('[role=dialog]');
