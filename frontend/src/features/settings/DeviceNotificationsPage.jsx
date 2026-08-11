@@ -30,23 +30,23 @@ const NOTIFICATION_PREFERENCE_META = Object.freeze({
 const initialPushState = { status: "loading", supported: true, permission: "default", enabled: false, reason: "loading", browserSubscribed: false };
 
 const PreferenceSection = ({ preferenceState, preferenceMutation, refreshPreferences, togglePreference }) => <section className={styles.preferenceSection} aria-labelledby="notification-preferences-title">
-  <div className={styles.preferenceHeading}><div><h3 id="notification-preferences-title">Jenis pengingat</h3><p>Preferensi berlaku untuk akun ini di semua perangkat. Perubahan memengaruhi notifikasi baru; antrean yang sudah diproses dapat tetap terkirim sekali.</p></div>{preferenceState.status === "error" ? <Button type="button" disabled={preferenceMutation.busy} onClick={refreshPreferences}>Coba lagi</Button> : null}</div>
+  <div className={styles.preferenceHeading}><h3 id="notification-preferences-title">Jenis pengingat</h3>{preferenceState.status === "error" ? <Button type="button" disabled={preferenceMutation.busy} onClick={refreshPreferences}>Coba lagi</Button> : null}</div>
   {preferenceState.status === "loading" ? <p role="status">Memuat preferensi notifikasi...</p> : null}
   {preferenceState.status === "error" ? <div className="notice notice--warning" role="status">Preferensi belum dapat dimuat. Pengaturan perangkat tetap aman dan tidak berubah.</div> : null}
   {preferenceState.status === "ready" ? <div className={styles.preferenceList}>{preferenceState.items.map((item) => {
-    const [label, description] = NOTIFICATION_PREFERENCE_META[item.type] || [item.type, "Pengingat aplikasi."];
-    return <label className={styles.preferenceItem} key={item.type}><span className={styles.preferenceCopy}><strong>{label}</strong><small>{description}</small></span><input type="checkbox" role="switch" checked={item.enabled} disabled={preferenceMutation.busy} onChange={() => togglePreference(item)} aria-label={`${label}: ${item.enabled ? "aktif" : "nonaktif"}`} /></label>;
+    const [label] = NOTIFICATION_PREFERENCE_META[item.type] || [item.type];
+    return <label className={styles.preferenceItem} key={item.type}><span className={styles.preferenceCopy}><strong>{label}</strong></span><input type="checkbox" role="switch" checked={item.enabled} disabled={preferenceMutation.busy} onChange={() => togglePreference(item)} aria-label={`${label}: ${item.enabled ? "aktif" : "nonaktif"}`} /></label>;
   })}</div> : null}
 </section>;
 
 const DeviceNotificationView = ({ pushState, view, tileAction, tileInteractive, busy, result, preferenceState, preferenceMutation, refreshPreferences, togglePreference, runPushAction, disableOpen, setDisableOpen }) => <section className={styles.pageContent} aria-labelledby="notification-settings-title">
-  <div className={styles.pageHeading}><p className="eyebrow">Perangkat dan notifikasi</p><h2 id="notification-settings-title">Notifikasi pada browser atau ponsel ini</h2><p>Setiap pengguna mendaftarkan perangkatnya sendiri. Izin hanya diminta setelah ketukan pengguna dan backend hanya mengirim ke subscription milik akun yang aktif.</p></div>
+  <div className={styles.pageHeading}><h2 id="notification-settings-title">Notifikasi perangkat</h2></div>
   <SettingsNotice result={result} />
-  <button type="button" className={styles.serviceTile} disabled={!tileInteractive} onClick={() => tileAction && runPushAction(tileAction)} aria-label={tileAction === "enable" ? "Aktifkan notifikasi pada perangkat ini" : tileAction === "verify" ? "Verifikasi ulang notifikasi pada perangkat ini" : "Status notifikasi perangkat"}><span className={styles.serviceIcon}><FiBell aria-hidden="true" /></span><span className={styles.serviceCopy}><h3>Notifikasi perangkat</h3><p role="status" aria-live="polite">{view.text}</p><small>{pushState.activeDeviceCount ? `${pushState.activeDeviceCount} perangkat aktif pada akun ini.` : "Ketuk tile saat status belum aktif atau belum terverifikasi."}</small></span><span className={`status-badge status-badge--${view.tone}`}>{busy ? "Memproses" : view.label}</span></button>
+  <button type="button" className={styles.serviceTile} disabled={!tileInteractive} onClick={() => tileAction && runPushAction(tileAction)} aria-label={tileAction === "enable" ? "Aktifkan notifikasi pada perangkat ini" : tileAction === "verify" ? "Verifikasi ulang notifikasi pada perangkat ini" : "Status notifikasi perangkat"}><span className={styles.serviceIcon}><FiBell aria-hidden="true" /></span><span className={styles.serviceCopy}><h3>Notifikasi perangkat</h3><p role="status" aria-live="polite">{view.text}</p>{pushState.activeDeviceCount ? <small>{pushState.activeDeviceCount} perangkat aktif</small> : null}</span><span className={`status-badge status-badge--${view.tone}`}>{busy ? "Memproses" : view.label}</span></button>
   {pushState.browserSubscribed ? <div className={styles.serviceActions}><Button type="button" disabled={busy} onClick={() => setDisableOpen(true)}>Nonaktifkan perangkat ini</Button></div> : null}
   <PreferenceSection preferenceState={preferenceState} preferenceMutation={preferenceMutation} refreshPreferences={refreshPreferences} togglePreference={togglePreference} />
-  <div className="notice notice--info"><span>iPhone dan iPad harus membuka aplikasi dari Home Screen. Detail finansial tidak ditampilkan pada lock screen.</span></div>
-  <ConfirmationModal open={disableOpen} title="Nonaktifkan notifikasi?" description="Subscription browser ini akan dinonaktifkan pada server dan perangkat. Perangkat lain pada akun yang sama tidak berubah." confirmLabel="Nonaktifkan" busy={busy} onCancel={() => !busy && setDisableOpen(false)} onConfirm={() => runPushAction("disable")} />
+  <div className="notice notice--info"><span>iPhone/iPad: buka aplikasi dari Home Screen.</span></div>
+  <ConfirmationModal open={disableOpen} title="Nonaktifkan notifikasi?" description="Notifikasi pada perangkat ini akan dinonaktifkan. Perangkat lain tetap aktif." confirmLabel="Nonaktifkan" busy={busy} onCancel={() => !busy && setDisableOpen(false)} onConfirm={() => runPushAction("disable")} />
 </section>;
 
 const DeviceNotificationsPage = () => {

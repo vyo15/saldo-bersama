@@ -38,7 +38,7 @@ const ImportTransactionsPage = () => {
   const applyImport = async () => {
     if (!preview) return;
     setBusy(true);
-    setResult({ status: "loading", text: "Menerapkan import secara atomik..." });
+    setResult({ status: "loading", text: "Menerapkan import..." });
     try {
       await runSettingsAction("import.apply", { previewToken: preview.previewToken, confirmation }, {});
       setPreview(null);
@@ -58,13 +58,12 @@ const ImportTransactionsPage = () => {
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="import-settings-title">
         <div className={styles.pageHeading}>
-          <p className="eyebrow">Import transaksi</p>
-          <h2 id="import-settings-title">Preview sebelum apply</h2>
-          <p>File JSON atau CSV maksimal 50 transaksi. Backend memvalidasi referensi, duplikat, nominal, tanggal, formula injection, dan dampak sebelum apply atomik.</p>
+          <h2 id="import-settings-title">Import transaksi</h2>
+          <p>JSON atau CSV, maksimal 50 transaksi. Preview selalu dilakukan sebelum import.</p>
         </div>
         <SettingsNotice result={result} />
         <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">File transaksi</p><h2>Upload dan validasi</h2><p>Memilih file baru akan membatalkan preview sebelumnya.</p></div><FiUploadCloud aria-hidden="true" /></div>
+          <div className="panel__header"><h2>Pilih file</h2><FiUploadCloud aria-hidden="true" /></div>
           <div className="stack-form">
             <label className="field"><span>File JSON atau CSV *</span><input className={styles.fileInput} required type="file" accept=".json,.csv,application/json,text/csv" onChange={(event) => { setFile(event.target.files?.[0] || null); setPreview(null); setConfirmation(""); setResult(null); }} /></label>
             <Button onClick={previewImport} loading={busy && !preview} disabled={!file}>Preview import</Button>

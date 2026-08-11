@@ -231,7 +231,7 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.match(page, /mobileFiltersOpen \? \(/);
   assert.match(page, /mobileTransactionDetailOpen \? \(/);
   assert.match(desktop, /aria-label=\{balanceVisible \? "Sembunyikan seluruh nominal"/);
-  assert.match(desktop, /Pilih rekening untuk melihat aktivitasnya/);
+  assert.match(desktop, /<h2 id="dashboard-accounts-title">Rekening<\/h2>/);
   assert.match(desktop, /accountTransactionDelta/);
   assert.match(desktop, /transaction\.transaction_type === "adjustment"/);
   assert.match(desktop, /other-categories/);

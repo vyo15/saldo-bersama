@@ -60,6 +60,26 @@
 .incomeSummary::after { background: color-mix(in srgb, var(--positive-soft) 82%, transparent); }
 .attentionSummary { border-color: color-mix(in srgb, var(--warning) 34%, var(--border)); }
 .attentionSummary::after { background: color-mix(in srgb, var(--warning-soft) 86%, transparent); }
+.summaryAction {
+  min-height: var(--control-height-sm);
+  padding: 0;
+  position: relative;
+  z-index: 1;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  background: transparent;
+  color: var(--warning);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+.summaryAction:hover { color: color-mix(in srgb, var(--warning) 82%, var(--text)); }
+.summaryAction:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+.summaryAction svg { width: .9rem; height: .9rem; }
 
 .headerActions {
   min-width: 0;
@@ -327,6 +347,35 @@
   background: var(--primary);
 }
 
+.attentionAction {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--warning) 34%, var(--border));
+  border-radius: var(--radius-sm);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  background: color-mix(in srgb, var(--warning-soft) 72%, var(--surface));
+}
+
+.attentionIcon {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: .75rem;
+  display: grid;
+  place-items: center;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.attentionIcon svg { width: 1.05rem; height: 1.05rem; }
+.attentionCopy { min-width: 0; display: grid; gap: .2rem; }
+.attentionCopy strong { font-size: var(--font-size-body-sm); }
+.attentionCopy p { color: var(--text-soft); font-size: var(--font-size-sm); line-height: 1.45; }
+.attentionCopy p :global(.money) { color: var(--text); font-size: inherit; font-weight: var(--font-weight-bold); }
+.attentionCopy small { color: var(--warning); font-size: var(--font-size-xs); line-height: 1.4; }
+.attentionPrimary { white-space: nowrap; }
+
 .actions {
   padding-top: var(--space-2);
   border-top: 1px solid var(--border);
@@ -458,6 +507,7 @@
   .summaryCard :global(.money),
   .summaryCard > strong { font-size: 1.15rem; }
   .summaryCard > small { display: none; }
+  .summaryAction { min-height: var(--mobile-control-height); font-size: var(--font-size-xs); }
   .summaryCard::after { width: 5.5rem; height: 5.5rem; inset-block-start: -2.6rem; inset-inline-end: -2.6rem; }
   .controlRow > div:first-child > p:last-child { display: none; }
   .controlRow h2 { font-size: 1rem; }
@@ -469,6 +519,8 @@
   .amountBlock small { text-align: start; }
   .metaGrid { grid-template-columns: 1fr; }
   .accountMeta { grid-column: auto; }
+  .attentionAction { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-2); }
+  .attentionPrimary { grid-column: 1 / -1; width: 100%; }
   .actionPrimary { display: grid; grid-template-columns: 1fr; }
   .actionPrimary :global(.button),
   .manageButton { width: 100%; margin-inline-start: 0; }

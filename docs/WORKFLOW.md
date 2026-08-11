@@ -45,23 +45,21 @@ Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contra
 
 ### 5. Validation
 
-Default quality gate:
+Default full local gate setelah setiap patch:
 
 ```bash
-npm run check
+npm run verify
 ```
 
-`npm run check` mencakup source validation, lint, frontend/backend tests, backend coverage, production build, dan build budget.
+`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check`, `npm run test:guard`, dan `npm run test:browser`. Ia tidak menjalankan `npm ci` atau menghapus dependency.
 
-Tambahan:
+`npm run check` tetap menjadi gate inti yang mencakup source validation, lint, frontend/backend tests, backend coverage, production build, dan build budget. Gunakan command penyusun secara terarah hanya untuk diagnosis kegagalan atau bila scope membutuhkan test tambahan:
 
 ```bash
-npm run test:guard     # guarded/security/data lifecycle bila relevan
-npm run test:browser   # perubahan frontend/browser
 npm run db:integrity   # hanya bila operasi DB memang disetujui
 ```
 
-Test yang tidak dijalankan harus dilaporkan sebagai limitation, bukan diklaim PASS.
+`npm ci` hanya untuk bootstrap/reinstall dependency atau clean CI. Test yang tidak dijalankan harus dilaporkan sebagai limitation, bukan diklaim PASS.
 
 ### 6. Direct Git
 

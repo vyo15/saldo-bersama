@@ -17,9 +17,7 @@ const SettingsPage = () => {
     <section className={styles.pageContent} aria-labelledby="settings-overview-title">
       <RefreshWarning error={healthResource.refreshError} onRetry={healthResource.reload} />
       <div className={styles.pageHeading}>
-        <p className="eyebrow">Ringkasan sistem</p>
-        <h2 id="settings-overview-title">Akses dan sumber data resmi</h2>
-        <p>Turso tetap menjadi sumber data resmi. Pilih menu di atas untuk mengelola perangkat, integrasi, anggota, portabilitas, pemulihan, periode, atau audit.</p>
+        <h2 id="settings-overview-title">Ringkasan</h2>
       </div>
       <div className="settings-grid">
         <Card className="settings-card">
@@ -29,12 +27,9 @@ const SettingsPage = () => {
         </Card>
         <Card className="settings-card">
           <FiDatabase aria-hidden="true" />
-          <div><h2>Turso database</h2><p role="status" aria-live="polite">{backend.summary} · {bootstrap?.config?.timezone || healthResource.data?.timezone || "Asia/Jakarta"}</p></div>
+          <div><h2>Database</h2><p role="status" aria-live="polite">{backend.summary} · {bootstrap?.config?.timezone || healthResource.data?.timezone || "Asia/Jakarta"}</p></div>
           <span className={`status-badge status-badge--${backend.tone}`}>{backend.label}</span>
         </Card>
-      </div>
-      <div className="notice notice--info" role="status">
-        <span>Menu administratif hanya terlihat bagi pemilik. Pembatasan utama tetap dilakukan backend pada setiap request.</span>
       </div>
     </section>
   );

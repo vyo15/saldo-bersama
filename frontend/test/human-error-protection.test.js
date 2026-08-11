@@ -138,7 +138,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(reset, /expectedConfirmation=\{preview\?\.confirmationPhrase/);
   assert.match(reset, /countdownSeconds=\{8\}/);
   assert.match(reset, /safety backup/i);
-  assert.match(notifications, /Setiap pengguna mendaftarkan perangkatnya sendiri/);
+  assert.match(notifications, /Nonaktifkan perangkat ini/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
   assert.match(members, /Tambah anggota/);
   assert.match(members, /<Modal[\s\S]*title=\{editingMember \? "Ubah akses anggota" : "Tambah anggota"\}/);
@@ -147,7 +147,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(members, /users\.upsert/);
   assert.match(members, /reactivateUser/);
   assert.match(recovery, /useApiResource\("archive\.list"/);
-  assert.match(recovery, /Purge umum tetap dinonaktifkan/);
+  assert.match(recovery, /Item diarsipkan/);
   assert.match(recovery, /restore\.preview/);
   assert.match(recovery, /restore\.apply/);
   for (const action of ["accounts.restore", "categories.restore", "envelopes.restoreRule", "goals.restore", "recurring.restoreRule", "budgets.restore"]) {
@@ -161,7 +161,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(period, /runSettingsAction\("periods\.previewClose"/);
   assert.match(period, /expectedConfirmation=\{closePreview\?\.confirmation/);
   assert.match(audit, /audit-mobile-list|mobile-data-list/);
-  assert.match(audit, /Audit tidak dapat diedit atau dihapus/);
+  assert.match(audit, /Audit aktivitas/);
   assert.match(api, /users\.reactivate/);
   assert.doesNotMatch([layout, notifications, members, recovery, period, audit, reset].join("\n"), /data\.purge|transactions\.delete|accounts\.delete(?!Unused)/);
 });
@@ -233,19 +233,28 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(recurring, /ScheduleFilters/);
   assert.match(recurring, /Edit jadwal/);
   assert.match(recurring, /Arsipkan \/ hapus/);
+  assert.match(recurring, /id: "attention"/);
+  assert.match(recurring, /Perlu perhatian/);
+  assert.match(recurring, /Lihat tindakan/);
+  assert.match(recurring, /Lengkapi aktual/);
+  assert.match(recurring, /Periksa auto-debit/);
+  assert.match(recurring, /ScheduleAttention/);
   assert.match(feedback, /aria-live="polite"/);
   assert.match(feedback, /dedupeKey/);
   assert.match(feedback, /GlobalProcessIndicator/);
   assert.match(feedback, /subscribeToMutationActivity/);
-  assert.match(feedback, /Memproses perubahan/);
-  assert.match(feedback, /Perubahan sudah tersimpan/);
+  assert.match(feedback, /ACTION_MODULES/);
+  assert.match(feedback, /transactions\.create/);
+  assert.match(feedback, /Menyimpan transaksi/);
+  assert.match(feedback, /Server sudah mengonfirmasi perubahan/);
+  assert.match(feedback, /Jangan kirim ulang sebelum status diperiksa agar tidak terjadi duplikasi/);
   assert.match(feedback, /\["success", "info", "warning", "danger"\]/, "feedback error wajib mempertahankan tone danger");
   assert.match(feedbackContext, /useFeedback/);
   assert.doesNotMatch(feedback, /undo|rollback|deleteTransaction|DELETE FROM/i);
   assert.match(providers, /FeedbackProvider/);
   assert.match(notifications, /role="switch"/);
-  assert.match(notifications, /berlaku untuk akun ini di semua perangkat/i);
-  assert.match(notifications, /antrean yang sudah diproses/i);
+  assert.match(notifications, /updateNotificationPreference/);
+  assert.match(notifications, /activeDeviceCount/);
 });
 
 test("feedback transient konsisten tanpa mengganti notice persisten untuk operasi kritis", async () => {
@@ -328,7 +337,7 @@ test("mutation ledger terkelola menginvalidasi rekening dan turunan laporan yang
   assert.match(goals, /goalLedgerRefreshKeys = Object\.freeze\(\["goals\.list", "transactions\.list", "accounts\.list", "reports\.monthly", "app\.initialState"\]\)/);
   assert.match(goals, /invalidate\(goalLedgerRefreshKeys\)/);
   assert.match(goals, /refresh\(goalLedgerRefreshKeys\)/);
-  assert.match(recurring, /recurringLedgerRefreshKeys = Object\.freeze\(\["recurring\.list", "transactions\.list", "accounts\.list", "budgets\.list", "reports\.monthly", "app\.initialState"\]\)/);
+  assert.match(recurring, /recurringLedgerRefreshKeys = Object\.freeze\(\["recurring\.list", "transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly", "app\.initialState"\]\)/);
   assert.equal((recurring.match(/keys: recurringLedgerRefreshKeys/g) || []).length, 2, "bayar dan reverse pembayaran rutin harus menyegarkan semua read model ledger terkait");
 });
 

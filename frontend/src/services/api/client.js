@@ -14,14 +14,18 @@ let sessionCache = { expiresAt: 0, value: null, promise: null };
 const inFlightMutations = new Map();
 const memoryMutationIntents = new Map();
 const mutationActivityListeners = new Set();
+const activeMutationActions = new Map();
 let activeMutationCount = 0;
 let mutationActivityEpoch = 0;
-let mutationActivitySnapshot = Object.freeze({ status: "idle", activeCount: 0, revision: 0 });
+let mutationActivitySnapshot = Object.freeze({ status: "idle", activeCount: 0, action: "", revision: 0 });
 
-const publishMutationActivity = (status) => {
+const visibleActiveMutationAction = () => activeMutationCount === 1 ? activeMutationActions.keys().next().value || "" : "";
+
+const publishMutationActivity = (status, action = "") => {
   mutationActivitySnapshot = Object.freeze({
     status,
     activeCount: activeMutationCount,
+    action: String(action || ""),
     revision: mutationActivitySnapshot.revision + 1,
   });
   for (const listener of [...mutationActivityListeners]) {
@@ -29,21 +33,27 @@ const publishMutationActivity = (status) => {
   }
 };
 
-const beginMutationActivity = () => {
+const beginMutationActivity = (action) => {
+  const normalizedAction = String(action || "");
   activeMutationCount += 1;
-  publishMutationActivity("submitting");
-  return mutationActivityEpoch;
+  activeMutationActions.set(normalizedAction, Number(activeMutationActions.get(normalizedAction) || 0) + 1);
+  publishMutationActivity("submitting", visibleActiveMutationAction());
+  return { epoch: mutationActivityEpoch, action: normalizedAction };
 };
 
-const settleMutationActivity = (epoch, status) => {
+const settleMutationActivity = ({ epoch, action }, status) => {
   if (epoch !== mutationActivityEpoch) return;
+  const remainingForAction = Math.max(0, Number(activeMutationActions.get(action) || 0) - 1);
+  if (remainingForAction) activeMutationActions.set(action, remainingForAction);
+  else activeMutationActions.delete(action);
   activeMutationCount = Math.max(0, activeMutationCount - 1);
-  publishMutationActivity(activeMutationCount > 0 ? "submitting" : status);
+  publishMutationActivity(activeMutationCount > 0 ? "submitting" : status, activeMutationCount > 0 ? visibleActiveMutationAction() : action);
 };
 
 const resetMutationActivity = () => {
   mutationActivityEpoch += 1;
   activeMutationCount = 0;
+  activeMutationActions.clear();
   publishMutationActivity("idle");
 };
 
@@ -104,17 +114,17 @@ const guardedMutationRequest = (action, payload, options = {}) => {
   const persisted = readPersistedIntent(fingerprint);
   const idempotencyKey = persisted?.idempotencyKey || options.idempotencyKey || createSecureRandomId();
   const requestOptions = { ...options, idempotencyKey, outcomeSensitive: true };
-  const activityEpoch = beginMutationActivity();
+  const activityToken = beginMutationActivity(action);
   const promise = gatewayFetch(action, payload, requestOptions, options.signal)
     .then((result) => {
       clearIntent(fingerprint);
-      settleMutationActivity(activityEpoch, "success");
+      settleMutationActivity(activityToken, "success");
       return result;
     })
     .catch((error) => {
       if (isOutcomeUnknownError(error)) persistIntent(fingerprint, idempotencyKey);
       else clearIntent(fingerprint);
-      settleMutationActivity(activityEpoch, isOutcomeUnknownError(error) ? "unknown" : "error");
+      settleMutationActivity(activityToken, isOutcomeUnknownError(error) ? "unknown" : "error");
       throw error;
     })
     .finally(() => {

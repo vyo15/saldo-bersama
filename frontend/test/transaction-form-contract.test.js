@@ -51,10 +51,11 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
 });
 
 
-test("pemasukan menjelaskan alur gajian ke rekening tujuan tanpa mengubah kontrak saldo", async () => {
+test("pemasukan tetap memakai rekening tujuan tanpa helper gajian permanen", async () => {
   const text = await source();
   assert.match(text, /form\.transaction_type === TRANSACTION_TYPES\.INCOME/);
-  assert.match(text, /Contoh gajian:/);
-  assert.match(text, /rekening bank yang menerima gaji sebagai rekening tujuan/);
-  assert.match(text, /Saldo rekening akan bertambah setelah server mengonfirmasi transaksi/);
+  assert.match(text, /ImpactPreview/);
+  assert.match(text, /impact\.destination/);
+  assert.doesNotMatch(text, /Contoh gajian:/);
+  assert.doesNotMatch(text, /rekening bank yang menerima gaji sebagai rekening tujuan/);
 });

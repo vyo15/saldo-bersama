@@ -6,6 +6,7 @@ import { accountBalanceAsOf, firstNegativeBalance, transactionImpact, visibleAcc
 import { assertAffectedBalances } from "../../api/_lib/services/finance.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/index.js";
 import { listRecurring } from "../../api/_lib/services/planning/recurring.js";
+import { listEnvelopes } from "../../api/_lib/services/planning/envelopes.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const active = (values) => ({ status: "active", amount: 100_000, source_account_id: null, destination_account_id: null, ...values });
@@ -219,4 +220,36 @@ test("recurring list memisahkan snapshot occurrence dari nilai master rule untuk
   assert.equal(result.items[0].expected_amount, 300_000, "nominal occurrence historis tidak boleh ditimpa master");
   assert.equal(result.items[0].rule_due_day, 31, "editor harus menerima due_day master asli");
   assert.equal(result.items[0].rule_expected_amount, 350_000, "editor harus menerima nominal master terbaru");
+});
+
+
+test("envelopes.list menghormati filter periode agar dashboard dan recurring tidak mencampur kantong periode lain", async () => {
+  const db = await createSqliteTestDatabase();
+  const actor = { user_id: "owner-envelope-period", role: "owner", email: "owner-envelope-period@example.com" };
+  const timestamp = "2026-08-01T00:00:00.000Z";
+  try {
+    await db.execute(
+      "INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+      [actor.user_id, "firebase-owner-envelope-period", actor.email, "Owner Envelope", "owner", "active", 1, timestamp, timestamp],
+    );
+    for (const [suffix, start, end] of [["aug", "2026-08-01", "2026-08-31"], ["sep", "2026-09-01", "2026-09-30"]]) {
+      await db.execute(
+        "INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [`rule-${suffix}`, `Kantong ${suffix}`, "monthly", "shared", null, 100_000, null, "unallocated", "confirm", "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
+      );
+      await db.execute(
+        "INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [`period-${suffix}`, `rule-${suffix}`, `Kantong ${suffix}`, start, end, 100_000, 0, "active", 1, actor.user_id, timestamp, actor.user_id, timestamp, null, null],
+      );
+    }
+
+    const august = await listEnvelopes(db, { actor, payload: { period: "2026-08" } });
+    assert.deepEqual(august.items.map((item) => item.envelope_period_id), ["period-aug"]);
+    const september = await listEnvelopes(db, { actor, payload: { period: "2026-09" } });
+    assert.deepEqual(september.items.map((item) => item.envelope_period_id), ["period-sep"]);
+    const all = await listEnvelopes(db, { actor, payload: {} });
+    assert.deepEqual(all.items.map((item) => item.envelope_period_id).sort(), ["period-aug", "period-sep"]);
+  } finally {
+    db.close();
+  }
 });

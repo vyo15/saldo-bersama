@@ -222,8 +222,10 @@ const buildOccurrencePaymentTransaction = (rule, occurrence, account, payload, a
   source_account_id: rule.kind === "expense" ? account.account_id : null,
   destination_account_id: rule.kind === "income" ? account.account_id : null,
   category_id: rule.category_id,
+  envelope_period_id: rule.kind === "expense" ? payload.envelope_period_id || null : null,
   amount,
   description: rule.name,
+  overspend_reason: rule.kind === "expense" ? payload.overspend_reason || "" : "",
   payment_method: rule.payment_method,
   recurring_occurrence_id: occurrence.occurrence_id,
 });

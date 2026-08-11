@@ -285,6 +285,12 @@ ${accountEditors}`;
   assert.match(pageStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid var\(--border\);[^}]*background:\s*var\(--surface-soft\);/s);
   assert.match(pageStyles, /\.impactSummary strong \{ color:\s*var\(--text\);/);
+  assert.match(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileAccountExperience/);
+  assert.match(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileAccountActivity/);
+  assert.match(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileHistoryPeriodControl input[\s\S]*color-scheme:\s*light/);
+  assert.doesNotMatch(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackCard/);
+  assert.doesNotMatch(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackBalance/);
+  assert.doesNotMatch(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackOwnership/);
   assert.doesNotMatch(pageStyles, /var\(--(?:border-subtle|surface-muted|text-primary)\)/);
 
   for (const asset of ["bca", "bni", "btn", "mandiri", "permata", "shopeepay", "dana", "gopay", "ovo", "linkaja", "cash", "savings"]) assert.match(card, new RegExp(`${asset}\.webp`));

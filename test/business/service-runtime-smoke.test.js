@@ -4,7 +4,7 @@ import { dispatchAction } from "../../api/_lib/actionDispatcher.js";
 import { createTechnicalBackup, integrityWithMaintenanceRecovery, previewRestore } from "../../api/_lib/services/maintenance/index.js";
 import { listSubscriptionsForUser } from "../../api/_lib/services/notifications.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
-import { todayJakarta } from "../../api/_lib/services/core.js";
+import { monthBounds, todayJakarta } from "../../api/_lib/services/core.js";
 
 const OWNER_EMAIL = "owner@example.com";
 const OWNER_ID = "user-owner";
@@ -308,18 +308,67 @@ test("budget dan recurring tetap dapat create, update, pay, reverse, skip, dan r
     });
     assert.equal(updated.name, "Tagihan Uji Diperbarui");
 
+    const recurringPeriod = monthBounds(todayJakarta().slice(0, 7));
+    const envelope = await dispatchAction({
+      signedActor,
+      action: "envelopes.create",
+      payload: {
+        name: "Kantong Tagihan Uji",
+        default_amount: 200_000,
+        allocated_amount: 200_000,
+        source_account_id: "account-main",
+        period_type: "monthly",
+        period_start: recurringPeriod.start,
+        period_end: recurringPeriod.end,
+        rollover_policy: "unallocated",
+        overspend_policy: "confirm",
+      },
+      requestId: "test:recurring-envelope-create",
+      idempotencyKey: "test-recurring-envelope-create",
+      database: db,
+    });
+
     const occurrence = await db.one("SELECT * FROM recurring_occurrences WHERE recurring_rule_id=? ORDER BY due_date LIMIT 1", [recurring.recurring_rule_id]);
     assert.ok(occurrence);
+    const beforePaymentState = await dispatchAction({
+      signedActor,
+      action: "app.initialState",
+      payload: { period },
+      requestId: "test:recurring-before-payment",
+      database: db,
+    });
     const paid = await dispatchAction({
       signedActor,
       action: "recurring.payOccurrence",
-      payload: { occurrence_id: occurrence.occurrence_id, account_id: "account-main", amount: 50_000, transaction_date: todayJakarta(), row_version: occurrence.row_version },
+      payload: { occurrence_id: occurrence.occurrence_id, account_id: "account-main", amount: 50_000, transaction_date: todayJakarta(), envelope_period_id: envelope.period.envelope_period_id, row_version: occurrence.row_version },
       rowVersion: occurrence.row_version,
       requestId: "test:recurring-pay",
       idempotencyKey: "test-recurring-pay",
       database: db
     });
     assert.equal(paid.occurrence.actual_amount, 50_000);
+    assert.equal(paid.transaction.envelope_period_id, envelope.period.envelope_period_id);
+    assert.equal(paid.transaction.recurring_occurrence_id, occurrence.occurrence_id);
+    const linkedActiveTransactions = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE recurring_occurrence_id=? AND envelope_period_id=? AND status='active'", [occurrence.occurrence_id, envelope.period.envelope_period_id]);
+    assert.equal(Number(linkedActiveTransactions.count), 1, "pembayaran rutin dengan kantong harus tetap membuat tepat satu transaksi ledger");
+    const afterPaymentState = await dispatchAction({
+      signedActor,
+      action: "app.initialState",
+      payload: { period },
+      requestId: "test:recurring-after-payment",
+      database: db,
+    });
+    assert.equal(afterPaymentState.overview.totalBalance, beforePaymentState.overview.totalBalance - 50_000);
+    assert.equal(afterPaymentState.overview.reservedBills, beforePaymentState.overview.reservedBills - 50_000);
+    assert.equal(afterPaymentState.overview.safeToSpend, beforePaymentState.overview.safeToSpend, "tagihan yang sudah dibayar penuh mengganti reserve dengan pengurangan saldo aktual, bukan dihitung ganda");
+    const envelopeAfterPayment = await dispatchAction({
+      signedActor,
+      action: "envelopes.list",
+      payload: {},
+      requestId: "test:recurring-envelope-after-payment",
+      database: db,
+    });
+    assert.equal(envelopeAfterPayment.items.find((item) => item.envelope_period_id === envelope.period.envelope_period_id)?.remaining_amount, 150_000);
 
     const reversed = await dispatchAction({
       signedActor,
@@ -336,6 +385,24 @@ test("budget dan recurring tetap dapat create, update, pay, reverse, skip, dan r
       database: db
     });
     assert.equal(reversed.transaction.status, "cancelled");
+    const envelopeAfterReverse = await dispatchAction({
+      signedActor,
+      action: "envelopes.list",
+      payload: {},
+      requestId: "test:recurring-envelope-after-reverse",
+      database: db,
+    });
+    assert.equal(envelopeAfterReverse.items.find((item) => item.envelope_period_id === envelope.period.envelope_period_id)?.remaining_amount, 200_000);
+    const afterReverseState = await dispatchAction({
+      signedActor,
+      action: "app.initialState",
+      payload: { period },
+      requestId: "test:recurring-after-reverse",
+      database: db,
+    });
+    assert.equal(afterReverseState.overview.totalBalance, beforePaymentState.overview.totalBalance);
+    assert.equal(afterReverseState.overview.reservedBills, beforePaymentState.overview.reservedBills);
+    assert.equal(afterReverseState.overview.safeToSpend, beforePaymentState.overview.safeToSpend);
 
     const skipped = await dispatchAction({
       signedActor,

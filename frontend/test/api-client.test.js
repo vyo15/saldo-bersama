@@ -298,10 +298,12 @@ test("mutation activity global melaporkan proses dan hasil tanpa memecah guard i
     const pending = apiClient.request("goals.create", { name: "Aktivitas" }, {});
     assert.equal(getMutationActivitySnapshot().status, "submitting");
     assert.equal(getMutationActivitySnapshot().activeCount, 1);
+    assert.equal(getMutationActivitySnapshot().action, "goals.create");
     resolveFetch(successfulResponse({ created: true }));
     assert.deepEqual(await pending, { created: true });
     assert.equal(getMutationActivitySnapshot().status, "success");
     assert.equal(getMutationActivitySnapshot().activeCount, 0);
+    assert.equal(getMutationActivitySnapshot().action, "goals.create");
     assert.ok(snapshots.some((item) => item.status === "submitting"));
     assert.ok(snapshots.some((item) => item.status === "success"));
     unsubscribe();

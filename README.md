@@ -51,6 +51,16 @@ npm run dev
 
 ## Quality gate
 
+Untuk validasi lokal setelah setiap patch, gunakan satu command canonical:
+
+```bash
+npm run verify
+```
+
+`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check`, `npm run test:guard`, dan `npm run test:browser`. Command ini **tidak menjalankan `npm ci`** dan tidak menghapus `node_modules`.
+
+Gate penyusunnya tetap tersedia untuk diagnosis terarah:
+
 ```bash
 npm run validate:source
 npm run lint
@@ -58,11 +68,12 @@ npm run test
 npm run build
 npm run build:budget
 npm run check
-npm run test:browser   # wajib untuk perubahan frontend/browser
+npm run test:guard
+npm run test:browser
 npm run zip
 ```
 
-`npm run check` menjalankan source validation, lint, frontend/backend tests, backend coverage, production build, dan build budget. Browser test tetap terpisah agar hanya dijalankan ketika scope frontend/browser membutuhkannya.
+`npm ci` hanya dipakai untuk clone/bootstrap baru, perubahan package/lockfile, dependency hilang/rusak, atau clean runner CI. Jangan menjalankan `npm ci` sebagai kebiasaan setelah setiap patch.
 
 ## Git harian
 
@@ -70,9 +81,7 @@ Workflow canonical sengaja sederhana dan langsung di `main` setelah patch disetu
 
 ```bash
 git status --short
-npm run check
-# untuk frontend/browser:
-npm run test:browser
+npm run verify
 
 git add -A
 git commit -m "feat: deskripsi perubahan"

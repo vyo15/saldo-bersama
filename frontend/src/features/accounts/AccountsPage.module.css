@@ -1185,6 +1185,85 @@
     scroll-margin-top: calc(var(--topbar-height, 3.5rem) + var(--space-3));
   }
 
+  /* Light mode changes only the canvas and UI around bank cards. Card artwork stays untouched. */
+  :global(:root[data-theme="light"]) .mobileAccountExperience,
+  :global(:root[data-theme="light"]) .mobileStackPanel {
+    color: var(--text);
+  }
+
+  :global(:root[data-theme="light"]) .mobileAccountExperience {
+    --accounts-mobile-surface:
+      radial-gradient(circle at 78% 14%, color-mix(in srgb, var(--primary-soft) 82%, transparent), transparent 30%),
+      radial-gradient(circle at 6% 84%, color-mix(in srgb, var(--secondary-soft) 68%, transparent), transparent 34%),
+      var(--page);
+  }
+
+  :global(:root[data-theme="light"]) .mobileStackHeaderButton { color: var(--text); }
+  :global(:root[data-theme="light"]) .mobileStackAddButton { background: var(--primary-soft); color: var(--primary); }
+  :global(:root[data-theme="light"]) .mobileStackHeaderButton:hover,
+  :global(:root[data-theme="light"]) .mobileStackHeaderButton:focus-visible,
+  :global(:root[data-theme="light"]) .mobileStackAddButton:hover,
+  :global(:root[data-theme="light"]) .mobileStackAddButton:focus-visible { background: var(--surface-strong); color: var(--primary); }
+  :global(:root[data-theme="light"]) .mobileStackAmbient::before { background: radial-gradient(circle, color-mix(in srgb, var(--primary-soft) 72%, transparent), transparent 72%); }
+  :global(:root[data-theme="light"]) .mobileStackAmbient::after { background: radial-gradient(circle, color-mix(in srgb, var(--secondary-soft) 72%, transparent), transparent 72%); }
+
+  :global(:root[data-theme="light"]) .mobileStackSummary small,
+  :global(:root[data-theme="light"]) .mobileStackHint,
+  :global(:root[data-theme="light"]) .mobileTransferQuickCopy small,
+  :global(:root[data-theme="light"]) .mobileTransferQuickChevron,
+  :global(:root[data-theme="light"]) .mobileActivityTabs > button,
+  :global(:root[data-theme="light"]) .mobileActivityHeading small,
+  :global(:root[data-theme="light"]) .mobileChartHeading small,
+  :global(:root[data-theme="light"]) .mobileHistoryPeriod > span:first-child,
+  :global(:root[data-theme="light"]) .mobileTransactionCopy small,
+  :global(:root[data-theme="light"]) .mobileChartHeading > div > span,
+  :global(:root[data-theme="light"]) .mobileChartLabels,
+  :global(:root[data-theme="light"]) .mobileChartStats small,
+  :global(:root[data-theme="light"]) .mobileChartNote,
+  :global(:root[data-theme="light"]) .mobileChartAction { color: var(--text-muted); }
+
+  :global(:root[data-theme="light"]) .mobileStackSummary h2,
+  :global(:root[data-theme="light"]) .mobileTransferQuickAction,
+  :global(:root[data-theme="light"]) .mobileTransferQuickCopy strong,
+  :global(:root[data-theme="light"]) .mobileActivityTabs > button:hover,
+  :global(:root[data-theme="light"]) .mobileActivityTabs > button:focus-visible,
+  :global(:root[data-theme="light"]) .mobileActivityTabs > .mobileActivityTabActive,
+  :global(:root[data-theme="light"]) .mobileActivityHeading strong,
+  :global(:root[data-theme="light"]) .mobileHistoryPeriodControl input,
+  :global(:root[data-theme="light"]) .mobileTransactionCopy strong,
+  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong,
+  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong :global(.money),
+  :global(:root[data-theme="light"]) .mobileActivityState > strong,
+  :global(:root[data-theme="light"]) .mobileChartHeading > div > strong,
+  :global(:root[data-theme="light"]) .mobileChartHeading > div > strong :global(.money),
+  :global(:root[data-theme="light"]) .mobileChartStats strong { color: var(--text); }
+
+  :global(:root[data-theme="light"]) .mobileTransferQuickAction { border-color: var(--border); background: var(--surface); box-shadow: var(--shadow-sm); }
+  :global(:root[data-theme="light"]) .mobileTransferQuickAction:hover:not(:disabled) { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); background: var(--surface-soft); }
+  :global(:root[data-theme="light"]) .mobileTransferQuickIcon { color: var(--on-primary); }
+  :global(:root[data-theme="light"]) .mobileActivityTabs { border-bottom-color: var(--border); }
+  :global(:root[data-theme="light"]) .mobileHistoryPeriodControl { border-color: var(--border); background: var(--surface); }
+  :global(:root[data-theme="light"]) .mobileHistoryPeriodControl input { color-scheme: light; }
+  :global(:root[data-theme="light"]) .mobileActivityNotice { border-color: var(--border); background: var(--surface-soft); color: var(--text-soft); }
+  :global(:root[data-theme="light"]) .mobileTransactionItem { border-bottom-color: var(--border); }
+  :global(:root[data-theme="light"]) .mobileTransactionIcon { border-color: var(--border); background: var(--surface-soft); color: var(--text-soft); }
+  :global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="positive"] { background: var(--positive-soft); color: var(--positive); }
+  :global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="negative"] { background: var(--negative-soft); color: var(--negative); }
+  :global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="neutral"] { color: var(--text-muted); }
+  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="positive"],
+  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="positive"] :global(.money) { color: var(--positive); }
+  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="neutral"],
+  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="neutral"] :global(.money) { color: var(--text-muted); }
+  :global(:root[data-theme="light"]) .mobileActivityState,
+  :global(:root[data-theme="light"]) .mobileChartState { border-color: var(--border-strong); color: var(--text-muted); }
+  :global(:root[data-theme="light"]) .mobileTrendControls > button { border-color: var(--border); background: var(--surface); color: var(--text-muted); }
+  :global(:root[data-theme="light"]) .mobileTrendControls > .mobileTrendControlActive { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+  :global(:root[data-theme="light"]) .mobileExpenseChart svg > line { stroke: var(--border); }
+  :global(:root[data-theme="light"]) .mobileExpensePoint { fill: var(--surface); }
+  :global(:root[data-theme="light"]) .mobileChartStats { border-top-color: var(--border); border-bottom-color: var(--border); }
+  :global(:root[data-theme="light"]) .mobileChartStats > div + div { border-left-color: var(--border); }
+  :global(:root[data-theme="light"]) .mobileChartAction { border-top-color: var(--border); }
+
 }
 
 .mobileAccountList {

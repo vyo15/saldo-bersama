@@ -51,6 +51,10 @@
 .process_unknown .processIcon { background: var(--negative-soft); color: var(--negative); }
 
 .processCopy { min-width: 0; display: grid; gap: 1px; }
+.processModule { color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .05em; text-transform: uppercase; }
+.process_success .processModule { color: var(--positive); }
+.process_error .processModule,
+.process_unknown .processModule { color: var(--negative); }
 .processCopy strong { font-size: var(--font-size-body-sm); line-height: 1.35; }
 .processCopy small { color: var(--text-soft); font-size: var(--font-size-sm); line-height: 1.35; }
 

@@ -8,7 +8,7 @@ const routeCases = Object.freeze([
   ["/anggaran", "Anggaran"],
   ["/alokasi", "Alokasi dana"],
   ["/tagihan", "Jadwal rutin"],
-  ["/target", "Tabungan & target"],
+  ["/target", "Target"],
   ["/laporan", "Laporan"],
   ["/rekening", "Rekening"],
   ["/rekonsiliasi", "Cocokkan Saldo"],
@@ -82,14 +82,18 @@ const navigateAndAssert = async (page, origin, pathname, expectedHeading, { mobi
 
 const assertAuthenticatedRoutePreflight = async (page, origin) => {
   await navigateAndAssert(page, origin, "/transaksi", "Transaksi", { mobile: true });
+  const period = await page.evaluate(`document.querySelector('input[aria-label="Periode transaksi"]')?.value || ""`);
+  assert.equal(period, authenticatedFixturePeriod, "Route Transaksi langsung harus memiliki periode fixture yang valid.");
+  await page.evaluate(`document.querySelector('button[aria-label^="Buka filter lainnya"]')?.click()`);
+  await waitFor(() => page.evaluate(`Boolean(document.querySelector('[role="dialog"] select[aria-label="Filter rekening"]'))`), { description: "filter lanjutan transaksi terbuka" });
   const transactionState = await page.evaluate(`({
-    period: document.querySelector('input[aria-label="Periode transaksi"]')?.value || "",
-    account: document.querySelector('select[aria-label="Filter rekening"]')?.value || "",
-    creator: document.querySelector('select[aria-label="Filter pencatat"]')?.value || "",
+    account: document.querySelector('[role="dialog"] select[aria-label="Filter rekening"]')?.value || "",
+    creator: document.querySelector('[role="dialog"] select[aria-label="Filter pencatat"]')?.value || "",
   })`);
-  assert.equal(transactionState.period, authenticatedFixturePeriod, "Route Transaksi langsung harus memiliki periode fixture yang valid.");
   assert.equal(transactionState.account, "all", "Route Transaksi langsung tanpa state harus aman dan tidak memaksakan rekening.");
   assert.equal(transactionState.creator, "all", "Route Transaksi langsung tanpa state harus aman dan tidak memaksakan pencatat.");
+  await page.evaluate(`document.querySelector('[role="dialog"] button[aria-label="Tutup dialog"]')?.click()`);
+  await waitFor(() => page.evaluate(`!document.querySelector('[role="dialog"]')`), { description: "filter lanjutan transaksi ditutup" });
   await navigateAndAssert(page, origin, "/", "Ringkasan Keuangan", { mobile: true });
 };
 
@@ -207,7 +211,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
 
     await navigateAndAssert(page, appServer.origin, "/tagihan", "Jadwal rutin", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('section[aria-label=\"Daftar jadwal rutin\"]'))"), true, "Daftar jadwal rutin mobile harus tetap dirender.");
-    assert.equal(await page.evaluate("document.body.textContent.includes('Tagihan periode ini') && document.body.textContent.includes('Penerimaan periode ini')"), true, "Tagihan dan pemasukan rutin harus dapat dijangkau pada mobile.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Pengeluaran') && document.body.textContent.includes('Pemasukan')"), true, "Pengeluaran dan pemasukan rutin harus dapat dijangkau pada mobile.");
 
     await navigateAndAssert(page, appServer.origin, "/anggaran", "Anggaran", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('#budget-form'))"), false, "Form anggaran tidak boleh memenuhi halaman sebelum diminta.");
@@ -247,6 +251,29 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       await navigateAndAssert(page, appServer.origin, pathname, heading, { mobile: true });
     }
 
+    await navigateAndAssert(page, appServer.origin, "/transaksi", "Transaksi", { mobile: true });
+    const compactTransactionFilters = await page.evaluate(`(() => {
+      const toolbar = document.querySelector('form[aria-label="Filter transaksi"]');
+      const period = toolbar?.querySelector('input[aria-label="Periode transaksi"]');
+      const type = toolbar?.querySelector('select[aria-label="Filter jenis transaksi"]');
+      const more = toolbar?.querySelector('button[aria-label^="Buka filter lainnya"]');
+      const advancedVisibleOutsideDialog = Boolean(toolbar?.querySelector('select[aria-label="Filter rekening"], select[aria-label="Filter kategori"], select[aria-label="Filter pencatat"]'));
+      return {
+        periodVisible: Boolean(period && period.getBoundingClientRect().height > 0),
+        typeVisible: Boolean(type && type.getBoundingClientRect().height > 0),
+        moreTouchTarget: more?.getBoundingClientRect().height || 0,
+        advancedVisibleOutsideDialog,
+      };
+    })()`);
+    assert.equal(compactTransactionFilters.periodVisible, true, "Periode harus tetap menjadi filter utama Transaksi.");
+    assert.equal(compactTransactionFilters.typeVisible, true, "Jenis harus tetap menjadi filter utama Transaksi.");
+    assert.ok(compactTransactionFilters.moreTouchTarget >= 43.5, `Filter lainnya harus memiliki touch target minimal 44px, ditemukan ${compactTransactionFilters.moreTouchTarget}px.`);
+    assert.equal(compactTransactionFilters.advancedVisibleOutsideDialog, false, "Rekening, kategori, dan pencatat tidak boleh memenuhi toolbar utama mobile.");
+    await page.evaluate(`document.querySelector('button[aria-label^="Buka filter lainnya"]')?.click()`);
+    await waitFor(() => page.evaluate(`Boolean(document.querySelector('[role="dialog"] select[aria-label="Filter rekening"]'))`), { description: "dialog filter lainnya Transaksi terbuka pada mobile sempit" });
+    assert.equal(await page.evaluate(`Boolean(document.querySelector('[role="dialog"] select[aria-label="Filter alokasi"]')) && Boolean(document.querySelector('[role="dialog"] select[aria-label="Filter kategori"]')) && Boolean(document.querySelector('[role="dialog"] select[aria-label="Filter pencatat"]'))`), true, "Seluruh filter lanjutan harus tetap tersedia di dialog.");
+    await page.evaluate(`document.querySelector('[role="dialog"] button[aria-label="Tutup dialog"]')?.click()`);
+
     await navigateAndAssert(page, appServer.origin, "/tagihan", "Jadwal rutin", { mobile: true });
     const narrowRecurringLayout = await page.evaluate(`(() => {
       const addButton = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Tambah jadwal');
@@ -278,7 +305,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     })()`);
     assert.equal(narrowSettingsLayout.twoColumns, true, "Menu Pengaturan 366px harus tetap dua kolom agar tidak menjadi daftar vertikal panjang.");
 
-    await navigateAndAssert(page, appServer.origin, "/kategori", "Kategori transaksi", { mobile: true });
+    await navigateAndAssert(page, appServer.origin, "/kategori", "Kategori", { mobile: true });
     const categoryTouchTargets = await page.evaluate(`[...document.querySelectorAll('button[aria-label^="Edit kategori"], button[aria-label^="Hapus atau arsipkan kategori"]')].map((button) => button.getBoundingClientRect().height)`);
     assert.ok(categoryTouchTargets.length > 0 && categoryTouchTargets.every((height) => height >= 43.5), `Aksi kategori mobile minimal 44px, ditemukan ${JSON.stringify(categoryTouchTargets)}.`);
 
@@ -368,19 +395,20 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     page.clearDiagnostics?.();
     await page.evaluate("[...document.querySelectorAll('[role=dialog] button')].find((button) => button.textContent.includes('Lihat semua di halaman Transaksi'))?.click()");
     await waitForAppRoute(page, "/transaksi", { heading: "Transaksi" });
-    const memberTransactionFilters = await page.evaluate(`({
-      creator: document.querySelector('select[aria-label="Filter pencatat"]')?.value || "",
-      period: document.querySelector('input[aria-label="Periode transaksi"]')?.value || "",
-    })`);
-    assert.equal(memberTransactionFilters.creator, "browser-owner", "Shortcut aktivitas harus menginisialisasi filter pencatat tanpa menaruh user id di URL.");
-    assert.equal(memberTransactionFilters.period, authenticatedFixturePeriod, "Shortcut aktivitas harus mempertahankan periode fixture yang dipilih.");
+    const memberTransactionPeriod = await page.evaluate(`document.querySelector('input[aria-label="Periode transaksi"]')?.value || ""`);
+    await page.evaluate(`document.querySelector('button[aria-label^="Buka filter lainnya"]')?.click()`);
+    await waitFor(() => page.evaluate(`Boolean(document.querySelector('[role="dialog"] select[aria-label="Filter pencatat"]'))`), { description: "filter pencatat shortcut aktivitas terbuka" });
+    const memberTransactionCreator = await page.evaluate(`document.querySelector('[role="dialog"] select[aria-label="Filter pencatat"]')?.value || ""`);
+    assert.equal(memberTransactionCreator, "browser-owner", "Shortcut aktivitas harus menginisialisasi filter pencatat tanpa menaruh user id di URL.");
+    assert.equal(memberTransactionPeriod, authenticatedFixturePeriod, "Shortcut aktivitas harus mempertahankan periode fixture yang dipilih.");
+    await page.evaluate(`document.querySelector('[role="dialog"] button[aria-label="Tutup dialog"]')?.click()`);
     assert.equal(await page.evaluate("location.search"), "", "Filter aktivitas anggota tidak boleh menaruh data pengguna pada query URL.");
 
     for (const [path, expected] of [
-      ["/pengaturan/export", "Unduh salinan Excel lengkap"],
-      ["/pengaturan/backup", "Snapshot terverifikasi ke Google Drive"],
-      ["/pengaturan/pemulihan", "Pulihkan item arsip atau backup teknis"],
-      ["/pengaturan/audit", "Aktivitas penting terbaru"],
+      ["/pengaturan/export", "Excel lengkap"],
+      ["/pengaturan/backup", "Backup manual"],
+      ["/pengaturan/pemulihan", "Pemulihan data"],
+      ["/pengaturan/audit", "Aktivitas terbaru"],
     ]) {
       await navigateAndAssert(page, appServer.origin, path, "Pengaturan", { mobile: true });
       assert.equal(
@@ -391,6 +419,10 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     }
 
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
+    if (await page.evaluate(`document.documentElement.dataset.theme !== "light"`)) {
+      await page.evaluate(`document.querySelector('button[aria-label="Aktifkan light mode"]')?.click()`);
+      await waitFor(() => page.evaluate(`document.documentElement.dataset.theme === "light"`), { description: "Rekening beralih ke light mode" });
+    }
     assert.equal(await page.evaluate(visibleExpression('button[aria-label="Tambah rekening"]')), true, "Owner mobile harus memiliki tombol tambah rekening.");
     assert.equal(await page.evaluate("[...document.querySelectorAll('button[aria-label^=\"Lihat detail rekening\"] span')].some((item) => item.textContent.trim() === 'Pribadi')"), true, "Badge kepemilikan rekening personal harus ringkas.");
 
@@ -411,15 +443,17 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
         contentBackground: contentStyle?.backgroundImage || '',
         experienceBackground: experienceStyle?.backgroundImage || '',
         reservedGap: experienceRect && navigationRect ? navigationRect.top - experienceRect.bottom : -1,
+        theme: document.documentElement.dataset.theme || '',
         contentColor: contentStyle?.color || '',
-        canonicalOnHeroColor: (() => {
+        canonicalTextColor: (() => {
           const probe = document.createElement("span");
-          probe.style.color = "var(--on-hero)";
+          probe.style.color = "var(--text)";
           document.body.appendChild(probe);
           const color = getComputedStyle(probe).color;
           probe.remove();
           return color;
         })(),
+        activeCardHasArtwork: Boolean([...document.querySelectorAll('button[aria-label^="Lihat detail rekening"]')].find((item) => item.getAttribute('aria-pressed') === 'true')?.querySelector('img')),
       };
     })()`);
     await waitFor(async () => {
@@ -432,11 +466,13 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.notEqual(accountFullScreenState.contentBackground, "none", "Area aman di bawah konten Rekening harus memiliki background route.");
     assert.equal(accountFullScreenState.contentBackground, accountFullScreenState.experienceBackground, "Background Rekening harus berlanjut sampai ruang aman sebelum navigasi.");
     assert.ok(accountFullScreenState.reservedGap >= -1 && accountFullScreenState.reservedGap <= 20, `Ruang aman sebelum navigasi harus tetap terkontrol, ditemukan ${accountFullScreenState.reservedGap}px.`);
+    assert.equal(accountFullScreenState.theme, "light", "Regression Rekening harus memvalidasi light mode secara eksplisit.");
     assert.equal(
       accountFullScreenState.contentColor,
-      accountFullScreenState.canonicalOnHeroColor,
-      "State loading atau notice pada route Rekening harus memakai warna on-hero canonical di atas surface gelap.",
+      accountFullScreenState.canonicalTextColor,
+      "Area di luar kartu Rekening harus memakai warna teks canonical light mode.",
     );
+    assert.equal(accountFullScreenState.activeCardHasArtwork, true, "Light mode tidak boleh menghapus atau mengganti artwork kartu rekening aktif.");
     await setViewport(page, 390, 844);
     await page.evaluate("window.scrollTo(0, 0)");
     await waitFor(() => page.evaluate(`(() => {
@@ -625,20 +661,20 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       const main = document.querySelector("main");
       const text = main?.textContent || "";
       return {
-        purpose: text.includes("Periksa apakah saldo aplikasi sama dengan saldo bank, e-wallet, atau uang tunai. Fitur ini tidak menambah saldo."),
+        noLongPurposeCopy: !text.includes("Periksa apakah saldo aplikasi sama dengan saldo bank, e-wallet, atau uang tunai. Fitur ini tidak menambah saldo."),
         actualBalanceInput: Boolean(main?.querySelector("#reconciliation-actual-balance")),
-        systemBalance: text.includes("Saldo sistem saat halaman dimuat"),
-        differenceGuard: text.includes("Bukan untuk menambah saldo."),
-        differenceGuidance: text.includes("Jika ada selisih, cari transaksi tertinggal atau transaksi ganda."),
+        systemBalance: text.includes("Saldo sistem"),
+        conciseGuard: text.includes("Tidak mengubah saldo secara otomatis."),
+        helpDisclosure: Boolean(main?.querySelector("details")) && text.includes("Cara kerja"),
       };
     })()`);
     assert.deepEqual(reconciliationState, {
-      purpose: true,
+      noLongPurposeCopy: true,
       actualBalanceInput: true,
       systemBalance: true,
-      differenceGuard: true,
-      differenceGuidance: true,
-    }, "Route Rekonsiliasi harus menampilkan tujuan, saldo sistem/aktual, dan selisih secara eksplisit.");
+      conciseGuard: true,
+      helpDisclosure: true,
+    }, "Route Rekonsiliasi harus tetap jelas tanpa copy edukasi permanen yang berulang.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('form'))"), true, "Owner yang memiliki capability harus memperoleh form rekonsiliasi.");
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     await page.evaluate("document.querySelector('button[aria-label=\"Tambah rekening\"]')?.click()");

@@ -20,16 +20,14 @@ const AuditPage = () => {
       <section className={styles.pageContent} aria-labelledby="audit-settings-title">
         <RefreshWarning error={healthResource.refreshError || auditResource.refreshError} onRetry={() => Promise.all([healthResource.reload(), auditResource.reload()])} />
         <div className={styles.pageHeading}>
-          <p className="eyebrow">Audit aktivitas</p>
-          <h2 id="audit-settings-title">Status backend dan log append-only</h2>
-          <p>Actor, request, entity, perubahan, dan hasil tindakan penting dicatat backend. Audit tidak dapat diedit atau dihapus dari aplikasi.</p>
+          <h2 id="audit-settings-title">Audit aktivitas</h2>
         </div>
         <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Status backend</p><h2>Kesiapan layanan</h2><p role="status" aria-live="polite">{backend.summary}</p></div><FiDatabase aria-hidden="true" /></div>
+          <div className="panel__header"><div><h2>Status layanan</h2><p role="status" aria-live="polite">{backend.summary}</p></div><FiDatabase aria-hidden="true" /></div>
           <div className="compact-list compact-list--stacked"><div><span><strong>Mode operasi</strong><small>{healthResource.data?.maintenanceMode ? "Maintenance aktif" : "Operasi normal"}</small></span><span className={`status-badge status-badge--${backend.tone}`}>{backend.label}</span></div></div>
         </Card>
         <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Audit append-only</p><h2>Aktivitas penting terbaru</h2><p>50 entri terbaru dimuat hanya saat halaman ini dibuka.</p></div><FiShield aria-hidden="true" /></div>
+          <div className="panel__header"><div><h2>Aktivitas terbaru</h2></div><FiShield aria-hidden="true" /></div>
           {auditResource.status === "loading" ? <p className="empty-inline-message" role="status">Memuat audit...</p> : null}
           {auditResource.status === "error" ? <div className="notice notice--danger" role="alert"><span>{auditResource.error?.message || "Audit belum dapat dimuat."}</span></div> : null}
           {entries.length ? (

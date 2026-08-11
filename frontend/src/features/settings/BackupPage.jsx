@@ -28,13 +28,12 @@ const BackupPage = () => {
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="backup-settings-title">
         <div className={styles.pageHeading}>
-          <p className="eyebrow">Backup teknis</p>
-          <h2 id="backup-settings-title">Snapshot terverifikasi ke Google Drive</h2>
-          <p>Backup menyimpan ID, audit, row version, checksum, relasi, dan schema untuk workflow pemulihan. Nama file unik dan tidak menimpa backup sebelumnya.</p>
+          <h2 id="backup-settings-title">Backup data</h2>
+          <p>Simpan salinan terverifikasi ke Google Drive untuk pemulihan.</p>
         </div>
         <SettingsNotice result={result} />
         <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Proteksi data</p><h2>Buat backup manual</h2><p>Gunakan sebelum migration, import besar, atau restore.</p></div><FiDownloadCloud aria-hidden="true" /></div>
+          <div className="panel__header"><h2>Backup manual</h2><FiDownloadCloud aria-hidden="true" /></div>
           <Button variant="primary" icon={FiDownloadCloud} loading={busy} onClick={createBackup}>Buat backup terverifikasi</Button>
         </Card>
       </section>

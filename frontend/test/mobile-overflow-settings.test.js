@@ -18,13 +18,22 @@ test("modal mobile hanya menggulir vertikal dan seluruh child form boleh menyusu
   assert.doesNotMatch(modal + components, /overflow-y:\s*hidden/);
 });
 
-test("filter transaksi dan kelompok ikon kategori tidak menjadi carousel horizontal mobile", async () => {
-  const [responsive, categoryStyles] = await Promise.all([
+test("filter transaksi mobile memprioritaskan filter utama dan memindahkan filter lanjutan ke dialog", async () => {
+  const [responsive, transactions, categoryStyles] = await Promise.all([
     read("src/styles/responsive.css"),
+    read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/categories/CategoriesPage.module.css"),
   ]);
-  assert.match(responsive, /\.transaction-filter-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*overflow:\s*visible;/);
-  assert.match(responsive, /@media \(max-width: 420px\)[\s\S]*\.transaction-filter-row\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(transactions, /title="Filter lainnya"/);
+  assert.match(transactions, /Buka filter lainnya/);
+  assert.match(transactions, /transaction-advanced-filter-grid/);
+  assert.match(transactions, /Filter rekening/);
+  assert.match(transactions, /Filter kategori/);
+  assert.match(transactions, /Filter pencatat/);
+  assert.match(responsive, /\.transaction-filter-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) auto;[^}]*overflow:\s*visible;/);
+  assert.match(responsive, /@media \(max-width: 420px\)[\s\S]*\.transaction-filter-row\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) var\(--mobile-control-height\);/);
+  assert.match(responsive, /@media \(max-width: 420px\)[\s\S]*\.transaction-advanced-filter-grid\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(responsive, /\.transaction-filter-more\s*\{[^}]*min-width:\s*var\(--mobile-control-height\)/);
   assert.doesNotMatch(responsive, /\.transaction-filter-row\s*\{[^}]*overflow-x:\s*auto/);
   assert.match(categoryStyles, /\.iconGroups\s*\{[^}]*flex-wrap:\s*wrap;[^}]*overflow:\s*visible;/);
   assert.doesNotMatch(categoryStyles, /\.iconGroups\s*\{[^}]*overflow-x:\s*auto/);
@@ -47,13 +56,13 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.match(layout, /ownerOnly/);
   assert.match(overview, /useApiResource\("system\.health"\)/);
   assert.doesNotMatch(overview, /users\.list|audit\.list|archive\.list|periods\.list|integrations\.status/);
-  assert.equal((notifications.match(/Notifikasi perangkat/g) || []).length, 1);
+  assert.equal((notifications.match(/<h2 id="notification-settings-title">Notifikasi perangkat<\/h2>/g) || []).length, 1);
   assert.equal((integrations.match(/<h3>Google Sheets<\/h3>/g) || []).length, 1);
   assert.equal((integrations.match(/<h3>Google Calendar<\/h3>/g) || []).length, 1);
-  assert.match(integrations, /menunggu \{sheets\.pending\}/);
-  assert.match(integrations, /diproses \{sheets\.processing\}/);
-  assert.match(integrations, /gagal \{sheets\.failed\}/);
-  assert.match(integrations, /perlu tindakan \{sheets\.deadLetter\}/);
+  assert.match(integrations, /Menunggu \{sheets\.pending\}/);
+  assert.match(integrations, /proses \{sheets\.processing\}/);
+  assert.match(integrations, /gagal \{sheets\.failed \+ sheets\.deadLetter\}/);
+  assert.doesNotMatch(integrations, /perlu tindakan \{sheets\.deadLetter\}/);
   assert.doesNotMatch(integrations, /antrean \{sheets\.pending\}/);
   assert.match(integrations, /<article className=\{styles\.serviceTile\} aria-label="Status integrasi Google Sheets">/);
   assert.match(integrations, /<article className=\{styles\.serviceTile\} aria-label="Status integrasi Google Calendar">/);

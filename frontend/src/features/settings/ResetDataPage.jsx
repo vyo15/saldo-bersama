@@ -123,9 +123,8 @@ const ResetDataPage = () => {
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="reset-data-title">
         <div className={styles.pageHeading}>
-          <p className="eyebrow">Maintenance aman</p>
           <h2 id="reset-data-title">Reset data percobaan</h2>
-          <p>Bersihkan aktivitas uji tanpa menghapus rekening beserta saldo awalnya, kategori, akun pengguna, konfigurasi, audit log, atau backup teknis.</p>
+          <p>Hapus data uji tanpa menghapus data dasar aplikasi.</p>
         </div>
 
         <SettingsNotice result={result} />
@@ -133,9 +132,8 @@ const ResetDataPage = () => {
         <Card className="panel">
           <div className="panel__header">
             <div>
-              <p className="eyebrow">Langkah 1</p>
-              <h2>Preview sebelum reset</h2>
-              <p>Backend menghitung data yang akan dihapus. Jika data berubah setelah preview, reset akan ditolak dan harus dipreview ulang.</p>
+              <h2>1. Preview reset</h2>
+              <p>Periksa data yang akan dihapus.</p>
             </div>
             <FiRefreshCw aria-hidden="true" />
           </div>
@@ -146,9 +144,8 @@ const ResetDataPage = () => {
         <Card className="panel">
           <div className="panel__header">
             <div>
-              <p className="eyebrow">Langkah 2</p>
-              <h2>Reset dengan safety backup</h2>
-              <p>Reset hanya berjalan setelah backup Google Drive terverifikasi. Aplikasi masuk maintenance selama purge, lalu menjalankan integrity check dan audit.</p>
+              <h2>2. Reset data</h2>
+              <p>Safety backup dibuat sebelum data dihapus.</p>
             </div>
             <FiTrash2 aria-hidden="true" />
           </div>

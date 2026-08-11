@@ -28,6 +28,7 @@ test("tooling kualitas canonical tidak bergantung pada task automation", async (
   assert.equal(packageJson.scripts.clean, "node scripts/clean-generated-artifacts.mjs");
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
   assert.equal(packageJson.scripts["test:browser"], "node scripts/prepare-browser-test-build.mjs && node --test test/browser/*.test.mjs");
+  assert.equal(packageJson.scripts.verify, "node scripts/verify-project.mjs");
   assert.equal(packageJson.scripts["audit:production"], "npm audit --omit=dev --audit-level=high");
   assert.equal(packageJson.scripts["check:duplicates"], "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test");
   assert.equal(packageJson.scripts["task:check"], undefined);

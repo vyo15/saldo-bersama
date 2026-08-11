@@ -12,7 +12,8 @@ test("halaman transaksi mengekspos filter rekening, kategori, dan pencatat", asy
   for (const field of ["account_id", "category_id", "created_by", "filterOptions.accounts", "filterOptions.categories", "filterOptions.creators"]) {
     assert.match(page, new RegExp(field.replace(".", "\\.")));
   }
-  assert.match(page, /Reset filter/);
+  assert.match(page, /Filter lainnya/);
+  assert.match(page, /Reset pilihan/);
 });
 
 test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan actionable", async () => {
@@ -22,7 +23,7 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(reports, /trend_months/);
   assert.match(reports, /Pengeluaran per rekening/);
   assert.match(reports, /Aktivitas pencatatan/);
-  assert.match(reports, /bukan ukuran kontribusi/);
+  assert.match(reports, /Menunjukkan pencatat, bukan penanggung biaya/);
   assert.match(reports, /to="\/anggaran"/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
   const budgets = await source("src/features/budgets/BudgetsPage.jsx");
@@ -38,6 +39,27 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", 
   assert.match(goals, /remaining_amount/);
   assert.match(goals, /required_monthly_amount/);
   assert.match(goals, /pace_status/);
+});
+
+test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang memakai kantong", async () => {
+  const [allocations, recurring, navigation] = await Promise.all([
+    source("src/features/allocations/AllocationsPage.jsx"),
+    source("src/features/recurring/RecurringPage.jsx"),
+    source("src/config/navigation.js"),
+  ]);
+
+  assert.match(allocations, /activeItems = useMemo/);
+  assert.match(allocations, /historicalItems = useMemo/);
+  assert.match(allocations, /Riwayat periode/);
+  assert.match(allocations, /items=\{activeItems\}/);
+  assert.match(recurring, /envelope_period_id/);
+  assert.match(recurring, /Kantong dana/);
+  assert.match(recurring, /paymentEnvelopes\.map/);
+  assert.doesNotMatch(recurring, /sekaligus mengurangi sisa alokasi/);
+  assert.match(recurring, /"envelopes\.list"/);
+  assert.match(navigation, /Bagi dana yang sudah tersedia ke kantong kebutuhan tanpa memindahkan saldo/);
+  assert.match(navigation, /catat aktualnya ke ledger/);
+  assert.match(navigation, /Kumpulkan dana ke rekening tujuan/);
 });
 
 test("dashboard desktop dan mobile memakai view model, filter, detail, alert, dan privacy yang sama", async () => {
@@ -57,22 +79,22 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   assert.match(page, /MobileDashboardFilters/);
   assert.match(page, /MobileTransactionDetail/);
   assert.match(desktop, /SensitiveMoney/);
-  assert.match(desktop, /Transaksi rekening terpilih/);
+  assert.match(desktop, /Transaksi rekening/);
   assert.match(desktop, /data-dashboard-account/);
-  assert.match(desktop, /Statistik pengeluaran/);
+  assert.match(desktop, /<h2 id="dashboard-statistics-title">Pengeluaran<\/h2>/);
   assert.match(desktop, /Anggaran bulan ini/);
   assert.match(desktop, /Tagihan terdekat/);
   assert.match(desktop, /Target tabungan/);
-  assert.match(desktop, /Buka transaksi/);
-  assert.match(desktop, /Buka anggaran/);
-  assert.match(desktop, /Buka jadwal rutin/);
+  assert.match(desktop, /<strong>Transaksi<\/strong>/);
+  assert.match(desktop, /<strong>Anggaran<\/strong>/);
+  assert.match(desktop, /<strong>Jadwal rutin<\/strong>/);
   assert.match(desktop, /to="\/rekonsiliasi"/);
   assert.equal((desktop.match(/>Tambah transaksi<\/span>/g) || []).length, 1);
-  assert.match(mobile, /Aman digunakan akun ini/);
+  assert.match(mobile, /Aman digunakan/);
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
   assert.match(mobile, /Batas aman per hari/);
-  assert.match(mobile, /Dana belum dialokasikan/);
+  assert.match(mobile, /Belum dialokasikan/);
   assert.match(mobile, /Rincian rekening dan kategori/);
   assert.match(mobile, /onOpenFilters/);
   assert.match(mobile, /onOpenTransactionDetail/);

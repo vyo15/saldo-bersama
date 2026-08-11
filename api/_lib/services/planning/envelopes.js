@@ -77,7 +77,7 @@ const envelopeRuleLifecycleImpact = async (db, current) => {
 };
 
 export const listEnvelopes = async (db, context) => {
-  const items = await envelopeItems(db, context.actor, { includeClosed: true });
+  const items = await envelopeItems(db, context.actor, { period: context.payload?.period || null, includeClosed: true });
   const access = visibleScopeSql(context.actor, "fr");
   const recentMovements = await db.all(`SELECT m.*,fp.name AS from_name,tp.name AS to_name,fp.row_version AS from_row_version,tp.row_version AS to_row_version,
       fr.scope,fr.owner_user_id

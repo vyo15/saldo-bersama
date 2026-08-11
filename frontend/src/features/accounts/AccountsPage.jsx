@@ -135,14 +135,14 @@ const useAccountLifecycleActions = ({ archiveTarget, setArchiveTarget, setDialog
 
 const AccountListSection = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, navigate, bootstrap, setSelectedAccountId, openEditAccount, openAccountLifecycle, onTransferSaved }) => (
   <section aria-labelledby="account-list-title" className={styles.accountSection}>
-    <div className={styles.sectionHeading}><div><p className="eyebrow">Rekening aktif</p><h2 id="account-list-title">Tempat uang tersimpan</h2></div><span>{accounts.length} rekening</span></div>
+    <div className={styles.sectionHeading}><h2 id="account-list-title">Rekening aktif</h2><span>{accounts.length} rekening</span></div>
     {accounts.length ? <>
       <Suspense fallback={null}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownerMode={ownerMode}
         openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} /></Suspense>
       <Suspense fallback={null}><DesktopAccountsWorkspace accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode} bootstrap={bootstrap}
         onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
         onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>
-    </> : <Card className={styles.emptyPanel}><h2>Belum ada rekening</h2><p>Tambahkan rekening bank, tunai, e-wallet, atau tabungan agar saldo dapat dihitung.</p>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null}</Card>}
+    </> : <Card className={styles.emptyPanel}><h2>Belum ada rekening</h2>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null}</Card>}
   </section>
 );
 
@@ -178,7 +178,7 @@ const AccountArchiveConfirmation = ({ archiveTarget, dialogState, setArchiveTarg
       <div><span>Seluruh transaksi</span><strong>{archiveTarget.preview.dependencies.transactions}</strong></div>
       <div><span>Rekonsiliasi</span><strong>{archiveTarget.preview.dependencies.reconciliations}</strong></div>
       <div><span>Referensi kantong/tagihan/target</span><strong>{archiveTarget.preview.dependencies.envelopes + archiveTarget.preview.dependencies.recurring + archiveTarget.preview.dependencies.goals}</strong></div>
-      <p>{archiveTarget.preview.canDeleteUnused ? "Data rekening sudah lolos guard server. Lengkapi alasan, frasa konfirmasi, dan pernyataan pemahaman di bawah. Backend tetap membaca ulang data tepat sebelum DELETE." : "Rekening pernah digunakan atau memiliki histori, sehingga data hanya diarsipkan dan tidak dihapus."}</p>
+      <p>{archiveTarget.preview.canDeleteUnused ? "Rekening dapat dihapus permanen. Lengkapi alasan, frasa konfirmasi, dan pernyataan pemahaman di bawah." : "Rekening pernah digunakan atau memiliki histori, sehingga data hanya diarsipkan dan tidak dihapus."}</p>
     </div> : null}
   </ConfirmationModal>
 );
@@ -203,7 +203,7 @@ const AccountsPageFeedback = ({ accountsResource, usersResource, ownerMode, relo
 
 const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
   <div className={styles.desktopPageHeader}><PageHeader title="Rekening"
-    description={<><span className={styles.mobileAccountCount}>{accounts.length} rekening aktif</span><span className={styles.desktopAccountDescription}>Pantau seluruh rekening bersama dan pribadi secara transparan. Hak tindakan tetap mengikuti pemilik dan peran pengguna.</span></>}
+    description={<span className={styles.mobileAccountCount}>{accounts.length} rekening aktif</span>}
     actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog} aria-label="Tambah rekening desktop">Tambah rekening</Button> : null} />
   </div>
 );

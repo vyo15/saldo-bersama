@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import {
+  FiAlertTriangle,
   FiArchive,
+  FiArrowRight,
   FiCalendar,
   FiCheckCircle,
   FiChevronDown,
@@ -45,15 +47,25 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import styles from "./RecurringPage.module.css";
 
 const recurringRefreshKeys = Object.freeze(["recurring.list", "reports.monthly", "app.initialState"]);
-const recurringLedgerRefreshKeys = Object.freeze(["recurring.list", "transactions.list", "accounts.list", "budgets.list", "reports.monthly", "app.initialState"]);
+const recurringLedgerRefreshKeys = Object.freeze(["recurring.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState"]);
 const initialRuleForm = () => ({ name: "", kind: "expense", expected_amount: "", due_day: 20, category_id: "", default_account_id: "", payment_method: "transfer", frequency: "monthly", start_date: todayInJakarta(), auto_debit: false });
-const initialPayment = () => ({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta() });
+const initialPayment = () => ({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "" });
 const activeAccounts = (bootstrap) => bootstrap?.accounts?.filter((item) => item.status === "active") || [];
 const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === kind) || [];
 const refreshRecurring = async ({ invalidate, resource, refreshOverview, keys = recurringRefreshKeys }) => { invalidate(keys); await Promise.allSettled([resource.reload(), refreshOverview()]); };
 
+const eligiblePaymentEnvelopes = (items, payment, account) => {
+  if (payment.item?.kind !== "expense" || !account?.account_id) return [];
+  const active = (items || []).filter((item) => item.status === "active"
+    && payment.transaction_date >= item.period_start
+    && payment.transaction_date <= item.period_end
+    && (!item.source_account_id || item.source_account_id === account.account_id));
+  return filterByOwnership(active, account);
+};
+
 const FILTERS = Object.freeze([
   { id: "all", label: "Semua" },
+  { id: "attention", label: "Perlu perhatian" },
   { id: "open", label: "Belum selesai" },
   { id: "done", label: "Selesai" },
   { id: "cancelled", label: "Dilewati" },
@@ -78,6 +90,7 @@ const PAYMENT_METHOD_LABELS = Object.freeze({
 });
 
 const completedStatuses = new Set(["paid", "received"]);
+const attentionStatuses = new Set(["overdue", "late", "partial"]);
 const openStatuses = new Set(["expected", "partial", "overdue", "late", "scheduled"]);
 
 const dateOrdinal = (value) => {
@@ -100,6 +113,7 @@ const duePresentation = (item) => {
 };
 
 const scheduleMatchesFilter = (item, filter) => {
+  if (filter === "attention") return attentionStatuses.has(item.status);
   if (filter === "open") return openStatuses.has(item.status);
   if (filter === "done") return completedStatuses.has(item.status);
   if (filter === "cancelled") return item.status === "cancelled";
@@ -117,12 +131,52 @@ const recurringSummary = (items) => items.reduce((summary, item) => {
 
 const lookupLabel = (items, id, idKey, fallback) => items?.find((item) => item[idKey] === id)?.name || fallback;
 
-const ScheduleActions = ({ item, actions, expanded, onToggle }) => {
+const attentionGuidance = (item) => {
+  if (!attentionStatuses.has(item.status)) return null;
+  const expected = Number(item.expected_amount || 0);
+  const actual = Number(item.actual_amount || 0);
+  const remaining = Math.max(0, expected - actual);
+  if (item.status === "partial") {
+    return {
+      title: "Aktual belum lengkap",
+      description: <>Masih ada <Money value={remaining} /> dari nominal rencana yang belum tercatat pada periode ini.</>,
+      primaryLabel: "Lengkapi aktual",
+    };
+  }
+  if (item.auto_debit) {
+    return {
+      title: "Periksa auto-debit",
+      description: "Cek mutasi rekening. Jika transaksi sudah terjadi, catat aktual.",
+      primaryLabel: "Catat aktual",
+    };
+  }
+  return {
+    title: "Jadwal melewati jatuh tempo",
+    description: "Catat aktual jika transaksi terjadi, atau lewati periode jika tidak.",
+    primaryLabel: "Catat aktual",
+  };
+};
+
+const ScheduleAttention = ({ item, guidance, actions }) => {
+  if (!guidance) return null;
+  return (
+    <div className={styles.attentionAction} role="status">
+      <span className={styles.attentionIcon} aria-hidden="true"><FiAlertTriangle /></span>
+      <div className={styles.attentionCopy}>
+        <strong>{guidance.title}</strong>
+        <p>{guidance.description}</p>
+      </div>
+      {item.can_pay ? <Button className={styles.attentionPrimary} variant="primary" onClick={() => actions.openPayment(item)}>{guidance.primaryLabel}</Button> : null}
+    </div>
+  );
+};
+
+const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false }) => {
   const hasManagement = item.can_reverse || item.can_cancel_occurrence || item.can_restore_occurrence || item.can_edit_rule || item.can_archive_rule;
   return (
     <div className={styles.actions}>
       <div className={styles.actionPrimary}>
-        {item.can_pay ? <Button variant="primary" onClick={() => actions.openPayment(item)}>Catat aktual</Button> : null}
+        {item.can_pay && !hidePay ? <Button variant="primary" onClick={() => actions.openPayment(item)}>Catat aktual</Button> : null}
         {item.can_restore_occurrence ? <Button icon={FiRotateCcw} onClick={() => actions.openRestore(item)}>Pulihkan periode</Button> : null}
         {completedStatuses.has(item.status) ? <span className={styles.completedMark}><FiCheckCircle aria-hidden="true" /> Sudah tercatat</span> : null}
         {hasManagement ? (
@@ -151,6 +205,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories 
   const accountLabel = account ? accountDisplayLabel(account) : "Rekening tidak tersedia";
   const categoryLabel = lookupLabel(categories, item.category_id, "category_id", "Kategori tidak tersedia");
   const actual = Number(item.actual_amount || 0);
+  const guidance = attentionGuidance(item);
   return (
     <Card as="article" className={styles.scheduleCard} interactive>
       <div className={styles.cardHeading}>
@@ -170,16 +225,17 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories 
 
       <div className={styles.amountBlock}>
         <span>Rencana <Money value={item.expected_amount} /></span>
-        {actual > 0 ? <small>Aktual <Money value={actual} /></small> : <small>Belum ada transaksi aktual</small>}
+        {actual > 0 ? <small>Aktual <Money value={actual} /></small> : null}
       </div>
 
       <div className={styles.metaGrid}>
         <span><FiClock aria-hidden="true" /><span><strong>{formatDateLongIndonesia(item.due_date) || item.due_date}</strong><small className={styles[due.tone]}>{due.label}</small></span></span>
         <span><FiRepeat aria-hidden="true" /><span><strong>{FREQUENCY_LABELS[item.frequency] || item.frequency}</strong><small>{PAYMENT_METHOD_LABELS[item.payment_method] || item.payment_method || "Metode belum diatur"}</small></span></span>
-        <span className={styles.accountMeta}><span className={styles.accountDot} aria-hidden="true" /><span><strong>{accountLabel}</strong><small>Rekening default</small></span></span>
+        <span className={styles.accountMeta}><span className={styles.accountDot} aria-hidden="true" /><span><strong>{accountLabel}</strong></span></span>
       </div>
 
-      <ScheduleActions item={item} actions={actions} expanded={expanded} onToggle={onToggle} />
+      <ScheduleAttention item={item} guidance={guidance} actions={actions} />
+      <ScheduleActions item={item} actions={actions} expanded={expanded} onToggle={onToggle} hidePay={Boolean(guidance)} />
     </Card>
   );
 };
@@ -206,13 +262,10 @@ const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, ac
   </div>
 );
 
-const SchedulePanel = ({ eyebrow, title, items, emptyText, ...props }) => (
+const SchedulePanel = ({ title, items, emptyText, ...props }) => (
   <Card className={styles.panel}>
     <div className={styles.panelHeader}>
-      <div>
-        <p className="eyebrow">{eyebrow}</p>
-        <h2>{title}</h2>
-      </div>
+      <h2>{title}</h2>
       <span className={styles.countBadge}>{items.length}</span>
     </div>
     <ScheduleList items={items} emptyText={emptyText} {...props} />
@@ -225,35 +278,32 @@ const SchedulePanels = ({ items, actions, expandedId, setExpandedId, accounts, c
   const shared = { actions, expandedId, setExpandedId, accounts, categories };
   return (
     <section className={styles.panels} aria-label="Daftar jadwal rutin">
-      <SchedulePanel eyebrow="Pengeluaran tetap" title="Tagihan periode ini" items={expenses} emptyText="Belum ada tagihan aktif pada filter ini." {...shared} />
-      <SchedulePanel eyebrow="Pemasukan tetap" title="Penerimaan periode ini" items={income} emptyText="Belum ada pemasukan rutin pada filter ini." {...shared} />
+      <SchedulePanel title="Pengeluaran" items={expenses} emptyText="Belum ada pengeluaran rutin." {...shared} />
+      <SchedulePanel title="Pemasukan" items={income} emptyText="Belum ada pemasukan rutin." {...shared} />
     </section>
   );
 };
 
-const ScheduleSummary = ({ items }) => {
+const ScheduleSummary = ({ items, onAttention }) => {
   const summary = recurringSummary(items);
   return (
     <section className={styles.summaryGrid} aria-label="Ringkasan jadwal rutin periode ini">
       <Card className={`${styles.summaryCard} ${styles.expenseSummary}`}>
         <span>Rencana pengeluaran</span>
         <Money value={summary.expense} />
-        <small>Total tagihan pada periode terpilih</small>
       </Card>
       <Card className={`${styles.summaryCard} ${styles.incomeSummary}`}>
         <span>Rencana pemasukan</span>
         <Money value={summary.income} />
-        <small>Total penerimaan pada periode terpilih</small>
       </Card>
       <Card className={styles.summaryCard}>
         <span>Sudah selesai</span>
         <strong>{summary.completed}</strong>
-        <small>Sudah dibayar atau diterima</small>
       </Card>
       <Card className={`${styles.summaryCard} ${summary.attention ? styles.attentionSummary : ""}`}>
         <span>Perlu perhatian</span>
         <strong>{summary.attention}</strong>
-        <small>Terlambat atau baru tercatat sebagian</small>
+        {summary.attention ? <button type="button" className={styles.summaryAction} onClick={onAttention}><span>Lihat tindakan</span><FiArrowRight aria-hidden="true" /></button> : null}
       </Card>
     </section>
   );
@@ -279,13 +329,13 @@ const AccountField = ({ label = "Rekening default", value, accounts, onChange })
 const CategoryField = ({ value, categories, onChange }) => <label className="field"><span>Kategori *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih kategori</option>{categories.map((item) => <option value={item.category_id} key={item.category_id}>{item.name}</option>)}</select></label>;
 
 const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message }) => (
-  <Modal open={open} onClose={close} title="Tambah jadwal rutin" description="Buat rencana tagihan atau pemasukan. Saldo baru berubah setelah transaksi aktual disimpan." footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Tambah jadwal</Button></>}>
+  <Modal open={open} onClose={close} title="Tambah jadwal rutin" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Tambah jadwal</Button></>}>
     <form id="create-recurring-form" className="form-grid" onSubmit={createRule}>
       <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
       <label className="field"><span>Jenis</span><select value={form.kind} onChange={(event) => setForm((current) => ({ ...current, kind: event.target.value, category_id: "" }))}><option value="expense">Pengeluaran tetap</option><option value="income">Pemasukan tetap</option></select></label>
       <MoneyInput id="recurring-amount" label="Nominal perkiraan" value={form.expected_amount} onChange={(value) => setForm((current) => ({ ...current, expected_amount: value }))} required />
       <FrequencyField value={form.frequency} onChange={(frequency) => setForm((current) => ({ ...current, frequency }))} />
-      <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: Number(event.target.value) }))} /><small>Jadwal mingguan atau harian mengikuti tanggal mulai.</small></label>
+      <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: Number(event.target.value) }))} /></label>
       <CategoryField value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => ({ ...current, category_id }))} />
       <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => ({ ...current, default_account_id }))} />
       <PaymentMethodField value={form.payment_method} onChange={(payment_method) => setForm((current) => ({ ...current, payment_method }))} />
@@ -296,10 +346,24 @@ const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, cre
   </Modal>
 );
 
-const PaymentModal = ({ payment, setPayment, paymentState, paymentMutation, paymentAccounts, completeOccurrence }) => {
+const PaymentModal = ({ payment, setPayment, paymentState, paymentMutation, paymentAccounts, paymentEnvelopes, envelopeStatus, completeOccurrence }) => {
   const close = () => paymentState.status !== "submitting" && setPayment((current) => ({ ...current, item: null }));
   const accountLabel = payment.item?.kind === "income" ? "Rekening penerima" : "Rekening pembayaran";
-  return <Modal open={Boolean(payment.item)} onClose={close} title={payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual"} description={payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : ""} footer={<><Button type="button" disabled={paymentState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={paymentState.status === "submitting"}>Simpan aktual</Button></>}><form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}><MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(amount) => setPayment((current) => ({ ...current, amount }))} required /><AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id }))} /><label className="field"><span>Tanggal aktual *</span><input required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value }))} /></label>{paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}</form></Modal>;
+  const selectedEnvelope = paymentEnvelopes.find((item) => item.envelope_period_id === payment.envelope_period_id) || null;
+  const amount = Number(payment.amount || 0);
+  const envelopeRemaining = Number(selectedEnvelope?.remaining_amount || 0);
+  const exceedsEnvelope = Boolean(selectedEnvelope && amount > envelopeRemaining);
+  const blockedByEnvelope = exceedsEnvelope && selectedEnvelope?.overspend_policy === "block";
+  const needsOverspendReason = exceedsEnvelope && selectedEnvelope?.overspend_policy === "confirm";
+  const submitDisabled = paymentState.status === "submitting" || blockedByEnvelope;
+  const envelopeHint = envelopeStatus === "loading"
+    ? "Memuat kantong aktif..."
+    : envelopeStatus === "error"
+      ? "Kantong tidak dapat dimuat. Aktual tetap dapat dicatat tanpa alokasi, atau muat ulang halaman sebelum memilih kantong."
+      : paymentEnvelopes.length
+        ? ""
+        : "Tidak ada kantong aktif yang cocok.";
+  return <Modal open={Boolean(payment.item)} onClose={close} title={payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual"} description={payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : ""} footer={<><Button type="button" disabled={paymentState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={submitDisabled}>Simpan aktual</Button></>}><form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}><MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(amount) => setPayment((current) => ({ ...current, amount }))} required /><AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }))} /><label className="field"><span>Tanggal aktual *</span><input required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }))} /></label>{payment.item?.kind === "expense" ? <label className="field form-grid__full"><span>Kantong dana</span><select value={payment.envelope_period_id} onChange={(event) => setPayment((current) => ({ ...current, envelope_period_id: event.target.value, overspend_reason: "" }))}><option value="">Belum dialokasikan</option>{paymentEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · sisa Rp {Number(item.remaining_amount || 0).toLocaleString("id-ID")}</option>)}</select>{envelopeHint ? <small>{envelopeHint}</small> : null}</label> : null}{blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa kantong. Kebijakan kantong ini memblokir overspend. Kurangi nominal atau pilih kantong lain.</div> : null}{needsOverspendReason ? <label className="field form-grid__full"><span>Alasan melebihi alokasi *</span><input required maxLength="180" value={payment.overspend_reason} onChange={(event) => setPayment((current) => ({ ...current, overspend_reason: event.target.value }))} placeholder="Contoh: tagihan aktual lebih tinggi dari perkiraan" /></label> : null}{exceedsEnvelope && selectedEnvelope?.overspend_policy === "allow" ? <div className="notice notice--info form-grid__full">Nominal aktual melebihi sisa kantong. Kebijakan ini mengizinkan overspend.</div> : null}{paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}</form></Modal>;
 };
 
 const EditRuleFields = ({ editRule, setEditRule, editCategories, accounts }) => <>
@@ -315,7 +379,7 @@ const EditRuleFields = ({ editRule, setEditRule, editCategories, accounts }) => 
   <label className="checkbox-field form-grid__full"><input type="checkbox" checked={Boolean(editRule?.auto_debit)} onChange={(event) => setEditRule((current) => ({ ...current, auto_debit: event.target.checked }))} /><span>Penanda auto-debit (tidak mengubah saldo sebelum aktual disimpan)</span></label>
 </>;
 
-const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategories, accounts }) => <Modal open={Boolean(editRule)} onClose={() => editState.status !== "submitting" && setEditRule(null)} title="Edit aturan rutin" description={editRule ? `${editRule.name} · perubahan berlaku untuk occurrence yang dibuat berikutnya.` : ""} footer={<><Button onClick={() => setEditRule(null)} disabled={editState.status === "submitting"}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" loading={editState.status === "submitting"}>Simpan perubahan</Button></>}><form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}><EditRuleFields editRule={editRule} setEditRule={setEditRule} editCategories={editCategories} accounts={accounts} />{editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}</form></Modal>;
+const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategories, accounts }) => <Modal open={Boolean(editRule)} onClose={() => editState.status !== "submitting" && setEditRule(null)} title="Edit jadwal rutin" description={editRule ? `${editRule.name} · berlaku untuk jadwal berikutnya.` : ""} footer={<><Button onClick={() => setEditRule(null)} disabled={editState.status === "submitting"}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" loading={editState.status === "submitting"}>Simpan perubahan</Button></>}><form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}><EditRuleFields editRule={editRule} setEditRule={setEditRule} editCategories={editCategories} accounts={accounts} />{editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}</form></Modal>;
 
 const RecurringConfirmations = (p) => <><ConfirmationModal open={Boolean(p.archiveRuleTarget)} title={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus aturan rutin yang belum dipakai?" : "Arsipkan aturan rutin?"} description={p.archiveRuleTarget ? (p.archiveRuleTarget.preview.canDeleteUnused ? `${p.archiveRuleTarget.item.name} hanya memiliki jadwal masa depan hasil generate dan belum pernah dibayar, dilewati, atau terhubung transaksi.` : `${p.archiveRuleTarget.item.name} sudah memiliki histori. Aturan tidak dihapus permanen dan riwayat pembayaran tetap tersimpan.`) : ""} confirmLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan aturan"} reasonLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Saya memahami hanya projection masa depan yang belum terealisasi yang akan dibersihkan bersama aturan ini." : ""} busy={p.editState.status === "submitting"} error={p.editState.error} onCancel={() => p.editState.status !== "submitting" && p.setArchiveRuleTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveRuleTarget ? <div className="notice notice--info">Jadwal total {p.archiveRuleTarget.preview.dependencies.occurrences} · projection masa depan yang aman diregenerate {p.archiveRuleTarget.preview.dependencies.reproducible_future_occurrences} · histori masa lalu {p.archiveRuleTarget.preview.dependencies.past_occurrences} · dilewati/dibatalkan {p.archiveRuleTarget.preview.dependencies.cancelled_occurrences} · terhubung transaksi {p.archiveRuleTarget.preview.dependencies.transactions}.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.skipTarget)} title="Lewati periode ini?" description={p.skipTarget ? `${p.skipTarget.name} untuk ${p.skipTarget.due_date} ditandai dilewati. Tidak ada transaksi dibuat dan saldo tidak berubah. Periode berikutnya tetap aktif.` : ""} confirmLabel="Lewati periode" reasonLabel="Alasan melewati periode" requireReason busy={p.skipMutation.busy} error={p.skipError} onCancel={() => !p.skipMutation.busy && p.setSkipTarget(null)} onConfirm={p.skipOccurrence} /><ConfirmationModal open={Boolean(p.restoreOccurrenceTarget)} title="Pulihkan periode yang dilewati?" description={p.restoreOccurrenceTarget ? `${p.restoreOccurrenceTarget.name} untuk ${p.restoreOccurrenceTarget.due_date} akan kembali menjadi jadwal aktif tanpa membuat transaksi.` : ""} confirmLabel="Pulihkan periode" reasonLabel="Alasan pemulihan" requireReason busy={p.restoreOccurrenceMutation.busy} error={p.restoreOccurrenceError} onCancel={() => !p.restoreOccurrenceMutation.busy && p.setRestoreOccurrenceTarget(null)} onConfirm={p.restoreSkippedOccurrence} /><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan aktual terakhir?" description={p.reverseTarget ? `${p.reverseTarget.name} · transaksi ledger terkait akan dibatalkan dan status jadwal dihitung ulang.` : ""} confirmLabel="Batalkan aktual" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reversePayment} /></>;
 
@@ -343,8 +407,8 @@ const useRecurringPaymentActions = (shared) => {
   const [paymentState, setPaymentState] = useState({ status: "idle", error: null });
   const [reverseTarget, setReverseTarget] = useState(null);
   const [reverseState, setReverseState] = useState({ status: "idle", error: null });
-  const openPayment = (item) => { const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""; setPayment({ item, account_id: item.default_account_id || "", amount: String(remaining), transaction_date: todayInJakarta() }); setPaymentState({ status: "idle", error: null }); };
-  const completeOccurrence = (event) => { event.preventDefault(); if (!payment.item) return; setPaymentState({ status: "submitting", error: null }); return paymentMutation.run(async () => { await payRecurringOccurrence({ occurrence_id: payment.item.occurrence_id, row_version: payment.item.row_version, account_id: payment.account_id, amount: assertPositiveRupiah(payment.amount), transaction_date: payment.transaction_date }, { rowVersion: payment.item.row_version }); setPayment(initialPayment()); setPaymentState({ status: "idle", error: null }); shared.notify({ message: "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." }); await refreshRecurring({ ...shared, keys: recurringLedgerRefreshKeys }); }).catch((error) => setPaymentState({ status: "error", error })); };
+  const openPayment = (item) => { const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""; setPayment({ item, account_id: item.default_account_id || "", amount: String(remaining), transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "" }); setPaymentState({ status: "idle", error: null }); };
+  const completeOccurrence = (event) => { event.preventDefault(); if (!payment.item) return; setPaymentState({ status: "submitting", error: null }); return paymentMutation.run(async () => { await payRecurringOccurrence({ occurrence_id: payment.item.occurrence_id, row_version: payment.item.row_version, account_id: payment.account_id, amount: assertPositiveRupiah(payment.amount), transaction_date: payment.transaction_date, envelope_period_id: payment.item.kind === "expense" ? payment.envelope_period_id : "", overspend_reason: payment.item.kind === "expense" ? payment.overspend_reason : "" }, { rowVersion: payment.item.row_version }); const allocated = Boolean(payment.item.kind === "expense" && payment.envelope_period_id); setPayment(initialPayment()); setPaymentState({ status: "idle", error: null }); shared.notify({ message: allocated ? "Aktual berhasil dicatat ke ledger dan sisa kantong diperbarui." : "Pembayaran/penerimaan aktual berhasil dicatat ke ledger." }); await refreshRecurring({ ...shared, keys: recurringLedgerRefreshKeys }); }).catch((error) => setPaymentState({ status: "error", error })); };
   const reversePayment = async (reason) => { if (!reverseTarget) return; const transactionId = String(reverseTarget.transaction_ids || "").split(",").map((value) => value.trim()).filter(Boolean).at(-1); if (!transactionId) return; setReverseState({ status: "submitting", error: null }); try { await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version }); setReverseTarget(null); setReverseState({ status: "idle", error: null }); shared.notify({ message: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." }); await refreshRecurring({ ...shared, keys: recurringLedgerRefreshKeys }); } catch (error) { setReverseState({ status: "error", error }); } };
   const openReverse = (item) => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); };
   return { paymentMutation, payment, setPayment, paymentState, reverseTarget, setReverseTarget, reverseState, openPayment, completeOccurrence, reversePayment, openReverse };
@@ -376,10 +440,13 @@ const RecurringPage = () => {
   const rules = useRecurringRuleActions(shared);
   const payments = useRecurringPaymentActions(shared);
   const recovery = useRecurringOccurrenceRecovery(shared);
+  const envelopeResource = useApiResource("envelopes.list", { period }, { enabled: payments.payment.item?.kind === "expense" });
   const accounts = activeAccounts(bootstrap);
   const categories = activeCategories(bootstrap, rules.form.kind);
   const editCategories = activeCategories(bootstrap, rules.editRule?.kind);
   const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
+  const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
+  const paymentEnvelopes = eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount);
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
@@ -393,23 +460,15 @@ const RecurringPage = () => {
   return (
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      <PageHeader title="Jadwal rutin" description="Pantau tagihan dan pemasukan berkala. Saldo hanya berubah setelah transaksi aktual tersimpan." actions={headerActions} />
-      <ScheduleSummary items={allItems} />
+      <PageHeader title="Jadwal rutin" actions={headerActions} />
+      <ScheduleSummary items={allItems} onAttention={() => { setFilter("attention"); setExpandedId(null); }} />
       <div className={styles.controlRow}>
-        <div>
-          <p className="eyebrow">Kelola jadwal</p>
-          <h2>Jadwal pada periode ini</h2>
-          <p>Pilih status, lalu buka Kelola jadwal untuk mengubah aturan atau menangani occurrence.</p>
-        </div>
+        <h2>Jadwal periode ini</h2>
         <ScheduleFilters filter={filter} setFilter={(next) => { setFilter(next); setExpandedId(null); }} items={allItems} />
       </div>
       <SchedulePanels items={filteredItems} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} />
-      <div className={`notice notice--info ${styles.calendarNotice}`}>
-        <FiCalendar aria-hidden="true" />
-        <span><strong>Google Calendar hanya pengingat.</strong> Status dibayar atau diterima berubah setelah transaksi aktual tersimpan di ledger. Jadwal yang diarsipkan tetap memiliki histori dan dapat dipulihkan melalui menu Pemulihan.</span>
-      </div>
       <CreateRuleModal open={rules.createOpen} close={rules.closeCreate} form={rules.form} setForm={rules.setForm} categories={categories} accounts={accounts} createRule={rules.createRule} createMutation={rules.createMutation} message={rules.message} />
-      <PaymentModal payment={payments.payment} setPayment={payments.setPayment} paymentState={payments.paymentState} paymentMutation={payments.paymentMutation} paymentAccounts={paymentAccounts} completeOccurrence={payments.completeOccurrence} />
+      <PaymentModal payment={payments.payment} setPayment={payments.setPayment} paymentState={payments.paymentState} paymentMutation={payments.paymentMutation} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} completeOccurrence={payments.completeOccurrence} />
       <EditRuleModal editRule={rules.editRule} setEditRule={rules.setEditRule} editState={rules.editState} saveRule={rules.saveRule} editCategories={editCategories} accounts={accounts} />
       <RecurringConfirmations {...confirmations} />
     </div>

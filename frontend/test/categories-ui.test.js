@@ -18,7 +18,7 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
 
   assert.match(app, /path="kategori"/);
   assert.match(navigation, /to: "\/kategori", label: "Kategori"[\s\S]*icon: FiTag/);
-  assert.match(page, /title="Kategori transaksi"/);
+  assert.match(page, /title="Kategori"/);
   assert.match(page, /aria-label="Tambah kategori"/);
   assert.match(page, /useApiResource\("categories\.list"\)/);
   assert.match(page, /create-category-form/);
@@ -43,8 +43,8 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
   assert.match(categoryPresentation, /value: "expense", label: "Uang keluar"/);
   assert.match(categoryPresentation, /value: "income", label: "Uang masuk"/);
   assert.match(categoryPresentation, /value: "refund", label: "Pengembalian dana"/);
-  assert.match(page, /Transfer antar rekening tidak memakai kategori/);
-  assert.match(page, /gunakan Transfer atau Target/);
+  assert.doesNotMatch(page, /Transfer antar rekening tidak memakai kategori/);
+  assert.doesNotMatch(page, /gunakan Transfer atau Target/);
   assert.match(styles, /\.iconGroups[\s\S]*flex-wrap: wrap/);
   assert.doesNotMatch(styles, /\.iconGroups[\s\S]{0,180}overflow-x:\s*auto/);
   assert.doesNotMatch(categoryPresentation.match(/EXPENSE_NATURE_OPTIONS[\s\S]*?\]\);/)?.[0] || "", /value: "savings"/);

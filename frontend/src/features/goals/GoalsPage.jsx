@@ -81,7 +81,6 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
     open={open}
     onClose={close}
     title="Buat target"
-    description="Pilih rekening tujuan. Kontribusi berikutnya akan dicatat sebagai transfer."
     footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button type="submit" form="goal-create-form" variant="primary" icon={FiPlus} loading={createMutation.busy}>Buat target</Button></>}
   >
     <form id="goal-create-form" className="form-grid" onSubmit={createGoal}>
@@ -96,7 +95,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
 );
 
 const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => (
-  <Modal open={Boolean(editGoal)} onClose={() => editState.status !== "submitting" && setEditGoal(null)} title="Edit target" description="Rekening, jenis, dan status target dipertahankan agar riwayat tetap konsisten." footer={<><Button type="button" disabled={editState.status === "submitting"} onClick={() => setEditGoal(null)}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
+  <Modal open={Boolean(editGoal)} onClose={() => editState.status !== "submitting" && setEditGoal(null)} title="Edit target" footer={<><Button type="button" disabled={editState.status === "submitting"} onClick={() => setEditGoal(null)}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
     <form id="goal-edit-form" className="form-grid" onSubmit={saveGoal}>
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={editGoal?.name || ""} onChange={(event) => setEditGoal((current) => ({ ...current, name: event.target.value }))} /></label>
       <MoneyInput id="goal-edit-target" label="Target nominal" value={editGoal?.target_amount || ""} onChange={(value) => setEditGoal((current) => ({ ...current, target_amount: value }))} />
@@ -308,7 +307,7 @@ const GoalsPage = () => {
   const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange };
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Tabungan & target" description="Kontribusi target dicatat sebagai transfer, bukan pengeluaran." actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />
+    <PageHeader title="Target" actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />
     <GoalGrid items={resource.data?.items || []} actions={actions} ownerMode={ownerMode} openCreate={creation.openCreate} />
     <GoalCreateModal open={creation.open} close={creation.closeCreate} form={creation.form} setForm={creation.setForm} accounts={accounts} createGoal={creation.createGoal} createMutation={creation.createMutation} message={creation.message} />
     <GoalEditModal editGoal={lifecycle.editGoal} setEditGoal={lifecycle.setEditGoal} editState={lifecycle.editState} saveGoal={lifecycle.saveGoal} />

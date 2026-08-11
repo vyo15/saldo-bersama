@@ -11,17 +11,15 @@ Repository ini private dan workflow default sengaja sederhana.
 
 ## Validation
 
-```bash
-npm run check
-```
-
-Untuk perubahan frontend/browser:
+Setelah setiap patch, jalankan full local gate:
 
 ```bash
-npm run test:browser
+npm run verify
 ```
 
-Jalankan test khusus domain bila perubahan menyentuh auth, saldo, transfer, idempotency, import, backup/restore, notifikasi, atau security.
+`npm run verify` tidak reinstall dependency. Ia melakukan preflight Node/dependency lalu menjalankan quality gate inti, guard regression, dan browser regression. Jalankan test domain tambahan bila perubahan menyentuh auth, saldo, transfer, idempotency, import, backup/restore, notifikasi, atau security.
+
+Gunakan `npm ci` hanya untuk bootstrap/reinstall dependency atau clean CI, bukan sebelum setiap validation.
 
 ## Commit dan push
 

@@ -31,13 +31,12 @@ const ExportDataPage = () => {
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="export-settings-title">
         <div className={styles.pageHeading}>
-          <p className="eyebrow">Export data</p>
-          <h2 id="export-settings-title">Unduh salinan Excel lengkap</h2>
-          <p>Excel bersifat read-only untuk analisis dan arsip manual. File ini bukan sumber restore dan tidak menggantikan backup teknis.</p>
+          <h2 id="export-settings-title">Export data</h2>
+          <p>Excel untuk salinan dan analisis, bukan untuk restore.</p>
         </div>
         <SettingsNotice result={result} />
         <Card className="panel">
-          <div className="panel__header"><div><p className="eyebrow">Portabilitas</p><h2>Export keuangan</h2><p>Data diekspor dari Turso melalui endpoint backend yang terautentikasi.</p></div><FiDownload aria-hidden="true" /></div>
+          <div className="panel__header"><h2>Excel lengkap</h2><FiDownload aria-hidden="true" /></div>
           <Button variant="primary" icon={FiDownload} loading={exporting} onClick={downloadExcel}>Unduh Excel lengkap</Button>
         </Card>
       </section>

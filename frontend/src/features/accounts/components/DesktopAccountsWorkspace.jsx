@@ -80,7 +80,7 @@ const AccountSelectorCard = ({ account, onSelect }) => (
 const DistributionRow = ({ account, percentage, selected, onSelect }) => (
   <button type="button" className={styles.distributionRow} aria-pressed={selected} onClick={() => onSelect(account.account_id)}>
     <span className={styles.distributionMeta}>
-      <span><strong>{account.name}</strong><small>{percentage}% dari magnitudo saldo</small></span>
+      <span><strong>{account.name}</strong><small>{percentage}% dari distribusi saldo</small></span>
       <Money value={account.balance || 0} tone={balanceTone(account.balance)} />
     </span>
     <progress className={styles.distributionProgress} max="100" value={percentage} aria-label={`Porsi saldo ${account.name} ${percentage}%`} />
@@ -128,7 +128,7 @@ const SelectedAccountHero = ({ account, ownerMode, onViewTransactions, onEditAcc
 const OtherAccountsPanel = ({ accounts, onSelectAccount }) => (
   <section className={styles.otherAccountsPanel} aria-labelledby="desktop-other-accounts-title">
     <header className={styles.panelHeading}>
-      <div><p className="eyebrow">Rekening lain</p><h2 id="desktop-other-accounts-title">Pindah rekening tanpa kehilangan konteks</h2></div>
+      <h2 id="desktop-other-accounts-title">Rekening lain</h2>
       <span>{accounts.length} lainnya</span>
     </header>
     {accounts.length ? (
@@ -140,7 +140,7 @@ const OtherAccountsPanel = ({ accounts, onSelectAccount }) => (
 const RecentTransactionsPanel = ({ resource, items, categoryLookup, selectedAccount, onViewTransactions }) => (
   <section className={styles.transactionsPanel} aria-labelledby="desktop-recent-transactions-title">
     <header className={styles.panelHeading}>
-      <div><p className="eyebrow">Aktivitas rekening</p><h2 id="desktop-recent-transactions-title">Transaksi terbaru bulan ini</h2></div>
+      <h2 id="desktop-recent-transactions-title">Transaksi terbaru</h2>
       <button type="button" className={styles.textAction} onClick={() => onViewTransactions(selectedAccount)}>Lihat semua <FiArrowRight aria-hidden="true" /></button>
     </header>
     {resource.status === "loading" ? <p className={styles.supportingState}>Memuat transaksi rekening…</p> : null}
@@ -157,13 +157,13 @@ const AccountInsights = ({ accounts, selectedAccount, totalBalance, balanceTrend
       <div><p>Total saldo</p><strong><Money value={totalBalance} tone={balanceTone(totalBalance)} /></strong><small>{accounts.length} rekening aktif</small></div>
     </section>
     <section className={styles.trendPanel} aria-labelledby="desktop-balance-trend-title">
-      <header className={styles.compactHeading}><span><FiTrendingUp aria-hidden="true" /></span><div><p>Tren saldo</p><h2 id="desktop-balance-trend-title">6 bulan terakhir</h2></div></header>
+      <header className={styles.compactHeading}><span><FiTrendingUp aria-hidden="true" /></span><h2 id="desktop-balance-trend-title">Tren saldo</h2></header>
       {reportStatus === "loading" ? <div className={styles.chartState}>Memuat tren saldo…</div> : reportStatus === "error" ? <div className={styles.chartState}>Tren belum dapat dimuat. Total saldo tetap berasal dari daftar rekening terbaru.</div> : <div className={styles.balanceChart}><LineChart data={balanceTrend} label="Tren total saldo seluruh rekening" /></div>}
     </section>
     <section className={styles.distributionPanel} aria-labelledby="desktop-account-distribution-title">
-      <header className={styles.compactHeading}><span><FiPieChart aria-hidden="true" /></span><div><p>Distribusi rekening</p><h2 id="desktop-account-distribution-title">Komposisi saldo</h2></div></header>
+      <header className={styles.compactHeading}><span><FiPieChart aria-hidden="true" /></span><h2 id="desktop-account-distribution-title">Komposisi saldo</h2></header>
       <div className={styles.distributionList}>{distribution.map(({ account, percentage }) => <DistributionRow key={account.account_id} account={account} percentage={percentage} selected={account.account_id === selectedAccount.account_id} onSelect={onSelectAccount} />)}</div>
-      <p className={styles.distributionNote}>Persentase memakai magnitudo saldo agar rekening bersaldo negatif tidak menghasilkan pembagian yang menyesatkan.</p>
+      <p className={styles.distributionNote}>Persentase memakai nilai absolut agar saldo negatif tetap terbaca.</p>
     </section>
     <section className={styles.accountPulse}>
       <span><FiClock aria-hidden="true" /></span>

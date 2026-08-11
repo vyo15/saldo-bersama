@@ -47,9 +47,7 @@ const GoogleIntegrationsPage = () => {
     <section className={styles.pageContent} aria-labelledby="google-integrations-title">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <div className={styles.pageHeading}>
-        <p className="eyebrow">Integrasi Google</p>
-        <h2 id="google-integrations-title">Google Sheets dan Google Calendar</h2>
-        <p>Turso tetap menjadi sumber data resmi. Sheets hanya mirror baca dan Calendar hanya pengingat. Konfigurasi secret tetap berada di server.</p>
+        <h2 id="google-integrations-title">Integrasi Google</h2>
       </div>
       <SettingsNotice result={result} />
       <div className={styles.serviceGrid}>
@@ -57,8 +55,9 @@ const GoogleIntegrationsPage = () => {
           <span className={styles.serviceIcon}><FiFileText aria-hidden="true" /></span>
           <span className={styles.serviceCopy}>
             <h3>Google Sheets</h3>
-            <p>Mirror baca. Edit manual tidak mengubah saldo resmi.</p>
-            <small>{sheets.lastCompletedAt ? `Berhasil terakhir ${sheets.lastCompletedAt}` : sheets.lastUpdatedAt ? `Aktivitas terakhir ${sheets.lastUpdatedAt}` : "Belum pernah diproses"} · menunggu {sheets.pending} · diproses {sheets.processing} · gagal {sheets.failed} · perlu tindakan {sheets.deadLetter} · selesai {sheets.completed}</small>
+            <p>Salinan data baca.</p>
+            <small>{sheets.lastCompletedAt ? `Terakhir ${sheets.lastCompletedAt}` : sheets.lastUpdatedAt ? `Aktivitas ${sheets.lastUpdatedAt}` : "Belum pernah diproses"}</small>
+            {sheets.pending || sheets.processing || sheets.failed || sheets.deadLetter ? <small>Menunggu {sheets.pending} · proses {sheets.processing} · gagal {sheets.failed + sheets.deadLetter}</small> : null}
             {!sheetsReadiness.ready ? <small>{sheetsReadiness.text}</small> : null}
           </span>
           <span className={`status-badge status-badge--${sheetsReadiness.tone}`}>{sheetsReadiness.label}</span>
@@ -67,8 +66,9 @@ const GoogleIntegrationsPage = () => {
           <span className={styles.serviceIcon}><FiCalendar aria-hidden="true" /></span>
           <span className={styles.serviceCopy}>
             <h3>Google Calendar</h3>
-            <p>Pengingat jadwal. Status dibayar tetap berasal dari ledger.</p>
-            <small>{calendar.lastCompletedAt ? `Berhasil terakhir ${calendar.lastCompletedAt}` : calendar.lastUpdatedAt ? `Aktivitas terakhir ${calendar.lastUpdatedAt}` : "Belum pernah diproses"} · menunggu {calendar.pending} · diproses {calendar.processing} · gagal {calendar.failed} · perlu tindakan {calendar.deadLetter} · selesai {calendar.completed}</small>
+            <p>Pengingat jadwal.</p>
+            <small>{calendar.lastCompletedAt ? `Terakhir ${calendar.lastCompletedAt}` : calendar.lastUpdatedAt ? `Aktivitas ${calendar.lastUpdatedAt}` : "Belum pernah diproses"}</small>
+            {calendar.pending || calendar.processing || calendar.failed || calendar.deadLetter ? <small>Menunggu {calendar.pending} · proses {calendar.processing} · gagal {calendar.failed + calendar.deadLetter}</small> : null}
             {!calendarReadiness.ready ? <small>{calendarReadiness.text}</small> : null}
           </span>
           <span className={`status-badge status-badge--${calendarReadiness.tone}`}>{calendarReadiness.label}</span>
@@ -84,7 +84,7 @@ const GoogleIntegrationsPage = () => {
       <ConfirmationModal
         open={rebuildOpen}
         title="Bangun ulang mirror Google Sheets?"
-        description="Semua baris mirror akan dibangun ulang dari data resmi Turso. Proses ini tidak mengubah saldo atau transaksi di Turso."
+        description="Salinan Google Sheets akan dibangun ulang. Saldo dan transaksi tidak berubah."
         confirmLabel="Bangun ulang mirror"
         busy={busyAction === "mirror.rebuild"}
         onCancel={() => !busyAction && setRebuildOpen(false)}

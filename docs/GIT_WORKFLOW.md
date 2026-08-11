@@ -10,16 +10,10 @@ Setelah patch disetujui dan diterapkan ke working tree `main`:
 
 ```bash
 git status --short
-npm run check
+npm run verify
 ```
 
-Jika frontend/browser berubah:
-
-```bash
-npm run test:browser
-```
-
-Jika semuanya PASS:
+Jika full local gate PASS:
 
 ```bash
 git add -A
@@ -51,7 +45,7 @@ Git flow tetap sederhana, tetapi **approval dan validation tidak boleh disederha
 2. plan file-by-file;
 3. approval eksplisit;
 4. patch terarah;
-5. test domain + `npm run check` + gate relevan;
+5. test domain relevan + `npm run verify`;
 6. baru commit/push.
 
 ## Recovery sederhana
