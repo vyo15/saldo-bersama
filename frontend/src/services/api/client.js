@@ -13,6 +13,47 @@ const SESSION_CACHE_TTL_MS = 2_000;
 let sessionCache = { expiresAt: 0, value: null, promise: null };
 const inFlightMutations = new Map();
 const memoryMutationIntents = new Map();
+const mutationActivityListeners = new Set();
+let activeMutationCount = 0;
+let mutationActivityEpoch = 0;
+let mutationActivitySnapshot = Object.freeze({ status: "idle", activeCount: 0, revision: 0 });
+
+const publishMutationActivity = (status) => {
+  mutationActivitySnapshot = Object.freeze({
+    status,
+    activeCount: activeMutationCount,
+    revision: mutationActivitySnapshot.revision + 1,
+  });
+  for (const listener of [...mutationActivityListeners]) {
+    try { listener(); } catch { /* UI activity listeners must never affect request completion */ }
+  }
+};
+
+const beginMutationActivity = () => {
+  activeMutationCount += 1;
+  publishMutationActivity("submitting");
+  return mutationActivityEpoch;
+};
+
+const settleMutationActivity = (epoch, status) => {
+  if (epoch !== mutationActivityEpoch) return;
+  activeMutationCount = Math.max(0, activeMutationCount - 1);
+  publishMutationActivity(activeMutationCount > 0 ? "submitting" : status);
+};
+
+const resetMutationActivity = () => {
+  mutationActivityEpoch += 1;
+  activeMutationCount = 0;
+  publishMutationActivity("idle");
+};
+
+export const subscribeToMutationActivity = (listener) => {
+  if (typeof listener !== "function") return () => {};
+  mutationActivityListeners.add(listener);
+  return () => mutationActivityListeners.delete(listener);
+};
+
+export const getMutationActivitySnapshot = () => mutationActivitySnapshot;
 
 const fnv1a64 = (value) => {
   let hash = 0xcbf29ce484222325n;
@@ -43,6 +84,7 @@ const clearIntent = (fingerprint) => {
 const clearMutationState = () => {
   inFlightMutations.clear();
   memoryMutationIntents.clear();
+  resetMutationActivity();
 };
 
 const clearClientState = () => {
@@ -62,14 +104,17 @@ const guardedMutationRequest = (action, payload, options = {}) => {
   const persisted = readPersistedIntent(fingerprint);
   const idempotencyKey = persisted?.idempotencyKey || options.idempotencyKey || createSecureRandomId();
   const requestOptions = { ...options, idempotencyKey, outcomeSensitive: true };
+  const activityEpoch = beginMutationActivity();
   const promise = gatewayFetch(action, payload, requestOptions, options.signal)
     .then((result) => {
       clearIntent(fingerprint);
+      settleMutationActivity(activityEpoch, "success");
       return result;
     })
     .catch((error) => {
       if (isOutcomeUnknownError(error)) persistIntent(fingerprint, idempotencyKey);
       else clearIntent(fingerprint);
+      settleMutationActivity(activityEpoch, isOutcomeUnknownError(error) ? "unknown" : "error");
       throw error;
     })
     .finally(() => {

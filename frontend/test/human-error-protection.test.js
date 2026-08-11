@@ -227,8 +227,19 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(recurring, /Pulihkan periode/);
   assert.match(recurring, /Ledger dan saldo tidak berubah/);
   assert.match(recurring, /useGuardedMutation/);
+
+  assert.match(recurring, /Kelola jadwal/);
+  assert.match(recurring, /ScheduleSummary/);
+  assert.match(recurring, /ScheduleFilters/);
+  assert.match(recurring, /Edit jadwal/);
+  assert.match(recurring, /Arsipkan \/ hapus/);
   assert.match(feedback, /aria-live="polite"/);
   assert.match(feedback, /dedupeKey/);
+  assert.match(feedback, /GlobalProcessIndicator/);
+  assert.match(feedback, /subscribeToMutationActivity/);
+  assert.match(feedback, /Memproses perubahan/);
+  assert.match(feedback, /Perubahan sudah tersimpan/);
+  assert.match(feedback, /\["success", "info", "warning", "danger"\]/, "feedback error wajib mempertahankan tone danger");
   assert.match(feedbackContext, /useFeedback/);
   assert.doesNotMatch(feedback, /undo|rollback|deleteTransaction|DELETE FROM/i);
   assert.match(providers, /FeedbackProvider/);

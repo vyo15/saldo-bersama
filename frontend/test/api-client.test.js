@@ -285,6 +285,31 @@ test("mutation identik yang dikirim bersamaan dikoaleskan menjadi satu write dan
   }
 });
 
+test("mutation activity global melaporkan proses dan hasil tanpa memecah guard idempotency", async () => {
+  const originalFetch = globalThis.fetch;
+  let resolveFetch;
+  globalThis.fetch = () => new Promise((resolve) => { resolveFetch = resolve; });
+  try {
+    const { apiClient, getMutationActivitySnapshot, subscribeToMutationActivity } = await import("../src/services/api/client.js");
+    apiClient.clearCache();
+    apiClient.setSessionScope("mutation-activity");
+    const snapshots = [];
+    const unsubscribe = subscribeToMutationActivity(() => snapshots.push(getMutationActivitySnapshot()));
+    const pending = apiClient.request("goals.create", { name: "Aktivitas" }, {});
+    assert.equal(getMutationActivitySnapshot().status, "submitting");
+    assert.equal(getMutationActivitySnapshot().activeCount, 1);
+    resolveFetch(successfulResponse({ created: true }));
+    assert.deepEqual(await pending, { created: true });
+    assert.equal(getMutationActivitySnapshot().status, "success");
+    assert.equal(getMutationActivitySnapshot().activeCount, 0);
+    assert.ok(snapshots.some((item) => item.status === "submitting"));
+    assert.ok(snapshots.some((item) => item.status === "success"));
+    unsubscribe();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("network putus saat write mempertahankan idempotency key untuk retry intent yang sama", async () => {
   const originalFetch = globalThis.fetch;
   const keys = [];
