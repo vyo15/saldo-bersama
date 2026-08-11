@@ -86,7 +86,10 @@
   }
   .app-shell--dashboard .dashboard-desktop { display: none; }
   .app-shell--dashboard .mobile-finance-dashboard { display: block; }
-  .page-header { display: grid; gap: 12px; }
+  .page-header { min-width: 0; max-width: 100%; display: grid; gap: 12px; }
+  .page-header > *,
+  .page-header__actions,
+  .page-header__actions > * { min-width: 0; max-width: 100%; }
   .two-column-grid { grid-template-columns: 1fr; }
   .panel--wide { grid-column: auto; }
   .toolbar { grid-template-columns: 1fr; }
@@ -94,7 +97,8 @@
   .topbar .brand-mark { width: 32px; height: 32px; }
   .topbar .brand-wordmark { font-size: 14px; }
   .topbar__actions { margin-left: auto; }
-  .page-stack { gap: var(--mobile-section-gap); }
+  .page-stack { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); gap: var(--mobile-section-gap); }
+  .page-stack > * { min-width: 0; max-width: 100%; }
   .page-header h1 { font-size: clamp(24px, 7vw, 30px); letter-spacing: -.035em; }
   .page-header p { margin-top: 5px; max-width: 100%; display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: var(--font-size-body-sm); line-height: 1.45; }
   .page-header__actions { width: 100%; }
@@ -116,7 +120,7 @@
   .panel__header h2 { font-size: 17px; }
   .panel__header p:not(.eyebrow) { margin-top: 4px; font-size: var(--font-size-body-sm); line-height: 1.45; }
   .metric-grid { gap: 10px; }
-  .metric-card { min-height: 108px; gap: 7px; }
+  .metric-card { min-height: 94px; gap: 6px; }
   .metric-card > span:first-child { font-size: 12px; }
   .metric-card .money { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: clamp(19px, 5.4vw, 24px); }
   .mobile-finance-hero { min-height: 188px; padding: max(14px, env(safe-area-inset-top)) var(--mobile-page-gutter) 48px; background: linear-gradient(145deg, var(--hero-start), var(--hero-mid) 62%, var(--hero-end)); }
@@ -213,7 +217,7 @@
   .budget-mobile-card__metrics dt { font-size: 11px; }
   .budget-mobile-card__metrics dd { text-align: left; }
   .budget-mobile-card__metrics .money { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-  .budget-performance-panel .empty-state { min-height: 180px; padding: 20px 14px; }
+  .budget-performance-panel .empty-state { min-height: 144px; padding: 18px 14px; }
 
   .reconciliation-mobile-card { display: grid; gap: 12px; }
   .reconciliation-mobile-card dl { padding-top: 10px; border-top: 1px solid var(--border); }
@@ -285,8 +289,13 @@
 
 @media (max-width: 420px) {
   .transaction-filter-row { grid-template-columns: 1fr; }
-  .report-period-controls { grid-template-columns: 1fr; }
+  .report-period-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .financial-alert-list li { display: grid; }
+}
+
+@media (max-width: 340px) {
+  .transaction-filter-row,
+  .report-period-controls { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 370px) {

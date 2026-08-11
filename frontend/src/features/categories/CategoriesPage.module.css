@@ -131,10 +131,10 @@
 }
 
 .categoryActionButton {
-  width: 2.25rem;
-  min-width: 2.25rem;
-  height: 2.25rem;
-  min-height: 2.25rem;
+  width: var(--control-height-md);
+  min-width: var(--control-height-md);
+  height: var(--control-height-md);
+  min-height: var(--control-height-md);
   padding: 0;
   border-radius: 0.7rem;
 }
@@ -240,7 +240,7 @@
 
 .iconGroupButton {
   flex: 0 1 auto;
-  min-height: 2.25rem;
+  min-height: var(--control-height-md);
   padding-inline: var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
@@ -414,6 +414,7 @@
 
 @media (max-width: 47.99rem) {
   .categoryPanel { padding: var(--space-4); }
+  .emptyPanel { min-height: 8.5rem; padding: var(--space-4); }
   .categoryGroups { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
   .iconPickerHeading { display: grid; }
   .selectedIconBadge { width: max-content; }

@@ -206,8 +206,8 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "menu lainnya ditutup" });
 
     await navigateAndAssert(page, appServer.origin, "/tagihan", "Jadwal rutin", { mobile: true });
-    assert.equal(await page.evaluate(visibleExpression(".two-column-grid")), true, "Grid jadwal rutin mobile tidak boleh disembunyikan.");
-    assert.equal(await page.evaluate("document.body.textContent.includes('Tagihan periode ini') && document.body.textContent.includes('Penerimaan yang diharapkan')"), true, "Tagihan dan pemasukan rutin harus dapat dijangkau pada mobile.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('section[aria-label=\"Daftar jadwal rutin\"]'))"), true, "Daftar jadwal rutin mobile harus tetap dirender.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Tagihan periode ini') && document.body.textContent.includes('Penerimaan periode ini')"), true, "Tagihan dan pemasukan rutin harus dapat dijangkau pada mobile.");
 
     await navigateAndAssert(page, appServer.origin, "/anggaran", "Anggaran", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('#budget-form'))"), false, "Form anggaran tidak boleh memenuhi halaman sebelum diminta.");
@@ -241,6 +241,48 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v8')"), true, "Status backend harus memakai kontrak system.health aktual.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Degraded')"), false, "Status backend siap tidak boleh salah ditampilkan sebagai Degraded.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/notifikasi\"]')) && Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), true, "Owner harus memperoleh navigasi internal Pengaturan.");
+
+    await setViewport(page, 366, 668);
+    for (const [pathname, heading] of [["/", "Ringkasan Keuangan"], ["/transaksi", "Transaksi"], ...routeCases]) {
+      await navigateAndAssert(page, appServer.origin, pathname, heading, { mobile: true });
+    }
+
+    await navigateAndAssert(page, appServer.origin, "/tagihan", "Jadwal rutin", { mobile: true });
+    const narrowRecurringLayout = await page.evaluate(`(() => {
+      const addButton = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Tambah jadwal');
+      const period = document.querySelector('input[type="month"]');
+      const schedule = document.querySelector('section[aria-label="Daftar jadwal rutin"]');
+      const navigation = document.querySelector('.mobile-navigation');
+      const filterButtons = [...document.querySelectorAll('button[aria-pressed]')];
+      const insideViewport = (element) => {
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.left >= -1 && rect.right <= innerWidth + 1;
+      };
+      return {
+        addInside: insideViewport(addButton),
+        periodInside: insideViewport(period),
+        scheduleBeforeNavigation: Boolean(schedule && navigation && schedule.getBoundingClientRect().top < navigation.getBoundingClientRect().top),
+        filterTouchTargets: filterButtons.length >= 4 && filterButtons.every((button) => button.getBoundingClientRect().height >= 43.5),
+      };
+    })()`);
+    assert.deepEqual(narrowRecurringLayout, { addInside: true, periodInside: true, scheduleBeforeNavigation: true, filterTouchTargets: true }, "Jadwal rutin 366x668 harus compact, tidak terpotong, dan tetap memiliki touch target aman.");
+
+    await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
+    const narrowSettingsLayout = await page.evaluate(`(() => {
+      const links = [...document.querySelectorAll('main nav[aria-label="Menu pengaturan"] a')];
+      if (links.length < 2) return { twoColumns: false };
+      const first = links[0].getBoundingClientRect();
+      const second = links[1].getBoundingClientRect();
+      return { twoColumns: Math.abs(first.top - second.top) <= 2 && second.left > first.left };
+    })()`);
+    assert.equal(narrowSettingsLayout.twoColumns, true, "Menu Pengaturan 366px harus tetap dua kolom agar tidak menjadi daftar vertikal panjang.");
+
+    await navigateAndAssert(page, appServer.origin, "/kategori", "Kategori transaksi", { mobile: true });
+    const categoryTouchTargets = await page.evaluate(`[...document.querySelectorAll('button[aria-label^="Edit kategori"], button[aria-label^="Hapus atau arsipkan kategori"]')].map((button) => button.getBoundingClientRect().height)`);
+    assert.ok(categoryTouchTargets.length > 0 && categoryTouchTargets.every((height) => height >= 43.5), `Aksi kategori mobile minimal 44px, ditemukan ${JSON.stringify(categoryTouchTargets)}.`);
+
+    await setViewport(page, 390, 844);
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan/notifikasi", "Pengaturan", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('#notification-settings-title')) && document.body.textContent.includes('Notifikasi perangkat')"), true, "Notifikasi perangkat harus berada pada route khusus.");

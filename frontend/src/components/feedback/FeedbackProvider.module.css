@@ -97,9 +97,12 @@
 
   .region {
     inset-inline: var(--space-3);
-    inset-block-end: calc(var(--mobile-nav-height, 4.75rem) + env(safe-area-inset-bottom) + var(--space-3));
+    inset-block-end: calc(var(--mobile-navigation-height, 68px) + env(safe-area-inset-bottom) + var(--space-3));
     width: auto;
   }
+
+  .toast { padding: var(--space-2); }
+  .close { width: var(--control-height-md); height: var(--control-height-md); }
 }
 
 @media (prefers-reduced-motion: reduce) {

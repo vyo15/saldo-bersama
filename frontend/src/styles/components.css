@@ -138,6 +138,11 @@ input[type="file"] {
 .empty-state, .error-state { min-height: 300px; padding: 36px; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; background: var(--surface); border: 1px dashed var(--border); border-radius: 18px; }
 .empty-state > svg, .error-state > svg { width: 36px; height: 36px; color: var(--primary); }
 .error-state > svg { color: var(--negative); }
+
+@media (max-width: 820px) {
+  .empty-state, .error-state { min-height: 144px; padding: 20px 14px; border-radius: var(--mobile-card-radius); }
+  .empty-state > svg, .error-state > svg { width: 30px; height: 30px; }
+}
 .checkbox-field { display: flex; align-items: flex-start; gap: 10px; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
 .checkbox-field input { margin-top: 3px; }
 .button-group { display: flex; flex-wrap: wrap; gap: 8px; }
