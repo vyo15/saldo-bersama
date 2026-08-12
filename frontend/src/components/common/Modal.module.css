@@ -25,6 +25,15 @@
   animation: modal-dialog-in var(--motion-normal) var(--motion-easing);
 }
 
+.swipeEnabled {
+  transform: translateY(var(--modal-drag-y, 0));
+}
+
+.dragging,
+.dismissing {
+  animation: none;
+}
+
 .small { width: min(100%, 30rem); }
 .medium { width: min(100%, 42.5rem); }
 .large { width: min(100%, 53.75rem); }
@@ -40,7 +49,12 @@
 }
 
 .header {
+  position: relative;
   border-bottom: 1px solid var(--border);
+}
+
+.mobileDragHandle {
+  display: none;
 }
 
 .heading {
@@ -149,6 +163,44 @@
     padding: var(--space-4);
   }
 
+  .swipeEnabled {
+    transition: transform var(--motion-normal) var(--motion-easing);
+    will-change: transform;
+  }
+
+  .swipeEnabled.dragging {
+    transition: none;
+  }
+
+  .swipeEnabled.dismissing {
+    transition-duration: 180ms;
+    transition-timing-function: ease-in;
+  }
+
+  .swipeHeader {
+    padding-top: calc(var(--space-4) + 0.55rem);
+    touch-action: pan-x pinch-zoom;
+    user-select: none;
+    cursor: grab;
+  }
+
+  .dragging .swipeHeader {
+    cursor: grabbing;
+  }
+
+  .mobileDragHandle {
+    position: absolute;
+    top: 0.45rem;
+    left: 50%;
+    width: 2.5rem;
+    height: 0.25rem;
+    display: block;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--text-muted) 44%, transparent);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
   .body {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -170,4 +222,5 @@
 @media (prefers-reduced-motion: reduce) {
   .backdrop,
   .dialog { animation: none; }
+  .swipeEnabled { transition: none; }
 }

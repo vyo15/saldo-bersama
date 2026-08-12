@@ -206,8 +206,39 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(mobileMenuState.quickAddDuplicate, false, "Menu lainnya tidak boleh menduplikasi aksi Tambah transaksi dari navigasi utama.");
     assert.equal(mobileMenuState.reconciliationRoute, true, "Rekonsiliasi harus tersedia pada grup Kontrol saldo.");
     assert.equal(mobileMenuState.logoutInFooter, true, "Logout mobile harus tersedia pada footer menu.");
+    assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.getAttribute('data-mobile-swipe-to-close')"), "true", "Menu lainnya harus mengaktifkan swipe-to-dismiss secara eksplisit.");
+    await waitFor(() => page.evaluate("document.activeElement?.classList.contains('mobile-menu-link') || false"), { description: "focus awal Menu lainnya berada pada item menu" });
     await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
-    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "menu lainnya ditutup" });
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "menu lainnya ditutup dengan tombol X" });
+
+    await page.evaluate("document.querySelector('.mobile-navigation__more')?.click()");
+    await waitFor(() => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Menu lainnya'"), { description: "menu lainnya dibuka untuk gesture" });
+    await page.evaluate(`(() => {
+      const header = document.querySelector('[role=dialog] .modal__header');
+      const rect = header?.getBoundingClientRect();
+      if (!header || !rect) return;
+      const pointerId = 71;
+      const x = rect.left + 48;
+      const startY = rect.top + Math.min(42, rect.height / 2);
+      const emit = (type, y, buttons) => header.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y, buttons }));
+      emit('pointerdown', startY, 1);
+      emit('pointermove', startY + 32, 1);
+      emit('pointerup', startY + 32, 0);
+    })()`);
+    assert.equal(await page.evaluate("Boolean(document.querySelector('[role=dialog]'))"), true, "Swipe pendek harus snap back dan tidak menutup Menu lainnya.");
+    await page.evaluate(`(() => {
+      const header = document.querySelector('[role=dialog] .modal__header');
+      const rect = header?.getBoundingClientRect();
+      if (!header || !rect) return;
+      const pointerId = 72;
+      const x = rect.left + 48;
+      const startY = rect.top + Math.min(42, rect.height / 2);
+      const emit = (type, y, buttons) => header.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y, buttons }));
+      emit('pointerdown', startY, 1);
+      emit('pointermove', startY + 140, 1);
+      emit('pointerup', startY + 140, 0);
+    })()`);
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "menu lainnya ditutup dengan swipe ke bawah" });
 
     await navigateAndAssert(page, appServer.origin, "/tagihan", "Jadwal rutin", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('section[aria-label=\"Daftar jadwal rutin\"]'))"), true, "Daftar jadwal rutin mobile harus tetap dirender.");

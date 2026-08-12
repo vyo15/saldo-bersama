@@ -204,17 +204,31 @@ test("selector responsive tidak boleh menggantung sebelum selector berikutnya", 
 });
 
 
-test("menu mobile tidak menduplikasi kontrol tema dan logout berada di footer", async () => {
-  const [shell, components] = await Promise.all([
+test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan mendukung swipe opt-in", async () => {
+  const [shell, components, modal, modalStyles] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
     read("src/styles/components.css"),
+    read("src/components/common/Modal.jsx"),
+    read("src/components/common/Modal.module.css"),
   ]);
   assert.doesNotMatch(shell, /ThemeToggle showLabel/);
   assert.doesNotMatch(shell, /mobile-menu-quick-add/);
   assert.match(shell, /!dashboardRoute && !transactionsRoute/);
+  assert.match(shell, /mobileMenuRoute === location\.pathname/);
+  assert.match(shell, /setMobileMenuRoute\(location\.pathname\)/);
+  assert.match(shell, /key=\{`mobile-more-\$\{location\.pathname\}`\}/);
+  assert.match(shell, /initialFocusRef=\{mobileMenuInitialFocusRef\}/);
+  assert.match(shell, /mobileSwipeToClose/);
+  assert.match(shell, /handleMobileLogout/);
   assert.match(shell, /mobile-menu-footer/);
   assert.match(shell, /mobile-menu-logout/);
   assert.match(components, /\.mobile-menu-link \{[^}]*border:\s*0;/);
-  assert.match(components, /\.mobile-menu-footer/);
+  assert.match(components, /\.mobile-menu-footer \{[^}]*safe-area-inset-bottom/);
   assert.doesNotMatch(components, /mobile-menu-theme/);
+  assert.match(modal, /mobileSwipeToClose = false/);
+  assert.match(modal, /data-mobile-swipe-to-close/);
+  assert.match(modal, /onPointerDown=\{handleSwipePointerDown\}/);
+  assert.match(modal, /SWIPE_DISMISS_RATIO/);
+  assert.match(modalStyles, /\.mobileDragHandle/);
+  assert.match(modalStyles, /\.swipeHeader \{[\s\S]*touch-action:\s*pan-x pinch-zoom;/);
 });

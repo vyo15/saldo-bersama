@@ -157,7 +157,7 @@ input[type="file"] {
 .mobile-menu-link.active { background: var(--primary-soft); color: var(--primary-strong); }
 .mobile-menu-link:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
 .mobile-menu-link svg { width: 20px; height: 20px; color: var(--primary); }
-.mobile-menu-footer { padding-top: var(--space-3); border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent); }
+.mobile-menu-footer { padding: var(--space-3) 0 max(var(--space-2), env(safe-area-inset-bottom)); border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent); }
 .mobile-menu-logout { width: 100%; border-radius: .8rem; }
 
 .money-entry { display: grid; gap: 8px; align-content: start; }

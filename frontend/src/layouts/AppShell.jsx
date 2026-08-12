@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FiLogOut, FiPlus, FiRefreshCw, FiSettings } from "react-icons/fi";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useAuth } from "../features/auth/AuthContext.jsx";
@@ -24,8 +24,10 @@ const AppShell = () => {
   const { isRefreshing, refreshError, refreshAll } = useFinance();
   const { openTransactionComposer } = useTransactionComposer();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuRoute, setMobileMenuRoute] = useState("");
   const [logoutError, setLogoutError] = useState("");
+  const mobileMenuInitialFocusRef = useRef(null);
+  const mobileMenuOpen = mobileMenuRoute === location.pathname;
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
@@ -37,6 +39,11 @@ const AppShell = () => {
     setLogoutError("");
     try { await logout(); }
     catch (error) { setLogoutError(error.message || "Logout belum berhasil."); }
+  };
+
+  const handleMobileLogout = async () => {
+    setMobileMenuRoute("");
+    await handleLogout();
   };
 
   return (
@@ -79,27 +86,36 @@ const AppShell = () => {
       </div>
 
       {!dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
-      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuOpen(true)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
+      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
 
       <Modal
+        key={`mobile-more-${location.pathname}`}
         open={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
+        onClose={() => setMobileMenuRoute("")}
         title="Menu lainnya"
         size="sm"
+        initialFocusRef={mobileMenuInitialFocusRef}
+        mobileSwipeToClose
       >
         <div className="mobile-menu-list">
-          {MOBILE_SECONDARY_GROUPS.map(({ id, label, items }) => (
+          {MOBILE_SECONDARY_GROUPS.map(({ id, label, items }, groupIndex) => (
             <section key={id} className="mobile-menu-section" aria-labelledby={`mobile-menu-${id}`}>
               <h3 id={`mobile-menu-${id}`}>{label}</h3>
-              {items.map(({ to, label: itemLabel, icon: Icon }) => (
-                <NavLink key={to} to={to} className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>
+              {items.map(({ to, label: itemLabel, icon: Icon }, itemIndex) => (
+                <NavLink
+                  key={to}
+                  ref={groupIndex === 0 && itemIndex === 0 ? mobileMenuInitialFocusRef : undefined}
+                  to={to}
+                  className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`}
+                  onClick={() => setMobileMenuRoute("")}
+                >
                   <Icon aria-hidden="true" /><span>{itemLabel}</span>
                 </NavLink>
               ))}
             </section>
           ))}
           <div className="mobile-menu-footer">
-            <Button className="mobile-menu-logout" icon={FiLogOut} type="button" onClick={handleLogout}>Keluar</Button>
+            <Button className="mobile-menu-logout" icon={FiLogOut} type="button" onClick={handleMobileLogout}>Keluar</Button>
           </div>
         </div>
       </Modal>

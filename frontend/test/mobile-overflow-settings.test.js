@@ -4,14 +4,20 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("modal mobile hanya menggulir vertikal dan seluruh child form boleh menyusut", async () => {
-  const [modal, components] = await Promise.all([
+test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci body", async () => {
+  const [modal, modalSource, components] = await Promise.all([
     read("src/components/common/Modal.module.css"),
+    read("src/components/common/Modal.jsx"),
     read("src/styles/components.css"),
   ]);
   assert.match(modal, /\.body\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
   assert.match(modal, /@media \(max-width: 47\.99rem\)[\s\S]*\.body\s*\{[\s\S]*scrollbar-width:\s*none;/);
   assert.match(modal, /\.body::-webkit-scrollbar\s*\{[\s\S]*width:\s*0;[\s\S]*height:\s*0;[\s\S]*display:\s*none;/);
+  assert.match(modal, /\.swipeHeader\s*\{[\s\S]*touch-action:\s*pan-x pinch-zoom;/);
+  assert.match(modal, /prefers-reduced-motion:[\s\S]*\.swipeEnabled \{ transition:\s*none;/);
+  assert.doesNotMatch(modal, /touch-action:\s*none/);
+  assert.match(modalSource, /mobileSwipeToClose = false/);
+  assert.match(modalSource, /event\.target\.closest\?\.\(INTERACTIVE_GESTURE_TARGET\)/);
   assert.match(components, /\.segmented-control\s*\{[\s\S]*min-inline-size:\s*0;/);
   assert.match(components, /\.form-grid,[\s\S]*\.segmented-control\s*\{[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
   assert.match(components, /input\[type="file"\][\s\S]*max-width:\s*100%;/);
