@@ -13,39 +13,49 @@ export const transactionImpact = (accountId, transaction) => {
   return 0;
 };
 
-export const visibleAccounts = async (db, actor, { includeArchived = false, cutoffDate = todayJakarta() } = {}) => {
+export const visibleAccountsStatement = (actor, { includeArchived = false, cutoffDate = todayJakarta() } = {}) => {
   const access = readableAccountSql(actor, "a");
-  const rows = await db.all(`SELECT a.*,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name,
-    CASE WHEN a.initial_balance_date <= ? THEN a.initial_balance ELSE 0 END + COALESCE((
-      SELECT SUM(CASE
-        WHEN t.status <> 'active' OR t.transaction_date > ? OR t.transaction_date < a.initial_balance_date THEN 0
-        WHEN t.transaction_type IN ('income','refund') AND t.destination_account_id = a.account_id THEN t.amount
-        WHEN t.transaction_type = 'expense' AND t.source_account_id = a.account_id THEN -t.amount
-        WHEN t.transaction_type = 'transfer' AND t.source_account_id = a.account_id THEN -t.amount
-        WHEN t.transaction_type = 'transfer' AND t.destination_account_id = a.account_id THEN t.amount
-        WHEN t.transaction_type = 'adjustment' AND t.source_account_id = a.account_id THEN t.amount
-        ELSE 0 END)
-      FROM transactions t
-      WHERE t.source_account_id = a.account_id OR t.destination_account_id = a.account_id
-    ),0) AS balance
-    FROM accounts a
-    LEFT JOIN users u ON u.user_id=a.owner_user_id
-    WHERE ${access.sql} ${includeArchived ? "" : "AND a.status = 'active'"}
-    ORDER BY a.status, a.name COLLATE NOCASE`, [cutoffDate, cutoffDate, ...access.args]);
-  return rows.map((row) => {
-    const item = publicRow(row, ["allow_negative"]);
-    const actorOwnsAccount = item.owner_scope === "personal" && item.owner_user_id === actor.user_id;
-    const canOperate = actor.role === "owner" || item.owner_scope === "shared" || actorOwnsAccount;
-    return {
-      ...item,
-      owner_name: item.owner_scope === "personal" ? item.owner_name : "",
-      is_owned_by_actor: actorOwnsAccount,
-      can_transact: canOperate,
-      can_reconcile: canOperate,
-      can_manage: actor.role === "owner",
-      read_only: !canOperate && actor.role !== "owner",
-    };
-  });
+  return {
+    sql: `SELECT a.*,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name,
+      CASE WHEN a.initial_balance_date <= ? THEN a.initial_balance ELSE 0 END + COALESCE((
+        SELECT SUM(CASE
+          WHEN t.transaction_type IN ('income','refund') AND t.destination_account_id = a.account_id THEN t.amount
+          WHEN t.transaction_type = 'expense' AND t.source_account_id = a.account_id THEN -t.amount
+          WHEN t.transaction_type = 'transfer' AND t.source_account_id = a.account_id THEN -t.amount
+          WHEN t.transaction_type = 'transfer' AND t.destination_account_id = a.account_id THEN t.amount
+          WHEN t.transaction_type = 'adjustment' AND t.source_account_id = a.account_id THEN t.amount
+          ELSE 0 END)
+        FROM transactions t
+        WHERE t.status='active'
+          AND t.transaction_date BETWEEN a.initial_balance_date AND ?
+          AND (t.source_account_id = a.account_id OR t.destination_account_id = a.account_id)
+      ),0) AS balance
+      FROM accounts a
+      LEFT JOIN users u ON u.user_id=a.owner_user_id
+      WHERE ${access.sql} ${includeArchived ? "" : "AND a.status = 'active'"}
+      ORDER BY a.status, a.name COLLATE NOCASE`,
+    args: [cutoffDate, cutoffDate, ...access.args],
+  };
+};
+
+export const mapVisibleAccountRows = (rows, actor) => rows.map((row) => {
+  const item = publicRow(row, ["allow_negative"]);
+  const actorOwnsAccount = item.owner_scope === "personal" && item.owner_user_id === actor.user_id;
+  const canOperate = actor.role === "owner" || item.owner_scope === "shared" || actorOwnsAccount;
+  return {
+    ...item,
+    owner_name: item.owner_scope === "personal" ? item.owner_name : "",
+    is_owned_by_actor: actorOwnsAccount,
+    can_transact: canOperate,
+    can_reconcile: canOperate,
+    can_manage: actor.role === "owner",
+    read_only: !canOperate && actor.role !== "owner",
+  };
+});
+
+export const visibleAccounts = async (db, actor, options = {}) => {
+  const statement = visibleAccountsStatement(actor, options);
+  return mapVisibleAccountRows(await db.all(statement.sql, statement.args), actor);
 };
 
 export const accountBalanceAsOf = async (db, account, cutoffDate = todayJakarta(), { excludeTransactionId = null, candidate = null } = {}) => {
@@ -78,39 +88,75 @@ export const firstNegativeBalance = async (db, account, { excludeTransactionId =
   return null;
 };
 
-export const visibleTransactions = async (db, actor, { startDate = null, endDate = null, includeCancelled = true } = {}) => {
+export const visibleTransactions = async (db, actor, { startDate = null, endDate = null, includeCancelled = true, limit = null } = {}) => {
   const access = readableLedgerSql(actor, "t");
   const conditions = [access.sql];
   const args = [...access.args];
   if (startDate) { conditions.push("t.transaction_date >= ?"); args.push(startDate); }
   if (endDate) { conditions.push("t.transaction_date <= ?"); args.push(endDate); }
   if (!includeCancelled) conditions.push("t.status = 'active'");
+  const safeLimit = Number.isSafeInteger(Number(limit)) && Number(limit) > 0 ? Number(limit) : null;
   const rows = await db.all(`SELECT t.* FROM transactions t WHERE ${conditions.join(" AND ")}
-    ORDER BY t.transaction_date DESC, t.created_at DESC`, args);
+    ORDER BY t.transaction_date DESC, t.created_at DESC${safeLimit ? " LIMIT ?" : ""}`, [...args, ...(safeLimit ? [safeLimit] : [])]);
   return rows.map((row) => publicRow(row));
 };
+
+export const categoryExpenseTotalsStatement = (actor, startDate, endDate) => {
+  const access = readableLedgerSql(actor, "t");
+  return {
+    sql: `SELECT t.category_id, COALESCE(c.name,'Tanpa kategori') AS name, SUM(t.amount) AS amount
+      FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id
+      WHERE t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}
+      GROUP BY t.category_id,c.name ORDER BY amount DESC`,
+    args: [startDate, endDate, ...access.args],
+  };
+};
+
+export const mapCategoryExpenseRows = (rows) => rows.map((row) => publicRow(row));
 
 export const categoryExpenseTotals = async (db, actor, startDate, endDate) => {
-  const access = readableLedgerSql(actor, "t");
-  const rows = await db.all(`SELECT t.category_id, COALESCE(c.name,'Tanpa kategori') AS name, SUM(t.amount) AS amount
-    FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id
-    WHERE t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}
-    GROUP BY t.category_id,c.name ORDER BY amount DESC`, [startDate, endDate, ...access.args]);
-  return rows.map((row) => publicRow(row));
+  const statement = categoryExpenseTotalsStatement(actor, startDate, endDate);
+  return mapCategoryExpenseRows(await db.all(statement.sql, statement.args));
 };
 
-export const envelopeItems = async (db, actor, { period = null, includeClosed = true } = {}) => {
+export const envelopeItemsStatement = (actor, { period = null, includeClosed = true } = {}) => {
   const access = visibleScopeSql(actor, "r");
   const conditions = [access.sql];
-  const args = [...access.args];
+  const outerArgs = [...access.args];
+  const usageConditions = ["status='active'", "transaction_type='expense'", "envelope_period_id IS NOT NULL"];
+  const usageArgs = [];
   if (!includeClosed) conditions.push("p.status='active'");
-  if (period) { const bounds = monthBounds(period); conditions.push("p.period_start <= ? AND p.period_end >= ?"); args.push(bounds.end, bounds.start); }
-  const rows = await db.all(`SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
-    COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0) AS used_amount
-    FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
-    WHERE r.status='active' AND ${conditions.join(" AND ")}
-    ORDER BY p.period_start DESC,r.name`, args);
-  return rows.map((row) => ({ ...publicRow(row), name: row.name || row.rule_name, remaining_amount: Number(row.allocated_amount) - Number(row.reserved_amount) - Number(row.used_amount) }));
+  if (period) {
+    const bounds = monthBounds(period);
+    conditions.push("p.period_start <= ? AND p.period_end >= ?");
+    outerArgs.push(bounds.end, bounds.start);
+    usageConditions.push("transaction_date BETWEEN ? AND ?");
+    usageArgs.push(bounds.start, bounds.end);
+  }
+  return {
+    sql: `SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
+      COALESCE(usage.used_amount,0) AS used_amount
+      FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+      LEFT JOIN (
+        SELECT envelope_period_id,SUM(amount) AS used_amount FROM transactions
+        WHERE ${usageConditions.join(" AND ")}
+        GROUP BY envelope_period_id
+      ) usage ON usage.envelope_period_id=p.envelope_period_id
+      WHERE r.status='active' AND ${conditions.join(" AND ")}
+      ORDER BY p.period_start DESC,r.name`,
+    args: [...usageArgs, ...outerArgs],
+  };
+};
+
+export const mapEnvelopeItemRows = (rows) => rows.map((row) => ({
+  ...publicRow(row),
+  name: row.name || row.rule_name,
+  remaining_amount: Number(row.allocated_amount) - Number(row.reserved_amount) - Number(row.used_amount),
+}));
+
+export const envelopeItems = async (db, actor, options = {}) => {
+  const statement = envelopeItemsStatement(actor, options);
+  return mapEnvelopeItemRows(await db.all(statement.sql, statement.args));
 };
 
 export const goalProgress = async (db, goalId, cutoffDate = todayJakarta()) => {

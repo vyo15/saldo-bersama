@@ -29,41 +29,41 @@ const PeriodControlPage = lazy(() => import("../features/settings/PeriodControlP
 const AuditPage = lazy(() => import("../features/settings/AuditPage.jsx"));
 const NotFoundPage = lazy(() => import("../features/settings/NotFoundPage.jsx"));
 
+const routeElement = (Component) => <Suspense fallback={<LoadingScreen />}><Component /></Suspense>;
+
 const App = () => (
-  <Suspense fallback={<LoadingScreen />}>
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route element={<RequireAuth />}>
-        <Route element={<AppShell />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="transaksi" element={<TransactionsPage />} />
-          <Route path="anggaran" element={<BudgetsPage />} />
-          <Route path="alokasi" element={<AllocationsPage />} />
-          <Route path="tagihan" element={<RecurringPage />} />
-          <Route path="target" element={<GoalsPage />} />
-          <Route path="laporan" element={<ReportsPage />} />
-          <Route path="rekening" element={<AccountsPage />} />
-          <Route path="rekonsiliasi" element={<ReconciliationsPage />} />
-          <Route path="kategori" element={<CategoriesPage />} />
-          <Route path="pengaturan" element={<SettingsLayout />}>
-            <Route index element={<SettingsPage />} />
-            <Route path="notifikasi" element={<DeviceNotificationsPage />} />
-            <Route path="integrasi" element={<GoogleIntegrationsPage />} />
-            <Route path="anggota" element={<MembersSettingsPage />} />
-            <Route path="export" element={<ExportDataPage />} />
-            <Route path="import" element={<ImportTransactionsPage />} />
-            <Route path="backup" element={<BackupPage />} />
-            <Route path="pemulihan" element={<RecoveryPage />} />
-            <Route path="reset-data" element={<ResetDataPage />} />
-            <Route path="periode" element={<PeriodControlPage />} />
-            <Route path="audit" element={<AuditPage />} />
-          </Route>
-          <Route path="404" element={<NotFoundPage />} />
-          <Route path="*" element={<Navigate to="/404" replace />} />
+  <Routes>
+    <Route path="/login" element={<LoginPage />} />
+    <Route element={<RequireAuth />}>
+      <Route element={<AppShell />}>
+        <Route index element={routeElement(DashboardPage)} />
+        <Route path="transaksi" element={routeElement(TransactionsPage)} />
+        <Route path="anggaran" element={routeElement(BudgetsPage)} />
+        <Route path="alokasi" element={routeElement(AllocationsPage)} />
+        <Route path="tagihan" element={routeElement(RecurringPage)} />
+        <Route path="target" element={routeElement(GoalsPage)} />
+        <Route path="laporan" element={routeElement(ReportsPage)} />
+        <Route path="rekening" element={routeElement(AccountsPage)} />
+        <Route path="rekonsiliasi" element={routeElement(ReconciliationsPage)} />
+        <Route path="kategori" element={routeElement(CategoriesPage)} />
+        <Route path="pengaturan" element={routeElement(SettingsLayout)}>
+          <Route index element={routeElement(SettingsPage)} />
+          <Route path="notifikasi" element={routeElement(DeviceNotificationsPage)} />
+          <Route path="integrasi" element={routeElement(GoogleIntegrationsPage)} />
+          <Route path="anggota" element={routeElement(MembersSettingsPage)} />
+          <Route path="export" element={routeElement(ExportDataPage)} />
+          <Route path="import" element={routeElement(ImportTransactionsPage)} />
+          <Route path="backup" element={routeElement(BackupPage)} />
+          <Route path="pemulihan" element={routeElement(RecoveryPage)} />
+          <Route path="reset-data" element={routeElement(ResetDataPage)} />
+          <Route path="periode" element={routeElement(PeriodControlPage)} />
+          <Route path="audit" element={routeElement(AuditPage)} />
         </Route>
+        <Route path="404" element={routeElement(NotFoundPage)} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
       </Route>
-    </Routes>
-  </Suspense>
+    </Route>
+  </Routes>
 );
 
 export default App;

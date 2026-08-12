@@ -208,7 +208,8 @@ test("Web Push memakai secure context, status backend, payload privat, dan deliv
   assert.match(frontendNotifications, /notifications\.updatePreference/);
   assert.match(frontendNotifications, /verification = await apiClient\.request/);
   assert.doesNotMatch(notificationsPage, /Uji notifikasi/);
-  assert.match(notificationsPage, /Ketuk tile/);
+  assert.match(notificationsPage, /tileAction/);
+  assert.match(notificationsPage, /tileAction && runPushAction\(tileAction\)/);
   assert.match(serviceWorker, /Ada pengingat keuangan yang perlu diperiksa/);
   assert.doesNotMatch(serviceWorker, /payload\.title|payload\.body/);
   assert.match(backendNotifications, /normalizePushEndpoint/);

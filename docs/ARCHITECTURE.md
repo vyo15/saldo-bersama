@@ -69,7 +69,7 @@ saldo awal + dampak transaksi aktif hingga cutoff date
 - adjustment hanya owner dan mengikuti rekening yang divalidasi;
 - cancelled/archived tidak memengaruhi saldo.
 
-`visibleAccounts()` sengaja menghitung aggregate saldo dengan `CASE` SQL untuk menghindari N+1, sedangkan validasi point-in-time memakai `transactionImpact()`/`accountBalanceAsOf()`. Kedua implementasi wajib tetap parity dan dijaga oleh regression test di `test/business/business-rules.test.js`.
+`visibleAccounts()` sengaja menghitung aggregate saldo dengan `CASE` SQL untuk menghindari N+1. Subquery transaksi membatasi `status` dan rentang tanggal di `WHERE` agar histori di luar cutoff tidak ikut diagregasi. Validasi point-in-time tetap memakai `transactionImpact()`/`accountBalanceAsOf()`. Kedua implementasi wajib tetap parity dan dijaga oleh regression test di `test/business/business-rules.test.js`.
 
 ## Concurrency
 
@@ -79,8 +79,9 @@ saldo awal + dampak transaksi aktif hingga cutoff date
 - affected row nol menghasilkan HTTP 409.
 - Retry hanya terbatas dan memakai idempotency key yang sama.
 - Outbox memakai coalescing pending/failed dan dapat merebut kembali worker macet. Penyelesaian job wajib cocok dengan `locked_by` agar worker lama tidak menutup pekerjaan worker baru.
-- Read multi-query penting (`app.initialState`, laporan, export, mirror, Calendar snapshot) memakai read transaction agar berasal dari snapshot database yang konsisten.
-- `maintenance_mode` diperiksa sebelum dispatch dan dibaca ulang di dalam write transaction untuk menutup race dengan restore/import.
+- Read multi-query penting (`app.initialState`, dashboard, transaksi terfilter, laporan, export, mirror, Calendar snapshot) memakai read transaction agar berasal dari snapshot database yang konsisten. Statement independen di dalam snapshot digabung dengan `tx.batch()` supaya konsistensi snapshot tetap terjaga tanpa satu HTTP round-trip per statement.
+- Read action tidak melakukan query `maintenance_mode` karena maintenance memang mengizinkan read. Write tetap memeriksa `maintenance_mode` sebelum dispatch dan membacanya ulang di dalam write transaction untuk menutup race dengan restore/import.
+- Telemetry `database.read.metrics` membedakan jumlah SQL statement (`dbQueryCount`) dari jumlah pipeline HTTP Turso (`dbPipelineCount`) agar latency network dapat diaudit tanpa mencatat SQL atau payload finansial.
 
 ## Google integrations
 
@@ -92,7 +93,7 @@ Service worker hanya meng-cache app shell dan asset statis. `/api/*` tidak perna
 
 ## UI architecture
 
-Shared UI primitive memakai CSS Modules dan design tokens project. Feature mengimpor shared wrapper, bukan toolkit secara langsung. Mantine telah disetujui sebagai toolkit target untuk perilaku kompleks melalui staged adoption; dependency dan lockfile Mantine tersedia, tetapi runtime adoption tetap bertahap melalui wrapper project. Kontrak lengkap berada di `UI_DESIGN_SYSTEM.md` dan ADR-0009.
+Shared UI primitive memakai CSS Modules dan design tokens project. Feature mengimpor shared wrapper, bukan toolkit secara langsung. Surface responsive yang memiliki implementasi mobile dan desktop terpisah hanya di-mount untuk breakpoint aktif; CSS tidak dipakai sebagai satu-satunya cara menyembunyikan duplikat DOM berat. Mantine telah disetujui sebagai toolkit target untuk perilaku kompleks melalui staged adoption; dependency dan lockfile Mantine tersedia, tetapi runtime adoption tetap bertahap melalui wrapper project. Kontrak lengkap berada di `UI_DESIGN_SYSTEM.md` dan ADR-0009.
 
 
 ## Batas privasi mirror

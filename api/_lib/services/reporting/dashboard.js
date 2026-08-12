@@ -1,5 +1,19 @@
-import { listBudgets, listEnvelopes, listGoals, listRecurring } from "../planning/index.js";
-import { accountBalanceAsOf, categoryExpenseTotals, visibleAccounts, visibleTransactions } from "../readModels.js";
+import {
+  budgetListStatement,
+  goalListStatements,
+  mapBudgetListRows,
+  mapGoalListRows,
+  mapRecurringRows,
+  recurringListStatement,
+} from "../planning/index.js";
+import {
+  categoryExpenseTotalsStatement,
+  envelopeItemsStatement,
+  mapCategoryExpenseRows,
+  mapEnvelopeItemRows,
+  mapVisibleAccountRows,
+  visibleAccountsStatement,
+} from "../readModels.js";
 import {
   appError,
   boundedInteger,
@@ -9,6 +23,8 @@ import {
   publicRow,
   readableAccountSql,
   readableLedgerSql,
+  operableScopeSql,
+  sanitizeText,
   todayJakarta,
 } from "../core.js";
 import { dateBefore } from "./shared.js";
@@ -24,6 +40,14 @@ const NATURE_LABELS = Object.freeze({
 });
 
 const ALERT_PRIORITY = Object.freeze({ danger: 3, warning: 2, info: 1 });
+
+const readBatchRows = async (db, statements) => {
+  if (typeof db.batch === "function") {
+    const results = await db.batch(statements);
+    return results.map((result) => result.rows || []);
+  }
+  return Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+};
 
 const addPeriodMonths = (period, offset) => {
   const [year, month] = periodKey(period).split("-").map(Number);
@@ -50,11 +74,13 @@ const usageThreshold = (percentage, custom = 75) => {
 };
 
 export const bootstrapData = async (db, context) => {
-  const [accounts, categories, configRows] = await Promise.all([
-    visibleAccounts(db, context.actor),
-    db.all("SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE"),
-    db.all("SELECT key,value FROM system_config WHERE key IN ('schema_version','timezone','currency','maintenance_mode')"),
+  const accountStatement = visibleAccountsStatement(context.actor);
+  const [accountRows, categories, configRows] = await readBatchRows(db, [
+    accountStatement,
+    { sql: "SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE", args: [] },
+    { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','timezone','currency','maintenance_mode')", args: [] },
   ]);
+  const accounts = mapVisibleAccountRows(accountRows, context.actor);
   const config = Object.fromEntries(configRows.map((row) => [row.key, row.value]));
   return {
     user: publicRow(context.actor),
@@ -69,11 +95,7 @@ export const bootstrapData = async (db, context) => {
   };
 };
 
-const allocationSummary = async (db, actor, accounts, period) => {
-  const items = (await listEnvelopes(db, {
-    actor,
-    payload: { period },
-  })).items.filter((item) => item.status === "active");
+const allocationSummary = (accounts, items) => {
   const allocatedRemaining = items.reduce((sum, item) => sum + Math.max(0, Number(item.remaining_amount || 0)), 0);
   const totalAvailable = accounts.reduce((sum, item) => sum + Math.max(0, Number(item.balance || 0)), 0);
   return {
@@ -83,82 +105,144 @@ const allocationSummary = async (db, actor, accounts, period) => {
   };
 };
 
-const reportBreakdowns = async (db, actor, startDate, endDate) => {
+const reportBreakdownStatements = (actor, startDate, endDate) => {
   const access = readableLedgerSql(actor, "t");
   const commonWhere = `t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}`;
   const args = [startDate, endDate, ...access.args];
-  const [accounts, creators, natures] = await Promise.all([
-    db.all(`SELECT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
+  return [
+    { sql: `SELECT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
       FROM transactions t JOIN accounts a ON a.account_id=t.source_account_id
       LEFT JOIN users u ON u.user_id=a.owner_user_id
       WHERE ${commonWhere}
-      GROUP BY a.account_id,a.name,a.owner_scope,a.owner_user_id,u.name ORDER BY amount DESC`, args),
-    db.all(`SELECT u.user_id,u.name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
+      GROUP BY a.account_id,a.name,a.owner_scope,a.owner_user_id,u.name ORDER BY amount DESC`, args },
+    { sql: `SELECT u.user_id,u.name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
       FROM transactions t JOIN users u ON u.user_id=t.created_by
       WHERE ${commonWhere}
-      GROUP BY u.user_id,u.name ORDER BY amount DESC`, args),
-    db.all(`SELECT COALESCE(c.nature,'other') AS nature,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
+      GROUP BY u.user_id,u.name ORDER BY amount DESC`, args },
+    { sql: `SELECT COALESCE(c.nature,'other') AS nature,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
       FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id
       WHERE ${commonWhere}
-      GROUP BY COALESCE(c.nature,'other') ORDER BY amount DESC`, args),
-  ]);
-  return {
-    accountExpenses: accounts.map((row) => ({
-      ...publicRow(row),
-      label: row.owner_scope === "personal" ? `${row.name} · Pribadi · ${row.owner_name}` : `${row.name} · Bersama`,
-    })),
-    creatorExpenses: creators.map((row) => ({ ...publicRow(row), label: row.name })),
-    natureExpenses: natures.map((row) => ({ ...publicRow(row), label: NATURE_LABELS[row.nature] || NATURE_LABELS.other })),
-  };
+      GROUP BY COALESCE(c.nature,'other') ORDER BY amount DESC`, args },
+  ];
 };
 
-const monthlyTrend = async (db, actor, endPeriod, count) => {
+const mapReportBreakdowns = ([accounts = [], creators = [], natures = []]) => ({
+  accountExpenses: accounts.map((row) => ({
+    ...publicRow(row),
+    label: row.owner_scope === "personal" ? `${row.name} · Pribadi · ${row.owner_name}` : `${row.name} · Bersama`,
+  })),
+  creatorExpenses: creators.map((row) => ({ ...publicRow(row), label: row.name })),
+  natureExpenses: natures.map((row) => ({ ...publicRow(row), label: NATURE_LABELS[row.nature] || NATURE_LABELS.other })),
+});
+
+const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {}) => {
   const periods = Array.from({ length: count }, (_, index) => addPeriodMonths(endPeriod, index - count + 1));
   const firstBounds = monthBounds(periods[0]);
   const lastBounds = monthBounds(periods.at(-1));
   const currentPeriod = todayJakarta().slice(0, 7);
   const trendEnd = periods.at(-1) === currentPeriod ? todayJakarta() : lastBounds.end;
-  const access = readableLedgerSql(actor, "t");
-  const rows = await db.all(`SELECT substr(t.transaction_date,1,7) AS period_key,
-      COALESCE(SUM(CASE WHEN t.transaction_type='income' THEN t.amount ELSE 0 END),0) AS income,
-      COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
-      COALESCE(SUM(CASE WHEN t.transaction_type='refund' THEN t.amount ELSE 0 END),0) AS refund
-    FROM transactions t
-    WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}
-    GROUP BY substr(t.transaction_date,1,7)`, [firstBounds.start, trendEnd, ...access.args]);
-  const lookup = new Map(rows.map((row) => [row.period_key, row]));
-  const items = [];
-  for (const period of periods) {
+  const ledgerAccess = readableLedgerSql(actor, "t");
+  const accountAccess = readableAccountSql(actor, "a");
+  const cutoffs = periods.map((period) => {
     const bounds = monthBounds(period);
-    const cutoffDate = period === currentPeriod ? todayJakarta() : bounds.end;
-    const accounts = await visibleAccounts(db, actor, { includeArchived: true, cutoffDate });
-    const row = lookup.get(period) || {};
-    const income = Number(row.income || 0);
-    const expense = Number(row.expense || 0);
-    const refund = Number(row.refund || 0);
-    items.push({
-      periodKey: period,
-      label: periodLabel(period),
-      income,
-      expense,
-      refund,
-      net: income + refund - expense,
-      totalBalance: accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0),
+    return [period, period === currentPeriod ? todayJakarta() : bounds.end];
+  });
+  const cutoffValues = cutoffs.map(() => "(?,?)").join(",");
+  const cutoffArgs = cutoffs.flat();
+  const statements = [
+    {
+      sql: `SELECT substr(t.transaction_date,1,7) AS period_key,
+        COALESCE(SUM(CASE WHEN t.transaction_type='income' THEN t.amount ELSE 0 END),0) AS income,
+        COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
+        COALESCE(SUM(CASE WHEN t.transaction_type='refund' THEN t.amount ELSE 0 END),0) AS refund
+      FROM transactions t
+      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql}
+      GROUP BY substr(t.transaction_date,1,7)`,
+      args: [firstBounds.start, trendEnd, ...ledgerAccess.args],
+    },
+    {
+      sql: `WITH cutoffs(period_key,cutoff_date) AS (VALUES ${cutoffValues}),
+        account_balances AS (
+          SELECT c.period_key,a.account_id,
+            CASE WHEN a.initial_balance_date<=c.cutoff_date THEN a.initial_balance ELSE 0 END + COALESCE(SUM(CASE
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='expense' AND t.source_account_id=a.account_id THEN -t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
+              ELSE 0 END),0) AS balance
+          FROM cutoffs c CROSS JOIN accounts a
+          LEFT JOIN transactions t ON (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
+            AND t.status='active' AND t.transaction_date<=c.cutoff_date AND t.transaction_date>=a.initial_balance_date
+          WHERE ${accountAccess.sql}
+          GROUP BY c.period_key,a.account_id,a.initial_balance,a.initial_balance_date
+        )
+        SELECT period_key,COALESCE(SUM(balance),0) AS total_balance FROM account_balances GROUP BY period_key`,
+      args: [...cutoffArgs, ...accountAccess.args],
+    },
+  ];
+  if (accountId) {
+    statements.push({
+      sql: `SELECT substr(t.transaction_date,1,7) AS period_key,COALESCE(SUM(t.amount),0) AS amount
+        FROM transactions t
+        WHERE t.status='active' AND t.transaction_type='expense' AND t.source_account_id=?
+          AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql}
+        GROUP BY substr(t.transaction_date,1,7)`,
+      args: [accountId, firstBounds.start, trendEnd, ...ledgerAccess.args],
     });
   }
-  return items;
+  return { periods, statements, accountId };
 };
 
-const reconciliationAlerts = async (db, actor, accounts) => {
+const mapMonthlyTrendRows = (plan, [cashRows = [], balanceRows = [], accountExpenseRows = []]) => {
+  const cashLookup = new Map(cashRows.map((row) => [row.period_key, row]));
+  const balanceLookup = new Map(balanceRows.map((row) => [row.period_key, Number(row.total_balance || 0)]));
+  const accountExpenseLookup = new Map(accountExpenseRows.map((row) => [row.period_key, Number(row.amount || 0)]));
+  return {
+    items: plan.periods.map((period) => {
+      const row = cashLookup.get(period) || {};
+      const income = Number(row.income || 0);
+      const expense = Number(row.expense || 0);
+      const refund = Number(row.refund || 0);
+      return {
+        periodKey: period,
+        label: periodLabel(period),
+        income,
+        expense,
+        refund,
+        net: income + refund - expense,
+        totalBalance: balanceLookup.get(period) || 0,
+      };
+    }),
+    accountExpenseItems: plan.accountId
+      ? plan.periods.map((period) => ({ period, value: accountExpenseLookup.get(period) || 0 }))
+      : [],
+  };
+};
+
+const reconciliationAlertStatement = (actor) => {
   const access = readableAccountSql(actor, "a");
-  const rows = await db.all(`SELECT a.account_id,a.name,r.reconciled_at,r.difference
-    FROM accounts a
-    LEFT JOIN reconciliations r ON r.reconciliation_id=(
-      SELECT rr.reconciliation_id FROM reconciliations rr
-      WHERE rr.account_id=a.account_id ORDER BY rr.reconciled_at DESC,rr.created_at DESC LIMIT 1
-    )
-    WHERE a.status='active' AND ${access.sql}
-    ORDER BY a.name COLLATE NOCASE`, access.args);
+  return {
+    sql: `SELECT a.account_id,a.name,r.reconciled_at,r.difference
+      FROM accounts a
+      LEFT JOIN (
+        SELECT account_id,reconciled_at,difference FROM (
+          SELECT account_id,reconciled_at,difference,ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY reconciled_at DESC,created_at DESC) AS rn
+          FROM reconciliations
+        ) latest WHERE latest.rn=1
+      ) r ON r.account_id=a.account_id
+      WHERE a.status='active' AND ${access.sql}
+      ORDER BY a.name COLLATE NOCASE`,
+    args: access.args,
+  };
+};
+
+const reconciliationAlertsFromRows = (rows, accounts) => {
   const balanceLookup = new Map(accounts.map((item) => [item.account_id, Number(item.balance || 0)]));
   const accountLabelLookup = new Map(accounts.map((item) => [
     item.account_id,
@@ -277,7 +361,7 @@ const sortFinancialAlerts = (alerts) => alerts.sort((left, right) => (
   || left.title.localeCompare(right.title, "id")
 ));
 
-const buildFinancialAlerts = async (db, context, {
+const buildFinancialAlerts = ({
   period,
   historical,
   accounts,
@@ -286,70 +370,162 @@ const buildFinancialAlerts = async (db, context, {
   goals,
   budgets,
   unallocatedCount,
+  reconciliationRows = [],
 }) => {
   if (historical) return [];
-  const reconciliation = await reconciliationAlerts(db, context.actor, accounts);
   return sortFinancialAlerts([
     ...unallocatedAlerts(period, unallocatedCount),
     ...budgetAlerts(budgets),
     ...envelopeAlerts(envelopes),
     ...recurringAlerts(recurring),
     ...goalAlerts(goals),
-    ...reconciliation,
+    ...reconciliationAlertsFromRows(reconciliationRows, accounts),
   ]);
 };
 
-export const dashboardOverview = async (db, context) => {
+const dashboardCashFlowStatement = (actor, startDate, endDate) => {
+  const readable = readableLedgerSql(actor, "t");
+  const operable = operableScopeSql(actor, "t");
+  return {
+    sql: `SELECT
+      COALESCE(SUM(CASE WHEN t.transaction_type='income' THEN t.amount ELSE 0 END),0) AS income,
+      COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
+      COALESCE(SUM(CASE WHEN t.transaction_type='refund' THEN t.amount ELSE 0 END),0) AS refund,
+      COALESCE(SUM(CASE WHEN t.transaction_type='expense' AND t.envelope_period_id IS NULL AND ${operable.sql} THEN 1 ELSE 0 END),0) AS unallocated_count
+      FROM transactions t
+      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${readable.sql}`,
+    args: [...operable.args, startDate, endDate, ...readable.args],
+  };
+};
+
+const dashboardRecentTransactionsStatement = (actor, startDate, endDate) => {
+  const access = readableLedgerSql(actor, "t");
+  return {
+    sql: `SELECT t.* FROM transactions t
+      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}
+      ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT 12`,
+    args: [startDate, endDate, ...access.args],
+  };
+};
+
+const dashboardEnvelopeCapabilities = (items, actor) => items.map((item) => ({
+  ...item,
+  can_close: actor.role === "owner" && item.status === "active",
+  can_archive_rule: actor.role === "owner" && item.status === "active",
+}));
+
+const dashboardPeriodContext = (context, preloadedAccounts) => {
   const period = periodKey(context.payload?.period);
   const bounds = monthBounds(period);
-  const currentPeriod = todayJakarta().slice(0, 7);
+  const today = todayJakarta();
+  const currentPeriod = today.slice(0, 7);
   const historical = period < currentPeriod;
-  const cutoffDate = historical ? bounds.end : todayJakarta();
-  const [accounts, transactions, categoryExpenses, recurringResult, goalsResult, budgetResult] = await Promise.all([
-    visibleAccounts(db, context.actor, { includeArchived: historical, cutoffDate }),
-    visibleTransactions(db, context.actor, { startDate: bounds.start, endDate: cutoffDate, includeCancelled: false }),
-    categoryExpenseTotals(db, context.actor, bounds.start, cutoffDate),
-    listRecurring(db, { ...context, payload: { period } }),
-    listGoals(db, context),
-    listBudgets(db, { ...context, payload: { period } }),
-  ]);
-  const operableAccounts = accounts.filter((account) => account.can_transact !== false);
-  const allocation = await allocationSummary(db, context.actor, operableAccounts, period);
-  let income = 0;
-  let expense = 0;
-  let refund = 0;
-  let unallocatedCount = 0;
-  for (const row of transactions) {
-    const actorCanOperate = context.actor.role === "owner" || row.scope === "shared" || (row.scope === "personal" && row.owner_user_id === context.actor.user_id);
-    if (row.transaction_type === "income") income += Number(row.amount);
-    else if (row.transaction_type === "expense") {
-      expense += Number(row.amount);
-      if (!row.envelope_period_id && actorCanOperate) unallocatedCount += 1;
-    } else if (row.transaction_type === "refund") refund += Number(row.amount);
-  }
-  const openingDate = dateBefore(bounds.start);
-  let openingBalance = 0;
-  for (const account of accounts) openingBalance += await accountBalanceAsOf(db, account, openingDate);
-  const totalBalance = accounts.reduce((sum, row) => sum + Number(row.balance || 0), 0);
+  const cutoffDate = historical ? bounds.end : today;
+  return {
+    period,
+    bounds,
+    today,
+    currentPeriod,
+    historical,
+    cutoffDate,
+    openingDate: dateBefore(bounds.start),
+    scopedContext: { ...context, payload: { period } },
+    canReuseCurrentAccounts: Array.isArray(preloadedAccounts) && !historical && cutoffDate === today,
+  };
+};
+
+const dashboardReadPlan = (context, periodContext) => {
+  const { period, bounds, cutoffDate, openingDate, historical, scopedContext, canReuseCurrentAccounts } = periodContext;
+  const statements = [];
+  const indexes = {};
+  const add = (key, statement) => {
+    indexes[key] = statements.length;
+    statements.push(statement);
+  };
+  if (!canReuseCurrentAccounts) add("accounts", visibleAccountsStatement(context.actor, { includeArchived: historical, cutoffDate }));
+  add("openingAccounts", visibleAccountsStatement(context.actor, { includeArchived: historical, cutoffDate: openingDate }));
+  add("cashFlow", dashboardCashFlowStatement(context.actor, bounds.start, cutoffDate));
+  add("recentTransactions", dashboardRecentTransactionsStatement(context.actor, bounds.start, cutoffDate));
+  add("categoryExpenses", categoryExpenseTotalsStatement(context.actor, bounds.start, cutoffDate));
+  add("recurring", recurringListStatement(scopedContext));
+  const goalIndexes = goalListStatements(context).map((statement) => {
+    const index = statements.length;
+    statements.push(statement);
+    return index;
+  });
+  add("budgets", budgetListStatement(scopedContext));
+  add("envelopes", envelopeItemsStatement(context.actor, { period, includeClosed: false }));
+  if (!historical) add("reconciliation", reconciliationAlertStatement(context.actor));
+  return { statements, indexes, goalIndexes };
+};
+
+const mapDashboardReadRows = (rows, plan, context, periodContext, preloadedAccounts) => {
+  const { indexes, goalIndexes } = plan;
+  const { historical, scopedContext, canReuseCurrentAccounts } = periodContext;
+  const accounts = canReuseCurrentAccounts
+    ? preloadedAccounts
+    : mapVisibleAccountRows(rows[indexes.accounts] || [], context.actor);
+  return {
+    accounts,
+    openingAccounts: mapVisibleAccountRows(rows[indexes.openingAccounts] || [], context.actor),
+    cashFlowRow: (rows[indexes.cashFlow] || [])[0] || {},
+    recentTransactionRows: (rows[indexes.recentTransactions] || []).map((row) => publicRow(row)),
+    categoryExpenses: mapCategoryExpenseRows(rows[indexes.categoryExpenses] || []),
+    recurring: mapRecurringRows(rows[indexes.recurring] || [], scopedContext).items,
+    goals: mapGoalListRows(goalIndexes.map((index) => rows[index] || []), context).items,
+    budgets: mapBudgetListRows(rows[indexes.budgets] || []).items,
+    dashboardEnvelopes: dashboardEnvelopeCapabilities(mapEnvelopeItemRows(rows[indexes.envelopes] || []), context.actor),
+    reconciliationRows: historical ? [] : rows[indexes.reconciliation] || [],
+  };
+};
+
+const dashboardBalanceMetrics = (accounts, openingAccounts, recurring) => {
   const protectedTypes = new Set(["emergency_fund", "savings", "sinking_fund"]);
+  const operableAccounts = accounts.filter((account) => account.can_transact !== false);
+  const openingBalance = openingAccounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
+  const totalBalance = accounts.reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const emergencyBalance = accounts.filter((row) => row.account_type === "emergency_fund").reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const protectedBalance = accounts.filter((row) => protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const liquidBalance = accounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const operableLiquidBalance = operableAccounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
-  const recurring = recurringResult.items;
-  const goals = goalsResult.items;
-  const budgets = budgetResult.items;
   const reservedBills = recurring.filter((row) => row.kind === "expense" && !["paid", "cancelled"].includes(row.status)).reduce((sum, row) => sum + Math.max(0, Number(row.expected_amount) - Number(row.actual_amount)), 0);
-  const safeToSpend = Math.max(0, operableLiquidBalance - reservedBills);
+  return {
+    operableAccounts,
+    openingBalance,
+    totalBalance,
+    emergencyBalance,
+    protectedBalance,
+    liquidBalance,
+    reservedBills,
+    safeToSpend: Math.max(0, operableLiquidBalance - reservedBills),
+  };
+};
+
+const dashboardRecentTransactions = (rows, actor) => rows.map((row) => {
+  const actorCanOperate = actor.role === "owner" || row.scope === "shared" || (row.scope === "personal" && row.owner_user_id === actor.user_id);
+  const actorCanModify = row.status === "active" && (actor.role === "owner" || (actorCanOperate && row.created_by === actor.user_id));
+  return { ...row, can_update: actorCanModify, can_cancel: actorCanModify };
+});
+
+const dashboardDaysRemaining = ({ historical, period, currentPeriod, today, bounds }) => {
+  if (historical) return 0;
   const lastDay = Number(bounds.end.slice(-2));
-  const currentDay = period === currentPeriod ? Number(todayJakarta().slice(-2)) : 1;
-  const daysRemaining = historical ? 0 : Math.max(1, lastDay - currentDay + 1);
-  const recentTransactions = transactions.slice(0, 12).map((row) => {
-    const actorCanOperate = context.actor.role === "owner" || row.scope === "shared" || (row.scope === "personal" && row.owner_user_id === context.actor.user_id);
-    const actorCanModify = row.status === "active" && (context.actor.role === "owner" || (actorCanOperate && row.created_by === context.actor.user_id));
-    return { ...row, can_update: actorCanModify, can_cancel: actorCanModify };
-  });
-  const alerts = await buildFinancialAlerts(db, context, {
+  const currentDay = period === currentPeriod ? Number(today.slice(-2)) : 1;
+  return Math.max(1, lastDay - currentDay + 1);
+};
+
+const dashboardResult = (context, periodContext, readState) => {
+  const { period, bounds, today, currentPeriod, historical, cutoffDate } = periodContext;
+  const { accounts, openingAccounts, cashFlowRow, recentTransactionRows, categoryExpenses, recurring, goals, budgets, dashboardEnvelopes, reconciliationRows } = readState;
+  const balance = dashboardBalanceMetrics(accounts, openingAccounts, recurring);
+  const allocation = allocationSummary(balance.operableAccounts, dashboardEnvelopes);
+  const income = Number(cashFlowRow.income || 0);
+  const expense = Number(cashFlowRow.expense || 0);
+  const refund = Number(cashFlowRow.refund || 0);
+  const unallocatedCount = Number(cashFlowRow.unallocated_count || 0);
+  const daysRemaining = dashboardDaysRemaining({ historical, period, currentPeriod, today, bounds });
+  const recentTransactions = dashboardRecentTransactions(recentTransactionRows, context.actor);
+  const alerts = buildFinancialAlerts({
     period,
     historical,
     accounts,
@@ -358,21 +534,22 @@ export const dashboardOverview = async (db, context) => {
     goals,
     budgets,
     unallocatedCount,
+    reconciliationRows,
   });
   return {
     periodKey: period,
     cutoffDate,
     isHistoricalPeriod: historical,
     accountBalances: accounts,
-    totalBalance,
-    openingBalance,
-    balanceChange: totalBalance - openingBalance,
-    liquidBalance,
-    safeToSpend,
-    dailySafeToSpend: daysRemaining ? Math.floor(safeToSpend / daysRemaining) : 0,
+    totalBalance: balance.totalBalance,
+    openingBalance: balance.openingBalance,
+    balanceChange: balance.totalBalance - balance.openingBalance,
+    liquidBalance: balance.liquidBalance,
+    safeToSpend: balance.safeToSpend,
+    dailySafeToSpend: daysRemaining ? Math.floor(balance.safeToSpend / daysRemaining) : 0,
     daysRemaining,
-    emergencyBalance,
-    protectedBalance,
+    emergencyBalance: balance.emergencyBalance,
+    protectedBalance: balance.protectedBalance,
     cashFlow: { income, expense, refund, net: income + refund - expense },
     envelopes: allocation.items,
     recurring,
@@ -384,34 +561,46 @@ export const dashboardOverview = async (db, context) => {
     unallocatedCount,
     unallocatedFunds: allocation.unallocatedAmount,
     allocatedRemaining: allocation.allocatedRemaining,
-    reservedBills,
+    reservedBills: balance.reservedBills,
     lastSyncedAt: nowIso(),
   };
 };
 
+export const dashboardOverview = async (db, context, { preloadedAccounts = null } = {}) => {
+  const periodContext = dashboardPeriodContext(context, preloadedAccounts);
+  const plan = dashboardReadPlan(context, periodContext);
+  const rows = await readBatchRows(db, plan.statements);
+  const readState = mapDashboardReadRows(rows, plan, context, periodContext, preloadedAccounts);
+  return dashboardResult(context, periodContext, readState);
+};
+
 export const appInitialState = async (db, context) => {
-  const [bootstrap, overview] = await Promise.all([bootstrapData(db, context), dashboardOverview(db, context)]);
+  const bootstrap = await bootstrapData(db, context);
+  const overview = await dashboardOverview(db, context, { preloadedAccounts: bootstrap.accounts });
   return { bootstrap, overview };
 };
 
 export const monthlyReport = async (db, context) => {
   const period = periodKey(context.payload?.period);
   const trendMonths = boundedInteger(context.payload?.trend_months, 6, 3, 12, "Rentang tren");
+  const accountId = sanitizeText(context.payload?.account_id, 100);
   if (![3, 6, 12].includes(trendMonths)) throw appError("INVALID_TREND_RANGE", "Rentang tren harus 3, 6, atau 12 bulan.", 400);
   const scoped = { ...context, payload: { period } };
   const overview = await dashboardOverview(db, scoped);
   const bounds = monthBounds(period);
   const currentPeriod = todayJakarta().slice(0, 7);
   const cutoffDate = period === currentPeriod ? todayJakarta() : bounds.end;
-  const [breakdowns, trend] = await Promise.all([
-    reportBreakdowns(db, context.actor, bounds.start, cutoffDate),
-    monthlyTrend(db, context.actor, period, trendMonths),
-  ]);
+  const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate);
+  const trendPlan = monthlyTrendPlan(context.actor, period, trendMonths, { accountId });
+  const combinedRows = await readBatchRows(db, [...breakdownStatements, ...trendPlan.statements]);
+  const breakdowns = mapReportBreakdowns(combinedRows.slice(0, breakdownStatements.length));
+  const trend = mapMonthlyTrendRows(trendPlan, combinedRows.slice(breakdownStatements.length));
   return {
     overview,
     budgets: overview.budgets,
     categoryExpenses: overview.categoryExpenses,
     ...breakdowns,
-    trend: { months: trendMonths, items: trend },
+    trend: { months: trendMonths, items: trend.items },
+    ...(accountId ? { accountExpenseTrend: { months: trendMonths, items: trend.accountExpenseItems } } : {}),
   };
 };

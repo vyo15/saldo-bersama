@@ -1,5 +1,8 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 const REQUEST_TIMEOUT_MS = 12_000;
 const TRANSACTION_STEP_TIMEOUT_MS = 10_000;
+const pipelineMetricsStorage = new AsyncLocalStorage();
 
 const appError = (code, message, status = 500, details = null) => Object.assign(new Error(message), { code, status, details });
 
@@ -90,6 +93,8 @@ export class TursoHttpClient {
   }
 
   async pipeline(requests, { baton = null, baseUrl = null, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
+    const pipelineMetrics = pipelineMetricsStorage.getStore();
+    if (pipelineMetrics) pipelineMetrics.pipelineCount = Number(pipelineMetrics.pipelineCount || 0) + 1;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -204,6 +209,8 @@ export class TursoHttpClient {
       throw error;
     }
   }
+
+  withPipelineMetrics(metrics, callback) { return pipelineMetricsStorage.run(metrics, callback); }
 
   async transaction(callback) { return this.runTransaction(callback, { begin: "BEGIN IMMEDIATE" }); }
   async readTransaction(callback) { return this.runTransaction(callback, { begin: "BEGIN" }); }

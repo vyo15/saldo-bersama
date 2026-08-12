@@ -41,3 +41,24 @@ test("form Anggaran mempertahankan validasi nominal, kategori aktif, dan ambang 
   assert.match(moneyInput, /required=\{required\}/);
   assert.doesNotMatch(page, /<form[^>]+noValidate/);
 });
+
+
+test("UI Anggaran memakai hero, pacing marker, filter perhatian, dan ikon kategori existing", async () => {
+  const [page, card, pacing, hero, presentation] = await Promise.all([
+    read("src/features/budgets/BudgetsPage.jsx"),
+    read("src/features/budgets/components/BudgetInsightCard.jsx"),
+    read("src/features/budgets/components/BudgetPacingBar.jsx"),
+    read("src/features/budgets/components/BudgetHeroCard.jsx"),
+    read("src/features/budgets/budgetPresentation.js"),
+  ]);
+
+  assert.match(page, /BudgetHeroCard/);
+  assert.match(page, /Perlu perhatian/);
+  assert.match(page, /Paling kritis/);
+  assert.match(card, /categoryIcon\(category\?\.icon, "expense"\)/);
+  assert.match(card, /Batas aman \/ hari/);
+  assert.match(pacing, /Hari ini/);
+  assert.match(pacing, /role="img"/);
+  assert.match(hero, /Sisa anggaran bulan ini/);
+  assert.match(presentation, /usedPercent > Number\(periodMeta\.elapsedPercent \|\| 0\) \+ 8/);
+});

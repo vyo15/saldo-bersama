@@ -1,5 +1,5 @@
 import { appendAudit } from "../audit.js";
-import { accountBalanceAsOf, envelopeItems } from "../readModels.js";
+import { accountBalanceAsOf, envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
@@ -77,24 +77,35 @@ const envelopeRuleLifecycleImpact = async (db, current) => {
 };
 
 export const listEnvelopes = async (db, context) => {
-  const items = await envelopeItems(db, context.actor, { period: context.payload?.period || null, includeClosed: true });
+  const itemStatement = envelopeItemsStatement(context.actor, { period: context.payload?.period || null, includeClosed: true });
   const access = visibleScopeSql(context.actor, "fr");
-  const recentMovements = await db.all(`SELECT m.*,fp.name AS from_name,tp.name AS to_name,fp.row_version AS from_row_version,tp.row_version AS to_row_version,
+  const movementStatement = {
+    sql: `SELECT m.*,fp.name AS from_name,tp.name AS to_name,fp.row_version AS from_row_version,tp.row_version AS to_row_version,
       fr.scope,fr.owner_user_id
-    FROM envelope_movements m
-    JOIN envelope_periods fp ON fp.envelope_period_id=m.from_envelope_period_id
-    JOIN envelope_periods tp ON tp.envelope_period_id=m.to_envelope_period_id
-    JOIN envelope_rules fr ON fr.envelope_rule_id=fp.envelope_rule_id
-    WHERE m.status='active' AND m.movement_type='reallocation' AND ${access.sql}
-    ORDER BY m.created_at DESC LIMIT 20`, access.args);
-  const archivedRules = context.actor.role === "owner"
-    ? await db.all("SELECT * FROM envelope_rules WHERE status='archived' ORDER BY updated_at DESC LIMIT 50")
-    : [];
+      FROM envelope_movements m
+      JOIN envelope_periods fp ON fp.envelope_period_id=m.from_envelope_period_id
+      JOIN envelope_periods tp ON tp.envelope_period_id=m.to_envelope_period_id
+      JOIN envelope_rules fr ON fr.envelope_rule_id=fp.envelope_rule_id
+      WHERE m.status='active' AND m.movement_type='reallocation' AND ${access.sql}
+      ORDER BY m.created_at DESC LIMIT 20`,
+    args: access.args,
+  };
+  const statements = [itemStatement, movementStatement];
+  const archivedIndex = context.actor.role === "owner" ? statements.push({
+    sql: "SELECT * FROM envelope_rules WHERE status='archived' ORDER BY updated_at DESC LIMIT 50",
+    args: [],
+  }) - 1 : -1;
+  const resultRows = typeof db.batch === "function"
+    ? (await db.batch(statements)).map((result) => result.rows || [])
+    : await Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+  const items = mapEnvelopeItemRows(resultRows[0] || []);
+  const recentMovements = resultRows[1] || [];
+  const archivedRules = archivedIndex >= 0 ? resultRows[archivedIndex] || [] : [];
   return {
-    items: items.map(item => ({
+    items: items.map((item) => ({
       ...item,
       can_close: context.actor.role === "owner" && item.status === "active",
-      can_archive_rule: context.actor.role === "owner" && item.status === "active"
+      can_archive_rule: context.actor.role === "owner" && item.status === "active",
     })),
     recentMovements: recentMovements.map((movement) => ({
       ...publicRow(movement),
@@ -103,6 +114,7 @@ export const listEnvelopes = async (db, context) => {
     archivedRules: archivedRules.map((row) => publicRow(row)),
   };
 };
+
 export const createEnvelopeRule = async (db, context, payload = context.payload || {}) => {
   assertOwner(context.actor);
   const name = sanitizeText(payload.name, 100);

@@ -105,6 +105,30 @@ test("transaction rollback ketika callback gagal dan error database tidak memboc
   await assert.rejects(failing.execute("SELECT token"), (error) => error.code === "DATABASE_QUERY_FAILED" && error.message === "Operasi database ditolak.");
 });
 
+
+test("pipeline metrics menghitung HTTP pipeline aktual termasuk BEGIN batch dan COMMIT", async () => {
+  let call = 0;
+  const client = new TursoHttpClient({
+    url: "https://saldo.turso.io",
+    authToken: "token",
+    fetchImpl: async (_url, options) => {
+      const body = JSON.parse(options.body);
+      call += 1;
+      if (call === 1) return response({ baton: "m1", base_url: "https://primary.turso.io", results: body.requests.map(() => result()) });
+      if (call === 2) return response({ baton: "m2", base_url: "https://primary.turso.io", results: body.requests.map(() => result()) });
+      return response({ results: [result(), close] });
+    },
+  });
+  const metrics = { pipelineCount: 0 };
+  await client.withPipelineMetrics(metrics, () => client.readTransaction(async (tx) => {
+    await tx.batch([
+      { sql: "SELECT 1", args: [] },
+      { sql: "SELECT 2", args: [] },
+      { sql: "SELECT 3", args: [] },
+    ]);
+  }));
+  assert.equal(metrics.pipelineCount, 3, "BEGIN, satu tx.batch, dan COMMIT harus tercatat sebagai tiga pipeline HTTP");
+});
 test("health melakukan query terautentikasi, bukan mengandalkan endpoint publik", async () => {
   const client = new TursoHttpClient({ url: "https://saldo.turso.io", authToken: "token", fetchImpl: async () => response({ results: [result(), result(["ok"], [[{ type: "integer", value: "1" }]]), close] }) });
   assert.equal(await client.health(), true);

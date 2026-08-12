@@ -13,6 +13,21 @@ const MobileFinanceDashboard = lazy(() => import("./components/MobileFinanceDash
 const MobileDashboardFilters = lazy(() => import("./components/MobileDashboardFilters.jsx"));
 const MobileTransactionDetail = lazy(() => import("./components/MobileTransactionDetail.jsx"));
 
+const MOBILE_DASHBOARD_QUERY = "(max-width: 820px)";
+const readMobileDashboardLayout = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(MOBILE_DASHBOARD_QUERY).matches;
+const useMobileDashboardLayout = () => {
+  const [mobile, setMobile] = useState(readMobileDashboardLayout);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const media = window.matchMedia(MOBILE_DASHBOARD_QUERY);
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return mobile;
+};
+
 const buildLookups = (overview, bootstrap) => {
   const accountBalances = (overview.accountBalances || []).map((item) => ({ ...item, account_name: item.name, name: accountDisplayLabel(item) }));
   return {
@@ -78,24 +93,25 @@ const useDesktopAccountSelection = (overview) => {
 
 const MobileDashboardOverlays = ({ mobileFiltersOpen, setMobileFiltersOpen, mobileTransactionDetailOpen, setMobileTransactionDetailOpen, dashboardViewModel, bootstrap, filters, setters, balanceVisible, resetFilters, openTransactionComposer }) => <>{mobileFiltersOpen ? (<Suspense fallback={null}><MobileDashboardFilters open onClose={() => setMobileFiltersOpen(false)} accounts={dashboardViewModel.accountBalances} categories={(bootstrap?.categories || []).filter((item) => item.status === "active")} accountFilter={filters.accountFilter} onAccountFilterChange={setters.setAccountFilter} categoryFilter={filters.categoryFilter} onCategoryFilterChange={setters.setCategoryFilter} typeFilter={filters.typeFilter} onTypeFilterChange={setters.setTypeFilter} searchTerm={filters.searchTerm} onSearchTermChange={setters.setSearchTerm} activeFilterCount={dashboardViewModel.activeFilterCount} onReset={resetFilters} /></Suspense>) : null}{mobileTransactionDetailOpen ? (<Suspense fallback={null}><MobileTransactionDetail open onClose={() => setMobileTransactionDetailOpen(false)} transaction={dashboardViewModel.selectedTransaction} title={dashboardViewModel.selectedTitle} category={dashboardViewModel.selectedCategory} accountLabel={dashboardViewModel.transactionAccountLabel(dashboardViewModel.selectedTransaction)} envelope={dashboardViewModel.selectedEnvelope} envelopeNote={dashboardViewModel.selectedEnvelopeNote} lastSyncedAt={dashboardViewModel.lastSyncedAt} balanceVisible={balanceVisible} onOpenTransaction={() => { setMobileTransactionDetailOpen(false); openTransactionComposer(); }} /></Suspense>) : null}</>;
 
-const DashboardSurfaces = ({ displayOverview, bootstrap, dashboardViewModel, displayName, balanceVisible, setBalanceVisible, refreshOverview, openTransactionComposer, setMobileFiltersOpen, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters }) => (
+const DashboardSurfaces = ({ mobileLayout, displayOverview, bootstrap, dashboardViewModel, displayName, balanceVisible, setBalanceVisible, refreshOverview, openTransactionComposer, setMobileFiltersOpen, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters }) => (
   <Suspense fallback={<LoadingScreen />}>
-    <MobileFinanceDashboard overview={displayOverview} bootstrap={bootstrap} viewModel={dashboardViewModel} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} onOpenTransaction={() => openTransactionComposer()} onOpenFilters={() => setMobileFiltersOpen(true)} onOpenTransactionDetail={openMobileTransactionDetail} />
-    <DesktopFinanceDashboard overview={displayOverview} bootstrap={bootstrap} viewModel={dashboardViewModel} displayName={displayName} selectedAccountId={desktopAccountId} onSelectAccount={(accountId) => { setDesktopAccountId(accountId); setters.setSelectedTransactionId(""); }} categoryFilter={filters.categoryFilter} setCategoryFilter={setters.setCategoryFilter} typeFilter={filters.typeFilter} setTypeFilter={setters.setTypeFilter} searchTerm={filters.searchTerm} setSearchTerm={setters.setSearchTerm} selectedTransactionId={filters.selectedTransactionId} setSelectedTransactionId={setters.setSelectedTransactionId} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} onOpenTransaction={() => openTransactionComposer()} />
+    {mobileLayout
+      ? <MobileFinanceDashboard overview={displayOverview} bootstrap={bootstrap} viewModel={dashboardViewModel} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} onOpenTransaction={() => openTransactionComposer()} onOpenFilters={() => setMobileFiltersOpen(true)} onOpenTransactionDetail={openMobileTransactionDetail} />
+      : <DesktopFinanceDashboard overview={displayOverview} bootstrap={bootstrap} viewModel={dashboardViewModel} displayName={displayName} selectedAccountId={desktopAccountId} onSelectAccount={(accountId) => { setDesktopAccountId(accountId); setters.setSelectedTransactionId(""); }} categoryFilter={filters.categoryFilter} setCategoryFilter={setters.setCategoryFilter} typeFilter={filters.typeFilter} setTypeFilter={setters.setTypeFilter} searchTerm={filters.searchTerm} setSearchTerm={setters.setSearchTerm} selectedTransactionId={filters.selectedTransactionId} setSelectedTransactionId={setters.setSelectedTransactionId} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} onOpenTransaction={() => openTransactionComposer()} />}
   </Suspense>
 );
 
 const DashboardPage = () => {
-  const { overview, bootstrap, status, error, refreshOverview, refreshAll } = useFinance(); const { openTransactionComposer } = useTransactionComposer(); const { user } = useAuth();
+  const { overview, bootstrap, status, error, refreshOverview, refreshAll } = useFinance(); const { openTransactionComposer } = useTransactionComposer(); const { user } = useAuth(); const mobileLayout = useMobileDashboardLayout();
   const [balanceVisible, setBalanceVisible] = useState(true); const [searchTerm, setSearchTerm] = useState(""); const [accountFilter, setAccountFilter] = useState("all"); const [categoryFilter, setCategoryFilter] = useState("all"); const [typeFilter, setTypeFilter] = useState("all"); const [selectedTransactionId, setSelectedTransactionId] = useState(""); const [desktopAccountId, setDesktopAccountId] = useDesktopAccountSelection(overview); const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false); const [mobileTransactionDetailOpen, setMobileTransactionDetailOpen] = useState(false);
   const filters = { searchTerm, accountFilter, categoryFilter, typeFilter, selectedTransactionId }; const setters = { setSearchTerm, setAccountFilter, setCategoryFilter, setTypeFilter, setSelectedTransactionId };
   const dashboardViewModel = useMemo(() => createDashboardViewModel({ overview, bootstrap, filters: { searchTerm, accountFilter, categoryFilter, typeFilter, selectedTransactionId } }), [accountFilter, bootstrap, categoryFilter, overview, searchTerm, selectedTransactionId, typeFilter]);
   if (status === "loading" || status === "idle") return <LoadingScreen />; if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />; if (!overview || !dashboardViewModel) return null;
   const displayOverview = { ...overview, accountBalances: dashboardViewModel.accountBalances }; const displayName = String(user?.name || user?.email || "").trim().split(/\s+/)[0] || "Kamu";
   const openMobileTransactionDetail = (transactionId) => { setSelectedTransactionId(transactionId); setMobileTransactionDetailOpen(true); }; const resetDashboardFilters = () => { setSearchTerm(""); setAccountFilter("all"); setCategoryFilter("all"); setTypeFilter("all"); };
-  const surfaces = { displayOverview, bootstrap, dashboardViewModel, displayName, balanceVisible, setBalanceVisible, refreshOverview, openTransactionComposer, setMobileFiltersOpen, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };
+  const surfaces = { mobileLayout, displayOverview, bootstrap, dashboardViewModel, displayName, balanceVisible, setBalanceVisible, refreshOverview, openTransactionComposer, setMobileFiltersOpen, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };
   const overlays = { mobileFiltersOpen, setMobileFiltersOpen, mobileTransactionDetailOpen, setMobileTransactionDetailOpen, dashboardViewModel, bootstrap, filters, setters, balanceVisible, resetFilters: resetDashboardFilters, openTransactionComposer };
-  return <div className="dashboard-page"><DashboardSurfaces {...surfaces} /><MobileDashboardOverlays {...overlays} /></div>;
+  return <div className="dashboard-page"><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
 };
 
 export default DashboardPage;

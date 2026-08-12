@@ -28,6 +28,21 @@ const MobileAccountsExperience = lazy(() => import("./components/MobileAccountsE
 const DesktopAccountsWorkspace = lazy(() => import("./components/DesktopAccountsWorkspace.jsx"));
 const AccountEditorDialogs = lazy(() => import("./components/AccountEditorDialogs.jsx"));
 
+const MOBILE_ACCOUNTS_QUERY = "(max-width: 820px)";
+const readMobileAccountsLayout = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(MOBILE_ACCOUNTS_QUERY).matches;
+const useMobileAccountsLayout = () => {
+  const [mobile, setMobile] = useState(readMobileAccountsLayout);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const media = window.matchMedia(MOBILE_ACCOUNTS_QUERY);
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return mobile;
+};
+
 const EMPTY_ACCOUNTS = Object.freeze([]);
 
 const emptyAccountForm = () => ({
@@ -133,16 +148,16 @@ const useAccountLifecycleActions = ({ archiveTarget, setArchiveTarget, setDialog
   return { openAccountLifecycle, archiveSelectedAccount };
 };
 
-const AccountListSection = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, navigate, bootstrap, setSelectedAccountId, openEditAccount, openAccountLifecycle, onTransferSaved }) => (
+const AccountListSection = ({ mobileLayout, accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, navigate, bootstrap, setSelectedAccountId, openEditAccount, openAccountLifecycle, onTransferSaved }) => (
   <section aria-labelledby="account-list-title" className={styles.accountSection}>
     <div className={styles.sectionHeading}><h2 id="account-list-title">Rekening aktif</h2><span>{accounts.length} rekening</span></div>
-    {accounts.length ? <>
-      <Suspense fallback={null}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownerMode={ownerMode}
-        openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} /></Suspense>
-      <Suspense fallback={null}><DesktopAccountsWorkspace accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode} bootstrap={bootstrap}
-        onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
-        onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>
-    </> : <Card className={styles.emptyPanel}><h2>Belum ada rekening</h2>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null}</Card>}
+    {accounts.length ? (mobileLayout
+      ? <Suspense fallback={null}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownerMode={ownerMode}
+          openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} /></Suspense>
+      : <Suspense fallback={null}><DesktopAccountsWorkspace accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode} bootstrap={bootstrap}
+          onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
+          onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>)
+      : <Card className={styles.emptyPanel}><h2>Belum ada rekening</h2>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null}</Card>}
   </section>
 );
 
@@ -215,6 +230,7 @@ const AccountsPage = () => {
   const { bootstrap, refreshAll, invalidate } = useFinance();
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
+  const mobileLayout = useMobileAccountsLayout();
   const usersResource = useApiResource("users.list", {}, { enabled: ownerMode });
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [message, setMessage] = useState(null);
@@ -242,10 +258,10 @@ const AccountsPage = () => {
   return <div className={`page-stack ${styles.accountsPage}`}>
     <AccountsPageFeedback accountsResource={accountsResource} usersResource={usersResource} ownerMode={ownerMode} reloadAccounts={reloadAccounts} message={message} />
     <AccountsPageHeading accounts={accounts} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} />
-    <AccountListSection accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
+    <AccountListSection mobileLayout={mobileLayout} accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
       navigate={navigate} bootstrap={bootstrap} setSelectedAccountId={setSelectedAccountId} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} onTransferSaved={reloadAccounts} />
-    <AccountSheets mobileAccountSheet={mobileAccountSheet} setMobileAccountSheet={setMobileAccountSheet} accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode}
-      setSelectedAccountId={setSelectedAccountId} navigate={navigate} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} />
+    {mobileLayout ? <AccountSheets mobileAccountSheet={mobileAccountSheet} setMobileAccountSheet={setMobileAccountSheet} accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode}
+      setSelectedAccountId={setSelectedAccountId} navigate={navigate} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} /> : null}
     <AccountEditors createDialogOpen={crud.createDialogOpen} editAccount={editAccount} closeCreateDialog={crud.closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
       createAccount={crud.createAccount} setEditAccount={setEditAccount} saveAccount={crud.saveAccount} dialogState={dialogState} activeUsers={activeUsers}
       currentDatabaseUser={currentDatabaseUser} currentOwnerLabel={currentOwnerLabel} />

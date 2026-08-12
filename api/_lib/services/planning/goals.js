@@ -72,22 +72,55 @@ const goalLifecycleImpact = async (db, current) => {
   };
 };
 
-export const listGoals = async (db, context) => {
+export const goalListStatements = (context) => {
   const access = visibleScopeSql(context.actor, "g");
-  const rows = await db.all(`SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`, access.args);
-  const items = [];
-  for (const row of rows) {
-    const current = await goalProgress(db, row.goal_id);
-    const last = await db.one("SELECT goal_movement_id,transaction_id,row_version,created_at FROM goal_movements WHERE goal_id=? AND status='active' ORDER BY created_at DESC LIMIT 1", [row.goal_id]);
-    const linked = last?.transaction_id ? await db.one("SELECT transaction_date FROM transactions WHERE transaction_id=?", [last.transaction_id]) : null;
-    const locked = linked ? Boolean(await db.one("SELECT closure_id FROM period_closures WHERE status='closed' AND period_key>=substr(?,1,7) LIMIT 1", [linked.transaction_date])) : false;
+  const today = todayJakarta();
+  return [
+    {
+      sql: `SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`,
+      args: access.args,
+    },
+    {
+      sql: `SELECT m.goal_id,COALESCE(SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END),0) AS current_amount
+        FROM goal_movements m JOIN savings_goals g ON g.goal_id=m.goal_id
+        LEFT JOIN transactions t ON t.transaction_id=m.transaction_id
+        WHERE m.status='active' AND g.status<>'archived' AND ${access.sql}
+          AND COALESCE(t.transaction_date,substr(m.created_at,1,10)) <= ?
+        GROUP BY m.goal_id`,
+      args: [...access.args, today],
+    },
+    {
+      sql: `SELECT m.goal_id,m.goal_movement_id,m.transaction_id,m.row_version,m.created_at,t.transaction_date,
+          CASE WHEN t.transaction_date IS NOT NULL AND EXISTS(
+            SELECT 1 FROM period_closures pc WHERE pc.status='closed' AND pc.period_key>=substr(t.transaction_date,1,7)
+          ) THEN 1 ELSE 0 END AS movement_locked
+        FROM goal_movements m JOIN savings_goals g ON g.goal_id=m.goal_id
+        LEFT JOIN transactions t ON t.transaction_id=m.transaction_id
+        WHERE m.status='active' AND g.status<>'archived' AND ${access.sql}
+          AND m.goal_movement_id=(
+            SELECT m2.goal_movement_id FROM goal_movements m2
+            WHERE m2.goal_id=m.goal_id AND m2.status='active'
+            ORDER BY m2.created_at DESC LIMIT 1
+          )`,
+      args: access.args,
+    },
+  ];
+};
+
+export const mapGoalListRows = (resultRows, context) => {
+  const [rows = [], progressRows = [], movementRows = []] = resultRows;
+  const progressLookup = new Map(progressRows.map((row) => [row.goal_id, Number(row.current_amount || 0)]));
+  const movementLookup = new Map(movementRows.map((row) => [row.goal_id, row]));
+  const items = rows.map((row) => {
+    const current = progressLookup.get(row.goal_id) || 0;
+    const last = movementLookup.get(row.goal_id) || null;
     const targetAmount = Number(row.target_amount || 0);
     const reached = current >= targetAmount;
     const activeMovement = row.status === "active" && row.account_status === "active";
     const canDeposit = activeMovement && !reached;
     const canWithdraw = activeMovement && current > 0;
     const ownerMode = context.actor.role === "owner";
-    items.push({
+    return {
       ...publicRow(row),
       current_amount: current,
       ...goalProjection(row, current),
@@ -98,14 +131,20 @@ export const listGoals = async (db, context) => {
       can_withdraw: canWithdraw,
       can_complete: ownerMode && row.status === "active" && reached,
       can_reopen: ownerMode && row.status === "completed",
-      can_reverse: row.status === "active" && Boolean(last) && !locked,
+      can_reverse: row.status === "active" && Boolean(last) && !Boolean(last?.movement_locked),
       can_update: ownerMode && row.status === "active",
-      can_archive: ownerMode && row.status !== "archived"
-    });
-  }
-  return {
-    items
-  };
+      can_archive: ownerMode && row.status !== "archived",
+    };
+  });
+  return { items };
+};
+
+export const listGoals = async (db, context) => {
+  const statements = goalListStatements(context);
+  const resultRows = typeof db.batch === "function"
+    ? (await db.batch(statements)).map((result) => result.rows || [])
+    : await Promise.all(statements.map((statement) => db.all(statement.sql, statement.args)));
+  return mapGoalListRows(resultRows, context);
 };
 
 const goalPayloadValue = (payload, current, key) => payload[key] === undefined ? current[key] : payload[key];

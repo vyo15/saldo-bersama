@@ -409,14 +409,20 @@ export const restoreRecurringRule = async (db, context) => {
   return publicRow(next, ["auto_debit"]);
 };
 
-export const listRecurring = async (db, context) => {
+export const recurringListStatement = (context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "r");
-  const rows = await db.all(`SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id
-    FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
-    WHERE o.period_key=? AND ${access.sql} ORDER BY o.due_date,r.name`, [period, ...access.args]);
+  return {
+    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id
+      FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
+      WHERE o.period_key=? AND ${access.sql} ORDER BY o.due_date,r.name`,
+    args: [period, ...access.args],
+  };
+};
+
+export const mapRecurringRows = (rows, context) => {
   const today = todayJakarta();
-  const items = rows.map(row => {
+  const items = rows.map((row) => {
     const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
     const persistedStatus = String(row.status || "");
     const status = persistedStatus === "cancelled"
@@ -441,11 +447,17 @@ export const listRecurring = async (db, context) => {
       can_restore_occurrence: context.actor.role === "owner" && row.rule_status === "active" && status === "cancelled",
       can_edit_rule: context.actor.role === "owner" && row.rule_status === "active",
       can_archive_rule: context.actor.role === "owner" && row.rule_status === "active",
-      transaction_type: row.kind
+      transaction_type: row.kind,
     };
   });
   return { items };
 };
+
+export const listRecurring = async (db, context) => {
+  const statement = recurringListStatement(context);
+  return mapRecurringRows(await db.all(statement.sql, statement.args), context);
+};
+
 export const cancelOccurrence = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};

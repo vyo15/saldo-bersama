@@ -1,17 +1,38 @@
 import { appendAudit } from "../audit.js";
-import { appError, assertOwner, assertVersion, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
+import { appError, assertOwner, assertVersion, monthBounds, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
-export const listBudgets = async (db, context) => {
+export const budgetListStatement = (context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "b");
-  const rows = await db.all(`SELECT b.*,COALESCE(c.name,b.name) AS display_name,COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.category_id=b.category_id AND substr(t.transaction_date,1,7)=b.period_key AND ((b.scope='shared' AND t.scope='shared') OR (b.scope='personal' AND t.scope='personal' AND t.owner_user_id=b.owner_user_id))),0) AS used_amount FROM budgets b LEFT JOIN categories c ON c.category_id=b.category_id WHERE b.period_key=? AND b.status='active' AND ${access.sql} ORDER BY display_name`, [period, ...access.args]);
+  const bounds = monthBounds(period);
   return {
-    items: rows.map(row => ({
-      ...publicRow(row),
-      name: row.display_name
-    }))
+    sql: `WITH usage AS (
+      SELECT t.category_id,t.scope,t.owner_user_id,SUM(t.amount) AS used_amount
+      FROM transactions t
+      WHERE t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ?
+      GROUP BY t.category_id,t.scope,t.owner_user_id
+    )
+    SELECT b.*,COALESCE(c.name,b.name) AS display_name,COALESCE(u.used_amount,0) AS used_amount
+    FROM budgets b
+    LEFT JOIN categories c ON c.category_id=b.category_id
+    LEFT JOIN usage u ON u.category_id=b.category_id
+      AND u.scope=b.scope
+      AND COALESCE(u.owner_user_id,'')=COALESCE(b.owner_user_id,'')
+    WHERE b.period_key=? AND b.status='active' AND ${access.sql}
+    ORDER BY display_name`,
+    args: [bounds.start, bounds.end, period, ...access.args],
   };
 };
+
+export const mapBudgetListRows = (rows) => ({
+  items: rows.map((row) => ({ ...publicRow(row), name: row.display_name })),
+});
+
+export const listBudgets = async (db, context) => {
+  const statement = budgetListStatement(context);
+  return mapBudgetListRows(await db.all(statement.sql, statement.args));
+};
+
 export const upsertBudget = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};
@@ -66,20 +87,21 @@ export const upsertBudget = async (db, context) => {
   return publicRow(next);
 };
 const budgetLifecycleImpact = async (db, current) => {
+  const bounds = monthBounds(current.period_key);
   const transactionCount = current.category_id
     ? await db.one(`SELECT COUNT(*) AS count FROM transactions
         WHERE category_id=?
-          AND substr(transaction_date,1,7)=?
+          AND transaction_date BETWEEN ? AND ?
           AND scope=?
-          AND COALESCE(owner_user_id,'')=COALESCE(?,'')`, [current.category_id, current.period_key, current.scope, current.owner_user_id])
+          AND COALESCE(owner_user_id,'')=COALESCE(?,'')`, [current.category_id, bounds.start, bounds.end, current.scope, current.owner_user_id])
     : await db.one(`SELECT COUNT(*) AS count FROM transactions
         WHERE envelope_period_id IN (
           SELECT envelope_period_id FROM envelope_periods
           WHERE envelope_rule_id=?
         )
-          AND substr(transaction_date,1,7)=?
+          AND transaction_date BETWEEN ? AND ?
           AND scope=?
-          AND COALESCE(owner_user_id,'')=COALESCE(?,'')`, [current.envelope_rule_id, current.period_key, current.scope, current.owner_user_id]);
+          AND COALESCE(owner_user_id,'')=COALESCE(?,'')`, [current.envelope_rule_id, bounds.start, bounds.end, current.scope, current.owner_user_id]);
   const closures = await db.one("SELECT COUNT(*) AS count FROM period_closures WHERE period_key=?", [current.period_key]);
   const dependencies = {
     transactions: Number(transactionCount?.count || 0),

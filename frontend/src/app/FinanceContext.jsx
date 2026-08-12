@@ -12,13 +12,16 @@ const requestStillCurrent = (requestSequence, sequence) => requestSequence.curre
 const seedOverviewCollections = (overview, { includePeriod = false } = {}) => {
   const envelopes = { items: overview?.envelopes || [] };
   const recurring = { items: overview?.recurring || [] };
+  const goals = { items: overview?.goals || [] };
+  const budgets = { items: overview?.budgets || [] };
   apiClient.seed("envelopes.list", {}, envelopes);
   apiClient.seed("recurring.list", {}, recurring);
-  apiClient.seed("goals.list", {}, { items: overview?.goals || [] });
+  apiClient.seed("goals.list", {}, goals);
   if (!includePeriod) return;
   const period = overview?.periodKey || "current";
   apiClient.seed("envelopes.list", { period }, envelopes);
   apiClient.seed("recurring.list", { period }, recurring);
+  apiClient.seed("budgets.list", { period }, budgets);
 };
 
 const nextLoadState = (hasCurrentData) => ({
@@ -109,7 +112,7 @@ const useFinanceRefreshers = (authStatus, user, controls, loadInitialState) => {
       const nextOverview = await apiClient.request("dashboard.overview", {}, { force: true });
       if (!requestStillCurrent(controls.requestSequence, sequence)) return nextOverview;
       apiClient.seed("dashboard.overview", {}, nextOverview);
-      seedOverviewCollections(nextOverview);
+      seedOverviewCollections(nextOverview, { includePeriod: true });
       controls.overviewRef.current = nextOverview;
       controls.setOverview(nextOverview);
       controls.setState({ status: "ready", error: null, refreshError: null });

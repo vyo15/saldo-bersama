@@ -10,6 +10,44 @@ import SettingsNotice from "./SettingsNotice.jsx";
 import { integrationProviderPresentation, providerSummary } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
+const providerActivityText = (provider) => {
+  if (provider.lastCompletedAt) return `Terakhir ${provider.lastCompletedAt}`;
+  if (provider.lastUpdatedAt) return `Aktivitas ${provider.lastUpdatedAt}`;
+  return "Belum pernah diproses";
+};
+
+const providerQueueText = (provider) => {
+  if (!(provider.pending || provider.processing || provider.failed || provider.deadLetter)) return "";
+  return `Menunggu ${provider.pending} · proses ${provider.processing} · gagal ${provider.failed + provider.deadLetter}`;
+};
+
+const syncSuccessText = (action) => {
+  if (action === "mirror.rebuild") return "Pembangunan ulang mirror sudah masuk antrean.";
+  if (action === "mirror.sync") return "Sinkronisasi Google Sheets sudah masuk antrean.";
+  return "Sinkronisasi dan rekonsiliasi Google Calendar sudah masuk antrean.";
+};
+
+const IntegrationTile = ({ icon: Icon, label, description, provider, readiness }) => {
+  const queueText = providerQueueText(provider);
+  return <article className={styles.serviceTile} aria-label={`Status integrasi ${label}`}>
+    <span className={styles.serviceIcon}><Icon aria-hidden="true" /></span>
+    <span className={styles.serviceCopy}>
+      <h3>{label}</h3>
+      <p>{description}</p>
+      <small>{providerActivityText(provider)}</small>
+      {queueText ? <small>{queueText}</small> : null}
+      {!readiness.ready ? <small>{readiness.text}</small> : null}
+    </span>
+    <span className={`status-badge status-badge--${readiness.tone}`}>{readiness.label}</span>
+  </article>;
+};
+
+const GoogleIntegrationActions = ({ busyAction, sheetsReadiness, calendarReadiness, run, openRebuild }) => <div className={styles.serviceActions}>
+  <Button type="button" disabled={Boolean(busyAction) || !sheetsReadiness.ready} onClick={() => run("mirror.sync")}>Sinkronkan Sheets sekarang</Button>
+  <Button type="button" disabled={Boolean(busyAction) || !calendarReadiness.ready} onClick={() => run("calendar.sync")}>Sinkronkan Calendar sekarang</Button>
+  <Button type="button" disabled={Boolean(busyAction) || !sheetsReadiness.ready} onClick={openRebuild}>Bangun ulang mirror Sheets</Button>
+</div>;
+
 const GoogleIntegrationsPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -28,12 +66,7 @@ const GoogleIntegrationsPage = () => {
     setResult({ status: "loading", text: "Mengirim permintaan sinkronisasi..." });
     try {
       await runSettingsAction(action, {}, {});
-      setResult({
-        status: "success",
-        text: action === "mirror.rebuild"
-          ? "Pembangunan ulang mirror sudah masuk antrean."
-          : action === "mirror.sync" ? "Sinkronisasi Google Sheets sudah masuk antrean." : "Sinkronisasi dan rekonsiliasi Google Calendar sudah masuk antrean.",
-      });
+      setResult({ status: "success", text: syncSuccessText(action) });
       setRebuildOpen(false);
       await Promise.allSettled([resource.reload()]);
     } catch (error) {
@@ -46,41 +79,13 @@ const GoogleIntegrationsPage = () => {
   return (
     <section className={styles.pageContent} aria-labelledby="google-integrations-title">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      <div className={styles.pageHeading}>
-        <h2 id="google-integrations-title">Integrasi Google</h2>
-      </div>
+      <div className={styles.pageHeading}><h2 id="google-integrations-title">Integrasi Google</h2></div>
       <SettingsNotice result={result} />
       <div className={styles.serviceGrid}>
-        <article className={styles.serviceTile} aria-label="Status integrasi Google Sheets">
-          <span className={styles.serviceIcon}><FiFileText aria-hidden="true" /></span>
-          <span className={styles.serviceCopy}>
-            <h3>Google Sheets</h3>
-            <p>Salinan data baca.</p>
-            <small>{sheets.lastCompletedAt ? `Terakhir ${sheets.lastCompletedAt}` : sheets.lastUpdatedAt ? `Aktivitas ${sheets.lastUpdatedAt}` : "Belum pernah diproses"}</small>
-            {sheets.pending || sheets.processing || sheets.failed || sheets.deadLetter ? <small>Menunggu {sheets.pending} · proses {sheets.processing} · gagal {sheets.failed + sheets.deadLetter}</small> : null}
-            {!sheetsReadiness.ready ? <small>{sheetsReadiness.text}</small> : null}
-          </span>
-          <span className={`status-badge status-badge--${sheetsReadiness.tone}`}>{sheetsReadiness.label}</span>
-        </article>
-        <article className={styles.serviceTile} aria-label="Status integrasi Google Calendar">
-          <span className={styles.serviceIcon}><FiCalendar aria-hidden="true" /></span>
-          <span className={styles.serviceCopy}>
-            <h3>Google Calendar</h3>
-            <p>Pengingat jadwal.</p>
-            <small>{calendar.lastCompletedAt ? `Terakhir ${calendar.lastCompletedAt}` : calendar.lastUpdatedAt ? `Aktivitas ${calendar.lastUpdatedAt}` : "Belum pernah diproses"}</small>
-            {calendar.pending || calendar.processing || calendar.failed || calendar.deadLetter ? <small>Menunggu {calendar.pending} · proses {calendar.processing} · gagal {calendar.failed + calendar.deadLetter}</small> : null}
-            {!calendarReadiness.ready ? <small>{calendarReadiness.text}</small> : null}
-          </span>
-          <span className={`status-badge status-badge--${calendarReadiness.tone}`}>{calendarReadiness.label}</span>
-        </article>
+        <IntegrationTile icon={FiFileText} label="Google Sheets" description="Salinan data baca." provider={sheets} readiness={sheetsReadiness} />
+        <IntegrationTile icon={FiCalendar} label="Google Calendar" description="Pengingat jadwal." provider={calendar} readiness={calendarReadiness} />
       </div>
-      {ownerMode ? (
-        <div className={styles.serviceActions}>
-          <Button type="button" disabled={Boolean(busyAction) || !sheetsReadiness.ready} onClick={() => run("mirror.sync")}>Sinkronkan Sheets sekarang</Button>
-          <Button type="button" disabled={Boolean(busyAction) || !calendarReadiness.ready} onClick={() => run("calendar.sync")}>Sinkronkan Calendar sekarang</Button>
-          <Button type="button" disabled={Boolean(busyAction) || !sheetsReadiness.ready} onClick={() => setRebuildOpen(true)}>Bangun ulang mirror Sheets</Button>
-        </div>
-      ) : null}
+      {ownerMode ? <GoogleIntegrationActions busyAction={busyAction} sheetsReadiness={sheetsReadiness} calendarReadiness={calendarReadiness} run={run} openRebuild={() => setRebuildOpen(true)} /> : null}
       <ConfirmationModal
         open={rebuildOpen}
         title="Bangun ulang mirror Google Sheets?"

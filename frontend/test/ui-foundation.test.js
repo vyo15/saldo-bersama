@@ -157,6 +157,8 @@ test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", 
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/DesktopFinanceDashboard\.jsx"\)\)/);
   assert.doesNotMatch(dashboard, /import MobileFinanceDashboard from "\.\/components\/MobileFinanceDashboard\.jsx";/);
   assert.doesNotMatch(dashboard, /import DesktopFinanceDashboard from "\.\/components\/DesktopFinanceDashboard\.jsx";/);
+  assert.match(dashboard, /MOBILE_DASHBOARD_QUERY = "\(max-width: 820px\)"/);
+  assert.match(dashboard, /mobileLayout[\s\S]*\? <MobileFinanceDashboard[\s\S]*: <DesktopFinanceDashboard/);
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.match(mobile, /ThemeToggle tone="hero"/);

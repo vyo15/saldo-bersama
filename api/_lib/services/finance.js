@@ -2,7 +2,7 @@ import { appendAudit } from "./audit.js";
 import { firstNegativeBalance } from "./readModels.js";
 import { isReservedTransactionField } from "../transactionContract.js";
 import {
-  appError, assertOwner, assertVersion, boundedInteger, dateValue, nowIso, periodKey, positiveInteger, publicRow,
+  appError, assertOwner, assertVersion, boundedInteger, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow,
   readableLedgerSql, sanitizeText, scopeFromAccountPair, uuid,
 } from "./core.js";
 
@@ -52,12 +52,11 @@ const assertCanModify = (context, transaction) => {
   if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi target harus dilakukan melalui menu Target.", 409, { goalId: transaction.goal_id });
 };
 
-const transactionCapabilities = async (db, context, transaction) => {
+const transactionCapabilities = (context, transaction, { periodOpen }) => {
   const active = transaction.status === "active";
   const linked = Boolean(transaction.recurring_occurrence_id || transaction.goal_id);
   const ownerOrCreator = context.actor.role === "owner" || (transaction.created_by === context.actor.user_id && actorCanOperateTransaction(context.actor, transaction));
   const adjustmentAllowed = transaction.transaction_type !== "adjustment" || context.actor.role === "owner";
-  const periodOpen = !(await isTransactionDateLocked(db, transaction.transaction_date));
   return {
     can_edit: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
     can_cancel: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
@@ -339,81 +338,103 @@ export const restoreTransaction = async (db, context) => {
   return publicRow(next);
 };
 
-export const listTransactions = async (db, context) => {
+const transactionListRequest = (context) => {
   const payload = context.payload || {};
-  const period = periodKey(payload.period);
-  const limit = boundedInteger(payload.limit, 20, 1, 200, "Limit transaksi");
-  const offset = boundedInteger(payload.offset, 0, 0, 100000, "Offset transaksi");
-  const query = sanitizeText(payload.query, 100).toLowerCase();
-  const type = String(payload.transaction_type || "all");
-  const allocation = String(payload.allocation || "all");
-  const accountId = sanitizeText(payload.account_id, 100);
-  const categoryId = sanitizeText(payload.category_id, 100);
-  const createdBy = sanitizeText(payload.created_by, 100);
+  const request = {
+    period: periodKey(payload.period),
+    limit: boundedInteger(payload.limit, 20, 1, 200, "Limit transaksi"),
+    offset: boundedInteger(payload.offset, 0, 0, 100000, "Offset transaksi"),
+    query: sanitizeText(payload.query, 100).toLowerCase(),
+    type: String(payload.transaction_type || "all"),
+    allocation: String(payload.allocation || "all"),
+    accountId: sanitizeText(payload.account_id, 100),
+    categoryId: sanitizeText(payload.category_id, 100),
+    createdBy: sanitizeText(payload.created_by, 100),
+  };
+  if (!["all", ...TRANSACTION_TYPES].includes(request.type)) throw appError("INVALID_TRANSACTION_TYPE", "Filter jenis transaksi tidak valid.", 400);
+  if (!["all", "allocated", "unallocated"].includes(request.allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter alokasi tidak valid.", 400);
+  return request;
+};
 
-  if (!["all", ...TRANSACTION_TYPES].includes(type)) throw appError("INVALID_TRANSACTION_TYPE", "Filter jenis transaksi tidak valid.", 400);
-  if (!["all", "allocated", "unallocated"].includes(allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter alokasi tidak valid.", 400);
-
+const transactionListFilters = (context, request) => {
   const access = readableLedgerSql(context.actor, "t");
-  const baseConditions = ["substr(t.transaction_date,1,7)=?", access.sql];
-  const baseArgs = [period, ...access.args];
+  const bounds = monthBounds(request.period);
+  const baseConditions = ["t.transaction_date BETWEEN ? AND ?", access.sql];
+  const baseArgs = [bounds.start, bounds.end, ...access.args];
   const conditions = [...baseConditions];
   const args = [...baseArgs];
 
-  if (type !== "all") {
+  if (request.type !== "all") {
     conditions.push("t.transaction_type=?");
-    args.push(type);
+    args.push(request.type);
   }
-  if (allocation === "allocated") conditions.push("(t.transaction_type<>'expense' OR t.envelope_period_id IS NOT NULL)");
-  if (allocation === "unallocated") conditions.push("t.transaction_type='expense' AND t.envelope_period_id IS NULL");
-  if (accountId && accountId !== "all") {
+  if (request.allocation === "allocated") conditions.push("(t.transaction_type<>'expense' OR t.envelope_period_id IS NOT NULL)");
+  if (request.allocation === "unallocated") conditions.push("t.transaction_type='expense' AND t.envelope_period_id IS NULL");
+  if (request.accountId && request.accountId !== "all") {
     conditions.push("(t.source_account_id=? OR t.destination_account_id=?)");
-    args.push(accountId, accountId);
+    args.push(request.accountId, request.accountId);
   }
-  if (categoryId && categoryId !== "all") {
+  if (request.categoryId && request.categoryId !== "all") {
     conditions.push("t.category_id=?");
-    args.push(categoryId);
+    args.push(request.categoryId);
   }
-  if (createdBy && createdBy !== "all") {
+  if (request.createdBy && request.createdBy !== "all") {
     conditions.push("t.created_by=?");
-    args.push(createdBy === "me" ? context.actor.user_id : createdBy);
+    args.push(request.createdBy === "me" ? context.actor.user_id : request.createdBy);
   }
-  if (query) {
+  if (request.query) {
     conditions.push("(lower(t.description) LIKE ? OR lower(t.merchant) LIKE ? OR lower(COALESCE(c.name,'')) LIKE ?)");
-    args.push(`%${query}%`, `%${query}%`, `%${query}%`);
+    args.push(`%${request.query}%`, `%${request.query}%`, `%${request.query}%`);
   }
+  return { baseConditions, baseArgs, conditions, args };
+};
 
-  const [count, rows, filterAccounts, filterCategories, filterCreators] = await Promise.all([
-    db.one(`SELECT COUNT(*) AS total FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}`, args),
-    db.all(`SELECT t.* FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${conditions.join(" AND ")}
-      ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT ? OFFSET ?`, [...args, limit, offset]),
-    db.all(`SELECT DISTINCT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name
-      FROM accounts a JOIN transactions t ON t.source_account_id=a.account_id OR t.destination_account_id=a.account_id
-      LEFT JOIN users u ON u.user_id=a.owner_user_id
-      WHERE ${baseConditions.join(" AND ")} ORDER BY a.name COLLATE NOCASE`, baseArgs),
-    db.all(`SELECT DISTINCT c.category_id,c.name
-      FROM categories c JOIN transactions t ON t.category_id=c.category_id
-      WHERE ${baseConditions.join(" AND ")} ORDER BY c.name COLLATE NOCASE`, baseArgs),
-    db.all(`SELECT DISTINCT u.user_id,u.name
-      FROM users u JOIN transactions t ON t.created_by=u.user_id
-      WHERE ${baseConditions.join(" AND ")} ORDER BY u.name COLLATE NOCASE`, baseArgs),
-  ]);
+const transactionListStatements = (request, filters) => [
+  { sql: `SELECT COUNT(*) AS total FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${filters.conditions.join(" AND ")}`, args: filters.args },
+  { sql: `SELECT t.* FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${filters.conditions.join(" AND ")}
+    ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT ? OFFSET ?`, args: [...filters.args, request.limit, request.offset] },
+  { sql: `SELECT DISTINCT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name
+    FROM accounts a JOIN transactions t ON t.source_account_id=a.account_id OR t.destination_account_id=a.account_id
+    LEFT JOIN users u ON u.user_id=a.owner_user_id
+    WHERE ${filters.baseConditions.join(" AND ")} ORDER BY a.name COLLATE NOCASE`, args: filters.baseArgs },
+  { sql: `SELECT DISTINCT c.category_id,c.name
+    FROM categories c JOIN transactions t ON t.category_id=c.category_id
+    WHERE ${filters.baseConditions.join(" AND ")} ORDER BY c.name COLLATE NOCASE`, args: filters.baseArgs },
+  { sql: `SELECT DISTINCT u.user_id,u.name
+    FROM users u JOIN transactions t ON t.created_by=u.user_id
+    WHERE ${filters.baseConditions.join(" AND ")} ORDER BY u.name COLLATE NOCASE`, args: filters.baseArgs },
+  { sql: "SELECT closure_id,period_key FROM period_closures WHERE status='closed' AND period_key >= ? ORDER BY period_key LIMIT 1", args: [request.period] },
+];
 
-  const items = [];
-  for (const row of rows) items.push({ ...publicRow(row), ...(await transactionCapabilities(db, context, row)) });
-  const total = Number(count?.total || 0);
+const readTransactionListRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+
+const transactionListResponse = (context, request, resultRows) => {
+  const [countRows, rows, filterAccounts, filterCategories, filterCreators, closureRows] = resultRows;
+  const periodLocked = Boolean(closureRows[0]);
+  const periodOpen = !periodLocked;
+  const items = rows.map((row) => ({ ...publicRow(row), ...transactionCapabilities(context, row, { periodOpen }) }));
+  const total = Number(countRows[0]?.total || 0);
   return {
     items,
     total,
-    offset,
-    limit,
-    hasMore: offset + items.length < total,
-    nextOffset: offset + items.length,
-    periodLocked: await isTransactionDateLocked(db, `${period}-01`),
+    offset: request.offset,
+    limit: request.limit,
+    hasMore: request.offset + items.length < total,
+    nextOffset: request.offset + items.length,
+    periodLocked,
     filterOptions: {
       accounts: filterAccounts.map((row) => publicRow(row)),
       categories: filterCategories.map((row) => publicRow(row)),
       creators: filterCreators.map((row) => publicRow(row)),
     },
   };
+};
+
+export const listTransactions = async (db, context) => {
+  const request = transactionListRequest(context);
+  const filters = transactionListFilters(context, request);
+  const resultRows = await readTransactionListRows(db, transactionListStatements(request, filters));
+  return transactionListResponse(context, request, resultRows);
 };

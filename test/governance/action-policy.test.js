@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ACTION_POLICIES, actionNames, requiresIdempotencyKey } from "../../api/_lib/actions/policy.js";
+import { ACTION_POLICIES, actionNames, isSnapshotReadAction, requiresIdempotencyKey } from "../../api/_lib/actions/policy.js";
 import { ACTION_REGISTRY } from "../../api/_lib/actions/registry.js";
 import { ACTION_PERMISSIONS } from "../../api/_lib/security.js";
 import { READ_CACHE_TTL_MS } from "../../frontend/src/services/api/cache.js";
@@ -70,4 +70,14 @@ test("preview yang menulis state tidak menyamar sebagai read dan retry external 
 test("frontend read transport tidak drift dari backend action policy", () => {
   const backendReads = Object.entries(ACTION_POLICIES).filter(([, policy]) => policy.mode === "read").map(([action]) => action).sort();
   assert.deepEqual(Object.keys(READ_CACHE_TTL_MS).sort(), backendReads);
+});
+
+
+test("snapshot read dipertahankan untuk read-model multi-query finansial dan preview guarded", () => {
+  for (const action of ["app.initialState", "bootstrap.get", "dashboard.overview", "archive.list", "transactions.list", "envelopes.list", "goals.list", "reports.monthly", "periods.previewClose", "reset.preview"]) {
+    assert.equal(isSnapshotReadAction(action), true, `${action} wajib memakai snapshot konsisten`);
+  }
+  for (const action of ["accounts.list", "categories.list", "budgets.list", "recurring.list", "reconciliations.list", "periods.list"]) {
+    assert.equal(isSnapshotReadAction(action), false, `${action} cukup memakai single-query read tanpa BEGIN/COMMIT`);
+  }
 });

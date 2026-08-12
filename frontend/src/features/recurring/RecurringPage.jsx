@@ -346,24 +346,61 @@ const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, cre
   </Modal>
 );
 
+const paymentEnvelopeHint = (status, envelopes) => {
+  if (status === "loading") return "Memuat kantong aktif...";
+  if (status === "error") return "Kantong tidak dapat dimuat. Aktual tetap dapat dicatat tanpa alokasi, atau muat ulang halaman sebelum memilih kantong.";
+  return envelopes.length ? "" : "Tidak ada kantong aktif yang cocok.";
+};
+
+const paymentEnvelopeState = (payment, paymentEnvelopes) => {
+  const selectedEnvelope = paymentEnvelopes.find((item) => item.envelope_period_id === payment.envelope_period_id) || null;
+  const exceedsEnvelope = Boolean(selectedEnvelope && Number(payment.amount || 0) > Number(selectedEnvelope.remaining_amount || 0));
+  return {
+    selectedEnvelope,
+    exceedsEnvelope,
+    blockedByEnvelope: exceedsEnvelope && selectedEnvelope?.overspend_policy === "block",
+    needsOverspendReason: exceedsEnvelope && selectedEnvelope?.overspend_policy === "confirm",
+    allowsOverspend: exceedsEnvelope && selectedEnvelope?.overspend_policy === "allow",
+  };
+};
+
+const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeHint }) => <label className="field form-grid__full">
+  <span>Kantong dana</span>
+  <select value={payment.envelope_period_id} onChange={(event) => setPayment((current) => ({ ...current, envelope_period_id: event.target.value, overspend_reason: "" }))}>
+    <option value="">Belum dialokasikan</option>
+    {paymentEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · sisa Rp {Number(item.remaining_amount || 0).toLocaleString("id-ID")}</option>)}
+  </select>
+  {envelopeHint ? <small>{envelopeHint}</small> : null}
+</label>;
+
+const PaymentOverspendFields = ({ payment, setPayment, envelopeState }) => <>
+  {envelopeState.blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa kantong. Kebijakan kantong ini memblokir overspend. Kurangi nominal atau pilih kantong lain.</div> : null}
+  {envelopeState.needsOverspendReason ? <label className="field form-grid__full"><span>Alasan melebihi alokasi *</span><input required maxLength="180" value={payment.overspend_reason} onChange={(event) => setPayment((current) => ({ ...current, overspend_reason: event.target.value }))} placeholder="Contoh: tagihan aktual lebih tinggi dari perkiraan" /></label> : null}
+  {envelopeState.allowsOverspend ? <div className="notice notice--info form-grid__full">Nominal aktual melebihi sisa kantong. Kebijakan ini mengizinkan overspend.</div> : null}
+</>;
+
+const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, paymentEnvelopes, envelopeStatus, envelopeState, completeOccurrence }) => {
+  const accountLabel = payment.item?.kind === "income" ? "Rekening penerima" : "Rekening pembayaran";
+  const showEnvelope = payment.item?.kind === "expense";
+  return <form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}>
+    <MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(amount) => setPayment((current) => ({ ...current, amount }))} required />
+    <AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }))} />
+    <label className="field"><span>Tanggal aktual *</span><input required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }))} /></label>
+    {showEnvelope ? <PaymentEnvelopeField payment={payment} setPayment={setPayment} paymentEnvelopes={paymentEnvelopes} envelopeHint={paymentEnvelopeHint(envelopeStatus, paymentEnvelopes)} /> : null}
+    <PaymentOverspendFields payment={payment} setPayment={setPayment} envelopeState={envelopeState} />
+    {paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}
+  </form>;
+};
+
 const PaymentModal = ({ payment, setPayment, paymentState, paymentMutation, paymentAccounts, paymentEnvelopes, envelopeStatus, completeOccurrence }) => {
   const close = () => paymentState.status !== "submitting" && setPayment((current) => ({ ...current, item: null }));
-  const accountLabel = payment.item?.kind === "income" ? "Rekening penerima" : "Rekening pembayaran";
-  const selectedEnvelope = paymentEnvelopes.find((item) => item.envelope_period_id === payment.envelope_period_id) || null;
-  const amount = Number(payment.amount || 0);
-  const envelopeRemaining = Number(selectedEnvelope?.remaining_amount || 0);
-  const exceedsEnvelope = Boolean(selectedEnvelope && amount > envelopeRemaining);
-  const blockedByEnvelope = exceedsEnvelope && selectedEnvelope?.overspend_policy === "block";
-  const needsOverspendReason = exceedsEnvelope && selectedEnvelope?.overspend_policy === "confirm";
-  const submitDisabled = paymentState.status === "submitting" || blockedByEnvelope;
-  const envelopeHint = envelopeStatus === "loading"
-    ? "Memuat kantong aktif..."
-    : envelopeStatus === "error"
-      ? "Kantong tidak dapat dimuat. Aktual tetap dapat dicatat tanpa alokasi, atau muat ulang halaman sebelum memilih kantong."
-      : paymentEnvelopes.length
-        ? ""
-        : "Tidak ada kantong aktif yang cocok.";
-  return <Modal open={Boolean(payment.item)} onClose={close} title={payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual"} description={payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : ""} footer={<><Button type="button" disabled={paymentState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={submitDisabled}>Simpan aktual</Button></>}><form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}><MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(amount) => setPayment((current) => ({ ...current, amount }))} required /><AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }))} /><label className="field"><span>Tanggal aktual *</span><input required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }))} /></label>{payment.item?.kind === "expense" ? <label className="field form-grid__full"><span>Kantong dana</span><select value={payment.envelope_period_id} onChange={(event) => setPayment((current) => ({ ...current, envelope_period_id: event.target.value, overspend_reason: "" }))}><option value="">Belum dialokasikan</option>{paymentEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · sisa Rp {Number(item.remaining_amount || 0).toLocaleString("id-ID")}</option>)}</select>{envelopeHint ? <small>{envelopeHint}</small> : null}</label> : null}{blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa kantong. Kebijakan kantong ini memblokir overspend. Kurangi nominal atau pilih kantong lain.</div> : null}{needsOverspendReason ? <label className="field form-grid__full"><span>Alasan melebihi alokasi *</span><input required maxLength="180" value={payment.overspend_reason} onChange={(event) => setPayment((current) => ({ ...current, overspend_reason: event.target.value }))} placeholder="Contoh: tagihan aktual lebih tinggi dari perkiraan" /></label> : null}{exceedsEnvelope && selectedEnvelope?.overspend_policy === "allow" ? <div className="notice notice--info form-grid__full">Nominal aktual melebihi sisa kantong. Kebijakan ini mengizinkan overspend.</div> : null}{paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}</form></Modal>;
+  const envelopeState = paymentEnvelopeState(payment, paymentEnvelopes);
+  const title = payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual";
+  const description = payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : "";
+  const footer = <><Button type="button" disabled={paymentState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={paymentState.status === "submitting" || envelopeState.blockedByEnvelope}>Simpan aktual</Button></>;
+  return <Modal open={Boolean(payment.item)} onClose={close} title={title} description={description} footer={footer}>
+    <PaymentForm payment={payment} setPayment={setPayment} paymentState={paymentState} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeStatus} envelopeState={envelopeState} completeOccurrence={completeOccurrence} />
+  </Modal>;
 };
 
 const EditRuleFields = ({ editRule, setEditRule, editCategories, accounts }) => <>
