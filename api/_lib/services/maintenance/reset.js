@@ -33,11 +33,30 @@ const RESET_STATE_TABLES = Object.freeze([...RESET_BUSINESS_TABLES, ...RESET_OPE
 const RESET_OPERATIONAL_DELETE_ORDER = Object.freeze(RESET_OPERATIONAL_TABLES.map(({ table }) => table));
 const RESET_BUSINESS_DELETE_ORDER = Object.freeze(RESET_BUSINESS_TABLES.map(({ table }) => table));
 
-const readResetState = async (db) => {
-  const rowsByTable = {};
-  for (const { table, key } of RESET_STATE_TABLES) {
-    rowsByTable[table] = await db.all(`SELECT * FROM ${quoted(table)} ORDER BY ${quoted(key)}`);
+const RESET_STATE_STATEMENTS = Object.freeze(RESET_STATE_TABLES.map(({ table, key }) => ({
+  sql: `SELECT * FROM ${quoted(table)} ORDER BY ${quoted(key)}`,
+  args: [],
+})));
+
+const PRESERVED_COUNT_STATEMENTS = Object.freeze([
+  { sql: "SELECT COUNT(*) AS count FROM accounts", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM categories", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM users", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM audit_log", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM backup_runs", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM push_subscriptions", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM notification_preferences", args: [] },
+]);
+
+const readBatchRows = async (db, statements) => {
+  if (typeof db.batch === "function") {
+    return (await db.batch(statements)).map((result) => result.rows || []);
   }
+  return Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+};
+
+const mapResetStateRows = (resultRows) => {
+  const rowsByTable = Object.fromEntries(RESET_STATE_TABLES.map(({ table }, index) => [table, resultRows[index] || []]));
   const counts = Object.fromEntries(RESET_STATE_TABLES.map(({ table }) => [table, rowsByTable[table].length]));
   return {
     counts,
@@ -45,16 +64,8 @@ const readResetState = async (db) => {
   };
 };
 
-const readPreservedCounts = async (db) => {
-  const [accounts, categories, users, audit, backups, pushSubscriptions, notificationPreferences] = await Promise.all([
-    db.one("SELECT COUNT(*) AS count FROM accounts"),
-    db.one("SELECT COUNT(*) AS count FROM categories"),
-    db.one("SELECT COUNT(*) AS count FROM users"),
-    db.one("SELECT COUNT(*) AS count FROM audit_log"),
-    db.one("SELECT COUNT(*) AS count FROM backup_runs"),
-    db.one("SELECT COUNT(*) AS count FROM push_subscriptions"),
-    db.one("SELECT COUNT(*) AS count FROM notification_preferences"),
-  ]);
+const mapPreservedCountRows = (resultRows) => {
+  const [accounts, categories, users, audit, backups, pushSubscriptions, notificationPreferences] = resultRows.map((rows) => rows?.[0] || null);
   return {
     accounts: Number(accounts?.count || 0),
     categories: Number(categories?.count || 0),
@@ -65,6 +76,8 @@ const readPreservedCounts = async (db) => {
     notificationPreferences: Number(notificationPreferences?.count || 0),
   };
 };
+
+const readResetState = async (db) => mapResetStateRows(await readBatchRows(db, RESET_STATE_STATEMENTS));
 
 const sumCounts = (counts, tables) => tables.reduce((sum, { table }) => sum + Number(counts[table] || 0), 0);
 
@@ -96,7 +109,9 @@ const resetSummary = (counts) => {
 
 export const previewTrialDataReset = async (db, context) => {
   assertOwner(context.actor);
-  const [state, preserved] = await Promise.all([readResetState(db), readPreservedCounts(db)]);
+  const resultRows = await readBatchRows(db, [...RESET_STATE_STATEMENTS, ...PRESERVED_COUNT_STATEMENTS]);
+  const state = mapResetStateRows(resultRows.slice(0, RESET_STATE_STATEMENTS.length));
+  const preserved = mapPreservedCountRows(resultRows.slice(RESET_STATE_STATEMENTS.length));
   return {
     scope: "prelaunch-testing-data",
     previewFingerprint: state.fingerprint,

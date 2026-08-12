@@ -71,12 +71,8 @@ export const accountBalanceAsOf = async (db, account, cutoffDate = todayJakarta(
   return total;
 };
 
-export const firstNegativeBalance = async (db, account, { excludeTransactionId = null, candidate = null, fromDate = account.initial_balance_date } = {}) => {
-  const rows = await db.all(`SELECT * FROM transactions
-    WHERE status='active' AND transaction_date >= ?
-      AND (source_account_id=? OR destination_account_id=?)
-      ${excludeTransactionId ? "AND transaction_id <> ?" : ""}
-    ORDER BY transaction_date, created_at, transaction_id`, [account.initial_balance_date, account.account_id, account.account_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
+export const firstNegativeBalanceFromRows = (account, transactionRows = [], { candidate = null, fromDate = account.initial_balance_date } = {}) => {
+  const rows = [...transactionRows];
   if (candidate) rows.push({ status: "active", created_at: "9999", transaction_id: "candidate", ...candidate });
   rows.sort((a, b) => String(a.transaction_date).localeCompare(String(b.transaction_date)) || String(a.created_at).localeCompare(String(b.created_at)) || String(a.transaction_id).localeCompare(String(b.transaction_id)));
   let balance = Number(account.initial_balance || 0);
@@ -86,6 +82,15 @@ export const firstNegativeBalance = async (db, account, { excludeTransactionId =
     if (balance < 0 && row.transaction_date >= fromDate) return { date: row.transaction_date, balance };
   }
   return null;
+};
+
+export const firstNegativeBalance = async (db, account, { excludeTransactionId = null, candidate = null, fromDate = account.initial_balance_date } = {}) => {
+  const rows = await db.all(`SELECT * FROM transactions
+    WHERE status='active' AND transaction_date >= ?
+      AND (source_account_id=? OR destination_account_id=?)
+      ${excludeTransactionId ? "AND transaction_id <> ?" : ""}
+    ORDER BY transaction_date, created_at, transaction_id`, [account.initial_balance_date, account.account_id, account.account_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
+  return firstNegativeBalanceFromRows(account, rows, { candidate, fromDate });
 };
 
 export const visibleTransactions = async (db, actor, { startDate = null, endDate = null, includeCancelled = true, limit = null } = {}) => {

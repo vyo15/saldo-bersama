@@ -47,15 +47,11 @@ export const goalProjection = (row, currentAmount) => {
     pace_status: paceStatus,
   };
 };
-const goalLifecycleImpact = async (db, current) => {
-  const dependencies = await db.one(`SELECT
-    (SELECT COUNT(*) FROM goal_movements WHERE goal_id=?) AS movements,
-    (SELECT COUNT(*) FROM transactions WHERE goal_id=?) AS transactions`, [current.goal_id, current.goal_id]);
+const goalLifecycleResult = (current, dependencies, currentAmount) => {
   const normalized = {
     movements: Number(dependencies?.movements || 0),
     transactions: Number(dependencies?.transactions || 0),
   };
-  const currentAmount = await goalProgress(db, current.goal_id);
   const deleteBlockers = [];
   if (current.status !== "active") deleteBlockers.push("Hanya target aktif yang dapat dihapus sebagai target belum dipakai.");
   if (currentAmount !== 0) deleteBlockers.push("Progress target harus Rp0.");
@@ -71,6 +67,33 @@ const goalLifecycleImpact = async (db, current) => {
     deleteBlockers,
   };
 };
+
+const goalLifecycleImpact = async (db, current) => goalLifecycleResult(
+  current,
+  await db.one(`SELECT
+    (SELECT COUNT(*) FROM goal_movements WHERE goal_id=?) AS movements,
+    (SELECT COUNT(*) FROM transactions WHERE goal_id=?) AS transactions`, [current.goal_id, current.goal_id]),
+  await goalProgress(db, current.goal_id),
+);
+
+const goalLifecyclePreviewStatements = (goalId, cutoffDate = todayJakarta()) => [{
+  sql: "SELECT * FROM savings_goals WHERE goal_id=? AND status<>'archived'",
+  args: [goalId],
+}, {
+  sql: `SELECT
+    (SELECT COUNT(*) FROM goal_movements WHERE goal_id=?) AS movements,
+    (SELECT COUNT(*) FROM transactions WHERE goal_id=?) AS transactions`,
+  args: [goalId, goalId],
+}, {
+  sql: `SELECT COALESCE(SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END),0) AS total
+    FROM goal_movements m LEFT JOIN transactions t ON t.transaction_id=m.transaction_id
+    WHERE m.goal_id=? AND m.status='active' AND COALESCE(t.transaction_date,substr(m.created_at,1,10)) <= ?`,
+  args: [goalId, cutoffDate],
+}];
+
+const readGoalBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
 
 export const goalListStatements = (context) => {
   const access = visibleScopeSql(context.actor, "g");
@@ -141,9 +164,7 @@ export const mapGoalListRows = (resultRows, context) => {
 
 export const listGoals = async (db, context) => {
   const statements = goalListStatements(context);
-  const resultRows = typeof db.batch === "function"
-    ? (await db.batch(statements)).map((result) => result.rows || [])
-    : await Promise.all(statements.map((statement) => db.all(statement.sql, statement.args)));
+  const resultRows = await readGoalBatchRows(db, statements);
   return mapGoalListRows(resultRows, context);
 };
 
@@ -320,10 +341,12 @@ export const updateGoal = async (db, context) => {
 export const previewGoalLifecycle = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};
-  const current = await db.one("SELECT * FROM savings_goals WHERE goal_id=? AND status<>'archived'", [p.goal_id]);
+  const goalId = p.goal_id;
+  const [currentRows, dependencyRows, progressRows] = await readGoalBatchRows(db, goalLifecyclePreviewStatements(goalId));
+  const current = currentRows[0] || null;
   if (!current) throw appError("NOT_FOUND", "Target aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
-  return goalLifecycleImpact(db, current);
+  return goalLifecycleResult(current, dependencyRows[0] || {}, Number(progressRows[0]?.total || 0));
 };
 
 export const deleteUnusedGoal = async (db, context) => {

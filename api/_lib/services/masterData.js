@@ -1,5 +1,5 @@
 import { appendAudit } from "./audit.js";
-import { accountBalanceAsOf, firstNegativeBalance, visibleAccounts } from "./readModels.js";
+import { accountBalanceAsOf, firstNegativeBalance, mapVisibleAccountRows, visibleAccounts, visibleAccountsStatement } from "./readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "./core.js";
 import { nextVersionStamp } from "./versioning.js";
 
@@ -79,9 +79,7 @@ const accountDependencyCounts = async (db, accountId) => numericCounts(await db.
   accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId,
 ]));
 
-const accountLifecycleImpact = async (db, current, cutoffDate) => {
-  const dependencies = await accountDependencyCounts(db, current.account_id);
-  const currentBalance = await accountBalanceAsOf(db, current, cutoffDate);
+const accountLifecycleResult = (current, dependencies, currentBalance) => {
   const archiveBlockers = [];
   if (current.status !== "active") archiveBlockers.push("Rekening tidak aktif.");
   if (currentBalance !== 0) archiveBlockers.push("Saldo saat ini harus Rp0.");
@@ -113,6 +111,42 @@ const accountLifecycleImpact = async (db, current, cutoffDate) => {
   };
 };
 
+const accountLifecycleImpact = async (db, current, cutoffDate) => accountLifecycleResult(
+  current,
+  await accountDependencyCounts(db, current.account_id),
+  await accountBalanceAsOf(db, current, cutoffDate),
+);
+
+const accountLifecyclePreviewStatements = (accountId, cutoffDate) => [{
+  sql: "SELECT * FROM accounts WHERE account_id=?",
+  args: [accountId],
+}, {
+  sql: `SELECT
+    (SELECT COUNT(*) FROM transactions WHERE source_account_id=? OR destination_account_id=?) AS transactions,
+    (SELECT COUNT(*) FROM transactions WHERE status='active' AND (source_account_id=? OR destination_account_id=?)) AS active_transactions,
+    (SELECT COUNT(*) FROM envelope_rules WHERE source_account_id=?) AS envelopes,
+    (SELECT COUNT(*) FROM envelope_rules WHERE status='active' AND source_account_id=?) AS active_envelopes,
+    (SELECT COUNT(*) FROM recurring_rules WHERE default_account_id=?) AS recurring,
+    (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND default_account_id=?) AS active_recurring,
+    (SELECT COUNT(*) FROM savings_goals WHERE account_id=?) AS goals,
+    (SELECT COUNT(*) FROM savings_goals WHERE status IN ('active','completed') AND account_id=?) AS active_goals,
+    (SELECT COUNT(*) FROM reconciliations WHERE account_id=?) AS reconciliations`,
+  args: [accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId],
+}, {
+  sql: `SELECT CASE WHEN a.initial_balance_date>? THEN 0 ELSE a.initial_balance + COALESCE(SUM(CASE
+      WHEN t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
+      WHEN t.transaction_type='expense' AND t.source_account_id=a.account_id THEN -t.amount
+      WHEN t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
+      WHEN t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
+      WHEN t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
+      ELSE 0 END),0) END AS balance
+    FROM accounts a LEFT JOIN transactions t ON t.status='active'
+      AND t.transaction_date BETWEEN a.initial_balance_date AND ?
+      AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
+    WHERE a.account_id=? GROUP BY a.account_id`,
+  args: [cutoffDate, cutoffDate, accountId],
+}];
+
 const categoryDependencyCounts = async (db, categoryId) => numericCounts(await db.one(`SELECT
   (SELECT COUNT(*) FROM transactions WHERE category_id=?) AS transactions,
   (SELECT COUNT(*) FROM transactions WHERE status='active' AND category_id=?) AS active_transactions,
@@ -121,8 +155,7 @@ const categoryDependencyCounts = async (db, categoryId) => numericCounts(await d
   (SELECT COUNT(*) FROM budgets WHERE category_id=?) AS budgets,
   (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS active_budgets`, [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId]));
 
-const categoryLifecycleImpact = async (db, current) => {
-  const dependencies = await categoryDependencyCounts(db, current.category_id);
+const categoryLifecycleResult = (current, dependencies) => {
   const archiveBlockers = [];
   if (current.status !== "active") archiveBlockers.push("Kategori tidak aktif.");
   if (dependencies.active_recurring) archiveBlockers.push("Masih digunakan tagihan rutin aktif.");
@@ -144,18 +177,45 @@ const categoryLifecycleImpact = async (db, current) => {
   };
 };
 
+const categoryLifecycleImpact = async (db, current) => categoryLifecycleResult(
+  current,
+  await categoryDependencyCounts(db, current.category_id),
+);
+
+const categoryLifecyclePreviewStatements = (categoryId) => [{
+  sql: "SELECT * FROM categories WHERE category_id=?",
+  args: [categoryId],
+}, {
+  sql: `SELECT
+    (SELECT COUNT(*) FROM transactions WHERE category_id=?) AS transactions,
+    (SELECT COUNT(*) FROM transactions WHERE status='active' AND category_id=?) AS active_transactions,
+    (SELECT COUNT(*) FROM recurring_rules WHERE category_id=?) AS recurring,
+    (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND category_id=?) AS active_recurring,
+    (SELECT COUNT(*) FROM budgets WHERE category_id=?) AS budgets,
+    (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS active_budgets`,
+  args: [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId],
+}];
+
+const readBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+
 export const listAccounts = async (db, context) => ({ items: await visibleAccounts(db, context.actor) });
 
 export const listArchivedData = async (db, context) => {
   assertOwner(context.actor);
-  const [allAccounts, categories, envelopeRules, goals, recurringRules, budgets] = await Promise.all([
-    visibleAccounts(db, context.actor, { includeArchived: true }),
-    db.all("SELECT * FROM categories WHERE status='archived' ORDER BY updated_at DESC,name COLLATE NOCASE"),
-    db.all("SELECT r.*,a.name AS source_account_name,a.status AS source_account_status FROM envelope_rules r LEFT JOIN accounts a ON a.account_id=r.source_account_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50"),
-    db.all("SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE g.status='archived' ORDER BY g.updated_at DESC LIMIT 50"),
-    db.all("SELECT r.*,a.name AS account_name,a.status AS account_status,c.name AS category_name,c.status AS category_status FROM recurring_rules r JOIN accounts a ON a.account_id=r.default_account_id JOIN categories c ON c.category_id=r.category_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50"),
-    db.all("SELECT b.*,COALESCE(c.name,b.name) AS display_name,c.status AS category_status FROM budgets b LEFT JOIN categories c ON c.category_id=b.category_id WHERE b.status='archived' ORDER BY b.updated_at DESC LIMIT 100"),
-  ]);
+  const accountStatement = visibleAccountsStatement(context.actor, { includeArchived: true });
+  const statements = [
+    accountStatement,
+    { sql: "SELECT * FROM categories WHERE status='archived' ORDER BY updated_at DESC,name COLLATE NOCASE", args: [] },
+    { sql: "SELECT r.*,a.name AS source_account_name,a.status AS source_account_status FROM envelope_rules r LEFT JOIN accounts a ON a.account_id=r.source_account_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50", args: [] },
+    { sql: "SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE g.status='archived' ORDER BY g.updated_at DESC LIMIT 50", args: [] },
+    { sql: "SELECT r.*,a.name AS account_name,a.status AS account_status,c.name AS category_name,c.status AS category_status FROM recurring_rules r JOIN accounts a ON a.account_id=r.default_account_id JOIN categories c ON c.category_id=r.category_id WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50", args: [] },
+    { sql: "SELECT b.*,COALESCE(c.name,b.name) AS display_name,c.status AS category_status FROM budgets b LEFT JOIN categories c ON c.category_id=b.category_id WHERE b.status='archived' ORDER BY b.updated_at DESC LIMIT 100", args: [] },
+  ];
+  const resultRows = await readBatchRows(db, statements);
+  const [accountRows = [], categories = [], envelopeRules = [], goals = [], recurringRules = [], budgets = []] = resultRows;
+  const allAccounts = mapVisibleAccountRows(accountRows, context.actor);
   return {
     accounts: allAccounts.filter((item) => item.status === "archived"),
     categories: categories.map((row) => publicRow(row)),
@@ -313,10 +373,13 @@ export const updateAccount = async (db, context) => {
 
 export const previewAccountLifecycle = async (db, context) => {
   assertOwner(context.actor);
-  const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [context.payload?.account_id]);
+  const accountId = context.payload?.account_id;
+  const cutoffDate = context.today || nowIso().slice(0, 10);
+  const [currentRows, dependencyRows, balanceRows] = await readBatchRows(db, accountLifecyclePreviewStatements(accountId, cutoffDate));
+  const current = currentRows[0] || null;
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? context.payload?.row_version);
-  return accountLifecycleImpact(db, current, context.today || nowIso().slice(0, 10));
+  return accountLifecycleResult(current, numericCounts(dependencyRows[0] || {}), Number(balanceRows[0]?.balance || 0));
 };
 
 export const archiveAccount = async (db, context) => {
@@ -443,10 +506,12 @@ export const updateCategory = async (db, context) => {
 
 export const previewCategoryArchive = async (db, context) => {
   assertOwner(context.actor);
-  const current = await db.one("SELECT * FROM categories WHERE category_id=?", [context.payload?.category_id]);
+  const categoryId = context.payload?.category_id;
+  const [currentRows, dependencyRows] = await readBatchRows(db, categoryLifecyclePreviewStatements(categoryId));
+  const current = currentRows[0] || null;
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Kategori aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? context.payload?.row_version);
-  return categoryLifecycleImpact(db, current);
+  return categoryLifecycleResult(current, numericCounts(dependencyRows[0] || {}));
 };
 
 export const archiveCategory = async (db, context) => {

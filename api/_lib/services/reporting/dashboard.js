@@ -73,13 +73,13 @@ const usageThreshold = (percentage, custom = 75) => {
   return null;
 };
 
-export const bootstrapData = async (db, context) => {
-  const accountStatement = visibleAccountsStatement(context.actor);
-  const [accountRows, categories, configRows] = await readBatchRows(db, [
-    accountStatement,
-    { sql: "SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE", args: [] },
-    { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','timezone','currency','maintenance_mode')", args: [] },
-  ]);
+const bootstrapReadStatements = (context) => [
+  visibleAccountsStatement(context.actor),
+  { sql: "SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE", args: [] },
+  { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','timezone','currency','maintenance_mode')", args: [] },
+];
+
+const mapBootstrapRows = ([accountRows = [], categories = [], configRows = []], context) => {
   const accounts = mapVisibleAccountRows(accountRows, context.actor);
   const config = Object.fromEntries(configRows.map((row) => [row.key, row.value]));
   return {
@@ -94,6 +94,11 @@ export const bootstrapData = async (db, context) => {
     },
   };
 };
+
+export const bootstrapData = async (db, context) => mapBootstrapRows(
+  await readBatchRows(db, bootstrapReadStatements(context)),
+  context,
+);
 
 const allocationSummary = (accounts, items) => {
   const allocatedRemaining = items.reduce((sum, item) => sum + Math.max(0, Number(item.remaining_amount || 0)), 0);
@@ -257,9 +262,9 @@ const reconciliationAlertsFromRows = (rows, accounts) => {
         id: `reconciliation-difference:${row.account_id}`,
         type: "reconciliation_difference",
         severity: "danger",
-        title: `Selisih saldo ${accountLabel}`,
-        message: "Saldo aktual terakhir masih berbeda dari saldo aplikasi.",
-        targetPath: "/rekening",
+        title: `Saldo ${accountLabel} berbeda`,
+        message: "Saldo yang terakhir Anda cek berbeda dari catatan aplikasi.",
+        targetPath: "/rekonsiliasi",
       });
       continue;
     }
@@ -269,9 +274,9 @@ const reconciliationAlertsFromRows = (rows, accounts) => {
         id: `reconciliation-stale:${row.account_id}`,
         type: "reconciliation_stale",
         severity: "info",
-        title: `Rekonsiliasi ${accountLabel}`,
-        message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak rekonsiliasi terakhir." : "Rekening belum pernah direkonsiliasi.",
-        targetPath: "/rekening",
+        title: row.reconciled_at ? `Saatnya cek saldo ${accountLabel}` : `Saldo ${accountLabel} belum pernah dicek`,
+        message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir dicocokkan." : "Cocokkan saldo aplikasi dengan saldo sebenarnya agar catatan tetap akurat.",
+        targetPath: "/rekonsiliasi",
       });
     }
   }
@@ -282,8 +287,8 @@ const unallocatedAlerts = (period, count) => count > 0 ? [{
   id: `unallocated:${period}`,
   type: "unallocated_expense",
   severity: "warning",
-  title: `${count} transaksi belum dialokasikan`,
-  message: "Lengkapi kantong sebelum menutup periode agar sisa dana dapat dipercaya.",
+  title: `${count} pengeluaran belum masuk alokasi`,
+  message: "Pilih kantong agar sisa jatah dan laporan alokasi tetap akurat.",
   targetPath: "/transaksi",
 }] : [];
 
@@ -352,7 +357,7 @@ const goalAlerts = (goals) => goals
     type: "goal_behind",
     severity: "warning",
     title: `${item.name} tertinggal dari rencana`,
-    message: `Perkiraan kebutuhan setoran bulanan ${Number(item.required_monthly_amount || 0)} Rupiah.`,
+    message: `Perkiraan kebutuhan setoran bulanan Rp ${Number(item.required_monthly_amount || 0).toLocaleString("id-ID")}.`,
     targetPath: "/target",
   }));
 
@@ -575,8 +580,17 @@ export const dashboardOverview = async (db, context, { preloadedAccounts = null 
 };
 
 export const appInitialState = async (db, context) => {
-  const bootstrap = await bootstrapData(db, context);
-  const overview = await dashboardOverview(db, context, { preloadedAccounts: bootstrap.accounts });
+  const bootstrapStatements = bootstrapReadStatements(context);
+  // Empty-array hint only tells the dashboard planner that current account rows will
+  // come from the bootstrap slice of the same batch. Historical periods still read
+  // their own cutoff account rows because they cannot reuse today's balances.
+  const periodContext = dashboardPeriodContext(context, []);
+  const dashboardPlan = dashboardReadPlan(context, periodContext);
+  const combinedRows = await readBatchRows(db, [...bootstrapStatements, ...dashboardPlan.statements]);
+  const bootstrap = mapBootstrapRows(combinedRows.slice(0, bootstrapStatements.length), context);
+  const dashboardRows = combinedRows.slice(bootstrapStatements.length);
+  const readState = mapDashboardReadRows(dashboardRows, dashboardPlan, context, periodContext, bootstrap.accounts);
+  const overview = dashboardResult(context, periodContext, readState);
   return { bootstrap, overview };
 };
 
@@ -586,15 +600,25 @@ export const monthlyReport = async (db, context) => {
   const accountId = sanitizeText(context.payload?.account_id, 100);
   if (![3, 6, 12].includes(trendMonths)) throw appError("INVALID_TREND_RANGE", "Rentang tren harus 3, 6, atau 12 bulan.", 400);
   const scoped = { ...context, payload: { period } };
-  const overview = await dashboardOverview(db, scoped);
+  const periodContext = dashboardPeriodContext(scoped, null);
+  const dashboardPlan = dashboardReadPlan(scoped, periodContext);
   const bounds = monthBounds(period);
   const currentPeriod = todayJakarta().slice(0, 7);
   const cutoffDate = period === currentPeriod ? todayJakarta() : bounds.end;
   const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate);
   const trendPlan = monthlyTrendPlan(context.actor, period, trendMonths, { accountId });
-  const combinedRows = await readBatchRows(db, [...breakdownStatements, ...trendPlan.statements]);
-  const breakdowns = mapReportBreakdowns(combinedRows.slice(0, breakdownStatements.length));
-  const trend = mapMonthlyTrendRows(trendPlan, combinedRows.slice(breakdownStatements.length));
+  const combinedRows = await readBatchRows(db, [
+    ...dashboardPlan.statements,
+    ...breakdownStatements,
+    ...trendPlan.statements,
+  ]);
+  const dashboardEnd = dashboardPlan.statements.length;
+  const breakdownEnd = dashboardEnd + breakdownStatements.length;
+  const dashboardRows = combinedRows.slice(0, dashboardEnd);
+  const readState = mapDashboardReadRows(dashboardRows, dashboardPlan, scoped, periodContext, null);
+  const overview = dashboardResult(scoped, periodContext, readState);
+  const breakdowns = mapReportBreakdowns(combinedRows.slice(dashboardEnd, breakdownEnd));
+  const trend = mapMonthlyTrendRows(trendPlan, combinedRows.slice(breakdownEnd));
   return {
     overview,
     budgets: overview.budgets,

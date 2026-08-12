@@ -60,8 +60,8 @@ const assertAllocationAvailable = async (db, sourceAccount, amount, excludePerio
     accountBalance: balance
   });
 };
-const envelopeRuleLifecycleImpact = async (db, current) => {
-  const row = await db.one(`SELECT
+const envelopeRuleDependencyStatement = (ruleId) => ({
+  sql: `SELECT
     COUNT(*) AS periods,
     SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active_periods,
     SUM(CASE WHEN status='closed' OR closed_at IS NOT NULL THEN 1 ELSE 0 END) AS closed_periods,
@@ -70,7 +70,11 @@ const envelopeRuleLifecycleImpact = async (db, current) => {
     (SELECT COUNT(*) FROM transactions WHERE envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)) AS transactions,
     (SELECT COUNT(*) FROM envelope_movements WHERE from_envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?) OR to_envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)) AS movements,
     (SELECT COUNT(*) FROM budgets WHERE envelope_rule_id=?) AS budgets
-    FROM envelope_periods WHERE envelope_rule_id=?`, [current.envelope_rule_id, current.envelope_rule_id, current.envelope_rule_id, current.envelope_rule_id, current.envelope_rule_id]);
+    FROM envelope_periods WHERE envelope_rule_id=?`,
+  args: [ruleId, ruleId, ruleId, ruleId, ruleId],
+});
+
+const envelopeRuleLifecycleResult = (current, row) => {
   const dependencies = Object.fromEntries(Object.entries(row || {}).map(([key, value]) => [key, Number(value || 0)]));
   const deleteBlockers = [];
   if (current.status !== "active") deleteBlockers.push("Hanya aturan kantong aktif yang dapat dihapus sebagai data belum dipakai.");
@@ -90,6 +94,15 @@ const envelopeRuleLifecycleImpact = async (db, current) => {
     deleteBlockers,
   };
 };
+
+const envelopeRuleLifecycleImpact = async (db, current) => {
+  const statement = envelopeRuleDependencyStatement(current.envelope_rule_id);
+  return envelopeRuleLifecycleResult(current, await db.one(statement.sql, statement.args));
+};
+
+const readEnvelopeBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
 
 export const listEnvelopes = async (db, context) => {
   const itemStatement = envelopeItemsStatement(context.actor, { period: context.payload?.period || null, includeClosed: true });
@@ -112,9 +125,7 @@ export const listEnvelopes = async (db, context) => {
       WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50`,
     args: [],
   }) - 1 : -1;
-  const resultRows = typeof db.batch === "function"
-    ? (await db.batch(statements)).map((result) => result.rows || [])
-    : await Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+  const resultRows = await readEnvelopeBatchRows(db, statements);
   const items = mapEnvelopeItemRows(resultRows[0] || []);
   const recentMovements = resultRows[1] || [];
   const archivedRules = archivedIndex >= 0 ? resultRows[archivedIndex] || [] : [];
@@ -362,10 +373,15 @@ export const closeEnvelope = async (db, context) => {
 export const previewEnvelopeRuleLifecycle = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};
-  const current = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
+  const ruleId = payload.envelope_rule_id;
+  const [currentRows, dependencyRows] = await readEnvelopeBatchRows(db, [{
+    sql: "SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'",
+    args: [ruleId],
+  }, envelopeRuleDependencyStatement(ruleId)]);
+  const current = currentRows[0] || null;
   if (!current) throw appError("NOT_FOUND", "Aturan kantong aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? payload.row_version);
-  return envelopeRuleLifecycleImpact(db, current);
+  return envelopeRuleLifecycleResult(current, dependencyRows[0] || {});
 };
 
 export const deleteUnusedEnvelopeRule = async (db, context) => {

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiArchive, FiArrowDown, FiArrowUp, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
+import { useLocation } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -298,6 +299,8 @@ const useGoalLifecycle = ({ resource, refreshOverview, invalidate, notify }) => 
 };
 
 const GoalsPage = () => {
+  const location = useLocation();
+  const attentionHandled = useRef(false);
   const resource = useApiResource("goals.list");
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
@@ -308,12 +311,20 @@ const GoalsPage = () => {
   const creation = useGoalCreation(shared);
   const movement = useGoalMovement({ ...shared, accounts });
   const lifecycle = useGoalLifecycle(shared);
+  const attentionGoalId = location.state?.attentionSource === "dashboard" ? String(location.state?.attentionGoalId || "") : "";
+  useEffect(() => {
+    if (attentionHandled.current || !attentionGoalId || resource.status !== "ready") return;
+    const goal = (resource.data?.items || []).find((item) => item.goal_id === attentionGoalId);
+    if (!goal) return;
+    attentionHandled.current = true;
+    if (location.state?.attentionAction === "deposit" && goal.can_deposit) movement.openMovement(goal, "deposit");
+  }, [attentionGoalId, location.state?.attentionAction, movement.openMovement, resource.data?.items, resource.status]);
   if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange };
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Target" actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />
+    <PageHeader title="Target" actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{attentionGoalId ? <div className="notice notice--info attention-guidance" role="status"><strong>Target ini tertinggal dari rencana.</strong><span>Tambahkan dana hanya jika saldo rekening sumber mencukupi. Form setoran akan dibuka otomatis bila target masih menerima setoran.</span></div> : null}
     <GoalGrid items={resource.data?.items || []} actions={actions} ownerMode={ownerMode} openCreate={creation.openCreate} />
     <GoalCreateModal open={creation.open} close={creation.closeCreate} form={creation.form} setForm={creation.setForm} accounts={accounts} createGoal={creation.createGoal} createMutation={creation.createMutation} message={creation.message} />
     <GoalEditModal editGoal={lifecycle.editGoal} setEditGoal={lifecycle.setEditGoal} editState={lifecycle.editState} saveGoal={lifecycle.saveGoal} />

@@ -24,31 +24,38 @@ const monthBoundary = (monthOffset, endOfMonth = false) => {
 };
 const safeRows = (rows) => rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, typeof value === "string" ? safeSpreadsheetText(value) : value])));
 
+const readJobBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+
 const mirrorSnapshot = async (db) => {
-  const [accounts, categories, transactions, budgets, envelopes, recurring, goals, reconciliations] = await Promise.all([
-    db.all("SELECT account_id,name,account_type,owner_scope,initial_balance,initial_balance_date,allow_negative,status,row_version,created_at,updated_at FROM accounts WHERE owner_scope='shared' ORDER BY name"),
-    db.all("SELECT category_id,name,transaction_type,nature,status,row_version,created_at,updated_at FROM categories ORDER BY transaction_type,name"),
-    db.all("SELECT transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,amount,description,merchant,payment_method,scope,status,row_version,created_at,updated_at,cancelled_at,cancellation_reason FROM transactions WHERE scope='shared' ORDER BY transaction_date DESC,created_at DESC"),
-    db.all("SELECT budget_id,period_key,category_id,name,amount,warning_threshold,scope,status,row_version,updated_at FROM budgets WHERE scope='shared' ORDER BY period_key DESC,name"),
-    db.all(`SELECT p.envelope_period_id,p.envelope_rule_id,p.name,p.period_start,p.period_end,p.allocated_amount,p.reserved_amount,p.status,p.row_version,
+  const today = todayJakarta();
+  const rows = await readJobBatchRows(db, [
+    { sql: "SELECT account_id,name,account_type,owner_scope,initial_balance,initial_balance_date,allow_negative,status,row_version,created_at,updated_at FROM accounts WHERE owner_scope='shared' ORDER BY name", args: [] },
+    { sql: "SELECT category_id,name,transaction_type,nature,status,row_version,created_at,updated_at FROM categories ORDER BY transaction_type,name", args: [] },
+    { sql: "SELECT transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,amount,description,merchant,payment_method,scope,status,row_version,created_at,updated_at,cancelled_at,cancellation_reason FROM transactions WHERE scope='shared' ORDER BY transaction_date DESC,created_at DESC", args: [] },
+    { sql: "SELECT budget_id,period_key,category_id,name,amount,warning_threshold,scope,status,row_version,updated_at FROM budgets WHERE scope='shared' ORDER BY period_key DESC,name", args: [] },
+    { sql: `SELECT p.envelope_period_id,p.envelope_rule_id,p.name,p.period_start,p.period_end,p.allocated_amount,p.reserved_amount,p.status,p.row_version,
       r.period_type,r.scope,r.assignee_user_id,COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'Bersama') AS assignee_name,CASE au.role WHEN 'owner' THEN 'Administrator' WHEN 'member' THEN 'Member' ELSE NULL END AS assignee_role,
       r.rollover_policy,r.overspend_policy,r.source_account_id
       FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
       LEFT JOIN users au ON au.user_id=r.assignee_user_id
-      WHERE r.scope='shared' ORDER BY p.period_start DESC,p.name`),
-    db.all("SELECT o.occurrence_id,o.recurring_rule_id,r.name,r.kind,o.due_date,o.expected_amount,o.actual_amount,o.status,r.frequency,r.payment_method,r.scope,r.status AS rule_status FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id WHERE r.scope='shared' ORDER BY o.due_date DESC,r.name"),
-    db.all("SELECT g.goal_id,g.name,g.goal_type,g.target_amount,g.target_date,g.account_id,g.priority,g.scope,g.status,g.row_version,g.updated_at,COALESCE((SELECT SUM(CASE WHEN m.movement_type='deposit' THEN m.amount ELSE -m.amount END) FROM goal_movements m WHERE m.goal_id=g.goal_id AND m.status='active'),0) AS current_amount FROM savings_goals g WHERE g.scope='shared' ORDER BY g.status,g.target_date"),
-    db.all("SELECT r.reconciliation_id,r.reconciled_at,a.name AS account_name,r.system_balance,r.actual_balance,r.difference,r.notes,r.status,r.created_at FROM reconciliations r JOIN accounts a ON a.account_id=r.account_id WHERE a.owner_scope='shared' ORDER BY r.reconciled_at DESC"),
+      WHERE r.scope='shared' ORDER BY p.period_start DESC,p.name`, args: [] },
+    { sql: "SELECT o.occurrence_id,o.recurring_rule_id,r.name,r.kind,o.due_date,o.expected_amount,o.actual_amount,o.status,r.frequency,r.payment_method,r.scope,r.status AS rule_status FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id WHERE r.scope='shared' ORDER BY o.due_date DESC,r.name", args: [] },
+    { sql: "SELECT g.goal_id,g.name,g.goal_type,g.target_amount,g.target_date,g.account_id,g.priority,g.scope,g.status,g.row_version,g.updated_at,COALESCE((SELECT SUM(CASE WHEN m.movement_type='deposit' THEN m.amount ELSE -m.amount END) FROM goal_movements m WHERE m.goal_id=g.goal_id AND m.status='active'),0) AS current_amount FROM savings_goals g WHERE g.scope='shared' ORDER BY g.status,g.target_date", args: [] },
+    { sql: "SELECT r.reconciliation_id,r.reconciled_at,a.name AS account_name,r.system_balance,r.actual_balance,r.difference,r.notes,r.status,r.created_at FROM reconciliations r JOIN accounts a ON a.account_id=r.account_id WHERE a.owner_scope='shared' ORDER BY r.reconciled_at DESC", args: [] },
+    { sql: `SELECT COALESCE(SUM(CASE WHEN a.initial_balance_date <= ? THEN a.initial_balance ELSE 0 END),0)
+      + COALESCE((SELECT SUM(CASE
+        WHEN t.transaction_type IN ('income','refund') THEN t.amount
+        WHEN t.transaction_type='expense' THEN -t.amount
+        WHEN t.transaction_type='adjustment' THEN t.amount
+        ELSE 0 END)
+        FROM transactions t
+        WHERE t.status='active' AND t.scope='shared' AND t.transaction_date<=?),0) AS approximate_total
+      FROM accounts a WHERE a.status='active' AND a.owner_scope='shared'`, args: [today, today] },
   ]);
-  const total = await db.one(`SELECT COALESCE(SUM(CASE WHEN a.initial_balance_date <= ? THEN a.initial_balance ELSE 0 END),0)
-    + COALESCE((SELECT SUM(CASE
-      WHEN t.transaction_type IN ('income','refund') THEN t.amount
-      WHEN t.transaction_type='expense' THEN -t.amount
-      WHEN t.transaction_type='adjustment' THEN t.amount
-      ELSE 0 END)
-      FROM transactions t
-      WHERE t.status='active' AND t.scope='shared' AND t.transaction_date<=?),0) AS approximate_total
-    FROM accounts a WHERE a.status='active' AND a.owner_scope='shared'`, [todayJakarta(), todayJakarta()]);
+  const [accounts, categories, transactions, budgets, envelopes, recurring, goals, reconciliations, totalRows] = rows;
+  const total = totalRows[0] || null;
   return {
     generatedAt: nowIso(),
     schemaVersion: DATABASE_SCHEMA_VERSION,

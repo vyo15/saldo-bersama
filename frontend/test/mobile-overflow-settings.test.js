@@ -153,10 +153,15 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
 
   assert.match(transactionStyles, /@media \(max-width: 25rem\)[\s\S]*\.typeSelector\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(transactionStyles, /font-size:\s*9px/);
-  assert.match(allocations, /className="allocation-header-actions"/);
+  assert.match(allocations, /allocation-header-actions/);
   assert.match(allocations, /className="allocation-advanced form-grid__full"/);
   assert.match(allocations, /aria-label="Muat ulang alokasi"/);
   assert.match(allocations, /PageHeader title="Alokasi dana"/);
+  assert.match(allocations, /allocation-summary/);
+  assert.match(allocations, /allocation-filters/);
+  assert.match(allocations, /allocation-card__expand/);
+  assert.match(allocations, /FiMoreHorizontal/);
+  assert.match(allocations, /mobileSwipeToClose/);
   assert.match(goals, /className="goal-card__primary-action"/);
   assert.match(goals, /className="goal-action-menu"/);
   assert.match(goals, /FiMoreHorizontal/);
@@ -166,6 +171,9 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(pages, /\.goal-action-menu__items/);
   assert.match(pages, /\.goal-action-menu:only-child \{ grid-column:\s*2; \}/);
   assert.match(responsive, /\.allocation-refresh-action > span \{ display:\s*none; \}/);
+  assert.match(responsive, /\.allocation-header-actions--administrator \{ grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, \.95fr\) var\(--mobile-control-height\); \}/);
+  assert.match(responsive, /\.allocation-filters button \{ min-height:\s*var\(--mobile-control-height\);/);
+  assert.doesNotMatch(pages, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
   assert.match(responsive, /\.report-details__summary \{[\s\S]*display:\s*flex;/);
   assert.doesNotMatch(budgets, /font-size:\s*9px/);
 });

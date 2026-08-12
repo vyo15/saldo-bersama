@@ -9,7 +9,7 @@ import BudgetPacingBar from "./BudgetPacingBar.jsx";
 import BudgetStatusPill from "./BudgetStatusPill.jsx";
 import styles from "../BudgetsPage.module.css";
 
-const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, openBudgetLifecycle }) => {
+const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, openBudgetLifecycle, attention = false }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const state = budgetVisualState(item, periodMeta);
   const Icon = categoryIcon(category?.icon, "expense");
@@ -21,7 +21,7 @@ const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, 
     : "Bersama";
 
   return (
-    <article className={`${styles.budgetCard} ${styles[`budgetCard_${state.key}`] || ""}`} data-budget-status={state.key}>
+    <article className={`${styles.budgetCard} ${styles[`budgetCard_${state.key}`] || ""}${attention ? ` ${styles.budgetCardAttention}` : ""}`} data-budget-status={state.key} data-budget-id={item.budget_id}>
       <header className={styles.cardHeader}>
         <span className={styles.categoryIcon}><Icon aria-hidden="true" /></span>
         <div className={styles.cardTitle}><strong>{name}</strong><small>{periodMeta.rangeLabel} · {ownershipLabel}</small></div>

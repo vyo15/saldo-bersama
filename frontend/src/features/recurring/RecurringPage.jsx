@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiAlertTriangle,
   FiArchive,
@@ -14,6 +14,7 @@ import {
   FiRepeat,
   FiRotateCcw,
 } from "react-icons/fi";
+import { useLocation } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -472,6 +473,8 @@ const useRecurringOccurrenceRecovery = (shared) => {
 };
 
 const RecurringPage = () => {
+  const location = useLocation();
+  const attentionHandled = useRef(false);
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [filter, setFilter] = useState("all");
   const [expandedId, setExpandedId] = useState(null);
@@ -490,6 +493,16 @@ const RecurringPage = () => {
   const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
   const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
   const paymentEnvelopes = eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount, bootstrap?.user || user);
+  const attentionOccurrenceId = location.state?.attentionSource === "dashboard" ? String(location.state?.attentionOccurrenceId || "") : "";
+  useEffect(() => {
+    if (attentionHandled.current || !attentionOccurrenceId || resource.status !== "ready") return;
+    const item = (resource.data?.items || []).find((candidate) => candidate.occurrence_id === attentionOccurrenceId);
+    if (!item) return;
+    attentionHandled.current = true;
+    setFilter(location.state?.attentionType === "recurring_due" ? "open" : "attention");
+    setExpandedId(item.occurrence_id);
+    if (location.state?.attentionAction === "payment" && item.can_pay) payments.openPayment(item);
+  }, [attentionOccurrenceId, location.state?.attentionAction, location.state?.attentionType, payments.openPayment, resource.data?.items, resource.status]);
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
@@ -503,7 +516,7 @@ const RecurringPage = () => {
   return (
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      <PageHeader title="Jadwal rutin" actions={headerActions} />
+      <PageHeader title="Jadwal rutin" actions={headerActions} />{attentionOccurrenceId ? <div className="notice notice--info attention-guidance" role="status"><strong>Selesaikan jadwal yang dipilih.</strong><span>Jika transaksi sudah terjadi, catat nominal aktual dan rekeningnya. Saldo baru berubah setelah Anda menyimpan pembayaran/penerimaan.</span></div> : null}
       <ScheduleSummary items={allItems} onAttention={() => { setFilter("attention"); setExpandedId(null); }} />
       <div className={styles.controlRow}>
         <h2>Jadwal periode ini</h2>

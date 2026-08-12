@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiPlus, FiSliders } from "react-icons/fi";
+import { useLocation } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -133,7 +134,7 @@ const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen })
   return { archiveTarget, archiveState, setArchiveTarget, openBudgetLifecycle, applyBudgetLifecycle };
 };
 
-const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, periodMeta, canManage, editBudget, openBudgetLifecycle, openBudgetForm }) => {
+const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, periodMeta, canManage, editBudget, openBudgetLifecycle, openBudgetForm, attentionBudgetId }) => {
   const title = activeFilter === "attention" ? "Perlu perhatian" : "Anggaran aktif";
   const emptyTitle = activeFilter === "attention" ? "Tidak ada anggaran yang perlu perhatian" : "Belum ada anggaran";
   const emptyAction = canManage && activeFilter === "all" ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah anggaran</Button> : undefined;
@@ -142,11 +143,11 @@ const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriti
       <h2 id="budget-list-title">{title}</h2>
       {visibleItems.length > 1 ? <button type="button" className={styles.sortButton} onClick={() => setCriticalFirst((current) => !current)} aria-pressed={criticalFirst}><FiSliders aria-hidden="true" />{criticalFirst ? "Paling kritis" : "Urutan awal"}</button> : null}
     </div>
-    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} category={categoryLookup[item.category_id]} periodMeta={periodMeta} canManage={canManage} editBudget={editBudget} openBudgetLifecycle={openBudgetLifecycle} />)}</div> : <EmptyState title={emptyTitle} action={emptyAction} />}
+    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} attention={item.budget_id === attentionBudgetId} category={categoryLookup[item.category_id]} periodMeta={periodMeta} canManage={canManage} editBudget={editBudget} openBudgetLifecycle={openBudgetLifecycle} />)}</div> : <EmptyState title={emptyTitle} action={emptyAction} />}
   </section>;
 };
 
-const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, message, canManage, user, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, formController, lifecycleController, categories, users, usersStatus }) => <div className={`page-stack budgets-page ${styles.page}`}>
+const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, message, canManage, user, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, formController, lifecycleController, categories, users, usersStatus, attentionBudgetId }) => <div className={`page-stack budgets-page ${styles.page}`}>
   <header className={styles.pageHeader}>
     <div className={styles.pageHeading}><h1>Anggaran</h1><span>{periodMeta.label}</span></div>
     {canManage ? <button type="button" className={styles.addButton} onClick={formController.openBudgetForm} aria-label="Tambah anggaran" title="Tambah anggaran"><FiPlus aria-hidden="true" /></button> : null}
@@ -156,16 +157,18 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
     <span className={styles.daysBadge}>{periodMeta.isCurrent ? `${periodMeta.daysLeft} hari tersisa` : "Periode selesai"}</span>
   </div>
   <BudgetTabs activeFilter={activeFilter} setActiveFilter={setActiveFilter} totalCount={items.length} attentionCount={attentionCount} />
+  {attentionBudgetId ? <div className="notice notice--info attention-guidance" role="status"><strong>Periksa anggaran yang disorot.</strong><span>Lihat pemakaian dan transaksi terkait. Ubah batas anggaran hanya jika rencana keuangan memang berubah, bukan sekadar untuk menghilangkan peringatan.</span></div> : null}
   {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
   {!canManage ? <div className={`notice notice--info ${styles.readOnlyNote}`} role="status">{user?.role !== "owner" ? "Member dapat memantau anggaran. Pembuatan dan perubahan anggaran hanya dapat dilakukan Administrator." : "Periode historis ditampilkan hanya-baca. Kelola anggaran pada periode aktif."}</div> : null}
   <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
-  <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} canManage={canManage} editBudget={formController.editBudget} openBudgetLifecycle={lifecycleController.openBudgetLifecycle} openBudgetForm={formController.openBudgetForm} />
+  <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} canManage={canManage} editBudget={formController.editBudget} openBudgetLifecycle={lifecycleController.openBudgetLifecycle} openBudgetForm={formController.openBudgetForm} attentionBudgetId={attentionBudgetId} />
   <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme anggaran</strong> membandingkan pemakaian dengan posisi hari ini dalam periode.</p></aside>
   <BudgetModal open={formController.formOpen && canManage} close={formController.closeBudgetForm} existingBudget={formController.existingBudget} saveState={formController.saveState} saveBudget={formController.saveBudget} form={formController.form} setForm={formController.setForm} categories={categories} users={users} usersStatus={usersStatus} selectCategory={formController.selectCategory} selectOwnership={formController.selectOwnership} />
   <BudgetLifecycleModal archiveTarget={lifecycleController.archiveTarget} archiveState={lifecycleController.archiveState} setArchiveTarget={lifecycleController.setArchiveTarget} applyBudgetLifecycle={lifecycleController.applyBudgetLifecycle} />
 </div>;
 
 const BudgetsPage = () => {
+  const location = useLocation();
   const currentPeriod = currentMonthInJakarta();
   const today = todayInJakarta();
   const [period, setPeriod] = useState(currentPeriod);
@@ -186,6 +189,7 @@ const BudgetsPage = () => {
   const periodMeta = useMemo(() => budgetPeriodMeta(period, today), [period, today]);
   const presentationItems = useMemo(() => items.map((item) => ({ item, state: budgetVisualState(item, periodMeta) })), [items, periodMeta]);
   const attentionCount = presentationItems.filter(({ state }) => state.attention).length;
+  const attentionBudgetId = location.state?.attentionSource === "dashboard" ? String(location.state?.attentionBudgetId || "") : "";
   const visibleItems = useMemo(() => {
     const filtered = activeFilter === "attention" ? presentationItems.filter(({ state }) => state.attention) : [...presentationItems];
     if (!criticalFirst) return filtered;
@@ -198,13 +202,21 @@ const BudgetsPage = () => {
   };
   const formController = useBudgetFormController({ items, period, notify, refresh });
   const lifecycleController = useBudgetLifecycleController({ notify, refresh, setForm: formController.setForm, setFormOpen: formController.setFormOpen });
+  useEffect(() => {
+    if (!attentionBudgetId || resource.status !== "ready") return;
+    const target = presentationItems.find(({ item }) => item.budget_id === attentionBudgetId);
+    if (!target) return;
+    setActiveFilter(target.state.attention ? "attention" : "all");
+    const frame = window.requestAnimationFrame(() => document.querySelector(`[data-budget-id="${CSS.escape(attentionBudgetId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [attentionBudgetId, presentationItems, resource.status]);
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat anggaran..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   return <>
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
     {administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}
-    <BudgetLoadedView period={period} setPeriod={setPeriod} currentPeriod={currentPeriod} periodMeta={periodMeta} activeFilter={activeFilter} setActiveFilter={setActiveFilter} items={items} attentionCount={attentionCount} message={formController.message} canManage={canManage} user={user} totals={totals} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} formController={formController} lifecycleController={lifecycleController} categories={categories} users={activeUsers} usersStatus={usersResource.status} />
+    <BudgetLoadedView period={period} setPeriod={setPeriod} currentPeriod={currentPeriod} periodMeta={periodMeta} activeFilter={activeFilter} setActiveFilter={setActiveFilter} items={items} attentionCount={attentionCount} message={formController.message} canManage={canManage} user={user} totals={totals} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} formController={formController} lifecycleController={lifecycleController} categories={categories} users={activeUsers} usersStatus={usersResource.status} attentionBudgetId={attentionBudgetId} />
   </>;
 };
 

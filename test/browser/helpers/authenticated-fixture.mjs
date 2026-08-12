@@ -284,11 +284,11 @@ const budgets = Object.freeze([
 ]);
 
 const alerts = Object.freeze([
-  { id: "alert-budget", severity: "warning", title: "Anggaran makan 80%", message: "Pemakaian kategori makan mendekati batas.", targetPath: "/anggaran" },
-  { id: "alert-recurring", severity: "info", title: "Kontrakan segera jatuh tempo", message: "Tagihan jatuh tempo dalam 8 hari.", targetPath: "/tagihan" },
-  { id: "alert-goal", severity: "warning", title: "Target perlu dijaga", message: "Setoran bulanan perlu dipertahankan.", targetPath: "/target" },
-  { id: "alert-unallocated", severity: "danger", title: "Transaksi belum dialokasikan", message: "Satu transaksi perlu ditinjau.", targetPath: "/transaksi" },
-  { id: "alert-reconciliation", severity: "info", title: "Saatnya rekonsiliasi", message: "Cocokkan saldo rekening dengan bank.", targetPath: "/rekening" },
+  { id: "budget:budget-food:80", type: "budget_threshold", severity: "warning", title: "Makan 80% terpakai", message: "Pemakaian kategori makan mendekati batas.", targetPath: "/anggaran" },
+  { id: "recurring-due:occ-rent-2026-08", type: "recurring_due", severity: "warning", title: "Kontrakan segera jatuh tempo", message: "Tagihan jatuh tempo dalam 7 hari.", targetPath: "/tagihan" },
+  { id: "goal-behind:goal-wedding", type: "goal_behind", severity: "warning", title: "Target perlu dijaga", message: "Setoran bulanan perlu dipertahankan.", targetPath: "/target" },
+  { id: `unallocated:${periodKey}`, type: "unallocated_expense", severity: "warning", title: "1 pengeluaran belum masuk alokasi", message: "Pilih kantong agar sisa jatah tetap akurat.", targetPath: "/transaksi" },
+  { id: "reconciliation-stale:acc-shared-cash", type: "reconciliation_stale", severity: "info", title: "Saldo Tunai belum pernah dicek", message: "Cocokkan saldo aplikasi dengan saldo sebenarnya.", targetPath: "/rekonsiliasi" },
 ]);
 
 export const bootstrapFixture = Object.freeze({

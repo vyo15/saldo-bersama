@@ -417,6 +417,12 @@
   border-color: color-mix(in srgb, var(--negative) 24%, var(--border));
 }
 
+.budgetCardAttention {
+  outline: 3px solid color-mix(in srgb, var(--primary) 52%, transparent);
+  outline-offset: 3px;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--primary) 13%, transparent);
+}
+
 .cardHeader {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;

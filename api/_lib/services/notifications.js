@@ -6,7 +6,6 @@ import net from "node:net";
 import webpush from "web-push";
 import { appendAudit } from "./audit.js";
 import { addDays, appError, assertVersion, nowIso, parseJson, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid } from "./core.js";
-import { accountBalanceAsOf } from "./readModels.js";
 import { goalProjection } from "./planning/goals.js";
 
 const BLOCKED_ENDPOINT_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".example", ".invalid", ".onion"];
@@ -302,25 +301,45 @@ const deviceStateFromSubscription = (current, actorId) => {
   return { state: active ? "active" : "inactive", registered: active, updatedAt: current.updated_at || null };
 };
 
-const resolveCurrentDevice = async (db, endpointValue, actorId) => {
-  if (!endpointValue) return { currentDevice: { state: "not_subscribed", registered: false, updatedAt: null }, subscriptionId: null };
-  const endpoint = normalizePushEndpoint(endpointValue);
-  const current = await db.one("SELECT subscription_id,user_id,status,updated_at FROM push_subscriptions WHERE endpoint=?", [endpoint]);
-  const subscriptionId = current?.user_id === actorId ? current.subscription_id : null;
-  return { currentDevice: deviceStateFromSubscription(current, actorId), subscriptionId };
+const notificationStatusStatements = (actorId, endpointValue) => {
+  const endpoint = endpointValue ? normalizePushEndpoint(endpointValue) : null;
+  const statements = [];
+  const currentIndex = endpoint ? statements.push({
+    sql: "SELECT subscription_id,user_id,status,updated_at FROM push_subscriptions WHERE endpoint=?",
+    args: [endpoint],
+  }) - 1 : -1;
+  const activeIndex = statements.push({
+    sql: "SELECT COUNT(*) AS count FROM push_subscriptions WHERE user_id=? AND status='active'",
+    args: [actorId],
+  }) - 1;
+  const deliveryIndex = statements.push({
+    sql: `SELECT notification_type,status,attempt_count,last_attempt_at,created_at
+      FROM notification_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 1`,
+    args: [actorId],
+  }) - 1;
+  const auditSubscriptionArgs = endpoint ? [actorId, endpoint, actorId] : null;
+  const successIndex = endpoint ? statements.push({
+    sql: `SELECT timestamp FROM audit_log
+      WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription'
+        AND entity_id=(SELECT subscription_id FROM push_subscriptions WHERE endpoint=? AND user_id=? LIMIT 1)
+        AND result='success'
+      ORDER BY timestamp DESC LIMIT 1`,
+    args: auditSubscriptionArgs,
+  }) - 1 : -1;
+  const failureIndex = endpoint ? statements.push({
+    sql: `SELECT timestamp,new_value FROM audit_log
+      WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription'
+        AND entity_id=(SELECT subscription_id FROM push_subscriptions WHERE endpoint=? AND user_id=? LIMIT 1)
+        AND result='failed'
+      ORDER BY timestamp DESC LIMIT 1`,
+    args: auditSubscriptionArgs,
+  }) - 1 : -1;
+  return { statements, currentIndex, activeIndex, deliveryIndex, successIndex, failureIndex };
 };
 
-const readLastPushTest = async (db, actorId, subscriptionId) => {
-  if (!subscriptionId) return { lastTest: null, failureRow: null };
-  const lastTest = await db.one(`SELECT timestamp FROM audit_log
-    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='success'
-    ORDER BY timestamp DESC LIMIT 1`, [actorId, subscriptionId]);
-  if (lastTest) return { lastTest, failureRow: null };
-  const failureRow = await db.one(`SELECT timestamp,new_value FROM audit_log
-    WHERE actor_id=? AND action='notifications.test' AND entity_type='push_subscription' AND entity_id=? AND result='failed'
-    ORDER BY timestamp DESC LIMIT 1`, [actorId, subscriptionId]);
-  return { lastTest: null, failureRow };
-};
+const readNotificationBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
 
 const presentLastTestFailure = (row) => {
   if (!row) return null;
@@ -344,19 +363,22 @@ export const notificationStatus = async (db, context) => {
   const configuration = webPushConfigurationStatus();
   const actorId = context.actor.user_id;
   const endpointValue = String(context.payload?.endpoint || "").trim();
-  const { currentDevice, subscriptionId } = await resolveCurrentDevice(db, endpointValue, actorId);
-  const [activeDevices, testState, lastDelivery] = await Promise.all([
-    db.one("SELECT COUNT(*) AS count FROM push_subscriptions WHERE user_id=? AND status='active'", [actorId]),
-    readLastPushTest(db, actorId, subscriptionId),
-    db.one(`SELECT notification_type,status,attempt_count,last_attempt_at,created_at
-      FROM notification_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 1`, [actorId]),
-  ]);
+  const plan = notificationStatusStatements(actorId, endpointValue);
+  const resultRows = await readNotificationBatchRows(db, plan.statements);
+  const current = plan.currentIndex >= 0 ? resultRows[plan.currentIndex]?.[0] || null : null;
+  const currentDevice = endpointValue
+    ? deviceStateFromSubscription(current, actorId)
+    : { state: "not_subscribed", registered: false, updatedAt: null };
+  const activeDevices = resultRows[plan.activeIndex]?.[0] || null;
+  const lastDelivery = resultRows[plan.deliveryIndex]?.[0] || null;
+  const lastTest = plan.successIndex >= 0 ? resultRows[plan.successIndex]?.[0] || null : null;
+  const failureRow = lastTest || plan.failureIndex < 0 ? null : resultRows[plan.failureIndex]?.[0] || null;
   return {
     server: { configured: configuration.configured, ready: configuration.ready, code: configuration.code },
     currentDevice,
     activeDeviceCount: Number(activeDevices?.count || 0),
-    lastTestAt: testState.lastTest?.timestamp || null,
-    lastTestFailure: presentLastTestFailure(testState.failureRow),
+    lastTestAt: lastTest?.timestamp || null,
+    lastTestFailure: presentLastTestFailure(failureRow),
     lastDelivery: presentLastDelivery(lastDelivery),
   };
 };
@@ -505,16 +527,79 @@ const queueForRecipients = async (db, users, item, notification, disabledPrefere
   return queued;
 };
 
-const queueRecurringDueNotifications = async (db, state) => {
-  const { today, dueEndDate, users, disabledPreferences } = state;
-  let queued = 0;
-  const recurring = await db.all(`SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
+const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
+  const statements = [];
+  const indexes = {};
+  const add = (key, statement) => {
+    indexes[key] = statements.length;
+    statements.push(statement);
+  };
+  add("users", { sql: "SELECT user_id FROM users WHERE status='active'", args: [] });
+  add("preferences", { sql: "SELECT user_id,notification_type FROM notification_preferences WHERE enabled=0", args: [] });
+  add("recurringDue", {
+    sql: `SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
       r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,
-      a.account_id,a.name AS account_name,a.initial_balance,a.initial_balance_date,a.allow_negative,a.owner_scope,a.owner_user_id AS account_owner_user_id,a.status AS account_status
+      a.account_id,a.status AS account_status
     FROM recurring_occurrences o
     JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
     JOIN accounts a ON a.account_id=r.default_account_id
-    WHERE r.status='active' AND o.status NOT IN ('paid','cancelled') AND o.due_date BETWEEN ? AND ?`, [today, dueEndDate]);
+    WHERE r.status='active' AND o.status NOT IN ('paid','cancelled') AND o.due_date BETWEEN ? AND ?`,
+    args: [today, dueEndDate],
+  });
+  add("recurringCompleted", {
+    sql: `SELECT o.occurrence_id,o.due_date,o.updated_at,r.kind,r.scope,r.owner_user_id
+      FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
+      WHERE r.status='active' AND o.status='paid' AND substr(o.updated_at,1,10) BETWEEN ? AND ?`,
+    args: [addDays(today, -3), today],
+  });
+  add("budgets", {
+    sql: `SELECT b.*,COALESCE((SELECT SUM(t.amount) FROM transactions t
+      WHERE t.status='active' AND t.transaction_type='expense' AND t.category_id=b.category_id
+        AND substr(t.transaction_date,1,7)=b.period_key
+        AND ((b.scope='shared' AND t.scope='shared') OR (b.scope='personal' AND t.scope='personal' AND t.owner_user_id=b.owner_user_id))),0) AS used_amount
+    FROM budgets b WHERE b.period_key=? AND b.status='active'`,
+    args: [period],
+  });
+  add("envelopes", {
+    sql: `SELECT p.envelope_period_id,p.name,p.allocated_amount,p.reserved_amount,r.scope,r.owner_user_id,r.assignee_user_id,
+      COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0) AS used_amount
+    FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+    WHERE p.status='active' AND r.status='active' AND p.period_start<=? AND p.period_end>=?`,
+    args: [today, today],
+  });
+  add("goals", {
+    sql: `SELECT g.*,COALESCE((SELECT SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END)
+      FROM goal_movements m WHERE m.goal_id=g.goal_id AND m.status='active'),0) AS current_amount
+    FROM savings_goals g WHERE g.status='active' AND g.target_date IS NOT NULL`,
+    args: [],
+  });
+  add("unallocated", {
+    sql: `SELECT scope,owner_user_id,COUNT(*) AS count
+      FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?
+      GROUP BY scope,owner_user_id`,
+    args: [period],
+  });
+  add("accountBalances", {
+    sql: `SELECT a.account_id,
+      CASE WHEN a.initial_balance_date<=? THEN a.initial_balance ELSE 0 END + COALESCE((SELECT SUM(CASE
+        WHEN t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
+        WHEN t.transaction_type='expense' AND t.source_account_id=a.account_id THEN -t.amount
+        WHEN t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
+        WHEN t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
+        WHEN t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
+        ELSE 0 END)
+      FROM transactions t WHERE t.status='active'
+        AND t.transaction_date BETWEEN a.initial_balance_date AND ?
+        AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)),0) AS balance
+      FROM accounts a WHERE a.status='active'`,
+    args: [today, today],
+  });
+  return { statements, indexes };
+};
+
+const queueRecurringDueNotifications = async (db, state, recurring) => {
+  const { today, users, disabledPreferences, accountBalances } = state;
+  let queued = 0;
   for (const item of recurring) {
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_due",
@@ -525,15 +610,8 @@ const queueRecurringDueNotifications = async (db, state) => {
     }, disabledPreferences);
     const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0));
     if (item.kind !== "expense" || remaining <= 0 || item.account_status !== "active" || item.due_date > addDays(today, 2)) continue;
-    const balance = await accountBalanceAsOf(db, {
-      account_id: item.account_id,
-      initial_balance: item.initial_balance,
-      initial_balance_date: item.initial_balance_date,
-      allow_negative: item.allow_negative,
-      owner_scope: item.owner_scope,
-      owner_user_id: item.account_owner_user_id,
-    }, today);
-    if (Number(balance) >= remaining) continue;
+    const balance = Number(accountBalances.get(item.account_id) || 0);
+    if (balance >= remaining) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_funding_shortage",
       title: "Pengingat keuangan",
@@ -545,12 +623,9 @@ const queueRecurringDueNotifications = async (db, state) => {
   return queued;
 };
 
-const queueRecurringCompletedNotifications = async (db, state) => {
-  const { today, users, disabledPreferences } = state;
+const queueRecurringCompletedNotifications = async (db, state, items) => {
+  const { users, disabledPreferences } = state;
   let queued = 0;
-  const items = await db.all(`SELECT o.occurrence_id,o.due_date,o.updated_at,r.kind,r.scope,r.owner_user_id
-    FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
-    WHERE r.status='active' AND o.status='paid' AND substr(o.updated_at,1,10) BETWEEN ? AND ?`, [addDays(today, -3), today]);
   for (const item of items) {
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_completed",
@@ -563,14 +638,9 @@ const queueRecurringCompletedNotifications = async (db, state) => {
   return queued;
 };
 
-const queueBudgetNotifications = async (db, state) => {
+const queueBudgetNotifications = async (db, state, budgets) => {
   const { period, users, disabledPreferences } = state;
   let queued = 0;
-  const budgets = await db.all(`SELECT b.*,COALESCE((SELECT SUM(t.amount) FROM transactions t
-      WHERE t.status='active' AND t.transaction_type='expense' AND t.category_id=b.category_id
-        AND substr(t.transaction_date,1,7)=b.period_key
-        AND ((b.scope='shared' AND t.scope='shared') OR (b.scope='personal' AND t.scope='personal' AND t.owner_user_id=b.owner_user_id))),0) AS used_amount
-    FROM budgets b WHERE b.period_key=? AND b.status='active'`, [period]);
   for (const item of budgets) {
     const percentage = Number(item.amount || 0) > 0 ? Math.round((Number(item.used_amount || 0) / Number(item.amount)) * 100) : 0;
     const threshold = highestUsageThreshold(percentage, Number(item.warning_threshold || 80));
@@ -586,13 +656,9 @@ const queueBudgetNotifications = async (db, state) => {
   return queued;
 };
 
-const queueEnvelopeNotifications = async (db, state) => {
-  const { today, users, disabledPreferences } = state;
+const queueEnvelopeNotifications = async (db, state, envelopes) => {
+  const { users, disabledPreferences } = state;
   let queued = 0;
-  const envelopes = await db.all(`SELECT p.envelope_period_id,p.name,p.allocated_amount,p.reserved_amount,r.scope,r.owner_user_id,r.assignee_user_id,
-      COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0) AS used_amount
-    FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
-    WHERE p.status='active' AND r.status='active' AND p.period_start<=? AND p.period_end>=?`, [today, today]);
   for (const item of envelopes) {
     const allocated = Number(item.allocated_amount || 0);
     const percentage = allocated > 0 ? Math.round(((Number(item.used_amount || 0) + Number(item.reserved_amount || 0)) / allocated) * 100) : 0;
@@ -609,12 +675,9 @@ const queueEnvelopeNotifications = async (db, state) => {
   return queued;
 };
 
-const queueGoalNotifications = async (db, state) => {
+const queueGoalNotifications = async (db, state, goals) => {
   const { period, users, disabledPreferences } = state;
   let queued = 0;
-  const goals = await db.all(`SELECT g.*,COALESCE((SELECT SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END)
-      FROM goal_movements m WHERE m.goal_id=g.goal_id AND m.status='active'),0) AS current_amount
-    FROM savings_goals g WHERE g.status='active' AND g.target_date IS NOT NULL`);
   for (const item of goals) {
     const projection = goalProjection(item, Number(item.current_amount || 0));
     if (projection.pace_status !== "behind" && projection.pace_status !== "overdue") continue;
@@ -629,12 +692,9 @@ const queueGoalNotifications = async (db, state) => {
   return queued;
 };
 
-const queueUnallocatedExpenseNotifications = async (db, state) => {
-  const { today, period, users, disabledPreferences } = state;
+const queueUnallocatedExpenseNotifications = async (db, state, items) => {
+  const { today, users, disabledPreferences } = state;
   let queued = 0;
-  const items = await db.all(`SELECT scope,owner_user_id,COUNT(*) AS count
-    FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?
-    GROUP BY scope,owner_user_id`, [period]);
   for (const item of items) {
     if (Number(item.count || 0) < 1) continue;
     queued += await queueForRecipients(db, users, item, {
@@ -652,22 +712,26 @@ export const queueActionableNotifications = async (db) => {
   const today = todayJakarta();
   const dueEnd = new Date(`${today}T00:00:00+07:00`);
   dueEnd.setUTCDate(dueEnd.getUTCDate() + 3);
-  const users = await db.all("SELECT user_id FROM users WHERE status='active'");
-  const preferenceRows = await db.all("SELECT user_id,notification_type FROM notification_preferences WHERE enabled=0");
+  const period = today.slice(0, 7);
+  const dueEndDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(dueEnd);
+  const plan = actionableNotificationReadPlan({ today, dueEndDate, period });
+  const rows = await readNotificationBatchRows(db, plan.statements);
+  const at = (key) => rows[plan.indexes[key]] || [];
   const state = {
     today,
-    period: today.slice(0, 7),
-    dueEndDate: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(dueEnd),
-    users,
-    disabledPreferences: new Set(preferenceRows.map((row) => `${row.user_id}:${row.notification_type}`)),
+    period,
+    dueEndDate,
+    users: at("users"),
+    disabledPreferences: new Set(at("preferences").map((row) => `${row.user_id}:${row.notification_type}`)),
+    accountBalances: new Map(at("accountBalances").map((row) => [row.account_id, Number(row.balance || 0)])),
   };
 
   let queued = 0;
-  queued += await queueRecurringDueNotifications(db, state);
-  queued += await queueRecurringCompletedNotifications(db, state);
-  queued += await queueBudgetNotifications(db, state);
-  queued += await queueEnvelopeNotifications(db, state);
-  queued += await queueGoalNotifications(db, state);
-  queued += await queueUnallocatedExpenseNotifications(db, state);
+  queued += await queueRecurringDueNotifications(db, state, at("recurringDue"));
+  queued += await queueRecurringCompletedNotifications(db, state, at("recurringCompleted"));
+  queued += await queueBudgetNotifications(db, state, at("budgets"));
+  queued += await queueEnvelopeNotifications(db, state, at("envelopes"));
+  queued += await queueGoalNotifications(db, state, at("goals"));
+  queued += await queueUnallocatedExpenseNotifications(db, state, at("unallocated"));
   return queued;
 };

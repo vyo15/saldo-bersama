@@ -88,6 +88,28 @@ export const upsertBudget = async (db, context) => {
   await context.enqueueMirror?.(db, "budget", next.budget_id);
   return publicRow(next);
 };
+const budgetLifecycleResult = (current, dependencies) => {
+  const normalizedDependencies = {
+    transactions: Number(dependencies?.transactions || 0),
+    period_closures: Number(dependencies?.period_closures || 0),
+  };
+  const canDeleteUnused = current.status === "active"
+    && normalizedDependencies.transactions === 0
+    && normalizedDependencies.period_closures === 0;
+  return {
+    budget_id: current.budget_id,
+    status: current.status,
+    row_version: current.row_version,
+    canDeleteUnused,
+    canArchive: current.status === "active",
+    dependencies: normalizedDependencies,
+    blockers: canDeleteUnused ? [] : [
+      ...(normalizedDependencies.transactions ? ["Anggaran sudah berada pada periode/kategori yang memiliki histori transaksi."] : []),
+      ...(normalizedDependencies.period_closures ? ["Periode anggaran sudah pernah ditutup dan merupakan histori perencanaan."] : [])
+    ]
+  };
+};
+
 const budgetLifecycleImpact = async (db, current) => {
   const bounds = monthBounds(current.period_key);
   const transactionCount = current.category_id
@@ -105,34 +127,48 @@ const budgetLifecycleImpact = async (db, current) => {
           AND scope=?
           AND COALESCE(owner_user_id,'')=COALESCE(?,'')`, [current.envelope_rule_id, bounds.start, bounds.end, current.scope, current.owner_user_id]);
   const closures = await db.one("SELECT COUNT(*) AS count FROM period_closures WHERE period_key=?", [current.period_key]);
-  const dependencies = {
+  return budgetLifecycleResult(current, {
     transactions: Number(transactionCount?.count || 0),
-    period_closures: Number(closures?.count || 0)
-  };
-  const canDeleteUnused = current.status === "active"
-    && dependencies.transactions === 0
-    && dependencies.period_closures === 0;
-  return {
-    budget_id: current.budget_id,
-    status: current.status,
-    row_version: current.row_version,
-    canDeleteUnused,
-    canArchive: current.status === "active",
-    dependencies,
-    blockers: canDeleteUnused ? [] : [
-      ...(dependencies.transactions ? ["Anggaran sudah berada pada periode/kategori yang memiliki histori transaksi."] : []),
-      ...(dependencies.period_closures ? ["Periode anggaran sudah pernah ditutup dan merupakan histori perencanaan."] : [])
-    ]
-  };
+    period_closures: Number(closures?.count || 0),
+  });
 };
+
+const budgetLifecycleDependencyStatement = (budgetId) => ({
+  sql: `WITH current AS (SELECT * FROM budgets WHERE budget_id=?)
+    SELECT CASE WHEN b.category_id IS NOT NULL THEN (
+      SELECT COUNT(*) FROM transactions t
+      WHERE t.category_id=b.category_id
+        AND t.transaction_date BETWEEN b.period_key||'-01' AND date(b.period_key||'-01','+1 month','-1 day')
+        AND t.scope=b.scope
+        AND COALESCE(t.owner_user_id,'')=COALESCE(b.owner_user_id,'')
+    ) ELSE (
+      SELECT COUNT(*) FROM transactions t
+      WHERE t.envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=b.envelope_rule_id)
+        AND t.transaction_date BETWEEN b.period_key||'-01' AND date(b.period_key||'-01','+1 month','-1 day')
+        AND t.scope=b.scope
+        AND COALESCE(t.owner_user_id,'')=COALESCE(b.owner_user_id,'')
+    ) END AS transactions,
+    (SELECT COUNT(*) FROM period_closures pc WHERE pc.period_key=b.period_key) AS period_closures
+    FROM current b`,
+  args: [budgetId],
+});
+
+const readBudgetBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
 
 export const previewBudgetLifecycle = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};
-  const current = await db.one("SELECT * FROM budgets WHERE budget_id=?", [p.budget_id]);
+  const budgetId = p.budget_id;
+  const [currentRows, dependencyRows] = await readBudgetBatchRows(db, [{
+    sql: "SELECT * FROM budgets WHERE budget_id=?",
+    args: [budgetId],
+  }, budgetLifecycleDependencyStatement(budgetId)]);
+  const current = currentRows[0] || null;
   if (!current) throw appError("NOT_FOUND", "Anggaran tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
-  return budgetLifecycleImpact(db, current);
+  return budgetLifecycleResult(current, dependencyRows[0] || {});
 };
 
 export const deleteUnusedBudget = async (db, context) => {

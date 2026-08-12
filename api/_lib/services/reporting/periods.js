@@ -2,7 +2,7 @@ import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, canonicalJson, monthBounds, nowIso, periodKey, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { monthlyReport } from "./dashboard.js";
-import { integrityIssues } from "./integrity.js";
+import { integrityBaseStatements, integrityIssuesFromBaseRows } from "./integrity.js";
 import { hash } from "./shared.js";
 const compactSnapshot = async (db, context, period) => {
   const report = await monthlyReport(db, {
@@ -122,17 +122,34 @@ const assertPeriodCanBePreviewed = (period, current, bounds) => {
   }
 };
 
-const periodStatistics = async (db, period) => Promise.all([
-  integrityIssues(db),
-  db.one("SELECT COUNT(*) AS count FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?", [period]),
-  db.one(`SELECT
+const readPeriodBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
+
+const periodStatistics = async (db, period) => {
+  const integrityStatements = integrityBaseStatements();
+  const unallocatedStatement = {
+    sql: "SELECT COUNT(*) AS count FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?",
+    args: [period],
+  };
+  const statisticsStatement = {
+    sql: `SELECT
       COUNT(*) AS transaction_count,
       SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active_count,
       SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
       COALESCE(SUM(CASE WHEN status='active' AND transaction_type IN ('income','refund') THEN amount ELSE 0 END),0) AS income_total,
       COALESCE(SUM(CASE WHEN status='active' AND transaction_type='expense' THEN amount ELSE 0 END),0) AS expense_total
-      FROM transactions WHERE substr(transaction_date,1,7)=?`, [period]),
-]);
+      FROM transactions WHERE substr(transaction_date,1,7)=?`,
+    args: [period],
+  };
+  const rows = await readPeriodBatchRows(db, [...integrityStatements, unallocatedStatement, statisticsStatement]);
+  const integrity = integrityIssuesFromBaseRows(rows.slice(0, integrityStatements.length));
+  return [
+    integrity,
+    rows[integrityStatements.length]?.[0] || null,
+    rows[integrityStatements.length + 1]?.[0] || null,
+  ];
+};
 
 const closeIssues = (integrity, unallocated, period) => {
   const issues = [...integrity];

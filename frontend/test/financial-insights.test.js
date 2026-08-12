@@ -37,6 +37,36 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(mobile, /overview\.alerts/);
 });
 
+test("dashboard mobile mengubah peringatan menjadi instruksi dan tindakan kontekstual", async () => {
+  const [mobile, transactions, reconciliation, recurring, goals, budgets, allocations] = await Promise.all([
+    source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    source("src/features/transactions/TransactionsPage.jsx"),
+    source("src/features/reconciliations/ReconciliationsPage.jsx"),
+    source("src/features/recurring/RecurringPage.jsx"),
+    source("src/features/goals/GoalsPage.jsx"),
+    source("src/features/budgets/BudgetsPage.jsx"),
+    source("src/features/allocations/AllocationsPage.jsx"),
+  ]);
+  assert.match(mobile, /Yang perlu dilakukan/);
+  assert.match(mobile, /Cocokkan saldo/);
+  assert.match(mobile, /Pilih alokasi/);
+  assert.match(mobile, /Tambah dana target/);
+  assert.match(mobile, /attentionOccurrenceId/);
+  assert.doesNotMatch(mobile, />Tinjau</);
+  assert.match(transactions, /allocation: \["allocated", "unallocated"\]\.includes\(state\?\.allocation\)/);
+  assert.match(transactions, /attentionEditableTarget/);
+  assert.match(transactions, /setEditingTransaction\(attentionEditableTarget\)/);
+  assert.match(transactions, /Daftar sudah difilter ke pengeluaran yang belum dialokasikan/);
+  assert.match(reconciliation, /accountId/);
+  assert.match(reconciliation, /sudah dipilih otomatis/);
+  assert.match(recurring, /attentionOccurrenceId/);
+  assert.match(recurring, /payments\.openPayment\(item\)/);
+  assert.match(goals, /attentionGoalId/);
+  assert.match(goals, /movement\.openMovement\(goal, "deposit"\)/);
+  assert.match(budgets, /attentionBudgetId/);
+  assert.match(allocations, /attentionEnvelopeId/);
+});
+
 test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", async () => {
   const goals = await source("src/features/goals/GoalsPage.jsx");
   assert.match(goals, /remaining_amount/);
@@ -61,7 +91,14 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /bootstrap\?\.user \|\| user/);
   assert.match(allocations, /hasSameAssignee/);
   assert.match(allocations, /Administrator, atau Member/);
-  assert.match(allocations, /items=\{activeItems\}/);
+  assert.match(allocations, /filteredActiveItems = useMemo/);
+  assert.match(allocations, /allocationFilter === "shared"/);
+  assert.match(allocations, /allocationFilter === "mine"/);
+  assert.match(allocations, /allocationFilter === "unused"/);
+  assert.match(allocations, /Melebihi alokasi/);
+  assert.match(allocations, /aria-hidden=\{!expanded\}/);
+  assert.match(allocations, /<AllocationSummary items=\{activeItems\}/);
+  assert.match(allocations, /items=\{filteredActiveItems\}/);
   assert.match(recurring, /envelope_period_id/);
   assert.match(recurring, /Kantong dana/);
   assert.match(recurring, /paymentEnvelopes\.map/);

@@ -128,7 +128,8 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
         filter: visible(".mobile-dashboard-filter-button"),
         insights: Boolean(document.querySelector(".mobile-finance-insights")),
         transaction: visible(".mobile-transaction-item"),
-        alertCount: document.querySelectorAll(".financial-alert-list--mobile li").length,
+        attentionTrigger: visible(".mobile-attention-trigger"),
+        attentionHeight: document.querySelector(".mobile-attention-trigger")?.getBoundingClientRect().height || 0,
       };
     })()`);
     assert.equal(dashboard.heading, "Ringkasan Keuangan");
@@ -138,7 +139,24 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(dashboard.filter, true);
     assert.equal(dashboard.insights, true);
     assert.equal(dashboard.transaction, true);
-    assert.ok(dashboard.alertCount >= 4, "Dashboard mobile harus mengekspos peringatan keuangan.");
+    assert.equal(dashboard.attentionTrigger, true, "Dashboard mobile harus mengekspos ringkasan Perlu perhatian.");
+    assert.ok(dashboard.attentionHeight <= 82, `Ringkasan Perlu perhatian harus compact, tinggi aktual ${dashboard.attentionHeight}px.`);
+    await page.evaluate("document.querySelector('.mobile-attention-trigger')?.click()");
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Perlu perhatian'"),
+      { description: "bottom sheet Perlu perhatian" },
+    );
+    const attentionSheet = await page.evaluate(`(() => ({
+      itemCount: document.querySelectorAll('.mobile-attention-item').length,
+      actions: [...document.querySelectorAll('.mobile-attention-action')].map((item) => item.textContent.trim()),
+      hasInstruction: (document.querySelector('[role=dialog]')?.textContent || '').includes('Yang perlu dilakukan'),
+    }))()`);
+    assert.ok(attentionSheet.itemCount >= 4, "Bottom sheet harus menampilkan seluruh peringatan yang dapat ditindaklanjuti.");
+    assert.equal(attentionSheet.hasInstruction, true, "Setiap peringatan harus menjelaskan tindakan berikutnya.");
+    assert.ok(attentionSheet.actions.includes("Pilih alokasi"));
+    assert.ok(attentionSheet.actions.includes("Cek saldo sekarang"));
+    await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "bottom sheet perhatian ditutup" });
     const mobileScrollState = await page.evaluate(`(() => {
       const htmlStyle = getComputedStyle(document.documentElement);
       const bodyStyle = getComputedStyle(document.body);
@@ -342,15 +360,54 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       const actions = document.querySelector('.allocation-header-actions');
       const refresh = document.querySelector('.allocation-refresh-action');
       const create = document.querySelector('.allocation-header-actions__primary');
+      const move = [...(actions?.querySelectorAll('.button') || [])].find((button) => button.getAttribute('aria-label') === 'Pindahkan alokasi');
       return {
         actionsInside: Boolean(actions && actions.getBoundingClientRect().right <= innerWidth + 1),
         refreshTouchTarget: refresh?.getBoundingClientRect().height || 0,
-        createFullRow: Boolean(create && actions && Math.abs(create.getBoundingClientRect().width - actions.getBoundingClientRect().width) <= 2),
+        compactSingleRow: Boolean(create && move && refresh && Math.abs(create.getBoundingClientRect().top - move.getBoundingClientRect().top) <= 2 && Math.abs(move.getBoundingClientRect().top - refresh.getBoundingClientRect().top) <= 2),
       };
     })()`);
     assert.equal(narrowAllocationActions.actionsInside, true, "Aksi Alokasi harus tetap di dalam viewport sempit.");
     assert.ok(narrowAllocationActions.refreshTouchTarget >= 43.5, `Muat ulang Alokasi minimal 44px, ditemukan ${narrowAllocationActions.refreshTouchTarget}px.`);
-    assert.equal(narrowAllocationActions.createFullRow, true, "Buat kantong harus menjadi primary action satu baris pada mobile sempit.");
+    assert.equal(narrowAllocationActions.compactSingleRow, true, "Buat kantong, Pindahkan, dan Muat ulang harus tetap compact dalam satu baris pada mobile sempit.");
+
+    const allocationCardInteraction = await page.evaluate(`(() => {
+      const summary = document.querySelector('.allocation-summary');
+      const filters = [...document.querySelectorAll('.allocation-filters button')];
+      const card = document.querySelector('.allocation-card');
+      const expand = card?.querySelector('.allocation-card__expand');
+      const menu = card?.querySelector('.allocation-card__menu');
+      const before = expand?.getAttribute('aria-expanded');
+      expand?.click();
+      return {
+        summaryVisible: Boolean(summary && summary.getBoundingClientRect().height > 0),
+        filters: filters.map((button) => button.textContent.trim()),
+        menuTouchTarget: menu?.getBoundingClientRect().height || 0,
+        before,
+        after: expand?.getAttribute('aria-expanded'),
+      };
+    })()`);
+    assert.equal(allocationCardInteraction.summaryVisible, true, "Ringkasan alokasi aktif harus terlihat sebelum daftar kantong.");
+    assert.deepEqual(allocationCardInteraction.filters, ["Semua", "Bersama", "Saya", "Belum terpakai"], "Filter kantong aktif harus tersedia dan ringkas.");
+    assert.ok(allocationCardInteraction.menuTouchTarget >= 43.5, `Menu tindakan kantong minimal 44px, ditemukan ${allocationCardInteraction.menuTouchTarget}px.`);
+    assert.deepEqual([allocationCardInteraction.before, allocationCardInteraction.after], ["false", "true"], "Lihat detail harus membuka progressive disclosure tanpa navigasi baru.");
+
+    await page.evaluate("document.querySelector('.allocation-card__menu')?.click()");
+    await waitFor(() => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Belanja harian'"), { description: "action sheet kantong alokasi" });
+    assert.equal(await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      return dialog?.getAttribute('data-mobile-swipe-to-close') === 'true' && dialog?.textContent?.includes('Tutup periode');
+    })()`), true, "Aksi kantong mobile harus memakai swipeable action sheet dan mempertahankan Tutup periode.");
+    await page.evaluate("document.querySelector('[role=dialog] [aria-label=\"Tutup dialog\"]')?.click()");
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "action sheet alokasi tertutup" });
+
+    await page.evaluate(`(() => {
+      [...document.querySelectorAll('.allocation-filters button')].find((button) => button.textContent.trim() === 'Belum terpakai')?.click();
+    })()`);
+    assert.equal(await page.evaluate("document.body.textContent.includes('Tidak ada kantong yang sesuai filter.')"), true, "Filter Belum terpakai harus memperbarui daftar secara lokal tanpa mengubah data.");
+    await page.evaluate(`(() => {
+      [...document.querySelectorAll('.allocation-filters button')].find((button) => button.textContent.trim() === 'Semua')?.click();
+    })()`);
 
     await navigateAndAssert(page, appServer.origin, "/target", "Target", { mobile: true });
     const compactGoalActions = await page.evaluate(`(() => {

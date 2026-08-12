@@ -192,6 +192,10 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
     assert.equal(report.creatorExpenses[0].user_id, member.user_id);
     assert.equal(report.natureExpenses[0].nature, "variable");
     assert.ok(report.overview.alerts.some((item) => item.type === "budget_threshold"));
+    const reconciliationAlert = report.overview.alerts.find((item) => item.type === "reconciliation_stale" || item.type === "reconciliation_difference");
+    if (reconciliationAlert) assert.equal(reconciliationAlert.targetPath, "/rekonsiliasi");
+    const unallocatedAlert = report.overview.alerts.find((item) => item.type === "unallocated_expense");
+    if (unallocatedAlert) assert.match(unallocatedAlert.title, /pengeluaran belum masuk alokasi/);
 
     const goals = await listGoals(db, { actor: owner, payload: {} });
     assert.equal(goals.items[0].remaining_amount, 12_000_000);

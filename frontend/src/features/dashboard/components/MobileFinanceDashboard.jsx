@@ -1,6 +1,8 @@
-import { FiChevronDown, FiEye, FiEyeOff, FiPieChart, FiRefreshCw, FiSliders } from "react-icons/fi";
+import { useState } from "react";
+import { FiAlertTriangle, FiChevronDown, FiChevronRight, FiEye, FiEyeOff, FiInfo, FiPieChart, FiRefreshCw, FiSliders } from "react-icons/fi";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
+import Modal from "../../../components/common/Modal.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import ThemeToggle from "../../../components/common/ThemeToggle.jsx";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
@@ -8,7 +10,99 @@ import { formatTransactionDate, transactionCategoryIcon, transactionSign, transa
 import { formatPeriod, QUICK_ACTIONS } from "../dashboardPresentation.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
-const MobileAlertItems = ({ alerts }) => alerts.map((alert) => <li key={alert.id} data-severity={alert.severity}><div><strong>{alert.title}</strong><span>{alert.message}</span></div><Link to={alert.targetPath || "/"}>Tinjau</Link></li>);
+const alertEntityId = (alert) => String(alert?.id || "").split(":")[1] || "";
+const alertPeriod = (alert) => {
+  const candidate = alertEntityId(alert);
+  return /^\d{4}-\d{2}$/.test(candidate) ? candidate : "";
+};
+
+const alertGuidance = (alert) => {
+  const entityId = alertEntityId(alert);
+  switch (alert.type) {
+    case "reconciliation_difference":
+      return {
+        instruction: "Masukkan saldo rekening yang benar saat ini. Rekening akan dipilih otomatis agar Anda tidak perlu mencarinya lagi.",
+        actionLabel: "Cocokkan saldo",
+        to: "/rekonsiliasi",
+        state: { attentionSource: "dashboard", attentionType: alert.type, accountId: entityId },
+      };
+    case "reconciliation_stale":
+      return {
+        instruction: "Cek saldo sebenarnya di bank atau uang tunai Anda, lalu masukkan nilainya untuk memastikan catatan aplikasi masih sesuai.",
+        actionLabel: "Cek saldo sekarang",
+        to: "/rekonsiliasi",
+        state: { attentionSource: "dashboard", attentionType: alert.type, accountId: entityId },
+      };
+    case "unallocated_expense":
+      return {
+        instruction: "Pilih pengeluaran yang belum memiliki kantong, buka Edit, lalu tentukan alokasi seperti Makan, Bensin, Rumah, atau jatah lainnya.",
+        actionLabel: "Pilih alokasi",
+        to: "/transaksi",
+        state: { attentionSource: "dashboard", attentionType: alert.type, allocation: "unallocated", period: alertPeriod(alert) },
+      };
+    case "budget_threshold":
+      return {
+        instruction: alert.severity === "danger" ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah batas hanya jika rencana anggarannya memang berubah." : "Periksa pemakaian kategori ini dan pastikan sisa anggaran cukup sampai akhir periode.",
+        actionLabel: "Periksa anggaran",
+        to: "/anggaran",
+        state: { attentionSource: "dashboard", attentionType: alert.type, attentionBudgetId: entityId },
+      };
+    case "envelope_threshold":
+      return {
+        instruction: alert.severity === "danger" ? "Periksa transaksi pada kantong ini karena jatah sudah habis atau terlampaui." : "Periksa sisa jatah sebelum membuat pengeluaran berikutnya dari kantong ini.",
+        actionLabel: "Periksa alokasi",
+        to: "/alokasi",
+        state: { attentionSource: "dashboard", attentionType: alert.type, attentionEnvelopeId: entityId },
+      };
+    case "recurring_overdue":
+      return {
+        instruction: "Jika tagihan sudah dibayar, catat pembayaran aktual sekarang. Jika belum, periksa nominal dan rekening sebelum melanjutkan.",
+        actionLabel: "Catat pembayaran",
+        to: "/tagihan",
+        state: { attentionSource: "dashboard", attentionType: alert.type, attentionOccurrenceId: entityId, attentionAction: "payment" },
+      };
+    case "recurring_due":
+      return {
+        instruction: "Periksa tagihan yang akan jatuh tempo. Jika sudah dibayar lebih awal, catat aktualnya agar saldo dan jadwal tetap sinkron.",
+        actionLabel: "Buka tagihan ini",
+        to: "/tagihan",
+        state: { attentionSource: "dashboard", attentionType: alert.type, attentionOccurrenceId: entityId },
+      };
+    case "goal_behind":
+      return {
+        instruction: "Target berada di bawah ritme rencana. Tambahkan dana jika kondisi keuangan memungkinkan; jangan mengambil dana dari rekening yang tidak sesuai.",
+        actionLabel: "Tambah dana target",
+        to: "/target",
+        state: { attentionSource: "dashboard", attentionType: alert.type, attentionGoalId: entityId, attentionAction: "deposit" },
+      };
+    default:
+      return {
+        instruction: "Buka bagian terkait untuk melihat data yang perlu diperiksa sebelum mengambil tindakan.",
+        actionLabel: "Buka tindakan",
+        to: alert.targetPath || "/",
+        state: { attentionSource: "dashboard", attentionType: alert.type || "unknown" },
+      };
+  }
+};
+
+const AttentionSeverityIcon = ({ severity }) => severity === "info" ? <FiInfo aria-hidden="true" /> : <FiAlertTriangle aria-hidden="true" />;
+
+const AttentionSheet = ({ alerts, open, onClose }) => <Modal open={open} onClose={onClose} title="Perlu perhatian" description="Selesaikan yang paling penting terlebih dahulu. Tidak ada perubahan data sebelum Anda mengonfirmasi tindakan pada halaman tujuan." size="sm" mobileSwipeToClose>
+  <div className="mobile-attention-list">
+    {alerts.map((alert) => {
+      const guidance = alertGuidance(alert);
+      return <article className="mobile-attention-item" data-severity={alert.severity} key={alert.id}>
+        <span className="mobile-attention-item__icon"><AttentionSeverityIcon severity={alert.severity} /></span>
+        <div className="mobile-attention-item__content">
+          <strong>{alert.title}</strong>
+          <p>{alert.message}</p>
+          <div className="mobile-attention-instruction"><span>Yang perlu dilakukan</span><p>{guidance.instruction}</p></div>
+          <Link className="mobile-attention-action" to={guidance.to} state={guidance.state}>{guidance.actionLabel}<FiChevronRight aria-hidden="true" /></Link>
+        </div>
+      </article>;
+    })}
+  </div>
+</Modal>;
 
 const MobileFinanceHero = ({ overview, displayName, balanceVisible, onToggleBalance, onRefresh }) => (
   <header className="mobile-finance-hero">
@@ -24,9 +118,18 @@ const MobileInsightList = ({ title, items, balanceVisible, expense = false, empt
 const MobileInsights = ({ accountBars, expenseBars, balanceVisible }) => <details className="mobile-finance-insights"><summary><span>Rincian rekening dan kategori</span><FiChevronDown aria-hidden="true" /></summary><div className="mobile-finance-insights__grid"><MobileInsightList title={{ id: "mobile-account-insights-title", text: "Saldo per rekening" }} items={accountBars} balanceVisible={balanceVisible} emptyText="Belum ada rekening aktif." target="/rekening" targetLabel="Kelola rekening" /><MobileInsightList title={{ id: "mobile-category-insights-title", text: "Pengeluaran per kategori" }} items={expenseBars} balanceVisible={balanceVisible} expense emptyText="Belum ada pengeluaran kategori." target="/laporan" targetLabel="Buka laporan" /></div></details>;
 
 const MobileAlerts = ({ alerts }) => {
+  const [open, setOpen] = useState(false);
   if (!alerts?.length) return null;
-  const visibleAlerts = alerts.slice(0, 4); const additionalAlerts = alerts.slice(4);
-  return <section className="mobile-finance-section mobile-alert-section" aria-labelledby="mobile-alerts-title"><div className="mobile-section-heading"><h2 id="mobile-alerts-title">Perlu perhatian</h2><span>{alerts.length} item</span></div><ul className="financial-alert-list financial-alert-list--mobile"><MobileAlertItems alerts={visibleAlerts} /></ul>{additionalAlerts.length ? <details className="mobile-alert-more"><summary>Lihat {additionalAlerts.length} peringatan lainnya</summary><ul className="financial-alert-list financial-alert-list--mobile"><MobileAlertItems alerts={additionalAlerts} /></ul></details> : null}</section>;
+  const counts = alerts.reduce((result, alert) => ({ ...result, [alert.severity]: (result[alert.severity] || 0) + 1 }), {});
+  const summary = [counts.danger ? `${counts.danger} penting` : "", counts.warning ? `${counts.warning} peringatan` : "", counts.info ? `${counts.info} pengingat` : ""].filter(Boolean).join(" · ");
+  return <section className="mobile-finance-section mobile-alert-section" aria-labelledby="mobile-alerts-title">
+    <button type="button" className="mobile-attention-trigger" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Perlu perhatian, ${alerts.length} item. ${summary}`}>
+      <span className="mobile-attention-trigger__icon"><FiAlertTriangle aria-hidden="true" /></span>
+      <span className="mobile-attention-trigger__copy"><strong id="mobile-alerts-title">Perlu perhatian <em>{alerts.length}</em></strong><small>{summary}</small></span>
+      <FiChevronRight className="mobile-attention-trigger__chevron" aria-hidden="true" />
+    </button>
+    <AttentionSheet alerts={alerts} open={open} onClose={() => setOpen(false)} />
+  </section>;
 };
 
 const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, balanceVisible, onOpenTransactionDetail }) => {

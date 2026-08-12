@@ -135,8 +135,12 @@ test("integrity check melaporkan histori negatif pada rekening yang melarang sal
   const db = {
     all: async (sql) => {
       if (sql.startsWith("PRAGMA")) return [];
-      if (sql.includes("SELECT * FROM accounts WHERE allow_negative=0")) return [account];
-      if (sql.includes("FROM transactions") && sql.includes("source_account_id=?")) return [expense];
+      if (sql.includes("protected_account_id")) return [{
+        protected_account_id: account.account_id,
+        protected_initial_balance: account.initial_balance,
+        protected_initial_balance_date: account.initial_balance_date,
+        ...expense,
+      }];
       return [];
     },
   };

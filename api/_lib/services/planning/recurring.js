@@ -89,9 +89,8 @@ const removeUnpaidFutureOccurrences = async (db, ruleId, cutoff = todayJakarta()
   return Number(result.rowsAffected || 0);
 };
 
-const recurringRuleLifecycleImpact = async (db, current) => {
-  const cutoff = todayJakarta();
-  const counts = await db.one(`SELECT
+const recurringRuleDependencyStatement = (ruleId, cutoff = todayJakarta()) => ({
+  sql: `SELECT
     COUNT(*) AS occurrences,
     SUM(CASE WHEN due_date>=?
       AND actual_amount=0
@@ -109,7 +108,11 @@ const recurringRuleLifecycleImpact = async (db, current) => {
         SELECT occurrence_id FROM recurring_occurrences WHERE recurring_rule_id=?
       )) AS transactions
     FROM recurring_occurrences
-    WHERE recurring_rule_id=?`, [cutoff, cutoff, current.recurring_rule_id, current.recurring_rule_id]);
+    WHERE recurring_rule_id=?`,
+  args: [cutoff, cutoff, ruleId, ruleId],
+});
+
+const recurringRuleLifecycleResult = (current, counts) => {
   const dependencies = {
     occurrences: Number(counts?.occurrences || 0),
     reproducible_future_occurrences: Number(counts?.reproducible_future_occurrences || 0),
@@ -135,6 +138,15 @@ const recurringRuleLifecycleImpact = async (db, current) => {
     ]
   };
 };
+
+const recurringRuleLifecycleImpact = async (db, current) => {
+  const statement = recurringRuleDependencyStatement(current.recurring_rule_id);
+  return recurringRuleLifecycleResult(current, await db.one(statement.sql, statement.args));
+};
+
+const readRecurringBatchRows = async (db, statements) => typeof db.batch === "function"
+  ? (await db.batch(statements)).map((result) => result.rows || [])
+  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
 
 const recurringOccurrenceWithRule = (db, occurrenceId) => db.one(`SELECT o.*,r.status AS rule_status,r.scope,r.owner_user_id,r.recurring_rule_id
   FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
@@ -334,10 +346,16 @@ export const updateRecurringRule = async (db, context) => {
 export const previewRecurringRuleLifecycle = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};
-  const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=?", [p.recurring_rule_id]);
+  const ruleId = p.recurring_rule_id;
+  const statement = recurringRuleDependencyStatement(ruleId);
+  const [currentRows, dependencyRows] = await readRecurringBatchRows(db, [{
+    sql: "SELECT * FROM recurring_rules WHERE recurring_rule_id=?",
+    args: [ruleId],
+  }, statement]);
+  const current = currentRows[0] || null;
   if (!current) throw appError("NOT_FOUND", "Aturan rutin tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
-  return recurringRuleLifecycleImpact(db, current);
+  return recurringRuleLifecycleResult(current, dependencyRows[0] || {});
 };
 
 export const deleteUnusedRecurringRule = async (db, context) => {

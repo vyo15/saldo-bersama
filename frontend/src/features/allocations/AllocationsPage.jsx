@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { FiArchive, FiArrowRight, FiChevronDown, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
+import { useEffect, useId, useMemo, useState } from "react";
+import { FiArchive, FiArrowRight, FiChevronDown, FiMoreHorizontal, FiPieChart, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
+import { useLocation } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -75,10 +76,61 @@ const allocationAssigneeLabel = (item) => {
   return `${name} · ${userRoleLabel(item.assignee_role)}`;
 };
 
-const AllocationCards = ({ items, setCloseTarget, setCloseState, openRuleLifecycle }) => <section className="allocation-grid">{items.length ? items.map((item) => {
-  const reserved = Number(item.reserved_amount || 0);
-  return <Card className="allocation-card" key={item.envelope_period_id}><div className="allocation-card__header"><div><h2>{item.name}</h2><small>{item.period_start} – {item.period_end}</small><small>Jatah untuk {allocationAssigneeLabel(item)}</small></div><Money value={item.remaining_amount} /></div><ProgressBar value={Number(item.used_amount || 0) + reserved} max={item.allocated_amount} label={item.name} /><dl><div><dt>Alokasi</dt><dd><Money value={item.allocated_amount} /></dd></div><div><dt>Terpakai</dt><dd><Money value={item.used_amount} /></dd></div>{reserved > 0 ? <div><dt>Dipesan</dt><dd><Money value={reserved} /></dd></div> : null}</dl>{item.can_close || item.can_archive_rule ? <div className="form-actions">{item.can_close ? <Button icon={FiArchive} onClick={() => { setCloseTarget(item); setCloseState({ status: "idle", error: null }); }}>Tutup periode</Button> : null}{item.can_archive_rule ? <Button icon={FiArchive} onClick={() => openRuleLifecycle(item)}>Hapus / Arsipkan</Button> : null}</div> : null}</Card>;
-}) : <Card className="panel"><p>Belum ada kantong aktif.</p></Card>}</section>;
+const MONTH_LABELS = Object.freeze(["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]);
+
+const parseDateParts = (value) => {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+};
+
+const allocationPeriodLabel = (startValue, endValue) => {
+  const start = parseDateParts(startValue); const end = parseDateParts(endValue);
+  if (!start || !end) return `${startValue || "?"} – ${endValue || "?"}`;
+  if (start.year === end.year && start.month === end.month) return `${start.day}–${end.day} ${MONTH_LABELS[start.month - 1]} ${start.year}`;
+  if (start.year === end.year) return `${start.day} ${MONTH_LABELS[start.month - 1]} – ${end.day} ${MONTH_LABELS[end.month - 1]} ${start.year}`;
+  return `${start.day} ${MONTH_LABELS[start.month - 1]} ${start.year} – ${end.day} ${MONTH_LABELS[end.month - 1]} ${end.year}`;
+};
+
+const allocationUsage = (item) => {
+  const allocated = Math.max(0, Number(item?.allocated_amount || 0));
+  const used = Math.max(0, Number(item?.used_amount || 0));
+  const reserved = Math.max(0, Number(item?.reserved_amount || 0));
+  const committed = used + reserved;
+  const percentage = allocated > 0 ? Math.max(0, Math.round((committed / allocated) * 100)) : 0;
+  if (committed <= 0) return { allocated, used, reserved, committed, percentage, label: "Belum terpakai", tone: "idle" };
+  if (allocated <= 0 || committed > allocated) return { allocated, used, reserved, committed, percentage, label: "Melebihi alokasi", tone: "danger" };
+  if (percentage >= 100) return { allocated, used, reserved, committed, percentage, label: "Alokasi penuh", tone: "danger" };
+  if (percentage >= 80) return { allocated, used, reserved, committed, percentage, label: "Menipis", tone: "warning" };
+  return { allocated, used, reserved, committed, percentage, label: "Sedang digunakan", tone: "active" };
+};
+
+const allocationRolloverLabel = (policy) => {
+  if (policy === "carry") return "Bawa sisa ke periode berikutnya";
+  if (policy === "unallocated") return "Kembali ke dana belum dialokasikan";
+  return "Mengikuti aturan kantong";
+};
+
+const AllocationSummary = ({ items }) => {
+  const totals = items.reduce((sum, item) => ({
+    allocated: sum.allocated + Math.max(0, Number(item.allocated_amount || 0)),
+    used: sum.used + Math.max(0, Number(item.used_amount || 0)),
+    reserved: sum.reserved + Math.max(0, Number(item.reserved_amount || 0)),
+    remaining: sum.remaining + Number(item.remaining_amount || 0),
+  }), { allocated: 0, used: 0, reserved: 0, remaining: 0 });
+  const usage = allocationUsage({ allocated_amount: totals.allocated, used_amount: totals.used, reserved_amount: totals.reserved });
+  return <Card className="allocation-summary" aria-labelledby="allocation-summary-title"><div className="allocation-summary__top"><span className="allocation-summary__eyebrow" id="allocation-summary-title">Ringkasan alokasi aktif</span><span className={`allocation-summary__status allocation-summary__status--${items.length ? usage.tone : "idle"}`}>{items.length ? usage.label : "Belum ada kantong"}</span></div><div className="allocation-summary__amount"><Money value={totals.remaining} tone={totals.remaining < 0 ? "negative" : "default"} /></div><p>Sisa dari <Money value={totals.allocated} /> yang dialokasikan.</p><div className="allocation-summary__progress"><ProgressBar value={usage.committed} max={totals.allocated} label="Pemakaian seluruh alokasi aktif" /></div><div className="allocation-summary__metrics"><div><span>Terpakai + dipesan</span><strong><Money value={usage.committed} /></strong></div><div><span>Kantong aktif</span><strong>{items.length} kantong</strong></div></div></Card>;
+};
+
+const AllocationCard = ({ item, onOpenActions, attention = false }) => {
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
+  const usage = allocationUsage(item);
+  const hasActions = Boolean(item.can_close || item.can_archive_rule);
+  return <Card className={`allocation-card${expanded ? " is-expanded" : ""}${attention ? " allocation-card--attention" : ""}`} data-envelope-period-id={item.envelope_period_id}><div className="allocation-card__header"><span className="allocation-card__icon"><FiPieChart aria-hidden="true" /></span><div className="allocation-card__heading"><h2>{item.name}</h2><p>{allocationAssigneeLabel(item)} · {allocationPeriodLabel(item.period_start, item.period_end)}</p></div>{hasActions ? <button type="button" className="allocation-card__menu" aria-label={`Kelola kantong ${item.name}`} onClick={() => onOpenActions(item)}><FiMoreHorizontal aria-hidden="true" /></button> : null}</div><div className="allocation-card__balance"><span className="allocation-card__balance-label"><i aria-hidden="true" />Sisa alokasi</span><Money className="allocation-card__remaining" value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /><div className="allocation-card__progress-meta"><span>Terpakai + dipesan <strong><Money value={usage.committed} /></strong></span><strong>{usage.percentage}%</strong></div><div className="allocation-card__progress"><ProgressBar value={usage.committed} max={usage.allocated} label={item.name} /></div></div><div className="allocation-card__quick"><div><span>Total alokasi</span><strong><Money value={usage.allocated} /></strong></div><div><span>Status</span><strong className={`allocation-card__status allocation-card__status--${usage.tone}`}>{usage.label}</strong></div></div><button type="button" className="allocation-card__expand" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded((current) => !current)}>{expanded ? "Tutup detail" : "Lihat detail"}<FiChevronDown aria-hidden="true" /></button><div className="allocation-card__details" id={detailsId} aria-hidden={!expanded}><div><dl><div><dt>Jatah untuk</dt><dd>{allocationAssigneeLabel(item)}</dd></div><div><dt>Periode</dt><dd>{allocationPeriodLabel(item.period_start, item.period_end)}</dd></div><div><dt>Terpakai</dt><dd><Money value={usage.used} /></dd></div><div><dt>Dipesan</dt><dd><Money value={usage.reserved} /></dd></div><div><dt>Rollover</dt><dd>{allocationRolloverLabel(item.rollover_policy)}</dd></div></dl></div></div></Card>;
+};
+
+const AllocationCards = ({ items, totalItems, onOpenActions, attentionEnvelopeId }) => <section className="allocation-grid" aria-label="Daftar kantong aktif">{items.length ? items.map((item) => <AllocationCard key={item.envelope_period_id} item={item} onOpenActions={onOpenActions} attention={item.envelope_period_id === attentionEnvelopeId} />) : <Card className="allocation-empty panel"><strong>{totalItems ? "Tidak ada kantong yang sesuai filter." : "Belum ada kantong aktif."}</strong><p>{totalItems ? "Pilih filter lain untuk menampilkan kantong aktif." : "Buat kantong untuk mulai membagi dana yang tersedia."}</p></Card>}</section>;
 
 const AllocationHistory = ({ items }) => items.length ? <Card className="panel"><div className="panel__header"><h2>Riwayat periode</h2></div><div className="compact-list compact-list--stacked">{items.map((item) => <div key={item.envelope_period_id}><span><strong>{item.name}</strong><small>{item.period_start} – {item.period_end} · Jatah untuk {allocationAssigneeLabel(item)} · {item.status === "closed" ? "Ditutup" : item.status === "archived" ? "Diarsipkan" : item.status}</small></span><span><Money value={item.allocated_amount} /><small>Terpakai <Money value={item.used_amount} /></small></span></div>)}</div></Card> : null;
 
@@ -130,20 +182,36 @@ const MoveEnvelopeModal = ({ open, close, move, setMove, items, destinations, su
 
 const RecoveryPanels = ({ recentMovements, setReverseTarget, setReverseState }) => recentMovements.length ? <Card className="panel"><div className="panel__header"><h2>Mutasi terakhir</h2></div><div className="compact-list compact-list--stacked">{recentMovements.map((item) => <div key={item.movement_id}><span><strong>{item.from_name} → {item.to_name}</strong><small><Money value={item.amount} /> · {item.reason}</small></span>{item.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); }}>Batalkan</Button> : null}</div>)}</div></Card> : null;
 
+const AllocationActionModal = ({ target, onClose, onClosePeriod, onLifecycle }) => <Modal open={Boolean(target)} onClose={onClose} title={target?.name || "Kelola kantong"} description={target ? `${allocationAssigneeLabel(target)} · ${allocationPeriodLabel(target.period_start, target.period_end)}` : ""} size="sm" mobileSwipeToClose><div className="allocation-action-sheet"><div className="allocation-action-sheet__balance"><span>Sisa alokasi</span><Money value={target?.remaining_amount || 0} tone={Number(target?.remaining_amount || 0) < 0 ? "negative" : "default"} /></div><div className="allocation-action-sheet__actions">{target?.can_close ? <Button icon={FiArchive} onClick={() => onClosePeriod(target)}>Tutup periode</Button> : null}{target?.can_archive_rule ? <Button className="allocation-action-sheet__danger" icon={FiArchive} onClick={() => onLifecycle(target)}>Hapus / Arsipkan</Button> : null}</div><p>Aksi penutupan dan arsip tetap memakai validasi serta konfirmasi yang sama seperti sebelumnya.</p></div></Modal>;
+
 const AllocationModals = (p) => <><ConfirmationModal open={Boolean(p.closeTarget)} title="Tutup periode kantong?" description={p.closeTarget ? `${p.closeTarget.name} (${p.closeTarget.period_start}–${p.closeTarget.period_end}) akan dikunci. ${p.closeTarget.rollover_policy === "carry" ? "Sisa alokasi akan dibawa ke periode berikutnya." : "Sisa alokasi akan kembali menjadi dana belum dialokasikan."}` : ""} confirmLabel="Tutup periode" busy={p.closeState.status === "submitting"} error={p.closeState.error} onCancel={() => p.closeState.status !== "submitting" && p.setCloseTarget(null)} onConfirm={p.closeEnvelope} /><ConfirmationModal open={Boolean(p.archiveTarget)} title={p.archiveTarget?.preview.canDeleteUnused ? "Hapus kantong yang belum dipakai?" : "Arsipkan aturan kantong?"} description={p.archiveTarget ? (p.archiveTarget.preview.canDeleteUnused ? `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} hanya memiliki periode awal kosong dan belum pernah memiliki transaksi, mutasi, penutupan, atau anggaran terkait.` : `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} sudah memiliki histori atau dependency. Data tidak dihapus permanen dan hanya diarsipkan.`) : ""} confirmLabel={p.archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan aturan"} reasonLabel={p.archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan arsip"} requireReason acknowledgementLabel={p.archiveTarget?.preview.canDeleteUnused ? "Saya memahami kantong ini belum pernah digunakan dan penghapusan bersifat permanen." : ""} busy={p.archiveState.status === "submitting"} error={p.archiveState.error} onCancel={() => p.archiveState.status !== "submitting" && p.setArchiveTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveTarget ? <div className="notice notice--info">Periode {p.archiveTarget.preview.dependencies.periods} · transaksi {p.archiveTarget.preview.dependencies.transactions} · mutasi/rollover {p.archiveTarget.preview.dependencies.movements} · anggaran {p.archiveTarget.preview.dependencies.budgets} · periode ditutup {p.archiveTarget.preview.dependencies.closed_periods}.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan mutasi alokasi?" description={p.reverseTarget ? `${p.reverseTarget.from_name} → ${p.reverseTarget.to_name}. Dana akan dikembalikan hanya jika belum terpakai atau dipesan.` : ""} confirmLabel="Batalkan mutasi" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reverseMovement} /></>;
 
+const ALLOCATION_FILTERS = Object.freeze([
+  { value: "all", label: "Semua" },
+  { value: "shared", label: "Bersama" },
+  { value: "mine", label: "Saya" },
+  { value: "unused", label: "Belum terpakai" },
+]);
+
 const AllocationsPage = () => {
+  const location = useLocation();
   const resource = useApiResource("envelopes.list"); const { refreshOverview, invalidate, bootstrap } = useFinance(); const { user } = useAuth(); const { notify } = useFeedback();
   const administratorMode = user?.role === "owner";
   const usersResource = useApiResource("users.list", {}, { enabled: administratorMode });
   const createMutation = useGuardedMutation(); const moveMutation = useGuardedMutation(); const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" }); const [createForm, setCreateForm] = useState(defaultCreateForm);
-  const [createOpen, setCreateOpen] = useState(false); const [moveOpen, setMoveOpen] = useState(false); const [message, setMessage] = useState(null); const [closeTarget, setCloseTarget] = useState(null); const [closeState, setCloseState] = useState({ status: "idle", error: null }); const [archiveTarget, setArchiveTarget] = useState(null); const [archiveState, setArchiveState] = useState({ status: "idle", error: null }); const [reverseTarget, setReverseTarget] = useState(null); const [reverseState, setReverseState] = useState({ status: "idle", error: null });
+  const [createOpen, setCreateOpen] = useState(false); const [moveOpen, setMoveOpen] = useState(false); const [message, setMessage] = useState(null); const [allocationFilter, setAllocationFilter] = useState("all"); const [actionTarget, setActionTarget] = useState(null); const [closeTarget, setCloseTarget] = useState(null); const [closeState, setCloseState] = useState({ status: "idle", error: null }); const [archiveTarget, setArchiveTarget] = useState(null); const [archiveState, setArchiveState] = useState({ status: "idle", error: null }); const [reverseTarget, setReverseTarget] = useState(null); const [reverseState, setReverseState] = useState({ status: "idle", error: null });
   const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
   const activeUsers = usersResource.data?.items?.filter((item) => item.status === "active") || [];
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const activeItems = useMemo(() => items.filter((item) => item.status === "active"), [items]);
   const historicalItems = useMemo(() => items.filter((item) => item.status !== "active"), [items]);
   const allocationActor = bootstrap?.user || user;
+  const filteredActiveItems = useMemo(() => activeItems.filter((item) => {
+    if (allocationFilter === "shared") return !item.assignee_user_id;
+    if (allocationFilter === "mine") return Boolean(allocationActor?.user_id) && item.assignee_user_id === allocationActor.user_id;
+    if (allocationFilter === "unused") return Number(item.used_amount || 0) + Number(item.reserved_amount || 0) === 0;
+    return true;
+  }), [activeItems, allocationActor?.user_id, allocationFilter]);
   const movableItems = useMemo(() => filterByAssigneeAccess(activeItems, allocationActor), [activeItems, allocationActor]);
   const recentMovements = resource.data?.recentMovements || [];
   const lookup = useMemo(() => Object.fromEntries(activeItems.map((item) => [item.envelope_period_id, item])), [activeItems]);
@@ -154,11 +222,19 @@ const AllocationsPage = () => {
   const canMove = movableItems.some((source) => filterByOwnership(movableItems, source).some((target) => target.envelope_period_id !== source.envelope_period_id && (administratorMode || hasSameAssignee(source, target))));
   const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup, notify, setMessage, onCreated: () => setCreateOpen(false), onMoved: () => setMoveOpen(false) });
   const lifecycle = useAllocationLifecycle({ closeTarget, setCloseTarget, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation: createMove.refreshAfterMutation, notify });
+  const attentionEnvelopeId = location.state?.attentionSource === "dashboard" ? String(location.state?.attentionEnvelopeId || "") : "";
+  useEffect(() => {
+    if (!attentionEnvelopeId || resource.status !== "ready" || !activeItems.some((item) => item.envelope_period_id === attentionEnvelopeId)) return;
+    const frame = window.requestAnimationFrame(() => document.querySelector(`[data-envelope-period-id="${CSS.escape(attentionEnvelopeId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeItems, attentionEnvelopeId, resource.status]);
   if (resource.status === "loading") return <LoadingScreen label="Memuat alokasi dana..." />; if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const modalProps = { closeTarget, setCloseTarget, closeState, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
   const openCreate = () => { setMessage(null); setCreateOpen(true); }; const openMove = () => { setMessage(null); setMoveOpen(true); }; const closeCreate = () => { if (!createMutation.busy) setCreateOpen(false); }; const closeMove = () => { if (!moveMutation.busy) setMoveOpen(false); };
-  const headerActions = <div className="allocation-header-actions">{administratorMode ? <Button className="allocation-header-actions__primary" variant="primary" icon={FiPlus} onClick={openCreate}>Buat kantong</Button> : null}<Button icon={FiArrowRight} onClick={openMove} disabled={!canMove}>Pindahkan alokasi</Button><Button className="allocation-refresh-action" icon={FiRefreshCw} onClick={resource.reload} aria-label="Muat ulang alokasi">Muat ulang</Button></div>;
-  return <div className="page-stack"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} />{administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}<PageHeader title="Alokasi dana" actions={headerActions} /><AllocationCards items={activeItems} setCloseTarget={setCloseTarget} setCloseState={setCloseState} openRuleLifecycle={lifecycle.openRuleLifecycle} /><AllocationHistory items={historicalItems} /><RecoveryPanels recentMovements={recentMovements} setReverseTarget={setReverseTarget} setReverseState={setReverseState} /><CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersResource.status} createEnvelope={createMove.createEnvelope} createMutation={createMutation} message={message} /><MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={createMove.submitMove} moveMutation={moveMutation} message={message} /><AllocationModals {...modalProps} /></div>;
+  const headerActions = <div className={`allocation-header-actions allocation-header-actions--${administratorMode ? "administrator" : "member"}`}>{administratorMode ? <Button className="allocation-header-actions__primary" variant="primary" icon={FiPlus} onClick={openCreate}>Buat kantong</Button> : null}<Button icon={FiArrowRight} onClick={openMove} disabled={!canMove} aria-label="Pindahkan alokasi">Pindahkan</Button><Button className="allocation-refresh-action" icon={FiRefreshCw} onClick={resource.reload} aria-label="Muat ulang alokasi">Muat ulang</Button></div>;
+  const startClosePeriod = (item) => { setActionTarget(null); setCloseTarget(item); setCloseState({ status: "idle", error: null }); };
+  const startLifecycle = (item) => { setActionTarget(null); lifecycle.openRuleLifecycle(item); };
+  return <div className="page-stack allocations-page"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} />{administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}<PageHeader title="Alokasi dana" description="Bagi dana ke kantong yang jelas, lalu pantau pemakaiannya." />{attentionEnvelopeId ? <div className="notice notice--info attention-guidance" role="status"><strong>Periksa kantong yang disorot.</strong><span>Lihat sisa jatah dan transaksi terkait sebelum membuat pengeluaran berikutnya. Jangan pindahkan dana hanya untuk menutup pemakaian yang belum diperiksa.</span></div> : null}<AllocationSummary items={activeItems} />{headerActions}<section className="allocation-active" aria-labelledby="allocation-active-title"><div className="allocation-section-heading"><h2 id="allocation-active-title">Kantong aktif</h2><span>{filteredActiveItems.length} dari {activeItems.length}</span></div>{activeItems.length ? <div className="allocation-filters" role="group" aria-label="Filter kantong aktif">{ALLOCATION_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationFilter === filter.value ? "is-active" : ""} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}<AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} attentionEnvelopeId={attentionEnvelopeId} /></section><AllocationHistory items={historicalItems} /><RecoveryPanels recentMovements={recentMovements} setReverseTarget={setReverseTarget} setReverseState={setReverseState} /><CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersResource.status} createEnvelope={createMove.createEnvelope} createMutation={createMutation} message={message} /><MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={createMove.submitMove} moveMutation={moveMutation} message={message} /><AllocationActionModal target={actionTarget} onClose={() => setActionTarget(null)} onClosePeriod={startClosePeriod} onLifecycle={startLifecycle} /><AllocationModals {...modalProps} /></div>;
 };
 
 export default AllocationsPage;

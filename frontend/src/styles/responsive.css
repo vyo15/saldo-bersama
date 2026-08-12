@@ -215,11 +215,30 @@
   .pagination-bar .button { width: 100%; }
 
 
-  .allocation-header-actions { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) var(--mobile-control-height); gap: 8px; }
-  .allocation-header-actions__primary { grid-column: 1 / -1; }
-  .allocation-header-actions > .button { width: 100%; min-width: 0; }
+  .allocation-summary { padding: 15px; border-radius: 20px; box-shadow: none; }
+  .allocation-summary__amount .money { font-size: clamp(27px, 8vw, 32px); }
+  .allocation-summary > p { font-size: 12px; }
+  .allocation-summary__metrics { gap: 8px; margin-top: 12px; }
+  .allocation-summary__metrics > div { padding: 9px 10px; border-radius: 13px; }
+  .allocation-header-actions { width: 100%; display: grid; gap: 8px; }
+  .allocation-header-actions--administrator { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) var(--mobile-control-height); }
+  .allocation-header-actions--member { grid-template-columns: minmax(0, 1fr) var(--mobile-control-height); }
+  .allocation-header-actions__primary { grid-column: auto; }
+  .allocation-header-actions > .button { width: 100%; min-width: 0; padding-inline: 10px; font-size: 12px; }
   .allocation-refresh-action { width: var(--mobile-control-height) !important; min-width: var(--mobile-control-height) !important; padding: 0 !important; }
   .allocation-refresh-action > span { display: none; }
+  .allocation-section-heading h2 { font-size: 15px; }
+  .allocation-filters { margin-inline: calc(var(--mobile-page-gutter) * -1); padding-inline: var(--mobile-page-gutter); scroll-padding-inline: var(--mobile-page-gutter); }
+  .allocation-filters button { min-height: var(--mobile-control-height); font-size: 11px; }
+  .allocation-card { padding: 14px; border-radius: var(--mobile-card-radius); box-shadow: none; }
+  .allocation-card__icon { width: 40px; height: 40px; border-radius: 13px; }
+  .allocation-card__heading h2 { font-size: 14px; }
+  .allocation-card__heading p { font-size: 11px; }
+  .allocation-card__menu { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); }
+  .allocation-card__balance { margin-top: 12px; padding: 12px; }
+  .allocation-card__remaining { font-size: clamp(23px, 7vw, 27px); }
+  .allocation-card__quick { gap: 7px; }
+  .allocation-card__expand { min-height: var(--mobile-control-height); }
   .allocation-advanced__content { grid-template-columns: 1fr; }
   .goal-card__actions { grid-template-columns: minmax(0, 1fr) auto; }
   .goal-action-menu > summary { width: var(--mobile-control-height); min-width: var(--mobile-control-height); padding: 0; }

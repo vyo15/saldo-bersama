@@ -55,6 +55,10 @@ test("outbox membatasi claim, merebut kembali worker macet, dan mengelompokkan r
   assert.match(jobs, /for \(const provider of \["sheets", "calendar"\]\)/);
   assert.match(jobs, /mirror\.rebuild/);
   assert.match(jobs, /calendar\.rebuild/);
+  const mirror = jobs.match(/const mirrorSnapshot = async \(db\) => \{[\s\S]*?\n\};\n\nconst calendarSnapshot/)?.[0] || "";
+  assert.match(mirror, /readJobBatchRows\(db, \[/);
+  assert.doesNotMatch(mirror, /await Promise\.all\(\[\s*db\.all/);
+  assert.doesNotMatch(mirror, /await db\.one/);
 });
 
 test("push notification diklaim atomik sebelum network untuk mencegah kirim ganda", async () => {
@@ -194,11 +198,237 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
 
   const initialDb = makeDashboardDb();
   await appInitialState(initialDb, { actor, payload: { period: "2026-08" } });
-  assert.equal(initialDb.metrics.network, 2, "initial state memakai satu bootstrap batch dan satu dashboard batch");
+  assert.equal(initialDb.metrics.network, 1, "initial state menggabungkan bootstrap dan dashboard ke satu pipeline batch");
   assert.equal(initialDb.metrics.accountBalanceStatements, 2, "current accounts bootstrap direuse; initial state hanya membaca current + opening balance sekali masing-masing");
+
+  const historicalInitialDb = makeDashboardDb();
+  await appInitialState(historicalInitialDb, { actor, payload: { period: "2026-07" } });
+  assert.equal(historicalInitialDb.metrics.network, 1, "initial state historis tetap satu pipeline batch");
+  assert.equal(historicalInitialDb.metrics.accountBalanceStatements, 3, "periode historis tetap membaca current bootstrap, cutoff historis, dan opening balance secara terpisah di batch yang sama");
 
   const reportDb = makeDashboardDb();
   const { monthlyReport } = await import("../../api/_lib/services/reporting/dashboard.js");
   await monthlyReport(reportDb, { actor, payload: { period: "2026-08", trend_months: 12 } });
-  assert.equal(reportDb.metrics.network, 2, "laporan bulanan memakai satu dashboard batch dan satu batch gabungan breakdown+trend");
+  assert.equal(reportDb.metrics.network, 1, "laporan bulanan menggabungkan dashboard, breakdown, dan trend ke satu pipeline batch");
+});
+
+
+test("read snapshot tambahan tidak memecah query independen menjadi pipeline serial", async () => {
+  const [{ listArchivedData }, { previewTrialDataReset }, { integrityIssues }] = await Promise.all([
+    import("../../api/_lib/services/masterData.js"),
+    import("../../api/_lib/services/maintenance/reset.js"),
+    import("../../api/_lib/services/reporting/integrity.js"),
+  ]);
+  const actor = { user_id: "u1", email: "owner@example.test", role: "owner", status: "active" };
+
+  const archiveMetrics = { network: 0, statements: 0 };
+  const archiveDb = {
+    async batch(statements) {
+      archiveMetrics.network += 1;
+      archiveMetrics.statements += statements.length;
+      return statements.map(() => ({ rows: [] }));
+    },
+  };
+  await listArchivedData(archiveDb, { actor, payload: {} });
+  assert.equal(archiveMetrics.network, 1, "archive.list harus satu batch, bukan enam read snapshot serial");
+  assert.equal(archiveMetrics.statements, 6);
+
+  const resetMetrics = { network: 0, statements: 0 };
+  const resetDb = {
+    async batch(statements) {
+      resetMetrics.network += 1;
+      resetMetrics.statements += statements.length;
+      return statements.map((statement) => ({ rows: statement.sql.includes("COUNT(*) AS count") ? [{ count: 0 }] : [] }));
+    },
+  };
+  const preview = await previewTrialDataReset(resetDb, { actor, payload: {} });
+  assert.equal(preview.summary.totalRows, 0);
+  assert.equal(resetMetrics.network, 1, "reset.preview harus membaca state dan preserved count dalam satu batch");
+  assert.equal(resetMetrics.statements, 23);
+
+  const integrityMetrics = { network: 0, statements: [] };
+  const integrityDb = {
+    async batch(statements) {
+      integrityMetrics.network += 1;
+      integrityMetrics.statements.push(statements.length);
+      return statements.map((statement) => {
+        if (statement.sql.includes("protected_account_id")) {
+          return { rows: [{ protected_account_id: "a1", protected_initial_balance: 0, protected_initial_balance_date: "2026-08-01", transaction_id: null }] };
+        }
+        if (statement.sql.includes("GROUP BY idempotency_key,created_by")) return { rows: [] };
+        if (statement.sql.trim().startsWith("SELECT COUNT(*) AS count") || statement.sql.includes("SELECT COUNT(DISTINCT")) return { rows: [{ count: 0 }] };
+        return { rows: [] };
+      });
+    },
+  };
+  assert.deepEqual(await integrityIssues(integrityDb), []);
+  assert.equal(integrityMetrics.network, 1, "integrity check termasuk histori rekening protected harus satu batch");
+  assert.deepEqual(integrityMetrics.statements, [10]);
+});
+
+test("preview lifecycle owner menggabungkan read independen menjadi satu batch snapshot", async () => {
+  const [masterData, envelopes, recurring, budgets, goals] = await Promise.all([
+    import("../../api/_lib/services/masterData.js"),
+    import("../../api/_lib/services/planning/envelopes.js"),
+    import("../../api/_lib/services/planning/recurring.js"),
+    import("../../api/_lib/services/planning/budgets.js"),
+    import("../../api/_lib/services/planning/goals.js"),
+  ]);
+  const actor = { user_id: "u1", email: "owner@example.test", role: "owner", status: "active" };
+  const makeDb = (currentMatcher, currentRow) => {
+    const metrics = { network: 0, statements: [] };
+    return {
+      metrics,
+      async batch(statements) {
+        metrics.network += 1;
+        metrics.statements.push(statements.length);
+        return statements.map((statement) => {
+          if (currentMatcher(statement.sql)) return { rows: [currentRow] };
+          if (statement.sql.includes(" AS balance")) return { rows: [{ balance: 0 }] };
+          if (statement.sql.includes(" AS total") && statement.sql.includes("goal_movements")) return { rows: [{ total: 0 }] };
+          return { rows: [{}] };
+        });
+      },
+    };
+  };
+
+  const accountDb = makeDb((sql) => sql === "SELECT * FROM accounts WHERE account_id=?", {
+    account_id: "a1", name: "Tunai", status: "active", row_version: 1, initial_balance: 0,
+    initial_balance_date: "2026-08-01", owner_scope: "shared", owner_user_id: null, allow_negative: 1,
+  });
+  await masterData.previewAccountLifecycle(accountDb, { actor, payload: { account_id: "a1", row_version: 1 }, today: "2026-08-12" });
+  assert.deepEqual(accountDb.metrics, { network: 1, statements: [3] });
+
+  const categoryDb = makeDb((sql) => sql === "SELECT * FROM categories WHERE category_id=?", {
+    category_id: "c1", name: "Makan", status: "active", row_version: 1, transaction_type: "expense",
+  });
+  await masterData.previewCategoryArchive(categoryDb, { actor, payload: { category_id: "c1", row_version: 1 } });
+  assert.deepEqual(categoryDb.metrics, { network: 1, statements: [2] });
+
+  const envelopeDb = makeDb((sql) => sql.includes("SELECT * FROM envelope_rules WHERE envelope_rule_id=?"), {
+    envelope_rule_id: "e1", name: "Makan", status: "active", row_version: 1,
+  });
+  await envelopes.previewEnvelopeRuleLifecycle(envelopeDb, { actor, payload: { envelope_rule_id: "e1", row_version: 1 } });
+  assert.deepEqual(envelopeDb.metrics, { network: 1, statements: [2] });
+
+  const recurringDb = makeDb((sql) => sql === "SELECT * FROM recurring_rules WHERE recurring_rule_id=?", {
+    recurring_rule_id: "r1", name: "Tagihan", status: "active", row_version: 1,
+  });
+  await recurring.previewRecurringRuleLifecycle(recurringDb, { actor, payload: { recurring_rule_id: "r1", row_version: 1 } });
+  assert.deepEqual(recurringDb.metrics, { network: 1, statements: [2] });
+
+  const budgetDb = makeDb((sql) => sql === "SELECT * FROM budgets WHERE budget_id=?", {
+    budget_id: "b1", period_key: "2026-08", status: "active", row_version: 1,
+  });
+  await budgets.previewBudgetLifecycle(budgetDb, { actor, payload: { budget_id: "b1", row_version: 1 } });
+  assert.deepEqual(budgetDb.metrics, { network: 1, statements: [2] });
+
+  const goalDb = makeDb((sql) => sql.includes("SELECT * FROM savings_goals WHERE goal_id=?"), {
+    goal_id: "g1", name: "Dana", status: "active", row_version: 1,
+  });
+  await goals.previewGoalLifecycle(goalDb, { actor, payload: { goal_id: "g1", row_version: 1 } });
+  assert.deepEqual(goalDb.metrics, { network: 1, statements: [3] });
+});
+
+test("status sistem dan notifikasi tidak memecah read independen ke beberapa pipeline", async () => {
+  const [{ getActionDefinition }, { notificationStatus }] = await Promise.all([
+    import("../../api/_lib/actions/registry.js"),
+    import("../../api/_lib/services/notifications.js"),
+  ]);
+  const previousUrl = process.env.GOOGLE_BRIDGE_WEB_APP_URL;
+  const previousSecret = process.env.GOOGLE_BRIDGE_SHARED_SECRET;
+  delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
+  delete process.env.GOOGLE_BRIDGE_SHARED_SECRET;
+  try {
+    let healthNetwork = 0;
+    const healthDb = {
+      async batch(statements) {
+        healthNetwork += 1;
+        assert.equal(statements.length, 2);
+        return [
+          { rows: [{ key: "schema_version", value: "9" }, { key: "maintenance_mode", value: "false" }, { key: "timezone", value: "Asia/Jakarta" }, { key: "currency", value: "IDR" }] },
+          { rows: [] },
+        ];
+      },
+    };
+    const health = await getActionDefinition("system.health").handler(healthDb, {});
+    assert.equal(health.status, "ok");
+    assert.equal(healthNetwork, 1);
+
+    let notificationNetwork = 0;
+    let notificationStatements = 0;
+    const notificationDb = {
+      async batch(statements) {
+        notificationNetwork += 1;
+        notificationStatements += statements.length;
+        return statements.map((statement) => {
+          if (statement.sql.includes("FROM push_subscriptions WHERE endpoint=?")) return { rows: [{ subscription_id: "s1", user_id: "u1", status: "active", updated_at: "2026-08-12T00:00:00Z" }] };
+          if (statement.sql.includes("COUNT(*) AS count FROM push_subscriptions")) return { rows: [{ count: 1 }] };
+          return { rows: [] };
+        });
+      },
+    };
+    const status = await notificationStatus(notificationDb, { actor: { user_id: "u1" }, payload: { endpoint: "https://push.example.com/device" } });
+    assert.equal(status.currentDevice.state, "active");
+    assert.equal(status.activeDeviceCount, 1);
+    assert.equal(notificationNetwork, 1);
+    assert.equal(notificationStatements, 5);
+  } finally {
+    if (previousUrl === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL; else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previousUrl;
+    if (previousSecret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET; else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previousSecret;
+  }
+});
+
+test("scheduler notifikasi menggabungkan seluruh source read dan saldo rekening dalam satu batch", async () => {
+  const { queueActionableNotifications } = await import("../../api/_lib/services/notifications.js");
+  const metrics = { network: 0, statements: 0, executes: 0, ones: 0, alls: 0 };
+  const db = {
+    async batch(statements) {
+      metrics.network += 1;
+      metrics.statements += statements.length;
+      return statements.map(() => ({ rows: [] }));
+    },
+    async execute() { metrics.executes += 1; return { rowsAffected: 1 }; },
+    async one() { metrics.ones += 1; return null; },
+    async all() { metrics.alls += 1; return []; },
+  };
+  const queued = await queueActionableNotifications(db);
+  assert.equal(queued, 0);
+  assert.equal(metrics.network, 1, "source scheduler notifikasi harus satu batch");
+  assert.equal(metrics.statements, 9, "user, preferensi, recurring, budget, alokasi, target, unallocated, dan saldo harus dibaca bulk");
+  assert.equal(metrics.alls, 0, "tidak boleh ada source read serial di luar batch");
+  assert.equal(metrics.ones, 0, "saldo recurring tidak boleh lagi N+1 per occurrence");
+  assert.equal(metrics.executes, 0, "tanpa item actionable tidak boleh ada write queue");
+});
+
+test("preview tutup periode menggabungkan statistik dan integrity base setelah blocker closure", async () => {
+  const { previewClosePeriod } = await import("../../api/_lib/services/reporting/periods.js");
+  const metrics = { one: 0, batch: 0, statements: [] };
+  const db = {
+    async one(sql) {
+      metrics.one += 1;
+      assert.match(sql, /period_closures/);
+      return null;
+    },
+    async batch(statements) {
+      metrics.batch += 1;
+      metrics.statements.push(statements.length);
+      return statements.map((statement) => {
+        if (statement.sql.includes("transaction_count")) return { rows: [{ transaction_count: 0, active_count: 0, cancelled_count: 0, income_total: 0, expense_total: 0 }] };
+        if (statement.sql.includes("envelope_period_id IS NULL")) return { rows: [{ count: 0 }] };
+        if (statement.sql.includes("protected_account_id")) return { rows: [] };
+        if (statement.sql.includes("GROUP BY idempotency_key,created_by")) return { rows: [] };
+        if (statement.sql.includes("COUNT(*) AS count") || statement.sql.includes("COUNT(DISTINCT")) return { rows: [{ count: 0 }] };
+        return { rows: [] };
+      });
+    },
+  };
+  const result = await previewClosePeriod(db, {
+    actor: { user_id: "u1", role: "owner" },
+    payload: { period_key: "2026-07" },
+  });
+  assert.equal(result.canClose, true);
+  assert.equal(metrics.one, 1, "closure blocker tetap dibaca dulu agar closed period fail-fast");
+  assert.equal(metrics.batch, 1, "integrity base, unallocated, dan statistik harus satu batch setelah blocker");
+  assert.deepEqual(metrics.statements, [12]);
 });

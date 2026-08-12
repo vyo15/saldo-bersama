@@ -139,8 +139,8 @@ const resolveBridgeProbe = async (context, bridgeConfigured) => {
   return { checked: false, reachable: null, errorCode: null, health: null };
 };
 
-export const integrationStatus = async (db, context = null) => {
-  const rows = await db.all(`WITH latest_full_sync AS (
+export const integrationStatusStatement = () => ({
+  sql: `WITH latest_full_sync AS (
       SELECT provider,MAX(completed_at) AS resolved_at
       FROM integration_outbox
       WHERE status='completed' AND entity_type='system' AND event_type IN ('sync','rebuild') AND completed_at IS NOT NULL
@@ -152,12 +152,21 @@ export const integrationStatus = async (db, context = null) => {
     WHERE o.status NOT IN ('failed','dead_letter')
       OR f.resolved_at IS NULL
       OR o.updated_at>f.resolved_at
-    GROUP BY o.provider,o.status`);
+    GROUP BY o.provider,o.status`,
+  args: [],
+});
+
+export const presentIntegrationStatus = async (rows, context = null) => {
   const providers = accumulateProviderRows(rows);
   const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);
   const bridgeProbe = await resolveBridgeProbe(context, bridgeConfigured);
   const bridge = { configured: bridgeConfigured, ...bridgeProbe };
   return { providers, bridge, configured: bridgeReadiness(bridgeConfigured, bridge) };
+};
+
+export const integrationStatus = async (db, context = null) => {
+  const statement = integrationStatusStatement();
+  return presentIntegrationStatus(await db.all(statement.sql, statement.args), context);
 };
 
 export const markIntegrationResult = async (db, row, error = null) => {
