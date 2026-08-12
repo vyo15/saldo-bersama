@@ -87,7 +87,7 @@ test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase s
 
 
 
-test("backup schema v8 menyimpan notification preferences dan provider E-wallet canonical", async () => {
+test("backup schema v9 menyimpan penerima jatah, notification preferences, dan provider E-wallet canonical", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
@@ -95,7 +95,7 @@ test("backup schema v8 menyimpan notification preferences dan provider E-wallet 
     await db.execute("INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", ["u-pref", "budget_threshold", 0, 1, now, now]);
     await db.execute("INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["wallet-v8", "Belanja", "ewallet", "", "generic", "gopay", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-pref", now, "u-pref", now]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 8);
+    assert.equal(snapshot.manifest.schemaVersion, 9);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
     assert.equal(snapshot.tables.accounts[0].ewallet_template, "gopay");
@@ -103,7 +103,7 @@ test("backup schema v8 menyimpan notification preferences dan provider E-wallet 
   } finally { db.close(); }
 });
 
-test("backup schema v3-v7 tetap dapat dimuat ke schema v8 dengan field additive canonical", async () => {
+test("backup schema v3-v8 tetap dapat dimuat ke schema v9 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {

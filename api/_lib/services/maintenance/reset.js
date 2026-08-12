@@ -5,9 +5,9 @@ import { appError, assertOwner, canonicalJson, nowIso, sanitizeText, uuid } from
 import { createTechnicalBackup } from "./backup.js";
 import { digest, quoted } from "./shared.js";
 
-export const TRIAL_RESET_CONFIRMATION = "RESET DATA PERCOBAAN";
+export const TRIAL_RESET_CONFIRMATION = "BERSIHKAN DATA TESTING";
 
-const RESET_DATA_TABLES = Object.freeze([
+const RESET_BUSINESS_TABLES = Object.freeze([
   { table: "goal_movements", key: "goal_movement_id" },
   { table: "budgets", key: "budget_id" },
   { table: "envelope_movements", key: "movement_id" },
@@ -21,22 +21,24 @@ const RESET_DATA_TABLES = Object.freeze([
   { table: "period_closures", key: "closure_id" },
 ]);
 
-const RESET_OPERATIONAL_DELETE_ORDER = Object.freeze([
-  "notification_deliveries",
-  "notification_queue",
-  "integration_links",
-  "integration_outbox",
-  "import_previews",
+const RESET_OPERATIONAL_TABLES = Object.freeze([
+  { table: "notification_deliveries", key: "delivery_id" },
+  { table: "notification_queue", key: "notification_id" },
+  { table: "integration_links", key: "link_id" },
+  { table: "integration_outbox", key: "outbox_id" },
+  { table: "import_previews", key: "preview_id" },
 ]);
 
-const RESET_BUSINESS_DELETE_ORDER = Object.freeze(RESET_DATA_TABLES.map(({ table }) => table));
+const RESET_STATE_TABLES = Object.freeze([...RESET_BUSINESS_TABLES, ...RESET_OPERATIONAL_TABLES]);
+const RESET_OPERATIONAL_DELETE_ORDER = Object.freeze(RESET_OPERATIONAL_TABLES.map(({ table }) => table));
+const RESET_BUSINESS_DELETE_ORDER = Object.freeze(RESET_BUSINESS_TABLES.map(({ table }) => table));
 
 const readResetState = async (db) => {
   const rowsByTable = {};
-  for (const { table, key } of RESET_DATA_TABLES) {
+  for (const { table, key } of RESET_STATE_TABLES) {
     rowsByTable[table] = await db.all(`SELECT * FROM ${quoted(table)} ORDER BY ${quoted(key)}`);
   }
-  const counts = Object.fromEntries(RESET_DATA_TABLES.map(({ table }) => [table, rowsByTable[table].length]));
+  const counts = Object.fromEntries(RESET_STATE_TABLES.map(({ table }) => [table, rowsByTable[table].length]));
   return {
     counts,
     fingerprint: digest(canonicalJson(rowsByTable)),
@@ -44,40 +46,59 @@ const readResetState = async (db) => {
 };
 
 const readPreservedCounts = async (db) => {
-  const [accounts, categories, users, audit] = await Promise.all([
+  const [accounts, categories, users, audit, backups, pushSubscriptions, notificationPreferences] = await Promise.all([
     db.one("SELECT COUNT(*) AS count FROM accounts"),
     db.one("SELECT COUNT(*) AS count FROM categories"),
     db.one("SELECT COUNT(*) AS count FROM users"),
     db.one("SELECT COUNT(*) AS count FROM audit_log"),
+    db.one("SELECT COUNT(*) AS count FROM backup_runs"),
+    db.one("SELECT COUNT(*) AS count FROM push_subscriptions"),
+    db.one("SELECT COUNT(*) AS count FROM notification_preferences"),
   ]);
   return {
     accounts: Number(accounts?.count || 0),
     categories: Number(categories?.count || 0),
     users: Number(users?.count || 0),
     audit: Number(audit?.count || 0),
+    backups: Number(backups?.count || 0),
+    pushSubscriptions: Number(pushSubscriptions?.count || 0),
+    notificationPreferences: Number(notificationPreferences?.count || 0),
   };
 };
 
-const resetSummary = (counts) => ({
-  transactions: Number(counts.transactions || 0),
-  reconciliations: Number(counts.reconciliations || 0),
-  goals: Number(counts.savings_goals || 0),
-  goalMovements: Number(counts.goal_movements || 0),
-  budgets: Number(counts.budgets || 0),
-  allocationRules: Number(counts.envelope_rules || 0),
-  allocationPeriods: Number(counts.envelope_periods || 0),
-  allocationMovements: Number(counts.envelope_movements || 0),
-  recurringRules: Number(counts.recurring_rules || 0),
-  recurringOccurrences: Number(counts.recurring_occurrences || 0),
-  periodClosures: Number(counts.period_closures || 0),
-  totalRows: Object.values(counts).reduce((sum, value) => sum + Number(value || 0), 0),
-});
+const sumCounts = (counts, tables) => tables.reduce((sum, { table }) => sum + Number(counts[table] || 0), 0);
+
+const resetSummary = (counts) => {
+  const businessRows = sumCounts(counts, RESET_BUSINESS_TABLES);
+  const operationalRows = sumCounts(counts, RESET_OPERATIONAL_TABLES);
+  return {
+    transactions: Number(counts.transactions || 0),
+    reconciliations: Number(counts.reconciliations || 0),
+    goals: Number(counts.savings_goals || 0),
+    goalMovements: Number(counts.goal_movements || 0),
+    budgets: Number(counts.budgets || 0),
+    allocationRules: Number(counts.envelope_rules || 0),
+    allocationPeriods: Number(counts.envelope_periods || 0),
+    allocationMovements: Number(counts.envelope_movements || 0),
+    recurringRules: Number(counts.recurring_rules || 0),
+    recurringOccurrences: Number(counts.recurring_occurrences || 0),
+    periodClosures: Number(counts.period_closures || 0),
+    notificationDeliveries: Number(counts.notification_deliveries || 0),
+    notificationQueue: Number(counts.notification_queue || 0),
+    integrationLinks: Number(counts.integration_links || 0),
+    integrationOutbox: Number(counts.integration_outbox || 0),
+    importPreviews: Number(counts.import_previews || 0),
+    businessRows,
+    operationalRows,
+    totalRows: businessRows + operationalRows,
+  };
+};
 
 export const previewTrialDataReset = async (db, context) => {
   assertOwner(context.actor);
   const [state, preserved] = await Promise.all([readResetState(db), readPreservedCounts(db)]);
   return {
-    scope: "trial-financial-data",
+    scope: "prelaunch-testing-data",
     previewFingerprint: state.fingerprint,
     previewedAt: nowIso(),
     confirmationPhrase: TRIAL_RESET_CONFIRMATION,
@@ -95,16 +116,16 @@ const assertResetRequest = (context) => {
     throw appError("RESET_ACKNOWLEDGEMENT_REQUIRED", "Pernyataan pemahaman wajib dicentang.", 400);
   }
   const reason = sanitizeText(payload.reason, 200);
-  if (reason.length < 5) throw appError("RESET_REASON_REQUIRED", "Alasan reset minimal 5 karakter.", 400);
+  if (reason.length < 5) throw appError("RESET_REASON_REQUIRED", "Alasan pembersihan minimal 5 karakter.", 400);
   const previewFingerprint = sanitizeText(payload.previewFingerprint, 128);
-  if (!previewFingerprint) throw appError("RESET_PREVIEW_REQUIRED", "Jalankan preview reset terlebih dahulu.", 409);
+  if (!previewFingerprint) throw appError("RESET_PREVIEW_REQUIRED", "Jalankan preview pembersihan terlebih dahulu.", 409);
   return { reason, previewFingerprint };
 };
 
 const assertPreviewUnchanged = async (db, previewFingerprint) => {
   const state = await readResetState(db);
   if (state.fingerprint !== previewFingerprint) {
-    throw appError("RESET_PREVIEW_CHANGED", "Data berubah sejak preview. Jalankan preview reset lagi agar data terbaru diperiksa.", 409);
+    throw appError("RESET_PREVIEW_CHANGED", "Data berubah sejak preview. Jalankan preview lagi agar data terbaru diperiksa.", 409);
   }
   return state;
 };
@@ -112,7 +133,7 @@ const assertPreviewUnchanged = async (db, previewFingerprint) => {
 const claimMaintenance = async (db) => {
   const result = await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode' AND value='false'", [nowIso()]);
   if (result.rowsAffected !== 1) {
-    throw appError("MAINTENANCE_MODE", "Maintenance lain sedang aktif. Selesaikan recovery/integrity sebelum reset.", 409);
+    throw appError("MAINTENANCE_MODE", "Maintenance lain sedang aktif. Selesaikan recovery/integrity sebelum pembersihan data testing.", 409);
   }
 };
 
@@ -146,13 +167,13 @@ export const applyTrialDataReset = async (db, context) => {
       purgeStarted = true;
       await purgeTrialData(tx);
       const issues = await integrityIssues(tx);
-      if (issues.length) throw appError("RESET_INTEGRITY_FAILED", "Reset dibatalkan karena integrity check gagal.", 409, issues);
+      if (issues.length) throw appError("RESET_INTEGRITY_FAILED", "Pembersihan dibatalkan karena integrity check gagal.", 409, issues);
       await appendAudit(tx, { ...context, action: "reset.apply" }, {
         entityType: "maintenance_reset",
         entityId: resetId,
         reason,
         previous: { previewFingerprint, summary: result.summary },
-        next: { resetAt, safetyBackupId: safety.backupId, scope: "trial-financial-data", reason },
+        next: { resetAt, safetyBackupId: safety.backupId, scope: "prelaunch-testing-data", reason },
       });
       await enqueueIntegration(tx, "sheets", "rebuild", "system", "mirror", { reason: "trial-reset", resetId });
       await enqueueIntegration(tx, "calendar", "rebuild", "system", "calendar", { reason: "trial-reset", resetId });

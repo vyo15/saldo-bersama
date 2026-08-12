@@ -62,7 +62,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    npm run env:check
    ```
 
-5. Pastikan database sudah memakai schema v8 dan integrity check lulus:
+5. Pastikan database sudah memakai schema v9 dan integrity check lulus:
 
    ```bash
    npm run db:migrate
@@ -84,11 +84,13 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 
    Langkah ini dilakukan satu kali setelah aktivasi/rotasi settings. Laptop atau PC lain kemudian cukup menjalankan `npm run dev`; bootstrap menarik Development terbaru secara otomatis.
 8. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
-9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v8. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
+9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v9. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
 10. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 11. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
-## 6. Migration schema v8
+## 6. Migration schema v9
+
+Migration terbaru adalah `database/migrations/007_envelope_assignee.sql`. Migration bersifat additive, membackfill kantong personal ke pemiliknya, dan membiarkan kantong shared sebagai Jatah Bersama.
 
 Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v8 menerima traffic:
 
@@ -99,7 +101,7 @@ npm run db:integrity
 
 Migration `006_account_ewallet_template.sql` bersifat additive. Ia menambah provider E-wallet canonical (`generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`) tanpa mengubah nama rekening, saldo, transaksi, ownership, atau template bank. Rekening E-wallet existing dibackfill hanya untuk provider yang sudah dapat dikenali dengan aman oleh presentation layer.
 
-Backup schema v8 menyertakan `ewallet_template` dan notification preferences. Runtime v8 tetap dapat membaca backup v3-v7 melalui normalisasi additive. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus kolom/tabel langsung pada database aktif.
+Backup schema v9 menyertakan `assignee_user_id`, `ewallet_template`, dan notification preferences. Runtime v9 tetap dapat membaca backup v3-v8 melalui normalisasi additive. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus kolom/tabel langsung pada database aktif.
 
 ## 7. Release gate
 
@@ -112,4 +114,4 @@ npm run test:browser
 npm run db:integrity
 ```
 
-`npm run env:push:production` hanya dijalankan ketika perubahan environment memang menjadi bagian release yang sudah direview; jangan menjadikannya efek samping setiap release. Lanjutkan smoke test login owner/member, create/update/cancel transaksi, transfer, conflict, Excel, status/register/test/unregister Web Push, retry dua perangkat, mirror, Calendar, backup, restore drill, dan PWA iOS/Android.
+`npm run env:push:production` hanya dijalankan ketika perubahan environment memang menjadi bagian release yang sudah direview; jangan menjadikannya efek samping setiap release. Lanjutkan smoke test login Administrator/Member, create/update/cancel transaksi, transfer, conflict, Excel, status/register/test/unregister Web Push, retry dua perangkat, mirror, Calendar, backup, restore drill, dan PWA iOS/Android.

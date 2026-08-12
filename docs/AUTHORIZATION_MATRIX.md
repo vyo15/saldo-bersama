@@ -12,7 +12,7 @@
 
 ## Action permission
 
-| Action | Owner | Member |
+| Action | Administrator | Member |
 |---|---:|---:|
 | `system.health` | Ya | Ya |
 | `app.initialState` | Ya | Ya |
@@ -107,13 +107,13 @@
 
 ## Recurring occurrence dan preferensi notifikasi
 
-- Melewati atau memulihkan satu occurrence (`recurring.cancelOccurrence` / `recurring.restoreOccurrence`) adalah keputusan planning owner-only. Aksi ini tidak membuat ledger entry dan tidak mengubah saldo.
-- Owner dan member boleh membaca serta mengubah **preference notifikasi miliknya sendiri**. `user_id`, actor, role, timestamp, dan audit identity tetap ditentukan backend; client tidak dapat mengubah preference pengguna lain.
+- Melewati atau memulihkan satu occurrence (`recurring.cancelOccurrence` / `recurring.restoreOccurrence`) adalah keputusan planning Administrator-only. Aksi ini tidak membuat ledger entry dan tidak mengubah saldo.
+- Administrator dan Member boleh membaca serta mengubah **preference notifikasi miliknya sendiri**. `user_id`, actor, role, timestamp, dan audit identity tetap ditentukan backend; client tidak dapat mengubah preference pengguna lain.
 - Hak menerima alert tidak memperluas hak membaca data: payload Push tetap generik dan preference hanya memfilter tipe alert sebelum queue dibuat.
 
 ## Guard recovery kantong
 
-- Archive/restore aturan kantong tetap owner-only karena mengubah master planning.
+- Archive/restore aturan kantong tetap Administrator-only karena mengubah master planning.
 - Member boleh membatalkan `envelopes.reverseMovement` hanya untuk movement miliknya dan tetap tunduk pada ownership scope, `row_version`, ketersediaan nominal di kantong tujuan, idempotency, dan audit backend.
 - Movement kantong tidak pernah hard-delete. Envelope rule baru boleh memakai `envelopes.deleteUnusedRule` hanya bila server membuktikan rule belum pernah dipakai dan satu-satunya child adalah initial empty period; selain itu gunakan archive/restore.
 
@@ -123,15 +123,16 @@
 - Rekening personal selalu membawa `owner_name` dari join backend serta capability server-side. Frontend tidak boleh menentukan pemilik atau hak akses dari nama rekening, email client, atau role yang dikirim browser.
 - Hak operasi tetap lebih sempit: member hanya dapat bertransaksi dan merekonsiliasi rekening shared atau rekening personal miliknya. Rekening personal pasangan memiliki `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
-- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap owner-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga owner-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap owner-only.
-- User management, master create/update/archive, budget management, period close/reopen, mirror/calendar manual sync, backup/import/restore/reset data percobaan/integrity adalah owner-only sesuai action matrix.
-- Export lengkap owner-only melalui `/api/export`. Sheets mirror tetap shared-only.
+- Kantong memiliki dimensi `assignee_user_id` terpisah dari ownership ledger. `NULL` berarti Jatah Bersama. Member hanya boleh memakai atau memindahkan Jatah Bersama dan jatah miliknya sendiri; jatah pengguna lain ditolak backend. Rekening personal hanya boleh menjadi sumber jatah untuk pemilik rekening tersebut.
+- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
+- User management, master create/update/archive, budget management, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix.
+- Export lengkap Administrator-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.
 - `totalBalance` adalah metrik readable/transparan. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` adalah metrik actionable sehingga hanya boleh memakai rekening/scope operable actor.
 
 ## Keputusan role pasangan
 
-Runtime canonical tetap memakai role `member`. Dokumen produk tidak boleh menganggap member dapat membuat/mengubah master planning bila permission source masih owner-only. Perubahan `envelopes.create`, `budgets.upsert`, `goals.create/update`, atau recurring rule management memerlukan RFC-0016, review backend/frontend, dan test authorization.
+UI menggunakan role **Administrator** dan **Member**. Untuk kompatibilitas data/session existing, key internal database/permission untuk Administrator tetap `owner`; konfigurasi `ALLOWED_USERS_JSON` menerima `administrator` dan menormalisasinya ke key internal tersebut. Member tidak dapat membuat rekening atau mengubah master planning selama permission source tetap Administrator-only. Perubahan `envelopes.create`, `budgets.upsert`, `goals.create/update`, atau recurring rule management memerlukan RFC-0016, review backend/frontend, dan test authorization.
 
 ## Privasi data turunan
 

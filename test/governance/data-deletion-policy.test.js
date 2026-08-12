@@ -22,6 +22,7 @@ const walk = async (relative, extension) => {
 
 const APPROVED_SQL_DELETES = new Map([
   ["api/jobs.js", new Set(["request_nonces"])],
+  ["api/_lib/services/maintenance/housekeeping.js", new Set(["idempotency_keys", "import_previews", "restore_previews"])],
   ["api/_lib/idempotency.js", new Set(["idempotency_keys"])],
   ["api/_lib/services/masterData.js", new Set(["accounts", "categories"])],
   ["api/_lib/services/planning/envelopes.js", new Set(["envelope_periods", "envelope_rules"])],
@@ -113,7 +114,7 @@ test("ledger dan audit tidak boleh di-hard-delete oleh business service", async 
   }
 });
 
-test("reset data percobaan hanya tersedia melalui maintenance guard owner, preview, backup, dan audit", async () => {
+test("bersihkan data testing hanya tersedia melalui maintenance guard owner, preview, backup, dan audit", async () => {
   const reset = await readFile(path.join(root, "api/_lib/services/maintenance/reset.js"), "utf8");
   assert.match(reset, /assertOwner\(context\.actor\)/);
   assert.match(reset, /previewFingerprint/);
@@ -121,7 +122,7 @@ test("reset data percobaan hanya tersedia melalui maintenance guard owner, previ
   assert.match(reset, /maintenance_mode/);
   assert.match(reset, /integrityIssues/);
   assert.match(reset, /appendAudit/);
-  assert.match(reset, /RESET DATA PERCOBAAN/);
+  assert.match(reset, /BERSIHKAN DATA TESTING/);
   assert.doesNotMatch(reset, /"audit_log"/);
   assert.doesNotMatch(reset, /"accounts"\s*,\s*key/);
   assert.doesNotMatch(reset, /"categories"\s*,\s*key/);

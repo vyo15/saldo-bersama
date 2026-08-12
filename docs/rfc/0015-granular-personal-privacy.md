@@ -12,7 +12,7 @@ Schema v3 hanya shared/personal. Kebutuhan meminta full detail, balance-only, co
 ## Goals
 
 - Authorization dan projection backend per account/data class.
-- Owner/member memahami apa yang terlihat tanpa inferensi saldo/detail yang tidak diizinkan.
+- Administrator/Member memahami apa yang terlihat tanpa inferensi saldo/detail yang tidak diizinkan.
 - Mirror/export/backup mengikuti policy.
 
 ## Proposed solution
@@ -24,7 +24,7 @@ Policy entity atau field visibility versioned dengan server-side read models. Qu
 - Detail yang dibatasi tidak pernah dikirim ke browser.
 - Aggregate tidak memungkinkan rekonstruksi mudah dari endpoint lain.
 - Export/mirror mematuhi policy.
-- Owner emergency/recovery access diputuskan eksplisit.
+- Akses emergency/recovery Administrator diputuskan eksplisit.
 
 ## Risks
 

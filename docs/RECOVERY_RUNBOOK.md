@@ -12,7 +12,7 @@ Backup wajib berisi manifest, schema version, created_at/by, table counts, check
 
 ## Restore guarded
 
-1. Owner memasukkan Drive file ID.
+1. Administrator memasukkan Drive file ID.
 2. Backend membaca melalui signed bridge.
 3. Verifikasi ukuran, gzip, JSON, checksum, dan schema version.
 4. Buat preview dengan expiry.
@@ -39,7 +39,7 @@ Kesalahan pengguna biasa harus ditangani melalui lifecycle per-item:
 
 - rekening/kategori arsip → action restore dengan alasan dan `row_version`;
 - transaksi cancelled → restore khusus owner bila period, reference, duplicate, dan balance guard lulus;
-- anggota nonaktif → reaktivasi eksplisit setelah allowlist diverifikasi;
+- member nonaktif → reaktivasi eksplisit setelah allowlist diverifikasi;
 - periode salah ditutup → buka kembali secara berurutan dengan alasan.
 
 Full database restore bukan mekanisme undo harian. Gunakan restore guarded hanya bila kerusakan mencakup banyak data atau lifecycle per-item tidak dapat menjaga konsistensi. Rekening kosong yang dihapus melalui `accounts.deleteUnused` tidak dipulihkan per item; audit tetap tersedia dan rekening baru dapat dibuat kembali tanpa memalsukan histori.

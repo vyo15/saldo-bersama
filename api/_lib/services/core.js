@@ -141,7 +141,7 @@ export const assertVersion = (row, expected) => {
 };
 
 export const assertOwner = (actor) => {
-  if (actor.role !== "owner") throw appError("OWNER_ONLY", "Operasi ini hanya dapat dilakukan owner.", 403);
+  if (actor.role !== "owner") throw appError("OWNER_ONLY", "Operasi ini hanya dapat dilakukan Administrator.", 403);
 };
 
 export const redactErrorMessage = (error) => sanitizeText(error?.message || "Operasi gagal.", 300).replace(/(?:turso|libsql):\/\/[^\s]+/gi, "[database]");

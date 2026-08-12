@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiRefreshCw, FiShield, FiTrash2 } from "react-icons/fi";
+import { FiCheckCircle, FiDatabase, FiRefreshCw, FiShield, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -15,7 +15,7 @@ const RESET_INVALIDATIONS = Object.freeze([
   "reconciliations.list", "periods.list", "archive.list", "audit.list", "integrations.status",
 ]);
 
-const SUMMARY_LABELS = Object.freeze([
+const BUSINESS_SUMMARY_LABELS = Object.freeze([
   ["transactions", "Transaksi"],
   ["reconciliations", "Pencocokan saldo"],
   ["goals", "Target"],
@@ -29,16 +29,81 @@ const SUMMARY_LABELS = Object.freeze([
   ["periodClosures", "Tutup buku"],
 ]);
 
+const OPERATIONAL_SUMMARY_LABELS = Object.freeze([
+  ["notificationDeliveries", "Delivery notifikasi"],
+  ["notificationQueue", "Queue notifikasi"],
+  ["integrationLinks", "Link integrasi"],
+  ["integrationOutbox", "Queue sinkronisasi"],
+  ["importPreviews", "Preview import"],
+]);
+
+const PRESERVED_LABELS = Object.freeze([
+  ["accounts", "Rekening"],
+  ["categories", "Kategori"],
+  ["users", "Pengguna"],
+  ["audit", "Audit log"],
+  ["backups", "Riwayat backup"],
+  ["pushSubscriptions", "Perangkat notifikasi"],
+  ["notificationPreferences", "Preferensi notifikasi"],
+]);
+
+const formatCount = (value) => Number(value || 0).toLocaleString("id-ID");
+
+const SummaryGrid = ({ labels, summary, ariaLabel }) => (
+  <div className={styles.resetPreviewGrid} aria-label={ariaLabel}>
+    {labels.map(([key, label]) => (
+      <div key={key}><span>{label}</span><strong>{formatCount(summary?.[key])}</strong></div>
+    ))}
+  </div>
+);
+
 const ResetPreview = ({ preview }) => (
   <div className={styles.resetPreview}>
-    <div className={styles.resetPreviewGrid} aria-label="Data yang akan dihapus">
-      {SUMMARY_LABELS.map(([key, label]) => (
-        <div key={key}><span>{label}</span><strong>{Number(preview.summary?.[key] || 0).toLocaleString("id-ID")}</strong></div>
-      ))}
+    <div className={styles.resetOverview} aria-label="Ringkasan data testing">
+      <div>
+        <span>Total dibersihkan</span>
+        <strong>{formatCount(preview.summary?.totalRows)}</strong>
+        <small>baris</small>
+      </div>
+      <div>
+        <span>Data finansial</span>
+        <strong>{formatCount(preview.summary?.businessRows)}</strong>
+        <small>baris</small>
+      </div>
+      <div>
+        <span>Data operasional</span>
+        <strong>{formatCount(preview.summary?.operationalRows)}</strong>
+        <small>baris</small>
+      </div>
     </div>
-    <div className="notice notice--info">
-      <FiShield aria-hidden="true" />
-      <span>Rekening ({preview.preserved?.accounts || 0}) beserta saldo awalnya, kategori ({preview.preserved?.categories || 0}), pengguna, audit log, konfigurasi, dan backup tetap dipertahankan.</span>
+
+    <div className={styles.resetPreviewSection}>
+      <div className={styles.resetPreviewSectionHeading}>
+        <FiDatabase aria-hidden="true" />
+        <div><strong>Aktivitas dan perencanaan</strong><small>Data trial yang memengaruhi tampilan finansial.</small></div>
+      </div>
+      <SummaryGrid labels={BUSINESS_SUMMARY_LABELS} summary={preview.summary} ariaLabel="Aktivitas dan perencanaan yang akan dibersihkan" />
+    </div>
+
+    <div className={styles.resetPreviewSection}>
+      <div className={styles.resetPreviewSectionHeading}>
+        <FiRefreshCw aria-hidden="true" />
+        <div><strong>Sisa proses testing</strong><small>Queue, projection, dan preview sementara ikut dibersihkan dalam eksekusi yang sama.</small></div>
+      </div>
+      <SummaryGrid labels={OPERATIONAL_SUMMARY_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dibersihkan" />
+    </div>
+
+    <div className={styles.resetPreserved}>
+      <div className={styles.resetPreviewSectionHeading}>
+        <FiShield aria-hidden="true" />
+        <div><strong>Tetap disimpan</strong><small>Master, keamanan, audit, dan recovery tidak dihapus.</small></div>
+      </div>
+      <div className={styles.resetPreservedGrid}>
+        {PRESERVED_LABELS.map(([key, label]) => (
+          <div key={key}><FiCheckCircle aria-hidden="true" /><span>{label}</span><strong>{formatCount(preview.preserved?.[key])}</strong></div>
+        ))}
+        <div><FiCheckCircle aria-hidden="true" /><span>Konfigurasi sistem</span><strong>Tetap</strong></div>
+      </div>
     </div>
   </div>
 );
@@ -46,14 +111,14 @@ const ResetPreview = ({ preview }) => (
 const ResetConfirmationModal = ({ preview, open, busy, error, onCancel, onConfirm }) => (
   <ConfirmationModal
     open={open}
-    title="Reset data percobaan?"
-    description="Data aktivitas dan perencanaan pada preview akan dihapus permanen setelah safety backup. Rekening, kategori, pengguna, audit, konfigurasi, dan backup tetap disimpan."
-    confirmLabel="Reset data percobaan"
-    reasonLabel="Alasan reset"
-    reasonPlaceholder="Contoh: Membersihkan data uji rekonsiliasi dan transaksi"
+    title="Bersihkan data testing?"
+    description="Seluruh data pada preview akan dihapus permanen setelah safety backup. Karena project memakai satu database, gunakan hanya selama data yang tersimpan masih benar-benar data trial/error."
+    confirmLabel="Bersihkan data testing"
+    reasonLabel="Alasan pembersihan"
+    reasonPlaceholder="Contoh: Membersihkan transaksi dan rekonsiliasi hasil trial"
     requireReason
-    expectedConfirmation={preview?.confirmationPhrase || "RESET DATA PERCOBAAN"}
-    acknowledgementLabel="Saya memahami data pada preview akan dihapus permanen dan hanya dapat dipulihkan melalui backup teknis."
+    expectedConfirmation={preview?.confirmationPhrase || "BERSIHKAN DATA TESTING"}
+    acknowledgementLabel="Saya memahami project memakai satu database dan seluruh data pada preview akan dihapus permanen. Rekening, kategori, pengguna, audit, konfigurasi, dan backup tetap disimpan."
     countdownSeconds={8}
     busy={busy}
     error={error}
@@ -76,11 +141,16 @@ const ResetDataPage = () => {
 
   const loadPreview = async () => {
     setPreviewBusy(true);
-    setResult({ status: "loading", text: "Memeriksa data percobaan yang dapat direset..." });
+    setResult({ status: "loading", text: "Memeriksa seluruh data testing yang dapat dibersihkan..." });
     try {
       const data = await runSettingsAction("reset.preview", {}, { force: true });
       setPreview(data);
-      setResult({ status: "success", text: data.summary?.totalRows ? `Preview siap. ${data.summary.totalRows.toLocaleString("id-ID")} baris data akan dibersihkan.` : "Tidak ada data aktivitas/perencanaan yang perlu direset." });
+      setResult({
+        status: "success",
+        text: data.summary?.totalRows
+          ? `Preview siap. ${formatCount(data.summary.totalRows)} baris data testing akan dibersihkan dalam satu eksekusi.`
+          : "Tidak ada data aktivitas atau sisa proses testing yang perlu dibersihkan.",
+      });
     } catch (error) {
       setPreview(null);
       setResult({ status: "danger", text: error.message });
@@ -106,7 +176,7 @@ const ResetDataPage = () => {
       await Promise.allSettled([refreshAll()]);
       setResult({
         status: "success",
-        text: "Data percobaan berhasil direset setelah safety backup dan integrity check. Rekening, kategori, pengguna, audit, dan konfigurasi tetap ada.",
+        text: `Pembersihan selesai. ${formatCount(data.summary?.totalRows)} baris data testing dihapus setelah safety backup dan integrity check. Data dasar aplikasi tetap dipertahankan.`,
         fileLink: data.safetyBackupFileId ? `https://drive.google.com/open?id=${encodeURIComponent(data.safetyBackupFileId)}` : null,
       });
     } catch (error) {
@@ -123,36 +193,41 @@ const ResetDataPage = () => {
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="reset-data-title">
         <div className={styles.pageHeading}>
-          <h2 id="reset-data-title">Reset data percobaan</h2>
-          <p>Hapus data uji tanpa menghapus data dasar aplikasi.</p>
+          <h2 id="reset-data-title">Bersihkan data testing</h2>
+          <p>Kosongkan data trial/error dalam satu proses tanpa menghapus master, akses pengguna, audit, atau recovery.</p>
         </div>
 
         <SettingsNotice result={result} />
 
+        <div className="notice notice--warning" role="note">
+          <FiShield aria-hidden="true" />
+          <span><strong>Satu database aktif.</strong> Fitur ini aman untuk fase sebelum go-live karena seluruh data finansial yang ada masih dianggap data testing. Setelah Anda mulai memasukkan transaksi nyata, jangan gunakan pembersihan massal ini.</span>
+        </div>
+
         <Card className="panel">
           <div className="panel__header">
             <div>
-              <h2>1. Preview reset</h2>
-              <p>Periksa data yang akan dihapus.</p>
+              <h2>1. Periksa data</h2>
+              <p>Preview mencakup data finansial dan sisa proses testing agar tidak ada queue trial yang tertinggal.</p>
             </div>
             <FiRefreshCw aria-hidden="true" />
           </div>
-          <Button variant="primary" icon={FiRefreshCw} loading={previewBusy} onClick={loadPreview}>Periksa data percobaan</Button>
+          <Button variant="primary" icon={FiRefreshCw} loading={previewBusy} onClick={loadPreview}>Periksa data testing</Button>
           {preview ? <ResetPreview preview={preview} /> : null}
         </Card>
 
         <Card className="panel">
           <div className="panel__header">
             <div>
-              <h2>2. Reset data</h2>
-              <p>Safety backup dibuat sebelum data dihapus.</p>
+              <h2>2. Bersihkan sekaligus</h2>
+              <p>Safety backup dibuat dan diverifikasi sebelum penghapusan dimulai.</p>
             </div>
             <FiTrash2 aria-hidden="true" />
           </div>
-          <div className="notice notice--warning">
-            <span>Gunakan hanya untuk membersihkan data uji. Untuk transaksi nyata, gunakan batal/arsip/pemulihan sesuai workflow normal.</span>
+          <div className="notice notice--info">
+            <span>Proses ini tidak berjalan otomatis di background. Satu konfirmasi Administrator membersihkan seluruh scope pada preview secara atomik agar database testing kembali rapi.</span>
           </div>
-          <Button variant="danger" icon={FiTrash2} disabled={!hasResettableData || previewBusy} onClick={() => { setApplyError(null); setConfirmationOpen(true); }}>Reset data percobaan</Button>
+          <Button variant="danger" icon={FiTrash2} disabled={!hasResettableData || previewBusy} onClick={() => { setApplyError(null); setConfirmationOpen(true); }}>Bersihkan data testing</Button>
         </Card>
 
         <ResetConfirmationModal

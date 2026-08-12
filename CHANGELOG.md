@@ -21,6 +21,8 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Menguatkan maintenance pra-go-live **Bersihkan data testing** untuk keputusan satu Turso database: preview/fingerprint kini mencakup data finansial dan sisa operasional testing, UI menampilkan scope yang dihapus/dipertahankan, typed confirmation menjadi `BERSIHKAN DATA TESTING`, dan reset tetap manual owner-only dengan safety backup, maintenance lock, integrity check, audit, serta rebuild integrasi.
+- Menambahkan scheduled housekeeping untuk `idempotency_keys`, `import_previews`, dan `restore_previews` yang sudah expired; preview berstatus `applying`, ledger, audit, backup, master, push subscription, dan preference notifikasi tidak disentuh.
 - Menambahkan asset kartu 768×484 untuk Tunai, Tabungan, ShopeePay, DANA, GoPay, OVO, dan LinkAja. Asset tersebut kini dipetakan melalui `accounts.ewallet_template` schema v8; deteksi nama hanya dipertahankan untuk kompatibilitas legacy dan provider yang tidak dikenali tetap memakai fallback generic.
 - Menutup false failure berulang pada authenticated browser journey `/rekening`: browser harness mendukung `readySelector` dan route mobile memiliki capability anchor terpusat, sehingga `MobileAccountsExperience` boleh tetap lazy untuk memenuhi chunk budget tetapi assertion owner/member baru berjalan setelah stack benar-benar visible.
 - Menyinkronkan dokumentasi QA/Test Plan/Release/Project Status dengan UI Rekening mobile aktual: Transfer adalah quick action, Riwayat/Grafik adalah tab informasi, dan browser gate wajib lulus terpisah untuk perubahan frontend.

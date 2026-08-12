@@ -8,11 +8,11 @@
 | Pengeluaran | Transaksi `expense` yang mengurangi rekening sumber. |
 | Transfer | Pemindahan antar dua rekening valid yang berbeda; bukan income/expense. |
 | Refund | Pengembalian dana yang menambah rekening tujuan sesuai rule transaksi. |
-| Adjustment | Penyesuaian owner-only yang tetap masuk ledger dan audit. |
+| Adjustment | Penyesuaian Administrator-only yang tetap masuk ledger dan audit. |
 | Active | Record masih berlaku terhadap perhitungan/operasi. |
 | Cancelled | Transaksi dibatalkan secara audit-safe dan tidak memengaruhi saldo. |
 | Archived | Record tidak aktif untuk penggunaan normal tetapi tidak dihapus permanen. |
-| Kantong/Envelope | Alokasi dana dengan rule dan instance per periode. |
+| Kantong/Envelope | Alokasi dana dengan rule dan instance per periode; dapat memiliki penerima jatah Bersama/Administrator/Member tanpa mengubah ownership ledger. |
 | Budget | Batas nominal kategori per periode. |
 | Recurring | Aturan pemasukan/tagihan yang menghasilkan occurrence. |
 | Occurrence | Kejadian per tanggal dari recurring rule. |
@@ -26,5 +26,5 @@
 | Row version | Versi record untuk menolak overwrite edit pengguna lain. |
 | Preview | Analisis non-final sebelum import/restore apply. |
 | Maintenance mode | Mode read-mostly untuk operasi recovery/integrity. |
-| Owner | Role administratif tertinggi yang tetap dibatasi backend. |
+| Administrator | Role administratif tertinggi. Key internal `owner` dipertahankan hanya untuk kompatibilitas backend/data existing. |
 | Member | Role pengguna kedua dengan permission dan ownership terbatas. |

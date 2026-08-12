@@ -12,7 +12,7 @@ Dokumen kebutuhan menyebut Partner dapat mengelola anggaran/target bersama, seda
 ## Goals
 
 - Putuskan capability pasangan secara eksplisit tanpa privilege escalation.
-- Pertahankan owner-only untuk recovery, anggota, auth, schema, import/restore, dan destructive maintenance.
+- Pertahankan Administrator-only untuk recovery, member, auth, schema, import/restore, dan destructive maintenance.
 
 ## Alternatives
 
@@ -28,7 +28,7 @@ Belum dipilih. Prefer capability matrix server-side daripada conditional UI. Set
 
 - Default deny tetap berlaku.
 - Member tidak dapat mengubah personal milik pengguna lain.
-- Recovery/admin tetap owner-only.
+- Recovery/admin tetap Administrator-only.
 - Frontend dan backend matrix konsisten.
 
 ## Risks
@@ -37,4 +37,4 @@ Broken access control dan perubahan ekspektasi pasangan.
 
 ## Decision
 
-Pending keputusan owner aplikasi.
+Pending keputusan Administrator aplikasi.

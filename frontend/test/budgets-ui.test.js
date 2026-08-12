@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("halaman Anggaran memisahkan pengelolaan dari Laporan dengan guard owner dan concurrency", async () => {
+test("halaman Anggaran memisahkan pengelolaan dari Laporan dengan guard Administrator dan concurrency", async () => {
   const [app, page, api, reports, dashboard, navigation] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/features/budgets/BudgetsPage.jsx"),
@@ -16,12 +16,12 @@ test("halaman Anggaran memisahkan pengelolaan dari Laporan dengan guard owner da
 
   assert.match(app, /path="anggaran"/);
   assert.match(page, /useApiResource\("budgets\.list", \{ period \}\)/);
-  assert.match(page, /user\?\.role === "owner" && period === currentPeriod/);
+  assert.match(page, /administratorMode && period === currentPeriod/);
   assert.match(page, /row_version: existingBudget\?\.row_version/);
   assert.doesNotMatch(page, /createIdempotencyKey|idempotencyKey:/, "Anggaran harus memakai mutation intent canonical dari apiClient, bukan membuat key per klik");
   assert.match(page, /Promise\.allSettled\(\[resource\.reload\(\), refreshOverview\(\)\]\)/);
   assert.doesNotMatch(page, /Transfer internal tidak dihitung/);
-  assert.match(page, /Anggota dapat memantau anggaran/);
+  assert.match(page, /Member dapat memantau anggaran/);
   assert.match(api, /budgets\.upsert/);
   assert.match(api, /budgets\.archive/);
   assert.match(reports, /to="\/anggaran"/);
@@ -38,6 +38,11 @@ test("form Anggaran mempertahankan validasi nominal, kategori aktif, dan ambang 
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
   assert.match(page, /item\.status === "active" && item\.transaction_type === "expense"/);
   assert.match(page, /type="number" min="50" max="100"/);
+  assert.match(page, /Berlaku untuk/);
+  assert.match(page, /budgetOwnershipUpdates/);
+  assert.match(page, /\{ \.\.\.nextForm, amount: "", warning_threshold: 80 \}/);
+  assert.match(page, /useApiResource\("users\.list"/);
+  assert.match(page, /Untuk jatah per orang dari rekening bersama, gunakan Alokasi/);
   assert.match(moneyInput, /required=\{required\}/);
   assert.doesNotMatch(page, /<form[^>]+noValidate/);
 });

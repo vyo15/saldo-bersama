@@ -13,6 +13,7 @@ import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { userOptionLabel } from "../../shared/presentation/user.js";
 import { archiveBudget as requestArchiveBudget, deleteUnusedBudget as requestDeleteUnusedBudget, previewBudgetLifecycle, upsertBudget } from "./budgets.api.js";
 import { budgetPeriodMeta, budgetTotals, budgetVisualState } from "./budgetPresentation.js";
 import BudgetHeroCard from "./components/BudgetHeroCard.jsx";
@@ -20,9 +21,17 @@ import BudgetInsightCard from "./components/BudgetInsightCard.jsx";
 import styles from "./BudgetsPage.module.css";
 
 const EMPTY_BUDGET_ITEMS = Object.freeze([]);
-const emptyForm = () => ({ category_id: "", amount: "", warning_threshold: 80 });
+const emptyForm = () => ({ category_id: "", amount: "", warning_threshold: 80, scope: "shared", owner_user_id: "" });
 
-const BudgetModal = ({ open, close, existingBudget, saveState, saveBudget, form, setForm, categories, selectCategory }) => <Modal open={open} onClose={close} title={existingBudget ? "Edit anggaran" : "Tambah anggaran"} footer={<><Button type="button" disabled={saveState.status === "submitting"} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="budget-form" loading={saveState.status === "submitting"}>{existingBudget ? "Simpan perubahan" : "Simpan anggaran"}</Button></>}><form id="budget-form" className="form-grid" onSubmit={saveBudget}><label className="field"><span>Kategori pengeluaran *</span><select required value={form.category_id} onChange={(event) => selectCategory(event.target.value)}><option value="">Pilih kategori</option>{categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label><MoneyInput id="budget-amount" label="Nominal anggaran" value={form.amount} onChange={(value) => setForm((current) => ({ ...current, amount: value }))} required /><label className="field"><span>Ambang peringatan (%)</span><input type="number" min="50" max="100" value={form.warning_threshold} onChange={(event) => setForm((current) => ({ ...current, warning_threshold: Number(event.target.value) }))} /></label>{saveState.status === "error" ? <div className="notice notice--danger form-grid__full" role="alert">{saveState.error?.message || "Anggaran belum dapat disimpan."}</div> : null}</form></Modal>;
+const budgetOwnershipValue = (form) => form.scope === "personal" && form.owner_user_id ? `user:${form.owner_user_id}` : "shared";
+const budgetOwnershipUpdates = (value) => value === "shared"
+  ? { scope: "shared", owner_user_id: "" }
+  : { scope: "personal", owner_user_id: String(value).replace(/^user:/, "") };
+const budgetMatchesForm = (item, form) => item.category_id === form.category_id
+  && item.scope === form.scope
+  && String(item.owner_user_id || "") === String(form.owner_user_id || "");
+
+const BudgetModal = ({ open, close, existingBudget, saveState, saveBudget, form, setForm, categories, users, usersStatus, selectCategory, selectOwnership }) => <Modal open={open} onClose={close} title={existingBudget ? "Edit anggaran" : "Tambah anggaran"} footer={<><Button type="button" disabled={saveState.status === "submitting"} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="budget-form" loading={saveState.status === "submitting"}>{existingBudget ? "Simpan perubahan" : "Simpan anggaran"}</Button></>}><form id="budget-form" className="form-grid" onSubmit={saveBudget}><label className="field"><span>Kategori pengeluaran *</span><select required value={form.category_id} onChange={(event) => selectCategory(event.target.value)}><option value="">Pilih kategori</option>{categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label><label className="field"><span>Berlaku untuk</span><select value={budgetOwnershipValue(form)} onChange={(event) => selectOwnership(event.target.value)} disabled={usersStatus === "loading"}><option value="shared">Bersama</option>{users.map((item) => <option key={item.user_id} value={`user:${item.user_id}`}>{userOptionLabel(item)}</option>)}</select><small>Anggaran pribadi menghitung transaksi pada rekening pribadi pengguna tersebut. Untuk jatah per orang dari rekening bersama, gunakan Alokasi.</small></label><MoneyInput id="budget-amount" label="Nominal anggaran" value={form.amount} onChange={(value) => setForm((current) => ({ ...current, amount: value }))} required /><label className="field"><span>Ambang peringatan (%)</span><input type="number" min="50" max="100" value={form.warning_threshold} onChange={(event) => setForm((current) => ({ ...current, warning_threshold: Number(event.target.value) }))} /></label>{saveState.status === "error" ? <div className="notice notice--danger form-grid__full" role="alert">{saveState.error?.message || "Anggaran belum dapat disimpan."}</div> : null}</form></Modal>;
 
 const BudgetLifecycleModal = ({ archiveTarget, archiveState, setArchiveTarget, applyBudgetLifecycle }) => <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus anggaran yang belum dipakai?" : "Arsipkan anggaran?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.budget.name || archiveTarget.budget.category_id} belum menjadi histori perencanaan dan dapat dihapus permanen.` : `${archiveTarget.budget.name || archiveTarget.budget.category_id} sudah terkait transaksi atau histori periode. Anggaran hanya dapat diarsipkan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan anggaran"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyBudgetLifecycle}>{archiveTarget ? <div className="notice notice--info">Transaksi periode {archiveTarget.preview.dependencies.transactions} · penutupan periode {archiveTarget.preview.dependencies.period_closures}.</div> : null}</ConfirmationModal>;
 
@@ -38,14 +47,26 @@ const useBudgetFormController = ({ items, period, notify, refresh }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [message, setMessage] = useState(null);
   const [saveState, setSaveState] = useState({ status: "idle", error: null });
-  const existingBudget = items.find((item) => item.category_id === form.category_id && item.scope === "shared") || null;
+  const existingBudget = items.find((item) => budgetMatchesForm(item, form)) || null;
 
   const resetSaveState = () => setSaveState({ status: "idle", error: null });
   const selectCategory = (categoryId) => {
-    const current = items.find((item) => item.category_id === categoryId && item.scope === "shared") || null;
     setMessage(null);
     resetSaveState();
-    setForm(current ? { category_id: current.category_id, amount: String(current.amount || ""), warning_threshold: Number(current.warning_threshold || 80) } : { ...emptyForm(), category_id: categoryId });
+    setForm((currentForm) => {
+      const nextForm = { ...currentForm, category_id: categoryId };
+      const current = items.find((item) => budgetMatchesForm(item, nextForm)) || null;
+      return current ? { category_id: current.category_id, amount: String(current.amount || ""), warning_threshold: Number(current.warning_threshold || 80), scope: current.scope, owner_user_id: current.owner_user_id || "" } : { ...nextForm, amount: "", warning_threshold: 80 };
+    });
+  };
+  const selectOwnership = (value) => {
+    setMessage(null);
+    resetSaveState();
+    setForm((currentForm) => {
+      const nextForm = { ...currentForm, ...budgetOwnershipUpdates(value) };
+      const current = items.find((item) => budgetMatchesForm(item, nextForm)) || null;
+      return current ? { category_id: current.category_id, amount: String(current.amount || ""), warning_threshold: Number(current.warning_threshold || 80), scope: current.scope, owner_user_id: current.owner_user_id || "" } : { ...nextForm, amount: "", warning_threshold: 80 };
+    });
   };
   const openBudgetForm = () => { setForm(emptyForm()); setMessage(null); resetSaveState(); setFormOpen(true); };
   const closeBudgetForm = () => {
@@ -55,7 +76,7 @@ const useBudgetFormController = ({ items, period, notify, refresh }) => {
     resetSaveState();
   };
   const editBudget = (item) => {
-    setForm({ category_id: item.category_id, amount: String(item.amount || ""), warning_threshold: Number(item.warning_threshold || 80) });
+    setForm({ category_id: item.category_id, amount: String(item.amount || ""), warning_threshold: Number(item.warning_threshold || 80), scope: item.scope || "shared", owner_user_id: item.owner_user_id || "" });
     setMessage(null);
     resetSaveState();
     setFormOpen(true);
@@ -65,7 +86,7 @@ const useBudgetFormController = ({ items, period, notify, refresh }) => {
     setSaveState({ status: "submitting", error: null });
     setMessage(null);
     try {
-      await upsertBudget({ ...form, period_key: period, amount: assertPositiveRupiah(form.amount), scope: "shared", row_version: existingBudget?.row_version }, { rowVersion: existingBudget?.row_version });
+      await upsertBudget({ ...form, period_key: period, amount: assertPositiveRupiah(form.amount), owner_user_id: form.scope === "personal" ? form.owner_user_id : null, row_version: existingBudget?.row_version }, { rowVersion: existingBudget?.row_version });
       setForm(emptyForm());
       setFormOpen(false);
       resetSaveState();
@@ -73,7 +94,7 @@ const useBudgetFormController = ({ items, period, notify, refresh }) => {
       await refresh();
     } catch (error) { setSaveState({ status: "error", error }); }
   };
-  return { form, setForm, formOpen, setFormOpen, message, setMessage, saveState, existingBudget, selectCategory, openBudgetForm, closeBudgetForm, editBudget, saveBudget };
+  return { form, setForm, formOpen, setFormOpen, message, setMessage, saveState, existingBudget, selectCategory, selectOwnership, openBudgetForm, closeBudgetForm, editBudget, saveBudget };
 };
 
 const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen }) => {
@@ -104,7 +125,7 @@ const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen })
       }
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
-      setForm((current) => current.category_id === budget.category_id ? emptyForm() : current);
+      setForm((current) => budgetMatchesForm(budget, current) ? emptyForm() : current);
       setFormOpen(false);
       await refresh();
     } catch (error) { setArchiveState({ status: "error", error }); }
@@ -125,7 +146,7 @@ const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriti
   </section>;
 };
 
-const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, message, canManage, user, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, formController, lifecycleController, categories }) => <div className={`page-stack budgets-page ${styles.page}`}>
+const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, message, canManage, user, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, formController, lifecycleController, categories, users, usersStatus }) => <div className={`page-stack budgets-page ${styles.page}`}>
   <header className={styles.pageHeader}>
     <div className={styles.pageHeading}><h1>Anggaran</h1><span>{periodMeta.label}</span></div>
     {canManage ? <button type="button" className={styles.addButton} onClick={formController.openBudgetForm} aria-label="Tambah anggaran" title="Tambah anggaran"><FiPlus aria-hidden="true" /></button> : null}
@@ -136,11 +157,11 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
   </div>
   <BudgetTabs activeFilter={activeFilter} setActiveFilter={setActiveFilter} totalCount={items.length} attentionCount={attentionCount} />
   {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
-  {!canManage ? <div className={`notice notice--info ${styles.readOnlyNote}`} role="status">{user?.role !== "owner" ? "Anggota dapat memantau anggaran. Pembuatan dan perubahan anggaran hanya dapat dilakukan owner." : "Periode historis ditampilkan hanya-baca. Kelola anggaran pada periode aktif."}</div> : null}
+  {!canManage ? <div className={`notice notice--info ${styles.readOnlyNote}`} role="status">{user?.role !== "owner" ? "Member dapat memantau anggaran. Pembuatan dan perubahan anggaran hanya dapat dilakukan Administrator." : "Periode historis ditampilkan hanya-baca. Kelola anggaran pada periode aktif."}</div> : null}
   <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
   <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} canManage={canManage} editBudget={formController.editBudget} openBudgetLifecycle={lifecycleController.openBudgetLifecycle} openBudgetForm={formController.openBudgetForm} />
   <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme anggaran</strong> membandingkan pemakaian dengan posisi hari ini dalam periode.</p></aside>
-  <BudgetModal open={formController.formOpen && canManage} close={formController.closeBudgetForm} existingBudget={formController.existingBudget} saveState={formController.saveState} saveBudget={formController.saveBudget} form={formController.form} setForm={formController.setForm} categories={categories} selectCategory={formController.selectCategory} />
+  <BudgetModal open={formController.formOpen && canManage} close={formController.closeBudgetForm} existingBudget={formController.existingBudget} saveState={formController.saveState} saveBudget={formController.saveBudget} form={formController.form} setForm={formController.setForm} categories={categories} users={users} usersStatus={usersStatus} selectCategory={formController.selectCategory} selectOwnership={formController.selectOwnership} />
   <BudgetLifecycleModal archiveTarget={lifecycleController.archiveTarget} archiveState={lifecycleController.archiveState} setArchiveTarget={lifecycleController.setArchiveTarget} applyBudgetLifecycle={lifecycleController.applyBudgetLifecycle} />
 </div>;
 
@@ -154,10 +175,13 @@ const BudgetsPage = () => {
   const { bootstrap, invalidate, refreshOverview } = useFinance();
   const { user } = useAuth();
   const { notify } = useFeedback();
+  const administratorMode = user?.role === "owner";
+  const usersResource = useApiResource("users.list", {}, { enabled: administratorMode });
+  const activeUsers = usersResource.data?.items?.filter((item) => item.status === "active") || [];
   const items = resource.data?.items ?? EMPTY_BUDGET_ITEMS;
   const categories = useMemo(() => (bootstrap?.categories || []).filter((item) => item.status === "active" && item.transaction_type === "expense"), [bootstrap?.categories]);
   const categoryLookup = useMemo(() => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])), [bootstrap?.categories]);
-  const canManage = user?.role === "owner" && period === currentPeriod;
+  const canManage = administratorMode && period === currentPeriod;
   const totals = budgetTotals(items);
   const periodMeta = useMemo(() => budgetPeriodMeta(period, today), [period, today]);
   const presentationItems = useMemo(() => items.map((item) => ({ item, state: budgetVisualState(item, periodMeta) })), [items, periodMeta]);
@@ -179,7 +203,8 @@ const BudgetsPage = () => {
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   return <>
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <BudgetLoadedView period={period} setPeriod={setPeriod} currentPeriod={currentPeriod} periodMeta={periodMeta} activeFilter={activeFilter} setActiveFilter={setActiveFilter} items={items} attentionCount={attentionCount} message={formController.message} canManage={canManage} user={user} totals={totals} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} formController={formController} lifecycleController={lifecycleController} categories={categories} />
+    {administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}
+    <BudgetLoadedView period={period} setPeriod={setPeriod} currentPeriod={currentPeriod} periodMeta={periodMeta} activeFilter={activeFilter} setActiveFilter={setActiveFilter} items={items} attentionCount={attentionCount} message={formController.message} canManage={canManage} user={user} totals={totals} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} formController={formController} lifecycleController={lifecycleController} categories={categories} users={activeUsers} usersStatus={usersResource.status} />
   </>;
 };
 

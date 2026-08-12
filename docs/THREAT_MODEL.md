@@ -10,7 +10,7 @@
 | SQL injection | Parameterized Turso statements | Jangan membuat dynamic SQL dari input tanpa allowlist. |
 | Formula injection | Neutralisasi export/import | Test setiap format baru. |
 | XSS | React escaping, larangan raw HTML | Audit dependency dan render HTML baru. |
-| Privilege escalation | Server role/allowlist/binding | Role change owner-only dan audit. |
+| Privilege escalation | Server role/allowlist/binding | Role change Administrator-only dan audit. |
 | Backup disclosure | Private Drive folder, checksum | Enkripsi aplikasi belum menjadi baseline teruji. |
 | Malicious import/restore | Preview, fingerprint, safety backup, maintenance, integrity | Real-resource drill wajib. |
 | Log leakage | Structured redaction | Coverage terminal log/client crash masih perlu ditingkatkan. |

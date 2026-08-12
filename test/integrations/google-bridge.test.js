@@ -24,7 +24,7 @@ const loadBridge = async () => {
         ["source_of_truth", "Turso"],
         ["mode", "read-only mirror"],
         ["generated_at", "2026-08-08T00:00:00.000Z"],
-        ["schema_version", 8],
+        ["schema_version", 9],
         ["warning", "managed"],
       ],
     }),
@@ -111,13 +111,17 @@ test("signature bridge menolak replay dan formula mirror dinetralkan", async () 
 
 test("mirror metadata memakai schema canonical dari backend dan menolak versi invalid", async () => {
   const context = await loadBridge();
-  assert.equal(context.mirrorSchemaVersion_({ schemaVersion: 8 }), 8);
+  assert.equal(context.mirrorSchemaVersion_({ schemaVersion: 9 }), 9);
   assert.throws(() => context.mirrorSchemaVersion_({ schemaVersion: 0 }), (error) => error.code === "MIRROR_SCHEMA_INVALID");
-  assert.throws(() => context.mirrorSchemaVersion_({ schemaVersion: "8" }), (error) => error.code === "MIRROR_SCHEMA_INVALID");
+  assert.throws(() => context.mirrorSchemaVersion_({ schemaVersion: "9" }), (error) => error.code === "MIRROR_SCHEMA_INVALID");
 
   const mirrorSource = await readFile(new URL("../../apps-script/MirrorService.gs", import.meta.url), "utf8");
   const jobsSource = await readFile(new URL("../../api/jobs.js", import.meta.url), "utf8");
   assert.match(jobsSource, /schemaVersion:\s*DATABASE_SCHEMA_VERSION/);
+  assert.match(jobsSource, /assignee_user_id/);
+  assert.match(jobsSource, /assignee_name/);
+  assert.match(jobsSource, /Administrator/);
+  assert.match(jobsSource, /Member/);
   assert.match(mirrorSource, /\["schema_version",\s*schemaVersion\]/);
   assert.doesNotMatch(mirrorSource, /\["schema_version",\s*3\]/);
 });
@@ -136,7 +140,7 @@ test("mirror hanya mengadopsi spreadsheet kosong atau target yang memiliki metad
         ["source_of_truth", "Turso"],
         ["mode", "read-only mirror"],
         ["generated_at", "2026-08-08T00:00:00.000Z"],
-        ["schema_version", 8],
+        ["schema_version", 9],
         ["warning", "managed"],
       ],
     }),

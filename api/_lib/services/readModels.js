@@ -134,9 +134,11 @@ export const envelopeItemsStatement = (actor, { period = null, includeClosed = t
     usageArgs.push(bounds.start, bounds.end);
   }
   return {
-    sql: `SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
+    sql: `SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
+      COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'') AS assignee_name,au.role AS assignee_role,
       COALESCE(usage.used_amount,0) AS used_amount
       FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+      LEFT JOIN users au ON au.user_id=r.assignee_user_id
       LEFT JOIN (
         SELECT envelope_period_id,SUM(amount) AS used_amount FROM transactions
         WHERE ${usageConditions.join(" AND ")}

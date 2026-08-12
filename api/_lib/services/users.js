@@ -11,7 +11,7 @@ export const resolveActor = async (db, signedActor) => {
       (SELECT COUNT(*) FROM users) AS users_count,
       (SELECT COUNT(*) FROM accounts) + (SELECT COUNT(*) FROM transactions) + (SELECT COUNT(*) FROM categories) AS business_count`);
     if (signedActor.role !== "owner" || Number(countRow?.users_count || 0) || Number(countRow?.business_count || 0)) {
-      throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh owner.", 403);
+      throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
     }
     const timestamp = nowIso();
     user = {
@@ -51,18 +51,18 @@ export const upsertUser = async (db, context) => {
   const payload = context.payload || {};
   const email = String(payload.email || "").trim().toLowerCase();
   const role = String(payload.role || "member");
-  if (!EMAIL_PATTERN.test(email)) throw appError("INVALID_EMAIL", "Email anggota tidak valid.", 400);
-  if (!["owner", "member"].includes(role)) throw appError("INVALID_ROLE", "Role anggota tidak valid.", 400);
+  if (!EMAIL_PATTERN.test(email)) throw appError("INVALID_EMAIL", "Email pengguna tidak valid.", 400);
+  if (!["owner", "member"].includes(role)) throw appError("INVALID_ROLE", "Role pengguna tidak valid.", 400);
   const allowed = context.allowedUsers?.find((item) => item.email === email);
   if (!allowed || allowed.role !== role) throw appError("ALLOWLIST_MISMATCH", "Email dan role harus sama dengan ALLOWED_USERS_JSON di Vercel.", 409);
   const current = await db.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
   const timestamp = nowIso();
   if (current) {
-    if (current.status === "inactive") throw appError("USER_REACTIVATION_REQUIRED", "Anggota nonaktif harus dipulihkan melalui tindakan reaktivasi eksplisit.", 409, { userId: current.user_id });
+    if (current.status === "inactive") throw appError("USER_REACTIVATION_REQUIRED", "Pengguna nonaktif harus dipulihkan melalui tindakan reaktivasi eksplisit.", 409, { userId: current.user_id });
     assertVersion(current, context.rowVersion ?? payload.row_version);
     const next = { ...current, name: sanitizeText(payload.name || current.name || email, 120), role, row_version: Number(current.row_version) + 1, updated_at: timestamp };
     const result = await db.execute("UPDATE users SET name=?,role=?,row_version=?,updated_at=? WHERE user_id=? AND row_version=? AND status='active'", [next.name, role, next.row_version, timestamp, current.user_id, current.row_version]);
-    if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data anggota berubah. Muat ulang.", 409);
+    if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data pengguna berubah. Muat ulang.", 409);
     await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: publicRow(next) });
     return publicRow(next);
   }
@@ -75,28 +75,30 @@ export const upsertUser = async (db, context) => {
 export const deactivateUser = async (db, context) => {
   assertOwner(context.actor);
   const reason = sanitizeText(context.payload?.reason, 200);
-  if (!reason) throw appError("REASON_REQUIRED", "Alasan penonaktifan anggota wajib diisi.", 400);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan penonaktifan pengguna wajib diisi.", 400);
   const current = await db.one("SELECT * FROM users WHERE user_id = ?", [context.payload?.user_id]);
-  if (!current || current.status !== "active") throw appError("NOT_FOUND", "Anggota aktif tidak ditemukan.", 404);
-  if (current.user_id === context.actor.user_id) throw appError("SELF_DEACTIVATE_DENIED", "Owner tidak dapat menonaktifkan dirinya sendiri.", 409);
+  if (!current || current.status !== "active") throw appError("NOT_FOUND", "Pengguna aktif tidak ditemukan.", 404);
+  if (current.user_id === context.actor.user_id) throw appError("SELF_DEACTIVATE_DENIED", "Administrator tidak dapat menonaktifkan dirinya sendiri.", 409);
   assertVersion(current, context.rowVersion ?? context.payload?.row_version);
   if (current.role === "owner") {
     const owners = await db.one("SELECT COUNT(*) AS count FROM users WHERE role='owner' AND status='active'");
-    if (Number(owners?.count || 0) <= 1) throw appError("LAST_OWNER", "Minimal satu owner aktif harus tersedia.", 409);
+    if (Number(owners?.count || 0) <= 1) throw appError("LAST_OWNER", "Minimal satu Administrator aktif harus tersedia.", 409);
   }
   const dependencies = await db.one(`SELECT
     (SELECT COUNT(*) FROM accounts WHERE owner_user_id=? AND status='active') AS accounts,
     (SELECT COUNT(*) FROM envelope_rules WHERE owner_user_id=? AND status='active') AS envelopes,
+    (SELECT COUNT(*) FROM envelope_rules WHERE assignee_user_id=? AND status='active') AS assigned_envelopes,
+    (SELECT COUNT(*) FROM budgets WHERE owner_user_id=? AND status='active') AS budgets,
     (SELECT COUNT(*) FROM recurring_rules WHERE owner_user_id=? AND status='active') AS recurring,
-    (SELECT COUNT(*) FROM savings_goals WHERE owner_user_id=? AND status='active') AS goals`, [current.user_id, current.user_id, current.user_id, current.user_id]);
-  if (Object.values(dependencies || {}).some((value) => Number(value) > 0)) throw appError("USER_HAS_ACTIVE_DATA", "Anggota masih memiliki data personal aktif. Arsipkan atau pindahkan data terlebih dahulu.", 409, dependencies);
+    (SELECT COUNT(*) FROM savings_goals WHERE owner_user_id=? AND status='active') AS goals`, [current.user_id, current.user_id, current.user_id, current.user_id, current.user_id, current.user_id]);
+  if (Object.values(dependencies || {}).some((value) => Number(value) > 0)) throw appError("USER_HAS_ACTIVE_DATA", "Pengguna masih memiliki data personal, anggaran personal, atau jatah aktif. Arsipkan atau pindahkan data terlebih dahulu.", 409, dependencies);
   const next = { ...current, status: "inactive", row_version: Number(current.row_version) + 1, updated_at: nowIso() };
   await db.execute("UPDATE push_subscriptions SET status='inactive',updated_at=? WHERE user_id=? AND status='active'", [next.updated_at, current.user_id]);
   await db.execute(`UPDATE notification_deliveries SET status='dead_letter',locked_by=NULL,error_code='USER_INACTIVE',updated_at=?
     WHERE notification_id IN (SELECT notification_id FROM notification_queue WHERE user_id=?) AND status IN ('pending','processing','failed')`, [next.updated_at, current.user_id]);
   await db.execute("UPDATE notification_queue SET status='dead_letter',last_attempt_at=?,locked_by=NULL WHERE user_id=? AND status IN ('pending','processing','failed')", [next.updated_at, current.user_id]);
   const result = await db.execute("UPDATE users SET status='inactive',row_version=?,updated_at=? WHERE user_id=? AND row_version=?", [next.row_version, next.updated_at, current.user_id, current.row_version]);
-  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data anggota berubah. Muat ulang.", 409);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data pengguna berubah. Muat ulang.", 409);
   await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: { ...publicRow(next), deactivation_reason: reason } });
   return publicRow(next);
 };
@@ -105,15 +107,15 @@ export const reactivateUser = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};
   const reason = sanitizeText(payload.reason, 200);
-  if (!reason) throw appError("REASON_REQUIRED", "Alasan reaktivasi anggota wajib diisi.", 400);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan reaktivasi pengguna wajib diisi.", 400);
   const current = await db.one("SELECT * FROM users WHERE user_id = ?", [payload.user_id]);
-  if (!current || current.status !== "inactive") throw appError("NOT_FOUND", "Anggota nonaktif tidak ditemukan.", 404);
+  if (!current || current.status !== "inactive") throw appError("NOT_FOUND", "Pengguna nonaktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const allowed = context.allowedUsers?.find((item) => item.email === String(current.email || "").toLowerCase());
-  if (!allowed || allowed.role !== current.role) throw appError("ALLOWLIST_MISMATCH", "Email dan role anggota harus aktif dan sama dengan ALLOWED_USERS_JSON di Vercel sebelum reaktivasi.", 409);
+  if (!allowed || allowed.role !== current.role) throw appError("ALLOWLIST_MISMATCH", "Email dan role pengguna harus aktif dan sama dengan ALLOWED_USERS_JSON di Vercel sebelum reaktivasi.", 409);
   const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_at: nowIso() };
   const result = await db.execute("UPDATE users SET status='active',row_version=?,updated_at=? WHERE user_id=? AND row_version=? AND status='inactive'", [next.row_version, next.updated_at, current.user_id, current.row_version]);
-  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data anggota berubah. Muat ulang.", 409);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data pengguna berubah. Muat ulang.", 409);
   await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: { ...publicRow(next), reactivation_reason: reason } });
   return publicRow(next);
 };

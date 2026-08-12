@@ -4,6 +4,7 @@ import Modal from "../../../components/common/Modal.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { parseRupiah } from "../../../domain/money.js";
 import { BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS } from "../../../shared/presentation/account.js";
+import { userOptionLabel } from "../../../shared/presentation/user.js";
 import styles from "../AccountsPage.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";
 
@@ -20,9 +21,29 @@ const ACCOUNT_TYPE_OPTIONS = Object.freeze([
   ["emergency_fund", "Dana darurat"], ["sinking_fund", "Dana berkala"], ["investment", "Investasi"], ["other", "Lainnya"],
 ]);
 
-const AccountOwnerOptions = ({ activeUsers }) => activeUsers.map((member) => (
-  <option key={member.user_id} value={member.user_id}>{member.name || "Pengguna"}{member.is_current ? " · saya" : ""}</option>
-));
+const ownershipSelectValue = (entity, fallbackUserId = "") => entity?.owner_scope === "personal"
+  ? `user:${entity.owner_user_id || fallbackUserId}`
+  : "shared";
+
+const ownershipUpdates = (value, fallbackUserId = "") => {
+  if (value === "shared") return { owner_scope: "shared", owner_user_id: "" };
+  const userId = String(value || "").replace(/^user:/, "") || fallbackUserId;
+  return { owner_scope: "personal", owner_user_id: userId };
+};
+
+const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange }) => {
+  const users = activeUsers.length ? activeUsers : defaultOwnerUserId ? [{ user_id: defaultOwnerUserId, name: currentOwnerLabel, role: "owner", is_current: true }] : [];
+  return (
+    <label className="field">
+      <span>Kepemilikan *</span>
+      <select required value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(event) => onChange(ownershipUpdates(event.target.value, defaultOwnerUserId))}>
+        <option value="shared">Bersama</option>
+        {users.map((member) => <option key={member.user_id} value={`user:${member.user_id}`}>{userOptionLabel(member)}</option>)}
+      </select>
+      <small>Pilih Bersama atau pengguna yang memiliki rekening ini. Hanya Administrator yang dapat membuat dan mengubah rekening. Perubahan kepemilikan dapat ditolak bila masih ada data aktif terkait.</small>
+    </label>
+  );
+};
 
 const buildAccountPreview = ({ accountForm, activeUsers, defaultOwnerUserId, currentOwnerLabel }) => {
   const personal = accountForm.owner_scope === "personal";
@@ -65,17 +86,7 @@ const EwalletProviderField = ({ value, onChange, compact = false }) => (
   </label>
 );
 
-const OwnerField = ({ activeUsers, value, fallbackLabel, ariaLabel, help, onChange }) => (
-  <label className="field">
-    <span>Pemilik rekening *</span>
-    {activeUsers.length ? (
-      <select required value={value} onChange={(event) => onChange(event.target.value)}><AccountOwnerOptions activeUsers={activeUsers} /></select>
-    ) : <input value={fallbackLabel} disabled aria-label={ariaLabel} />}
-    <small>{help}</small>
-  </label>
-);
-
-const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm, defaultOwnerUserId, createNameInputRef }) => (
+const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm, createNameInputRef }) => (
   <>
     <label className="field form-grid__full">
       <span>Nama rekening *</span>
@@ -98,30 +109,12 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm, 
         {ACCOUNT_TYPE_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
     </label>
-    <label className="field">
-      <span>Kepemilikan</span>
-      <select value={accountForm.owner_scope} onChange={(event) => {
-        const ownerScope = event.target.value;
-        setAccountForm((current) => ({ ...current, owner_scope: ownerScope, owner_user_id: ownerScope === "personal" ? current.owner_user_id || defaultOwnerUserId : "" }));
-      }}>
-        <option value="shared">Bersama</option><option value="personal">Pribadi</option>
-      </select>
-    </label>
   </>
 );
 
 const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, currentOwnerLabel, updateAccountForm }) => (
   <>
-    {accountForm.owner_scope === "personal" ? (
-      <OwnerField
-        activeUsers={activeUsers}
-        value={accountForm.owner_user_id || defaultOwnerUserId}
-        fallbackLabel={currentOwnerLabel}
-        ariaLabel="Pemilik rekening aktif"
-        help={activeUsers.length ? "Nama pemilik terlihat oleh pasangan. Hak transaksi tetap mengikuti pemilik." : "Daftar anggota belum tersedia. Server tetap menetapkan pengguna aktif sebagai pemilik."}
-        onChange={(ownerUserId) => updateAccountForm({ owner_user_id: ownerUserId })}
-      />
-    ) : null}
+    <AccountOwnershipField entity={accountForm} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} onChange={updateAccountForm} />
     {accountForm.account_type === "bank" ? <BankTemplateField value={accountForm.bank_template} onChange={(bankTemplate) => updateAccountForm({ bank_template: bankTemplate })} /> : null}
     {accountForm.account_type === "ewallet" ? <EwalletProviderField value={accountForm.ewallet_template} onChange={(ewalletTemplate) => updateAccountForm({ ewallet_template: ewalletTemplate })} /> : null}
     <MoneyInput id="initial-balance" label="Saldo awal" value={accountForm.initial_balance} onChange={(value) => updateAccountForm({ initial_balance: value })} />
@@ -160,25 +153,12 @@ const EditEwalletFields = ({ editAccount, updateEditAccount }) => {
   return <EwalletProviderField compact value={editAccount?.ewallet_template || "generic"} onChange={(ewalletTemplate) => updateEditAccount({ ewallet_template: ewalletTemplate })} />;
 };
 
-const EditOwnerField = ({ editAccount, activeUsers, defaultOwnerUserId, currentOwnerLabel, updateEditAccount }) => {
-  if (editAccount?.owner_scope !== "personal") return null;
-  const help = activeUsers.length ? "Kepemilikan hanya dapat dipindahkan bila rekening belum memiliki data terkait." : "Daftar anggota belum dapat dimuat. Pemilik rekening saat ini dipertahankan.";
-  return <OwnerField activeUsers={activeUsers} value={editAccount?.owner_user_id || defaultOwnerUserId} fallbackLabel={editAccount?.owner_name || currentOwnerLabel} ariaLabel="Pemilik rekening saat ini" help={help} onChange={(ownerUserId) => updateEditAccount({ owner_user_id: ownerUserId })} />;
-};
-
-const EditAccountFields = ({ editAccount, updateEditAccount, setEditAccount, activeUsers, defaultOwnerUserId, currentOwnerLabel }) => (
+const EditAccountFields = ({ editAccount, updateEditAccount, activeUsers, defaultOwnerUserId, currentOwnerLabel }) => (
   <>
     <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" value={editAccount?.name || ""} onChange={(event) => updateEditAccount({ name: event.target.value })} /></label>
     <EditBankFields editAccount={editAccount} updateEditAccount={updateEditAccount} />
     <EditEwalletFields editAccount={editAccount} updateEditAccount={updateEditAccount} />
-    <label className="field">
-      <span>Kepemilikan</span>
-      <select value={editAccount?.owner_scope || "shared"} onChange={(event) => {
-        const ownerScope = event.target.value;
-        setEditAccount((current) => current ? ({ ...current, owner_scope: ownerScope, owner_user_id: ownerScope === "personal" ? current.owner_user_id || defaultOwnerUserId : "" }) : current);
-      }}><option value="shared">Bersama</option><option value="personal">Pribadi</option></select>
-    </label>
-    <EditOwnerField editAccount={editAccount} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} updateEditAccount={updateEditAccount} />
+    <AccountOwnershipField entity={editAccount} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} onChange={updateEditAccount} />
     <label className="checkbox-field"><input type="checkbox" checked={Boolean(editAccount?.allow_negative)} onChange={(event) => updateEditAccount({ allow_negative: event.target.checked })} /><span>Izinkan saldo negatif</span></label>
   </>
 );

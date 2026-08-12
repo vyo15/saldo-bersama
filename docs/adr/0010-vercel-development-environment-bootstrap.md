@@ -32,7 +32,7 @@ Web Push memperjelas masalah tersebut. Production sudah memiliki pasangan VAPID,
 - Google bridge tetap dapat dinonaktifkan. Bila diaktifkan, konfigurasi pusat yang sama melayani Integrasi Google, backup, restore Drive, dan scheduler pada komputer tepercaya.
 - Izin notifikasi browser tetap per perangkat dan tidak dapat diberikan otomatis oleh environment bootstrap.
 - Nama key muncul pada scope Development dan Production; ini disengaja.
-- Anggota yang memperoleh akses project Vercel dapat menarik Development secrets. Vercel tidak menyediakan mode Sensitive untuk Development, sehingga akses project wajib dibatasi.
+- Member yang memperoleh akses project Vercel dapat menarik Development secrets. Vercel tidak menyediakan mode Sensitive untuk Development, sehingga akses project wajib dibatasi.
 - Karena database Turso masih tunggal sesuai ADR-0007, aktivitas lokal tetap menyentuh data aktif dan tidak boleh memakai data dummy/destructive operation.
 
 ## Alternatives

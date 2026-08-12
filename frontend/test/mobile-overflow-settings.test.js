@@ -72,7 +72,7 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.match(presentation, /integrationProviderPresentation/);
   assert.match(presentation, /Trigger belum siap/);
   assert.match(presentation, /health check belum dapat dijangkau/);
-  assert.match(members, /Tambah anggota/);
+  assert.match(members, /Tambah pengguna/);
   assert.match(members, /Lihat aktivitas transaksi/);
   assert.match(members, /MemberActivityPanel/);
 });
@@ -131,4 +131,35 @@ test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provi
   const readiness = integrationProviderPresentation(integration, "calendar");
   assert.equal(readiness.ready, false);
   assert.equal(readiness.label, "Trigger belum siap");
+});
+
+
+test("mobile finance forms dan planning memakai hierarchy yang compact tanpa teks mikro 9px", async () => {
+  const [transactionStyles, allocations, goals, reports, pages, responsive, budgets] = await Promise.all([
+    read("src/features/transactions/TransactionForm.module.css"),
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/reports/ReportsPage.jsx"),
+    read("src/styles/pages.css"),
+    read("src/styles/responsive.css"),
+    read("src/features/budgets/BudgetsPage.module.css"),
+  ]);
+
+  assert.match(transactionStyles, /@media \(max-width: 25rem\)[\s\S]*\.typeSelector\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(transactionStyles, /font-size:\s*9px/);
+  assert.match(allocations, /className="allocation-header-actions"/);
+  assert.match(allocations, /className="allocation-advanced form-grid__full"/);
+  assert.match(allocations, /aria-label="Muat ulang alokasi"/);
+  assert.match(allocations, /PageHeader title="Alokasi dana"/);
+  assert.match(goals, /className="goal-card__primary-action"/);
+  assert.match(goals, /className="goal-action-menu"/);
+  assert.match(goals, /FiMoreHorizontal/);
+  assert.match(reports, /className="report-details"/);
+  assert.match(reports, /Rincian laporan/);
+  assert.match(reports, /typeof window\.matchMedia === "function"/);
+  assert.match(pages, /\.goal-action-menu__items/);
+  assert.match(pages, /\.goal-action-menu:only-child \{ grid-column:\s*2; \}/);
+  assert.match(responsive, /\.allocation-refresh-action > span \{ display:\s*none; \}/);
+  assert.match(responsive, /\.report-details__summary \{[\s\S]*display:\s*flex;/);
+  assert.doesNotMatch(budgets, /font-size:\s*9px/);
 });

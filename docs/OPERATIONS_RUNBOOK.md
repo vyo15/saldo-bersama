@@ -49,7 +49,7 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 ## Salah arsip, salah batal, atau salah nonaktif
 
 1. Jangan mengedit Turso langsung dan jangan melakukan full restore terlebih dahulu.
-2. Owner membuka Pengaturan → Arsip dan pemulihan untuk rekening/kategori, atau daftar Transaksi untuk transaksi cancelled.
+2. Administrator membuka Pengaturan → Arsip dan pemulihan untuk rekening/kategori, atau daftar Transaksi untuk transaksi cancelled.
 3. Periksa entity, versi, alasan, periode, serta dependency yang ditampilkan.
 4. Jalankan pemulihan satu item. Backend akan menolak konflik, duplicate, periode tertutup, referensi tidak aktif, atau dampak saldo tidak valid.
 5. Refresh data, verifikasi saldo/laporan, lalu periksa audit activity.
@@ -57,20 +57,22 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 
 ## Hapus rekening belum dipakai
 
-- Hanya owner dapat menjalankan `accounts.deleteUnused` dari detail rekening setelah preview server.
+- Hanya Administrator dapat menjalankan `accounts.deleteUnused` dari detail rekening setelah preview server.
 - Pastikan saldo awal/saat ini Rp0 dan seluruh hitungan transaksi, rekonsiliasi, kantong, tagihan, serta target bernilai nol.
 - Isi alasan, centang acknowledgement, dan ketik frasa yang diminta.
 - Bila muncul conflict, jangan retry dengan data lama; refresh lalu tinjau ulang.
 - Hasil hard delete tidak memiliki tombol undo karena row rekening sudah hilang. Audit tetap ada; bila rekening ternyata masih dibutuhkan, buat rekening baru. Jangan restore database hanya untuk rekening kosong yang belum pernah digunakan.
 
-## Reset data percobaan
+## Bersihkan data testing
 
-Gunakan hanya untuk membersihkan aktivitas uji saat setup atau trial, bukan untuk mengoreksi transaksi nyata.
+Gunakan hanya pada fase setup/trial sebelum transaksi nyata mulai dicatat. Project saat ini sengaja memakai satu database Turso untuk runtime lokal dan Production, sehingga backend tidak dapat membedakan transaksi trial dari transaksi nyata. Operasi ini manual dan tidak pernah dijalankan otomatis di background.
 
-1. Owner membuka **Pengaturan → Reset data percobaan** dan menjalankan preview.
-2. Preview harus menunjukkan jumlah transaksi, pencocokan saldo, target, anggaran, alokasi, jadwal rutin, dan tutup buku yang akan dibersihkan.
-3. Rekening, kategori, pengguna, konfigurasi, audit log, dan backup tidak ikut dihapus.
-4. Apply wajib memakai fingerprint preview terbaru, alasan, acknowledgement, frasa `RESET DATA PERCOBAAN`, dan safety backup Google Drive yang terverifikasi.
-5. Backend mengaktifkan maintenance, menghapus data trial secara atomik, menjalankan integrity check, menulis audit, lalu mengantrekan rebuild Sheets/Calendar.
-6. Jika purge sudah dimulai dan proses gagal, maintenance tetap aktif. Jalankan integrity recovery sebelum membuka write normal.
-7. Setelah reset, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, dan halaman Cocokkan Saldo sebelum melanjutkan input data nyata.
+1. Administrator membuka **Pengaturan → Bersihkan data testing** dan menjalankan preview.
+2. Preview harus menunjukkan seluruh data finansial yang akan dibersihkan: transaksi, pencocokan saldo, target, anggaran, alokasi, jadwal rutin, dan tutup buku.
+3. Preview juga menghitung sisa operasional yang ikut dibersihkan: delivery/queue notifikasi, link/outbox integrasi, dan preview import. Seluruh scope tersebut ikut fingerprint agar perubahan setelah preview menghasilkan conflict.
+4. Rekening, kategori, pengguna, konfigurasi, audit log, backup, push subscription, dan preference notifikasi tidak ikut dihapus.
+5. Apply wajib memakai fingerprint preview terbaru, alasan, acknowledgement, frasa `BERSIHKAN DATA TESTING`, dan safety backup Google Drive yang terverifikasi.
+6. Backend mengaktifkan maintenance, menghapus scope testing secara atomik, menjalankan integrity check, menulis audit, lalu mengantrekan rebuild Sheets/Calendar.
+7. Jika purge sudah dimulai dan proses gagal, maintenance tetap aktif. Jalankan integrity recovery sebelum membuka write normal.
+8. Setelah pembersihan, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, Cocokkan Saldo, dan status integrasi sebelum melanjutkan input.
+9. Begitu aplikasi mulai dipakai untuk transaksi nyata, hentikan penggunaan pembersihan massal ini. Koreksi data nyata wajib memakai cancel/archive/restore/reverse sesuai lifecycle domain.

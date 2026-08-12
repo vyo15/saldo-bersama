@@ -10,13 +10,13 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-FIN-004` | Soft cancel/archive + guarded delete-unused | Implemented | transaction status, master/config lifecycle preview, exact hard-delete allowlist, audit, tests | Backup/operational retention policy tetap terpisah |
 | `REQ-FIN-005` | Idempotency + audit append-only | Implemented | internal transaction replay + external pre-side-effect reservation + restore reservation preservation + private-memory frontend mutation intent + integrity-run idempotency + audit triggers | Full Node 24 guard/browser gate pada patch terbaru |
 | `REQ-FIN-006` | Optimistic row version | Implemented | version guards/conflict tests | Multi-device smoke |
-| `REQ-SEC-001`–`REQ-SEC-002` | Auth/authorization | Implemented | `security.js`, session, ownership query | Real owner/member smoke |
+| `REQ-SEC-001`–`REQ-SEC-002` | Auth/authorization | Implemented | `security.js`, session, ownership query | Real Administrator/Member smoke |
 | `REQ-DATA-001`–`REQ-DATA-002` | Turso/recovery | Implemented | migration, maintenance services | Restore drill nyata |
 | `REQ-OFFLINE-001` | Offline write deny | Implemented | service worker/front-end guards | Device smoke |
 | `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
 | `REQ-UX-001` | UI states | Implemented | feedback components/pages + shared responsive view model | Production/device smoke |
 | `REQ-A11Y-001` | Accessibility baseline | Partial | semantic tests + unauthenticated/authenticated Chromium smoke | axe penuh dan Safari/Firefox device coverage pending |
-| `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v5 account number/`bank_template` + schema v8 `ewallet_template` + list/detail financial-card UI + owner label/capability + route rekening terpisah | Mode privacy granular pending RFC-0015; real-resource owner/member smoke pending |
+| `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v5 account number/`bank_template` + schema v8 `ewallet_template` + schema v9 `assignee_user_id` pada Alokasi + list/detail financial-card UI + label/capability Administrator/Member + route rekening terpisah | Mode privacy granular pending RFC-0015; real-resource Administrator/Member smoke pending |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
 | `REQ-PROD-03` | Kategori | Partial | route `/kategori`, facade feature, categories + `nature` | hierarchy pending RFC-0014 |
 | `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods + archive/restore rule + reverse reallocation | Full device regression setelah patch terbaru |
@@ -39,7 +39,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Production smoke after env/deploy changes |
-| Turso schema v8 | Implemented | Migration additive provider E-wallet + compatibility backup v3-v7; production migration/parity evidence pending |
+| Turso schema v9 | Implemented | Migration additive penerima jatah + provider E-wallet + compatibility backup v3-v8; production migration/parity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

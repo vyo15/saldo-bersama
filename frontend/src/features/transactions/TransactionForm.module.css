@@ -407,7 +407,7 @@
   }
 
   .typeSelector label > span b {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .amountVisual :global([data-ui="money-input"] input) {
@@ -424,7 +424,7 @@
   }
 }
 
-@media (max-width: 22rem) {
+@media (max-width: 25rem) {
   .walletBubble {
     width: 3.9rem;
     height: 3.9rem;
@@ -436,12 +436,26 @@
     height: 3.1rem;
   }
 
+  .typeSelector {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .typeSelector label > span {
-    min-height: 72px;
+    min-height: 66px;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding-inline: 10px;
+  }
+
+  .typeSelector label > span svg {
+    width: 1.9rem;
+    height: 1.9rem;
+    flex: 0 0 auto;
   }
 
   .typeSelector label > span b {
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 

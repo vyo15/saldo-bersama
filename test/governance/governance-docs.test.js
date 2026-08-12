@@ -172,7 +172,7 @@ test("API contract mode dan idempotency mengikuti canonical action policy", () =
   }
 });
 
-test("API dan authorization docs mengikuti canonical owner/member permissions", () => {
+test("API dan authorization docs mengikuti canonical Administrator/Member permissions", () => {
   const parseRows = (source) => {
     const rows = new Map();
     for (const line of source.split(/\r?\n/)) {
@@ -304,9 +304,9 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
-test("project status is a current-state snapshot with schema v8 and shared database guard", () => {
+test("project status is a current-state snapshot with schema v9 and shared database guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
-  assert.match(status, /Active schema contract:\*\* v8/);
+  assert.match(status, /Active schema contract:\*\* v9/);
   assert.match(status, /Runtime lokal dan Vercel Production dirancang memakai database Turso bersama/);
   assert.match(status, /bukan jurnal perubahan/i);
 });

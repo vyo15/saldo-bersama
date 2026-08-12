@@ -14,7 +14,7 @@
 
 - [ ] Production env scope benar.
 - [ ] Migration hanya dijalankan bila disetujui.
-- [ ] Smoke test owner/member sesuai scope.
+- [ ] Smoke test Administrator/Member sesuai scope.
 - [ ] Saldo/data integrity diverifikasi bila transaksi/data terdampak.
 
 ## Close

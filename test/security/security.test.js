@@ -11,8 +11,8 @@ const withEnv = (values, fn) => {
   try { return fn(); } finally { for (const [key, value] of Object.entries(previous)) value === undefined ? delete process.env[key] : process.env[key] = value; }
 };
 
-test("allowlist memetakan role secara deny by default", () => withEnv({ ALLOWED_USERS_JSON: '[{"email":"Owner@Gmail.com","role":"owner"}]' }, () => {
-  assert.deepEqual(parseAllowedUsers(), [{ email: "owner@gmail.com", role: "owner" }]);
+test("allowlist menerima Administrator dan menormalisasinya ke compatibility role internal", () => withEnv({ ALLOWED_USERS_JSON: '[{"email":"Admin@Gmail.com","role":"administrator"}]' }, () => {
+  assert.deepEqual(parseAllowedUsers(), [{ email: "admin@gmail.com", role: "owner" }]);
   assert.equal(authorizeAction({ role: "member" }, "backup.create"), false);
   assert.equal(authorizeAction({ role: "owner" }, "backup.create"), true);
   assert.equal(authorizeAction({ role: "member" }, "reset.preview"), false);
@@ -23,6 +23,7 @@ test("allowlist memetakan role secara deny by default", () => withEnv({ ALLOWED_
 
 
 test("allowlist menolak role, email, dan konflik duplikat yang invalid", () => {
+  assert.deepEqual(parseAllowedUsers('[{"email":"legacy@gmail.com","role":"owner"}]'), [{ email: "legacy@gmail.com", role: "owner" }]);
   assert.throws(() => parseAllowedUsers('[{"email":"user@gmail.com","role":"admin"}]'), /role tidak valid/);
   assert.throws(() => parseAllowedUsers('[{"email":"bukan-email","role":"member"}]'), /email tidak valid/);
   assert.throws(() => parseAllowedUsers('[{"email":"user@gmail.com","role":"owner"},{"email":"USER@gmail.com","role":"member"}]'), /role konflik/);
@@ -30,7 +31,7 @@ test("allowlist menolak role, email, dan konflik duplikat yang invalid", () => {
 });
 
 test("session cookie ditandatangani dan dapat diverifikasi", () => withEnv({
-  ALLOWED_USERS_JSON: '[{"email":"owner@gmail.com","role":"owner"}]',
+  ALLOWED_USERS_JSON: '[{"email":"owner@gmail.com","role":"administrator"}]',
   SESSION_SECRET: "12345678901234567890123456789012",
   VERCEL_ENV: "development",
 }, () => {

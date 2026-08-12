@@ -3,6 +3,7 @@ import { FiArchive, FiChevronRight, FiEdit2 } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import { categoryIcon } from "../../../shared/presentation/transaction.js";
+import { userRoleLabel } from "../../../shared/presentation/user.js";
 import { budgetSafeDailyAmount, budgetVisualState } from "../budgetPresentation.js";
 import BudgetPacingBar from "./BudgetPacingBar.jsx";
 import BudgetStatusPill from "./BudgetStatusPill.jsx";
@@ -15,12 +16,15 @@ const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, 
   const safeDaily = budgetSafeDailyAmount(state.remaining, periodMeta);
   const name = item.name || category?.name || item.category_id;
   const remainingLabel = periodMeta.isCurrent ? `untuk ${periodMeta.daysLeft} hari` : "periode selesai";
+  const ownershipLabel = item.scope === "personal"
+    ? `${item.owner_name || "Pribadi"} · ${userRoleLabel(item.owner_role)}`
+    : "Bersama";
 
   return (
     <article className={`${styles.budgetCard} ${styles[`budgetCard_${state.key}`] || ""}`} data-budget-status={state.key}>
       <header className={styles.cardHeader}>
         <span className={styles.categoryIcon}><Icon aria-hidden="true" /></span>
-        <div className={styles.cardTitle}><strong>{name}</strong><small>{periodMeta.rangeLabel}</small></div>
+        <div className={styles.cardTitle}><strong>{name}</strong><small>{periodMeta.rangeLabel} · {ownershipLabel}</small></div>
         <BudgetStatusPill state={state} />
       </header>
 

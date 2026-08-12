@@ -42,7 +42,8 @@ import { currentMonthInJakarta, formatDateLongIndonesia, todayInJakarta } from "
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { filterByOwnership } from "../../domain/ownership.js";
+import { filterByAssigneeAccess, filterByOwnership } from "../../domain/ownership.js";
+import { userRoleLabel } from "../../shared/presentation/user.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import styles from "./RecurringPage.module.css";
 
@@ -54,13 +55,13 @@ const activeAccounts = (bootstrap) => bootstrap?.accounts?.filter((item) => item
 const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === kind) || [];
 const refreshRecurring = async ({ invalidate, resource, refreshOverview, keys = recurringRefreshKeys }) => { invalidate(keys); await Promise.allSettled([resource.reload(), refreshOverview()]); };
 
-const eligiblePaymentEnvelopes = (items, payment, account) => {
+const eligiblePaymentEnvelopes = (items, payment, account, user) => {
   if (payment.item?.kind !== "expense" || !account?.account_id) return [];
   const active = (items || []).filter((item) => item.status === "active"
     && payment.transaction_date >= item.period_start
     && payment.transaction_date <= item.period_end
     && (!item.source_account_id || item.source_account_id === account.account_id));
-  return filterByOwnership(active, account);
+  return filterByAssigneeAccess(filterByOwnership(active, account), user);
 };
 
 const FILTERS = Object.freeze([
@@ -364,11 +365,16 @@ const paymentEnvelopeState = (payment, paymentEnvelopes) => {
   };
 };
 
+const recurringEnvelopeOptionLabel = (item) => {
+  const assignee = item.assignee_user_id ? `${item.assignee_name || "Pengguna"} · ${userRoleLabel(item.assignee_role)}` : "Bersama";
+  return `${item.name} · ${assignee} · sisa Rp ${Number(item.remaining_amount || 0).toLocaleString("id-ID")}`;
+};
+
 const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeHint }) => <label className="field form-grid__full">
   <span>Kantong dana</span>
   <select value={payment.envelope_period_id} onChange={(event) => setPayment((current) => ({ ...current, envelope_period_id: event.target.value, overspend_reason: "" }))}>
     <option value="">Belum dialokasikan</option>
-    {paymentEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · sisa Rp {Number(item.remaining_amount || 0).toLocaleString("id-ID")}</option>)}
+    {paymentEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{recurringEnvelopeOptionLabel(item)}</option>)}
   </select>
   {envelopeHint ? <small>{envelopeHint}</small> : null}
 </label>;
@@ -483,7 +489,7 @@ const RecurringPage = () => {
   const editCategories = activeCategories(bootstrap, rules.editRule?.kind);
   const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
   const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
-  const paymentEnvelopes = eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount);
+  const paymentEnvelopes = eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount, bootstrap?.user || user);
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;

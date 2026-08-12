@@ -473,9 +473,12 @@ export const listSubscriptionsForUser = async (db, userId) => (await db.all(
   [userId],
 )).map((row) => publicRow(row));
 
-const notificationRecipients = (users, item) => item.scope === "personal"
-  ? users.filter((user) => user.user_id === item.owner_user_id)
-  : users;
+const notificationRecipients = (users, item) => {
+  if (item.assignee_user_id) return users.filter((user) => user.user_id === item.assignee_user_id);
+  return item.scope === "personal"
+    ? users.filter((user) => user.user_id === item.owner_user_id)
+    : users;
+};
 
 const highestUsageThreshold = (percentage, customThreshold = 75) => {
   if (percentage >= 100) return 100;
@@ -586,7 +589,7 @@ const queueBudgetNotifications = async (db, state) => {
 const queueEnvelopeNotifications = async (db, state) => {
   const { today, users, disabledPreferences } = state;
   let queued = 0;
-  const envelopes = await db.all(`SELECT p.envelope_period_id,p.name,p.allocated_amount,p.reserved_amount,r.scope,r.owner_user_id,
+  const envelopes = await db.all(`SELECT p.envelope_period_id,p.name,p.allocated_amount,p.reserved_amount,r.scope,r.owner_user_id,r.assignee_user_id,
       COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0) AS used_amount
     FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
     WHERE p.status='active' AND r.status='active' AND p.period_start<=? AND p.period_end>=?`, [today, today]);

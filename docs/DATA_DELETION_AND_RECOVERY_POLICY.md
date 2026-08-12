@@ -7,7 +7,7 @@ Kebijakan ini mencegah kehilangan histori, saldo tidak konsisten, dan kesalahan 
 ## Prinsip wajib
 
 - Data finansial yang pernah berpengaruh pada saldo tidak dihapus permanen.
-- Owner tetap tunduk pada validasi backend, authorization deny-by-default, `row_version`, idempotency, transaction database, dan audit append-only.
+- Administrator tetap tunduk pada validasi backend, authorization deny-by-default, `row_version`, idempotency, transaction database, dan audit append-only.
 - Frontend tidak boleh menganggap operasi berhasil sebelum server mengonfirmasi commit.
 - Preview hanya membantu pengguna; backend selalu membaca ulang kondisi terbaru saat apply.
 - Audit, rekonsiliasi, penutupan periode, backup, dan histori restore tidak boleh dihapus dari UI harian.
@@ -17,21 +17,21 @@ Kebijakan ini mencegah kehilangan histori, saldo tidak konsisten, dan kesalahan 
 
 | Entity | Tindakan normal | Pemulihan | Permanent delete |
 |---|---|---|---|
-| Transaksi termasuk transfer | Batalkan dengan alasan | Owner dapat memulihkan transaksi cancelled yang aman | Dilarang |
+| Transaksi termasuk transfer | Batalkan dengan alasan | Administrator dapat memulihkan transaksi cancelled yang aman | Dilarang |
 | Movement kantong/target | Reverse dengan alasan | Histori original + reversal dipertahankan | Dilarang |
-| Rekening | Arsipkan bila pernah dipakai | Owner dapat mengaktifkan kembali | Hanya `accounts.deleteUnused` bila seluruh histori/dependensi = 0 |
-| Kategori | Arsipkan bila pernah dipakai | Owner dapat mengaktifkan kembali | Hanya `categories.deleteUnused` bila transaksi/recurring/budget semua status = 0 |
-| Kantong/envelope rule | Arsipkan bila pernah dipakai | Owner dapat memulihkan rule | Hanya `envelopes.deleteUnusedRule` bila hanya ada satu initial empty period dan tidak ada transaksi/movement/budget/closed history |
-| Tagihan rutin/recurring rule | Arsipkan bila pernah dipakai | Owner dapat memulihkan rule | Hanya `recurring.deleteUnusedRule` bila semua child hanyalah future generated projections yang belum pernah materialized/paid/skipped/cancelled |
-| Target tabungan | Arsipkan bila pernah dipakai | Owner dapat memulihkan goal | Hanya `goals.deleteUnused` bila saldo progres = 0 dan tidak ada movement/transaksi semua status |
-| Anggaran | Arsipkan bila pernah menjadi histori planning | Owner dapat memulihkan budget | Hanya `budgets.deleteUnused` bila tidak ada transaksi terkait dan tidak ada histori period closure |
-| Anggota | Nonaktifkan | Reaktivasi eksplisit setelah allowlist diverifikasi | Dilarang dari UI harian |
+| Rekening | Arsipkan bila pernah dipakai | Administrator dapat mengaktifkan kembali | Hanya `accounts.deleteUnused` bila seluruh histori/dependensi = 0 |
+| Kategori | Arsipkan bila pernah dipakai | Administrator dapat mengaktifkan kembali | Hanya `categories.deleteUnused` bila transaksi/recurring/budget semua status = 0 |
+| Kantong/envelope rule | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `envelopes.deleteUnusedRule` bila hanya ada satu initial empty period dan tidak ada transaksi/movement/budget/closed history |
+| Tagihan rutin/recurring rule | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `recurring.deleteUnusedRule` bila semua child hanyalah future generated projections yang belum pernah materialized/paid/skipped/cancelled |
+| Target tabungan | Arsipkan bila pernah dipakai | Administrator dapat memulihkan goal | Hanya `goals.deleteUnused` bila saldo progres = 0 dan tidak ada movement/transaksi semua status |
+| Anggaran | Arsipkan bila pernah menjadi histori planning | Administrator dapat memulihkan budget | Hanya `budgets.deleteUnused` bila tidak ada transaksi terkait dan tidak ada histori period closure |
+| Member | Nonaktifkan | Reaktivasi eksplisit setelah allowlist diverifikasi | Dilarang dari UI harian |
 | Periode | Tutup | Buka kembali berurutan dengan alasan | Dilarang |
 | Audit dan rekonsiliasi | Tambah record koreksi baru | Tidak berlaku | Dilarang |
 
 ## Pengecualian: hapus permanen master/config yang benar-benar belum dipakai
 
-Owner boleh menghapus row rekening hanya bila **seluruh** kondisi berikut benar pada pemeriksaan ulang backend:
+Administrator boleh menghapus row rekening hanya bila **seluruh** kondisi berikut benar pada pemeriksaan ulang backend:
 
 1. Rekening masih berstatus aktif dan `row_version` cocok.
 2. Saldo awal tepat Rp0.
@@ -41,8 +41,8 @@ Owner boleh menghapus row rekening hanya bila **seluruh** kondisi berikut benar 
 6. Tidak pernah memiliki rekonsiliasi.
 7. Actor adalah owner yang terverifikasi.
 8. Alasan wajib diisi.
-9. Owner mencentang pernyataan pemahaman.
-10. Owner mengetik frasa `HAPUS REKENING <NAMA REKENING>` secara persis.
+9. Administrator mencentang pernyataan pemahaman.
+10. Administrator mengetik frasa `HAPUS REKENING <NAMA REKENING>` secara persis.
 11. Request menggunakan idempotency key dan dijalankan dalam transaction database.
 
 Jika satu syarat gagal, `accounts.deleteUnused` harus ditolak. Rekening yang pernah dipakai hanya boleh mengikuti aturan arsip.
@@ -75,18 +75,24 @@ Kantong dan recurring mempunyai child yang dapat tercipta otomatis. Child terseb
 
 `test/governance/data-deletion-policy.test.js` adalah guard arsitektur wajib. Semua `DELETE FROM` production API harus cocok dengan inventaris exact path/table yang disetujui. `transactions`, `audit_log`, movement finansial, rekonsiliasi, dan period closure tidak boleh memperoleh normal business hard-delete. Controlled full restore dan technical cleanup ephemeral hanya boleh pada path yang sudah di-allowlist. Migration SQL dan operational scripts tidak boleh menjadi jalur hard-delete/`DROP TABLE`/`TRUNCATE` produksi. DELETE baru yang tidak terdaftar harus membuat CI gagal.
 
+### Pengecualian pra-go-live: pembersihan data testing
+
+Selama keputusan satu database masih aktif dan aplikasi belum dipakai untuk transaksi nyata, Administrator dapat menjalankan maintenance action `reset.preview` → `reset.apply` dari menu **Bersihkan data testing**. Ini bukan lifecycle harian dan tidak boleh dijalankan otomatis. Seluruh data finansial dan operasional yang akan dihapus harus masuk preview serta fingerprint yang sama. Safety backup, maintenance lock, integrity check, audit append-only, dan rebuild projection wajib selesai sesuai kontrak maintenance. Master/security/recovery yang dipertahankan mencakup rekening, kategori, pengguna, konfigurasi, audit log, backup, push subscription, serta preference notifikasi.
+
+Scheduled housekeeping hanya boleh hard-delete state ephemeral yang sudah tidak berlaku: `request_nonces` expired, `idempotency_keys` expired, serta `import_previews`/`restore_previews` expired yang tidak sedang `applying`. Housekeeping tidak boleh menghapus ledger, audit, backup, integrity history, master, atau record preview yang sedang diproses.
+
 ## Pemulihan per item
 
 ### Master/config yang diarsipkan
 
-Owner dapat memulihkan rekening, kategori, kantong, recurring rule, goal, atau budget yang diarsipkan melalui workflow domain/arsip yang tersedia. Backend wajib memeriksa versi terbaru, duplicate, status pemilik, dan constraint lain sebelum mengaktifkan kembali data.
+Administrator dapat memulihkan rekening, kategori, kantong, recurring rule, goal, atau budget yang diarsipkan melalui workflow domain/arsip yang tersedia. Backend wajib memeriksa versi terbaru, duplicate, status pemilik, dan constraint lain sebelum mengaktifkan kembali data.
 Master/config yang diarsipkan tidak boleh dipakai untuk transaksi atau workflow baru. Jika histori aktif perlu dikoreksi dan validasinya membutuhkan master aktif, owner harus memulihkan master tersebut terlebih dahulu, melakukan koreksi guarded, lalu mengarsipkannya kembali bila masih diperlukan.
 
 ### Transaksi cancelled
 
-Owner hanya dapat memulihkan transaksi bila periode masih terbuka, rekening/kategori masih valid, transaksi tidak terhubung workflow recurring/goal, tidak menciptakan duplicate, dan saldo proyeksi tetap valid. Transaksi linked harus dikoreksi melalui workflow domain asal.
+Administrator hanya dapat memulihkan transaksi bila periode masih terbuka, rekening/kategori masih valid, transaksi tidak terhubung workflow recurring/goal, tidak menciptakan duplicate, dan saldo proyeksi tetap valid. Transaksi linked harus dikoreksi melalui workflow domain asal.
 
-### Anggota nonaktif
+### Member nonaktif
 
 Reaktivasi harus memakai action eksplisit. Email dan role wajib masih cocok dengan `ALLOWED_USERS_JSON`; `users.upsert` tidak boleh secara diam-diam mengaktifkan pengguna lama.
 

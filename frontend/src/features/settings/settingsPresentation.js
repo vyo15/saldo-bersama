@@ -1,3 +1,4 @@
+import { userRoleLabel } from "../../shared/presentation/user.js";
 export const providerSummary = (integration, provider) => {
   const item = integration?.providers?.[provider] || {};
   return {
@@ -112,7 +113,7 @@ export const pushPresentation = (state) => {
   return presentations[state.reason] || { text: "Status notifikasi belum dapat ditentukan.", tone: "danger", label: "Tidak diketahui", canEnable: false };
 };
 
-export const roleLabel = (role) => role === "owner" ? "Pemilik" : role === "member" ? "Anggota" : role || "Tidak diketahui";
+export const roleLabel = userRoleLabel;
 export const userStatusLabel = (status) => status === "active" ? "Aktif" : status === "inactive" ? "Nonaktif" : status || "Tidak diketahui";
 export const auditResultLabel = (result) => result === "success" ? "Berhasil" : result === "failed" ? "Gagal" : result || "Tidak diketahui";
 

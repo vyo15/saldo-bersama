@@ -49,7 +49,7 @@ Import harus dipreview dan diuji pada salinan terisolasi sementara terlebih dahu
 4. Import ke Turso production.
 5. Jalankan schema, FK, dan business integrity check.
 6. Bandingkan seluruh saldo dan laporan.
-7. Smoke test owner dan member.
+7. Smoke test Administrator dan Member.
 8. Deploy API dengan Turso sebagai backend.
 9. Buka maintenance setelah verifikasi.
 10. Arsipkan spreadsheet lama read-only.

@@ -46,7 +46,7 @@ const actorCanOperateTransaction = (actor, transaction) => actor.role === "owner
   || (transaction.scope === "personal" && transaction.owner_user_id === actor.user_id);
 
 const assertCanModify = (context, transaction) => {
-  if (transaction.transaction_type === "adjustment" && context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat diubah owner.", 403);
+  if (transaction.transaction_type === "adjustment" && context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat diubah Administrator.", 403);
   if (context.actor.role !== "owner" && (!actorCanOperateTransaction(context.actor, transaction) || transaction.created_by !== context.actor.user_id)) throw appError("FORBIDDEN", "Member hanya dapat mengubah transaksi miliknya pada rekening yang dapat dioperasikan.", 403);
   if (transaction.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Koreksi transaksi rutin harus dilakukan melalui menu Tagihan.", 409, { occurrenceId: transaction.recurring_occurrence_id });
   if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi target harus dilakukan melalui menu Target.", 409, { goalId: transaction.goal_id });
@@ -68,12 +68,13 @@ const transactionCapabilities = (context, transaction, { periodOpen }) => {
 
 const validateEnvelope = async (db, context, transaction, { excludeTransactionId = null } = {}) => {
   if (transaction.transaction_type !== "expense" || !transaction.envelope_period_id) return;
-  const row = await db.one(`SELECT p.*,r.scope,r.owner_user_id,r.overspend_policy,r.source_account_id
+  const row = await db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.overspend_policy,r.source_account_id
     FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
     WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [transaction.envelope_period_id]);
   if (!row) throw appError("INVALID_ENVELOPE", "Kantong tidak ditemukan atau tidak aktif.", 400);
   if (transaction.transaction_date < row.period_start || transaction.transaction_date > row.period_end) throw appError("ENVELOPE_DATE_MISMATCH", "Tanggal transaksi berada di luar periode kantong.", 409);
-  if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Kantong dan rekening transaksi harus memiliki kepemilikan yang sama.", 409);
+  if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Kantong dan rekening transaksi harus memiliki kepemilikan ledger yang sama.", 409);
+  if (context.actor.role !== "owner" && row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat memakai jatah Bersama atau jatah miliknya sendiri.", 403);
   const usage = await db.one(`SELECT COALESCE(SUM(amount),0) AS used FROM transactions
     WHERE status='active' AND transaction_type='expense' AND envelope_period_id=? ${excludeTransactionId ? "AND transaction_id<>?" : ""}`, [row.envelope_period_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
   const remaining = Number(row.allocated_amount) - Number(row.reserved_amount) - Number(usage?.used || 0);
@@ -120,7 +121,7 @@ export const assertAffectedBalances = async (db, current, candidate = null) => {
 const validateTransactionTypePolicy = (context, payload, current, type) => {
   if (!TRANSACTION_TYPES.has(type)) throw appError("INVALID_TRANSACTION_TYPE", "Jenis transaksi tidak valid.", 400);
   if (type === "adjustment") {
-    if (context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat dibuat owner.", 403);
+    if (context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat dibuat Administrator.", 403);
     if (!sanitizeText(payload.description ?? current?.description, 250)) throw appError("ADJUSTMENT_REASON_REQUIRED", "Alasan penyesuaian saldo wajib diisi.", 400);
   }
   if (current && type !== current.transaction_type && (type === "adjustment" || current.transaction_type === "adjustment")) {

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { FiChevronDown } from "react-icons/fi";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
@@ -30,11 +31,32 @@ const OverviewMetrics = ({ overview }) => (
 
 const ReportAlerts = ({ alerts = [] }) => alerts.length ? <Card className="panel report-alert-panel"><div className="panel__header"><h2>Perlu perhatian</h2></div><ul className="financial-alert-list">{alerts.slice(0, 8).map((alert) => <li key={alert.id} data-severity={alert.severity}><strong>{alert.title}</strong><span>{alert.message}</span></li>)}</ul></Card> : null;
 
-const TrendPanels = ({ trend, balanceComparison, cashFlowTrend, balanceTrend }) => <>
+const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
   <Card className="panel"><div className="panel__header"><h2>Saldo awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>
   <Card className="panel"><div className="panel__header"><h2>Arus kas {trend.months} bulan</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" />}</Card>
-  <Card className="panel"><div className="panel__header"><h2>Tren total saldo</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren total saldo" /> : <EmptyState title="Belum ada tren saldo" />}</Card>
 </>;
+
+const useCompactReportDetails = () => {
+  const query = "(max-width: 767px)";
+  const canUseMatchMedia = () => typeof window !== "undefined" && typeof window.matchMedia === "function";
+  const [compact, setCompact] = useState(() => canUseMatchMedia() && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (!canUseMatchMedia()) return undefined;
+    const media = window.matchMedia(query);
+    const update = () => setCompact(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return compact;
+};
+
+const ReportDetails = ({ balanceTrend, categoryExpenses, accountExpenses, natureExpenses, creatorExpenses, budgets }) => {
+  const compact = useCompactReportDetails();
+  const content = <div className="report-details__content"><Card className="panel"><div className="panel__header"><h2>Tren total saldo</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren total saldo" /> : <EmptyState title="Belum ada tren saldo" />}</Card><BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} natureExpenses={natureExpenses} creatorExpenses={creatorExpenses} /><BudgetPerformance budgets={budgets} /></div>;
+  if (!compact) return <div className="report-details report-details--desktop">{content}</div>;
+  return <details className="report-details"><summary className="report-details__summary"><span><strong>Rincian laporan</strong><small>Tren saldo, kategori, rekening, jenis, pencatat, dan anggaran</small></span><FiChevronDown aria-hidden="true" /></summary>{content}</details>;
+};
 
 const BreakdownPanels = ({ categoryExpenses, accountExpenses, natureExpenses, creatorExpenses }) => <>
   <Card className="panel"><div className="panel__header"><h2>Pengeluaran per kategori</h2></div><BarChart data={categoryExpenses} /></Card>
@@ -61,7 +83,7 @@ const ReportsContent = ({ data, period, trendMonths, setPeriod, setTrendMonths, 
   const cashFlowTrend = trend.items.map((item) => ({ label: item.label, value: item.net }));
   const balanceTrend = trend.items.map((item) => ({ label: item.label, value: item.totalBalance }));
   const balanceComparison = [{ label: "Awal periode", value: overview?.openingBalance || 0 }, { label: overview?.isHistoricalPeriod ? "Akhir periode" : "Saat ini", value: overview?.totalBalance || 0 }];
-  return <div className="page-stack reports-page"><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} /><ReportAlerts alerts={overview?.alerts} /><section className="two-column-grid report-chart-grid"><TrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} balanceTrend={balanceTrend} /><BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} natureExpenses={natureExpenses} creatorExpenses={creatorExpenses} /><BudgetPerformance budgets={budgets} /></section></div>;
+  return <div className="page-stack reports-page"><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} /><ReportAlerts alerts={overview?.alerts} /><section className="two-column-grid report-chart-grid"><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} natureExpenses={natureExpenses} creatorExpenses={creatorExpenses} budgets={budgets} /></section></div>;
 };
 
 const ReportsPage = () => {

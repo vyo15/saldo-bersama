@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { listTransactions } from "../../api/_lib/services/finance.js";
 import { listGoals } from "../../api/_lib/services/planning/goals.js";
+import { listBudgets } from "../../api/_lib/services/planning/budgets.js";
 import { monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
 import { notificationPreferences, queueActionableNotifications, updateNotificationPreference } from "../../api/_lib/services/notifications.js";
 import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
@@ -112,6 +113,44 @@ test("filter transaksi mendukung rekening, kategori, dan pencatat tanpa melewati
   }
 });
 
+test("anggaran Bersama dan personal menghitung transaksi sesuai ownership ledger masing-masing", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const period = todayJakarta().slice(0, 7);
+    const date = `${period}-02`;
+    await db.execute(
+      "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["account-member-budget", "Budget Member", "bank", "personal", member.user_id, 500_000, "2020-01-01", 0, "active", 1, owner.user_id, now, owner.user_id, now],
+    );
+    await insertTransaction(db, { id: "budget-shared-expense", date, type: "expense", amount: 80_000, source: "account-bank", category: "category-food" });
+    const txNow = new Date().toISOString();
+    await db.execute(`INSERT INTO transactions(
+      transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,
+      amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,
+      cancelled_by,cancelled_at,cancellation_reason
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+      "budget-personal-expense", date, "expense", "account-member-budget", null, "category-food", null, null, null,
+      30_000, "Personal", "", "", "", "personal", member.user_id, "active", 1, "idem-budget-personal", member.user_id, txNow, member.user_id, txNow, null, null, "",
+    ]);
+    const insertBudget = "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    await db.execute(insertBudget, ["budget-shared", period, "category-food", null, "Makan Bersama", 500_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null]);
+    await db.execute(insertBudget, ["budget-member", period, "category-food", null, "Makan Member", 200_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "personal", member.user_id]);
+
+    const adminList = await listBudgets(db, { actor: owner, payload: { period } });
+    assert.equal(adminList.items.find((item) => item.budget_id === "budget-shared")?.used_amount, 80_000);
+    const personal = adminList.items.find((item) => item.budget_id === "budget-member");
+    assert.equal(personal.used_amount, 30_000);
+    assert.equal(personal.owner_name, member.name);
+    assert.equal(personal.owner_role, "member");
+
+    const memberList = await listBudgets(db, { actor: member, payload: { period } });
+    assert.deepEqual(memberList.items.map((item) => item.budget_id).sort(), ["budget-member", "budget-shared"]);
+  } finally {
+    db.close();
+  }
+});
+
 test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari data yang sudah ada", async () => {
   const db = await createSqliteTestDatabase();
   try {
@@ -181,6 +220,29 @@ test("notifikasi aksi penting idempotent untuk budget dan transaksi belum dialok
     const queued = await db.all("SELECT notification_type,dedupe_key FROM notification_queue ORDER BY notification_type,dedupe_key");
     assert.ok(queued.some((item) => item.notification_type === "budget_threshold"));
     assert.ok(queued.some((item) => item.notification_type === "unallocated_expense"));
+  } finally {
+    db.close();
+  }
+});
+
+test("notifikasi ambang Alokasi assigned hanya dikirim kepada penerima jatah", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const today = todayJakarta();
+    await db.execute(
+      "INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["rule-member-alert", "Jatah Makan Member", "monthly", "shared", null, member.user_id, 100_000, "account-bank", "unallocated", "confirm", "active", 1, owner.user_id, now, owner.user_id, now],
+    );
+    await db.execute(
+      "INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["period-member-alert", "rule-member-alert", "Jatah Makan Member", today, today, 100_000, 0, "active", 1, owner.user_id, now, owner.user_id, now, null, null],
+    );
+    await insertTransaction(db, { id: "expense-member-alert", date: today, type: "expense", amount: 80_000, source: "account-bank", category: "category-food", envelope: "period-member-alert", creator: member.user_id });
+
+    await queueActionableNotifications(db);
+    const recipients = await db.all("SELECT user_id FROM notification_queue WHERE notification_type='envelope_threshold' ORDER BY user_id");
+    assert.deepEqual(recipients.map((item) => item.user_id), [member.user_id]);
   } finally {
     db.close();
   }

@@ -12,6 +12,10 @@ export const integrityIssues = async (db) => {
   if (invalidTransfer.length) issues.push({ code: "INVALID_TRANSFER", count: invalidTransfer.length });
   const brokenOwnership = await db.all("SELECT account_id FROM accounts WHERE (owner_scope='shared' AND owner_user_id IS NOT NULL) OR (owner_scope='personal' AND owner_user_id IS NULL)");
   if (brokenOwnership.length) issues.push({ code: "BROKEN_ACCOUNT_OWNERSHIP", count: brokenOwnership.length });
+  const invalidEnvelopeAssignee = await db.all(`SELECT r.envelope_rule_id FROM envelope_rules r
+    LEFT JOIN users u ON u.user_id=r.assignee_user_id
+    WHERE r.assignee_user_id IS NOT NULL AND (u.user_id IS NULL OR (r.status='active' AND u.status<>'active'))`);
+  if (invalidEnvelopeAssignee.length) issues.push({ code: "INVALID_ENVELOPE_ASSIGNEE", count: invalidEnvelopeAssignee.length });
   const linkedCancelled = await db.all("SELECT occurrence_id FROM recurring_occurrences WHERE actual_amount<>(SELECT COALESCE(SUM(amount),0) FROM transactions WHERE status='active' AND recurring_occurrence_id=recurring_occurrences.occurrence_id)");
   if (linkedCancelled.length) issues.push({ code: "RECURRING_ACTUAL_MISMATCH", count: linkedCancelled.length });
   const pushOwnershipMismatchRows = await db.all(`SELECT COUNT(*) AS count

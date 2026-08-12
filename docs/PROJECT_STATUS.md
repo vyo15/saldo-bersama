@@ -9,7 +9,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - **Database/source of truth:** Turso/SQLite HTTP pipeline.
 - **Auth:** Firebase Authentication Google + server session/authorization.
 - **Google integration:** Apps Script bridge; Sheets mirror satu arah, Calendar reminder bersama, Drive backup teknis.
-- **Active schema contract:** v8.
+- **Active schema contract:** v9.
 - Runtime lokal dan Vercel Production dirancang memakai database Turso bersama; operasi destructive/migration tetap guarded.
 
 ## Workflow saat ini
@@ -23,7 +23,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 
 ## Rekening mobile saat ini
 
-- `MobileAccountsExperience` tetap lazy untuk menjaga route-chunk budget. Browser journey `/rekening` menunggu stack mobile visible sebelum menguji capability owner/member, sehingga heading siap tidak disalahartikan sebagai seluruh nested UI siap.
+- `MobileAccountsExperience` tetap lazy untuk menjaga route-chunk budget. Browser journey `/rekening` menunggu stack mobile visible sebelum menguji capability Administrator/Member, sehingga heading siap tidak disalahartikan sebagai seluruh nested UI siap.
 - Transfer adalah quick action, bukan tab. Form tetap memakai `TransactionForm` canonical dan sukses hanya ditampilkan setelah server mengonfirmasi write.
 - `Riwayat` dan `Grafik` adalah dua tab informasi. Transfer tetap tidak dihitung sebagai pemasukan/pengeluaran.
 - Kartu rekening memakai asset WebP 768×484 untuk bank, Tunai, Tabungan, serta provider E-wallet ShopeePay, DANA, GoPay, OVO, dan LinkAja. Provider E-wallet disimpan canonical pada `accounts.ewallet_template` schema v8; nama rekening hanya dipakai sebagai fallback untuk object/backup legacy yang belum memiliki field tersebut. Provider `generic` tetap aman untuk E-wallet lain.

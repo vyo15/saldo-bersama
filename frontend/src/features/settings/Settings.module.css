@@ -346,32 +346,32 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .preferenceItem input[role="switch"]:disabled { cursor: wait; opacity: .65; }
 .preferenceItem input[role="switch"]:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
-.resetPreview {
-  display: grid;
-  gap: var(--space-3);
-}
+.resetPreview { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
+.resetOverview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.resetOverview > div { min-width: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); display: grid; gap: .2rem; background: var(--surface); }
+.resetOverview span { color: var(--text-soft); font-size: var(--font-size-xs); }
+.resetOverview strong { font-size: var(--font-size-heading-sm); line-height: 1.15; }
+.resetOverview small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.resetPreviewSection, .resetPreserved { display: grid; gap: var(--space-3); }
+.resetPreviewSectionHeading { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-2); }
+.resetPreviewSectionHeading > svg { width: 1.1rem; height: 1.1rem; margin-top: .1rem; color: var(--primary); }
+.resetPreviewSectionHeading > div { min-width: 0; display: grid; gap: .1rem; }
+.resetPreviewSectionHeading strong { font-size: var(--font-size-sm); }
+.resetPreviewSectionHeading small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.resetPreviewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.resetPreviewGrid > div { min-width: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); background: var(--surface); }
+.resetPreviewGrid span { min-width: 0; color: var(--text-soft); font-size: var(--font-size-xs); overflow-wrap: anywhere; }
+.resetPreviewGrid strong { min-width: max-content; font-size: var(--font-size-sm); }
+.resetPreserved { padding: var(--space-3); border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: var(--radius-md); background: var(--primary-soft); }
+.resetPreservedGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.resetPreservedGrid > div { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
+.resetPreservedGrid svg { color: var(--primary); }
+.resetPreservedGrid span { min-width: 0; font-size: var(--font-size-xs); overflow-wrap: anywhere; }
+.resetPreservedGrid strong { min-width: max-content; font-size: var(--font-size-xs); }
 
-.resetPreviewGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
-  gap: var(--space-2);
-}
-
-.resetPreviewGrid > div {
-  min-width: 0;
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  display: grid;
-  gap: .2rem;
-  background: var(--surface-soft, var(--surface));
-}
-
-.resetPreviewGrid span {
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.resetPreviewGrid strong {
-  font-size: var(--font-size-body);
+@media (max-width: 36rem) {
+  .resetOverview { grid-template-columns: 1fr; }
+  .resetOverview > div { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-3); }
+  .resetOverview > div small { grid-column: 2; }
+  .resetPreviewGrid, .resetPreservedGrid { grid-template-columns: 1fr; }
 }

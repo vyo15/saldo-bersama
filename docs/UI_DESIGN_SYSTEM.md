@@ -85,9 +85,9 @@ frontend/src/components/
 
 ## Information architecture Pengaturan
 
-- `/pengaturan` adalah ringkasan status. Notifikasi, Integrasi, Anggota, Export, Import, Backup, Pemulihan, Periode, dan Audit memakai nested route sendiri.
+- `/pengaturan` adalah ringkasan status. Notifikasi, Integrasi, Akses pengguna, Export, Import, Backup, Pemulihan, Periode, dan Audit memakai nested route sendiri.
 - Setiap route hanya memuat resource yang dibutuhkan dan menampilkan loading/error/result dekat tindakan. Error Audit tidak boleh mengganggu Notifikasi, dan sebaliknya.
-- Owner-only item boleh disembunyikan dari navigasi anggota, tetapi direct route tetap harus menampilkan guard dan backend selalu menjadi authorization utama.
+- Administrator-only item boleh disembunyikan dari navigasi member, tetapi direct route tetap harus menampilkan guard dan backend selalu menjadi authorization utama.
 - Tile layanan adalah `button` bila melakukan aksi. Status siap tanpa aksi tidak boleh diberi click handler pada elemen non-interaktif.
 
 ## HTML semantik
@@ -187,16 +187,16 @@ Adopsi Mantine harus dilakukan bertahap:
 - Kontrol utama desktop minimum 44×44px. Enam kontrol canonical dikelompokkan rapat di tengah rail tanpa mengubah mask organik. Submenu grup memakai anchored flyout di samping trigger, label satu baris, trigger-toggle, Escape, click-outside, route-close, dan focus restoration; tombol X tidak diperlukan untuk flyout navigasi.
 - Theme toggle hanya tampil pada kontrol shell yang canonical. Menu mobile “Menu lainnya” tidak menduplikasi dark/light toggle; logout berada pada footer terpisah dan bottom navigation tetap tersedia.
 
-## Login dan anggota
+## Login dan pengguna
 
 - Login desktop memakai artwork approved sebagai visual layer utuh agar komposisi light/dark konsisten dengan desain referensi. Artwork mempertahankan rasio 1672×941 dan ditampilkan tanpa menggambar ulang ilustrasi dengan CSS. Area autentikasi tetap menampilkan satu host Google Identity Services canonical di atas artwork; error konfigurasi/login dan retry hanya muncul saat diperlukan.
 - Login mobile ≤820px memakai tiga slide total: onboarding “Rajin menabung, bijak belanja”, onboarding “Atur anggaran, hindari boros”, lalu slide login. Artwork mempertahankan rasio 941×1672, tombol `Lanjut` menggunakan hotspot semantik, swipe horizontal dan ArrowLeft/ArrowRight tersedia, dan `prefers-reduced-motion` mematikan transisi slide.
 - Artwork tidak boleh menggantikan kontrol autentikasi. Tombol Google tetap dirender oleh Google Identity Services/Firebase flow existing. Karena Google membatasi tampilan provider, area tombol boleh berbeda sedikit dari artwork referensi; jangan menyamarkan iframe provider dengan tombol palsu.
 - Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px. Theme toggle mobile adalah kontrol DOM asli yang ditempatkan di atas artwork login; artwork onboarding mobile yang disetujui saat ini tetap light agar pixel-match dengan referensi.
-- Halaman Akses anggota tetap owner-only. Daftar memakai card profil yang mudah dipindai, search nama/email, filter role, dan Modal canonical untuk tambah/ubah. Destructive member action tetap memakai confirmation guarded dan backend authorization.
-- `UserAvatar` memakai foto Google hanya bila URL profil tersedia dari session/read model tepercaya. Jika `users.list` tidak menyediakan foto anggota lain, gunakan initials fallback; jangan mengambil foto dari Google Search atau mengarang URL.
-- Aktivitas anggota adalah audit-friendly view atas ledger existing berdasarkan `created_by`, bukan ledger baru dan bukan ukuran kontribusi finansial. Copy wajib menyebutnya sebagai pencatat, bukan pembayar/pemakai.
-- Desktop menampilkan aktivitas anggota sebagai right drawer read-only. Mobile ≤820px menampilkan full-screen detail dengan focus trap, tombol kembali, body scroll lock, safe area, dan focus restoration.
+- Halaman Akses pengguna tetap Administrator-only. Daftar memakai card profil yang mudah dipindai, search nama/email, filter role, dan Modal canonical untuk tambah/ubah. Destructive member action tetap memakai confirmation guarded dan backend authorization.
+- `UserAvatar` memakai foto Google hanya bila URL profil tersedia dari session/read model tepercaya. Jika `users.list` tidak menyediakan foto pengguna lain, gunakan initials fallback; jangan mengambil foto dari Google Search atau mengarang URL.
+- Aktivitas pengguna adalah audit-friendly view atas ledger existing berdasarkan `created_by`, bukan ledger baru dan bukan ukuran kontribusi finansial. Copy wajib menyebutnya sebagai pencatat, bukan pembayar/pemakai.
+- Desktop menampilkan aktivitas pengguna sebagai right drawer read-only. Mobile ≤820px menampilkan full-screen detail dengan focus trap, tombol kembali, body scroll lock, safe area, dan focus restoration.
 - Ringkasan nominal per pencatat hanya boleh memakai agregasi backend exact. Total transaksi dapat memakai `transactions.list.total`; pengeluaran dapat memakai `reports.monthly.creatorExpenses`. Jangan menghitung agregasi dari page slice.
 - Shortcut ke daftar lengkap memakai route canonical `/transaksi` dan router state untuk initial filter `creatorId`/`period`; jangan menaruh user id atau data finansial pada URL.
 

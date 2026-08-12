@@ -10,6 +10,7 @@ const bankTemplateMigrationUrl = new URL("003_account_bank_template.sql", migrat
 const notificationDeliveriesMigrationUrl = new URL("004_notification_deliveries.sql", migrationDirectory);
 const notificationPreferencesMigrationUrl = new URL("005_notification_preferences.sql", migrationDirectory);
 const ewalletTemplateMigrationUrl = new URL("006_account_ewallet_template.sql", migrationDirectory);
+const envelopeAssigneeMigrationUrl = new URL("007_envelope_assignee.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -99,9 +100,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v8 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v9 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "8");
+  assert.equal(result.schema_version, "9");
   assert.ok(result.table_count >= 25);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -227,4 +228,30 @@ test("migration v8 menyimpan provider E-wallet terpisah dan hanya untuk rekening
   assert.match(sql, /WHERE account_type = 'ewallet'/);
   assert.match(sql, /value = '8'/);
   assert.doesNotMatch(sql, /UPDATE accounts\s+SET name/i);
+});
+
+
+test("migration v9 menambah penerima jatah dan membackfill kantong personal tanpa mengubah shared", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("006_account_ewallet_template.sql"));
+    const now = "2026-08-12T00:00:00.000Z";
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+      .run("u-admin", "firebase-admin", "admin@example.com", "Admin", "owner", "active", 1, now, now);
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+      .run("u-member", "firebase-member", "member@example.com", "Member", "member", "active", 1, now, now);
+    const insertRule = `INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    db.prepare(insertRule).run("rule-personal", "Makan Member", "monthly", "personal", "u-member", 100000, null, "unallocated", "confirm", "active", 1, "u-admin", now, "u-admin", now);
+    db.prepare(insertRule).run("rule-shared", "Makan Bersama", "monthly", "shared", null, 100000, null, "unallocated", "confirm", "active", 1, "u-admin", now, "u-admin", now);
+
+    db.exec((await readFile(envelopeAssigneeMigrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+    assert.equal(db.prepare("SELECT assignee_user_id FROM envelope_rules WHERE envelope_rule_id='rule-personal'").get().assignee_user_id, "u-member");
+    assert.equal(db.prepare("SELECT assignee_user_id FROM envelope_rules WHERE envelope_rule_id='rule-shared'").get().assignee_user_id, null);
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "9");
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_envelope_rules_assignee'").get());
+  } finally {
+    db.close();
+  }
 });

@@ -79,6 +79,12 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
   assert.deepEqual(accountCardNumberGroups("123456789012345678901234"), ["••••", "3456", "7890", "1234"]);
 });
 
+test("label kepemilikan rekening menampilkan Bersama atau nama pengguna, bukan role internal", () => {
+  assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Puput" }), "Puput");
+  assert.equal(accountDisplayLabel({ name: "BTN", account_type: "bank", owner_scope: "personal", owner_name: "Puput" }), "BTN · Puput");
+});
+
 test("arah transaksi rekening konsisten untuk desktop dan mobile", () => {
   assert.deepEqual(accountTransactionDirection({ transaction_type: "expense", status: "active" }, "acc-1"), { prefix: "−", tone: "negative" });
   assert.deepEqual(accountTransactionDirection({ transaction_type: "income", status: "active" }, "acc-1"), { prefix: "+", tone: "positive" });
@@ -135,6 +141,7 @@ ${accountEditors}`;
   assert.match(accountPageSource, /create-account-form/);
   assert.doesNotMatch(accountPageSource, /create-category-form|categories\.list|Kategori transaksi/);
   assert.match(accountPageSource, /account_number/);
+  assert.match(cardStyles, /\.accountNumber \{[^}]*justify-content:\s*flex-start;[^}]*gap:\s*clamp\(/s);
   assert.match(accountPageSource, /bank_template/);
   assert.match(accountPageSource, /ewallet_template/);
   assert.match(accountPageSource, /Provider E-wallet/);
@@ -146,8 +153,10 @@ ${accountEditors}`;
   assert.match(accountPageSource, /<span>No rekening \*<\/span>/);
   assert.match(accountPageSource, /useApiResource\("users\.list"/);
   assert.match(accountPageSource, /owner_user_id/);
-  assert.match(accountPageSource, /<span>Pemilik rekening \*<\/span>/);
-  assert.match(accountPageSource, /Daftar anggota belum dapat dimuat/);
+  assert.match(accountPageSource, /<span>Kepemilikan \*<\/span>/);
+  assert.match(accountPageSource, /userOptionLabel/);
+  assert.match(accountPageSource, /Administrator/);
+  assert.doesNotMatch(accountPageSource, /<span>Pemilik rekening \*<\/span>/);
   assert.match(accountPageSource, /Promise\.allSettled\(\[accountsResource\.reload\(\), refreshAll\(\)\]\)/);
   assert.doesNotMatch(accountPageSource, /accountsResult\.status === "rejected"/);
   assert.match(accountPageSource, /selectedAccountId/);
@@ -354,7 +363,7 @@ test("label rekening memprioritaskan provider dan tetap membedakan pemilik perso
 
 test("label kepemilikan kartu tetap ringkas dan nama pemilik tersedia terpisah", () => {
   assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
-  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Vio Yusup" }), "Pribadi");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Vio Yusup" }), "Vio Yusup");
   assert.equal(accountOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
 });
 

@@ -9,7 +9,7 @@ const OwnerSettingsGuard = ({ children }) => {
   return (
     <Card className="panel">
       <div className="panel__header">
-        <div><h2>Hanya pemilik yang dapat membuka bagian ini</h2></div>
+        <div><h2>Hanya Administrator yang dapat membuka bagian ini</h2></div>
         <FiLock aria-hidden="true" />
       </div>
       <Link className="button button--secondary" to="/pengaturan">Kembali ke ringkasan</Link>

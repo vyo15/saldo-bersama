@@ -130,7 +130,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(layout, /\/pengaturan\/periode/);
   assert.match(layout, /\/pengaturan\/audit/);
   assert.match(layout, /\/pengaturan\/reset-data/);
-  assert.match(layout, /Reset data percobaan/);
+  assert.match(layout, /Bersihkan data testing/);
   assert.match(layout, /ownerOnly/);
   assert.match(reset, /<OwnerSettingsGuard>/);
   assert.match(reset, /runSettingsAction\("reset\.preview"/);
@@ -140,8 +140,8 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(reset, /safety backup/i);
   assert.match(notifications, /Nonaktifkan perangkat ini/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
-  assert.match(members, /Tambah anggota/);
-  assert.match(members, /<Modal[\s\S]*title=\{editingMember \? "Ubah akses anggota" : "Tambah anggota"\}/);
+  assert.match(members, /Tambah pengguna/);
+  assert.match(members, /<Modal[\s\S]*title=\{editingMember \? "Ubah akses pengguna" : "Tambah pengguna"\}/);
   assert.match(members, /Lihat aktivitas transaksi/);
   assert.doesNotMatch(members, /Tambah atau ubah akses/);
   assert.match(members, /users\.upsert/);

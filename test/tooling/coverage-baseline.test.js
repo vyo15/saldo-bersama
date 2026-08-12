@@ -80,15 +80,15 @@ test("encoding dan serializer canonical menangani validasi serta urutan property
   );
 });
 
-test("schema helpers memverifikasi version 8, mismatch, cache invalidation, dan checksum", async () => {
+test("schema helpers memverifikasi version 9, mismatch, cache invalidation, dan checksum", async () => {
   invalidateSchemaCache();
-  const readyDb = { one: async () => ({ value: "8" }) };
+  const readyDb = { one: async () => ({ value: "9" }) };
   const ready = await readSchemaStatus(readyDb, { force: true });
-  assert.deepEqual(ready, { ready: true, version: 8, expectedVersion: 8 });
+  assert.deepEqual(ready, { ready: true, version: 9, expectedVersion: 9 });
   assert.equal((await assertDatabaseReady(readyDb)).ready, true);
 
   invalidateSchemaCache();
-  const staleDb = { one: async () => ({ value: "7" }) };
+  const staleDb = { one: async () => ({ value: "8" }) };
   await assert.rejects(
     () => assertDatabaseReady(staleDb),
     (error) => error?.code === "DATABASE_SCHEMA_MISMATCH" && error?.status === 503,
@@ -99,7 +99,7 @@ test("schema helpers memverifikasi version 8, mismatch, cache invalidation, dan 
   assert.deepEqual(await readSchemaStatus(missingDb, { force: true }), {
     ready: false,
     version: 0,
-    expectedVersion: 8,
+    expectedVersion: 9,
   });
   assert.match(checksumText("saldo-bersama"), /^[a-f0-9]{64}$/);
 });

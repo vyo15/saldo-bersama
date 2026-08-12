@@ -6,7 +6,7 @@ const SESSION_COOKIE = "sb_session";
 const encoder = (value) => Buffer.from(value).toString("base64url");
 const decoder = (value) => Buffer.from(value, "base64url").toString("utf8");
 
-const ALLOWED_ROLES = new Set(["owner", "member"]);
+const ROLE_ALIASES = Object.freeze({ administrator: "owner", owner: "owner", member: "member" });
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const parseAllowedUsers = (raw = process.env.ALLOWED_USERS_JSON || "[]") => {
@@ -18,9 +18,10 @@ export const parseAllowedUsers = (raw = process.env.ALLOWED_USERS_JSON || "[]") 
   users.forEach((item, index) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} harus berupa object.`);
     const email = String(item.email || "").trim().toLowerCase();
-    const role = String(item.role || "").trim();
+    const configuredRole = String(item.role || "").trim().toLowerCase();
+    const role = ROLE_ALIASES[configuredRole] || "";
     if (!EMAIL_PATTERN.test(email)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki email tidak valid.`);
-    if (!ALLOWED_ROLES.has(role)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki role tidak valid.`);
+    if (!role) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki role tidak valid. Gunakan administrator atau member.`);
 
     const existing = uniqueUsers.get(email);
     if (existing && existing.role !== role) throw new Error(`ALLOWED_USERS_JSON memiliki role konflik untuk ${email}.`);
@@ -120,7 +121,7 @@ export const assertPayloadAuthorization = (session, action, payload = {}) => {
   if (action === "transactions.create" || action === "transactions.update") {
     assertNoReservedTransactionFields(payload);
     if (session?.role !== "owner" && payload.transaction_type === "adjustment") {
-      throw Object.assign(new Error("Penyesuaian saldo hanya dapat dibuat owner."), {
+      throw Object.assign(new Error("Penyesuaian saldo hanya dapat dibuat Administrator."), {
         status: 403,
         code: "ADJUSTMENT_OWNER_ONLY",
       });

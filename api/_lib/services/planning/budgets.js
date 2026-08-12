@@ -12,9 +12,11 @@ export const budgetListStatement = (context) => {
       WHERE t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ?
       GROUP BY t.category_id,t.scope,t.owner_user_id
     )
-    SELECT b.*,COALESCE(c.name,b.name) AS display_name,COALESCE(u.used_amount,0) AS used_amount
+    SELECT b.*,COALESCE(c.name,b.name) AS display_name,COALESCE(u.used_amount,0) AS used_amount,
+      bu.name AS owner_name,bu.role AS owner_role
     FROM budgets b
     LEFT JOIN categories c ON c.category_id=b.category_id
+    LEFT JOIN users bu ON bu.user_id=b.owner_user_id
     LEFT JOIN usage u ON u.category_id=b.category_id
       AND u.scope=b.scope
       AND COALESCE(u.owner_user_id,'')=COALESCE(b.owner_user_id,'')

@@ -6,6 +6,21 @@ import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount }
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
 const OVERSPEND_POLICIES = new Set(["block", "confirm", "allow"]);
+
+const resolveEnvelopeAssignee = async (db, value) => {
+  const userId = String(value || "").trim();
+  if (!userId) return null;
+  const user = await db.one("SELECT user_id,email,name,role,status FROM users WHERE user_id=?", [userId]);
+  if (!user || user.status !== "active") throw appError("INVALID_ENVELOPE_ASSIGNEE", "Penerima jatah harus merupakan pengguna aktif.", 400);
+  return publicRow(user);
+};
+
+const assertEnvelopeAssigneeAccess = (actor, envelope) => {
+  if (actor.role === "owner" || !envelope?.assignee_user_id || envelope.assignee_user_id === actor.user_id) return;
+  throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat menggunakan atau memindahkan jatah Bersama dan jatah miliknya sendiri.", 403);
+};
+
+const hasSameEnvelopeAssignee = (left, right) => String(left?.assignee_user_id || "") === String(right?.assignee_user_id || "");
 const nextEnvelopeBounds = period => {
   const type = period.period_type;
   if (type === "daily") return {
@@ -92,7 +107,9 @@ export const listEnvelopes = async (db, context) => {
   };
   const statements = [itemStatement, movementStatement];
   const archivedIndex = context.actor.role === "owner" ? statements.push({
-    sql: "SELECT * FROM envelope_rules WHERE status='archived' ORDER BY updated_at DESC LIMIT 50",
+    sql: `SELECT r.*,COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'') AS assignee_name,au.role AS assignee_role
+      FROM envelope_rules r LEFT JOIN users au ON au.user_id=r.assignee_user_id
+      WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50`,
     args: [],
   }) - 1 : -1;
   const resultRows = typeof db.batch === "function"
@@ -127,6 +144,12 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
     optional: true
   });
   const owned = ruleScopeFromAccount(account);
+  const legacyAssignee = owned.scope === "personal" ? owned.owner_user_id : null;
+  const requestedAssignee = Object.hasOwn(payload, "assignee_user_id") ? payload.assignee_user_id : legacyAssignee;
+  const assignee = await resolveEnvelopeAssignee(db, requestedAssignee);
+  if (owned.scope === "personal" && assignee?.user_id !== owned.owner_user_id) {
+    throw appError("ENVELOPE_ASSIGNEE_SCOPE_MISMATCH", "Kantong dari rekening personal harus menjadi jatah pemilik rekening tersebut.", 409);
+  }
   const amount = positiveInteger(payload.default_amount, "Nominal alokasi");
   const timestamp = nowIso();
   const record = {
@@ -135,6 +158,7 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
     period_type: periodType,
     scope: owned.scope,
     owner_user_id: owned.owner_user_id,
+    assignee_user_id: assignee?.user_id || null,
     default_amount: amount,
     source_account_id: account?.account_id || null,
     rollover_policy: rollover,
@@ -146,7 +170,7 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
     updated_by: context.actor.user_id,
     updated_at: timestamp
   };
-  await db.execute(`INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await db.execute(`INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   return record;
 };
 export const createEnvelopePeriod = async (db, context, payload = context.payload || {}) => {
@@ -206,13 +230,16 @@ export const moveEnvelope = async (db, context) => {
   const fromId = payload.fromEnvelopePeriodId || payload.from_envelope_period_id;
   const toId = payload.toEnvelopePeriodId || payload.to_envelope_period_id;
   if (!fromId || !toId || fromId === toId) throw appError("INVALID_ENVELOPE_MOVE", "Kantong sumber dan tujuan harus berbeda.", 400);
-  const [from, to] = await Promise.all([db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [fromId]), db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [toId])]);
+  const [from, to] = await Promise.all([db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [fromId]), db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [toId])]);
   if (!from || !to) throw appError("INVALID_ENVELOPE", "Kantong aktif tidak ditemukan.", 404);
   assertOwnedAccess(context.actor, from);
   assertOwnedAccess(context.actor, to);
+  assertEnvelopeAssigneeAccess(context.actor, from);
+  assertEnvelopeAssigneeAccess(context.actor, to);
   assertVersion(from, payload.from_row_version);
   assertVersion(to, payload.to_row_version);
-  if (from.scope !== to.scope || String(from.owner_user_id || "") !== String(to.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Alokasi hanya dapat dipindahkan antar kantong dengan kepemilikan sama.", 409);
+  if (from.scope !== to.scope || String(from.owner_user_id || "") !== String(to.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Alokasi hanya dapat dipindahkan antar kantong dengan kepemilikan ledger yang sama.", 409);
+  if (context.actor.role !== "owner" && !hasSameEnvelopeAssignee(from, to)) throw appError("ENVELOPE_ASSIGNEE_MISMATCH", "Member hanya dapat memindahkan alokasi antar jatah dengan penerima yang sama.", 409);
   const amount = positiveInteger(payload.amount, "Nominal realokasi");
   const usage = await db.one("SELECT COALESCE(SUM(amount),0) AS used FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id=?", [fromId]);
   const remaining = Number(from.allocated_amount) - Number(from.reserved_amount) - Number(usage?.used || 0);
@@ -398,6 +425,10 @@ export const restoreEnvelopeRule = async (db, context) => {
     const account = await db.one("SELECT status FROM accounts WHERE account_id=?", [current.source_account_id]);
     if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening sumber kantong harus aktif sebelum dipulihkan.", 409);
   }
+  if (current.assignee_user_id) {
+    const assignee = await db.one("SELECT status FROM users WHERE user_id=?", [current.assignee_user_id]);
+    if (!assignee || assignee.status !== "active") throw appError("ASSIGNEE_INACTIVE", "Penerima jatah harus aktif sebelum kantong dipulihkan.", 409);
+  }
   const timestamp = nowIso();
   const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id, timestamp) };
   const update = await db.execute("UPDATE envelope_rules SET status='active',row_version=?,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.envelope_rule_id, current.row_version]);
@@ -415,12 +446,15 @@ export const reverseEnvelopeMovement = async (db, context) => {
   if (context.actor.role !== "owner" && movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi alokasi yang dibuat sendiri.", 403);
   assertVersion(movement, context.rowVersion ?? payload.row_version);
   const [from, to] = await Promise.all([
-    db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.from_envelope_period_id]),
-    db.one(`SELECT p.*,r.scope,r.owner_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.to_envelope_period_id]),
+    db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.from_envelope_period_id]),
+    db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.to_envelope_period_id]),
   ]);
   if (!from || !to) throw appError("ENVELOPE_MOVEMENT_LOCKED", "Mutasi hanya dapat dibatalkan ketika kedua kantong masih aktif.", 409);
   assertOwnedAccess(context.actor, from);
   assertOwnedAccess(context.actor, to);
+  assertEnvelopeAssigneeAccess(context.actor, from);
+  assertEnvelopeAssigneeAccess(context.actor, to);
+  if (context.actor.role !== "owner" && !hasSameEnvelopeAssignee(from, to)) throw appError("ENVELOPE_ASSIGNEE_MISMATCH", "Member hanya dapat membatalkan mutasi antar jatah dengan penerima yang sama.", 409);
   assertVersion(from, payload.from_row_version);
   assertVersion(to, payload.to_row_version);
   const usage = await db.one("SELECT COALESCE(SUM(amount),0) AS used FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id=?", [to.envelope_period_id]);

@@ -6,9 +6,9 @@ Saldo Bersama adalah sistem pengendali uang privat untuk dua akun Google. Sistem
 
 ## Pengguna dan istilah role
 
-- **Owner**: mengelola anggota, master data, maintenance, backup/restore, dan operasi administratif.
-- **Member**: role runtime yang saat ini dipakai untuk pasangan. Perluasan hak menjadi “Partner” penuh masih menunggu keputusan RFC-0016.
-- Istilah UI boleh memakai “pasangan”, tetapi action permission tetap mengikuti `owner`/`member` sampai RFC diterima dan source diubah.
+- **Administrator**: mengelola member, master data, rekening, maintenance, backup/restore, dan operasi administratif.
+- **Member**: pengguna kedua dengan permission operasional terbatas; tidak dapat membuat atau mengelola master rekening.
+- UI memakai istilah Administrator/Member. Backend mempertahankan key internal `owner` untuk Administrator demi kompatibilitas data/session existing; konfigurasi allowlist menerima `administrator`.
 
 ## Invariant produk
 
@@ -42,6 +42,10 @@ Mendukung bank, tunai, e-wallet, tabungan, dana darurat, sinking fund, investasi
 Mendukung income, expense, transfer, refund, adjustment; tanggal, nominal, rekening, kategori, pencatat, merchant, metode, catatan, status aktif/cancelled/archived, idempotency, conflict, dan audit.
 
 **Gap yang memerlukan RFC/schema:** pengguna uang (`used_by`), bukti/struk privat, draft/rencana/belum dibayar, utang, dan piutang. Lihat RFC-0011 dan RFC-0012.
+
+### `REQ-PROD-02A` Alokasi per penerima — Implemented
+
+Kantong memisahkan ownership ledger (`scope`/`owner_user_id`) dari penerima jatah (`assignee_user_id`). `NULL` berarti Bersama; shared source dapat dialokasikan untuk Administrator atau Member. Rekening personal hanya dapat menjadi sumber jatah untuk pemilik rekening tersebut. Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah miliknya sendiri.
 
 ### `REQ-PROD-03` Kategori kebutuhan — Partial
 
@@ -109,7 +113,7 @@ Menyimpan saldo sistem, saldo aktual, selisih, status, catatan, dan actor. Dashb
 
 ### `REQ-PROD-15` Hak akses dan privasi — Partial
 
-Owner/member, shared/personal, ownership query, dan backend authorization tersedia.
+Administrator/Member, shared/personal, ownership query, dan backend authorization tersedia.
 
 **Gap:** mode full detail, balance-only, contribution-only, dan private penuh per rekening memerlukan projection backend serta RFC-0015.
 

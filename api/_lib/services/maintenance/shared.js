@@ -4,7 +4,7 @@ import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
 const EWALLET_TEMPLATES = new Set(["generic", "shopeepay", "dana", "gopay", "ovo", "linkaja"]);
 
@@ -123,6 +123,14 @@ const normalizedStoredTemplate = ({ row, accountType, field, allowed, requiredTy
 };
 
 export const normalizeRestoredRows = (table, rows) => {
+  if (table === "envelope_rules") {
+    return rows.map((row) => ({
+      ...row,
+      assignee_user_id: Object.hasOwn(row, "assignee_user_id")
+        ? row.assignee_user_id || null
+        : row.scope === "personal" ? row.owner_user_id || null : null,
+    }));
+  }
   if (table !== "accounts") return rows;
   return rows.map((row) => {
     const accountType = String(row.account_type || "");

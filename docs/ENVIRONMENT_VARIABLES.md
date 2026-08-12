@@ -26,7 +26,7 @@ Development menyimpan delapan key core wajib dan satu key logging opsional. Web 
 | `VITE_APP_NAME` | Tidak | Nama aplikasi |
 | `VITE_GOOGLE_CLIENT_ID` | Tidak | OAuth Web Client ID Google |
 | `VITE_FIREBASE_API_KEY` | Tidak | Firebase Web API key |
-| `ALLOWED_USERS_JSON` | Ya | Dua email dan role canonical |
+| `ALLOWED_USERS_JSON` | Ya | Dua email dengan role `administrator` atau `member`; backend menormalisasi `administrator` ke compatibility key internal |
 | `ALLOWED_ORIGINS` | Tidak | Memuat `http://localhost:5173` dan domain Production |
 | `SESSION_SECRET` | Ya | Minimal 32 karakter acak |
 | `TURSO_DATABASE_URL` | Ya | URL database Turso yang disetujui |

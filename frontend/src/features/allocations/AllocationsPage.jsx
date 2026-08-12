@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FiArchive, FiArrowRight, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
+import { FiArchive, FiArrowRight, FiChevronDown, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -19,11 +19,12 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { currentMonthBoundsInJakarta } from "../../domain/dates.js";
-import { filterByOwnership } from "../../domain/ownership.js";
+import { filterByAssigneeAccess, filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
+import { userOptionLabel, userRoleLabel } from "../../shared/presentation/user.js";
 
 const defaultCreateForm = () => {
   const { start, end } = currentMonthBoundsInJakarta();
-  return { name: "", default_amount: "", source_account_id: "", period_type: "monthly", period_start: start, period_end: end, rollover_policy: "unallocated", overspend_policy: "confirm" };
+  return { name: "", default_amount: "", source_account_id: "", assignee_user_id: "", period_type: "monthly", period_start: start, period_end: end, rollover_policy: "unallocated", overspend_policy: "confirm" };
 };
 
 const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup, notify, setMessage, onCreated, onMoved }) => {
@@ -33,7 +34,7 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
     return createMutation.run(async () => {
       const amount = assertPositiveRupiah(createForm.default_amount);
       await requestCreateEnvelope({ ...createForm, default_amount: amount, allocated_amount: amount }, {});
-      setCreateForm((current) => ({ ...current, name: "", default_amount: "" }));
+      setCreateForm(defaultCreateForm());
       onCreated?.();
       notify({ message: "Kantong dan periode aktif berhasil dibuat." });
       await refreshAfterMutation();
@@ -68,16 +69,64 @@ const useAllocationLifecycle = ({ closeTarget, setCloseTarget, setCloseState, ar
   return { closeEnvelope, openRuleLifecycle, applyRuleLifecycle, reverseMovement };
 };
 
+const allocationAssigneeLabel = (item) => {
+  if (!item?.assignee_user_id) return "Bersama";
+  const name = String(item.assignee_name || "Pengguna").trim();
+  return `${name} · ${userRoleLabel(item.assignee_role)}`;
+};
+
 const AllocationCards = ({ items, setCloseTarget, setCloseState, openRuleLifecycle }) => <section className="allocation-grid">{items.length ? items.map((item) => {
   const reserved = Number(item.reserved_amount || 0);
-  return <Card className="allocation-card" key={item.envelope_period_id}><div className="allocation-card__header"><div><h2>{item.name}</h2><small>{item.period_start} – {item.period_end}</small></div><Money value={item.remaining_amount} /></div><ProgressBar value={Number(item.used_amount || 0) + reserved} max={item.allocated_amount} label={item.name} /><dl><div><dt>Alokasi</dt><dd><Money value={item.allocated_amount} /></dd></div><div><dt>Terpakai</dt><dd><Money value={item.used_amount} /></dd></div>{reserved > 0 ? <div><dt>Dipesan</dt><dd><Money value={reserved} /></dd></div> : null}</dl>{item.can_close || item.can_archive_rule ? <div className="form-actions">{item.can_close ? <Button icon={FiArchive} onClick={() => { setCloseTarget(item); setCloseState({ status: "idle", error: null }); }}>Tutup periode</Button> : null}{item.can_archive_rule ? <Button icon={FiArchive} onClick={() => openRuleLifecycle(item)}>Hapus / Arsipkan</Button> : null}</div> : null}</Card>;
+  return <Card className="allocation-card" key={item.envelope_period_id}><div className="allocation-card__header"><div><h2>{item.name}</h2><small>{item.period_start} – {item.period_end}</small><small>Jatah untuk {allocationAssigneeLabel(item)}</small></div><Money value={item.remaining_amount} /></div><ProgressBar value={Number(item.used_amount || 0) + reserved} max={item.allocated_amount} label={item.name} /><dl><div><dt>Alokasi</dt><dd><Money value={item.allocated_amount} /></dd></div><div><dt>Terpakai</dt><dd><Money value={item.used_amount} /></dd></div>{reserved > 0 ? <div><dt>Dipesan</dt><dd><Money value={reserved} /></dd></div> : null}</dl>{item.can_close || item.can_archive_rule ? <div className="form-actions">{item.can_close ? <Button icon={FiArchive} onClick={() => { setCloseTarget(item); setCloseState({ status: "idle", error: null }); }}>Tutup periode</Button> : null}{item.can_archive_rule ? <Button icon={FiArchive} onClick={() => openRuleLifecycle(item)}>Hapus / Arsipkan</Button> : null}</div> : null}</Card>;
 }) : <Card className="panel"><p>Belum ada kantong aktif.</p></Card>}</section>;
 
-const AllocationHistory = ({ items }) => items.length ? <Card className="panel"><div className="panel__header"><h2>Riwayat periode</h2></div><div className="compact-list compact-list--stacked">{items.map((item) => <div key={item.envelope_period_id}><span><strong>{item.name}</strong><small>{item.period_start} – {item.period_end} · {item.status === "closed" ? "Ditutup" : item.status === "archived" ? "Diarsipkan" : item.status}</small></span><span><Money value={item.allocated_amount} /><small>Terpakai <Money value={item.used_amount} /></small></span></div>)}</div></Card> : null;
+const AllocationHistory = ({ items }) => items.length ? <Card className="panel"><div className="panel__header"><h2>Riwayat periode</h2></div><div className="compact-list compact-list--stacked">{items.map((item) => <div key={item.envelope_period_id}><span><strong>{item.name}</strong><small>{item.period_start} – {item.period_end} · Jatah untuk {allocationAssigneeLabel(item)} · {item.status === "closed" ? "Ditutup" : item.status === "archived" ? "Diarsipkan" : item.status}</small></span><span><Money value={item.allocated_amount} /><small>Terpakai <Money value={item.used_amount} /></small></span></div>)}</div></Card> : null;
 
-const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, createEnvelope, createMutation, message }) => <Modal open={open} onClose={close} title="Buat kantong" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Buat kantong</Button></>}><form id="create-envelope-form" className="form-grid" onSubmit={createEnvelope}><label className="field form-grid__full"><span>Nama kantong *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Jatah makan bulanan" /></label><MoneyInput id="envelope-default" label="Nominal alokasi" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} /><label className="field"><span>Rekening sumber</span><select value={createForm.source_account_id} onChange={(event) => setCreateForm((current) => ({ ...current, source_account_id: event.target.value }))}><option value="">Gabungan rekening bersama</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label><label className="field"><span>Periode jatah</span><select value={createForm.period_type} onChange={(event) => setCreateForm((current) => ({ ...current, period_type: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="paycycle">Periode gajian</option><option value="custom">Khusus</option></select></label><label className="field"><span>Rollover</span><select value={createForm.rollover_policy} onChange={(event) => setCreateForm((current) => ({ ...current, rollover_policy: event.target.value }))}><option value="unallocated">Kembali ke belum dialokasikan</option><option value="carry">Bawa sisa ke periode berikutnya</option></select></label><label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label><label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>{message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}</form></Modal>;
+const envelopeAssigneeOptions = (form, accounts, users) => {
+  const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
+  if (source?.owner_scope !== "personal") return { options: users, locked: false };
+  const existing = users.find((item) => item.user_id === source.owner_user_id);
+  const fallback = existing || {
+    user_id: source.owner_user_id,
+    name: source.owner_name || "Pemilik rekening",
+    option_label: `${source.owner_name || "Pemilik rekening"} · Pemilik rekening`,
+  };
+  return { options: fallback.user_id ? [fallback] : [], locked: true };
+};
 
-const MoveEnvelopeModal = ({ open, close, move, setMove, items, destinations, submitMove, moveMutation, message }) => <Modal open={open} onClose={close} title="Pindahkan alokasi" footer={<><Button type="button" disabled={moveMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiArrowRight} type="submit" form="move-envelope-form" loading={moveMutation.busy}>Pindahkan</Button></>}><form id="move-envelope-form" className="form-grid" onSubmit={submitMove}><label className="field"><span>Dari kantong *</span><select required value={move.fromEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, fromEnvelopePeriodId: event.target.value, toEnvelopePeriodId: "" }))}><option value="">Pilih sumber</option>{items.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · sisa Rp {Number(item.remaining_amount || 0).toLocaleString("id-ID")}</option>)}</select></label><label className="field"><span>Ke kantong *</span><select required value={move.toEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, toEnvelopePeriodId: event.target.value }))}><option value="">Pilih tujuan</option>{destinations.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name}</option>)}</select></label><MoneyInput id="move-amount" label="Nominal dipindahkan" value={move.amount} onChange={(amount) => setMove((current) => ({ ...current, amount }))} /><label className="field form-grid__full"><span>Alasan *</span><input required value={move.reason} maxLength="160" onChange={(event) => setMove((current) => ({ ...current, reason: event.target.value }))} placeholder="Contoh: sisa jatah mingguan" /></label>{message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}</form></Modal>;
+const assigneeOptionLabel = (item) => item.option_label || userOptionLabel(item);
+
+const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
+  const assigneeState = envelopeAssigneeOptions(createForm, accounts, users);
+  const changeSource = (sourceAccountId) => {
+    const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
+    setCreateForm((current) => ({
+      ...current,
+      source_account_id: sourceAccountId,
+      assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : current.assignee_user_id,
+    }));
+  };
+  return <Modal open={open} onClose={close} title="Buat kantong" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Buat kantong</Button></>}>
+    <form id="create-envelope-form" className="form-grid allocation-create-form" onSubmit={createEnvelope}>
+      <label className="field form-grid__full"><span>Nama kantong *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Jatah makan bulanan" /></label>
+      <MoneyInput id="envelope-default" label="Nominal alokasi" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} />
+      <label className="field"><span>Rekening sumber</span><select value={createForm.source_account_id} onChange={(event) => changeSource(event.target.value)}><option value="">Gabungan rekening bersama</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label>
+      <label className="field form-grid__full"><span>Jatah untuk</span><select value={createForm.assignee_user_id} onChange={(event) => setCreateForm((current) => ({ ...current, assignee_user_id: event.target.value }))} disabled={usersStatus === "loading" || assigneeState.locked}>{!assigneeState.locked ? <option value="">Bersama</option> : null}{assigneeState.options.map((item) => <option key={item.user_id} value={item.user_id}>{assigneeOptionLabel(item)}</option>)}</select><small>{assigneeState.locked ? "Rekening personal hanya dapat dialokasikan untuk pemilik rekening tersebut." : usersStatus === "loading" ? "Memuat pengguna aktif..." : "Pilih Bersama, Administrator, atau Member yang menerima jatah."}</small></label>
+      <details className="allocation-advanced form-grid__full">
+        <summary><span><strong>Periode dan rollover</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
+        <div className="allocation-advanced__content">
+          <label className="field"><span>Periode jatah</span><select value={createForm.period_type} onChange={(event) => setCreateForm((current) => ({ ...current, period_type: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="paycycle">Periode gajian</option><option value="custom">Khusus</option></select></label>
+          <label className="field"><span>Rollover</span><select value={createForm.rollover_policy} onChange={(event) => setCreateForm((current) => ({ ...current, rollover_policy: event.target.value }))}><option value="unallocated">Kembali ke belum dialokasikan</option><option value="carry">Bawa sisa ke periode berikutnya</option></select></label>
+          <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
+          <label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
+        </div>
+      </details>
+      {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
+    </form>
+  </Modal>;
+};
+
+const MoveEnvelopeModal = ({ open, close, move, setMove, items, destinations, submitMove, moveMutation, message }) => <Modal open={open} onClose={close} title="Pindahkan alokasi" footer={<><Button type="button" disabled={moveMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiArrowRight} type="submit" form="move-envelope-form" loading={moveMutation.busy}>Pindahkan</Button></>}><form id="move-envelope-form" className="form-grid" onSubmit={submitMove}><label className="field"><span>Dari kantong *</span><select required value={move.fromEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, fromEnvelopePeriodId: event.target.value, toEnvelopePeriodId: "" }))}><option value="">Pilih sumber</option>{items.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · {allocationAssigneeLabel(item)} · sisa Rp {Number(item.remaining_amount || 0).toLocaleString("id-ID")}</option>)}</select></label><label className="field"><span>Ke kantong *</span><select required value={move.toEnvelopePeriodId} onChange={(event) => setMove((current) => ({ ...current, toEnvelopePeriodId: event.target.value }))}><option value="">Pilih tujuan</option>{destinations.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · {allocationAssigneeLabel(item)}</option>)}</select></label><MoneyInput id="move-amount" label="Nominal dipindahkan" value={move.amount} onChange={(amount) => setMove((current) => ({ ...current, amount }))} /><label className="field form-grid__full"><span>Alasan *</span><input required value={move.reason} maxLength="160" onChange={(event) => setMove((current) => ({ ...current, reason: event.target.value }))} placeholder="Contoh: sisa jatah mingguan" /></label>{message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}</form></Modal>;
 
 const RecoveryPanels = ({ recentMovements, setReverseTarget, setReverseState }) => recentMovements.length ? <Card className="panel"><div className="panel__header"><h2>Mutasi terakhir</h2></div><div className="compact-list compact-list--stacked">{recentMovements.map((item) => <div key={item.movement_id}><span><strong>{item.from_name} → {item.to_name}</strong><small><Money value={item.amount} /> · {item.reason}</small></span>{item.can_reverse ? <Button icon={FiRotateCcw} onClick={() => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); }}>Batalkan</Button> : null}</div>)}</div></Card> : null;
 
@@ -85,16 +134,31 @@ const AllocationModals = (p) => <><ConfirmationModal open={Boolean(p.closeTarget
 
 const AllocationsPage = () => {
   const resource = useApiResource("envelopes.list"); const { refreshOverview, invalidate, bootstrap } = useFinance(); const { user } = useAuth(); const { notify } = useFeedback();
+  const administratorMode = user?.role === "owner";
+  const usersResource = useApiResource("users.list", {}, { enabled: administratorMode });
   const createMutation = useGuardedMutation(); const moveMutation = useGuardedMutation(); const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" }); const [createForm, setCreateForm] = useState(defaultCreateForm);
   const [createOpen, setCreateOpen] = useState(false); const [moveOpen, setMoveOpen] = useState(false); const [message, setMessage] = useState(null); const [closeTarget, setCloseTarget] = useState(null); const [closeState, setCloseState] = useState({ status: "idle", error: null }); const [archiveTarget, setArchiveTarget] = useState(null); const [archiveState, setArchiveState] = useState({ status: "idle", error: null }); const [reverseTarget, setReverseTarget] = useState(null); const [reverseState, setReverseState] = useState({ status: "idle", error: null });
-  const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || []; const items = useMemo(() => resource.data?.items || [], [resource.data?.items]); const activeItems = useMemo(() => items.filter((item) => item.status === "active"), [items]); const historicalItems = useMemo(() => items.filter((item) => item.status !== "active"), [items]); const recentMovements = resource.data?.recentMovements || []; const lookup = useMemo(() => Object.fromEntries(activeItems.map((item) => [item.envelope_period_id, item])), [activeItems]); const selectedSourceEnvelope = lookup[move.fromEnvelopePeriodId] || null; const destinations = filterByOwnership(activeItems, selectedSourceEnvelope).filter((item) => item.envelope_period_id !== move.fromEnvelopePeriodId);
+  const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
+  const activeUsers = usersResource.data?.items?.filter((item) => item.status === "active") || [];
+  const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
+  const activeItems = useMemo(() => items.filter((item) => item.status === "active"), [items]);
+  const historicalItems = useMemo(() => items.filter((item) => item.status !== "active"), [items]);
+  const allocationActor = bootstrap?.user || user;
+  const movableItems = useMemo(() => filterByAssigneeAccess(activeItems, allocationActor), [activeItems, allocationActor]);
+  const recentMovements = resource.data?.recentMovements || [];
+  const lookup = useMemo(() => Object.fromEntries(activeItems.map((item) => [item.envelope_period_id, item])), [activeItems]);
+  const selectedSourceEnvelope = lookup[move.fromEnvelopePeriodId] || null;
+  const destinations = filterByOwnership(movableItems, selectedSourceEnvelope)
+    .filter((item) => item.envelope_period_id !== move.fromEnvelopePeriodId)
+    .filter((item) => administratorMode || hasSameAssignee(item, selectedSourceEnvelope));
+  const canMove = movableItems.some((source) => filterByOwnership(movableItems, source).some((target) => target.envelope_period_id !== source.envelope_period_id && (administratorMode || hasSameAssignee(source, target))));
   const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup, notify, setMessage, onCreated: () => setCreateOpen(false), onMoved: () => setMoveOpen(false) });
   const lifecycle = useAllocationLifecycle({ closeTarget, setCloseTarget, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation: createMove.refreshAfterMutation, notify });
   if (resource.status === "loading") return <LoadingScreen label="Memuat alokasi dana..." />; if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const modalProps = { closeTarget, setCloseTarget, closeState, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
   const openCreate = () => { setMessage(null); setCreateOpen(true); }; const openMove = () => { setMessage(null); setMoveOpen(true); }; const closeCreate = () => { if (!createMutation.busy) setCreateOpen(false); }; const closeMove = () => { if (!moveMutation.busy) setMoveOpen(false); };
-  const headerActions = <>{user?.role === "owner" ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat kantong</Button> : null}<Button icon={FiArrowRight} onClick={openMove} disabled={activeItems.length < 2}>Pindahkan alokasi</Button><Button icon={FiRefreshCw} onClick={resource.reload}>Muat ulang</Button></>;
-  return <div className="page-stack"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} /><PageHeader title="Alokasi" actions={headerActions} /><AllocationCards items={activeItems} setCloseTarget={setCloseTarget} setCloseState={setCloseState} openRuleLifecycle={lifecycle.openRuleLifecycle} /><AllocationHistory items={historicalItems} /><RecoveryPanels recentMovements={recentMovements} setReverseTarget={setReverseTarget} setReverseState={setReverseState} /><CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} createEnvelope={createMove.createEnvelope} createMutation={createMutation} message={message} /><MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={activeItems} destinations={destinations} submitMove={createMove.submitMove} moveMutation={moveMutation} message={message} /><AllocationModals {...modalProps} /></div>;
+  const headerActions = <div className="allocation-header-actions">{administratorMode ? <Button className="allocation-header-actions__primary" variant="primary" icon={FiPlus} onClick={openCreate}>Buat kantong</Button> : null}<Button icon={FiArrowRight} onClick={openMove} disabled={!canMove}>Pindahkan alokasi</Button><Button className="allocation-refresh-action" icon={FiRefreshCw} onClick={resource.reload} aria-label="Muat ulang alokasi">Muat ulang</Button></div>;
+  return <div className="page-stack"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} />{administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}<PageHeader title="Alokasi dana" actions={headerActions} /><AllocationCards items={activeItems} setCloseTarget={setCloseTarget} setCloseState={setCloseState} openRuleLifecycle={lifecycle.openRuleLifecycle} /><AllocationHistory items={historicalItems} /><RecoveryPanels recentMovements={recentMovements} setReverseTarget={setReverseTarget} setReverseState={setReverseState} /><CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersResource.status} createEnvelope={createMove.createEnvelope} createMutation={createMutation} message={message} /><MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={createMove.submitMove} moveMutation={moveMutation} message={message} /><AllocationModals {...modalProps} /></div>;
 };
 
 export default AllocationsPage;

@@ -230,19 +230,30 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
 
     await navigateAndAssert(page, appServer.origin, "/laporan", "Laporan", { mobile: true });
     assert.equal(await page.evaluate("!document.body.textContent.includes('Simpan anggaran') && !document.body.textContent.includes('Arsipkan anggaran')"), true, "Laporan tidak boleh memuat mutation anggaran.");
-    const visibleReportPanels = await page.evaluate(`(() => {
-      const grid = document.querySelector('.report-chart-grid');
-      if (!grid) return 0;
-      return [...grid.children].filter((element) => {
+    const reportDisclosureState = await page.evaluate(`(() => {
+      const details = document.querySelector('.report-details');
+      const summary = details?.querySelector('.report-details__summary');
+      const content = details?.querySelector('.report-details__content');
+      const visible = (element) => {
+        if (!element) return false;
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
         return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
-      }).length;
+      };
+      return {
+        detailsPresent: Boolean(details),
+        summaryVisible: visible(summary),
+        contentInitiallyVisible: visible(content),
+        primaryPanels: [...document.querySelectorAll('.report-chart-grid > .panel')].filter(visible).length,
+      };
     })()`);
-    assert.ok(visibleReportPanels >= 7, `Chart laporan mobile harus terlihat, ditemukan ${visibleReportPanels} panel.`);
+    assert.deepEqual(reportDisclosureState, { detailsPresent: true, summaryVisible: true, contentInitiallyVisible: false, primaryPanels: 2 }, "Laporan mobile harus menampilkan dua insight utama dan menyimpan rincian di disclosure.");
+    await page.evaluate("document.querySelector('.report-details > summary')?.click()");
+    await waitFor(() => page.evaluate("document.querySelector('.report-details')?.open === true"), { description: "rincian laporan mobile terbuka" });
+    assert.equal(await page.evaluate(visibleExpression(".report-details__content")), true, "Rincian laporan harus tetap dapat dijangkau setelah diminta.");
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
-    assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v8')"), true, "Status backend harus memakai kontrak system.health aktual.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v9')"), true, "Status backend harus memakai kontrak system.health aktual.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Degraded')"), false, "Status backend siap tidak boleh salah ditampilkan sebagai Degraded.");
     assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/notifikasi\"]')) && Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), true, "Owner harus memperoleh navigasi internal Pengaturan.");
 
@@ -294,6 +305,37 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       };
     })()`);
     assert.deepEqual(narrowRecurringLayout, { addInside: true, periodInside: true, scheduleBeforeNavigation: true, filterTouchTargets: true }, "Jadwal rutin 366x668 harus compact, tidak terpotong, dan tetap memiliki touch target aman.");
+
+    await navigateAndAssert(page, appServer.origin, "/alokasi", "Alokasi dana", { mobile: true });
+    const narrowAllocationActions = await page.evaluate(`(() => {
+      const actions = document.querySelector('.allocation-header-actions');
+      const refresh = document.querySelector('.allocation-refresh-action');
+      const create = document.querySelector('.allocation-header-actions__primary');
+      return {
+        actionsInside: Boolean(actions && actions.getBoundingClientRect().right <= innerWidth + 1),
+        refreshTouchTarget: refresh?.getBoundingClientRect().height || 0,
+        createFullRow: Boolean(create && actions && Math.abs(create.getBoundingClientRect().width - actions.getBoundingClientRect().width) <= 2),
+      };
+    })()`);
+    assert.equal(narrowAllocationActions.actionsInside, true, "Aksi Alokasi harus tetap di dalam viewport sempit.");
+    assert.ok(narrowAllocationActions.refreshTouchTarget >= 43.5, `Muat ulang Alokasi minimal 44px, ditemukan ${narrowAllocationActions.refreshTouchTarget}px.`);
+    assert.equal(narrowAllocationActions.createFullRow, true, "Buat kantong harus menjadi primary action satu baris pada mobile sempit.");
+
+    await navigateAndAssert(page, appServer.origin, "/target", "Target", { mobile: true });
+    const compactGoalActions = await page.evaluate(`(() => {
+      const cards = [...document.querySelectorAll('.goal-card')];
+      const menus = [...document.querySelectorAll('.goal-action-menu > summary')];
+      return {
+        cards: cards.length,
+        menus: menus.length,
+        menuTouchTargets: menus.map((item) => item.getBoundingClientRect().height),
+        maxDirectButtons: Math.max(0, ...cards.map((card) => card.querySelectorAll(':scope > .goal-card__actions > .button').length)),
+      };
+    })()`);
+    assert.ok(compactGoalActions.cards > 0, "Fixture Target harus menghasilkan kartu untuk menguji action hierarchy.");
+    assert.ok(compactGoalActions.menus > 0, "Target dengan aksi sekunder harus menyediakan menu Kelola.");
+    assert.ok(compactGoalActions.menuTouchTargets.every((height) => height >= 43.5), `Menu Kelola Target minimal 44px, ditemukan ${JSON.stringify(compactGoalActions.menuTouchTargets)}.`);
+    assert.ok(compactGoalActions.maxDirectButtons <= 1, `Kartu Target hanya boleh memiliki satu primary action langsung, ditemukan ${compactGoalActions.maxDirectButtons}.`);
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
     const narrowSettingsLayout = await page.evaluate(`(() => {

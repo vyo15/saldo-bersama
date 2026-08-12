@@ -3,6 +3,7 @@ import test from "node:test";
 import { applyTrialDataReset, previewTrialDataReset, TRIAL_RESET_CONFIRMATION } from "../../api/_lib/services/maintenance/reset.js";
 import { decodeBackup } from "../../api/_lib/services/maintenance/shared.js";
 import { nowIso } from "../../api/_lib/services/core.js";
+import { cleanupExpiredEphemeralState } from "../../api/_lib/services/maintenance/housekeeping.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const owner = {
@@ -58,17 +59,27 @@ const withBridgeStub = async (fn) => {
   }
 };
 
-test("reset data percobaan owner-only, preview-aware, membuat safety backup, purge terarah, dan mempertahankan master/audit", async () => {
+test("bersihkan data testing owner-only, preview-aware, membuat safety backup, purge terarah, dan mempertahankan master/audit", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
     await assert.rejects(() => previewTrialDataReset(db, context(member, "reset.preview")), (error) => error.code === "OWNER_ONLY");
 
+    await db.execute(`INSERT INTO integration_outbox(outbox_id,provider,event_type,entity_type,entity_id,event_key,payload_json,status,attempt_count,next_attempt_at,locked_at,locked_by,last_error_code,last_error_message,created_at,updated_at,completed_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["outbox-reset", "sheets", "upsert", "transaction", "tx-reset", "sheets:upsert:transaction:tx-reset", "{}", "pending", 0, nowIso(), null, null, "", "", nowIso(), nowIso(), null]);
+    await db.execute("INSERT INTO import_previews(preview_id,actor_id,records_json,fingerprint,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,'pending',NULL,NULL,?,?)", ["import-reset", owner.user_id, "[]", "fp-reset", "{}", new Date(Date.now() + 60_000).toISOString(), nowIso()]);
+
     const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
     assert.equal(preview.summary.transactions, 1);
     assert.equal(preview.summary.reconciliations, 1);
+    assert.equal(preview.summary.integrationOutbox, 1);
+    assert.equal(preview.summary.importPreviews, 1);
+    assert.equal(preview.summary.businessRows, 2);
+    assert.equal(preview.summary.operationalRows, 2);
+    assert.equal(preview.summary.totalRows, 4);
     assert.equal(preview.preserved.accounts, 1);
     assert.equal(preview.preserved.categories, 1);
+    assert.equal(preview.preserved.users, 2);
 
     await assert.rejects(
       () => applyTrialDataReset(db, context(owner, "reset.apply", { previewFingerprint: preview.previewFingerprint, confirmation: "SALAH", acknowledged: true, reason: "Data uji" })),
@@ -93,6 +104,7 @@ test("reset data percobaan owner-only, preview-aware, membuat safety backup, pur
 
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 0);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM reconciliations")).count, 0);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM import_previews")).count, 0);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM accounts")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM categories")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM users")).count, 2);
@@ -157,6 +169,52 @@ test("reset melepaskan maintenance jika data berubah saat safety backup sebelum 
     if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL; else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
     if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET; else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
     globalThis.fetch = previous.fetch;
+    db.close();
+  }
+});
+
+
+test("preview reset ikut berubah jika sisa operasional berubah", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
+    await db.execute(`INSERT INTO integration_outbox(outbox_id,provider,event_type,entity_type,entity_id,event_key,payload_json,status,attempt_count,next_attempt_at,locked_at,locked_by,last_error_code,last_error_message,created_at,updated_at,completed_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["outbox-after-preview", "calendar", "rebuild", "system", "calendar", "calendar:rebuild:system:calendar", "{}", "pending", 0, nowIso(), null, null, "", "", nowIso(), nowIso(), null]);
+    await assert.rejects(
+      () => applyTrialDataReset(db, context(owner, "reset.apply", {
+        previewFingerprint: preview.previewFingerprint,
+        confirmation: TRIAL_RESET_CONFIRMATION,
+        acknowledged: true,
+        reason: "Membersihkan data uji",
+      })),
+      (error) => error.code === "RESET_PREVIEW_CHANGED",
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test("housekeeping scheduler hanya menghapus state ephemeral yang expired dan tidak menyentuh applying", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const expired = "2026-08-01T00:00:00.000Z";
+    const future = "2026-09-01T00:00:00.000Z";
+    await db.execute("INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)", [owner.user_id, "expired-idem", "transactions.create", "fp", null, "{}", expired, expired]);
+    await db.execute("INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)", [owner.user_id, "active-idem", "transactions.create", "fp2", null, "{}", expired, future]);
+    await db.execute("INSERT INTO import_previews(preview_id,actor_id,records_json,fingerprint,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["expired-import", owner.user_id, "[]", "fp", "{}", "pending", null, null, expired, expired]);
+    await db.execute("INSERT INTO import_previews(preview_id,actor_id,records_json,fingerprint,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["applying-import", owner.user_id, "[]", "fp", "{}", "applying", null, null, expired, expired]);
+    await db.execute("INSERT INTO backup_runs(backup_id,backup_type,external_file_id,file_name,schema_version,status,checksum,created_by,created_at,verified_at,error_code) VALUES(?,?,?,?,?,?,?,?,?,?,?)", ["backup-preview", "manual", "drive-id", "backup.json.gz", 8, "verified", "checksum", owner.user_id, expired, expired, null]);
+    await db.execute("INSERT INTO restore_previews(preview_id,backup_id,actor_id,checksum,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["expired-restore", "backup-preview", owner.user_id, "checksum", "{}", "pending", null, null, expired, expired]);
+    await db.execute("INSERT INTO restore_previews(preview_id,backup_id,actor_id,checksum,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["applying-restore", "backup-preview", owner.user_id, "checksum", "{}", "applying", null, null, expired, expired]);
+
+    const result = await cleanupExpiredEphemeralState(db, "2026-08-12T00:00:00.000Z");
+    assert.deepEqual(result, { idempotencyKeys: 1, importPreviews: 1, restorePreviews: 1 });
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM idempotency_keys")).count, 1);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM import_previews")).count, 1);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM restore_previews")).count, 1);
+  } finally {
     db.close();
   }
 });

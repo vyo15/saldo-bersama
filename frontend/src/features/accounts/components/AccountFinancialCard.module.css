@@ -129,8 +129,8 @@
 .accountNumber {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: .35rem;
+  justify-content: flex-start;
+  gap: clamp(.3rem, 1.4vw, .65rem);
 }
 
 .accountNumber span { white-space: nowrap; }

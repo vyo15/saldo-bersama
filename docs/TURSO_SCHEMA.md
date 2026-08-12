@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, dan `database/migrations/006_account_ewallet_template.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `, `database/migrations/006_account_ewallet_template.sql`, dan `database/migrations/007_envelope_assignee.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -47,7 +47,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - Semua nominal memakai `INTEGER`; tidak ada `REAL` untuk Rupiah.
 - Tabel bisnis memakai `STRICT`.
 - Foreign key diaktifkan pada setiap koneksi dan diverifikasi oleh integrity check.
-- Ownership shared wajib tanpa owner; personal wajib memiliki `owner_user_id`.
+- Ownership ledger shared wajib tanpa `owner_user_id`; personal wajib memiliki `owner_user_id`. `envelope_rules.assignee_user_id` adalah penerima jatah dan terpisah dari ownership ledger.
 - Bentuk transaksi ditegakkan database: income/refund hanya rekening tujuan, expense hanya rekening sumber, transfer sumber/tujuan berbeda, adjustment hanya rekening sumber; link envelope/goal dibatasi pada tipe yang benar.
 - Metadata cancellation harus konsisten dengan status transaksi.
 - Saldo awal negatif hanya diizinkan ketika `allow_negative=1`.
@@ -82,16 +82,17 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `8`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `9`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
 
-### Migration v8 dan rollback
+### Migration v9 dan rollback
 
 - Sebelum `npm run db:migrate`, buat backup teknis terverifikasi dan catat database target.
-- `006_account_ewallet_template.sql` bersifat additive: menambah `accounts.ewallet_template` dengan default `generic`, enum provider yang dibatasi, dan constraint bahwa provider non-generic hanya valid untuk `account_type='ewallet'`.
-- Migration melakukan backfill hanya pada rekening E-wallet existing untuk provider yang sudah dikenali oleh presentation layer (ShopeePay, DANA, GoPay, OVO, LinkAja). Nama rekening, saldo, ownership, transaksi, dan `bank_template` tidak diubah.
-- Runtime v8 memakai `ewallet_template` sebagai sumber canonical. Deteksi nama hanya dipertahankan untuk object/backup legacy tanpa field tersebut.
-- Backup schema v8 menyertakan `notification_preferences` dan `ewallet_template`. Runtime v8 tetap menerima backup schema v3, v4, v5, v6, dan v7; backup lama dinormalisasi dengan field additive dan preference notifikasi default aktif bila tabel preference belum ada.
-- Migration v7 `005_notification_preferences.sql` tetap menjadi dasar preference tujuh jenis notifikasi per pengguna, sedangkan migration v6 `004_notification_deliveries.sql` tetap menjadi dasar retry Web Push per perangkat.
-- Bila deployment runtime v8 gagal, gunakan forward-fix bila memungkinkan. Rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan menjatuhkan kolom/tabel secara langsung pada database produksi.
+- `007_envelope_assignee.sql` bersifat additive: menambah `envelope_rules.assignee_user_id` sebagai foreign key nullable ke `users` dan index `idx_envelope_rules_assignee`.
+- Kantong personal existing dibackfill ke pemilik ledger yang sama; kantong shared existing tetap `assignee_user_id=NULL` sehingga bermakna **Jatah Bersama**.
+- Rekening personal hanya boleh menjadi sumber kantong yang ditugaskan kepada pemilik rekening tersebut. Rekening shared atau gabungan rekening bersama boleh ditugaskan ke Bersama, Administrator, atau Member aktif.
+- Runtime v9 tetap memakai key role database `owner` sebagai compatibility key internal, tetapi UI dan konfigurasi allowlist menerima istilah **Administrator**; `administrator` dinormalisasi ke key internal tersebut. Role pengguna kedua tetap `member`.
+- Backup schema v9 menyertakan `assignee_user_id`. Restore menerima backup schema v3-v8; backup tanpa field assignee dinormalisasi menjadi pemilik untuk envelope personal dan Bersama untuk envelope shared.
+- Migration v8 `006_account_ewallet_template.sql`, v7 `005_notification_preferences.sql`, dan v6 `004_notification_deliveries.sql` tetap menjadi dasar field sebelumnya.
+- Bila deployment runtime v9 gagal, gunakan forward-fix bila memungkinkan. Rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan menjatuhkan kolom/tabel secara langsung pada database produksi.
 
 Arti dan lifecycle tabel didokumentasikan di `DATA_DICTIONARY.md`; kebijakan perubahan schema berada di `DATABASE_MIGRATION_POLICY.md`.

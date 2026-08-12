@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiArchive, FiArrowDown, FiArrowUp, FiCheckCircle, FiEdit2, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
+import { FiArchive, FiArrowDown, FiArrowUp, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -36,17 +36,23 @@ const goalTypeLabel = (type) => ({ emergency_fund: "Dana darurat", sinking_fund:
 const refreshGoalKeys = Object.freeze(["goals.list", "reports.monthly", "app.initialState"]);
 const goalLedgerRefreshKeys = Object.freeze(["goals.list", "transactions.list", "accounts.list", "reports.monthly", "app.initialState"]);
 
-const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, openStatusChange }) => (
-  <div className="goal-card__actions">
-    {goal.can_deposit ? <Button icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Tambah dana</Button> : null}
-    {goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}
-    {goal.can_complete ? <Button variant="primary" icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}
-    {goal.can_reopen ? <Button icon={FiRotateCcw} onClick={() => openStatusChange(goal, "active")}>Buka kembali</Button> : null}
-    {goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}
-    {goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}
-    {goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Hapus / Arsipkan</Button> : null}
-  </div>
-);
+const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, openStatusChange }) => {
+  const primaryAction = goal.can_deposit
+    ? <Button className="goal-card__primary-action" variant="primary" icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Tambah dana</Button>
+    : goal.can_complete
+      ? <Button className="goal-card__primary-action" variant="primary" icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button>
+      : goal.can_reopen
+        ? <Button className="goal-card__primary-action" variant="primary" icon={FiRotateCcw} onClick={() => openStatusChange(goal, "active")}>Buka kembali</Button>
+        : null;
+  const hasSecondaryActions = goal.can_withdraw || (goal.can_complete && goal.can_deposit) || goal.can_reverse || goal.can_update || goal.can_archive;
+  if (!primaryAction && !hasSecondaryActions) return null;
+  return (
+    <div className="goal-card__actions">
+      {primaryAction}
+      {hasSecondaryActions ? <details className="goal-action-menu"><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className="goal-action-menu__items">{goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}{goal.can_complete && goal.can_deposit ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Hapus / Arsipkan</Button> : null}</div></details> : null}
+    </div>
+  );
+};
 
 const GoalCard = ({ goal, actions }) => (
   <Card className="goal-card">

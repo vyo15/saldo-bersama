@@ -9,11 +9,16 @@ import { nowIso, todayJakarta } from "./_lib/services/core.js";
 
 const exportData = async (db) => {
   const [accounts, categories, transactions, budgets, envelopes, recurring, goals, reconciliations, audit] = await Promise.all([
-    db.all("SELECT account_id,name,account_type,owner_scope,initial_balance,initial_balance_date,allow_negative,status,row_version,created_at,updated_at FROM accounts ORDER BY name"),
+    db.all(`SELECT a.account_id,a.name,a.account_type,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),NULLIF(TRIM(u.email),''),'') AS owner_name,CASE u.role WHEN 'owner' THEN 'Administrator' WHEN 'member' THEN 'Member' ELSE NULL END AS owner_role,a.initial_balance,a.initial_balance_date,a.allow_negative,a.status,a.row_version,a.created_at,a.updated_at FROM accounts a LEFT JOIN users u ON u.user_id=a.owner_user_id ORDER BY a.name`),
     db.all("SELECT category_id,name,transaction_type,nature,status,row_version,created_at,updated_at FROM categories ORDER BY transaction_type,name"),
-    db.all("SELECT transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,amount,description,merchant,payment_method,scope,status,row_version,created_at,updated_at,cancelled_at,cancellation_reason FROM transactions ORDER BY transaction_date DESC,created_at DESC"),
-    db.all("SELECT budget_id,period_key,category_id,name,amount,warning_threshold,scope,status,row_version,updated_at FROM budgets ORDER BY period_key DESC,name"),
-    db.all("SELECT p.envelope_period_id,p.name,p.period_start,p.period_end,p.allocated_amount,p.reserved_amount,p.status,r.period_type,r.scope,r.rollover_policy,r.overspend_policy FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id ORDER BY p.period_start DESC,p.name"),
+    db.all(`SELECT t.transaction_id,t.transaction_date,t.transaction_type,t.source_account_id,t.destination_account_id,t.category_id,t.envelope_period_id,t.amount,t.description,t.merchant,t.payment_method,t.scope,t.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),NULLIF(TRIM(u.email),''),'') AS owner_name,CASE u.role WHEN 'owner' THEN 'Administrator' WHEN 'member' THEN 'Member' ELSE NULL END AS owner_role,t.status,t.row_version,t.created_at,t.updated_at,t.cancelled_at,t.cancellation_reason FROM transactions t LEFT JOIN users u ON u.user_id=t.owner_user_id ORDER BY t.transaction_date DESC,t.created_at DESC`),
+    db.all(`SELECT b.budget_id,b.period_key,b.category_id,b.name,b.amount,b.warning_threshold,b.scope,b.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),NULLIF(TRIM(u.email),''),'') AS owner_name,CASE u.role WHEN 'owner' THEN 'Administrator' WHEN 'member' THEN 'Member' ELSE NULL END AS owner_role,b.status,b.row_version,b.updated_at FROM budgets b LEFT JOIN users u ON u.user_id=b.owner_user_id ORDER BY b.period_key DESC,b.name`),
+    db.all(`SELECT p.envelope_period_id,p.name,p.period_start,p.period_end,p.allocated_amount,p.reserved_amount,p.status,
+      r.period_type,r.scope,r.assignee_user_id,COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'Bersama') AS assignee_name,CASE au.role WHEN 'owner' THEN 'Administrator' WHEN 'member' THEN 'Member' ELSE NULL END AS assignee_role,
+      r.rollover_policy,r.overspend_policy
+      FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+      LEFT JOIN users au ON au.user_id=r.assignee_user_id
+      ORDER BY p.period_start DESC,p.name`),
     db.all("SELECT o.occurrence_id,r.name,r.kind,o.due_date,o.expected_amount,o.actual_amount,o.status,r.frequency,r.payment_method,r.scope FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id ORDER BY o.due_date DESC,r.name"),
     db.all("SELECT g.goal_id,g.name,g.goal_type,g.target_amount,g.target_date,g.priority,g.scope,g.status,COALESCE((SELECT SUM(CASE WHEN m.movement_type='deposit' THEN m.amount ELSE -m.amount END) FROM goal_movements m WHERE m.goal_id=g.goal_id AND m.status='active'),0) AS current_amount FROM savings_goals g ORDER BY g.status,g.target_date"),
     db.all("SELECT r.reconciliation_id,r.reconciled_at,a.name AS account_name,r.system_balance,r.actual_balance,r.difference,r.notes,r.status FROM reconciliations r JOIN accounts a ON a.account_id=r.account_id ORDER BY r.reconciled_at DESC"),
@@ -29,7 +34,7 @@ export default async function handler(request, response) {
     assertAllowedOrigin(request);
     const session = readSession(request);
     if (!session) return fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir.", { requestId });
-    if (session.role !== "owner") return fail(response, 403, "OWNER_ONLY", "Export lengkap hanya dapat dilakukan owner.", { requestId });
+    if (session.role !== "owner") return fail(response, 403, "OWNER_ONLY", "Export lengkap hanya dapat dilakukan Administrator.", { requestId });
     enforceBestEffortRateLimit(identityRateLimitKey("export", session.uid), { limit: 5, windowMs: 60_000 });
     const db = getDatabase(); await assertDatabaseReady(db); await resolveActor(db, session);
     const data = typeof db.readTransaction === "function" ? await db.readTransaction(exportData) : await exportData(db);

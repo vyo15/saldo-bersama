@@ -6,7 +6,7 @@
 |---|---|---|
 | `/api/session` | GET/POST | Membaca sesi, login Firebase ID token, logout. |
 | `/api/gateway` | POST | Seluruh action bisnis. |
-| `/api/export` | POST | XLSX owner-only. |
+| `/api/export` | POST | XLSX Administrator-only. |
 | `/api/health` | GET | Health teredaksi. |
 | `/api/jobs` | POST | Worker terjadwal dengan signature. |
 
@@ -64,7 +64,7 @@ Daftar exact field transaksi yang server-owned/reserved bersifat canonical di `a
 
 Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `api/_lib/actions/registry.js`, operational policy di `api/_lib/actions/policy.js`, dan `api/_lib/actionDispatcher.js` hanya melakukan dispatch terjaga.
 
-| Action | Owner | Member | Mode | Idempotency | Source utama |
+| Action | Administrator | Member | Mode | Idempotency | Source utama |
 |---|---:|---:|---|---|---|
 | `system.health` | Ya | Ya | Read | Tidak | `api/_lib/actions/registry.js` |
 | `app.initialState` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
@@ -167,14 +167,14 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 
 ### Recovery human error planning
 
-- `reset.preview` hanya menghitung data aktivitas/perencanaan yang akan dibersihkan dan menghasilkan fingerprint. `reset.apply` hanya owner, wajib fingerprint yang masih sama, alasan, acknowledgement, frasa `RESET DATA PERCOBAAN`, safety backup terverifikasi, maintenance lock, purge atomik, integrity check, rebuild integrasi, dan audit. Rekening, kategori, pengguna, konfigurasi, audit log, serta backup dipertahankan.
-- Master/config owner-only memakai server lifecycle preview. `accounts`, `categories`, envelope rule, recurring rule, goal, dan budget hanya boleh hard-delete melalui action `deleteUnused` masing-masing ketika backend membuktikan seluruh histori/dependensi domain = 0. Begitu pernah dipakai, jalurnya hanya archive/restore.
-- `envelopes.archiveRule` dan `envelopes.restoreRule` owner-only, memakai alasan + `row_version`, dan tidak menghapus movement/audit. `envelopes.deleteUnusedRule` hanya boleh menghapus rule baru bersama satu initial empty period yang belum pernah menjadi histori.
-- `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan `budgets.archive`/`budgets.restore` owner-only; lifecycle eksplisit membutuhkan `row_version` dan alasan. `goals.deleteUnused`, `recurring.deleteUnusedRule`, dan `budgets.deleteUnused` hanya untuk entity history-free sesuai preview backend.
+- `reset.preview` menghitung data aktivitas/perencanaan sekaligus sisa operasional testing (`notification_deliveries`, `notification_queue`, `integration_links`, `integration_outbox`, dan `import_previews`) dan memasukkan seluruh scope ke fingerprint. `reset.apply` hanya owner, wajib fingerprint yang masih sama, alasan, acknowledgement, frasa `BERSIHKAN DATA TESTING`, safety backup terverifikasi, maintenance lock, purge atomik, integrity check, rebuild integrasi, dan audit. Rekening, kategori, pengguna, konfigurasi, audit log, backup, push subscription, dan preference notifikasi dipertahankan. Fitur ini hanya untuk fase pra-go-live pada keputusan satu database; tidak ada reset terjadwal otomatis.
+- Master/config Administrator-only memakai server lifecycle preview. `accounts`, `categories`, envelope rule, recurring rule, goal, dan budget hanya boleh hard-delete melalui action `deleteUnused` masing-masing ketika backend membuktikan seluruh histori/dependensi domain = 0. Begitu pernah dipakai, jalurnya hanya archive/restore.
+- `envelopes.archiveRule` dan `envelopes.restoreRule` Administrator-only, memakai alasan + `row_version`, dan tidak menghapus movement/audit. `envelopes.deleteUnusedRule` hanya boleh menghapus rule baru bersama satu initial empty period yang belum pernah menjadi histori.
+- `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan `budgets.archive`/`budgets.restore` Administrator-only; lifecycle eksplisit membutuhkan `row_version` dan alasan. `goals.deleteUnused`, `recurring.deleteUnusedRule`, dan `budgets.deleteUnused` hanya untuk entity history-free sesuai preview backend.
 - `recurring.archiveRule` boleh membersihkan future generated projections berstatus `expected` yang reproducible dan belum materialized. Paid/partial/past/cancelled/transaction-linked occurrence adalah histori dan tidak boleh hard-delete.
 - `goals.list` mengembalikan `last_movement_row_version` bersama `last_movement_id`; `goals.reverseMovement` wajib membawa versi movement yang dilihat client melalui `rowVersion` atau `payload.row_version` sebelum linked transaction dibatalkan.
-- `recurring.cancelOccurrence` melewati tepat satu occurrence tanpa membuat/membatalkan transaksi dan tanpa mengubah saldo. Hanya occurrence tanpa pembayaran aktif/aktual yang boleh dilewati. `recurring.restoreOccurrence` memulihkan occurrence tersebut menjadi `expected` atau `overdue` berdasarkan tanggal saat pemulihan. Keduanya owner-only, beralasan, memakai `row_version`, idempotency, audit, dan tidak menghapus histori.
-- `envelopes.reverseMovement` dapat dipakai owner atau member untuk movement yang dibuatnya sendiri, hanya selama kedua kantong masih aktif dan nominal hasil realokasi belum terpakai/reserved. Reversal mengubah status movement menjadi `reversed`; tidak hard delete.
+- `recurring.cancelOccurrence` melewati tepat satu occurrence tanpa membuat/membatalkan transaksi dan tanpa mengubah saldo. Hanya occurrence tanpa pembayaran aktif/aktual yang boleh dilewati. `recurring.restoreOccurrence` memulihkan occurrence tersebut menjadi `expected` atau `overdue` berdasarkan tanggal saat pemulihan. Keduanya Administrator-only, beralasan, memakai `row_version`, idempotency, audit, dan tidak menghapus histori.
+- `envelopes.reverseMovement` dapat dipakai Administrator atau Member untuk movement yang dibuatnya sendiri, hanya selama kedua kantong masih aktif dan nominal hasil realokasi belum terpakai/reserved. Reversal mengubah status movement menjadi `reversed`; tidak hard delete.
 
 ### Kontrak Web Push
 
@@ -209,7 +209,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - `dashboard.overview.totalBalance` membaca seluruh rekening transparan. Metrik actionable `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` hanya menghitung rekening/scope yang `can_transact` bagi actor, supaya saldo personal pasangan tidak salah dianggap dapat digunakan atau dialokasikan member.
 - Audit create/update hanya mencatat bentuk bertopeng empat digit terakhir. Nomor rekening tidak ditambahkan ke Sheets mirror atau export baca. Backup teknis tetap memuat kolom tersebut untuk recovery terjaga.
 - Field ini adalah nomor rekening transfer, bukan nomor kartu debit. PIN, CVV, masa berlaku, serta nomor kartu debit tidak diterima.
-- Lifecycle preview (`accounts.previewLifecycle`, `categories.previewArchive`, `envelopes.previewRuleLifecycle`, `recurring.previewRuleLifecycle`, `goals.previewLifecycle`, `budgets.previewLifecycle`) menghitung kondisi terbaru dan dependency semua status sebelum owner memilih hard delete unused atau archive.
+- Lifecycle preview (`accounts.previewLifecycle`, `categories.previewArchive`, `envelopes.previewRuleLifecycle`, `recurring.previewRuleLifecycle`, `goals.previewLifecycle`, `budgets.previewLifecycle`) menghitung kondisi terbaru dan dependency semua status sebelum Administrator memilih hard delete unused atau archive.
 - `accounts.deleteUnused` bukan purge umum. Action ini hanya berhasil bila rekening aktif mempunyai saldo awal Rp0, saldo saat ini Rp0, tidak pernah memiliki transaksi dalam status apa pun, tidak memiliki rekonsiliasi, dan tidak pernah direferensikan kantong, tagihan, atau target. Alasan, acknowledgement, frasa konfirmasi, `row_version`, idempotency, dan audit wajib.
 - Rekening yang pernah digunakan hanya boleh memakai `accounts.archive`; `accounts.archive` sekarang juga membutuhkan alasan. Prinsip yang sama berlaku pada master/config lain: history memblokir hard delete tetapi tetap dipertahankan saat archive selama future-active dependency domain tidak membuat archive tidak valid.
 
@@ -263,3 +263,5 @@ Field tambahan tersebut backward-compatible; transfer internal tetap tidak masuk
 ## Compatibility
 
 Perubahan action name, request/response shape, error code, permission, idempotency, ownership, atau side effect memerlukan RFC, contract/test update, dan release note. Payload detail paling akurat berada pada validator di service source sampai JSON Schema per action tersedia.
+
+- `envelopes.create` menerima `assignee_user_id` nullable. Nilai kosong berarti Jatah Bersama; user ID aktif berarti jatah pengguna tersebut. Field ini terpisah dari `scope`/`owner_user_id` ledger. Rekening personal hanya boleh membuat jatah untuk pemilik rekening. Member hanya dapat memakai atau memindahkan Jatah Bersama dan jatah miliknya sendiri; backend menolak jatah pengguna lain.

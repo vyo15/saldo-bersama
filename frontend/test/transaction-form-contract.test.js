@@ -18,7 +18,10 @@ test("metode pembayaran tidak diasumsikan ketika detail tambahan belum dipilih",
   assert.match(text, /<option value="">Belum dipilih<\/option>/);
   assert.doesNotMatch(text, /payment_method: "transfer"/);
   assert.match(text, /accountDisplayLabel/);
-  assert.equal((text.match(/accountDisplayLabel\(item, \{ includeOwner: false \}\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label tanpa suffix pemilik.");
+  assert.equal((text.match(/accountDisplayLabel\(item\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label kepemilikan yang konsisten.");
+  assert.doesNotMatch(text, /includeOwner: false/);
+  assert.match(text, /filterByAssigneeAccess\(ownedEnvelopes, bootstrap\?\.user \|\| user\)/);
+  assert.match(text, /envelopeOptionLabel/);
 });
 
 

@@ -14,7 +14,6 @@ import {
   FiList,
   FiShield,
   FiSmartphone,
-  FiUser,
   FiUsers,
   FiWifi,
   FiX,
@@ -37,7 +36,6 @@ import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import {
   accountCardholderName,
   accountCardNumberGroups,
-  accountOwnerName,
   accountOwnershipLabel,
   accountProviderLabel,
   accountTypeLabel,
@@ -143,17 +141,13 @@ const MobileDetailRow = ({ icon: Icon, label, children }) => (
   </div>
 );
 
-const accountCardModel = (account, ownerMode) => {
-  const ownerName = accountOwnerName(account);
-  return {
+const accountCardModel = (account, ownerMode) => ({
     typeLabel: accountTypeLabel(account.account_type),
     ownershipLabel: accountOwnershipLabel(account),
     canManage: Boolean(account.can_manage ?? ownerMode),
     readOnly: Boolean(account.read_only),
     bankLabel: accountProviderLabel(account),
-    ownerLabel: account.owner_scope === "personal" ? ownerName || "Belum tersedia" : "Kedua pengguna",
-  };
-};
+  });
 
 const useAccountNumberCopy = (account) => {
   const [copied, setCopied] = useState(false);
@@ -207,8 +201,7 @@ const MobileAccountNumber = ({ account, copied, onCopy }) => {
 const MobileDetailData = ({ account, model, copied, onCopy }) => (
   <dl className={styles.mobileDetailCard}>
     <MobileDetailRow icon={FiList} label="Bank / jenis"><span>{model.bankLabel}</span></MobileDetailRow>
-    <MobileDetailRow icon={FiUser} label="Nama pemilik"><span>{model.ownerLabel}</span></MobileDetailRow>
-    <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
+        <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
     <MobileDetailRow icon={FiUsers} label="Kepemilikan"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
     <MobileDetailRow icon={FiDollarSign} label="Saldo saat ini"><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
     <MobileDetailRow icon={FiFlag} label="Saldo awal"><span><Money value={account.initial_balance || 0} /></span></MobileDetailRow>
@@ -244,7 +237,6 @@ const DetailList = ({ account, model, copied, onCopy }) => (
     <div><dt><FiHash aria-hidden="true" />No rekening</dt><dd>{account.account_number ? <button type="button" className={styles.copyNumber} onClick={onCopy} title="Salin nomor rekening"><span>{copied ? "Tersalin" : formatAccountNumber(account.account_number, { placeholder: false })}</span><FiCopy aria-hidden="true" /></button> : "Belum diisi"}</dd></div>
     <div><dt><FiDollarSign aria-hidden="true" />Saldo saat ini</dt><dd className={styles.highlight}><Money value={account.balance || 0} /></dd></div>
     <div><dt><FiFlag aria-hidden="true" />Saldo awal</dt><dd><Money value={account.initial_balance || 0} /></dd></div>
-    <div><dt><FiUser aria-hidden="true" />Pemilik rekening</dt><dd>{model.ownerLabel}</dd></div>
     <div><dt><FiUsers aria-hidden="true" />Kepemilikan</dt><dd>{model.ownershipLabel}</dd></div>
     <div><dt><FiClock aria-hidden="true" />Terakhir diperbarui</dt><dd>{formatUpdatedAt(account.updated_at)}</dd></div>
   </dl>
@@ -267,7 +259,7 @@ const DetailCard = ({ account, model, copied, onCopy, closeButtonRef, onClose, o
       <div className={styles.detailBadges}><StatusBadge status={account.status || "active"} />{model.readOnly ? <ReadOnlyBadge /> : null}</div>
     </div>
     <DetailList account={account} model={model} copied={copied} onCopy={onCopy} />
-    {model.readOnly ? <p className={styles.readOnlyNotice}>Rekening ini transparan untuk pasangan, tetapi hanya pemilik atau owner yang berwenang dapat melakukan tindakan finansial.</p> : null}
+    {model.readOnly ? <p className={styles.readOnlyNotice}>Rekening ini transparan untuk pasangan. Pengelolaan rekening hanya tersedia untuk Administrator, sedangkan transaksi tetap mengikuti hak akses rekening.</p> : null}
     <DetailActions account={account} canManage={model.canManage} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} />
   </aside>
 );

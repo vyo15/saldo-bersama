@@ -4,7 +4,7 @@
 
 ```bash
 npm run validate:source
-- Archive target, aturan rutin, dan anggaran memakai action eksplisit owner-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
+- Archive target, aturan rutin, dan anggaran memakai action eksplisit Administrator-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
 npm run lint
 npm run lint:backend
 npm run test
@@ -35,7 +35,7 @@ Cakupan wajib:
 - personal/shared authorization dan IDOR;
 - recurring, envelope, budget, goal, reconciliation, close/reopen period; archive/restore envelope rule dan reverse reallocation; restore Target/Jadwal rutin/Anggaran arsip; negative actual reconciliation hanya untuk account `allow_negative`;
 - recurring occurrence skip/restore: hanya owner, reason + row_version + idempotency, tidak mengubah ledger/saldo, status cancelled persisted, pay ditolak sampai dipulihkan, archive/restore rule tidak menghapus skip;
-- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v8;
+- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v9;
 - feedback global: `aria-live`, dedupe, mobile safe-area, reduced motion, tanpa generic hard rollback/undo;
 - read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, Calendar ScriptLock, dan duplicate managed-event self-healing;
 - formula injection dan valid XLSX;
@@ -76,7 +76,7 @@ Perubahan write baru belum boleh dianggap selesai bila belum membuktikan:
 
 ## Manual
 
-Uji dua browser/perangkat dengan owner dan member:
+Uji dua browser/perangkat dengan Administrator dan Member:
 
 1. Login/logout dan redirect route; uji dari sesi bersih, pastikan login/logout berhasil tanpa reload dan tidak muncul error parser seperti `i.json is not a function`.
 2. Edit record yang sama untuk memastikan 409 conflict jelas.
@@ -85,9 +85,10 @@ Uji dua browser/perangkat dengan owner dan member:
 5. Install PWA iPhone/Android dan update app shell. Aktifkan Push pada HTTPS, pastikan verifikasi otomatis muncul, lalu periksa panel sistem. Uji dua perangkat saat satu delivery gagal sementara dan pastikan perangkat sukses tidak menerima duplikat. Pada Safari iPhone pastikan aplikasi dibuka dari Home Screen, fokus input tidak memicu auto-zoom, modal tidak bergeser horizontal, dan scroll vertikal tetap bekerja.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.
 7. Export Excel dan periksa formula-like input.
-8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif.
-9. Responsive, keyboard, focus, contrast, loading/empty/error/unauthorized/maintenance. Audit seluruh CSS untuk custom property yang tidak terdefinisi, native control di bawah 16px, duplicate media query dalam file yang sama, dan endpoint gradient yang gagal kontras.
-10. Full axe scan, authenticated browser journey, visual regression, dan Chrome/Firefox/Safari device coverage.
+8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif. Untuk fase pra-go-live satu database, uji **Bersihkan data testing** hanya ketika seluruh data pada preview memang trial/error: pastikan financial + operational count tampil, stale fingerprint ditolak, safety backup terverifikasi, master/audit tetap ada, dan rebuild integrasi terantre.
+9. Verifikasi scheduled housekeeping menghapus `idempotency_keys`, `import_previews`, dan `restore_previews` yang expired, tetapi mempertahankan preview berstatus `applying`, ledger, audit, backup, dan master.
+10. Responsive, keyboard, focus, contrast, loading/empty/error/unauthorized/maintenance. Audit seluruh CSS untuk custom property yang tidak terdefinisi, native control di bawah 16px, duplicate media query dalam file yang sama, dan endpoint gradient yang gagal kontras.
+11. Full axe scan, authenticated browser journey, visual regression, dan Chrome/Firefox/Safari device coverage.
 
 Tidak boleh mengklaim production-ready hanya berdasarkan unit test; real resource integration dan migration parity wajib lulus.
 
@@ -118,7 +119,7 @@ Fitur planned seperti receipt, utang/piutang, contribution split, category hiera
 
 ## Authenticated desktop/mobile capability parity
 
-Browser test authenticated wajib memakai fixture owner dan member yang deterministik, tanpa koneksi Firebase, Turso, Google Identity, atau provider eksternal. Cakupan minimum:
+Browser test authenticated wajib memakai fixture Administrator dan Member yang deterministik, tanpa koneksi Firebase, Turso, Google Identity, atau provider eksternal. Cakupan minimum:
 
 - seluruh route `/`, `/transaksi`, `/anggaran`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, `/pengaturan`, dan nested route Pengaturan dapat dirender pada mobile;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
@@ -127,7 +128,7 @@ Browser test authenticated wajib memakai fixture owner dan member yang determini
 - menu `Lainnya` aktif dengan `aria-current="page"` pada route sekunder;
 - menu `Lainnya` tidak memuat quick-add duplikat dan menampilkan link Rekonsiliasi pada kelompok Kontrol saldo;
 - grup mobile harus berurutan Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi; route `/tagihan` menampilkan heading `Jadwal rutin`;
-- owner dan member memakai route yang sama, sementara kontrol write tetap mengikuti authorization data/API;
+- Administrator dan Member memakai route yang sama, sementara kontrol write tetap mengikuti authorization data/API;
 - viewport tidak overflow horizontal dan business form tidak diduplikasi per perangkat.
 
 Viewport regression minimum:
@@ -150,9 +151,9 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 
 ## Rekening, rekonsiliasi, dan kategori — responsive financial card
 
-- Owner mobile dan desktop melihat aksi `Tambah rekening` pada route Rekening dan `Tambah kategori` pada route Kategori.
+- Administrator mobile dan desktop melihat aksi `Tambah rekening` pada route Rekening dan `Tambah kategori` pada route Kategori.
 - Browser journey `/rekening` wajib menunggu stack mobile visible sebelum memeriksa `Tambah rekening`, label `Pribadi · <pemilik>`, gesture, atau capability lain; ini mencegah false failure akibat nested lazy render setelah heading route stabil.
-- Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive owner.
+- Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive Administrator.
 - Dialog rekening dan kategori terpisah serta memakai form domain yang sama pada desktop/mobile tanpa tab lintas domain.
 - Stack kartu mobile memakai swipe vertikal pada kartu aktif. Container memakai `touch-action: pan-y pinch-zoom`, kartu aktif memakai `touch-action: pan-x pinch-zoom`, gesture horizontal tidak mengganti rekening, dan area kosong stack tetap menggulir halaman.
 - Tombol `Daftar rekening` harus membuka daftar rekening aktif. Rekening mobile memakai quick action `Transfer` yang membuka form transfer canonical; `Riwayat` dan `Grafik` tetap menjadi tab informasi, sedangkan Jadwal rutin dan Rekonsiliasi berada pada route masing-masing.
@@ -171,7 +172,9 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
-- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Restore runtime v8 tetap menerima backup schema v3-v7; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
+- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive; restore runtime v9 tetap menerima backup schema v3-v8; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
+- Alokasi assigned harus memisahkan `assignee_user_id` dari ownership ledger: Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah sendiri, rekening personal mengunci penerima ke pemilik rekening, notifikasi assigned hanya menuju penerima, dan penonaktifan user diblok bila masih ada jatah aktif.
+- Budget personal harus dihitung hanya dari transaksi personal user terkait, tidak boleh dipakai sebagai substitusi jatah per orang dari rekening Bersama, dan user dengan Budget personal aktif tidak dapat dinonaktifkan.
 - Sidebar melengkung harus tetap terlihat, target sentuh minimal 44px, submenu minimal dapat ditutup, dan menu mobile tidak menduplikasi theme toggle.
 
 ## Regression rekening transparan dan capability mobile
@@ -182,7 +185,7 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Label pemilik wajib konsisten pada filter transaksi, account breakdown, reconciliation history, dan reconciliation alert.
 - `reconciliations.list` bersifat readable; `reconciliations.create` tetap operable. Negative authorization test wajib memakai request langsung ke service, bukan hanya tombol tersembunyi.
 - Form transaksi hanya menawarkan rekening dengan `can_transact !== false`; backend tetap mengulang guard ownership.
-- Form rekening personal owner dapat memilih user aktif. Saat `users.list` gagal, create harus fallback ke actor backend dan edit harus mempertahankan `owner_user_id` existing tanpa field required kosong.
+- Form rekening personal Administrator dapat memilih user aktif. Saat `users.list` gagal, create harus fallback ke actor backend dan edit harus mempertahankan `owner_user_id` existing tanpa field required kosong.
 - Route `/kategori` harus menyediakan tipe refund sesuai `CATEGORY_TYPES` backend. Mutation master yang sudah sukses tidak boleh dilaporkan gagal karena reload domain atau refresh dashboard/bootstrap sesudahnya gagal; UI harus mempertahankan status sukses server dan mengekspos refresh warning.
 - Browser mobile 390×844 wajib memeriksa capability anchor dengan computed style dan bounding rect: dua panel `/tagihan`, minimal tujuh panel chart `/laporan`, nested route `/pengaturan` sesuai role, detail read-only pasangan `/rekening`, dan route `/kategori`. Modal transaksi serta kategori wajib bebas overflow horizontal; detail rekening wajib lulus focus trap Tab/Shift+Tab, Escape close, body scroll lock, dan focus restoration.
 - Nomor rekening panjang wajib dipadatkan pada visual kartu tanpa mengubah nilai lengkap pada detail/copy.
@@ -224,12 +227,12 @@ Regression wajib membuktikan:
 - `categories.create` menormalkan non-pengeluaran tanpa nature eksplisit menjadi `other`, menolak nature pengeluaran pada income/refund, serta menolak kategori expense baru dengan nature `savings`.
 - Data legacy `savings` tetap dapat dibaca dan diubah menuju klasifikasi baru tanpa migration diam-diam.
 - `/pengaturan` hanya memuat `system.health`; setiap nested route memuat resource sendiri dan menampilkan result/error dekat tindakan.
-- Owner-only deep link tetap menampilkan guard frontend dan wajib ditolak backend bila request dipaksakan oleh member.
+- Administrator-only deep link tetap menampilkan guard frontend dan wajib ditolak backend bila request dipaksakan oleh member.
 
 ## Web Push desktop dan mobile
 
 - `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
-- Schema Production harus versi 8 dan `npm run db:integrity` harus lulus sebelum register subscription.
+- Schema Production harus versi 9 dan `npm run db:integrity` harus lulus sebelum register subscription.
 - `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
 - Bootstrap Development interaktif wajib menarik ulang Vercel Development walaupun `.env.local` lama terlihat lengkap; hasil pull mengganti file hanya setelah delapan core + Web Push lolos validasi.
 - Mode non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
