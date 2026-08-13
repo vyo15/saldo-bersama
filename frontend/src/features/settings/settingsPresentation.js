@@ -13,6 +13,27 @@ export const providerSummary = (integration, provider) => {
   };
 };
 
+const bridgeFailureText = (bridge = {}) => {
+  const code = String(bridge.errorCode || bridge.liveness?.errorCode || "");
+  const messages = {
+    GOOGLE_BRIDGE_TIMEOUT: "Apps Script tidak merespons dalam batas waktu. Coba periksa ulang. Jika tetap gagal, cek deployment Web App dan koneksi Google.",
+    GOOGLE_BRIDGE_UNAVAILABLE: "Endpoint Web App Apps Script tidak dapat dijangkau dari server. Periksa URL /exec, akses deployment, dan koneksi server.",
+    GOOGLE_BRIDGE_URL_INVALID: "URL Google bridge pada environment server bukan Web App Apps Script /exec yang valid.",
+    GOOGLE_BRIDGE_RESPONSE_INVALID: "Deployment Apps Script merespons dengan format yang tidak dikenali. Pastikan Web App menggunakan deployment bridge Saldo Bersama terbaru.",
+    GOOGLE_BRIDGE_LIVENESS_INVALID: "Deployment Apps Script dapat dihubungi tetapi respons liveness tidak valid. Deploy ulang Web App bridge terbaru.",
+    GOOGLE_BRIDGE_SERVICE_MISMATCH: "URL /exec mengarah ke Apps Script yang bukan bridge Saldo Bersama.",
+    GOOGLE_BRIDGE_DEPLOYMENT_STALE: "Web App Apps Script masih memakai versi deployment lama. Buka Manage deployments, pilih New version, lalu deploy tanpa mengganti URL /exec.",
+    GOOGLE_BRIDGE_TIME_INVALID: "Deployment Apps Script tidak mengembalikan waktu health yang valid. Deploy ulang bridge terbaru.",
+    GOOGLE_BRIDGE_SECRET_INVALID: "Shared secret Google bridge pada environment server belum valid.",
+    INVALID_SIGNATURE: "Shared secret Google bridge di Vercel dan Apps Script tidak sama. Samakan nilainya lalu redeploy server.",
+    BRIDGE_NOT_CONFIGURED: "GOOGLE_BRIDGE_SHARED_SECRET belum siap pada Apps Script Properties.",
+    UNKNOWN_ACTION: "Deployment Web App belum mengenali health check terbaru. Deploy New version pada deployment Apps Script yang digunakan.",
+    MESSAGE_EXPIRED: "Waktu server dan Apps Script tidak sinkron. Aplikasi sudah mencoba koreksi waktu otomatis, tetapi health check masih ditolak.",
+    REPLAY_DENIED: "Health check bridge ditolak sebagai replay. Coba periksa ulang agar request memakai nonce baru.",
+  };
+  return messages[code] || "Bridge Google sudah dikonfigurasi, tetapi signed health check gagal. Periksa deployment Apps Script, shared secret, dan koneksi server.";
+};
+
 const unavailableIntegration = (configured) => configured
   ? { ready: true, label: "Siap", tone: "active", text: "Integrasi siap digunakan." }
   : { ready: false, label: "Belum siap", tone: "warning", text: "Integrasi Google belum aktif pada runtime ini." };
@@ -49,15 +70,22 @@ export const integrationProviderPresentation = (integration, provider) => {
     return { ready: false, label: "Belum siap", tone: "warning", text: "Bridge Google belum dikonfigurasi pada environment server." };
   }
   if (bridge.checked && !bridge.reachable) {
-    return { ready: false, label: "Gangguan", tone: "danger", text: "Bridge Google sudah dikonfigurasi, tetapi health check belum dapat dijangkau. Periksa deployment Apps Script dan koneksi server." };
+    return { ready: false, label: "Gangguan", tone: "danger", text: bridgeFailureText(bridge), errorCode: bridge.errorCode || bridge.liveness?.errorCode || null };
   }
   if (bridge.checked) {
     const blocked = checkedBridgePresentation(bridge, provider);
     if (blocked) return blocked;
   }
-  return configured
-    ? { ready: true, label: "Siap", tone: "active", text: "Resource Google dan scheduler sudah terverifikasi." }
-    : { ready: false, label: "Belum terverifikasi", tone: "warning", text: "Kesiapan integrasi Google belum dapat diverifikasi." };
+  if (!configured) return { ready: false, label: "Belum terverifikasi", tone: "warning", text: "Kesiapan integrasi Google belum dapat diverifikasi." };
+  const descriptor = providerResourceDescriptor(provider);
+  return {
+    ready: true,
+    label: "Siap",
+    tone: "active",
+    text: descriptor.needsScheduler
+      ? "Resource Google dan scheduler sudah terverifikasi."
+      : "Folder Google Drive untuk safety backup sudah terverifikasi.",
+  };
 };
 
 export const backendPresentation = (resource) => {

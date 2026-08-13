@@ -454,9 +454,26 @@ const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategor
 
 const RecurringConfirmations = (p) => <><ConfirmationModal open={Boolean(p.archiveRuleTarget)} title={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus aturan rutin yang belum dipakai?" : "Arsipkan aturan rutin?"} description={p.archiveRuleTarget ? (p.archiveRuleTarget.preview.canDeleteUnused ? `${p.archiveRuleTarget.item.name} hanya memiliki jadwal masa depan hasil generate dan belum pernah dibayar, dilewati, atau terhubung transaksi.` : `${p.archiveRuleTarget.item.name} sudah memiliki histori. Aturan tidak dihapus permanen dan riwayat pembayaran tetap tersimpan.`) : ""} confirmLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan aturan"} reasonLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Saya memahami hanya projection masa depan yang belum terealisasi yang akan dibersihkan bersama aturan ini." : ""} busy={p.editState.status === "submitting"} error={p.editState.error} onCancel={() => p.editState.status !== "submitting" && p.setArchiveRuleTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveRuleTarget ? <div className="notice notice--info">Jadwal total {p.archiveRuleTarget.preview.dependencies.occurrences} · projection masa depan yang aman diregenerate {p.archiveRuleTarget.preview.dependencies.reproducible_future_occurrences} · histori masa lalu {p.archiveRuleTarget.preview.dependencies.past_occurrences} · dilewati/dibatalkan {p.archiveRuleTarget.preview.dependencies.cancelled_occurrences} · terhubung transaksi {p.archiveRuleTarget.preview.dependencies.transactions}.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.skipTarget)} title="Lewati periode ini?" description={p.skipTarget ? `${p.skipTarget.name} untuk ${p.skipTarget.due_date} ditandai dilewati. Tidak ada transaksi dibuat dan saldo tidak berubah. Periode berikutnya tetap aktif.` : ""} confirmLabel="Lewati periode" reasonLabel="Alasan melewati periode" requireReason busy={p.skipMutation.busy} error={p.skipError} onCancel={() => !p.skipMutation.busy && p.setSkipTarget(null)} onConfirm={p.skipOccurrence} /><ConfirmationModal open={Boolean(p.restoreOccurrenceTarget)} title="Pulihkan periode yang dilewati?" description={p.restoreOccurrenceTarget ? `${p.restoreOccurrenceTarget.name} untuk ${p.restoreOccurrenceTarget.due_date} akan kembali menjadi jadwal aktif tanpa membuat transaksi.` : ""} confirmLabel="Pulihkan periode" reasonLabel="Alasan pemulihan" requireReason busy={p.restoreOccurrenceMutation.busy} error={p.restoreOccurrenceError} onCancel={() => !p.restoreOccurrenceMutation.busy && p.setRestoreOccurrenceTarget(null)} onConfirm={p.restoreSkippedOccurrence} /><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan aktual terakhir?" description={p.reverseTarget ? `${p.reverseTarget.name} · transaksi ledger terkait akan dibatalkan dan status jadwal dihitung ulang.` : ""} confirmLabel="Batalkan aktual" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reversePayment} /></>;
 
+const useRecurringAttention = ({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment }) => {
+  const attentionHandled = useRef(false);
+  const attentionOccurrenceId = String(attention?.attentionOccurrenceId || "");
+  useEffect(() => {
+    if (attentionHandled.current || !attentionOccurrenceId || resource.status !== "ready") return;
+    attentionHandled.current = true;
+    const item = (resource.data?.items || []).find((candidate) => candidate.occurrence_id === attentionOccurrenceId);
+    if (item) {
+      setFilter(attention?.attentionType === "recurring_due" ? "open" : "attention");
+      setKind(item.kind === "income" ? "income" : "expense");
+      setExpandedId(item.occurrence_id);
+      if (attention?.attentionAction === "payment" && item.can_pay) openPayment(item);
+    }
+    consumeAttention();
+  }, [attention?.attentionAction, attention?.attentionType, attentionOccurrenceId, consumeAttention, openPayment, resource.data?.items, resource.status, setExpandedId, setFilter, setKind]);
+  return attentionOccurrenceId;
+};
+
 const RecurringPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
-  const attentionHandled = useRef(false);
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [filter, setFilter] = useState("all");
   const [kind, setKind] = useState("expense");
@@ -468,6 +485,7 @@ const RecurringPage = () => {
   const shared = { resource, refreshOverview, invalidate, notify };
   const rules = useRecurringRuleActions(shared);
   const payments = useRecurringPaymentActions(shared);
+  const { openPayment } = payments;
   const recovery = useRecurringOccurrenceRecovery(shared);
   const envelopeResource = useApiResource("envelopes.list", { period }, { enabled: payments.payment.item?.kind === "expense" });
   const accounts = activeAccounts(bootstrap);
@@ -476,19 +494,7 @@ const RecurringPage = () => {
   const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
   const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
   const paymentEnvelopes = eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount, bootstrap?.user || user);
-  const attentionOccurrenceId = String(attention?.attentionOccurrenceId || "");
-  useEffect(() => {
-    if (attentionHandled.current || !attentionOccurrenceId || resource.status !== "ready") return;
-    attentionHandled.current = true;
-    const item = (resource.data?.items || []).find((candidate) => candidate.occurrence_id === attentionOccurrenceId);
-    if (item) {
-      setFilter(attention?.attentionType === "recurring_due" ? "open" : "attention");
-      setKind(item.kind === "income" ? "income" : "expense");
-      setExpandedId(item.occurrence_id);
-      if (attention?.attentionAction === "payment" && item.can_pay) payments.openPayment(item);
-    }
-    consumeAttention();
-  }, [attention?.attentionAction, attention?.attentionType, attentionOccurrenceId, consumeAttention, payments.openPayment, resource.data?.items, resource.status]);
+  const attentionOccurrenceId = useRecurringAttention({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment });
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;

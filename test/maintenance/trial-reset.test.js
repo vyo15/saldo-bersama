@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { applyTrialDataReset, previewTrialDataReset, readTrialDataResetStatus, TRIAL_RESET_CONFIRMATION } from "../../api/_lib/services/maintenance/reset.js";
 import { integrityWithMaintenanceRecovery } from "../../api/_lib/services/maintenance/integrity.js";
-import { decodeBackup } from "../../api/_lib/services/maintenance/shared.js";
+import { decodeBackup, digest } from "../../api/_lib/services/maintenance/shared.js";
 import { nowIso } from "../../api/_lib/services/core.js";
 import { cleanupExpiredEphemeralState } from "../../api/_lib/services/maintenance/housekeeping.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
@@ -291,6 +291,36 @@ test("reset.status merekonsiliasi outcome unknown dari audit dan safety backup t
     const recoveredWithoutClientToken = await readTrialDataResetStatus(db, context(owner, "reset.status"));
     assert.equal(recoveredWithoutClientToken.outcome, "committed", "Reload browser harus tetap menemukan unresolved reset milik owner dari idempotency server.");
     assert.equal(recoveredWithoutClientToken.intent.state, "unknown");
+  } finally {
+    db.close();
+  }
+});
+
+
+test("reset.status explicit key menemukan audit commit lama tanpa bergantung pada 12 audit terbaru", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const idempotencyKey = "reset-committed-long-ago";
+    const safetyBackupId = `bkp_${digest(`${owner.user_id}:backup.safety:pre-trial-reset:${idempotencyKey}`).slice(0, 32)}`;
+    const oldTimestamp = "2026-07-01T00:00:00.000Z";
+    await db.execute(
+      "INSERT INTO audit_log(audit_id,request_id,timestamp,actor_id,actor_email,action,entity_type,entity_id,previous_value,new_value,result) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+      ["audit-old-reset", "request-old-reset", oldTimestamp, owner.user_id, owner.email, "reset.apply", "maintenance_reset", "reset-old", JSON.stringify({ previewFingerprint: "old", summary: { totalRows: 3 } }), JSON.stringify({ resetAt: oldTimestamp, safetyBackupId }), "success"],
+    );
+    for (let index = 0; index < 13; index += 1) {
+      const timestamp = `2026-08-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`;
+      await db.execute(
+        "INSERT INTO audit_log(audit_id,request_id,timestamp,actor_id,actor_email,action,entity_type,entity_id,previous_value,new_value,result) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        [`audit-new-${index}`, `request-new-${index}`, timestamp, owner.user_id, owner.email, "reset.apply", "maintenance_reset", `reset-new-${index}`, "{}", JSON.stringify({ resetAt: timestamp, safetyBackupId: `other-backup-${index}` }), "success"],
+      );
+    }
+
+    const status = await readTrialDataResetStatus(db, context(owner, "reset.status", { idempotencyKey }));
+    assert.equal(status.outcome, "committed");
+    assert.equal(status.committedReset.resetId, "reset-old");
+    assert.equal(status.committedReset.safetyBackupId, safetyBackupId);
+    assert.equal(status.committedReset.summary.totalRows, 3);
   } finally {
     db.close();
   }

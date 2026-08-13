@@ -310,15 +310,16 @@ const GoalsPage = () => {
   const shared = { resource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation(shared);
   const movement = useGoalMovement({ ...shared, accounts });
+  const { openMovement } = movement;
   const lifecycle = useGoalLifecycle(shared);
   const attentionGoalId = String(attention?.attentionGoalId || "");
   useEffect(() => {
     if (attentionHandled.current || !attentionGoalId || resource.status !== "ready") return;
     attentionHandled.current = true;
     const goal = (resource.data?.items || []).find((item) => item.goal_id === attentionGoalId);
-    if (goal && attention?.attentionAction === "deposit" && goal.can_deposit) movement.openMovement(goal, "deposit");
+    if (goal && attention?.attentionAction === "deposit" && goal.can_deposit) openMovement(goal, "deposit");
     consumeAttention();
-  }, [attention?.attentionAction, attentionGoalId, consumeAttention, movement.openMovement, resource.data?.items, resource.status]);
+  }, [attention?.attentionAction, attentionGoalId, consumeAttention, openMovement, resource.data?.items, resource.status]);
   if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange };

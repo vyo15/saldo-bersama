@@ -10,13 +10,18 @@
 
 Backup wajib berisi manifest, schema version, created_at/by, table counts, checksum, dan seluruh tabel recovery-safe. Push subscription tidak ikut backup/restore karena merupakan credential perangkat yang harus didaftarkan ulang setelah recovery. Pembuatan manual/before-import/before-restore dicatat di `backup_runs` dan audit. Nama file unik; file existing hanya boleh digunakan ulang bila backup ID dan checksum cocok.
 
+
+## Import guarded
+
+Import transaksi maksimal 50 record dan bersifat all-or-nothing. File dianggap input tidak tepercaya; field kontrol internal seperti `confirm_duplicate`, actor, role, audit field, atau reserved linkage tidak boleh dipakai untuk melewati guard backend. Preview mensimulasikan record secara berurutan di transaction rollback-only sehingga dampak saldo, kantong, period lock, reference aktif, dan duplicate antarbaris ikut dihitung secara kumulatif. Satu baris invalid atau duplicate membuat seluruh preview `acceptable=false` dan `import.apply` wajib menolak tanpa membuat transaksi. Apply yang acceptable membuat safety backup, memvalidasi ulang semua record dalam satu transaction, menjalankan integrity check, menulis audit, lalu commit. Kegagalan pada record mana pun harus rollback seluruh record import.
+
 ## Restore guarded
 
 1. Administrator memasukkan Drive file ID.
 2. Backend membaca melalui signed bridge.
 3. Verifikasi ukuran, gzip, JSON, checksum, dan schema version.
-4. Buat preview dengan expiry.
-5. User mengetik confirmation phrase.
+4. Buat preview dengan expiry dan tampilkan nama file, waktu backup, schema version, serta row counts utama.
+5. User mengisi alasan, menyelesaikan seluruh acknowledgement, dan mengetik frasa `RESTORE SALDO BERSAMA` secara persis.
 6. Buat safety backup dari database aktif.
 7. Aktifkan maintenance fail-closed.
 8. Apply restore dalam transaction database.

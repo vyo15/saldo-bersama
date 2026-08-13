@@ -77,7 +77,7 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.doesNotMatch(integrations, /handleTile|onClick=\{\(\) => run\(provider/);
   assert.match(presentation, /integrationProviderPresentation/);
   assert.match(presentation, /Trigger belum siap/);
-  assert.match(presentation, /health check belum dapat dijangkau/);
+  assert.match(presentation, /signed health check gagal|Apps Script tidak merespons dalam batas waktu/);
   assert.match(members, /Tambah pengguna/);
   assert.match(members, /Lihat aktivitas transaksi/);
   assert.match(members, /MemberActivityPanel/);
@@ -137,6 +137,15 @@ test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provi
   const readiness = integrationProviderPresentation(integration, "calendar");
   assert.equal(readiness.ready, false);
   assert.equal(readiness.label, "Trigger belum siap");
+
+  const expired = integrationProviderPresentation({
+    bridge: { configured: true, checked: true, reachable: false, errorCode: "MESSAGE_EXPIRED", liveness: { reachable: true, version: 3 } },
+    configured: { drive: false },
+  }, "drive");
+  assert.equal(expired.ready, false);
+  assert.equal(expired.label, "Gangguan");
+  assert.equal(expired.errorCode, "MESSAGE_EXPIRED");
+  assert.match(expired.text, /koreksi waktu otomatis/);
 });
 
 

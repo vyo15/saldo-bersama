@@ -2,7 +2,7 @@ import { listAudit } from "../services/audit.js";
 import { ACTION_POLICIES, actionNames, getActionPolicy, isExternalAction, isMaintenanceAllowedAction, isReadAction } from "./policy.js";
 import { nowIso, todayJakarta } from "../services/core.js";
 import { createTransaction, updateTransaction, cancelTransaction, restoreTransaction, listTransactions } from "../services/finance.js";
-import { enqueueIntegration, integrationStatus, integrationStatusStatement, presentIntegrationStatus } from "../services/integrations.js";
+import { backupActivityStatement, enqueueIntegration, integrationStatus, integrationStatusStatement, presentIntegrationStatus } from "../services/integrations.js";
 import {
   archiveAccount, archiveCategory, createAccount, createCategory, deleteUnusedAccount, deleteUnusedCategory, listAccounts, listArchivedData,
   listCategories, previewAccountLifecycle, previewCategoryArchive, restoreAccount, restoreCategory, updateAccount,
@@ -28,11 +28,13 @@ import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../servic
 const systemHealth = async (db) => {
   const configStatement = { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','maintenance_mode','timezone','currency')", args: [] };
   const integrationStatement = integrationStatusStatement();
+  const backupStatement = backupActivityStatement();
+  const statements = [configStatement, integrationStatement, backupStatement];
   const resultRows = typeof db.batch === "function"
-    ? (await db.batch([configStatement, integrationStatement])).map((result) => result.rows || [])
-    : await Promise.all([db.all(configStatement.sql, configStatement.args), db.all(integrationStatement.sql, integrationStatement.args)]);
+    ? (await db.batch(statements)).map((result) => result.rows || [])
+    : await Promise.all(statements.map((statement) => db.all(statement.sql, statement.args)));
   const config = Object.fromEntries((resultRows[0] || []).map((row) => [row.key, row.value]));
-  const status = await presentIntegrationStatus(resultRows[1] || []);
+  const status = await presentIntegrationStatus(resultRows[1] || [], null, resultRows[2] || []);
   return {
     status: config.maintenance_mode === "true" ? "maintenance" : "ok",
     schemaVersion: Number(config.schema_version || 0),

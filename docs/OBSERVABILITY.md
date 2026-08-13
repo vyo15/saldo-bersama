@@ -2,7 +2,7 @@
 
 ## Health
 
-`/api/health` dan action `system.health` melaporkan status teredaksi: database, schema, maintenance, build, serta ringkasan queue integrasi. Response tidak boleh memuat URL/token database, secret, full Spreadsheet/Calendar ID, stack trace, atau internal path.
+`/api/health` dan action `system.health` melaporkan status teredaksi: database, schema, maintenance, build, serta ringkasan queue integrasi. `system.health` tidak melakukan network probe ke Google; provider yang belum diprobe harus tetap berstatus belum terverifikasi. Health resource Google yang dapat mengaktifkan action berasal dari `integrations.status`. Response tidak boleh memuat URL/token database, secret, full Spreadsheet/Calendar/Drive ID, stack trace, atau internal path.
 
 ## Logging
 

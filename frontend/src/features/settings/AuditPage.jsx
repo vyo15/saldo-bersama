@@ -1,19 +1,47 @@
+import { useState } from "react";
 import { FiDatabase, FiShield } from "react-icons/fi";
 import Card from "../../components/common/Card.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
+import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import MaintenanceRecoveryPanel from "./MaintenanceRecoveryPanel.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
+import SettingsNotice from "./SettingsNotice.jsx";
+import { runSettingsAction } from "./settings.api.js";
 import { auditDetailLabel, auditResultLabel, backendPresentation } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
 const AuditPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
+  const { invalidate, refreshAll } = useFinance();
   const healthResource = useApiResource("system.health", {}, { enabled: ownerMode });
   const auditResource = useApiResource("audit.list", { limit: 50 }, { enabled: ownerMode });
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [result, setResult] = useState(null);
   const backend = backendPresentation(healthResource);
   const entries = auditResource.data?.items || [];
+
+  const recoverMaintenance = async () => {
+    if (recoveryBusy) return;
+    setRecoveryBusy(true);
+    setResult({ status: "loading", text: "Menjalankan integrity check sebelum membuka maintenance..." });
+    try {
+      const data = await runSettingsAction("integrity.run", { clearMaintenance: true }, {});
+      invalidate(["system.health", "audit.list", "reset.status"]);
+      if (!data.ok) {
+        setResult({ status: "danger", text: `Maintenance tetap aktif. Integrity check menemukan ${data.issues?.length || 0} masalah.` });
+        return;
+      }
+      setResult({ status: "success", text: data.maintenanceCleared ? "Integrity check lulus dan maintenance berhasil dibuka kembali." : "Integrity check lulus. Maintenance sudah tidak aktif." });
+      await Promise.allSettled([healthResource.reload(), auditResource.reload(), refreshAll()]);
+    } catch (error) {
+      setResult({ status: "danger", text: error.message });
+    } finally {
+      setRecoveryBusy(false);
+    }
+  };
 
   return (
     <OwnerSettingsGuard>
@@ -22,6 +50,8 @@ const AuditPage = () => {
         <div className={styles.pageHeading}>
           <h2 id="audit-settings-title">Audit aktivitas</h2>
         </div>
+        <SettingsNotice result={result} />
+        <MaintenanceRecoveryPanel maintenanceMode={Boolean(healthResource.data?.maintenanceMode)} busy={recoveryBusy} onRecover={recoverMaintenance} description="Database sedang berada pada mode maintenance. Recovery hanya membuka akses tulis setelah integrity check lulus dan audit recovery tersimpan." />
         <Card className="panel">
           <div className="panel__header"><div><h2>Status layanan</h2><p role="status" aria-live="polite">{backend.summary}</p></div><FiDatabase aria-hidden="true" /></div>
           <div className="compact-list compact-list--stacked"><div><span><strong>Mode operasi</strong><small>{healthResource.data?.maintenanceMode ? "Maintenance aktif" : "Operasi normal"}</small></span><span className={`status-badge status-badge--${backend.tone}`}>{backend.label}</span></div></div>

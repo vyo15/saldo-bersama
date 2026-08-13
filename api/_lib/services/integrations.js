@@ -1,8 +1,12 @@
+import { readBatchRows } from "../db/readBatchRows.js";
 import crypto from "node:crypto";
 import { appError, canonicalJson, nowIso, sanitizeText, uuid } from "./core.js";
 
 const OUTBOX_PROVIDERS = new Set(["sheets", "calendar", "drive"]);
-const BRIDGE_HEALTH_TIMEOUT_MS = 5_000;
+const BRIDGE_HEALTH_TIMEOUT_MS = 12_000;
+const BRIDGE_LIVENESS_TIMEOUT_MS = 7_000;
+const BRIDGE_SERVICE = "saldo-bersama-google-bridge";
+const BRIDGE_MIN_VERSION = 3;
 
 export const enqueueIntegration = async (db, provider, eventType, entityType, entityId, payload = {}) => {
   if (!OUTBOX_PROVIDERS.has(provider)) throw appError("INTEGRATION_PROVIDER_INVALID", "Provider integrasi tidak valid.", 500);
@@ -25,19 +29,43 @@ export const integrationEnqueuers = (context) => ({
 
 const signature = (message, secret) => crypto.createHmac("sha256", secret).update(message).digest("hex");
 
+const canonicalBridgeUrl = (value) => {
+  let url;
+  try { url = new URL(String(value || "").trim()); } catch {
+    throw appError("GOOGLE_BRIDGE_URL_INVALID", "URL Google bridge tidak valid.", 503);
+  }
+  if (
+    url.protocol !== "https:"
+    || url.hostname !== "script.google.com"
+    || !/^\/macros\/s\/[^/]+\/exec\/?$/.test(url.pathname)
+    || url.search
+    || url.hash
+  ) {
+    throw appError("GOOGLE_BRIDGE_URL_INVALID", "URL Google bridge harus Web App Apps Script canonical /exec.", 503);
+  }
+  return url.toString();
+};
+
 const googleBridgeConfiguration = () => {
-  const url = String(process.env.GOOGLE_BRIDGE_WEB_APP_URL || "").trim();
+  const rawUrl = String(process.env.GOOGLE_BRIDGE_WEB_APP_URL || "").trim();
   const secret = String(process.env.GOOGLE_BRIDGE_SHARED_SECRET || "").trim();
-  if (!url || !secret) throw appError("GOOGLE_BRIDGE_NOT_CONFIGURED", "Integrasi Google belum dikonfigurasi.", 503);
-  return { url, secret };
+  if (!rawUrl || !secret) throw appError("GOOGLE_BRIDGE_NOT_CONFIGURED", "Integrasi Google belum dikonfigurasi.", 503);
+  if (secret.length < 32) throw appError("GOOGLE_BRIDGE_SECRET_INVALID", "Shared secret Google bridge belum valid.", 503);
+  return { url: canonicalBridgeUrl(rawUrl), secret };
+};
+
+const parseJsonResponse = async (response) => {
+  const text = await response.text();
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch {}
+  return { body, text };
 };
 
 const parseBridgeResponse = async (response) => {
-  const text = await response.text();
-  let body = {};
-  try { body = text ? JSON.parse(text) : {}; } catch {}
-  if (response.ok && body.ok !== false) return body.data ?? body;
-  const error = body && body.error ? body.error : {};
+  const { body } = await parseJsonResponse(response);
+  if (response.ok && body?.ok !== false && body) return body.data ?? body;
+  if (!body) throw appError("GOOGLE_BRIDGE_RESPONSE_INVALID", "Deployment Google bridge mengembalikan respons yang tidak dikenali.", 503);
+  const error = body.error || {};
   throw appError(String(error.code || "GOOGLE_BRIDGE_FAILED"), sanitizeText(error.message || "Integrasi Google gagal.", 200), 503);
 };
 
@@ -47,23 +75,92 @@ const normalizeBridgeCallError = (error) => {
   return appError("GOOGLE_BRIDGE_UNAVAILABLE", "Integrasi Google tidak dapat dihubungi.", 503);
 };
 
-export const callGoogleBridge = async (action, payload, { fetchImpl = globalThis.fetch, timeoutMs = 15_000 } = {}) => {
-  const { url, secret } = googleBridgeConfiguration();
-  const message = canonicalJson({ action, payload, timestamp: Date.now(), nonce: crypto.randomUUID() });
+const fetchWithTimeout = async (fetchImpl, url, options, timeoutMs) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1, Number(timeoutMs) || 15_000));
   try {
-    const response = await fetchImpl(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, signature: signature(message, secret) }),
-      signal: controller.signal,
-    });
-    return await parseBridgeResponse(response);
-  } catch (error) {
-    throw normalizeBridgeCallError(error);
+    return await fetchImpl(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timer);
+  }
+};
+
+const bridgeLiveness = async (fetchImpl = globalThis.fetch, timeoutMs = BRIDGE_LIVENESS_TIMEOUT_MS) => {
+  let url;
+  try {
+    ({ url } = googleBridgeConfiguration());
+    const startedAt = Date.now();
+    const response = await fetchWithTimeout(fetchImpl, url, { method: "GET", redirect: "follow", cache: "no-store" }, timeoutMs);
+    const completedAt = Date.now();
+    const { body } = await parseJsonResponse(response);
+    if (!response.ok || !body || body.ok === false) {
+      return { checked: true, reachable: false, errorCode: "GOOGLE_BRIDGE_LIVENESS_INVALID", version: null, clockOffsetMs: 0 };
+    }
+    const payload = body.data ?? body;
+    const serviceValid = payload?.service === BRIDGE_SERVICE;
+    const version = Number(payload?.version || 0);
+    const remoteTime = Date.parse(String(payload?.timestamp || ""));
+    if (!serviceValid) {
+      return { checked: true, reachable: false, errorCode: "GOOGLE_BRIDGE_SERVICE_MISMATCH", version: Number.isSafeInteger(version) ? version : null, clockOffsetMs: 0 };
+    }
+    if (!Number.isSafeInteger(version) || version < BRIDGE_MIN_VERSION) {
+      return { checked: true, reachable: false, errorCode: "GOOGLE_BRIDGE_DEPLOYMENT_STALE", version: Number.isSafeInteger(version) ? version : null, clockOffsetMs: 0 };
+    }
+    if (!Number.isFinite(remoteTime)) {
+      return { checked: true, reachable: false, errorCode: "GOOGLE_BRIDGE_TIME_INVALID", version, clockOffsetMs: 0 };
+    }
+    const localMidpoint = Math.round((startedAt + completedAt) / 2);
+    return {
+      checked: true,
+      reachable: true,
+      errorCode: null,
+      version,
+      clockOffsetMs: remoteTime - localMidpoint,
+    };
+  } catch (error) {
+    const normalized = normalizeBridgeCallError(error);
+    return { checked: true, reachable: false, errorCode: normalized.code, version: null, clockOffsetMs: 0 };
+  }
+};
+
+const signedBridgePost = async ({ url, secret, action, payload, fetchImpl, timeoutMs, clockOffsetMs = 0 }) => {
+  const message = canonicalJson({ action, payload, timestamp: Date.now() + Number(clockOffsetMs || 0), nonce: crypto.randomUUID() });
+  const response = await fetchWithTimeout(fetchImpl, url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, signature: signature(message, secret) }),
+    redirect: "follow",
+    cache: "no-store",
+  }, timeoutMs);
+  return parseBridgeResponse(response);
+};
+
+export const callGoogleBridge = async (action, payload, {
+  fetchImpl = globalThis.fetch,
+  timeoutMs = 15_000,
+  clockOffsetMs = 0,
+  allowClockRecovery = true,
+} = {}) => {
+  const config = googleBridgeConfiguration();
+  try {
+    return await signedBridgePost({ ...config, action, payload, fetchImpl, timeoutMs, clockOffsetMs });
+  } catch (error) {
+    const normalized = normalizeBridgeCallError(error);
+    if (normalized.code !== "MESSAGE_EXPIRED" || !allowClockRecovery || clockOffsetMs) throw normalized;
+    const liveness = await bridgeLiveness(fetchImpl);
+    if (!liveness.reachable) throw normalized;
+    try {
+      return await signedBridgePost({
+        ...config,
+        action,
+        payload,
+        fetchImpl,
+        timeoutMs,
+        clockOffsetMs: liveness.clockOffsetMs,
+      });
+    } catch (retryError) {
+      throw normalizeBridgeCallError(retryError);
+    }
   }
 };
 
@@ -78,7 +175,7 @@ const normalizeBridgeHealth = (value = {}) => ({
 
 const bridgeReadiness = (bridgeConfigured, bridge) => {
   if (!bridgeConfigured) return { sheets: false, calendar: false, drive: false };
-  if (!bridge?.checked) return { sheets: true, calendar: true, drive: true };
+  if (!bridge?.checked) return { sheets: false, calendar: false, drive: false };
   if (!bridge.reachable || !bridge.health) return { sheets: false, calendar: false, drive: false };
   const schedulerReady = bridge.health.jobsConfigured && bridge.health.triggerReady;
   return {
@@ -89,15 +186,39 @@ const bridgeReadiness = (bridgeConfigured, bridge) => {
 };
 
 const probeGoogleBridgeHealth = async (fetchImpl) => {
+  const liveness = await bridgeLiveness(fetchImpl);
   try {
-    const health = normalizeBridgeHealth(await callGoogleBridge("integration.health", {}, { fetchImpl, timeoutMs: BRIDGE_HEALTH_TIMEOUT_MS }));
-    return { checked: true, reachable: true, errorCode: null, health };
+    const health = normalizeBridgeHealth(await callGoogleBridge("integration.health", {}, {
+      fetchImpl,
+      timeoutMs: BRIDGE_HEALTH_TIMEOUT_MS,
+      clockOffsetMs: liveness.reachable ? liveness.clockOffsetMs : 0,
+      allowClockRecovery: !liveness.reachable,
+    }));
+    return {
+      checked: true,
+      reachable: true,
+      errorCode: null,
+      health,
+      liveness: {
+        reachable: liveness.reachable,
+        errorCode: liveness.errorCode,
+        version: liveness.version,
+        clockSkewSeconds: liveness.reachable ? Math.round(liveness.clockOffsetMs / 1_000) : null,
+      },
+    };
   } catch (error) {
+    const normalized = normalizeBridgeCallError(error);
     return {
       checked: true,
       reachable: false,
-      errorCode: sanitizeText(error?.code || "GOOGLE_BRIDGE_UNAVAILABLE", 80),
+      errorCode: sanitizeText(normalized.code || "GOOGLE_BRIDGE_UNAVAILABLE", 80),
       health: null,
+      liveness: {
+        reachable: liveness.reachable,
+        errorCode: liveness.errorCode,
+        version: liveness.version,
+        clockSkewSeconds: liveness.reachable ? Math.round(liveness.clockOffsetMs / 1_000) : null,
+      },
     };
   }
 };
@@ -156,17 +277,44 @@ export const integrationStatusStatement = () => ({
   args: [],
 });
 
-export const presentIntegrationStatus = async (rows, context = null) => {
+export const backupActivityStatement = () => ({
+  sql: `SELECT backup_id,backup_type,external_file_id,file_name,schema_version,status,created_at,verified_at,error_code
+    FROM backup_runs ORDER BY created_at DESC LIMIT 1`,
+  args: [],
+});
+
+const presentDriveBackup = (rows = []) => {
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    backupId: row.backup_id,
+    backupType: row.backup_type,
+    fileId: row.external_file_id || null,
+    fileName: row.file_name,
+    schemaVersion: Number(row.schema_version || 0),
+    status: row.status,
+    createdAt: row.created_at,
+    verifiedAt: row.verified_at || null,
+    errorCode: row.error_code || null,
+  };
+};
+
+export const presentIntegrationStatus = async (rows, context = null, backupRows = []) => {
   const providers = accumulateProviderRows(rows);
   const bridgeConfigured = Boolean(process.env.GOOGLE_BRIDGE_WEB_APP_URL && process.env.GOOGLE_BRIDGE_SHARED_SECRET);
   const bridgeProbe = await resolveBridgeProbe(context, bridgeConfigured);
   const bridge = { configured: bridgeConfigured, ...bridgeProbe };
-  return { providers, bridge, configured: bridgeReadiness(bridgeConfigured, bridge) };
+  return {
+    providers,
+    bridge,
+    configured: bridgeReadiness(bridgeConfigured, bridge),
+    driveBackup: presentDriveBackup(backupRows),
+  };
 };
 
 export const integrationStatus = async (db, context = null) => {
-  const statement = integrationStatusStatement();
-  return presentIntegrationStatus(await db.all(statement.sql, statement.args), context);
+  const [rows, backupRows] = await readBatchRows(db, [integrationStatusStatement(), backupActivityStatement()]);
+  return presentIntegrationStatus(rows, context, backupRows);
 };
 
 export const markIntegrationResult = async (db, row, error = null) => {

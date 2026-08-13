@@ -9,6 +9,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { categoryTypeLabel } from "../../shared/presentation/category.js";
+import MaintenanceRecoveryPanel from "./MaintenanceRecoveryPanel.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { runSettingsAction } from "./settings.api.js";
@@ -26,9 +27,25 @@ const RESTORE_REFRESH_KEYS = Object.freeze([
   "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
   "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly",
   "periods.list", "reconciliations.list", "users.list", "audit.list", "archive.list",
-  "notifications.status", "notifications.preferences", "integrations.status",
+  "notifications.status", "notifications.preferences", "integrations.status", "system.health", "reset.status",
+]);
+const RESTORE_ACKNOWLEDGEMENTS = Object.freeze([
+  "Saya sudah memastikan file dan waktu backup yang akan dipulihkan sudah benar.",
+  "Saya memahami restore akan mengganti dataset aktif dengan isi backup yang dipreview.",
+  "Saya memahami safety backup baru dibuat sebelum restore dan maintenance tetap aktif jika integrity check gagal.",
+]);
+const RESTORE_TABLES = Object.freeze([
+  ["transactions", "Transaksi"], ["accounts", "Rekening"], ["categories", "Kategori"], ["users", "Pengguna"],
+  ["envelope_rules", "Aturan alokasi"], ["savings_goals", "Target"], ["recurring_rules", "Jadwal rutin"],
+  ["budgets", "Anggaran"], ["audit_log", "Audit log"],
 ]);
 
+const formatCount = (value) => Number(value || 0).toLocaleString("id-ID");
+const formatDateTimeJakarta = (value) => {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return value || "Tidak tersedia";
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(date);
+};
 
 const archiveGroups = (data = {}) => [
   ["account", data.accounts || [], (item) => accountDisplayLabel(item), () => "Rekening diarsipkan"],
@@ -54,37 +71,65 @@ const ArchivePanel = ({ resource, openRestore }) => <Card className="panel">
   {resource.status === "ready" ? <ArchiveItems data={resource.data} openRestore={openRestore} /> : null}
 </Card>;
 
-const RestorePanel = ({ backupFileId, setBackupFileId, restorePreview, setRestorePreview, restoreConfirmation, setRestoreConfirmation, restoreBusy, previewRestore, applyRestore }) => <Card className="panel">
-  <div className="panel__header"><div><h2>Pulihkan backup</h2><p>Gunakan backup teknis yang sudah diverifikasi.</p></div><FiDownloadCloud aria-hidden="true" /></div>
+const RestorePreviewSummary = ({ preview, compact = false }) => {
+  if (!preview) return null;
+  return (
+    <div className={`${styles.restorePreview}${compact ? ` ${styles.restorePreviewCompact}` : ""}`}>
+      <div className={styles.restorePreviewIdentity}>
+        <div><span>File backup</span><strong>{preview.fileName || "Tidak tersedia"}</strong></div>
+        <div><span>Dibuat</span><strong>{formatDateTimeJakarta(preview.createdAt)}</strong></div>
+        <div><span>Schema</span><strong>v{preview.schemaVersion || "-"}</strong></div>
+      </div>
+      <div className={styles.restorePreviewGrid} aria-label="Jumlah data dalam backup">
+        {RESTORE_TABLES.map(([key, label]) => <div key={key}><span>{label}</span><strong>{formatCount(preview.tables?.[key])}</strong></div>)}
+      </div>
+    </div>
+  );
+};
+
+const RestorePanel = ({ backupFileId, setBackupFileId, restorePreview, restoreBusy, healthReady, maintenanceMode, previewRestore, openConfirmation }) => <Card className="panel">
+  <div className="panel__header"><div><h2>Pulihkan backup</h2><p>Gunakan hanya backup teknis Google Drive yang sudah diverifikasi.</p></div><FiDownloadCloud aria-hidden="true" /></div>
   <div className="form-grid">
-    <label className="field form-grid__full"><span>Google Drive file ID backup teknis</span><input value={backupFileId} onChange={(event) => { setBackupFileId(event.target.value); setRestorePreview(null); setRestoreConfirmation(""); }} /></label>
-    <div className="form-grid__full"><Button onClick={previewRestore} loading={restoreBusy && !restorePreview} disabled={!backupFileId.trim()}>Validasi dan preview</Button></div>
-    {restorePreview ? <div className="notice notice--warning form-grid__full"><span>Backup valid. Preview berlaku 10 menit.</span></div> : null}
-    {restorePreview ? <label className="field form-grid__full"><span>Ketik RESTORE SALDO BERSAMA</span><input value={restoreConfirmation} onChange={(event) => setRestoreConfirmation(event.target.value)} /></label> : null}
-    {restorePreview ? <div className="form-grid__full form-actions"><Button variant="primary" onClick={applyRestore} loading={restoreBusy} disabled={restoreConfirmation !== "RESTORE SALDO BERSAMA"}>Terapkan restore</Button></div> : null}
+    <label className="field form-grid__full"><span>Google Drive file ID backup teknis</span><input value={backupFileId} onChange={(event) => setBackupFileId(event.target.value)} /></label>
+    <div className="form-grid__full"><Button onClick={previewRestore} loading={restoreBusy && !restorePreview} disabled={!backupFileId.trim() || !healthReady || maintenanceMode}>Validasi dan preview</Button></div>
+    {!healthReady ? <div className="notice notice--warning form-grid__full"><span>Status backend dan maintenance belum terverifikasi. Muat ulang status sebelum memulai full restore.</span></div> : null}
+    {maintenanceMode ? <div className="notice notice--warning form-grid__full"><span>Restore baru diblokir karena maintenance aktif. Jalankan recovery terlebih dahulu.</span></div> : null}
+    {restorePreview ? <div className="notice notice--warning form-grid__full"><span>Backup valid. Periksa identitas dan jumlah data dengan teliti. Preview berlaku 10 menit.</span></div> : null}
+    {restorePreview ? <div className="form-grid__full"><RestorePreviewSummary preview={restorePreview} /></div> : null}
+    {restorePreview ? <div className="form-grid__full form-actions"><Button variant="danger" onClick={openConfirmation} loading={restoreBusy} disabled={!healthReady || maintenanceMode}>Tinjau & terapkan restore</Button></div> : null}
   </div>
 </Card>;
 
-const RecoveryView = ({ resource, result, openRestore, restoreProps, archiveTarget, archiveState, setArchiveTarget, restoreArchivedItem }) => <OwnerSettingsGuard><section className={styles.pageContent} aria-labelledby="recovery-settings-title">
-  <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-  <div className={styles.pageHeading}><h2 id="recovery-settings-title">Pemulihan data</h2></div>
-  <SettingsNotice result={result} /><ArchivePanel resource={resource} openRestore={openRestore} /><RestorePanel {...restoreProps} />
-  <div className="notice notice--warning"><FiShield aria-hidden="true" /><span>Jangan menjalankan full restore untuk kesalahan arsip biasa. Pilih item di atas agar dampak tetap terbatas.</span></div>
-  <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget ? `Pulihkan ${RECOVERY_TYPES[archiveTarget.type]?.label?.toLowerCase() || "data"}?` : "Pulihkan data?"} description={archiveTarget ? `${archiveTarget.item.name} akan aktif kembali setelah validasi terbaru.` : ""} confirmLabel="Pulihkan data" reasonLabel="Alasan pemulihan" requireReason tone="primary" busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={restoreArchivedItem} />
-</section></OwnerSettingsGuard>;
+const RestoreConfirmation = ({ preview, open, busy, error, onCancel, onConfirm }) => (
+  <ConfirmationModal
+    open={open}
+    title="Pulihkan seluruh data dari backup?"
+    description="Dataset aktif akan diganti dengan isi backup yang sudah dipreview. Safety backup baru dibuat sebelum perubahan dimulai."
+    confirmLabel="Pulihkan backup"
+    reasonLabel="Alasan restore"
+    reasonPlaceholder="Contoh: Memulihkan kondisi sebelum import yang salah"
+    requireReason
+    expectedConfirmation="RESTORE SALDO BERSAMA"
+    acknowledgementItems={RESTORE_ACKNOWLEDGEMENTS}
+    countdownSeconds={10}
+    busy={busy}
+    error={error}
+    tone="danger"
+    onCancel={onCancel}
+    onConfirm={onConfirm}
+  >
+    <RestorePreviewSummary preview={preview} compact />
+  </ConfirmationModal>
+);
 
-const RecoveryPage = () => {
-  const { user } = useAuth();
-  const ownerMode = user?.role === "owner";
-  const { invalidate, refreshAll } = useFinance();
-  const archiveResource = useApiResource("archive.list", {}, { enabled: ownerMode });
-  const [result, setResult] = useState(null);
+const useArchiveRecovery = ({ archiveResource, invalidate, refreshAll, setResult }) => {
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
-  const [backupFileId, setBackupFileId] = useState("");
-  const [restorePreview, setRestorePreview] = useState(null);
-  const [restoreConfirmation, setRestoreConfirmation] = useState("");
-  const [restoreBusy, setRestoreBusy] = useState(false);
+
+  const openRestore = (type, item) => {
+    setArchiveTarget({ type, item });
+    setArchiveState({ status: "idle", error: null });
+  };
 
   const restoreArchivedItem = async (reason) => {
     if (!archiveTarget) return;
@@ -92,7 +137,11 @@ const RecoveryPage = () => {
     if (!config) return;
     setArchiveState({ status: "submitting", error: null });
     try {
-      await runSettingsAction(config.action, { [config.idKey]: archiveTarget.item[config.idKey], row_version: archiveTarget.item.row_version, reason }, { rowVersion: archiveTarget.item.row_version });
+      await runSettingsAction(config.action, {
+        [config.idKey]: archiveTarget.item[config.idKey],
+        row_version: archiveTarget.item.row_version,
+        reason,
+      }, { rowVersion: archiveTarget.item.row_version });
       invalidate([
         "accounts.list", "categories.list", "envelopes.list", "goals.list", "recurring.list", "budgets.list",
         "archive.list", "app.initialState", "dashboard.overview", "reports.monthly",
@@ -106,13 +155,32 @@ const RecoveryPage = () => {
     }
   };
 
+  return { archiveTarget, setArchiveTarget, archiveState, openRestore, restoreArchivedItem };
+};
+
+const useFullRestore = ({ archiveResource, healthResource, healthReady, maintenanceMode, invalidate, refreshAll, setResult }) => {
+  const [backupFileId, setBackupFileIdState] = useState("");
+  const [restorePreview, setRestorePreview] = useState(null);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [restoreConfirmationOpen, setRestoreConfirmationOpen] = useState(false);
+  const [restoreError, setRestoreError] = useState(null);
+
+  const setBackupFileId = (value) => {
+    setBackupFileIdState(value);
+    setRestorePreview(null);
+    setRestoreConfirmationOpen(false);
+    setRestoreError(null);
+  };
+
   const previewRestore = async () => {
+    if (!healthReady || maintenanceMode) return;
     setRestoreBusy(true);
-    setResult({ status: "loading", text: "Memvalidasi backup teknis..." });
+    setRestoreError(null);
+    setResult({ status: "loading", text: "Memvalidasi checksum, schema, dan isi backup teknis..." });
     try {
       const data = await runSettingsAction("restore.preview", { backupFileId: backupFileId.trim() }, {});
       setRestorePreview(data);
-      setResult({ status: "warning", text: "Backup valid. Preview berlaku 10 menit." });
+      setResult({ status: "warning", text: "Backup valid. Cocokkan nama file, waktu, schema, dan jumlah data sebelum restore." });
     } catch (error) {
       setRestorePreview(null);
       setResult({ status: "danger", text: error.message });
@@ -121,27 +189,107 @@ const RecoveryPage = () => {
     }
   };
 
-  const applyRestore = async () => {
-    if (!restorePreview) return;
+  const applyRestore = async (reason, confirmationState) => {
+    if (!restorePreview || !healthReady || maintenanceMode) return;
     setRestoreBusy(true);
+    setRestoreError(null);
     setResult({ status: "loading", text: "Membuat safety backup dan menjalankan restore guarded..." });
     try {
-      await runSettingsAction("restore.apply", { backupFileId: backupFileId.trim(), previewToken: restorePreview.previewToken, confirmation: restoreConfirmation }, {});
+      await runSettingsAction("restore.apply", {
+        backupFileId: backupFileId.trim(),
+        previewToken: restorePreview.previewToken,
+        confirmation: confirmationState.confirmation,
+        acknowledged: confirmationState.acknowledged,
+        reason,
+      }, {});
+      setRestoreConfirmationOpen(false);
       setRestorePreview(null);
-      setRestoreConfirmation("");
-      setResult({ status: "success", text: "Pemulihan selesai dan data sudah diverifikasi." });
+      setResult({ status: "success", text: "Pemulihan selesai. Integrity check lulus dan dataset aktif sudah diverifikasi." });
       invalidate(RESTORE_REFRESH_KEYS);
-      await Promise.allSettled([refreshAll()]);
+      await Promise.allSettled([refreshAll(), archiveResource.reload(), healthResource.reload()]);
     } catch (error) {
+      setRestoreError(error);
       setResult({ status: "danger", text: error.message });
+      const health = await healthResource.reload().catch(() => null);
+      if (health?.maintenanceMode) setRestoreConfirmationOpen(false);
     } finally {
       setRestoreBusy(false);
     }
   };
 
-  const openRestore = (type, item) => { setArchiveTarget({ type, item }); setArchiveState({ status: "idle", error: null }); };
-  const restoreProps = { backupFileId, setBackupFileId, restorePreview, setRestorePreview, restoreConfirmation, setRestoreConfirmation, restoreBusy, previewRestore, applyRestore };
-  return <RecoveryView resource={archiveResource} result={result} openRestore={openRestore} restoreProps={restoreProps} archiveTarget={archiveTarget} archiveState={archiveState} setArchiveTarget={setArchiveTarget} restoreArchivedItem={restoreArchivedItem} />;
+  const openConfirmation = () => {
+    setRestoreError(null);
+    setRestoreConfirmationOpen(true);
+  };
+  const cancelConfirmation = () => {
+    if (restoreBusy) return;
+    setRestoreConfirmationOpen(false);
+    setRestoreError(null);
+  };
+
+  return {
+    backupFileId, setBackupFileId, restorePreview, restoreBusy, restoreConfirmationOpen, restoreError,
+    previewRestore, applyRestore, openConfirmation, cancelConfirmation,
+  };
+};
+
+const useMaintenanceRecovery = ({ healthResource, invalidate, refreshAll, setResult }) => {
+  const [maintenanceBusy, setMaintenanceBusy] = useState(false);
+  const recoverMaintenance = async () => {
+    if (maintenanceBusy) return;
+    setMaintenanceBusy(true);
+    setResult({ status: "loading", text: "Menjalankan integrity check sebelum membuka maintenance..." });
+    try {
+      const data = await runSettingsAction("integrity.run", { clearMaintenance: true }, {});
+      invalidate(["system.health", "audit.list", "reset.status"]);
+      if (!data.ok) {
+        setResult({ status: "danger", text: `Maintenance tetap aktif. Integrity check menemukan ${data.issues?.length || 0} masalah.` });
+        return;
+      }
+      setResult({
+        status: "success",
+        text: data.maintenanceCleared
+          ? "Integrity check lulus dan maintenance berhasil dibuka kembali."
+          : "Integrity check lulus. Maintenance sudah tidak aktif.",
+      });
+      await Promise.allSettled([healthResource.reload(), refreshAll()]);
+    } catch (error) {
+      setResult({ status: "danger", text: error.message });
+    } finally {
+      setMaintenanceBusy(false);
+    }
+  };
+  return { maintenanceBusy, recoverMaintenance };
+};
+
+const RecoveryPage = () => {
+  const { user } = useAuth();
+  const ownerMode = user?.role === "owner";
+  const { invalidate, refreshAll } = useFinance();
+  const archiveResource = useApiResource("archive.list", {}, { enabled: ownerMode });
+  const healthResource = useApiResource("system.health", {}, { enabled: ownerMode });
+  const [result, setResult] = useState(null);
+  const healthReady = healthResource.status === "ready";
+  const maintenanceMode = healthReady && Boolean(healthResource.data?.maintenanceMode);
+  const archive = useArchiveRecovery({ archiveResource, invalidate, refreshAll, setResult });
+  const restore = useFullRestore({ archiveResource, healthResource, healthReady, maintenanceMode, invalidate, refreshAll, setResult });
+  const maintenance = useMaintenanceRecovery({ healthResource, invalidate, refreshAll, setResult });
+
+  return (
+    <OwnerSettingsGuard>
+      <section className={styles.pageContent} aria-labelledby="recovery-settings-title">
+        <RefreshWarning error={archiveResource.refreshError || healthResource.refreshError} onRetry={() => Promise.all([archiveResource.reload(), healthResource.reload()])} />
+        <div className={styles.pageHeading}><h2 id="recovery-settings-title">Pemulihan data</h2><p>Pulihkan item arsip secara terbatas atau lakukan full restore hanya setelah preview backup terverifikasi.</p></div>
+        <SettingsNotice result={result} />
+        <MaintenanceRecoveryPanel maintenanceMode={maintenanceMode} busy={maintenance.maintenanceBusy} onRecover={maintenance.recoverMaintenance} description="Restore atau maintenance sebelumnya belum selesai dengan kondisi yang dapat dipastikan. Integrity check wajib lulus sebelum operasi baru." />
+        <ArchivePanel resource={archiveResource} openRestore={archive.openRestore} />
+        <RestorePanel backupFileId={restore.backupFileId} setBackupFileId={restore.setBackupFileId} restorePreview={restore.restorePreview} restoreBusy={restore.restoreBusy} healthReady={healthReady} maintenanceMode={maintenanceMode} previewRestore={restore.previewRestore} openConfirmation={restore.openConfirmation} />
+        <div className="notice notice--warning"><FiShield aria-hidden="true" /><span>Jangan menjalankan full restore untuk kesalahan arsip biasa. Pilih item arsip agar dampak tetap terbatas.</span></div>
+        <ConfirmationModal open={Boolean(archive.archiveTarget)} title={archive.archiveTarget ? `Pulihkan ${RECOVERY_TYPES[archive.archiveTarget.type]?.label?.toLowerCase() || "data"}?` : "Pulihkan data?"} description={archive.archiveTarget ? `${archive.archiveTarget.item.name} akan aktif kembali setelah validasi terbaru.` : ""} confirmLabel="Pulihkan data" reasonLabel="Alasan pemulihan" requireReason tone="primary" busy={archive.archiveState.status === "submitting"} error={archive.archiveState.error} onCancel={() => archive.archiveState.status !== "submitting" && archive.setArchiveTarget(null)} onConfirm={archive.restoreArchivedItem} />
+        <RestoreConfirmation preview={restore.restorePreview} open={restore.restoreConfirmationOpen} busy={restore.restoreBusy} error={restore.restoreError} onCancel={restore.cancelConfirmation} onConfirm={restore.applyRestore} />
+      </section>
+    </OwnerSettingsGuard>
+  );
 };
 
 export default RecoveryPage;

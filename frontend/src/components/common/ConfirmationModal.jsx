@@ -173,7 +173,7 @@ const blockConfirmationEnter = (event, requiresTypedConfirmation) => {
 
 const resolveConfirmationState = ({
   pending, busy, reasonRequired, requireReason, onCancel, onClose, expectedConfirmation,
-  acknowledgementLabel, acknowledgementItems, confirmation, acknowledged, acknowledgedItems, remainingSeconds,
+  acknowledgementLabel, acknowledgementItems, reason, confirmation, acknowledged, acknowledgedItems, remainingSeconds,
 }) => {
   const isPending = pending || busy;
   const mustProvideReason = reasonRequired || requireReason;
@@ -217,7 +217,7 @@ const ConfirmationModal = (props) => {
     reasonReady, confirmationReady, acknowledgementReady, confirmDisabled,
   } = resolveConfirmationState({
     pending, busy, reasonRequired, requireReason, onCancel, onClose, expectedConfirmation,
-    acknowledgementLabel, acknowledgementItems, confirmation, acknowledged, acknowledgedItems, remainingSeconds,
+    acknowledgementLabel, acknowledgementItems, reason, confirmation, acknowledged, acknowledgedItems, remainingSeconds,
   });
 
   const requirementHint = confirmationRequirementHint({ remainingSeconds, reasonReady, confirmationReady, acknowledgementReady });

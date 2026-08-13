@@ -3,6 +3,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { TursoHttpClient } from "../api/_lib/db/httpClient.js";
 import { readSchemaStatus } from "../api/_lib/db/schema.js";
+import { callGoogleBridge } from "../api/_lib/services/integrations.js";
 import { CORE_RUNTIME_ENV_KEYS, environmentStatus, validateWebPushEnvironment } from "./runtime-environment.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -47,8 +48,15 @@ if (bridge) {
     const response = await fetch(url, { cache: "no-store", redirect: "follow", signal: controller.signal });
     clearTimeout(timer);
     const body = await response.json().catch(() => null);
-    console.log(`Google bridge: HTTP ${response.status}, ${body?.data?.service || "respons tidak dikenali"}`);
-  } catch (error) { console.error(`Google bridge: FAILED (${error.name === "AbortError" ? "timeout" : error.message})`); }
+    const deployment = body?.data || body || {};
+    console.log(`Google bridge liveness: HTTP ${response.status}, ${deployment?.service || "respons tidak dikenali"}${deployment?.version ? ` v${deployment.version}` : ""}`);
+    try {
+      const health = await callGoogleBridge("integration.health", {}, { timeoutMs: 12_000 });
+      console.log(`Google bridge signed health: ready (Sheets=${Boolean(health?.mirrorConfigured)}, Calendar=${Boolean(health?.calendarConfigured)}, Drive=${Boolean(health?.backupConfigured)}, Jobs=${Boolean(health?.jobsConfigured)}, Trigger=${Boolean(health?.triggerReady)})`);
+    } catch (healthError) {
+      console.error(`Google bridge signed health: FAILED (${healthError.code || healthError.message})`);
+    }
+  } catch (error) { console.error(`Google bridge liveness: FAILED (${error.name === "AbortError" ? "timeout" : error.message})`); }
 } else console.log("Google bridge: optional/not configured");
 
 if (missing.length) console.error(`Konfigurasi inti belum lengkap: ${missing.join(", ")}`);

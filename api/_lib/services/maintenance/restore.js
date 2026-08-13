@@ -53,11 +53,14 @@ const restoredDataTables = Object.freeze([
 
 const loadRestorePreview = async (db, context, payload) => {
   if (payload.confirmation !== "RESTORE SALDO BERSAMA") throw appError("CONFIRMATION_REQUIRED", "Konfirmasi restore tidak sesuai.", 400);
+  if (payload.acknowledged !== true) throw appError("RESTORE_ACKNOWLEDGEMENT_REQUIRED", "Seluruh pernyataan pemahaman restore wajib diselesaikan.", 400);
+  const reason = sanitizeText(payload.reason, 200);
+  if (reason.length < 5) throw appError("RESTORE_REASON_REQUIRED", "Alasan restore minimal 5 karakter.", 400);
   const preview = await db.one("SELECT * FROM restore_previews WHERE preview_id=? AND actor_id=?", [payload.previewToken, context.actor.user_id]);
   if (!preview) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore tidak ditemukan.", 409);
-  if (preview.status === "applied" && preview.result_json) return { preview, appliedResult: JSON.parse(preview.result_json) };
+  if (preview.status === "applied" && preview.result_json) return { preview, appliedResult: JSON.parse(preview.result_json), reason };
   if (preview.expires_at <= nowIso()) throw appError("RESTORE_PREVIEW_EXPIRED", "Preview restore sudah kedaluwarsa.", 409);
-  return { preview, appliedResult: null };
+  return { preview, appliedResult: null, reason };
 };
 
 const loadRestoreIdentityState = async (db, context) => {
@@ -151,24 +154,26 @@ const restoreSystemConfig = async (tx, snapshot) => {
   await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES('schema_version',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [String(DATABASE_SCHEMA_VERSION), nowIso()]);
 };
 
-const finalizeRestore = async (tx, context, { preview, run, checksum, safety, result }) => {
+const finalizeRestore = async (tx, context, { preview, run, checksum, safety, result, reason }) => {
   const issues = await integrityIssues(tx);
   if (issues.length) throw appError("RESTORE_INTEGRITY_FAILED", "Restore dibatalkan karena integrity check gagal.", 409, issues);
   await appendAudit(tx, { ...context, action: "restore.apply" }, {
     entityType: "restore",
     entityId: run.backup_id,
-    next: { checksum, safetyBackupId: safety.backupId },
+    next: { checksum, safetyBackupId: safety.backupId, reason },
   });
   await enqueueIntegration(tx, "sheets", "rebuild", "system", "mirror", { reason: "restore", backupId: run.backup_id });
   await enqueueIntegration(tx, "calendar", "rebuild", "system", "calendar", { reason: "restore", backupId: run.backup_id });
-  await tx.execute("UPDATE restore_previews SET status='applied',result_json=?,applied_at=?,expires_at=? WHERE preview_id=? AND status='applying'", [canonicalJson(result), nowIso(), expiry(30 * 24 * 60), preview.preview_id]);
-  await tx.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+  const previewUpdate = await tx.execute("UPDATE restore_previews SET status='applied',result_json=?,applied_at=?,expires_at=? WHERE preview_id=? AND status='applying'", [canonicalJson(result), nowIso(), expiry(30 * 24 * 60), preview.preview_id]);
+  if (previewUpdate.rowsAffected !== 1) throw appError("RESTORE_IN_PROGRESS", "Status preview restore berubah sebelum commit. Restore dibatalkan.", 409);
+  const maintenanceUpdate = await tx.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+  if (maintenanceUpdate.rowsAffected !== 1) throw appError("MAINTENANCE_MODE", "Status maintenance tidak dapat dipastikan. Restore dibatalkan dan maintenance tetap aktif.", 409);
 };
 
 export const applyRestore = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};
-  const { preview, appliedResult } = await loadRestorePreview(db, context, payload);
+  const { preview, appliedResult, reason } = await loadRestorePreview(db, context, payload);
   if (appliedResult) return appliedResult;
 
   const activeIdempotencyReservation = context.idempotencyKey
@@ -198,7 +203,7 @@ export const applyRestore = async (db, context) => {
       await restoreSnapshotTables(tx, snapshot);
       await restoreIdempotencyReservation(tx, activeIdempotencyReservation);
       await restoreSystemConfig(tx, snapshot);
-      await finalizeRestore(tx, context, { preview, run, checksum, safety, result });
+      await finalizeRestore(tx, context, { preview, run, checksum, safety, result, reason });
     });
     return result;
   } catch (error) {

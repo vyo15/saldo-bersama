@@ -378,3 +378,52 @@ test("import dan restore teknis menginvalidasi cache finansial sebelum refresh b
   assert.match(recoveryPage, /RESTORE_REFRESH_KEYS[\s\S]*"bootstrap\.get"[\s\S]*"transactions\.list"[\s\S]*"reconciliations\.list"[\s\S]*"users\.list"[\s\S]*"archive\.list"/);
   assert.match(recoveryPage, /invalidate\(RESTORE_REFRESH_KEYS\);[\s\S]*refreshAll\(\)/);
 });
+
+test("import transaksi memblokir partial apply dan restore memakai konfirmasi destructive lengkap", async () => {
+  const [importPage, recoveryPage, maintenancePanel, integrations] = await Promise.all([
+    read("src/features/settings/ImportTransactionsPage.jsx"),
+    read("src/features/settings/RecoveryPage.jsx"),
+    read("src/features/settings/MaintenanceRecoveryPanel.jsx"),
+    read("src/features/settings/GoogleIntegrationsPage.jsx"),
+  ]);
+
+  assert.match(importPage, /preview\?\.acceptable/);
+  assert.match(importPage, /if \(!preview\?\.acceptable\) return/);
+  assert.match(importPage, /Tidak ada partial import/);
+  assert.match(importPage, /Dampak kumulatif import/);
+  assert.match(importPage, /Total refund/);
+  assert.match(importPage, /Penyesuaian saldo/);
+  assert.match(importPage, /fileInputRef\.current\.value = ""/);
+
+  assert.match(recoveryPage, /expectedConfirmation="RESTORE SALDO BERSAMA"/);
+  assert.match(recoveryPage, /acknowledgementItems=\{RESTORE_ACKNOWLEDGEMENTS\}/);
+  assert.match(recoveryPage, /countdownSeconds=\{10\}/);
+  assert.match(recoveryPage, /requireReason/);
+  assert.match(recoveryPage, /RestorePreviewSummary/);
+  assert.match(recoveryPage, /preview\.fileName/);
+  assert.match(recoveryPage, /preview\.createdAt/);
+  assert.match(recoveryPage, /preview\.schemaVersion/);
+  assert.match(recoveryPage, /clearMaintenance: true/);
+  assert.match(recoveryPage, /healthResource\.status === "ready"/);
+  assert.match(recoveryPage, /!healthReady \|\| maintenanceMode/);
+  assert.match(recoveryPage, /<MaintenanceRecoveryPanel/);
+  assert.match(maintenancePanel, /Periksa integritas & pulihkan/);
+
+  assert.match(integrations, /driveBackupActivity/);
+  assert.match(integrations, /integrations\.driveBackup/);
+  assert.match(integrations, /Safety backup untuk reset, restore, import, dan recovery/);
+});
+
+test("FinanceContext memakai epoch per resource agar refresh overview dan bootstrap tidak saling membatalkan", async () => {
+  const [finance, epoch] = await Promise.all([
+    read("src/app/FinanceContext.jsx"),
+    read("src/app/financeRequestEpoch.js"),
+  ]);
+  assert.match(finance, /beginFinanceRequest\(controls\.requestEpoch\.current, \["bootstrap", "overview"\]\)/);
+  assert.match(finance, /beginFinanceRequest\(controls\.requestEpoch\.current, \["overview"\]\)/);
+  assert.match(finance, /beginFinanceRequest\(controls\.requestEpoch\.current, \["bootstrap"\]\)/);
+  assert.doesNotMatch(finance, /requestSequence/);
+  assert.match(epoch, /session/);
+  assert.match(epoch, /requestOwnsFinanceResource/);
+  assert.match(epoch, /invalidateFinanceSession/);
+});

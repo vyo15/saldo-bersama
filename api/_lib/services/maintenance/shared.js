@@ -56,7 +56,21 @@ export const snapshotDatabase = async (db) => db.transaction(async (tx) => {
   return { ...payload, checksum };
 });
 
-export const encodeBackup = (snapshot) => gzipSync(Buffer.from(JSON.stringify(snapshot), "utf8"), { level: 9 }).toString("base64");
+const gzipWithOriginalName = (buffer, fileName) => {
+  const compressed = gzipSync(buffer, { level: 9 });
+  const cleanName = String(fileName || "saldo-bersama-backup.json")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 160) || "saldo-bersama-backup.json";
+  const header = Buffer.from(compressed.subarray(0, 10));
+  header[3] |= 0x08;
+  return Buffer.concat([header, Buffer.from(`${cleanName}\0`, "latin1"), compressed.subarray(10)]);
+};
+
+export const encodeBackup = (snapshot, fileName = "saldo-bersama-backup.json") => gzipWithOriginalName(
+  Buffer.from(JSON.stringify(snapshot), "utf8"),
+  fileName,
+).toString("base64");
 
 export const decodeBackup = (base64) => {
   try {

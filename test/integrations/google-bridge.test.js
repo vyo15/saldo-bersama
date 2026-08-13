@@ -197,14 +197,17 @@ test("status integrasi membedakan queue, hasil sukses, dan kesiapan resource Goo
   process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/example/exec";
   process.env.GOOGLE_BRIDGE_SHARED_SECRET = "g".repeat(64);
   try {
-    const db = {
-      all: async () => [
-        { provider: "sheets", status: "pending", count: 2, last_updated_at: "2026-08-08T03:00:00.000Z", last_completed_at: null },
-        { provider: "sheets", status: "completed", count: 3, last_updated_at: "2026-08-08T03:04:00.000Z", last_completed_at: "2026-08-08T03:04:00.000Z" },
-        { provider: "sheets", status: "failed", count: 1, last_updated_at: "2026-08-08T03:06:00.000Z", last_completed_at: null },
-        { provider: "sheets", status: "dead_letter", count: 1, last_updated_at: "2026-08-08T03:07:00.000Z", last_completed_at: null },
-      ],
-    };
+    const providerRows = [
+      { provider: "sheets", status: "pending", count: 2, last_updated_at: "2026-08-08T03:00:00.000Z", last_completed_at: null },
+      { provider: "sheets", status: "completed", count: 3, last_updated_at: "2026-08-08T03:04:00.000Z", last_completed_at: "2026-08-08T03:04:00.000Z" },
+      { provider: "sheets", status: "failed", count: 1, last_updated_at: "2026-08-08T03:06:00.000Z", last_completed_at: null },
+      { provider: "sheets", status: "dead_letter", count: 1, last_updated_at: "2026-08-08T03:07:00.000Z", last_completed_at: null },
+    ];
+    const backupRows = [{
+      backup_id: "backup-latest", backup_type: "manual", external_file_id: "drive-file", file_name: "backup-latest.json.gz",
+      schema_version: 9, status: "verified", created_at: "2026-08-08T03:02:00.000Z", verified_at: "2026-08-08T03:03:00.000Z", error_code: null,
+    }];
+    const db = { batch: async () => [{ rows: providerRows }, { rows: backupRows }] };
     const fetchImpl = async () => ({
       ok: true,
       text: async () => JSON.stringify({ ok: true, data: {
@@ -232,6 +235,10 @@ test("status integrasi membedakan queue, hasil sukses, dan kesiapan resource Goo
       lastUpdatedAt: "2026-08-08T03:07:00.000Z",
       lastCompletedAt: "2026-08-08T03:04:00.000Z",
       lastFailureAt: "2026-08-08T03:07:00.000Z",
+    });
+    assert.deepEqual(status.driveBackup, {
+      backupId: "backup-latest", backupType: "manual", fileId: "drive-file", fileName: "backup-latest.json.gz",
+      schemaVersion: 9, status: "verified", createdAt: "2026-08-08T03:02:00.000Z", verifiedAt: "2026-08-08T03:03:00.000Z", errorCode: null,
     });
   } finally {
     if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
@@ -287,6 +294,22 @@ test("full snapshot sukses menyupersede failed dan dead_letter lama tanpa mengha
   }
 });
 
+test("status tanpa health probe tidak menganggap provider Google siap hanya dari environment", async () => {
+  const { presentIntegrationStatus } = await import("../../api/_lib/services/integrations.js");
+  const previous = { url: process.env.GOOGLE_BRIDGE_WEB_APP_URL, secret: process.env.GOOGLE_BRIDGE_SHARED_SECRET };
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/example/exec";
+  process.env.GOOGLE_BRIDGE_SHARED_SECRET = "i".repeat(64);
+  try {
+    const status = await presentIntegrationStatus([], null, []);
+    assert.equal(status.bridge.configured, true);
+    assert.equal(status.bridge.checked, false);
+    assert.deepEqual(status.configured, { sheets: false, calendar: false, drive: false });
+  } finally {
+    if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL; else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET; else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
+  }
+});
+
 test("status integrasi fail closed ketika health bridge tidak dapat dijangkau", async () => {
   const { integrationStatus } = await import("../../api/_lib/services/integrations.js");
   const previous = {
@@ -305,6 +328,92 @@ test("status integrasi fail closed ketika health bridge tidak dapat dijangkau", 
     assert.equal(status.bridge.reachable, false);
     assert.equal(status.bridge.errorCode, "GOOGLE_BRIDGE_UNAVAILABLE");
     assert.deepEqual(status.configured, { sheets: false, calendar: false, drive: false });
+  } finally {
+    if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
+    else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET;
+    else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
+  }
+});
+
+
+
+test("bridge memulihkan MESSAGE_EXPIRED sekali memakai clock offset liveness deployment", async () => {
+  const { callGoogleBridge } = await import("../../api/_lib/services/integrations.js");
+  const previous = {
+    url: process.env.GOOGLE_BRIDGE_WEB_APP_URL,
+    secret: process.env.GOOGLE_BRIDGE_SHARED_SECRET,
+  };
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/example/exec";
+  process.env.GOOGLE_BRIDGE_SHARED_SECRET = "c".repeat(64);
+  const remoteOffsetMs = 5 * 60_000;
+  let postCount = 0;
+  let getCount = 0;
+  const fetchImpl = async (_url, options = {}) => {
+    if (options.method === "GET") {
+      getCount += 1;
+      return {
+        ok: true,
+        text: async () => JSON.stringify({
+          ok: true,
+          service: "saldo-bersama-google-bridge",
+          version: 3,
+          timestamp: new Date(Date.now() + remoteOffsetMs).toISOString(),
+        }),
+      };
+    }
+    postCount += 1;
+    const request = JSON.parse(options.body);
+    const message = JSON.parse(request.message);
+    const expired = Math.abs((Date.now() + remoteOffsetMs) - Number(message.timestamp || 0)) > 120_000;
+    return {
+      ok: true,
+      text: async () => JSON.stringify(expired
+        ? { ok: false, error: { code: "MESSAGE_EXPIRED", message: "Pesan bridge kedaluwarsa.", status: 401 } }
+        : { ok: true, data: { backupConfigured: true } }),
+    };
+  };
+  try {
+    const result = await callGoogleBridge("integration.health", {}, { fetchImpl });
+    assert.equal(result.backupConfigured, true);
+    assert.equal(postCount, 2);
+    assert.equal(getCount, 1);
+  } finally {
+    if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
+    else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET;
+    else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
+  }
+});
+
+test("health status membawa diagnosis deployment tanpa membocorkan URL atau secret", async () => {
+  const { integrationStatus } = await import("../../api/_lib/services/integrations.js");
+  const previous = {
+    url: process.env.GOOGLE_BRIDGE_WEB_APP_URL,
+    secret: process.env.GOOGLE_BRIDGE_SHARED_SECRET,
+  };
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/example/exec";
+  process.env.GOOGLE_BRIDGE_SHARED_SECRET = "d".repeat(64);
+  const fetchImpl = async (_url, options = {}) => {
+    if (options.method === "GET") {
+      return {
+        ok: true,
+        text: async () => JSON.stringify({ ok: true, service: "saldo-bersama-google-bridge", version: 2, timestamp: new Date().toISOString() }),
+      };
+    }
+    return {
+      ok: true,
+      text: async () => JSON.stringify({ ok: false, error: { code: "UNKNOWN_ACTION", message: "Action bridge tidak dikenali.", status: 404 } }),
+    };
+  };
+  try {
+    const status = await integrationStatus({ all: async () => [] }, { action: "integrations.status", fetchImpl });
+    assert.equal(status.bridge.reachable, false);
+    assert.equal(status.bridge.errorCode, "UNKNOWN_ACTION");
+    assert.equal(status.bridge.liveness.errorCode, "GOOGLE_BRIDGE_DEPLOYMENT_STALE");
+    assert.equal(status.bridge.liveness.version, 2);
+    assert.equal(JSON.stringify(status).includes("script.google.com"), false);
+    assert.equal(JSON.stringify(status).includes("d".repeat(64)), false);
   } finally {
     if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
     else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;

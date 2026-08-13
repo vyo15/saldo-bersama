@@ -11,7 +11,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-FIN-005` | Idempotency + audit append-only | Implemented | internal transaction replay + external pre-side-effect reservation + restore reservation preservation + private-memory frontend mutation intent + integrity-run idempotency + audit triggers | Full Node 24 guard/browser gate pada patch terbaru |
 | `REQ-FIN-006` | Optimistic row version | Implemented | version guards/conflict tests | Multi-device smoke |
 | `REQ-SEC-001`–`REQ-SEC-002` | Auth/authorization | Implemented | `security.js`, session, ownership query | Real Administrator/Member smoke |
-| `REQ-DATA-001`–`REQ-DATA-002` | Turso/recovery | Implemented | migration, maintenance services | Restore drill nyata |
+| `REQ-DATA-001`–`REQ-DATA-002` | Turso/recovery | Implemented | migration, cumulative all-or-nothing import preview/apply, safety backup, guarded restore, integrity verification, maintenance recovery | Restore drill nyata |
 | `REQ-OFFLINE-001` | Offline write deny | Implemented | service worker/front-end guards | Device smoke |
 | `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
 | `REQ-UX-001` | UI states | Implemented | feedback components/pages + shared responsive view model | Production/device smoke |

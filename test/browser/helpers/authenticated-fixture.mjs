@@ -323,7 +323,7 @@ const alerts = Object.freeze([
 export const bootstrapFixture = Object.freeze({
   accounts,
   categories,
-  config: { schemaVersion: 8, timezone: "Asia/Jakarta", maintenanceMode: false },
+  config: { schemaVersion: 9, timezone: "Asia/Jakarta", maintenanceMode: false },
 });
 
 export const overviewFixture = Object.freeze({
@@ -431,8 +431,33 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
       { user_id: memberSession.uid, email: memberSession.email, name: memberSession.name, role: "member", status: "active", is_current: session.uid === memberSession.uid, row_version: 1 },
     ] },
     "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
-    "system.health": { status: "ok", schemaVersion: 8, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR", integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
-    "integrations.status": { configured: { sheets: false, calendar: false, drive: true }, providers: { sheets: {}, calendar: {}, drive: {} } },
+    "archive.list": { accounts: [], categories: [], envelopeRules: [], goals: [], recurringRules: [], budgets: [] },
+    "import.preview": {
+      previewToken: "browser-import-preview", acceptable: false, validCount: 1,
+      invalid: [{ index: 1, code: "CATEGORY_NOT_FOUND", message: "Kategori import tidak valid." }], duplicates: [],
+      impact: { income: 0, refund: 0, expense: 125000, transfer: 0 },
+    },
+    "restore.preview": {
+      previewToken: "browser-restore-preview", fileName: "saldo-bersama-full-v9-browser.json.gz",
+      createdAt: "2026-08-13T04:15:00.000Z", schemaVersion: 9,
+      tables: { transactions: 18, accounts: 3, categories: 8, users: 2, envelope_rules: 4, savings_goals: 2, recurring_rules: 3, budgets: 5, audit_log: 42 },
+    },
+    "system.health": {
+      status: "ok", schemaVersion: 9, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR",
+      integrations: { configured: { sheets: false, calendar: false, drive: false }, providers: {}, bridge: { configured: true, checked: false }, driveBackup: null },
+    },
+    "integrations.status": {
+      configured: { sheets: true, calendar: true, drive: true },
+      providers: { sheets: {}, calendar: {}, drive: {} },
+      bridge: {
+        configured: true, checked: true, reachable: true,
+        health: { mirrorConfigured: true, calendarConfigured: true, backupConfigured: true, jobsConfigured: true, triggerReady: true },
+      },
+      driveBackup: {
+        backupId: "backup-browser", backupType: "manual", fileId: "drive-browser-backup", fileName: "saldo-bersama-full-v9-browser.json.gz",
+        schemaVersion: 9, status: "verified", createdAt: "2026-08-13T04:15:00.000Z", verifiedAt: "2026-08-13T04:16:00.000Z", errorCode: null,
+      },
+    },
     "reset.status": {
       checkedAt: "2026-08-13T04:00:00.000Z", outcome: "idle", requiresAttention: false, canStartNewIntent: true,
       maintenanceMode: false, intent: null, backup: null, committedReset: null,

@@ -8,6 +8,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { createSecureRandomId } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import MaintenanceRecoveryPanel from "./MaintenanceRecoveryPanel.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { isSettingsOutcomeUnknownError, runSettingsAction } from "./settings.api.js";
@@ -60,6 +61,27 @@ const RESET_ACKNOWLEDGEMENTS = Object.freeze([
 
 const RESET_RECOVERY_STORAGE_KEY = "saldo-bersama:reset-recovery";
 const formatCount = (value) => Number(value || 0).toLocaleString("id-ID");
+
+const ResetStepHeader = ({ number, icon: Icon, title, description }) => (
+  <div className={styles.resetStepHeader}>
+    <span className={styles.resetStepNumber}>{number}</span>
+    <div><h2>{title}</h2><p>{description}</p></div>
+    <span className={styles.resetStepIcon}><Icon aria-hidden="true" /></span>
+  </div>
+);
+
+const intentStateLabel = (value) => ({
+  processing: "Sedang diproses",
+  unknown: "Belum pasti",
+  completed: "Selesai",
+  missing: "Tidak ditemukan",
+}[value] || "Tidak ada");
+
+const backupStateLabel = (value) => ({
+  verified: "Terverifikasi",
+  pending: "Diproses",
+  failed: "Gagal",
+}[value] || "Belum ada");
 
 const readRecoveryToken = () => {
   if (typeof window === "undefined") return null;
@@ -159,6 +181,7 @@ const ResetSafetyPreflight = ({ resource, readiness }) => (
     <span>
       <strong>Safety backup Google Drive</strong>
       <small>{backupStatusText(readiness, resource.status)}</small>
+      {readiness.errorCode ? <small>Kode diagnosis: {readiness.errorCode}</small> : null}
     </span>
     <span className={`status-badge status-badge--${readiness.tone}`}>{readiness.label}</span>
   </div>
@@ -168,58 +191,37 @@ const resetStatusPresentation = (status) => {
   const presentations = {
     processing: ["warning", "Operasi sebelumnya masih diproses", "Jangan kirim reset baru. Periksa status lagi sampai hasilnya pasti."],
     recovery_required: ["danger", "Mode pemulihan aktif", "Integrity check wajib lulus sebelum maintenance dapat dibuka kembali."],
-    not_committed: ["warning", "Reset sebelumnya tidak tercatat berhasil", "Aman untuk memulai intent baru hanya setelah preview data diperbarui."],
-    committed: ["success", "Reset sebelumnya sudah terkonfirmasi", "Audit dan safety backup menunjukkan operasi sudah commit. Jangan kirim reset yang sama lagi."],
+    not_committed: ["warning", "Status operasi sebelumnya belum pasti", "Periksa data terbaru sebelum membuat intent pembersihan baru."],
   };
   return presentations[status?.outcome] || null;
 };
 
-const ResetRecoveryPanel = ({ status, statusBusy, recoveryBusy, onCheck, onRecover, onReloadPreview }) => {
+const ResetRecoveryPanel = ({ status, statusBusy, onCheck, onReloadPreview }) => {
   const presentation = resetStatusPresentation(status);
   if (!presentation) return null;
   const [tone, title, text] = presentation;
   return (
     <Card className={`${styles.resetRecoveryCard} ${styles[`resetRecoveryCard_${tone}`] || ""}`}>
-      <div className="panel__header">
+      <div className={styles.resetRecoveryHeader}>
+        <span className={styles.resetRecoveryIcon}><FiAlertTriangle aria-hidden="true" /></span>
         <div><h2>{title}</h2><p>{text}</p></div>
-        <FiAlertTriangle aria-hidden="true" />
       </div>
       <div className={styles.resetRecoveryMeta}>
-        <div><span>Status intent</span><strong>{status.intent?.state || "Tidak ada"}</strong></div>
-        <div><span>Maintenance</span><strong>{status.maintenanceMode ? "Aktif" : "Tidak aktif"}</strong></div>
-        <div><span>Safety backup</span><strong>{status.backup?.status || "Belum ada"}</strong></div>
+        <div><span>Status intent</span><strong>{intentStateLabel(status.intent?.state)}</strong></div>
+        <div><span>Maintenance</span><strong>{status.maintenanceMode ? "Aktif" : "Normal"}</strong></div>
+        <div><span>Safety backup</span><strong>{backupStateLabel(status.backup?.status)}</strong></div>
       </div>
       <div className={styles.resetRecoveryActions}>
-        <Button type="button" icon={FiRefreshCw} loading={statusBusy} onClick={onCheck}>Periksa status lagi</Button>
-        {status.outcome === "recovery_required" ? <Button type="button" variant="danger" icon={FiShield} loading={recoveryBusy} onClick={onRecover}>Periksa integritas & pulihkan</Button> : null}
-        {status.outcome === "not_committed" ? <Button type="button" variant="primary" icon={FiDatabase} onClick={onReloadPreview}>Periksa data testing lagi</Button> : null}
+        <Button type="button" icon={FiRefreshCw} loading={statusBusy} onClick={onCheck}>Periksa status</Button>
+        {status.outcome === "not_committed" ? <Button type="button" variant="primary" icon={FiDatabase} onClick={onReloadPreview}>Buat preview baru</Button> : null}
       </div>
     </Card>
   );
 };
 
-const ResetDataPage = () => {
-  const { user } = useAuth();
-  const ownerMode = user?.role === "owner";
-  const { invalidate, refreshAll } = useFinance();
-  const [recoveryToken, setRecoveryToken] = useState(readRecoveryToken);
-  const integrationsResource = useApiResource("integrations.status", {}, { enabled: ownerMode });
-  const resetStatusResource = useApiResource("reset.status", recoveryToken ? {
-    idempotencyKey: recoveryToken.idempotencyKey,
-  } : {}, { enabled: ownerMode });
-  const [preview, setPreview] = useState(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-  const [applyBusy, setApplyBusy] = useState(false);
-  const [applyError, setApplyError] = useState(null);
-  const [confirmationOpen, setConfirmationOpen] = useState(false);
+const useResetRecovery = ({ setRecoveryToken, integrationsResource, resetStatusResource, invalidate, refreshAll }) => {
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [result, setResult] = useState(null);
-
-  const driveReadiness = integrationProviderPresentation(integrationsResource.data || {}, "drive");
-  const driveReady = integrationsResource.status === "ready" && !integrationsResource.refreshError && driveReadiness.ready;
-  const resetStatus = resetStatusResource.data || null;
-  const resetStatusVerified = resetStatusResource.status === "ready" && !resetStatusResource.refreshError;
-  const statusBlocksReset = !resetStatusVerified || resetStatus?.canStartNewIntent === false || resetStatus?.maintenanceMode;
 
   const clearRecovery = () => {
     storeRecoveryToken(null);
@@ -228,8 +230,6 @@ const ResetDataPage = () => {
 
   const refreshAfterCommittedReset = async (status) => {
     clearRecovery();
-    setConfirmationOpen(false);
-    setPreview(null);
     invalidate(RESET_INVALIDATIONS);
     await Promise.allSettled([refreshAll(), integrationsResource.reload()]);
     const committed = status?.committedReset || {};
@@ -242,31 +242,23 @@ const ResetDataPage = () => {
 
   const handleCheckedStatus = async (status) => {
     if (!status) return;
+    const messages = {
+      processing: ["warning", "Reset sebelumnya masih diproses. Jangan kirim operasi baru. Periksa status lagi beberapa saat kemudian."],
+      recovery_required: ["danger", "Mode pemulihan aktif. Jalankan integrity check dari panel recovery sebelum melakukan perubahan lain."],
+      not_committed: ["warning", "Reset sebelumnya tidak tercatat sebagai commit. Jalankan preview baru sebelum mencoba pembersihan dengan intent baru."],
+    };
     if (status.outcome === "committed") {
       await refreshAfterCommittedReset(status);
       return;
     }
-    if (status.outcome === "processing") {
-      setResult({ status: "warning", text: "Reset sebelumnya masih diproses. Jangan kirim operasi baru. Periksa status lagi beberapa saat kemudian." });
-      return;
-    }
-    if (status.outcome === "recovery_required") {
-      setResult({ status: "danger", text: "Mode pemulihan aktif. Jalankan integrity check dari panel recovery sebelum melakukan perubahan lain." });
-      return;
-    }
-    if (status.outcome === "not_committed") {
-      clearRecovery();
-      setPreview(null);
-      setResult({ status: "warning", text: "Reset sebelumnya tidak tercatat sebagai commit. Jalankan preview baru sebelum mencoba pembersihan dengan intent baru." });
-      return;
-    }
-    setResult({ status: "success", text: "Tidak ada operasi reset yang sedang menunggu kepastian." });
+    if (status.outcome === "not_committed") clearRecovery();
+    const message = messages[status.outcome];
+    setResult(message ? { status: message[0], text: message[1] } : { status: "success", text: "Tidak ada operasi reset yang sedang menunggu kepastian." });
   };
 
   const checkResetStatus = async () => {
     try {
-      const status = await resetStatusResource.reload();
-      await handleCheckedStatus(status);
+      await handleCheckedStatus(await resetStatusResource.reload());
     } catch (error) {
       setResult({ status: "danger", text: error.message });
     }
@@ -293,15 +285,25 @@ const ResetDataPage = () => {
     }
   };
 
+  return { recoveryBusy, result, setResult, clearRecovery, refreshAfterCommittedReset, handleCheckedStatus, checkResetStatus, recoverMaintenance };
+};
+
+const useResetPreview = ({ recoveryToken, resetStatusResource, integrationsResource, refreshAfterCommittedReset, setResult }) => {
+  const [preview, setPreview] = useState(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+
   const loadPreview = async () => {
     setPreviewBusy(true);
     setResult({ status: "loading", text: "Memeriksa status reset, kesiapan backup, dan seluruh data testing..." });
     try {
       const [status, integrations] = await Promise.all([resetStatusResource.reload(), integrationsResource.reload()]);
-      if (status?.outcome === "committed" && status?.intent?.state === "unknown") {
+      if (recoveryToken && status?.outcome === "committed") {
+        setPreview(null);
         await refreshAfterCommittedReset(status);
+        return;
       }
-      if (status?.canStartNewIntent === false || status?.outcome === "processing" || status?.outcome === "recovery_required" || status?.maintenanceMode) {
+      const blocked = status?.canStartNewIntent === false || status?.outcome === "processing" || status?.outcome === "recovery_required" || status?.maintenanceMode;
+      if (blocked) {
         setPreview(null);
         setResult({ status: "danger", text: "Pembersihan baru diblokir sampai status operasi sebelumnya dan maintenance selesai dipastikan." });
         return;
@@ -309,13 +311,12 @@ const ResetDataPage = () => {
       const currentDriveReadiness = integrationProviderPresentation(integrations || {}, "drive");
       const data = await runSettingsAction("reset.preview", {}, { force: true });
       setPreview(data);
+      const hasRows = Number(data.summary?.totalRows || 0) > 0;
+      const readyText = `Preview siap. ${formatCount(data.summary?.totalRows)} baris data testing dapat dibersihkan dan safety backup Google Drive sudah siap.`;
+      const blockedText = `Preview siap, tetapi pembersihan diblokir karena safety backup Google Drive belum terverifikasi. ${currentDriveReadiness.text}`;
       setResult({
         status: currentDriveReadiness.ready ? "success" : "warning",
-        text: data.summary?.totalRows
-          ? currentDriveReadiness.ready
-            ? `Preview siap. ${formatCount(data.summary.totalRows)} baris data testing dapat dibersihkan dan safety backup Google Drive sudah siap.`
-            : `Preview siap, tetapi pembersihan diblokir karena safety backup Google Drive belum terverifikasi. ${currentDriveReadiness.text}`
-          : "Tidak ada data aktivitas atau sisa proses testing yang perlu dibersihkan.",
+        text: hasRows ? (currentDriveReadiness.ready ? readyText : blockedText) : "Tidak ada data aktivitas atau sisa proses testing yang perlu dibersihkan.",
       });
     } catch (error) {
       setPreview(null);
@@ -325,32 +326,66 @@ const ResetDataPage = () => {
     }
   };
 
+  return { preview, setPreview, previewBusy, loadPreview };
+};
+
+const handleResetApplyError = async ({
+  error, clearRecovery, resetStatusResource, setConfirmationOpen, setPreview, setResult, setApplyError, handleCheckedStatus,
+}) => {
+  if (isSettingsOutcomeUnknownError(error)) {
+    setConfirmationOpen(false);
+    setPreview(null);
+    setResult({ status: "warning", text: "Hasil pembersihan belum dapat dipastikan. Jangan kirim ulang. Gunakan Periksa status operasi untuk merekonsiliasi hasilnya." });
+    resetStatusResource.reload().catch(() => {});
+    return;
+  }
+  clearRecovery();
+  const checkedStatus = await resetStatusResource.reload().catch(() => null);
+  if (checkedStatus?.outcome === "recovery_required" || checkedStatus?.maintenanceMode) {
+    setConfirmationOpen(false);
+    setPreview(null);
+    await handleCheckedStatus(checkedStatus);
+    return;
+  }
+  if (["RESET_PREVIEW_CHANGED", "RESET_NOTHING_TO_CLEAN"].includes(error?.code)) {
+    setConfirmationOpen(false);
+    setPreview(null);
+    setResult({ status: "warning", text: `${error.message} Periksa data testing lagi sebelum melanjutkan.` });
+    return;
+  }
+  setApplyError(error);
+  setResult({ status: "danger", text: error.message });
+};
+
+const useResetApply = ({
+  preview, setPreview, resetStatusResource, integrationsResource, clearRecovery, setRecoveryToken,
+  invalidate, refreshAll, handleCheckedStatus, setResult,
+}) => {
+  const [applyBusy, setApplyBusy] = useState(false);
+  const [applyError, setApplyError] = useState(null);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+
   const applyReset = async (reason, confirmationState) => {
     if (!preview) return;
     setApplyBusy(true);
     setApplyError(null);
+    const idempotencyKey = createSecureRandomId();
+    const recovery = { idempotencyKey, createdAt: new Date().toISOString() };
     const payload = {
       previewFingerprint: preview.previewFingerprint,
       confirmation: confirmationState.confirmation,
       acknowledged: confirmationState.acknowledged,
       reason,
     };
-    const idempotencyKey = createSecureRandomId();
-    const recovery = { idempotencyKey, createdAt: new Date().toISOString() };
     try {
       const [status, integrations] = await Promise.all([resetStatusResource.reload(), integrationsResource.reload()]);
-      if (status?.canStartNewIntent === false || status?.outcome === "processing" || status?.outcome === "recovery_required" || status?.maintenanceMode) {
-        throw new Error("Pembersihan baru diblokir karena operasi sebelumnya belum aman untuk dilanjutkan.");
-      }
+      const blocked = status?.canStartNewIntent === false || status?.outcome === "processing" || status?.outcome === "recovery_required" || status?.maintenanceMode;
+      if (blocked) throw new Error("Pembersihan baru diblokir karena operasi sebelumnya belum aman untuk dilanjutkan.");
       const currentDriveReadiness = integrationProviderPresentation(integrations || {}, "drive");
       if (!currentDriveReadiness.ready) throw new Error(`Safety backup Google Drive belum siap. ${currentDriveReadiness.text}`);
-
       storeRecoveryToken(recovery);
       setRecoveryToken(recovery);
-      const data = await runSettingsAction("reset.apply", payload, {
-        idempotencyKey,
-        newIntent: true,
-      });
+      const data = await runSettingsAction("reset.apply", payload, { idempotencyKey, newIntent: true });
       clearRecovery();
       setConfirmationOpen(false);
       setPreview(null);
@@ -362,104 +397,61 @@ const ResetDataPage = () => {
         fileLink: data.safetyBackupFileId ? `https://drive.google.com/open?id=${encodeURIComponent(data.safetyBackupFileId)}` : null,
       });
     } catch (error) {
-      if (isSettingsOutcomeUnknownError(error)) {
-        setConfirmationOpen(false);
-        setPreview(null);
-        setResult({ status: "warning", text: "Hasil pembersihan belum dapat dipastikan. Jangan kirim ulang. Gunakan Periksa status operasi untuk merekonsiliasi hasilnya." });
-        resetStatusResource.reload().catch(() => {});
-      } else {
-        clearRecovery();
-        const checkedStatus = await resetStatusResource.reload().catch(() => null);
-        if (checkedStatus?.outcome === "recovery_required" || checkedStatus?.maintenanceMode) {
-          setConfirmationOpen(false);
-          setPreview(null);
-          await handleCheckedStatus(checkedStatus);
-        } else if (["RESET_PREVIEW_CHANGED", "RESET_NOTHING_TO_CLEAN"].includes(error?.code)) {
-          setConfirmationOpen(false);
-          setPreview(null);
-          setResult({ status: "warning", text: `${error.message} Periksa data testing lagi sebelum melanjutkan.` });
-        } else {
-          setApplyError(error);
-          setResult({ status: "danger", text: error.message });
-        }
-      }
+      await handleResetApplyError({ error, clearRecovery, resetStatusResource, setConfirmationOpen, setPreview, setResult, setApplyError, handleCheckedStatus });
     } finally {
       setApplyBusy(false);
     }
   };
 
-  const hasResettableData = Number(preview?.summary?.totalRows || 0) > 0;
-  const canOpenReset = hasResettableData && driveReady && !previewBusy && !statusBlocksReset;
+  return { applyBusy, applyError, setApplyError, confirmationOpen, setConfirmationOpen, applyReset };
+};
+
+const ResetDataPage = () => {
+  const { user } = useAuth();
+  const ownerMode = user?.role === "owner";
+  const { invalidate, refreshAll } = useFinance();
+  const [recoveryToken, setRecoveryToken] = useState(readRecoveryToken);
+  const integrationsResource = useApiResource("integrations.status", {}, { enabled: ownerMode });
+  const resetStatusResource = useApiResource("reset.status", recoveryToken ? { idempotencyKey: recoveryToken.idempotencyKey } : {}, { enabled: ownerMode });
+  const recovery = useResetRecovery({ setRecoveryToken, integrationsResource, resetStatusResource, invalidate, refreshAll });
+  const previewState = useResetPreview({ recoveryToken, resetStatusResource, integrationsResource, refreshAfterCommittedReset: recovery.refreshAfterCommittedReset, setResult: recovery.setResult });
+  const apply = useResetApply({ preview: previewState.preview, setPreview: previewState.setPreview, resetStatusResource, integrationsResource, clearRecovery: recovery.clearRecovery, setRecoveryToken, invalidate, refreshAll, handleCheckedStatus: recovery.handleCheckedStatus, setResult: recovery.setResult });
+
+  const driveReadiness = integrationProviderPresentation(integrationsResource.data || {}, "drive");
+  const driveReady = integrationsResource.status === "ready" && !integrationsResource.refreshError && driveReadiness.ready;
+  const resetStatus = resetStatusResource.data || null;
+  const resetStatusVerified = resetStatusResource.status === "ready" && !resetStatusResource.refreshError;
+  const statusBlocksReset = !resetStatusVerified || resetStatus?.canStartNewIntent === false || resetStatus?.maintenanceMode;
+  const hasResettableData = Number(previewState.preview?.summary?.totalRows || 0) > 0;
+  const canOpenReset = hasResettableData && driveReady && !previewState.previewBusy && !statusBlocksReset;
 
   return (
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="reset-data-title">
-        <div className={styles.pageHeading}>
-          <h2 id="reset-data-title">Bersihkan data testing</h2>
-          <p>Kosongkan data trial/error dalam satu proses tanpa menghapus master, akses pengguna, audit, atau recovery.</p>
-        </div>
-
-        <SettingsNotice result={result} />
-
-        <ResetRecoveryPanel
-          status={resetStatus}
-          statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing}
-          recoveryBusy={recoveryBusy}
-          onCheck={checkResetStatus}
-          onRecover={recoverMaintenance}
-          onReloadPreview={loadPreview}
-        />
-
+        <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Bersihkan data testing</h2><p>Hapus data trial secara terarah. Rekening, kategori, pengguna, audit, dan recovery tetap dipertahankan.</p></div>
+        <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
+        <ResetRecoveryPanel status={resetStatus} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
+        <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetStatus?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan maintenance aktif. Integrity check wajib lulus sebelum perubahan data dibuka kembali." />
         {resetStatusResource.status === "error" || resetStatusResource.refreshError ? (
-          <div className="notice notice--danger" role="alert">
-            <FiAlertTriangle aria-hidden="true" />
-            <span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau intent baru.</span>
-            <Button type="button" icon={FiRefreshCw} loading={resetStatusResource.isRefreshing} onClick={checkResetStatus}>Periksa status operasi</Button>
-          </div>
+          <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau intent baru.</span><Button type="button" icon={FiRefreshCw} loading={resetStatusResource.isRefreshing} onClick={recovery.checkResetStatus}>Periksa status operasi</Button></div>
         ) : null}
-
-        <div className="notice notice--warning" role="note">
-          <FiShield aria-hidden="true" />
-          <span><strong>Satu database aktif.</strong> Gunakan fitur ini hanya selama seluruh data finansial yang tersimpan masih data testing. Setelah transaksi nyata mulai digunakan, jangan lakukan pembersihan massal.</span>
-        </div>
-
-        <Card className="panel">
-          <div className="panel__header">
-            <div><h2>1. Periksa data</h2><p>Preview memisahkan data finansial, sisa proses trial, dan queue sistem hasil reset agar hitungannya tidak menyesatkan.</p></div>
-            <FiRefreshCw aria-hidden="true" />
-          </div>
-          <Button variant="primary" icon={FiRefreshCw} loading={previewBusy} disabled={statusBlocksReset} onClick={loadPreview}>Periksa data testing</Button>
-          {preview ? <ResetPreview preview={preview} /> : null}
+        <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode pra-go-live.</strong> Gunakan hanya ketika seluruh data finansial masih data testing. Setelah transaksi nyata digunakan, pembersihan massal harus dihentikan.</span></div>
+        <Card className={`panel ${styles.resetStepCard}`}>
+          <ResetStepHeader number="1" icon={FiRefreshCw} title="Periksa data" description="Lihat tepatnya data finansial dan proses trial yang akan dibersihkan." />
+          <Button variant="primary" icon={FiRefreshCw} loading={previewState.previewBusy} disabled={statusBlocksReset} onClick={previewState.loadPreview}>Periksa data testing</Button>
+          {previewState.preview ? <ResetPreview preview={previewState.preview} /> : null}
         </Card>
-
-        <Card className="panel">
-          <div className="panel__header">
-            <div><h2>2. Verifikasi safety backup</h2><p>Google Drive harus lolos health check sebelum tombol destructive dapat digunakan.</p></div>
-            <FiHardDrive aria-hidden="true" />
-          </div>
+        <Card className={`panel ${styles.resetStepCard}`}>
+          <ResetStepHeader number="2" icon={FiHardDrive} title="Verifikasi safety backup" description="Google Drive wajib siap sebelum operasi destructive dapat dimulai." />
           <ResetSafetyPreflight resource={integrationsResource} readiness={driveReadiness} />
-          {!driveReady ? <div className="notice notice--warning"><span>Reset tetap diblokir sampai safety backup siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</span></div> : null}
+          {!driveReady ? <div className={styles.resetInlineWarning}><span>Safety backup belum siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</span></div> : null}
         </Card>
-
-        <Card className="panel">
-          <div className="panel__header">
-            <div><h2>3. Bersihkan sekaligus</h2><p>Setelah preview dan backup siap, server membuat safety backup, mengunci maintenance, purge atomik, integrity check, lalu audit.</p></div>
-            <FiTrash2 aria-hidden="true" />
-          </div>
-          <div className="notice notice--info">
-            <span>Jika koneksi terputus, jangan kirim ulang. Aplikasi akan memeriksa idempotency, audit, backup, dan maintenance untuk memastikan hasil operasi terlebih dahulu.</span>
-          </div>
-          <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { setApplyError(null); setConfirmationOpen(true); }}>Bersihkan data testing</Button>
+        <Card className={`panel ${styles.resetStepCard} ${styles.resetDangerStep}`}>
+          <ResetStepHeader number="3" icon={FiTrash2} title="Bersihkan sekaligus" description="Server membuat backup, mengunci maintenance, membersihkan data, memeriksa integritas, lalu menulis audit." />
+          <div className={styles.resetSafeHint}><FiShield aria-hidden="true" /><span>Jika koneksi terputus, jangan kirim ulang. Gunakan pemeriksaan status agar operasi yang sama tidak berjalan dua kali.</span></div>
+          <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Bersihkan data testing</Button>
         </Card>
-
-        <ResetConfirmationModal
-          preview={preview}
-          open={confirmationOpen}
-          busy={applyBusy}
-          error={applyError}
-          onCancel={() => { if (!applyBusy) { setConfirmationOpen(false); setApplyError(null); } }}
-          onConfirm={applyReset}
-        />
+        <ResetConfirmationModal preview={previewState.preview} open={apply.confirmationOpen} busy={apply.applyBusy} error={apply.applyError} onCancel={() => { if (!apply.applyBusy) { apply.setConfirmationOpen(false); apply.setApplyError(null); } }} onConfirm={apply.applyReset} />
       </section>
     </OwnerSettingsGuard>
   );

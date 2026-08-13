@@ -81,11 +81,11 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(reconciliation, /sudah dipilih otomatis/);
   assert.match(reconciliation, /consumeAttention\(\)/);
   assert.match(recurring, /attentionOccurrenceId/);
-  assert.match(recurring, /payments\.openPayment\(item\)/);
+  assert.match(recurring, /openPayment\(item\)/);
   assert.match(recurring, /consumeAttention\(\)/);
   assert.match(recurringActions, /const openPayment = useCallback/);
   assert.match(goals, /attentionGoalId/);
-  assert.match(goals, /movement\.openMovement\(goal, "deposit"\)/);
+  assert.match(goals, /openMovement\(goal, "deposit"\)/);
   assert.match(goals, /const openMovement = useCallback/);
   assert.match(goals, /consumeAttention\(\)/);
   assert.match(budgets, /attentionBudgetId/);

@@ -555,7 +555,9 @@ test("import, restore, dan integrity recovery menjalankan dependency hasil pemec
         payload: {
           previewToken: restorePreview.previewToken,
           backupFileId: backup.fileId,
-          confirmation: "RESTORE SALDO BERSAMA"
+          confirmation: "RESTORE SALDO BERSAMA",
+          acknowledged: true,
+          reason: "Memulihkan backup uji service"
         },
         requestId: "test:restore-apply",
         idempotencyKey: "test-restore-apply",
@@ -568,7 +570,9 @@ test("import, restore, dan integrity recovery menjalankan dependency hasil pemec
         payload: {
           previewToken: restorePreview.previewToken,
           backupFileId: backup.fileId,
-          confirmation: "RESTORE SALDO BERSAMA"
+          confirmation: "RESTORE SALDO BERSAMA",
+          acknowledged: true,
+          reason: "Memulihkan backup uji service"
         },
         requestId: "test:restore-apply-replay",
         idempotencyKey: "test-restore-apply",

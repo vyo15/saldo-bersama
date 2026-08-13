@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import { canonicalJson } from "../../api/_lib/services/core.js";
-import { digest, insertRows, normalizeRestoredRows, snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
+import { decodeBackup, digest, encodeBackup, insertRows, normalizeRestoredRows, snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const maintenanceSource = async () => {
@@ -23,6 +23,17 @@ test("backup memakai snapshot transaction, checksum, gzip limit, nama unik, dan 
   assert.match(maintenance, /callGoogleBridge\("backup\.store"/);
 });
 
+test("gzip backup menyimpan nama JSON internal agar Google Drive tidak menampilkan item Unknown", () => {
+  const payload = { manifest: { format: "saldo-bersama-backup" }, tables: {}, checksum: "test" };
+  const innerName = "saldo-bersama-backup-v9-20260813T081139Z-bc0c2716.json";
+  const compressed = Buffer.from(encodeBackup(payload, innerName), "base64");
+  assert.equal(compressed[3] & 0x08, 0x08, "gzip wajib memiliki FNAME metadata");
+  const nameEnd = compressed.indexOf(0, 10);
+  assert.ok(nameEnd > 10, "nama file internal gzip harus diakhiri null byte");
+  assert.equal(compressed.subarray(10, nameEnd).toString("latin1"), innerName);
+  assert.deepEqual(decodeBackup(compressed.toString("base64")), payload);
+});
+
 test("restore melakukan preview, safety backup, maintenance fail-closed, transaction, integrity, dan rebuild integration", async () => {
   const maintenance = await maintenanceSource();
   const applyRestoreSource = maintenance.slice(maintenance.indexOf("export const applyRestore"));
@@ -36,6 +47,8 @@ test("restore melakukan preview, safety backup, maintenance fail-closed, transac
   assert.match(maintenance, /enqueueIntegration\(tx, "sheets", "rebuild"/);
   assert.match(maintenance, /enqueueIntegration\(tx, "calendar", "rebuild"/);
   assert.match(maintenance, /status='applied',result_json=/);
+  assert.match(maintenance, /previewUpdate\.rowsAffected !== 1/);
+  assert.match(maintenance, /maintenanceUpdate\.rowsAffected !== 1/);
 });
 
 test("restore menghapus queue dan push credential lama, mempertahankan audit, serta mengikat identitas ke konfigurasi aktif", async () => {

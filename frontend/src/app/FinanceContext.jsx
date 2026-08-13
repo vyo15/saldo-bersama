@@ -1,13 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "../services/api/client.js";
 import { useAuth } from "../features/auth/AuthContext.jsx";
+import { beginFinanceRequest, createFinanceRequestEpoch, finishFinanceResource, hasPendingFinanceRequest, invalidateFinanceSession, requestOwnsAnyFinanceResource, requestOwnsFinanceResource } from "./financeRequestEpoch.js";
 
 const FinanceContext = createContext(null);
 const INITIAL_ACTIONS = ["app.initialState", "bootstrap.get", "dashboard.overview"];
 
 const authenticated = (authStatus, user) => authStatus === "authenticated" && Boolean(user);
 const snapshotReady = (bootstrapRef, overviewRef) => Boolean(bootstrapRef.current && overviewRef.current);
-const requestStillCurrent = (requestSequence, sequence) => requestSequence.current === sequence;
 
 const seedOverviewCollections = (overview, { includePeriod = false } = {}) => {
   const envelopes = { items: overview?.envelopes || [] };
@@ -40,12 +40,12 @@ const useFinanceStore = () => {
   const [bootstrap, setBootstrap] = useState(null);
   const [overview, setOverview] = useState(null);
   const [state, setState] = useState({ status: "idle", error: null, refreshError: null });
-  const requestSequence = useRef(0);
+  const requestEpoch = useRef(createFinanceRequestEpoch());
   const bootstrapRef = useRef(null);
   const overviewRef = useRef(null);
 
   const clearFinanceState = useCallback(() => {
-    requestSequence.current += 1;
+    invalidateFinanceSession(requestEpoch.current);
     apiClient.invalidate(INITIAL_ACTIONS);
     bootstrapRef.current = null;
     overviewRef.current = null;
@@ -55,23 +55,29 @@ const useFinanceStore = () => {
   }, []);
 
   const controls = useMemo(() => ({
-    setBootstrap, setOverview, setState, requestSequence, bootstrapRef, overviewRef,
+    setBootstrap, setOverview, setState, requestEpoch, bootstrapRef, overviewRef,
   }), []);
   return { bootstrap, overview, state, controls, clearFinanceState };
 };
 
 const useInitialFinanceLoad = (authStatus, user, controls) => useCallback(async ({ force = false } = {}) => {
   if (!authenticated(authStatus, user)) return null;
-  const sequence = controls.requestSequence.current + 1;
-  controls.requestSequence.current = sequence;
+  const token = beginFinanceRequest(controls.requestEpoch.current, ["bootstrap", "overview"]);
   setInitialLoadingState(controls);
   try {
     const initial = await apiClient.request("app.initialState", {}, { force });
-    if (!requestStillCurrent(controls.requestSequence, sequence)) return initial;
-    applyInitialFinanceState(controls, initial);
+    const ownsBootstrap = requestOwnsFinanceResource(controls.requestEpoch.current, token, "bootstrap");
+    const ownsOverview = requestOwnsFinanceResource(controls.requestEpoch.current, token, "overview");
+    if (!ownsBootstrap && !ownsOverview) return initial;
+    applyInitialFinanceState(controls, initial, { ownsBootstrap, ownsOverview });
+    if (ownsBootstrap) finishFinanceResource(controls.requestEpoch.current, token, "bootstrap");
+    if (ownsOverview) finishFinanceResource(controls.requestEpoch.current, token, "overview");
+    settleFinanceLoadState(controls);
     return initial;
   } catch (error) {
-    if (!requestStillCurrent(controls.requestSequence, sequence)) return null;
+    if (!requestOwnsAnyFinanceResource(controls.requestEpoch.current, token)) return null;
+    if (requestOwnsFinanceResource(controls.requestEpoch.current, token, "bootstrap")) finishFinanceResource(controls.requestEpoch.current, token, "bootstrap");
+    if (requestOwnsFinanceResource(controls.requestEpoch.current, token, "overview")) finishFinanceResource(controls.requestEpoch.current, token, "overview");
     applyFinanceLoadError(controls, error);
     throw error;
   }
@@ -81,22 +87,36 @@ const setInitialLoadingState = (controls) => {
   controls.setState(nextLoadState(snapshotReady(controls.bootstrapRef, controls.overviewRef)));
 };
 
-const applyInitialFinanceState = (controls, initial) => {
-  apiClient.seed("bootstrap.get", {}, initial.bootstrap);
-  apiClient.seed("dashboard.overview", {}, initial.overview);
-  seedOverviewCollections(initial.overview, { includePeriod: true });
-  controls.bootstrapRef.current = initial.bootstrap;
-  controls.overviewRef.current = initial.overview;
-  controls.setBootstrap(initial.bootstrap);
-  controls.setOverview(initial.overview);
+const applyInitialFinanceState = (controls, initial, { ownsBootstrap, ownsOverview }) => {
+  if (ownsBootstrap) {
+    apiClient.seed("bootstrap.get", {}, initial.bootstrap);
+    controls.bootstrapRef.current = initial.bootstrap;
+    controls.setBootstrap(initial.bootstrap);
+  }
+  if (ownsOverview) {
+    apiClient.seed("dashboard.overview", {}, initial.overview);
+    seedOverviewCollections(initial.overview, { includePeriod: true });
+    controls.overviewRef.current = initial.overview;
+    controls.setOverview(initial.overview);
+  }
+};
+
+const settleFinanceLoadState = (controls) => {
+  if (hasPendingFinanceRequest(controls.requestEpoch.current)) {
+    controls.setState(nextLoadState(snapshotReady(controls.bootstrapRef, controls.overviewRef)));
+    return;
+  }
   controls.setState({ status: "ready", error: null, refreshError: null });
 };
 
 const applyFinanceLoadError = (controls, error) => {
   const hasCurrentData = snapshotReady(controls.bootstrapRef, controls.overviewRef);
-  if (!hasCurrentData) {
-    controls.setBootstrap(null);
-    controls.setOverview(null);
+  if (hasPendingFinanceRequest(controls.requestEpoch.current)) {
+    controls.setState({
+      ...nextLoadState(Boolean(controls.bootstrapRef.current || controls.overviewRef.current)),
+      refreshError: error,
+    });
+    return;
   }
   controls.setState(loadFailureState(hasCurrentData, error));
 };
@@ -104,43 +124,45 @@ const applyFinanceLoadError = (controls, error) => {
 const useFinanceRefreshers = (authStatus, user, controls, loadInitialState) => {
   const refreshOverview = useCallback(async () => {
     if (!authenticated(authStatus, user)) return null;
-    const sequence = controls.requestSequence.current + 1;
-    controls.requestSequence.current = sequence;
+    const token = beginFinanceRequest(controls.requestEpoch.current, ["overview"]);
     apiClient.invalidate(["dashboard.overview", "app.initialState"]);
     controls.setState(nextLoadState(Boolean(controls.overviewRef.current)));
     try {
       const nextOverview = await apiClient.request("dashboard.overview", {}, { force: true });
-      if (!requestStillCurrent(controls.requestSequence, sequence)) return nextOverview;
+      if (!requestOwnsFinanceResource(controls.requestEpoch.current, token, "overview")) return nextOverview;
       apiClient.seed("dashboard.overview", {}, nextOverview);
       seedOverviewCollections(nextOverview, { includePeriod: true });
       controls.overviewRef.current = nextOverview;
       controls.setOverview(nextOverview);
-      controls.setState({ status: "ready", error: null, refreshError: null });
+      finishFinanceResource(controls.requestEpoch.current, token, "overview");
+      settleFinanceLoadState(controls);
       return nextOverview;
     } catch (error) {
-      if (!requestStillCurrent(controls.requestSequence, sequence)) return null;
-      controls.setState(loadFailureState(Boolean(controls.overviewRef.current), error));
+      if (!requestOwnsFinanceResource(controls.requestEpoch.current, token, "overview")) return null;
+      finishFinanceResource(controls.requestEpoch.current, token, "overview");
+      applyFinanceLoadError(controls, error);
       throw error;
     }
   }, [authStatus, controls, user]);
 
   const refreshBootstrap = useCallback(async () => {
     if (!authenticated(authStatus, user)) return null;
-    const sequence = controls.requestSequence.current + 1;
-    controls.requestSequence.current = sequence;
+    const token = beginFinanceRequest(controls.requestEpoch.current, ["bootstrap"]);
     apiClient.invalidate(["bootstrap.get", "accounts.list", "categories.list", "app.initialState"]);
     controls.setState(nextLoadState(Boolean(controls.bootstrapRef.current)));
     try {
       const nextBootstrap = await apiClient.request("bootstrap.get", {}, { force: true });
-      if (!requestStillCurrent(controls.requestSequence, sequence)) return nextBootstrap;
+      if (!requestOwnsFinanceResource(controls.requestEpoch.current, token, "bootstrap")) return nextBootstrap;
       apiClient.seed("bootstrap.get", {}, nextBootstrap);
       controls.bootstrapRef.current = nextBootstrap;
       controls.setBootstrap(nextBootstrap);
-      controls.setState({ status: "ready", error: null, refreshError: null });
+      finishFinanceResource(controls.requestEpoch.current, token, "bootstrap");
+      settleFinanceLoadState(controls);
       return nextBootstrap;
     } catch (error) {
-      if (!requestStillCurrent(controls.requestSequence, sequence)) return null;
-      controls.setState(loadFailureState(Boolean(controls.bootstrapRef.current), error));
+      if (!requestOwnsFinanceResource(controls.requestEpoch.current, token, "bootstrap")) return null;
+      finishFinanceResource(controls.requestEpoch.current, token, "bootstrap");
+      applyFinanceLoadError(controls, error);
       throw error;
     }
   }, [authStatus, controls, user]);

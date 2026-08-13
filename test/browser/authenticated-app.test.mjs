@@ -451,6 +451,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan/integrasi", "Pengaturan", { mobile: true });
     assert.equal(await page.evaluate("document.querySelectorAll('h3').length >= 3 && document.body.textContent.includes('Google Sheets') && document.body.textContent.includes('Google Calendar') && document.body.textContent.includes('Google Drive')"), true, "Sheets, Calendar, dan safety backup Google Drive harus tampil pada route integrasi.");
+    assert.equal(await page.evaluate("document.body.textContent.includes('Terverifikasi') && document.body.textContent.includes('saldo-bersama-full-v9-browser.json.gz')"), true, "Tile Google Drive harus mengambil aktivitas backup terverifikasi dari backup_runs, bukan queue mirror.");
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan/anggota", "Pengaturan", { mobile: true });
     const memberPageState = await page.evaluate(`(() => {
@@ -551,6 +552,84 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
         `${expected} harus dapat dijangkau pada route Pengaturan terpisah.`,
       );
     }
+
+    await navigateAndAssert(page, appServer.origin, "/pengaturan/import", "Pengaturan", { mobile: true });
+    const importFileReady = await page.evaluate(`(() => {
+      const input = document.querySelector('input[type="file"]');
+      if (!input) return false;
+      const records = [{
+        transaction_date: '2026-08-05', transaction_type: 'expense', source_account_id: 'acc-shared-bank',
+        category_id: 'cat-food', amount: 125000, description: 'Browser import preview'
+      }];
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([JSON.stringify(records)], 'browser-import.json', { type: 'application/json' }));
+      input.files = transfer.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    assert.equal(importFileReady, true, "Fixture import harus dapat mengisi file input tanpa filesystem eksternal.");
+    await page.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent.includes('Preview import'))?.click()`);
+    await waitFor(
+      () => page.evaluate(`document.body.textContent.includes('Tidak ada partial import')`),
+      { description: "preview import unacceptable tampil" },
+    );
+    const importGuardState = await page.evaluate(`(() => ({
+      hasApply: [...document.querySelectorAll('button')].some((button) => button.textContent.includes('Terapkan import')),
+      hasConfirmation: [...document.querySelectorAll('input')].some((input) => input.getAttribute('placeholder') === 'IMPORT TRANSAKSI'),
+      showsInvalid: document.body.textContent.includes('Kategori import tidak valid'),
+      showsImpact: document.body.textContent.includes('Total pengeluaran'),
+    }))()`);
+    assert.equal(importGuardState.hasApply, false, "Preview import unacceptable tidak boleh menawarkan tombol apply.");
+    assert.equal(importGuardState.hasConfirmation, false, "Preview import unacceptable tidak boleh meminta frasa apply.");
+    assert.equal(importGuardState.showsInvalid, true, "UI import harus menjelaskan baris invalid.");
+    assert.equal(importGuardState.showsImpact, true, "UI import harus menampilkan dampak kumulatif.");
+
+    await navigateAndAssert(page, appServer.origin, "/pengaturan/pemulihan", "Pengaturan", { mobile: true });
+    const restoreFileIdSet = await page.evaluate(`(() => {
+      const input = [...document.querySelectorAll('input')].find((item) => item.closest('label')?.textContent.includes('Google Drive file ID'));
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      if (!input || !setter) return false;
+      setter.call(input, 'drive-browser-backup');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    assert.equal(restoreFileIdSet, true, "Fixture restore harus dapat mengisi Google Drive file ID.");
+    await waitFor(
+      () => page.evaluate(`[...document.querySelectorAll('button')].some((button) => button.textContent.includes('Validasi dan preview') && !button.disabled)`),
+      { description: "status backend restore terverifikasi" },
+    );
+    await page.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent.includes('Validasi dan preview'))?.click()`);
+    await waitFor(
+      () => page.evaluate(`document.body.textContent.includes('saldo-bersama-full-v9-browser.json.gz')`),
+      { description: "preview restore terverifikasi tampil" },
+    );
+    const restorePreviewState = await page.evaluate(`(() => ({
+      hasFile: document.body.textContent.includes('saldo-bersama-full-v9-browser.json.gz'),
+      hasSchema: document.body.textContent.includes('v9'),
+      hasTransactions: document.body.textContent.includes('Transaksi') && document.body.textContent.includes('18'),
+      hasAudit: document.body.textContent.includes('Audit log') && document.body.textContent.includes('42'),
+    }))()`);
+    assert.equal(restorePreviewState.hasFile, true, "Restore preview harus menampilkan nama file backup.");
+    assert.equal(restorePreviewState.hasSchema, true, "Restore preview harus menampilkan schema backup.");
+    assert.equal(restorePreviewState.hasTransactions, true, "Restore preview harus menampilkan jumlah transaksi.");
+    assert.equal(restorePreviewState.hasAudit, true, "Restore preview harus menampilkan jumlah audit.");
+    await page.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent.includes('Tinjau & terapkan restore'))?.click()`);
+    await waitFor(() => page.evaluate(`document.querySelector('[role="dialog"]')?.textContent?.includes('RESTORE SALDO BERSAMA') || false`), { description: "modal restore guarded terbuka" });
+    const restoreGuardState = await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      return {
+        checkboxCount: dialog?.querySelectorAll('input[type="checkbox"]').length || 0,
+        hasReason: [...(dialog?.querySelectorAll('textarea') || [])].some((input) => input.closest('label')?.textContent.includes('Alasan restore')),
+        hasPhrase: [...(dialog?.querySelectorAll('input') || [])].some((input) => input.getAttribute('placeholder') === 'RESTORE SALDO BERSAMA'),
+        confirmDisabled: [...(dialog?.querySelectorAll('button') || [])].find((button) => button.textContent.includes('Tunggu') || button.textContent.includes('Pulihkan backup'))?.disabled ?? false,
+      };
+    })()`);
+    assert.equal(restoreGuardState.checkboxCount, 3, "Restore full harus meminta tiga acknowledgement eksplisit.");
+    assert.equal(restoreGuardState.hasReason, true, "Restore full harus meminta alasan.");
+    assert.equal(restoreGuardState.hasPhrase, true, "Restore full harus meminta frasa exact.");
+    assert.equal(restoreGuardState.confirmDisabled, true, "CTA restore harus terkunci sebelum syarat destructive terpenuhi.");
+    await page.evaluate(`document.querySelector('[role="dialog"] button[aria-label="Tutup dialog"]')?.click()`);
 
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     if (await page.evaluate(`document.documentElement.dataset.theme !== "light"`)) {

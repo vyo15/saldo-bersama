@@ -137,7 +137,7 @@ test("restore apply mewajibkan confirmation dan dapat replay hasil preview appli
       (error) => error.code === "CONFIRMATION_REQUIRED",
     );
     await assert.rejects(
-      () => applyRestore(db, context(owner, "restore.apply", { confirmation: "RESTORE SALDO BERSAMA", previewToken: "missing" })),
+      () => applyRestore(db, context(owner, "restore.apply", { confirmation: "RESTORE SALDO BERSAMA", acknowledged: true, reason: "Uji restore aman", previewToken: "missing" })),
       (error) => error.code === "RESTORE_PREVIEW_EXPIRED",
     );
 
@@ -148,7 +148,7 @@ test("restore apply mewajibkan confirmation dan dapat replay hasil preview appli
       ["applied-restore", "restore-backup", owner.user_id, "checksum", "{}", "applied", canonicalJson(replayResult), nowIso(), "2099-01-01T00:00:00.000Z", nowIso()],
     );
     assert.deepEqual(
-      await applyRestore(db, context(owner, "restore.apply", { confirmation: "RESTORE SALDO BERSAMA", previewToken: "applied-restore" })),
+      await applyRestore(db, context(owner, "restore.apply", { confirmation: "RESTORE SALDO BERSAMA", acknowledged: true, reason: "Uji replay restore", previewToken: "applied-restore" })),
       replayResult,
     );
   } finally {

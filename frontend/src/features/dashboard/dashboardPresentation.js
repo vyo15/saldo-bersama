@@ -37,79 +37,97 @@ const alertPeriod = (alert) => {
   return /^\d{4}-\d{2}$/.test(candidate) ? candidate : "";
 };
 
-export const dashboardAlertGuidance = (alert = {}) => {
-  const entityId = alertEntityId(alert);
-  const config = ALERT_TARGETS[alert.type];
-  const to = safeTargetPath(alert, config?.fallbackPath || "/");
-  const baseState = { attentionSource: "dashboard", attentionType: alert.type || "unknown" };
+const guidance = ({ instruction, actionLabel, to, baseState, state = {} }) => ({
+  instruction,
+  actionLabel,
+  to,
+  state: { ...baseState, ...state },
+});
 
-  switch (alert.type) {
-    case "reconciliation_difference":
-      return {
-        instruction: "Masukkan saldo rekening yang benar saat ini. Rekening akan dipilih otomatis agar Anda tidak perlu mencarinya lagi.",
-        actionLabel: "Cocokkan saldo",
-        to,
-        state: { ...baseState, ...(entityId ? { accountId: entityId } : {}) },
-      };
-    case "reconciliation_stale":
-      return {
-        instruction: "Cek saldo sebenarnya di bank atau uang tunai Anda, lalu masukkan nilainya untuk memastikan catatan aplikasi masih sesuai.",
-        actionLabel: "Cek saldo sekarang",
-        to,
-        state: { ...baseState, ...(entityId ? { accountId: entityId } : {}) },
-      };
-    case "unallocated_expense": {
-      const period = alertPeriod(alert);
-      return {
-        instruction: "Pilih pengeluaran yang belum memiliki kantong, buka Edit, lalu tentukan alokasi seperti Makan, Bensin, Rumah, atau jatah lainnya.",
-        actionLabel: "Pilih alokasi",
-        to,
-        state: { ...baseState, allocation: "unallocated", ...(period ? { period } : {}) },
-      };
-    }
-    case "budget_threshold":
-      return {
-        instruction: alert.severity === "danger" ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah batas hanya jika rencana anggarannya memang berubah." : "Periksa pemakaian kategori ini dan pastikan sisa anggaran cukup sampai akhir periode.",
-        actionLabel: "Periksa anggaran",
-        to,
-        state: { ...baseState, ...(entityId ? { attentionBudgetId: entityId } : {}) },
-      };
-    case "envelope_threshold":
-      return {
-        instruction: alert.severity === "danger" ? "Periksa transaksi pada kantong ini karena jatah sudah habis atau terlampaui." : "Periksa sisa jatah sebelum membuat pengeluaran berikutnya dari kantong ini.",
-        actionLabel: "Periksa alokasi",
-        to,
-        state: { ...baseState, ...(entityId ? { attentionEnvelopeId: entityId } : {}) },
-      };
-    case "recurring_overdue":
-      return {
-        instruction: "Jika tagihan sudah dibayar, catat pembayaran aktual sekarang. Jika belum, periksa nominal dan rekening sebelum melanjutkan.",
-        actionLabel: "Catat pembayaran",
-        to,
-        state: { ...baseState, ...(entityId ? { attentionOccurrenceId: entityId } : {}), attentionAction: "payment" },
-      };
-    case "recurring_due":
-      return {
-        instruction: "Periksa tagihan yang akan jatuh tempo. Jika sudah dibayar lebih awal, catat aktualnya agar saldo dan jadwal tetap sinkron.",
-        actionLabel: "Buka tagihan ini",
-        to,
-        state: { ...baseState, ...(entityId ? { attentionOccurrenceId: entityId } : {}) },
-      };
-    case "goal_behind":
-      return {
-        instruction: "Target berada di bawah ritme rencana. Tambahkan dana jika kondisi keuangan memungkinkan; jangan mengambil dana dari rekening yang tidak sesuai.",
-        actionLabel: "Tambah dana target",
-        to,
-        state: { ...baseState, ...(entityId ? { attentionGoalId: entityId } : {}), attentionAction: "deposit" },
-      };
-    default:
-      return {
-        instruction: "Buka bagian terkait untuk melihat data yang perlu diperiksa sebelum mengambil tindakan.",
-        actionLabel: "Buka tindakan",
-        to,
-        state: baseState,
-      };
-  }
+const entityState = (key, value) => (value ? { [key]: value } : {});
+
+const ALERT_GUIDANCE_BUILDERS = Object.freeze({
+  reconciliation_difference: ({ to, baseState, entityId }) => guidance({
+    instruction: "Masukkan saldo rekening yang benar saat ini. Rekening akan dipilih otomatis agar Anda tidak perlu mencarinya lagi.",
+    actionLabel: "Cocokkan saldo",
+    to,
+    baseState,
+    state: entityState("accountId", entityId),
+  }),
+  reconciliation_stale: ({ to, baseState, entityId }) => guidance({
+    instruction: "Cek saldo sebenarnya di bank atau uang tunai Anda, lalu masukkan nilainya untuk memastikan catatan aplikasi masih sesuai.",
+    actionLabel: "Cek saldo sekarang",
+    to,
+    baseState,
+    state: entityState("accountId", entityId),
+  }),
+  unallocated_expense: ({ alert, to, baseState }) => {
+    const period = alertPeriod(alert);
+    return guidance({
+      instruction: "Pilih pengeluaran yang belum memiliki kantong, buka Edit, lalu tentukan alokasi seperti Makan, Bensin, Rumah, atau jatah lainnya.",
+      actionLabel: "Pilih alokasi",
+      to,
+      baseState,
+      state: { allocation: "unallocated", ...entityState("period", period) },
+    });
+  },
+  budget_threshold: ({ alert, to, baseState, entityId }) => guidance({
+    instruction: alert.severity === "danger"
+      ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah batas hanya jika rencana anggarannya memang berubah."
+      : "Periksa pemakaian kategori ini dan pastikan sisa anggaran cukup sampai akhir periode.",
+    actionLabel: "Periksa anggaran",
+    to,
+    baseState,
+    state: entityState("attentionBudgetId", entityId),
+  }),
+  envelope_threshold: ({ alert, to, baseState, entityId }) => guidance({
+    instruction: alert.severity === "danger"
+      ? "Periksa transaksi pada kantong ini karena jatah sudah habis atau terlampaui."
+      : "Periksa sisa jatah sebelum membuat pengeluaran berikutnya dari kantong ini.",
+    actionLabel: "Periksa alokasi",
+    to,
+    baseState,
+    state: entityState("attentionEnvelopeId", entityId),
+  }),
+  recurring_overdue: ({ to, baseState, entityId }) => guidance({
+    instruction: "Jika tagihan sudah dibayar, catat pembayaran aktual sekarang. Jika belum, periksa nominal dan rekening sebelum melanjutkan.",
+    actionLabel: "Catat pembayaran",
+    to,
+    baseState,
+    state: { ...entityState("attentionOccurrenceId", entityId), attentionAction: "payment" },
+  }),
+  recurring_due: ({ to, baseState, entityId }) => guidance({
+    instruction: "Periksa tagihan yang akan jatuh tempo. Jika sudah dibayar lebih awal, catat aktualnya agar saldo dan jadwal tetap sinkron.",
+    actionLabel: "Buka tagihan ini",
+    to,
+    baseState,
+    state: entityState("attentionOccurrenceId", entityId),
+  }),
+  goal_behind: ({ to, baseState, entityId }) => guidance({
+    instruction: "Target berada di bawah ritme rencana. Tambahkan dana jika kondisi keuangan memungkinkan; jangan mengambil dana dari rekening yang tidak sesuai.",
+    actionLabel: "Tambah dana target",
+    to,
+    baseState,
+    state: { ...entityState("attentionGoalId", entityId), attentionAction: "deposit" },
+  }),
+});
+
+const defaultAlertGuidance = ({ to, baseState }) => guidance({
+  instruction: "Buka bagian terkait untuk melihat data yang perlu diperiksa sebelum mengambil tindakan.",
+  actionLabel: "Buka tindakan",
+  to,
+  baseState,
+});
+
+export const dashboardAlertGuidance = (alert = {}) => {
+  const config = ALERT_TARGETS[alert.type];
+  const context = {
+    alert,
+    entityId: alertEntityId(alert),
+    to: safeTargetPath(alert, config?.fallbackPath || "/"),
+    baseState: { attentionSource: "dashboard", attentionType: alert.type || "unknown" },
+  };
+  return (ALERT_GUIDANCE_BUILDERS[alert.type] || defaultAlertGuidance)(context);
 };
 
 export const formatPeriod = (value) => {

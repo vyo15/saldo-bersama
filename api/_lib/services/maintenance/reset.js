@@ -232,14 +232,24 @@ export const readTrialDataResetStatus = async (db, context) => {
       sql: "SELECT idempotency_key,response_json,request_fingerprint,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='reset.apply' AND expires_at>? ORDER BY created_at DESC LIMIT 12",
       args: [context.actor.user_id, nowIso()],
     };
+  const requestedBackupId = resetBackupIdForIntent(context.actor.user_id, requestedKey);
+  const auditStatement = requestedBackupId
+    ? {
+      sql: `SELECT timestamp,entity_id,previous_value,new_value FROM audit_log
+        WHERE actor_id=? AND action='reset.apply' AND entity_type='maintenance_reset' AND result='success'
+          AND json_valid(new_value)=1 AND json_extract(new_value,'$.safetyBackupId')=?
+        ORDER BY timestamp DESC LIMIT 1`,
+      args: [context.actor.user_id, requestedBackupId],
+    }
+    : {
+      sql: "SELECT timestamp,entity_id,previous_value,new_value FROM audit_log WHERE actor_id=? AND action='reset.apply' AND entity_type='maintenance_reset' AND result='success' ORDER BY timestamp DESC LIMIT 12",
+      args: [context.actor.user_id],
+    };
   const statusStatements = [
     ...RESET_COUNT_STATEMENTS,
     { sql: "SELECT value FROM system_config WHERE key='maintenance_mode'", args: [] },
     intentStatement,
-    {
-      sql: "SELECT timestamp,entity_id,previous_value,new_value FROM audit_log WHERE actor_id=? AND action='reset.apply' AND entity_type='maintenance_reset' AND result='success' ORDER BY timestamp DESC LIMIT 12",
-      args: [context.actor.user_id],
-    },
+    auditStatement,
   ];
   const resultRows = await readBatchRows(db, statusStatements);
   const counts = mapResetCountRows(resultRows.slice(0, RESET_COUNT_STATEMENTS.length));
@@ -252,7 +262,7 @@ export const readTrialDataResetStatus = async (db, context) => {
   const auditRows = resultRows[offset + 2] || [];
   const intent = decodeIdempotency(intentRow);
   const effectiveKey = intentRow?.idempotency_key || requestedKey || "";
-  const expectedBackupId = resetBackupIdForIntent(context.actor.user_id, effectiveKey);
+  const expectedBackupId = requestedBackupId || resetBackupIdForIntent(context.actor.user_id, effectiveKey);
   const auditRow = matchingResetAudit(auditRows, expectedBackupId);
   const audit = resetAuditDetails(auditRow);
   const completed = intent.state === "completed" && intent.result?.reset === true ? intent.result : null;

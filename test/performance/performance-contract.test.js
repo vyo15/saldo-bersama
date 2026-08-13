@@ -346,9 +346,10 @@ test("status sistem dan notifikasi tidak memecah read independen ke beberapa pip
     const healthDb = {
       async batch(statements) {
         healthNetwork += 1;
-        assert.equal(statements.length, 2);
+        assert.equal(statements.length, 3);
         return [
           { rows: [{ key: "schema_version", value: "9" }, { key: "maintenance_mode", value: "false" }, { key: "timezone", value: "Asia/Jakarta" }, { key: "currency", value: "IDR" }] },
+          { rows: [] },
           { rows: [] },
         ];
       },

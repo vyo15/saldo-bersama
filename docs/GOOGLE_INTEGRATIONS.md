@@ -43,7 +43,26 @@ Kriteria readiness:
 
 Health check bersifat read-only terhadap resource Google. Jika health check gagal, UI harus menampilkan belum siap/gangguan dan tidak menjalankan sinkronisasi. Secret, resource ID, endpoint internal, dan payload finansial tetap tidak dikembalikan ke browser.
 
+Backend melakukan liveness GET terhadap deployment `/exec` untuk membaca identitas bridge, versi deployment, dan waktu Apps Script sebelum/bersamaan dengan signed health. Bila signed request ditolak dengan `MESSAGE_EXPIRED`, backend hanya melakukan satu recovery aman: membaca timestamp liveness dari deployment Google yang tervalidasi, menghitung clock offset, lalu mengirim ulang request dengan nonce baru dan HMAC baru. Replay guard Apps Script tetap aktif. Mekanisme ini menangani jam komputer development yang melenceng tanpa memperlebar window verifikasi HMAC. Jika retry masih gagal, provider tetap fail-closed.
+
+UI menampilkan kode diagnosis aman ketika bridge tidak sehat. Kode yang perlu diperhatikan antara lain `MESSAGE_EXPIRED`, `INVALID_SIGNATURE`, `UNKNOWN_ACTION`, `GOOGLE_BRIDGE_DEPLOYMENT_STALE`, `GOOGLE_BRIDGE_TIMEOUT`, dan `GOOGLE_BRIDGE_UNAVAILABLE`. Kode tersebut tidak memuat URL, secret, resource ID, atau payload finansial.
+
+`system.health` tidak melakukan probe jaringan ke Google agar halaman Pengaturan tetap ringan. Karena itu provider Google pada response `system.health` tidak boleh dianggap health-verified hanya dari environment. Readiness resource yang dapat mengaktifkan tindakan Google harus berasal dari `integrations.status`, yang melakukan probe bridge teredaksi.
+
 Queue tetap dibedakan menjadi `pending`, `processing`, `failed`, `dead_letter`, dan `completed`. Untuk Sheets/Calendar, successful full snapshot `system:sync`/`system:rebuild` menyupersede kegagalan lama yang terjadi sebelum snapshot tersebut: row historis tetap tersimpan di `integration_outbox`, tetapi tidak lagi dihitung sebagai `failed`/`dead_letter` aktif. Kegagalan yang lebih baru dari full snapshot terakhir tetap tampil sebagai masalah aktif. `lastCompletedAt` selalu berasal dari `completed_at`.
+
+## Troubleshooting health bridge
+
+Gunakan `npm run diagnose` pada komputer tepercaya setelah `.env.local` canonical tersedia. Diagnostic tidak mencetak nilai secret. Output Google membedakan liveness deployment dan signed `integration.health`.
+
+- `MESSAGE_EXPIRED`: biasanya clock runtime development berbeda lebih dari dua menit. Runtime sekarang mencoba koreksi otomatis menggunakan timestamp liveness Apps Script. Tetap sinkronkan jam Windows/NTP agar seluruh tooling konsisten.
+- `INVALID_SIGNATURE`: `GOOGLE_BRIDGE_SHARED_SECRET` Vercel/Development tidak sama dengan Apps Script Properties.
+- `UNKNOWN_ACTION` atau `GOOGLE_BRIDGE_DEPLOYMENT_STALE`: source Apps Script mungkin sudah di-push tetapi deployment `/exec` masih versi lama. Buat **New version** pada deployment existing.
+- `GOOGLE_BRIDGE_TIMEOUT`: Apps Script tidak merespons dalam batas health check. Coba ulang sekali; jika berulang, cek execution log dan deployment.
+- `GOOGLE_BRIDGE_UNAVAILABLE`: endpoint `/exec` tidak dapat dijangkau dari runtime server.
+- `GOOGLE_BRIDGE_URL_INVALID`: environment server tidak menunjuk ke URL HTTPS `script.google.com/macros/s/.../exec` canonical.
+
+Jangan mem-bypass safety-backup guard pada reset/restore/import hanya untuk melewati health error. Pulihkan bridge lalu ulang health check.
 
 ## Google Sheets mirror
 
@@ -69,6 +88,8 @@ Tab mirror canonical: Ringkasan, Transaksi, Rekening, Kategori, Anggaran, Kanton
 ## Google Drive backup
 
 Backup teknis berupa JSON terkompresi dengan manifest, schema version, row counts, dan checksum. Nama canonical adalah `saldo-bersama-backup-v<schema>-YYYYMMDDTHHMMSSZ-<8hex>.json.gz`; validator bridge harus version-aware dan tidak boleh hardcode versi schema lama. Nama unik tidak overwrite; nama sama dengan checksum/backup ID berbeda ditolak. Excel tidak digunakan untuk restore.
+
+Aktivitas Google Drive pada UI berasal dari `backup_runs`, bukan `integration_outbox`, karena backup ditulis langsung melalui bridge. UI menampilkan backup teknis terbaru beserta status verified/completed/pending/failed, waktu, nama file, dan error code teredaksi bila ada.
 
 ## Script Properties
 
