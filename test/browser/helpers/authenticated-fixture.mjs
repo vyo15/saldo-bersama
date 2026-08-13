@@ -227,23 +227,48 @@ const recurring = Object.freeze([
   {
     recurring_rule_id: "rec-rent",
     occurrence_id: "occ-rent-2026-08",
+    period_key: periodKey,
     name: "Kontrakan",
+    kind: "expense",
     transaction_type: "expense",
-    amount: 1_000_000,
-    due_date: "2026-08-10",
-    frequency: "monthly",
-    source_account_id: "acc-shared-bank",
     category_id: "cat-home",
-    owner_scope: "shared",
-    status: "pending",
-    occurrence_status: "pending",
+    expected_amount: 1_300_000,
+    actual_amount: 0,
+    due_date: "2026-08-20",
+    frequency: "monthly",
+    rule_due_day: 20,
+    default_account_id: "acc-shared-bank",
+    payment_method: "transfer",
+    auto_debit: false,
+    start_date: "2026-01-20",
+    end_date: null,
+    priority: 1,
+    rule_status: "active",
+    scope: "shared",
+    owner_user_id: null,
+    status: "expected",
+    transaction_ids: "",
     row_version: 1,
+    rule_row_version: 1,
     can_pay: true,
-    can_update: true,
-    can_archive: true,
     can_reverse: false,
+    can_cancel_occurrence: true,
+    can_restore_occurrence: false,
+    can_edit_rule: true,
+    can_archive_rule: true,
   },
 ]);
+
+const recurringForSession = (session) => recurring.map((item) => {
+  const canManage = session.role === "owner";
+  return {
+    ...item,
+    can_cancel_occurrence: canManage && item.can_cancel_occurrence,
+    can_restore_occurrence: canManage && item.can_restore_occurrence,
+    can_edit_rule: canManage && item.can_edit_rule,
+    can_archive_rule: canManage && item.can_archive_rule,
+  };
+});
 
 const goals = Object.freeze([
   {
@@ -262,6 +287,10 @@ const goals = Object.freeze([
     status: "active",
     row_version: 1,
     can_move: true,
+    can_deposit: true,
+    can_withdraw: true,
+    can_complete: false,
+    can_reopen: false,
     can_reverse: false,
     can_update: true,
     can_archive: true,
@@ -390,7 +419,7 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
       };
     },
     "envelopes.list": { items: envelopes },
-    "recurring.list": { items: recurring },
+    "recurring.list": { items: recurringForSession(session) },
     "goals.list": { items: goals },
     "budgets.list": { items: budgets },
     "reports.monthly": { ...reportFixture, overview: sessionOverview },
@@ -403,7 +432,22 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
     ] },
     "audit.list": { items: [{ audit_id: "audit-1", timestamp: "2026-08-02T05:40:00.000Z", actor_email: session.email, action: "transaction.create", entity_type: "transaction", result: "success" }] },
     "system.health": { status: "ok", schemaVersion: 8, maintenanceMode: false, recoveryRequired: false, timezone: "Asia/Jakarta", currency: "IDR", integrations: { configured: { sheets: false, calendar: false }, providers: {} } },
-    "integrations.status": { configured: { sheets: false, calendar: false }, providers: { sheets: {}, calendar: {} } },
+    "integrations.status": { configured: { sheets: false, calendar: false, drive: true }, providers: { sheets: {}, calendar: {}, drive: {} } },
+    "reset.status": {
+      checkedAt: "2026-08-13T04:00:00.000Z", outcome: "idle", requiresAttention: false, canStartNewIntent: true,
+      maintenanceMode: false, intent: null, backup: null, committedReset: null,
+      currentSummary: { totalRows: 2, businessRows: 2, operationalRows: 0 },
+    },
+    "reset.preview": {
+      scope: "prelaunch-testing-data", previewFingerprint: "browser-reset-preview", previewedAt: "2026-08-13T04:00:00.000Z",
+      confirmationPhrase: "BERSIHKAN DATA TESTING",
+      summary: {
+        transactions: 1, reconciliations: 1, goals: 0, goalMovements: 0, budgets: 0, allocationRules: 0, allocationPeriods: 0,
+        allocationMovements: 0, recurringRules: 0, recurringOccurrences: 0, periodClosures: 0, notificationDeliveries: 0,
+        notificationQueue: 0, integrationLinks: 0, integrationOutbox: 0, importPreviews: 0, businessRows: 2, operationalRows: 0, totalRows: 2,
+      },
+      preserved: { accounts: 3, categories: 3, users: 2, audit: 8, backups: 1, pushSubscriptions: 1, notificationPreferences: 7 },
+    },
     "notifications.preferences": {
       items: [
         { type: "recurring_due", enabled: true, row_version: null, source: "default" },

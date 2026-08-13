@@ -283,9 +283,7 @@
 @media (max-width: 767px) {
   .report-period-controls { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .report-period-controls .field { min-width: 0; }
-  .financial-alert-list--dashboard { grid-template-columns: 1fr; }
-  .financial-alert-list--dashboard li:first-child { grid-column: auto; }
-  .financial-alert-list li { align-items: flex-start; }
+  .financial-alert-list--report { grid-template-columns: 1fr; }
   .report-details { border: 1px solid var(--border); border-radius: var(--mobile-card-radius); background: var(--surface-soft); overflow: hidden; }
   .report-details__summary { min-height: 52px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
   .report-details__summary::-webkit-details-marker { display: none; }
@@ -345,7 +343,6 @@
   .transaction-filter-summary { gap: var(--space-1); }
   .transaction-advanced-filter-grid { grid-template-columns: 1fr; }
   .report-period-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .financial-alert-list li { display: grid; }
 }
 
 @media (max-width: 340px) {

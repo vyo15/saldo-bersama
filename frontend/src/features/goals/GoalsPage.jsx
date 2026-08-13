@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FiArchive, FiArrowDown, FiArrowUp, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
-import { useLocation } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -13,6 +12,7 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -190,11 +190,11 @@ const useGoalMovement = ({ accounts, resource, refreshOverview, invalidate, noti
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
   const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
   const compatibleMovementAccounts = filterByOwnership(accounts, goalAccount);
-  const openMovement = (goal, movement_type) => {
+  const openMovement = useCallback((goal, movement_type) => {
     const withdrawal = movement_type === "withdrawal";
     setMovement({ goal, movement_type, amount: "", source_account_id: withdrawal ? goal.account_id || "" : "", destination_account_id: withdrawal ? "" : goal.account_id || "", transaction_date: todayInJakarta(), reason: withdrawal ? "Penggunaan dana target" : "Kontribusi target" });
     setMovementState({ status: "idle", error: null });
-  };
+  }, []);
   const submitMovement = (event) => {
     event.preventDefault();
     if (!movement.goal) return;
@@ -299,7 +299,7 @@ const useGoalLifecycle = ({ resource, refreshOverview, invalidate, notify }) => 
 };
 
 const GoalsPage = () => {
-  const location = useLocation();
+  const { attention, consumeAttention } = useDashboardAttentionState();
   const attentionHandled = useRef(false);
   const resource = useApiResource("goals.list");
   const { bootstrap, refreshOverview, invalidate } = useFinance();
@@ -311,14 +311,14 @@ const GoalsPage = () => {
   const creation = useGoalCreation(shared);
   const movement = useGoalMovement({ ...shared, accounts });
   const lifecycle = useGoalLifecycle(shared);
-  const attentionGoalId = location.state?.attentionSource === "dashboard" ? String(location.state?.attentionGoalId || "") : "";
+  const attentionGoalId = String(attention?.attentionGoalId || "");
   useEffect(() => {
     if (attentionHandled.current || !attentionGoalId || resource.status !== "ready") return;
-    const goal = (resource.data?.items || []).find((item) => item.goal_id === attentionGoalId);
-    if (!goal) return;
     attentionHandled.current = true;
-    if (location.state?.attentionAction === "deposit" && goal.can_deposit) movement.openMovement(goal, "deposit");
-  }, [attentionGoalId, location.state?.attentionAction, movement.openMovement, resource.data?.items, resource.status]);
+    const goal = (resource.data?.items || []).find((item) => item.goal_id === attentionGoalId);
+    if (goal && attention?.attentionAction === "deposit" && goal.can_deposit) movement.openMovement(goal, "deposit");
+    consumeAttention();
+  }, [attention?.attentionAction, attentionGoalId, consumeAttention, movement.openMovement, resource.data?.items, resource.status]);
   if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange };

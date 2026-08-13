@@ -17,7 +17,9 @@ test("allowlist menerima Administrator dan menormalisasinya ke compatibility rol
   assert.equal(authorizeAction({ role: "owner" }, "backup.create"), true);
   assert.equal(authorizeAction({ role: "member" }, "reset.preview"), false);
   assert.equal(authorizeAction({ role: "member" }, "reset.apply"), false);
+  assert.equal(authorizeAction({ role: "member" }, "reset.status"), false);
   assert.equal(authorizeAction({ role: "owner" }, "reset.preview"), true);
+  assert.equal(authorizeAction({ role: "owner" }, "reset.status"), true);
   assert.equal(authorizeAction({ role: "owner" }, "reset.apply"), true);
 }));
 

@@ -31,7 +31,7 @@ const APPROVED_SQL_DELETES = new Map([
   ["api/_lib/services/planning/budgets.js", new Set(["budgets"])],
   ["api/_lib/services/maintenance/import.js", new Set(["import_previews"])],
   ["api/_lib/services/maintenance/restore.js", new Set(["restore_previews", "__RESTORE_DELETE_ORDER__"])],
-  ["api/_lib/services/maintenance/reset.js", new Set(["__RESTORE_DELETE_ORDER__"])],
+  ["api/_lib/services/maintenance/reset.js", new Set(["__RESTORE_DELETE_ORDER__", "integration_outbox"])],
 ]);
 
 const destructiveSqlTargets = (source) => {

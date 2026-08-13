@@ -1,3 +1,4 @@
+import { readBatchRows } from "../../db/readBatchRows.js";
 import {
   budgetListStatement,
   goalListStatements,
@@ -40,14 +41,6 @@ const NATURE_LABELS = Object.freeze({
 });
 
 const ALERT_PRIORITY = Object.freeze({ danger: 3, warning: 2, info: 1 });
-
-const readBatchRows = async (db, statements) => {
-  if (typeof db.batch === "function") {
-    const results = await db.batch(statements);
-    return results.map((result) => result.rows || []);
-  }
-  return Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-};
 
 const addPeriodMonths = (period, offset) => {
   const [year, month] = periodKey(period).split("-").map(Number);

@@ -12,7 +12,7 @@ Runtime lokal membaca `.env.local`, sedangkan deployment cloud memakai Vercel Pr
 
 Keputusan awal bahwa Vercel Development kosong dan `.env.local` tidak ditarik otomatis sudah digantikan oleh ADR-0010. Vercel Development sekarang menjadi sumber bootstrap untuk komputer tepercaya. Runtime lokal tetap tidak pernah menarik secret dari scope Production.
 
-Satu database tetap dipakai. Tidak dibuat database testing kedua. Selama fase pra-go-live, Administrator boleh memakai maintenance action **Bersihkan data testing** untuk mengosongkan aktivitas/perencanaan dan projection/queue testing yang dinyatakan pada preview. Action tersebut wajib Administrator-only, preview + fingerprint, typed confirmation, acknowledgement, safety backup, maintenance lock, purge atomik, integrity check, audit, serta rebuild integrasi.
+Satu database tetap dipakai. Tidak dibuat database testing kedua. Selama fase pra-go-live, Administrator boleh memakai maintenance action **Bersihkan data testing** untuk mengosongkan aktivitas/perencanaan dan projection/queue testing yang dinyatakan pada preview. Action tersebut wajib Administrator-only, preview + fingerprint, typed confirmation, acknowledgement, safety backup, maintenance lock, purge atomik, integrity check, audit, serta rebuild integrasi. Outcome `reset.apply` yang tidak pasti wajib direkonsiliasi melalui read action `reset.status`; retry destructive tidak pernah otomatis, dan maintenance hanya boleh dibuka setelah integrity check lulus.
 
 ## Consequences
 

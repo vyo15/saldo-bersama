@@ -10,7 +10,7 @@ import {
 } from "../services/masterData.js";
 import {
   applyImport, applyRestore, applyTrialDataReset, createTechnicalBackup, integrityWithMaintenanceRecovery, previewImport,
-  previewRestore, previewTrialDataReset,
+  previewRestore, previewTrialDataReset, readTrialDataResetStatus,
 } from "../services/maintenance/index.js";
 import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
 import {
@@ -149,6 +149,7 @@ const ACTION_HANDLERS = Object.freeze({
   "restore.preview": previewRestore,
   "restore.apply": applyRestore,
   "reset.preview": previewTrialDataReset,
+  "reset.status": readTrialDataResetStatus,
   "reset.apply": applyTrialDataReset,
   "integrity.run": integrityWithMaintenanceRecovery,
 });

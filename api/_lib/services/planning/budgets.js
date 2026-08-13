@@ -1,3 +1,4 @@
+import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, monthBounds, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
@@ -153,15 +154,11 @@ const budgetLifecycleDependencyStatement = (budgetId) => ({
   args: [budgetId],
 });
 
-const readBudgetBatchRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-
 export const previewBudgetLifecycle = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};
   const budgetId = p.budget_id;
-  const [currentRows, dependencyRows] = await readBudgetBatchRows(db, [{
+  const [currentRows, dependencyRows] = await readBatchRows(db, [{
     sql: "SELECT * FROM budgets WHERE budget_id=?",
     args: [budgetId],
   }, budgetLifecycleDependencyStatement(budgetId)]);

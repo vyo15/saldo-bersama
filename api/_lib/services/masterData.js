@@ -1,3 +1,4 @@
+import { readBatchRows } from "../db/readBatchRows.js";
 import { appendAudit } from "./audit.js";
 import { accountBalanceAsOf, firstNegativeBalance, mapVisibleAccountRows, visibleAccounts, visibleAccountsStatement } from "./readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "./core.js";
@@ -195,10 +196,6 @@ const categoryLifecyclePreviewStatements = (categoryId) => [{
     (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS active_budgets`,
   args: [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId],
 }];
-
-const readBatchRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
 
 export const listAccounts = async (db, context) => ({ items: await visibleAccounts(db, context.actor) });
 

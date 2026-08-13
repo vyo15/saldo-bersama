@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyTrialDataReset, previewTrialDataReset, TRIAL_RESET_CONFIRMATION } from "../../api/_lib/services/maintenance/reset.js";
+import { applyTrialDataReset, previewTrialDataReset, readTrialDataResetStatus, TRIAL_RESET_CONFIRMATION } from "../../api/_lib/services/maintenance/reset.js";
+import { integrityWithMaintenanceRecovery } from "../../api/_lib/services/maintenance/integrity.js";
 import { decodeBackup } from "../../api/_lib/services/maintenance/shared.js";
 import { nowIso } from "../../api/_lib/services/core.js";
 import { cleanupExpiredEphemeralState } from "../../api/_lib/services/maintenance/housekeeping.js";
@@ -67,12 +68,14 @@ test("bersihkan data testing owner-only, preview-aware, membuat safety backup, p
 
     await db.execute(`INSERT INTO integration_outbox(outbox_id,provider,event_type,entity_type,entity_id,event_key,payload_json,status,attempt_count,next_attempt_at,locked_at,locked_by,last_error_code,last_error_message,created_at,updated_at,completed_at)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["outbox-reset", "sheets", "upsert", "transaction", "tx-reset", "sheets:upsert:transaction:tx-reset", "{}", "pending", 0, nowIso(), null, null, "", "", nowIso(), nowIso(), null]);
+    await db.execute(`INSERT INTO integration_outbox(outbox_id,provider,event_type,entity_type,entity_id,event_key,payload_json,status,attempt_count,next_attempt_at,locked_at,locked_by,last_error_code,last_error_message,created_at,updated_at,completed_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["outbox-system-rebuild", "sheets", "rebuild", "system", "mirror", "sheets:rebuild:system:mirror", JSON.stringify({ reason: "trial-reset", resetId: "older-reset" }), "pending", 0, nowIso(), null, null, "", "", nowIso(), nowIso(), null]);
     await db.execute("INSERT INTO import_previews(preview_id,actor_id,records_json,fingerprint,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,'pending',NULL,NULL,?,?)", ["import-reset", owner.user_id, "[]", "fp-reset", "{}", new Date(Date.now() + 60_000).toISOString(), nowIso()]);
 
     const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
     assert.equal(preview.summary.transactions, 1);
     assert.equal(preview.summary.reconciliations, 1);
-    assert.equal(preview.summary.integrationOutbox, 1);
+    assert.equal(preview.summary.integrationOutbox, 1, "Queue rebuild sistem tidak boleh dihitung sebagai data testing.");
     assert.equal(preview.summary.importPreviews, 1);
     assert.equal(preview.summary.businessRows, 2);
     assert.equal(preview.summary.operationalRows, 2);
@@ -111,6 +114,70 @@ test("bersihkan data testing owner-only, preview-aware, membuat safety backup, p
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='reset.apply'")).count, 1);
     assert.equal((await db.one("SELECT value FROM system_config WHERE key='maintenance_mode'")).value, "false");
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM integration_outbox WHERE event_type='rebuild'")).count, 2);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM integration_outbox WHERE outbox_id='outbox-system-rebuild'")).count, 1, "Queue rebuild canonical hasil reset harus dipertahankan/reuse, bukan dihapus diam-diam.");
+
+    const after = await previewTrialDataReset(db, context(owner, "reset.preview"));
+    assert.equal(after.summary.integrationOutbox, 0, "Queue rebuild hasil reset adalah state sistem dan tidak boleh dihitung sebagai data testing baru.");
+    assert.equal(after.summary.totalRows, 0);
+    await assert.rejects(
+      () => applyTrialDataReset(db, context(owner, "reset.apply", {
+        previewFingerprint: after.previewFingerprint,
+        confirmation: TRIAL_RESET_CONFIRMATION,
+        acknowledged: true,
+        reason: "Tidak ada data lagi",
+      })),
+      (error) => error.code === "RESET_NOTHING_TO_CLEAN",
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test("reset menangani payload outbox legacy yang bukan JSON tanpa menghapus queue rebuild canonical", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const timestamp = nowIso();
+    await db.execute(`INSERT INTO integration_outbox(outbox_id,provider,event_type,entity_type,entity_id,event_key,payload_json,status,attempt_count,next_attempt_at,locked_at,locked_by,last_error_code,last_error_message,created_at,updated_at,completed_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["outbox-invalid-json", "sheets", "upsert", "transaction", "legacy-row", "sheets:upsert:transaction:legacy-row", "{invalid", "pending", 0, timestamp, null, null, "", "", timestamp, timestamp, null]);
+    await db.execute(`INSERT INTO integration_outbox(outbox_id,provider,event_type,entity_type,entity_id,event_key,payload_json,status,attempt_count,next_attempt_at,locked_at,locked_by,last_error_code,last_error_message,created_at,updated_at,completed_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["outbox-canonical-reset", "calendar", "rebuild", "system", "calendar", "calendar:rebuild:system:calendar", JSON.stringify({ reason: "trial-reset", resetId: "existing" }), "pending", 0, timestamp, null, null, "", "", timestamp, timestamp, null]);
+
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
+    assert.equal(preview.summary.integrationOutbox, 1, "Payload legacy invalid tetap dihitung sebagai data testing, bukan dianggap queue sistem.");
+
+    await withBridgeStub(async () => applyTrialDataReset(db, context(owner, "reset.apply", {
+      previewFingerprint: preview.previewFingerprint,
+      confirmation: TRIAL_RESET_CONFIRMATION,
+      acknowledged: true,
+      reason: "Membersihkan data uji",
+    })));
+
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM integration_outbox WHERE outbox_id='outbox-invalid-json'")).count, 0);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM integration_outbox WHERE outbox_id='outbox-canonical-reset'")).count, 1);
+  } finally {
+    db.close();
+  }
+});
+
+test("reset.status memakai count batch dan tidak membaca seluruh row operasional", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const originalBatch = db.batch;
+    const batches = [];
+    db.batch = async (statements) => {
+      batches.push(statements.map((statement) => statement.sql));
+      return originalBatch(statements);
+    };
+
+    const status = await readTrialDataResetStatus(db, context(owner, "reset.status"));
+    assert.equal(status.currentSummary.transactions, 1);
+    assert.ok(batches.length >= 1);
+    const statusSql = batches[0].slice(0, 16).join("\n");
+    assert.doesNotMatch(statusSql, /SELECT \* FROM/i, "Status ringan tidak boleh membaca isi penuh tabel hanya untuk ringkasan.");
+    assert.match(statusSql, /SELECT COUNT\(\*\) AS count FROM ["`]transactions["`]/i);
+    assert.match(statusSql, /SELECT COUNT\(\*\) AS count FROM integration_outbox/i);
   } finally {
     db.close();
   }
@@ -190,6 +257,122 @@ test("preview reset ikut berubah jika sisa operasional berubah", async () => {
       })),
       (error) => error.code === "RESET_PREVIEW_CHANGED",
     );
+  } finally {
+    db.close();
+  }
+});
+
+
+test("reset.status merekonsiliasi outcome unknown dari audit dan safety backup tanpa mengulang reset", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
+    await withBridgeStub(async () => applyTrialDataReset(db, context(owner, "reset.apply", {
+      previewFingerprint: preview.previewFingerprint,
+      confirmation: TRIAL_RESET_CONFIRMATION,
+      acknowledged: true,
+      reason: "Membersihkan data uji",
+    })));
+    const now = nowIso();
+    await db.execute(
+      "INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)",
+      [owner.user_id, "test:reset.apply", "reset.apply", "unknown-reset-fingerprint", null, JSON.stringify({ __idempotency_state: "unknown" }), now, new Date(Date.now() + 60_000).toISOString()],
+    );
+
+    const status = await readTrialDataResetStatus(db, context(owner, "reset.status", { idempotencyKey: "test:reset.apply" }));
+    assert.equal(status.outcome, "committed");
+    assert.equal(status.intent.state, "unknown");
+    assert.equal(status.maintenanceMode, false);
+    assert.equal(status.committedReset.summary.totalRows, 2);
+    assert.equal(status.committedReset.safetyBackupFileId, "drive-reset-backup");
+    assert.equal(status.canStartNewIntent, true);
+
+    const recoveredWithoutClientToken = await readTrialDataResetStatus(db, context(owner, "reset.status"));
+    assert.equal(recoveredWithoutClientToken.outcome, "committed", "Reload browser harus tetap menemukan unresolved reset milik owner dari idempotency server.");
+    assert.equal(recoveredWithoutClientToken.intent.state, "unknown");
+  } finally {
+    db.close();
+  }
+});
+
+test("reset.status membedakan unknown yang tidak commit dan maintenance recovery diaudit", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const now = nowIso();
+    await db.execute(
+      "INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)",
+      [owner.user_id, "unknown-reset", "reset.apply", "unknown-no-commit", null, JSON.stringify({ __idempotency_state: "unknown" }), now, new Date(Date.now() + 60_000).toISOString()],
+    );
+    let status = await readTrialDataResetStatus(db, context(owner, "reset.status", { idempotencyKey: "unknown-reset" }));
+    assert.equal(status.outcome, "not_committed");
+    assert.equal(status.canStartNewIntent, true);
+
+    await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+    status = await readTrialDataResetStatus(db, context(owner, "reset.status", { idempotencyKey: "unknown-reset" }));
+    assert.equal(status.outcome, "recovery_required");
+    assert.equal(status.requiresAttention, true);
+    assert.equal(status.canStartNewIntent, false);
+
+    const recovery = await integrityWithMaintenanceRecovery(db, context(owner, "integrity.run", { clearMaintenance: true }));
+    assert.equal(recovery.ok, true);
+    assert.equal(recovery.maintenanceCleared, true);
+    assert.equal((await db.one("SELECT value FROM system_config WHERE key='maintenance_mode'")).value, "false");
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='maintenance.recover'")).count, 1);
+  } finally {
+    db.close();
+  }
+});
+
+
+test("maintenance recovery rollback jika audit recovery gagal", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+    await db.execute(`CREATE TRIGGER block_maintenance_recovery_audit
+      BEFORE INSERT ON audit_log
+      WHEN NEW.action='maintenance.recover'
+      BEGIN
+        SELECT RAISE(ABORT, 'maintenance recovery audit blocked');
+      END`);
+
+    await assert.rejects(
+      () => integrityWithMaintenanceRecovery(db, context(owner, "integrity.run", { clearMaintenance: true })),
+      /maintenance recovery audit blocked/,
+    );
+    assert.equal(
+      (await db.one("SELECT value FROM system_config WHERE key='maintenance_mode'")).value,
+      "true",
+      "Maintenance tidak boleh terbuka jika audit recovery gagal ditulis.",
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test("reset.status menemukan processing tanpa token client dan mengabaikan histori completed yang sudah definitif", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const created = nowIso();
+    await db.execute(
+      "INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)",
+      [owner.user_id, "completed-reset-old", "reset.apply", "completed-fp", null, JSON.stringify({ reset: true, resetId: "done", resetAt: created, safetyBackupId: "done-backup", summary: { totalRows: 1 } }), created, new Date(Date.now() + 60_000).toISOString()],
+    );
+    let status = await readTrialDataResetStatus(db, context(owner, "reset.status"));
+    assert.equal(status.outcome, "idle", "Histori completed tidak boleh membuat panel recovery muncul terus setelah operasi sudah definitif.");
+
+    const processingAt = new Date(Date.now() + 1_000).toISOString();
+    await db.execute(
+      "INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)",
+      [owner.user_id, "processing-reset", "reset.apply", "processing-fp", null, JSON.stringify({ __idempotency_state: "processing" }), processingAt, new Date(Date.now() + 60_000).toISOString()],
+    );
+    status = await readTrialDataResetStatus(db, context(owner, "reset.status"));
+    assert.equal(status.outcome, "processing");
+    assert.equal(status.intent.state, "processing");
+    assert.equal(status.canStartNewIntent, false);
   } finally {
     db.close();
   }

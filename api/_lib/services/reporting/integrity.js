@@ -1,3 +1,4 @@
+import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { firstNegativeBalanceFromRows } from "../readModels.js";
 import { canonicalJson, nowIso, uuid } from "../core.js";
@@ -34,13 +35,6 @@ export const integrityBaseStatements = () => [
     WHERE a.allow_negative=0
     ORDER BY a.account_id,t.transaction_date,t.created_at,t.transaction_id`, args: [] },
 ];
-
-const readBatchRows = async (db, statements) => {
-  if (typeof db.batch === "function") {
-    return (await db.batch(statements)).map((result) => result.rows || []);
-  }
-  return Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-};
 
 export const integrityIssuesFromBaseRows = (baseRows) => {
   const issues = [];

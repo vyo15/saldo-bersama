@@ -1,3 +1,4 @@
+import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal, assertTransactionDateUnlocked } from "../finance.js";
 import { goalProgress } from "../readModels.js";
@@ -91,10 +92,6 @@ const goalLifecyclePreviewStatements = (goalId, cutoffDate = todayJakarta()) => 
   args: [goalId, cutoffDate],
 }];
 
-const readGoalBatchRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-
 export const goalListStatements = (context) => {
   const access = visibleScopeSql(context.actor, "g");
   const today = todayJakarta();
@@ -164,7 +161,7 @@ export const mapGoalListRows = (resultRows, context) => {
 
 export const listGoals = async (db, context) => {
   const statements = goalListStatements(context);
-  const resultRows = await readGoalBatchRows(db, statements);
+  const resultRows = await readBatchRows(db, statements);
   return mapGoalListRows(resultRows, context);
 };
 
@@ -342,7 +339,7 @@ export const previewGoalLifecycle = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};
   const goalId = p.goal_id;
-  const [currentRows, dependencyRows, progressRows] = await readGoalBatchRows(db, goalLifecyclePreviewStatements(goalId));
+  const [currentRows, dependencyRows, progressRows] = await readBatchRows(db, goalLifecyclePreviewStatements(goalId));
   const current = currentRows[0] || null;
   if (!current) throw appError("NOT_FOUND", "Target aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);

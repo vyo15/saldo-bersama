@@ -209,3 +209,79 @@ await test("confirmation modal mempertahankan alasan, frasa, checkbox, countdown
     await appServer?.close?.().catch(() => {});
   }
 });
+
+await test("checklist bersihkan data testing interaktif, tidak reset saat dicentang, dan tetap gated oleh frasa", { timeout: 45_000 }, async () => {
+  let appServer;
+  let chromium;
+  let page;
+  try {
+    const responses = createAuthenticatedGatewayResponses(ownerSession);
+    appServer = await startBrowserAppServer({ session: ownerSession, gatewayResponses: responses });
+    chromium = await startChromium();
+    page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/pengaturan/reset-data`, { width: 390, height: 844 });
+    await waitForAppRoute(page, "/pengaturan/reset-data", { heading: "Pengaturan" });
+
+    await waitFor(
+      () => page.evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Periksa data testing');
+        return Boolean(button && !button.disabled);
+      })()`),
+      { description: "status reset awal terverifikasi" },
+    );
+    await page.evaluate(`[...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Periksa data testing')?.click()`);
+    await waitFor(
+      () => page.evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Bersihkan data testing');
+        return Boolean(button && !button.disabled);
+      })()`),
+      { description: "preview reset dan safety backup siap" },
+    );
+    await page.evaluate(`[...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Bersihkan data testing' && !item.disabled)?.click()`);
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Bersihkan data testing?'"),
+      { description: "modal reset data testing" },
+    );
+
+    const checklistCount = await page.evaluate("document.querySelectorAll('[role=dialog] .confirmation-checklist__item').length");
+    assert.equal(checklistCount, 3, "Reset harus memakai tiga acknowledgement card yang eksplisit.");
+
+    for (let index = 0; index < 3; index += 1) {
+      await page.evaluate(`document.querySelectorAll('[role=dialog] .confirmation-checklist__item')[${index}]?.click()`);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      const state = await page.evaluate(`(() => ({
+        checked: [...document.querySelectorAll('[role=dialog] .confirmation-checklist__item input')].map((item) => item.checked),
+        progress: document.querySelector('[role=dialog] .confirmation-checklist__progress')?.textContent || '',
+      }))()`);
+      assert.equal(state.checked.slice(0, index + 1).every(Boolean), true, `Checklist 1-${index + 1} tidak boleh kembali kosong setelah render.`);
+      assert.match(state.progress, new RegExp(`${index + 1}/3`));
+    }
+
+    const filled = await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      const reason = dialog?.querySelector('textarea');
+      const confirmation = dialog?.querySelector('input:not([type="checkbox"])');
+      const textareaSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      const inputSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      if (!reason || !confirmation || !textareaSetter || !inputSetter) return false;
+      textareaSetter.call(reason, 'Membersihkan fixture data testing');
+      reason.dispatchEvent(new Event('input', { bubbles: true }));
+      inputSetter.call(confirmation, confirmation.placeholder);
+      confirmation.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`);
+    assert.equal(filled, true);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    const persisted = await page.evaluate(`(() => ({
+      reason: document.querySelector('[role=dialog] textarea')?.value || '',
+      confirmation: document.querySelector('[role=dialog] input:not([type="checkbox"])')?.value || '',
+      checked: [...document.querySelectorAll('[role=dialog] .confirmation-checklist__item input')].map((item) => item.checked),
+    }))()`);
+    assert.equal(persisted.reason, "Membersihkan fixture data testing");
+    assert.equal(persisted.confirmation, "BERSIHKAN DATA TESTING");
+    assert.deepEqual(persisted.checked, [true, true, true], "Checklist reset harus tetap tercentang setelah field lain berubah.");
+  } finally {
+    await chromium?.close?.().catch(() => {});
+    await page?.close?.().catch(() => {});
+    await appServer?.close?.().catch(() => {});
+  }
+});

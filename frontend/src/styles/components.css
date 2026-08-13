@@ -288,3 +288,16 @@ input[type="file"] {
 .install-app-card__hint { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-soft); font-weight: var(--font-weight-semibold); white-space: nowrap; }
 .install-app-card__hint svg { width: 18px; height: 18px; color: var(--primary); }
 .floating-add:disabled, .mobile-navigation__add:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+.confirmation-checklist { margin: 0; padding: 0; border: 0; display: grid; gap: 10px; }
+.confirmation-checklist legend { padding: 0; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+.confirmation-checklist__progress { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: var(--font-size-xs); }
+.confirmation-checklist__progress > :last-child { color: var(--primary); font-weight: var(--font-weight-bold); }
+.confirmation-checklist__items { display: grid; gap: 8px; }
+.confirmation-checklist__item { min-height: 52px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; background: var(--surface); color: var(--text-soft); font-size: var(--font-size-xs); line-height: 1.45; cursor: pointer; transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing); }
+.confirmation-checklist__item:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+.confirmation-checklist__item:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.confirmation-checklist__item.is-checked { border-color: color-mix(in srgb, var(--primary) 48%, var(--border)); background: var(--primary-soft); color: var(--text); }
+.confirmation-checklist__item input { width: 1px; height: 1px; margin: 0; padding: 0; position: absolute; opacity: 0; pointer-events: none; }
+.confirmation-checklist__marker { width: 24px; height: 24px; border: 1px solid var(--border-strong); border-radius: 999px; display: grid; place-items: center; background: var(--surface-elevated); color: var(--text-muted); font-size: 11px; font-weight: var(--font-weight-bold); }
+.confirmation-checklist__item.is-checked .confirmation-checklist__marker { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }

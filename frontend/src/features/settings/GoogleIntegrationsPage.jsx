@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiCalendar, FiFileText } from "react-icons/fi";
+import { FiCalendar, FiFileText, FiHardDrive } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -58,8 +58,10 @@ const GoogleIntegrationsPage = () => {
   const integrations = resource.data || {};
   const sheets = providerSummary(integrations, "sheets");
   const calendar = providerSummary(integrations, "calendar");
+  const drive = providerSummary(integrations, "drive");
   const sheetsReadiness = integrationProviderPresentation(integrations, "sheets");
   const calendarReadiness = integrationProviderPresentation(integrations, "calendar");
+  const driveReadiness = integrationProviderPresentation(integrations, "drive");
 
   const run = async (action) => {
     setBusyAction(action);
@@ -84,6 +86,7 @@ const GoogleIntegrationsPage = () => {
       <div className={styles.serviceGrid}>
         <IntegrationTile icon={FiFileText} label="Google Sheets" description="Salinan data baca." provider={sheets} readiness={sheetsReadiness} />
         <IntegrationTile icon={FiCalendar} label="Google Calendar" description="Pengingat jadwal." provider={calendar} readiness={calendarReadiness} />
+        <IntegrationTile icon={FiHardDrive} label="Google Drive" description="Safety backup untuk reset, restore, dan operasi recovery." provider={drive} readiness={driveReadiness} />
       </div>
       {ownerMode ? <GoogleIntegrationActions busyAction={busyAction} sheetsReadiness={sheetsReadiness} calendarReadiness={calendarReadiness} run={run} openRebuild={() => setRebuildOpen(true)} /> : null}
       <ConfirmationModal

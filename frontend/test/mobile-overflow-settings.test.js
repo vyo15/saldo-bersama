@@ -7,7 +7,7 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci body", async () => {
   const [modal, modalSource, components] = await Promise.all([
     read("src/components/common/Modal.module.css"),
-    read("src/components/common/Modal.jsx"),
+    Promise.all([read("src/components/common/Modal.jsx"), read("src/components/common/useMobileSwipeDismiss.js")]).then((parts) => parts.join("\n")),
     read("src/styles/components.css"),
   ]);
   assert.match(modal, /\.body\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);

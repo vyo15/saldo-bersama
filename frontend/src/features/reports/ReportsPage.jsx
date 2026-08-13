@@ -12,6 +12,7 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
+import FinancialAlertList from "../dashboard/components/FinancialAlertList.jsx";
 
 const ReportHeader = ({ period, trendMonths, setPeriod, setTrendMonths }) => (
   <PageHeader
@@ -29,7 +30,7 @@ const OverviewMetrics = ({ overview }) => (
   </section>
 );
 
-const ReportAlerts = ({ alerts = [] }) => alerts.length ? <Card className="panel report-alert-panel"><div className="panel__header"><h2>Perlu perhatian</h2></div><ul className="financial-alert-list">{alerts.slice(0, 8).map((alert) => <li key={alert.id} data-severity={alert.severity}><strong>{alert.title}</strong><span>{alert.message}</span></li>)}</ul></Card> : null;
+const ReportAlerts = ({ alerts = [] }) => alerts.length ? <Card className="panel report-alert-panel"><div className="panel__header"><div><h2>Perlu perhatian</h2><p className="panel__description">{alerts.length} item aktif. Buka tindakan terkait untuk menyelesaikannya tanpa mengubah data langsung dari laporan.</p></div></div><FinancialAlertList alerts={alerts} variant="report" /></Card> : null;
 
 const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
   <Card className="panel"><div className="panel__header"><h2>Saldo awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>

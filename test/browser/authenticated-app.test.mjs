@@ -338,7 +338,9 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     const narrowRecurringLayout = await page.evaluate(`(() => {
       const addButton = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Tambah jadwal');
       const period = document.querySelector('input[type="month"]');
+      const summary = document.querySelector('section[aria-label="Ringkasan jadwal rutin periode ini"]');
       const schedule = document.querySelector('section[aria-label="Daftar jadwal rutin"]');
+      const kindTabs = document.querySelector('[role="group"][aria-label="Jenis jadwal rutin"]');
       const navigation = document.querySelector('.mobile-navigation');
       const filterButtons = [...document.querySelectorAll('button[aria-pressed]')];
       const insideViewport = (element) => {
@@ -349,11 +351,13 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       return {
         addInside: insideViewport(addButton),
         periodInside: insideViewport(period),
+        summaryVisible: Boolean(summary && summary.getBoundingClientRect().height > 0),
+        kindTabsVisible: Boolean(kindTabs && kindTabs.querySelectorAll('button').length === 2),
         scheduleBeforeNavigation: Boolean(schedule && navigation && schedule.getBoundingClientRect().top < navigation.getBoundingClientRect().top),
-        filterTouchTargets: filterButtons.length >= 4 && filterButtons.every((button) => button.getBoundingClientRect().height >= 43.5),
+        filterTouchTargets: filterButtons.length >= 7 && filterButtons.every((button) => button.getBoundingClientRect().height >= 43.5),
       };
     })()`);
-    assert.deepEqual(narrowRecurringLayout, { addInside: true, periodInside: true, scheduleBeforeNavigation: true, filterTouchTargets: true }, "Jadwal rutin 366x668 harus compact, tidak terpotong, dan tetap memiliki touch target aman.");
+    assert.deepEqual(narrowRecurringLayout, { addInside: true, periodInside: true, summaryVisible: true, kindTabsVisible: true, scheduleBeforeNavigation: true, filterTouchTargets: true }, "Jadwal rutin 366x668 harus compact, menampilkan ringkasan dan tab jenis, tidak terpotong, serta tetap memiliki touch target aman.");
 
     await navigateAndAssert(page, appServer.origin, "/alokasi", "Alokasi dana", { mobile: true });
     const narrowAllocationActions = await page.evaluate(`(() => {
@@ -446,7 +450,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(await page.evaluate("document.body.textContent.includes('Uji notifikasi')"), false, "Verifikasi notifikasi harus otomatis tanpa tombol uji terpisah.");
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan/integrasi", "Pengaturan", { mobile: true });
-    assert.equal(await page.evaluate("document.querySelectorAll('h3').length >= 2 && document.body.textContent.includes('Google Sheets') && document.body.textContent.includes('Google Calendar')"), true, "Sheets dan Calendar harus tampil satu kali pada route integrasi.");
+    assert.equal(await page.evaluate("document.querySelectorAll('h3').length >= 3 && document.body.textContent.includes('Google Sheets') && document.body.textContent.includes('Google Calendar') && document.body.textContent.includes('Google Drive')"), true, "Sheets, Calendar, dan safety backup Google Drive harus tampil pada route integrasi.");
 
     await navigateAndAssert(page, appServer.origin, "/pengaturan/anggota", "Pengaturan", { mobile: true });
     const memberPageState = await page.evaluate(`(() => {
@@ -1013,6 +1017,42 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(accountDrivenDashboard.bills, true);
     assert.equal(accountDrivenDashboard.goals, true);
     assert.equal(accountDrivenDashboard.typeFilter, true, "Filter jenis transaksi harus tetap tersedia pada desktop.");
+    const alertButton = await page.evaluate(`(() => {
+      const button = document.querySelector('.shared-alert-count-button');
+      return { visible: Boolean(button), label: button?.getAttribute('aria-label') || '', count: button?.textContent?.trim() || '' };
+    })()`);
+    assert.deepEqual(alertButton, { visible: true, label: "Lihat 5 peringatan aktif", count: "5" }, "Dashboard desktop harus mengekspos jumlah peringatan yang dapat dibuka.");
+    await page.evaluate("document.querySelector('.shared-alert-count-button')?.click()");
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Perlu perhatian'"),
+      { description: "dialog Perlu perhatian desktop" },
+    );
+    const desktopAlerts = await page.evaluate(`(() => ({
+      items: document.querySelectorAll('[role=dialog] .financial-alert-item').length,
+      actions: [...document.querySelectorAll('[role=dialog] .financial-alert-action')].map((item) => item.textContent.trim()),
+      instructions: [...document.querySelectorAll('[role=dialog] .financial-alert-instruction')].every((item) => item.textContent.includes('Yang perlu dilakukan')),
+    }))()`);
+    assert.equal(desktopAlerts.items, 5, "Semua alert fixture harus terlihat pada desktop, bukan hanya angkanya.");
+    assert.equal(desktopAlerts.instructions, true, "Alert desktop harus memiliki instruksi yang sama dengan mobile.");
+    for (const action of ["Periksa anggaran", "Buka tagihan ini", "Tambah dana target", "Pilih alokasi", "Cek saldo sekarang"]) assert.ok(desktopAlerts.actions.includes(action), `Aksi desktop ${action} harus tersedia.`);
+    await page.evaluate(`[...document.querySelectorAll('[role=dialog] .financial-alert-action')].find((item) => item.textContent.includes('Tambah dana target'))?.click()`);
+    await waitForAppRoute(page, "/target", { heading: "Target" });
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Tambah dana target'"),
+      { description: "deep-link target membuka form setoran" },
+    );
+    const consumedAttention = await page.evaluate(`(() => {
+      const state = history.state?.usr ?? history.state ?? null;
+      return { source: state?.attentionSource || null, action: state?.attentionAction || null, goal: state?.attentionGoalId || null };
+    })()`);
+    assert.deepEqual(consumedAttention, { source: null, action: null, goal: null }, "Attention state harus dikonsumsi setelah deep-link dijalankan agar refresh tidak membuka aksi lagi.");
+    await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
+    await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "modal target dari attention ditutup" });
+    await navigateAndAssert(page, appServer.origin, "/", "Ringkasan Keuangan", { mobile: false });
+    await waitFor(
+      () => page.evaluate("document.querySelectorAll('[data-dashboard-account]').length >= 3 && document.querySelectorAll('.shared-transaction-table tbody tr').length >= 2"),
+      { description: "dashboard desktop kembali setelah regression deep-link" },
+    );
     await page.evaluate("document.querySelector('[data-dashboard-account=\"acc-shared-cash\"]')?.click()");
     await waitFor(
       () => page.evaluate("document.querySelector('[data-dashboard-account=\"acc-shared-cash\"]')?.getAttribute('aria-pressed') === 'true'"),

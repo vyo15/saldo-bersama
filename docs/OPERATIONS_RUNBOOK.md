@@ -67,12 +67,14 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 
 Gunakan hanya pada fase setup/trial sebelum transaksi nyata mulai dicatat. Project saat ini sengaja memakai satu database Turso untuk runtime lokal dan Production, sehingga backend tidak dapat membedakan transaksi trial dari transaksi nyata. Operasi ini manual dan tidak pernah dijalankan otomatis di background.
 
-1. Administrator membuka **Pengaturan → Bersihkan data testing** dan menjalankan preview.
-2. Preview harus menunjukkan seluruh data finansial yang akan dibersihkan: transaksi, pencocokan saldo, target, anggaran, alokasi, jadwal rutin, dan tutup buku.
-3. Preview juga menghitung sisa operasional yang ikut dibersihkan: delivery/queue notifikasi, link/outbox integrasi, dan preview import. Seluruh scope tersebut ikut fingerprint agar perubahan setelah preview menghasilkan conflict.
+1. Administrator membuka **Pengaturan → Bersihkan data testing**. Halaman lebih dulu menjalankan `reset.status` dan health check Google Drive. Jika status reset tidak dapat diverifikasi, operasi destructive tetap diblokir.
+2. Jalankan preview. Preview harus menunjukkan seluruh data finansial yang akan dibersihkan: transaksi, pencocokan saldo, target, anggaran, alokasi, jadwal rutin, dan tutup buku.
+3. Preview juga menghitung sisa operasional yang ikut dibersihkan: delivery/queue notifikasi, link/outbox integrasi, dan preview import. Queue canonical `system/rebuild` dari reset sebelumnya bukan data testing dan harus dipertahankan/reuse.
 4. Rekening, kategori, pengguna, konfigurasi, audit log, backup, push subscription, dan preference notifikasi tidak ikut dihapus.
-5. Apply wajib memakai fingerprint preview terbaru, alasan, acknowledgement, frasa `BERSIHKAN DATA TESTING`, dan safety backup Google Drive yang terverifikasi.
-6. Backend mengaktifkan maintenance, menghapus scope testing secara atomik, menjalankan integrity check, menulis audit, lalu mengantrekan rebuild Sheets/Calendar.
-7. Jika purge sudah dimulai dan proses gagal, maintenance tetap aktif. Jalankan integrity recovery sebelum membuka write normal.
-8. Setelah pembersihan, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, Cocokkan Saldo, dan status integrasi sebelum melanjutkan input.
-9. Begitu aplikasi mulai dipakai untuk transaksi nyata, hentikan penggunaan pembersihan massal ini. Koreksi data nyata wajib memakai cancel/archive/restore/reverse sesuai lifecycle domain.
+5. Google Drive wajib berstatus siap. Apply memakai fingerprint preview terbaru, alasan, seluruh acknowledgement checklist, frasa `BERSIHKAN DATA TESTING`, dan safety backup Google Drive yang terverifikasi.
+6. Backend mengaktifkan maintenance, menghapus scope testing secara atomik, menjalankan integrity check, menulis audit, lalu mengantrekan/reuse rebuild Sheets/Calendar.
+7. Jika client menerima `IDEMPOTENCY_OUTCOME_UNKNOWN`, **jangan kirim reset lagi**. Gunakan **Periksa status operasi**. `reset.status` memeriksa unresolved idempotency milik Administrator, audit `reset.apply`, deterministic safety backup, dan maintenance.
+8. Jika status `committed`, perlakukan reset lama sebagai sukses dan jangan kirim ulang. Bila kemudian memang ada data testing baru, jalankan preview baru dan gunakan intent/idempotency key baru hanya ketika `canStartNewIntent=true`. Jika status `not_committed`, jalankan preview baru sebelum membuat intent baru. Jika status `processing`, tunggu lalu periksa lagi.
+9. Jika status `recovery_required`, jalankan integrity recovery. Maintenance hanya boleh dibuka kembali bila integrity check `ok`; perubahan ini wajib menghasilkan audit `maintenance.recover`.
+10. Setelah pembersihan, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, Cocokkan Saldo, dan status integrasi sebelum melanjutkan input.
+11. Begitu aplikasi mulai dipakai untuk transaksi nyata, hentikan penggunaan pembersihan massal ini. Koreksi data nyata wajib memakai cancel/archive/restore/reverse sesuai lifecycle domain.

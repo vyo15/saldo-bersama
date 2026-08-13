@@ -101,6 +101,7 @@
 | `restore.preview` | Ya | Tidak |
 | `restore.apply` | Ya | Tidak |
 | `reset.preview` | Ya | Tidak |
+| `reset.status` | Ya | Tidak |
 | `reset.apply` | Ya | Tidak |
 | `integrity.run` | Ya | Tidak |
 

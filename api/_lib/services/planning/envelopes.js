@@ -1,3 +1,4 @@
+import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { accountBalanceAsOf, envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
@@ -100,10 +101,6 @@ const envelopeRuleLifecycleImpact = async (db, current) => {
   return envelopeRuleLifecycleResult(current, await db.one(statement.sql, statement.args));
 };
 
-const readEnvelopeBatchRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-
 export const listEnvelopes = async (db, context) => {
   const itemStatement = envelopeItemsStatement(context.actor, { period: context.payload?.period || null, includeClosed: true });
   const access = visibleScopeSql(context.actor, "fr");
@@ -125,7 +122,7 @@ export const listEnvelopes = async (db, context) => {
       WHERE r.status='archived' ORDER BY r.updated_at DESC LIMIT 50`,
     args: [],
   }) - 1 : -1;
-  const resultRows = await readEnvelopeBatchRows(db, statements);
+  const resultRows = await readBatchRows(db, statements);
   const items = mapEnvelopeItemRows(resultRows[0] || []);
   const recentMovements = resultRows[1] || [];
   const archivedRules = archivedIndex >= 0 ? resultRows[archivedIndex] || [] : [];
@@ -374,7 +371,7 @@ export const previewEnvelopeRuleLifecycle = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};
   const ruleId = payload.envelope_rule_id;
-  const [currentRows, dependencyRows] = await readEnvelopeBatchRows(db, [{
+  const [currentRows, dependencyRows] = await readBatchRows(db, [{
     sql: "SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'",
     args: [ruleId],
   }, envelopeRuleDependencyStatement(ruleId)]);

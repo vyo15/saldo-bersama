@@ -1,6 +1,5 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FiArchive, FiArrowRight, FiChevronDown, FiMoreHorizontal, FiPieChart, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
-import { useLocation } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -13,6 +12,7 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { archiveEnvelopeRule as requestArchiveEnvelopeRule, closeEnvelope as requestCloseEnvelope, createEnvelope as requestCreateEnvelope, deleteUnusedEnvelopeRule as requestDeleteUnusedEnvelopeRule, moveEnvelope as requestMoveEnvelope, previewEnvelopeRuleLifecycle, reverseEnvelopeMovement as requestReverseEnvelopeMovement } from "./allocations.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
@@ -193,48 +193,115 @@ const ALLOCATION_FILTERS = Object.freeze([
   { value: "unused", label: "Belum terpakai" },
 ]);
 
+const isAllocationAdministrator = (user) => user?.role === "owner";
+const activeAllocationAccounts = (bootstrap) => (bootstrap?.accounts || []).filter((item) => item.status === "active");
+const activeAllocationUsers = (resource) => (resource.data?.items || []).filter((item) => item.status === "active");
+
+const filterActiveAllocations = (items, allocationFilter, actor) => items.filter((item) => {
+  if (allocationFilter === "shared") return !item.assignee_user_id;
+  if (allocationFilter === "mine") return Boolean(actor?.user_id) && item.assignee_user_id === actor.user_id;
+  if (allocationFilter === "unused") return Number(item.used_amount || 0) + Number(item.reserved_amount || 0) === 0;
+  return true;
+});
+
+const allocationMoveDestinations = ({ movableItems, selectedSourceEnvelope, sourceId, administratorMode }) => filterByOwnership(movableItems, selectedSourceEnvelope)
+  .filter((item) => item.envelope_period_id !== sourceId)
+  .filter((item) => administratorMode || hasSameAssignee(item, selectedSourceEnvelope));
+
+const hasAllocationMovePair = (movableItems, administratorMode) => movableItems.some((source) => filterByOwnership(movableItems, source)
+  .some((target) => target.envelope_period_id !== source.envelope_period_id && (administratorMode || hasSameAssignee(source, target))));
+
+const AllocationAttentionNotice = ({ envelopeId }) => envelopeId ? <div className="notice notice--info attention-guidance" role="status"><strong>Periksa kantong yang disorot.</strong><span>Lihat sisa jatah dan transaksi terkait sebelum membuat pengeluaran berikutnya. Jangan pindahkan dana hanya untuk menutup pemakaian yang belum diperiksa.</span></div> : null;
+
+const AllocationHeaderActions = ({ administratorMode, canMove, openCreate, openMove, reload }) => <div className={`allocation-header-actions allocation-header-actions--${administratorMode ? "administrator" : "member"}`}>
+  {administratorMode ? <Button className="allocation-header-actions__primary" variant="primary" icon={FiPlus} onClick={openCreate}>Buat kantong</Button> : null}
+  <Button icon={FiArrowRight} onClick={openMove} disabled={!canMove} aria-label="Pindahkan alokasi">Pindahkan</Button>
+  <Button className="allocation-refresh-action" icon={FiRefreshCw} onClick={reload} aria-label="Muat ulang alokasi">Muat ulang</Button>
+</div>;
+
+const AllocationActiveSection = ({ activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, attentionEnvelopeId }) => <section className="allocation-active" aria-labelledby="allocation-active-title">
+  <div className="allocation-section-heading"><h2 id="allocation-active-title">Kantong aktif</h2><span>{filteredActiveItems.length} dari {activeItems.length}</span></div>
+  {activeItems.length ? <div className="allocation-filters" role="group" aria-label="Filter kantong aktif">{ALLOCATION_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationFilter === filter.value ? "is-active" : ""} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}
+  <AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} attentionEnvelopeId={attentionEnvelopeId} />
+</section>;
+
 const AllocationsPage = () => {
-  const location = useLocation();
-  const resource = useApiResource("envelopes.list"); const { refreshOverview, invalidate, bootstrap } = useFinance(); const { user } = useAuth(); const { notify } = useFeedback();
-  const administratorMode = user?.role === "owner";
+  const { attention, consumeAttention } = useDashboardAttentionState();
+  const attentionHandled = useRef(false);
+  const resource = useApiResource("envelopes.list");
+  const { refreshOverview, invalidate, bootstrap } = useFinance();
+  const { user } = useAuth();
+  const { notify } = useFeedback();
+  const administratorMode = isAllocationAdministrator(user);
   const usersResource = useApiResource("users.list", {}, { enabled: administratorMode });
-  const createMutation = useGuardedMutation(); const moveMutation = useGuardedMutation(); const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" }); const [createForm, setCreateForm] = useState(defaultCreateForm);
-  const [createOpen, setCreateOpen] = useState(false); const [moveOpen, setMoveOpen] = useState(false); const [message, setMessage] = useState(null); const [allocationFilter, setAllocationFilter] = useState("all"); const [actionTarget, setActionTarget] = useState(null); const [closeTarget, setCloseTarget] = useState(null); const [closeState, setCloseState] = useState({ status: "idle", error: null }); const [archiveTarget, setArchiveTarget] = useState(null); const [archiveState, setArchiveState] = useState({ status: "idle", error: null }); const [reverseTarget, setReverseTarget] = useState(null); const [reverseState, setReverseState] = useState({ status: "idle", error: null });
-  const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
-  const activeUsers = usersResource.data?.items?.filter((item) => item.status === "active") || [];
+  const createMutation = useGuardedMutation();
+  const moveMutation = useGuardedMutation();
+  const [move, setMove] = useState({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
+  const [createForm, setCreateForm] = useState(defaultCreateForm);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [allocationFilter, setAllocationFilter] = useState("all");
+  const [actionTarget, setActionTarget] = useState(null);
+  const [closeTarget, setCloseTarget] = useState(null);
+  const [closeState, setCloseState] = useState({ status: "idle", error: null });
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
+  const [reverseTarget, setReverseTarget] = useState(null);
+  const [reverseState, setReverseState] = useState({ status: "idle", error: null });
+  const accounts = activeAllocationAccounts(bootstrap);
+  const activeUsers = activeAllocationUsers(usersResource);
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const activeItems = useMemo(() => items.filter((item) => item.status === "active"), [items]);
   const historicalItems = useMemo(() => items.filter((item) => item.status !== "active"), [items]);
   const allocationActor = bootstrap?.user || user;
-  const filteredActiveItems = useMemo(() => activeItems.filter((item) => {
-    if (allocationFilter === "shared") return !item.assignee_user_id;
-    if (allocationFilter === "mine") return Boolean(allocationActor?.user_id) && item.assignee_user_id === allocationActor.user_id;
-    if (allocationFilter === "unused") return Number(item.used_amount || 0) + Number(item.reserved_amount || 0) === 0;
-    return true;
-  }), [activeItems, allocationActor?.user_id, allocationFilter]);
+  const filteredActiveItems = useMemo(() => filterActiveAllocations(activeItems, allocationFilter, allocationActor), [activeItems, allocationActor, allocationFilter]);
   const movableItems = useMemo(() => filterByAssigneeAccess(activeItems, allocationActor), [activeItems, allocationActor]);
   const recentMovements = resource.data?.recentMovements || [];
   const lookup = useMemo(() => Object.fromEntries(activeItems.map((item) => [item.envelope_period_id, item])), [activeItems]);
   const selectedSourceEnvelope = lookup[move.fromEnvelopePeriodId] || null;
-  const destinations = filterByOwnership(movableItems, selectedSourceEnvelope)
-    .filter((item) => item.envelope_period_id !== move.fromEnvelopePeriodId)
-    .filter((item) => administratorMode || hasSameAssignee(item, selectedSourceEnvelope));
-  const canMove = movableItems.some((source) => filterByOwnership(movableItems, source).some((target) => target.envelope_period_id !== source.envelope_period_id && (administratorMode || hasSameAssignee(source, target))));
+  const destinations = allocationMoveDestinations({ movableItems, selectedSourceEnvelope, sourceId: move.fromEnvelopePeriodId, administratorMode });
+  const canMove = hasAllocationMovePair(movableItems, administratorMode);
   const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup, notify, setMessage, onCreated: () => setCreateOpen(false), onMoved: () => setMoveOpen(false) });
   const lifecycle = useAllocationLifecycle({ closeTarget, setCloseTarget, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation: createMove.refreshAfterMutation, notify });
-  const attentionEnvelopeId = location.state?.attentionSource === "dashboard" ? String(location.state?.attentionEnvelopeId || "") : "";
+  const attentionEnvelopeId = String(attention?.attentionEnvelopeId || "");
+
   useEffect(() => {
-    if (!attentionEnvelopeId || resource.status !== "ready" || !activeItems.some((item) => item.envelope_period_id === attentionEnvelopeId)) return;
+    if (attentionHandled.current || !attentionEnvelopeId || resource.status !== "ready") return undefined;
+    attentionHandled.current = true;
+    const targetExists = activeItems.some((item) => item.envelope_period_id === attentionEnvelopeId);
+    consumeAttention();
+    if (!targetExists) return undefined;
     const frame = window.requestAnimationFrame(() => document.querySelector(`[data-envelope-period-id="${CSS.escape(attentionEnvelopeId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     return () => window.cancelAnimationFrame(frame);
-  }, [activeItems, attentionEnvelopeId, resource.status]);
-  if (resource.status === "loading") return <LoadingScreen label="Memuat alokasi dana..." />; if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  }, [activeItems, attentionEnvelopeId, consumeAttention, resource.status]);
+
+  if (resource.status === "loading") return <LoadingScreen label="Memuat alokasi dana..." />;
+  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+
   const modalProps = { closeTarget, setCloseTarget, closeState, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
-  const openCreate = () => { setMessage(null); setCreateOpen(true); }; const openMove = () => { setMessage(null); setMoveOpen(true); }; const closeCreate = () => { if (!createMutation.busy) setCreateOpen(false); }; const closeMove = () => { if (!moveMutation.busy) setMoveOpen(false); };
-  const headerActions = <div className={`allocation-header-actions allocation-header-actions--${administratorMode ? "administrator" : "member"}`}>{administratorMode ? <Button className="allocation-header-actions__primary" variant="primary" icon={FiPlus} onClick={openCreate}>Buat kantong</Button> : null}<Button icon={FiArrowRight} onClick={openMove} disabled={!canMove} aria-label="Pindahkan alokasi">Pindahkan</Button><Button className="allocation-refresh-action" icon={FiRefreshCw} onClick={resource.reload} aria-label="Muat ulang alokasi">Muat ulang</Button></div>;
+  const openCreate = () => { setMessage(null); setCreateOpen(true); };
+  const openMove = () => { setMessage(null); setMoveOpen(true); };
+  const closeCreate = () => { if (!createMutation.busy) setCreateOpen(false); };
+  const closeMove = () => { if (!moveMutation.busy) setMoveOpen(false); };
   const startClosePeriod = (item) => { setActionTarget(null); setCloseTarget(item); setCloseState({ status: "idle", error: null }); };
   const startLifecycle = (item) => { setActionTarget(null); lifecycle.openRuleLifecycle(item); };
-  return <div className="page-stack allocations-page"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} />{administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}<PageHeader title="Alokasi dana" description="Bagi dana ke kantong yang jelas, lalu pantau pemakaiannya." />{attentionEnvelopeId ? <div className="notice notice--info attention-guidance" role="status"><strong>Periksa kantong yang disorot.</strong><span>Lihat sisa jatah dan transaksi terkait sebelum membuat pengeluaran berikutnya. Jangan pindahkan dana hanya untuk menutup pemakaian yang belum diperiksa.</span></div> : null}<AllocationSummary items={activeItems} />{headerActions}<section className="allocation-active" aria-labelledby="allocation-active-title"><div className="allocation-section-heading"><h2 id="allocation-active-title">Kantong aktif</h2><span>{filteredActiveItems.length} dari {activeItems.length}</span></div>{activeItems.length ? <div className="allocation-filters" role="group" aria-label="Filter kantong aktif">{ALLOCATION_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationFilter === filter.value ? "is-active" : ""} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}<AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} attentionEnvelopeId={attentionEnvelopeId} /></section><AllocationHistory items={historicalItems} /><RecoveryPanels recentMovements={recentMovements} setReverseTarget={setReverseTarget} setReverseState={setReverseState} /><CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersResource.status} createEnvelope={createMove.createEnvelope} createMutation={createMutation} message={message} /><MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={createMove.submitMove} moveMutation={moveMutation} message={message} /><AllocationActionModal target={actionTarget} onClose={() => setActionTarget(null)} onClosePeriod={startClosePeriod} onLifecycle={startLifecycle} /><AllocationModals {...modalProps} /></div>;
+
+  return <div className="page-stack allocations-page">
+    <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+    {administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}
+    <PageHeader title="Alokasi dana" description="Bagi dana ke kantong yang jelas, lalu pantau pemakaiannya." />
+    <AllocationAttentionNotice envelopeId={attentionEnvelopeId} />
+    <AllocationSummary items={activeItems} />
+    <AllocationHeaderActions administratorMode={administratorMode} canMove={canMove} openCreate={openCreate} openMove={openMove} reload={resource.reload} />
+    <AllocationActiveSection activeItems={activeItems} filteredActiveItems={filteredActiveItems} allocationFilter={allocationFilter} setAllocationFilter={setAllocationFilter} setActionTarget={setActionTarget} attentionEnvelopeId={attentionEnvelopeId} />
+    <AllocationHistory items={historicalItems} />
+    <RecoveryPanels recentMovements={recentMovements} setReverseTarget={setReverseTarget} setReverseState={setReverseState} />
+    <CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersResource.status} createEnvelope={createMove.createEnvelope} createMutation={createMutation} message={message} />
+    <MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={createMove.submitMove} moveMutation={moveMutation} message={message} />
+    <AllocationActionModal target={actionTarget} onClose={() => setActionTarget(null)} onClosePeriod={startClosePeriod} onLifecycle={startLifecycle} />
+    <AllocationModals {...modalProps} />
+  </div>;
 };
 
 export default AllocationsPage;

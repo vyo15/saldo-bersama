@@ -103,18 +103,20 @@ test("single-query read menghindari snapshot overhead dan multi-query finansial 
 });
 
 test("list transaksi menggabungkan filter, rows, dan period lock dalam satu batch; target tetap bulk", async () => {
-  const [finance, goals] = await Promise.all([
+  const [finance, goals, batchReader] = await Promise.all([
     source("api/_lib/services/finance.js"),
     source("api/_lib/services/planning/goals.js"),
+    source("api/_lib/db/readBatchRows.js"),
   ]);
   assert.match(finance, /const transactionListStatements =/);
   assert.match(finance, /period_closures/);
-  assert.match(finance, /typeof db\.batch === "function"/);
+  assert.match(finance, /readBatchRows\(db, transactionListStatements/);
   assert.match(finance, /const periodLocked = Boolean\(closureRows\[0\]\)/);
   assert.doesNotMatch(finance, /for \(const row of rows\)[\s\S]{0,220}isTransactionDateLocked/);
-  assert.match(goals, /typeof db\.batch === "function"/);
+  assert.match(goals, /readBatchRows\(db, statements\)/);
   assert.match(goals, /GROUP BY m\.goal_id/);
   assert.match(goals, /movementLookup/);
+  assert.match(batchReader, /typeof db\.batch === "function"/);
 });
 
 test("dashboard memakai opening balance bulk, envelope ringan, dan laporan trend tidak N+1 rekening", async () => {

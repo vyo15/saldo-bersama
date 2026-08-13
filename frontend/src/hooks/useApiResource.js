@@ -52,12 +52,13 @@ export const useApiResource = (action, payload = {}, { enabled = true } = {}) =>
     });
   }, [action, enabled, load]);
 
+  const reload = useCallback(() => load({ force: true }), [load]);
   const status = enabled && state.status === "idle" ? "loading" : state.status;
 
   return {
     ...state,
     status,
     isRefreshing: status === "refreshing",
-    reload: () => load({ force: true }),
+    reload,
   };
 };

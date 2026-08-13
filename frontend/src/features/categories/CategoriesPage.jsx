@@ -227,6 +227,57 @@ const groupCategories = (items) => items.reduce((groups, category) => {
   return groups;
 }, {});
 
+
+const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenMenuId }) => {
+  const [form, setForm] = useState(emptyCategoryForm);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editCategory, setEditCategory] = useState(null);
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [dialogState, setDialogState] = useState({ status: "idle", error: null });
+
+  const reloadCategories = async () => {
+    invalidate(["categories.list", "archive.list", "transactions.list", "recurring.list", "budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
+    const [categoriesResult, financeResult] = await Promise.allSettled([resource.reload(), refreshAll()]);
+    return { categoriesResult, financeResult };
+  };
+  const openCreate = () => { setOpenMenuId(""); setDialogState({ status: "idle", error: null }); setCreateOpen(true); };
+  const openEdit = (category) => { setOpenMenuId(""); setEditCategory({ ...category, icon: categoryIconKey(category.icon, category.transaction_type) }); setDialogState({ status: "idle", error: null }); };
+  const closeCreate = () => { if (dialogState.status !== "submitting") { setCreateOpen(false); setDialogState({ status: "idle", error: null }); } };
+
+  const createCategory = async (event) => {
+    event.preventDefault(); setDialogState({ status: "submitting", error: null });
+    try {
+      await requestCreateCategory(form, {}); setForm(emptyCategoryForm()); setCreateOpen(false); setDialogState({ status: "idle", error: null });
+      notify({ message: "Kategori berhasil dibuat.", tone: "success", dedupeKey: "categories:create" }); await reloadCategories();
+    } catch (error) { setDialogState({ status: "error", error }); }
+  };
+  const saveCategory = async (event) => {
+    event.preventDefault(); if (!editCategory) return; setDialogState({ status: "submitting", error: null });
+    try {
+      await requestUpdateCategory({ category_id: editCategory.category_id, name: editCategory.name, ...(editCategory.transaction_type === "expense" ? { nature: editCategory.nature } : {}), icon: editCategory.icon, row_version: editCategory.row_version }, { rowVersion: editCategory.row_version });
+      setEditCategory(null); setDialogState({ status: "idle", error: null }); notify({ message: "Kategori berhasil diperbarui.", tone: "success", dedupeKey: "categories:update" }); await reloadCategories();
+    } catch (error) { setDialogState({ status: "error", error }); }
+  };
+  const openArchivePreview = async (category) => {
+    setOpenMenuId(""); setDialogState({ status: "submitting", error: null });
+    try {
+      const preview = await previewCategoryArchive({ category_id: category.category_id, row_version: category.row_version }, { force: true });
+      if (!preview.canArchive) { setMessage({ type: "warning", text: preview.blockers.join(" ") || "Kategori belum dapat diarsipkan." }); setDialogState({ status: "idle", error: null }); return; }
+      setArchiveTarget({ category, preview }); setDialogState({ status: "idle", error: null });
+    } catch (error) { setDialogState({ status: "error", error }); setMessage({ type: "danger", text: error.message }); }
+  };
+  const applyCategoryLifecycle = async (reason) => {
+    if (!archiveTarget) return; const { category, preview } = archiveTarget; setDialogState({ status: "submitting", error: null });
+    try {
+      if (preview.canDeleteUnused) { await deleteUnusedCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version }); notify({ message: "Kategori yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "categories:delete-unused" }); }
+      else { await archiveCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version }); notify({ message: "Kategori berhasil diarsipkan.", tone: "success", dedupeKey: "categories:archive" }); }
+      setArchiveTarget(null); setDialogState({ status: "idle", error: null }); await reloadCategories();
+    } catch (error) { setDialogState({ status: "error", error }); }
+  };
+  return { form, setForm, createOpen, editCategory, setEditCategory, archiveTarget, setArchiveTarget, message, dialogState, reloadCategories, openCreate, openEdit, closeCreate, createCategory, saveCategory, openArchivePreview, applyCategoryLifecycle };
+};
+
 const CategoriesPage = () => {
   const { notify } = useFeedback();
   const resource = useApiResource("categories.list");
@@ -236,38 +287,11 @@ const CategoriesPage = () => {
   const [statusFilter, setStatusFilter] = useState("active");
   const archiveEnabled = ownerMode && statusFilter !== "active";
   const archiveResource = useApiResource("archive.list", {}, { enabled: archiveEnabled });
-  const [form, setForm] = useState(emptyCategoryForm);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editCategory, setEditCategory] = useState(null);
-  const [archiveTarget, setArchiveTarget] = useState(null);
-  const [message, setMessage] = useState(null);
-  const [dialogState, setDialogState] = useState({ status: "idle", error: null });
   const [searchQuery, setSearchQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState("");
   const activeMenuRef = useRef(null);
   const menuTriggerRefs = useRef(new Map());
-
-  const openCreate = () => {
-    setOpenMenuId("");
-    setDialogState({ status: "idle", error: null });
-    setCreateOpen(true);
-  };
-
-  const openEdit = (category) => {
-    setOpenMenuId("");
-    setEditCategory({
-      ...category,
-      icon: categoryIconKey(category.icon, category.transaction_type),
-    });
-    setDialogState({ status: "idle", error: null });
-  };
-
-  const reloadCategories = async () => {
-    invalidate(["categories.list", "archive.list", "transactions.list", "recurring.list", "budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
-    const [categoriesResult, financeResult] = await Promise.allSettled([resource.reload(), refreshAll()]);
-    return { categoriesResult, financeResult };
-  };
-
+  const actions = useCategoryActions({ resource, notify, invalidate, refreshAll, setOpenMenuId });
   const items = useMemo(() => {
     const merged = new Map();
     for (const category of archiveResource.data?.categories || []) merged.set(category.category_id, category);
@@ -284,87 +308,16 @@ const CategoriesPage = () => {
     });
   }, [items, searchQuery, statusFilter]);
   const grouped = useMemo(() => groupCategories(filteredItems), [filteredItems]);
-
   useCategoryMenuDismiss({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId });
-
-  const createCategory = async (event) => {
-    event.preventDefault();
-    setDialogState({ status: "submitting", error: null });
-    try {
-      await requestCreateCategory(form, {});
-      setForm(emptyCategoryForm());
-      setCreateOpen(false);
-      setDialogState({ status: "idle", error: null });
-      notify({ message: "Kategori berhasil dibuat.", tone: "success", dedupeKey: "categories:create" });
-      await reloadCategories();
-    } catch (error) { setDialogState({ status: "error", error }); }
-  };
-
-  const saveCategory = async (event) => {
-    event.preventDefault();
-    if (!editCategory) return;
-    setDialogState({ status: "submitting", error: null });
-    try {
-      await requestUpdateCategory({
-        category_id: editCategory.category_id,
-        name: editCategory.name,
-        ...(editCategory.transaction_type === "expense" ? { nature: editCategory.nature } : {}),
-        icon: editCategory.icon,
-        row_version: editCategory.row_version,
-      }, { rowVersion: editCategory.row_version });
-      setEditCategory(null);
-      setDialogState({ status: "idle", error: null });
-      notify({ message: "Kategori berhasil diperbarui.", tone: "success", dedupeKey: "categories:update" });
-      await reloadCategories();
-    } catch (error) { setDialogState({ status: "error", error }); }
-  };
-
-  const openArchivePreview = async (category) => {
-    setOpenMenuId("");
-    setDialogState({ status: "submitting", error: null });
-    try {
-      const preview = await previewCategoryArchive({ category_id: category.category_id, row_version: category.row_version }, { force: true });
-      if (!preview.canArchive) {
-        setMessage({ type: "warning", text: preview.blockers.join(" ") || "Kategori belum dapat diarsipkan." });
-        setDialogState({ status: "idle", error: null });
-        return;
-      }
-      setArchiveTarget({ category, preview });
-      setDialogState({ status: "idle", error: null });
-    } catch (error) {
-      setDialogState({ status: "error", error });
-      setMessage({ type: "danger", text: error.message });
-    }
-  };
-
-  const applyCategoryLifecycle = async (reason) => {
-    if (!archiveTarget) return;
-    const { category, preview } = archiveTarget;
-    setDialogState({ status: "submitting", error: null });
-    try {
-      if (preview.canDeleteUnused) {
-        await deleteUnusedCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version });
-        notify({ message: "Kategori yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "categories:delete-unused" });
-      } else {
-        await archiveCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version });
-        notify({ message: "Kategori berhasil diarsipkan.", tone: "success", dedupeKey: "categories:archive" });
-      }
-      setArchiveTarget(null);
-      setDialogState({ status: "idle", error: null });
-      await reloadCategories();
-    } catch (error) { setDialogState({ status: "error", error }); }
-  };
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat kategori transaksi..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
-  const closeCreate = () => { if (dialogState.status !== "submitting") { setCreateOpen(false); setDialogState({ status: "idle", error: null }); } };
   const filtersActive = Boolean(searchQuery.trim()) || statusFilter !== "active";
   const clearFilters = () => { setSearchQuery(""); setStatusFilter("active"); setOpenMenuId(""); };
   const menuProps = { openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId };
   const archivePending = archiveEnabled && statusFilter === "archived" && archiveResource.status === "loading" && !archiveResource.data;
-
-  return <div className={`page-stack ${styles.categoryPage}`}><RefreshWarning error={resource.refreshError} onRetry={reloadCategories} />{archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}{archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}<PageHeader title="Kategori" actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />{message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}<CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />{archivePending ? <LoadingScreen label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={openCreate} openEdit={openEdit} openArchivePreview={openArchivePreview} menuProps={menuProps} />}<CreateCategoryModal open={createOpen} close={closeCreate} form={form} setForm={setForm} createCategory={createCategory} dialogState={dialogState} /><EditCategoryModal editCategory={editCategory} setEditCategory={setEditCategory} saveCategory={saveCategory} dialogState={dialogState} /><ArchiveCategoryModal archiveTarget={archiveTarget} dialogState={dialogState} setArchiveTarget={setArchiveTarget} applyCategoryLifecycle={applyCategoryLifecycle} /></div>;
+  return <div className={`page-stack ${styles.categoryPage}`}><RefreshWarning error={resource.refreshError} onRetry={actions.reloadCategories} />{archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}{archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}<PageHeader title="Kategori" actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={actions.openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />{actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}<CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />{archivePending ? <LoadingScreen label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}<CreateCategoryModal open={actions.createOpen} close={actions.closeCreate} form={actions.form} setForm={actions.setForm} createCategory={actions.createCategory} dialogState={actions.dialogState} /><EditCategoryModal editCategory={actions.editCategory} setEditCategory={actions.setEditCategory} saveCategory={actions.saveCategory} dialogState={actions.dialogState} /><ArchiveCategoryModal archiveTarget={actions.archiveTarget} dialogState={actions.dialogState} setArchiveTarget={actions.setArchiveTarget} applyCategoryLifecycle={actions.applyCategoryLifecycle} /></div>;
 };
 
 export default CategoriesPage;

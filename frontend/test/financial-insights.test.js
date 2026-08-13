@@ -17,14 +17,19 @@ test("halaman transaksi mengekspos filter rekening, kategori, dan pencatat", asy
 });
 
 test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan actionable", async () => {
-  const reports = await source("src/features/reports/ReportsPage.jsx");
-  const desktop = await source("src/features/dashboard/components/DesktopFinanceDashboard.jsx");
-  const mobile = await source("src/features/dashboard/components/MobileFinanceDashboard.jsx");
+  const [reports, desktop, mobile, alertList] = await Promise.all([
+    source("src/features/reports/ReportsPage.jsx"),
+    source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    source("src/features/dashboard/components/FinancialAlertList.jsx"),
+  ]);
   assert.match(reports, /trend_months/);
   assert.match(reports, /Pengeluaran per rekening/);
   assert.match(reports, /Aktivitas pencatatan/);
   assert.match(reports, /Menunjukkan pencatat, bukan penanggung biaya/);
   assert.match(reports, /to="\/anggaran"/);
+  assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
+  assert.doesNotMatch(reports, /alerts\.slice\(0,\s*8\)/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
   const budgets = await source("src/features/budgets/BudgetsPage.jsx");
   assert.match(budgets, /useApiResource\("budgets\.list"/);
@@ -34,37 +39,59 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(budgets, /scope: "personal"/);
   assert.match(budgets, /userOptionLabel/);
   assert.match(desktop, /overview\.alerts/);
+  assert.match(desktop, /shared-alert-count-button/);
+  assert.match(desktop, /FinancialAlertList alerts=\{model\.alerts\} variant="dashboard"/);
   assert.match(mobile, /overview\.alerts/);
+  assert.match(mobile, /FinancialAlertList alerts=\{alerts\} variant="mobile"/);
+  assert.match(alertList, /Yang perlu dilakukan/);
+  assert.match(alertList, /dashboardAlertGuidance/);
+  assert.match(alertList, /state=\{guidance\.state\}/);
 });
 
-test("dashboard mobile mengubah peringatan menjadi instruksi dan tindakan kontekstual", async () => {
-  const [mobile, transactions, reconciliation, recurring, goals, budgets, allocations] = await Promise.all([
-    source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dikonsumsi satu kali", async () => {
+  const [presentation, attentionHook, transactions, reconciliation, recurring, recurringActions, goals, budgets, allocations] = await Promise.all([
+    source("src/features/dashboard/dashboardPresentation.js"),
+    source("src/hooks/useDashboardAttentionState.js"),
     source("src/features/transactions/TransactionsPage.jsx"),
     source("src/features/reconciliations/ReconciliationsPage.jsx"),
     source("src/features/recurring/RecurringPage.jsx"),
+    source("src/features/recurring/useRecurringActions.js"),
     source("src/features/goals/GoalsPage.jsx"),
     source("src/features/budgets/BudgetsPage.jsx"),
     source("src/features/allocations/AllocationsPage.jsx"),
   ]);
-  assert.match(mobile, /Yang perlu dilakukan/);
-  assert.match(mobile, /Cocokkan saldo/);
-  assert.match(mobile, /Pilih alokasi/);
-  assert.match(mobile, /Tambah dana target/);
-  assert.match(mobile, /attentionOccurrenceId/);
-  assert.doesNotMatch(mobile, />Tinjau</);
+  for (const type of ["reconciliation_difference", "reconciliation_stale", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
+    assert.match(presentation, new RegExp(type));
+  }
+  for (const label of ["Cocokkan saldo", "Pilih alokasi", "Periksa anggaran", "Periksa alokasi", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
+    assert.match(presentation, new RegExp(label));
+  }
+  assert.match(presentation, /safeTargetPath/);
+  assert.match(presentation, /value === fallbackPath/);
+  assert.match(presentation, /attentionSource: "dashboard"/);
+  assert.match(attentionHook, /stripDashboardAttentionState/);
+  assert.match(attentionHook, /replace: true/);
+  assert.match(attentionHook, /consumedRef\.current/);
+  assert.doesNotMatch(attentionHook, /delete next\.accountId|delete next\.period|delete next\.allocation/);
   assert.match(transactions, /allocation: \["allocated", "unallocated"\]\.includes\(state\?\.allocation\)/);
   assert.match(transactions, /attentionEditableTarget/);
   assert.match(transactions, /setEditingTransaction\(attentionEditableTarget\)/);
-  assert.match(transactions, /Daftar sudah difilter ke pengeluaran yang belum dialokasikan/);
+  assert.match(transactions, /consumeAttention\(\)/);
   assert.match(reconciliation, /accountId/);
   assert.match(reconciliation, /sudah dipilih otomatis/);
+  assert.match(reconciliation, /consumeAttention\(\)/);
   assert.match(recurring, /attentionOccurrenceId/);
   assert.match(recurring, /payments\.openPayment\(item\)/);
+  assert.match(recurring, /consumeAttention\(\)/);
+  assert.match(recurringActions, /const openPayment = useCallback/);
   assert.match(goals, /attentionGoalId/);
   assert.match(goals, /movement\.openMovement\(goal, "deposit"\)/);
+  assert.match(goals, /const openMovement = useCallback/);
+  assert.match(goals, /consumeAttention\(\)/);
   assert.match(budgets, /attentionBudgetId/);
+  assert.match(budgets, /consumeAttention\(\)/);
   assert.match(allocations, /attentionEnvelopeId/);
+  assert.match(allocations, /consumeAttention\(\)/);
 });
 
 test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", async () => {

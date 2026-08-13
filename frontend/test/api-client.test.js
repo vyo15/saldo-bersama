@@ -257,6 +257,8 @@ test("preview lifecycle dan arsip owner tetap diklasifikasikan sebagai read tanp
   assert.equal(READ_CACHE_TTL_MS["archive.list"], 30_000);
   assert.equal(isReadAction("integrations.status"), true);
   assert.equal(READ_CACHE_TTL_MS["integrations.status"], 0);
+  assert.equal(isReadAction("reset.status"), true);
+  assert.equal(READ_CACHE_TTL_MS["reset.status"], 0);
 });
 
 test("mutation identik yang dikirim bersamaan dikoaleskan menjadi satu write dan satu idempotency intent", async () => {

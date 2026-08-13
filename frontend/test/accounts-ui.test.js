@@ -310,7 +310,7 @@ ${accountEditors}`;
   assert.doesNotMatch(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackOwnership/);
   assert.doesNotMatch(pageStyles, /var\(--(?:border-subtle|surface-muted|text-primary)\)/);
 
-  for (const asset of ["bca", "bni", "btn", "mandiri", "permata", "shopeepay", "dana", "gopay", "ovo", "linkaja", "cash", "savings"]) assert.match(card, new RegExp(`${asset}\.webp`));
+  for (const asset of ["bca", "bni", "btn", "mandiri", "permata", "shopeepay", "dana", "gopay", "ovo", "linkaja", "cash", "savings", "emergency_fund", "sinking_fund", "investment", "other"]) assert.match(card, new RegExp(`${asset}\.webp`));
   assert.match(card, /detectEwalletTemplate/);
   assert.match(card, /data-visual-kind/);
   assert.match(card, /ewalletOwnership/);
@@ -371,7 +371,7 @@ test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () =
   const assets = [
     ...["bca", "bni", "btn", "mandiri", "permata"].map((name) => ["bank-cards", name]),
     ...["shopeepay", "dana", "gopay", "ovo", "linkaja"].map((name) => ["ewallet-cards", name]),
-    ...["cash", "savings"].map((name) => ["account-cards", name]),
+    ...["cash", "savings", "emergency_fund", "sinking_fund", "investment", "other"].map((name) => ["account-cards", name]),
   ];
   for (const [directory, name] of assets) {
     const url = new URL(`../src/assets/${directory}/${name}.webp`, import.meta.url);
@@ -379,6 +379,6 @@ test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () =
     const [info, dimensions] = await Promise.all([stat(file), webpSize(file)]);
     assert.ok(file, `${name}.webp harus tersedia`);
     assert.ok(info.size <= 160_000, `${name}.webp terlalu besar untuk kartu responsif (${info.size} byte)`);
-    assert.deepEqual(dimensions, { width: 768, height: 484 }, `${name}.webp harus memakai kanvas 768x484`);
+    assert.deepEqual(dimensions, { width: 1536, height: 968 }, `${name}.webp harus memakai kanvas 1536x968`);
   }
 });

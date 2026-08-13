@@ -99,7 +99,8 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /account_id:\s*filters\.account/);
   assert.match(transactions, /category_id:\s*filters\.category/);
   assert.match(transactions, /created_by:\s*filters\.creator/);
-  assert.match(transactions, /initialFilters\(location\.state\)/);
+  assert.match(transactions, /initialFilters\(attention\)/);
+  assert.match(transactions, /useDashboardAttentionState/);
   assert.match(transactions, /state\?\.creatorId/);
   assert.match(transactions, /state\?\.period/);
   assert.doesNotMatch(transactions, /const initialFilters = \(location\)/);

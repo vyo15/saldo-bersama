@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router";
 import { FiChevronLeft, FiChevronRight, FiEdit2, FiPlus, FiRotateCcw, FiSearch, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -11,6 +10,7 @@ import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { cancelTransaction as requestCancelTransaction, restoreTransaction as requestRestoreTransaction } from "./transactions.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
@@ -173,19 +173,96 @@ const useTransactionLifecycle = ({ resource, refreshOverview, invalidate }) => {
   return { cancelTarget, setCancelTarget, cancelState, restoreTarget, setRestoreTarget, restoreState, cancelTransaction, restoreCancelledTransaction, openCancel, openRestore };
 };
 
+const transactionPageData = (bootstrap, resource) => {
+  const accounts = bootstrap?.accounts || [];
+  const categories = bootstrap?.categories || [];
+  return {
+    accountLookup: Object.fromEntries(accounts.map((item) => [item.account_id, accountDisplayLabel(item)])),
+    categoryLookup: Object.fromEntries(categories.map((item) => [item.category_id, item])),
+    items: resource.data?.items || [],
+    filterOptions: resource.data?.filterOptions || defaultFilterOptions,
+  };
+};
+
+const transactionFiltersActive = (filters) => Boolean(filters.query)
+  || [filters.type, filters.allocation, filters.account, filters.category, filters.creator].some((value) => value !== "all");
+
+const dashboardTransactionAttention = (attention, filters, items) => {
+  const active = attention?.attentionType === "unallocated_expense" && filters.allocation === "unallocated";
+  const editableTarget = active ? items.find((item) => item.status === "active" && item.can_edit) || null : null;
+  return { active, editableTarget };
+};
+
+const TransactionAttentionNotice = ({ active, editableTarget }) => {
+  if (!active) return null;
+  const title = editableTarget ? "Pilih kantong pada transaksi yang dibuka." : "Pilih alokasi untuk pengeluaran di bawah.";
+  const description = editableTarget
+    ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Kantong pada form, lalu simpan setelah memastikan rekening dan nominal sudah benar."
+    : "Daftar sudah difilter ke pengeluaran yang belum dialokasikan. Buka transaksi yang dapat diedit, lalu pilih Kantong pada form.";
+  return <div className="notice notice--info attention-guidance" role="status"><strong>{title}</strong><span>{description}</span></div>;
+};
+
+const TransactionResourceStates = ({ resource, items, openTransactionComposer }) => <>
+  {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
+  {resource.status === "loading" ? <LoadingScreen label="Memuat transaksi..." /> : null}
+  {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
+  {resource.status === "ready" && !items.length ? <EmptyState title="Transaksi tidak ditemukan" action={<Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
+</>;
+
 const TransactionsPage = () => {
-  const location = useLocation(); const { bootstrap, refreshOverview, invalidate } = useFinance(); const { openTransactionComposer } = useTransactionComposer(); const mobileLayout = useMobileTransactionsLayout(); const attentionHandled = useRef(false); const [draftQuery, setDraftQuery] = useState(""); const [filters, setFilters] = useState(() => initialFilters(location.state)); const [editingTransaction, setEditingTransaction] = useState(null); const [detailTransaction, setDetailTransaction] = useState(null); const resource = useApiResource("transactions.list", transactionQuery(filters)); const lifecycle = useTransactionLifecycle({ resource, refreshOverview, invalidate });
-  const accountLookup = Object.fromEntries((bootstrap?.accounts || []).map((item) => [item.account_id, accountDisplayLabel(item)])); const categoryLookup = Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])); const items = resource.data?.items || []; const filterOptions = resource.data?.filterOptions || defaultFilterOptions; const filtersActive = filters.query || [filters.type, filters.allocation, filters.account, filters.category, filters.creator].some((value) => value !== "all");
-  const submitSearch = (event) => { event.preventDefault(); setFilters((current) => ({ ...current, query: draftQuery.trim(), offset: 0 })); }; const updateFilter = (key, value) => setFilters((current) => key === "period" ? { ...current, period: value, account: "all", category: "all", creator: "all", offset: 0 } : { ...current, [key]: value, offset: 0 }); const accountLabel = (item) => accountLabelFor(accountLookup, item); const categoryLabel = (item) => categoryLabelFor(categoryLookup, item);
-  const openEdit = (item) => setEditingTransaction(item); const actions = { openEdit, openCancel: lifecycle.openCancel, openRestore: lifecycle.openRestore }; const closeDetail = () => setDetailTransaction(null); const detailActions = { openEdit: (item) => { closeDetail(); openEdit(item); }, openCancel: (item) => { closeDetail(); lifecycle.openCancel(item); }, openRestore: (item) => { closeDetail(); lifecycle.openRestore(item); } }; const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, onOpenDetail: setDetailTransaction, resource, filters, setFilters, mobileLayout }; const modalProps = { ...lifecycle, accountLabel, categoryLabel };
-  const attentionFromDashboard = location.state?.attentionSource === "dashboard" && location.state?.attentionType === "unallocated_expense" && filters.allocation === "unallocated";
-  const attentionEditableTarget = attentionFromDashboard ? items.find((item) => item.status === "active" && item.can_edit) || null : null;
+  const { attention, consumeAttention } = useDashboardAttentionState();
+  const { bootstrap, refreshOverview, invalidate } = useFinance();
+  const { openTransactionComposer } = useTransactionComposer();
+  const mobileLayout = useMobileTransactionsLayout();
+  const attentionHandled = useRef(false);
+  const [draftQuery, setDraftQuery] = useState("");
+  const [filters, setFilters] = useState(() => initialFilters(attention));
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [detailTransaction, setDetailTransaction] = useState(null);
+  const resource = useApiResource("transactions.list", transactionQuery(filters));
+  const lifecycle = useTransactionLifecycle({ resource, refreshOverview, invalidate });
+  const { accountLookup, categoryLookup, items, filterOptions } = transactionPageData(bootstrap, resource);
+  const filtersActive = transactionFiltersActive(filters);
+  const { active: attentionFromDashboard, editableTarget: attentionEditableTarget } = dashboardTransactionAttention(attention, filters, items);
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    setFilters((current) => ({ ...current, query: draftQuery.trim(), offset: 0 }));
+  };
+  const updateFilter = (key, value) => setFilters((current) => key === "period"
+    ? { ...current, period: value, account: "all", category: "all", creator: "all", offset: 0 }
+    : { ...current, [key]: value, offset: 0 });
+  const accountLabel = (item) => accountLabelFor(accountLookup, item);
+  const categoryLabel = (item) => categoryLabelFor(categoryLookup, item);
+  const openEdit = (item) => setEditingTransaction(item);
+  const closeDetail = () => setDetailTransaction(null);
+  const actions = { openEdit, openCancel: lifecycle.openCancel, openRestore: lifecycle.openRestore };
+  const detailActions = {
+    openEdit: (item) => { closeDetail(); openEdit(item); },
+    openCancel: (item) => { closeDetail(); lifecycle.openCancel(item); },
+    openRestore: (item) => { closeDetail(); lifecycle.openRestore(item); },
+  };
+  const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, onOpenDetail: setDetailTransaction, resource, filters, setFilters, mobileLayout };
+  const modalProps = { ...lifecycle, accountLabel, categoryLabel };
+
   useEffect(() => {
-    if (attentionHandled.current || !attentionFromDashboard || resource.status !== "ready" || !attentionEditableTarget) return;
+    if (attentionHandled.current || !attentionFromDashboard || resource.status !== "ready") return;
     attentionHandled.current = true;
-    setEditingTransaction(attentionEditableTarget);
-  }, [attentionEditableTarget, attentionFromDashboard, resource.status]);
-  return <div className="page-stack transactions-page"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} /><PageHeader title="Transaksi" description="Semua transaksi dalam satu alur." actions={<Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button>} />{attentionFromDashboard ? <div className="notice notice--info attention-guidance" role="status"><strong>{attentionEditableTarget ? "Pilih kantong pada transaksi yang dibuka." : "Pilih alokasi untuk pengeluaran di bawah."}</strong><span>{attentionEditableTarget ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Kantong pada form, lalu simpan setelah memastikan rekening dan nominal sudah benar." : "Daftar sudah difilter ke pengeluaran yang belum dialokasikan. Buka transaksi yang dapat diedit, lalu pilih Kantong pada form."}</span></div> : null}<TransactionFilters draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} filterOptions={filterOptions} updateFilter={updateFilter} submitSearch={submitSearch} filtersActive={filtersActive} />{resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}{resource.status === "loading" ? <LoadingScreen label="Memuat transaksi..." /> : null}{resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}{resource.status === "ready" && !items.length ? <EmptyState title="Transaksi tidak ditemukan" action={<Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}<TransactionResults {...resultProps} /><TransactionDetailModal target={detailTransaction} onClose={closeDetail} accountLabel={accountLabel} categoryLabel={categoryLabel} actions={detailActions} /><TransactionForm open={Boolean(editingTransaction)} transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={resource.reload} /><TransactionLifecycleModals {...modalProps} /></div>;
+    if (attentionEditableTarget) setEditingTransaction(attentionEditableTarget);
+    consumeAttention();
+  }, [attentionEditableTarget, attentionFromDashboard, consumeAttention, resource.status]);
+
+  return <div className="page-stack transactions-page">
+    <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+    <PageHeader title="Transaksi" description="Semua transaksi dalam satu alur." actions={<Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button>} />
+    <TransactionAttentionNotice active={attentionFromDashboard} editableTarget={attentionEditableTarget} />
+    <TransactionFilters draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} filterOptions={filterOptions} updateFilter={updateFilter} submitSearch={submitSearch} filtersActive={filtersActive} />
+    <TransactionResourceStates resource={resource} items={items} openTransactionComposer={openTransactionComposer} />
+    <TransactionResults {...resultProps} />
+    <TransactionDetailModal target={detailTransaction} onClose={closeDetail} accountLabel={accountLabel} categoryLabel={categoryLabel} actions={detailActions} />
+    <TransactionForm open={Boolean(editingTransaction)} transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={resource.reload} />
+    <TransactionLifecycleModals {...modalProps} />
+  </div>;
 };
 
 export default TransactionsPage;

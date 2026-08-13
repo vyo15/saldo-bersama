@@ -20,6 +20,10 @@ import {
 } from "react-icons/fi";
 import cashCard from "../../../assets/account-cards/cash.webp";
 import savingsCard from "../../../assets/account-cards/savings.webp";
+import emergencyFundCard from "../../../assets/account-cards/emergency_fund.webp";
+import sinkingFundCard from "../../../assets/account-cards/sinking_fund.webp";
+import investmentCard from "../../../assets/account-cards/investment.webp";
+import otherCard from "../../../assets/account-cards/other.webp";
 import bcaCard from "../../../assets/bank-cards/bca.webp";
 import bniCard from "../../../assets/bank-cards/bni.webp";
 import btnCard from "../../../assets/bank-cards/btn.webp";
@@ -47,7 +51,7 @@ import styles from "./AccountFinancialCard.module.css";
 
 const BANK_IMAGES = Object.freeze({ bca: bcaCard, bni: bniCard, btn: btnCard, mandiri: mandiriCard, permata: permataCard });
 const EWALLET_IMAGES = Object.freeze({ shopeepay: shopeepayCard, dana: danaCard, gopay: gopayCard, ovo: ovoCard, linkaja: linkajaCard });
-const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, savings: savingsCard });
+const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, savings: savingsCard, emergency_fund: emergencyFundCard, sinking_fund: sinkingFundCard, investment: investmentCard, other: otherCard });
 const ACCOUNT_ICONS = Object.freeze({
   bank: FiCreditCard,
   cash: FiDollarSign,

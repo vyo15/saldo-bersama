@@ -29,7 +29,7 @@ Cakupan wajib:
 - income/expense/transfer/refund/adjustment;
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
 - row-version conflict dan idempotency replay;
-- guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage`, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
+- guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage` untuk mutation biasa, dengan satu pengecualian reset berupa opaque recovery idempotency key pada `sessionStorage` tab, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
 - browser human-error journey pada network lambat: double-click create target harus menghasilkan satu request mutation;
 - linked worktree release check: `.git` berbentuk file tidak gagal source validator; `npm run test:browser` membangun fixture public sendiri tanpa `.env.local`;
 - personal/shared authorization dan IDOR;
@@ -85,7 +85,7 @@ Uji dua browser/perangkat dengan Administrator dan Member:
 5. Install PWA iPhone/Android dan update app shell. Aktifkan Push pada HTTPS, pastikan verifikasi otomatis muncul, lalu periksa panel sistem. Uji dua perangkat saat satu delivery gagal sementara dan pastikan perangkat sukses tidak menerima duplikat. Pada Safari iPhone pastikan aplikasi dibuka dari Home Screen, fokus input tidak memicu auto-zoom, modal tidak bergeser horizontal, dan scroll vertikal tetap bekerja.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.
 7. Export Excel dan periksa formula-like input.
-8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif. Untuk fase pra-go-live satu database, uji **Bersihkan data testing** hanya ketika seluruh data pada preview memang trial/error: pastikan financial + operational count tampil, stale fingerprint ditolak, safety backup terverifikasi, master/audit tetap ada, dan rebuild integrasi terantre.
+8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif. Untuk fase pra-go-live satu database, uji **Bersihkan data testing** hanya ketika seluruh data pada preview memang trial/error: pastikan financial + operational count tampil, queue rebuild sistem tidak salah dihitung/dihapus, stale fingerprint ditolak, Google Drive preflight dan safety backup terverifikasi, master/audit tetap ada, rebuild integrasi terantre, outcome unknown dapat direkonsiliasi lewat `reset.status` setelah reload, dan maintenance hanya dapat dibuka kembali setelah integrity check lulus + audit `maintenance.recover`.
 9. Verifikasi scheduled housekeeping menghapus `idempotency_keys`, `import_previews`, dan `restore_previews` yang expired, tetapi mempertahankan preview berstatus `applying`, ledger, audit, backup, dan master.
 10. Responsive, keyboard, focus, contrast, loading/empty/error/unauthorized/maintenance. Audit seluruh CSS untuk custom property yang tidak terdefinisi, native control di bawah 16px, duplicate media query dalam file yang sama, dan endpoint gradient yang gagal kontras.
 11. Full axe scan, authenticated browser journey, visual regression, dan Chrome/Firefox/Safari device coverage.

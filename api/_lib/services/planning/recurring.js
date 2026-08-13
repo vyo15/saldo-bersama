@@ -1,3 +1,4 @@
+import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal } from "../finance.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
@@ -143,10 +144,6 @@ const recurringRuleLifecycleImpact = async (db, current) => {
   const statement = recurringRuleDependencyStatement(current.recurring_rule_id);
   return recurringRuleLifecycleResult(current, await db.one(statement.sql, statement.args));
 };
-
-const readRecurringBatchRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
 
 const recurringOccurrenceWithRule = (db, occurrenceId) => db.one(`SELECT o.*,r.status AS rule_status,r.scope,r.owner_user_id,r.recurring_rule_id
   FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
@@ -348,7 +345,7 @@ export const previewRecurringRuleLifecycle = async (db, context) => {
   const p = context.payload || {};
   const ruleId = p.recurring_rule_id;
   const statement = recurringRuleDependencyStatement(ruleId);
-  const [currentRows, dependencyRows] = await readRecurringBatchRows(db, [{
+  const [currentRows, dependencyRows] = await readBatchRows(db, [{
     sql: "SELECT * FROM recurring_rules WHERE recurring_rule_id=?",
     args: [ruleId],
   }, statement]);

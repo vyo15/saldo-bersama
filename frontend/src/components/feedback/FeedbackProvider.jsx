@@ -13,19 +13,28 @@ const safeTone = (tone) => ["success", "info", "warning", "danger"].includes(ton
 
 const ACTION_MODULES = Object.freeze({
   accounts: "Rekening",
+  backup: "Backup",
   budgets: "Anggaran",
   categories: "Kategori",
   envelopes: "Alokasi",
   goals: "Target",
+  integrity: "Integritas",
   notifications: "Notifikasi",
   periods: "Periode",
   reconciliations: "Cocokkan saldo",
+  reset: "Bersihkan data testing",
+  restore: "Pemulihan data",
   recurring: "Jadwal rutin",
   transactions: "Transaksi",
   users: "Member",
 });
 
+const ACTION_UNKNOWN_DETAILS = Object.freeze({
+  "reset.apply": "Jangan kirim ulang. Buka Bersihkan data testing lalu gunakan Periksa status operasi untuk memastikan hasilnya.",
+});
+
 const ACTION_LABELS = Object.freeze({
+  "backup.create": ["Membuat safety backup...", "Safety backup berhasil dibuat"],
   "accounts.create": ["Membuat rekening...", "Rekening berhasil dibuat"],
   "accounts.update": ["Memperbarui rekening...", "Rekening berhasil diperbarui"],
   "accounts.archive": ["Mengarsipkan rekening...", "Rekening berhasil diarsipkan"],
@@ -53,6 +62,9 @@ const ACTION_LABELS = Object.freeze({
   "notifications.unregister": ["Menonaktifkan notifikasi perangkat...", "Notifikasi perangkat berhasil dinonaktifkan"],
   "periods.reopen": ["Membuka kembali periode...", "Periode berhasil dibuka kembali"],
   "reconciliations.create": ["Mencocokkan saldo...", "Pencocokan saldo tersimpan"],
+  "reset.apply": ["Membersihkan data testing...", "Data testing berhasil dibersihkan"],
+  "restore.apply": ["Memulihkan backup...", "Backup berhasil dipulihkan"],
+  "integrity.run": ["Memeriksa integritas...", "Integrity check selesai"],
   "recurring.createRule": ["Membuat jadwal rutin...", "Jadwal rutin berhasil dibuat"],
   "recurring.updateRule": ["Memperbarui jadwal rutin...", "Jadwal rutin berhasil diperbarui"],
   "recurring.payOccurrence": ["Mencatat aktual jadwal...", "Aktual jadwal berhasil dicatat"],
@@ -83,7 +95,7 @@ const processPresentation = (state) => {
     };
   }
   if (state.status === "success") return { module, label: labels?.[1] || `${module} berhasil diperbarui`, detail: "Server sudah mengonfirmasi perubahan.", icon: FiCheckCircle };
-  if (state.status === "unknown") return { module, label: `${module} belum terkonfirmasi`, detail: "Jangan kirim ulang sebelum status diperiksa agar tidak terjadi duplikasi.", icon: FiAlertCircle };
+  if (state.status === "unknown") return { module, label: `${module} belum terkonfirmasi`, detail: ACTION_UNKNOWN_DETAILS[state.action] || "Jangan kirim ulang sebelum status diperiksa agar tidak terjadi duplikasi.", icon: FiAlertCircle };
   if (state.status === "error") return { module, label: `${module} gagal diproses`, detail: "Perubahan belum tersimpan. Periksa pesan pada formulir lalu coba lagi.", icon: FiAlertCircle };
   return null;
 };

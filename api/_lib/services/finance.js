@@ -1,3 +1,4 @@
+import { readBatchRows } from "../db/readBatchRows.js";
 import { appendAudit } from "./audit.js";
 import { firstNegativeBalance } from "./readModels.js";
 import { isReservedTransactionField } from "../transactionContract.js";
@@ -407,10 +408,6 @@ const transactionListStatements = (request, filters) => [
   { sql: "SELECT closure_id,period_key FROM period_closures WHERE status='closed' AND period_key >= ? ORDER BY period_key LIMIT 1", args: [request.period] },
 ];
 
-const readTransactionListRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-
 const transactionListResponse = (context, request, resultRows) => {
   const [countRows, rows, filterAccounts, filterCategories, filterCreators, closureRows] = resultRows;
   const periodLocked = Boolean(closureRows[0]);
@@ -436,6 +433,6 @@ const transactionListResponse = (context, request, resultRows) => {
 export const listTransactions = async (db, context) => {
   const request = transactionListRequest(context);
   const filters = transactionListFilters(context, request);
-  const resultRows = await readTransactionListRows(db, transactionListStatements(request, filters));
+  const resultRows = await readBatchRows(db, transactionListStatements(request, filters));
   return transactionListResponse(context, request, resultRows);
 };

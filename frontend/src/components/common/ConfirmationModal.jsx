@@ -1,29 +1,34 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Button from "./Button.jsx";
 import Modal from "./Modal.jsx";
+
+const EMPTY_ACKNOWLEDGEMENT_ITEMS = Object.freeze([]);
 
 const confirmationValidationMessage = ({ mustProvideReason, normalizedReason, confirmationReady, acknowledgementReady, reasonLabel }) => {
   if (mustProvideReason && !normalizedReason) return `${reasonLabel || "Alasan"} wajib diisi.`;
   if (!confirmationReady) return "Frasa konfirmasi belum sesuai.";
-  if (!acknowledgementReady) return "Pernyataan pemahaman wajib dicentang.";
+  if (!acknowledgementReady) return "Seluruh pernyataan pemahaman wajib diselesaikan.";
   return "";
 };
 
-const confirmationRequirementHint = ({ remainingSeconds, confirmationReady, acknowledgementReady }) => {
+const confirmationRequirementHint = ({ remainingSeconds, reasonReady, confirmationReady, acknowledgementReady }) => {
   if (remainingSeconds > 0) return `Konfirmasi aktif dalam ${remainingSeconds} detik.`;
+  if (!reasonReady) return "Isi alasan tindakan untuk mengaktifkan tombol.";
   if (!confirmationReady) return "Selesaikan frasa konfirmasi untuk mengaktifkan tombol.";
-  if (!acknowledgementReady) return "Centang pernyataan pemahaman untuk mengaktifkan tombol.";
+  if (!acknowledgementReady) return "Selesaikan verifikasi pemahaman untuk mengaktifkan tombol.";
   return "";
 };
 
 const useCountdownReset = ({
-  open, countdownSeconds, setReason, setConfirmation, setAcknowledged, setRemainingSeconds, setValidationError, submitLockRef,
+  open, countdownSeconds, acknowledgementItems, setReason, setConfirmation, setAcknowledged, setAcknowledgedItems,
+  setRemainingSeconds, setValidationError, submitLockRef,
 }) => {
   useEffect(() => {
     if (!open) return undefined;
     setReason("");
     setConfirmation("");
     setAcknowledged(false);
+    setAcknowledgedItems(acknowledgementItems.map(() => false));
     submitLockRef.current = false;
     setValidationError("");
     setRemainingSeconds(Math.max(0, Number(countdownSeconds || 0)));
@@ -38,7 +43,36 @@ const useCountdownReset = ({
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [countdownSeconds, open, setAcknowledged, setConfirmation, setReason, setRemainingSeconds, setValidationError, submitLockRef]);
+  }, [acknowledgementItems, countdownSeconds, open, setAcknowledged, setAcknowledgedItems, setConfirmation, setReason, setRemainingSeconds, setValidationError, submitLockRef]);
+};
+
+const AcknowledgementChecklist = ({ items, checkedItems, setCheckedItems }) => {
+  const completed = checkedItems.filter(Boolean).length;
+  return (
+    <fieldset className="confirmation-checklist">
+      <legend>Sebelum melanjutkan</legend>
+      <div className="confirmation-checklist__progress" role="status" aria-live="polite">
+        <span>{completed}/{items.length} verifikasi selesai</span>
+        <span aria-hidden="true">{completed === items.length ? "Siap" : "Wajib"}</span>
+      </div>
+      <div className="confirmation-checklist__items">
+        {items.map((item, index) => {
+          const checked = Boolean(checkedItems[index]);
+          return (
+            <label className={`confirmation-checklist__item${checked ? " is-checked" : ""}`} key={`${index}-${item}`}>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(event) => setCheckedItems((current) => current.map((value, itemIndex) => itemIndex === index ? event.target.checked : value))}
+              />
+              <span className="confirmation-checklist__marker" aria-hidden="true">{checked ? "✓" : index + 1}</span>
+              <span>{item}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
 };
 
 const ConfirmationFields = ({
@@ -57,6 +91,9 @@ const ConfirmationFields = ({
   acknowledged,
   setAcknowledged,
   acknowledgementLabel,
+  acknowledgementItems,
+  acknowledgedItems,
+  setAcknowledgedItems,
   requiresAcknowledgement,
   requirementHint,
   validationError,
@@ -73,11 +110,21 @@ const ConfirmationFields = ({
     {requiresTypedConfirmation ? (
       <label className="field">
         <span>{confirmationLabel}</span>
-        <input autoComplete="off" spellCheck="false" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={expectedConfirmation} aria-describedby={`${formId}-confirmation-help`} />
+        <input
+          autoComplete="off"
+          spellCheck="false"
+          value={confirmation}
+          onChange={(event) => setConfirmation(event.target.value)}
+          placeholder={expectedConfirmation}
+          aria-describedby={`${formId}-confirmation-help`}
+          aria-invalid={Boolean(confirmation && confirmation !== expectedConfirmation)}
+        />
         <small id={`${formId}-confirmation-help`}>Ketik persis: <strong>{expectedConfirmation}</strong></small>
       </label>
     ) : null}
-    {requiresAcknowledgement ? (
+    {acknowledgementItems.length ? (
+      <AcknowledgementChecklist items={acknowledgementItems} checkedItems={acknowledgedItems} setCheckedItems={setAcknowledgedItems} />
+    ) : requiresAcknowledgement ? (
       <label className="checkbox-field">
         <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
         <span>{acknowledgementLabel}</span>
@@ -100,7 +147,7 @@ const ConfirmationFooter = ({ close, isPending, formId, tone, confirmDisabled, r
 
 const submitConfirmation = async ({
   event, reason, mustProvideReason, confirmationReady, acknowledgementReady, reasonLabel,
-  remainingSeconds, submitLockRef, setValidationError, onConfirm, confirmation, acknowledged,
+  remainingSeconds, submitLockRef, setValidationError, onConfirm, confirmation,
 }) => {
   event.preventDefault();
   const normalized = reason.trim();
@@ -113,7 +160,7 @@ const submitConfirmation = async ({
   submitLockRef.current = true;
   setValidationError("");
   try {
-    await onConfirm(normalized, { confirmation, acknowledged });
+    await onConfirm(normalized, { confirmation, acknowledged: acknowledgementReady });
   } finally {
     submitLockRef.current = false;
   }
@@ -126,49 +173,57 @@ const blockConfirmationEnter = (event, requiresTypedConfirmation) => {
 
 const resolveConfirmationState = ({
   pending, busy, reasonRequired, requireReason, onCancel, onClose, expectedConfirmation,
-  acknowledgementLabel, confirmation, acknowledged, remainingSeconds,
+  acknowledgementLabel, acknowledgementItems, confirmation, acknowledged, acknowledgedItems, remainingSeconds,
 }) => {
   const isPending = pending || busy;
   const mustProvideReason = reasonRequired || requireReason;
   const close = onCancel || onClose || (() => {});
   const requiresTypedConfirmation = Boolean(expectedConfirmation);
-  const requiresAcknowledgement = Boolean(acknowledgementLabel);
+  const requiresAcknowledgement = Boolean(acknowledgementLabel) || acknowledgementItems.length > 0;
+  const reasonReady = !mustProvideReason || Boolean(reason.trim());
   const confirmationReady = !requiresTypedConfirmation || confirmation === expectedConfirmation;
-  const acknowledgementReady = !requiresAcknowledgement || acknowledged;
-  const confirmDisabled = isPending || remainingSeconds > 0 || !confirmationReady || !acknowledgementReady;
-  return { isPending, mustProvideReason, close, requiresTypedConfirmation, requiresAcknowledgement, confirmationReady, acknowledgementReady, confirmDisabled };
+  const checklistReady = acknowledgementItems.length > 0 && acknowledgedItems.length === acknowledgementItems.length && acknowledgedItems.every(Boolean);
+  const acknowledgementReady = !requiresAcknowledgement || (acknowledgementItems.length ? checklistReady : acknowledged);
+  const confirmDisabled = isPending || remainingSeconds > 0 || !reasonReady || !confirmationReady || !acknowledgementReady;
+  return { isPending, mustProvideReason, close, requiresTypedConfirmation, requiresAcknowledgement, reasonReady, confirmationReady, acknowledgementReady, confirmDisabled };
 };
 
 const ConfirmationModal = (props) => {
   const {
     open, title, description, confirmLabel = "Konfirmasi", cancelLabel = "Batal", reasonLabel = null,
     reasonPlaceholder = "", reasonRequired = false, requireReason = false, confirmationLabel = "Ketik frasa konfirmasi",
-    expectedConfirmation = "", acknowledgementLabel = "", countdownSeconds = 0, pending = false, busy = false,
+    expectedConfirmation = "", acknowledgementLabel = "", acknowledgementItems: acknowledgementItemsProp = EMPTY_ACKNOWLEDGEMENT_ITEMS, countdownSeconds = 0, pending = false, busy = false,
     error = null, tone = "danger", children, onClose, onCancel, onConfirm,
   } = props;
   const formId = useId();
+  const acknowledgementItems = useMemo(
+    () => (Array.isArray(acknowledgementItemsProp) ? acknowledgementItemsProp.filter(Boolean) : EMPTY_ACKNOWLEDGEMENT_ITEMS),
+    [acknowledgementItemsProp],
+  );
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
+  const [acknowledgedItems, setAcknowledgedItems] = useState([]);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [validationError, setValidationError] = useState("");
   const submitLockRef = useRef(false);
   useCountdownReset({
-    open, countdownSeconds, setReason, setConfirmation, setAcknowledged, setRemainingSeconds, setValidationError, submitLockRef,
+    open, countdownSeconds, acknowledgementItems, setReason, setConfirmation, setAcknowledged, setAcknowledgedItems,
+    setRemainingSeconds, setValidationError, submitLockRef,
   });
 
   const {
     isPending, mustProvideReason, close, requiresTypedConfirmation, requiresAcknowledgement,
-    confirmationReady, acknowledgementReady, confirmDisabled,
+    reasonReady, confirmationReady, acknowledgementReady, confirmDisabled,
   } = resolveConfirmationState({
     pending, busy, reasonRequired, requireReason, onCancel, onClose, expectedConfirmation,
-    acknowledgementLabel, confirmation, acknowledged, remainingSeconds,
+    acknowledgementLabel, acknowledgementItems, confirmation, acknowledged, acknowledgedItems, remainingSeconds,
   });
 
-  const requirementHint = confirmationRequirementHint({ remainingSeconds, confirmationReady, acknowledgementReady });
+  const requirementHint = confirmationRequirementHint({ remainingSeconds, reasonReady, confirmationReady, acknowledgementReady });
   const submit = (event) => submitConfirmation({
     event, reason, mustProvideReason, confirmationReady, acknowledgementReady, reasonLabel,
-    remainingSeconds, submitLockRef, setValidationError, onConfirm, confirmation, acknowledged,
+    remainingSeconds, submitLockRef, setValidationError, onConfirm, confirmation,
   });
   const blockAccidentalEnter = (event) => blockConfirmationEnter(event, requiresTypedConfirmation);
 
@@ -198,6 +253,9 @@ const ConfirmationModal = (props) => {
           acknowledged={acknowledged}
           setAcknowledged={setAcknowledged}
           acknowledgementLabel={acknowledgementLabel}
+          acknowledgementItems={acknowledgementItems}
+          acknowledgedItems={acknowledgedItems}
+          setAcknowledgedItems={setAcknowledgedItems}
           requiresAcknowledgement={requiresAcknowledgement}
           requirementHint={requirementHint}
           validationError={validationError}

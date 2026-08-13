@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiPlus, FiSliders } from "react-icons/fi";
-import { useLocation } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -13,6 +12,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { userOptionLabel } from "../../shared/presentation/user.js";
 import { archiveBudget as requestArchiveBudget, deleteUnusedBudget as requestDeleteUnusedBudget, previewBudgetLifecycle, upsertBudget } from "./budgets.api.js";
@@ -168,7 +168,8 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
 </div>;
 
 const BudgetsPage = () => {
-  const location = useLocation();
+  const { attention, consumeAttention } = useDashboardAttentionState();
+  const attentionHandled = useRef(false);
   const currentPeriod = currentMonthInJakarta();
   const today = todayInJakarta();
   const [period, setPeriod] = useState(currentPeriod);
@@ -189,7 +190,7 @@ const BudgetsPage = () => {
   const periodMeta = useMemo(() => budgetPeriodMeta(period, today), [period, today]);
   const presentationItems = useMemo(() => items.map((item) => ({ item, state: budgetVisualState(item, periodMeta) })), [items, periodMeta]);
   const attentionCount = presentationItems.filter(({ state }) => state.attention).length;
-  const attentionBudgetId = location.state?.attentionSource === "dashboard" ? String(location.state?.attentionBudgetId || "") : "";
+  const attentionBudgetId = String(attention?.attentionBudgetId || "");
   const visibleItems = useMemo(() => {
     const filtered = activeFilter === "attention" ? presentationItems.filter(({ state }) => state.attention) : [...presentationItems];
     if (!criticalFirst) return filtered;
@@ -203,13 +204,15 @@ const BudgetsPage = () => {
   const formController = useBudgetFormController({ items, period, notify, refresh });
   const lifecycleController = useBudgetLifecycleController({ notify, refresh, setForm: formController.setForm, setFormOpen: formController.setFormOpen });
   useEffect(() => {
-    if (!attentionBudgetId || resource.status !== "ready") return;
+    if (attentionHandled.current || !attentionBudgetId || resource.status !== "ready") return undefined;
+    attentionHandled.current = true;
     const target = presentationItems.find(({ item }) => item.budget_id === attentionBudgetId);
-    if (!target) return;
+    consumeAttention();
+    if (!target) return undefined;
     setActiveFilter(target.state.attention ? "attention" : "all");
     const frame = window.requestAnimationFrame(() => document.querySelector(`[data-budget-id="${CSS.escape(attentionBudgetId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     return () => window.cancelAnimationFrame(frame);
-  }, [attentionBudgetId, presentationItems, resource.status]);
+  }, [attentionBudgetId, consumeAttention, presentationItems, resource.status]);
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat anggaran..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;

@@ -1,3 +1,4 @@
+import { readBatchRows } from "../../db/readBatchRows.js";
 import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, canonicalJson, monthBounds, nowIso, periodKey, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
@@ -122,10 +123,6 @@ const assertPeriodCanBePreviewed = (period, current, bounds) => {
   }
 };
 
-const readPeriodBatchRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-
 const periodStatistics = async (db, period) => {
   const integrityStatements = integrityBaseStatements();
   const unallocatedStatement = {
@@ -142,7 +139,7 @@ const periodStatistics = async (db, period) => {
       FROM transactions WHERE substr(transaction_date,1,7)=?`,
     args: [period],
   };
-  const rows = await readPeriodBatchRows(db, [...integrityStatements, unallocatedStatement, statisticsStatement]);
+  const rows = await readBatchRows(db, [...integrityStatements, unallocatedStatement, statisticsStatement]);
   const integrity = integrityIssuesFromBaseRows(rows.slice(0, integrityStatements.length));
   return [
     integrity,

@@ -1,3 +1,4 @@
+import { readBatchRows } from "../db/readBatchRows.js";
 import { decodeBase64Url } from "../encoding.js";
 import { WEB_PUSH_ENV_KEYS, validateVapidConfiguration } from "../webPushConfiguration.js";
 import dns from "node:dns";
@@ -337,10 +338,6 @@ const notificationStatusStatements = (actorId, endpointValue) => {
   return { statements, currentIndex, activeIndex, deliveryIndex, successIndex, failureIndex };
 };
 
-const readNotificationBatchRows = async (db, statements) => typeof db.batch === "function"
-  ? (await db.batch(statements)).map((result) => result.rows || [])
-  : Promise.all(statements.map((statement) => db.all(statement.sql, statement.args || [])));
-
 const presentLastTestFailure = (row) => {
   if (!row) return null;
   const value = parseJson(row.new_value, {});
@@ -364,7 +361,7 @@ export const notificationStatus = async (db, context) => {
   const actorId = context.actor.user_id;
   const endpointValue = String(context.payload?.endpoint || "").trim();
   const plan = notificationStatusStatements(actorId, endpointValue);
-  const resultRows = await readNotificationBatchRows(db, plan.statements);
+  const resultRows = await readBatchRows(db, plan.statements);
   const current = plan.currentIndex >= 0 ? resultRows[plan.currentIndex]?.[0] || null : null;
   const currentDevice = endpointValue
     ? deviceStateFromSubscription(current, actorId)
@@ -715,7 +712,7 @@ export const queueActionableNotifications = async (db) => {
   const period = today.slice(0, 7);
   const dueEndDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(dueEnd);
   const plan = actionableNotificationReadPlan({ today, dueEndDate, period });
-  const rows = await readNotificationBatchRows(db, plan.statements);
+  const rows = await readBatchRows(db, plan.statements);
   const at = (key) => rows[plan.indexes[key]] || [];
   const state = {
     today,

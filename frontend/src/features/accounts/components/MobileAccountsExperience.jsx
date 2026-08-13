@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { FiArrowLeft, FiList, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
-import { accountOwnershipLabel } from "../../../shared/presentation/account.js";
+import { accountOwnershipLabel, detectEwalletTemplate } from "../../../shared/presentation/account.js";
 import { AccountVisual } from "./AccountFinancialCard.jsx";
 import styles from "../AccountsPage.module.css";
 
@@ -258,6 +258,9 @@ const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAcco
   return { refs, ...gestures, cancelMobileStackPointer, handleMobileStackKeyDown, selectMobileStackAccount };
 };
 
+
+const shouldRenderMobileStackOwnership = (account) => account.account_type !== "ewallet" || detectEwalletTemplate(account) === "generic";
+
 const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved }) => {
   const navigate = useNavigate();
   const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
@@ -286,7 +289,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
             onPointerCancel={cancelMobileStackPointer} onClick={() => selectMobileStackAccount(account, index)}>
             <AccountVisual account={account} stack />
             <span className={styles.mobileStackBalance}><small>Saldo rekening</small><strong><Money value={account.balance || 0} /></strong></span>
-            <span className={styles.mobileStackOwnership}>{accountOwnershipLabel(account)}</span>
+            {shouldRenderMobileStackOwnership(account) ? <span className={styles.mobileStackOwnership}>{accountOwnershipLabel(account)}</span> : null}
           </button>
         ))}
       </div>

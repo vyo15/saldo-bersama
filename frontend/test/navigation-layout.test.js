@@ -208,7 +208,7 @@ test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan 
   const [shell, components, modal, modalStyles] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
     read("src/styles/components.css"),
-    read("src/components/common/Modal.jsx"),
+    Promise.all([read("src/components/common/Modal.jsx"), read("src/components/common/useMobileSwipeDismiss.js")]).then((parts) => parts.join("\n")),
     read("src/components/common/Modal.module.css"),
   ]);
   assert.doesNotMatch(shell, /ThemeToggle showLabel/);
@@ -227,7 +227,7 @@ test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan 
   assert.doesNotMatch(components, /mobile-menu-theme/);
   assert.match(modal, /mobileSwipeToClose = false/);
   assert.match(modal, /data-mobile-swipe-to-close/);
-  assert.match(modal, /onPointerDown=\{handleSwipePointerDown\}/);
+  assert.match(modal, /onPointerDown|swipeHandlers/);
   assert.match(modal, /SWIPE_DISMISS_RATIO/);
   assert.match(modalStyles, /\.mobileDragHandle/);
   assert.match(modalStyles, /\.swipeHeader \{[\s\S]*touch-action:\s*pan-x pinch-zoom;/);

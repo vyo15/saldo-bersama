@@ -99,6 +99,7 @@ export const ACTION_POLICIES = Object.freeze({
   "restore.preview": external({ maintenanceAllowed: true, retryUnknownSafe: true }),
   "restore.apply": external({ maintenanceAllowed: true, retryUnknownSafe: true }),
   "reset.preview": snapshotRead(),
+  "reset.status": snapshotRead({ maintenanceAllowed: true }),
   "reset.apply": external(),
   "integrity.run": write({ maintenanceAllowed: true }),
 });

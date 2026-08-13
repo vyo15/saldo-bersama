@@ -1,6 +1,6 @@
 .region {
   position: fixed;
-  z-index: calc(var(--layer-modal) + 2);
+  z-index: calc(var(--layer-modal) - 1);
   inset-block-end: max(var(--space-4), env(safe-area-inset-bottom));
   inset-inline-end: max(var(--space-4), env(safe-area-inset-right));
   width: min(24rem, calc(100vw - (var(--space-4) * 2)));
@@ -11,7 +11,7 @@
 
 .process {
   position: fixed;
-  z-index: calc(var(--layer-modal) + 3);
+  z-index: calc(var(--layer-modal) - 1);
   inset-block-start: max(var(--space-4), env(safe-area-inset-top));
   inset-inline-start: 50%;
   width: min(23rem, calc(100vw - (var(--space-4) * 2)));
