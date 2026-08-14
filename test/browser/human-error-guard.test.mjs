@@ -285,3 +285,55 @@ await test("checklist bersihkan data testing interaktif, tidak reset saat dicent
     await appServer?.close?.().catch(() => {});
   }
 });
+
+await test("reset semua data punya preview terpisah, safety guard, dan confirmation empat langkah", { timeout: 45_000 }, async () => {
+  let appServer;
+  let chromium;
+  let page;
+  try {
+    const responses = createAuthenticatedGatewayResponses(ownerSession);
+    appServer = await startBrowserAppServer({ session: ownerSession, gatewayResponses: responses });
+    chromium = await startChromium();
+    page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/pengaturan/reset-semua`, { width: 390, height: 844 });
+    await waitForAppRoute(page, "/pengaturan/reset-semua", { heading: "Pengaturan" });
+
+    await waitFor(
+      () => page.evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Periksa semua data');
+        return Boolean(button && !button.disabled);
+      })()`),
+      { description: "status full reset terverifikasi" },
+    );
+    await page.evaluate(`[...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Periksa semua data')?.click()`);
+    await waitFor(
+      () => page.evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Reset semua data');
+        return Boolean(button && !button.disabled);
+      })()`),
+      { description: "preview full reset dan Drive siap" },
+    );
+    const previewText = await page.evaluate("document.body.innerText");
+    assert.match(previewText, /Rekening/);
+    assert.match(previewText, /Kategori/);
+    assert.match(previewText, /Tetap disimpan/);
+    assert.match(previewText, /Audit log/);
+
+    await page.evaluate(`[...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Reset semua data' && !item.disabled)?.click()`);
+    await waitFor(
+      () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Reset semua data?'"),
+      { description: "modal full reset" },
+    );
+    const state = await page.evaluate(`(() => ({
+      checklist: document.querySelectorAll('[role=dialog] .confirmation-checklist__item').length,
+      text: document.querySelector('[role=dialog]')?.innerText || '',
+      confirmDisabled: [...document.querySelectorAll('[role=dialog] button')].find((item) => item.textContent.trim() === 'Reset semua data')?.disabled,
+    }))()`);
+    assert.equal(state.checklist, 4);
+    assert.match(state.text, /RESET SEMUA DATA SALDO BERSAMA/);
+    assert.equal(state.confirmDisabled, true, "CTA full reset wajib tetap gated sebelum reason, checklist, frasa, dan countdown selesai.");
+  } finally {
+    await chromium?.close?.().catch(() => {});
+    await page?.close?.().catch(() => {});
+    await appServer?.close?.().catch(() => {});
+  }
+});

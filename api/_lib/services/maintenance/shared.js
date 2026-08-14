@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
-import { appError, canonicalJson, nowIso } from "../core.js";
+import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
 const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
@@ -34,6 +34,54 @@ export const quoted = (name) => {
 export const digest = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");
 
 export const expiry = (minutes) => new Date(Date.now() + minutes * 60_000).toISOString();
+
+
+export const maintenanceBackupIdForIntent = ({ actorId, idempotencyKey, backupType }) => idempotencyKey
+  ? `bkp_${digest(`${actorId}:backup.safety:${backupType}:${idempotencyKey}`).slice(0, 32)}`
+  : null;
+
+export const decodeMaintenanceIdempotency = (row) => {
+  if (!row) return { state: "missing", result: null };
+  const value = parseJson(row.response_json, {});
+  const state = value?.__idempotency_state;
+  if (state === "processing" || state === "unknown") return { state, result: null };
+  return { state: "completed", result: value };
+};
+
+export const selectMaintenanceIntentRow = (rows, requestedKey) => requestedKey
+  ? rows?.[0] || null
+  : rows?.find((row) => ["processing", "unknown"].includes(decodeMaintenanceIdempotency(row).state)) || null;
+
+export const resolveMaintenanceOutcome = ({ committed, intentState, maintenanceMode, requestedKey }) => {
+  if (committed) return "committed";
+  if (intentState === "processing") return "processing";
+  if (maintenanceMode) return "recovery_required";
+  if (intentState === "unknown" || (requestedKey && intentState === "missing")) return "not_committed";
+  return "idle";
+};
+
+export const maintenanceBackupPresentation = (backup) => backup ? {
+  backupId: backup.backup_id,
+  status: backup.status,
+  fileId: backup.external_file_id || null,
+  verifiedAt: backup.verified_at || null,
+  errorCode: backup.error_code || null,
+  createdAt: backup.created_at || null,
+} : null;
+
+export const claimMaintenanceMode = async (db, busyMessage) => {
+  const result = await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode' AND value='false'", [nowIso()]);
+  if (result.rowsAffected !== 1) throw appError("MAINTENANCE_MODE", busyMessage, 409);
+};
+
+export const releaseMaintenanceMode = async (db, failureMessage) => {
+  const result = await db.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode' AND value='true'", [nowIso()]);
+  if (result.rowsAffected !== 1) throw appError("MAINTENANCE_MODE", failureMessage, 409);
+};
+
+export const clearMaintenanceMode = async (db) => {
+  await db.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+};
 
 export const ensureBackupAudit = async (db, context, backupId, details, enabled) => {
   if (!enabled) return;

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
 import { accountOwnershipLabel, detectEwalletTemplate } from "../../../shared/presentation/account.js";
 import { AccountVisual } from "./AccountFinancialCard.jsx";
-import styles from "../AccountsPage.module.css";
+import styles from "./MobileAccountsExperience.module.css";
 
 const MobileAccountActivity = lazy(() => import("./MobileAccountActivity.jsx"));
 

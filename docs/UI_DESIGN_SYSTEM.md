@@ -82,6 +82,8 @@ frontend/src/components/
 - `form-grid`, child grid, `fieldset`, `.field`, money input, optional section, dan native file input wajib memiliki `min-width: 0` serta `max-width: 100%`.
 - Indikator scrollbar dapat disembunyikan pada mobile, tetapi `overflow-y: hidden`, pembatasan zoom viewport, dan konten footer yang tidak dapat dijangkau dilarang.
 - Carousel horizontal hanya boleh dipakai untuk kontrol yang memang memilih urutan item, saat ini rekening. Filter, tab kategori, dan kelompok ikon harus wrap atau grid.
+- Boundary mobile canonical adalah `<=820px`; gesture swipe-to-dismiss dan presentation bottom sheet wajib memakai boundary yang sama. `>=821px` kembali ke perilaku dialog desktop.
+- Modal yang sedang menjalankan mutation kritis wajib memakai state `dismissible=false`: tombol tutup tidak terlihat aktif, Escape/backdrop/swipe tidak menutup modal, dan focus trap tetap berjalan sampai server memberi hasil.
 
 ## Information architecture Pengaturan
 
@@ -100,6 +102,8 @@ Gunakan elemen berdasarkan makna:
 - `table` hanya untuk data tabular.
 - `progress` untuk progres terukur.
 - Dialog wajib memiliki `role="dialog"`, `aria-modal`, accessible name, focus trap, Escape handling, dan focus restoration.
+- Shell/page adalah pemilik landmark `main`. Feedback primitive seperti loading, empty, dan error di dalam page wajib memakai container non-landmark agar tidak menghasilkan nested `main`.
+- Feedback canonical menyediakan konteks `page`, `panel`, dan `inline`; heading level harus mengikuti hierarchy halaman, bukan dipaksakan oleh primitive.
 
 Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button/link.
 

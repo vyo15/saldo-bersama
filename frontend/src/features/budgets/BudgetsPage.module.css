@@ -253,93 +253,24 @@
 
 .heroArtwork {
   position: absolute;
-  right: clamp(18px, 5vw, 54px);
-  top: 48px;
+  right: clamp(20px, 4vw, 48px);
+  top: 50%;
   z-index: 1;
-  width: 130px;
-  height: 120px;
-  filter: drop-shadow(0 14px 24px color-mix(in srgb, var(--primary) 18%, transparent));
-}
-
-.walletBody {
-  position: absolute;
-  left: 10px;
-  bottom: 15px;
-  width: 104px;
-  height: 70px;
-  border: 1px solid color-mix(in srgb, var(--surface) 42%, transparent);
-  border-radius: 19px 19px 25px 25px;
-  background: linear-gradient(150deg, color-mix(in srgb, var(--secondary) 68%, var(--surface)), var(--primary));
-  box-shadow: inset 0 1px 0 var(--glass-border);
-}
-
-.walletPocket {
-  position: absolute;
-  right: 5px;
-  top: 17px;
-  width: 50px;
-  height: 32px;
-  border-radius: 11px;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 86%, var(--primary-deep)), var(--primary-hover));
-  box-shadow: inset 0 0 0 1px var(--glass-border);
-}
-
-.walletCard {
-  position: absolute;
-  left: 28px;
-  top: 14px;
-  width: 70px;
-  height: 42px;
-  border-radius: 10px;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--palette-mint) 70%, var(--surface)), color-mix(in srgb, var(--secondary) 55%, var(--surface)));
-  transform: rotate(8deg);
-}
-
-.walletCard::after {
-  content: "";
-  position: absolute;
-  left: 11px;
-  top: 10px;
-  width: 20px;
-  height: 5px;
-  border-radius: var(--radius-pill);
-  background: rgba(3, 98, 76, 0.25);
-}
-
-.rupiahCoin {
-  position: absolute;
-  right: 0;
-  bottom: 2px;
-  width: 48px;
-  height: 48px;
-  border: 3px solid color-mix(in srgb, var(--surface) 75%, transparent);
-  border-radius: 50%;
-  background: linear-gradient(145deg, var(--secondary), var(--primary));
-  color: var(--on-primary);
+  width: clamp(190px, 20vw, 250px);
+  height: auto;
   display: grid;
   place-items: center;
-  font-size: 15px;
-  font-weight: 800;
-  box-shadow: 0 8px 16px color-mix(in srgb, var(--primary) 20%, transparent);
+  pointer-events: none;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 16px 26px color-mix(in srgb, var(--primary) 16%, transparent));
 }
 
-.sparkle {
-  position: absolute;
-  color: var(--secondary);
-  font-weight: 900;
-  opacity: 0.72;
-}
-
-.sparkleOne {
-  left: -10px;
-  top: 18px;
-  font-size: 16px;
-}
-
-.sparkleTwo {
-  right: 7px;
-  top: -6px;
-  font-size: 11px;
+.heroIllustration {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
 }
 
 .listSection {
@@ -691,10 +622,13 @@
 }
 
 .tipCard {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 12px;
+  min-height: 72px;
+  overflow: hidden;
+  padding: 12px 88px 12px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-soft);
@@ -724,13 +658,30 @@
   color: var(--primary);
 }
 
+.tipArtwork {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 60px;
+  height: auto;
+  opacity: 0.82;
+  pointer-events: none;
+  user-select: none;
+  transform: translateY(-50%);
+}
+
 @media (max-width: 900px) {
   .cardGrid {
     grid-template-columns: 1fr;
   }
 
   .heroCopy {
-    width: 70%;
+    width: min(68%, 540px);
+  }
+
+  .heroArtwork {
+    right: 18px;
+    width: clamp(168px, 22vw, 210px);
   }
 }
 
@@ -762,15 +713,26 @@
   }
 
   .heroCopy {
-    width: 72%;
+    width: calc(100% - 120px);
   }
 
   .heroArtwork {
     right: 8px;
-    top: 47px;
-    width: 112px;
-    transform: scale(0.9);
-    transform-origin: right top;
+    top: 50%;
+    width: 108px;
+    transform: translateY(-50%);
+  }
+
+  .tipCard {
+    padding-right: 70px;
+  }
+
+  .tipArtwork {
+    right: 10px;
+    top: 50%;
+    width: 50px;
+    opacity: 0.76;
+    transform: translateY(-50%);
   }
 
   .heroMeta {
@@ -836,12 +798,13 @@
 
 @media (max-width: 390px) {
   .heroCopy {
-    width: 76%;
+    width: calc(100% - 100px);
   }
 
   .heroArtwork {
-    opacity: 0.62;
-    right: 0;
+    right: 4px;
+    width: 92px;
+    opacity: 0.84;
   }
 
   .cardHeader {

@@ -11,12 +11,14 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
     read("src/styles/components.css"),
   ]);
   assert.match(modal, /\.body\s*\{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
-  assert.match(modal, /@media \(max-width: 47\.99rem\)[\s\S]*\.body\s*\{[\s\S]*scrollbar-width:\s*none;/);
+  assert.match(modal, /@media \(max-width: 820px\)[\s\S]*\.body\s*\{[\s\S]*scrollbar-width:\s*none;/);
   assert.match(modal, /\.body::-webkit-scrollbar\s*\{[\s\S]*width:\s*0;[\s\S]*height:\s*0;[\s\S]*display:\s*none;/);
   assert.match(modal, /\.swipeHeader\s*\{[\s\S]*touch-action:\s*pan-x pinch-zoom;/);
   assert.match(modal, /prefers-reduced-motion:[\s\S]*\.swipeEnabled \{ transition:\s*none;/);
   assert.doesNotMatch(modal, /touch-action:\s*none/);
   assert.match(modalSource, /mobileSwipeToClose = false/);
+  assert.match(modalSource, /MOBILE_SWIPE_QUERY = "\(max-width: 820px\)"/);
+  assert.doesNotMatch(modalSource, /47\.99rem|51\.25rem/);
   assert.match(modalSource, /event\.target\.closest\?\.\(INTERACTIVE_GESTURE_TARGET\)/);
   assert.match(components, /\.segmented-control\s*\{[\s\S]*min-inline-size:\s*0;/);
   assert.match(components, /\.form-grid,[\s\S]*\.segmented-control\s*\{[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
@@ -43,6 +45,8 @@ test("filter transaksi mobile memprioritaskan filter utama dan memindahkan filte
   assert.doesNotMatch(responsive, /\.transaction-filter-row\s*\{[^}]*overflow-x:\s*auto/);
   assert.match(categoryStyles, /\.iconGroups\s*\{[^}]*flex-wrap:\s*wrap;[^}]*overflow:\s*visible;/);
   assert.doesNotMatch(categoryStyles, /\.iconGroups\s*\{[^}]*overflow-x:\s*auto/);
+  assert.match(categoryStyles, /@media \(max-width: 820px\)[\s\S]*\.categoryGroups/);
+  assert.doesNotMatch(categoryStyles, /47\.99rem|51\.25rem/);
 });
 
 test("pengaturan memakai route internal dan tidak memuat semua domain pada ringkasan", async () => {
@@ -55,7 +59,7 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/settings/settingsPresentation.js"),
   ]);
-  for (const route of ["notifikasi", "integrasi", "anggota", "export", "import", "backup", "pemulihan", "periode", "audit"]) {
+  for (const route of ["notifikasi", "integrasi", "anggota", "export", "import", "backup", "pemulihan", "reset-data", "reset-semua", "periode", "audit"]) {
     assert.match(app, new RegExp(`path="${route}"`));
   }
   assert.match(layout, /SETTINGS_NAVIGATION/);
@@ -97,8 +101,8 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
   assert.match(activity, /reports\.monthly/);
   assert.match(activity, /navigate\("\/transaksi", \{ state: \{ creatorId: member\.user_id, period \} \}\)/);
   assert.match(styles, /\.memberGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(styles, /@media \(max-width: 51\.25rem\)[\s\S]*\.memberGrid \{ grid-template-columns:\s*1fr;/);
-  assert.match(styles, /@media \(max-width: 51\.25rem\)[\s\S]*\.memberActivityPanel \{ width:\s*100%; min-width:\s*0; height:\s*100vh; height:\s*100dvh;/);
+  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberGrid \{ grid-template-columns:\s*1fr;/);
+  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberActivityPanel \{ width:\s*100%; min-width:\s*0; height:\s*100vh; height:\s*100dvh;/);
 });
 
 test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provider", async () => {
@@ -162,6 +166,8 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
 
   assert.match(transactionStyles, /@media \(max-width: 25rem\)[\s\S]*\.typeSelector\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(transactionStyles, /font-size:\s*9px/);
+  assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.modal/);
+  assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);
   assert.match(allocations, /allocation-header-actions/);
   assert.match(allocations, /className="allocation-advanced form-grid__full"/);
   assert.match(allocations, /aria-label="Muat ulang alokasi"/);
@@ -185,4 +191,17 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(pages, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
   assert.match(responsive, /\.report-details__summary \{[\s\S]*display:\s*flex;/);
   assert.doesNotMatch(budgets, /font-size:\s*9px/);
+
+  const accountStyles = (await Promise.all([
+    read("src/features/accounts/AccountsPage.module.css"),
+    read("src/features/accounts/components/MobileAccountActivity.module.css"),
+    read("src/features/accounts/components/MobileAccountsExperience.module.css"),
+    read("src/features/accounts/components/MobileAccountTransferAction.module.css"),
+  ])).join("\n");
+  assert.doesNotMatch(accountStyles, /font-size:\s*\.(?:55|58|62)rem;/);
+  assert.match(accountStyles, /\.mobileStackBalance small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(accountStyles, /\.mobileStackSummary small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(accountStyles, /\.mobileChartLabels \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(accountStyles, /\.mobileChartStats small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(accountStyles, /\.mobileTransferSuccessRoute small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
 });

@@ -94,6 +94,11 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(responsive, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
   assert.doesNotMatch(pages, /\.premium-/);
   assert.match(pages, /\.google-login-button \{[^}]*min-height:\s*48px;/);
+  const dashboardStart = pages.indexOf(".shared-account-panel {");
+  const dashboardEnd = pages.indexOf(".shared-empty-state {", dashboardStart);
+  assert.ok(dashboardStart >= 0 && dashboardEnd > dashboardStart, "Blok dashboard desktop harus tetap ditemukan");
+  const dashboardStyles = pages.slice(dashboardStart, dashboardEnd);
+  assert.doesNotMatch(dashboardStyles, /font-size:\s*(?:8|9|10)px;/);
 });
 
 test("tipografi memakai system font yang tersedia dan bobot standar tanpa synthetic weight ekstrem", async () => {
@@ -158,7 +163,12 @@ test("gradient avatar dan login artwork menjaga focus, motion preference, dan fu
 test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir scroll vertikal", async () => {
   const [responsive, accountStyles, indexHtml, components, modalStyles, reset, pages] = await Promise.all([
     readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/accounts/AccountsPage.module.css", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/features/accounts/AccountsPage.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/accounts/components/MobileAccountActivity.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/accounts/components/MobileAccountsExperience.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/accounts/components/MobileAccountTransferAction.module.css", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
     readFile(new URL("../index.html", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/Modal.module.css", import.meta.url), "utf8"),

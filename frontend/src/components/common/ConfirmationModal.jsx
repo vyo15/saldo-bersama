@@ -130,7 +130,7 @@ const ConfirmationFields = ({
         <span>{acknowledgementLabel}</span>
       </label>
     ) : null}
-    {requirementHint ? <div className="notice notice--warning" role="status">{requirementHint}</div> : null}
+    {requirementHint ? <div className="notice notice--warning">{requirementHint}</div> : null}
     {validationError ? <small className="field__error" role="alert">{validationError}</small> : null}
     {error ? <div className="notice notice--danger" role="alert">{error.message || String(error)}</div> : null}
   </>
@@ -221,6 +221,11 @@ const ConfirmationModal = (props) => {
   });
 
   const requirementHint = confirmationRequirementHint({ remainingSeconds, reasonReady, confirmationReady, acknowledgementReady });
+  const countdownAnnouncement = countdownSeconds > 0
+    ? remainingSeconds > 0
+      ? "Tombol konfirmasi akan aktif setelah jeda keamanan."
+      : "Jeda keamanan selesai. Lanjutkan verifikasi yang diperlukan."
+    : "";
   const submit = (event) => submitConfirmation({
     event, reason, mustProvideReason, confirmationReady, acknowledgementReady, reasonLabel,
     remainingSeconds, submitLockRef, setValidationError, onConfirm, confirmation,
@@ -230,13 +235,15 @@ const ConfirmationModal = (props) => {
   return (
     <Modal
       open={open}
-      onClose={isPending ? () => {} : close}
+      onClose={close}
+      dismissible={!isPending}
       title={title}
       description={description}
       size="sm"
       footer={<ConfirmationFooter close={close} isPending={isPending} formId={formId} tone={tone} confirmDisabled={confirmDisabled} remainingSeconds={remainingSeconds} confirmLabel={confirmLabel} cancelLabel={cancelLabel} />}
     >
       <form id={formId} className="stack-form" onSubmit={submit} onKeyDown={blockAccidentalEnter}>
+        {countdownAnnouncement ? <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{countdownAnnouncement}</span> : null}
         <ConfirmationFields
           formId={formId}
           children={children}

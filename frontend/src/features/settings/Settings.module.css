@@ -266,7 +266,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .auditCard dt { color: var(--text-muted); }
 .auditCard dd { overflow-wrap: anywhere; text-align: right; }
 
-@media (max-width: 47.99rem) {
+@media (max-width: 820px) {
   .settingsNavigation { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settingsNavigationLink { min-height: 3.75rem; padding: var(--space-2); gap: var(--space-2); }
   .settingsNavigationIcon { width: 2.25rem; height: 2.25rem; }
@@ -274,10 +274,6 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   .serviceTile { padding: var(--space-4); grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3); }
   .serviceTile > :last-child { grid-column: 1 / -1; }
   .serviceIcon { width: 2.65rem; height: 2.65rem; }
-}
-
-
-@media (max-width: 51.25rem) {
   .membersPageHeader { display: grid; align-items: stretch; gap: var(--space-3); }
   .membersPageHeader > :global(.button) { width: 100%; justify-content: center; }
   .memberToolbar { grid-template-columns: 1fr; align-items: stretch; }
@@ -471,7 +467,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   .resetOverview > div { padding: .65rem .55rem; }
   .resetOverview span { font-size: .66rem; }
   .resetOverview strong { font-size: 1.15rem; }
-  .resetPreviewGrid, .resetPreservedGrid { grid-template-columns: 1fr; }
+  .resetPreviewGrid, .resetPreservedGrid, .resetScopeSelector { grid-template-columns: 1fr; }
   .resetSafetyPreflight { grid-template-columns: auto minmax(0, 1fr); }
   .resetSafetyPreflight > :last-child { grid-column: 2; justify-self: start; }
   .resetRecoveryMeta { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
@@ -483,6 +479,87 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 @media (max-width: 22rem) {
   .resetOverview, .resetRecoveryMeta { grid-template-columns: 1fr; }
 }
+
+.resetScopeSelector {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.resetScopeSelector legend {
+  grid-column: 1 / -1;
+  margin-bottom: .2rem;
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+.resetScopeSelector > label {
+  min-width: 0;
+  min-height: 4.75rem;
+  padding: .8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: start;
+  gap: .65rem;
+  background: var(--surface-soft);
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.resetScopeSelector > label:hover { border-color: var(--border-strong); }
+.resetScopeSelector > label:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.resetScopeSelector > label.isSelected {
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 50%, var(--surface));
+}
+.resetScopeSelector input { width: 1rem; height: 1rem; margin: .18rem 0 0; accent-color: var(--primary); }
+.resetScopeIcon {
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--primary);
+}
+.resetScopeIcon svg { width: 1rem; height: 1rem; }
+.resetScopeSelector > label > span:last-child { min-width: 0; display: grid; gap: .2rem; }
+.resetScopeSelector strong { font-size: var(--font-size-sm); line-height: 1.35; }
+.resetScopeSelector small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+
+.resetBalancePreview {
+  display: grid;
+  gap: var(--space-3);
+  padding: .85rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 24%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-soft) 95%, var(--warning) 5%);
+}
+.resetBalanceTotal { display: flex; align-items: end; justify-content: space-between; gap: var(--space-3); }
+.resetBalanceTotal > span { min-width: 0; display: grid; gap: .15rem; }
+.resetBalanceTotal small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.resetBalanceTotal strong { font-size: var(--font-size-body); font-variant-numeric: tabular-nums; }
+.resetBalanceTotal > strong { color: var(--positive); white-space: nowrap; }
+.resetBalanceAccounts { display: grid; gap: .4rem; }
+.resetBalanceAccounts > div {
+  min-width: 0;
+  padding: .6rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: .7rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .5rem;
+  background: var(--surface);
+}
+.resetBalanceAccounts span { min-width: 0; display: grid; gap: .12rem; }
+.resetBalanceAccounts span strong { overflow-wrap: anywhere; }
+.resetBalanceAccounts span small { color: var(--text-muted); font-size: .68rem; }
+.resetBalanceAccounts > div > strong { align-self: center; color: var(--positive); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.resetBalanceEmpty { margin: 0; color: var(--text-muted); font-size: var(--font-size-xs); }
+.fullResetGuard { border-color: color-mix(in srgb, var(--negative) 32%, var(--border)); background: color-mix(in srgb, var(--surface-elevated) 95%, var(--negative) 5%); }
+.fullResetGuard > svg { color: var(--negative); }
 
 .importPreview {
   min-width: 0;

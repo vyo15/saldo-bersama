@@ -6,6 +6,7 @@ import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
@@ -155,14 +156,14 @@ const categoryMenuAnchorStyle = (trigger) => {
 const CategoryActionMenu = ({ category, menuOpen, activeMenuRef, menuTriggerRefs, setOpenMenuId, openEdit, openArchivePreview }) => {
   const trigger = menuTriggerRefs.current.get(category.category_id);
   const menu = menuOpen && typeof document !== "undefined" ? createPortal(
-    <div ref={activeMenuRef} className={styles.categoryMenu} style={categoryMenuAnchorStyle(trigger)} role="group" aria-label={`Aksi kategori ${category.name}`}>
-      <button type="button" onClick={() => openEdit(category)}><FiEdit2 aria-hidden="true" />Edit</button>
-      <button type="button" className={styles.categoryMenuDanger} aria-label={`Hapus atau arsipkan kategori ${category.name}`} onClick={() => openArchivePreview(category)}><FiArchive aria-hidden="true" />Hapus / Arsipkan</button>
+    <div ref={activeMenuRef} className={styles.categoryMenu} style={categoryMenuAnchorStyle(trigger)} role="menu" aria-label={`Aksi kategori ${category.name}`}>
+      <button type="button" role="menuitem" onClick={() => openEdit(category)}><FiEdit2 aria-hidden="true" />Edit</button>
+      <button type="button" role="menuitem" className={styles.categoryMenuDanger} aria-label={`Hapus atau arsipkan kategori ${category.name}`} onClick={() => openArchivePreview(category)}><FiArchive aria-hidden="true" />Hapus / Arsipkan</button>
     </div>,
     document.body,
   ) : null;
 
-  return <div className={styles.categoryMenuWrap}><button ref={(node) => { if (node) menuTriggerRefs.current.set(category.category_id, node); else menuTriggerRefs.current.delete(category.category_id); }} type="button" className={styles.categoryMenuTrigger} aria-label={`Kelola kategori ${category.name}`} aria-haspopup="true" aria-expanded={menuOpen} onClick={() => setOpenMenuId((current) => current === category.category_id ? "" : category.category_id)}><FiMoreHorizontal aria-hidden="true" /></button>{menu}</div>;
+  return <div className={styles.categoryMenuWrap}><button ref={(node) => { if (node) menuTriggerRefs.current.set(category.category_id, node); else menuTriggerRefs.current.delete(category.category_id); }} type="button" className={styles.categoryMenuTrigger} aria-label={`Kelola kategori ${category.name}`} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setOpenMenuId((current) => current === category.category_id ? "" : category.category_id)}><FiMoreHorizontal aria-hidden="true" /></button>{menu}</div>;
 };
 
 const CategoryItem = ({ category, ownerMode, menuProps, openEdit, openArchivePreview }) => {
@@ -180,30 +181,57 @@ const orderedCategoryGroups = (grouped) => Object.entries(grouped).sort(([left],
   return leftIndex - rightIndex;
 });
 
-const CategoryList = ({ items, totalItems, grouped, filtersActive, clearFilters, ownerMode, openCreate, openEdit, openArchivePreview, menuProps }) => items.length ? <Card className={styles.categoryPanel}><div className={styles.categoryGroups}>{orderedCategoryGroups(grouped).map(([type, categories]) => { const meta = CATEGORY_SECTION_META[type] || { label: categoryTypeLabel(type), icon: null, className: "" }; const TypeIcon = meta.icon; return <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}><div className={styles.categoryGroupHeading}><div className={`${styles.categoryGroupTitle} ${meta.className}`}><h2 id={`category-${type}`}>{meta.label}</h2>{TypeIcon ? <TypeIcon aria-hidden="true" /> : null}</div><span>{categories.length}</span></div><div className={styles.categoryList}>{categories.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} menuProps={menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div></section>; })}</div></Card> : <Card className={styles.emptyPanel}><h2>{totalItems ? filtersActive ? "Kategori tidak ditemukan" : "Belum ada kategori aktif" : "Belum ada kategori"}</h2>{totalItems && filtersActive ? <Button onClick={clearFilters}>Reset pencarian</Button> : !totalItems && ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null}</Card>;
+const CategoryList = ({ items, totalItems, grouped, filtersActive, clearFilters, ownerMode, openCreate, openEdit, openArchivePreview, menuProps }) => items.length ? <Card className={styles.categoryPanel}><div className={styles.categoryGroups}>{orderedCategoryGroups(grouped).map(([type, categories]) => { const meta = CATEGORY_SECTION_META[type] || { label: categoryTypeLabel(type), icon: null, className: "" }; const TypeIcon = meta.icon; return <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}><div className={styles.categoryGroupHeading}><div className={`${styles.categoryGroupTitle} ${meta.className}`}><h2 id={`category-${type}`}>{meta.label}</h2>{TypeIcon ? <TypeIcon aria-hidden="true" /> : null}</div><span>{categories.length}</span></div><div className={styles.categoryList}>{categories.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} menuProps={menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div></section>; })}</div></Card> : <Card className={styles.emptyPanel}><EmptyState variant="inline" title={totalItems ? filtersActive ? "Kategori tidak ditemukan" : "Belum ada kategori aktif" : "Belum ada kategori"} description={totalItems && filtersActive ? "Ubah pencarian atau filter untuk menampilkan kategori lain." : !totalItems ? "Kategori membantu mengelompokkan pemasukan dan pengeluaran." : "Tidak ada kategori aktif pada status yang dipilih."} action={totalItems && filtersActive ? <Button onClick={clearFilters}>Reset pencarian</Button> : !totalItems && ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} /></Card>;
 
 const useCategoryMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId }) => {
   useEffect(() => {
     if (!openMenuId) return undefined;
+    const focusFrame = window.requestAnimationFrame(() => activeMenuRef.current?.querySelector("button")?.focus());
     const closeFromOutside = (event) => {
       const trigger = menuTriggerRefs.current.get(openMenuId);
       if (activeMenuRef.current?.contains(event.target) || trigger?.contains(event.target)) return;
       setOpenMenuId("");
     };
     const closeFromKeyboard = (event) => {
-      if (event.key !== "Escape") return;
+      const menu = activeMenuRef.current;
+      const items = [...(menu?.querySelectorAll('[role="menuitem"]') || [])];
+      if (event.key === "Escape") {
+        const trigger = menuTriggerRefs.current.get(openMenuId);
+        setOpenMenuId("");
+        window.requestAnimationFrame(() => trigger?.focus());
+        return;
+      }
+      if (!menu?.contains(document.activeElement) || !items.length) return;
+      const currentIndex = Math.max(0, items.indexOf(document.activeElement));
+      const nextIndex = event.key === "ArrowDown"
+        ? (currentIndex + 1) % items.length
+        : event.key === "ArrowUp"
+          ? (currentIndex - 1 + items.length) % items.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? items.length - 1
+              : null;
+      if (nextIndex === null) return;
+      event.preventDefault();
+      items[nextIndex]?.focus();
+    };
+    const closeFromFocusChange = (event) => {
       const trigger = menuTriggerRefs.current.get(openMenuId);
+      if (activeMenuRef.current?.contains(event.target) || trigger?.contains(event.target)) return;
       setOpenMenuId("");
-      window.requestAnimationFrame(() => trigger?.focus());
     };
     const closeFromViewportChange = () => setOpenMenuId("");
     document.addEventListener("pointerdown", closeFromOutside);
     document.addEventListener("keydown", closeFromKeyboard);
+    document.addEventListener("focusin", closeFromFocusChange);
     window.addEventListener("resize", closeFromViewportChange);
     window.addEventListener("scroll", closeFromViewportChange, true);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", closeFromOutside);
       document.removeEventListener("keydown", closeFromKeyboard);
+      document.removeEventListener("focusin", closeFromFocusChange);
       window.removeEventListener("resize", closeFromViewportChange);
       window.removeEventListener("scroll", closeFromViewportChange, true);
     };
@@ -317,7 +345,7 @@ const CategoriesPage = () => {
   const clearFilters = () => { setSearchQuery(""); setStatusFilter("active"); setOpenMenuId(""); };
   const menuProps = { openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId };
   const archivePending = archiveEnabled && statusFilter === "archived" && archiveResource.status === "loading" && !archiveResource.data;
-  return <div className={`page-stack ${styles.categoryPage}`}><RefreshWarning error={resource.refreshError} onRetry={actions.reloadCategories} />{archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}{archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}<PageHeader title="Kategori" actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={actions.openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />{actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}<CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />{archivePending ? <LoadingScreen label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}<CreateCategoryModal open={actions.createOpen} close={actions.closeCreate} form={actions.form} setForm={actions.setForm} createCategory={actions.createCategory} dialogState={actions.dialogState} /><EditCategoryModal editCategory={actions.editCategory} setEditCategory={actions.setEditCategory} saveCategory={actions.saveCategory} dialogState={actions.dialogState} /><ArchiveCategoryModal archiveTarget={actions.archiveTarget} dialogState={actions.dialogState} setArchiveTarget={actions.setArchiveTarget} applyCategoryLifecycle={actions.applyCategoryLifecycle} /></div>;
+  return <div className={`page-stack ${styles.categoryPage}`}><RefreshWarning error={resource.refreshError} onRetry={actions.reloadCategories} />{archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}{archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}<PageHeader title="Kategori" actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={actions.openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />{actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}<CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />{archivePending ? <LoadingScreen variant="panel" label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}<CreateCategoryModal open={actions.createOpen} close={actions.closeCreate} form={actions.form} setForm={actions.setForm} createCategory={actions.createCategory} dialogState={actions.dialogState} /><EditCategoryModal editCategory={actions.editCategory} setEditCategory={actions.setEditCategory} saveCategory={actions.saveCategory} dialogState={actions.dialogState} /><ArchiveCategoryModal archiveTarget={actions.archiveTarget} dialogState={actions.dialogState} setArchiveTarget={actions.setArchiveTarget} applyCategoryLifecycle={actions.applyCategoryLifecycle} /></div>;
 };
 
 export default CategoriesPage;

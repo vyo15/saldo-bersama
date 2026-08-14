@@ -47,7 +47,10 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
   assert.match(page, /document\.body/);
   assert.match(page, /Hapus \/ Arsipkan/);
   assert.match(page, /active \? null : <span className=\{styles\.categoryStatus\}/);
-  assert.match(page, /event\.key !== "Escape"/);
+  assert.match(page, /event\.key === "Escape"/);
+  assert.match(page, /event\.key === "ArrowDown"/);
+  assert.match(page, /event\.key === "ArrowUp"/);
+  assert.match(page, /role="menuitem"/);
   assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.categoryMenu[\s\S]*position: fixed[\s\S]*mobile-navigation-height/);
   assert.doesNotMatch(styles, /\.categoryStatusActive/);

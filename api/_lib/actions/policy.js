@@ -101,6 +101,9 @@ export const ACTION_POLICIES = Object.freeze({
   "reset.preview": snapshotRead(),
   "reset.status": snapshotRead({ maintenanceAllowed: true }),
   "reset.apply": external(),
+  "fullReset.preview": snapshotRead(),
+  "fullReset.status": snapshotRead({ maintenanceAllowed: true }),
+  "fullReset.apply": external(),
   "integrity.run": write({ maintenanceAllowed: true }),
 });
 

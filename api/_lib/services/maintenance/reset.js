@@ -4,9 +4,24 @@ import { enqueueIntegration } from "../integrations.js";
 import { integrityIssues } from "../reporting/index.js";
 import { appError, assertOwner, canonicalJson, nowIso, parseJson, sanitizeText, uuid } from "../core.js";
 import { createTechnicalBackup } from "./backup.js";
-import { digest, quoted } from "./shared.js";
+import {
+  claimMaintenanceMode,
+  clearMaintenanceMode,
+  decodeMaintenanceIdempotency,
+  digest,
+  maintenanceBackupIdForIntent,
+  maintenanceBackupPresentation,
+  quoted,
+  releaseMaintenanceMode,
+  resolveMaintenanceOutcome,
+  selectMaintenanceIntentRow,
+} from "./shared.js";
 
 export const TRIAL_RESET_CONFIRMATION = "BERSIHKAN DATA TESTING";
+export const TRIAL_RESET_SCOPE_ACTIVITY = "activity";
+export const TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES = "activity_and_balances";
+
+const TRIAL_RESET_SCOPES = new Set([TRIAL_RESET_SCOPE_ACTIVITY, TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES]);
 
 const RESET_BUSINESS_TABLES = Object.freeze([
   { table: "goal_movements", key: "goal_movement_id" },
@@ -63,6 +78,32 @@ const PRESERVED_COUNT_STATEMENTS = Object.freeze([
   { sql: "SELECT COUNT(*) AS count FROM notification_preferences", args: [] },
 ]);
 
+const accountBalanceResetStatement = (cutoffDate) => ({
+  sql: `SELECT a.account_id,a.name,a.initial_balance,a.initial_balance_date,a.row_version,a.status,
+    CASE WHEN a.initial_balance_date>? THEN 0 ELSE a.initial_balance + COALESCE(SUM(CASE
+      WHEN t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
+      WHEN t.transaction_type='expense' AND t.source_account_id=a.account_id THEN -t.amount
+      WHEN t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
+      WHEN t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
+      WHEN t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
+      ELSE 0 END),0) END AS current_balance
+    FROM accounts a
+    LEFT JOIN transactions t ON t.status='active'
+      AND t.transaction_date BETWEEN a.initial_balance_date AND ?
+      AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
+    GROUP BY a.account_id
+    ORDER BY a.account_id`,
+  args: [cutoffDate, cutoffDate],
+});
+
+const normalizedResetScope = (value) => {
+  const scope = sanitizeText(value || TRIAL_RESET_SCOPE_ACTIVITY, 40);
+  if (!TRIAL_RESET_SCOPES.has(scope)) {
+    throw appError("RESET_SCOPE_INVALID", "Pilihan reset data testing tidak valid.", 400);
+  }
+  return scope;
+};
+
 const isResetGeneratedOutbox = (row) => {
   if (row?.entity_type !== "system" || row?.event_type !== "rebuild") return false;
   const canonicalTarget = (row.provider === "sheets" && row.entity_id === "mirror")
@@ -75,15 +116,27 @@ const resettableRows = (table, rows) => table === "integration_outbox"
   ? rows.filter((row) => !isResetGeneratedOutbox(row))
   : rows;
 
-const mapResetStateRows = (resultRows) => {
-  const rowsByTable = Object.fromEntries(RESET_STATE_TABLES.map(({ table }, index) => [
-    table,
-    resettableRows(table, resultRows[index] || []),
-  ]));
+const rowsByResetTable = (resultRows) => Object.fromEntries(RESET_STATE_TABLES.map(({ table }, index) => [
+  table,
+  resettableRows(table, resultRows[index] || []),
+]));
+
+const accountStateForFingerprint = (accounts = []) => accounts.map((row) => ({
+  account_id: row.account_id,
+  initial_balance: Number(row.initial_balance || 0),
+  initial_balance_date: row.initial_balance_date,
+  row_version: Number(row.row_version || 1),
+}));
+
+const mapResetStateRows = (resultRows, scope, accountRows = []) => {
+  const rowsByTable = rowsByResetTable(resultRows);
   const counts = Object.fromEntries(RESET_STATE_TABLES.map(({ table }) => [table, rowsByTable[table].length]));
+  const fingerprintPayload = scope === TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES
+    ? { rowsByTable, accounts: accountStateForFingerprint(accountRows), scope }
+    : { rowsByTable, scope };
   return {
     counts,
-    fingerprint: digest(canonicalJson(rowsByTable)),
+    fingerprint: digest(canonicalJson(fingerprintPayload)),
   };
 };
 
@@ -105,7 +158,35 @@ const mapPreservedCountRows = (resultRows) => {
   };
 };
 
-const readResetState = async (db) => mapResetStateRows(await readBatchRows(db, RESET_STATE_STATEMENTS));
+const balanceResetPreview = (accountRows = []) => {
+  const accounts = accountRows
+    .filter((row) => Number(row.current_balance || 0) !== 0 || Number(row.initial_balance || 0) !== 0)
+    .map((row) => ({
+      accountId: row.account_id,
+      name: row.name,
+      currentBalance: Number(row.current_balance || 0),
+      initialBalance: Number(row.initial_balance || 0),
+      nextBalance: 0,
+      rowVersion: Number(row.row_version || 1),
+    }));
+  return {
+    accountsAffected: accounts.length,
+    totalCurrentBalance: accounts.reduce((sum, row) => sum + row.currentBalance, 0),
+    totalInitialBalance: accounts.reduce((sum, row) => sum + row.initialBalance, 0),
+    accounts,
+  };
+};
+
+const readResetState = async (db, scope, cutoffDate) => {
+  const withBalances = scope === TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES;
+  const statements = withBalances ? [...RESET_STATE_STATEMENTS, accountBalanceResetStatement(cutoffDate)] : RESET_STATE_STATEMENTS;
+  const resultRows = await readBatchRows(db, statements);
+  const accountRows = withBalances ? resultRows.at(-1) || [] : [];
+  return {
+    ...mapResetStateRows(resultRows.slice(0, RESET_STATE_STATEMENTS.length), scope, accountRows),
+    balanceReset: withBalances ? balanceResetPreview(accountRows) : null,
+  };
+};
 
 const sumCounts = (counts, tables) => tables.reduce((sum, { table }) => sum + Number(counts[table] || 0), 0);
 
@@ -137,15 +218,28 @@ const resetSummary = (counts) => {
 
 export const previewTrialDataReset = async (db, context) => {
   assertOwner(context.actor);
-  const resultRows = await readBatchRows(db, [...RESET_STATE_STATEMENTS, ...PRESERVED_COUNT_STATEMENTS]);
-  const state = mapResetStateRows(resultRows.slice(0, RESET_STATE_STATEMENTS.length));
-  const preserved = mapPreservedCountRows(resultRows.slice(RESET_STATE_STATEMENTS.length));
+  const resetScope = normalizedResetScope(context.payload?.resetScope);
+  const withBalances = resetScope === TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES;
+  const statements = [
+    ...RESET_STATE_STATEMENTS,
+    ...PRESERVED_COUNT_STATEMENTS,
+    ...(withBalances ? [accountBalanceResetStatement(context.today)] : []),
+  ];
+  const resultRows = await readBatchRows(db, statements);
+  const stateRows = resultRows.slice(0, RESET_STATE_STATEMENTS.length);
+  const preservedStart = RESET_STATE_STATEMENTS.length;
+  const preservedEnd = preservedStart + PRESERVED_COUNT_STATEMENTS.length;
+  const preserved = mapPreservedCountRows(resultRows.slice(preservedStart, preservedEnd));
+  const accountRows = withBalances ? resultRows[preservedEnd] || [] : [];
+  const state = mapResetStateRows(stateRows, resetScope, accountRows);
   return {
     scope: "prelaunch-testing-data",
+    resetScope,
     previewFingerprint: state.fingerprint,
     previewedAt: nowIso(),
     confirmationPhrase: TRIAL_RESET_CONFIRMATION,
     summary: resetSummary(state.counts),
+    balanceReset: withBalances ? balanceResetPreview(accountRows) : null,
     preserved,
   };
 };
@@ -162,22 +256,16 @@ const assertResetRequest = (context) => {
   if (reason.length < 5) throw appError("RESET_REASON_REQUIRED", "Alasan pembersihan minimal 5 karakter.", 400);
   const previewFingerprint = sanitizeText(payload.previewFingerprint, 128);
   if (!previewFingerprint) throw appError("RESET_PREVIEW_REQUIRED", "Jalankan preview pembersihan terlebih dahulu.", 409);
-  return { reason, previewFingerprint };
+  const resetScope = normalizedResetScope(payload.resetScope);
+  return { reason, previewFingerprint, resetScope };
 };
 
-const assertPreviewUnchanged = async (db, previewFingerprint) => {
-  const state = await readResetState(db);
+const assertPreviewUnchanged = async (db, previewFingerprint, resetScope, cutoffDate) => {
+  const state = await readResetState(db, resetScope, cutoffDate);
   if (state.fingerprint !== previewFingerprint) {
     throw appError("RESET_PREVIEW_CHANGED", "Data berubah sejak preview. Jalankan preview lagi agar data terbaru diperiksa.", 409);
   }
   return state;
-};
-
-const claimMaintenance = async (db) => {
-  const result = await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode' AND value='false'", [nowIso()]);
-  if (result.rowsAffected !== 1) {
-    throw appError("MAINTENANCE_MODE", "Maintenance lain sedang aktif. Selesaikan recovery/integrity sebelum pembersihan data testing.", 409);
-  }
 };
 
 const purgeTrialData = async (tx) => {
@@ -191,16 +279,12 @@ const purgeTrialData = async (tx) => {
   for (const table of RESET_BUSINESS_DELETE_ORDER) await tx.execute(`DELETE FROM ${quoted(table)}`);
 };
 
-const resetBackupIdForIntent = (actorId, idempotencyKey) => idempotencyKey
-  ? `bkp_${digest(`${actorId}:backup.safety:pre-trial-reset:${idempotencyKey}`).slice(0, 32)}`
-  : null;
-
-const decodeIdempotency = (row) => {
-  if (!row) return { state: "missing", result: null };
-  const value = parseJson(row.response_json, {});
-  const state = value?.__idempotency_state;
-  if (state === "processing" || state === "unknown") return { state, result: null };
-  return { state: "completed", result: value };
+const zeroInitialBalances = async (tx, context) => {
+  const timestamp = nowIso();
+  return tx.execute(`UPDATE accounts
+    SET initial_balance=0,initial_balance_date=?,row_version=row_version+1,updated_by=?,updated_at=?
+    WHERE initial_balance<>0`,
+  [context.today, context.actor.user_id, timestamp]);
 };
 
 const resetAuditDetails = (row) => {
@@ -212,6 +296,8 @@ const resetAuditDetails = (row) => {
     resetAt: next.resetAt || row.timestamp,
     previewFingerprint: previous.previewFingerprint || null,
     summary: previous.summary || null,
+    balanceReset: previous.balanceReset || null,
+    resetScope: next.resetScope || TRIAL_RESET_SCOPE_ACTIVITY,
     safetyBackupId: next.safetyBackupId || null,
   };
 };
@@ -232,7 +318,7 @@ export const readTrialDataResetStatus = async (db, context) => {
       sql: "SELECT idempotency_key,response_json,request_fingerprint,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='reset.apply' AND expires_at>? ORDER BY created_at DESC LIMIT 12",
       args: [context.actor.user_id, nowIso()],
     };
-  const requestedBackupId = resetBackupIdForIntent(context.actor.user_id, requestedKey);
+  const requestedBackupId = maintenanceBackupIdForIntent({ actorId: context.actor.user_id, idempotencyKey: requestedKey, backupType: "pre-trial-reset" });
   const auditStatement = requestedBackupId
     ? {
       sql: `SELECT timestamp,entity_id,previous_value,new_value FROM audit_log
@@ -256,13 +342,11 @@ export const readTrialDataResetStatus = async (db, context) => {
   const offset = RESET_COUNT_STATEMENTS.length;
   const maintenanceMode = resultRows[offset]?.[0]?.value === "true";
   const candidateIntentRows = resultRows[offset + 1] || [];
-  const intentRow = requestedKey
-    ? candidateIntentRows[0] || null
-    : candidateIntentRows.find((row) => ["processing", "unknown"].includes(decodeIdempotency(row).state)) || null;
+  const intentRow = selectMaintenanceIntentRow(candidateIntentRows, requestedKey);
   const auditRows = resultRows[offset + 2] || [];
-  const intent = decodeIdempotency(intentRow);
+  const intent = decodeMaintenanceIdempotency(intentRow);
   const effectiveKey = intentRow?.idempotency_key || requestedKey || "";
-  const expectedBackupId = requestedBackupId || resetBackupIdForIntent(context.actor.user_id, effectiveKey);
+  const expectedBackupId = requestedBackupId || maintenanceBackupIdForIntent({ actorId: context.actor.user_id, idempotencyKey: effectiveKey, backupType: "pre-trial-reset" });
   const auditRow = matchingResetAudit(auditRows, expectedBackupId);
   const audit = resetAuditDetails(auditRow);
   const completed = intent.state === "completed" && intent.result?.reset === true ? intent.result : null;
@@ -273,12 +357,12 @@ export const readTrialDataResetStatus = async (db, context) => {
     [safetyBackupId],
   ) : null;
 
-  let outcome = "idle";
-  if (committed) outcome = "committed";
-  else if (intent.state === "processing") outcome = "processing";
-  else if (maintenanceMode) outcome = "recovery_required";
-  else if (intent.state === "unknown") outcome = "not_committed";
-  else if (requestedKey && intent.state === "missing") outcome = "not_committed";
+  const outcome = resolveMaintenanceOutcome({
+    committed,
+    intentState: intent.state,
+    maintenanceMode,
+    requestedKey,
+  });
 
   return {
     checkedAt: nowIso(),
@@ -287,20 +371,15 @@ export const readTrialDataResetStatus = async (db, context) => {
     canStartNewIntent: !maintenanceMode && !["processing"].includes(outcome),
     maintenanceMode,
     intent: intentRow ? { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at } : null,
-    backup: backup ? {
-      backupId: backup.backup_id,
-      status: backup.status,
-      fileId: backup.external_file_id || null,
-      verifiedAt: backup.verified_at || null,
-      errorCode: backup.error_code || null,
-      createdAt: backup.created_at || null,
-    } : null,
+    backup: maintenanceBackupPresentation(backup),
     committedReset: committed ? {
       resetId: completed?.resetId || audit?.resetId || null,
       resetAt: completed?.resetAt || audit?.resetAt || null,
       safetyBackupId: completed?.safetyBackupId || audit?.safetyBackupId || null,
       safetyBackupFileId: completed?.safetyBackupFileId || backup?.external_file_id || null,
       summary: completed?.summary || audit?.summary || null,
+      balanceReset: completed?.balanceReset || audit?.balanceReset || null,
+      resetScope: completed?.resetScope || audit?.resetScope || TRIAL_RESET_SCOPE_ACTIVITY,
     } : null,
     currentSummary: resetSummary(counts),
   };
@@ -308,14 +387,16 @@ export const readTrialDataResetStatus = async (db, context) => {
 
 export const applyTrialDataReset = async (db, context) => {
   assertOwner(context.actor);
-  const { reason, previewFingerprint } = assertResetRequest(context);
-  const preBackupState = await assertPreviewUnchanged(db, previewFingerprint);
+  const { reason, previewFingerprint, resetScope } = assertResetRequest(context);
+  const preBackupState = await assertPreviewUnchanged(db, previewFingerprint, resetScope, context.today);
   const summary = resetSummary(preBackupState.counts);
-  if (summary.totalRows <= 0) {
-    throw appError("RESET_NOTHING_TO_CLEAN", "Tidak ada data testing yang perlu dibersihkan. Jalankan preview lagi jika data baru ditambahkan.", 409);
+  const balanceReset = preBackupState.balanceReset;
+  const hasBalanceChanges = resetScope === TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES && Number(balanceReset?.accountsAffected || 0) > 0;
+  if (summary.totalRows <= 0 && !hasBalanceChanges) {
+    throw appError("RESET_NOTHING_TO_CLEAN", "Tidak ada data testing atau saldo awal yang perlu dibersihkan. Jalankan preview lagi jika data baru ditambahkan.", 409);
   }
   const safety = await createTechnicalBackup(db, { ...context, action: "backup.safety" }, { type: "pre-trial-reset", audit: true });
-  await claimMaintenance(db);
+  await claimMaintenanceMode(db, "Maintenance lain sedang aktif. Selesaikan recovery/integrity sebelum pembersihan data testing.");
 
   const resetId = uuid();
   const resetAt = nowIso();
@@ -323,34 +404,45 @@ export const applyTrialDataReset = async (db, context) => {
     reset: true,
     resetId,
     resetAt,
+    resetScope,
     safetyBackupId: safety.backupId,
     safetyBackupFileId: safety.fileId,
     summary,
+    balanceReset,
   };
 
   let purgeStarted = false;
   try {
     await db.transaction(async (tx) => {
-      await assertPreviewUnchanged(tx, previewFingerprint);
+      await assertPreviewUnchanged(tx, previewFingerprint, resetScope, context.today);
       purgeStarted = true;
       await purgeTrialData(tx);
+      if (resetScope === TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES) await zeroInitialBalances(tx, context);
       const issues = await integrityIssues(tx);
       if (issues.length) throw appError("RESET_INTEGRITY_FAILED", "Pembersihan dibatalkan karena integrity check gagal.", 409, issues);
       await appendAudit(tx, { ...context, action: "reset.apply" }, {
         entityType: "maintenance_reset",
         entityId: resetId,
         reason,
-        previous: { previewFingerprint, summary: result.summary },
-        next: { resetAt, safetyBackupId: safety.backupId, scope: "prelaunch-testing-data", reason },
+        previous: {
+          previewFingerprint,
+          summary: result.summary,
+          balanceReset: balanceReset ? {
+            accountsAffected: balanceReset.accountsAffected,
+            totalCurrentBalance: balanceReset.totalCurrentBalance,
+            totalInitialBalance: balanceReset.totalInitialBalance,
+          } : null,
+        },
+        next: { resetAt, safetyBackupId: safety.backupId, scope: "prelaunch-testing-data", resetScope, reason },
       });
       await enqueueIntegration(tx, "sheets", "rebuild", "system", "mirror", { reason: "trial-reset", resetId });
       await enqueueIntegration(tx, "calendar", "rebuild", "system", "calendar", { reason: "trial-reset", resetId });
-      await tx.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+      await releaseMaintenanceMode(tx, "Status maintenance tidak dapat dipastikan. Pembersihan dibatalkan dan maintenance tetap aktif.");
     });
     return result;
   } catch (error) {
     if (!purgeStarted) {
-      await db.execute("UPDATE system_config SET value='false',updated_at=? WHERE key='maintenance_mode'", [nowIso()]);
+      await clearMaintenanceMode(db);
     }
     // Setelah purge dimulai, fail closed: maintenance tetap aktif sampai owner menjalankan integrity recovery.
     throw error;

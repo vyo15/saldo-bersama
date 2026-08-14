@@ -1,11 +1,14 @@
 import Brand from "../common/Brand.jsx";
 
-const LoadingScreen = ({ label = "Menyiapkan data keuangan..." }) => (
-  <main className="loading-screen" role="status" aria-live="polite">
-    <Brand />
-    <span className="spinner" aria-hidden="true" />
-    <p>{label}</p>
-  </main>
-);
+const LoadingScreen = ({ label = "Menyiapkan data keuangan...", variant = "page" }) => {
+  const isPage = variant === "page";
+  return (
+    <div className={`loading-screen loading-screen--${isPage ? "page" : "panel"}`} role="status" aria-live="polite" aria-atomic="true">
+      {isPage ? <Brand /> : null}
+      <span className="spinner" aria-hidden="true" />
+      <p>{label}</p>
+    </div>
+  );
+};
 
 export default LoadingScreen;

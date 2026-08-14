@@ -74,7 +74,7 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
   const [allocations, allocationsApi, recurring, recurringApi, goals, goalsApi, budgets, budgetsApi] = await Promise.all([
     read("src/features/allocations/AllocationsPage.jsx"),
     read("src/features/allocations/allocations.api.js"),
-    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/recurring.api.js"),
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/goals/goals.api.js"),
@@ -113,7 +113,7 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
 });
 
 test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode per route", async () => {
-  const [layout, notifications, members, recovery, period, audit, reset, integrations, confirmationModal, feedbackCss, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi] = await Promise.all([
+  const [layout, notifications, members, recovery, period, audit, reset, fullReset, integrations, confirmationModal, feedbackCss, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi] = await Promise.all([
     read("src/features/settings/SettingsLayout.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
@@ -121,6 +121,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
     read("src/features/settings/PeriodControlPage.jsx"),
     read("src/features/settings/AuditPage.jsx"),
     read("src/features/settings/ResetDataPage.jsx"),
+    read("src/features/settings/FullResetPage.jsx"),
     read("src/features/settings/GoogleIntegrationsPage.jsx"),
     read("src/components/common/ConfirmationModal.jsx"),
     read("src/components/feedback/FeedbackProvider.module.css"),
@@ -137,7 +138,9 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(layout, /\/pengaturan\/periode/);
   assert.match(layout, /\/pengaturan\/audit/);
   assert.match(layout, /\/pengaturan\/reset-data/);
-  assert.match(layout, /Bersihkan data testing/);
+  assert.match(layout, /Reset data testing/);
+  assert.match(layout, /\/pengaturan\/reset-semua/);
+  assert.match(layout, /Reset semua data/);
   assert.match(layout, /ownerOnly/);
   assert.match(reset, /<OwnerSettingsGuard>/);
   assert.match(reset, /runSettingsAction\("reset\.preview"/);
@@ -153,7 +156,18 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(reset, /expectedConfirmation=\{preview\?\.confirmationPhrase/);
   assert.match(reset, /countdownSeconds=\{8\}/);
   assert.match(reset, /safety backup/i);
-  assert.match(reset, /acknowledgementItems=\{RESET_ACKNOWLEDGEMENTS\}/);
+  assert.match(reset, /RESET_SCOPE_ACTIVITY_AND_BALANCES/);
+  assert.match(reset, /runSettingsAction\("reset\.preview", \{ resetScope \}/);
+  assert.match(reset, /balanceReset/);
+  assert.match(reset, /RESET_BALANCE_ACKNOWLEDGEMENTS/);
+  assert.match(fullReset, /<OwnerSettingsGuard>/);
+  assert.match(fullReset, /useApiResource\("fullReset\.status"/);
+  assert.match(fullReset, /runSettingsAction\("fullReset\.preview"/);
+  assert.match(fullReset, /runSettingsAction\("fullReset\.apply"/);
+  assert.match(fullReset, /RESET SEMUA DATA SALDO BERSAMA/);
+  assert.match(fullReset, /countdownSeconds=\{15\}/);
+  assert.match(fullReset, /acknowledgementItems=\{FULL_RESET_ACKNOWLEDGEMENTS\}/);
+  assert.match(fullReset, /clearMaintenance: true/);
   assert.match(integrations, /Google Drive/);
   assert.match(integrations, /FiHardDrive/);
   assert.match(confirmationModal, /confirmation-checklist/);
@@ -192,7 +206,7 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
     read("src/hooks/useGuardedMutation.js"),
     read("src/components/common/ConfirmationModal.jsx"),
     read("src/features/goals/GoalsPage.jsx"),
-    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/allocations/AllocationsPage.jsx"),
     read("src/features/transactions/TransactionForm.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
@@ -205,6 +219,7 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
   assert.match(hook, /if \(inFlightRef\.current && promiseRef\.current\) return promiseRef\.current/);
   assert.match(modal, /submitLockRef\.current/);
   assert.match(modal, /submitLockRef\.current\) return/);
+  assert.match(modal, /dismissible=\{!isPending\}/);
   assert.match(transactionForm, /Promise\.allSettled\(\[refreshOverview\(\), Promise\.resolve\(\)\.then/, "refresh gagal setelah transaksi tersimpan tidak boleh dilaporkan sebagai save gagal");
   assert.match(notifications, /useGuardedMutation/, "aksi subscription/push browser wajib punya synchronous reentrancy guard");
   for (const [name, source] of [["goals", goals], ["recurring", recurring], ["allocations", allocations]]) {
@@ -234,7 +249,7 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
 
 test("recurring skip/restore dan feedback global memakai guard canonical tanpa hard rollback", async () => {
   const [recurring, recurringApi, feedback, feedbackContext, providers, notifications] = await Promise.all([
-    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/recurring.api.js"),
     read("src/components/feedback/FeedbackProvider.jsx"),
     read("src/components/feedback/feedbackContext.js"),
@@ -273,7 +288,7 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(feedback, /Menyimpan transaksi/);
   assert.match(feedback, /Server sudah mengonfirmasi perubahan/);
   assert.match(feedback, /Jangan kirim ulang sebelum status diperiksa agar tidak terjadi duplikasi/);
-  assert.match(feedback, /"reset\.apply": "Jangan kirim ulang\. Buka Bersihkan data testing lalu gunakan Periksa status operasi/);
+  assert.match(feedback, /"reset\.apply": "Jangan kirim ulang\. Buka Reset data testing lalu gunakan Periksa status operasi/);
   assert.match(feedback, /\["success", "info", "warning", "danger"\]/, "feedback error wajib mempertahankan tone danger");
   assert.match(feedbackContext, /useFeedback/);
   assert.doesNotMatch(feedback, /undo|rollback|deleteTransaction|DELETE FROM/i);
@@ -315,7 +330,7 @@ test("feedback transient konsisten tanpa mengganti notice persisten untuk operas
 
 test("editor jadwal rutin memakai master rule, bukan snapshot occurrence, dan menandai input wajib", async () => {
   const [page, backend] = await Promise.all([
-    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     readFile(new URL("../../api/_lib/services/planning/recurring.js", import.meta.url), "utf8"),
   ]);
   assert.match(backend, /r\.expected_amount AS rule_expected_amount/);
@@ -358,7 +373,7 @@ test("inisialisasi Google Login dapat dibatalkan saat layout atau effect berubah
 test("mutation ledger terkelola menginvalidasi rekening dan turunan laporan yang ikut berubah", async () => {
   const [goals, recurring] = await Promise.all([
     read("src/features/goals/GoalsPage.jsx"),
-    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
   ]);
   assert.match(goals, /goalLedgerRefreshKeys = Object\.freeze\(\["goals\.list", "transactions\.list", "accounts\.list", "reports\.monthly", "app\.initialState"\]\)/);
   assert.match(goals, /invalidate\(goalLedgerRefreshKeys\)/);
@@ -407,7 +422,7 @@ test("import transaksi memblokir partial apply dan restore memakai konfirmasi de
   assert.match(recoveryPage, /healthResource\.status === "ready"/);
   assert.match(recoveryPage, /!healthReady \|\| maintenanceMode/);
   assert.match(recoveryPage, /<MaintenanceRecoveryPanel/);
-  assert.match(maintenancePanel, /Periksa integritas & pulihkan/);
+  assert.match(maintenancePanel, /Periksa konsistensi & pulihkan/);
 
   assert.match(integrations, /driveBackupActivity/);
   assert.match(integrations, /integrations\.driveBackup/);

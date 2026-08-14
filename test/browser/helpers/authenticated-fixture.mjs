@@ -464,7 +464,7 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
       currentSummary: { totalRows: 2, businessRows: 2, operationalRows: 0 },
     },
     "reset.preview": {
-      scope: "prelaunch-testing-data", previewFingerprint: "browser-reset-preview", previewedAt: "2026-08-13T04:00:00.000Z",
+      scope: "prelaunch-testing-data", resetScope: "activity", previewFingerprint: "browser-reset-preview", previewedAt: "2026-08-13T04:00:00.000Z",
       confirmationPhrase: "BERSIHKAN DATA TESTING",
       summary: {
         transactions: 1, reconciliations: 1, goals: 0, goalMovements: 0, budgets: 0, allocationRules: 0, allocationPeriods: 0,
@@ -472,6 +472,22 @@ export const createAuthenticatedGatewayResponses = (session = ownerSession) => {
         notificationQueue: 0, integrationLinks: 0, integrationOutbox: 0, importPreviews: 0, businessRows: 2, operationalRows: 0, totalRows: 2,
       },
       preserved: { accounts: 3, categories: 3, users: 2, audit: 8, backups: 1, pushSubscriptions: 1, notificationPreferences: 7 },
+    },
+    "fullReset.status": {
+      checkedAt: "2026-08-13T04:00:00.000Z", outcome: "idle", requiresAttention: false, canStartNewIntent: true,
+      maintenanceMode: false, intent: null, backup: null, committedReset: null,
+      currentSummary: { totalRows: 11, domainRows: 4, masterRows: 6, operationalRows: 1 },
+    },
+    "fullReset.preview": {
+      scope: "full-data-reset", previewFingerprint: "browser-full-reset-preview", previewedAt: "2026-08-13T04:00:00.000Z",
+      confirmationPhrase: "RESET SEMUA DATA SALDO BERSAMA",
+      summary: {
+        transactions: 2, reconciliations: 1, goals: 0, goalMovements: 0, budgets: 1, allocationRules: 0, allocationPeriods: 0, allocationMovements: 0,
+        recurringRules: 0, recurringOccurrences: 0, periodClosures: 0, accounts: 3, categories: 3, notificationDeliveries: 0, notificationQueue: 0,
+        integrationLinks: 0, integrationOutbox: 1, notificationPreferences: 0, pushSubscriptions: 0, importPreviews: 0, restorePreviews: 0,
+        domainRows: 4, masterRows: 6, operationalRows: 1, totalRows: 11,
+      },
+      preserved: { users: 2, audit: 8, backups: 1, integrityRuns: 2, idempotencyKeys: 3, systemConfig: 10, schemaMigrations: 7, requestNonces: 1 },
     },
     "notifications.preferences": {
       items: [

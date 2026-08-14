@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const MOBILE_SWIPE_QUERY = "(max-width: 47.99rem)";
+const MOBILE_SWIPE_QUERY = "(max-width: 820px)";
 const SWIPE_DIRECTION_LOCK_PX = 8;
 const SWIPE_HORIZONTAL_REJECT_PX = 10;
 const SWIPE_VELOCITY_PX_MS = 0.58;

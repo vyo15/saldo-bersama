@@ -561,7 +561,7 @@
   .iconGrid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
-@media (max-width: 47.99rem) {
+@media (max-width: 820px) {
   .categoryPage { gap: var(--space-4); }
   .categoryPage :global(.page-header) { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
   .categoryPage :global(.page-header__actions) { width: auto; }

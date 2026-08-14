@@ -68,7 +68,7 @@ const withBridgeStub = async (callback) => {
   const originalFetch = globalThis.fetch;
   const originalUrl = process.env.GOOGLE_BRIDGE_WEB_APP_URL;
   const originalSecret = process.env.GOOGLE_BRIDGE_SHARED_SECRET;
-  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://bridge.invalid.test";
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/test-import-safety/exec";
   process.env.GOOGLE_BRIDGE_SHARED_SECRET = "test-secret-at-least-thirty-two-characters";
   globalThis.fetch = async (_url, options) => {
     const request = JSON.parse(options.body);

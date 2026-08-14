@@ -7,7 +7,7 @@ const VARIANT_STYLES = Object.freeze({
   danger: styles.danger,
 });
 
-const Button = ({ variant = "secondary", className = "", icon: Icon, children, loading = false, disabled, ...props }) => {
+const Button = ({ variant = "secondary", className = "", icon: Icon, children, loading = false, disabled, type = "button", ...props }) => {
   const DisplayIcon = loading ? FiLoader : Icon;
   const variantStyle = VARIANT_STYLES[variant] || styles.secondary;
   const classes = [
@@ -23,6 +23,7 @@ const Button = ({ variant = "secondary", className = "", icon: Icon, children, l
   return (
     <button
       className={classes}
+      type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       data-ui="button"

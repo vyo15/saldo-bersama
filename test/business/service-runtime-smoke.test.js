@@ -63,7 +63,7 @@ const withGoogleBridgeStub = async (callback) => {
   const files = new Map();
   let sequence = 0;
 
-  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://bridge.invalid.test";
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/test-service-smoke/exec";
   process.env.GOOGLE_BRIDGE_SHARED_SECRET = "test-secret-at-least-thirty-two-characters";
   globalThis.fetch = async (_url, options) => {
     const request = JSON.parse(options.body);

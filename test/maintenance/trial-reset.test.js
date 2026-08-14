@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyTrialDataReset, previewTrialDataReset, readTrialDataResetStatus, TRIAL_RESET_CONFIRMATION } from "../../api/_lib/services/maintenance/reset.js";
+import {
+  applyTrialDataReset, previewTrialDataReset, readTrialDataResetStatus, TRIAL_RESET_CONFIRMATION,
+  TRIAL_RESET_SCOPE_ACTIVITY, TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES,
+} from "../../api/_lib/services/maintenance/reset.js";
 import { integrityWithMaintenanceRecovery } from "../../api/_lib/services/maintenance/integrity.js";
 import { decodeBackup, digest } from "../../api/_lib/services/maintenance/shared.js";
 import { nowIso } from "../../api/_lib/services/core.js";
@@ -21,6 +24,7 @@ const context = (actor, action, payload = {}) => ({
   requestId: `test:${action}`,
   idempotencyKey: `test:${action}`,
   rowVersion: null,
+  today: "2026-08-13",
   allowedUsers: [{ email: owner.email, role: "owner" }, { email: member.email, role: "member" }],
 });
 
@@ -44,7 +48,7 @@ const withBridgeStub = async (fn) => {
     fetch: globalThis.fetch,
   };
   const calls = [];
-  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://bridge.invalid.test";
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/test-trial-reset/exec";
   process.env.GOOGLE_BRIDGE_SHARED_SECRET = "reset-test-secret-at-least-thirty-two-characters";
   globalThis.fetch = async (_url, options) => {
     const envelope = JSON.parse(options.body);
@@ -214,7 +218,7 @@ test("reset melepaskan maintenance jika data berubah saat safety backup sebelum 
   try {
     await seed(db);
     const preview = await previewTrialDataReset(db, context(owner, "reset.preview"));
-    process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://bridge.invalid.test";
+    process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/test-trial-reset/exec";
     process.env.GOOGLE_BRIDGE_SHARED_SECRET = "reset-test-secret-at-least-thirty-two-characters";
     globalThis.fetch = async () => {
       await db.execute("UPDATE transactions SET amount=amount+1,row_version=row_version+1 WHERE transaction_id='tx-reset'");
@@ -430,4 +434,81 @@ test("housekeeping scheduler hanya menghapus state ephemeral yang expired dan ti
   } finally {
     db.close();
   }
+});
+
+
+test("reset data testing dapat mempertahankan saldo awal atau menolkan saldo sesuai scope", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await db.execute("UPDATE accounts SET initial_balance=?,initial_balance_date=?,row_version=? WHERE account_id=?", [500_000, "2026-08-01", 3, "account-reset"]);
+
+    const activityPreview = await previewTrialDataReset(db, context(owner, "reset.preview", { resetScope: TRIAL_RESET_SCOPE_ACTIVITY }));
+    assert.equal(activityPreview.resetScope, TRIAL_RESET_SCOPE_ACTIVITY);
+    assert.equal(activityPreview.balanceReset, null);
+
+    const balancePreview = await previewTrialDataReset(db, context(owner, "reset.preview", { resetScope: TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES }));
+    assert.equal(balancePreview.resetScope, TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES);
+    assert.equal(balancePreview.balanceReset.accountsAffected, 1);
+    assert.equal(balancePreview.balanceReset.totalInitialBalance, 500_000);
+    assert.equal(balancePreview.balanceReset.totalCurrentBalance, 1_800_000);
+    assert.equal(balancePreview.balanceReset.accounts[0].currentBalance, 1_800_000);
+    assert.equal(balancePreview.balanceReset.accounts[0].nextBalance, 0);
+
+    await withBridgeStub(async () => applyTrialDataReset(db, context(owner, "reset.apply", {
+      resetScope: TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES,
+      previewFingerprint: balancePreview.previewFingerprint,
+      confirmation: TRIAL_RESET_CONFIRMATION,
+      acknowledged: true,
+      reason: "Menghapus trial dan nolkan saldo",
+    })));
+
+    const account = await db.one("SELECT initial_balance,initial_balance_date,row_version FROM accounts WHERE account_id=?", ["account-reset"]);
+    assert.equal(account.initial_balance, 0);
+    assert.equal(account.initial_balance_date, "2026-08-13");
+    assert.equal(account.row_version, 4, "Nolkan saldo wajib menaikkan row_version rekening.");
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 0);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM accounts")).count, 1);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM categories")).count, 1);
+  } finally { await db.close(); }
+});
+
+test("perubahan saldo awal setelah preview membatalkan reset scope saldo", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview", { resetScope: TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES }));
+    await db.execute("UPDATE accounts SET initial_balance=initial_balance+1,row_version=row_version+1 WHERE account_id=?", ["account-reset"]);
+    await assert.rejects(
+      () => withBridgeStub(async () => applyTrialDataReset(db, context(owner, "reset.apply", {
+        resetScope: TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES,
+        previewFingerprint: preview.previewFingerprint,
+        confirmation: TRIAL_RESET_CONFIRMATION,
+        acknowledged: true,
+        reason: "Data berubah setelah preview",
+      }))),
+      (error) => error.code === "RESET_PREVIEW_CHANGED",
+    );
+  } finally { await db.close(); }
+});
+
+test("reset activity membersihkan history tetapi mempertahankan saldo awal rekening", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await db.execute("UPDATE accounts SET initial_balance=500000,initial_balance_date='2026-08-01',row_version=3 WHERE account_id='account-reset'");
+    const preview = await previewTrialDataReset(db, context(owner, "reset.preview", { resetScope: TRIAL_RESET_SCOPE_ACTIVITY }));
+    await withBridgeStub(async () => applyTrialDataReset(db, context(owner, "reset.apply", {
+      resetScope: TRIAL_RESET_SCOPE_ACTIVITY,
+      previewFingerprint: preview.previewFingerprint,
+      confirmation: TRIAL_RESET_CONFIRMATION,
+      acknowledged: true,
+      reason: "Hapus aktivitas trial saja",
+    })));
+    const account = await db.one("SELECT initial_balance,initial_balance_date,row_version FROM accounts WHERE account_id='account-reset'");
+    assert.equal(account.initial_balance, 500000);
+    assert.equal(account.initial_balance_date, "2026-08-01");
+    assert.equal(account.row_version, 3);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 0);
+  } finally { await db.close(); }
 });

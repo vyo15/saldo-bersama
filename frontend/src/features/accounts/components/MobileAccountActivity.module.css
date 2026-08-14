@@ -1,0 +1,451 @@
+.mobileAccountActivity {
+  display: none;
+}
+
+@media (max-width: 820px) {
+.mobileAccountActivity {
+    min-width: 0;
+    padding: .75rem var(--mobile-page-gutter) .35rem;
+    display: block;
+  }
+
+.mobileActivityTabs {
+    min-width: 0;
+    margin-top: .8rem;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--on-hero) 7.5%, transparent);
+    border-radius: 0;
+    background: transparent;
+  }
+
+.mobileActivityTabs > button {
+    min-height: 2.8rem;
+    padding: .45rem .75rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    background: transparent;
+    color: color-mix(in srgb, var(--on-hero) 48%, transparent);
+    font-size: .7rem;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
+  }
+
+.mobileActivityTabIcon {
+    width: .95rem;
+    height: .95rem;
+    color: currentColor;
+  }
+
+.mobileActivityTabs > button:hover,
+.mobileActivityTabs > button:focus-visible { color: var(--on-hero); }
+
+.mobileActivityTabs > button:focus-visible,
+.mobileTrendControls > button:focus-visible,
+.mobileActivityHeading > button:focus-visible,
+.mobileActivityNotice > button:focus-visible,
+.mobileActivityState > button:focus-visible,
+.mobileChartState > button:focus-visible,
+.mobileChartAction:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--account-mobile-accent) 38%, transparent);
+    outline-offset: 2px;
+  }
+
+.mobileActivityTabs > .mobileActivityTabActive {
+    border-bottom-color: var(--primary);
+    background: transparent;
+    color: var(--on-hero);
+    box-shadow: none;
+  }
+
+.mobileActivityTabs > .mobileActivityTabActive .mobileActivityTabIcon { color: var(--primary); }
+
+.mobileActivityPanel { min-width: 0; padding-top: 1rem; }
+
+.mobileActivityHeading,
+.mobileChartHeading {
+    min-width: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+.mobileActivityHeading > div,
+.mobileChartHeading > div { min-width: 0; }
+
+.mobileActivityHeading small,
+.mobileChartHeading small {
+    display: block;
+    color: color-mix(in srgb, var(--on-hero) 56%, transparent);
+    font-size: .6rem;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: .09em;
+  }
+
+.mobileActivityHeading strong {
+    display: block;
+    margin-top: .3rem;
+    color: var(--on-hero);
+    font-size: 1.05rem;
+    font-weight: var(--font-weight-bold);
+  }
+
+.mobileActivityHeading > button {
+    min-height: 2.5rem;
+    padding: 0 .2rem;
+    border: 0;
+    background: transparent;
+    color: var(--primary);
+    font-size: .68rem;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+  }
+
+.mobileHistoryPeriod {
+    margin-top: .8rem;
+    display: grid;
+    gap: .35rem;
+  }
+
+.mobileHistoryPeriod > span:first-child {
+    color: color-mix(in srgb, var(--on-hero) 52%, transparent);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+  }
+
+.mobileHistoryPeriodControl {
+    min-width: 0;
+    padding: .48rem .7rem;
+    display: flex;
+    border: 1px solid color-mix(in srgb, var(--on-hero) 9%, transparent);
+    border-radius: .78rem;
+    background: color-mix(in srgb, var(--on-hero) 5%, transparent);
+  }
+
+.mobileHistoryPeriodControl input {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--on-hero);
+    font-size: var(--font-size-body);
+    color-scheme: dark;
+  }
+
+.mobileHistoryPeriodControl:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--account-mobile-accent) 18%, transparent);
+  }
+
+.mobileActivityNotice {
+    margin-top: .75rem;
+    padding: .7rem .8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--on-hero) 8%, transparent);
+    border-radius: .8rem;
+    background: color-mix(in srgb, var(--on-hero) 4.5%, transparent);
+    color: color-mix(in srgb, var(--on-hero) 70%, transparent);
+    font-size: .65rem;
+  }
+
+.mobileActivityNotice > button,
+.mobileActivityState > button,
+.mobileChartState > button {
+    min-height: 2.25rem;
+    padding: 0 .55rem;
+    border: 0;
+    border-radius: .65rem;
+    background: color-mix(in srgb, var(--account-mobile-accent) 13%, transparent);
+    color: var(--primary);
+    font-size: .64rem;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+  }
+
+.mobileTransactionList { margin-top: .55rem; display: grid; }
+
+.mobileTransactionItem {
+    min-width: 0;
+    min-height: 4rem;
+    padding: .65rem .05rem;
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .65rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--on-hero) 6.5%, transparent);
+  }
+
+.mobileTransactionItem:last-child { border-bottom: 0; }
+
+.mobileTransactionIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: grid;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--on-hero) 7%, transparent);
+    border-radius: .78rem;
+    background: color-mix(in srgb, var(--on-hero) 6%, transparent);
+    color: color-mix(in srgb, var(--on-hero) 88%, transparent);
+  }
+
+.mobileTransactionIcon[data-tone="positive"] { background: color-mix(in srgb, var(--account-mobile-accent) 11%, transparent); color: var(--primary); }
+
+.mobileTransactionIcon[data-tone="negative"] { background: color-mix(in srgb, var(--on-hero) 7%, transparent); color: var(--on-hero); }
+
+.mobileTransactionIcon[data-tone="neutral"] { color: color-mix(in srgb, var(--on-hero) 52%, transparent); }
+
+.mobileTransactionIcon svg { width: 1rem; height: 1rem; }
+
+.mobileTransactionCopy { min-width: 0; display: grid; gap: .2rem; }
+
+.mobileTransactionCopy strong,
+.mobileTransactionCopy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.mobileTransactionCopy strong { color: var(--on-hero); font-size: .72rem; font-weight: var(--font-weight-semibold); }
+
+.mobileTransactionCopy small { color: color-mix(in srgb, var(--on-hero) 46%, transparent); font-size: .6rem; }
+
+.mobileTransactionMeta {
+    min-width: 5.9rem;
+    display: grid;
+    justify-items: end;
+    gap: .25rem;
+    text-align: right;
+  }
+
+.mobileTransactionMeta > strong,
+.mobileTransactionMeta > strong :global(.money) {
+    color: var(--on-hero);
+    font-size: .68rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+.mobileTransactionMeta > strong[data-tone="positive"],
+.mobileTransactionMeta > strong[data-tone="positive"] :global(.money) { color: var(--primary); }
+
+.mobileTransactionMeta > strong[data-tone="neutral"],
+.mobileTransactionMeta > strong[data-tone="neutral"] :global(.money) { color: color-mix(in srgb, var(--on-hero) 48%, transparent); }
+
+.mobileActivityState,
+.mobileChartState {
+    min-height: 10rem;
+    margin-top: .75rem;
+    padding: var(--space-4);
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: .5rem;
+    border: 1px dashed color-mix(in srgb, var(--on-hero) 12%, transparent);
+    border-radius: 1rem;
+    color: color-mix(in srgb, var(--on-hero) 52%, transparent);
+    font-size: .68rem;
+    text-align: center;
+  }
+
+.mobileActivityState > svg,
+.mobileChartState > svg { width: 1.4rem; height: 1.4rem; color: var(--primary); }
+
+.mobileActivityState > strong { color: var(--on-hero); font-size: .75rem; }
+
+.mobileChartHeading { align-items: flex-start; }
+
+.mobileChartHeading > div > strong,
+.mobileChartHeading > div > strong :global(.money) {
+    display: block;
+    margin-top: .28rem;
+    color: var(--on-hero);
+    font-size: 1.45rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -.035em;
+  }
+
+.mobileChartHeading > div > span { display: block; margin-top: .22rem; color: color-mix(in srgb, var(--on-hero) 45%, transparent); font-size: var(--font-size-xs); }
+
+.mobileChartHeading > svg { width: 1.2rem; height: 1.2rem; color: var(--primary); }
+
+.mobileTrendControls { margin-top: .9rem; display: flex; gap: .4rem; }
+
+.mobileTrendControls > button {
+    min-height: 2.15rem;
+    padding: 0 .72rem;
+    border: 1px solid color-mix(in srgb, var(--on-hero) 8%, transparent);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--on-hero) 4%, transparent);
+    color: color-mix(in srgb, var(--on-hero) 52%, transparent);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+  }
+
+.mobileTrendControls > .mobileTrendControlActive { border-color: var(--on-hero); background: var(--on-hero); color: var(--account-mobile-accent-ink); }
+
+.mobileExpenseChart { margin: .8rem 0 0; color: var(--primary); }
+
+.mobileExpenseChart svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+.mobileExpenseChart svg > line { stroke: color-mix(in srgb, var(--on-hero) 6%, transparent); stroke-width: 1; }
+
+.mobileExpenseArea { fill: color-mix(in srgb, var(--account-mobile-accent) 8%, transparent); stroke: none; }
+
+.mobileExpenseLine { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+.mobileExpensePoint { fill: var(--account-mobile-accent-ink); stroke: currentColor; stroke-width: 3; }
+
+.mobileChartLabels {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--chart-label-count, 6), minmax(0, 1fr));
+    color: color-mix(in srgb, var(--on-hero) 40%, transparent);
+    font-size: var(--font-size-xs);
+    text-align: center;
+  }
+
+.mobileChartLabels span:first-child { text-align: left; }
+
+.mobileChartLabels span:last-child { text-align: right; }
+
+.mobileChartStats {
+    margin-top: 1rem;
+    padding: .8rem 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid color-mix(in srgb, var(--on-hero) 7%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--on-hero) 7%, transparent);
+  }
+
+.mobileChartStats > div { min-width: 0; }
+
+.mobileChartStats > div + div { padding-left: .8rem; border-left: 1px solid color-mix(in srgb, var(--on-hero) 7%, transparent); }
+
+.mobileChartStats small { display: block; color: color-mix(in srgb, var(--on-hero) 43%, transparent); font-size: var(--font-size-xs); }
+
+.mobileChartStats strong { display: block; margin-top: .25rem; overflow: hidden; color: var(--on-hero); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+
+.mobileChartNote {
+    margin-top: .8rem;
+    display: grid;
+    grid-template-columns: 1.65rem minmax(0, 1fr);
+    gap: .55rem;
+    align-items: start;
+    color: color-mix(in srgb, var(--on-hero) 48%, transparent);
+    font-size: .6rem;
+    line-height: 1.45;
+  }
+
+.mobileChartNote > svg {
+    width: 1.65rem;
+    height: 1.65rem;
+    padding: .38rem;
+    border-radius: .5rem;
+    background: color-mix(in srgb, var(--account-mobile-accent) 12%, transparent);
+    color: var(--primary);
+  }
+
+.mobileChartAction {
+    width: 100%;
+    min-height: 2.75rem;
+    margin-top: .65rem;
+    padding: .55rem .1rem;
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--on-hero) 7%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    background: transparent;
+    color: color-mix(in srgb, var(--on-hero) 70%, transparent);
+    font-size: .66rem;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+  }
+
+.mobileChartAction svg { width: 1rem; height: 1rem; color: var(--primary); }
+
+:global(:root[data-theme="light"]) .mobileActivityTabs > button,
+:global(:root[data-theme="light"]) .mobileActivityHeading small,
+:global(:root[data-theme="light"]) .mobileChartHeading small,
+:global(:root[data-theme="light"]) .mobileHistoryPeriod > span:first-child,
+:global(:root[data-theme="light"]) .mobileTransactionCopy small,
+:global(:root[data-theme="light"]) .mobileChartHeading > div > span,
+:global(:root[data-theme="light"]) .mobileChartLabels,
+:global(:root[data-theme="light"]) .mobileChartStats small,
+:global(:root[data-theme="light"]) .mobileChartNote,
+:global(:root[data-theme="light"]) .mobileChartAction { color: var(--text-muted); }
+
+:global(:root[data-theme="light"]) .mobileActivityTabs > button:hover,
+:global(:root[data-theme="light"]) .mobileActivityTabs > button:focus-visible,
+:global(:root[data-theme="light"]) .mobileActivityTabs > .mobileActivityTabActive,
+:global(:root[data-theme="light"]) .mobileActivityHeading strong,
+:global(:root[data-theme="light"]) .mobileHistoryPeriodControl input,
+:global(:root[data-theme="light"]) .mobileTransactionCopy strong,
+:global(:root[data-theme="light"]) .mobileTransactionMeta > strong,
+:global(:root[data-theme="light"]) .mobileTransactionMeta > strong :global(.money),
+:global(:root[data-theme="light"]) .mobileActivityState > strong,
+:global(:root[data-theme="light"]) .mobileChartHeading > div > strong,
+:global(:root[data-theme="light"]) .mobileChartHeading > div > strong :global(.money),
+:global(:root[data-theme="light"]) .mobileChartStats strong { color: var(--text); }
+
+:global(:root[data-theme="light"]) .mobileActivityTabs { border-bottom-color: var(--border); }
+
+:global(:root[data-theme="light"]) .mobileHistoryPeriodControl { border-color: var(--border); background: var(--surface); }
+
+:global(:root[data-theme="light"]) .mobileHistoryPeriodControl input { color-scheme: light; }
+
+:global(:root[data-theme="light"]) .mobileActivityNotice { border-color: var(--border); background: var(--surface-soft); color: var(--text-soft); }
+
+:global(:root[data-theme="light"]) .mobileTransactionItem { border-bottom-color: var(--border); }
+
+:global(:root[data-theme="light"]) .mobileTransactionIcon { border-color: var(--border); background: var(--surface-soft); color: var(--text-soft); }
+
+:global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="positive"] { background: var(--positive-soft); color: var(--positive); }
+
+:global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="negative"] { background: var(--negative-soft); color: var(--negative); }
+
+:global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="neutral"] { color: var(--text-muted); }
+
+:global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="positive"],
+:global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="positive"] :global(.money) { color: var(--positive); }
+
+:global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="neutral"],
+:global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="neutral"] :global(.money) { color: var(--text-muted); }
+
+:global(:root[data-theme="light"]) .mobileActivityState,
+:global(:root[data-theme="light"]) .mobileChartState { border-color: var(--border-strong); color: var(--text-muted); }
+
+:global(:root[data-theme="light"]) .mobileTrendControls > button { border-color: var(--border); background: var(--surface); color: var(--text-muted); }
+
+:global(:root[data-theme="light"]) .mobileTrendControls > .mobileTrendControlActive { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+
+:global(:root[data-theme="light"]) .mobileExpenseChart svg > line { stroke: var(--border); }
+
+:global(:root[data-theme="light"]) .mobileExpensePoint { fill: var(--surface); }
+
+:global(:root[data-theme="light"]) .mobileChartStats { border-top-color: var(--border); border-bottom-color: var(--border); }
+
+:global(:root[data-theme="light"]) .mobileChartStats > div + div { border-left-color: var(--border); }
+
+:global(:root[data-theme="light"]) .mobileChartAction { border-top-color: var(--border); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+.mobileActivityTabIcon {
+    animation: none;
+    transition: none;
+  }
+}

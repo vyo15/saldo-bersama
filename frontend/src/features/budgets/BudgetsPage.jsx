@@ -19,6 +19,7 @@ import { archiveBudget as requestArchiveBudget, deleteUnusedBudget as requestDel
 import { budgetPeriodMeta, budgetTotals, budgetVisualState } from "./budgetPresentation.js";
 import BudgetHeroCard from "./components/BudgetHeroCard.jsx";
 import BudgetInsightCard from "./components/BudgetInsightCard.jsx";
+import budgetCalendarArtwork from "../../assets/budget-illustrations/budget-calendar.webp";
 import styles from "./BudgetsPage.module.css";
 
 const EMPTY_BUDGET_ITEMS = Object.freeze([]);
@@ -162,7 +163,7 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
   {!canManage ? <div className={`notice notice--info ${styles.readOnlyNote}`} role="status">{user?.role !== "owner" ? "Member dapat memantau anggaran. Pembuatan dan perubahan anggaran hanya dapat dilakukan Administrator." : "Periode historis ditampilkan hanya-baca. Kelola anggaran pada periode aktif."}</div> : null}
   <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
   <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} canManage={canManage} editBudget={formController.editBudget} openBudgetLifecycle={lifecycleController.openBudgetLifecycle} openBudgetForm={formController.openBudgetForm} attentionBudgetId={attentionBudgetId} />
-  <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme anggaran</strong> membandingkan pemakaian dengan posisi hari ini dalam periode.</p></aside>
+  <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme anggaran</strong> membandingkan pemakaian dengan posisi hari ini dalam periode.</p><img className={styles.tipArtwork} src={budgetCalendarArtwork} alt="" aria-hidden="true" loading="lazy" decoding="async" /></aside>
   <BudgetModal open={formController.formOpen && canManage} close={formController.closeBudgetForm} existingBudget={formController.existingBudget} saveState={formController.saveState} saveBudget={formController.saveBudget} form={formController.form} setForm={formController.setForm} categories={categories} users={users} usersStatus={usersStatus} selectCategory={formController.selectCategory} selectOwnership={formController.selectOwnership} />
   <BudgetLifecycleModal archiveTarget={lifecycleController.archiveTarget} archiveState={lifecycleController.archiveState} setArchiveTarget={lifecycleController.setArchiveTarget} applyBudgetLifecycle={lifecycleController.applyBudgetLifecycle} />
 </div>;

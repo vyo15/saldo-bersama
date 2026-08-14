@@ -216,9 +216,10 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
 
 
 test("read snapshot tambahan tidak memecah query independen menjadi pipeline serial", async () => {
-  const [{ listArchivedData }, { previewTrialDataReset }, { integrityIssues }] = await Promise.all([
+  const [{ listArchivedData }, { previewTrialDataReset }, { previewFullDataReset }, { integrityIssues }] = await Promise.all([
     import("../../api/_lib/services/masterData.js"),
     import("../../api/_lib/services/maintenance/reset.js"),
+    import("../../api/_lib/services/maintenance/fullReset.js"),
     import("../../api/_lib/services/reporting/integrity.js"),
   ]);
   const actor = { user_id: "u1", email: "owner@example.test", role: "owner", status: "active" };
@@ -247,6 +248,19 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   assert.equal(preview.summary.totalRows, 0);
   assert.equal(resetMetrics.network, 1, "reset.preview harus membaca state dan preserved count dalam satu batch");
   assert.equal(resetMetrics.statements, 23);
+
+  const fullResetMetrics = { network: 0, statements: 0 };
+  const fullResetDb = {
+    async batch(statements) {
+      fullResetMetrics.network += 1;
+      fullResetMetrics.statements += statements.length;
+      return statements.map((statement) => ({ rows: statement.sql.includes("COUNT(*) AS count") ? [{ count: 0 }] : [] }));
+    },
+  };
+  const fullResetPreview = await previewFullDataReset(fullResetDb, { actor, payload: {} });
+  assert.equal(fullResetPreview.summary.totalRows, 0);
+  assert.equal(fullResetMetrics.network, 1, "fullReset.preview harus membaca seluruh scope dan preserved count dalam satu batch");
+  assert.equal(fullResetMetrics.statements, 29);
 
   const integrityMetrics = { network: 0, statements: [] };
   const integrityDb = {

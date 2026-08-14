@@ -1,7 +1,7 @@
 import Modal from "../../../components/common/Modal.jsx";
 import Money from "../../../components/common/Money.jsx";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
-import styles from "../AccountsPage.module.css";
+import styles from "./MobileAccountSheets.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";
 
 const MobileAccountSheets = ({

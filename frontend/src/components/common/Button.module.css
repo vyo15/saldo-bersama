@@ -78,8 +78,8 @@
 }
 
 .danger:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--negative) 88%, black);
-  background: color-mix(in srgb, var(--negative) 88%, black);
+  border-color: color-mix(in srgb, var(--negative) 88%, var(--shadow-ink));
+  background: color-mix(in srgb, var(--negative) 88%, var(--shadow-ink));
 }
 
 .loading svg {

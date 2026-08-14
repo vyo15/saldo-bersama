@@ -32,6 +32,8 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "integrations.status": 0,
   "reset.preview": 0,
   "reset.status": 0,
+  "fullReset.preview": 0,
+  "fullReset.status": 0,
 });
 
 const ABORT_GRACE_MS = 40;

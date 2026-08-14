@@ -63,12 +63,12 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 - Bila muncul conflict, jangan retry dengan data lama; refresh lalu tinjau ulang.
 - Hasil hard delete tidak memiliki tombol undo karena row rekening sudah hilang. Audit tetap ada; bila rekening ternyata masih dibutuhkan, buat rekening baru. Jangan restore database hanya untuk rekening kosong yang belum pernah digunakan.
 
-## Bersihkan data testing
+## Reset data testing
 
 Gunakan hanya pada fase setup/trial sebelum transaksi nyata mulai dicatat. Project saat ini sengaja memakai satu database Turso untuk runtime lokal dan Production, sehingga backend tidak dapat membedakan transaksi trial dari transaksi nyata. Operasi ini manual dan tidak pernah dijalankan otomatis di background.
 
-1. Administrator membuka **Pengaturan → Bersihkan data testing**. Halaman lebih dulu menjalankan `reset.status` dan health check Google Drive. Jika status reset tidak dapat diverifikasi, operasi destructive tetap diblokir.
-2. Jalankan preview. Preview harus menunjukkan seluruh data finansial yang akan dibersihkan: transaksi, pencocokan saldo, target, anggaran, alokasi, jadwal rutin, dan tutup buku.
+1. Administrator membuka **Pengaturan → Reset data testing**. Halaman lebih dulu menjalankan `reset.status` dan health check Google Drive. Jika status reset tidak dapat diverifikasi, operasi destructive tetap diblokir.
+2. Pilih preset `Bersihkan aktivitas testing` atau `Bersihkan aktivitas + nolkan saldo`, lalu jalankan preview. Preview harus menunjukkan seluruh data finansial yang akan dibersihkan; untuk preset kedua, preview juga wajib menunjukkan saldo rekening saat ini dan saldo awal yang akan menjadi Rp0.
 3. Preview juga menghitung sisa operasional yang ikut dibersihkan: delivery/queue notifikasi, link/outbox integrasi, dan preview import. Queue canonical `system/rebuild` dari reset sebelumnya bukan data testing dan harus dipertahankan/reuse.
 4. Rekening, kategori, pengguna, konfigurasi, audit log, backup, push subscription, dan preference notifikasi tidak ikut dihapus.
 5. Google Drive wajib berstatus siap. Apply memakai fingerprint preview terbaru, alasan, seluruh acknowledgement checklist, frasa `BERSIHKAN DATA TESTING`, dan safety backup Google Drive yang terverifikasi.
@@ -78,3 +78,15 @@ Gunakan hanya pada fase setup/trial sebelum transaksi nyata mulai dicatat. Proje
 9. Jika status `recovery_required`, jalankan integrity recovery. Maintenance hanya boleh dibuka kembali bila integrity check `ok`; perubahan ini wajib menghasilkan audit `maintenance.recover`.
 10. Setelah pembersihan, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, Cocokkan Saldo, dan status integrasi sebelum melanjutkan input.
 11. Begitu aplikasi mulai dipakai untuk transaksi nyata, hentikan penggunaan pembersihan massal ini. Koreksi data nyata wajib memakai cancel/archive/restore/reverse sesuai lifecycle domain.
+
+## Reset semua data
+
+Gunakan hanya ketika Administrator benar-benar ingin mengembalikan data aplikasi ke kondisi awal. Ini bukan pengganti koreksi transaksi harian dan tidak menghapus identitas login, audit, safety backup, konfigurasi keamanan, idempotency recovery, atau nonce anti-replay yang masih berlaku.
+
+1. Administrator membuka **Pengaturan → Reset semua data** lalu menjalankan preview server.
+2. Preview wajib menampilkan ledger/planning, rekening, kategori, state notifikasi/integrasi/preview maintenance yang akan dihapus, serta security/recovery backbone yang tetap disimpan.
+3. Google Drive wajib sehat. Apply memerlukan safety backup terverifikasi, alasan, empat acknowledgement, frasa `RESET SEMUA DATA SALDO BERSAMA`, dan countdown 15 detik di UI.
+4. Backend memvalidasi fingerprint lagi setelah safety backup, mengaktifkan maintenance, purge sesuai urutan foreign key, menjalankan integrity check, menulis audit `fullReset.apply`, mempertahankan/reuse queue projection canonical, lalu membuka maintenance secara atomik.
+5. Queue rebuild `full-reset` bukan data pengguna dan tidak boleh membuat preview pasca-reset terlihat masih kotor. Request nonce yang masih berlaku juga dipertahankan agar request scheduler lama tidak dapat diputar ulang.
+6. Jika client menerima outcome unknown, **jangan retry**. Gunakan `fullReset.status` dengan recovery key yang sama. Jika `committed`, anggap selesai; jika `processing`, tunggu; jika `not_committed`, buat preview baru; jika `recovery_required`, jalankan integrity recovery.
+7. Jika data yang dihapus perlu dikembalikan, gunakan safety backup melalui workflow Restore guarded. Jangan menulis ulang data langsung ke database.

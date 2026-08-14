@@ -1,6 +1,6 @@
 import {
   FiArchive, FiBell, FiCalendar, FiDatabase, FiDownload, FiDownloadCloud,
-  FiLock, FiRefreshCw, FiShield, FiUploadCloud, FiUsers,
+  FiLock, FiRefreshCw, FiShield, FiTrash2, FiUploadCloud, FiUsers,
 } from "react-icons/fi";
 import { NavLink, Outlet } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -16,7 +16,8 @@ const SETTINGS_NAVIGATION = Object.freeze([
   { to: "/pengaturan/import", label: "Import transaksi", icon: FiUploadCloud, ownerOnly: true },
   { to: "/pengaturan/backup", label: "Backup teknis", icon: FiDownloadCloud, ownerOnly: true },
   { to: "/pengaturan/pemulihan", label: "Pemulihan data", icon: FiArchive, ownerOnly: true },
-  { to: "/pengaturan/reset-data", label: "Bersihkan data testing", icon: FiRefreshCw, ownerOnly: true },
+  { to: "/pengaturan/reset-data", label: "Reset data testing", icon: FiRefreshCw, ownerOnly: true },
+  { to: "/pengaturan/reset-semua", label: "Reset semua data", icon: FiTrash2, ownerOnly: true },
   { to: "/pengaturan/periode", label: "Periode dan integritas", icon: FiLock, ownerOnly: true },
   { to: "/pengaturan/audit", label: "Audit aktivitas", icon: FiShield, ownerOnly: true },
 ]);

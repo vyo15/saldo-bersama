@@ -22,7 +22,8 @@ const ACTION_MODULES = Object.freeze({
   notifications: "Notifikasi",
   periods: "Periode",
   reconciliations: "Cocokkan saldo",
-  reset: "Bersihkan data testing",
+  reset: "Reset data testing",
+  fullReset: "Reset semua data",
   restore: "Pemulihan data",
   recurring: "Jadwal rutin",
   transactions: "Transaksi",
@@ -30,7 +31,8 @@ const ACTION_MODULES = Object.freeze({
 });
 
 const ACTION_UNKNOWN_DETAILS = Object.freeze({
-  "reset.apply": "Jangan kirim ulang. Buka Bersihkan data testing lalu gunakan Periksa status operasi untuk memastikan hasilnya.",
+  "reset.apply": "Jangan kirim ulang. Buka Reset data testing lalu gunakan Periksa status operasi untuk memastikan hasilnya.",
+  "fullReset.apply": "Jangan kirim ulang. Buka Reset semua data lalu gunakan Periksa status operasi untuk memastikan hasilnya.",
 });
 
 const ACTION_LABELS = Object.freeze({
@@ -63,6 +65,7 @@ const ACTION_LABELS = Object.freeze({
   "periods.reopen": ["Membuka kembali periode...", "Periode berhasil dibuka kembali"],
   "reconciliations.create": ["Mencocokkan saldo...", "Pencocokan saldo tersimpan"],
   "reset.apply": ["Membersihkan data testing...", "Data testing berhasil dibersihkan"],
+  "fullReset.apply": ["Mereset seluruh data aplikasi...", "Reset semua data berhasil"],
   "restore.apply": ["Memulihkan backup...", "Backup berhasil dipulihkan"],
   "integrity.run": ["Memeriksa integritas...", "Integrity check selesai"],
   "recurring.createRule": ["Membuat jadwal rutin...", "Jadwal rutin berhasil dibuat"],

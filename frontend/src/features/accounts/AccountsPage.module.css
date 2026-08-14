@@ -43,36 +43,10 @@
   line-height: 1.6;
 }
 
-.createAccountLayout {
-  display: grid;
-  grid-template-columns: minmax(17rem, 0.95fr) minmax(18rem, 1.05fr);
-  gap: var(--space-6);
-  align-items: start;
-}
-
-@media (max-width: 1280px) {
-  .createAccountLayout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
-}
-
 @media (max-width: 580px) {
   .sectionHeading {
     align-items: start;
   }
-}
-
-.mobileAccountExperience {
-  display: none;
-}
-
-.mobileAccountActivity {
-  display: none;
-}
-
-.mobileStackPanel {
-  display: none;
 }
 
 .mobileDetailContainer {
@@ -150,1035 +124,280 @@
     display: none;
   }
 
-  .mobileAccountExperience {
-    min-width: 0;
-    margin-inline: calc(0px - var(--mobile-page-gutter));
-    padding-bottom: var(--space-3);
-    display: grid;
-    gap: 0;
-    overflow: hidden;
-    color: #fff;
-    --accounts-mobile-surface:
-      radial-gradient(circle at 72% 18%, rgb(255 255 255 / .08), transparent 27%),
-      radial-gradient(circle at 8% 88%, rgb(22 199 132 / .12), transparent 30%),
-      linear-gradient(145deg, #101413 0%, #0c1110 48%, #07100e 100%);
-    background: var(--accounts-mobile-background, var(--accounts-mobile-surface));
-    isolation: isolate;
-  }
-
-  .mobileStackPanel {
-    min-width: 0;
-    padding-bottom: 0;
-    display: block;
-    overflow: hidden;
-    color: #fff;
-    background: transparent;
-  }
-
-  .mobileStackHeader {
-    min-height: 3.75rem;
-    padding: .65rem var(--mobile-page-gutter) 0;
-    position: relative;
-    z-index: 20;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-
-  .mobileStackHeaderActions {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-1);
-  }
-
-  .mobileStackHeaderButton,
-  .mobileStackAddButton {
-    min-height: 2.75rem;
-    border: 0;
-    color: #fff;
-    background: transparent;
-    cursor: pointer;
-    touch-action: manipulation;
-  }
-
-  .mobileStackHeaderButton {
-    padding: 0 .35rem;
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-    font-size: var(--font-size-body-sm);
-    font-weight: var(--font-weight-semibold);
-  }
-
-  .mobileStackAddButton {
-    width: 2.75rem;
-    min-width: 2.75rem;
-    padding: 0;
-    border-radius: var(--radius-pill);
-    display: grid;
-    place-items: center;
-    color: var(--primary);
-    background: rgb(255 255 255 / .06);
-  }
-
-  .mobileStackHeaderButton:hover,
-  .mobileStackHeaderButton:focus-visible,
-  .mobileStackAddButton:hover,
-  .mobileStackAddButton:focus-visible {
-    color: var(--primary);
-    background: rgb(255 255 255 / .07);
-  }
-
-  .mobileStackHeaderButton:focus-visible,
-  .mobileStackAddButton:focus-visible {
-    outline: 3px solid rgb(22 199 132 / .38);
-    outline-offset: 2px;
-  }
-
-  .mobileStackHeaderButton svg,
-  .mobileStackAddButton svg {
-    width: 1.1rem;
-    height: 1.1rem;
-  }
-
-  .mobileStackStage {
-    height: 31.6rem;
-    position: relative;
-    z-index: 2;
-    overflow: hidden;
-    perspective: 93.75rem;
-    perspective-origin: 50% 45%;
-    touch-action: pan-y pinch-zoom;
-    user-select: none;
-    cursor: default;
-  }
-
-  .mobileStackStage:focus-visible {
-    outline: 3px solid rgb(22 199 132 / .34);
-    outline-offset: -5px;
-  }
-
-  .mobileStackStage.mobileStackDragging .mobileStackCard[aria-pressed="true"] {
-    cursor: grabbing;
-  }
-
-  .mobileStackAmbient {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  .mobileStackAmbient::before,
-  .mobileStackAmbient::after {
-    content: "";
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(14px);
-  }
-
-  .mobileStackAmbient::before {
-    width: 17.5rem;
-    height: 17.5rem;
-    top: 4rem;
-    right: -5rem;
-    background: radial-gradient(circle, rgb(255 255 255 / .08), transparent 72%);
-  }
-
-  .mobileStackAmbient::after {
-    width: 18rem;
-    height: 18rem;
-    left: -6rem;
-    bottom: -6rem;
-    background: radial-gradient(circle, rgb(22 199 132 / .12), transparent 72%);
-  }
-
-  .mobileStackCard {
-    width: min(78vw, 19.1rem);
-    aspect-ratio: 1.586 / 1;
-    padding: 0;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    overflow: hidden;
-    border: 1px solid rgb(255 255 255 / .14);
-    border-radius: 1.375rem;
-    background: #161d1b;
-    color: #fff;
-    text-align: left;
-    box-shadow: 0 1.75rem 3.9rem rgb(0 0 0 / .46);
-    transform-style: preserve-3d;
-    backface-visibility: hidden;
-    contain: layout paint;
-    touch-action: auto;
-    cursor: pointer;
-  }
-
-  .mobileStackCard[aria-pressed="true"] {
-    touch-action: pan-x pinch-zoom;
-    cursor: grab;
-  }
-
-  .mobileStackCard:focus-visible {
-    outline: 3px solid rgb(22 199 132 / .48);
-    outline-offset: 4px;
-  }
-
-  .mobileStackBalance {
-    position: absolute;
-    z-index: 5;
-    top: 8%;
-    left: 7%;
-    max-width: 62%;
-    color: #fff;
-    text-shadow: 0 2px 8px rgb(0 0 0 / .48);
-    pointer-events: none;
-  }
-
-  .mobileStackBalance small {
-    display: block;
-    color: rgb(255 255 255 / .76);
-    font-size: .62rem;
-    font-weight: var(--font-weight-semibold);
-  }
-
-  .mobileStackBalance strong,
-  .mobileStackBalance :global(.money) {
-    display: block;
-    margin-top: .25rem;
-    color: #fff;
-    font-size: clamp(1.16rem, 5.2vw, 1.45rem);
-    font-weight: var(--font-weight-bold);
-    letter-spacing: -.045em;
-    line-height: 1.05;
-  }
-
-  .mobileStackOwnership {
-    min-height: 1.55rem;
-    padding: 0 .62rem;
-    position: absolute;
-    z-index: 5;
-    right: 6.5%;
-    bottom: 6.5%;
-    display: inline-flex;
-    align-items: center;
-    border-radius: var(--radius-pill);
-    border: 1px solid rgb(255 255 255 / .24);
-    background: rgb(5 17 15 / .3);
-    color: #fff;
-    font-size: .6rem;
-    font-weight: var(--font-weight-semibold);
-    backdrop-filter: blur(8px);
-    pointer-events: none;
-  }
-
-  .mobileStackSummary {
-    margin: -.35rem 0 0;
-    padding: .85rem calc(var(--mobile-page-gutter) + .25rem) .25rem;
-    position: relative;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    backdrop-filter: none;
-  }
-
-  .mobileStackSummary > div {
-    min-width: 0;
-  }
-
-  .mobileStackSummary small {
-    display: block;
-    color: rgb(255 255 255 / .58);
-    font-size: .62rem;
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-
-  .mobileStackSummary h2 {
-    margin: .25rem 0 0;
-    overflow: hidden;
-    color: #fff;
-    font-size: var(--font-size-body);
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: -.02em;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mobileStackSummary > span {
-    flex: 0 0 auto;
-    min-height: 1.65rem;
-    padding: 0 .6rem;
-    display: inline-flex;
-    align-items: center;
-    border-radius: var(--radius-pill);
-    color: var(--primary);
-    background: rgb(22 199 132 / .14);
-    font-size: .62rem;
-    font-weight: var(--font-weight-bold);
-  }
-
-  .mobileStackHint {
-    margin: .65rem var(--mobile-page-gutter) 0;
-    color: rgb(255 255 255 / .52);
-    font-size: .64rem;
-    line-height: 1.5;
-    text-align: center;
-  }
-
-  .mobileAccountActivity {
-    min-width: 0;
-    padding: .75rem var(--mobile-page-gutter) .35rem;
-    display: block;
-  }
-
-  .mobileTransferQuickAction {
-    width: 100%;
-    min-height: 3.9rem;
-    padding: .58rem .72rem;
-    border: 1px solid rgb(255 255 255 / .075);
-    border-radius: 1rem;
-    display: grid;
-    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: .65rem;
-    background: rgb(255 255 255 / .035);
-    color: #fff;
-    text-align: left;
-    cursor: pointer;
-    touch-action: manipulation;
-    transition:
-      border-color var(--motion-fast) var(--motion-easing),
-      background-color var(--motion-fast) var(--motion-easing),
-      transform var(--motion-fast) var(--motion-easing);
-  }
-
-  .mobileTransferQuickAction:hover:not(:disabled) {
-    border-color: rgb(22 199 132 / .3);
-    background: rgb(255 255 255 / .055);
-  }
-
-  .mobileTransferQuickAction:active:not(:disabled) { transform: scale(.99); }
-
-  .mobileTransferQuickAction:disabled {
-    cursor: not-allowed;
-    opacity: .58;
-  }
-
-  .mobileTransferQuickAction:focus-visible {
-    outline: 3px solid rgb(22 199 132 / .38);
-    outline-offset: 2px;
-  }
-
-  .mobileTransferQuickIcon {
-    width: 2.5rem;
-    height: 2.5rem;
-    display: grid;
-    place-items: center;
-    border-radius: .78rem;
-    background: var(--primary);
-    color: #06110d;
-    box-shadow: 0 .35rem 1rem rgb(22 199 132 / .16);
-  }
-
-  .mobileTransferQuickIcon svg { width: 1.05rem; height: 1.05rem; }
-
-  .mobileTransferQuickCopy {
-    min-width: 0;
-    display: grid;
-    gap: .18rem;
-  }
-
-  .mobileTransferQuickCopy strong,
-  .mobileTransferQuickCopy small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mobileTransferQuickCopy strong {
-    color: #fff;
-    font-size: .76rem;
-    font-weight: var(--font-weight-bold);
-  }
-
-  .mobileTransferQuickCopy small {
-    color: rgb(255 255 255 / .48);
-    font-size: .6rem;
-    font-weight: var(--font-weight-medium);
-  }
-
-  .mobileTransferQuickChevron {
-    width: 1rem;
-    height: 1rem;
-    color: rgb(255 255 255 / .4);
-  }
-
-  .mobileActivityTabs {
-    min-width: 0;
-    margin-top: .8rem;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    border: 0;
-    border-bottom: 1px solid rgb(255 255 255 / .075);
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .mobileActivityTabs > button {
-    min-height: 2.8rem;
-    padding: .45rem .75rem;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .4rem;
-    background: transparent;
-    color: rgb(255 255 255 / .48);
-    font-size: .7rem;
-    font-weight: var(--font-weight-semibold);
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
-  }
-
-  .mobileActivityTabIcon {
-    width: .95rem;
-    height: .95rem;
-    color: currentColor;
-  }
-
-  .mobileActivityTabs > button:hover,
-  .mobileActivityTabs > button:focus-visible { color: #fff; }
-
-  .mobileActivityTabs > button:focus-visible,
-  .mobileTrendControls > button:focus-visible,
-  .mobileActivityHeading > button:focus-visible,
-  .mobileActivityNotice > button:focus-visible,
-  .mobileActivityState > button:focus-visible,
-  .mobileChartState > button:focus-visible,
-  .mobileChartAction:focus-visible {
-    outline: 3px solid rgb(22 199 132 / .38);
-    outline-offset: 2px;
-  }
-
-  .mobileActivityTabs > .mobileActivityTabActive {
-    border-bottom-color: var(--primary);
-    background: transparent;
-    color: #fff;
-    box-shadow: none;
-  }
-
-  .mobileActivityTabs > .mobileActivityTabActive .mobileActivityTabIcon { color: var(--primary); }
-
-  .mobileActivityPanel { min-width: 0; padding-top: 1rem; }
-
-  .mobileActivityHeading,
-  .mobileChartHeading {
-    min-width: 0;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .mobileActivityHeading > div,
-  .mobileChartHeading > div { min-width: 0; }
-
-  .mobileActivityHeading small,
-  .mobileChartHeading small {
-    display: block;
-    color: rgb(255 255 255 / .56);
-    font-size: .6rem;
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: .09em;
-  }
-
-  .mobileActivityHeading strong {
-    display: block;
-    margin-top: .3rem;
-    color: #fff;
-    font-size: 1.05rem;
-    font-weight: var(--font-weight-bold);
-  }
-
-  .mobileActivityHeading > button {
-    min-height: 2.5rem;
-    padding: 0 .2rem;
-    border: 0;
-    background: transparent;
-    color: var(--primary);
-    font-size: .68rem;
-    font-weight: var(--font-weight-bold);
-    cursor: pointer;
-  }
-
-  .mobileHistoryPeriod {
-    margin-top: .8rem;
-    display: grid;
-    gap: .35rem;
-  }
-
-  .mobileHistoryPeriod > span:first-child {
-    color: rgb(255 255 255 / .52);
-    font-size: .62rem;
-    font-weight: var(--font-weight-semibold);
-  }
-
-  .mobileHistoryPeriodControl {
-    min-width: 0;
-    padding: .48rem .7rem;
-    display: flex;
-    border: 1px solid rgb(255 255 255 / .09);
-    border-radius: .78rem;
-    background: rgb(255 255 255 / .05);
-  }
-
-  .mobileHistoryPeriodControl input {
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: #fff;
-    font-size: var(--font-size-body);
-    color-scheme: dark;
-  }
-
-  .mobileHistoryPeriodControl:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgb(22 199 132 / .18);
-  }
-
-  .mobileActivityNotice {
-    margin-top: .75rem;
-    padding: .7rem .8rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    border: 1px solid rgb(255 255 255 / .08);
-    border-radius: .8rem;
-    background: rgb(255 255 255 / .045);
-    color: rgb(255 255 255 / .7);
-    font-size: .65rem;
-  }
-
-  .mobileActivityNotice > button,
-  .mobileActivityState > button,
-  .mobileChartState > button {
-    min-height: 2.25rem;
-    padding: 0 .55rem;
-    border: 0;
-    border-radius: .65rem;
-    background: rgb(22 199 132 / .13);
-    color: var(--primary);
-    font-size: .64rem;
-    font-weight: var(--font-weight-bold);
-    cursor: pointer;
-  }
-
-  .mobileTransactionList { margin-top: .55rem; display: grid; }
-
-  .mobileTransactionItem {
-    min-width: 0;
-    min-height: 4rem;
-    padding: .65rem .05rem;
-    display: grid;
-    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: .65rem;
-    border-bottom: 1px solid rgb(255 255 255 / .065);
-  }
-
-  .mobileTransactionItem:last-child { border-bottom: 0; }
-
-  .mobileTransactionIcon {
-    width: 2.5rem;
-    height: 2.5rem;
-    display: grid;
-    place-items: center;
-    border: 1px solid rgb(255 255 255 / .07);
-    border-radius: .78rem;
-    background: rgb(255 255 255 / .06);
-    color: rgb(255 255 255 / .88);
-  }
-
-  .mobileTransactionIcon[data-tone="positive"] { background: rgb(22 199 132 / .11); color: var(--primary); }
-  .mobileTransactionIcon[data-tone="negative"] { background: rgb(255 255 255 / .07); color: #fff; }
-  .mobileTransactionIcon[data-tone="neutral"] { color: rgb(255 255 255 / .52); }
-  .mobileTransactionIcon svg { width: 1rem; height: 1rem; }
-
-  .mobileTransactionCopy { min-width: 0; display: grid; gap: .2rem; }
-
-  .mobileTransactionCopy strong,
-  .mobileTransactionCopy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mobileTransactionCopy strong { color: #fff; font-size: .72rem; font-weight: var(--font-weight-semibold); }
-  .mobileTransactionCopy small { color: rgb(255 255 255 / .46); font-size: .6rem; }
-
-  .mobileTransactionMeta {
-    min-width: 5.9rem;
-    display: grid;
-    justify-items: end;
-    gap: .25rem;
-    text-align: right;
-  }
-
-  .mobileTransactionMeta > strong,
-  .mobileTransactionMeta > strong :global(.money) {
-    color: #fff;
-    font-size: .68rem;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  .mobileTransactionMeta > strong[data-tone="positive"],
-  .mobileTransactionMeta > strong[data-tone="positive"] :global(.money) { color: var(--primary); }
-
-  .mobileTransactionMeta > strong[data-tone="neutral"],
-  .mobileTransactionMeta > strong[data-tone="neutral"] :global(.money) { color: rgb(255 255 255 / .48); }
-
-  .mobileActivityState,
-  .mobileChartState {
-    min-height: 10rem;
-    margin-top: .75rem;
-    padding: var(--space-4);
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: .5rem;
-    border: 1px dashed rgb(255 255 255 / .12);
-    border-radius: 1rem;
-    color: rgb(255 255 255 / .52);
-    font-size: .68rem;
-    text-align: center;
-  }
-
-  .mobileActivityState > svg,
-  .mobileChartState > svg { width: 1.4rem; height: 1.4rem; color: var(--primary); }
-  .mobileActivityState > strong { color: #fff; font-size: .75rem; }
-
-  .mobileChartHeading { align-items: flex-start; }
-
-  .mobileChartHeading > div > strong,
-  .mobileChartHeading > div > strong :global(.money) {
-    display: block;
-    margin-top: .28rem;
-    color: #fff;
-    font-size: 1.45rem;
-    font-weight: var(--font-weight-bold);
-    letter-spacing: -.035em;
-  }
-
-  .mobileChartHeading > div > span { display: block; margin-top: .22rem; color: rgb(255 255 255 / .45); font-size: .62rem; }
-  .mobileChartHeading > svg { width: 1.2rem; height: 1.2rem; color: var(--primary); }
-
-  .mobileTrendControls { margin-top: .9rem; display: flex; gap: .4rem; }
-
-  .mobileTrendControls > button {
-    min-height: 2.15rem;
-    padding: 0 .72rem;
-    border: 1px solid rgb(255 255 255 / .08);
-    border-radius: var(--radius-pill);
-    background: rgb(255 255 255 / .04);
-    color: rgb(255 255 255 / .52);
-    font-size: .62rem;
-    font-weight: var(--font-weight-semibold);
-    cursor: pointer;
-  }
-
-  .mobileTrendControls > .mobileTrendControlActive { border-color: #f3f8f6; background: #f3f8f6; color: #08120f; }
-
-  .mobileExpenseChart { margin: .8rem 0 0; color: var(--primary); }
-  .mobileExpenseChart svg { width: 100%; height: auto; display: block; overflow: visible; }
-  .mobileExpenseChart svg > line { stroke: rgb(255 255 255 / .06); stroke-width: 1; }
-  .mobileExpenseArea { fill: rgb(22 199 132 / .08); stroke: none; }
-  .mobileExpenseLine { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-  .mobileExpensePoint { fill: #08120f; stroke: currentColor; stroke-width: 3; }
-
-  .mobileChartLabels {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: repeat(var(--chart-label-count, 6), minmax(0, 1fr));
-    color: rgb(255 255 255 / .4);
-    font-size: .55rem;
-    text-align: center;
-  }
-
-  .mobileChartLabels span:first-child { text-align: left; }
-  .mobileChartLabels span:last-child { text-align: right; }
-
-  .mobileChartStats {
-    margin-top: 1rem;
-    padding: .8rem 0;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-top: 1px solid rgb(255 255 255 / .07);
-    border-bottom: 1px solid rgb(255 255 255 / .07);
-  }
-
-  .mobileChartStats > div { min-width: 0; }
-  .mobileChartStats > div + div { padding-left: .8rem; border-left: 1px solid rgb(255 255 255 / .07); }
-  .mobileChartStats small { display: block; color: rgb(255 255 255 / .43); font-size: .58rem; }
-  .mobileChartStats strong { display: block; margin-top: .25rem; overflow: hidden; color: #fff; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
-
-  .mobileChartNote {
-    margin-top: .8rem;
-    display: grid;
-    grid-template-columns: 1.65rem minmax(0, 1fr);
-    gap: .55rem;
-    align-items: start;
-    color: rgb(255 255 255 / .48);
-    font-size: .6rem;
-    line-height: 1.45;
-  }
-
-  .mobileChartNote > svg {
-    width: 1.65rem;
-    height: 1.65rem;
-    padding: .38rem;
-    border-radius: .5rem;
-    background: rgb(22 199 132 / .12);
-    color: var(--primary);
-  }
-
-  .mobileChartAction {
-    width: 100%;
-    min-height: 2.75rem;
-    margin-top: .65rem;
-    padding: .55rem .1rem;
-    border: 0;
-    border-top: 1px solid rgb(255 255 255 / .07);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    background: transparent;
-    color: rgb(255 255 255 / .7);
-    font-size: .66rem;
-    font-weight: var(--font-weight-semibold);
-    cursor: pointer;
-  }
-
-  .mobileChartAction svg { width: 1rem; height: 1rem; color: var(--primary); }
-
-  .mobileTransferSuccess {
-    min-width: 0;
-    display: grid;
-    justify-items: center;
-    gap: .8rem;
-    text-align: center;
-  }
-
-  .mobileTransferSuccessVisual {
-    --success-motion-x: 50%;
-    --success-motion-y: 50%;
-    --success-motion-rx: 0deg;
-    --success-motion-ry: 0deg;
-    width: 10rem;
-    height: 10rem;
-    padding: 0;
-    position: relative;
-    border: 0;
-    border-radius: 2.4rem;
-    display: grid;
-    place-items: center;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    touch-action: manipulation;
-    perspective: 56rem;
-    transition: transform var(--motion-fast) ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .mobileTransferSuccessVisual:active { transform: scale(.985); }
-
-  .mobileTransferSuccessVisual:focus-visible {
-    outline: 3px solid var(--focus-ring);
-    outline-offset: .2rem;
-  }
-
-  .mobileTransferSuccessAmbient {
-    position: absolute;
-    inset: 1.05rem;
-    border-radius: 50%;
-    background: radial-gradient(circle, color-mix(in srgb, var(--secondary) 15%, transparent), transparent 68%);
-    filter: blur(.55rem);
-    opacity: .7;
-    animation: mobile-transfer-logo-ambient 2.8s ease-in-out infinite;
-  }
-
-  .mobileTransferSuccessLogo {
-    width: 8.2rem;
-    height: 8.2rem;
-    position: relative;
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    transform: rotateX(var(--success-motion-rx)) rotateY(var(--success-motion-ry)) scale(.96);
-    transform-style: preserve-3d;
-    transition: transform var(--motion-fast) ease-out;
-    animation: mobile-transfer-logo-arrive .72s cubic-bezier(.22, .7, .16, 1) forwards;
-  }
-
-
-  .mobileTransferSuccessLogo > img {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    z-index: 1;
-    object-fit: contain;
-    filter: drop-shadow(0 .9rem 1.35rem color-mix(in srgb, var(--text) 12%, transparent));
-    user-select: none;
-    pointer-events: none;
-  }
-
-  .mobileTransferSuccessLogoEnergy,
-  .mobileTransferSuccessLogoSweep,
-  .mobileTransferSuccessFlow {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    -webkit-mask-image: url("/brand/saldo-bersama-mark.png");
-    mask-image: url("/brand/saldo-bersama-mark.png");
-    -webkit-mask-position: center;
-    mask-position: center;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: contain;
-    mask-size: contain;
-    pointer-events: none;
-  }
-
-  .mobileTransferSuccessLogoEnergy {
-    overflow: hidden;
-    background:
-      radial-gradient(circle at var(--success-motion-x) var(--success-motion-y), rgb(255 255 255 / .86) 0 5%, transparent 22%),
-      linear-gradient(115deg, rgb(10 167 195 / .08), rgb(44 194 149 / .24) 58%, rgb(33 211 108 / .2));
-    opacity: .95;
-  }
-
-  .mobileTransferSuccessLogoEnergy::before,
-  .mobileTransferSuccessLogoEnergy::after {
-    content: "";
-    width: 1.05rem;
-    height: 1.05rem;
-    position: absolute;
-    top: 46%;
-    border-radius: 50%;
-    opacity: 0;
-    filter: blur(.05rem);
-  }
-
-  .mobileTransferSuccessLogoEnergy::before {
-    left: -1.2rem;
-    background: #63dff5;
-    box-shadow: 0 0 1.2rem rgb(10 167 195 / .42);
-    animation: mobile-transfer-logo-orb-left 1s .08s cubic-bezier(.22, .7, .16, 1) forwards;
-  }
-
-  .mobileTransferSuccessLogoEnergy::after {
-    right: -1.2rem;
-    background: #7bea9e;
-    box-shadow: 0 0 1.2rem rgb(33 211 108 / .4);
-    animation: mobile-transfer-logo-orb-right 1s .16s cubic-bezier(.22, .7, .16, 1) forwards;
-  }
-
-  .mobileTransferSuccessLogoSweep {
-    z-index: 3;
-    background: linear-gradient(105deg, transparent 32%, rgb(255 255 255 / .7) 48%, transparent 62%);
-    background-size: 235% 100%;
-    background-position: -130% 0;
-    opacity: .55;
-    animation: mobile-transfer-logo-sweep 1.05s .38s cubic-bezier(.22, .7, .16, 1) forwards;
-  }
-
-  .mobileTransferSuccessFlow {
-    z-index: 4;
-    background: radial-gradient(circle at 50% 50%, rgb(255 255 255 / .75) 0 4%, transparent 20%);
-    opacity: 0;
-    animation: mobile-transfer-logo-merge .52s .52s ease-out forwards;
-  }
-
-  .mobileTransferSuccessCheck {
-    width: 4.55rem;
-    height: 4.55rem;
-    position: absolute;
-    z-index: 5;
-    display: grid;
-    place-items: center;
-    border: 1px solid color-mix(in srgb, var(--border-strong) 58%, transparent);
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--surface) 92%, transparent);
-    color: var(--primary);
-    box-shadow: 0 .8rem 2rem color-mix(in srgb, var(--text) 13%, transparent);
-    backdrop-filter: blur(.65rem);
-    opacity: 0;
-    transform: scale(.72);
-    animation: mobile-transfer-check-pop .48s .72s cubic-bezier(.22, .7, .16, 1.2) forwards;
-  }
-
-  .mobileTransferSuccessCheck svg {
-    width: 2.25rem;
-    height: 2.25rem;
-    stroke-width: 2.7;
-    stroke-dasharray: 30;
-    stroke-dashoffset: 30;
-    animation: mobile-transfer-check-draw .38s .93s ease-out forwards;
-  }
-
-  .mobileTransferSuccessRipple {
-    width: 4.8rem;
-    height: 4.8rem;
-    position: absolute;
-    z-index: 1;
-    border: 1px solid color-mix(in srgb, var(--secondary) 34%, transparent);
-    border-radius: 50%;
-    opacity: 0;
-    animation: mobile-transfer-logo-ripple .84s .72s ease-out forwards;
-  }
-
-  .mobileTransferSuccessCopy {
-    min-width: 0;
-    opacity: 0;
-    transform: translateY(.45rem);
-    animation: mobile-transfer-rise .42s .9s cubic-bezier(.22, .7, .16, 1) forwards;
-  }
-
-  .mobileTransferSuccessCopy small {
-    display: block;
-    color: var(--primary);
-    font-size: .6rem;
-    font-weight: var(--font-weight-bold);
-    letter-spacing: .1em;
-  }
-
-  .mobileTransferSuccessCopy > strong,
-  .mobileTransferSuccessCopy > strong :global(.money) {
-    display: block;
-    margin-top: .35rem;
-    color: var(--text);
-    font-size: 1.75rem;
-    font-weight: var(--font-weight-bold);
-    letter-spacing: -.04em;
-  }
-
-  .mobileTransferSuccessCopy p {
-    margin: .35rem auto 0;
-    max-width: 18rem;
-    color: var(--text-soft);
-    font-size: .72rem;
-    line-height: 1.5;
-  }
-
-  .mobileTransferSuccessCopy b { color: var(--text); }
-
-  .mobileTransferSuccessRoute {
-    width: 100%;
-    min-width: 0;
-    padding: .8rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 1.75rem minmax(0, 1fr);
-    align-items: center;
-    gap: .45rem;
-    border: 1px solid var(--border);
-    border-radius: .9rem;
-    background: var(--surface-soft);
-    opacity: 0;
-    transform: translateY(.45rem);
-    animation: mobile-transfer-rise .42s 1.03s cubic-bezier(.22, .7, .16, 1) forwards;
-  }
-
-  .mobileTransferSuccessRoute > span { min-width: 0; display: grid; gap: .2rem; text-align: left; }
-  .mobileTransferSuccessRoute > span:last-child { text-align: right; }
-  .mobileTransferSuccessRoute small { color: var(--text-muted); font-size: .58rem; }
-  .mobileTransferSuccessRoute strong { overflow: hidden; color: var(--text); font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
-  .mobileTransferSuccessRoute > svg { width: 1rem; height: 1rem; justify-self: center; color: var(--primary); }
-
-  .mobileTransferSuccessStatus {
-    width: 100%;
-    padding-top: .7rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    border-top: 1px solid var(--border);
-    color: var(--text-muted);
-    font-size: .65rem;
-    opacity: 0;
-    transform: translateY(.45rem);
-    animation: mobile-transfer-rise .42s 1.14s cubic-bezier(.22, .7, .16, 1) forwards;
-  }
-
-  .mobileTransferSuccessStatus strong { display: inline-flex; align-items: center; gap: .38rem; color: var(--positive); }
-  .mobileTransferSuccessStatus strong > i { width: .42rem; height: .42rem; border-radius: 50%; background: currentColor; }
-
-  @keyframes mobile-transfer-logo-arrive {
-    0% { opacity: 0; transform: rotateX(0deg) rotateY(0deg) translateY(.55rem) scale(.9); filter: blur(.3rem); }
-    62% { opacity: 1; transform: rotateX(var(--success-motion-rx)) rotateY(var(--success-motion-ry)) translateY(-.1rem) scale(1.015); filter: blur(0); }
-    100% { opacity: 1; transform: rotateX(var(--success-motion-rx)) rotateY(var(--success-motion-ry)) translateY(0) scale(1); filter: blur(0); }
-  }
-
-  @keyframes mobile-transfer-logo-ambient {
-    0%, 100% { opacity: .5; transform: scale(.94); }
-    50% { opacity: .82; transform: scale(1.04); }
-  }
-
-  @keyframes mobile-transfer-logo-orb-left {
-    0% { opacity: 0; transform: translate(-.5rem, .8rem) scale(.65); }
-    18% { opacity: 1; }
-    62% { opacity: 1; transform: translate(4.35rem, -.2rem) scale(1); }
-    100% { opacity: 0; transform: translate(6.4rem, 0) scale(.45); }
-  }
-
-  @keyframes mobile-transfer-logo-orb-right {
-    0% { opacity: 0; transform: translate(.5rem, .8rem) scale(.65); }
-    18% { opacity: 1; }
-    62% { opacity: 1; transform: translate(-4.35rem, -.2rem) scale(1); }
-    100% { opacity: 0; transform: translate(-6.4rem, 0) scale(.45); }
-  }
-
-  @keyframes mobile-transfer-logo-sweep {
-    0% { background-position: -130% 0; opacity: 0; }
-    35% { opacity: .64; }
-    100% { background-position: 150% 0; opacity: .08; }
-  }
-
-  @keyframes mobile-transfer-logo-merge {
-    0% { opacity: 0; transform: scale(.5); }
-    42% { opacity: .92; transform: scale(1.08); }
-    100% { opacity: 0; transform: scale(1.8); }
-  }
-
-  @keyframes mobile-transfer-logo-ripple {
-    0% { opacity: 0; transform: scale(.65); }
-    22% { opacity: .72; }
-    100% { opacity: 0; transform: scale(1.8); }
-  }
-
-  @keyframes mobile-transfer-check-pop {
-    0% { opacity: 0; transform: scale(.72); }
-    68% { opacity: 1; transform: scale(1.055); }
-    100% { opacity: 1; transform: scale(1); }
-  }
-
-  @keyframes mobile-transfer-check-draw { to { stroke-dashoffset: 0; } }
-
-  @keyframes mobile-transfer-rise { to { opacity: 1; transform: translateY(0); } }
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+  
+
+  
+
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
   .mobileDetailContainer {
     min-width: 0;
@@ -1186,183 +405,43 @@
   }
 
   /* Light mode changes only the canvas and UI around bank cards. Card artwork stays untouched. */
-  :global(:root[data-theme="light"]) .mobileAccountExperience,
-  :global(:root[data-theme="light"]) .mobileStackPanel {
-    color: var(--text);
-  }
+  
 
-  :global(:root[data-theme="light"]) .mobileAccountExperience {
-    --accounts-mobile-surface:
-      radial-gradient(circle at 78% 14%, color-mix(in srgb, var(--primary-soft) 82%, transparent), transparent 30%),
-      radial-gradient(circle at 6% 84%, color-mix(in srgb, var(--secondary-soft) 68%, transparent), transparent 34%),
-      var(--page);
-  }
+  
 
-  :global(:root[data-theme="light"]) .mobileStackHeaderButton { color: var(--text); }
-  :global(:root[data-theme="light"]) .mobileStackAddButton { background: var(--primary-soft); color: var(--primary); }
-  :global(:root[data-theme="light"]) .mobileStackHeaderButton:hover,
-  :global(:root[data-theme="light"]) .mobileStackHeaderButton:focus-visible,
-  :global(:root[data-theme="light"]) .mobileStackAddButton:hover,
-  :global(:root[data-theme="light"]) .mobileStackAddButton:focus-visible { background: var(--surface-strong); color: var(--primary); }
-  :global(:root[data-theme="light"]) .mobileStackAmbient::before { background: radial-gradient(circle, color-mix(in srgb, var(--primary-soft) 72%, transparent), transparent 72%); }
-  :global(:root[data-theme="light"]) .mobileStackAmbient::after { background: radial-gradient(circle, color-mix(in srgb, var(--secondary-soft) 72%, transparent), transparent 72%); }
+  
+  
+  
+  
+  
 
-  :global(:root[data-theme="light"]) .mobileStackSummary small,
-  :global(:root[data-theme="light"]) .mobileStackHint,
-  :global(:root[data-theme="light"]) .mobileTransferQuickCopy small,
-  :global(:root[data-theme="light"]) .mobileTransferQuickChevron,
-  :global(:root[data-theme="light"]) .mobileActivityTabs > button,
-  :global(:root[data-theme="light"]) .mobileActivityHeading small,
-  :global(:root[data-theme="light"]) .mobileChartHeading small,
-  :global(:root[data-theme="light"]) .mobileHistoryPeriod > span:first-child,
-  :global(:root[data-theme="light"]) .mobileTransactionCopy small,
-  :global(:root[data-theme="light"]) .mobileChartHeading > div > span,
-  :global(:root[data-theme="light"]) .mobileChartLabels,
-  :global(:root[data-theme="light"]) .mobileChartStats small,
-  :global(:root[data-theme="light"]) .mobileChartNote,
-  :global(:root[data-theme="light"]) .mobileChartAction { color: var(--text-muted); }
+  
 
-  :global(:root[data-theme="light"]) .mobileStackSummary h2,
-  :global(:root[data-theme="light"]) .mobileTransferQuickAction,
-  :global(:root[data-theme="light"]) .mobileTransferQuickCopy strong,
-  :global(:root[data-theme="light"]) .mobileActivityTabs > button:hover,
-  :global(:root[data-theme="light"]) .mobileActivityTabs > button:focus-visible,
-  :global(:root[data-theme="light"]) .mobileActivityTabs > .mobileActivityTabActive,
-  :global(:root[data-theme="light"]) .mobileActivityHeading strong,
-  :global(:root[data-theme="light"]) .mobileHistoryPeriodControl input,
-  :global(:root[data-theme="light"]) .mobileTransactionCopy strong,
-  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong,
-  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong :global(.money),
-  :global(:root[data-theme="light"]) .mobileActivityState > strong,
-  :global(:root[data-theme="light"]) .mobileChartHeading > div > strong,
-  :global(:root[data-theme="light"]) .mobileChartHeading > div > strong :global(.money),
-  :global(:root[data-theme="light"]) .mobileChartStats strong { color: var(--text); }
+  
 
-  :global(:root[data-theme="light"]) .mobileTransferQuickAction { border-color: var(--border); background: var(--surface); box-shadow: var(--shadow-sm); }
-  :global(:root[data-theme="light"]) .mobileTransferQuickAction:hover:not(:disabled) { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); background: var(--surface-soft); }
-  :global(:root[data-theme="light"]) .mobileTransferQuickIcon { color: var(--on-primary); }
-  :global(:root[data-theme="light"]) .mobileActivityTabs { border-bottom-color: var(--border); }
-  :global(:root[data-theme="light"]) .mobileHistoryPeriodControl { border-color: var(--border); background: var(--surface); }
-  :global(:root[data-theme="light"]) .mobileHistoryPeriodControl input { color-scheme: light; }
-  :global(:root[data-theme="light"]) .mobileActivityNotice { border-color: var(--border); background: var(--surface-soft); color: var(--text-soft); }
-  :global(:root[data-theme="light"]) .mobileTransactionItem { border-bottom-color: var(--border); }
-  :global(:root[data-theme="light"]) .mobileTransactionIcon { border-color: var(--border); background: var(--surface-soft); color: var(--text-soft); }
-  :global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="positive"] { background: var(--positive-soft); color: var(--positive); }
-  :global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="negative"] { background: var(--negative-soft); color: var(--negative); }
-  :global(:root[data-theme="light"]) .mobileTransactionIcon[data-tone="neutral"] { color: var(--text-muted); }
-  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="positive"],
-  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="positive"] :global(.money) { color: var(--positive); }
-  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="neutral"],
-  :global(:root[data-theme="light"]) .mobileTransactionMeta > strong[data-tone="neutral"] :global(.money) { color: var(--text-muted); }
-  :global(:root[data-theme="light"]) .mobileActivityState,
-  :global(:root[data-theme="light"]) .mobileChartState { border-color: var(--border-strong); color: var(--text-muted); }
-  :global(:root[data-theme="light"]) .mobileTrendControls > button { border-color: var(--border); background: var(--surface); color: var(--text-muted); }
-  :global(:root[data-theme="light"]) .mobileTrendControls > .mobileTrendControlActive { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
-  :global(:root[data-theme="light"]) .mobileExpenseChart svg > line { stroke: var(--border); }
-  :global(:root[data-theme="light"]) .mobileExpensePoint { fill: var(--surface); }
-  :global(:root[data-theme="light"]) .mobileChartStats { border-top-color: var(--border); border-bottom-color: var(--border); }
-  :global(:root[data-theme="light"]) .mobileChartStats > div + div { border-left-color: var(--border); }
-  :global(:root[data-theme="light"]) .mobileChartAction { border-top-color: var(--border); }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
-}
-
-.mobileAccountList {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.mobileAccountListItem {
-  width: 100%;
-  min-height: 4.75rem;
-  padding: .8rem .9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--control-radius);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  background: var(--surface);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.mobileAccountListItem[aria-pressed="true"] {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.mobileAccountListItem > span:first-child {
-  min-width: 0;
-  display: grid;
-  gap: .2rem;
-}
-
-.mobileAccountListItem strong,
-.mobileAccountListItem small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobileAccountListItem small {
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.mobileAccountListItem :global(.money) {
-  flex: 0 0 auto;
-}
-
-
-
-@media (max-width: 420px) {
-  .mobileStackStage {
-    height: 30.75rem;
-  }
-
-  .mobileStackCard {
-    width: min(80vw, 19rem);
-  }
-
-  .mobileStackHeaderButton span {
-    font-size: .72rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mobileStackCard { scroll-behavior: auto; }
-  .mobileActivityTabIcon,
-  .mobileTransferQuickAction,
-  .mobileTransferSuccessVisual,
-  .mobileTransferSuccessAmbient,
-  .mobileTransferSuccessLogo,
-  .mobileTransferSuccessLogoEnergy::before,
-  .mobileTransferSuccessLogoEnergy::after,
-  .mobileTransferSuccessLogoSweep,
-  .mobileTransferSuccessFlow,
-  .mobileTransferSuccessCheck,
-  .mobileTransferSuccessCheck svg,
-  .mobileTransferSuccessRipple,
-  .mobileTransferSuccessCopy,
-  .mobileTransferSuccessRoute,
-  .mobileTransferSuccessStatus {
-    animation: none;
-    transition: none;
-  }
-
-  .mobileTransferSuccessLogo { opacity: 1; transform: none; filter: none; }
-  .mobileTransferSuccessLogoEnergy::before,
-  .mobileTransferSuccessLogoEnergy::after,
-  .mobileTransferSuccessLogoSweep,
-  .mobileTransferSuccessFlow,
-  .mobileTransferSuccessRipple { opacity: 0; }
-  .mobileTransferSuccessCheck,
-  .mobileTransferSuccessCopy,
-  .mobileTransferSuccessRoute,
-  .mobileTransferSuccessStatus { opacity: 1; transform: none; }
-  .mobileTransferSuccessCheck svg { stroke-dashoffset: 0; }
 }
 
 .impactSummary {

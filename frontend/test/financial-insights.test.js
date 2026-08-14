@@ -55,7 +55,10 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
     source("src/features/transactions/TransactionsPage.jsx"),
     source("src/features/reconciliations/ReconciliationsPage.jsx"),
     source("src/features/recurring/RecurringPage.jsx"),
-    source("src/features/recurring/useRecurringActions.js"),
+    Promise.all([
+      source("src/features/recurring/useRecurringActions.js"),
+      source("src/features/recurring/RecurringDialogs.jsx"),
+    ]).then((parts) => parts.join("\n")),
     source("src/features/goals/GoalsPage.jsx"),
     source("src/features/budgets/BudgetsPage.jsx"),
     source("src/features/allocations/AllocationsPage.jsx"),
@@ -81,8 +84,8 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(reconciliation, /sudah dipilih otomatis/);
   assert.match(reconciliation, /consumeAttention\(\)/);
   assert.match(recurring, /attentionOccurrenceId/);
-  assert.match(recurring, /openPayment\(item\)/);
-  assert.match(recurring, /consumeAttention\(\)/);
+  assert.match(recurringActions, /openPayment\(item\)/);
+  assert.match(recurringActions, /consumeAttention\(\)/);
   assert.match(recurringActions, /const openPayment = useCallback/);
   assert.match(goals, /attentionGoalId/);
   assert.match(goals, /openMovement\(goal, "deposit"\)/);
@@ -104,7 +107,10 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", 
 test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang memakai kantong", async () => {
   const [allocations, recurring, navigation] = await Promise.all([
     source("src/features/allocations/AllocationsPage.jsx"),
-    source("src/features/recurring/RecurringPage.jsx"),
+    Promise.all([
+      source("src/features/recurring/RecurringPage.jsx"),
+      source("src/features/recurring/RecurringDialogs.jsx"),
+    ]).then((parts) => parts.join("\n")),
     source("src/config/navigation.js"),
   ]);
 

@@ -9,8 +9,8 @@ import {
   updateCategory,
 } from "../services/masterData.js";
 import {
-  applyImport, applyRestore, applyTrialDataReset, createTechnicalBackup, integrityWithMaintenanceRecovery, previewImport,
-  previewRestore, previewTrialDataReset, readTrialDataResetStatus,
+  applyFullDataReset, applyImport, applyRestore, applyTrialDataReset, createTechnicalBackup, integrityWithMaintenanceRecovery, previewFullDataReset, previewImport,
+  previewRestore, previewTrialDataReset, readFullDataResetStatus, readTrialDataResetStatus,
 } from "../services/maintenance/index.js";
 import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
 import {
@@ -153,6 +153,9 @@ const ACTION_HANDLERS = Object.freeze({
   "reset.preview": previewTrialDataReset,
   "reset.status": readTrialDataResetStatus,
   "reset.apply": applyTrialDataReset,
+  "fullReset.preview": previewFullDataReset,
+  "fullReset.status": readFullDataResetStatus,
+  "fullReset.apply": applyFullDataReset,
   "integrity.run": integrityWithMaintenanceRecovery,
 });
 

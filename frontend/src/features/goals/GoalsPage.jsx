@@ -8,6 +8,7 @@ import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
+import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
@@ -76,8 +77,7 @@ const GoalGrid = ({ items, actions, ownerMode, openCreate }) => (
   <section className="goal-grid">
     {items.length ? items.map((goal) => <GoalCard key={goal.goal_id} goal={goal} actions={actions} />) : (
       <Card className="panel">
-        <p>Belum ada target keuangan.</p>
-        {ownerMode ? <div className="form-actions"><Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button></div> : null}
+        <EmptyState variant="inline" icon={FiTarget} title="Belum ada target keuangan" description="Buat target untuk memantau progres dana dan kebutuhan bulanan." action={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : null} />
       </Card>
     )}
   </section>

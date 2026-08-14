@@ -76,16 +76,16 @@
   .app-shell--accounts .app-content { padding-top: 0; color: var(--on-hero); }
   :root[data-theme="light"] .app-shell--accounts .app-content { color: var(--text); }
   .app-shell--dashboard .app-content > .notice { margin: 14px; }
-  .app-content > .loading-screen,
+  .app-content > .loading-screen--page,
   .app-content > .fatal-error,
   .app-content > .centered-page {
     min-height: calc(100vh - 56px - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
     min-height: calc(100dvh - 56px - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
   }
-  .app-shell--dashboard .app-content > .loading-screen,
+  .app-shell--dashboard .app-content > .loading-screen--page,
   .app-shell--dashboard .app-content > .fatal-error,
   .app-shell--dashboard .app-content > .centered-page,
-  .app-shell--accounts .app-content > .loading-screen,
+  .app-shell--accounts .app-content > .loading-screen--page,
   .app-shell--accounts .app-content > .fatal-error,
   .app-shell--accounts .app-content > .centered-page {
     min-height: calc(100vh - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
@@ -225,7 +225,7 @@
   .allocation-header-actions--member { grid-template-columns: minmax(0, 1fr) var(--mobile-control-height); }
   .allocation-header-actions__primary { grid-column: auto; }
   .allocation-header-actions > .button { width: 100%; min-width: 0; padding-inline: 10px; font-size: 12px; }
-  .allocation-refresh-action { width: var(--mobile-control-height) !important; min-width: var(--mobile-control-height) !important; padding: 0 !important; }
+  .allocation-header-actions > .allocation-refresh-action { width: var(--mobile-control-height); min-width: var(--mobile-control-height); padding: 0; }
   .allocation-refresh-action > span { display: none; }
   .allocation-section-heading h2 { font-size: 15px; }
   .allocation-filters { margin-inline: calc(var(--mobile-page-gutter) * -1); padding-inline: var(--mobile-page-gutter); scroll-padding-inline: var(--mobile-page-gutter); }

@@ -103,6 +103,9 @@
 | `reset.preview` | Ya | Tidak |
 | `reset.status` | Ya | Tidak |
 | `reset.apply` | Ya | Tidak |
+| `fullReset.preview` | Ya | Tidak |
+| `fullReset.status` | Ya | Tidak |
+| `fullReset.apply` | Ya | Tidak |
 | `integrity.run` | Ya | Tidak |
 
 

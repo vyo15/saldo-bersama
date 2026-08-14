@@ -22,26 +22,36 @@ const Modal = ({
   initialFocusRef,
   className = "",
   mobileSwipeToClose = false,
+  dismissible = true,
 }) => {
   const containerRef = useRef(null);
   const closeRef = useRef(null);
   const titleId = useId();
   const descriptionId = useId();
-  const { closeModal, dragY, dragging, dismissing, swipeHandlers } = useMobileSwipeDismiss({ enabled: mobileSwipeToClose, containerRef, onClose });
+  const canDismiss = dismissible && typeof onClose === "function";
+  const requestClose = () => { if (canDismiss) onClose(); };
+  const swipeEnabled = mobileSwipeToClose && canDismiss;
+  const { closeModal, dragY, dragging, dismissing, swipeHandlers } = useMobileSwipeDismiss({ enabled: swipeEnabled, containerRef, onClose: requestClose });
 
-  useFocusTrap({ open, containerRef, initialFocusRef: initialFocusRef || closeRef, onEscape: closeModal, bodyClassName: "modal-open" });
+  useFocusTrap({
+    open,
+    containerRef,
+    initialFocusRef: initialFocusRef || (canDismiss ? closeRef : undefined),
+    onEscape: canDismiss ? closeModal : undefined,
+    bodyClassName: "modal-open",
+  });
 
   if (!open) return null;
 
   const sizeStyle = SIZE_STYLES[size] || styles.medium;
-  const gestureClass = mobileSwipeToClose ? styles.swipeEnabled : "";
+  const gestureClass = swipeEnabled ? styles.swipeEnabled : "";
   const dragClass = dragging ? styles.dragging : "";
   const dismissClass = dismissing ? styles.dismissing : "";
   return createPortal(
     <div
       className={`${styles.backdrop} modal-backdrop`}
       role="presentation"
-      onPointerDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}
+      onPointerDown={(event) => { if (canDismiss && event.target === event.currentTarget) closeModal(); }}
     >
       <section
         className={`${styles.dialog} ${sizeStyle} ${gestureClass} ${dragClass} ${dismissClass} modal modal--${size} ${className}`.trim()}
@@ -53,14 +63,15 @@ const Modal = ({
         tabIndex={-1}
         data-ui="dialog"
         data-size={size}
-        data-mobile-swipe-to-close={mobileSwipeToClose ? "true" : undefined}
-        style={mobileSwipeToClose ? { "--modal-drag-y": `${dragY}px` } : undefined}
+        data-dismissible={canDismiss ? "true" : "false"}
+        data-mobile-swipe-to-close={swipeEnabled ? "true" : undefined}
+        style={swipeEnabled ? { "--modal-drag-y": `${dragY}px` } : undefined}
       >
         <header
-          className={`${styles.header} ${mobileSwipeToClose ? styles.swipeHeader : ""} modal__header`.trim()}
-          {...swipeHandlers}
+          className={`${styles.header} ${swipeEnabled ? styles.swipeHeader : ""} modal__header`.trim()}
+          {...(swipeEnabled ? swipeHandlers : {})}
         >
-          {mobileSwipeToClose ? <span className={styles.mobileDragHandle} aria-hidden="true" /> : null}
+          {swipeEnabled ? <span className={styles.mobileDragHandle} aria-hidden="true" /> : null}
           <div className={styles.heading}>
             <h2 id={titleId}>{title}</h2>
             {description ? <p id={descriptionId}>{description}</p> : null}
@@ -70,7 +81,8 @@ const Modal = ({
             className={`${styles.closeButton} icon-button`}
             type="button"
             onClick={closeModal}
-            aria-label="Tutup dialog"
+            disabled={!canDismiss}
+            aria-label={canDismiss ? "Tutup dialog" : "Dialog sedang diproses dan belum dapat ditutup"}
           >
             <FiX aria-hidden="true" />
           </button>

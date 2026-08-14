@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
@@ -63,4 +63,22 @@ export const useRecurringOccurrenceRecovery = (shared) => {
   const openSkip = (item) => { setSkipTarget(item); setSkipError(null); };
   const openRestore = (item) => { setRestoreOccurrenceTarget(item); setRestoreOccurrenceError(null); };
   return { skipMutation, restoreOccurrenceMutation, skipTarget, setSkipTarget, skipError, restoreOccurrenceTarget, setRestoreOccurrenceTarget, restoreOccurrenceError, skipOccurrence, restoreSkippedOccurrence, openSkip, openRestore };
+};
+
+export const useRecurringAttention = ({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment }) => {
+  const attentionHandled = useRef(false);
+  const attentionOccurrenceId = String(attention?.attentionOccurrenceId || "");
+  useEffect(() => {
+    if (attentionHandled.current || !attentionOccurrenceId || resource.status !== "ready") return;
+    attentionHandled.current = true;
+    const item = (resource.data?.items || []).find((candidate) => candidate.occurrence_id === attentionOccurrenceId);
+    if (item) {
+      setFilter(attention?.attentionType === "recurring_due" ? "open" : "attention");
+      setKind(item.kind === "income" ? "income" : "expense");
+      setExpandedId(item.occurrence_id);
+      if (attention?.attentionAction === "payment" && item.can_pay) openPayment(item);
+    }
+    consumeAttention();
+  }, [attention?.attentionAction, attention?.attentionType, attentionOccurrenceId, consumeAttention, openPayment, resource.data?.items, resource.status, setExpandedId, setFilter, setKind]);
+  return attentionOccurrenceId;
 };

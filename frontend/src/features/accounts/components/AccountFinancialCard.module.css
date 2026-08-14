@@ -39,8 +39,8 @@
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border-strong) 68%, transparent);
   border-radius: 0.9rem;
-  background: #0a1016;
-  box-shadow: 0 12px 28px color-mix(in srgb, #000 30%, transparent);
+  background: var(--account-card-surface);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--shadow-ink) 30%, transparent);
   isolation: isolate;
 }
 
@@ -48,7 +48,7 @@
   width: min(100%, 26.5rem);
   margin: var(--space-5) auto;
   border-radius: 1.15rem;
-  box-shadow: 0 22px 48px color-mix(in srgb, #000 40%, transparent);
+  box-shadow: 0 22px 48px color-mix(in srgb, var(--shadow-ink) 40%, transparent);
 }
 
 .cardImage {
@@ -69,7 +69,7 @@
   z-index: 2;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, transparent 48%, rgba(3, 8, 12, 0.04) 60%, rgba(3, 8, 12, 0.66) 100%);
+  background: linear-gradient(180deg, transparent 48%, color-mix(in srgb, var(--account-card-overlay) 4%, transparent) 60%, color-mix(in srgb, var(--account-card-overlay) 66%, transparent) 100%);
 }
 
 .genericCard {
@@ -78,14 +78,14 @@
   display: grid;
   place-items: center;
   background: var(--primary-deep);
-  color: color-mix(in srgb, white 24%, transparent);
+  color: color-mix(in srgb, var(--on-hero) 24%, transparent);
 }
 
 .visual[data-bank-template="generic"]::after,
 .visual[data-has-image="false"]::after { background: none; }
 
 .visual[data-visual-kind="ewallet"]::after {
-  background: linear-gradient(180deg, transparent 52%, rgba(3, 8, 12, .08) 62%, rgba(3, 8, 12, .7) 100%);
+  background: linear-gradient(180deg, transparent 52%, color-mix(in srgb, var(--account-card-overlay) 8%, transparent) 62%, color-mix(in srgb, var(--account-card-overlay) 70%, transparent) 100%);
 }
 
 .genericCard svg { width: 30%; height: 30%; }
@@ -94,7 +94,7 @@
   position: absolute;
   z-index: 3;
   inset: 0;
-  color: #fff;
+  color: var(--on-hero);
 }
 
 .contactless {
@@ -106,8 +106,8 @@
   min-width: 1rem;
   min-height: 1rem;
   transform: rotate(90deg);
-  color: rgba(255,255,255,.96);
-  filter: drop-shadow(0 2px 5px rgba(0,0,0,.42));
+  color: color-mix(in srgb, var(--on-hero) 96%, transparent);
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--shadow-ink) 42%, transparent));
 }
 
 .accountNumber,
@@ -117,13 +117,13 @@
   right: 7.2%;
   bottom: 21.5%;
   min-width: 0;
-  color: #fff;
+  color: var(--on-hero);
   font-family: var(--font-mono);
   font-size: clamp(.62rem, 1.15vw, .9rem);
   font-weight: var(--font-weight-semibold);
   letter-spacing: .07em;
   line-height: 1;
-  text-shadow: 0 2px 7px rgba(0,0,0,.72);
+  text-shadow: 0 2px 7px color-mix(in srgb, var(--shadow-ink) 72%, transparent);
 }
 
 .accountNumber {
@@ -142,7 +142,7 @@
   right: 7.2%;
   bottom: 8.5%;
   overflow: hidden;
-  color: #fff;
+  color: var(--on-hero);
   font-family: var(--font-mono);
   font-size: clamp(.47rem, .82vw, .68rem);
   font-weight: var(--font-weight-semibold);
@@ -150,7 +150,7 @@
   line-height: 1;
   text-overflow: ellipsis;
   text-transform: uppercase;
-  text-shadow: 0 2px 6px rgba(0,0,0,.74);
+  text-shadow: 0 2px 6px color-mix(in srgb, var(--shadow-ink) 74%, transparent);
   white-space: nowrap;
 }
 
@@ -166,17 +166,17 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,.38);
+  border: 1px solid color-mix(in srgb, var(--on-hero) 38%, transparent);
   border-radius: var(--radius-pill);
-  background: rgba(5, 17, 15, .38);
-  color: #fff;
+  background: color-mix(in srgb, var(--account-mobile-deep-surface) 38%, transparent);
+  color: var(--on-hero);
   font-family: var(--font-sans);
   font-size: clamp(.46rem, 2.1vw, .7rem);
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
-  box-shadow: 0 .2rem .7rem rgba(0,0,0,.14);
+  box-shadow: 0 .2rem .7rem color-mix(in srgb, var(--shadow-ink) 14%, transparent);
   backdrop-filter: blur(10px);
 }
 
@@ -258,8 +258,8 @@
   overflow-y: auto;
   border: 1px solid var(--border-strong);
   border-radius: 1.25rem;
-  background: linear-gradient(145deg, color-mix(in srgb, white 2%, transparent), transparent 42%), color-mix(in srgb, var(--surface-elevated) 92%, transparent);
-  box-shadow: 0 24px 54px color-mix(in srgb, #000 34%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--on-hero) 2%, transparent), transparent 42%), color-mix(in srgb, var(--surface-elevated) 92%, transparent);
+  box-shadow: 0 24px 54px color-mix(in srgb, var(--shadow-ink) 34%, transparent);
   scrollbar-gutter: stable;
 }
 
@@ -425,31 +425,31 @@
   z-index: 4;
   max-width: 58%;
   overflow: hidden;
-  color: #fff;
+  color: var(--on-hero);
   font-family: var(--font-sans);
   font-size: clamp(.62rem, 2.8vw, .78rem);
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-shadow: 0 2px 6px rgba(0,0,0,.42);
+  text-shadow: 0 2px 6px color-mix(in srgb, var(--shadow-ink) 42%, transparent);
 }
 
 .cardOwnership {
   top: 7.5%;
   left: 6.5%;
   padding: .52em .75em;
-  border: 1px solid rgba(255,255,255,.28);
+  border: 1px solid color-mix(in srgb, var(--on-hero) 28%, transparent);
   border-radius: var(--radius-pill);
-  background: rgba(5, 17, 15, .3);
-  box-shadow: 0 .2rem .7rem rgba(0,0,0,.12);
+  background: color-mix(in srgb, var(--account-mobile-deep-surface) 30%, transparent);
+  box-shadow: 0 .2rem .7rem color-mix(in srgb, var(--shadow-ink) 12%, transparent);
   backdrop-filter: blur(10px);
 }
 
 .cardTypeLabel {
   right: 6.5%;
   bottom: 8.5%;
-  color: rgba(255,255,255,.78);
+  color: color-mix(in srgb, var(--on-hero) 78%, transparent);
   font-weight: var(--font-weight-medium);
 }
 
@@ -479,7 +479,7 @@
 
 .carouselVisual {
   border-radius: 1.2rem;
-  box-shadow: 0 18px 42px color-mix(in srgb, #000 34%, transparent);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--shadow-ink) 34%, transparent);
   transition: transform var(--motion-normal), box-shadow var(--motion-normal), opacity var(--motion-normal);
 }
 
@@ -489,7 +489,7 @@
 }
 
 .carouselItemSelected .carouselVisual {
-  box-shadow: 0 20px 48px color-mix(in srgb, #000 38%, transparent), 0 0 0 2px color-mix(in srgb, var(--primary) 42%, transparent);
+  box-shadow: 0 20px 48px color-mix(in srgb, var(--shadow-ink) 38%, transparent), 0 0 0 2px color-mix(in srgb, var(--primary) 42%, transparent);
 }
 
 .carouselVisual .contactless {

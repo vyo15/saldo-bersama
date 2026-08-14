@@ -48,3 +48,14 @@ Kesalahan pengguna biasa harus ditangani melalui lifecycle per-item:
 - periode salah ditutup → buka kembali secara berurutan dengan alasan.
 
 Full database restore bukan mekanisme undo harian. Gunakan restore guarded hanya bila kerusakan mencakup banyak data atau lifecycle per-item tidak dapat menjaga konsistensi. Rekening kosong yang dihapus melalui `accounts.deleteUnused` tidak dipulihkan per item; audit tetap tersedia dan rekening baru dapat dibuat kembali tanpa memalsukan histori.
+
+
+## Full reset
+
+1. Jangan retry `fullReset.apply` setelah timeout/5xx.
+2. Gunakan `fullReset.status` dengan opaque idempotency recovery key yang sama.
+3. Jika `committed`, anggap reset selesai dan jangan kirim intent yang sama lagi.
+4. Jika `processing`, tunggu lalu periksa status ulang.
+5. Jika `not_committed` dan maintenance normal, buat preview baru sebelum intent baru.
+6. Jika `recovery_required`, jalankan integrity recovery. Maintenance hanya boleh dibuka jika integrity check lulus dan `maintenance.recover` tercatat atomik.
+7. Untuk mengembalikan data yang telah di-full-reset, gunakan safety backup yang terverifikasi melalui workflow Restore, bukan menulis ulang data secara manual.

@@ -49,12 +49,13 @@ test("form Anggaran mempertahankan validasi nominal, kategori aktif, dan ambang 
 
 
 test("UI Anggaran memakai hero, pacing marker, filter perhatian, dan ikon kategori existing", async () => {
-  const [page, card, pacing, hero, presentation] = await Promise.all([
+  const [page, card, pacing, hero, presentation, styles] = await Promise.all([
     read("src/features/budgets/BudgetsPage.jsx"),
     read("src/features/budgets/components/BudgetInsightCard.jsx"),
     read("src/features/budgets/components/BudgetPacingBar.jsx"),
     read("src/features/budgets/components/BudgetHeroCard.jsx"),
     read("src/features/budgets/budgetPresentation.js"),
+    read("src/features/budgets/BudgetsPage.module.css"),
   ]);
 
   assert.match(page, /BudgetHeroCard/);
@@ -65,5 +66,13 @@ test("UI Anggaran memakai hero, pacing marker, filter perhatian, dan ikon katego
   assert.match(pacing, /Hari ini/);
   assert.match(pacing, /role="img"/);
   assert.match(hero, /Sisa anggaran bulan ini/);
+  assert.match(hero, /budget-wallet-hero\.webp/);
+  assert.match(page, /budget-calendar\.webp/);
+  assert.doesNotMatch(page, /budget-empty-wallet\.webp|emptyStateArtwork/);
+  assert.match(page, /<EmptyState title=\{emptyTitle\} action=\{emptyAction\} \/>/);
+  assert.match(styles, /\.heroArtwork\s*\{[\s\S]*top:\s*50%;[\s\S]*transform:\s*translateY\(-50%\);/);
+  assert.match(styles, /\.tipArtwork\s*\{[\s\S]*top:\s*50%;[\s\S]*transform:\s*translateY\(-50%\);/);
+  assert.doesNotMatch(styles, /emptyStateArtwork|emptyStateArtworkWrap/);
+  assert.doesNotMatch(styles, /\.tipArtwork\s*\{[^}]*bottom:\s*-/s);
   assert.match(presentation, /usedPercent > Number\(periodMeta\.elapsedPercent \|\| 0\) \+ 8/);
 });

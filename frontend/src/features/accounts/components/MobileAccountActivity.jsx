@@ -19,7 +19,7 @@ import {
 } from "../../../shared/presentation/transaction.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { loadAccountExpenseTrend } from "../accounts.api.js";
-import styles from "../AccountsPage.module.css";
+import styles from "./MobileAccountActivity.module.css";
 import MobileAccountTransferAction from "./MobileAccountTransferAction.jsx";
 
 const MOBILE_QUERY = "(max-width: 820px)";

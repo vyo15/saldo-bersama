@@ -81,7 +81,10 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
     read("src/styles/reset.css"),
     read("src/styles/app.css"),
     read("src/styles/responsive.css"),
-    read("src/features/accounts/AccountsPage.module.css"),
+    Promise.all([
+      read("src/features/accounts/AccountsPage.module.css"),
+      read("src/features/accounts/components/MobileAccountsExperience.module.css"),
+    ]).then((parts) => parts.join("\n")),
     read("src/styles/components.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
     read("src/styles/pages.css"),
@@ -95,10 +98,26 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(responsiveCss, /\.app-shell--accounts,\s*\n\s*\.app-shell--accounts \.app-shell__main,\s*\n\s*\.app-shell--accounts \.app-content \{ background:\s*var\(--accounts-mobile-background\); \}/);
   assert.match(responsiveCss, /\.app-shell--accounts \.app-content \{ padding-top:\s*0; color:\s*var\(--on-hero\); \}/);
   assert.match(accountCss, /background:\s*var\(--accounts-mobile-background, var\(--accounts-mobile-surface\)\);/);
-  assert.match(componentCss, /\.loading-screen, \.fatal-error \{ min-height:\s*100vh; min-height:\s*100dvh; \}/);
-  assert.match(responsiveCss, /\.app-content > \.loading-screen,[\s\S]*min-height:\s*calc\(100dvh - 56px/);
+  assert.match(componentCss, /\.loading-screen--page, \.fatal-error \{ min-height:\s*100vh; min-height:\s*100dvh; \}/);
+  assert.match(responsiveCss, /\.app-content > \.loading-screen--page,[\s\S]*min-height:\s*calc\(100dvh - 56px/);
   assert.match(accountDetailCss, /max-height:\s*calc\(100vh[^;]+;\s*\n\s*max-height:\s*calc\(100dvh/);
   assert.match(pagesCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);
+});
+
+
+test("shell terautentikasi menjadi satu-satunya main landmark untuk route internal", async () => {
+  const [shell, loading, dashboard, notFound] = await Promise.all([
+    read("src/layouts/AppShell.jsx"),
+    read("src/components/feedback/LoadingScreen.jsx"),
+    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    read("src/features/settings/NotFoundPage.jsx"),
+  ]);
+
+  assert.match(shell, /<main className="app-content">/);
+  assert.doesNotMatch(loading, /<main\b/);
+  assert.doesNotMatch(dashboard, /<main\b/);
+  assert.doesNotMatch(notFound, /<main\b/);
+  assert.match(notFound, /<section className="centered-page" aria-labelledby="not-found-title">/);
 });
 
 test("geometri rail mengikuti IMS dan menyisakan navigasi mobile", async () => {

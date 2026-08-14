@@ -5,7 +5,7 @@ import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { parseRupiah } from "../../../domain/money.js";
 import { BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS } from "../../../shared/presentation/account.js";
 import { userOptionLabel } from "../../../shared/presentation/user.js";
-import styles from "../AccountsPage.module.css";
+import styles from "./AccountEditorDialogs.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";
 
 const previewBalance = (value) => {

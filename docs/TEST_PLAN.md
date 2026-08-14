@@ -86,7 +86,7 @@ Uji dua browser/perangkat dengan Administrator dan Member:
 5. Install PWA iPhone/Android dan update app shell. Aktifkan Push pada HTTPS, pastikan verifikasi otomatis muncul, lalu periksa panel sistem. Uji dua perangkat saat satu delivery gagal sementara dan pastikan perangkat sukses tidak menerima duplikat. Pada Safari iPhone pastikan aplikasi dibuka dari Home Screen, fokus input tidak memicu auto-zoom, modal tidak bergeser horizontal, dan scroll vertikal tetap bekerja.
 6. Sinkronisasi Sheets dan Calendar, termasuk failure/retry.
 7. Export Excel dan periksa formula-like input.
-8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif. Untuk fase pra-go-live satu database, uji **Bersihkan data testing** hanya ketika seluruh data pada preview memang trial/error: pastikan financial + operational count tampil, queue rebuild sistem tidak salah dihitung/dihapus, stale fingerprint ditolak, Google Drive preflight dan safety backup terverifikasi, master/audit tetap ada, rebuild integrasi terantre, outcome unknown dapat direkonsiliasi lewat `reset.status` setelah reload, dan maintenance hanya dapat dibuka kembali setelah integrity check lulus + audit `maintenance.recover`.
+8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif. Untuk fase pra-go-live satu database, uji **Reset data testing** hanya ketika seluruh data pada preview memang trial/error: uji preset aktivitas dan preset aktivitas + nolkan saldo; pastikan `initial_balance` menjadi 0, `initial_balance_date` canonical, `row_version` naik, dan stale account state membatalkan apply. Selain itu, pastikan financial + operational count tampil, queue rebuild sistem tidak salah dihitung/dihapus, stale fingerprint ditolak, Google Drive preflight dan safety backup terverifikasi, master/audit tetap ada, rebuild integrasi terantre, outcome unknown dapat direkonsiliasi lewat `reset.status` setelah reload, dan maintenance hanya dapat dibuka kembali setelah integrity check lulus + audit `maintenance.recover`.
 9. Verifikasi scheduled housekeeping menghapus `idempotency_keys`, `import_previews`, dan `restore_previews` yang expired, tetapi mempertahankan preview berstatus `applying`, ledger, audit, backup, dan master.
 10. Responsive, keyboard, focus, contrast, loading/empty/error/unauthorized/maintenance. Audit seluruh CSS untuk custom property yang tidak terdefinisi, native control di bawah 16px, duplicate media query dalam file yang sama, dan endpoint gradient yang gagal kontras.
 11. Full axe scan, authenticated browser journey, visual regression, dan Chrome/Firefox/Safari device coverage.
@@ -149,6 +149,7 @@ Viewport regression minimum:
 ```
 
 Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile serta kontrol sesi desktop. Pada setiap ukuran, setidaknya satu jalur logout harus tersedia melalui header desktop atau menu mobile.
+Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib mencakup 767, 768, 769, 820, dan 821 CSS pixel: gesture mobile tetap aktif sampai 820 dan nonaktif mulai 821.
 
 ## Rekening, rekonsiliasi, dan kategori — responsive financial card
 
@@ -173,6 +174,8 @@ Batas 820/821 dan 940/941 wajib dijaga karena merupakan transisi navigasi mobile
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
+- Saat Modal mutation kritis memakai `dismissible=false`, tombol X harus disabled, Escape/backdrop/swipe tidak menutup dialog, tetapi Tab/Shift+Tab dan focus trap tetap berfungsi.
+- Loading di dalam shell tidak boleh merender nested `main`; loading panel/inline tidak boleh mengambil tinggi satu viewport. Empty/error inline harus tetap compact pada mobile.
 - Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive; restore runtime v9 tetap menerima backup schema v3-v8; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
 - Alokasi assigned harus memisahkan `assignee_user_id` dari ownership ledger: Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah sendiri, rekening personal mengunci penerima ke pemilik rekening, notifikasi assigned hanya menuju penerima, dan penonaktifan user diblok bila masih ada jatah aktif.
 - Budget personal harus dihitung hanya dari transaksi personal user terkait, tidak boleh dipakai sebagai substitusi jatah per orang dari rekening Bersama, dan user dengan Budget personal aktif tidak dapat dinonaktifkan.
@@ -244,3 +247,5 @@ Regression wajib membuktikan:
 - Dua perangkat pada akun yang sama harus memiliki subscription terpisah. Retry perangkat gagal tidak boleh mengirim ulang ke perangkat yang sudah sukses.
 - Subscription 404/410 harus dinonaktifkan. Endpoint lokal/private harus ditolak. Payload lock screen tidak boleh membawa nominal, saldo, nama rekening, kategori, atau detail transaksi.
 - Apps Script hanya memiliki satu trigger `runScheduledJobs`, secret scheduler sama dengan Vercel, dan `/api/jobs` berhasil memproses queue tanpa menggagalkan backup ketika Push gagal.
+
+9. Full reset harus diuji pada database terisolasi: preview mencakup accounts/categories/ledger/operational state; users/audit/backups/integrity/idempotency/nonce anti-replay/config/schema tetap; safety backup berisi data sebelum purge; stale preview ditolak; queue rebuild canonical tidak membuat preview sesudah reset terlihat kotor; outcome unknown direkonsiliasi lewat `fullReset.status`; member ditolak; dan integrity/audit/maintenance failure menyebabkan rollback/fail-closed.

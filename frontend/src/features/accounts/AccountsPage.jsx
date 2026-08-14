@@ -6,6 +6,7 @@ import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
@@ -157,7 +158,7 @@ const AccountListSection = ({ mobileLayout, accounts, selectedAccount, selectedA
       : <Suspense fallback={null}><DesktopAccountsWorkspace accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode} bootstrap={bootstrap}
           onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
           onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>)
-      : <Card className={styles.emptyPanel}><h2>Belum ada rekening</h2>{ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null}</Card>}
+      : <Card className={styles.emptyPanel}><EmptyState variant="inline" title="Belum ada rekening" description={ownerMode ? "Tambahkan rekening pertama untuk mulai mencatat saldo dan transaksi." : "Belum ada rekening aktif yang dapat ditampilkan."} action={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null} /></Card>}
   </section>
 );
 

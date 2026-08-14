@@ -47,3 +47,9 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | PWA/Web Push | Partial | Source contract + centralized VAPID + privacy-safe smart recurring alerts; desktop Production operator smoke reported, real Android/iOS tetap required |
 | Browser smoke/build budget | Implemented | Enforced after successful local/CI install |
 | External alerting | Not implemented | RFC/approved provider pending |
+
+## Maintenance destructive
+
+| Area | Status source | Bukti utama | Verification |
+|---|---|---|---|
+| Reset data testing & full reset | Implemented | preset aktivitas, optional saldo Rp0 + row_version, full data reset guarded, verified safety backup, reconciliation status, integrity/audit | Restore drill nyata setelah full reset pada salinan terisolasi |

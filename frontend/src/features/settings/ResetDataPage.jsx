@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { FiAlertTriangle, FiCheckCircle, FiDatabase, FiHardDrive, FiRefreshCw, FiShield, FiTrash2 } from "react-icons/fi";
+import { FiAlertTriangle, FiCheckCircle, FiDatabase, FiDollarSign, FiHardDrive, FiRefreshCw, FiShield, FiTrash2 } from "react-icons/fi";
 import { Link } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import { formatRupiah } from "../../domain/money.js";
 import { createSecureRandomId } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
-import MaintenanceRecoveryPanel from "./MaintenanceRecoveryPanel.jsx";
+import MaintenanceRecoveryPanel, {
+  formatMaintenanceCount as formatCount,
+  MaintenanceSummaryGrid as SummaryGrid,
+  readMaintenanceRecoveryToken,
+  SafetyBackupPreflight,
+  storeMaintenanceRecoveryToken,
+} from "./MaintenanceRecoveryPanel.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { isSettingsOutcomeUnknownError, runSettingsAction } from "./settings.api.js";
@@ -53,61 +60,49 @@ const PRESERVED_LABELS = Object.freeze([
   ["notificationPreferences", "Preferensi notifikasi"],
 ]);
 
+const RESET_SCOPE_ACTIVITY = "activity";
+const RESET_SCOPE_ACTIVITY_AND_BALANCES = "activity_and_balances";
+
 const RESET_ACKNOWLEDGEMENTS = Object.freeze([
   "Saya memahami seluruh data pada preview akan dihapus permanen.",
   "Saya sudah memastikan data yang tersimpan masih data testing/trial, bukan transaksi nyata.",
   "Saya memahami safety backup Google Drive harus terverifikasi sebelum pembersihan dimulai.",
 ]);
 
+const RESET_BALANCE_ACKNOWLEDGEMENTS = Object.freeze([
+  ...RESET_ACKNOWLEDGEMENTS,
+  "Saya memahami saldo awal rekening yang masuk preview akan dinolkan dan row version rekening terkait akan diperbarui.",
+]);
+
 const RESET_RECOVERY_STORAGE_KEY = "saldo-bersama:reset-recovery";
-const formatCount = (value) => Number(value || 0).toLocaleString("id-ID");
-
-const ResetStepHeader = ({ number, icon: Icon, title, description }) => (
-  <div className={styles.resetStepHeader}>
-    <span className={styles.resetStepNumber}>{number}</span>
-    <div><h2>{title}</h2><p>{description}</p></div>
-    <span className={styles.resetStepIcon}><Icon aria-hidden="true" /></span>
-  </div>
-);
-
-const intentStateLabel = (value) => ({
-  processing: "Sedang diproses",
-  unknown: "Belum pasti",
-  completed: "Selesai",
-  missing: "Tidak ditemukan",
-}[value] || "Tidak ada");
-
-const backupStateLabel = (value) => ({
-  verified: "Terverifikasi",
-  pending: "Diproses",
-  failed: "Gagal",
-}[value] || "Belum ada");
-
-const readRecoveryToken = () => {
-  if (typeof window === "undefined") return null;
-  try {
-    const value = JSON.parse(window.sessionStorage.getItem(RESET_RECOVERY_STORAGE_KEY) || "null");
-    return value?.idempotencyKey ? value : null;
-  } catch {
-    return null;
-  }
+const BalanceResetPreview = ({ balanceReset }) => {
+  if (!balanceReset) return null;
+  return (
+    <div className={styles.resetBalancePreview}>
+      <div className={styles.resetPreviewSectionHeading}>
+        <FiDollarSign aria-hidden="true" />
+        <div>
+          <strong>Saldo rekening akan menjadi Rp0</strong>
+          <small>Riwayat testing dibersihkan. Saldo awal rekening yang masih bernilai juga dinolkan.</small>
+        </div>
+      </div>
+      <div className={styles.resetBalanceTotal}>
+        <span>Total saldo saat ini</span>
+        <strong>{formatRupiah(balanceReset.totalCurrentBalance)} <span aria-hidden="true">→</span> Rp0</strong>
+      </div>
+      {balanceReset.accounts?.length ? (
+        <div className={styles.resetBalanceAccounts} aria-label="Rekening yang saldo akhirnya akan menjadi nol">
+          {balanceReset.accounts.map((account) => (
+            <div key={account.accountId}>
+              <span><strong>{account.name}</strong><small>Saldo awal {formatRupiah(account.initialBalance)}</small></span>
+              <strong>{formatRupiah(account.currentBalance)} <span aria-hidden="true">→</span> Rp0</strong>
+            </div>
+          ))}
+        </div>
+      ) : <small className={styles.resetBalanceEmpty}>Semua rekening sudah memiliki saldo Rp0.</small>}
+    </div>
+  );
 };
-
-const storeRecoveryToken = (value) => {
-  if (typeof window === "undefined") return;
-  try {
-    if (value) window.sessionStorage.setItem(RESET_RECOVERY_STORAGE_KEY, JSON.stringify(value));
-    else window.sessionStorage.removeItem(RESET_RECOVERY_STORAGE_KEY);
-  } catch { /* Browser storage must not control destructive safety. */ }
-};
-
-const SummaryGrid = ({ labels, summary, ariaLabel }) => (
-  <div className={styles.resetPreviewGrid} aria-label={ariaLabel}>
-    {labels.map(([key, label]) => (
-      <div key={key}><span>{label}</span><strong>{formatCount(summary?.[key])}</strong></div>
-    ))}
-  </div>
-);
 
 const ResetPreview = ({ preview }) => (
   <div className={styles.resetPreview}>
@@ -128,15 +123,17 @@ const ResetPreview = ({ preview }) => (
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiRefreshCw aria-hidden="true" />
-        <div><strong>Sisa proses testing</strong><small>Queue trial, projection, dan preview sementara ikut dibersihkan. Queue rebuild sistem hasil reset tidak dihitung sebagai data testing baru.</small></div>
+        <div><strong>Sisa proses testing</strong><small>Notifikasi tertunda, data sinkronisasi testing, dan preview sementara ikut dibersihkan. Tugas sinkronisasi baru yang dibuat setelah reset tidak dihitung sebagai data testing.</small></div>
       </div>
       <SummaryGrid labels={OPERATIONAL_SUMMARY_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dibersihkan" />
     </div>
 
+    <BalanceResetPreview balanceReset={preview.balanceReset} />
+
     <div className={styles.resetPreserved}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiShield aria-hidden="true" />
-        <div><strong>Tetap disimpan</strong><small>Master, keamanan, audit, dan recovery tidak dihapus.</small></div>
+        <div><strong>Tetap disimpan</strong><small>Rekening, kategori, pengguna, audit, backup, perangkat notifikasi, dan data pemulihan tetap disimpan.</small></div>
       </div>
       <div className={styles.resetPreservedGrid}>
         {PRESERVED_LABELS.map(([key, label]) => (
@@ -152,13 +149,15 @@ const ResetConfirmationModal = ({ preview, open, busy, error, onCancel, onConfir
   <ConfirmationModal
     open={open}
     title="Bersihkan data testing?"
-    description="Seluruh data pada preview akan dihapus permanen setelah safety backup. Gunakan hanya selama data yang tersimpan benar-benar masih data trial/error."
+    description={preview?.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES
+      ? "Seluruh riwayat testing pada preview akan dihapus dan saldo rekening akan dikembalikan ke Rp0 setelah safety backup."
+      : "Seluruh data pada preview akan dihapus permanen setelah safety backup. Gunakan hanya selama data yang tersimpan benar-benar masih data trial/error."}
     confirmLabel="Bersihkan data testing"
     reasonLabel="Alasan pembersihan"
     reasonPlaceholder="Contoh: Membersihkan transaksi dan rekonsiliasi hasil trial"
     requireReason
     expectedConfirmation={preview?.confirmationPhrase || "BERSIHKAN DATA TESTING"}
-    acknowledgementItems={RESET_ACKNOWLEDGEMENTS}
+    acknowledgementItems={preview?.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? RESET_BALANCE_ACKNOWLEDGEMENTS : RESET_ACKNOWLEDGEMENTS}
     countdownSeconds={8}
     busy={busy}
     error={error}
@@ -170,28 +169,11 @@ const ResetConfirmationModal = ({ preview, open, busy, error, onCancel, onConfir
   </ConfirmationModal>
 );
 
-const backupStatusText = (readiness, resourceStatus) => {
-  if (resourceStatus === "loading" || resourceStatus === "refreshing") return "Memeriksa Google Drive...";
-  return readiness.text;
-};
-
-const ResetSafetyPreflight = ({ resource, readiness }) => (
-  <div className={styles.resetSafetyPreflight}>
-    <span className={styles.serviceIcon}><FiHardDrive aria-hidden="true" /></span>
-    <span>
-      <strong>Safety backup Google Drive</strong>
-      <small>{backupStatusText(readiness, resource.status)}</small>
-      {readiness.errorCode ? <small>Kode diagnosis: {readiness.errorCode}</small> : null}
-    </span>
-    <span className={`status-badge status-badge--${readiness.tone}`}>{readiness.label}</span>
-  </div>
-);
-
 const resetStatusPresentation = (status) => {
   const presentations = {
     processing: ["warning", "Operasi sebelumnya masih diproses", "Jangan kirim reset baru. Periksa status lagi sampai hasilnya pasti."],
-    recovery_required: ["danger", "Mode pemulihan aktif", "Integrity check wajib lulus sebelum maintenance dapat dibuka kembali."],
-    not_committed: ["warning", "Status operasi sebelumnya belum pasti", "Periksa data terbaru sebelum membuat intent pembersihan baru."],
+    recovery_required: ["danger", "Mode pemulihan aktif", "Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dapat dibuka kembali."],
+    not_committed: ["warning", "Status operasi sebelumnya belum pasti", "Periksa data terbaru sebelum memulai pembersihan baru."],
   };
   return presentations[status?.outcome] || null;
 };
@@ -207,8 +189,8 @@ const ResetRecoveryPanel = ({ status, statusBusy, onCheck, onReloadPreview }) =>
         <div><h2>{title}</h2><p>{text}</p></div>
       </div>
       <div className={styles.resetRecoveryMeta}>
-        <div><span>Status intent</span><strong>{intentStateLabel(status.intent?.state)}</strong></div>
-        <div><span>Maintenance</span><strong>{status.maintenanceMode ? "Aktif" : "Normal"}</strong></div>
+        <div><span>Status operasi</span><strong>{intentStateLabel(status.intent?.state)}</strong></div>
+        <div><span>Mode pemulihan</span><strong>{status.maintenanceMode ? "Aktif" : "Normal"}</strong></div>
         <div><span>Safety backup</span><strong>{backupStateLabel(status.backup?.status)}</strong></div>
       </div>
       <div className={styles.resetRecoveryActions}>
@@ -224,7 +206,7 @@ const useResetRecovery = ({ setRecoveryToken, integrationsResource, resetStatusR
   const [result, setResult] = useState(null);
 
   const clearRecovery = () => {
-    storeRecoveryToken(null);
+    storeMaintenanceRecoveryToken(RESET_RECOVERY_STORAGE_KEY, null);
     setRecoveryToken(null);
   };
 
@@ -244,8 +226,8 @@ const useResetRecovery = ({ setRecoveryToken, integrationsResource, resetStatusR
     if (!status) return;
     const messages = {
       processing: ["warning", "Reset sebelumnya masih diproses. Jangan kirim operasi baru. Periksa status lagi beberapa saat kemudian."],
-      recovery_required: ["danger", "Mode pemulihan aktif. Jalankan integrity check dari panel recovery sebelum melakukan perubahan lain."],
-      not_committed: ["warning", "Reset sebelumnya tidak tercatat sebagai commit. Jalankan preview baru sebelum mencoba pembersihan dengan intent baru."],
+      recovery_required: ["danger", "Mode pemulihan aktif. Jalankan pemeriksaan konsistensi dari panel pemulihan sebelum melakukan perubahan lain."],
+      not_committed: ["warning", "Hasil reset sebelumnya belum terkonfirmasi tersimpan. Jalankan preview baru sebelum mencoba pembersihan baru."],
     };
     if (status.outcome === "committed") {
       await refreshAfterCommittedReset(status);
@@ -267,16 +249,16 @@ const useResetRecovery = ({ setRecoveryToken, integrationsResource, resetStatusR
   const recoverMaintenance = async () => {
     if (recoveryBusy) return;
     setRecoveryBusy(true);
-    setResult({ status: "loading", text: "Menjalankan integrity check sebelum membuka maintenance..." });
+    setResult({ status: "loading", text: "Memeriksa konsistensi data sebelum membuka kembali perubahan..." });
     try {
       const data = await runSettingsAction("integrity.run", { clearMaintenance: true }, {});
       invalidate(["system.health", "audit.list", "reset.status"]);
       if (!data.ok) {
-        setResult({ status: "danger", text: `Maintenance tetap aktif. Integrity check menemukan ${data.issues?.length || 0} masalah yang harus diselesaikan.` });
+        setResult({ status: "danger", text: `Mode pemulihan tetap aktif. Pemeriksaan konsistensi menemukan ${data.issues?.length || 0} masalah yang harus diselesaikan.` });
         return;
       }
       const status = await resetStatusResource.reload();
-      setResult({ status: "success", text: data.maintenanceCleared ? "Integrity check lulus dan maintenance berhasil dibuka kembali." : "Integrity check lulus. Maintenance sudah tidak aktif." });
+      setResult({ status: "success", text: data.maintenanceCleared ? "Pemeriksaan konsistensi lulus dan perubahan data berhasil dibuka kembali." : "Pemeriksaan konsistensi lulus. Mode pemulihan sudah tidak aktif." });
       await handleCheckedStatus(status);
     } catch (error) {
       setResult({ status: "danger", text: error.message });
@@ -288,7 +270,7 @@ const useResetRecovery = ({ setRecoveryToken, integrationsResource, resetStatusR
   return { recoveryBusy, result, setResult, clearRecovery, refreshAfterCommittedReset, handleCheckedStatus, checkResetStatus, recoverMaintenance };
 };
 
-const useResetPreview = ({ recoveryToken, resetStatusResource, integrationsResource, refreshAfterCommittedReset, setResult }) => {
+const useResetPreview = ({ recoveryToken, resetScope, resetStatusResource, integrationsResource, refreshAfterCommittedReset, setResult }) => {
   const [preview, setPreview] = useState(null);
   const [previewBusy, setPreviewBusy] = useState(false);
 
@@ -305,18 +287,22 @@ const useResetPreview = ({ recoveryToken, resetStatusResource, integrationsResou
       const blocked = status?.canStartNewIntent === false || status?.outcome === "processing" || status?.outcome === "recovery_required" || status?.maintenanceMode;
       if (blocked) {
         setPreview(null);
-        setResult({ status: "danger", text: "Pembersihan baru diblokir sampai status operasi sebelumnya dan maintenance selesai dipastikan." });
+        setResult({ status: "danger", text: "Pembersihan baru diblokir sampai status operasi sebelumnya dan mode pemulihan dipastikan aman." });
         return;
       }
       const currentDriveReadiness = integrationProviderPresentation(integrations || {}, "drive");
-      const data = await runSettingsAction("reset.preview", {}, { force: true });
+      const data = await runSettingsAction("reset.preview", { resetScope }, { force: true });
       setPreview(data);
       const hasRows = Number(data.summary?.totalRows || 0) > 0;
-      const readyText = `Preview siap. ${formatCount(data.summary?.totalRows)} baris data testing dapat dibersihkan dan safety backup Google Drive sudah siap.`;
+      const hasBalanceChanges = Number(data.balanceReset?.accountsAffected || 0) > 0;
+      const balanceText = data.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES && hasBalanceChanges
+        ? ` ${formatCount(data.balanceReset.accountsAffected)} rekening akan berakhir pada saldo Rp0.`
+        : "";
+      const readyText = `Preview siap. ${formatCount(data.summary?.totalRows)} baris data testing dapat dibersihkan.${balanceText} Safety backup Google Drive sudah siap.`;
       const blockedText = `Preview siap, tetapi pembersihan diblokir karena safety backup Google Drive belum terverifikasi. ${currentDriveReadiness.text}`;
       setResult({
         status: currentDriveReadiness.ready ? "success" : "warning",
-        text: hasRows ? (currentDriveReadiness.ready ? readyText : blockedText) : "Tidak ada data aktivitas atau sisa proses testing yang perlu dibersihkan.",
+        text: hasRows || hasBalanceChanges ? (currentDriveReadiness.ready ? readyText : blockedText) : "Tidak ada data aktivitas, sisa proses testing, atau saldo awal yang perlu dibersihkan.",
       });
     } catch (error) {
       setPreview(null);
@@ -373,6 +359,7 @@ const useResetApply = ({
     const recovery = { idempotencyKey, createdAt: new Date().toISOString() };
     const payload = {
       previewFingerprint: preview.previewFingerprint,
+      resetScope: preview.resetScope,
       confirmation: confirmationState.confirmation,
       acknowledged: confirmationState.acknowledged,
       reason,
@@ -383,7 +370,7 @@ const useResetApply = ({
       if (blocked) throw new Error("Pembersihan baru diblokir karena operasi sebelumnya belum aman untuk dilanjutkan.");
       const currentDriveReadiness = integrationProviderPresentation(integrations || {}, "drive");
       if (!currentDriveReadiness.ready) throw new Error(`Safety backup Google Drive belum siap. ${currentDriveReadiness.text}`);
-      storeRecoveryToken(recovery);
+      storeMaintenanceRecoveryToken(RESET_RECOVERY_STORAGE_KEY, recovery);
       setRecoveryToken(recovery);
       const data = await runSettingsAction("reset.apply", payload, { idempotencyKey, newIntent: true });
       clearRecovery();
@@ -393,7 +380,7 @@ const useResetApply = ({
       await Promise.allSettled([refreshAll(), integrationsResource.reload(), resetStatusResource.reload()]);
       setResult({
         status: "success",
-        text: `Pembersihan selesai. ${formatCount(data.summary?.totalRows)} baris data testing dihapus setelah safety backup dan integrity check. Data dasar aplikasi tetap dipertahankan.`,
+        text: `Pembersihan selesai. ${formatCount(data.summary?.totalRows)} baris data testing dihapus${data.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? " dan seluruh saldo rekening pada preview dikembalikan ke Rp0" : ""} setelah backup keamanan dan pemeriksaan konsistensi data. Rekening, kategori, pengguna, audit, dan data pemulihan tetap dipertahankan.`,
         fileLink: data.safetyBackupFileId ? `https://drive.google.com/open?id=${encodeURIComponent(data.safetyBackupFileId)}` : null,
       });
     } catch (error) {
@@ -410,11 +397,12 @@ const ResetDataPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
   const { invalidate, refreshAll } = useFinance();
-  const [recoveryToken, setRecoveryToken] = useState(readRecoveryToken);
+  const [resetScope, setResetScope] = useState(RESET_SCOPE_ACTIVITY);
+  const [recoveryToken, setRecoveryToken] = useState(() => readMaintenanceRecoveryToken(RESET_RECOVERY_STORAGE_KEY));
   const integrationsResource = useApiResource("integrations.status", {}, { enabled: ownerMode });
   const resetStatusResource = useApiResource("reset.status", recoveryToken ? { idempotencyKey: recoveryToken.idempotencyKey } : {}, { enabled: ownerMode });
   const recovery = useResetRecovery({ setRecoveryToken, integrationsResource, resetStatusResource, invalidate, refreshAll });
-  const previewState = useResetPreview({ recoveryToken, resetStatusResource, integrationsResource, refreshAfterCommittedReset: recovery.refreshAfterCommittedReset, setResult: recovery.setResult });
+  const previewState = useResetPreview({ recoveryToken, resetScope, resetStatusResource, integrationsResource, refreshAfterCommittedReset: recovery.refreshAfterCommittedReset, setResult: recovery.setResult });
   const apply = useResetApply({ preview: previewState.preview, setPreview: previewState.setPreview, resetStatusResource, integrationsResource, clearRecovery: recovery.clearRecovery, setRecoveryToken, invalidate, refreshAll, handleCheckedStatus: recovery.handleCheckedStatus, setResult: recovery.setResult });
 
   const driveReadiness = integrationProviderPresentation(integrationsResource.data || {}, "drive");
@@ -422,32 +410,57 @@ const ResetDataPage = () => {
   const resetStatus = resetStatusResource.data || null;
   const resetStatusVerified = resetStatusResource.status === "ready" && !resetStatusResource.refreshError;
   const statusBlocksReset = !resetStatusVerified || resetStatus?.canStartNewIntent === false || resetStatus?.maintenanceMode;
-  const hasResettableData = Number(previewState.preview?.summary?.totalRows || 0) > 0;
+  const hasResettableData = Number(previewState.preview?.summary?.totalRows || 0) > 0 || Number(previewState.preview?.balanceReset?.accountsAffected || 0) > 0;
   const canOpenReset = hasResettableData && driveReady && !previewState.previewBusy && !statusBlocksReset;
 
   return (
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="reset-data-title">
-        <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Bersihkan data testing</h2><p>Hapus data trial secara terarah. Rekening, kategori, pengguna, audit, dan recovery tetap dipertahankan.</p></div>
+        <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Reset data testing</h2><p>Pilih apakah hanya riwayat testing yang dibersihkan atau sekaligus mengembalikan nominal saldo rekening ke Rp0. Rekening, kategori, pengguna, audit, dan data pemulihan tetap dipertahankan.</p></div>
         <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
         <ResetRecoveryPanel status={resetStatus} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
-        <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetStatus?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan maintenance aktif. Integrity check wajib lulus sebelum perubahan data dibuka kembali." />
+        <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetStatus?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
         {resetStatusResource.status === "error" || resetStatusResource.refreshError ? (
-          <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau intent baru.</span><Button type="button" icon={FiRefreshCw} loading={resetStatusResource.isRefreshing} onClick={recovery.checkResetStatus}>Periksa status operasi</Button></div>
+          <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau memulai pembersihan baru.</span><Button type="button" icon={FiRefreshCw} loading={resetStatusResource.isRefreshing} onClick={recovery.checkResetStatus}>Periksa status operasi</Button></div>
         ) : null}
-        <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode pra-go-live.</strong> Gunakan hanya ketika seluruh data finansial masih data testing. Setelah transaksi nyata digunakan, pembersihan massal harus dihentikan.</span></div>
+        <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode sebelum data nyata.</strong> Gunakan hanya ketika seluruh data keuangan masih berupa data testing. Setelah transaksi nyata digunakan, jangan gunakan pembersihan massal.</span></div>
+        <fieldset className={styles.resetScopeSelector}>
+          <legend>Pilih hasil akhir reset testing</legend>
+          <label className={resetScope === RESET_SCOPE_ACTIVITY ? styles.isSelected : ""}>
+            <input
+              type="radio"
+              name="reset-testing-scope"
+              value={RESET_SCOPE_ACTIVITY}
+              checked={resetScope === RESET_SCOPE_ACTIVITY}
+              onChange={() => { setResetScope(RESET_SCOPE_ACTIVITY); previewState.setPreview(null); recovery.setResult(null); }}
+            />
+            <span className={styles.resetScopeIcon}><FiRefreshCw aria-hidden="true" /></span>
+            <span><strong>Bersihkan aktivitas testing</strong><small>Hapus riwayat keuangan dan perencanaan testing. Rekening, kategori, dan saldo awal tetap.</small></span>
+          </label>
+          <label className={resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? styles.isSelected : ""}>
+            <input
+              type="radio"
+              name="reset-testing-scope"
+              value={RESET_SCOPE_ACTIVITY_AND_BALANCES}
+              checked={resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES}
+              onChange={() => { setResetScope(RESET_SCOPE_ACTIVITY_AND_BALANCES); previewState.setPreview(null); recovery.setResult(null); }}
+            />
+            <span className={styles.resetScopeIcon}><FiDollarSign aria-hidden="true" /></span>
+            <span><strong>Bersihkan aktivitas + nolkan saldo</strong><small>Hapus seluruh riwayat testing dan kembalikan saldo seluruh rekening pada preview menjadi Rp0.</small></span>
+          </label>
+        </fieldset>
         <Card className={`panel ${styles.resetStepCard}`}>
-          <ResetStepHeader number="1" icon={FiRefreshCw} title="Periksa data" description="Lihat tepatnya data finansial dan proses trial yang akan dibersihkan." />
+          <ResetStepHeader number="1" icon={FiRefreshCw} title="Periksa data" description="Lihat tepatnya data keuangan dan proses testing yang akan dibersihkan." />
           <Button variant="primary" icon={FiRefreshCw} loading={previewState.previewBusy} disabled={statusBlocksReset} onClick={previewState.loadPreview}>Periksa data testing</Button>
           {previewState.preview ? <ResetPreview preview={previewState.preview} /> : null}
         </Card>
         <Card className={`panel ${styles.resetStepCard}`}>
-          <ResetStepHeader number="2" icon={FiHardDrive} title="Verifikasi safety backup" description="Google Drive wajib siap sebelum operasi destructive dapat dimulai." />
-          <ResetSafetyPreflight resource={integrationsResource} readiness={driveReadiness} />
-          {!driveReady ? <div className={styles.resetInlineWarning}><span>Safety backup belum siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</span></div> : null}
+          <ResetStepHeader number="2" icon={FiHardDrive} title="Verifikasi backup keamanan" description="Google Drive wajib siap sebelum pembersihan data dapat dimulai." />
+          <SafetyBackupPreflight resource={integrationsResource} readiness={driveReadiness} />
+          {!driveReady ? <div className={styles.resetInlineWarning}><span>Backup keamanan belum siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</span></div> : null}
         </Card>
         <Card className={`panel ${styles.resetStepCard} ${styles.resetDangerStep}`}>
-          <ResetStepHeader number="3" icon={FiTrash2} title="Bersihkan sekaligus" description="Server membuat backup, mengunci maintenance, membersihkan data, memeriksa integritas, lalu menulis audit." />
+          <ResetStepHeader number="3" icon={FiTrash2} title="Bersihkan sekaligus" description="Server membuat backup keamanan, mengunci perubahan selama proses, membersihkan data, memeriksa konsistensi, lalu menulis audit." />
           <div className={styles.resetSafeHint}><FiShield aria-hidden="true" /><span>Jika koneksi terputus, jangan kirim ulang. Gunakan pemeriksaan status agar operasi yang sama tidak berjalan dua kali.</span></div>
           <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Bersihkan data testing</Button>
         </Card>

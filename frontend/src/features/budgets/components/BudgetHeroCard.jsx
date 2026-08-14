@@ -1,13 +1,10 @@
 import Money from "../../../components/common/Money.jsx";
+import budgetWalletHero from "../../../assets/budget-illustrations/budget-wallet-hero.webp";
 import styles from "../BudgetsPage.module.css";
 
 const BudgetHeroArtwork = () => (
   <div className={styles.heroArtwork} aria-hidden="true">
-    <span className={`${styles.sparkle} ${styles.sparkleOne}`}>✦</span>
-    <span className={`${styles.sparkle} ${styles.sparkleTwo}`}>✦</span>
-    <span className={styles.walletCard} />
-    <span className={styles.walletBody}><span className={styles.walletPocket} /></span>
-    <span className={styles.rupiahCoin}>Rp</span>
+    <img className={styles.heroIllustration} src={budgetWalletHero} alt="" decoding="async" />
   </div>
 );
 

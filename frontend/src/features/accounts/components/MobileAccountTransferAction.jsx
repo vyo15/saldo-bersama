@@ -6,7 +6,7 @@ import Money from "../../../components/common/Money.jsx";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { filterByOwnership } from "../../../domain/ownership.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
-import styles from "../AccountsPage.module.css";
+import styles from "./MobileAccountTransferAction.module.css";
 
 const TransactionForm = lazy(() => import("../../transactions/TransactionForm.jsx"));
 

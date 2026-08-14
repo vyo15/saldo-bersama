@@ -32,6 +32,7 @@ const APPROVED_SQL_DELETES = new Map([
   ["api/_lib/services/maintenance/import.js", new Set(["import_previews"])],
   ["api/_lib/services/maintenance/restore.js", new Set(["restore_previews", "__RESTORE_DELETE_ORDER__"])],
   ["api/_lib/services/maintenance/reset.js", new Set(["__RESTORE_DELETE_ORDER__", "integration_outbox"])],
+  ["api/_lib/services/maintenance/fullReset.js", new Set(["__RESTORE_DELETE_ORDER__", "integration_outbox"])],
 ]);
 
 const destructiveSqlTargets = (source) => {
@@ -107,7 +108,7 @@ test("ledger dan audit tidak boleh di-hard-delete oleh business service", async 
   const files = await walk("api", ".js");
   for (const file of files) {
     const source = await readFile(path.join(root, file), "utf8");
-    if (file === "api/_lib/services/maintenance/restore.js") continue;
+    if (["api/_lib/services/maintenance/restore.js", "api/_lib/services/maintenance/fullReset.js"].includes(file)) continue;
     assert.doesNotMatch(source, /DELETE\s+FROM\s+transactions\b/i, `${file} tidak boleh hard-delete transaksi`);
     assert.doesNotMatch(source, /DELETE\s+FROM\s+audit_log\b/i, `${file} tidak boleh hard-delete audit`);
     assert.doesNotMatch(source, /DELETE\s+FROM\s+(goal_movements|envelope_movements|reconciliations|period_closures)\b/i, `${file} tidak boleh hard-delete histori finansial`);
@@ -126,6 +127,26 @@ test("bersihkan data testing hanya tersedia melalui maintenance guard owner, pre
   assert.doesNotMatch(reset, /"audit_log"/);
   assert.doesNotMatch(reset, /"accounts"\s*,\s*key/);
   assert.doesNotMatch(reset, /"categories"\s*,\s*key/);
+});
+
+
+test("reset semua data hanya melalui maintenance owner, backup, fingerprint, integrity, audit, dan preservation backbone", async () => {
+  const fullReset = await readFile(path.join(root, "api/_lib/services/maintenance/fullReset.js"), "utf8");
+  assert.match(fullReset, /assertOwner\(context\.actor\)/);
+  assert.match(fullReset, /previewFingerprint/);
+  assert.match(fullReset, /createTechnicalBackup/);
+  assert.match(fullReset, /maintenance_mode/);
+  assert.match(fullReset, /integrityIssues/);
+  assert.match(fullReset, /appendAudit/);
+  assert.match(fullReset, /RESET SEMUA DATA SALDO BERSAMA/);
+  assert.match(fullReset, /"accounts"/);
+  assert.match(fullReset, /"categories"/);
+  assert.match(fullReset, /"transactions"/);
+  assert.doesNotMatch(fullReset, /"audit_log"/);
+  assert.doesNotMatch(fullReset, /"users"/);
+  assert.doesNotMatch(fullReset, /"backup_runs"/);
+  assert.doesNotMatch(fullReset, /"integrity_runs"/);
+  assert.doesNotMatch(fullReset, /"idempotency_keys"/);
 });
 
 test("controlled restore reset memakai daftar tabel statis dan tidak menghapus audit_log", async () => {
