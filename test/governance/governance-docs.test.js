@@ -337,6 +337,26 @@ test("project status is a current-state snapshot with schema v9 and shared datab
 });
 
 
+test("current docs track desktop GIS, mobile Firebase popup, schema v9, dan manual accessibility QA", () => {
+  const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
+  const deployment = read("docs/DEPLOYMENT.md");
+  const status = read("docs/PROJECT_STATUS.md");
+  const testPlan = read("docs/TEST_PLAN.md");
+  const release = read("docs/RELEASE_CHECKLIST.md");
+
+  assert.doesNotMatch(matrix, /Chromium smoke/);
+  assert.match(matrix, /manual device accessibility QA/);
+  assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
+  assert.match(deployment, /runtime v9 menerima traffic/);
+  assert.match(status, /Auth desktop:.*Google Identity Services/);
+  assert.match(status, /Auth mobile:.*Firebase Web SDK.*signInWithPopup/);
+  assert.match(status, /tombol Google custom pada UI Saldo Bersama/);
+  assert.match(testPlan, /Firebase Web SDK `GoogleAuthProvider` \+ `signInWithPopup`/);
+  assert.match(testPlan, /tidak merender tombol\/iframe Google Identity Services/);
+  assert.match(testPlan, /Firebase ID token dari user hasil popup diteruskan ke session backend existing/);
+  assert.doesNotMatch(release, /OAuth redirect URI|login mobile redirect/);
+});
+
 test("every canonical product requirement is tracked in the implementation matrix", () => {
   const requirements = read("docs/product/PRODUCT_REQUIREMENTS.md");
   const implementationMatrix = read("docs/IMPLEMENTATION_MATRIX.md");

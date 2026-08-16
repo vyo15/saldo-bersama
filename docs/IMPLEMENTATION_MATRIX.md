@@ -15,7 +15,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-OFFLINE-001` | Offline write deny | Implemented | service worker/front-end guards | Device smoke |
 | `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
 | `REQ-UX-001` | UI states | Implemented | feedback components/pages + shared responsive view model | Production/device smoke |
-| `REQ-A11Y-001` | Accessibility baseline | Partial | semantic tests + unauthenticated/authenticated Chromium smoke | axe penuh dan Safari/Firefox device coverage pending |
+| `REQ-A11Y-001` | Accessibility baseline | Partial | semantic/static regression + manual device accessibility QA | axe penuh dan Chrome/Firefox/Safari real-device coverage pending |
 | `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v5 account number/`bank_template` + schema v8 `ewallet_template` + schema v9 `assignee_user_id` pada Alokasi + list/detail financial-card UI + label/capability Administrator/Member + route rekening terpisah | Mode privacy granular pending RFC-0015; real-resource Administrator/Member smoke pending |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
 | `REQ-PROD-03` | Kategori | Partial | route `/kategori`, facade feature, categories + `nature` | hierarchy pending RFC-0014 |

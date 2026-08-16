@@ -7,7 +7,9 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - **Frontend:** React 19 + Vite 7 PWA.
 - **Backend:** Vercel Functions.
 - **Database/source of truth:** Turso/SQLite HTTP pipeline.
-- **Auth:** Firebase Authentication Google + server session/authorization.
+- **Auth desktop:** Google Identity Services button → Firebase ID token exchange → server session.
+- **Auth mobile:** tombol Google custom pada UI Saldo Bersama → Firebase Web SDK `GoogleAuthProvider` + `signInWithPopup` → Firebase ID token → server session. Module auth dipreload sebelum tombol aktif agar popup dimulai langsung dari user gesture.
+- **Session/authorization authority:** signed HttpOnly server session + backend allowlist/role.
 - **Google integration:** Apps Script bridge; Sheets mirror satu arah, Calendar reminder bersama, Drive backup teknis.
 - **Active schema contract:** v9.
 - Runtime lokal dan Vercel Production dirancang memakai database Turso bersama; operasi destructive/migration tetap guarded.

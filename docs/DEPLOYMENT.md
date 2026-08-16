@@ -23,7 +23,7 @@ npm run db:integrity
 
 ## 3. Firebase
 
-Aktifkan Google provider dan authorized domain untuk localhost serta `saldo-bersama.vercel.app`. Untuk login mobile production, tambahkan authorized redirect URI `https://saldo-bersama.vercel.app/__/auth/handler` pada OAuth Web Client yang dipakai Firebase/Google. `vercel.json` memproxy `/__/auth/*` secara transparan ke `https://saldo-bersama.firebaseapp.com/__/auth/*`; jangan menggantinya dengan HTTP redirect. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; Firebase Web API key bukan secret. Authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`.
+Aktifkan Google provider dan authorized domain untuk localhost serta `saldo-bersama.vercel.app`. Login mobile memakai Firebase `signInWithPopup` dari tombol custom Saldo Bersama, sehingga tidak membutuhkan reverse proxy `/__/auth/*` maupun OAuth redirect URI custom pada domain Vercel. `VITE_FIREBASE_AUTH_DOMAIN` tetap `saldo-bersama.firebaseapp.com`. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; Firebase Web API key bukan secret. Authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`.
 
 ## 4. Apps Script bridge
 
@@ -92,7 +92,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 
 Migration terbaru adalah `database/migrations/007_envelope_assignee.sql`. Migration bersifat additive, membackfill kantong personal ke pemiliknya, dan membiarkan kantong shared sebagai Jatah Bersama.
 
-Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v8 menerima traffic:
+Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v9 menerima traffic:
 
 ```bash
 npm run db:migrate

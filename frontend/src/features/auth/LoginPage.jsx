@@ -417,54 +417,94 @@ const useMobileLoginInteraction = () => {
   return { mobileLayout, mobileSlide, trackRef, moveMobileSlide, beginSwipe, moveSwipe, finishSwipe };
 };
 
-const DesktopLoginLayout = ({ theme, providerProps }) => <main className="login-page login-page--desktop-artwork">
-  <h1 className="sr-only">Saldo Bersama</h1><section className="login-desktop-stage" aria-label="Login Saldo Bersama"><div className="login-desktop-artwork-frame"><img className="login-desktop-artwork" src={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light} alt="" aria-hidden="true" draggable="false" fetchPriority="high" /><div className="login-provider-mask login-provider-mask--desktop" aria-hidden="true" /><section className="login-provider-slot login-provider-slot--desktop" aria-label="Masuk ke Saldo Bersama"><LoginProvider {...providerProps} /></section><CreatorLink /></div><MoneyRain /><div className="sr-only"><p>Kelola keuangan pribadi dan bersama.</p><p>Akun yang diizinkan. Akses terverifikasi. Sinkron antar perangkat.</p></div></section>
-</main>;
+const DesktopLoginLayout = ({ theme, providerProps }) => (
+  <main className="login-page login-page--desktop-minimal">
+    <h1 className="sr-only">Saldo Bersama</h1>
+    <section
+      className="login-desktop-stage"
+      aria-label="Login Saldo Bersama"
+      data-fallback-artwork={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light}
+    >
+      <div className="login-desktop-shell">
+        <section className="login-desktop-hero" aria-label="Saldo Bersama">
+          <MoneyRain />
+          <header className="login-desktop-brand-row">
+            <div className="login-desktop-brand">
+              <img src="/brand/saldo-bersama-mark.png" alt="" aria-hidden="true" draggable="false" />
+              <span>
+                <strong>Saldo Bersama</strong>
+                <small>Catatan keuangan pribadi dan bersama</small>
+              </span>
+            </div>
+            <ThemeToggle className="login-desktop-theme-toggle" />
+          </header>
 
-const useMobileGoogleRedirectResult = ({
+          <div className="login-desktop-copy">
+            <h2>Keuangan bersama, <strong>lebih sederhana.</strong></h2>
+            <p>Catat, pantau, dan kelola keuangan dari satu tempat dengan tampilan yang tenang dan mudah dipakai setiap hari.</p>
+          </div>
+
+          <div className="login-desktop-visual" aria-hidden="true">
+            <span className="login-desktop-visual-glow login-desktop-visual-glow--one" />
+            <span className="login-desktop-visual-glow login-desktop-visual-glow--two" />
+            <img className="login-desktop-visual-main" src={`${MOBILE_ASSET_BASE}/hand-phone-dashboard.webp`} alt="" draggable="false" />
+            <img className="login-desktop-visual-piggy" src={`${MOBILE_ASSET_BASE}/piggy-bank.webp`} alt="" draggable="false" />
+            <img className="login-desktop-visual-wallet" src={`${MOBILE_ASSET_BASE}/wallet.webp`} alt="" draggable="false" />
+            <span className="login-desktop-visual-shadow" />
+          </div>
+        </section>
+
+        <aside className="login-desktop-auth" aria-label="Masuk ke Saldo Bersama">
+          <section className="login-desktop-auth-content">
+            <h2>Selamat datang.</h2>
+            <p>Masuk untuk melanjutkan ke Saldo Bersama.</p>
+
+            <div className="login-provider-slot login-provider-slot--desktop">
+              <LoginProvider {...providerProps} />
+            </div>
+
+            <p className="login-desktop-auth-help">Hanya akun Google yang telah diizinkan yang dapat mengakses aplikasi ini.</p>
+            <div className="login-desktop-auth-divider" />
+            <div className="login-desktop-auth-facts">
+              <span><i />Login cepat tanpa form manual</span>
+              <span><i />Data tetap sinkron antarperangkat</span>
+            </div>
+            <p className="login-desktop-auth-note">Akses ditolak otomatis jika akun tidak termasuk allowlist.</p>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+);
+
+const useMobileGooglePopupProvider = ({
   configErrorCount,
-  loginWithFirebaseToken,
+  mobileAuthRef,
   mobileLayout,
-  moveMobileSlide,
   setButtonError,
   setMobileGoogleAuthReady,
-  setMobileLoginPending,
   status,
 }) => {
   useEffect(() => {
     if (!mobileLayout || status !== "anonymous" || configErrorCount) {
+      mobileAuthRef.current = null;
       setMobileGoogleAuthReady(false);
       return undefined;
     }
     let active = true;
     setMobileGoogleAuthReady(false);
-    preloadMobileGoogleAuth().then(async (mobileAuth) => {
-      const returningFromGoogle = mobileAuth.hasPendingGoogleRedirect();
-      if (active && returningFromGoogle) {
-        moveMobileSlide(MOBILE_LOGIN_SLIDE);
-        setMobileLoginPending(true);
-      }
-      try {
-        const result = await mobileAuth.consumeGoogleRedirectResult({ onFirebaseToken: loginWithFirebaseToken });
-        if (active && !result.handled) {
-          setMobileGoogleAuthReady(true);
-          setMobileLoginPending(false);
-        }
-      } catch (redirectError) {
-        if (active) {
-          setButtonError(redirectError);
-          setMobileGoogleAuthReady(true);
-          setMobileLoginPending(false);
-        }
-      }
+    preloadMobileGoogleAuth().then((mobileAuth) => {
+      if (!active) return;
+      mobileAuthRef.current = mobileAuth;
+      setMobileGoogleAuthReady(true);
     }).catch(() => {
-      if (active) {
-        setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
-        setMobileLoginPending(false);
-      }
+      if (active) setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
     });
-    return () => { active = false; };
-  }, [configErrorCount, loginWithFirebaseToken, mobileLayout, moveMobileSlide, setButtonError, setMobileGoogleAuthReady, setMobileLoginPending, status]);
+    return () => {
+      active = false;
+      mobileAuthRef.current = null;
+    };
+  }, [configErrorCount, mobileAuthRef, mobileLayout, setButtonError, setMobileGoogleAuthReady, status]);
 };
 
 const LoginPage = () => {
@@ -472,6 +512,7 @@ const LoginPage = () => {
   const { theme } = useTheme();
   const location = useLocation();
   const buttonRef = useRef(null);
+  const mobileGoogleAuthRef = useRef(null);
   const [buttonError, setButtonError] = useState(null);
   const [mobileLoginPending, setMobileLoginPending] = useState(false);
   const [mobileGoogleAuthReady, setMobileGoogleAuthReady] = useState(false);
@@ -486,14 +527,12 @@ const LoginPage = () => {
   } = useMobileLoginInteraction();
   const shouldRenderDesktopGoogleButton = status === "anonymous" && !configErrors.length && !mobileLayout;
 
-  useMobileGoogleRedirectResult({
+  useMobileGooglePopupProvider({
     configErrorCount: configErrors.length,
-    loginWithFirebaseToken,
+    mobileAuthRef: mobileGoogleAuthRef,
     mobileLayout,
-    moveMobileSlide,
     setButtonError,
     setMobileGoogleAuthReady,
-    setMobileLoginPending,
     status,
   });
 
@@ -521,13 +560,18 @@ const LoginPage = () => {
 
   const handleMobileGoogleLogin = async () => {
     if (mobileLoginPending || !mobileGoogleAuthReady || status !== "anonymous" || configErrors.length) return;
+    const mobileAuth = mobileGoogleAuthRef.current;
+    if (!mobileAuth) {
+      setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+      return;
+    }
     setButtonError(null);
     setMobileLoginPending(true);
     try {
-      const { startGoogleRedirect } = await preloadMobileGoogleAuth();
-      await startGoogleRedirect();
+      await mobileAuth.signInWithGooglePopup({ onFirebaseToken: loginWithFirebaseToken });
     } catch (loginError) {
       setButtonError(loginError);
+    } finally {
       setMobileLoginPending(false);
     }
   };
