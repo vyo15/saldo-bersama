@@ -6,8 +6,10 @@ const source = () => readFile(new URL("../src/features/transactions/TransactionF
 
 test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori wajib sesuai validator", async () => {
   const text = await source();
-  const expenseOptions = text.match(/\[TRANSACTION_TYPES\.EXPENSE, "Pengeluaran"\]/g) || [];
+  const expenseOptions = text.match(/\{ value: TRANSACTION_TYPES\.EXPENSE, label: "Pengeluaran"/g) || [];
   assert.equal(expenseOptions.length, 1);
+  assert.equal((text.match(/name="transaction_type"/g) || []).length, 1, "Jenis transaksi harus memiliki satu selector canonical.");
+  assert.match(text, /legend="Jenis transaksi"/);
   assert.match(text, /!\[TRANSACTION_TYPES\.TRANSFER, TRANSACTION_TYPES\.ADJUSTMENT\]\.includes\(form\.transaction_type\)/);
   assert.match(text, /form\.transaction_type === "refund" && item\.transaction_type === "expense"/);
 });
@@ -15,7 +17,8 @@ test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori waji
 test("metode pembayaran tidak diasumsikan ketika detail tambahan belum dipilih", async () => {
   const text = await source();
   assert.match(text, /payment_method: ""/);
-  assert.match(text, /<option value="">Belum dipilih<\/option>/);
+  assert.match(text, /\{ value: "", label: "Belum dipilih", icon: OtherIcon \}/);
+  assert.match(text, /legend="Metode pembayaran"[\s\S]*name="payment_method"/);
   assert.doesNotMatch(text, /payment_method: "transfer"/);
   assert.match(text, /accountDisplayLabel/);
   assert.equal((text.match(/accountDisplayLabel\(item\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label kepemilikan yang konsisten.");
