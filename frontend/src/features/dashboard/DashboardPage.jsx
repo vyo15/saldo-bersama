@@ -1,3 +1,4 @@
+import "./DashboardPage.css";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import ErrorState from "../../components/feedback/ErrorState.jsx";

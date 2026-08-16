@@ -67,7 +67,7 @@ npm run dev
 
 Alur `npm run dev` pada terminal interaktif:
 
-1. Memeriksa `vite`, `react`, dan `@mantine/core` dari workspace frontend.
+1. Memeriksa `vite`, `react`, `@mantine/core`, dan `@fontsource-variable/manrope` dari workspace frontend.
 2. Menjalankan `npm ci` hanya bila dependency tersebut belum tersedia.
 3. Membersihkan token OIDC sementara dan key legacy dari `.env.local` bila file sudah ada.
 4. Meminta login Vercel hanya bila sesi belum ada.

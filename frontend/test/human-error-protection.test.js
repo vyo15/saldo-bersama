@@ -150,7 +150,8 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(reset, /idempotencyKey/);
   assert.match(reset, /newIntent: true/);
   assert.match(reset, /canStartNewIntent/);
-  assert.match(reset, /resetStatusVerified/);
+  assert.match(reset, /const resetStatusState =/);
+  assert.match(reset, /blocked: !verified \|\| resetOperationBlocked\(status\)/);
   assert.match(reset, /RESET_PREVIEW_CHANGED/);
   assert.match(reset, /recovery_required/);
   assert.match(reset, /expectedConfirmation=\{preview\?\.confirmationPhrase/);
@@ -292,6 +293,22 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
   }
   assert.equal(manualKeyUsers.length, 1, `hanya TransactionForm boleh mengelola key intent lokal: ${manualKeyUsers.join(", ")}`);
   assert.match(manualKeyUsers[0], /TransactionForm\.jsx$/);
+});
+
+test("jadwal rutin memuat dialog secara lazy dan helper filter tidak mengotori module Fast Refresh", async () => {
+  const [page, layer, schedule, presentation] = await Promise.all([
+    read("src/features/recurring/RecurringPage.jsx"),
+    read("src/features/recurring/RecurringDialogLayer.jsx"),
+    read("src/features/recurring/RecurringSchedule.jsx"),
+    read("src/features/recurring/recurringPresentation.js"),
+  ]);
+  assert.match(page, /lazy\(\(\) => import\("\.\/RecurringDialogLayer\.jsx"\)\)/);
+  assert.match(page, /<Suspense fallback=\{null\}>/);
+  assert.doesNotMatch(page, /from "\.\/RecurringDialogs\.jsx"/);
+  assert.match(layer, /from "\.\/RecurringDialogs\.jsx"/);
+  assert.match(schedule, /from "\.\/recurringPresentation\.js"/);
+  assert.doesNotMatch(schedule, /export const scheduleMatchesFilter/);
+  assert.match(presentation, /export const scheduleMatchesFilter/);
 });
 
 test("recurring skip/restore dan feedback global memakai guard canonical tanpa hard rollback", async () => {

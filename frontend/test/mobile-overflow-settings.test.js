@@ -27,22 +27,23 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
 });
 
 test("filter transaksi mobile memprioritaskan filter utama dan memindahkan filter lanjutan ke dialog", async () => {
-  const [responsive, transactions, categoryStyles] = await Promise.all([
-    read("src/styles/responsive.css"),
+  const [transactionStyles, transactions, categoryStyles] = await Promise.all([
+    read("src/features/transactions/TransactionsPage.css"),
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/categories/CategoriesPage.module.css"),
   ]);
   assert.match(transactions, /title="Filter lainnya"/);
+  assert.match(transactions, /import "\.\/TransactionsPage\.css";/);
   assert.match(transactions, /Buka filter lainnya/);
   assert.match(transactions, /transaction-advanced-filter-grid/);
   assert.match(transactions, /Filter rekening/);
   assert.match(transactions, /Filter kategori/);
   assert.match(transactions, /Filter pencatat/);
-  assert.match(responsive, /\.transaction-filter-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) auto;[^}]*overflow:\s*visible;/);
-  assert.match(responsive, /@media \(max-width: 420px\)[\s\S]*\.transaction-filter-row\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) var\(--mobile-control-height\);/);
-  assert.match(responsive, /@media \(max-width: 420px\)[\s\S]*\.transaction-advanced-filter-grid\s*\{\s*grid-template-columns:\s*1fr;/);
-  assert.match(responsive, /\.transaction-filter-more\s*\{[^}]*min-width:\s*var\(--mobile-control-height\)/);
-  assert.doesNotMatch(responsive, /\.transaction-filter-row\s*\{[^}]*overflow-x:\s*auto/);
+  assert.match(transactionStyles, /\.transaction-filter-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) auto;[^}]*overflow:\s*visible;/);
+  assert.match(transactionStyles, /@media \(max-width: 420px\)[\s\S]*\.transaction-filter-row\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) var\(--mobile-control-height\);/);
+  assert.match(transactionStyles, /@media \(max-width: 420px\)[\s\S]*\.transaction-advanced-filter-grid\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(transactionStyles, /\.transaction-filter-more\s*\{[^}]*min-width:\s*var\(--mobile-control-height\)/);
+  assert.doesNotMatch(transactionStyles, /\.transaction-filter-row\s*\{[^}]*overflow-x:\s*auto/);
   assert.match(categoryStyles, /\.iconGroups\s*\{[^}]*flex-wrap:\s*wrap;[^}]*overflow:\s*visible;/);
   assert.doesNotMatch(categoryStyles, /\.iconGroups\s*\{[^}]*overflow-x:\s*auto/);
   assert.match(categoryStyles, /@media \(max-width: 820px\)[\s\S]*\.categoryGroups/);

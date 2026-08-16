@@ -156,6 +156,7 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
         submitLabel="Transfer sekarang"
         submittingLabel="Memproses transfer..."
         notifyOnSuccess={false}
+        presentation="mobile-transfer"
       /></Suspense> : null}
 
       <MobileTransferSuccess

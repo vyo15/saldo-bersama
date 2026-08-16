@@ -4,6 +4,15 @@ import { startBrowserAppServer, startChromium, openBrowserPage, waitForAppRoute 
 import { waitFor } from "./helpers/cdp.mjs";
 import { createAuthenticatedGatewayResponses, ownerSession } from "./helpers/authenticated-fixture.mjs";
 
+const readConfirmationCountdown = (page) => page.evaluate(`(() => {
+  const dialog = document.querySelector('[role=dialog]');
+  if (!dialog) return 0;
+  const warning = [...dialog.querySelectorAll('.notice--warning')].map((item) => item.textContent || '').find((value) => value.includes('Konfirmasi aktif dalam')) || '';
+  const submitText = dialog.querySelector('button[type="submit"]')?.textContent || '';
+  const source = warning + ' ' + submitText;
+  return Number(source.match(/(?:Konfirmasi aktif dalam|Tunggu)\\s+(\\d+)\\s+detik/)?.[1] || 0);
+})()`);
+
 await test("double-click create target pada network lambat hanya menghasilkan satu mutation intent", { timeout: 45_000 }, async () => {
   let appServer;
   let chromium;
@@ -21,7 +30,7 @@ await test("double-click create target pada network lambat hanya menghasilkan sa
     appServer = await startBrowserAppServer({ session: ownerSession, gatewayResponses: responses });
     chromium = await startChromium();
     page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/target`, { width: 1280, height: 900 });
-    await waitForAppRoute(page, "/target", { heading: "Tabungan & target" });
+    await waitForAppRoute(page, "/target", { heading: "Target" });
 
     const opened = await page.evaluate(`(() => {
       const button = [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Buat target' && !item.hasAttribute('form'));
@@ -125,11 +134,10 @@ await test("confirmation modal mempertahankan alasan, frasa, checkbox, countdown
     };
 
     await openDeleteConfirmation();
-    const initialCountdown = await page.evaluate(`(() => {
-      const text = [...document.querySelectorAll('[role=status]')].map((item) => item.textContent || '').find((value) => value.includes('Konfirmasi aktif dalam')) || '';
-      return Number(text.match(/(\\d+) detik/)?.[1] || 0);
-    })()`);
+    const initialCountdown = await readConfirmationCountdown(page);
+    const initialSubmitDisabled = await page.evaluate("document.querySelector('[role=dialog] button[type=submit]')?.disabled ?? false");
     assert.ok(initialCountdown > 0, "Countdown destructive confirmation harus aktif saat modal dibuka.");
+    assert.equal(initialSubmitDisabled, true, "CTA destructive harus disabled selama countdown awal.");
 
     const filled = await page.evaluate(`(() => {
       const dialog = document.querySelector('[role=dialog]');
@@ -171,10 +179,7 @@ await test("confirmation modal mempertahankan alasan, frasa, checkbox, countdown
     assert.equal(persisted.acknowledged, true, "Checkbox acknowledgement tidak boleh kembali false setelah render ulang.");
 
     await waitFor(async () => {
-      const remaining = await page.evaluate(`(() => {
-        const text = [...document.querySelectorAll('[role=status]')].map((item) => item.textContent || '').find((value) => value.includes('Konfirmasi aktif dalam')) || '';
-        return Number(text.match(/(\\d+) detik/)?.[1] || 0);
-      })()`);
+      const remaining = await readConfirmationCountdown(page);
       return remaining >= 0 && remaining < initialCountdown;
     }, { timeoutMs: 2_500, description: "countdown confirmation tetap berjalan setelah field diedit" });
 
@@ -327,14 +332,20 @@ await test("reset semua data punya preview terpisah, safety guard, dan confirmat
       () => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Reset semua data?'"),
       { description: "modal full reset" },
     );
-    const state = await page.evaluate(`(() => ({
-      checklist: document.querySelectorAll('[role=dialog] .confirmation-checklist__item').length,
-      text: document.querySelector('[role=dialog]')?.innerText || '',
-      confirmDisabled: [...document.querySelectorAll('[role=dialog] button')].find((item) => item.textContent.trim() === 'Reset semua data')?.disabled,
-    }))()`);
+    const state = await page.evaluate(`(() => {
+      const dialog = document.querySelector('[role=dialog]');
+      const submit = dialog?.querySelector('button[type="submit"]');
+      return {
+        checklist: dialog?.querySelectorAll('.confirmation-checklist__item').length || 0,
+        text: dialog?.innerText || '',
+        confirmDisabled: submit?.disabled ?? null,
+        confirmText: submit?.textContent?.trim() || '',
+      };
+    })()`);
     assert.equal(state.checklist, 4);
     assert.match(state.text, /RESET SEMUA DATA SALDO BERSAMA/);
     assert.equal(state.confirmDisabled, true, "CTA full reset wajib tetap gated sebelum reason, checklist, frasa, dan countdown selesai.");
+    assert.match(state.confirmText, /^Tunggu \d+ detik$/, "CTA full reset harus memperlihatkan countdown keamanan saat modal baru dibuka.");
   } finally {
     await chromium?.close?.().catch(() => {});
     await page?.close?.().catch(() => {});

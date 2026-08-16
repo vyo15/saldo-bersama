@@ -10,6 +10,7 @@ import StatusBadge from "../../components/common/StatusBadge.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import { scheduleMatchesFilter } from "./recurringPresentation.js";
 import styles from "./RecurringPage.module.css";
 
 const FILTERS = Object.freeze([
@@ -40,7 +41,6 @@ const PAYMENT_METHOD_LABELS = Object.freeze({
 
 const completedStatuses = new Set(["paid", "received"]);
 const attentionStatuses = new Set(["overdue", "late", "partial"]);
-const openStatuses = new Set(["expected", "partial", "overdue", "late", "scheduled"]);
 
 const dateOrdinal = (value) => {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -59,14 +59,6 @@ const duePresentation = (item) => {
   if (delta === 0) return { label: "Jatuh tempo hari ini", tone: "warning" };
   if (delta === 1) return { label: "Besok", tone: "warning" };
   return { label: `${delta} hari lagi`, tone: "muted" };
-};
-
-export const scheduleMatchesFilter = (item, filter) => {
-  if (filter === "attention") return attentionStatuses.has(item.status);
-  if (filter === "open") return openStatuses.has(item.status);
-  if (filter === "done") return completedStatuses.has(item.status);
-  if (filter === "cancelled") return item.status === "cancelled";
-  return true;
 };
 
 const recurringSummary = (items) => items.reduce((summary, item) => {

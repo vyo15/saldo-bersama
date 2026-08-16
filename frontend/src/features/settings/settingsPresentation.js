@@ -159,3 +159,23 @@ export const auditDetailLabel = (code) => {
   };
   return labels[String(code || "")] || String(code || "");
 };
+
+export const formatMaintenanceCount = (value) => Number(value || 0).toLocaleString("id-ID");
+
+export const readMaintenanceRecoveryToken = (storageKey) => {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(storageKey) || "null");
+    return value?.idempotencyKey ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+export const storeMaintenanceRecoveryToken = (storageKey, value) => {
+  if (typeof window === "undefined") return;
+  try {
+    if (value) window.sessionStorage.setItem(storageKey, JSON.stringify(value));
+    else window.sessionStorage.removeItem(storageKey);
+  } catch { /* Browser storage is only a recovery hint. Backend remains authoritative. */ }
+};

@@ -95,7 +95,7 @@ test("arah transaksi rekening konsisten untuk desktop dan mobile", () => {
 });
 
 test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta grafik pada mobile", async () => {
-  const [page, accountSheets, mobileExperience, mobileActivity, mobileTransfer, accountEditors, desktopWorkspace, desktopStyles, card, pageStyles, cardStyles, categoryPage, reconciliationPage, transactionPresentation] = await Promise.all([
+  const [page, accountSheets, mobileExperience, mobileActivity, mobileTransfer, accountEditors, desktopWorkspace, desktopStyles, card, accountStyleSources, cardStyles, categoryPage, reconciliationPage, transactionPresentation] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
     read("src/features/accounts/components/MobileAccountsExperience.jsx"),
@@ -112,11 +112,23 @@ test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta g
       read("src/features/accounts/components/MobileAccountSheets.module.css"),
       read("src/features/accounts/components/MobileAccountsExperience.module.css"),
       read("src/features/accounts/components/MobileAccountTransferAction.module.css"),
-    ]).then((parts) => parts.join("\n")),
+    ]).then(([accountsPageStyles, accountEditorStyles, mobileActivityStyles, mobileSheetsStyles, mobileExperienceStyles, mobileTransferStyles]) => ({
+      accountsPageStyles,
+      accountEditorStyles,
+      mobileActivityStyles,
+      mobileSheetsStyles,
+      mobileExperienceStyles,
+      mobileTransferStyles,
+      combined: [accountsPageStyles, accountEditorStyles, mobileActivityStyles, mobileSheetsStyles, mobileExperienceStyles, mobileTransferStyles].join("\n"),
+    })),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
     read("src/shared/presentation/transaction.js"),
+  ]);
+  const [mobileTransferFields, transactionForm] = await Promise.all([
+    read("src/features/transactions/MobileTransferFields.jsx"),
+    read("src/features/transactions/TransactionForm.jsx"),
   ]);
   const accountPageSource = `${page}
 ${accountSheets}
@@ -124,6 +136,15 @@ ${mobileExperience}
 ${mobileActivity}
 ${mobileTransfer}
 ${accountEditors}`;
+  const {
+    accountsPageStyles,
+    accountEditorStyles,
+    mobileActivityStyles,
+    mobileSheetsStyles,
+    mobileExperienceStyles,
+    mobileTransferStyles,
+    combined: pageStyles,
+  } = accountStyleSources;
   const accountsApi = await read("src/features/accounts/accounts.api.js");
 
   assert.match(accountPageSource, /title="Rekening"/);
@@ -191,9 +212,18 @@ ${accountEditors}`;
   assert.match(mobileActivity, /accountTransactionDirection\(item, selectedAccountId\)/);
   assert.doesNotMatch(desktopWorkspace, /const transactionDirection/);
   assert.doesNotMatch(mobileActivity, /const transactionDirection/);
-  assert.match(desktopWorkspace, /Rekening utama/);
-  assert.match(desktopWorkspace, /Rekening lain/);
-  assert.match(desktopWorkspace, /Belum ada rekening lain untuk dipilih/);
+  assert.match(desktopWorkspace, /Rekening terpilih/);
+  assert.match(desktopWorkspace, /const AccountCarousel =/);
+  assert.match(desktopWorkspace, /Pilih rekening/);
+  assert.match(desktopWorkspace, /Rekening sebelumnya/);
+  assert.match(desktopWorkspace, /Rekening berikutnya/);
+  assert.match(desktopWorkspace, /event\.key === "ArrowLeft"/);
+  assert.match(desktopWorkspace, /event\.key === "ArrowRight"/);
+  assert.match(desktopWorkspace, /CAROUSEL_SWIPE_MIN_DISTANCE = 42/);
+  assert.match(desktopWorkspace, /onPointerDown=\{handlePointerDown\}/);
+  assert.match(desktopWorkspace, /onPointerUp=\{handlePointerEnd\}/);
+  assert.match(desktopWorkspace, /aria-pressed=\{index === selectedIndex\}/);
+  assert.doesNotMatch(desktopWorkspace, /OtherAccountsPanel|AccountSelectorCard|Rekening lain/);
   assert.match(desktopWorkspace, /const RecentTransactionsPanel =/);
   assert.match(desktopWorkspace, /Total saldo/);
   assert.match(desktopWorkspace, /Tren saldo/);
@@ -205,7 +235,10 @@ ${accountEditors}`;
   assert.match(desktopStyles, /grid-template-columns: minmax\(0, 1\.55fr\) minmax\(20rem, \.72fr\)/);
   assert.match(desktopStyles, /position: sticky/);
   assert.match(desktopStyles, /@media \(max-width: 820px\) \{[^}]*\.desktopWorkspace \{ display: none; \}/s);
-  assert.match(desktopStyles, /accountSelectorGrid/);
+  assert.match(desktopStyles, /accountCarousel/);
+  assert.match(desktopStyles, /carouselStage/);
+  assert.match(desktopStyles, /carouselDots/);
+  assert.doesNotMatch(desktopStyles, /accountSelectorGrid|accountSelectorMeta|miniVisual/);
   assert.match(desktopStyles, /transactionList/);
   assert.match(desktopStyles, /distributionList/);
   assert.match(desktopWorkspace, /<progress className=\{styles\.distributionProgress\}/);
@@ -231,6 +264,15 @@ ${accountEditors}`;
   assert.match(mobileTransfer, /initialSourceAccountId=\{selectedAccount\?\.account_id \|\| ""\}/);
   assert.match(mobileTransfer, /lockType/);
   assert.match(mobileTransfer, /notifyOnSuccess=\{false\}/);
+  assert.match(mobileTransfer, /presentation="mobile-transfer"/);
+  assert.match(transactionForm, /presentation = "default"/);
+  assert.match(transactionForm, /presentation === "mobile-transfer"/);
+  assert.match(transactionForm, /<MobileTransferFields \{\.\.\.fields\} \/>/);
+  assert.match(mobileTransferFields, /Dari rekening/);
+  assert.match(mobileTransferFields, /Ke rekening/);
+  assert.match(mobileTransferFields, /Preview dampak saldo/);
+  assert.match(mobileTransferFields, /Total aset tetap/);
+  assert.doesNotMatch(mobileTransferFields, /createTransaction|updateTransaction|transactions\.create|apiClient/);
   assert.match(mobileTransfer, /pendingSavedRef/);
   assert.match(mobileTransfer, /onTransferSaved/);
   assert.match(mobileTransfer, /Transfer memerlukan rekening sumber aktif/);
@@ -305,7 +347,20 @@ ${accountEditors}`;
   assert.doesNotMatch(pageStyles, /touch-action: none/);
   assert.match(pageStyles, /width: min\(78vw, 19\.1rem\)/);
   assert.doesNotMatch(pageStyles, /mobilePagination|scroll-snap-type/);
-  assert.equal((pageStyles.match(/@media \(max-width: 820px\)/g) || []).length, 1);
+  const mobileBreakpointCount = (styles) => (styles.match(/@media \(max-width: 820px\)/g) || []).length;
+  assert.equal(mobileBreakpointCount(accountsPageStyles), 1, "AccountsPage harus memiliki satu breakpoint mobile canonical 820px.");
+  assert.equal(mobileBreakpointCount(accountEditorStyles), 0, "AccountEditorDialogs tidak membutuhkan breakpoint mobile 820px.");
+  assert.equal(mobileBreakpointCount(mobileActivityStyles), 1, "MobileAccountActivity harus memiliki satu breakpoint mobile canonical 820px.");
+  assert.equal(mobileBreakpointCount(mobileSheetsStyles), 0, "MobileAccountSheets tidak membutuhkan breakpoint mobile 820px.");
+  assert.equal(mobileBreakpointCount(mobileExperienceStyles), 1, "MobileAccountsExperience harus memiliki satu breakpoint mobile canonical 820px.");
+  assert.equal(mobileBreakpointCount(mobileTransferStyles), 1, "MobileAccountTransferAction harus memiliki satu breakpoint mobile canonical 820px.");
+  assert.doesNotMatch(pageStyles, /47\.99rem|51\.25rem/, "CSS rekening tidak boleh kembali ke breakpoint mobile legacy sekitar 768/820px.");
+  assert.match(mobileExperienceStyles, /mobileStackPanel/);
+  assert.match(mobileActivityStyles, /mobileAccountActivity/);
+  assert.match(mobileActivityStyles, /mobileActivityTabs/);
+  assert.match(mobileActivityStyles, /mobileExpenseChart/);
+  assert.match(mobileTransferStyles, /mobileTransferQuickAction/);
+  assert.match(accountsPageStyles, /impactSummary/);
   assert.match(pageStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid var\(--border\);[^}]*background:\s*var\(--surface-soft\);/s);
   assert.match(pageStyles, /\.impactSummary strong \{ color:\s*var\(--text\);/);

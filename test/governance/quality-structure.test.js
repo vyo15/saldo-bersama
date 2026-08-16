@@ -15,7 +15,7 @@ test("quality workflow menjalankan check, guard regression, browser journey, dan
   const workflow = await source(".github/workflows/quality.yml");
   assert.match(workflow, /actions\/checkout@v5/);
   assert.match(workflow, /actions\/setup-node@v5/);
-  assert.match(workflow, /node-version:\s*24/);
+  assert.match(workflow, /node-version-file:\s*["']?\.node-version["']?/);
   assert.match(workflow, /npm ci/);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:guard/);

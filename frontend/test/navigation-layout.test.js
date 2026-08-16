@@ -77,7 +77,7 @@ test("desktop memakai shell full-bleed tanpa gap viewport", async () => {
 
 
 test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus ruang aman navigasi", async () => {
-  const [resetCss, appCss, responsiveCss, accountCss, componentCss, accountDetailCss, pagesCss] = await Promise.all([
+  const [resetCss, appCss, responsiveCss, accountCss, componentCss, accountDetailCss, loginCss] = await Promise.all([
     read("src/styles/reset.css"),
     read("src/styles/app.css"),
     read("src/styles/responsive.css"),
@@ -87,7 +87,7 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
     ]).then((parts) => parts.join("\n")),
     read("src/styles/components.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
-    read("src/styles/pages.css"),
+    read("src/features/auth/LoginPage.css"),
   ]);
 
   assert.match(resetCss, /body \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/);
@@ -101,7 +101,7 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(componentCss, /\.loading-screen--page, \.fatal-error \{ min-height:\s*100vh; min-height:\s*100dvh; \}/);
   assert.match(responsiveCss, /\.app-content > \.loading-screen--page,[\s\S]*min-height:\s*calc\(100dvh - 56px/);
   assert.match(accountDetailCss, /max-height:\s*calc\(100vh[^;]+;\s*\n\s*max-height:\s*calc\(100dvh/);
-  assert.match(pagesCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);
+  assert.match(loginCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);
 });
 
 
@@ -154,13 +154,16 @@ test("asset rail light dan dark mempertahankan path organik IMS", async () => {
 });
 
 test("layout mobile compact mempertahankan safe area dan target sentuh", async () => {
-  const responsiveCss = await read("src/styles/responsive.css");
+  const [responsiveCss, dashboardCss] = await Promise.all([
+    read("src/styles/responsive.css"),
+    read("src/features/dashboard/DashboardPage.css"),
+  ]);
 
   assert.match(responsiveCss, /--mobile-navigation-height:\s*68px;/);
   assert.match(responsiveCss, /\.mobile-navigation a,\s*\n\s*\.mobile-navigation__more \{[^}]*min-height:\s*50px;/);
-  assert.match(responsiveCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero \.theme-toggle \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
-  assert.doesNotMatch(responsiveCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
-  assert.match(responsiveCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
+  assert.match(dashboardCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero \.theme-toggle \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.doesNotMatch(dashboardCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
+  assert.match(dashboardCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
   assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*flex; \}/);
   assert.match(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*none; \}/);
 });

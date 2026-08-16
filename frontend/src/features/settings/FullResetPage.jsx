@@ -11,16 +11,13 @@ import { createSecureRandomId } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import MaintenanceRecoveryPanel, {
-  formatMaintenanceCount as formatCount,
   MaintenanceSummaryGrid as SummaryGrid,
-  readMaintenanceRecoveryToken,
   SafetyBackupPreflight,
-  storeMaintenanceRecoveryToken,
 } from "./MaintenanceRecoveryPanel.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { isSettingsOutcomeUnknownError, runSettingsAction } from "./settings.api.js";
-import { integrationProviderPresentation } from "./settingsPresentation.js";
+import { formatMaintenanceCount as formatCount, readMaintenanceRecoveryToken, storeMaintenanceRecoveryToken, integrationProviderPresentation } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
 const FULL_RESET_RECOVERY_STORAGE_KEY = "saldo-bersama:full-reset-recovery";
@@ -311,6 +308,77 @@ const useFullResetApply = ({
   return { applyBusy, applyError, setApplyError, confirmationOpen, setConfirmationOpen, applyReset };
 };
 
+const FullResetStatusPanels = ({ status, statusResource, recovery }) => (
+  <>
+    <MaintenanceRecoveryPanel maintenanceMode={Boolean(status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset penuh sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
+    {(statusResource.status === "error" || statusResource.refreshError) ? (
+      <div className="notice notice--danger" role="alert">
+        <FiAlertTriangle aria-hidden="true" />
+        <span><strong>Status full reset belum dapat diverifikasi.</strong> Operasi tetap diblokir sampai status dari server dapat dibaca.</span>
+        <Button type="button" icon={FiRefreshCw} loading={statusResource.isRefreshing} onClick={recovery.checkStatus}>Periksa status operasi</Button>
+      </div>
+    ) : null}
+    {["processing", "not_committed"].includes(status?.outcome) ? (
+      <Card className={`${styles.resetRecoveryCard} ${styles.resetRecoveryCard_warning}`}>
+        <div className={styles.resetRecoveryHeader}>
+          <span className={styles.resetRecoveryIcon}><FiAlertTriangle aria-hidden="true" /></span>
+          <div><h2>{status.outcome === "processing" ? "Full reset masih diproses" : "Hasil full reset belum pasti"}</h2><p>Jangan kirim reset baru sebelum status operasi sebelumnya dipastikan.</p></div>
+        </div>
+        <div className={styles.resetRecoveryActions}><Button type="button" icon={FiRefreshCw} onClick={recovery.checkStatus}>Periksa status</Button></div>
+      </Card>
+    ) : null}
+  </>
+);
+
+const FullResetPreviewStep = ({ preview, statusBlocked }) => (
+  <Card className={`panel ${styles.resetStepCard}`}>
+    <div className={styles.resetStepHeader}><span className={styles.resetStepNumber}>1</span><div><h2>Preview seluruh dampak</h2><p>Server membaca ulang seluruh data keuangan, data utama, dan data operasional yang akan dihapus.</p></div><span className={styles.resetStepIcon}><FiDatabase aria-hidden="true" /></span></div>
+    <Button variant="primary" icon={FiRefreshCw} loading={preview.previewBusy} disabled={statusBlocked} onClick={preview.loadPreview}>Periksa semua data</Button>
+    {preview.preview ? <FullResetPreview preview={preview.preview} /> : null}
+  </Card>
+);
+
+const FullResetBackupStep = ({ integrationsResource, driveReadiness, driveReady }) => (
+  <Card className={`panel ${styles.resetStepCard}`}>
+    <div className={styles.resetStepHeader}><span className={styles.resetStepNumber}>2</span><div><h2>Verifikasi backup keamanan</h2><p>Google Drive harus siap agar backup sebelum full reset dapat dipulihkan bila diperlukan.</p></div><span className={styles.resetStepIcon}><FiHardDrive aria-hidden="true" /></span></div>
+    <SafetyBackupPreflight resource={integrationsResource} readiness={driveReadiness} />
+    {!driveReady ? <div className={styles.resetInlineWarning}>Full reset diblokir sampai backup keamanan siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</div> : null}
+  </Card>
+);
+
+const FullResetApplyStep = ({ canOpenReset, apply }) => (
+  <Card className={`panel ${styles.resetStepCard} ${styles.resetDangerStep}`}>
+    <div className={styles.resetStepHeader}><span className={styles.resetStepNumber}>3</span><div><h2>Reset ke kondisi awal</h2><p>Server membuat backup keamanan, mengunci perubahan selama proses, memeriksa ulang data, menghapus sesuai preview, memeriksa konsistensi, mencatat audit, lalu membangun ulang data sinkronisasi.</p></div><span className={styles.resetStepIcon}><FiTrash2 aria-hidden="true" /></span></div>
+    <div className={styles.resetSafeHint}><FiShield aria-hidden="true" /><span>Jika koneksi terputus, jangan menekan tombol lagi. Gunakan Periksa status operasi untuk memastikan hasil terakhir.</span></div>
+    <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Reset semua data</Button>
+  </Card>
+);
+
+const FullResetSteps = ({ preview, statusBlocked, integrationsResource, driveReadiness, driveReady, canOpenReset, apply }) => (
+  <>
+    <FullResetPreviewStep preview={preview} statusBlocked={statusBlocked} />
+    <FullResetBackupStep integrationsResource={integrationsResource} driveReadiness={driveReadiness} driveReady={driveReady} />
+    <FullResetApplyStep canOpenReset={canOpenReset} apply={apply} />
+  </>
+);
+
+const fullResetDriveState = (integrationsResource) => {
+  const readiness = integrationProviderPresentation(integrationsResource.data || {}, "drive");
+  return {
+    readiness,
+    ready: integrationsResource.status === "ready" && !integrationsResource.refreshError && readiness.ready,
+  };
+};
+
+const fullResetStatusState = (statusResource) => {
+  const status = statusResource.data || null;
+  const verified = statusResource.status === "ready" && !statusResource.refreshError;
+  const blockedByStatus = status ? status.canStartNewIntent === false || Boolean(status.maintenanceMode) : false;
+  return { status, blocked: !verified || blockedByStatus };
+};
+
+const fullResetPreviewHasData = (preview) => Boolean(preview && Number(preview.summary?.totalRows || 0) > 0);
+
 const FullResetPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -322,13 +390,9 @@ const FullResetPage = () => {
   const preview = useFullResetPreview({ recoveryToken, statusResource, integrationsResource, committed: recovery.committed, setResult: recovery.setResult });
   const apply = useFullResetApply({ preview: preview.preview, setPreview: preview.setPreview, statusResource, integrationsResource, recovery, setRecoveryToken, invalidate, refreshAll });
 
-  const status = statusResource.data || null;
-  const driveReadiness = integrationProviderPresentation(integrationsResource.data || {}, "drive");
-  const driveReady = integrationsResource.status === "ready" && !integrationsResource.refreshError && driveReadiness.ready;
-  const statusVerified = statusResource.status === "ready" && !statusResource.refreshError;
-  const statusBlocked = !statusVerified || status?.canStartNewIntent === false || status?.maintenanceMode;
-  const hasData = Number(preview.preview?.summary?.totalRows || 0) > 0;
-  const canOpenReset = hasData && driveReady && !preview.previewBusy && !statusBlocked;
+  const drive = fullResetDriveState(integrationsResource);
+  const resetState = fullResetStatusState(statusResource);
+  const canOpenReset = fullResetPreviewHasData(preview.preview) && drive.ready && !preview.previewBusy && !resetState.blocked;
 
   return (
     <OwnerSettingsGuard>
@@ -338,54 +402,12 @@ const FullResetPage = () => {
           <p>Kembalikan data aplikasi ke kondisi awal. Rekening, kategori, saldo, riwayat keuangan, perencanaan, dan data operasional akan dihapus. Pengguna, audit, backup, dan struktur database tetap disimpan.</p>
         </div>
         <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
-        <MaintenanceRecoveryPanel maintenanceMode={Boolean(status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset penuh sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
-        {statusResource.status === "error" || statusResource.refreshError ? (
-          <div className="notice notice--danger" role="alert">
-            <FiAlertTriangle aria-hidden="true" />
-            <span><strong>Status full reset belum dapat diverifikasi.</strong> Operasi tetap diblokir sampai status dari server dapat dibaca.</span>
-            <Button type="button" icon={FiRefreshCw} loading={statusResource.isRefreshing} onClick={recovery.checkStatus}>Periksa status operasi</Button>
-          </div>
-        ) : null}
-        {["processing", "not_committed"].includes(status?.outcome) ? (
-          <Card className={`${styles.resetRecoveryCard} ${styles.resetRecoveryCard_warning}`}>
-            <div className={styles.resetRecoveryHeader}>
-              <span className={styles.resetRecoveryIcon}><FiAlertTriangle aria-hidden="true" /></span>
-              <div><h2>{status.outcome === "processing" ? "Full reset masih diproses" : "Hasil full reset belum pasti"}</h2><p>Jangan kirim reset baru sebelum status operasi sebelumnya dipastikan.</p></div>
-            </div>
-            <div className={styles.resetRecoveryActions}><Button type="button" icon={FiRefreshCw} onClick={recovery.checkStatus}>Periksa status</Button></div>
-          </Card>
-        ) : null}
+        <FullResetStatusPanels status={resetState.status} statusResource={statusResource} recovery={recovery} />
         <div className={`${styles.resetGuardNotice} ${styles.fullResetGuard}`} role="note">
           <FiShield aria-hidden="true" />
           <span><strong>Tindakan ini menghapus hampir seluruh data aplikasi.</strong> Gunakan reset penuh hanya untuk mengembalikan aplikasi ke kondisi awal. Gunakan Restore jika Anda hanya perlu kembali ke backup tertentu.</span>
         </div>
-        <Card className={`panel ${styles.resetStepCard}`}>
-          <div className={styles.resetStepHeader}>
-            <span className={styles.resetStepNumber}>1</span>
-            <div><h2>Preview seluruh dampak</h2><p>Server membaca ulang seluruh data keuangan, data utama, dan data operasional yang akan dihapus.</p></div>
-            <span className={styles.resetStepIcon}><FiDatabase aria-hidden="true" /></span>
-          </div>
-          <Button variant="primary" icon={FiRefreshCw} loading={preview.previewBusy} disabled={statusBlocked} onClick={preview.loadPreview}>Periksa semua data</Button>
-          {preview.preview ? <FullResetPreview preview={preview.preview} /> : null}
-        </Card>
-        <Card className={`panel ${styles.resetStepCard}`}>
-          <div className={styles.resetStepHeader}>
-            <span className={styles.resetStepNumber}>2</span>
-            <div><h2>Verifikasi backup keamanan</h2><p>Google Drive harus siap agar backup sebelum full reset dapat dipulihkan bila diperlukan.</p></div>
-            <span className={styles.resetStepIcon}><FiHardDrive aria-hidden="true" /></span>
-          </div>
-          <SafetyBackupPreflight resource={integrationsResource} readiness={driveReadiness} />
-          {!driveReady ? <div className={styles.resetInlineWarning}>Full reset diblokir sampai backup keamanan siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</div> : null}
-        </Card>
-        <Card className={`panel ${styles.resetStepCard} ${styles.resetDangerStep}`}>
-          <div className={styles.resetStepHeader}>
-            <span className={styles.resetStepNumber}>3</span>
-            <div><h2>Reset ke kondisi awal</h2><p>Server membuat backup keamanan, mengunci perubahan selama proses, memeriksa ulang data, menghapus sesuai preview, memeriksa konsistensi, mencatat audit, lalu membangun ulang data sinkronisasi.</p></div>
-            <span className={styles.resetStepIcon}><FiTrash2 aria-hidden="true" /></span>
-          </div>
-          <div className={styles.resetSafeHint}><FiShield aria-hidden="true" /><span>Jika koneksi terputus, jangan menekan tombol lagi. Gunakan Periksa status operasi untuk memastikan hasil terakhir.</span></div>
-          <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Reset semua data</Button>
-        </Card>
+        <FullResetSteps preview={preview} statusBlocked={resetState.blocked} integrationsResource={integrationsResource} driveReadiness={drive.readiness} driveReady={drive.ready} canOpenReset={canOpenReset} apply={apply} />
         <FullResetConfirmation
           preview={preview.preview}
           open={apply.confirmationOpen}

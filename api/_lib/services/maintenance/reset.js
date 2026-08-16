@@ -306,82 +306,89 @@ const matchingResetAudit = (rows, backupId) => backupId
   ? rows.find((row) => parseJson(row.new_value, {})?.safetyBackupId === backupId) || null
   : null;
 
-export const readTrialDataResetStatus = async (db, context) => {
-  assertOwner(context.actor);
-  const requestedKey = sanitizeText(context.payload?.idempotencyKey, 160);
+const trialResetStatusPlan = (actorId, requestedKey, timestamp) => {
   const intentStatement = requestedKey
-    ? {
-      sql: "SELECT idempotency_key,response_json,request_fingerprint,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='reset.apply' AND idempotency_key=? AND expires_at>? LIMIT 1",
-      args: [context.actor.user_id, requestedKey, nowIso()],
-    }
-    : {
-      sql: "SELECT idempotency_key,response_json,request_fingerprint,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='reset.apply' AND expires_at>? ORDER BY created_at DESC LIMIT 12",
-      args: [context.actor.user_id, nowIso()],
-    };
-  const requestedBackupId = maintenanceBackupIdForIntent({ actorId: context.actor.user_id, idempotencyKey: requestedKey, backupType: "pre-trial-reset" });
+    ? { sql: "SELECT idempotency_key,response_json,request_fingerprint,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='reset.apply' AND idempotency_key=? AND expires_at>? LIMIT 1", args: [actorId, requestedKey, timestamp] }
+    : { sql: "SELECT idempotency_key,response_json,request_fingerprint,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='reset.apply' AND expires_at>? ORDER BY created_at DESC LIMIT 12", args: [actorId, timestamp] };
+  const requestedBackupId = maintenanceBackupIdForIntent({ actorId, idempotencyKey: requestedKey, backupType: "pre-trial-reset" });
   const auditStatement = requestedBackupId
-    ? {
-      sql: `SELECT timestamp,entity_id,previous_value,new_value FROM audit_log
+    ? { sql: `SELECT timestamp,entity_id,previous_value,new_value FROM audit_log
         WHERE actor_id=? AND action='reset.apply' AND entity_type='maintenance_reset' AND result='success'
           AND json_valid(new_value)=1 AND json_extract(new_value,'$.safetyBackupId')=?
-        ORDER BY timestamp DESC LIMIT 1`,
-      args: [context.actor.user_id, requestedBackupId],
-    }
-    : {
-      sql: "SELECT timestamp,entity_id,previous_value,new_value FROM audit_log WHERE actor_id=? AND action='reset.apply' AND entity_type='maintenance_reset' AND result='success' ORDER BY timestamp DESC LIMIT 12",
-      args: [context.actor.user_id],
-    };
-  const statusStatements = [
-    ...RESET_COUNT_STATEMENTS,
-    { sql: "SELECT value FROM system_config WHERE key='maintenance_mode'", args: [] },
-    intentStatement,
-    auditStatement,
-  ];
-  const resultRows = await readBatchRows(db, statusStatements);
-  const counts = mapResetCountRows(resultRows.slice(0, RESET_COUNT_STATEMENTS.length));
+        ORDER BY timestamp DESC LIMIT 1`, args: [actorId, requestedBackupId] }
+    : { sql: "SELECT timestamp,entity_id,previous_value,new_value FROM audit_log WHERE actor_id=? AND action='reset.apply' AND entity_type='maintenance_reset' AND result='success' ORDER BY timestamp DESC LIMIT 12", args: [actorId] };
+  return { requestedBackupId, statements: [...RESET_COUNT_STATEMENTS, { sql: "SELECT value FROM system_config WHERE key='maintenance_mode'", args: [] }, intentStatement, auditStatement] };
+};
+
+const preferredResetValue = (primary, secondary, key, fallback = null) => {
+  if (primary && primary[key] !== undefined && primary[key] !== null) return primary[key];
+  if (secondary && secondary[key] !== undefined && secondary[key] !== null) return secondary[key];
+  return fallback;
+};
+
+const trialResetCommittedPresentation = ({ completed, audit, backup }) => {
+  if (!completed && !audit) return null;
+  return {
+    resetId: preferredResetValue(completed, audit, "resetId"),
+    resetAt: preferredResetValue(completed, audit, "resetAt"),
+    safetyBackupId: preferredResetValue(completed, audit, "safetyBackupId"),
+    safetyBackupFileId: preferredResetValue(completed, backup, "safetyBackupFileId", backup ? backup.external_file_id : null),
+    summary: preferredResetValue(completed, audit, "summary"),
+    balanceReset: preferredResetValue(completed, audit, "balanceReset"),
+    resetScope: preferredResetValue(completed, audit, "resetScope", TRIAL_RESET_SCOPE_ACTIVITY),
+  };
+};
+
+const trialResetStatusRows = (resultRows) => {
   const offset = RESET_COUNT_STATEMENTS.length;
-  const maintenanceMode = resultRows[offset]?.[0]?.value === "true";
-  const candidateIntentRows = resultRows[offset + 1] || [];
-  const intentRow = selectMaintenanceIntentRow(candidateIntentRows, requestedKey);
-  const auditRows = resultRows[offset + 2] || [];
-  const intent = decodeMaintenanceIdempotency(intentRow);
-  const effectiveKey = intentRow?.idempotency_key || requestedKey || "";
-  const expectedBackupId = requestedBackupId || maintenanceBackupIdForIntent({ actorId: context.actor.user_id, idempotencyKey: effectiveKey, backupType: "pre-trial-reset" });
-  const auditRow = matchingResetAudit(auditRows, expectedBackupId);
-  const audit = resetAuditDetails(auditRow);
-  const completed = intent.state === "completed" && intent.result?.reset === true ? intent.result : null;
+  const maintenanceRow = resultRows[offset] && resultRows[offset][0] ? resultRows[offset][0] : null;
+  return {
+    counts: mapResetCountRows(resultRows.slice(0, offset)),
+    maintenanceMode: maintenanceRow ? maintenanceRow.value === "true" : false,
+    intentRows: resultRows[offset + 1] || [],
+    auditRows: resultRows[offset + 2] || [],
+  };
+};
+
+const trialResetStatusCommit = async (db, actorId, requestedKey, requestedBackupId, intentRow, intent, auditRows) => {
+  const effectiveKey = intentRow && intentRow.idempotency_key ? intentRow.idempotency_key : requestedKey;
+  const expectedBackupId = requestedBackupId || maintenanceBackupIdForIntent({ actorId, idempotencyKey: effectiveKey || "", backupType: "pre-trial-reset" });
+  const audit = resetAuditDetails(matchingResetAudit(auditRows, expectedBackupId));
+  const completed = intent.state === "completed" && intent.result && intent.result.reset === true ? intent.result : null;
   const committed = completed || audit;
-  const safetyBackupId = committed?.safetyBackupId || audit?.safetyBackupId || expectedBackupId;
-  const backup = safetyBackupId ? await db.one(
-    "SELECT backup_id,status,external_file_id,verified_at,error_code,created_at FROM backup_runs WHERE backup_id=?",
-    [safetyBackupId],
-  ) : null;
+  const safetyBackupId = preferredResetValue(committed, audit, "safetyBackupId", expectedBackupId);
+  const backup = safetyBackupId
+    ? await db.one("SELECT backup_id,status,external_file_id,verified_at,error_code,created_at FROM backup_runs WHERE backup_id=?", [safetyBackupId])
+    : null;
+  return { audit, backup, committed, completed };
+};
 
-  const outcome = resolveMaintenanceOutcome({
-    committed,
-    intentState: intent.state,
-    maintenanceMode,
-    requestedKey,
-  });
+const resetIntentPresentation = (intentRow, intent) => {
+  if (!intentRow) return null;
+  return { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at };
+};
 
+export const readTrialDataResetStatus = async (db, context) => {
+  assertOwner(context.actor);
+  const payload = context.payload || {};
+  const requestedKey = sanitizeText(payload.idempotencyKey, 160);
+  const plan = trialResetStatusPlan(context.actor.user_id, requestedKey, nowIso());
+  const resultRows = await readBatchRows(db, plan.statements);
+  const state = trialResetStatusRows(resultRows);
+  const intentRow = selectMaintenanceIntentRow(state.intentRows, requestedKey);
+  const intent = decodeMaintenanceIdempotency(intentRow);
+  const commit = await trialResetStatusCommit(db, context.actor.user_id, requestedKey, plan.requestedBackupId, intentRow, intent, state.auditRows);
+  const outcome = resolveMaintenanceOutcome({ committed: commit.committed, intentState: intent.state, maintenanceMode: state.maintenanceMode, requestedKey });
   return {
     checkedAt: nowIso(),
     outcome,
-    requiresAttention: outcome === "processing" || outcome === "recovery_required",
-    canStartNewIntent: !maintenanceMode && !["processing"].includes(outcome),
-    maintenanceMode,
-    intent: intentRow ? { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at } : null,
-    backup: maintenanceBackupPresentation(backup),
-    committedReset: committed ? {
-      resetId: completed?.resetId || audit?.resetId || null,
-      resetAt: completed?.resetAt || audit?.resetAt || null,
-      safetyBackupId: completed?.safetyBackupId || audit?.safetyBackupId || null,
-      safetyBackupFileId: completed?.safetyBackupFileId || backup?.external_file_id || null,
-      summary: completed?.summary || audit?.summary || null,
-      balanceReset: completed?.balanceReset || audit?.balanceReset || null,
-      resetScope: completed?.resetScope || audit?.resetScope || TRIAL_RESET_SCOPE_ACTIVITY,
-    } : null,
-    currentSummary: resetSummary(counts),
+    requiresAttention: ["processing", "recovery_required"].includes(outcome),
+    canStartNewIntent: state.maintenanceMode ? false : outcome !== "processing",
+    maintenanceMode: state.maintenanceMode,
+    intent: resetIntentPresentation(intentRow, intent),
+    backup: maintenanceBackupPresentation(commit.backup),
+    committedReset: trialResetCommittedPresentation(commit),
+    currentSummary: resetSummary(state.counts),
   };
 };
 

@@ -242,60 +242,82 @@ const fullResetAuditByBackupId = async (db, actorId, backupId) => {
     ORDER BY timestamp DESC LIMIT 1`, [actorId, backupId]);
 };
 
+const fullResetIntentQuery = (actorId, requestedKey, timestamp) => requestedKey
+  ? { sql: "SELECT idempotency_key,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='fullReset.apply' AND idempotency_key=? AND expires_at>? LIMIT 1", args: [actorId, requestedKey, timestamp] }
+  : { sql: "SELECT idempotency_key,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='fullReset.apply' AND expires_at>? ORDER BY created_at DESC LIMIT 12", args: [actorId, timestamp] };
+
+const preferredValue = (primary, secondary, key, fallback = null) => {
+  if (primary && primary[key] !== undefined && primary[key] !== null) return primary[key];
+  if (secondary && secondary[key] !== undefined && secondary[key] !== null) return secondary[key];
+  return fallback;
+};
+
+const fullResetCommittedPresentation = ({ completed, audit, backup }) => {
+  if (!completed && !audit) return null;
+  return {
+    resetId: preferredValue(completed, audit, "resetId"),
+    resetAt: preferredValue(completed, audit, "resetAt"),
+    safetyBackupId: preferredValue(completed, audit, "safetyBackupId"),
+    safetyBackupFileId: preferredValue(completed, backup, "safetyBackupFileId", backup ? backup.external_file_id : null),
+    summary: preferredValue(completed, audit, "summary"),
+  };
+};
+
+const fullResetStatusRows = (rows) => {
+  const offset = FULL_RESET_COUNT_STATEMENTS.length;
+  const maintenanceRow = rows[offset] && rows[offset][0] ? rows[offset][0] : null;
+  return {
+    counts: mapCounts(rows.slice(0, offset)),
+    maintenanceMode: maintenanceRow ? maintenanceRow.value === "true" : false,
+    intentRows: rows[offset + 1] || [],
+  };
+};
+
+const fullResetStatusCommit = async (db, actorId, requestedKey, intentRow, intent) => {
+  const effectiveKey = intentRow && intentRow.idempotency_key ? intentRow.idempotency_key : requestedKey;
+  const expectedBackupId = maintenanceBackupIdForIntent({ actorId, idempotencyKey: effectiveKey || "", backupType: "pre-full-reset" });
+  const auditRow = await fullResetAuditByBackupId(db, actorId, expectedBackupId);
+  const audit = fullResetAuditDetails(auditRow);
+  const completed = intent.state === "completed" && intent.result && intent.result.fullReset === true ? intent.result : null;
+  const committed = completed || audit;
+  const safetyBackupId = preferredValue(completed, audit, "safetyBackupId", expectedBackupId);
+  const backup = safetyBackupId
+    ? await db.one("SELECT backup_id,status,external_file_id,verified_at,error_code,created_at FROM backup_runs WHERE backup_id=?", [safetyBackupId])
+    : null;
+  return { audit, backup, committed, completed };
+};
+
+const maintenanceIntentPresentation = (intentRow, intent) => {
+  if (!intentRow) return null;
+  return { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at };
+};
+
 export const readFullDataResetStatus = async (db, context) => {
   assertOwner(context.actor);
-  const requestedKey = sanitizeText(context.payload?.idempotencyKey, 160);
-  const intentSql = requestedKey
-    ? "SELECT idempotency_key,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='fullReset.apply' AND idempotency_key=? AND expires_at>? LIMIT 1"
-    : "SELECT idempotency_key,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='fullReset.apply' AND expires_at>? ORDER BY created_at DESC LIMIT 12";
-  const intentArgs = requestedKey
-    ? [context.actor.user_id, requestedKey, nowIso()]
-    : [context.actor.user_id, nowIso()];
+  const payload = context.payload || {};
+  const requestedKey = sanitizeText(payload.idempotencyKey, 160);
+  const timestamp = nowIso();
+  const intentQuery = fullResetIntentQuery(context.actor.user_id, requestedKey, timestamp);
   const rows = await readBatchRows(db, [
     ...FULL_RESET_COUNT_STATEMENTS,
     { sql: "SELECT value FROM system_config WHERE key='maintenance_mode'", args: [] },
-    { sql: intentSql, args: intentArgs },
+    intentQuery,
   ]);
-  const counts = mapCounts(rows.slice(0, FULL_RESET_COUNT_STATEMENTS.length));
-  const offset = FULL_RESET_COUNT_STATEMENTS.length;
-  const maintenanceMode = rows[offset]?.[0]?.value === "true";
-  const candidates = rows[offset + 1] || [];
-  const intentRow = selectMaintenanceIntentRow(candidates, requestedKey);
+  const state = fullResetStatusRows(rows);
+  const intentRow = selectMaintenanceIntentRow(state.intentRows, requestedKey);
   const intent = decodeMaintenanceIdempotency(intentRow);
-  const effectiveKey = intentRow?.idempotency_key || requestedKey || "";
-  const expectedBackupId = maintenanceBackupIdForIntent({ actorId: context.actor.user_id, idempotencyKey: effectiveKey, backupType: "pre-full-reset" });
-  const audit = fullResetAuditDetails(await fullResetAuditByBackupId(db, context.actor.user_id, expectedBackupId));
-  const completed = intent.state === "completed" && intent.result?.fullReset === true ? intent.result : null;
-  const committed = completed || audit;
-  const safetyBackupId = completed?.safetyBackupId || audit?.safetyBackupId || expectedBackupId;
-  const backup = safetyBackupId ? await db.one(
-    "SELECT backup_id,status,external_file_id,verified_at,error_code,created_at FROM backup_runs WHERE backup_id=?",
-    [safetyBackupId],
-  ) : null;
-
-  const outcome = resolveMaintenanceOutcome({
-    committed,
-    intentState: intent.state,
-    maintenanceMode,
-    requestedKey,
-  });
-
+  const commit = await fullResetStatusCommit(db, context.actor.user_id, requestedKey, intentRow, intent);
+  const outcome = resolveMaintenanceOutcome({ committed: commit.committed, intentState: intent.state, maintenanceMode: state.maintenanceMode, requestedKey });
   return {
     checkedAt: nowIso(),
     outcome,
-    requiresAttention: outcome === "processing" || outcome === "recovery_required",
-    canStartNewIntent: !maintenanceMode && outcome !== "processing",
-    maintenanceMode,
-    intent: intentRow ? { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at } : null,
-    backup: maintenanceBackupPresentation(backup),
-    committedReset: committed ? {
-      resetId: completed?.resetId || audit?.resetId || null,
-      resetAt: completed?.resetAt || audit?.resetAt || null,
-      safetyBackupId: completed?.safetyBackupId || audit?.safetyBackupId || null,
-      safetyBackupFileId: completed?.safetyBackupFileId || backup?.external_file_id || null,
-      summary: completed?.summary || audit?.summary || null,
-    } : null,
-    currentSummary: fullResetSummary(counts),
+    requiresAttention: ["processing", "recovery_required"].includes(outcome),
+    canStartNewIntent: state.maintenanceMode ? false : outcome !== "processing",
+    maintenanceMode: state.maintenanceMode,
+    intent: maintenanceIntentPresentation(intentRow, intent),
+    backup: maintenanceBackupPresentation(commit.backup),
+    committedReset: fullResetCommittedPresentation(commit),
+    currentSummary: fullResetSummary(state.counts),
   };
 };
 

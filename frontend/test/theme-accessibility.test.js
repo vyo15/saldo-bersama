@@ -4,6 +4,7 @@ import test from "node:test";
 
 const tokenSource = await readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8");
 const componentSource = await readFile(new URL("../src/styles/components.css", import.meta.url), "utf8");
+const mainSource = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 
 const collectCssSources = async (directory) => {
   const result = [];
@@ -82,27 +83,31 @@ test("komponen memakai semantic foreground dan reduced motion", () => {
 });
 
 test("density mobile memakai token readable dan tidak mengecilkan kontrol pada layar sempit", async () => {
-  const [tokens, responsive, pages] = await Promise.all([
+  const [tokens, responsive, pages, dashboard, loginStyles] = await Promise.all([
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(tokens, /--font-size-xs:\s*11px;/);
   assert.match(tokens, /--mobile-control-height:\s*44px;/);
-  assert.match(responsive, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
-  assert.match(responsive, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
+  assert.match(dashboard, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
+  assert.match(dashboard, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
   assert.doesNotMatch(pages, /\.premium-/);
-  assert.match(pages, /\.google-login-button \{[^}]*min-height:\s*48px;/);
-  const dashboardStart = pages.indexOf(".shared-account-panel {");
-  const dashboardEnd = pages.indexOf(".shared-empty-state {", dashboardStart);
-  assert.ok(dashboardStart >= 0 && dashboardEnd > dashboardStart, "Blok dashboard desktop harus tetap ditemukan");
-  const dashboardStyles = pages.slice(dashboardStart, dashboardEnd);
+  assert.match(loginStyles, /\.google-login-button \{[^}]*min-height:\s*48px;/);
+  assert.doesNotMatch(pages, /\.shared-account-panel \{/);
+  const dashboardStart = dashboard.indexOf(".shared-account-panel {");
+  const dashboardEnd = dashboard.indexOf(".shared-empty-state {", dashboardStart);
+  assert.ok(dashboardStart >= 0 && dashboardEnd > dashboardStart, "Blok dashboard desktop harus tetap ditemukan di bundle fitur Dashboard");
+  const dashboardStyles = dashboard.slice(dashboardStart, dashboardEnd);
   assert.doesNotMatch(dashboardStyles, /font-size:\s*(?:8|9|10)px;/);
 });
 
-test("tipografi memakai system font yang tersedia dan bobot standar tanpa synthetic weight ekstrem", async () => {
-  assert.match(tokenSource, /--font-sans:\s*"Segoe UI Variable Text", "Segoe UI", Inter/);
+test("tipografi memakai Manrope canonical, fallback system, dan bobot standar tanpa synthetic weight ekstrem", async () => {
+  assert.match(mainSource, /@fontsource-variable\/manrope\/wght\.css/);
+  assert.match(tokenSource, /--font-sans:\s*"Manrope Variable", Manrope, ui-sans-serif, system-ui/);
   assert.match(tokenSource, /--font-mono:\s*"Cascadia Mono", "SFMono-Regular", Consolas/);
   assert.match(tokenSource, /--font-weight-regular:\s*400;/);
   assert.match(tokenSource, /--font-weight-medium:\s*500;/);
@@ -143,25 +148,25 @@ test("semua CSS custom property statis terdefinisi dan alias semantic yang salah
   }
 });
 
-test("gradient avatar dan login artwork menjaga focus, motion preference, dan full-screen shell", async () => {
-  const [app, pages, login] = await Promise.all([
+test("gradient avatar dan login menjaga focus, motion preference, dan full-screen shell", async () => {
+  const [app, loginStyles, login] = await Promise.all([
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/auth/LoginPage.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(app, /\.desktop-user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
   assert.match(app, /\.user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
-  assert.match(pages, /\.login-artwork-hotspot:focus-visible/);
-  assert.match(pages, /\.login-mobile-stage:focus-visible/);
-  assert.match(pages, /min-height:\s*100dvh/);
-  assert.match(pages, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
+  assert.match(loginStyles, /\.login-artwork-hotspot:focus-visible/);
+  assert.match(loginStyles, /\.login-mobile-viewport:focus-visible/);
+  assert.match(loginStyles, /min-height:\s*100dvh/);
+  assert.match(loginStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
   assert.match(login, /DESKTOP_ARTWORK\[theme\]/);
   assert.doesNotMatch(app, /\.desktop-user-avatar \{[^}]*var\(--secondary\)/s);
   assert.doesNotMatch(app, /\.user-avatar \{[^}]*var\(--secondary\)/s);
 });
 
 test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir scroll vertikal", async () => {
-  const [responsive, accountStyles, indexHtml, components, modalStyles, reset, pages] = await Promise.all([
+  const [responsive, accountStyles, indexHtml, components, modalStyles, reset, dashboard] = await Promise.all([
     readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
     Promise.all([
       readFile(new URL("../src/features/accounts/AccountsPage.module.css", import.meta.url), "utf8"),
@@ -173,14 +178,14 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
     readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/Modal.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(tokenSource, /--font-size-body:\s*16px;/);
   assert.match(components, /\.field input,\s*\n\.field select,\s*\n\.field textarea,\s*\n\.toolbar select,\s*\n\.search-field \{[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(accountStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
-  assert.match(pages, /\.shared-transaction-tools input,\s*\n\.shared-transaction-tools select \{[^}]*font-size:\s*var\(--font-size-body\);/s);
-  assert.match(pages, /\.shared-transaction-tools label \{[^}]*min-height:\s*var\(--control-height-md\);/s);
+  assert.match(dashboard, /\.shared-transaction-tools input,\s*\n\.shared-transaction-tools select \{[^}]*font-size:\s*var\(--font-size-body\);/s);
+  assert.match(dashboard, /\.shared-transaction-tools label \{[^}]*min-height:\s*var\(--control-height-md\);/s);
   assert.match(responsive, /scrollbar-width:\s*none;/);
   assert.match(responsive, /html::-webkit-scrollbar,\s*\n\s*body::-webkit-scrollbar \{[^}]*display:\s*none;/s);
   assert.match(responsive, /overflow-x:\s*hidden;/);

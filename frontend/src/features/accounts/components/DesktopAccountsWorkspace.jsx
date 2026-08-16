@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiArchive,
   FiArrowRight,
-  FiClock,
+  FiChevronLeft,
+  FiChevronRight,
+  FiCreditCard,
   FiEdit2,
   FiFileText,
   FiPieChart,
   FiTrendingUp,
-  FiCreditCard,
 } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
@@ -31,6 +32,7 @@ import styles from "./DesktopAccountsWorkspace.module.css";
 
 const DESKTOP_QUERY = "(min-width: 821px)";
 const RECENT_TRANSACTION_LIMIT = 6;
+const CAROUSEL_SWIPE_MIN_DISTANCE = 42;
 
 const useDesktopWorkspaceEnabled = () => {
   const [enabled, setEnabled] = useState(() => typeof window === "undefined" || window.matchMedia(DESKTOP_QUERY).matches);
@@ -66,16 +68,6 @@ const RecentTransactionRow = ({ item, category, selectedAccountId }) => {
   );
 };
 
-const AccountSelectorCard = ({ account, onSelect }) => (
-  <button type="button" className={styles.accountSelector} aria-label={`Pilih rekening ${account.name}`} onClick={() => onSelect(account.account_id)}>
-    <span className={styles.miniVisual}><AccountVisual account={account} carousel /></span>
-    <span className={styles.accountSelectorMeta}>
-      <span><strong>{account.name}</strong><small>{accountProviderLabel(account)}</small></span>
-      <Money value={account.balance || 0} tone={balanceTone(account.balance)} />
-    </span>
-  </button>
-);
-
 const DistributionRow = ({ account, percentage, selected, onSelect }) => (
   <button type="button" className={styles.distributionRow} aria-pressed={selected} onClick={() => onSelect(account.account_id)}>
     <span className={styles.distributionMeta}>
@@ -86,7 +78,98 @@ const DistributionRow = ({ account, percentage, selected, onSelect }) => (
   </button>
 );
 
-const SelectedAccountHero = ({ account, ownerMode, onViewTransactions, onEditAccount, onArchiveAccount }) => {
+const AccountCarousel = ({ accounts, account, onSelectAccount }) => {
+  const selectedIndex = Math.max(0, accounts.findIndex((item) => item.account_id === account.account_id));
+  const hasMultipleAccounts = accounts.length > 1;
+  const pointerStartRef = useRef(null);
+
+  const selectIndex = (index) => {
+    if (!accounts.length) return;
+    const normalizedIndex = (index + accounts.length) % accounts.length;
+    const nextAccount = accounts[normalizedIndex];
+    if (nextAccount && nextAccount.account_id !== account.account_id) onSelectAccount(nextAccount.account_id);
+  };
+
+  const handleKeyDown = (event) => {
+    if (!hasMultipleAccounts) return;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      selectIndex(selectedIndex - 1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      selectIndex(selectedIndex + 1);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      selectIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      selectIndex(accounts.length - 1);
+    }
+  };
+
+  const handlePointerDown = (event) => {
+    if (!hasMultipleAccounts || event.button > 0) return;
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerEnd = (event) => {
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!start || !hasMultipleAccounts) return;
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (Math.abs(deltaX) < CAROUSEL_SWIPE_MIN_DISTANCE || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+    selectIndex(deltaX < 0 ? selectedIndex + 1 : selectedIndex - 1);
+  };
+
+  return (
+    <div className={styles.accountCarousel} role="group" aria-label="Pilih rekening">
+      <div className={styles.carouselHeader}>
+        <div><strong>Pilih rekening</strong><small>Geser kartu untuk berpindah rekening</small></div>
+        <span>{selectedIndex + 1} dari {accounts.length}</span>
+      </div>
+      <div className={styles.carouselStage}>
+        <button type="button" className={styles.carouselArrow} aria-label="Rekening sebelumnya" disabled={!hasMultipleAccounts} onClick={() => selectIndex(selectedIndex - 1)}>
+          <FiChevronLeft aria-hidden="true" />
+        </button>
+        <div
+          className={styles.carouselViewport}
+          role="group"
+          tabIndex={hasMultipleAccounts ? 0 : -1}
+          onKeyDown={handleKeyDown}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerEnd}
+          onPointerCancel={() => { pointerStartRef.current = null; }}
+          aria-label={`Rekening ${account.name}, ${selectedIndex + 1} dari ${accounts.length}`}
+          aria-live="polite"
+        >
+          <div className={styles.heroVisual}><AccountVisual account={account} carousel /></div>
+        </div>
+        <button type="button" className={styles.carouselArrow} aria-label="Rekening berikutnya" disabled={!hasMultipleAccounts} onClick={() => selectIndex(selectedIndex + 1)}>
+          <FiChevronRight aria-hidden="true" />
+        </button>
+      </div>
+      {hasMultipleAccounts ? (
+        <div className={styles.carouselDots} aria-label="Pilih rekening berdasarkan posisi">
+          {accounts.map((item, index) => (
+            <button
+              key={item.account_id}
+              type="button"
+              className={styles.carouselDot}
+              aria-label={`Pilih rekening ${item.name}`}
+              aria-pressed={index === selectedIndex}
+              onClick={() => selectIndex(index)}
+            />
+          ))}
+        </div>
+      ) : null}
+      <p className={styles.carouselHelper}>Geser kartu atau gunakan panah, keyboard, dan titik untuk berpindah rekening.</p>
+    </div>
+  );
+};
+
+const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onViewTransactions, onEditAccount, onArchiveAccount }) => {
   const canManage = Boolean(account.can_manage ?? ownerMode);
   const readOnly = Boolean(account.read_only);
   return (
@@ -94,7 +177,7 @@ const SelectedAccountHero = ({ account, ownerMode, onViewTransactions, onEditAcc
       <div className={styles.heroCopy}>
         <div className={styles.heroTitleRow}>
           <div>
-            <p className="eyebrow">Rekening utama</p>
+            <p className="eyebrow">Rekening terpilih</p>
             <h2 id="desktop-selected-account-title">{account.name}</h2>
             <p>{accountProviderLabel(account)} · {accountOwnershipLabel(account)}</p>
           </div>
@@ -118,22 +201,10 @@ const SelectedAccountHero = ({ account, ownerMode, onViewTransactions, onEditAcc
           {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Hapus / Arsipkan</Button> : null}
         </div>
       </div>
-      <div className={styles.heroVisual} aria-hidden="true"><AccountVisual account={account} carousel /></div>
+      <AccountCarousel accounts={accounts} account={account} onSelectAccount={onSelectAccount} />
     </section>
   );
 };
-
-const OtherAccountsPanel = ({ accounts, onSelectAccount }) => (
-  <section className={styles.otherAccountsPanel} aria-labelledby="desktop-other-accounts-title">
-    <header className={styles.panelHeading}>
-      <h2 id="desktop-other-accounts-title">Rekening lain</h2>
-      <span>{accounts.length} lainnya</span>
-    </header>
-    {accounts.length ? (
-      <div className={styles.accountSelectorGrid}>{accounts.map((account) => <AccountSelectorCard key={account.account_id} account={account} onSelect={onSelectAccount} />)}</div>
-    ) : <p className={styles.supportingState}>Belum ada rekening lain untuk dipilih.</p>}
-  </section>
-);
 
 const RecentTransactionsPanel = ({ resource, items, categoryLookup, selectedAccount, onViewTransactions }) => (
   <section className={styles.transactionsPanel} aria-labelledby="desktop-recent-transactions-title">
@@ -163,10 +234,6 @@ const AccountInsights = ({ accounts, selectedAccount, totalBalance, balanceTrend
       <div className={styles.distributionList}>{distribution.map(({ account, percentage }) => <DistributionRow key={account.account_id} account={account} percentage={percentage} selected={account.account_id === selectedAccount.account_id} onSelect={onSelectAccount} />)}</div>
       <p className={styles.distributionNote}>Persentase memakai nilai absolut agar saldo negatif tetap terbaca.</p>
     </section>
-    <section className={styles.accountPulse}>
-      <span><FiClock aria-hidden="true" /></span>
-      <div><p>Rekening terpilih</p><strong>{selectedAccount.name}</strong><small>{accountProviderLabel(selectedAccount)} · {accountOwnershipLabel(selectedAccount)}</small></div>
-    </section>
   </aside>
 );
 
@@ -192,8 +259,7 @@ const DesktopAccountsWorkspace = ({ accounts, selectedAccount, ownerMode, bootst
   return (
     <div className={styles.desktopWorkspace}>
       <div className={styles.leftColumn}>
-        <SelectedAccountHero account={selectedAccount} ownerMode={ownerMode} onViewTransactions={onViewTransactions} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} />
-        <OtherAccountsPanel accounts={accounts.filter((account) => account.account_id !== selectedAccount.account_id)} onSelectAccount={onSelectAccount} />
+        <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onViewTransactions={onViewTransactions} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} />
         <RecentTransactionsPanel resource={recentTransactionsResource} items={recentTransactionsResource.data?.items || []} categoryLookup={categoryLookup} selectedAccount={selectedAccount} onViewTransactions={onViewTransactions} />
       </div>
       <AccountInsights accounts={accounts} selectedAccount={selectedAccount} totalBalance={totalBalance} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} onSelectAccount={onSelectAccount} />

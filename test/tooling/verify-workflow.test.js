@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   REQUIRED_NODE_MAJOR,
+  REQUIRED_NODE_VERSION,
   VERIFY_STEPS,
   assertCanonicalNode,
   dependencyRecoveryMessage,
@@ -11,9 +12,10 @@ import {
 
 test("verify memakai Node 24 canonical", () => {
   assert.equal(REQUIRED_NODE_MAJOR, 24);
-  assert.equal(assertCanonicalNode("v24.18.1"), 24);
+  assert.equal(REQUIRED_NODE_VERSION, "24.18.1");
+  assert.equal(assertCanonicalNode("v24.18.1"), "24.18.1");
   assert.throws(
-    () => assertCanonicalNode("v22.16.0"),
+    () => assertCanonicalNode("v24.17.0"),
     (error) => error.code === "VERIFY_NODE_VERSION" && /fnm use/.test(error.message),
   );
 });

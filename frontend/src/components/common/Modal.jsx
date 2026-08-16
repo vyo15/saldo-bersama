@@ -11,6 +11,24 @@ const SIZE_STYLES = Object.freeze({
   lg: styles.large,
 });
 
+const modalClassName = ({ sizeStyle, swipeEnabled, dragging, dismissing, size, className }) => [
+  styles.dialog, sizeStyle, swipeEnabled ? styles.swipeEnabled : "", dragging ? styles.dragging : "",
+  dismissing ? styles.dismissing : "", "modal", `modal--${size}`, className,
+].filter(Boolean).join(" ");
+
+const ModalHeader = ({ swipeEnabled, swipeHandlers, titleId, title, descriptionId, description, closeRef, closeModal, canDismiss, CloseIcon, closeLabel }) => (
+  <header className={`${styles.header} ${swipeEnabled ? styles.swipeHeader : ""} modal__header`.trim()} {...(swipeEnabled ? swipeHandlers : {})}>
+    {swipeEnabled ? <span className={styles.mobileDragHandle} aria-hidden="true" /> : null}
+    <div className={styles.heading}>
+      <h2 id={titleId}>{title}</h2>
+      {description ? <p id={descriptionId}>{description}</p> : null}
+    </div>
+    <button ref={closeRef} className={`${styles.closeButton} icon-button`} type="button" onClick={closeModal} disabled={!canDismiss} aria-label={canDismiss ? closeLabel : "Dialog sedang diproses dan belum dapat ditutup"}>
+      <CloseIcon aria-hidden="true" />
+    </button>
+  </header>
+);
+
 const Modal = ({
   open,
   title,
@@ -23,6 +41,8 @@ const Modal = ({
   className = "",
   mobileSwipeToClose = false,
   dismissible = true,
+  closeIcon: CloseIcon = FiX,
+  closeLabel = "Tutup dialog",
 }) => {
   const containerRef = useRef(null);
   const closeRef = useRef(null);
@@ -44,17 +64,16 @@ const Modal = ({
   if (!open) return null;
 
   const sizeStyle = SIZE_STYLES[size] || styles.medium;
-  const gestureClass = swipeEnabled ? styles.swipeEnabled : "";
-  const dragClass = dragging ? styles.dragging : "";
-  const dismissClass = dismissing ? styles.dismissing : "";
+  const dialogClassName = modalClassName({ sizeStyle, swipeEnabled, dragging, dismissing, size, className });
+  const handleBackdropPointerDown = (event) => { if (canDismiss && event.target === event.currentTarget) closeModal(); };
   return createPortal(
     <div
       className={`${styles.backdrop} modal-backdrop`}
       role="presentation"
-      onPointerDown={(event) => { if (canDismiss && event.target === event.currentTarget) closeModal(); }}
+      onPointerDown={handleBackdropPointerDown}
     >
       <section
-        className={`${styles.dialog} ${sizeStyle} ${gestureClass} ${dragClass} ${dismissClass} modal modal--${size} ${className}`.trim()}
+        className={dialogClassName}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -67,26 +86,7 @@ const Modal = ({
         data-mobile-swipe-to-close={swipeEnabled ? "true" : undefined}
         style={swipeEnabled ? { "--modal-drag-y": `${dragY}px` } : undefined}
       >
-        <header
-          className={`${styles.header} ${swipeEnabled ? styles.swipeHeader : ""} modal__header`.trim()}
-          {...(swipeEnabled ? swipeHandlers : {})}
-        >
-          {swipeEnabled ? <span className={styles.mobileDragHandle} aria-hidden="true" /> : null}
-          <div className={styles.heading}>
-            <h2 id={titleId}>{title}</h2>
-            {description ? <p id={descriptionId}>{description}</p> : null}
-          </div>
-          <button
-            ref={closeRef}
-            className={`${styles.closeButton} icon-button`}
-            type="button"
-            onClick={closeModal}
-            disabled={!canDismiss}
-            aria-label={canDismiss ? "Tutup dialog" : "Dialog sedang diproses dan belum dapat ditutup"}
-          >
-            <FiX aria-hidden="true" />
-          </button>
-        </header>
+        <ModalHeader swipeEnabled={swipeEnabled} swipeHandlers={swipeHandlers} titleId={titleId} title={title} descriptionId={descriptionId} description={description} closeRef={closeRef} closeModal={closeModal} canDismiss={canDismiss} CloseIcon={CloseIcon} closeLabel={closeLabel} />
         <div className={`${styles.body} modal__body`}>{children}</div>
         {footer ? <footer className={`${styles.footer} modal__footer`}>{footer}</footer> : null}
       </section>

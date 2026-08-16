@@ -141,6 +141,21 @@ test("browser test membangun fixture public sendiri dan tidak bergantung pada en
 
 
 
+test("gitignore dan pin Node menjaga line ending canonical tanpa duplikasi CLI", async () => {
+  const [gitignore, nodeVersion] = await Promise.all([
+    readFile(path.join(root, ".gitignore"), "utf8"),
+    readFile(path.join(root, ".node-version"), "utf8"),
+  ]);
+  assert.equal(gitignore.includes("\r"), false);
+  assert.equal(nodeVersion, "24.18.1\n");
+  assert.equal((gitignore.match(/^\.vercel\/$/gm) || []).length, 1);
+  assert.equal((gitignore.match(/^\.env$/gm) || []).length, 1);
+  assert.equal((gitignore.match(/^\.env\.\*$/gm) || []).length, 1);
+  assert.equal((gitignore.match(/^!\.env\.example$/gm) || []).length, 1);
+  assert.equal((gitignore.match(/^\.vercel$/gm) || []).length, 0);
+  assert.equal((gitignore.match(/^\.env\*$/gm) || []).length, 0);
+});
+
 test("laporan npm audit lokal diabaikan validator dan tidak pernah masuk clean ZIP", async () => {
   const auditName = "npm-audit-20991231.json";
   const gitignore = await readFile(path.join(root, ".gitignore"), "utf8");

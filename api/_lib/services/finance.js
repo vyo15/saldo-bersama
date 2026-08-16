@@ -67,22 +67,29 @@ const transactionCapabilities = (context, transaction, { periodOpen }) => {
   };
 };
 
+const assertEnvelopeCompatibility = (row, context, transaction) => {
+  if (!row) throw appError("INVALID_ENVELOPE", "Kantong tidak ditemukan atau tidak aktif.", 400);
+  if (transaction.transaction_date < row.period_start || transaction.transaction_date > row.period_end) throw appError("ENVELOPE_DATE_MISMATCH", "Tanggal transaksi berada di luar periode kantong.", 409);
+  if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Kantong dan rekening transaksi harus memiliki kepemilikan ledger yang sama.", 409);
+  if (context.actor.role !== "owner" && row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat memakai jatah Bersama atau jatah miliknya sendiri.", 403);
+};
+
+const assertEnvelopeCapacity = (row, transaction, remaining) => {
+  if (transaction.amount <= remaining) return;
+  if (row.overspend_policy === "block") throw appError("ENVELOPE_LIMIT", "Nominal melebihi sisa kantong.", 409, { remainingAmount: remaining });
+  if (row.overspend_policy === "confirm" && !transaction.overspend_reason) throw appError("OVERSPEND_REASON_REQUIRED", "Alasan melebihi alokasi wajib diisi.", 409, { remainingAmount: remaining });
+};
+
 const validateEnvelope = async (db, context, transaction, { excludeTransactionId = null } = {}) => {
   if (transaction.transaction_type !== "expense" || !transaction.envelope_period_id) return;
   const row = await db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.overspend_policy,r.source_account_id
     FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
     WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [transaction.envelope_period_id]);
-  if (!row) throw appError("INVALID_ENVELOPE", "Kantong tidak ditemukan atau tidak aktif.", 400);
-  if (transaction.transaction_date < row.period_start || transaction.transaction_date > row.period_end) throw appError("ENVELOPE_DATE_MISMATCH", "Tanggal transaksi berada di luar periode kantong.", 409);
-  if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Kantong dan rekening transaksi harus memiliki kepemilikan ledger yang sama.", 409);
-  if (context.actor.role !== "owner" && row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat memakai jatah Bersama atau jatah miliknya sendiri.", 403);
+  assertEnvelopeCompatibility(row, context, transaction);
   const usage = await db.one(`SELECT COALESCE(SUM(amount),0) AS used FROM transactions
     WHERE status='active' AND transaction_type='expense' AND envelope_period_id=? ${excludeTransactionId ? "AND transaction_id<>?" : ""}`, [row.envelope_period_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
   const remaining = Number(row.allocated_amount) - Number(row.reserved_amount) - Number(usage?.used || 0);
-  if (transaction.amount > remaining) {
-    if (row.overspend_policy === "block") throw appError("ENVELOPE_LIMIT", "Nominal melebihi sisa kantong.", 409, { remainingAmount: remaining });
-    if (row.overspend_policy === "confirm" && !transaction.overspend_reason) throw appError("OVERSPEND_REASON_REQUIRED", "Alasan melebihi alokasi wajib diisi.", 409, { remainingAmount: remaining });
-  }
+  assertEnvelopeCapacity(row, transaction, remaining);
 };
 
 const duplicateTransaction = async (db, transaction, excludeTransactionId = null) => db.one(`SELECT transaction_id FROM transactions

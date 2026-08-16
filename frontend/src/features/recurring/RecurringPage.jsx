@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -17,9 +17,11 @@ import {
   useRecurringPaymentActions,
   useRecurringRuleActions,
 } from "./useRecurringActions.js";
-import { CreateRuleModal, EditRuleModal, PaymentModal, RecurringConfirmations } from "./RecurringDialogs.jsx";
-import { SchedulePeriodSection, ScheduleSummary, scheduleMatchesFilter } from "./RecurringSchedule.jsx";
+import { SchedulePeriodSection, ScheduleSummary } from "./RecurringSchedule.jsx";
+import { scheduleMatchesFilter } from "./recurringPresentation.js";
 import styles from "./RecurringPage.module.css";
+
+const RecurringDialogLayer = lazy(() => import("./RecurringDialogLayer.jsx"));
 
 const activeAccounts = (bootstrap) => bootstrap?.accounts?.filter((item) => item.status === "active") || [];
 const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === kind) || [];
@@ -32,6 +34,32 @@ const eligiblePaymentEnvelopes = (items, payment, account, user) => {
     && (!item.source_account_id || item.source_account_id === account.account_id));
   return filterByAssigneeAccess(filterByOwnership(active, account), user);
 };
+
+const recurringViewData = ({ resource, filter, bootstrap, rules, payments, envelopeResource, user }) => {
+  const allItems = resource.data?.items || [];
+  const accounts = activeAccounts(bootstrap);
+  const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
+  const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
+  return {
+    allItems,
+    filteredItems: allItems.filter((item) => scheduleMatchesFilter(item, filter)),
+    accounts,
+    categories: activeCategories(bootstrap, rules.form.kind),
+    editCategories: activeCategories(bootstrap, rules.editRule?.kind),
+    paymentAccounts,
+    paymentEnvelopes: eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount, bootstrap?.user || user),
+  };
+};
+
+const recurringDialogOpen = ({ rules, payments, recovery }) => Boolean(
+  rules.createOpen
+  || rules.editRule
+  || rules.archiveRuleTarget
+  || payments.payment.item
+  || payments.reverseTarget
+  || recovery.skipTarget
+  || recovery.restoreOccurrenceTarget,
+);
 
 const RecurringPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
@@ -49,21 +77,14 @@ const RecurringPage = () => {
   const { openPayment } = payments;
   const recovery = useRecurringOccurrenceRecovery(shared);
   const envelopeResource = useApiResource("envelopes.list", { period }, { enabled: payments.payment.item?.kind === "expense" });
-  const accounts = activeAccounts(bootstrap);
-  const categories = activeCategories(bootstrap, rules.form.kind);
-  const editCategories = activeCategories(bootstrap, rules.editRule?.kind);
-  const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
-  const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
-  const paymentEnvelopes = eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount, bootstrap?.user || user);
+  const view = recurringViewData({ resource, filter, bootstrap, rules, payments, envelopeResource, user });
   const attentionOccurrenceId = useRecurringAttention({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment });
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
-  const allItems = resource.data?.items || [];
-  const filteredItems = allItems.filter((item) => scheduleMatchesFilter(item, filter));
+  const { allItems, filteredItems, accounts, categories, editCategories, paymentAccounts, paymentEnvelopes } = view;
   const actions = { openPayment: payments.openPayment, openReverse: payments.openReverse, openSkip: recovery.openSkip, openRestore: recovery.openRestore, openRuleEditor: rules.openRuleEditor, openArchive: rules.openArchive };
-  const confirmations = { archiveRuleTarget: rules.archiveRuleTarget, setArchiveRuleTarget: rules.setArchiveRuleTarget, editState: rules.editState, applyRuleLifecycle: rules.applyRuleLifecycle, skipTarget: recovery.skipTarget, setSkipTarget: recovery.setSkipTarget, skipMutation: recovery.skipMutation, skipError: recovery.skipError, skipOccurrence: recovery.skipOccurrence, restoreOccurrenceTarget: recovery.restoreOccurrenceTarget, setRestoreOccurrenceTarget: recovery.setRestoreOccurrenceTarget, restoreOccurrenceMutation: recovery.restoreOccurrenceMutation, restoreOccurrenceError: recovery.restoreOccurrenceError, restoreSkippedOccurrence: recovery.restoreSkippedOccurrence, reverseTarget: payments.reverseTarget, setReverseTarget: payments.setReverseTarget, reverseState: payments.reverseState, reversePayment: payments.reversePayment };
   const headerActions = <div className={styles.headerActions}><label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => { setPeriod(event.target.value); setFilter("all"); setKind("expense"); setExpandedId(null); }} /></label>{user?.role === "owner" ? <Button variant="primary" icon={FiPlus} onClick={rules.openCreate}>Tambah jadwal</Button> : null}</div>;
 
   return (
@@ -89,10 +110,11 @@ const RecurringPage = () => {
         accounts={bootstrap?.accounts || []}
         categories={bootstrap?.categories || []}
       />
-      <CreateRuleModal open={rules.createOpen} close={rules.closeCreate} form={rules.form} setForm={rules.setForm} categories={categories} accounts={accounts} createRule={rules.createRule} createMutation={rules.createMutation} message={rules.message} />
-      <PaymentModal payment={payments.payment} setPayment={payments.setPayment} paymentState={payments.paymentState} paymentMutation={payments.paymentMutation} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} completeOccurrence={payments.completeOccurrence} />
-      <EditRuleModal editRule={rules.editRule} setEditRule={rules.setEditRule} editState={rules.editState} saveRule={rules.saveRule} editCategories={editCategories} accounts={accounts} />
-      <RecurringConfirmations {...confirmations} />
+      {recurringDialogOpen({ rules, payments, recovery }) ? (
+        <Suspense fallback={null}>
+          <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={accounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} />
+        </Suspense>
+      ) : null}
     </div>
   );
 };

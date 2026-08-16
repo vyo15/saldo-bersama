@@ -11,6 +11,18 @@ import {
 
 export const DEFAULT_VERCEL_PROJECT = "saldo-bersama";
 
+export const normalizeVercelGitignore = async (projectRoot) => {
+  const gitignorePath = path.join(projectRoot, ".gitignore");
+  let source;
+  try { source = await readFile(gitignorePath, "utf8"); } catch { return false; }
+  const lines = source.replace(/\r\n?/g, "\n").split("\n");
+  const cleaned = lines.filter((line) => line !== ".vercel" && line !== ".env*").join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
+  if (cleaned === source) return false;
+  await writeFile(gitignorePath, cleaned, "utf8");
+  return true;
+};
+
+
 const localEnvironmentState = async (envPath) => {
   const cleaned = await cleanEnvironmentFile({ file: envPath, allowMissing: true });
   if (!cleaned.exists) return { exists: false, source: "", complete: false, missing: [], invalid: [], removed: [] };
@@ -68,6 +80,7 @@ export const ensureVercelProject = async ({ cwd, projectName, runner }) => {
     assertSuccessful(result, "VERCEL_LINK_FAILED", "Project Vercel tidak berhasil dihubungkan.");
   }
 
+  await normalizeVercelGitignore(cwd);
   result = await runner({ cwd, args: ["env", "ls", "development", "--no-color"] });
   assertSuccessful(
     result,
@@ -151,6 +164,7 @@ export const ensureDevelopmentEnvironment = async ({
     console.log("Environment Development terbaru berhasil ditarik dan disimpan sebagai .env.local.");
     return { source: "vercel-development", envPath, missing: [], invalid: [], removed: cleaned.removed };
   } finally {
+    await normalizeVercelGitignore(projectRoot).catch(() => false);
     await rm(temporaryPath, { force: true }).catch(() => undefined);
     const cleanedLocal = await cleanEnvironmentFile({ file: envPath, allowMissing: true });
     if (!local.exists && cleanedLocal.exists && !Object.keys(parseEnvironmentText(cleanedLocal.text)).length) {

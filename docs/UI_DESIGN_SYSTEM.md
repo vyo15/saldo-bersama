@@ -18,11 +18,20 @@ Status source saat dokumen ini diperbarui: shared primitive sudah memakai CSS Mo
 | Area | Canonical source |
 |---|---|
 | Warna, spacing, radius, shadow, motion | `frontend/src/styles/tokens.css` |
+| Tipografi aplikasi | `@fontsource-variable/manrope/wght.css` di `frontend/src/main.jsx` + `--font-sans` di `frontend/src/styles/tokens.css` |
 | Reset dan semantic global defaults | `frontend/src/styles/reset.css` |
 | Shared UI primitive | `frontend/src/components/common/` |
 | Layout aplikasi | `frontend/src/layouts/` dan `frontend/src/styles/app.css` |
 | Responsive/PWA safe area | `frontend/src/styles/responsive.css` selama migrasi; feature style baru harus colocated |
 | Keputusan toolkit | `docs/adr/0009-mantine-css-modules-ui-foundation.md` |
+
+## Tipografi canonical
+
+- Font utama seluruh UI adalah **Manrope Variable** dari dependency `@fontsource-variable/manrope` dan di-load satu kali pada `frontend/src/main.jsx`. Asset font dibundle oleh Vite dan dilayani dari origin aplikasi sendiri.
+- `--font-sans` pada `frontend/src/styles/tokens.css` adalah satu-satunya sumber family sans-serif aplikasi. Page, feature, shared component, form, button, input, dan navigasi baru wajib mewarisi font global atau memakai `var(--font-sans)` bila deklarasi eksplisit memang diperlukan.
+- Jangan menambahkan Google Fonts/CDN, `@import` font eksternal, atau `font-family` sans-serif hardcoded per komponen. Fallback system pada `--font-sans` hanya digunakan bila asset Manrope gagal dimuat.
+- Bobot canonical tetap memakai token `--font-weight-regular` 400, `--font-weight-medium` 500, `--font-weight-semibold` 600, dan `--font-weight-bold` 700. Manrope Variable menyediakan rentang weight yang mencakup seluruh token tersebut.
+- `--font-mono` tetap khusus untuk data teknis/diagnostik yang memang membutuhkan monospace. Nominal finansial tetap memakai font utama dengan `font-variant-numeric: tabular-nums` melalui pola `.money`.
 
 ## Palet warna canonical
 
@@ -194,9 +203,9 @@ Adopsi Mantine harus dilakukan bertahap:
 ## Login dan pengguna
 
 - Login desktop memakai artwork approved sebagai visual layer utuh agar komposisi light/dark konsisten dengan desain referensi. Artwork mempertahankan rasio 1672×941 dan ditampilkan tanpa menggambar ulang ilustrasi dengan CSS. Area autentikasi tetap menampilkan satu host Google Identity Services canonical di atas artwork; error konfigurasi/login dan retry hanya muncul saat diperlukan.
-- Login mobile ≤820px memakai tiga slide total: onboarding “Rajin menabung, bijak belanja”, onboarding “Atur anggaran, hindari boros”, lalu slide login. Artwork mempertahankan rasio 941×1672, tombol `Lanjut` menggunakan hotspot semantik, swipe horizontal dan ArrowLeft/ArrowRight tersedia, dan `prefers-reduced-motion` mematikan transisi slide.
+- Login mobile ≤820px memakai empat halaman: tiga onboarding (“Rajin menabung, bijak belanja”, “Atur anggaran, hindari boros”, “Keuangan bersama, tetap jelas”) lalu halaman login khusus. Onboarding memakai UI React semantik dengan hero card clean, aset transparan terpisah, white space yang cukup, serta maksimal tiga ilustrasi per scene; tidak memakai poster full-page 941×1672 dan tidak menampilkan pill fitur tambahan di bawah deskripsi. Pada viewport mobile normal 320–430px termasuk tinggi pendek yang didukung, setiap halaman harus muat dalam satu layar tanpa scroll vertikal internal. Swipe horizontal mengikuti pointer secara real time, `Lanjut`/`Lewati`/pagination dan ArrowLeft/ArrowRight tetap tersedia, serta `prefers-reduced-motion` mematikan transisi yang tidak esensial.
 - Artwork tidak boleh menggantikan kontrol autentikasi. Tombol Google tetap dirender oleh Google Identity Services/Firebase flow existing. Karena Google membatasi tampilan provider, area tombol boleh berbeda sedikit dari artwork referensi; jangan menyamarkan iframe provider dengan tombol palsu.
-- Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px. Theme toggle mobile adalah kontrol DOM asli yang ditempatkan di atas artwork login; artwork onboarding mobile yang disetujui saat ini tetap light agar pixel-match dengan referensi.
+- Halaman login keempat mempertahankan provider Google canonical, logo project `/brand/saldo-bersama-mark.png`, creator link aman, dan efek uang jatuh hanya ketika halaman login aktif. Progress bar onboarding dan tombol back tidak ditampilkan pada halaman login agar fokus tetap pada autentikasi. Provider Google mobile meminta ukuran `medium` dengan host responsif hingga 300px agar label tetap utuh. Host hanya berfungsi sebagai layout transparan: tanpa background, border, radius, shadow, atau clipping tambahan; iframe provider tidak boleh di-resize paksa. Setelah iframe final selesai `load`, placeholder/button inline provider harus dibuang agar hanya satu kontrol Google final yang terlihat. Untuk menghindari perubahan bentuk inline-button → iframe yang terlihat oleh pengguna, provider harus dipreload ketika halaman login masih off-screen. Host baru fade-in setelah iframe final Google selesai dimuat; bila pengguna mencapai halaman 4 sebelum provider siap, tampilkan state netral `Menyiapkan login…` tanpa tombol palsu atau overlay. Perpindahan slide tidak boleh memicu render ulang provider yang sudah siap. Label “Selamat datang” tampil sederhana tanpa garis eyebrow dekoratif. Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px. Theme toggle mobile adalah kontrol DOM asli pada header; onboarding wajib konsisten pada light/dark theme tanpa mengganti auth flow.
 - Halaman Akses pengguna tetap Administrator-only. Daftar memakai card profil yang mudah dipindai, search nama/email, filter role, dan Modal canonical untuk tambah/ubah. Destructive member action tetap memakai confirmation guarded dan backend authorization.
 - `UserAvatar` memakai foto Google hanya bila URL profil tersedia dari session/read model tepercaya. Jika `users.list` tidak menyediakan foto pengguna lain, gunakan initials fallback; jangan mengambil foto dari Google Search atau mengarang URL.
 - Aktivitas pengguna adalah audit-friendly view atas ledger existing berdasarkan `created_by`, bukan ledger baru dan bukan ukuran kontribusi finansial. Copy wajib menyebutnya sebagai pencatat, bukan pembayar/pemakai.
@@ -231,3 +240,5 @@ Adopsi Mantine harus dilakukan bertahap:
 - Route sekunder pada navigasi mobile harus memberi orientasi aktif melalui menu `Lainnya` dan `aria-current`.
 - Pengurangan informasi pada mobile hanya boleh melalui progressive disclosure; data atau aksi tidak boleh dihapus tanpa pengganti yang dapat dijangkau.
 - Perubahan dashboard/navigation wajib diuji pada batas 820/821 dan 940/941 CSS pixel, selain viewport ponsel, tablet, dan desktop umum.
+
+- Tombol Google mobile tetap dirender native oleh Google Identity Services dengan `size: medium` dan host maksimal 300px yang dicenter agar provider memakai generic/non-personalized button dengan label utuh. Desktop tetap memakai ukuran `large`. Jangan memaksa `iframe` Google dengan `width: 100% !important`, jangan menaruh tombol custom transparan/overlay di atas provider, dan jangan mengubah flow autentikasi hanya untuk meniru visual tertentu.

@@ -356,28 +356,40 @@ const presentLastDelivery = (row) => row ? {
   createdAt: row.created_at,
 } : null;
 
+const rowAt = (rows, index) => {
+  if (index < 0) return null;
+  const group = rows[index];
+  return group && group[0] ? group[0] : null;
+};
+
+const notificationDevicePresentation = (current, endpointValue, actorId) => {
+  if (!endpointValue) return { state: "not_subscribed", registered: false, updatedAt: null };
+  return deviceStateFromSubscription(current, actorId);
+};
+
+const notificationStatusFromRows = ({ resultRows, plan, actorId, endpointValue, configuration }) => {
+  const current = rowAt(resultRows, plan.currentIndex);
+  const activeDevices = rowAt(resultRows, plan.activeIndex);
+  const lastDelivery = rowAt(resultRows, plan.deliveryIndex);
+  const lastTest = rowAt(resultRows, plan.successIndex);
+  const failureRow = lastTest ? null : rowAt(resultRows, plan.failureIndex);
+  return {
+    server: { configured: configuration.configured, ready: configuration.ready, code: configuration.code },
+    currentDevice: notificationDevicePresentation(current, endpointValue, actorId),
+    activeDeviceCount: Number(activeDevices ? activeDevices.count : 0),
+    lastTestAt: lastTest ? lastTest.timestamp : null,
+    lastTestFailure: presentLastTestFailure(failureRow),
+    lastDelivery: presentLastDelivery(lastDelivery),
+  };
+};
+
 export const notificationStatus = async (db, context) => {
   const configuration = webPushConfigurationStatus();
   const actorId = context.actor.user_id;
   const endpointValue = String(context.payload?.endpoint || "").trim();
   const plan = notificationStatusStatements(actorId, endpointValue);
   const resultRows = await readBatchRows(db, plan.statements);
-  const current = plan.currentIndex >= 0 ? resultRows[plan.currentIndex]?.[0] || null : null;
-  const currentDevice = endpointValue
-    ? deviceStateFromSubscription(current, actorId)
-    : { state: "not_subscribed", registered: false, updatedAt: null };
-  const activeDevices = resultRows[plan.activeIndex]?.[0] || null;
-  const lastDelivery = resultRows[plan.deliveryIndex]?.[0] || null;
-  const lastTest = plan.successIndex >= 0 ? resultRows[plan.successIndex]?.[0] || null : null;
-  const failureRow = lastTest || plan.failureIndex < 0 ? null : resultRows[plan.failureIndex]?.[0] || null;
-  return {
-    server: { configured: configuration.configured, ready: configuration.ready, code: configuration.code },
-    currentDevice,
-    activeDeviceCount: Number(activeDevices?.count || 0),
-    lastTestAt: lastTest?.timestamp || null,
-    lastTestFailure: presentLastTestFailure(failureRow),
-    lastDelivery: presentLastDelivery(lastDelivery),
-  };
+  return notificationStatusFromRows({ resultRows, plan, actorId, endpointValue, configuration });
 };
 
 const testRateLimit = async (db, actorId) => {

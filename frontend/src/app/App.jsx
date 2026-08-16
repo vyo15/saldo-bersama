@@ -2,9 +2,9 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import LoadingScreen from "../components/feedback/LoadingScreen.jsx";
 import RequireAuth from "../features/auth/RequireAuth.jsx";
-import LoginPage from "../features/auth/LoginPage.jsx";
 import AppShell from "../layouts/AppShell.jsx";
 
+const LoginPage = lazy(() => import("../features/auth/LoginPage.jsx"));
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage.jsx"));
 const TransactionsPage = lazy(() => import("../features/transactions/TransactionsPage.jsx"));
 const BudgetsPage = lazy(() => import("../features/budgets/BudgetsPage.jsx"));
@@ -34,7 +34,7 @@ const routeElement = (Component) => <Suspense fallback={<LoadingScreen />}><Comp
 
 const App = () => (
   <Routes>
-    <Route path="/login" element={<LoginPage />} />
+    <Route path="/login" element={routeElement(LoginPage)} />
     <Route element={<RequireAuth />}>
       <Route element={<AppShell />}>
         <Route index element={routeElement(DashboardPage)} />

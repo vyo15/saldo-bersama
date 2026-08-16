@@ -36,66 +36,62 @@ export const integrityBaseStatements = () => [
     ORDER BY a.account_id,t.transaction_date,t.created_at,t.transaction_id`, args: [] },
 ];
 
-export const integrityIssuesFromBaseRows = (baseRows) => {
-  const issues = [];
-  const [
-    fk = [],
-    duplicates = [],
-    invalidTransfer = [],
-    brokenOwnership = [],
-    invalidEnvelopeAssignee = [],
-    linkedCancelled = [],
-    pushOwnershipMismatchRows = [],
-    inactiveUserSubscriptionRows = [],
-    terminalQueueWithRetryableDeliveryRows = [],
-    protectedAccountLedgerRows = [],
-  ] = baseRows;
-
+const appendSimpleIntegrityIssues = (issues, rows) => {
+  const [fk = [], duplicates = [], invalidTransfer = [], brokenOwnership = [], invalidEnvelopeAssignee = [], linkedCancelled = []] = rows;
   for (const row of fk) issues.push({ code: "FOREIGN_KEY", table: row.table, rowid: row.rowid, parent: row.parent });
-  if (duplicates.length) issues.push({ code: "DUPLICATE_TRANSACTION_IDEMPOTENCY", count: duplicates.length });
-  if (invalidTransfer.length) issues.push({ code: "INVALID_TRANSFER", count: invalidTransfer.length });
-  if (brokenOwnership.length) issues.push({ code: "BROKEN_ACCOUNT_OWNERSHIP", count: brokenOwnership.length });
-  if (invalidEnvelopeAssignee.length) issues.push({ code: "INVALID_ENVELOPE_ASSIGNEE", count: invalidEnvelopeAssignee.length });
-  if (linkedCancelled.length) issues.push({ code: "RECURRING_ACTUAL_MISMATCH", count: linkedCancelled.length });
+  const counts = [
+    [duplicates, "DUPLICATE_TRANSACTION_IDEMPOTENCY"],
+    [invalidTransfer, "INVALID_TRANSFER"],
+    [brokenOwnership, "BROKEN_ACCOUNT_OWNERSHIP"],
+    [invalidEnvelopeAssignee, "INVALID_ENVELOPE_ASSIGNEE"],
+    [linkedCancelled, "RECURRING_ACTUAL_MISMATCH"],
+  ];
+  for (const [items, code] of counts) if (items.length) issues.push({ code, count: items.length });
+};
 
-  const pushOwnershipMismatchCount = Number(pushOwnershipMismatchRows[0]?.count || 0);
-  if (pushOwnershipMismatchCount > 0) issues.push({ code: "PUSH_DELIVERY_OWNERSHIP_MISMATCH", count: pushOwnershipMismatchCount });
-  const inactiveUserSubscriptionCount = Number(inactiveUserSubscriptionRows[0]?.count || 0);
-  if (inactiveUserSubscriptionCount > 0) issues.push({ code: "PUSH_SUBSCRIPTION_INACTIVE_USER", count: inactiveUserSubscriptionCount });
-  const terminalQueueWithRetryableDeliveryCount = Number(terminalQueueWithRetryableDeliveryRows[0]?.count || 0);
-  if (terminalQueueWithRetryableDeliveryCount > 0) issues.push({ code: "PUSH_QUEUE_TERMINAL_WITH_RETRYABLE_DELIVERY", count: terminalQueueWithRetryableDeliveryCount });
+const appendPushIntegrityIssues = (issues, rows) => {
+  const [ownership = [], inactive = [], terminal = []] = rows;
+  const counts = [
+    [ownership, "PUSH_DELIVERY_OWNERSHIP_MISMATCH"],
+    [inactive, "PUSH_SUBSCRIPTION_INACTIVE_USER"],
+    [terminal, "PUSH_QUEUE_TERMINAL_WITH_RETRYABLE_DELIVERY"],
+  ];
+  for (const [items, code] of counts) {
+    const count = Number(items[0]?.count || 0);
+    if (count > 0) issues.push({ code, count });
+  }
+};
 
+const protectedAccountsFromRows = (rows) => {
   const protectedAccounts = new Map();
-  for (const row of protectedAccountLedgerRows) {
+  for (const row of rows) {
     const accountId = row.protected_account_id;
     if (!accountId) continue;
-    if (!protectedAccounts.has(accountId)) {
-      protectedAccounts.set(accountId, {
-        account: {
-          account_id: accountId,
-          initial_balance: Number(row.protected_initial_balance || 0),
-          initial_balance_date: row.protected_initial_balance_date,
-        },
-        transactions: [],
-      });
-    }
-    if (row.transaction_id) {
-      protectedAccounts.get(accountId).transactions.push({
-        transaction_id: row.transaction_id,
-        transaction_date: row.transaction_date,
-        transaction_type: row.transaction_type,
-        source_account_id: row.source_account_id,
-        destination_account_id: row.destination_account_id,
-        amount: row.amount,
-        created_at: row.created_at,
-        status: row.status,
-      });
-    }
+    if (!protectedAccounts.has(accountId)) protectedAccounts.set(accountId, {
+      account: { account_id: accountId, initial_balance: Number(row.protected_initial_balance || 0), initial_balance_date: row.protected_initial_balance_date },
+      transactions: [],
+    });
+    if (row.transaction_id) protectedAccounts.get(accountId).transactions.push({
+      transaction_id: row.transaction_id, transaction_date: row.transaction_date, transaction_type: row.transaction_type,
+      source_account_id: row.source_account_id, destination_account_id: row.destination_account_id, amount: row.amount,
+      created_at: row.created_at, status: row.status,
+    });
   }
-  for (const { account, transactions } of protectedAccounts.values()) {
+  return protectedAccounts;
+};
+
+const appendBalanceIntegrityIssues = (issues, rows) => {
+  for (const { account, transactions } of protectedAccountsFromRows(rows).values()) {
     const negative = firstNegativeBalanceFromRows(account, transactions, { fromDate: account.initial_balance_date });
     if (negative) issues.push({ code: "NEGATIVE_BALANCE", accountId: account.account_id, date: negative.date, balance: negative.balance });
   }
+};
+
+export const integrityIssuesFromBaseRows = (baseRows) => {
+  const issues = [];
+  appendSimpleIntegrityIssues(issues, baseRows.slice(0, 6));
+  appendPushIntegrityIssues(issues, baseRows.slice(6, 9));
+  appendBalanceIntegrityIssues(issues, baseRows[9] || []);
   return issues;
 };
 

@@ -1,0 +1,363 @@
+.composer {
+  width: min(100%, 42rem);
+  margin: 0 auto;
+  padding: 1rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+  display: grid;
+  gap: .875rem;
+}
+
+.section,
+.destinationFieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: .4rem;
+}
+
+.sectionLabel {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
+}
+
+.sourceCard {
+  min-width: 0;
+  min-height: 4.35rem;
+  position: relative;
+  padding: .62rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--mobile-card-radius);
+  display: grid;
+  grid-template-columns: 2.65rem minmax(0, 1fr) 1.25rem;
+  align-items: center;
+  gap: .7rem;
+  background: color-mix(in srgb, var(--surface) 90%, var(--primary-soft) 10%);
+  box-shadow: var(--shadow-control);
+}
+
+.sourceCard:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.sourceCard select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.accountIcon,
+.destinationIcon,
+.dateIcon {
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.accountIcon {
+  width: 2.65rem;
+  height: 2.65rem;
+  border-radius: .8rem;
+}
+
+.accountIcon svg,
+.destinationIcon svg,
+.dateIcon svg { width: 1.15rem; height: 1.15rem; }
+
+.accountCopy,
+.dateCopy {
+  min-width: 0;
+  display: grid;
+  gap: .13rem;
+}
+
+.accountCopy strong,
+.dateCopy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountCopy small,
+.dateCopy small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-muted);
+}
+
+.destinationScroller {
+  min-width: 0;
+  margin-inline: -.1rem;
+  padding: .1rem;
+  display: flex;
+  gap: .55rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.destinationScroller::-webkit-scrollbar { display: none; }
+
+.destinationOption {
+  min-width: min(10.25rem, 46vw);
+  flex: 1 0 min(10.25rem, 46vw);
+  position: relative;
+  cursor: pointer;
+}
+
+.destinationOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.destinationCard {
+  min-height: 4rem;
+  padding: .55rem .62rem;
+  border: 1px solid var(--border);
+  border-radius: .9rem;
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr);
+  align-items: center;
+  gap: .55rem;
+  background: var(--surface);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--text) 5%, transparent);
+  transition: border-color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing), box-shadow var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
+}
+
+.destinationOption:hover .destinationCard { transform: translateY(-1px); }
+
+.destinationOption input:focus-visible + .destinationCard {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.destinationOption input:checked + .destinationCard {
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 50%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent), var(--shadow-control);
+}
+
+.destinationIcon {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: .7rem;
+}
+
+.emptyDestination {
+  padding: .75rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: .85rem;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.labelRow > span:last-child {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  width: 100%;
+  min-height: 4.25rem;
+  resize: none;
+  padding: .75rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--mobile-card-radius);
+  outline: 0;
+  background: var(--input);
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.45;
+  box-shadow: var(--shadow-control);
+}
+
+.note:hover { border-color: var(--border-strong); }
+.note:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
+
+.amountCard {
+  min-width: 0;
+  padding: .55rem .55rem .55rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--mobile-card-radius);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3rem;
+  align-items: center;
+  gap: .7rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+}
+
+.amountCard:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.amountInputWrap { min-width: 0; position: relative; }
+
+.currency {
+  position: absolute;
+  left: 0;
+  top: 1.35rem;
+  z-index: 1;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: var(--font-weight-bold);
+  pointer-events: none;
+}
+
+.amountInputWrap :global([data-ui="money-input"]) { gap: .12rem; }
+.amountInputWrap :global([data-ui="money-input"] > span:first-child) { color: var(--text-muted); font-size: var(--font-size-xs); }
+.amountInputWrap :global([data-ui="money-input"] input) {
+  min-height: 2.1rem;
+  padding: 0 0 0 2rem;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: clamp(1.45rem, 7vw, 2rem);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -.035em;
+}
+.amountInputWrap :global([data-ui="money-input"] input:focus-visible) { outline: 0; border: 0; box-shadow: none; }
+.amountInputWrap :global([data-ui="money-input"] > small:first-of-type) { display: none; }
+.amountInputWrap :global(.field__error) { margin-top: .15rem; font-size: var(--font-size-xs); }
+
+.submitButton {
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: var(--shadow-primary-control);
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing), opacity var(--motion-fast) var(--motion-easing);
+}
+
+.submitButton:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+.submitButton:active:not(:disabled) { transform: scale(.96); }
+.submitButton:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.submitButton:disabled { cursor: wait; opacity: .5; }
+.submitButton svg { width: 1.2rem; height: 1.2rem; }
+
+.dateCard {
+  min-height: 3.7rem;
+  position: relative;
+  padding: .55rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: .9rem;
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  align-items: center;
+  gap: .65rem;
+  background: color-mix(in srgb, var(--surface-soft) 72%, var(--surface));
+}
+
+.dateCard:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
+.dateIcon { width: 2.4rem; height: 2.4rem; border-radius: .7rem; }
+.dateCard input { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; opacity: 0; cursor: pointer; }
+
+.impact {
+  padding: .75rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
+  border-radius: .95rem;
+  display: grid;
+  gap: .6rem;
+  background: color-mix(in srgb, var(--primary-soft) 48%, var(--surface));
+}
+
+.impactHead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.impactHead strong { color: var(--primary); }
+
+.impactRoute {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1rem minmax(0, 1fr);
+  align-items: center;
+  gap: .45rem;
+}
+
+.impactRoute > span { min-width: 0; display: grid; gap: .18rem; }
+.impactRoute > span:last-child { text-align: right; }
+.impactRoute small,
+.impactRoute b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.impactRoute small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.impactRoute b { color: var(--text); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
+.impactRoute > svg { width: .9rem; height: .9rem; color: var(--primary); }
+.impact p,
+.guard { margin: 0; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.5; }
+
+.warning,
+.failure {
+  padding: .7rem .75rem;
+  border-radius: .85rem;
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.warning {
+  border: 1px solid color-mix(in srgb, var(--warning) 24%, var(--border));
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.warning svg { width: 1rem; height: 1rem; flex: 0 0 auto; margin-top: .05rem; }
+.failure { border: 1px solid color-mix(in srgb, var(--negative) 24%, var(--border)); background: var(--negative-soft); color: var(--negative); }
+.error { color: var(--negative); font-size: var(--font-size-xs); line-height: 1.4; }
+
+@media (max-width: 25rem) {
+  .composer { padding-inline: .75rem; }
+  .destinationOption { min-width: min(9.4rem, 66vw); flex-basis: min(9.4rem, 66vw); }
+  .impactRoute { grid-template-columns: minmax(0, 1fr) .8rem minmax(0, 1fr); gap: .3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .destinationCard,
+  .submitButton { transition: none; }
+}

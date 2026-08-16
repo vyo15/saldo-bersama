@@ -81,7 +81,7 @@ const initializeGoogleIdentityOnce = (identity) => {
   return state;
 };
 
-export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onError, signal }) => {
+export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onError, signal, compact = false }) => {
   if (!element || signal?.aborted) return () => {};
   const identity = await waitForGoogleIdentity(8000, signal);
   if (signal?.aborted) return () => {};
@@ -92,10 +92,10 @@ export const renderGoogleLoginButton = async ({ element, onFirebaseToken, onErro
   identity.renderButton(element, {
     type: "standard",
     theme: "outline",
-    size: "large",
+    size: compact ? "medium" : "large",
     shape: "pill",
     text: "continue_with",
-    width: Math.min(360, element.clientWidth || 320),
+    width: Math.min(compact ? 300 : 360, element.clientWidth || (compact ? 300 : 320)),
     locale: "id",
   });
   return () => {

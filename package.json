@@ -31,7 +31,7 @@
     "clean:dependencies": "node scripts/clean-development-dependencies.mjs",
     "build:budget": "node scripts/check-build-budget.mjs",
     "test:browser": "node scripts/prepare-browser-test-build.mjs && node --test test/browser/*.test.mjs",
-    "lint:backend": "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js",
+    "lint:backend": "node node_modules/eslint/bin/eslint.js api scripts test --config eslint.backend.config.js --max-warnings 0",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "audit:all": "npm audit --audit-level=high",
     "check:duplicates": "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test",

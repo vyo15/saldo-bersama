@@ -1,3 +1,4 @@
+import "./FinancialAlertList.css";
 import { FiAlertTriangle, FiChevronRight, FiInfo } from "react-icons/fi";
 import { Link } from "react-router";
 import { dashboardAlertGuidance } from "../dashboardPresentation.js";

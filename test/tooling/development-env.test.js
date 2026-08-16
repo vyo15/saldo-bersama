@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ensureDevelopmentDependencies } from "../../scripts/bootstrap-development-dependencies.mjs";
-import { ensureDevelopmentEnvironment } from "../../scripts/bootstrap-development-env.mjs";
+import { DEVELOPMENT_DEPENDENCY_PROBES, ensureDevelopmentDependencies } from "../../scripts/bootstrap-development-dependencies.mjs";
+import { ensureDevelopmentEnvironment, normalizeVercelGitignore } from "../../scripts/bootstrap-development-env.mjs";
 import { CORE_RUNTIME_ENV_KEYS, LEGACY_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
 import { cleanEnvironmentText } from "../../scripts/clean-local-environment.mjs";
 import { validateDevelopmentEnvironment } from "../../scripts/push-vercel-development-env.mjs";
@@ -29,6 +29,33 @@ const withTempRoot = async (callback) => {
 };
 
 
+
+test("normalisasi Vercel menjaga .gitignore canonical, LF, dan tidak menduplikasi env rules", async () => withTempRoot(async (root) => {
+  const gitignorePath = path.join(root, ".gitignore");
+  await writeFile(gitignorePath, [
+    "node_modules/",
+    ".vercel/",
+    ".env",
+    ".env.*",
+    "!.env.example",
+    ".vercel",
+    ".env*",
+    ".vercel",
+    ".env*",
+    "",
+  ].join("\r\n"));
+
+  assert.equal(await normalizeVercelGitignore(root), true);
+  const normalized = await readFile(gitignorePath, "utf8");
+  assert.equal(normalized.includes("\r"), false);
+  assert.equal((normalized.match(/^\.vercel\/$/gm) || []).length, 1);
+  assert.equal((normalized.match(/^\.env$/gm) || []).length, 1);
+  assert.equal((normalized.match(/^\.env\.\*$/gm) || []).length, 1);
+  assert.equal((normalized.match(/^!\.env\.example$/gm) || []).length, 1);
+  assert.equal((normalized.match(/^\.vercel$/gm) || []).length, 0);
+  assert.equal((normalized.match(/^\.env\*$/gm) || []).length, 0);
+  assert.equal(await normalizeVercelGitignore(root), false);
+}));
 
 test("legacy environment key memakai satu registry canonical untuk cleaner dan validator Development", () => {
   const legacyValues = Object.fromEntries(LEGACY_ENV_KEYS.map((key) => [key, "legacy-value"]));
@@ -216,6 +243,10 @@ test("bootstrap menolak hasil pull Development yang core-nya tidak lengkap tanpa
   );
   await assert.rejects(readFile(path.join(root, ".env.local"), "utf8"), { code: "ENOENT" });
 }));
+
+test("dependency bootstrap memprobe asset Manrope canonical", () => {
+  assert.ok(DEVELOPMENT_DEPENDENCY_PROBES.includes("@fontsource-variable/manrope"));
+});
 
 test("dependency bootstrap tidak menjalankan npm ci ketika dependency sudah tersedia", async () => {
   let installs = 0;

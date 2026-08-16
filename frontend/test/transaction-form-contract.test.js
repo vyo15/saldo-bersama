@@ -62,3 +62,26 @@ test("pemasukan tetap memakai rekening tujuan tanpa helper gajian permanen", asy
   assert.doesNotMatch(text, /Contoh gajian:/);
   assert.doesNotMatch(text, /rekening bank yang menerima gaji sebagai rekening tujuan/);
 });
+
+test("presentasi transfer mobile tetap memakai mutation, idempotency, dan validator canonical", async () => {
+  const [form, mobileFields, action, modal] = await Promise.all([
+    source(),
+    readFile(new URL("../src/features/transactions/MobileTransferFields.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/accounts/components/MobileAccountTransferAction.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/Modal.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(action, /presentation="mobile-transfer"/);
+  assert.match(form, /presentation = "default"/);
+  assert.match(form, /validateTransactionInput\(transactionPreparedInput/);
+  assert.match(form, /createIdempotencyKey\(\)/);
+  assert.match(form, /const saveTransaction = transaction \? updateTransaction : createTransaction/);
+  assert.match(form, /destination\.account_id === nextId/);
+  assert.match(form, /compatibleDestinationAccounts\[0\]\.account_id/);
+  assert.match(form, /<MobileTransferFields \{\.\.\.fields\} \/>/);
+  assert.doesNotMatch(mobileFields, /createTransaction|updateTransaction|createIdempotencyKey|transactions\.api|apiClient/);
+  assert.match(mobileFields, /type="submit"/);
+  assert.match(mobileFields, /Saldo baru berubah setelah server mengonfirmasi transfer/);
+  assert.match(modal, /closeIcon: CloseIcon = FiX/);
+  assert.match(modal, /closeLabel = "Tutup dialog"/);
+});
+

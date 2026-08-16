@@ -106,43 +106,97 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.doesNotMatch(transactions, /const initialFilters = \(location\)/);
 });
 
-test("login memakai artwork approved penuh, onboarding mobile, animasi uang, feedback tombol, LinkedIn aman, dan auth provider canonical", async () => {
-  const [login, pages, auth, desktopLight, desktopDark, saving, budget, mobileLogin] = await Promise.all([
+test("login mempertahankan desktop artwork dan memakai UI mobile empat halaman dengan aset transparan, logo project, swipe natural, serta provider canonical", async () => {
+  const assetNames = [
+    "hand-phone-dashboard.webp",
+    "piggy-bank.webp",
+    "wallet.webp",
+    "growth-board.webp",
+    "finance-checklist.webp",
+    "house.webp",
+    "phone-analytics.webp",
+  ];
+  const [login, loginStyles, app, pages, auth, desktopLight, desktopDark, logo, ...mobileAssets] = await Promise.all([
     read("src/features/auth/LoginPage.jsx"),
+    read("src/features/auth/LoginPage.css"),
+    read("src/app/App.jsx"),
     read("src/styles/pages.css"),
     read("src/services/auth/googleFirebaseAuth.js"),
     readFile(new URL("../public/login/desktop-light.webp", import.meta.url)),
     readFile(new URL("../public/login/desktop-dark.webp", import.meta.url)),
-    readFile(new URL("../public/login/mobile-onboarding-saving.webp", import.meta.url)),
-    readFile(new URL("../public/login/mobile-onboarding-budget.webp", import.meta.url)),
-    readFile(new URL("../public/login/mobile-login.webp", import.meta.url)),
+    readFile(new URL("../public/brand/saldo-bersama-mark.png", import.meta.url)),
+    ...assetNames.map((name) => readFile(new URL(`../public/login/assets/mobile/${name}`, import.meta.url))),
   ]);
 
   assert.match(login, /MOBILE_LOGIN_QUERY = "\(max-width: 820px\)"/);
-  assert.match(login, /MOBILE_SLIDE_COUNT = 3/);
-  assert.match(login, /mobile-onboarding-saving\.webp/);
-  assert.match(login, /mobile-onboarding-budget\.webp/);
-  assert.match(login, /mobile-login\.webp/);
+  assert.match(login, /MOBILE_SLIDE_COUNT = 4/);
+  assert.match(login, /MOBILE_LOGIN_SLIDE = MOBILE_SLIDE_COUNT - 1/);
+  assert.match(login, /MOBILE_ONBOARDING/);
+  for (const assetName of assetNames) assert.match(login, new RegExp(assetName.replace(".", "\\.")));
+  assert.doesNotMatch(login, /mobile-onboarding-saving\.webp|mobile-onboarding-budget\.webp|mobile-login\.webp/);
+  assert.match(login, /\/brand\/saldo-bersama-mark\.png/);
   assert.match(login, /desktop-light\.webp/);
   assert.match(login, /desktop-dark\.webp/);
-  assert.match(login, /MONEY_NOTES/);
-  assert.match(login, /MoneyRain/);
+  assert.match(login, /MOBILE_MONEY_NOTES/);
+  assert.match(login, /MoneyRain compact notes=\{MOBILE_MONEY_NOTES\}/);
   assert.match(login, /aria-roledescription="carousel"/);
   assert.match(login, /ThemeToggle className="login-mobile-theme-toggle"/);
+  assert.match(login, /login-mobile-pagination/);
+  assert.match(login, /login-mobile-login-slide/);
   assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
   assert.match(login, /rel="noopener noreferrer"/);
-  assert.equal((login.match(/className="google-login-button"/g) || []).length, 1);
+  assert.match(login, /className=\{`google-login-button\$\{buttonReady \? " is-ready" : ""\}`\}/);
   assert.match(auth, /identity\.renderButton\(element/);
-  assert.match(pages, /\.login-desktop-stage,[\s\S]*height:\s*100dvh;/);
+  assert.match(auth, /compact = false/);
+  assert.match(auth, /size: compact \? "medium" : "large"/);
+  assert.match(auth, /Math\.min\(compact \? 300 : 360/);
+  assert.match(login, /compact: mobileLayout/);
+  assert.match(login, /shouldRenderGoogleButton = status === "anonymous" && !configErrors\.length/);
+  assert.doesNotMatch(login, /showGoogleButton = [^;]*mobileSlide === MOBILE_LOGIN_SLIDE/);
+  assert.match(login, /new MutationObserver\(syncGoogleButtonReady\)/);
+  assert.match(login, /element\.querySelector\("iframe"\)/);
+  assert.match(login, /frame\.addEventListener\("load"/);
+  assert.match(login, /element\.contains\(frame\)/);
+  assert.match(login, /element\.querySelectorAll\("button"\)\.forEach\(\(button\) => button\.remove\(\)\)/);
+  assert.match(login, /Menyiapkan login…/);
+  assert.match(login, /buttonReady: !mobileLayout \|\| googleButtonReady/);
+  assert.match(login, /showPreparing: mobileLayout/);
+  assert.match(login, /import "\.\/LoginPage\.css";/);
+  assert.match(app, /const LoginPage = lazy\(\(\) => import\("\.\.\/features\/auth\/LoginPage\.jsx"\)\);/);
+  assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage\)\} \/>/);
+  assert.doesNotMatch(pages, /\.login-page\b|\.login-mobile-|\.login-desktop-/);
+  assert.match(loginStyles, /\.login-desktop-stage \{[\s\S]*height:\s*100dvh;/);
   assert.match(login, /login-desktop-artwork-frame/);
-  assert.match(login, /login-mobile-artwork-frame/);
-  assert.match(pages, /\.login-desktop-artwork-frame[\s\S]*width:\s*max\(100vw, calc\(100dvh \* 1672 \/ 941\)\)[\s\S]*aspect-ratio:\s*1672 \/ 941;/);
-  assert.match(pages, /\.login-mobile-artwork-frame[\s\S]*width:\s*max\(100vw, calc\(100dvh \* 941 \/ 1672\)\)[\s\S]*aspect-ratio:\s*941 \/ 1672;/);
-  assert.match(pages, /\.login-desktop-artwork,[\s\S]*object-fit:\s*cover;/);
-  assert.match(pages, /\.login-mobile-next:active[\s\S]*transform:\s*scale\(\.975\);/);
-  assert.match(pages, /@keyframes login-money-fall/);
-  assert.match(pages, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
-  for (const asset of [desktopLight, desktopDark, saving, budget, mobileLogin]) assert.ok(asset.length > 20_000);
+  assert.match(loginStyles, /\.login-desktop-artwork-frame \{[\s\S]*width:\s*max\(100vw, calc\(100dvh \* 1672 \/ 941\)\)[\s\S]*aspect-ratio:\s*1672 \/ 941;/);
+  assert.match(loginStyles, /\.login-desktop-artwork \{[\s\S]*object-fit:\s*cover;/);
+  assert.match(loginStyles, /\.login-mobile-track \{[\s\S]*width:\s*400%;[\s\S]*--login-mobile-drag/);
+  assert.match(loginStyles, /\.login-mobile-slide \{[\s\S]*width:\s*25%;[\s\S]*flex:\s*0 0 25%;[\s\S]*overflow:\s*hidden;/);
+  assert.match(loginStyles, /\.login-mobile-onboarding-slide \{[\s\S]*display:\s*flex;[\s\S]*flex-direction:\s*column;/);
+  assert.match(loginStyles, /\.login-mobile-hero \{[\s\S]*min-height:\s*210px;[\s\S]*max-height:\s*304px;[\s\S]*flex:\s*1 1 304px;[\s\S]*border-radius:\s*30px;/);
+  assert.match(loginStyles, /\.login-mobile-hero__panel \{[\s\S]*top:\s*68px;[\s\S]*bottom:\s*22px;/);
+  assert.doesNotMatch(login, /login-mobile-pills|pills:\s*\[/);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-pills/);
+  assert.match(login, /className="login-mobile-welcome">Selamat datang<\/p>/);
+  assert.match(loginStyles, /\.login-mobile-welcome \{[^}]*color:\s*var\(--primary\);/);
+  assert.match(login, /!loginActive \? \([\s\S]*className="login-mobile-progress"/);
+  assert.match(login, /!loginActive \? \([\s\S]*className="login-mobile-back"/);
+  assert.match(login, /login-mobile-navigation__spacer/);
+  assert.match(loginStyles, /\.login-mobile-stage\.is-login-active \{[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto;/);
+  assert.match(loginStyles, /\.login-mobile-provider \{[^}]*width:\s*min\(100%, 20rem\);[^}]*display:\s*flex;[^}]*justify-content:\s*center;/);
+  assert.match(loginStyles, /\.login-mobile-provider \.google-login-button \{[^}]*width:\s*min\(100%, 300px\);[^}]*max-width:\s*300px;[^}]*opacity:\s*0;[^}]*pointer-events:\s*none;/);
+  assert.match(loginStyles, /\.login-mobile-provider \.google-login-button\.is-ready \{[^}]*opacity:\s*1;[^}]*pointer-events:\s*auto;/);
+  assert.match(loginStyles, /\.login-mobile-provider \.google-login-button \{[^}]*overflow:\s*visible;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
+  assert.match(loginStyles, /\.login-mobile-provider \.google-login-button\.is-ready > button \{[^}]*display:\s*none\s*!important;/);
+  assert.match(loginStyles, /\.login-mobile-provider \.google-login-button iframe \{[^}]*display:\s*block;[^}]*border:\s*0\s*!important;[^}]*background:\s*transparent\s*!important;/);
+  assert.match(loginStyles, /\.login-mobile-provider__preparing \{[^}]*position:\s*absolute;[^}]*justify-content:\s*center;/);
+  assert.match(loginStyles, /@keyframes login-provider-spin/);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-provider \.google-login-button iframe \{[^}]*(?:width|max-width):\s*100%\s*!important;/);
+  assert.match(loginStyles, /\.login-mobile-viewport \{[\s\S]*touch-action:\s*pan-y;/);
+  assert.match(loginStyles, /\.login-mobile-next:active \{ transform:\s*scale\(\.98\); \}/);
+  assert.match(loginStyles, /\.login-mobile-login-slide \.login-money-field/);
+  assert.match(loginStyles, /@keyframes login-money-fall/);
+  assert.match(loginStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
+  for (const asset of [desktopLight, desktopDark, logo, ...mobileAssets]) assert.ok(asset.length > 20_000);
 });
 
 test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", async () => {
@@ -248,11 +302,13 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
 });
 
 test("pengaturan memakai kontrak system.health aktual dan status notifikasi aksesibel", async () => {
-  const [overview, presentation, notifications, notificationService, audit] = await Promise.all([
+  const [overview, presentation, notifications, notificationService, serviceWorkerRegistration, main, audit] = await Promise.all([
     read("src/features/settings/SettingsPage.jsx"),
     read("src/features/settings/settingsPresentation.js"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
     read("src/services/notifications.js"),
+    read("src/services/serviceWorker.js"),
+    read("src/main.jsx"),
     read("src/features/settings/AuditPage.jsx"),
   ]);
   assert.match(overview, /backendPresentation\(healthResource\)/);
@@ -263,6 +319,9 @@ test("pengaturan memakai kontrak system.health aktual dan status notifikasi akse
   assert.match(notifications, /<h3>Notifikasi perangkat<\/h3>[\s\S]*role="status" aria-live="polite"/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
   assert.match(notificationService, /lastTestFailure/);
+  assert.match(serviceWorkerRegistration, /navigator\.serviceWorker\.register\("\/sw\.js"/);
+  assert.match(main, /from "\.\/services\/serviceWorker\.js"/);
+  assert.doesNotMatch(main, /from "\.\/services\/notifications\.js"/);
   assert.match(presentation, /PUSH_DNS_FAILED/);
   assert.match(audit, /auditDetailLabel\(entry\.detail_code\)/);
 });

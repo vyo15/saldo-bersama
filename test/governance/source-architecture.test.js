@@ -203,8 +203,9 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
 
 
 test("Web Push memakai secure context, status backend, payload privat, dan delivery per perangkat", async () => {
-  const [frontendNotifications, notificationsPage, serviceWorker, backendNotifications, jobs, deliveryMigration, preferenceMigration] = await Promise.all([
+  const [frontendNotifications, serviceWorkerRegistration, notificationsPage, serviceWorker, backendNotifications, jobs, deliveryMigration, preferenceMigration] = await Promise.all([
     source("frontend/src/services/notifications.js"),
+    source("frontend/src/services/serviceWorker.js"),
     source("frontend/src/features/settings/DeviceNotificationsPage.jsx"),
     source("frontend/public/sw.js"),
     source("api/_lib/services/notifications.js"),
@@ -212,8 +213,9 @@ test("Web Push memakai secure context, status backend, payload privat, dan deliv
     source("database/migrations/004_notification_deliveries.sql"),
     source("database/migrations/005_notification_preferences.sql"),
   ]);
-  assert.doesNotMatch(frontendNotifications, /import\.meta\.env\.DEV/);
-  assert.match(frontendNotifications, /window\.isSecureContext/);
+  assert.doesNotMatch(frontendNotifications + serviceWorkerRegistration, /import\.meta\.env\.DEV/);
+  assert.match(serviceWorkerRegistration, /window\.isSecureContext/);
+  assert.match(serviceWorkerRegistration, /navigator\.serviceWorker\.register\("\/sw\.js"/);
   assert.match(frontendNotifications, /ios_install_required/);
   assert.match(frontendNotifications, /notifications\.status/);
   assert.match(frontendNotifications, /notifications\.test/);

@@ -1,3 +1,4 @@
+import "./TransactionsPage.css";
 import { useEffect, useRef, useState } from "react";
 import { FiChevronLeft, FiChevronRight, FiEdit2, FiPlus, FiRotateCcw, FiSearch, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";

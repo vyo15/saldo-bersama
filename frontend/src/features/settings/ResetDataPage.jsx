@@ -10,16 +10,13 @@ import { createSecureRandomId } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import MaintenanceRecoveryPanel, {
-  formatMaintenanceCount as formatCount,
   MaintenanceSummaryGrid as SummaryGrid,
-  readMaintenanceRecoveryToken,
   SafetyBackupPreflight,
-  storeMaintenanceRecoveryToken,
 } from "./MaintenanceRecoveryPanel.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { isSettingsOutcomeUnknownError, runSettingsAction } from "./settings.api.js";
-import { integrationProviderPresentation } from "./settingsPresentation.js";
+import { formatMaintenanceCount as formatCount, readMaintenanceRecoveryToken, storeMaintenanceRecoveryToken, integrationProviderPresentation } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
 const RESET_INVALIDATIONS = Object.freeze([
@@ -299,6 +296,19 @@ const useResetRecovery = ({ setRecoveryToken, integrationsResource, resetStatusR
   return { recoveryBusy, result, setResult, clearRecovery, refreshAfterCommittedReset, handleCheckedStatus, checkResetStatus, recoverMaintenance };
 };
 
+const resetOperationBlocked = (status) => status?.canStartNewIntent === false || ["processing", "recovery_required"].includes(status?.outcome) || Boolean(status?.maintenanceMode);
+
+const resetPreviewResult = (data, driveReadiness) => {
+  const hasRows = Number(data.summary?.totalRows || 0) > 0;
+  const hasBalanceChanges = Number(data.balanceReset?.accountsAffected || 0) > 0;
+  if (!hasRows && !hasBalanceChanges) return { status: "success", text: "Tidak ada data aktivitas, sisa proses testing, atau saldo awal yang perlu dibersihkan." };
+  if (!driveReadiness.ready) return { status: "warning", text: `Preview siap, tetapi pembersihan diblokir karena safety backup Google Drive belum terverifikasi. ${driveReadiness.text}` };
+  const balanceText = data.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES && hasBalanceChanges
+    ? ` ${formatCount(data.balanceReset.accountsAffected)} rekening akan berakhir pada saldo Rp0.`
+    : "";
+  return { status: "success", text: `Preview siap. ${formatCount(data.summary?.totalRows)} baris data testing dapat dibersihkan.${balanceText} Safety backup Google Drive sudah siap.` };
+};
+
 const useResetPreview = ({ recoveryToken, resetScope, resetStatusResource, integrationsResource, refreshAfterCommittedReset, setResult }) => {
   const [preview, setPreview] = useState(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -313,8 +323,7 @@ const useResetPreview = ({ recoveryToken, resetScope, resetStatusResource, integ
         await refreshAfterCommittedReset(status);
         return;
       }
-      const blocked = status?.canStartNewIntent === false || status?.outcome === "processing" || status?.outcome === "recovery_required" || status?.maintenanceMode;
-      if (blocked) {
+      if (resetOperationBlocked(status)) {
         setPreview(null);
         setResult({ status: "danger", text: "Pembersihan baru diblokir sampai status operasi sebelumnya dan mode pemulihan dipastikan aman." });
         return;
@@ -322,17 +331,7 @@ const useResetPreview = ({ recoveryToken, resetScope, resetStatusResource, integ
       const currentDriveReadiness = integrationProviderPresentation(integrations || {}, "drive");
       const data = await runSettingsAction("reset.preview", { resetScope }, { force: true });
       setPreview(data);
-      const hasRows = Number(data.summary?.totalRows || 0) > 0;
-      const hasBalanceChanges = Number(data.balanceReset?.accountsAffected || 0) > 0;
-      const balanceText = data.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES && hasBalanceChanges
-        ? ` ${formatCount(data.balanceReset.accountsAffected)} rekening akan berakhir pada saldo Rp0.`
-        : "";
-      const readyText = `Preview siap. ${formatCount(data.summary?.totalRows)} baris data testing dapat dibersihkan.${balanceText} Safety backup Google Drive sudah siap.`;
-      const blockedText = `Preview siap, tetapi pembersihan diblokir karena safety backup Google Drive belum terverifikasi. ${currentDriveReadiness.text}`;
-      setResult({
-        status: currentDriveReadiness.ready ? "success" : "warning",
-        text: hasRows || hasBalanceChanges ? (currentDriveReadiness.ready ? readyText : blockedText) : "Tidak ada data aktivitas, sisa proses testing, atau saldo awal yang perlu dibersihkan.",
-      });
+      setResult(resetPreviewResult(data, currentDriveReadiness));
     } catch (error) {
       setPreview(null);
       setResult({ status: "danger", text: error.message });
@@ -422,6 +421,81 @@ const useResetApply = ({
   return { applyBusy, applyError, setApplyError, confirmationOpen, setConfirmationOpen, applyReset };
 };
 
+const ResetStatusFailure = ({ resource, onCheck }) => (resource.status === "error" || resource.refreshError ? (
+  <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau memulai pembersihan baru.</span><Button type="button" icon={FiRefreshCw} loading={resource.isRefreshing} onClick={onCheck}>Periksa status operasi</Button></div>
+) : null);
+
+const ResetScopeSelector = ({ resetScope, setResetScope, setPreview, setResult }) => {
+  const selectScope = (scope) => { setResetScope(scope); setPreview(null); setResult(null); };
+  return (
+    <fieldset className={styles.resetScopeSelector}>
+      <legend>Pilih hasil akhir reset testing</legend>
+      <label className={resetScope === RESET_SCOPE_ACTIVITY ? styles.isSelected : ""}>
+        <input type="radio" name="reset-testing-scope" value={RESET_SCOPE_ACTIVITY} checked={resetScope === RESET_SCOPE_ACTIVITY} onChange={() => selectScope(RESET_SCOPE_ACTIVITY)} />
+        <span className={styles.resetScopeIcon}><FiRefreshCw aria-hidden="true" /></span>
+        <span><strong>Bersihkan aktivitas testing</strong><small>Hapus riwayat keuangan dan perencanaan testing. Rekening, kategori, dan saldo awal tetap.</small></span>
+      </label>
+      <label className={resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? styles.isSelected : ""}>
+        <input type="radio" name="reset-testing-scope" value={RESET_SCOPE_ACTIVITY_AND_BALANCES} checked={resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES} onChange={() => selectScope(RESET_SCOPE_ACTIVITY_AND_BALANCES)} />
+        <span className={styles.resetScopeIcon}><FiDollarSign aria-hidden="true" /></span>
+        <span><strong>Bersihkan aktivitas + nolkan saldo</strong><small>Hapus seluruh riwayat testing dan kembalikan saldo seluruh rekening pada preview menjadi Rp0.</small></span>
+      </label>
+    </fieldset>
+  );
+};
+
+const ResetPreviewStep = ({ previewState, statusBlocksReset }) => (
+  <Card className={`panel ${styles.resetStepCard}`}>
+    <ResetStepHeader number="1" icon={FiRefreshCw} title="Periksa data" description="Lihat tepatnya data keuangan dan proses testing yang akan dibersihkan." />
+    <Button variant="primary" icon={FiRefreshCw} loading={previewState.previewBusy} disabled={statusBlocksReset} onClick={previewState.loadPreview}>Periksa data testing</Button>
+    {previewState.preview ? <ResetPreview preview={previewState.preview} /> : null}
+  </Card>
+);
+
+const ResetBackupStep = ({ integrationsResource, driveReadiness, driveReady }) => (
+  <Card className={`panel ${styles.resetStepCard}`}>
+    <ResetStepHeader number="2" icon={FiHardDrive} title="Verifikasi backup keamanan" description="Google Drive wajib siap sebelum pembersihan data dapat dimulai." />
+    <SafetyBackupPreflight resource={integrationsResource} readiness={driveReadiness} />
+    {!driveReady ? <div className={styles.resetInlineWarning}><span>Backup keamanan belum siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</span></div> : null}
+  </Card>
+);
+
+const ResetApplyStep = ({ canOpenReset, apply }) => (
+  <Card className={`panel ${styles.resetStepCard} ${styles.resetDangerStep}`}>
+    <ResetStepHeader number="3" icon={FiTrash2} title="Bersihkan sekaligus" description="Server membuat backup keamanan, mengunci perubahan selama proses, membersihkan data, memeriksa konsistensi, lalu menulis audit." />
+    <div className={styles.resetSafeHint}><FiShield aria-hidden="true" /><span>Jika koneksi terputus, jangan kirim ulang. Gunakan pemeriksaan status agar operasi yang sama tidak berjalan dua kali.</span></div>
+    <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Bersihkan data testing</Button>
+  </Card>
+);
+
+const ResetStepCards = ({ previewState, statusBlocksReset, integrationsResource, driveReadiness, driveReady, canOpenReset, apply }) => (
+  <>
+    <ResetPreviewStep previewState={previewState} statusBlocksReset={statusBlocksReset} />
+    <ResetBackupStep integrationsResource={integrationsResource} driveReadiness={driveReadiness} driveReady={driveReady} />
+    <ResetApplyStep canOpenReset={canOpenReset} apply={apply} />
+  </>
+);
+
+const resetDriveState = (integrationsResource) => {
+  const readiness = integrationProviderPresentation(integrationsResource.data || {}, "drive");
+  return {
+    readiness,
+    ready: integrationsResource.status === "ready" && !integrationsResource.refreshError && readiness.ready,
+  };
+};
+
+const resetStatusState = (resetStatusResource) => {
+  const status = resetStatusResource.data || null;
+  const verified = resetStatusResource.status === "ready" && !resetStatusResource.refreshError;
+  return { status, blocked: !verified || resetOperationBlocked(status) };
+};
+
+const previewHasResettableData = (preview) => {
+  if (!preview) return false;
+  if (Number(preview.summary?.totalRows || 0) > 0) return true;
+  return Number(preview.balanceReset?.accountsAffected || 0) > 0;
+};
+
 const ResetDataPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -434,65 +508,21 @@ const ResetDataPage = () => {
   const previewState = useResetPreview({ recoveryToken, resetScope, resetStatusResource, integrationsResource, refreshAfterCommittedReset: recovery.refreshAfterCommittedReset, setResult: recovery.setResult });
   const apply = useResetApply({ preview: previewState.preview, setPreview: previewState.setPreview, resetStatusResource, integrationsResource, clearRecovery: recovery.clearRecovery, setRecoveryToken, invalidate, refreshAll, handleCheckedStatus: recovery.handleCheckedStatus, setResult: recovery.setResult });
 
-  const driveReadiness = integrationProviderPresentation(integrationsResource.data || {}, "drive");
-  const driveReady = integrationsResource.status === "ready" && !integrationsResource.refreshError && driveReadiness.ready;
-  const resetStatus = resetStatusResource.data || null;
-  const resetStatusVerified = resetStatusResource.status === "ready" && !resetStatusResource.refreshError;
-  const statusBlocksReset = !resetStatusVerified || resetStatus?.canStartNewIntent === false || resetStatus?.maintenanceMode;
-  const hasResettableData = Number(previewState.preview?.summary?.totalRows || 0) > 0 || Number(previewState.preview?.balanceReset?.accountsAffected || 0) > 0;
-  const canOpenReset = hasResettableData && driveReady && !previewState.previewBusy && !statusBlocksReset;
+  const drive = resetDriveState(integrationsResource);
+  const resetState = resetStatusState(resetStatusResource);
+  const canOpenReset = previewHasResettableData(previewState.preview) && drive.ready && !previewState.previewBusy && !resetState.blocked;
 
   return (
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="reset-data-title">
         <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Reset data testing</h2><p>Pilih apakah hanya riwayat testing yang dibersihkan atau sekaligus mengembalikan nominal saldo rekening ke Rp0. Rekening, kategori, pengguna, audit, dan data pemulihan tetap dipertahankan.</p></div>
         <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
-        <ResetRecoveryPanel status={resetStatus} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
-        <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetStatus?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
-        {resetStatusResource.status === "error" || resetStatusResource.refreshError ? (
-          <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau memulai pembersihan baru.</span><Button type="button" icon={FiRefreshCw} loading={resetStatusResource.isRefreshing} onClick={recovery.checkResetStatus}>Periksa status operasi</Button></div>
-        ) : null}
+        <ResetRecoveryPanel status={resetState.status} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
+        <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetState.status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
+        <ResetStatusFailure resource={resetStatusResource} onCheck={recovery.checkResetStatus} />
         <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode sebelum data nyata.</strong> Gunakan hanya ketika seluruh data keuangan masih berupa data testing. Setelah transaksi nyata digunakan, jangan gunakan pembersihan massal.</span></div>
-        <fieldset className={styles.resetScopeSelector}>
-          <legend>Pilih hasil akhir reset testing</legend>
-          <label className={resetScope === RESET_SCOPE_ACTIVITY ? styles.isSelected : ""}>
-            <input
-              type="radio"
-              name="reset-testing-scope"
-              value={RESET_SCOPE_ACTIVITY}
-              checked={resetScope === RESET_SCOPE_ACTIVITY}
-              onChange={() => { setResetScope(RESET_SCOPE_ACTIVITY); previewState.setPreview(null); recovery.setResult(null); }}
-            />
-            <span className={styles.resetScopeIcon}><FiRefreshCw aria-hidden="true" /></span>
-            <span><strong>Bersihkan aktivitas testing</strong><small>Hapus riwayat keuangan dan perencanaan testing. Rekening, kategori, dan saldo awal tetap.</small></span>
-          </label>
-          <label className={resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? styles.isSelected : ""}>
-            <input
-              type="radio"
-              name="reset-testing-scope"
-              value={RESET_SCOPE_ACTIVITY_AND_BALANCES}
-              checked={resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES}
-              onChange={() => { setResetScope(RESET_SCOPE_ACTIVITY_AND_BALANCES); previewState.setPreview(null); recovery.setResult(null); }}
-            />
-            <span className={styles.resetScopeIcon}><FiDollarSign aria-hidden="true" /></span>
-            <span><strong>Bersihkan aktivitas + nolkan saldo</strong><small>Hapus seluruh riwayat testing dan kembalikan saldo seluruh rekening pada preview menjadi Rp0.</small></span>
-          </label>
-        </fieldset>
-        <Card className={`panel ${styles.resetStepCard}`}>
-          <ResetStepHeader number="1" icon={FiRefreshCw} title="Periksa data" description="Lihat tepatnya data keuangan dan proses testing yang akan dibersihkan." />
-          <Button variant="primary" icon={FiRefreshCw} loading={previewState.previewBusy} disabled={statusBlocksReset} onClick={previewState.loadPreview}>Periksa data testing</Button>
-          {previewState.preview ? <ResetPreview preview={previewState.preview} /> : null}
-        </Card>
-        <Card className={`panel ${styles.resetStepCard}`}>
-          <ResetStepHeader number="2" icon={FiHardDrive} title="Verifikasi backup keamanan" description="Google Drive wajib siap sebelum pembersihan data dapat dimulai." />
-          <SafetyBackupPreflight resource={integrationsResource} readiness={driveReadiness} />
-          {!driveReady ? <div className={styles.resetInlineWarning}><span>Backup keamanan belum siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</span></div> : null}
-        </Card>
-        <Card className={`panel ${styles.resetStepCard} ${styles.resetDangerStep}`}>
-          <ResetStepHeader number="3" icon={FiTrash2} title="Bersihkan sekaligus" description="Server membuat backup keamanan, mengunci perubahan selama proses, membersihkan data, memeriksa konsistensi, lalu menulis audit." />
-          <div className={styles.resetSafeHint}><FiShield aria-hidden="true" /><span>Jika koneksi terputus, jangan kirim ulang. Gunakan pemeriksaan status agar operasi yang sama tidak berjalan dua kali.</span></div>
-          <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Bersihkan data testing</Button>
-        </Card>
+        <ResetScopeSelector resetScope={resetScope} setResetScope={setResetScope} setPreview={previewState.setPreview} setResult={recovery.setResult} />
+        <ResetStepCards previewState={previewState} statusBlocksReset={resetState.blocked} integrationsResource={integrationsResource} driveReadiness={drive.readiness} driveReady={drive.ready} canOpenReset={canOpenReset} apply={apply} />
         <ResetConfirmationModal preview={previewState.preview} open={apply.confirmationOpen} busy={apply.applyBusy} error={apply.applyError} onCancel={() => { if (!apply.applyBusy) { apply.setConfirmationOpen(false); apply.setApplyError(null); } }} onConfirm={apply.applyReset} />
       </section>
     </OwnerSettingsGuard>

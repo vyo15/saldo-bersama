@@ -12,7 +12,7 @@ const routeCases = Object.freeze([
   ["/laporan", "Laporan"],
   ["/rekening", "Rekening"],
   ["/rekonsiliasi", "Cocokkan Saldo"],
-  ["/kategori", "Kategori transaksi"],
+  ["/kategori", "Kategori"],
   ["/pengaturan", "Pengaturan"],
 ]);
 
@@ -123,7 +123,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       return {
         heading: document.querySelector("main h1")?.textContent?.trim() || "",
         dailySafeSpend: text.includes("Batas aman per hari"),
-        unallocated: text.includes("Dana belum dialokasikan"),
+        unallocated: Boolean([...document.querySelectorAll(".mobile-finance-summary span")].find((item) => item.textContent.trim() === "Belum dialokasikan")),
         privacy: visible(".mobile-finance-hero button[aria-label*='nominal']"),
         filter: visible(".mobile-dashboard-filter-button"),
         insights: Boolean(document.querySelector(".mobile-finance-insights")),
@@ -953,7 +953,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await page.evaluate("document.querySelector('[role=dialog] button[aria-label=\"Tutup dialog\"]')?.click()");
     await waitFor(() => page.evaluate("!document.querySelector('[role=dialog]')"), { description: "dialog rekening ditutup" });
 
-    await navigateAndAssert(page, appServer.origin, "/kategori", "Kategori transaksi", { mobile: true });
+    await navigateAndAssert(page, appServer.origin, "/kategori", "Kategori", { mobile: true });
     assert.equal(await page.evaluate(visibleExpression('button[aria-label="Tambah kategori"]')), true, "Owner harus memperoleh aksi kategori pada route khusus.");
     await page.evaluate("document.querySelector('button[aria-label=\"Tambah kategori\"]')?.click()");
     await waitFor(() => page.evaluate("document.querySelector('[role=dialog] h2')?.textContent?.trim() === 'Tambah kategori'"), { description: "dialog tambah kategori" });
@@ -1262,7 +1262,11 @@ await test("breakpoint 820/821/940/941 tidak pernah menghilangkan seluruh kontro
     }
 
     await setViewport(page, 900, 1000);
-    assert.equal(await page.evaluate(visibleExpression(".shared-transaction-tools label:nth-child(3) select")), true, "Filter jenis tetap terlihat pada dashboard compact desktop.");
+    await waitFor(
+      () => page.evaluate(visibleExpression('.shared-transaction-tools select[aria-label="Filter jenis transaksi"]')),
+      { description: "filter jenis dashboard compact desktop selesai dirender" },
+    );
+    assert.equal(await page.evaluate(visibleExpression('.shared-transaction-tools select[aria-label="Filter jenis transaksi"]')), true, "Filter jenis tetap terlihat pada dashboard compact desktop.");
   } finally {
     await page?.close();
     await chromium?.close();

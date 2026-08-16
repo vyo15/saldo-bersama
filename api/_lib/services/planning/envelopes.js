@@ -233,12 +233,13 @@ export const createEnvelope = async (db, context) => {
   await context.enqueueMirror?.(db, "envelope", period.envelope_period_id);
   return result;
 };
-export const moveEnvelope = async (db, context) => {
+const resolveEnvelopeMove = async (db, context) => {
   const payload = context.payload || {};
   const fromId = payload.fromEnvelopePeriodId || payload.from_envelope_period_id;
   const toId = payload.toEnvelopePeriodId || payload.to_envelope_period_id;
   if (!fromId || !toId || fromId === toId) throw appError("INVALID_ENVELOPE_MOVE", "Kantong sumber dan tujuan harus berbeda.", 400);
-  const [from, to] = await Promise.all([db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [fromId]), db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`, [toId])]);
+  const query = `SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`;
+  const [from, to] = await Promise.all([db.one(query, [fromId]), db.one(query, [toId])]);
   if (!from || !to) throw appError("INVALID_ENVELOPE", "Kantong aktif tidak ditemukan.", 404);
   assertOwnedAccess(context.actor, from);
   assertOwnedAccess(context.actor, to);
@@ -248,38 +249,37 @@ export const moveEnvelope = async (db, context) => {
   assertVersion(to, payload.to_row_version);
   if (from.scope !== to.scope || String(from.owner_user_id || "") !== String(to.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Alokasi hanya dapat dipindahkan antar kantong dengan kepemilikan ledger yang sama.", 409);
   if (context.actor.role !== "owner" && !hasSameEnvelopeAssignee(from, to)) throw appError("ENVELOPE_ASSIGNEE_MISMATCH", "Member hanya dapat memindahkan alokasi antar jatah dengan penerima yang sama.", 409);
-  const amount = positiveInteger(payload.amount, "Nominal realokasi");
+  return { payload, fromId, toId, from, to };
+};
+
+const assertEnvelopeMoveCapacity = async (db, fromId, from, amount) => {
   const usage = await db.one("SELECT COALESCE(SUM(amount),0) AS used FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id=?", [fromId]);
   const remaining = Number(from.allocated_amount) - Number(from.reserved_amount) - Number(usage?.used || 0);
-  if (amount > remaining) throw appError("INSUFFICIENT_ENVELOPE", "Nominal melebihi sisa kantong sumber.", 409, {
-    remainingAmount: remaining
-  });
-  const reason = sanitizeText(payload.reason, 180);
-  if (!reason) throw appError("REASON_REQUIRED", "Alasan realokasi wajib diisi.", 400);
-  const timestamp = nowIso();
-  const movement = {
-    movement_id: uuid(),
-    from_envelope_period_id: fromId,
-    to_envelope_period_id: toId,
-    amount,
-    movement_type: "reallocation",
-    reason,
-    status: "active",
-    row_version: 1,
-    created_by: context.actor.user_id,
-    created_at: timestamp
-  };
+  if (amount > remaining) throw appError("INSUFFICIENT_ENVELOPE", "Nominal melebihi sisa kantong sumber.", 409, { remainingAmount: remaining });
+};
+
+const applyEnvelopeMoveBalances = async (db, context, { fromId, toId, from, to, amount, timestamp }) => {
   const fromUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount-?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [amount, context.actor.user_id, timestamp, fromId, from.row_version]);
   if (fromUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong sumber berubah di perangkat lain.", 409);
   const toUpdate = await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount+?,row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [amount, context.actor.user_id, timestamp, toId, to.row_version]);
   if (toUpdate.rowsAffected !== 1) throw appError("CONFLICT", "Kantong tujuan berubah di perangkat lain.", 409);
+};
+
+export const moveEnvelope = async (db, context) => {
+  const move = await resolveEnvelopeMove(db, context);
+  const amount = positiveInteger(move.payload.amount, "Nominal realokasi");
+  await assertEnvelopeMoveCapacity(db, move.fromId, move.from, amount);
+  const reason = sanitizeText(move.payload.reason, 180);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan realokasi wajib diisi.", 400);
+  const timestamp = nowIso();
+  const movement = {
+    movement_id: uuid(), from_envelope_period_id: move.fromId, to_envelope_period_id: move.toId, amount,
+    movement_type: "reallocation", reason, status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp,
+  };
+  await applyEnvelopeMoveBalances(db, context, { ...move, amount, timestamp });
   await db.execute("INSERT INTO envelope_movements(movement_id,from_envelope_period_id,to_envelope_period_id,amount,movement_type,reason,status,row_version,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", Object.values(movement));
-  await appendAudit(db, context, {
-    entityType: "envelope_movement",
-    entityId: movement.movement_id,
-    next: publicRow(movement)
-  });
-  await context.enqueueMirror?.(db, "envelope", fromId);
+  await appendAudit(db, context, { entityType: "envelope_movement", entityId: movement.movement_id, next: publicRow(movement) });
+  await context.enqueueMirror?.(db, "envelope", move.fromId);
   return publicRow(movement);
 };
 export const closeEnvelope = async (db, context) => {

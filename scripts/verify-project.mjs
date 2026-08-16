@@ -1,11 +1,13 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-export const REQUIRED_NODE_MAJOR = 24;
+export const REQUIRED_NODE_VERSION = readFileSync(path.join(root, ".node-version"), "utf8").trim();
+export const REQUIRED_NODE_MAJOR = Number.parseInt(REQUIRED_NODE_VERSION.split(".")[0], 10);
 export const VERIFY_STEPS = Object.freeze([
   Object.freeze({ script: "check", label: "Quality gate inti" }),
   Object.freeze({ script: "test:guard", label: "Guard regression" }),
@@ -41,14 +43,14 @@ const spawnNpm = (args, { cwd = root, stdio = "inherit" } = {}) => {
 const nodeMajor = (version) => Number.parseInt(String(version || "").replace(/^v/, "").split(".")[0], 10);
 
 export const assertCanonicalNode = (version = process.version) => {
-  const major = nodeMajor(version);
-  if (major === REQUIRED_NODE_MAJOR) return major;
+  const normalized = String(version || "").replace(/^v/, "");
+  if (normalized === REQUIRED_NODE_VERSION) return REQUIRED_NODE_VERSION;
   throw Object.assign(
     new Error(
-      `Node ${REQUIRED_NODE_MAJOR}.x wajib untuk quality gate. Runtime aktif: ${version}. `
+      `Node ${REQUIRED_NODE_VERSION} wajib untuk quality gate. Runtime aktif: ${version}. `
       + "Jalankan `fnm use` dari root project lalu ulangi `npm run verify`.",
     ),
-    { code: "VERIFY_NODE_VERSION", expectedMajor: REQUIRED_NODE_MAJOR, actualMajor: major },
+    { code: "VERIFY_NODE_VERSION", expectedVersion: REQUIRED_NODE_VERSION, actualVersion: normalized, actualMajor: nodeMajor(version) },
   );
 };
 
