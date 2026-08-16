@@ -23,7 +23,7 @@ npm run db:integrity
 
 ## 3. Firebase
 
-Aktifkan Google provider dan authorized domain untuk localhost serta domain Vercel. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; Firebase Web API key bukan secret. Authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`.
+Aktifkan Google provider dan authorized domain untuk localhost serta `saldo-bersama.vercel.app`. Untuk login mobile production, tambahkan authorized redirect URI `https://saldo-bersama.vercel.app/__/auth/handler` pada OAuth Web Client yang dipakai Firebase/Google. `vercel.json` memproxy `/__/auth/*` secara transparan ke `https://saldo-bersama.firebaseapp.com/__/auth/*`; jangan menggantinya dengan HTTP redirect. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; Firebase Web API key bukan secret. Authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`.
 
 ## 4. Apps Script bridge
 

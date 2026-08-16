@@ -9,6 +9,7 @@
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Backup/rollback tersedia bila data terdampak.
 - [ ] Environment change tervalidasi tanpa menampilkan secret.
+- [ ] Jika auth mobile berubah, Firebase Authorized Domains dan OAuth redirect URI `https://saldo-bersama.vercel.app/__/auth/handler` sudah diverifikasi tanpa mengubah allowlist/role backend.
 - [ ] Security/privacy/accessibility/performance review relevan selesai.
 
 ## Deploy
@@ -16,6 +17,7 @@
 - [ ] Production env scope benar.
 - [ ] Migration hanya dijalankan bila disetujui.
 - [ ] Smoke test Administrator/Member sesuai scope.
+- [ ] Login desktop GIS dan login mobile redirect diuji terpisah; mobile harus kembali dari Google ke domain aplikasi lalu membentuk server session tanpa loop atau popup.
 - [ ] Saldo/data integrity diverifikasi bila transaksi/data terdampak.
 
 ## Close

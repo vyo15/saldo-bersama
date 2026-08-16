@@ -67,7 +67,7 @@ npm run verify
 
 `npm run check` tetap menjadi gate inti yang mencakup source validation, lint, frontend/backend tests, backend coverage, production build, dan build budget. Gunakan command penyusun secara terarah hanya untuk diagnosis kegagalan atau bila scope membutuhkan test tambahan:
 
-Jika build budget gagal, jangan ubah threshold sebagai shortcut. Audit route chunk, static dependency import, CSS global, dan asset tidak terpakai. Firebase popup mobile adalah lazy provider chunk; desktop GIS tetap terpisah. Verification wrapper selalu membersihkan generated build/test output sesudah PASS maupun gagal, sehingga retry dimulai dari artefak bersih tanpa menghapus dependency atau env lokal.
+Jika build budget gagal, jangan ubah threshold sebagai shortcut. Audit route chunk, static dependency import, CSS global, dan asset tidak terpakai. Firebase redirect mobile adalah lazy provider chunk; desktop GIS tetap terpisah. Production memproxy `/__/auth/*` ke helper Firebase same-origin, sehingga perubahan auth routing wajib ikut security/deployment regression. Verification wrapper selalu membersihkan generated build/test output sesudah PASS maupun gagal, sehingga retry dimulai dari artefak bersih tanpa menghapus dependency atau env lokal.
 
 ```bash
 npm run db:integrity   # hanya bila operasi DB memang disetujui

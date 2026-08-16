@@ -106,7 +106,7 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.doesNotMatch(transactions, /const initialFilters = \(location\)/);
 });
 
-test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase pada mobile empat halaman", async () => {
+test("login mempertahankan desktop GIS dan memakai Firebase redirect same-origin pada mobile empat halaman", async () => {
   const assetNames = [
     "hand-phone-dashboard.webp",
     "piggy-bank.webp",
@@ -145,20 +145,22 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
   assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
   assert.match(login, /rel="noopener noreferrer"/);
 
+  // Onboarding mobile mengandalkan swipe, pagination, Lewati, dan back; tombol Lanjut besar sudah dipensiunkan.
+  assert.doesNotMatch(login, /login-mobile-next|nextLabel|FiArrowRight/);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-next/);
+
   // Desktop tetap memakai Google Identity Services existing.
   assert.match(login, /renderGoogleLoginButton/);
   assert.match(desktopAuth, /identity\.renderButton\(element/);
   assert.match(login, /shouldRenderDesktopGoogleButton/);
   assert.doesNotMatch(desktopAuth, /compact/);
 
-  // Mobile tidak memakai iframe GIS. Provider Firebase di-preload, lalu popup dimulai langsung dari click user agar mobile tidak kehilangan user activation.
+  // Mobile tidak memakai iframe GIS. Tombol React memulai Firebase redirect dan mengonsumsi hasilnya sebelum membuat session backend.
   assert.match(login, /import\("\.\.\/\.\.\/services\/auth\/mobileFirebaseGoogleAuth\.js"\)/);
   assert.match(login, /preloadMobileGoogleAuth/);
-  assert.match(login, /let mobileGoogleAuthModule = null/);
-  assert.match(login, /mobileGoogleAuthModule = module/);
   assert.match(login, /mobileGoogleAuthReady/);
-  assert.match(login, /mobileGoogleAuthModule\.signInWithGooglePopup\(\{ onFirebaseToken: loginWithFirebaseToken \}\)/);
-  assert.doesNotMatch(login, /await preloadMobileGoogleAuth\(\)/);
+  assert.match(login, /startGoogleRedirect/);
+  assert.match(login, /consumeGoogleRedirectResult/);
   assert.match(login, /className="login-mobile-google-button"/);
   assert.match(login, /\/login\/google-g-logo\.png/);
   assert.match(login, /Menghubungkan ke Google…/);
@@ -166,14 +168,18 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
   assert.doesNotMatch(login, /login-mobile-provider/);
   assert.match(mobileAuth, /GoogleAuthProvider/);
   assert.match(mobileAuth, /browserPopupRedirectResolver/);
-  assert.match(mobileAuth, /signInWithPopup\(auth, provider, browserPopupRedirectResolver\)/);
-  assert.match(mobileAuth, /inMemoryPersistence/);
+  assert.match(mobileAuth, /signInWithRedirect\(auth, googleProvider\(\), browserPopupRedirectResolver\)/);
+  assert.match(mobileAuth, /getRedirectResult\(auth, browserPopupRedirectResolver\)/);
+  assert.match(mobileAuth, /browserSessionPersistence/);
   assert.match(mobileAuth, /initializeAuth/);
   assert.doesNotMatch(mobileAuth, /await setPersistence/);
   assert.match(mobileAuth, /firebaseAuthDomain/);
   assert.match(mobileAuth, /await onFirebaseToken\(firebaseIdToken\)/);
+  assert.match(mobileAuth, /CANONICAL_PRODUCTION_HOST = "saldo-bersama\.vercel\.app"/);
+  assert.match(mobileAuth, /authDomain: resolveMobileAuthDomain\(\)/);
   assert.match(mobileAuth, /await signOut\(auth\)\.catch/);
-  assert.match(mobileAuth, /auth\/popup-blocked/);
+  assert.match(mobileAuth, /auth\/web-storage-unsupported/);
+  assert.doesNotMatch(mobileAuth, /signInWithPopup|inMemoryPersistence|auth\/popup-blocked/);
   assert.doesNotMatch(mobileAuth, /console\.(?:log|error|warn)\(/);
   assert.doesNotMatch(desktopAuth, /@firebase\/(?:app|auth)/);
 
@@ -190,8 +196,6 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
   assert.match(loginStyles, /\.login-mobile-google-button:disabled \{[^}]*cursor:\s*wait;/);
   assert.match(loginStyles, /@keyframes login-google-spin/);
-  assert.doesNotMatch(login, /login-mobile-next|>Lanjut<|const nextLabel/);
-  assert.doesNotMatch(loginStyles, /\.login-mobile-next/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-provider/);
   assert.doesNotMatch(loginStyles, /login-provider-spin/);
   assert.match(login, /className="login-mobile-welcome">Selamat datang<\/p>/);

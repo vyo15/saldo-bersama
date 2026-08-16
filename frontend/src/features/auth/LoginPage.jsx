@@ -76,14 +76,10 @@ const MOBILE_MONEY_NOTES = Object.freeze([
 ]);
 
 const MOBILE_PAGE_LABELS = Object.freeze(["Menabung", "Anggaran", "Keuangan bersama", "Login"]);
-let mobileGoogleAuthModule = null;
 let mobileGoogleAuthModulePromise = null;
 const preloadMobileGoogleAuth = () => {
   if (!mobileGoogleAuthModulePromise) {
-    mobileGoogleAuthModulePromise = import("../../services/auth/mobileFirebaseGoogleAuth.js").then((module) => {
-      mobileGoogleAuthModule = module;
-      return module;
-    });
+    mobileGoogleAuthModulePromise = import("../../services/auth/mobileFirebaseGoogleAuth.js");
   }
   return mobileGoogleAuthModulePromise;
 };
@@ -469,13 +465,22 @@ const LoginPage = () => {
       return undefined;
     }
     let active = true;
-    preloadMobileGoogleAuth().then(() => {
-      if (active) setMobileGoogleAuthReady(true);
+    setMobileGoogleAuthReady(false);
+    preloadMobileGoogleAuth().then(async (mobileAuth) => {
+      try {
+        const result = await mobileAuth.consumeGoogleRedirectResult({ onFirebaseToken: loginWithFirebaseToken });
+        if (active && !result.handled) setMobileGoogleAuthReady(true);
+      } catch (redirectError) {
+        if (active) {
+          setButtonError(redirectError);
+          setMobileGoogleAuthReady(true);
+        }
+      }
     }).catch(() => {
       if (active) setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
     });
     return () => { active = false; };
-  }, [configErrors.length, mobileLayout, status]);
+  }, [configErrors.length, loginWithFirebaseToken, mobileLayout, status]);
 
   useEffect(() => {
     if (!shouldRenderDesktopGoogleButton) return undefined;
@@ -499,13 +504,17 @@ const LoginPage = () => {
     };
   }, [loginWithFirebaseToken, shouldRenderDesktopGoogleButton]);
 
-  const handleMobileGoogleLogin = () => {
-    if (mobileLoginPending || !mobileGoogleAuthReady || !mobileGoogleAuthModule || status !== "anonymous" || configErrors.length) return;
+  const handleMobileGoogleLogin = async () => {
+    if (mobileLoginPending || !mobileGoogleAuthReady || status !== "anonymous" || configErrors.length) return;
     setButtonError(null);
     setMobileLoginPending(true);
-    mobileGoogleAuthModule.signInWithGooglePopup({ onFirebaseToken: loginWithFirebaseToken })
-      .catch((loginError) => { setButtonError(loginError); })
-      .finally(() => { setMobileLoginPending(false); });
+    try {
+      const { startGoogleRedirect } = await preloadMobileGoogleAuth();
+      await startGoogleRedirect();
+    } catch (loginError) {
+      setButtonError(loginError);
+      setMobileLoginPending(false);
+    }
   };
 
   const requestedPath = typeof location.state?.from === "string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")

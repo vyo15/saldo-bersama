@@ -597,7 +597,7 @@
 .login-mobile-creator-link:hover { color: var(--primary); }
 .login-mobile-creator-link:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
 
-.login-mobile-navigation { position: relative; z-index: 12; padding: 6px 18px max(8px, env(safe-area-inset-bottom)); display: grid; gap: 6px; background: linear-gradient(to top, var(--page) 74%, color-mix(in srgb, var(--page) 80%, transparent)); }
+.login-mobile-navigation { position: relative; z-index: 12; padding: 6px 18px max(8px, env(safe-area-inset-bottom)); display: grid; background: linear-gradient(to top, var(--page) 74%, color-mix(in srgb, var(--page) 80%, transparent)); }
 .login-mobile-navigation__row { min-height: 44px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
 .login-mobile-navigation__spacer { width: 44px; height: 44px; display: block; }
 .login-mobile-back { width: 44px; height: 44px; padding: 0; border: 1px solid var(--border); border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--text); cursor: pointer; touch-action: manipulation; transition: transform var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing); }
@@ -650,7 +650,7 @@
   .login-mobile-login-content > p:not(.login-mobile-welcome) { margin: 8px auto 12px; font-size: 12.5px; line-height: 1.42; }
   .login-mobile-security { margin-top: 8px; gap: 6px 10px; font-size: 9px; }
   .login-mobile-creator-link { margin-top: 3px; }
-  .login-mobile-navigation { padding-top: 4px; gap: 4px; }
+  .login-mobile-navigation { padding-top: 4px; }
 }
 
 @media (max-height: 620px) and (max-width: 820px) {
