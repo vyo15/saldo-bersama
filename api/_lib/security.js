@@ -8,6 +8,13 @@ const decoder = (value) => Buffer.from(value, "base64url").toString("utf8");
 
 const ROLE_ALIASES = Object.freeze({ administrator: "owner", owner: "owner", member: "member" });
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GOOGLE_PROFILE_PHOTO_PREFIX = "https://lh3.googleusercontent.com/";
+
+const trustedProfilePhotoUrl = (value) => {
+  const photoUrl = String(value || "").trim();
+  if (!photoUrl || photoUrl.length > 1_024) return "";
+  return photoUrl.startsWith(GOOGLE_PROFILE_PHOTO_PREFIX) ? photoUrl : "";
+};
 
 export const parseAllowedUsers = (raw = process.env.ALLOWED_USERS_JSON || "[]") => {
   let users;
@@ -41,6 +48,7 @@ export const createSessionCookie = (user, { maxAgeSeconds = 43_200 } = {}) => {
     uid: user.uid,
     email: user.email,
     name: user.name || user.email,
+    photoURL: trustedProfilePhotoUrl(user.photoURL || user.photoUrl || user.picture),
     role: user.role,
     exp: Math.floor(Date.now() / 1000) + maxAgeSeconds,
   }));

@@ -30,12 +30,12 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
     assert.equal(
       configurationError,
       "",
-      `Build browser smoke harus menyediakan public test env VITE_GOOGLE_CLIENT_ID dan VITE_FIREBASE_API_KEY: ${configurationError}`,
+      `Build browser smoke harus menyediakan public test env VITE_GOOGLE_CLIENT_ID, VITE_FIREBASE_API_KEY, dan VITE_FIREBASE_AUTH_DOMAIN: ${configurationError}`,
     );
     assert.equal(
       await page.evaluate("window.google?.accounts?.id?.__saldoBersamaSmokeMock === true"),
       true,
-      "Browser smoke harus memakai mock Google Identity lokal, bukan script provider eksternal.",
+      "Browser smoke tetap memakai mock Google Identity lokal untuk jalur desktop, bukan script provider eksternal.",
     );
     assert.equal(
       await page.evaluate("Boolean(document.querySelector('.login-mobile-stage'))"),
@@ -50,7 +50,12 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
     assert.equal(
       await page.evaluate("document.querySelectorAll('.login-mobile-hero').length"),
       3,
-      "Tiga halaman onboarding harus memakai hero card clean, sedangkan halaman keempat tetap login canonical.",
+      "Tiga halaman onboarding harus memakai hero card clean, sedangkan halaman keempat tetap login khusus.",
+    );
+    assert.equal(
+      await page.evaluate("document.querySelectorAll('.login-mobile-provider, .login-mobile-login-slide .google-login-button, .login-mobile-login-slide iframe').length"),
+      0,
+      "Login mobile tidak boleh merender host atau iframe Google Identity Services.",
     );
     const onboardingGeometry = await page.evaluate(`(() => [...document.querySelectorAll('.login-mobile-onboarding-slide')].map((slide) => {
       const hero = slide.querySelector('.login-mobile-hero')?.getBoundingClientRect();
@@ -68,27 +73,6 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
       await page.evaluate("document.querySelectorAll('.login-mobile-pills').length"),
       0,
       "Onboarding final tidak memakai pill fitur tambahan di bawah deskripsi.",
-    );
-
-    await waitFor(
-      () => page.evaluate("Boolean(document.querySelector('.login-mobile-login-slide:not(.is-active) .google-login-button button'))"),
-      { timeoutMs: 3_000, description: "Google button dipreload saat halaman login masih off-screen" },
-    );
-    await page.evaluate(`(() => {
-      const host = document.querySelector('.login-mobile-login-slide .google-login-button');
-      const button = host?.querySelector('button');
-      if (!host || !button) return false;
-      const finalFrame = document.createElement('iframe');
-      finalFrame.hidden = true;
-      finalFrame.dataset.googleFinalMock = 'true';
-      finalFrame.dataset.preloadSentinel = 'stable';
-      host.append(finalFrame);
-      return true;
-    })()`);
-    await page.evaluate("document.querySelector('iframe[data-google-final-mock=\"true\"]')?.dispatchEvent(new Event('load'))");
-    await waitFor(
-      () => page.evaluate("document.querySelector('.login-mobile-login-slide .google-login-button')?.classList.contains('is-ready') === true"),
-      { timeoutMs: 3_000, description: "provider Google final siap sebelum halaman login dibuka" },
     );
 
     await setViewport(page, 360, 667);
@@ -120,23 +104,8 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
       { timeoutMs: 3_000, description: "halaman login aktif tanpa progress bar" },
     );
     await waitFor(
-      () => page.evaluate("Boolean(document.querySelector('.google-login-button button, .google-login-button iframe'))"),
-      { timeoutMs: 5_000, description: "widget login Google final sudah tersedia saat onboarding selesai" },
-    );
-    assert.equal(
-      await page.evaluate("document.querySelector('.google-login-button iframe[data-google-final-mock=\"true\"]')?.dataset.preloadSentinel"),
-      "stable",
-      "Perpindahan onboarding ke login tidak boleh merender ulang iframe Google final yang sudah dipreload.",
-    );
-    assert.equal(
-      await page.evaluate("document.querySelectorAll('.login-mobile-provider .google-login-button button').length"),
-      0,
-      "Placeholder button Google inline harus dibuang setelah iframe final selesai load agar tidak tampil dobel.",
-    );
-    assert.equal(
-      await page.evaluate("document.querySelectorAll('.login-mobile-provider__preparing').length"),
-      0,
-      "State Menyiapkan login tidak boleh terlihat bila provider sudah siap sebelum halaman 4 dibuka.",
+      () => page.evaluate("Boolean(document.querySelector('.login-mobile-google-button'))"),
+      { timeoutMs: 3_000, description: "tombol Google custom tersedia pada halaman login" },
     );
 
     const result = await page.evaluate(`(() => {
@@ -154,13 +123,11 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
       ).trim();
       const interactive = [...document.querySelectorAll("button, a[href], input, select, textarea, [role='button']")]
         .filter(visible);
-      const providerContainers = [...document.querySelectorAll(".google-login-button")].filter(visible);
-      const providerControls = interactive.filter((element) => element.closest(".google-login-button"));
-      const applicationControls = interactive.filter((element) => !element.closest(".google-login-button"));
       const dimensionsOf = (element) => {
         const rect = element.getBoundingClientRect();
         return { name: nameOf(element), width: Math.round(rect.width), height: Math.round(rect.height) };
       };
+      const loginButton = document.querySelector('.login-mobile-google-button');
       return {
         pathname: location.pathname,
         title: document.querySelector("h1")?.textContent?.trim() || "",
@@ -168,13 +135,12 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
         h1Count: document.querySelectorAll("h1").length,
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         unnamedControls: interactive.filter((element) => !nameOf(element)).map((element) => element.outerHTML.slice(0, 160)),
-        undersizedControls: applicationControls
+        undersizedControls: interactive
           .map(dimensionsOf)
           .filter((item) => item.width < 44 || item.height < 44),
-        providerContainers: providerContainers.map(dimensionsOf),
-        undersizedProviderControls: providerControls
-          .map(dimensionsOf)
-          .filter((item) => item.width < 24 || item.height < 24),
+        loginButton: loginButton ? dimensionsOf(loginButton) : null,
+        loginButtonCount: document.querySelectorAll('.login-mobile-google-button').length,
+        mobileGisCount: document.querySelectorAll('.login-mobile-login-slide .google-login-button, .login-mobile-login-slide iframe').length,
         alerts: [...document.querySelectorAll("[role='alert']")].map((element) => element.textContent.trim()),
       };
     })()`);
@@ -186,50 +152,39 @@ await test("browser smoke: route privat redirect ke login dan layout mobile teta
     assert.ok(result.overflow <= 1, `Layout mobile tidak boleh overflow horizontal (${result.overflow}px).`);
     assert.deepEqual(result.unnamedControls, [], "Semua kontrol terlihat harus mempunyai accessible name.");
     assert.deepEqual(result.undersizedControls, [], `Kontrol aplikasi harus mempunyai target sentuh minimum 44px: ${JSON.stringify(result.undersizedControls)}`);
-    assert.equal(result.providerContainers.length, 1, "Host widget login Google harus tersedia tepat satu kali.");
-    assert.ok(
-      result.providerContainers.every((item) => item.width >= 44 && item.height >= 44),
-      `Host widget pihak ketiga harus menyediakan area layout minimum 44px: ${JSON.stringify(result.providerContainers)}`,
-    );
-    assert.deepEqual(
-      result.undersizedProviderControls,
-      [],
-      `Kontrol provider-managed tetap harus memenuhi minimum 24px: ${JSON.stringify(result.undersizedProviderControls)}`,
-    );
+    assert.equal(result.loginButtonCount, 1, "Halaman mobile harus mempunyai tepat satu tombol Google custom.");
+    assert.ok(result.loginButton?.width >= 200 && result.loginButton?.width <= 320, `Tombol Google custom harus responsif dan tidak terlalu lebar: ${JSON.stringify(result.loginButton)}`);
+    assert.ok(result.loginButton?.height >= 44, `Tombol Google custom harus mempunyai target sentuh minimum 44px: ${JSON.stringify(result.loginButton)}`);
+    assert.equal(result.mobileGisCount, 0, "Mobile tidak boleh menghidupkan kembali iframe Google Identity Services.");
     assert.deepEqual(result.alerts, [], "Login smoke tidak boleh menampilkan error konfigurasi/runtime.");
+
     const loginFit = await page.evaluate(`(() => {
       const slide = document.querySelector('.login-mobile-login-slide');
-      const provider = document.querySelector('.login-mobile-provider');
-      const host = document.querySelector('.google-login-button');
+      const button = document.querySelector('.login-mobile-google-button');
       const slideRect = slide?.getBoundingClientRect();
-      const providerRect = provider?.getBoundingClientRect();
-      const hostRect = host?.getBoundingClientRect();
+      const buttonRect = button?.getBoundingClientRect();
       return {
         clientHeight: slide?.clientHeight || 0,
         scrollHeight: slide?.scrollHeight || 0,
         overflowY: slide ? getComputedStyle(slide).overflowY : '',
-        providerInside: Boolean(slideRect && providerRect && providerRect.left >= slideRect.left - 1 && providerRect.right <= slideRect.right + 1),
-        hostInside: Boolean(slideRect && hostRect && hostRect.left >= slideRect.left - 1 && hostRect.right <= slideRect.right + 1),
+        buttonInside: Boolean(slideRect && buttonRect && buttonRect.left >= slideRect.left - 1 && buttonRect.right <= slideRect.right + 1),
         welcomeHasDecoration: Boolean(document.querySelector('.login-mobile-login-content .login-mobile-eyebrow')),
         progressVisible: Boolean(document.querySelector('.login-mobile-progress')),
         backVisible: Boolean(document.querySelector('.login-mobile-back')),
-        providerHostWidth: Math.round(hostRect?.width || 0),
       };
     })()`);
     assert.equal(loginFit.overflowY, "hidden", "Halaman login mobile tidak boleh memiliki scroll vertikal internal.");
     assert.ok(loginFit.scrollHeight <= loginFit.clientHeight + 1, `Halaman login harus muat dalam satu layar: ${JSON.stringify(loginFit)}`);
-    assert.equal(loginFit.providerInside, true, `Provider Google harus berada penuh di dalam slide: ${JSON.stringify(loginFit)}`);
-    assert.equal(loginFit.hostInside, true, `Host Google tidak boleh terpotong: ${JSON.stringify(loginFit)}`);
+    assert.equal(loginFit.buttonInside, true, `Tombol Google custom harus berada penuh di dalam slide: ${JSON.stringify(loginFit)}`);
     assert.equal(loginFit.welcomeHasDecoration, false, "Selamat datang pada halaman login tidak memakai eyebrow bergaris.");
     assert.equal(loginFit.progressVisible, false, "Progress bar onboarding tidak tampil pada halaman login.");
     assert.equal(loginFit.backVisible, false, "Tombol kembali onboarding tidak tampil pada halaman login.");
-    assert.ok(loginFit.providerHostWidth >= 200 && loginFit.providerHostWidth <= 300, `Host Google mobile harus responsif 200-300px untuk tombol medium generic tanpa clipping: ${JSON.stringify(loginFit)}`);
 
     const { nodes } = await page.send("Accessibility.getFullAXTree");
     const snapshot = accessibilitySnapshot(nodes);
     assert.ok(snapshot.some((node) => node.role === "main"), "Accessibility tree harus memiliki main landmark.");
     assert.ok(snapshot.some((node) => node.role === "heading" && node.name === result.title), "Heading utama harus terbaca di accessibility tree.");
-    assert.ok(snapshot.some((node) => node.role === "button" && /Google/i.test(node.name)), "Tombol login Google harus terbaca di accessibility tree.");
+    assert.ok(snapshot.some((node) => node.role === "button" && /Google/i.test(node.name)), "Tombol login Google custom harus terbaca di accessibility tree.");
   } finally {
     await chromium?.close();
     await page?.close();

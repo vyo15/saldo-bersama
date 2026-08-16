@@ -5,6 +5,7 @@ export const CORE_RUNTIME_ENV_KEYS = Object.freeze([
   "VITE_APP_NAME",
   "VITE_GOOGLE_CLIENT_ID",
   "VITE_FIREBASE_API_KEY",
+  "VITE_FIREBASE_AUTH_DOMAIN",
   "ALLOWED_USERS_JSON",
   "ALLOWED_ORIGINS",
   "SESSION_SECRET",
@@ -54,7 +55,7 @@ export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
   ...WEB_PUSH_ENV_KEYS,
 ]);
 
-// Backward-compatible alias for existing imports that mean the eight core keys.
+// Backward-compatible alias for existing imports that mean the nine core keys.
 export const REQUIRED_RUNTIME_ENV_KEYS = CORE_RUNTIME_ENV_KEYS;
 
 const unquote = (value) => {

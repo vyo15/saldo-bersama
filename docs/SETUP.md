@@ -74,7 +74,7 @@ Alur `npm run dev` pada terminal interaktif:
 5. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
 6. Menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
 7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, serta grup opsional parsial.
-8. Memvalidasi delapan key core dan satu grup Web Push lengkap/valid.
+8. Memvalidasi sembilan key core dan satu grup Web Push lengkap/valid.
 9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
 10. Menjalankan server lokal setelah dependency dan environment valid.
 

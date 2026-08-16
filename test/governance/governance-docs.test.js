@@ -284,7 +284,7 @@ test("every canonical environment key is documented and classifications use one 
   keys.forEach((key) => {
     assert.ok(environmentDocs.includes(`\`${key}\``), `Environment key missing from docs: ${key}`);
   });
-  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 8);
+  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 9);
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
   assert.deepEqual(PRODUCTION_SYNC_ENV_KEYS, [
     ...CORE_RUNTIME_ENV_KEYS,
@@ -292,9 +292,9 @@ test("every canonical environment key is documented and classifications use one 
     ...GOOGLE_BRIDGE_ENV_KEYS,
     ...WEB_PUSH_ENV_KEYS,
   ]);
-  assert.match(environmentDocs, /delapan key core wajib dan satu key logging opsional/);
+  assert.match(environmentDocs, /sembilan key core wajib dan satu key logging opsional/);
   assert.match(environmentDocs, /Web Push wajib lengkap dan valid/i);
-  assert.doesNotMatch(environmentDocs, /sembilan key core/i);
+  assert.doesNotMatch(environmentDocs, /delapan key core/i);
 });
 
 test("environment policy uses Vercel Development as guarded local bootstrap", () => {

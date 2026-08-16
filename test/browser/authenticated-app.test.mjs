@@ -209,7 +209,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
       { description: "menu lainnya mobile" },
     );
     const mobileMenuGroups = await page.evaluate("[...document.querySelectorAll('.mobile-menu-section h3')].map((item) => item.textContent.trim())");
-    assert.deepEqual(mobileMenuGroups, ["Perencanaan", "Data keuangan", "Kontrol saldo", "Aplikasi"]);
+    assert.deepEqual(mobileMenuGroups, ["Perencanaan", "Data keuangan", "Kontrol saldo", "Akses", "Aplikasi"]);
     const mobileMenuState = await page.evaluate(`(() => {
       const dialog = document.querySelector('[role=dialog]');
       const text = dialog?.textContent || '';
@@ -217,12 +217,14 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
         themeDuplicate: Boolean(dialog?.querySelector('.mobile-menu-theme')) || /Dark mode|Light mode/i.test(text),
         quickAddDuplicate: [...(dialog?.querySelectorAll('button') || [])].some((button) => button.textContent.trim() === 'Tambah transaksi'),
         reconciliationRoute: Boolean(dialog?.querySelector('a[href="/rekonsiliasi"]')),
+        membersRoute: Boolean(dialog?.querySelector('a[href="/anggota"]')),
         logoutInFooter: Boolean(dialog?.querySelector('.mobile-menu-footer button')),
       };
     })()`);
     assert.equal(mobileMenuState.themeDuplicate, false, "Menu lainnya tidak boleh menduplikasi dark/light toggle.");
     assert.equal(mobileMenuState.quickAddDuplicate, false, "Menu lainnya tidak boleh menduplikasi aksi Tambah transaksi dari navigasi utama.");
     assert.equal(mobileMenuState.reconciliationRoute, true, "Rekonsiliasi harus tersedia pada grup Kontrol saldo.");
+    assert.equal(mobileMenuState.membersRoute, true, "Anggota harus tersedia sebagai menu terpisah untuk Administrator.");
     assert.equal(mobileMenuState.logoutInFooter, true, "Logout mobile harus tersedia pada footer menu.");
     assert.equal(await page.evaluate("document.querySelector('[role=dialog]')?.getAttribute('data-mobile-swipe-to-close')"), "true", "Menu lainnya harus mengaktifkan swipe-to-dismiss secara eksplisit.");
     await waitFor(() => page.evaluate("document.activeElement?.classList.contains('mobile-menu-link') || false"), { description: "focus awal Menu lainnya berada pada item menu" });
@@ -304,7 +306,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
     assert.equal(await page.evaluate("document.body.textContent.includes('Database tersambung · schema v9')"), true, "Status backend harus memakai kontrak system.health aktual.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Degraded')"), false, "Status backend siap tidak boleh salah ditampilkan sebagai Degraded.");
-    assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/notifikasi\"]')) && Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), true, "Owner harus memperoleh navigasi internal Pengaturan.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/notifikasi\"]')) && !Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), true, "Pengaturan tidak boleh lagi memuat menu Anggota.");
 
     await setViewport(page, 366, 668);
     for (const [pathname, heading] of [["/", "Ringkasan Keuangan"], ["/transaksi", "Transaksi"], ...routeCases]) {
@@ -453,7 +455,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     assert.equal(await page.evaluate("document.querySelectorAll('h3').length >= 3 && document.body.textContent.includes('Google Sheets') && document.body.textContent.includes('Google Calendar') && document.body.textContent.includes('Google Drive')"), true, "Sheets, Calendar, dan safety backup Google Drive harus tampil pada route integrasi.");
     assert.equal(await page.evaluate("document.body.textContent.includes('Terverifikasi') && document.body.textContent.includes('saldo-bersama-full-v9-browser.json.gz')"), true, "Tile Google Drive harus mengambil aktivitas backup terverifikasi dari backup_runs, bukan queue mirror.");
 
-    await navigateAndAssert(page, appServer.origin, "/pengaturan/anggota", "Pengaturan", { mobile: true });
+    await navigateAndAssert(page, appServer.origin, "/anggota", "Anggota", { mobile: true });
     const memberPageState = await page.evaluate(`(() => {
       const text = document.body.textContent || "";
       return {
@@ -1055,7 +1057,7 @@ await test("authenticated owner: seluruh route, dashboard capability, filter, de
     await page.evaluate("document.querySelector('.desktop-module-dock__flyout a[href=\"/rekening\"]')?.click()");
     await waitForAppRoute(page, "/rekening", { heading: "Rekening" });
     assert.equal(await page.evaluate("document.querySelector('button[aria-label=\"Buka menu Data keuangan\"]')?.classList.contains('is-active') || false"), true, "Parent Data keuangan harus aktif pada child route.");
-    await navigateAndAssert(page, appServer.origin, "/pengaturan/anggota", "Pengaturan", { mobile: false });
+    await navigateAndAssert(page, appServer.origin, "/anggota", "Anggota", { mobile: false });
     await page.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.includes('Lihat aktivitas transaksi'))?.click()");
     await waitFor(() => page.evaluate("document.querySelector('[role=dialog]')?.textContent?.includes('Aktivitas anggota') || false"), { description: "drawer aktivitas anggota desktop" });
     await waitForElementMotionToSettle(page, "[role=dialog]", "drawer aktivitas anggota desktop");
@@ -1168,11 +1170,11 @@ await test("authenticated member: seluruh route dapat dibuka tanpa kehilangan ca
     assert.equal(await page.evaluate("document.body.textContent.includes('Anggota dapat memantau anggaran')"), true, "Member harus memperoleh status Anggaran read-only yang jelas.");
     await navigateAndAssert(page, appServer.origin, "/pengaturan", "Pengaturan", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/notifikasi\"]'))"), true, "Member harus memperoleh menu notifikasi perangkat.");
-    assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), false, "Menu administratif owner tidak boleh terlihat bagi member.");
+    assert.equal(await page.evaluate("Boolean(document.querySelector('a[href=\"/pengaturan/anggota\"]'))"), false, "Pengaturan tidak boleh menampilkan menu Anggota.");
     await navigateAndAssert(page, appServer.origin, "/pengaturan/notifikasi", "Pengaturan", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('#notification-settings-title'))"), true, "Member harus dapat mengelola subscription notifikasi perangkatnya sendiri.");
-    await navigateAndAssert(page, appServer.origin, "/pengaturan/anggota", "Pengaturan", { mobile: true });
-    assert.equal(await page.evaluate("document.body.textContent.includes('Hanya pemilik yang dapat membuka bagian ini')"), true, "Deep link administratif harus menampilkan guard bagi member.");
+    await navigateAndAssert(page, appServer.origin, "/anggota", "Anggota", { mobile: true });
+    assert.equal(await page.evaluate("document.body.textContent.includes('Hanya Administrator yang dapat membuka bagian ini')"), true, "Deep link administratif harus menampilkan guard bagi member.");
     await navigateAndAssert(page, appServer.origin, "/rekening", "Rekening", { mobile: true });
     assert.equal(await page.evaluate("Boolean(document.querySelector('button[aria-label=\"Tambah rekening\"]'))"), false, "Member tidak boleh memperoleh aksi master data owner.");
     assert.equal(

@@ -283,3 +283,10 @@ test("dependency bootstrap fail closed bila npm ci tidak melengkapi dependency",
       && error.missing.includes("vite"),
   );
 });
+
+
+test("bootstrap dependency probe mencakup Firebase Auth modular", async () => {
+  const source = await readFile(new URL("../../scripts/bootstrap-development-dependencies.mjs", import.meta.url), "utf8");
+  assert.match(source, /"@firebase\/app"/);
+  assert.match(source, /"@firebase\/auth"/);
+});

@@ -133,7 +133,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
     read("src/features/recurring/recurring.api.js"),
   ]);
   assert.match(layout, /\/pengaturan\/notifikasi/);
-  assert.match(layout, /\/pengaturan\/anggota/);
+  assert.doesNotMatch(layout, /\/pengaturan\/anggota/);
   assert.match(layout, /\/pengaturan\/pemulihan/);
   assert.match(layout, /\/pengaturan\/periode/);
   assert.match(layout, /\/pengaturan\/audit/);
@@ -175,8 +175,8 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(feedbackCss, /z-index: calc\(var\(--layer-modal\) - 1\)/, "Feedback global tidak boleh menutupi dialog destructive.");
   assert.match(notifications, /Nonaktifkan perangkat ini/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
-  assert.match(members, /Tambah pengguna/);
-  assert.match(members, /<Modal[\s\S]*title=\{editingMember \? "Ubah akses pengguna" : "Tambah pengguna"\}/);
+  assert.match(members, /Tambah anggota/);
+  assert.match(members, /<Modal[\s\S]*title=\{editingMember \? "Ubah akses anggota" : "Tambah anggota"\}/);
   assert.match(members, /Lihat aktivitas transaksi/);
   assert.doesNotMatch(members, /Tambah atau ubah akses/);
   assert.match(members, /users\.upsert/);
@@ -415,7 +415,8 @@ test("aksi lifecycle rekening memakai label jujur sebelum server menentukan hapu
     read("src/features/accounts/components/AccountFinancialCard.jsx"),
   ]);
   assert.match(desktop, />Hapus \/ Arsipkan<\/Button>/);
-  assert.equal((card.match(/Hapus \/ Arsipkan/g) || []).length, 2);
+  assert.equal((card.match(/Hapus \/ Arsipkan/g) || []).length, 1);
+  assert.equal((`${desktop}\n${card}`.match(/Hapus \/ Arsipkan/g) || []).length, 2);
   assert.doesNotMatch(`${desktop}\n${card}`, />Arsipkan<\/(?:Button|button)>/);
 });
 

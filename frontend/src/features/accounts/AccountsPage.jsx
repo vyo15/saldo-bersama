@@ -220,7 +220,7 @@ const AccountsPageFeedback = ({ accountsResource, usersResource, ownerMode, relo
 const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
   <div className={styles.desktopPageHeader}><PageHeader title="Rekening"
     description={<span className={styles.mobileAccountCount}>{accounts.length} rekening aktif</span>}
-    actions={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog} aria-label="Tambah rekening desktop">Tambah rekening</Button> : null} />
+    actions={ownerMode && accounts.length ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog} aria-label="Tambah rekening desktop">Tambah rekening</Button> : null} />
   </div>
 );
 

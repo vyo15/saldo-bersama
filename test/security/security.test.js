@@ -38,16 +38,28 @@ test("allowlist menolak role, email, dan konflik duplikat yang invalid", () => {
   assert.deepEqual(parseAllowedUsers('[{"email":"user@gmail.com","role":"member"},{"email":"USER@gmail.com","role":"member"}]'), [{ email: "user@gmail.com", role: "member" }]);
 });
 
-test("session cookie ditandatangani dan dapat diverifikasi", () => withEnv({
+test("session cookie ditandatangani, mempertahankan foto Google tepercaya, dan dapat diverifikasi", () => withEnv({
   ALLOWED_USERS_JSON: '[{"email":"owner@gmail.com","role":"administrator"}]',
   SESSION_SECRET: "12345678901234567890123456789012",
   VERCEL_ENV: "development",
 }, () => {
-  const cookie = createSessionCookie({ uid: "u1", email: "owner@gmail.com", role: "owner", name: "Owner" });
+  const photoURL = "https://lh3.googleusercontent.com/a/example-profile=s96-c";
+  const cookie = createSessionCookie({ uid: "u1", email: "owner@gmail.com", role: "owner", name: "Owner", photoURL });
   const token = cookie.split(";")[0];
   const session = readSession({ headers: { cookie: token } });
   assert.equal(session.uid, "u1");
   assert.equal(session.role, "owner");
+  assert.equal(session.photoURL, photoURL);
+}));
+
+test("session cookie tidak mempersist URL foto profil di luar host Google yang diizinkan CSP", () => withEnv({
+  ALLOWED_USERS_JSON: '[{"email":"owner@gmail.com","role":"administrator"}]',
+  SESSION_SECRET: "12345678901234567890123456789012",
+  VERCEL_ENV: "development",
+}, () => {
+  const cookie = createSessionCookie({ uid: "u1", email: "owner@gmail.com", role: "owner", name: "Owner", photoURL: "https://example.com/avatar.jpg" });
+  const session = readSession({ headers: { cookie: cookie.split(";")[0] } });
+  assert.equal(session.photoURL, "");
 }));
 
 

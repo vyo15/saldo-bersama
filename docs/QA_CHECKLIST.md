@@ -106,9 +106,9 @@
 - [ ] Pada 390px, `Tagihan periode ini`, `Penerimaan yang diharapkan`, halaman Anggaran, seluruh chart laporan, serta route Pengaturan Notifikasi/Integrasi/Member/Export/Backup/Pemulihan/Audit memiliki bounding rect nonzero.
 - [ ] Pada ≤580px, action terakhir `.settings-card` menempati `grid-column: 1 / -1`.
 - [x] Breakpoint 820/821/940/941 tidak menghasilkan capability hilang; breakpoint 580/581 tetap harus diverifikasi terpisah bila area terkait berubah.
-- [ ] Login mobile Google menampilkan hanya satu kontrol final: host transparan tanpa wrap visual tambahan dan placeholder inline hilang setelah iframe final siap.
-- [ ] Login mobile 320/360/390/412/430px dan layar pendek muat satu layar tanpa scroll vertikal internal; hero, copy, navigasi, dan provider Google tidak terpotong; aset onboarding tidak meniban teks dan tidak keluar dari hero card.
-- [ ] Login mobile memiliki tiga onboarding hero-card clean tanpa pill fitur di bawah deskripsi dan halaman keempat login canonical; dark/light tetap terbaca, money rain hanya muncul di halaman login, provider Google memiliki safe width, “Selamat datang” tanpa garis eyebrow, dan halaman 4 tidak ikut diubah menjadi hero onboarding.
+- [ ] Login mobile Google menampilkan hanya satu tombol React `Masuk dengan Google`; tidak ada iframe/host Google Identity Services pada halaman mobile, logo Google resmi utuh, dan tombol tidak berubah bentuk setelah render.
+- [ ] Login mobile 320/360/390/412/430px dan layar pendek muat satu layar tanpa scroll vertikal internal; hero, copy, navigasi, dan tombol Google custom tidak terpotong; aset onboarding tidak meniban teks dan tidak keluar dari hero card.
+- [ ] Login mobile memiliki tiga onboarding hero-card clean tanpa pill fitur di bawah deskripsi dan halaman keempat login canonical; dark/light tetap terbaca, money rain hanya muncul di halaman login, tombol Google custom memiliki safe width, “Selamat datang” tanpa garis eyebrow, dan halaman 4 tidak ikut diubah menjadi hero onboarding.
 - [x] Ikon navigasi sesuai fungsi dan menu mobile tidak bergantung pada indeks array.
 - [ ] Sidebar desktop tetap memakai mask melengkung, target sentuh minimal 44px, dan tidak menutup konten pada 821/940/1440px.
 - [x] Submenu desktop satu tingkat, dapat ditutup melalui trigger/Escape/click-outside, dan tidak memakai kartu di dalam kartu.
@@ -144,4 +144,10 @@
 - [x] Tombol destructive mobile berlabel jelas, fokus awal aman, Enter tidak melakukan submit typed confirmation, dan UI menunggu respons server.
 - [ ] Konflik antarperangkat tidak menimpa data dan meminta refresh.
 
-- [ ] Login mobile: tombol Google tetap dirender canonical oleh Google Identity Services dengan `size: medium` pada host responsif maksimal 300px dan label utuh, tidak terpotong, iframe tidak di-resize paksa, serta progress bar dan tombol back onboarding tidak muncul pada halaman login. Provider dipreload saat halaman 4 masih off-screen; ketika halaman 4 dibuka, tombol final tidak berubah bentuk lagi. Jika iframe final belum selesai dimuat, hanya state `Menyiapkan login…` yang tampil sampai provider siap, tanpa tombol palsu/overlay dan tanpa render ulang saat berpindah slide.
+- [ ] Login mobile: tombol React branded Google memanggil Firebase `GoogleAuthProvider` + `signInWithPopup`, disabled selama proses agar tidak membuka popup ganda, tidak memakai iframe GIS, serta progress bar dan tombol back onboarding tidak muncul pada halaman login. Popup cancel/blocked/network error harus menghasilkan pesan ramah tanpa raw Firebase error; success meneruskan Firebase ID token ke session backend existing dan authorization backend tetap deny-by-default.
+
+
+### Login Google mobile
+- Mobile memakai tombol HTML branded Google milik Saldo Bersama dan Firebase Web SDK `GoogleAuthProvider` + `signInWithPopup`; tidak memakai iframe `google.accounts.id.renderButton()`.
+- Tombol wajib disabled saat proses login untuk mencegah double-submit, menampilkan error ramah tanpa raw Firebase error, dan meneruskan Firebase ID token ke session backend existing.
+- Desktop tetap memakai Google Identity Services existing. Backend allowlist, role, dan verifikasi Firebase ID token tetap source of truth.

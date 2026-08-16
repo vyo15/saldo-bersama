@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import Card from "../../components/common/Card.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-const OwnerSettingsGuard = ({ children }) => {
+const OwnerSettingsGuard = ({ children, returnTo = "/pengaturan", returnLabel = "Kembali ke ringkasan" }) => {
   const { user } = useAuth();
   if (user?.role === "owner") return children;
   return (
@@ -12,7 +12,7 @@ const OwnerSettingsGuard = ({ children }) => {
         <div><h2>Hanya Administrator yang dapat membuka bagian ini</h2></div>
         <FiLock aria-hidden="true" />
       </div>
-      <Link className="button button--secondary" to="/pengaturan">Kembali ke ringkasan</Link>
+      <Link className="button button--secondary" to={returnTo}>{returnLabel}</Link>
     </Card>
   );
 };

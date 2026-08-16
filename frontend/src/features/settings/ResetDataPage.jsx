@@ -421,7 +421,7 @@ const useResetApply = ({
   return { applyBusy, applyError, setApplyError, confirmationOpen, setConfirmationOpen, applyReset };
 };
 
-const ResetStatusFailure = ({ resource, onCheck }) => (resource.status === "error" || resource.refreshError ? (
+const ResetStatusFailure = ({ resource, status, onCheck }) => ((resource.status === "error" || resource.refreshError) && !resetStatusPresentation(status) ? (
   <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau memulai pembersihan baru.</span><Button type="button" icon={FiRefreshCw} loading={resource.isRefreshing} onClick={onCheck}>Periksa status operasi</Button></div>
 ) : null);
 
@@ -519,7 +519,7 @@ const ResetDataPage = () => {
         <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
         <ResetRecoveryPanel status={resetState.status} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
         <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetState.status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
-        <ResetStatusFailure resource={resetStatusResource} onCheck={recovery.checkResetStatus} />
+        <ResetStatusFailure resource={resetStatusResource} status={resetState.status} onCheck={recovery.checkResetStatus} />
         <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode sebelum data nyata.</strong> Gunakan hanya ketika seluruh data keuangan masih berupa data testing. Setelah transaksi nyata digunakan, jangan gunakan pembersihan massal.</span></div>
         <ResetScopeSelector resetScope={resetScope} setResetScope={setResetScope} setPreview={previewState.setPreview} setResult={recovery.setResult} />
         <ResetStepCards previewState={previewState} statusBlocksReset={resetState.blocked} integrationsResource={integrationsResource} driveReadiness={drive.readiness} driveReady={drive.ready} canOpenReset={canOpenReset} apply={apply} />

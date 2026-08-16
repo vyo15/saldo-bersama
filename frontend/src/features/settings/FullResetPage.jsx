@@ -98,7 +98,7 @@ const FullResetPreview = ({ preview }) => (
     <div className={styles.resetPreserved}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiShield aria-hidden="true" />
-        <div><strong>Tetap disimpan</strong><small>Akses pengguna, audit, backup, riwayat pemeriksaan integritas, dan struktur database tetap disimpan.</small></div>
+        <div><strong>Tetap disimpan</strong><small>Akses anggota, audit, backup, riwayat pemeriksaan integritas, dan struktur database tetap disimpan.</small></div>
       </div>
       <div className={styles.resetPreservedGrid}>
         <div><FiCheckCircle aria-hidden="true" /><span>Pengguna</span><strong>{formatCount(preview.preserved?.users)}</strong></div>
@@ -311,7 +311,7 @@ const useFullResetApply = ({
 const FullResetStatusPanels = ({ status, statusResource, recovery }) => (
   <>
     <MaintenanceRecoveryPanel maintenanceMode={Boolean(status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset penuh sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
-    {(statusResource.status === "error" || statusResource.refreshError) ? (
+    {(statusResource.status === "error" || statusResource.refreshError) && !["processing", "not_committed"].includes(status?.outcome) ? (
       <div className="notice notice--danger" role="alert">
         <FiAlertTriangle aria-hidden="true" />
         <span><strong>Status full reset belum dapat diverifikasi.</strong> Operasi tetap diblokir sampai status dari server dapat dibaca.</span>

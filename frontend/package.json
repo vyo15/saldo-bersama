@@ -11,6 +11,8 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@firebase/app": "0.16.0",
+    "@firebase/auth": "1.13.4",
     "@fontsource-variable/manrope": "5.3.0",
     "@mantine/core": "^9.5.0",
     "@mantine/hooks": "^9.5.0",

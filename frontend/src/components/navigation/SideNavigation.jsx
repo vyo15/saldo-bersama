@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router";
 import { useTheme } from "../../app/ThemeContext.jsx";
+import { useAuth } from "../../features/auth/AuthContext.jsx";
 import sidebarRailMask from "../../assets/layout/sidebar-rail-mask.svg";
 import sidebarRailMaskDark from "../../assets/layout/sidebar-rail-mask-dark.svg";
 import { DESKTOP_NAVIGATION, matchesNavigationPath } from "../../config/navigation.js";
@@ -92,6 +93,7 @@ const useNavigationDismiss = (openGroupId, setOpenGroupId, dockRef, triggerRefs)
 
 const SideNavigation = () => {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const location = useLocation();
   const [openGroupId, setOpenGroupId] = useState("");
   const dockRef = useRef(null);
@@ -99,12 +101,18 @@ const SideNavigation = () => {
 
   useEffect(() => setOpenGroupId(""), [location.pathname]);
   useNavigationDismiss(openGroupId, setOpenGroupId, dockRef, triggerRefs);
+  const visibleNavigation = DESKTOP_NAVIGATION
+    .filter((item) => !item.ownerOnly || user?.role === "owner")
+    .map((item) => item.items
+      ? { ...item, items: item.items.filter((child) => !child.ownerOnly || user?.role === "owner") }
+      : item)
+    .filter((item) => !item.items || item.items.length);
 
   return (
     <aside ref={dockRef} className="desktop-module-dock" aria-label="Navigasi utama Saldo Bersama">
       <img className="desktop-module-dock__shape" src={theme === "dark" ? sidebarRailMaskDark : sidebarRailMask} alt="" aria-hidden="true" />
       <nav className="desktop-module-dock__navigation" aria-label="Menu utama">
-        {DESKTOP_NAVIGATION.map((item) => (
+        {visibleNavigation.map((item) => (
           <NavigationItem
             key={item.to || item.id}
             item={item}

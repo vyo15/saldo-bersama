@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { FiArrowLeft, FiList, FiPlus } from "react-icons/fi";
+import { FiList, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
 import { accountOwnershipLabel, detectEwalletTemplate } from "../../../shared/presentation/account.js";
@@ -272,7 +272,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
   return <div className={styles.mobileAccountExperience}>
     <section className={styles.mobileStackPanel} aria-labelledby="mobile-account-stack-title">
       <header className={styles.mobileStackHeader}>
-        <button type="button" className={styles.mobileStackHeaderButton} onClick={() => navigate("/")}><FiArrowLeft aria-hidden="true" /><span>Beranda</span></button>
+        <strong className={styles.mobileStackHeaderTitle}>Rekening</strong>
         <div className={styles.mobileStackHeaderActions}>
           {ownerMode ? <button type="button" className={styles.mobileStackAddButton} onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /></button> : null}
           <button type="button" className={styles.mobileStackHeaderButton} onClick={() => setMobileAccountSheet("accounts")} aria-label={`Buka daftar ${accounts.length} rekening aktif`}>

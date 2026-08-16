@@ -3,7 +3,7 @@ import { FiAlertCircle, FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { useTheme } from "../../app/ThemeContext.jsx";
-import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
+import { renderGoogleLoginButton, signInWithGooglePopup } from "../../services/auth/googleFirebaseAuth.js";
 import { useAuth } from "./AuthContext.jsx";
 import "./LoginPage.css";
 
@@ -132,24 +132,23 @@ const LoginFeedback = ({ configErrors, error, buttonError, status, refreshSessio
   );
 };
 
-const LoginProvider = ({
-  buttonRef,
-  buttonReady = true,
-  configErrors,
-  error,
-  buttonError,
-  status,
-  refreshSession,
-  showPreparing = false,
-}) => {
-  const preparing = showPreparing
-    && !buttonReady
-    && status === "anonymous"
-    && !configErrors.length
-    && !error
-    && !buttonError;
+const LoginProvider = ({ buttonRef, configErrors, error, buttonError, status, refreshSession }) => (
+  <>
+    <LoginFeedback
+      configErrors={configErrors}
+      error={error}
+      buttonError={buttonError}
+      status={status}
+      refreshSession={refreshSession}
+    />
+    <div className="google-login-button" ref={buttonRef} aria-label="Masuk menggunakan Google" />
+  </>
+);
+
+const MobileGoogleLogin = ({ configErrors, error, buttonError, status, refreshSession, pending, onLogin }) => {
+  const disabled = pending || status !== "anonymous" || Boolean(configErrors.length);
   return (
-    <>
+    <div className="login-mobile-auth">
       <LoginFeedback
         configErrors={configErrors}
         error={error}
@@ -157,19 +156,20 @@ const LoginProvider = ({
         status={status}
         refreshSession={refreshSession}
       />
-      <div
-        className={`google-login-button${buttonReady ? " is-ready" : ""}`}
-        ref={buttonRef}
-        aria-label="Masuk menggunakan Google"
-        aria-busy={preparing || undefined}
-      />
-      {preparing ? (
-        <div className="login-mobile-provider__preparing" role="status" aria-live="polite">
-          <span className="login-mobile-provider__spinner" aria-hidden="true" />
-          <span>Menyiapkan login…</span>
-        </div>
-      ) : null}
-    </>
+      <button
+        className="login-mobile-google-button"
+        type="button"
+        onClick={onLogin}
+        disabled={disabled}
+        aria-busy={pending || undefined}
+      >
+        <span className="login-mobile-google-button__icon" aria-hidden="true">
+          <img src="/login/google-g-logo.png" alt="" draggable="false" />
+        </span>
+        <span>{pending ? "Menghubungkan ke Google…" : "Masuk dengan Google"}</span>
+        {pending ? <span className="login-mobile-google-button__spinner" aria-hidden="true" /> : null}
+      </button>
+    </div>
   );
 };
 
@@ -224,7 +224,7 @@ const MobileOnboardingSlide = ({ slide, index, active }) => (
   </article>
 );
 
-const MobileLoginSlide = ({ active, providerProps }) => (
+const MobileLoginSlide = ({ active, mobileAuthProps }) => (
   <article className={`login-mobile-slide login-mobile-login-slide${active ? " is-active" : ""}`} aria-hidden={!active}>
     <div className="login-mobile-login-backdrop" aria-hidden="true" />
     {active ? <MoneyRain compact notes={MOBILE_MONEY_NOTES} /> : null}
@@ -235,9 +235,7 @@ const MobileLoginSlide = ({ active, providerProps }) => (
       <p className="login-mobile-welcome">Selamat datang</p>
       <h2>Saldo <strong>Bersama</strong></h2>
       <p>Kelola keuangan pribadi dan bersama dengan akun Google yang sudah diizinkan.</p>
-      <div className="login-mobile-provider">
-        <LoginProvider {...providerProps} />
-      </div>
+      <MobileGoogleLogin {...mobileAuthProps} />
       <div className="login-mobile-security" aria-label="Keamanan login">
         <span><i />Akun terverifikasi</span>
         <span><i />Data privat</span>
@@ -270,7 +268,7 @@ const MobileLoginLayout = ({
   moveSwipe,
   finishSwipe,
   trackRef,
-  providerProps,
+  mobileAuthProps,
 }) => {
   const loginActive = mobileSlide === MOBILE_LOGIN_SLIDE;
   const nextLabel = mobileSlide === MOBILE_LOGIN_SLIDE - 1 ? "Masuk ke Saldo Bersama" : "Lanjut";
@@ -318,7 +316,7 @@ const MobileLoginLayout = ({
             {MOBILE_ONBOARDING.map((slide, index) => (
               <MobileOnboardingSlide key={slide.id} slide={slide} index={index} active={index === mobileSlide} />
             ))}
-            <MobileLoginSlide active={loginActive} providerProps={providerProps} />
+            <MobileLoginSlide active={loginActive} mobileAuthProps={mobileAuthProps} />
           </div>
         </div>
 
@@ -447,7 +445,7 @@ const LoginPage = () => {
   const location = useLocation();
   const buttonRef = useRef(null);
   const [buttonError, setButtonError] = useState(null);
-  const [googleButtonReady, setGoogleButtonReady] = useState(false);
+  const [mobileLoginPending, setMobileLoginPending] = useState(false);
   const {
     mobileLayout,
     mobileSlide,
@@ -457,72 +455,58 @@ const LoginPage = () => {
     moveSwipe,
     finishSwipe,
   } = useMobileLoginInteraction();
-  const shouldRenderGoogleButton = status === "anonymous" && !configErrors.length;
+  const shouldRenderDesktopGoogleButton = status === "anonymous" && !configErrors.length && !mobileLayout;
 
   useEffect(() => {
-    if (!shouldRenderGoogleButton) {
-      setGoogleButtonReady(false);
-      return undefined;
-    }
+    if (!shouldRenderDesktopGoogleButton) return undefined;
     const controller = new AbortController();
-    const element = buttonRef.current;
     let cleanup = () => {};
-    let observer = null;
-    let observedFrame = null;
     setButtonError(null);
-    setGoogleButtonReady(!mobileLayout);
-
-    const syncGoogleButtonReady = () => {
-      if (!mobileLayout || controller.signal.aborted || !element) return;
-      const frame = element.querySelector("iframe");
-      if (!frame || frame === observedFrame) return;
-      observedFrame = frame;
-      frame.addEventListener("load", () => {
-        if (controller.signal.aborted || !element.contains(frame)) return;
-        element.querySelectorAll("button").forEach((button) => button.remove());
-        setGoogleButtonReady(true);
-      }, { once: true });
-    };
-
-    if (mobileLayout && element && typeof MutationObserver !== "undefined") {
-      observer = new MutationObserver(syncGoogleButtonReady);
-      observer.observe(element, { childList: true, subtree: true });
-    }
-
     renderGoogleLoginButton({
-      element,
+      element: buttonRef.current,
       onFirebaseToken: loginWithFirebaseToken,
       onError: setButtonError,
       signal: controller.signal,
-      compact: mobileLayout,
+      compact: false,
     }).then((dispose) => {
       if (controller.signal.aborted) { dispose(); return; }
       cleanup = dispose;
-      syncGoogleButtonReady();
     }).catch((error) => {
       if (error?.name !== "AbortError") setButtonError(error);
     });
     return () => {
       controller.abort();
-      observer?.disconnect();
       cleanup();
     };
-  }, [loginWithFirebaseToken, mobileLayout, shouldRenderGoogleButton]);
+  }, [loginWithFirebaseToken, shouldRenderDesktopGoogleButton]);
+
+  const handleMobileGoogleLogin = async () => {
+    if (mobileLoginPending || status !== "anonymous" || configErrors.length) return;
+    setButtonError(null);
+    setMobileLoginPending(true);
+    try {
+      await signInWithGooglePopup({ onFirebaseToken: loginWithFirebaseToken });
+    } catch (loginError) {
+      setButtonError(loginError);
+    } finally {
+      setMobileLoginPending(false);
+    }
+  };
 
   const requestedPath = typeof location.state?.from === "string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")
     ? location.state.from
     : "/";
   if (status === "authenticated") return <Navigate to={requestedPath} replace />;
 
-  const providerProps = {
-    buttonRef,
-    buttonReady: !mobileLayout || googleButtonReady,
+  const providerProps = { buttonRef, configErrors, error, buttonError, status, refreshSession };
+  const mobileAuthProps = {
     configErrors,
     error,
     buttonError,
     status,
     refreshSession,
-    showPreparing: mobileLayout,
+    pending: mobileLoginPending,
+    onLogin: handleMobileGoogleLogin,
   };
   if (mobileLayout) return (
     <MobileLoginLayout
@@ -532,7 +516,7 @@ const LoginPage = () => {
       moveSwipe={moveSwipe}
       finishSwipe={finishSwipe}
       trackRef={trackRef}
-      providerProps={providerProps}
+      mobileAuthProps={mobileAuthProps}
     />
   );
   return <DesktopLoginLayout theme={theme} providerProps={providerProps} />;

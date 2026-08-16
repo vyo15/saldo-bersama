@@ -101,7 +101,7 @@ const GoogleIntegrationsPage = () => {
 
   return (
     <section className={styles.pageContent} aria-labelledby="google-integrations-title">
-      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+      <RefreshWarning error={resource.refreshError} />
       <div className={styles.pageHeading}><h2 id="google-integrations-title">Integrasi Google</h2></div>
       <SettingsNotice result={result} />
       {bridgeFailure ? (

@@ -31,6 +31,8 @@ const AppShell = () => {
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
+  const settingsRoute = location.pathname === "/pengaturan" || location.pathname.startsWith("/pengaturan/");
+  const transactionQuickAddVisible = !settingsRoute;
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();
@@ -85,8 +87,8 @@ const AppShell = () => {
         </div>
       </div>
 
-      {!dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
-      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
+      {transactionQuickAddVisible && !dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
+      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} quickAddVisible={transactionQuickAddVisible} />
 
       <Modal
         key={`mobile-more-${location.pathname}`}
@@ -98,7 +100,10 @@ const AppShell = () => {
         mobileSwipeToClose
       >
         <div className="mobile-menu-list">
-          {MOBILE_SECONDARY_GROUPS.map(({ id, label, items }, groupIndex) => (
+          {MOBILE_SECONDARY_GROUPS
+            .map((group) => ({ ...group, items: group.items.filter((item) => !item.ownerOnly || user?.role === "owner") }))
+            .filter((group) => group.items.length)
+            .map(({ id, label, items }, groupIndex) => (
             <section key={id} className="mobile-menu-section" aria-labelledby={`mobile-menu-${id}`}>
               <h3 id={`mobile-menu-${id}`}>{label}</h3>
               {items.map(({ to, label: itemLabel, icon: Icon }, itemIndex) => (

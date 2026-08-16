@@ -47,11 +47,12 @@ const App = () => (
         <Route path="rekening" element={routeElement(AccountsPage)} />
         <Route path="rekonsiliasi" element={routeElement(ReconciliationsPage)} />
         <Route path="kategori" element={routeElement(CategoriesPage)} />
+        <Route path="anggota" element={routeElement(MembersSettingsPage)} />
         <Route path="pengaturan" element={routeElement(SettingsLayout)}>
           <Route index element={routeElement(SettingsPage)} />
           <Route path="notifikasi" element={routeElement(DeviceNotificationsPage)} />
           <Route path="integrasi" element={routeElement(GoogleIntegrationsPage)} />
-          <Route path="anggota" element={routeElement(MembersSettingsPage)} />
+          <Route path="anggota" element={<Navigate to="/anggota" replace />} />
           <Route path="export" element={routeElement(ExportDataPage)} />
           <Route path="import" element={routeElement(ImportTransactionsPage)} />
           <Route path="backup" element={routeElement(BackupPage)} />

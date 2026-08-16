@@ -63,11 +63,8 @@
 .heroFacts dt { color: var(--text-muted); font-size: var(--font-size-sm); }
 .heroFacts dd { min-width: 0; margin: 0; overflow: hidden; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }
 
-.heroActions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
+.heroActions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .heroActions :global(.button) { min-width: 0; }
-.heroActions :global(.button--primary) { width: 100%; }
-.heroActions :global(.button--danger) { grid-column: 1 / -1; }
-.heroActions :global(.button:only-child) { grid-column: 1 / -1; }
 
 .accountCarousel {
   min-width: 0;
@@ -181,7 +178,6 @@
 .panelHeading h2,
 .compactHeading h2 { margin: .2rem 0 0; color: var(--text); font-size: var(--font-size-heading-sm); letter-spacing: -.025em; }
 
-.distributionRow:focus-visible,
 .textAction:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 3px; }
 
 .textAction {
@@ -236,8 +232,6 @@
 
 .distributionList { margin-top: var(--space-3); display: grid; gap: .35rem; }
 .distributionRow { min-width: 0; padding: .6rem; display: grid; gap: .45rem; border: 1px solid transparent; border-radius: .8rem; background: transparent; color: var(--text); text-align: left; }
-.distributionRow:hover { background: var(--surface-soft); }
-.distributionRow[aria-pressed="true"] { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); background: var(--primary-soft); }
 .distributionMeta { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .distributionMeta > span:first-child { min-width: 0; display: grid; gap: .15rem; }
 .distributionMeta strong,

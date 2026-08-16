@@ -168,7 +168,8 @@ test("action internal kantong tidak diekspos dan health publik hanya mengembalik
 test("environment template hanya memakai daftar canonical tanpa duplikasi legacy", async () => {
   const values = parseEnv(await source(".env.example"));
   for (const key of ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "SESSION_SECRET", "GOOGLE_BRIDGE_SHARED_SECRET", "JOBS_SHARED_SECRET", "VAPID_PRIVATE_KEY"]) assert.equal(values[key], "", `${key} wajib kosong`);
-  for (const key of ["VITE_APP_NAME", "VITE_GOOGLE_CLIENT_ID", "VITE_FIREBASE_API_KEY", "ALLOWED_USERS_JSON", "ALLOWED_ORIGINS", "GOOGLE_BRIDGE_WEB_APP_URL", "VITE_VAPID_PUBLIC_KEY", "VAPID_SUBJECT"]) assert.ok(key in values, key);
+  for (const key of ["VITE_APP_NAME", "VITE_GOOGLE_CLIENT_ID", "VITE_FIREBASE_API_KEY",
+    "VITE_FIREBASE_AUTH_DOMAIN", "ALLOWED_USERS_JSON", "ALLOWED_ORIGINS", "GOOGLE_BRIDGE_WEB_APP_URL", "VITE_VAPID_PUBLIC_KEY", "VAPID_SUBJECT"]) assert.ok(key in values, key);
   for (const legacy of ["INTERNAL_SHARED_SECRET", "APPS_SCRIPT_WEB_APP_URL", "FIREBASE_WEB_API_KEY", "VAPID_PUBLIC_KEY", "VITE_DEV_MODE", "SPREADSHEET_ID", "MIRROR_SPREADSHEET_ID", "GOOGLE_CALENDAR_ID", "BACKUP_FOLDER_ID", "JOBS_ENDPOINT_URL"]) assert.equal(legacy in values, false, legacy);
 });
 

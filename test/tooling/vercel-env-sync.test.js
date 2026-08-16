@@ -53,10 +53,10 @@ test("fixture VAPID selalu menghasilkan private scalar 32 byte", () => {
 });
 
 test("sinkronisasi Vercel mencakup core, logging, dan grup integrasi Production", () => {
-  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 8);
+  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 9);
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
   assert.deepEqual(PRODUCTION_ENV_KEYS, PRODUCTION_SYNC_ENV_KEYS);
-  assert.equal(PRODUCTION_ENV_KEYS.length, 15);
+  assert.equal(PRODUCTION_ENV_KEYS.length, 16);
   assert.deepEqual(new Set([...PUBLIC_PRODUCTION_KEYS, ...SENSITIVE_PRODUCTION_KEYS]), new Set(PRODUCTION_ENV_KEYS));
   assert.equal(validateProductionEnvironment(canonicalValues()).valid, true);
 });
@@ -72,7 +72,7 @@ test("sinkronisasi menolak key legacy dan environment core yang tidak lengkap", 
 });
 
 
-test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi delapan core", async () => withTempProject(async (root) => {
+test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi sembilan core", async () => withTempProject(async (root) => {
   const values = canonicalValues();
   delete values.LOG_LEVEL;
   assert.equal(validateProductionEnvironment(values).valid, true);
@@ -83,7 +83,7 @@ test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi delapan cor
     projectRunner: async () => {},
     runner: async (request) => calls.push(request),
   });
-  assert.equal(result.synced.length, 14);
+  assert.equal(result.synced.length, 15);
   assert.equal(calls.some(({ key }) => key === "LOG_LEVEL"), false);
 }));
 

@@ -151,7 +151,7 @@ const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriti
 const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, message, canManage, user, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, formController, lifecycleController, categories, users, usersStatus, attentionBudgetId }) => <div className={`page-stack budgets-page ${styles.page}`}>
   <header className={styles.pageHeader}>
     <div className={styles.pageHeading}><h1>Anggaran</h1><span>{periodMeta.label}</span></div>
-    {canManage ? <button type="button" className={styles.addButton} onClick={formController.openBudgetForm} aria-label="Tambah anggaran" title="Tambah anggaran"><FiPlus aria-hidden="true" /></button> : null}
+    {canManage && (items.length > 0 || activeFilter !== "all") ? <button type="button" className={styles.addButton} onClick={formController.openBudgetForm} aria-label="Tambah anggaran" title="Tambah anggaran"><FiPlus aria-hidden="true" /></button> : null}
   </header>
   <div className={styles.controlsRow}>
     <label className={styles.periodControl}><span className="sr-only">Periode</span><input type="month" max={currentPeriod} value={period} onChange={(event) => { setPeriod(event.target.value); setActiveFilter("all"); formController.setForm(emptyForm()); formController.setFormOpen(false); formController.setMessage(null); }} /></label>

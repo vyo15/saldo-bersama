@@ -7,7 +7,9 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 test("desktop mempertahankan module dock IMS melengkung dengan submenu minimal", async () => {
   const source = await read("src/components/navigation/SideNavigation.jsx");
 
-  assert.match(source, /DESKTOP_NAVIGATION\.map/);
+  assert.match(source, /const visibleNavigation = DESKTOP_NAVIGATION/);
+  assert.match(source, /visibleNavigation\.map/);
+  assert.match(source, /item\.ownerOnly \|\| user\?\.role === "owner"/);
   assert.match(source, /desktop-module-dock/);
   assert.match(source, /sidebar-rail-mask\.svg/);
   assert.match(source, /sidebar-rail-mask-dark\.svg/);
@@ -39,12 +41,25 @@ test("dock dirender sebagai sibling shell agar fixed tetap mengikuti viewport", 
 test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti viewport", async () => {
   const source = await read("src/layouts/AppShell.jsx");
   const shellIndex = source.indexOf('<div className={`app-shell');
-  const shellEndIndex = source.indexOf("\n      </div>\n\n      {!dashboardRoute");
+  const shellEndIndex = source.indexOf("\n      </div>\n\n      {transactionQuickAddVisible");
   const mobileNavigationIndex = source.indexOf("<MobileNavigation ");
 
   assert.ok(shellIndex >= 0, "shell aplikasi harus dirender");
   assert.ok(shellEndIndex > shellIndex, "shell harus ditutup sebelum kontrol fixed viewport");
   assert.ok(mobileNavigationIndex > shellEndIndex, "navigasi mobile harus menjadi sibling shell, bukan child dari backdrop-filter");
+});
+
+test("quick add transaksi tidak mengganggu halaman pengaturan dan maintenance", async () => {
+  const [shell, mobileNavigation, responsiveCss] = await Promise.all([
+    read("src/layouts/AppShell.jsx"),
+    read("src/components/navigation/MobileNavigation.jsx"),
+    read("src/styles/responsive.css"),
+  ]);
+  assert.match(shell, /settingsRoute = location\.pathname === "\/pengaturan" \|\| location\.pathname\.startsWith\("\/pengaturan\/"\)/);
+  assert.match(shell, /quickAddVisible=\{transactionQuickAddVisible\}/);
+  assert.match(mobileNavigation, /quickAddVisible = true/);
+  assert.match(mobileNavigation, /mobile-navigation--without-add/);
+  assert.match(responsiveCss, /\.mobile-navigation--without-add \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/);
 });
 
 test("navigasi mobile memakai safe area dan menyisakan ruang scroll untuk konten terakhir", async () => {
@@ -196,6 +211,7 @@ test("navigasi mengelompokkan menu berdasarkan fungsi tanpa mengubah route lama"
   assert.match(source, /FiCheckCircle/);
   assert.match(source, /to: "\/kategori", label: "Kategori"/);
   assert.match(source, /to: "\/rekonsiliasi", label: "Cocokkan saldo"/);
+  assert.match(source, /to: "\/anggota", label: "Anggota"[\s\S]*ownerOnly: true/);
   assert.match(source, /label: "Perencanaan"/);
   assert.match(source, /to: "\/anggaran", label: "Anggaran"/);
   assert.match(source, /to: "\/tagihan", label: "Jadwal rutin"/);
@@ -204,6 +220,7 @@ test("navigasi mengelompokkan menu berdasarkan fungsi tanpa mengubah route lama"
   assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
   assert.match(source, /label: "Kontrol saldo"/);
   assert.match(source, /items: pickNavigation\("\/rekonsiliasi"\)/);
+  assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota"\)/);
   assert.doesNotMatch(source, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
   assert.match(source, /pickNavigation\("\/", "\/transaksi", "\/laporan"\)/);
@@ -233,6 +250,7 @@ test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan 
     Promise.all([read("src/components/common/Modal.jsx"), read("src/components/common/useMobileSwipeDismiss.js")]).then((parts) => parts.join("\n")),
     read("src/components/common/Modal.module.css"),
   ]);
+  assert.match(shell, /item\.ownerOnly \|\| user\?\.role === "owner"/);
   assert.doesNotMatch(shell, /ThemeToggle showLabel/);
   assert.doesNotMatch(shell, /mobile-menu-quick-add/);
   assert.match(shell, /!dashboardRoute && !transactionsRoute/);

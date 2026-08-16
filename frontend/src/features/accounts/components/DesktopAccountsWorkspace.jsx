@@ -6,7 +6,6 @@ import {
   FiChevronRight,
   FiCreditCard,
   FiEdit2,
-  FiFileText,
   FiPieChart,
   FiTrendingUp,
 } from "react-icons/fi";
@@ -68,14 +67,14 @@ const RecentTransactionRow = ({ item, category, selectedAccountId }) => {
   );
 };
 
-const DistributionRow = ({ account, percentage, selected, onSelect }) => (
-  <button type="button" className={styles.distributionRow} aria-pressed={selected} onClick={() => onSelect(account.account_id)}>
+const DistributionRow = ({ account, percentage }) => (
+  <div className={styles.distributionRow}>
     <span className={styles.distributionMeta}>
       <span><strong>{account.name}</strong><small>{percentage}% dari distribusi saldo</small></span>
       <Money value={account.balance || 0} tone={balanceTone(account.balance)} />
     </span>
     <progress className={styles.distributionProgress} max="100" value={percentage} aria-label={`Porsi saldo ${account.name} ${percentage}%`} />
-  </button>
+  </div>
 );
 
 const AccountCarousel = ({ accounts, account, onSelectAccount }) => {
@@ -169,7 +168,7 @@ const AccountCarousel = ({ accounts, account, onSelectAccount }) => {
   );
 };
 
-const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onViewTransactions, onEditAccount, onArchiveAccount }) => {
+const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onEditAccount, onArchiveAccount }) => {
   const canManage = Boolean(account.can_manage ?? ownerMode);
   const readOnly = Boolean(account.read_only);
   return (
@@ -196,7 +195,6 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>
         <div className={styles.heroActions}>
-          <Button variant="primary" icon={FiFileText} onClick={() => onViewTransactions(account)}>Lihat transaksi</Button>
           {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
           {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Hapus / Arsipkan</Button> : null}
         </div>
@@ -219,7 +217,7 @@ const RecentTransactionsPanel = ({ resource, items, categoryLookup, selectedAcco
   </section>
 );
 
-const AccountInsights = ({ accounts, selectedAccount, totalBalance, balanceTrend, distribution, reportStatus, onSelectAccount }) => (
+const AccountInsights = ({ accounts, totalBalance, balanceTrend, distribution, reportStatus }) => (
   <aside className={styles.insightColumn} aria-label="Ringkasan seluruh rekening">
     <section className={styles.balanceSummary}>
       <span className={styles.summaryIcon}><FiCreditCard aria-hidden="true" /></span>
@@ -231,7 +229,7 @@ const AccountInsights = ({ accounts, selectedAccount, totalBalance, balanceTrend
     </section>
     <section className={styles.distributionPanel} aria-labelledby="desktop-account-distribution-title">
       <header className={styles.compactHeading}><span><FiPieChart aria-hidden="true" /></span><h2 id="desktop-account-distribution-title">Komposisi saldo</h2></header>
-      <div className={styles.distributionList}>{distribution.map(({ account, percentage }) => <DistributionRow key={account.account_id} account={account} percentage={percentage} selected={account.account_id === selectedAccount.account_id} onSelect={onSelectAccount} />)}</div>
+      <div className={styles.distributionList}>{distribution.map(({ account, percentage }) => <DistributionRow key={account.account_id} account={account} percentage={percentage} />)}</div>
       <p className={styles.distributionNote}>Persentase memakai nilai absolut agar saldo negatif tetap terbaca.</p>
     </section>
   </aside>
@@ -259,10 +257,10 @@ const DesktopAccountsWorkspace = ({ accounts, selectedAccount, ownerMode, bootst
   return (
     <div className={styles.desktopWorkspace}>
       <div className={styles.leftColumn}>
-        <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onViewTransactions={onViewTransactions} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} />
+        <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} />
         <RecentTransactionsPanel resource={recentTransactionsResource} items={recentTransactionsResource.data?.items || []} categoryLookup={categoryLookup} selectedAccount={selectedAccount} onViewTransactions={onViewTransactions} />
       </div>
-      <AccountInsights accounts={accounts} selectedAccount={selectedAccount} totalBalance={totalBalance} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} onSelectAccount={onSelectAccount} />
+      <AccountInsights accounts={accounts} totalBalance={totalBalance} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} />
     </div>
   );
 };

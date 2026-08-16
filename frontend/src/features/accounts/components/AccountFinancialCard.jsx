@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   FiArchive,
-  FiChevronRight,
   FiClock,
   FiCopy,
   FiCreditCard,
@@ -16,7 +15,6 @@ import {
   FiSmartphone,
   FiUsers,
   FiWifi,
-  FiX,
 } from "react-icons/fi";
 import cashCard from "../../../assets/account-cards/cash.webp";
 import savingsCard from "../../../assets/account-cards/savings.webp";
@@ -172,14 +170,6 @@ const PreviewCard = ({ account, templateOverride }) => (
   <div className={styles.preview}><AccountVisual account={account} templateOverride={templateOverride} detail /></div>
 );
 
-const CarouselCard = ({ account, selected, templateOverride, buttonRef, onSelect }) => (
-  <article className={`${styles.carouselItem} ${selected ? styles.carouselItemSelected : ""}`}>
-    <button ref={buttonRef} type="button" className={styles.carouselSelect} onClick={() => onSelect?.(account)} aria-pressed={selected} aria-label={`Pilih rekening ${account.name}`}>
-      <AccountVisual account={account} templateOverride={templateOverride} carousel />
-    </button>
-  </article>
-);
-
 const ReadOnlyBadge = () => <span className={styles.readOnlyBadge}><FiEye aria-hidden="true" />Hanya lihat</span>;
 
 const MobileDetailHeading = ({ account, embedded, readOnly }) => (
@@ -236,66 +226,12 @@ const MobileDetailCard = ({ account, model, embedded, copied, onCopy, onEdit, on
   </section>
 );
 
-const DetailList = ({ account, model, copied, onCopy }) => (
-  <dl className={styles.detailList}>
-    <div><dt><FiHash aria-hidden="true" />No rekening</dt><dd>{account.account_number ? <button type="button" className={styles.copyNumber} onClick={onCopy} title="Salin nomor rekening"><span>{copied ? "Tersalin" : formatAccountNumber(account.account_number, { placeholder: false })}</span><FiCopy aria-hidden="true" /></button> : "Belum diisi"}</dd></div>
-    <div><dt><FiDollarSign aria-hidden="true" />Saldo saat ini</dt><dd className={styles.highlight}><Money value={account.balance || 0} /></dd></div>
-    <div><dt><FiFlag aria-hidden="true" />Saldo awal</dt><dd><Money value={account.initial_balance || 0} /></dd></div>
-    <div><dt><FiUsers aria-hidden="true" />Kepemilikan</dt><dd>{model.ownershipLabel}</dd></div>
-    <div><dt><FiClock aria-hidden="true" />Terakhir diperbarui</dt><dd>{formatUpdatedAt(account.updated_at)}</dd></div>
-  </dl>
-);
-
-const DetailActions = ({ account, canManage, onEdit, onArchive, onViewTransactions }) => (
-  <div className={styles.detailActions} aria-label={`Aksi rekening ${account.name}`}>
-    <Button variant="primary" icon={FiFileText} onClick={() => onViewTransactions?.(account)}>Lihat transaksi</Button>
-    {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEdit?.(account)}>Edit</Button> : null}
-    {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchive?.(account)}>Hapus / Arsipkan</Button> : null}
-  </div>
-);
-
-const DetailCard = ({ account, model, copied, onCopy, closeButtonRef, onClose, onEdit, onArchive, onViewTransactions }) => (
-  <aside className={styles.detailPanel} aria-label={`Detail rekening ${account.name}`}>
-    <header className={styles.detailHeader}><strong>Detail rekening</strong><button ref={closeButtonRef} type="button" className={styles.closeDetail} onClick={onClose} aria-label="Tutup detail rekening"><FiX aria-hidden="true" /></button></header>
-    <AccountVisual account={account} detail />
-    <div className={styles.detailTitle}>
-      <div><h3>{account.name}</h3><p>{model.typeLabel}<span>•</span>{model.ownershipLabel}</p></div>
-      <div className={styles.detailBadges}><StatusBadge status={account.status || "active"} />{model.readOnly ? <ReadOnlyBadge /> : null}</div>
-    </div>
-    <DetailList account={account} model={model} copied={copied} onCopy={onCopy} />
-    {model.readOnly ? <p className={styles.readOnlyNotice}>Rekening ini transparan untuk pasangan. Pengelolaan rekening hanya tersedia untuk Administrator, sedangkan transaksi tetap mengikuti hak akses rekening.</p> : null}
-    <DetailActions account={account} canManage={model.canManage} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} />
-  </aside>
-);
-
-const ListCard = ({ account, model, selected, templateOverride, buttonRef, onSelect }) => (
-  <article className={`${styles.accountItem} ${selected ? styles.selected : ""}`}>
-    <button ref={buttonRef} type="button" className={styles.accountSelect} onClick={() => onSelect?.(account)} aria-pressed={selected} aria-label={`Lihat detail rekening ${account.name}`}>
-      <AccountVisual account={account} templateOverride={templateOverride} />
-      <span className={styles.rowSummary}>
-        <span className={styles.rowHeader}>
-          <span><strong>{account.name}</strong><small>{model.typeLabel}<i>•</i>{model.ownershipLabel}</small></span>
-          <span className={styles.rowBadges}><StatusBadge status={account.status || "active"} />{model.readOnly ? <span className={styles.readOnlyDot} title="Hanya lihat"><FiEye aria-hidden="true" /><span className="sr-only">Hanya lihat</span></span> : null}</span>
-        </span>
-        <span className={styles.rowMetrics}>
-          <span><small>Saldo saat ini</small><b><Money value={account.balance || 0} /></b></span>
-          <span><small>Saldo awal</small><b><Money value={account.initial_balance || 0} /></b></span>
-          <span><small>Terakhir diperbarui</small><b>{formatUpdatedAt(account.updated_at)}</b></span>
-        </span>
-      </span>
-      <FiChevronRight className={styles.chevron} aria-hidden="true" />
-    </button>
-  </article>
-);
-
-const AccountFinancialCard = ({ account, variant = "list", selected = false, ownerMode = false, templateOverride, buttonRef, closeButtonRef, onSelect, onClose, onEdit, onArchive, onViewTransactions, embedded = false }) => {
+const AccountFinancialCard = ({ account, variant = "preview", ownerMode = false, templateOverride, onEdit, onArchive, onViewTransactions, embedded = false }) => {
   const model = accountCardModel(account, ownerMode);
   const { copied, copy } = useAccountNumberCopy(account);
   if (variant === "preview") return <PreviewCard account={account} templateOverride={templateOverride} />;
-  if (variant === "carousel") return <CarouselCard account={account} selected={selected} templateOverride={templateOverride} buttonRef={buttonRef} onSelect={onSelect} />;
   if (variant === "mobileDetail") return <MobileDetailCard account={account} model={model} embedded={embedded} copied={copied} onCopy={copy} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} />;
-  if (variant === "detail") return <DetailCard account={account} model={model} copied={copied} onCopy={copy} closeButtonRef={closeButtonRef} onClose={onClose} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} />;
-  return <ListCard account={account} model={model} selected={selected} templateOverride={templateOverride} buttonRef={buttonRef} onSelect={onSelect} />;
+  return null;
 };
 
 export default AccountFinancialCard;

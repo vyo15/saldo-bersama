@@ -60,11 +60,14 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/settings/settingsPresentation.js"),
   ]);
-  for (const route of ["notifikasi", "integrasi", "anggota", "export", "import", "backup", "pemulihan", "reset-data", "reset-semua", "periode", "audit"]) {
+  for (const route of ["notifikasi", "integrasi", "export", "import", "backup", "pemulihan", "reset-data", "reset-semua", "periode", "audit"]) {
     assert.match(app, new RegExp(`path="${route}"`));
   }
+  assert.match(app, /<Route path="anggota" element=\{routeElement\(MembersSettingsPage\)\} \/>/);
+  assert.match(app, /<Route path="anggota" element=\{<Navigate to="\/anggota" replace \/>\} \/>/);
   assert.match(layout, /SETTINGS_NAVIGATION/);
   assert.match(layout, /ownerOnly/);
+  assert.doesNotMatch(layout, /pengaturan\/anggota|Akses pengguna/);
   assert.match(overview, /useApiResource\("system\.health"\)/);
   assert.doesNotMatch(overview, /users\.list|audit\.list|archive\.list|periods\.list|integrations\.status/);
   assert.equal((notifications.match(/<h2 id="notification-settings-title">Notifikasi perangkat<\/h2>/g) || []).length, 1);
@@ -83,7 +86,7 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.match(presentation, /integrationProviderPresentation/);
   assert.match(presentation, /Trigger belum siap/);
   assert.match(presentation, /signed health check gagal|Apps Script tidak merespons dalam batas waktu/);
-  assert.match(members, /Tambah pengguna/);
+  assert.match(members, /Tambah anggota/);
   assert.match(members, /Lihat aktivitas transaksi/);
   assert.match(members, /MemberActivityPanel/);
 });
@@ -97,6 +100,7 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
 
   assert.match(members, /UserAvatar/);
   assert.match(members, /photoURL:\s*user\?\.photoURL/);
+  assert.match(members, /currentMemberCard/);
   assert.match(members, /roleFilter/);
   assert.match(activity, /created_by:\s*member\?\.user_id/);
   assert.match(activity, /reports\.monthly/);

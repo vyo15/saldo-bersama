@@ -39,7 +39,8 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(budgets, /scope: "personal"/);
   assert.match(budgets, /userOptionLabel/);
   assert.match(desktop, /overview\.alerts/);
-  assert.match(desktop, /shared-alert-count-button/);
+  assert.doesNotMatch(desktop, /shared-alert-count-button/);
+  assert.match(desktop, /Peringatan aktif<\/dt><dd>\{model\.alerts\.length\}<\/dd>/);
   assert.match(desktop, /FinancialAlertList alerts=\{model\.alerts\} variant="dashboard"/);
   assert.match(mobile, /overview\.alerts/);
   assert.match(mobile, /FinancialAlertList alerts=\{alerts\} variant="mobile"/);
@@ -166,10 +167,9 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   assert.match(desktop, /Anggaran bulan ini/);
   assert.match(desktop, /Tagihan terdekat/);
   assert.match(desktop, /Target tabungan/);
-  assert.match(desktop, /<strong>Transaksi<\/strong>/);
-  assert.match(desktop, /<strong>Anggaran<\/strong>/);
-  assert.match(desktop, /<strong>Jadwal rutin<\/strong>/);
-  assert.match(desktop, /to="\/rekonsiliasi"/);
+  assert.doesNotMatch(desktop, /Aksi cepat/);
+  assert.doesNotMatch(desktop, /shared-quick-actions/);
+  assert.match(desktop, /Arus kas bersih/);
   assert.equal((desktop.match(/>Tambah transaksi<\/span>/g) || []).length, 1);
   assert.match(mobile, /Aman digunakan/);
   assert.match(desktop, /Sembunyikan seluruh nominal/);

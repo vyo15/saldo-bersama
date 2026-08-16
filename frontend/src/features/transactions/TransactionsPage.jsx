@@ -203,11 +203,11 @@ const TransactionAttentionNotice = ({ active, editableTarget }) => {
   return <div className="notice notice--info attention-guidance" role="status"><strong>{title}</strong><span>{description}</span></div>;
 };
 
-const TransactionResourceStates = ({ resource, items, openTransactionComposer }) => <>
+const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters }) => <>
   {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
   {resource.status === "loading" ? <LoadingScreen label="Memuat transaksi..." /> : null}
   {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
-  {resource.status === "ready" && !items.length ? <EmptyState title="Transaksi tidak ditemukan" action={<Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
+  {resource.status === "ready" && !items.length ? <EmptyState title={filtersActive ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filtersActive ? "Ubah atau reset filter untuk melihat transaksi lain." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filtersActive ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
 </>;
 
 const TransactionsPage = () => {
@@ -224,6 +224,8 @@ const TransactionsPage = () => {
   const lifecycle = useTransactionLifecycle({ resource, refreshOverview, invalidate });
   const { accountLookup, categoryLookup, items, filterOptions } = transactionPageData(bootstrap, resource);
   const filtersActive = transactionFiltersActive(filters);
+  const resetFilters = () => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 })); };
+  const showHeaderCreate = resource.status !== "ready" || items.length > 0 || filtersActive;
   const { active: attentionFromDashboard, editableTarget: attentionEditableTarget } = dashboardTransactionAttention(attention, filters, items);
 
   const submitSearch = (event) => {
@@ -255,10 +257,10 @@ const TransactionsPage = () => {
 
   return <div className="page-stack transactions-page">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Transaksi" description="Semua transaksi dalam satu alur." actions={<Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button>} />
+    <PageHeader title="Transaksi" description="Semua transaksi dalam satu alur." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button> : null} />
     <TransactionAttentionNotice active={attentionFromDashboard} editableTarget={attentionEditableTarget} />
     <TransactionFilters draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} filterOptions={filterOptions} updateFilter={updateFilter} submitSearch={submitSearch} filtersActive={filtersActive} />
-    <TransactionResourceStates resource={resource} items={items} openTransactionComposer={openTransactionComposer} />
+    <TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} />
     <TransactionResults {...resultProps} />
     <TransactionDetailModal target={detailTransaction} onClose={closeDetail} accountLabel={accountLabel} categoryLabel={categoryLabel} actions={detailActions} />
     <TransactionForm open={Boolean(editingTransaction)} transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={resource.reload} />

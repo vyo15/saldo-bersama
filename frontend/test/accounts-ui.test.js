@@ -229,6 +229,8 @@ ${accountEditors}`;
   assert.match(desktopWorkspace, /Tren saldo/);
   assert.match(desktopWorkspace, /const AccountInsights =/);
   assert.match(desktopWorkspace, /distributionProgress/);
+  assert.doesNotMatch(desktopWorkspace, /className=\{styles\.distributionRow\} aria-pressed|onSelect=\{onSelectAccount\}/);
+  assert.doesNotMatch(desktopStyles, /\.distributionRow\[aria-pressed="true"\]|\.distributionRow:hover/);
   assert.match(desktopWorkspace, /onEditAccount\(account\)/);
   assert.match(desktopWorkspace, /onArchiveAccount\(account\)/);
   assert.match(desktopWorkspace, /onViewTransactions\(account\)/);
@@ -249,6 +251,8 @@ ${accountEditors}`;
     assert.equal(declaredDesktopClasses.has(className), true, `DesktopAccountsWorkspace memakai styles.${className} tetapi CSS Module tidak mendeklarasikannya.`);
   }
   assert.match(accountPageSource, /mobileAccountSheet/);
+  assert.doesNotMatch(mobileExperience, />Beranda<|FiArrowLeft/);
+  assert.match(mobileExperience, /mobileStackHeaderTitle}>Rekening/);
   assert.match(mobileActivity, /role="tab"/);
   assert.match(mobileActivity, /tabIndex=\{activeTab === "history" \? 0 : -1\}/);
   assert.match(mobileActivity, /event\.key === "Home"/);

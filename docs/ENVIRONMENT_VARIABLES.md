@@ -4,6 +4,8 @@ Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development 
 
 ## Kebijakan environment
 
+Runtime canonical terdiri dari **sembilan key core wajib dan satu key logging opsional**; grup Google bridge dan Web Push mengikuti aturan kelengkapan masing-masing.
+
 - Project saat ini memakai satu database Turso untuk runtime lokal dan Vercel Production sesuai keputusan pemilik.
 - Vercel **Development** menjadi source of truth bootstrap `.env.local` untuk komputer tepercaya. `npm run dev` pada terminal interaktif selalu menarik ulang Development sebelum server dimulai agar konfigurasi antar-PC tidak drift.
 - Vercel **Production** menjadi runtime deployment production.
@@ -17,7 +19,7 @@ Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development 
 
 ## Scope Development canonical
 
-Development menyimpan delapan key core wajib dan satu key logging opsional. Web Push wajib lengkap dan valid untuk baseline local testing. Google bridge tetap opsional karena bergantung pada resource Apps Script/Sheets/Calendar/Drive yang diaktifkan terpisah.
+Development menyimpan sembilan key core wajib dan satu key logging opsional. Web Push wajib lengkap dan valid untuk baseline local testing. Google bridge tetap opsional karena bergantung pada resource Apps Script/Sheets/Calendar/Drive yang diaktifkan terpisah.
 
 ### Core — wajib
 
@@ -26,6 +28,7 @@ Development menyimpan delapan key core wajib dan satu key logging opsional. Web 
 | `VITE_APP_NAME` | Tidak | Nama aplikasi |
 | `VITE_GOOGLE_CLIENT_ID` | Tidak | OAuth Web Client ID Google |
 | `VITE_FIREBASE_API_KEY` | Tidak | Firebase Web API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Tidak | Firebase Auth domain publik untuk OAuth web |
 | `ALLOWED_USERS_JSON` | Ya | Dua email dengan role `administrator` atau `member`; backend menormalisasi `administrator` ke compatibility key internal |
 | `ALLOWED_ORIGINS` | Tidak | Memuat `http://localhost:5173` dan domain Production |
 | `SESSION_SECRET` | Ya | Minimal 32 karakter acak |
@@ -60,7 +63,7 @@ Jika Google bridge diaktifkan, ketiga key harus lengkap. Satu konfigurasi pusat 
 
 ## Scope Production canonical
 
-Production memakai delapan key core dan satu key logging opsional yang sama namanya. Google bridge dan Web Push ikut disinkronkan hanya bila seluruh key pada grup terkait lengkap dan valid.
+Production memakai sembilan key core dan satu key logging opsional yang sama namanya. Google bridge dan Web Push ikut disinkronkan hanya bila seluruh key pada grup terkait lengkap dan valid.
 
 Secret/token Production harus diperlakukan sebagai secret deployment. `npm run env:push:production` menyinkronkan core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap. Grup parsial atau key VAPID invalid membuat command berhenti sebelum mengubah Vercel.
 
@@ -77,7 +80,7 @@ terminal interaktif
   → cek/link project saldo-bersama
   → vercel env pull <temporary-file> dari scope Development
   → hapus VERCEL_OIDC_TOKEN/key legacy dan grup parsial
-  → validasi delapan core + Web Push wajib
+  → validasi sembilan core + Web Push wajib
   → atomic replace .env.local
   → start server
 
@@ -185,3 +188,7 @@ npm run diagnose
 ```
 
 Command hanya menampilkan status/nama variable, bukan isi secret. Source validator dan clean ZIP tetap menolak `.env.local`, `.vercel`, token, dump database, serta file sementara.
+
+
+### Firebase Auth domain
+`VITE_FIREBASE_AUTH_DOMAIN` adalah public Firebase web config. Nilai production saat ini `saldo-bersama.firebaseapp.com`; jangan menaruh secret pada key `VITE_*`.

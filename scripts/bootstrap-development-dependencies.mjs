@@ -8,6 +8,8 @@ export const DEVELOPMENT_DEPENDENCY_PROBES = Object.freeze([
   "react",
   "@mantine/core",
   "@fontsource-variable/manrope",
+  "@firebase/app",
+  "@firebase/auth",
 ]);
 
 const unresolvedDependencies = (projectRoot) => {

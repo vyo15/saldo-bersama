@@ -1,6 +1,6 @@
 import {
   FiArchive, FiBell, FiCalendar, FiDatabase, FiDownload, FiDownloadCloud,
-  FiLock, FiRefreshCw, FiShield, FiTrash2, FiUploadCloud, FiUsers,
+  FiLock, FiRefreshCw, FiShield, FiTrash2, FiUploadCloud,
 } from "react-icons/fi";
 import { NavLink, Outlet } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -11,7 +11,6 @@ const SETTINGS_NAVIGATION = Object.freeze([
   { to: "/pengaturan", end: true, label: "Ringkasan", icon: FiDatabase },
   { to: "/pengaturan/notifikasi", label: "Notifikasi", icon: FiBell },
   { to: "/pengaturan/integrasi", label: "Integrasi Google", icon: FiCalendar },
-  { to: "/pengaturan/anggota", label: "Akses pengguna", icon: FiUsers, ownerOnly: true },
   { to: "/pengaturan/export", label: "Export data", icon: FiDownload, ownerOnly: true },
   { to: "/pengaturan/import", label: "Import transaksi", icon: FiUploadCloud, ownerOnly: true },
   { to: "/pengaturan/backup", label: "Backup teknis", icon: FiDownloadCloud, ownerOnly: true },

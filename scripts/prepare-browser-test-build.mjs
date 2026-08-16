@@ -5,6 +5,7 @@ const env = {
   ...process.env,
   VITE_GOOGLE_CLIENT_ID: "ci-browser-smoke.apps.googleusercontent.com",
   VITE_FIREBASE_API_KEY: "ci-browser-smoke-public-key",
+  VITE_FIREBASE_AUTH_DOMAIN: "saldo-bersama.firebaseapp.com",
 };
 
 const npmExecPath = String(process.env.npm_execpath || "").trim();
