@@ -110,7 +110,6 @@ npm ci
 npm run env:check
 npm run check
 npm run test:guard
-npm run test:browser
 npm run db:integrity
 ```
 

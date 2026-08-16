@@ -16,14 +16,14 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 
 - Source terbaru + test aktual adalah sumber kebenaran.
 - Tidak ada task card/Task ID/branch automation sebagai workflow wajib.
-- Quality gate lokal canonical: `npm run verify`; `npm run zip` menjalankannya otomatis sebelum packaging dan pre-push guard menjalankannya lagi sebelum push. Setelah setiap verification PASS maupun gagal, generated build/test artifact dan cache Vite generated dibersihkan tanpa menghapus dependency, `.env.local`, `.vercel`, atau Git metadata. Route readiness browser hanya menjamin shell/heading; assertion capability yang dimuat terpisah wajib menunggu selector capability yang terlihat.
+- Quality gate lokal canonical: `npm run verify`; `npm run zip` menjalankannya otomatis sebelum packaging dan pre-push guard menjalankannya lagi sebelum push. Setelah setiap verification PASS maupun gagal, generated build/test artifact dan cache Vite generated dibersihkan tanpa menghapus dependency, `.env.local`, `.vercel`, atau Git metadata.
 - Setelah PASS: commit pada branch, push branch, buka Pull Request, tunggu workflow **Quality** lulus, lalu merge ke `main`. Ruleset GitHub tetap memerlukan verifikasi operasional.
 - `npm run zip` membuat clean source canonical fail-closed.
 - Guarded/high-risk tetap membutuhkan approval eksplisit sebelum coding/operation.
 
 ## Rekening mobile saat ini
 
-- `MobileAccountsExperience` tetap lazy untuk menjaga route-chunk budget. Browser journey `/rekening` menunggu stack mobile visible sebelum menguji capability Administrator/Member, sehingga heading siap tidak disalahartikan sebagai seluruh nested UI siap.
+- `MobileAccountsExperience` tetap lazy untuk menjaga route-chunk budget. Capability mobile/desktop divalidasi oleh frontend regression dan pemeriksaan manual pada viewport relevan; browser automation tidak menjadi gate canonical.
 - Transfer adalah quick action, bukan tab. Form tetap memakai `TransactionForm` canonical dan sukses hanya ditampilkan setelah server mengonfirmasi write.
 - `Riwayat` dan `Grafik` adalah dua tab informasi. Transfer tetap tidak dihitung sebagai pemasukan/pengeluaran.
 - Kartu rekening memakai asset WebP 768×484 untuk bank, Tunai, Tabungan, serta provider E-wallet ShopeePay, DANA, GoPay, OVO, dan LinkAja. Provider E-wallet disimpan canonical pada `accounts.ewallet_template` schema v8; nama rekening hanya dipakai sebagai fallback untuk object/backup legacy yang belum memiliki field tersebut. Provider `generic` tetap aman untuk E-wallet lain.

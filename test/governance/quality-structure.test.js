@@ -11,7 +11,7 @@ const exists = async (relative) => {
   catch { return false; }
 };
 
-test("quality workflow menjalankan check, guard regression, browser journey, dan verifikasi clean archive", async () => {
+test("quality workflow menjalankan check, guard regression, dan verifikasi clean archive", async () => {
   const workflow = await source(".github/workflows/quality.yml");
   assert.match(workflow, /actions\/checkout@v5/);
   assert.match(workflow, /actions\/setup-node@v5/);
@@ -19,16 +19,16 @@ test("quality workflow menjalankan check, guard regression, browser journey, dan
   assert.match(workflow, /npm ci/);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:guard/);
-  assert.match(workflow, /npm run test:browser/);
+  assert.doesNotMatch(workflow, /npm run test:browser/);
   assert.match(workflow, /node scripts\/create-clean-archive\.mjs/);
-  assert.doesNotMatch(workflow, /npm run zip --/, "CI sudah menjalankan check/guard/browser sehingga archive tidak boleh mengulang full verify");
+  assert.doesNotMatch(workflow, /npm run zip --/, "CI sudah menjalankan check/guard sehingga archive tidak boleh mengulang full verify");
 });
 
 test("tooling kualitas canonical tidak bergantung pada task automation", async () => {
   const packageJson = JSON.parse(await source("package.json"));
   assert.equal(packageJson.scripts.clean, "node scripts/clean-generated-artifacts.mjs");
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
-  assert.equal(packageJson.scripts["test:browser"], "node scripts/prepare-browser-test-build.mjs && node --test test/browser/*.test.mjs");
+  assert.equal(packageJson.scripts["test:browser"], undefined);
   assert.equal(packageJson.scripts.verify, "node scripts/verify-project.mjs");
   assert.equal(packageJson.scripts.zip, "node scripts/verified-clean-archive.mjs");
   assert.equal(packageJson.scripts.postinstall, "node scripts/install-git-hooks.mjs");
@@ -45,7 +45,7 @@ test("tooling kualitas canonical tidak bergantung pada task automation", async (
 
 test("test backend terkelompok berdasarkan tanggung jawab dan namespace runtime tetap bersih", async () => {
   assert.equal(await exists("test/api"), false);
-  for (const directory of ["test/business", "test/database", "test/governance", "test/integrations", "test/maintenance", "test/migration", "test/performance", "test/security", "test/tooling", "test/browser", "test/guards"]) {
+  for (const directory of ["test/business", "test/database", "test/governance", "test/integrations", "test/maintenance", "test/migration", "test/performance", "test/security", "test/tooling", "test/guards"]) {
     assert.equal(await exists(directory), true, `Missing test boundary: ${directory}`);
   }
 });

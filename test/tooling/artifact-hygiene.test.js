@@ -154,21 +154,6 @@ test("source validator mengabaikan metadata Git baik file maupun directory pada 
   assert.match(validator, /entry\.isSymbolicLink\(\) \|\| ignoredSegments\.has\(entry\.name\)/);
 });
 
-test("browser test membangun fixture public sendiri dan tidak bergantung pada env lokal", async () => {
-  const [packageJson, prepare] = await Promise.all([
-    readFile(path.join(root, "package.json"), "utf8"),
-    readFile(path.join(root, "scripts/prepare-browser-test-build.mjs"), "utf8"),
-  ]);
-  const scripts = JSON.parse(packageJson).scripts;
-  assert.match(scripts["test:browser"], /prepare-browser-test-build\.mjs/);
-  assert.match(prepare, /VITE_GOOGLE_CLIENT_ID/);
-  assert.match(prepare, /VITE_FIREBASE_API_KEY/);
-  assert.match(prepare, /npm_execpath/);
-  assert.match(prepare, /process\.execPath/);
-  assert.doesNotMatch(prepare, /spawnSync\(\s*["\']npm\.cmd["\']/);
-  assert.doesNotMatch(prepare, /SESSION_SECRET|TURSO_AUTH_TOKEN|VAPID_PRIVATE_KEY|GOOGLE_BRIDGE_SHARED_SECRET/);
-});
-
 
 
 test("local Git hooks tetap di luar clean source policy", async () => {

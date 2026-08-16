@@ -57,7 +57,7 @@ Untuk validasi lokal setelah setiap patch, gunakan satu command canonical:
 npm run verify
 ```
 
-`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check`, `npm run test:guard`, dan `npm run test:browser`. Command ini **tidak menjalankan `npm ci`** dan tidak menghapus `node_modules`.
+`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check` dan `npm run test:guard`. Command ini **tidak menjalankan `npm ci`** dan tidak menghapus `node_modules`.
 
 Gate penyusunnya tetap tersedia untuk diagnosis terarah:
 
@@ -69,7 +69,6 @@ npm run build
 npm run build:budget
 npm run check
 npm run test:guard
-npm run test:browser
 npm run zip
 ```
 

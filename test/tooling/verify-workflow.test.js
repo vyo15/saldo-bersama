@@ -24,7 +24,7 @@ test("verify memakai Node 24 canonical", () => {
 });
 
 test("verify menjalankan full local gate tanpa npm ci", () => {
-  assert.deepEqual(VERIFY_STEPS.map((step) => step.script), ["check", "test:guard", "test:browser"]);
+  assert.deepEqual(VERIFY_STEPS.map((step) => step.script), ["check", "test:guard"]);
   const executed = [];
   let dependencyChecks = 0;
   const logs = [];
@@ -37,7 +37,7 @@ test("verify menjalankan full local gate tanpa npm ci", () => {
   }), true);
 
   assert.equal(dependencyChecks, 1);
-  assert.deepEqual(executed, ["check", "test:guard", "test:browser"]);
+  assert.deepEqual(executed, ["check", "test:guard"]);
   assert.equal(executed.includes("ci"), false);
   assert.match(logs.at(-1), /PASS/);
 });

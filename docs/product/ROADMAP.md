@@ -9,11 +9,11 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Filter transaksi berdasarkan rekening, kategori, dan pencatat.
 - Tren 3/6/12 bulan, breakdown rekening/nature/pencatat, target projection, dashboard alerts.
 - Push actionable untuk recurring, budget, kantong, target, dan transaksi belum dialokasikan.
-- Governance, handoff, browser smoke, build/archive guard, Turso, PWA, dan Google bridge.
+- Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
 
 ## Now — verification dan operasi
 
-- Jalankan full Node 24 `npm run check` dan `npm run test:browser` setelah patch.
+- Jalankan full Node 24 `npm run verify` setelah patch. Perubahan UI tetap memerlukan pemeriksaan manual pada viewport/perangkat relevan.
 - Verifikasi operasional rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` yang pernah ikut ZIP manual mengikuti `SECRET_ROTATION_RUNBOOK.md`; source tidak dapat membuktikan credential lama sudah direvoke.
 - Migration parity Turso dan real-resource backup/restore drill.
 - Aktifkan branch protection/ruleset GitHub dan jadikan workflow **Quality** sebagai required check; source workflow/CONTRIBUTING sudah disiapkan, enforcement tetap setting GitHub.

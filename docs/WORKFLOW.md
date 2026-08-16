@@ -4,7 +4,7 @@
 
 ```text
 COORD | koordinasi/review/integration
-FE    | frontend/UI/UX/accessibility/browser
+FE    | frontend/UI/UX/accessibility/responsive
 BE    | backend/data/auth/security/integrations
 ```
 
@@ -63,7 +63,7 @@ Default full local gate setelah setiap patch:
 npm run verify
 ```
 
-`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check`, `npm run test:guard`, dan `npm run test:browser`. Ia tidak menjalankan `npm ci` atau menghapus dependency.
+`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check` dan `npm run test:guard`. Ia tidak menjalankan `npm ci` atau menghapus dependency. Browser automation telah dipensiunkan dari quality gate; UI/responsive diperiksa dengan regression frontend dan manual device QA sesuai scope.
 
 `npm run check` tetap menjadi gate inti yang mencakup source validation, lint, frontend/backend tests, backend coverage, production build, dan build budget. Gunakan command penyusun secara terarah hanya untuk diagnosis kegagalan atau bila scope membutuhkan test tambahan:
 

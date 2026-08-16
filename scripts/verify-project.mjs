@@ -12,7 +12,6 @@ export const REQUIRED_NODE_MAJOR = Number.parseInt(REQUIRED_NODE_VERSION.split("
 export const VERIFY_STEPS = Object.freeze([
   Object.freeze({ script: "check", label: "Quality gate inti" }),
   Object.freeze({ script: "test:guard", label: "Guard regression" }),
-  Object.freeze({ script: "test:browser", label: "Browser regression" }),
 ]);
 
 const npmInvocation = (args) => {

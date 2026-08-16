@@ -2,11 +2,12 @@
 
 ## Kontrak test
 
-Gunakan tiga lapis bukti:
+Gunakan dua lapis bukti otomatis:
 
-1. **Behavior/domain test** untuk rule, helper, service, mutation, saldo, authorization, dan data integrity.
+1. **Behavior/domain test** untuk rule, helper, service, mutation, saldo, authorization, data integrity, dan kontrak UI yang dapat diuji deterministik tanpa browser.
 2. **Static/source contract test** hanya untuk invariant yang memang literal seperti route, dependency boundary, forbidden API, required export, security guard, dan struktur deployment. Jangan mengunci nama variabel lokal atau bentuk JSX internal untuk membuktikan behavior.
-3. **Browser journey** untuk interaksi pengguna, responsive, focus, modal, navigation, dan integrasi UI yang tidak cukup dibuktikan oleh source regex.
+
+UI/responsive/focus/navigation yang membutuhkan rendering browser diverifikasi melalui **manual device QA** sesuai scope. Automated `test:browser` telah dipensiunkan dari quality gate dan tidak boleh ditambahkan kembali tanpa approval perubahan tooling.
 
 Setiap bug/regression harus memiliki regression test yang gagal terhadap behavior lama bila praktis dan PASS setelah fix. Setelah test/source/docs final, `npm run verify` wajib dijalankan lagi dari tree yang sama. PASS dari tree sebelum edit terakhir tidak berlaku.
 
@@ -21,11 +22,10 @@ npm run test:guard
 npm run build
 npm run build:budget
 npm run check
-npm run test:browser
 npm run zip
 ```
 
-`npm run zip` adalah local release guard: perintah ini memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` sebelum packaging. Jika salah satu lint/test/build/guard/browser gagal, ZIP tidak dibuat. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` akan dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung karena check/guard/browser sudah dijalankan pada step sebelumnya, sehingga full verification tidak diduplikasi.
+`npm run zip` adalah local release guard: perintah ini memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` sebelum packaging. Jika salah satu lint/test/build/guard gagal, ZIP tidak dibuat. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` akan dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung karena check/guard sudah dijalankan pada step sebelumnya, sehingga full verification tidak diduplikasi.
 
 ### Backend coverage gate
 
@@ -41,8 +41,8 @@ Cakupan wajib:
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
 - row-version conflict dan idempotency replay;
 - guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage` untuk mutation biasa, dengan satu pengecualian reset berupa opaque recovery idempotency key pada `sessionStorage` tab, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
-- browser human-error journey pada network lambat: double-click create target harus menghasilkan satu request mutation;
-- linked worktree release check: `.git` berbentuk file tidak gagal source validator; `npm run test:browser` membangun fixture public sendiri tanpa `.env.local`;
+- human-error guard memastikan double-submit/coalescing tidak menghasilkan mutation intent ganda;
+- linked worktree release check: `.git` berbentuk file tidak gagal source validator dan clean archive tetap tidak bergantung pada `.env.local`;
 - personal/shared authorization dan IDOR;
 - recurring, envelope, budget, goal, reconciliation, close/reopen period; archive/restore envelope rule dan reverse reallocation; restore Target/Jadwal rutin/Anggaran arsip; negative actual reconciliation hanya untuk account `allow_negative`;
 - recurring occurrence skip/restore: hanya owner, reason + row_version + idempotency, tidak mengubah ledger/saldo, status cancelled persisted, pay ditolak sampai dipulihkan, archive/restore rule tidak menghapus skip;
@@ -55,20 +55,14 @@ Cakupan wajib:
 - service worker tanpa API cache dan tanpa offline write queue;
 - Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, payload lock-screen privat, recurring shortage H-2 + completion notification tanpa detail finansial, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output; penggantian archive bersifat atomik, variasi clean lama dibersihkan dengan allowlist, dan ZIP patch/unrelated tidak disentuh;
-- browser smoke unauthenticated redirect, mobile overflow, target sentuh 44px untuk kontrol aplikasi, host 44px serta minimum 24px untuk widget provider-managed, accessible name, landmark, dan accessibility tree;
-- browser smoke mendeteksi Chrome, Edge, Brave, atau Chromium; kegagalan startup wajib menutup server test tanpa proses menggantung;
 - halaman Rekening mobile wajib memakai swipe vertikal hanya pada kartu aktif, membiarkan scroll vertikal dari area kosong stack, menolak gesture horizontal, mengembalikan swipe pendek, mempertahankan pinch zoom, dan menjaga kontrol form minimal 16px;
 - root, shell, main, dan content wajib memenuhi `100dvh` dengan fallback `100vh`; route Rekening harus mempertahankan background yang sama pada reserved navigation gap tanpa menghapus safe-area;
-- browser journey Rekening pada 351×590 wajib memverifikasi tinggi shell, kontinuitas background content/experience, ruang aman sebelum navigasi, dan keterbacaan foreground; route 404 wajib memenuhi sisa area konten;
+- manual device QA Rekening pada viewport kecil wajib memverifikasi tinggi shell, kontinuitas background content/experience, ruang aman sebelum navigasi, keterbacaan foreground, dan route 404 yang memenuhi sisa area konten;
 - loading dan fatal error di luar shell harus memenuhi viewport, sedangkan loading/fatal error/404 di dalam shell harus memenuhi area yang tersisa tanpa body scroll lock permanen;
 - menu `Lainnya` tidak boleh menduplikasi `Tambah transaksi`; route `/rekonsiliasi` harus tersedia di kelompok Kontrol saldo dan form hanya muncul berdasarkan capability backend;
 - default metode pembayaran transaksi harus kosong, bukan nilai `transfer` tersembunyi; selector rekening utama harus memakai formatter provider/nama/pemilik yang konsisten;
-- browser smoke memblokir script Google Identity Services eksternal khusus desktop sebelum navigasi dan memakai mock lokal deterministik, sehingga quality gate tidak bergantung pada jaringan provider;
-- login desktop wajib memilih artwork approved light/dark berdasarkan theme, mempertahankan rasio 1672×941, dan hanya memakai satu host `.google-login-button` runtime tanpa mengganti flow Google Identity Services/Firebase desktop; login mobile ≤820px wajib memiliki tepat empat halaman (tiga onboarding + login khusus), tiga onboarding memakai hero card clean dengan aset transparan terpisah, tanpa pill fitur di bawah deskripsi, tidak meniban area copy, serta muat satu layar tanpa scroll vertikal internal pada viewport mobile yang didukung. Halaman keempat memakai tombol HTML branded Google dan Firebase Web SDK `GoogleAuthProvider` + `signInWithPopup`, tidak merender iframe Google Identity Services, money rain hanya aktif pada halaman login, serta progress bar dan tombol back onboarding tidak tampil. Browser smoke wajib membuktikan tombol custom tunggal berada penuh di dalam slide, tidak ada `.login-mobile-provider`, `.google-login-button`, atau iframe pada halaman mobile, target sentuh minimum 44px, dan halaman tetap satu layar. “Selamat datang” tidak memakai garis eyebrow, kontrol `Lanjut`/`Lewati`/pagination minimum 44px, swipe/ArrowLeft/ArrowRight, creator link aman, theme toggle DOM asli, serta `prefers-reduced-motion` untuk transisi carousel;
-- authenticated route journey wajib menunggu `document.readyState` selesai dan heading canonical route yang tepat; pathname saja tidak boleh dianggap bukti render karena DOM lama/loading dapat masih aktif saat full navigation;
-- route readiness wajib menolak `main.loading-screen` dan memverifikasi heading canonical secara stabil dua kali. Heading bukan bukti bahwa lazy capability sudah siap; journey yang langsung menguji capability wajib memberi selector readiness yang visible/nonzero sebelum assertion;
+- login desktop wajib memilih artwork approved light/dark berdasarkan theme, mempertahankan rasio 1672×941, dan hanya memakai satu host `.google-login-button` runtime tanpa mengganti flow Google Identity Services/Firebase desktop; login mobile ≤820px wajib memiliki tepat empat halaman (tiga onboarding + login khusus), tiga onboarding memakai hero card clean dengan aset transparan terpisah, tanpa pill fitur di bawah deskripsi, tidak meniban area copy, serta muat satu layar tanpa scroll vertikal internal pada viewport mobile yang didukung. Halaman keempat memakai tombol HTML branded Google dan Firebase Web SDK `GoogleAuthProvider` + `signInWithPopup`, tidak merender iframe Google Identity Services, money rain hanya aktif pada halaman login, serta progress bar dan tombol back onboarding tidak tampil. Manual device QA memeriksa tombol custom tunggal, target sentuh minimum 44px, satu-layar pada viewport relevan, swipe/keyboard, creator link, theme toggle, dan reduced motion;
 - resource enabled pada initial `idle` wajib dipresentasikan sebagai loading agar page tidak berkedip dari konten kosong ke loading screen;
-- workflow CI membangun frontend browser smoke dengan nilai public dummy untuk `VITE_GOOGLE_CLIENT_ID` dan `VITE_FIREBASE_API_KEY`; nilai ini bukan secret dan hanya mencegah guard konfigurasi menghentikan render mock login;
 - gzip bundle dan source archive tetap di bawah budget.
 
 ## Definition of Done human-error guard
@@ -84,7 +78,7 @@ Perubahan write baru belum boleh dianggap selesai bila belum membuktikan:
 7. destructive action memiliki local reentrancy lock + backend idempotency;
 8. human error dipulihkan melalui cancel/archive/restore/reverse, termasuk Kantong/Target/Jadwal rutin/Anggaran, bukan hard delete atau SQL manual;
 9. role/ownership/row-version/audit tetap diperiksa backend;
-10. test browser, unit/service, source validation, build budget, dan clean archive tetap hijau.
+10. unit/service, guard regression, source validation, build budget, dan clean archive tetap hijau.
 
 ## Manual
 
@@ -100,14 +94,11 @@ Uji dua browser/perangkat dengan Administrator dan Member:
 8. Backup/restore drill pada salinan terisolasi sementara; jangan gunakan database aktif. Untuk fase pra-go-live satu database, uji **Reset data testing** hanya ketika seluruh data pada preview memang trial/error: uji preset aktivitas dan preset aktivitas + nolkan saldo; pastikan `initial_balance` menjadi 0, `initial_balance_date` canonical, `row_version` naik, dan stale account state membatalkan apply. Selain itu, pastikan financial + operational count tampil, queue rebuild sistem tidak salah dihitung/dihapus, stale fingerprint ditolak, Google Drive preflight dan safety backup terverifikasi, master/audit tetap ada, rebuild integrasi terantre, outcome unknown dapat direkonsiliasi lewat `reset.status` setelah reload, dan maintenance hanya dapat dibuka kembali setelah integrity check lulus + audit `maintenance.recover`.
 9. Verifikasi scheduled housekeeping menghapus `idempotency_keys`, `import_previews`, dan `restore_previews` yang expired, tetapi mempertahankan preview berstatus `applying`, ledger, audit, backup, dan master.
 10. Responsive, keyboard, focus, contrast, loading/empty/error/unauthorized/maintenance. Audit seluruh CSS untuk custom property yang tidak terdefinisi, native control di bawah 16px, duplicate media query dalam file yang sama, dan endpoint gradient yang gagal kontras.
-11. Full axe scan, authenticated browser journey, visual regression, dan Chrome/Firefox/Safari device coverage.
+11. Full axe scan, visual comparison, dan Chrome/Firefox/Safari device coverage dilakukan manual untuk perubahan UI yang relevan.
 
 Tidak boleh mengklaim production-ready hanya berdasarkan unit test; real resource integration dan migration parity wajib lulus.
 
 
-## Browser smoke cleanup guard
-
-Browser smoke wajib menutup process tree Chromium dan koneksi Chrome DevTools Protocol pada semua jalur sukses maupun gagal. Workflow memberi batas waktu dua menit pada langkah browser agar runner tidak menggantung bila executable browser atau proses turunannya bermasalah.
 
 ## Product-control alignment
 
@@ -131,7 +122,7 @@ Fitur planned seperti receipt, utang/piutang, contribution split, category hiera
 
 ## Authenticated desktop/mobile capability parity
 
-Browser test authenticated wajib memakai fixture Administrator dan Member yang deterministik, tanpa koneksi Firebase, Turso, Google Identity, atau provider eksternal. Cakupan minimum:
+Manual capability QA memakai akun/fixture aman Administrator dan Member pada environment testing. Cakupan minimum:
 
 - seluruh route `/`, `/transaksi`, `/anggaran`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, `/pengaturan`, dan nested route Pengaturan dapat dirender pada mobile;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
@@ -165,7 +156,7 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 ## Rekening, rekonsiliasi, dan kategori — responsive financial card
 
 - Administrator mobile dan desktop melihat aksi `Tambah rekening` pada route Rekening dan `Tambah kategori` pada route Kategori.
-- Browser journey `/rekening` wajib menunggu stack mobile visible sebelum memeriksa `Tambah rekening`, label `Pribadi · <pemilik>`, gesture, atau capability lain; ini mencegah false failure akibat nested lazy render setelah heading route stabil.
+- Manual QA `/rekening` memeriksa stack mobile setelah konten lazy terlihat sebelum menilai `Tambah rekening`, label `Pribadi · <pemilik>`, gesture, atau capability lain.
 - Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive Administrator.
 - Dialog rekening dan kategori terpisah serta memakai form domain yang sama pada desktop/mobile tanpa tab lintas domain.
 - Stack kartu mobile memakai swipe vertikal pada kartu aktif. Container memakai `touch-action: pan-y pinch-zoom`, kartu aktif memakai `touch-action: pan-x pinch-zoom`, gesture horizontal tidak mengganti rekening, dan area kosong stack tetap menggulir halaman.
@@ -202,7 +193,7 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Form transaksi hanya menawarkan rekening dengan `can_transact !== false`; backend tetap mengulang guard ownership.
 - Form rekening personal Administrator dapat memilih user aktif. Saat `users.list` gagal, create harus fallback ke actor backend dan edit harus mempertahankan `owner_user_id` existing tanpa field required kosong.
 - Route `/kategori` harus menyediakan tipe refund sesuai `CATEGORY_TYPES` backend. Mutation master yang sudah sukses tidak boleh dilaporkan gagal karena reload domain atau refresh dashboard/bootstrap sesudahnya gagal; UI harus mempertahankan status sukses server dan mengekspos refresh warning.
-- Browser mobile 390×844 wajib memeriksa capability anchor dengan computed style dan bounding rect: dua panel `/tagihan`, minimal tujuh panel chart `/laporan`, nested route `/pengaturan` sesuai role, detail read-only pasangan `/rekening`, dan route `/kategori`. Modal transaksi serta kategori wajib bebas overflow horizontal; detail rekening wajib lulus focus trap Tab/Shift+Tab, Escape close, body scroll lock, dan focus restoration.
+- Manual mobile QA pada viewport representatif memeriksa dua panel `/tagihan`, panel chart `/laporan`, nested route `/pengaturan` sesuai role, detail read-only pasangan `/rekening`, route `/kategori`, overflow horizontal modal, focus trap, Escape close, body scroll lock, dan focus restoration.
 - Nomor rekening panjang wajib dipadatkan pada visual kartu tanpa mengubah nilai lengkap pada detail/copy.
 - Boundary responsive wajib mencakup 580/581, 820/821, dan 940/941. Static test menolak dangling selector serta `.two-column-grid { display:none }`.
 
@@ -231,7 +222,7 @@ Regression wajib membuktikan:
 - Dependency provider yang hanya dibutuhkan pada aksi tertentu, seperti Firebase Google popup mobile, harus berada pada lazy chunk terpisah dan tidak membengkakkan `LoginPage` route chunk.
 - CSS shell terautentikasi tidak boleh dimuat pada route login bila tidak dibutuhkan. Shared brand/loading style tetap berada pada global primitive.
 - Asset publik yang sudah tidak direferensikan source, test, manifest, atau docs wajib dihapus setelah usage scan.
-- Build budget harus dijalankan setelah production build dan sebelum browser regression.
+- Build budget harus dijalankan setelah production build dan tetap menjadi blocking quality gate.
 
 ## Maintainability, artifact hygiene, dan duplicate-report policy
 

@@ -6,7 +6,7 @@ File ini berlaku untuk seluruh repository Saldo Bersama.
 
 ```text
 COORD | koordinasi scope, dependency, integration, review, dan risiko
-FE    | React, routing, state, form, CSS, responsive, UI/UX, accessibility, browser
+FE    | React, routing, state, form, CSS, responsive, UI/UX, accessibility
 BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, Apps Script, backup/restore
 ```
 
@@ -108,11 +108,9 @@ npm run build
 npm run build:budget
 ```
 
-Frontend/browser:
+Frontend/UI:
 
-```bash
-npm run test:browser
-```
+Gunakan frontend unit/static regression, lint, build, build budget, dan verifikasi manual perangkat bila perubahan UI memerlukannya. Browser automation bukan bagian quality gate canonical.
 
 Guarded/data/security harus menjalankan test domain terkait dan `npm run test:guard` bila relevan. Jangan menyatakan berhasil sebelum server/test benar-benar mengonfirmasi.
 

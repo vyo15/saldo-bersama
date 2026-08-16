@@ -17,7 +17,7 @@ git commit -m "fix: deskripsi perubahan"
 git push -u origin HEAD
 ```
 
-`npm run zip` memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` terlebih dahulu dan **tidak membuat ZIP bila lint/test/build/guard/browser gagal**. Selain itu, `npm ci` dan `npm run dev` memasang pre-push Auto Quality Guard lokal secara idempotent. Saat `git push`, hook menjalankan full verification lagi dan membatalkan push bila gate gagal. GitHub Quality tetap menjadi gate server-side terakhir.
+`npm run zip` memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` terlebih dahulu dan **tidak membuat ZIP bila lint/test/build/guard gagal**. Selain itu, `npm ci` dan `npm run dev` memasang pre-push Auto Quality Guard lokal secara idempotent. Saat `git push`, hook menjalankan full verification lagi dan membatalkan push bila gate gagal. GitHub Quality tetap menjadi gate server-side terakhir.
 
 Jika repository sudah memiliki `pre-push` custom yang bukan milik Saldo Bersama, installer tidak menimpanya. Pada kondisi itu jalankan `npm run verify` manual sebelum push atau integrasikan guard canonical ke hook custom tersebut.
 

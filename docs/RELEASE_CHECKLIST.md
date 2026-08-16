@@ -5,7 +5,7 @@
 - [ ] Semua perubahan yang termasuk release sudah disetujui dan validation relevan sudah selesai.
 - [ ] Perubahan masuk melalui branch + Pull Request; **Quality / check** wajib PASS sebelum merge ke `main`.
 - [ ] `npm run check` lulus pada Node 24 canonical.
-- [ ] Untuk perubahan frontend/browser, `npm run test:browser` lulus penuh; PASS `npm run check` saja belum cukup untuk menyatakan release-ready.
+- [ ] Untuk perubahan frontend/UI, `npm run verify` lulus dan pemeriksaan manual device/viewport relevan sudah dilakukan; tidak ada automated browser gate.
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Backup/rollback tersedia bila data terdampak.
 - [ ] Environment change tervalidasi tanpa menampilkan secret.

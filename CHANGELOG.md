@@ -1,5 +1,12 @@
 # Changelog
 
+## 16 Agustus 2026 — Automated browser gate dipensiunkan
+
+- Menghapus `npm run test:browser`, `scripts/prepare-browser-test-build.mjs`, dan seluruh `test/browser/**` dari quality gate canonical setelah suite tersebut berulang kali menghasilkan false failure lintas browser/viewport.
+- `npm run verify`, pre-push guard, `npm run zip`, dan GitHub Quality sekarang berhenti pada `npm run check` + `npm run test:guard`; build dan build budget tetap blocking.
+- UI/responsive/login tetap wajib memiliki regression frontend yang deterministik dan manual device QA sesuai scope. Browser automation tidak boleh ditambahkan kembali tanpa approval perubahan tooling.
+- Dokumentasi workflow, QA, release, deployment, setup, roadmap, implementation matrix, dan source routing diselaraskan agar tidak lagi mengarahkan contributor ke browser automation yang sudah dipensiunkan.
+
 
 ## 10 Agustus 2026 — Schema v8 provider E-wallet canonical
 

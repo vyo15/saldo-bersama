@@ -32,7 +32,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Loading, empty, error, offline/unauthorized/conflict state relevan tersedia.
 - [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa.
 - [ ] Mobile dan desktop tidak drift pada business rule yang sama.
-- [ ] Browser/device journey relevan mengikuti skenario `TEST_PLAN.md`.
+- [ ] Device/viewport journey relevan mengikuti skenario manual `TEST_PLAN.md` bila perubahan menyentuh UI/responsive.
 
 ## 5. Dokumentasi
 
@@ -49,7 +49,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] `npm run test` PASS.
 - [ ] `npm run build` dan `npm run build:budget` PASS.
 - [ ] `npm run test:guard` dijalankan untuk guarded/data/security change.
-- [ ] `npm run test:browser` dijalankan untuk frontend/user-flow change.
+- [ ] Untuk frontend/user-flow change, manual device QA dicatat bila diperlukan; tidak ada automated browser gate.
 - [ ] Final `npm run verify` PASS pada tree yang sama dengan patch yang akan dikirim.
 
 ## 7. Artifact hygiene dan delivery
