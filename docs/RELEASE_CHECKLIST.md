@@ -3,6 +3,7 @@
 ## Pre-release
 
 - [ ] Semua perubahan yang termasuk release sudah disetujui dan validation relevan sudah selesai.
+- [ ] Perubahan masuk melalui branch + Pull Request; **Quality / check** wajib PASS sebelum merge ke `main`.
 - [ ] `npm run check` lulus pada Node 24 canonical.
 - [ ] Untuk perubahan frontend/browser, `npm run test:browser` lulus penuh; PASS `npm run check` saja belum cukup untuk menyatakan release-ready.
 - [ ] Migration/schema impact direview bila relevan.

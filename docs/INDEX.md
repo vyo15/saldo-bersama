@@ -4,7 +4,7 @@
 
 - `../AGENTS.md` — instruksi AI/coding agent.
 - `WORKFLOW.md` — workflow review, patch, validation, dan delivery canonical.
-- `GIT_WORKFLOW.md` — Git direct-main yang sederhana.
+- `GIT_WORKFLOW.md` — branch/PR workflow dengan Quality gate.
 - `PROJECT_STATUS.md` — snapshot kondisi project sekarang.
 - `DOCUMENT_LIFECYCLE.md` — lifecycle dokumen.
 - `../CONTRIBUTING.md` — kebijakan kontribusi.
@@ -29,6 +29,7 @@
 
 - `WORKFLOW.md`
 - `GIT_WORKFLOW.md`
+- `GITHUB_RULESET.md`
 - `DEFINITION_OF_READY.md`
 - `DEFINITION_OF_DONE.md`
 - `rfc/README.md`
@@ -48,6 +49,7 @@ Historical task records dari workflow lama tetap berada di `tasks/archive/`, tet
 - `OPERATIONS_RUNBOOK.md`
 - `INCIDENT_RESPONSE.md`
 - `RECOVERY_RUNBOOK.md`
+- `SECRET_ROTATION_RUNBOOK.md`
 
 ## Build, QA, dan integrasi
 

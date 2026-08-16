@@ -2,7 +2,7 @@
 
 ## Health
 
-`/api/health` dan action `system.health` melaporkan status teredaksi: database, schema, maintenance, build, serta ringkasan queue integrasi. `system.health` tidak melakukan network probe ke Google; provider yang belum diprobe harus tetap berstatus belum terverifikasi. Health resource Google yang dapat mengaktifkan action berasal dari `integrations.status`. Response tidak boleh memuat URL/token database, secret, full Spreadsheet/Calendar/Drive ID, stack trace, atau internal path.
+`/api/health` adalah endpoint publik minimum dan hanya mengembalikan `status`, `timestamp`, serta `requestId`; status publik dinormalisasi menjadi `ok` atau `degraded`. Detail database/schema/maintenance/build tidak diekspos pada endpoint publik. Action terautentikasi `system.health` menyediakan status operasional yang diperlukan UI Administrator. `system.health` tidak melakukan network probe ke Google; provider yang belum diprobe harus tetap berstatus belum terverifikasi. Health resource Google yang dapat mengaktifkan action berasal dari `integrations.status`. Response tidak boleh memuat URL/token database, secret, full Spreadsheet/Calendar/Drive ID, stack trace, atau internal path.
 
 ## Logging
 

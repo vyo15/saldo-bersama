@@ -62,6 +62,11 @@ test("member membaca semua rekening dan ledger pasangan tetapi capability tulis 
       (error) => error?.code === "FORBIDDEN",
     );
     await assert.rejects(
+      () => cancelTransaction(db, { actor: member, payload: { transaction_id: "tx-member-legacy", row_version: 999, reason: "Tidak boleh" }, rowVersion: 999 }),
+      (error) => error?.code === "FORBIDDEN",
+      "Authorization wajib diputuskan sebelum row_version agar transaksi yang tidak boleh dimodifikasi tidak membocorkan state konflik.",
+    );
+    await assert.rejects(
       () => cancelTransaction(db, { actor: member, payload: { transaction_id: "tx-member-legacy", row_version: 1, reason: "Tidak boleh" }, rowVersion: 1 }),
       (error) => error?.code === "FORBIDDEN",
     );

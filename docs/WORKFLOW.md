@@ -20,8 +20,10 @@ request
   -> patch kecil
   -> validation
   -> review diff
-  -> commit langsung ke main
-  -> push
+  -> commit pada branch
+  -> push branch + Pull Request
+  -> Quality PASS + review
+  -> merge ke main
   -> clean ZIP bila diperlukan
 ```
 
@@ -37,11 +39,11 @@ Jangan mengarang path/schema/route/dependency. Gunakan helper/component/service 
 
 Beberapa chat/tab boleh melakukan audit atau menyiapkan patch paralel bila scope tidak overlap. Karena user bekerja dari satu folder fisik, **penerapan patch dilakukan serial**: patch A -> validate/commit/push -> patch B.
 
-Tidak ada task registry atau branch automation. Koordinasi scope dilakukan melalui plan dan diff source aktual.
+Tidak ada task registry atau branch automation. Branch dibuat manual per perubahan dan koordinasi scope dilakukan melalui plan serta diff source aktual.
 
 ### 4. Guarded changes
 
-Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contract, saldo/transfer/audit/idempotency, backup/restore/import/purge, env/secret/deployment, serta trust-boundary/security tooling. Guarded change tetap memakai Git normal setelah approval; pengaman utama adalah review + test + fail-closed runtime contract.
+Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contract, saldo/transfer/audit/idempotency, backup/restore/import/purge, env/secret/deployment, serta trust-boundary/security tooling. Guarded change tetap memakai branch/PR setelah approval; pengaman utama adalah review + test + required Quality + fail-closed runtime contract.
 
 ### 5. Validation
 
@@ -61,18 +63,19 @@ npm run db:integrity   # hanya bila operasi DB memang disetujui
 
 `npm ci` hanya untuk bootstrap/reinstall dependency atau clean CI. Test yang tidak dijalankan harus dilaporkan sebagai limitation, bukan diklaim PASS.
 
-### 6. Direct Git
+### 6. Git delivery
 
 Setelah validation PASS:
 
 ```bash
 git status --short
+git switch -c fix/deskripsi-singkat
 git add -A
 git commit -m "type: deskripsi perubahan"
-git push origin main
+git push -u origin HEAD
 ```
 
-PR/branch hanya opsional bila user meminta atau repository rules mengharuskan.
+Buat Pull Request ke `main`. Workflow **Quality** wajib lulus dan ruleset mengikuti `GITHUB_RULESET.md` sebelum merge.
 
 ### 7. Changed-files ZIP
 

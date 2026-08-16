@@ -31,6 +31,8 @@ const requiredFiles = [
   "docs/PROJECT_STATUS.md",
   "docs/WORKFLOW.md",
   "docs/GIT_WORKFLOW.md",
+  "docs/GITHUB_RULESET.md",
+  "docs/SECRET_ROTATION_RUNBOOK.md",
   "docs/ARCHITECTURE.md",
   "docs/ENVIRONMENT_VARIABLES.md",
   "docs/TURSO_SCHEMA.md",
@@ -92,11 +94,16 @@ test("README, AGENTS, and documentation index contain no broken local Markdown r
   }
 });
 
-test("direct Git workflow is canonical and retired task automation stays absent", () => {
+test("branch + Pull Request workflow is canonical and retired task automation stays absent", () => {
   const packageJson = JSON.parse(read("package.json"));
-  const combined = [read("README.md"), read("AGENTS.md"), read("docs/WORKFLOW.md"), read("docs/GIT_WORKFLOW.md")].join("\n");
+  const combined = [read("README.md"), read("AGENTS.md"), read("docs/WORKFLOW.md"), read("docs/GIT_WORKFLOW.md"), read("docs/GITHUB_RULESET.md"), read("docs/DEFINITION_OF_DONE.md")].join("\n");
   assert.match(combined, /git add -A/);
-  assert.match(combined, /git push origin main/);
+  assert.match(combined, /git push -u origin HEAD/);
+  assert.match(combined, /Pull Request/);
+  assert.match(combined, /Quality/);
+  assert.doesNotMatch(read("docs/GIT_WORKFLOW.md"), /git push origin main/);
+  assert.doesNotMatch(read("docs/DEFINITION_OF_DONE.md"), /dipush ke `main`/i);
+  assert.match(read("docs/DEFINITION_OF_DONE.md"), /Pull Request.*Quality.*merge/is);
   assert.equal(packageJson.scripts["task:check"], undefined);
   assert.equal(packageJson.scripts["task:list"], undefined);
   assert.equal(packageJson.scripts["task:finish"], undefined);
@@ -104,9 +111,16 @@ test("direct Git workflow is canonical and retired task automation stays absent"
   retiredTaskFiles.forEach((relative) => assert.equal(exists(relative), false, `Retired task file returned: ${relative}`));
 });
 
-test("documentation index exposes product boundaries and direct delivery workflow", () => {
+test("PR template mewajibkan Quality dan tidak mengizinkan direct push rutin ke main", () => {
+  const template = read(".github/PULL_REQUEST_TEMPLATE.md");
+  assert.match(template, /Quality \/ check/);
+  assert.match(template, /Direct push rutin ke `main` dilarang/);
+  assert.doesNotMatch(template, /PR bersifat opsional/);
+});
+
+test("documentation index exposes product boundaries and guarded delivery workflow", () => {
   const index = read("docs/INDEX.md");
-  for (const reference of ["product/OUT_OF_SCOPE.md", "product/ROADMAP.md", "WORKFLOW.md", "GIT_WORKFLOW.md", "UI_DESIGN_SYSTEM.md", "../database/README.md", "../apps-script/README.md"]) {
+  for (const reference of ["product/OUT_OF_SCOPE.md", "product/ROADMAP.md", "WORKFLOW.md", "GIT_WORKFLOW.md", "GITHUB_RULESET.md", "SECRET_ROTATION_RUNBOOK.md", "UI_DESIGN_SYSTEM.md", "../database/README.md", "../apps-script/README.md"]) {
     assert.match(index, new RegExp(escapeRegExp(reference)));
   }
   assert.doesNotMatch(index, /tasks\/README|TASK_TEMPLATE/);
@@ -306,9 +320,20 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
 
 test("project status is a current-state snapshot with schema v9 and shared database guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
+  const packageJson = JSON.parse(read("package.json"));
+  const productionSync = read("scripts/push-vercel-production-env.mjs");
+  const developmentSync = read("scripts/push-vercel-development-env.mjs");
+  const singleDbAdr = read("docs/adr/0007-single-turso-database-current-constraint.md");
+
   assert.match(status, /Active schema contract:\*\* v9/);
   assert.match(status, /Runtime lokal dan Vercel Production dirancang memakai database Turso bersama/);
   assert.match(status, /bukan jurnal perubahan/i);
+  assert.match(singleDbAdr, /database Turso yang sama/);
+  assert.match(productionSync, /envPath = path\.join\(cwd, "\.env\.local"\)/);
+  assert.match(developmentSync, /envPath = path\.join\(cwd, "\.env\.local"\)/);
+  assert.equal(packageJson.scripts["env:check:isolation"], undefined);
+  assert.equal(exists("scripts/environment-isolation.mjs"), false);
+  assert.equal(exists("docs/adr/0011-separated-development-production-turso.md"), false);
 });
 
 

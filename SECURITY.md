@@ -24,6 +24,8 @@ Jangan menguji pada data production dengan cara destruktif.
 
 ## Respons
 
-Temuan divalidasi, ditriage, dipatch secara terisolasi, diuji, direview sesuai risiko dan aturan repository, lalu dirilis melalui release checklist. Branch atau Pull Request digunakan bila diminta oleh aturan repository atau kebutuhan review. Rotasi secret dan verifikasi data wajib dilakukan bila credential atau integritas mungkin terdampak.
+Temuan divalidasi, ditriage, dipatch secara terisolasi, diuji, direview sesuai risiko dan aturan repository, lalu dirilis melalui release checklist. Perubahan source masuk melalui branch/Pull Request dan required **Quality** check. Rotasi secret mengikuti `docs/SECRET_ROTATION_RUNBOOK.md`; verifikasi data wajib dilakukan bila credential atau integritas mungkin terdampak.
+
+Rate limiter aplikasi saat ini bersifat best-effort per runtime instance. Ia tetap defense-in-depth, bukan pengganti distributed/platform rate limiting untuk endpoint publik. Aktivasi rate limit platform harus diverifikasi pada Vercel tanpa menambah storage, dependency, atau schema baru secara diam-diam.
 
 Lihat `docs/SECURITY_MODEL.md`, `docs/THREAT_MODEL.md`, dan `docs/INCIDENT_RESPONSE.md`.

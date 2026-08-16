@@ -12,7 +12,7 @@
 
 Frontend tidak boleh mengakses Turso atau Google bridge secara langsung.
 
-`/api/health` adalah endpoint HTTP `GET` untuk health teredaksi. `system.health` adalah action terautentikasi melalui `/api/gateway`; keduanya memiliki handler dan response contract yang berbeda.
+`/api/health` adalah endpoint HTTP `GET` publik dengan contract minimum `{ status, timestamp, requestId }`; `status` publik hanya `ok` atau `degraded`. Detail database/schema/maintenance/build hanya tersedia melalui action terautentikasi `system.health` di `/api/gateway`; keduanya memiliki handler dan response contract yang berbeda.
 
 ## Gateway envelope
 

@@ -1,12 +1,12 @@
 # Git Workflow
 
-Workflow canonical Saldo Bersama adalah **direct main yang tervalidasi**. Tujuannya mengurangi Git ceremony tanpa mengurangi quality/security gate.
+Workflow canonical Saldo Bersama adalah **branch + Pull Request dengan Quality wajib lulus sebelum merge ke `main`**. Enforcement GitHub mengikuti `GITHUB_RULESET.md`.
 
 Lihat juga `../CONTRIBUTING.md`.
 
 ## Normal flow
 
-Setelah patch disetujui dan diterapkan ke working tree `main`:
+Setelah patch disetujui dan diterapkan:
 
 ```bash
 git status --short
@@ -16,18 +16,26 @@ npm run verify
 Jika full local gate PASS:
 
 ```bash
+git switch -c fix/deskripsi-singkat
 git add -A
-git commit -m "feat: deskripsi perubahan"
-git push origin main
-npm run zip
+git commit -m "fix: deskripsi perubahan"
+git push -u origin HEAD
+```
+
+Buat Pull Request ke `main`. Merge hanya setelah workflow **Quality** lulus dan review yang diwajibkan repository selesai. Setelah merge:
+
+```bash
+git switch main
+git pull origin main
 ```
 
 Gunakan `git add -A` agar file yang memang dihapus ikut tercatat. Periksa `git status --short` sebelum commit untuk mencegah file lokal/secret ikut masuk.
 
 ## Tidak lagi digunakan
 
-Workflow berikut sudah dipensiunkan dan bukan bagian source canonical:
+Workflow berikut bukan bagian source canonical:
 
+- direct push rutin ke `main`;
 - task card aktif/Task ID;
 - `npm run task:check`;
 - `npm run task:list`;
@@ -39,18 +47,21 @@ Historical `docs/tasks/archive/` boleh tetap ada sebagai catatan lama, tetapi ti
 
 ## Guarded/high-risk
 
-Git flow tetap sederhana, tetapi **approval dan validation tidak boleh disederhanakan**. Untuk schema/auth/API/saldo/transfer/backup/restore/env/deployment/security/data-integrity:
+Untuk schema/auth/API/saldo/transfer/backup/restore/env/deployment/security/data-integrity:
 
 1. review source aktual;
 2. plan file-by-file;
 3. approval eksplisit;
 4. patch terarah;
 5. test domain relevan + `npm run verify`;
-6. baru commit/push.
+6. push branch;
+7. tunggu **Quality** PASS;
+8. review;
+9. merge ke `main`.
 
 ## Recovery sederhana
 
-Jika validation gagal, jangan commit/push. Perbaiki file yang gagal lalu ulangi gate.
+Jika validation gagal, jangan push/merge. Perbaiki file yang gagal lalu ulangi gate.
 
 Jika ada perubahan lokal yang tidak sengaja, lihat dulu:
 

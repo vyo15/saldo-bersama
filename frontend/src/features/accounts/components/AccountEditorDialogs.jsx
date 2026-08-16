@@ -132,7 +132,7 @@ const CreateAccountForm = (props) => (
 );
 
 const CreateAccountModal = ({ open, onClose, submitting, accountPreview, accountForm, createNameInputRef, formProps }) => (
-  <Modal open={open} onClose={onClose} title="Tambah rekening" description="Isi identitas rekening dan saldo awal. Nomor rekening tidak pernah diperlakukan sebagai nomor kartu debit." size="lg" initialFocusRef={createNameInputRef} footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting}>Simpan rekening</Button></>}>
+  <Modal open={open} onClose={onClose} dismissible={!submitting} title="Tambah rekening" description="Isi identitas rekening dan saldo awal. Nomor rekening tidak pernah diperlakukan sebagai nomor kartu debit." size="lg" initialFocusRef={createNameInputRef} footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting}>Simpan rekening</Button></>}>
     <div className={styles.createAccountLayout}>
       <AccountFinancialCard account={accountPreview} variant="preview" templateOverride={accountForm.account_type === "bank" ? accountForm.bank_template : accountForm.account_type === "ewallet" ? accountForm.ewallet_template : "generic"} />
       <CreateAccountForm {...formProps} />
@@ -164,7 +164,7 @@ const EditAccountFields = ({ editAccount, updateEditAccount, activeUsers, defaul
 );
 
 const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitting, dialogState, fieldProps }) => (
-  <Modal open={Boolean(editAccount)} onClose={() => !submitting && setEditAccount(null)} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={() => setEditAccount(null)} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={submitting}>{submitting ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
+  <Modal open={Boolean(editAccount)} onClose={() => setEditAccount(null)} dismissible={!submitting} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={() => setEditAccount(null)} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={submitting}>{submitting ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
     <form id="edit-account-form" className="form-grid" onSubmit={onSaveAccount}>
       <EditAccountFields {...fieldProps} />
       {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}

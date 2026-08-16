@@ -77,19 +77,19 @@ npm run zip
 
 ## Git harian
 
-Workflow canonical sengaja sederhana dan langsung di `main` setelah patch disetujui serta validation PASS:
+Workflow canonical memakai branch + Pull Request agar workflow **Quality** menjadi gate sebelum `main` berubah:
 
 ```bash
 git status --short
 npm run verify
 
+git switch -c fix/deskripsi-singkat
 git add -A
-git commit -m "feat: deskripsi perubahan"
-git push origin main
-npm run zip
+git commit -m "fix: deskripsi perubahan"
+git push -u origin HEAD
 ```
 
-Tidak ada lagi task card, Task ID, branch otomatis, `task:finish`, `task:check`, atau `task:list`. PR/branch tetap boleh digunakan bila user memang meminta review tambahan atau repository rules mengharuskannya, tetapi bukan workflow default.
+Buat Pull Request ke `main`, tunggu **Quality** PASS, lalu merge sesuai `docs/GITHUB_RULESET.md`. Setelah merge jalankan `git switch main && git pull origin main`. Tidak ada lagi task card, Task ID, branch otomatis, `task:finish`, `task:check`, atau `task:list`.
 
 ## Database
 

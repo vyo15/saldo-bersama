@@ -20,7 +20,7 @@ BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, A
 6. Patch kecil dan terarah; gunakan component/helper/hook/service existing.
 7. Jangan mass-format/refactor di luar scope.
 8. Jalankan validation yang benar-benar didukung stack; jangan mengklaim test yang tidak dijalankan.
-9. Setelah validation PASS, gunakan Git biasa: `git add -A`, `git commit`, `git push origin main`.
+9. Setelah validation PASS, gunakan branch + Pull Request: `git add -A`, `git commit`, `git push -u origin HEAD`, tunggu workflow **Quality** PASS, lalu merge ke `main` sesuai ruleset.
 10. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
 
 Tidak ada lagi task card, Task ID, branch otomatis, atau `task:finish`. Beberapa ChatGPT tab boleh melakukan review/menyiapkan patch paralel, tetapi satu working folder user harus menerima patch secara **serial** agar perubahan tidak saling menimpa.

@@ -87,6 +87,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
   <Modal
     open={open}
     onClose={close}
+    dismissible={!createMutation.busy}
     title="Buat target"
     footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button type="submit" form="goal-create-form" variant="primary" icon={FiPlus} loading={createMutation.busy}>Buat target</Button></>}
   >
@@ -102,7 +103,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
 );
 
 const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => (
-  <Modal open={Boolean(editGoal)} onClose={() => editState.status !== "submitting" && setEditGoal(null)} title="Edit target" footer={<><Button type="button" disabled={editState.status === "submitting"} onClick={() => setEditGoal(null)}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
+  <Modal open={Boolean(editGoal)} onClose={() => setEditGoal(null)} dismissible={editState.status !== "submitting"} title="Edit target" footer={<><Button type="button" disabled={editState.status === "submitting"} onClick={() => setEditGoal(null)}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
     <form id="goal-edit-form" className="form-grid" onSubmit={saveGoal}>
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={editGoal?.name || ""} onChange={(event) => setEditGoal((current) => ({ ...current, name: event.target.value }))} /></label>
       <MoneyInput id="goal-edit-target" label="Target nominal" value={editGoal?.target_amount || ""} onChange={(value) => setEditGoal((current) => ({ ...current, target_amount: value }))} />
@@ -118,7 +119,7 @@ const MovementAccountField = ({ label, value, accounts, onChange }) => <label cl
 const GoalMovementModal = ({ movement, setMovement, movementState, movementMutation, accounts, submitMovement }) => {
   const close = () => movementState.status !== "submitting" && setMovement((current) => ({ ...current, goal: null }));
   const deposit = movement.movement_type === "deposit";
-  return <Modal open={Boolean(movement.goal)} onClose={close} title={deposit ? "Tambah dana target" : "Tarik dana target"} description={movement.goal ? movement.goal.name : ""} footer={<><Button type="button" disabled={movementState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="goal-movement-form" variant="primary" loading={movementMutation.busy} disabled={movementState.status === "submitting"}>Simpan transfer</Button></>}>
+  return <Modal open={Boolean(movement.goal)} onClose={close} dismissible={movementState.status !== "submitting"} title={deposit ? "Tambah dana target" : "Tarik dana target"} description={movement.goal ? movement.goal.name : ""} footer={<><Button type="button" disabled={movementState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="goal-movement-form" variant="primary" loading={movementMutation.busy} disabled={movementState.status === "submitting"}>Simpan transfer</Button></>}>
     <form id="goal-movement-form" className="form-grid" onSubmit={submitMovement}>
       {movement.goal ? <div className="notice notice--info form-grid__full"><span>{deposit ? "Sisa target" : "Dana target tersedia"} <Money value={deposit ? movement.goal.remaining_amount : movement.goal.current_amount} />.</span></div> : null}
       <MoneyInput id="goal-movement-amount" label="Nominal" value={movement.amount} onChange={(value) => setMovement((current) => ({ ...current, amount: value }))} />

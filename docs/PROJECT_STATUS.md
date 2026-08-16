@@ -17,7 +17,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Source terbaru + test aktual adalah sumber kebenaran.
 - Tidak ada task card/Task ID/branch automation sebagai workflow wajib.
 - Quality gate utama: `npm run check`; frontend/browser ditambah `npm run test:browser`. Route readiness browser hanya menjamin shell/heading; assertion capability yang dimuat terpisah wajib menunggu selector capability yang terlihat.
-- Setelah PASS: `git add -A`, commit, dan `git push origin main`.
+- Setelah PASS: commit pada branch, push branch, buka Pull Request, tunggu workflow **Quality** lulus, lalu merge ke `main`. Ruleset GitHub tetap memerlukan verifikasi operasional.
 - `npm run zip` membuat clean source canonical fail-closed.
 - Guarded/high-risk tetap membutuhkan approval eksplisit sebelum coding/operation.
 

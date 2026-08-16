@@ -14,9 +14,9 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 ## Now — verification dan operasi
 
 - Jalankan full Node 24 `npm run check` dan `npm run test:browser` setelah patch.
-- Rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` yang pernah ikut ZIP manual.
+- Verifikasi operasional rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` yang pernah ikut ZIP manual mengikuti `SECRET_ROTATION_RUNBOOK.md`; source tidak dapat membuktikan credential lama sudah direvoke.
 - Migration parity Turso dan real-resource backup/restore drill.
-- Branch protection/ruleset dan required Quality check.
+- Aktifkan branch protection/ruleset GitHub dan jadikan workflow **Quality** sebagai required check; source workflow/CONTRIBUTING sudah disiapkan, enforcement tetap setting GitHub.
 - Verifikasi Google bridge, Calendar, Web Push, dan notification cadence pada resource nyata.
 
 ## Next — RFC sebelum schema/authorization berubah

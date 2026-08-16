@@ -200,6 +200,53 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.doesNotMatch([layout, notifications, members, recovery, period, audit, reset].join("\n"), /data\.purge|transactions\.delete|accounts\.delete(?!Unused)/);
 });
 
+
+test("reset data testing selalu mendefinisikan helper presentasi recovery dan step yang dirender", async () => {
+  const reset = await read("src/features/settings/ResetDataPage.jsx");
+  assert.match(reset, /const ResetStepHeader =/);
+  assert.match(reset, /const intentStateLabel =/);
+  assert.match(reset, /const backupStateLabel =/);
+  assert.match(reset, /<ResetStepHeader number="1"/);
+  assert.match(reset, /<ResetStepHeader number="2"/);
+  assert.match(reset, /<ResetStepHeader number="3"/);
+  assert.match(reset, /intentStateLabel\(status\.intent\?\.state\)/);
+  assert.match(reset, /backupStateLabel\(status\.backup\?\.status\)/);
+});
+
+test("modal form mutation tidak dapat didismiss selama request masih berjalan", async () => {
+  const [
+    transactionForm, budgets, allocations, goals, recurring, categories, accountDialogs, members,
+  ] = await Promise.all([
+    read("src/features/transactions/TransactionForm.jsx"),
+    read("src/features/budgets/BudgetsPage.jsx"),
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/recurring/RecurringDialogs.jsx"),
+    read("src/features/categories/CategoriesPage.jsx"),
+    read("src/features/accounts/components/AccountEditorDialogs.jsx"),
+    read("src/features/settings/MembersSettingsPage.jsx"),
+  ]);
+
+  assert.match(transactionForm, /dismissible=\{!submitting\}/);
+  assert.doesNotMatch(transactionForm, /onClose=\{submitting \? \(\) => \{\} : onClose\}/);
+
+  assert.match(budgets, /dismissible=\{saveState\.status !== "submitting"\}/);
+  assert.match(allocations, /dismissible=\{!createMutation\.busy\}/);
+  assert.match(allocations, /dismissible=\{!moveMutation\.busy\}/);
+
+  assert.match(goals, /dismissible=\{!createMutation\.busy\}/);
+  assert.match(goals, /dismissible=\{editState\.status !== "submitting"\}/);
+  assert.match(goals, /dismissible=\{movementState\.status !== "submitting"\}/);
+
+  assert.match(recurring, /dismissible=\{!createMutation\.busy\}/);
+  assert.match(recurring, /dismissible=\{paymentState\.status !== "submitting"\}/);
+  assert.match(recurring, /dismissible=\{editState\.status !== "submitting"\}/);
+
+  assert.match(categories, /dismissible=\{dialogState\.status !== "submitting"\}/g);
+  assert.match(accountDialogs, /dismissible=\{!submitting\}/g);
+  assert.match(members, /dismissible=\{!saving\}/);
+});
+
 test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry, dan membatasi key manual ke form transaksi", async () => {
   const [client, hook, modal, goals, recurring, allocations, transactionForm, notifications] = await Promise.all([
     read("src/services/api/client.js"),

@@ -300,6 +300,7 @@ export const cancelTransaction = async (db, context) => {
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM transactions WHERE transaction_id=? AND status='active'", [payload.transaction_id || payload.transactionId]);
   if (!current) throw appError("NOT_FOUND", "Transaksi aktif tidak ditemukan.",404);
+  assertCanModify(context, current);
   assertVersion(current, context.rowVersion ?? payload.row_version ?? payload.rowVersion);
   return cancelTransactionInternal(db, context, current, payload.reason);
 };

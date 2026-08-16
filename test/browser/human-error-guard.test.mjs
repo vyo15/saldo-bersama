@@ -220,6 +220,10 @@ await test("checklist bersihkan data testing interaktif, tidak reset saat dicent
     chromium = await startChromium();
     page = await openBrowserPage(chromium.debuggingPort, `${appServer.origin}/pengaturan/reset-data`, { width: 390, height: 844 });
     await waitForAppRoute(page, "/pengaturan/reset-data", { heading: "Pengaturan" });
+    await waitFor(
+      () => page.evaluate("document.getElementById('reset-data-title')?.textContent?.trim() === 'Reset data testing'"),
+      { description: "halaman reset data testing berhasil dirender tanpa ReferenceError" },
+    );
 
     await waitFor(
       () => page.evaluate(`(() => {

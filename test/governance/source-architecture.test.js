@@ -142,14 +142,27 @@ test("health endpoint menolak method selain GET sebelum akses database", async (
   assert.equal(JSON.parse(response.body).error.code, "METHOD_NOT_ALLOWED");
 });
 
-test("action internal kantong tidak diekspos dan health publik tidak membocorkan aktivitas integrasi", async () => {
+test("action internal kantong tidak diekspos dan health publik hanya mengembalikan status minimum", async () => {
   const [dispatcher, security, health] = await Promise.all([
     source("api/_lib/actionDispatcher.js"), source("api/_lib/security.js"), source("api/health.js"),
   ]);
   assert.doesNotMatch(dispatcher, /envelopes\.createRule|envelopes\.createPeriod/);
   assert.doesNotMatch(security, /envelopes\.createRule|envelopes\.createPeriod/);
-  assert.doesNotMatch(health, /integrationStatus/);
-  assert.match(health, /configured/);
+  assert.doesNotMatch(health, /runtimeBuildInfo|bridgeConfigured|integrations/);
+
+  const response = {
+    statusCode: 0,
+    body: "",
+    headersSent: false,
+    setHeader() {},
+    end(value) { this.body = value; },
+  };
+  await healthHandler({ method: "GET", headers: { "x-request-id": "health-minimal-test" } }, response);
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body);
+  assert.deepEqual(Object.keys(body.data).sort(), ["requestId", "status", "timestamp"]);
+  assert.ok(["ok", "degraded"].includes(body.data.status));
+  assert.notEqual(body.data.status, "maintenance");
 });
 
 test("environment template hanya memakai daftar canonical tanpa duplikasi legacy", async () => {

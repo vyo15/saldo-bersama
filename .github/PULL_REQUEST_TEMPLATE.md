@@ -20,4 +20,4 @@ test khusus:
 - [ ] Dampak schema/auth/API/saldo/backup/deployment diperiksa sesuai scope
 - [ ] Rollback/forward-fix jelas untuk perubahan berisiko
 
-PR bersifat opsional; workflow default project adalah direct push ke `main` setelah validation PASS.
+PR adalah jalur canonical menuju `main`. Jangan merge sebelum workflow **Quality / check** PASS dan review/approval guarded tersedia sesuai risiko. Direct push rutin ke `main` dilarang; emergency bypass hanya mengikuti ruleset dan harus terdokumentasi.

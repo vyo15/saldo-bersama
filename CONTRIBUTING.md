@@ -21,15 +21,16 @@ npm run verify
 
 Gunakan `npm ci` hanya untuk bootstrap/reinstall dependency atau clean CI, bukan sebelum setiap validation.
 
-## Commit dan push
+## Commit dan delivery
 
 Setelah validation PASS:
 
 ```bash
 git status --short
+git switch -c fix/deskripsi-singkat
 git add -A
 git commit -m "type: deskripsi perubahan"
-git push origin main
+git push -u origin HEAD
 ```
 
-PR/branch bersifat opsional dan dipakai hanya bila user meminta review tambahan atau repository rules mengharuskannya. Panduan lengkap ada di `docs/GIT_WORKFLOW.md`.
+Buat Pull Request ke `main`. Workflow **Quality** wajib lulus sebelum merge sesuai `docs/GITHUB_RULESET.md`. Panduan lengkap ada di `docs/GIT_WORKFLOW.md`.

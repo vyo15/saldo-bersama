@@ -24,4 +24,4 @@
 4. Dokumen canonical tidak dihapus tanpa memigrasikan contract yang masih relevan.
 5. Historical evidence yang berguna untuk audit/migration/recovery/arsitektur tidak dihapus hanya untuk merapikan folder.
 6. `docs/INDEX.md` wajib menunjuk dokumen canonical dan lifecycle ini.
-7. Governance test memastikan reference Markdown penting dan workflow direct-Git tidak drift.
+7. Governance test memastikan reference Markdown penting dan workflow branch/Pull Request + Quality tidak drift.

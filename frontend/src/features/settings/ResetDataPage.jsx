@@ -75,6 +75,35 @@ const RESET_BALANCE_ACKNOWLEDGEMENTS = Object.freeze([
 ]);
 
 const RESET_RECOVERY_STORAGE_KEY = "saldo-bersama:reset-recovery";
+
+const RESET_INTENT_STATE_LABELS = Object.freeze({
+  processing: "Sedang diproses",
+  unknown: "Belum pasti",
+  completed: "Selesai",
+  missing: "Tidak ditemukan",
+});
+
+const RESET_BACKUP_STATE_LABELS = Object.freeze({
+  pending: "Menunggu",
+  processing: "Sedang dibuat",
+  completed: "Selesai",
+  verified: "Terverifikasi",
+  failed: "Gagal",
+});
+
+const intentStateLabel = (state) => RESET_INTENT_STATE_LABELS[state] || state || "Tidak tersedia";
+const backupStateLabel = (state) => RESET_BACKUP_STATE_LABELS[state] || state || "Belum tersedia";
+
+const ResetStepHeader = ({ number, icon: Icon, title, description }) => (
+  <div className={styles.resetStepHeader}>
+    <span className={styles.resetStepNumber} aria-hidden="true">{number}</span>
+    <div>
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </div>
+    <span className={styles.resetStepIcon} aria-hidden="true"><Icon /></span>
+  </div>
+);
 const BalanceResetPreview = ({ balanceReset }) => {
   if (!balanceReset) return null;
   return (
