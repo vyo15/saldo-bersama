@@ -151,11 +151,14 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
   assert.match(login, /shouldRenderDesktopGoogleButton/);
   assert.doesNotMatch(desktopAuth, /compact/);
 
-  // Mobile tidak lagi memakai iframe GIS. Tombol React memanggil Firebase popup dan session existing.
+  // Mobile tidak memakai iframe GIS. Provider Firebase di-preload, lalu popup dimulai langsung dari click user agar mobile tidak kehilangan user activation.
   assert.match(login, /import\("\.\.\/\.\.\/services\/auth\/mobileFirebaseGoogleAuth\.js"\)/);
   assert.match(login, /preloadMobileGoogleAuth/);
+  assert.match(login, /let mobileGoogleAuthModule = null/);
+  assert.match(login, /mobileGoogleAuthModule = module/);
   assert.match(login, /mobileGoogleAuthReady/);
-  assert.match(login, /signInWithGooglePopup/);
+  assert.match(login, /mobileGoogleAuthModule\.signInWithGooglePopup\(\{ onFirebaseToken: loginWithFirebaseToken \}\)/);
+  assert.doesNotMatch(login, /await preloadMobileGoogleAuth\(\)/);
   assert.match(login, /className="login-mobile-google-button"/);
   assert.match(login, /\/login\/google-g-logo\.png/);
   assert.match(login, /Menghubungkan ke Google…/);
@@ -187,6 +190,8 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
   assert.match(loginStyles, /\.login-mobile-google-button:disabled \{[^}]*cursor:\s*wait;/);
   assert.match(loginStyles, /@keyframes login-google-spin/);
+  assert.doesNotMatch(login, /login-mobile-next|>Lanjut<|const nextLabel/);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-next/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-provider/);
   assert.doesNotMatch(loginStyles, /login-provider-spin/);
   assert.match(login, /className="login-mobile-welcome">Selamat datang<\/p>/);

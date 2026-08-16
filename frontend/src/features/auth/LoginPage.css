@@ -598,11 +598,6 @@
 .login-mobile-creator-link:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
 
 .login-mobile-navigation { position: relative; z-index: 12; padding: 6px 18px max(8px, env(safe-area-inset-bottom)); display: grid; gap: 6px; background: linear-gradient(to top, var(--page) 74%, color-mix(in srgb, var(--page) 80%, transparent)); }
-.login-mobile-next { width: 100%; min-height: 50px; padding: 0 20px; border: 0; border-radius: var(--radius-pill); display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-primary-control); font-weight: var(--font-weight-bold); cursor: pointer; touch-action: manipulation; transition: transform var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing), box-shadow var(--motion-fast) var(--motion-easing); }
-.login-mobile-next:hover { background: var(--primary-hover); }
-.login-mobile-next:active { transform: scale(.98); }
-.login-mobile-next:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.login-mobile-next svg { width: 18px; height: 18px; }
 .login-mobile-navigation__row { min-height: 44px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
 .login-mobile-navigation__spacer { width: 44px; height: 44px; display: block; }
 .login-mobile-back { width: 44px; height: 44px; padding: 0; border: 1px solid var(--border); border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--text); cursor: pointer; touch-action: manipulation; transition: transform var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing); }
@@ -656,7 +651,6 @@
   .login-mobile-security { margin-top: 8px; gap: 6px 10px; font-size: 9px; }
   .login-mobile-creator-link { margin-top: 3px; }
   .login-mobile-navigation { padding-top: 4px; gap: 4px; }
-  .login-mobile-next { min-height: 48px; }
 }
 
 @media (max-height: 620px) and (max-width: 820px) {
@@ -687,7 +681,6 @@
   .login-mobile-asset,
   .login-mobile-progress__bar,
   .login-mobile-dot::before,
-  .login-mobile-next,
   .login-mobile-back { transition: none; }
   .login-mobile-track { --login-mobile-parallax-soft: 0px !important; --login-mobile-parallax-medium: 0px !important; --login-mobile-parallax-strong: 0px !important; }
   .login-money-note,

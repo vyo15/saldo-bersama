@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FiAlertCircle, FiArrowLeft, FiArrowRight } from "react-icons/fi";
+import { FiAlertCircle, FiArrowLeft } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { useTheme } from "../../app/ThemeContext.jsx";
@@ -76,10 +76,14 @@ const MOBILE_MONEY_NOTES = Object.freeze([
 ]);
 
 const MOBILE_PAGE_LABELS = Object.freeze(["Menabung", "Anggaran", "Keuangan bersama", "Login"]);
+let mobileGoogleAuthModule = null;
 let mobileGoogleAuthModulePromise = null;
 const preloadMobileGoogleAuth = () => {
   if (!mobileGoogleAuthModulePromise) {
-    mobileGoogleAuthModulePromise = import("../../services/auth/mobileFirebaseGoogleAuth.js");
+    mobileGoogleAuthModulePromise = import("../../services/auth/mobileFirebaseGoogleAuth.js").then((module) => {
+      mobileGoogleAuthModule = module;
+      return module;
+    });
   }
   return mobileGoogleAuthModulePromise;
 };
@@ -279,7 +283,6 @@ const MobileLoginLayout = ({
   mobileAuthProps,
 }) => {
   const loginActive = mobileSlide === MOBILE_LOGIN_SLIDE;
-  const nextLabel = mobileSlide === MOBILE_LOGIN_SLIDE - 1 ? "Masuk ke Saldo Bersama" : "Lanjut";
   return (
     <main className="login-page login-page--mobile">
       <h1 className="sr-only">Saldo Bersama</h1>
@@ -329,12 +332,6 @@ const MobileLoginLayout = ({
         </div>
 
         <footer className="login-mobile-navigation">
-          {!loginActive ? (
-            <button type="button" className="login-mobile-next" onClick={() => moveMobileSlide(mobileSlide + 1)}>
-              <span>{nextLabel}</span>
-              <FiArrowRight aria-hidden="true" />
-            </button>
-          ) : null}
           <div className="login-mobile-navigation__row">
             {!loginActive ? (
               <button
@@ -502,18 +499,13 @@ const LoginPage = () => {
     };
   }, [loginWithFirebaseToken, shouldRenderDesktopGoogleButton]);
 
-  const handleMobileGoogleLogin = async () => {
-    if (mobileLoginPending || !mobileGoogleAuthReady || status !== "anonymous" || configErrors.length) return;
+  const handleMobileGoogleLogin = () => {
+    if (mobileLoginPending || !mobileGoogleAuthReady || !mobileGoogleAuthModule || status !== "anonymous" || configErrors.length) return;
     setButtonError(null);
     setMobileLoginPending(true);
-    try {
-      const { signInWithGooglePopup } = await preloadMobileGoogleAuth();
-      await signInWithGooglePopup({ onFirebaseToken: loginWithFirebaseToken });
-    } catch (loginError) {
-      setButtonError(loginError);
-    } finally {
-      setMobileLoginPending(false);
-    }
+    mobileGoogleAuthModule.signInWithGooglePopup({ onFirebaseToken: loginWithFirebaseToken })
+      .catch((loginError) => { setButtonError(loginError); })
+      .finally(() => { setMobileLoginPending(false); });
   };
 
   const requestedPath = typeof location.state?.from === "string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")
