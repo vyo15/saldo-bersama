@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FiAlertCircle, FiArrowLeft } from "react-icons/fi";
+import { FiAlertCircle } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { useTheme } from "../../app/ThemeContext.jsx";
@@ -298,15 +298,6 @@ const MobileLoginLayout = ({
           </div>
         </header>
 
-        {!loginActive ? (
-          <div className="login-mobile-progress" aria-hidden="true">
-            <span className="login-mobile-progress__track">
-              <span className={`login-mobile-progress__bar is-step-${mobileSlide + 1}`} />
-            </span>
-            <small>{mobileSlide + 1} / {MOBILE_SLIDE_COUNT}</small>
-          </div>
-        ) : null}
-
         <div
           className="login-mobile-viewport"
           onPointerDown={beginSwipe}
@@ -329,17 +320,7 @@ const MobileLoginLayout = ({
 
         <footer className="login-mobile-navigation">
           <div className="login-mobile-navigation__row">
-            {!loginActive ? (
-              <button
-                type="button"
-                className="login-mobile-back"
-                aria-label="Kembali ke halaman sebelumnya"
-                disabled={mobileSlide === 0}
-                onClick={() => moveMobileSlide(mobileSlide - 1)}
-              >
-                <FiArrowLeft aria-hidden="true" />
-              </button>
-            ) : <span className="login-mobile-navigation__spacer" aria-hidden="true" />}
+            <span className="login-mobile-navigation__spacer" aria-hidden="true" />
             <MobilePagination mobileSlide={mobileSlide} moveMobileSlide={moveMobileSlide} />
             <span className="login-mobile-navigation__hint">{loginActive ? "Login" : "Geser"}</span>
           </div>
@@ -444,8 +425,10 @@ const useMobileGoogleRedirectResult = ({
   configErrorCount,
   loginWithFirebaseToken,
   mobileLayout,
+  moveMobileSlide,
   setButtonError,
   setMobileGoogleAuthReady,
+  setMobileLoginPending,
   status,
 }) => {
   useEffect(() => {
@@ -456,20 +439,32 @@ const useMobileGoogleRedirectResult = ({
     let active = true;
     setMobileGoogleAuthReady(false);
     preloadMobileGoogleAuth().then(async (mobileAuth) => {
+      const returningFromGoogle = mobileAuth.hasPendingGoogleRedirect();
+      if (active && returningFromGoogle) {
+        moveMobileSlide(MOBILE_LOGIN_SLIDE);
+        setMobileLoginPending(true);
+      }
       try {
         const result = await mobileAuth.consumeGoogleRedirectResult({ onFirebaseToken: loginWithFirebaseToken });
-        if (active && !result.handled) setMobileGoogleAuthReady(true);
+        if (active && !result.handled) {
+          setMobileGoogleAuthReady(true);
+          setMobileLoginPending(false);
+        }
       } catch (redirectError) {
         if (active) {
           setButtonError(redirectError);
           setMobileGoogleAuthReady(true);
+          setMobileLoginPending(false);
         }
       }
     }).catch(() => {
-      if (active) setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+      if (active) {
+        setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+        setMobileLoginPending(false);
+      }
     });
     return () => { active = false; };
-  }, [configErrorCount, loginWithFirebaseToken, mobileLayout, setButtonError, setMobileGoogleAuthReady, status]);
+  }, [configErrorCount, loginWithFirebaseToken, mobileLayout, moveMobileSlide, setButtonError, setMobileGoogleAuthReady, setMobileLoginPending, status]);
 };
 
 const LoginPage = () => {
@@ -495,8 +490,10 @@ const LoginPage = () => {
     configErrorCount: configErrors.length,
     loginWithFirebaseToken,
     mobileLayout,
+    moveMobileSlide,
     setButtonError,
     setMobileGoogleAuthReady,
+    setMobileLoginPending,
     status,
   });
 

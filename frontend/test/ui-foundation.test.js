@@ -145,9 +145,9 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect same-origin
   assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
   assert.match(login, /rel="noopener noreferrer"/);
 
-  // Onboarding mobile mengandalkan swipe, pagination, Lewati, dan back; tombol Lanjut besar sudah dipensiunkan.
-  assert.doesNotMatch(login, /login-mobile-next|nextLabel|FiArrowRight/);
-  assert.doesNotMatch(loginStyles, /\.login-mobile-next/);
+  // Onboarding mobile mengandalkan swipe, pagination, dan Lewati; progress, back, serta tombol Lanjut besar sudah dipensiunkan.
+  assert.doesNotMatch(login, /login-mobile-next|nextLabel|FiArrowRight|FiArrowLeft|login-mobile-progress|login-mobile-back/);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-(?:next|progress|back)/);
 
   // Desktop tetap memakai Google Identity Services existing.
   assert.match(login, /renderGoogleLoginButton/);
@@ -170,6 +170,13 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect same-origin
   assert.match(mobileAuth, /browserPopupRedirectResolver/);
   assert.match(mobileAuth, /signInWithRedirect\(auth, googleProvider\(\), browserPopupRedirectResolver\)/);
   assert.match(mobileAuth, /getRedirectResult\(auth, browserPopupRedirectResolver\)/);
+  assert.match(mobileAuth, /REDIRECT_INTENT_KEY/);
+  assert.match(mobileAuth, /hasPendingGoogleRedirect/);
+  assert.match(mobileAuth, /auth\.authStateReady\(\)/);
+  assert.match(mobileAuth, /auth\.currentUser/);
+  assert.match(mobileAuth, /AUTH_REDIRECT_RESULT_MISSING/);
+  assert.match(login, /returningFromGoogle/);
+  assert.match(login, /moveMobileSlide\(MOBILE_LOGIN_SLIDE\)/);
   assert.match(mobileAuth, /browserSessionPersistence/);
   assert.match(mobileAuth, /initializeAuth/);
   assert.doesNotMatch(mobileAuth, /await setPersistence/);
@@ -191,6 +198,8 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect same-origin
   assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage\)\} \/>/);
   assert.doesNotMatch(pages, /\.login-page\b|\.login-mobile-|\.login-desktop-/);
   assert.match(loginStyles, /\.login-desktop-stage \{[\s\S]*height:\s*100dvh;/);
+  assert.match(loginStyles, /\.login-mobile-stage \{[\s\S]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto;/);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-stage\.is-login-active/);
   assert.match(loginStyles, /\.login-mobile-track \{[\s\S]*width:\s*400%;/);
   assert.match(loginStyles, /\.login-mobile-slide \{[\s\S]*overflow:\s*hidden;/);
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
@@ -199,8 +208,8 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect same-origin
   assert.doesNotMatch(loginStyles, /\.login-mobile-provider/);
   assert.doesNotMatch(loginStyles, /login-provider-spin/);
   assert.match(login, /className="login-mobile-welcome">Selamat datang<\/p>/);
-  assert.match(login, /!loginActive \? \([\s\S]*className="login-mobile-progress"/);
-  assert.match(login, /!loginActive \? \([\s\S]*className="login-mobile-back"/);
+  assert.doesNotMatch(login, /login-mobile-progress|login-mobile-back/);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-progress|\.login-mobile-back/);
   assert.match(loginStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-mobile-google-button__spinner/);
   for (const staleAsset of [
     "mobile-login.webp",

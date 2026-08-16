@@ -13,6 +13,8 @@ import { env } from "../../config/env.js";
 
 const MOBILE_FIREBASE_APP_NAME = "saldo-bersama-mobile-auth";
 const CANONICAL_PRODUCTION_HOST = "saldo-bersama.vercel.app";
+const REDIRECT_INTENT_KEY = "saldo-bersama:mobile-google-redirect";
+const REDIRECT_INTENT_MAX_AGE_MS = 10 * 60_000;
 let mobileFirebaseAuth = null;
 let redirectResultPromise = null;
 
@@ -28,6 +30,34 @@ const friendlyMobileGoogleError = (error) => {
   const [code, message] = messages[error?.code] || ["AUTH_LOGIN_FAILED", "Login Google belum berhasil. Silakan coba lagi."];
   return Object.assign(new Error(message), { code });
 };
+
+const redirectIntentStorage = () => {
+  try { return typeof window !== "undefined" ? window.sessionStorage : null; } catch { return null; }
+};
+
+const markRedirectIntent = () => {
+  try { redirectIntentStorage()?.setItem(REDIRECT_INTENT_KEY, String(Date.now())); } catch { /* Firebase will report unsupported storage if required. */ }
+};
+
+const clearRedirectIntent = () => {
+  try { redirectIntentStorage()?.removeItem(REDIRECT_INTENT_KEY); } catch { /* Best-effort cleanup only. */ }
+};
+
+const hasRecentRedirectIntent = () => {
+  try {
+    const startedAt = Number(redirectIntentStorage()?.getItem(REDIRECT_INTENT_KEY) || 0);
+    return startedAt > 0 && Date.now() - startedAt <= REDIRECT_INTENT_MAX_AGE_MS;
+  } catch {
+    return false;
+  }
+};
+
+export const hasPendingGoogleRedirect = () => hasRecentRedirectIntent();
+
+const missingRedirectResultError = () => Object.assign(
+  new Error("Google sudah mengembalikan Anda ke aplikasi, tetapi sesi login belum dapat dipulihkan. Coba login sekali lagi."),
+  { code: "AUTH_REDIRECT_RESULT_MISSING" },
+);
 
 const resolveMobileAuthDomain = () => {
   if (typeof window === "undefined") return env.firebaseAuthDomain;
@@ -68,28 +98,46 @@ const googleProvider = () => {
 
 export const startGoogleRedirect = async () => {
   const auth = getMobileFirebaseAuth();
+  markRedirectIntent();
   try {
     await signInWithRedirect(auth, googleProvider(), browserPopupRedirectResolver);
   } catch (error) {
+    clearRedirectIntent();
     throw friendlyMobileGoogleError(error);
   }
 };
 
+const resolveRedirectUser = async (auth, result, hadRedirectIntent) => {
+  if (result?.user) return result.user;
+  if (!hadRedirectIntent) return null;
+  await auth.authStateReady();
+  return auth.currentUser;
+};
+
 const completeGoogleRedirect = async ({ onFirebaseToken }) => {
   const auth = getMobileFirebaseAuth();
+  const hadRedirectIntent = hasRecentRedirectIntent();
   let result;
+  let user;
   try {
     result = await getRedirectResult(auth, browserPopupRedirectResolver);
+    user = await resolveRedirectUser(auth, result, hadRedirectIntent);
   } catch (error) {
+    clearRedirectIntent();
     await signOut(auth).catch(() => {});
     throw friendlyMobileGoogleError(error);
   }
-  if (!result?.user) return { handled: false };
+  if (!user) {
+    clearRedirectIntent();
+    if (hadRedirectIntent) throw missingRedirectResultError();
+    return { handled: false };
+  }
 
   let firebaseIdToken;
   try {
-    firebaseIdToken = await result.user.getIdToken();
+    firebaseIdToken = await user.getIdToken();
   } catch (error) {
+    clearRedirectIntent();
     await signOut(auth).catch(() => {});
     throw friendlyMobileGoogleError(error);
   }
@@ -98,6 +146,7 @@ const completeGoogleRedirect = async ({ onFirebaseToken }) => {
     await onFirebaseToken(firebaseIdToken);
     return { handled: true };
   } finally {
+    clearRedirectIntent();
     await signOut(auth).catch(() => {});
   }
 };
