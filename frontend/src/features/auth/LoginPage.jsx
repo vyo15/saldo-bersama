@@ -440,27 +440,16 @@ const DesktopLoginLayout = ({ theme, providerProps }) => <main className="login-
   <h1 className="sr-only">Saldo Bersama</h1><section className="login-desktop-stage" aria-label="Login Saldo Bersama"><div className="login-desktop-artwork-frame"><img className="login-desktop-artwork" src={DESKTOP_ARTWORK[theme] || DESKTOP_ARTWORK.light} alt="" aria-hidden="true" draggable="false" fetchPriority="high" /><div className="login-provider-mask login-provider-mask--desktop" aria-hidden="true" /><section className="login-provider-slot login-provider-slot--desktop" aria-label="Masuk ke Saldo Bersama"><LoginProvider {...providerProps} /></section><CreatorLink /></div><MoneyRain /><div className="sr-only"><p>Kelola keuangan pribadi dan bersama.</p><p>Akun yang diizinkan. Akses terverifikasi. Sinkron antar perangkat.</p></div></section>
 </main>;
 
-const LoginPage = () => {
-  const { status, error, configErrors, loginWithFirebaseToken, refreshSession } = useAuth();
-  const { theme } = useTheme();
-  const location = useLocation();
-  const buttonRef = useRef(null);
-  const [buttonError, setButtonError] = useState(null);
-  const [mobileLoginPending, setMobileLoginPending] = useState(false);
-  const [mobileGoogleAuthReady, setMobileGoogleAuthReady] = useState(false);
-  const {
-    mobileLayout,
-    mobileSlide,
-    trackRef,
-    moveMobileSlide,
-    beginSwipe,
-    moveSwipe,
-    finishSwipe,
-  } = useMobileLoginInteraction();
-  const shouldRenderDesktopGoogleButton = status === "anonymous" && !configErrors.length && !mobileLayout;
-
+const useMobileGoogleRedirectResult = ({
+  configErrorCount,
+  loginWithFirebaseToken,
+  mobileLayout,
+  setButtonError,
+  setMobileGoogleAuthReady,
+  status,
+}) => {
   useEffect(() => {
-    if (!mobileLayout || status !== "anonymous" || configErrors.length) {
+    if (!mobileLayout || status !== "anonymous" || configErrorCount) {
       setMobileGoogleAuthReady(false);
       return undefined;
     }
@@ -480,7 +469,36 @@ const LoginPage = () => {
       if (active) setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
     });
     return () => { active = false; };
-  }, [configErrors.length, loginWithFirebaseToken, mobileLayout, status]);
+  }, [configErrorCount, loginWithFirebaseToken, mobileLayout, setButtonError, setMobileGoogleAuthReady, status]);
+};
+
+const LoginPage = () => {
+  const { status, error, configErrors, loginWithFirebaseToken, refreshSession } = useAuth();
+  const { theme } = useTheme();
+  const location = useLocation();
+  const buttonRef = useRef(null);
+  const [buttonError, setButtonError] = useState(null);
+  const [mobileLoginPending, setMobileLoginPending] = useState(false);
+  const [mobileGoogleAuthReady, setMobileGoogleAuthReady] = useState(false);
+  const {
+    mobileLayout,
+    mobileSlide,
+    trackRef,
+    moveMobileSlide,
+    beginSwipe,
+    moveSwipe,
+    finishSwipe,
+  } = useMobileLoginInteraction();
+  const shouldRenderDesktopGoogleButton = status === "anonymous" && !configErrors.length && !mobileLayout;
+
+  useMobileGoogleRedirectResult({
+    configErrorCount: configErrors.length,
+    loginWithFirebaseToken,
+    mobileLayout,
+    setButtonError,
+    setMobileGoogleAuthReady,
+    status,
+  });
 
   useEffect(() => {
     if (!shouldRenderDesktopGoogleButton) return undefined;
