@@ -10,7 +10,7 @@
 
 ## Klasifikasi
 
-- Canonical: architecture, contracts, security model, environment, schema, data dictionary, UI design system, `WORKFLOW.md`, `GIT_WORKFLOW.md`, dan contribution policy.
+- Canonical: architecture, contracts, security model, environment, schema, data dictionary, UI design system, `WORKFLOW.md`, `GIT_WORKFLOW.md`, `TEST_PLAN.md`, `QA_CHECKLIST.md`, dan contribution policy.
 - Snapshot: `PROJECT_STATUS.md` dan `IMPLEMENTATION_MATRIX.md`.
 - Runbook: deployment, release, rollback, recovery, incident, operations, legacy cutover.
 - Historical: ADR/RFC superseded dan `docs/tasks/archive/` dari workflow lama. Archive task tidak lagi mengontrol delivery saat ini.
@@ -24,4 +24,6 @@
 4. Dokumen canonical tidak dihapus tanpa memigrasikan contract yang masih relevan.
 5. Historical evidence yang berguna untuk audit/migration/recovery/arsitektur tidak dihapus hanya untuk merapikan folder.
 6. `docs/INDEX.md` wajib menunjuk dokumen canonical dan lifecycle ini.
-7. Governance test memastikan reference Markdown penting dan workflow branch/Pull Request + Quality tidak drift.
+7. `TEST_PLAN.md` menyimpan contract test/domain scenario; `QA_CHECKLIST.md` hanya checklist evergreen. Keduanya tidak boleh menjadi jurnal patch, baseline tanggal lama, atau daftar `[x]` dari pekerjaan sebelumnya.
+8. Feature history berada di Git/`CHANGELOG.md`; detail regression yang masih aktif berada di `TEST_PLAN.md`, bukan diduplikasi di banyak dokumen.
+9. Governance test memastikan reference Markdown penting, routing perubahan, lifecycle QA docs, dan workflow branch/Pull Request + Quality tidak drift.

@@ -1,10 +1,19 @@
 # Test Plan
 
+## Kontrak test
+
+Gunakan tiga lapis bukti:
+
+1. **Behavior/domain test** untuk rule, helper, service, mutation, saldo, authorization, dan data integrity.
+2. **Static/source contract test** hanya untuk invariant yang memang literal seperti route, dependency boundary, forbidden API, required export, security guard, dan struktur deployment. Jangan mengunci nama variabel lokal atau bentuk JSX internal untuk membuktikan behavior.
+3. **Browser journey** untuk interaksi pengguna, responsive, focus, modal, navigation, dan integrasi UI yang tidak cukup dibuktikan oleh source regex.
+
+Setiap bug/regression harus memiliki regression test yang gagal terhadap behavior lama bila praktis dan PASS setelah fix. Setelah test/source/docs final, `npm run verify` wajib dijalankan lagi dari tree yang sama. PASS dari tree sebelum edit terakhir tidak berlaku.
+
 ## Otomatis
 
 ```bash
 npm run validate:source
-- Archive target, aturan rutin, dan anggaran memakai action eksplisit Administrator-only dengan alasan + `row_version`; generic update tidak dapat dipakai sebagai jalan pintas ke status `archived`.
 npm run lint
 npm run lint:backend
 npm run test
@@ -15,6 +24,8 @@ npm run check
 npm run test:browser
 npm run zip
 ```
+
+`npm run zip` adalah local release guard: perintah ini memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` sebelum packaging. Jika salah satu lint/test/build/guard/browser gagal, ZIP tidak dibuat. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` akan dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung karena check/guard/browser sudah dijalankan pada step sebelumnya, sehingga full verification tidak diduplikasi.
 
 ### Backend coverage gate
 
@@ -214,6 +225,14 @@ Regression wajib membuktikan:
 - generic purge tidak ada pada action registry, permission, API, atau UI.
 
 
+## Build budget dan route isolation
+
+- Jangan menaikkan limit build budget hanya untuk membuat QA hijau. Cari import sinkron, CSS global, asset legacy, atau dependency besar yang seharusnya lazy-loaded.
+- Dependency provider yang hanya dibutuhkan pada aksi tertentu, seperti Firebase Google popup mobile, harus berada pada lazy chunk terpisah dan tidak membengkakkan `LoginPage` route chunk.
+- CSS shell terautentikasi tidak boleh dimuat pada route login bila tidak dibutuhkan. Shared brand/loading style tetap berada pada global primitive.
+- Asset publik yang sudah tidak direferensikan source, test, manifest, atau docs wajib dihapus setelah usage scan.
+- Build budget harus dijalankan setelah production build dan sebelum browser regression.
+
 ## Maintainability, artifact hygiene, dan duplicate-report policy
 
 - `npm-audit-YYYYMMDD.json` adalah diagnostic lokal: boleh berada sementara di working directory, wajib di-ignore Git/source validator, dan **tidak boleh** masuk clean ZIP. Validator dan packager memakai policy local-only yang sama.
@@ -248,12 +267,13 @@ Regression wajib membuktikan:
 - Subscription 404/410 harus dinonaktifkan. Endpoint lokal/private harus ditolak. Payload lock screen tidak boleh membawa nominal, saldo, nama rekening, kategori, atau detail transaksi.
 - Apps Script hanya memiliki satu trigger `runScheduledJobs`, secret scheduler sama dengan Vercel, dan `/api/jobs` berhasil memproses queue tanpa menggagalkan backup ketika Push gagal.
 
-9. Full reset harus diuji pada database terisolasi: preview mencakup accounts/categories/ledger/operational state; users/audit/backups/integrity/idempotency/nonce anti-replay/config/schema tetap; safety backup berisi data sebelum purge; stale preview ditolak; queue rebuild canonical tidak membuat preview sesudah reset terlihat kotor; outcome unknown direkonsiliasi lewat `fullReset.status`; member ditolak; dan integrity/audit/maintenance failure menyebabkan rollback/fail-closed.
+## Full reset
 
-- login mobile: tombol `Masuk dengan Google` adalah kontrol React tunggal, memakai logo Google resmi, disabled selama popup/session sedang diproses, dan memanggil Firebase `GoogleAuthProvider` + `signInWithPopup`; mobile tidak merender Google Identity Services iframe. Success wajib meneruskan Firebase ID token ke session backend existing lalu membersihkan auth client; cancel/popup blocked/network error tetap di halaman login dengan pesan ramah dan tombol dapat dicoba kembali. Progress bar dan tombol back onboarding tidak tampil pada halaman login;
+Full reset harus diuji pada database terisolasi: preview mencakup accounts/categories/ledger/operational state; users/audit/backups/integrity/idempotency/nonce anti-replay/config/schema tetap; safety backup berisi data sebelum purge; stale preview ditolak; queue rebuild canonical tidak membuat preview sesudah reset terlihat kotor; outcome unknown direkonsiliasi lewat `fullReset.status`; member ditolak; dan integrity/audit/maintenance failure menyebabkan rollback/fail-closed.
 
+## Login Google mobile
 
-### Login Google mobile
-- Mobile memakai tombol HTML branded Google milik Saldo Bersama dan Firebase Web SDK `GoogleAuthProvider` + `signInWithPopup`; tidak memakai iframe `google.accounts.id.renderButton()`.
-- Tombol wajib disabled saat proses login untuk mencegah double-submit, menampilkan error ramah tanpa raw Firebase error, dan meneruskan Firebase ID token ke session backend existing.
+- Mobile memakai satu tombol HTML branded Google milik Saldo Bersama dan Firebase Web SDK `GoogleAuthProvider` + `signInWithPopup`; tidak memakai iframe `google.accounts.id.renderButton()`.
+- Tombol disabled selama popup/session diproses, mencegah double-submit, menampilkan error ramah tanpa raw Firebase error, dan meneruskan Firebase ID token ke session backend existing lalu membersihkan auth client.
+- Cancel, popup blocked, dan network error tetap berada di login dan dapat dicoba ulang. Progress bar serta tombol back onboarding tidak tampil pada halaman login.
 - Desktop tetap memakai Google Identity Services existing. Backend allowlist, role, dan verifikasi Firebase ID token tetap source of truth.

@@ -153,8 +153,11 @@ export const ensureDevelopmentEnvironment = async ({
     const status = developmentEnvironmentStatus(values);
     if (!status.complete) {
       const problem = developmentProblemMessage(status);
+      const remediation = status.core?.missing?.length
+        ? "Lengkapi core environment pada .env.local di komputer tepercaya, lalu sinkronkan dengan npm run env:push:development. Untuk VITE_FIREBASE_AUTH_DOMAIN project ini gunakan saldo-bersama.firebaseapp.com."
+        : "Seed konfigurasi settings dari komputer tepercaya menggunakan npm run env:push:development:settings.";
       throw Object.assign(
-        new Error(`Vercel Development belum siap untuk runtime lokal: ${problem}. Seed konfigurasi settings dari komputer tepercaya menggunakan npm run env:push:development:settings, atau sinkronkan seluruh environment dengan npm run env:push:development.`),
+        new Error(`Vercel Development belum siap untuk runtime lokal: ${problem}. ${remediation}`),
         { code: "VERCEL_DEVELOPMENT_ENV_INCOMPLETE", missing: status.missing, invalid: status.invalid },
       );
     }

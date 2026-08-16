@@ -4,6 +4,7 @@
 .gitattributes text eol=lf
 .gitignore text eol=lf
 .npmrc text eol=lf
+.node-version text eol=lf
 .env.example text eol=lf
 
 # Source and documentation

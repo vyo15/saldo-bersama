@@ -137,3 +137,16 @@ test("reserved transaction field contract dijaga konsisten di gateway dan financ
     );
   }
 });
+
+test("CSP mengizinkan helper Firebase Auth exact-domain tanpa wildcard", async () => {
+  const [vercelSource, envExample] = await Promise.all([
+    readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
+    readFile(new URL("../../.env.example", import.meta.url), "utf8"),
+  ]);
+  const vercel = JSON.parse(vercelSource);
+  const csp = vercel.headers?.flatMap((entry) => entry.headers || []).find((header) => header.key === "Content-Security-Policy")?.value || "";
+  const authDomain = envExample.match(/^VITE_FIREBASE_AUTH_DOMAIN=(.+)$/m)?.[1]?.trim();
+  assert.equal(authDomain, "saldo-bersama.firebaseapp.com");
+  assert.match(csp, new RegExp(`frame-src[^;]*https://${authDomain.replaceAll(".", "\\.")}(?:[ ;]|$)`));
+  assert.doesNotMatch(csp, /https:\/\/\*\.firebaseapp\.com|https:\/\/\*\.web\.app/);
+});

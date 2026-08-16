@@ -112,6 +112,8 @@ export const GENERATED_CLEAN_TARGETS = Object.freeze([
   "test-results",
   "blob-report",
   "frontend/.vite",
+  "frontend/node_modules/.vite",
+  "frontend/node_modules/.vite-temp",
   ".vite",
   ".cache",
   "temp",
@@ -147,10 +149,6 @@ export const LOCAL_ONLY_FILE_PATTERNS = Object.freeze([
   /\.(?:log|tmp|temp|bak|zip|rar|7z)$/i,
 ]);
 
-// Backward-compatible alias for existing imports; both validator and packager
-// must use the same local-only policy so a locally ignored diagnostic can never
-// leak into the canonical clean archive.
-export const IGNORED_LOCAL_FILE_PATTERNS = LOCAL_ONLY_FILE_PATTERNS;
 
 export const isWithinRoot = (root, candidate) => {
   const relative = path.relative(root, candidate);

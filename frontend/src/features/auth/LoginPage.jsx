@@ -3,7 +3,7 @@ import { FiAlertCircle, FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { useTheme } from "../../app/ThemeContext.jsx";
-import { renderGoogleLoginButton, signInWithGooglePopup } from "../../services/auth/googleFirebaseAuth.js";
+import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
 import { useAuth } from "./AuthContext.jsx";
 import "./LoginPage.css";
 
@@ -76,6 +76,14 @@ const MOBILE_MONEY_NOTES = Object.freeze([
 ]);
 
 const MOBILE_PAGE_LABELS = Object.freeze(["Menabung", "Anggaran", "Keuangan bersama", "Login"]);
+let mobileGoogleAuthModulePromise = null;
+const preloadMobileGoogleAuth = () => {
+  if (!mobileGoogleAuthModulePromise) {
+    mobileGoogleAuthModulePromise = import("../../services/auth/mobileFirebaseGoogleAuth.js");
+  }
+  return mobileGoogleAuthModulePromise;
+};
+
 
 const readMobileLayout = () => typeof window !== "undefined"
   && typeof window.matchMedia === "function"
@@ -145,8 +153,8 @@ const LoginProvider = ({ buttonRef, configErrors, error, buttonError, status, re
   </>
 );
 
-const MobileGoogleLogin = ({ configErrors, error, buttonError, status, refreshSession, pending, onLogin }) => {
-  const disabled = pending || status !== "anonymous" || Boolean(configErrors.length);
+const MobileGoogleLogin = ({ configErrors, error, buttonError, status, refreshSession, pending, ready, onLogin }) => {
+  const disabled = pending || !ready || status !== "anonymous" || Boolean(configErrors.length);
   return (
     <div className="login-mobile-auth">
       <LoginFeedback
@@ -166,7 +174,7 @@ const MobileGoogleLogin = ({ configErrors, error, buttonError, status, refreshSe
         <span className="login-mobile-google-button__icon" aria-hidden="true">
           <img src="/login/google-g-logo.png" alt="" draggable="false" />
         </span>
-        <span>{pending ? "Menghubungkan ke Google…" : "Masuk dengan Google"}</span>
+        <span>{pending ? "Menghubungkan ke Google…" : ready ? "Masuk dengan Google" : "Menyiapkan login…"}</span>
         {pending ? <span className="login-mobile-google-button__spinner" aria-hidden="true" /> : null}
       </button>
     </div>
@@ -446,6 +454,7 @@ const LoginPage = () => {
   const buttonRef = useRef(null);
   const [buttonError, setButtonError] = useState(null);
   const [mobileLoginPending, setMobileLoginPending] = useState(false);
+  const [mobileGoogleAuthReady, setMobileGoogleAuthReady] = useState(false);
   const {
     mobileLayout,
     mobileSlide,
@@ -458,6 +467,20 @@ const LoginPage = () => {
   const shouldRenderDesktopGoogleButton = status === "anonymous" && !configErrors.length && !mobileLayout;
 
   useEffect(() => {
+    if (!mobileLayout || status !== "anonymous" || configErrors.length) {
+      setMobileGoogleAuthReady(false);
+      return undefined;
+    }
+    let active = true;
+    preloadMobileGoogleAuth().then(() => {
+      if (active) setMobileGoogleAuthReady(true);
+    }).catch(() => {
+      if (active) setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+    });
+    return () => { active = false; };
+  }, [configErrors.length, mobileLayout, status]);
+
+  useEffect(() => {
     if (!shouldRenderDesktopGoogleButton) return undefined;
     const controller = new AbortController();
     let cleanup = () => {};
@@ -467,7 +490,6 @@ const LoginPage = () => {
       onFirebaseToken: loginWithFirebaseToken,
       onError: setButtonError,
       signal: controller.signal,
-      compact: false,
     }).then((dispose) => {
       if (controller.signal.aborted) { dispose(); return; }
       cleanup = dispose;
@@ -481,10 +503,11 @@ const LoginPage = () => {
   }, [loginWithFirebaseToken, shouldRenderDesktopGoogleButton]);
 
   const handleMobileGoogleLogin = async () => {
-    if (mobileLoginPending || status !== "anonymous" || configErrors.length) return;
+    if (mobileLoginPending || !mobileGoogleAuthReady || status !== "anonymous" || configErrors.length) return;
     setButtonError(null);
     setMobileLoginPending(true);
     try {
+      const { signInWithGooglePopup } = await preloadMobileGoogleAuth();
       await signInWithGooglePopup({ onFirebaseToken: loginWithFirebaseToken });
     } catch (loginError) {
       setButtonError(loginError);
@@ -506,6 +529,7 @@ const LoginPage = () => {
     status,
     refreshSession,
     pending: mobileLoginPending,
+    ready: mobileGoogleAuthReady,
     onLogin: handleMobileGoogleLogin,
   };
   if (mobileLayout) return (

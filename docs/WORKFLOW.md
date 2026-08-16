@@ -13,7 +13,8 @@ BE    | backend/data/auth/security/integrations
 ```text
 request
   -> validasi source terbaru
-  -> audit path/contract/test terkait
+  -> baca docs/INDEX.md -> peta perubahan
+  -> audit path/contract/test/docs terkait
   -> root cause
   -> plan file-by-file
   -> approval atau implementasi eksplisit
@@ -31,9 +32,11 @@ request
 
 ZIP/source terbaru wajib menjadi dasar review. Abaikan `node_modules`, build/dist, cache, `.git`, generated output, temporary file, dan secret. Review resmi menyebut nama source, root, stack relevan, path aktual yang diperiksa, file penting yang tidak ditemukan, dan limitation.
 
-### 2. Scope
+### 2. Impact scan dan scope
 
-Jangan mengarang path/schema/route/dependency. Gunakan helper/component/service existing. Jika implementasi membutuhkan area guarded yang belum disetujui, berhenti dan minta approval.
+Sebelum coding, petakan **source -> behavior/contract -> test -> docs** memakai `docs/INDEX.md`. Cari test yang sudah mengunci area tersebut agar refactor tidak meninggalkan assertion lama. Jangan mengarang path/schema/route/dependency. Gunakan helper/component/service existing. Jika implementasi membutuhkan area guarded yang belum disetujui, berhenti dan minta approval.
+
+Untuk bug/regression, test harus membuktikan behavior yang rusak. Jangan memakai source-text regex untuk mengunci nama variabel lokal, urutan helper internal, atau bentuk JSX yang boleh berubah tanpa mengubah behavior. Static/source tests tetap tepat untuk route literal, dependency boundary, forbidden API, security invariant, dan contract arsitektur yang memang harus literal.
 
 ### 3. Parallel work
 
@@ -47,6 +50,13 @@ Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contra
 
 ### 5. Validation
 
+Urutan validation patch:
+
+1. jalankan test regression/area yang terdampak;
+2. jalankan lint/build relevan;
+3. setelah seluruh edit dan docs final, jalankan full gate dari tree yang sama;
+4. bila edit dilakukan lagi setelah PASS, PASS lama gugur dan gate relevan harus diulang.
+
 Default full local gate setelah setiap patch:
 
 ```bash
@@ -56,6 +66,8 @@ npm run verify
 `npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check`, `npm run test:guard`, dan `npm run test:browser`. Ia tidak menjalankan `npm ci` atau menghapus dependency.
 
 `npm run check` tetap menjadi gate inti yang mencakup source validation, lint, frontend/backend tests, backend coverage, production build, dan build budget. Gunakan command penyusun secara terarah hanya untuk diagnosis kegagalan atau bila scope membutuhkan test tambahan:
+
+Jika build budget gagal, jangan ubah threshold sebagai shortcut. Audit route chunk, static dependency import, CSS global, dan asset tidak terpakai. Firebase popup mobile adalah lazy provider chunk; desktop GIS tetap terpisah. Verification wrapper selalu membersihkan generated build/test output sesudah PASS maupun gagal, sehingga retry dimulai dari artefak bersih tanpa menghapus dependency atau env lokal.
 
 ```bash
 npm run db:integrity   # hanya bila operasi DB memang disetujui

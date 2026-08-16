@@ -4,9 +4,11 @@ import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { ensureDevelopmentDependencies } from "./bootstrap-development-dependencies.mjs";
 import { ensureDevelopmentEnvironment } from "./bootstrap-development-env.mjs";
+import { installGitHooks } from "./install-git-hooks.mjs";
 import { validateWebPushEnvironment } from "./runtime-environment.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+await installGitHooks({ projectRoot });
 await ensureDevelopmentDependencies({ projectRoot });
 await ensureDevelopmentEnvironment({ projectRoot });
 const frontendRoot = path.join(projectRoot, "frontend");

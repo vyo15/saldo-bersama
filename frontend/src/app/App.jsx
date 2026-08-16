@@ -2,8 +2,8 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import LoadingScreen from "../components/feedback/LoadingScreen.jsx";
 import RequireAuth from "../features/auth/RequireAuth.jsx";
-import AppShell from "../layouts/AppShell.jsx";
 
+const AppShell = lazy(() => import("../layouts/AppShell.jsx"));
 const LoginPage = lazy(() => import("../features/auth/LoginPage.jsx"));
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage.jsx"));
 const TransactionsPage = lazy(() => import("../features/transactions/TransactionsPage.jsx"));
@@ -36,7 +36,7 @@ const App = () => (
   <Routes>
     <Route path="/login" element={routeElement(LoginPage)} />
     <Route element={<RequireAuth />}>
-      <Route element={<AppShell />}>
+      <Route element={routeElement(AppShell)}>
         <Route index element={routeElement(DashboardPage)} />
         <Route path="transaksi" element={routeElement(TransactionsPage)} />
         <Route path="anggaran" element={routeElement(BudgetsPage)} />

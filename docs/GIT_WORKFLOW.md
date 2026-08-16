@@ -6,21 +6,20 @@ Lihat juga `../CONTRIBUTING.md`.
 
 ## Normal flow
 
-Setelah patch disetujui dan diterapkan:
+Setelah patch disetujui dan diterapkan, workflow harian dapat tetap sederhana:
 
 ```bash
 git status --short
-npm run verify
-```
-
-Jika full local gate PASS:
-
-```bash
+npm run zip
 git switch -c fix/deskripsi-singkat
 git add -A
 git commit -m "fix: deskripsi perubahan"
 git push -u origin HEAD
 ```
+
+`npm run zip` memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` terlebih dahulu dan **tidak membuat ZIP bila lint/test/build/guard/browser gagal**. Selain itu, `npm ci` dan `npm run dev` memasang pre-push Auto Quality Guard lokal secara idempotent. Saat `git push`, hook menjalankan full verification lagi dan membatalkan push bila gate gagal. GitHub Quality tetap menjadi gate server-side terakhir.
+
+Jika repository sudah memiliki `pre-push` custom yang bukan milik Saldo Bersama, installer tidak menimpanya. Pada kondisi itu jalankan `npm run verify` manual sebelum push atau integrasikan guard canonical ke hook custom tersebut.
 
 Buat Pull Request ke `main`. Merge hanya setelah workflow **Quality** lulus dan review yang diwajibkan repository selesai. Setelah merge:
 
@@ -61,7 +60,7 @@ Untuk schema/auth/API/saldo/transfer/backup/restore/env/deployment/security/data
 
 ## Recovery sederhana
 
-Jika validation gagal, jangan push/merge. Perbaiki file yang gagal lalu ulangi gate.
+Jika validation gagal, jangan push/merge. `npm run zip` akan membatalkan packaging dan pre-push guard akan membatalkan push. Perbaiki file yang gagal lalu ulangi `npm run zip` atau `npm run verify`.
 
 Jika ada perubahan lokal yang tidak sengaja, lihat dulu:
 

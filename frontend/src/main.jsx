@@ -9,10 +9,8 @@ import { registerServiceWorker } from "./services/serviceWorker.js";
 import "@fontsource-variable/manrope/wght.css";
 import "./styles/tokens.css";
 import "./styles/reset.css";
-import "./styles/app.css";
 import "./styles/components.css";
 import "./styles/pages.css";
-import "./styles/responsive.css";
 
 initializeTheme();
 registerServiceWorker().catch(() => {});

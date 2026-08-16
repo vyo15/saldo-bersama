@@ -201,6 +201,16 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .memberRole { width: max-content; margin-top: .25rem; padding: .28rem .5rem; border-radius: var(--radius-pill); color: var(--primary-strong); background: var(--primary-soft); font-size: .64rem; font-weight: var(--font-weight-bold); letter-spacing: .05em; text-transform: uppercase; }
 .memberMeta { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
+.memberFacts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.memberFacts > div { min-width: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-soft); }
+.memberFacts dt { color: var(--text-muted); font-size: var(--font-size-xs); }
+.memberFacts dd { margin: .3rem 0 0; color: var(--text); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
+
 .memberActivityButton { width: 100%; justify-content: center; }
 
 .memberMenuWrap { position: relative; flex: 0 0 auto; }

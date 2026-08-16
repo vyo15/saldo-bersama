@@ -9,8 +9,21 @@ export class ApiError extends Error {
   }
 }
 
+const ACTOR_FATAL_ERRORS = Object.freeze({
+  ACCOUNT_INACTIVE: { status: 403, message: "Akun ini sedang dinonaktifkan. Hubungi Administrator untuk memulihkan akses." },
+  ROLE_MISMATCH: { status: 403, message: "Hak akses akun berubah dan sesi lama tidak dapat digunakan. Silakan login kembali setelah izin diperbarui." },
+  IDENTITY_NOT_PROVISIONED: { status: 403, message: "Akun Google ini belum diprovisikan di database Saldo Bersama. Hubungi Administrator." },
+  IDENTITY_CONFLICT: { status: 409, message: "Identitas Google akun ini tidak cocok dengan akun yang tersimpan. Hubungi Administrator sebelum mencoba lagi." },
+});
+
+export const actorFatalSessionReason = (responseStatus, errorCode) => {
+  const reason = ACTOR_FATAL_ERRORS[errorCode];
+  return reason?.status === responseStatus ? reason : null;
+};
+
 export const shouldInvalidateSession = (responseStatus, errorCode) => (
-  responseStatus === 401 && errorCode === "UNAUTHENTICATED"
+  (responseStatus === 401 && errorCode === "UNAUTHENTICATED")
+  || Boolean(actorFatalSessionReason(responseStatus, errorCode))
 );
 
 const responseRequestId = (response, body = null) => {
@@ -41,7 +54,14 @@ const throwResponseError = (response, body) => {
   const error = body?.error || {};
   const errorCode = error.code || "UNKNOWN";
   if (shouldInvalidateSession(response.status, errorCode) && typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("saldo-bersama:unauthorized"));
+    const actorFatal = actorFatalSessionReason(response.status, errorCode);
+    window.dispatchEvent(new CustomEvent("saldo-bersama:unauthorized", {
+      detail: {
+        code: errorCode,
+        actorFatal: Boolean(actorFatal),
+        message: actorFatal?.message || "Sesi sudah berakhir. Silakan login kembali.",
+      },
+    }));
   }
   throw new ApiError(error.message || "Permintaan tidak dapat diproses.", {
     code: errorCode,

@@ -192,3 +192,7 @@ Command hanya menampilkan status/nama variable, bukan isi secret. Source validat
 
 ### Firebase Auth domain
 `VITE_FIREBASE_AUTH_DOMAIN` adalah public Firebase web config. Nilai production saat ini `saldo-bersama.firebaseapp.com`; jangan menaruh secret pada key `VITE_*`.
+### Firebase Auth domain belum ada di Vercel
+
+`VITE_FIREBASE_AUTH_DOMAIN` termasuk **core environment**, bukan settings-only. Untuk project ini nilainya `saldo-bersama.firebaseapp.com`. Jika bootstrap Development melaporkan key ini belum tersedia, tambahkan/sinkronkan key tersebut ke Vercel Development. `npm run env:push:development:settings` hanya untuk Web Push dan Google bridge, sehingga tidak dapat memperbaiki core key ini. Production juga harus mempunyai nilai yang sama sebelum deployment yang memakai Firebase popup auth.
+

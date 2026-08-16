@@ -12,12 +12,17 @@ export const DEVELOPMENT_DEPENDENCY_PROBES = Object.freeze([
   "@firebase/auth",
 ]);
 
+export const DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS = Object.freeze({
+  "@firebase/app": "@firebase/app/package.json",
+  "@firebase/auth": "@firebase/auth/package.json",
+});
+
 const unresolvedDependencies = (projectRoot) => {
   const frontendPackage = path.join(projectRoot, "frontend", "package.json");
   const requireFromFrontend = createRequire(frontendPackage);
   return DEVELOPMENT_DEPENDENCY_PROBES.filter((dependency) => {
     try {
-      requireFromFrontend.resolve(dependency);
+      requireFromFrontend.resolve(DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS[dependency] || dependency);
       return false;
     } catch {
       return true;

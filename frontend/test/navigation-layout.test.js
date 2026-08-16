@@ -49,13 +49,18 @@ test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti 
   assert.ok(mobileNavigationIndex > shellEndIndex, "navigasi mobile harus menjadi sibling shell, bukan child dari backdrop-filter");
 });
 
-test("quick add transaksi tidak mengganggu halaman pengaturan dan maintenance", async () => {
+test("quick add transaksi mengikuti route dan tidak bersaing dengan aksi create lokal Administrator", async () => {
   const [shell, mobileNavigation, responsiveCss] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
     read("src/components/navigation/MobileNavigation.jsx"),
     read("src/styles/responsive.css"),
   ]);
-  assert.match(shell, /settingsRoute = location\.pathname === "\/pengaturan" \|\| location\.pathname\.startsWith\("\/pengaturan\/"\)/);
+  assert.match(shell, /OWNER_LOCAL_CREATE_ROUTES = new Set/);
+  for (const route of ["/rekening", "/anggaran", "/alokasi", "/tagihan", "/target", "/kategori"]) assert.match(shell, new RegExp(`"${route}"`));
+  assert.match(shell, /normalizedPath === "\/404"/);
+  assert.match(shell, /normalizedPath === "\/anggota"/);
+  assert.match(shell, /normalizedPath === "\/pengaturan" \|\| normalizedPath\.startsWith\("\/pengaturan\/"\)/);
+  assert.match(shell, /role === "owner" && OWNER_LOCAL_CREATE_ROUTES\.has\(normalizedPath\)/);
   assert.match(shell, /quickAddVisible=\{transactionQuickAddVisible\}/);
   assert.match(mobileNavigation, /quickAddVisible = true/);
   assert.match(mobileNavigation, /mobile-navigation--without-add/);

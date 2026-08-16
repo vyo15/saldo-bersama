@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
+
 import {
   REQUIRED_NODE_MAJOR,
   REQUIRED_NODE_VERSION,
@@ -7,6 +9,7 @@ import {
   assertCanonicalNode,
   dependencyRecoveryMessage,
   runVerification,
+  runVerificationWithCleanup,
   verifyInstalledDependencies,
 } from "../../scripts/verify-project.mjs";
 
@@ -69,4 +72,45 @@ test("dependency preflight fail closed dengan recovery Windows yang eksplisit", 
       && /npm ERR! missing: vite/.test(error.message),
   );
   assert.match(dependencyRecoveryMessage(), /bootstrap\/reinstall dependency/);
+});
+
+
+test("verification wrapper selalu membersihkan generated artifact setelah PASS maupun gagal", async () => {
+  const cleanupLogs = [];
+  assert.equal(await runVerificationWithCleanup({
+    nodeVersion: "v24.18.1",
+    dependencyCheck: () => {},
+    runScript: () => ({ status: 0 }),
+    logger: { log: () => {} },
+    cleanupLogger: { log: (message) => cleanupLogs.push(message) },
+  }), true);
+  assert.ok(cleanupLogs.length >= 1);
+
+  await assert.rejects(() => runVerificationWithCleanup({
+    nodeVersion: "v24.18.1",
+    dependencyCheck: () => {},
+    runScript: (script) => ({ status: script === "check" ? 3 : 0 }),
+    logger: { log: () => {} },
+    cleanupLogger: { log: (message) => cleanupLogs.push(message) },
+  }), (error) => error.code === "VERIFY_STEP_FAILED" && error.step === "check");
+});
+
+test("zip lokal dan pre-push memakai full verification canonical", async () => {
+  const [packageText, zipWrapper, hookInstaller, prePush, devStart] = await Promise.all([
+    readFile(new URL("../../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/verified-clean-archive.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/install-git-hooks.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/pre-push-verify.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/start-vite-dev.mjs", import.meta.url), "utf8"),
+  ]);
+  const packageJson = JSON.parse(packageText);
+  assert.equal(packageJson.scripts.zip, "node scripts/verified-clean-archive.mjs");
+  assert.equal(packageJson.scripts.postinstall, "node scripts/install-git-hooks.mjs");
+  assert.match(zipWrapper, /installGitHooks\(\)/);
+  assert.match(zipWrapper, /runVerificationWithCleanup\(\)/);
+  assert.match(zipWrapper, /createCleanArchive\(args\)/);
+  assert.match(prePush, /runVerificationWithCleanup\(\)/);
+  assert.match(hookInstaller, /pre-push/);
+  assert.match(hookInstaller, /saldo-bersama-managed-pre-push/);
+  assert.match(devStart, /installGitHooks\(\{ projectRoot \}\)/);
 });

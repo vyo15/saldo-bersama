@@ -106,7 +106,11 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
   assert.match(activity, /reports\.monthly/);
   assert.match(activity, /navigate\("\/transaksi", \{ state: \{ creatorId: member\.user_id, period \} \}\)/);
   assert.match(styles, /\.memberGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /\.memberFacts\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /\.memberFacts > div \{[^}]*background:\s*var\(--surface-soft\);/);
+  assert.match(styles, /\.memberFacts dd \{[^}]*margin:\s*\.3rem 0 0;/);
   assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberGrid \{ grid-template-columns:\s*1fr;/);
+  assert.match(styles, /@media \(max-width: 26rem\)[\s\S]*\.memberFacts, \.memberActivityMetrics \{ grid-template-columns:\s*1fr;/);
   assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberActivityPanel \{ width:\s*100%; min-width:\s*0; height:\s*100vh; height:\s*100dvh;/);
 });
 

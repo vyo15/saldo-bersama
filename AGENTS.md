@@ -14,14 +14,16 @@ BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, A
 
 1. Gunakan ZIP/source terbaru.
 2. Baca source aktual sebelum review resmi atau patch.
-3. Sebutkan root project, stack/dependency relevan, dan path aktual yang diperiksa.
-4. Temukan root cause dan buat plan file-by-file.
-5. Coding hanya setelah approval atau permintaan implementasi eksplisit.
-6. Patch kecil dan terarah; gunakan component/helper/hook/service existing.
-7. Jangan mass-format/refactor di luar scope.
-8. Jalankan validation yang benar-benar didukung stack; jangan mengklaim test yang tidak dijalankan.
-9. Setelah validation PASS, gunakan branch + Pull Request: `git add -A`, `git commit`, `git push -u origin HEAD`, tunggu workflow **Quality** PASS, lalu merge ke `main` sesuai ruleset.
-10. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
+3. Buka `docs/INDEX.md` bagian **Peta perubahan** lalu baca contract/test/docs canonical untuk area yang disentuh.
+4. Sebutkan root project, stack/dependency relevan, path aktual yang diperiksa, test terdampak, dan docs terdampak.
+5. Temukan root cause dan buat plan file-by-file.
+6. Coding hanya setelah approval atau permintaan implementasi eksplisit.
+7. Patch kecil dan terarah; gunakan component/helper/hook/service existing.
+8. Setiap bug/regression wajib memperbarui atau menambah test yang memverifikasi **behavior/contract**, bukan nama variabel lokal atau bentuk JSX internal. Source-text test hanya untuk guard arsitektur, dependency, route, forbidden pattern, dan contract statis yang memang harus tetap literal.
+9. Jangan mass-format/refactor di luar scope.
+10. Jalankan targeted regression lebih dulu, lalu validation penuh dari tree **setelah patch final**; jangan mengklaim PASS dari tree versi sebelumnya.
+11. Setelah validation PASS, gunakan branch + Pull Request: `git add -A`, `git commit`, `git push -u origin HEAD`, tunggu workflow **Quality** PASS, lalu merge ke `main` sesuai ruleset.
+12. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
 
 Tidak ada lagi task card, Task ID, branch otomatis, atau `task:finish`. Beberapa ChatGPT tab boleh melakukan review/menyiapkan patch paralel, tetapi satu working folder user harus menerima patch secara **serial** agar perubahan tidak saling menimpa.
 
@@ -113,6 +115,8 @@ npm run test:browser
 ```
 
 Guarded/data/security harus menjalankan test domain terkait dan `npm run test:guard` bila relevan. Jangan menyatakan berhasil sebelum server/test benar-benar mengonfirmasi.
+
+Jika `build:budget` gagal, jangan menaikkan threshold sebagai shortcut. Audit static import dependency besar, CSS global yang seharusnya route/shell-scoped, asset publik tanpa usage, dan duplicate/legacy presentation logic. Generated build/test/cache dibersihkan setelah verification PASS maupun gagal; jangan menghapus `.env.local`, `.vercel`, `.git`, atau dependency canonical kecuali menjalankan workflow dependency-clean dengan `--force`.
 
 ## ZIP/source
 

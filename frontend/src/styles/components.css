@@ -1,3 +1,31 @@
+.brand-lockup {
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
+}
+
+.brand-lockup--centered { display: flex; justify-content: center; }
+.brand-lockup--compact .brand-mark { width: 36px; height: 36px; }
+.brand-lockup--compact .brand-copy small { display: none; }
+
+.brand-mark {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 15px color-mix(in srgb, var(--primary) 20%, transparent));
+}
+
+.brand-copy { display: grid; gap: 3px; }
+.brand-copy small { color: var(--muted); font-size: 10px; font-weight: var(--font-weight-medium); letter-spacing: 0; }
+.brand-wordmark { font-size: 16px; line-height: 1; }
+.brand-wordmark span:first-child { color: var(--primary-deep); }
+.brand-wordmark span:last-child { color: var(--primary); }
+
 .button { min-height: 42px; padding: 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: var(--font-weight-semibold); cursor: pointer; transition: .18s ease; }
 .button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--primary); }
 .button:disabled { opacity: .6; cursor: wait; }

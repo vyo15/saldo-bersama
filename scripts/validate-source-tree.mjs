@@ -5,14 +5,14 @@ import { fileURLToPath } from "node:url";
 import {
   ARCHIVE_IGNORED_SEGMENTS,
   CANONICAL_ROOT_ENTRIES,
-  IGNORED_LOCAL_FILE_PATTERNS,
+  LOCAL_ONLY_FILE_PATTERNS,
   isCanonicalSourceFile,
 } from "./artifact-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const ignoredSegments = ARCHIVE_IGNORED_SEGMENTS;
-const ignoredLocalFilePatterns = IGNORED_LOCAL_FILE_PATTERNS;
+const ignoredLocalFilePatterns = LOCAL_ONLY_FILE_PATTERNS;
 
 const isIgnoredLocalFile = (file) => {
   const name = path.posix.basename(file);
@@ -201,5 +201,5 @@ if (hasViolation) {
 }
 
 console.log(
-  `Source tree bersih: ${files.length} file diperiksa; ${vercelFunctionCandidates.length} Vercel Functions canonical (batas maksimum: ${VERCEL_FUNCTION_LIMIT}).`,
+  `Source canonical valid: ${files.length} file diperiksa; ${vercelFunctionCandidates.length} Vercel Functions canonical (batas maksimum: ${VERCEL_FUNCTION_LIMIT}).`,
 );

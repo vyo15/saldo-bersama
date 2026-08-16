@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { cleanGeneratedArtifacts } from "./clean-generated-artifacts.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -96,10 +97,19 @@ export const runVerification = ({
   return true;
 };
 
+
+export const runVerificationWithCleanup = async (options = {}) => {
+  try {
+    return runVerification(options);
+  } finally {
+    await cleanGeneratedArtifacts({ logger: options.cleanupLogger || console });
+  }
+};
+
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   try {
-    runVerification();
+    await runVerificationWithCleanup();
   } catch (error) {
     console.error(`\nVERIFY FAILED: ${error?.message || "Quality gate gagal."}`);
     process.exitCode = Number.isInteger(error?.exitCode) ? error.exitCode : 1;

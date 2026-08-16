@@ -3,7 +3,11 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { DEVELOPMENT_DEPENDENCY_PROBES, ensureDevelopmentDependencies } from "../../scripts/bootstrap-development-dependencies.mjs";
+import {
+  DEVELOPMENT_DEPENDENCY_PROBES,
+  DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS,
+  ensureDevelopmentDependencies,
+} from "../../scripts/bootstrap-development-dependencies.mjs";
 import { ensureDevelopmentEnvironment, normalizeVercelGitignore } from "../../scripts/bootstrap-development-env.mjs";
 import { CORE_RUNTIME_ENV_KEYS, LEGACY_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
 import { cleanEnvironmentText } from "../../scripts/clean-local-environment.mjs";
@@ -239,13 +243,20 @@ test("bootstrap menolak hasil pull Development yang core-nya tidak lengkap tanpa
   await assert.rejects(
     ensureDevelopmentEnvironment({ projectRoot: root, interactive: true, runner }),
     (error) => error.code === "VERCEL_DEVELOPMENT_ENV_INCOMPLETE"
-      && error.missing.includes("TURSO_DATABASE_URL"),
+      && error.missing.includes("TURSO_DATABASE_URL")
+      && error.message.includes("npm run env:push:development")
+      && !error.message.includes("menggunakan npm run env:push:development:settings"),
   );
   await assert.rejects(readFile(path.join(root, ".env.local"), "utf8"), { code: "ENOENT" });
 }));
 
 test("dependency bootstrap memprobe asset Manrope canonical", () => {
   assert.ok(DEVELOPMENT_DEPENDENCY_PROBES.includes("@fontsource-variable/manrope"));
+});
+
+test("dependency bootstrap memprobe Firebase melalui package metadata yang stabil", () => {
+  assert.equal(DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS["@firebase/app"], "@firebase/app/package.json");
+  assert.equal(DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS["@firebase/auth"], "@firebase/auth/package.json");
 });
 
 test("dependency bootstrap tidak menjalankan npm ci ketika dependency sudah tersedia", async () => {

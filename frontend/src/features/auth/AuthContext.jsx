@@ -34,12 +34,14 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => { refreshSession(); }, [refreshSession]);
   useEffect(() => {
-    const handleUnauthorized = () => {
+    const handleUnauthorized = (event) => {
+      const detail = event?.detail || {};
       apiClient.setSessionScope("anonymous");
       setUser(null);
       setStatus("anonymous");
-      setError(new Error("Sesi sudah berakhir. Silakan login kembali."));
+      setError(new Error(detail.message || "Sesi sudah berakhir. Silakan login kembali."));
       disablePushNotifications({ bestEffort: true, localOnly: true }).catch(() => {});
+      if (detail.actorFatal) apiClient.logout().catch(() => { apiClient.setSessionScope("anonymous"); });
     };
     window.addEventListener("saldo-bersama:unauthorized", handleUnauthorized);
     return () => window.removeEventListener("saldo-bersama:unauthorized", handleUnauthorized);

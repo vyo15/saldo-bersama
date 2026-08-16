@@ -123,6 +123,68 @@ test("identity bootstrap dan user lifecycle fail closed pada role, allowlist, ow
   }
 });
 
+test("binding Firebase pertama idempotent saat request paralel dan tetap fail closed untuk UID berbeda", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner, { firebase_uid: null });
+    const signed = { uid: "firebase-first-bind", email: owner.email, name: owner.name, role: owner.role };
+    const [first, second] = await Promise.all([resolveActor(db, signed), resolveActor(db, signed)]);
+    assert.equal(first.firebase_uid, signed.uid);
+    assert.equal(second.firebase_uid, signed.uid);
+    const canonical = await db.one("SELECT firebase_uid,row_version FROM users WHERE user_id = ?", [owner.user_id]);
+    assert.equal(canonical.firebase_uid, signed.uid);
+    assert.equal(Number(canonical.row_version), 2, "binding UID yang sama tidak boleh menaikkan versi dua kali");
+
+    const conflictDb = await createSqliteTestDatabase();
+    try {
+      await seedUser(conflictDb, owner, { firebase_uid: null });
+      const results = await Promise.allSettled([
+        resolveActor(conflictDb, { ...signed, uid: "firebase-race-a" }),
+        resolveActor(conflictDb, { ...signed, uid: "firebase-race-b" }),
+      ]);
+      assert.equal(results.filter((item) => item.status === "fulfilled").length, 1);
+      const rejected = results.find((item) => item.status === "rejected");
+      assert.equal(rejected?.reason?.code, "IDENTITY_CONFLICT");
+    } finally {
+      conflictDb.close();
+    }
+
+    const reusedUidDb = await createSqliteTestDatabase();
+    try {
+      await seedUser(reusedUidDb, owner, { firebase_uid: null });
+      await seedUser(reusedUidDb, member, { firebase_uid: "firebase-already-bound" });
+      await assert.rejects(
+        () => resolveActor(reusedUidDb, { ...signed, uid: "firebase-already-bound" }),
+        (error) => error.code === "IDENTITY_CONFLICT" && error.status === 409,
+      );
+      const ownerAfterConflict = await reusedUidDb.one("SELECT firebase_uid,row_version FROM users WHERE user_id = ?", [owner.user_id]);
+      assert.equal(ownerAfterConflict.firebase_uid, null);
+      assert.equal(Number(ownerAfterConflict.row_version), 1);
+    } finally {
+      reusedUidDb.close();
+    }
+  } finally {
+    db.close();
+  }
+});
+
+test("bootstrap owner idempotent saat dua request pertama datang paralel", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const signed = { uid: "firebase-bootstrap-race", email: "bootstrap-race@example.com", name: "Bootstrap Race", role: "owner", requestId: "bootstrap-race" };
+    const [first, second] = await Promise.all([resolveActor(db, signed), resolveActor(db, signed)]);
+    assert.equal(first.user_id, second.user_id);
+    assert.equal(first.firebase_uid, signed.uid);
+    const users = await db.all("SELECT user_id,firebase_uid,email,row_version FROM users");
+    assert.equal(users.length, 1);
+    assert.equal(users[0].email, signed.email);
+    const audits = await db.all("SELECT action,entity_id FROM audit_log WHERE action='bootstrap.owner'");
+    assert.equal(audits.length, 1, "bootstrap paralel hanya boleh menghasilkan satu audit owner");
+  } finally {
+    db.close();
+  }
+});
+
 test("goal projection dan mutation menjaga target, ownership, status, dan account lock", async () => {
   const today = todayJakarta();
   assert.equal(goalProjection({ target_amount: 100_000, status: "active", target_date: null }, 10_000).pace_status, "no_target_date");

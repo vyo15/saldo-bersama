@@ -14,6 +14,23 @@
 - `product/OUT_OF_SCOPE.md` — batas fitur.
 - `product/ROADMAP.md` — roadmap.
 
+## Peta perubahan
+
+Gunakan tabel ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah; mulai dari contract yang relevan lalu cari source dan test aktual.
+
+| Area perubahan | Wajib dibaca | Test/validation utama |
+|---|---|---|
+| UI/layout/responsive | `UI_DESIGN_SYSTEM.md`, `TEST_PLAN.md` | frontend test area terkait + `npm run lint` + `npm run test:browser` |
+| Rekening/transaksi/saldo/laporan | `API_CONTRACT.md`, `DATA_DICTIONARY.md`, `TEST_PLAN.md` | test business/domain terkait + `npm run test:guard` |
+| Auth/session/role | `SECURITY_MODEL.md`, `AUTHORIZATION_MATRIX.md`, `ENVIRONMENT_VARIABLES.md` | auth/security regression + browser login journey |
+| Schema/database/migration | `TURSO_SCHEMA.md`, `DATA_DICTIONARY.md`, `DATABASE_MIGRATION_POLICY.md` | migration/schema/integrity tests |
+| Backup/restore/import/reset | `DATA_DELETION_AND_RECOVERY_POLICY.md`, `RECOVERY_RUNBOOK.md`, `TEST_PLAN.md` | maintenance/data-lifecycle guards |
+| Env/deployment/CI/tooling | `ENVIRONMENT_VARIABLES.md`, `DEPLOYMENT.md`, `GIT_WORKFLOW.md`, `TEST_PLAN.md` | tooling/governance tests + `npm run verify` |
+| Build/performance/bundle | `TEST_PLAN.md`, `UI_DESIGN_SYSTEM.md`, `WORKFLOW.md` | production build + `npm run build:budget`; audit static import, CSS global, lazy chunk, dan asset legacy |
+| Dokumentasi/governance | `DOCUMENT_LIFECYCLE.md`, `WORKFLOW.md`, `DEFINITION_OF_DONE.md` | governance/tooling tests |
+
+Jika perubahan menyentuh lebih dari satu area, gabungkan contract dan test dari semua baris yang relevan. Source tetap sumber kebenaran bila snapshot docs tertinggal; drift docs harus diperbaiki pada patch yang sama.
+
 ## Contract
 
 - `API_CONTRACT.md`

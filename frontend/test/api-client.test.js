@@ -88,8 +88,13 @@ test("transport API menunggu Response, mengklasifikasikan outcome write, dan tid
   assert.match(source, /destroyServerSession\s*=\s*async[\s\S]*fetchJson\("\/api\/session"/);
 });
 
-test("frontend hanya mengakhiri sesi untuk UNAUTHENTICATED dari API sendiri", () => {
+test("frontend mengakhiri sesi hanya untuk UNAUTHENTICATED dan actor-fatal canonical", () => {
   assert.equal(shouldInvalidateSession(401, "UNAUTHENTICATED"), true);
+  assert.equal(shouldInvalidateSession(403, "ACCOUNT_INACTIVE"), true);
+  assert.equal(shouldInvalidateSession(403, "ROLE_MISMATCH"), true);
+  assert.equal(shouldInvalidateSession(403, "IDENTITY_NOT_PROVISIONED"), true);
+  assert.equal(shouldInvalidateSession(403, "OWNER_ONLY"), false);
+  assert.equal(shouldInvalidateSession(409, "IDENTITY_CONFLICT"), true);
   assert.equal(shouldInvalidateSession(401, "INVALID_SIGNATURE"), false);
   assert.equal(shouldInvalidateSession(502, "CONNECTOR_AUTH_FAILED"), false);
   assert.equal(shouldInvalidateSession(401, "INVALID_TOKEN"), false);

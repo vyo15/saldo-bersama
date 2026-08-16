@@ -116,12 +116,14 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
     "house.webp",
     "phone-analytics.webp",
   ];
-  const [login, loginStyles, app, pages, auth, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
+  const [login, loginStyles, app, main, pages, desktopAuth, mobileAuth, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
     read("src/features/auth/LoginPage.jsx"),
     read("src/features/auth/LoginPage.css"),
     read("src/app/App.jsx"),
+    read("src/main.jsx"),
     read("src/styles/pages.css"),
     read("src/services/auth/googleFirebaseAuth.js"),
+    read("src/services/auth/mobileFirebaseGoogleAuth.js"),
     readFile(new URL("../public/login/desktop-light.webp", import.meta.url)),
     readFile(new URL("../public/login/desktop-dark.webp", import.meta.url)),
     readFile(new URL("../public/brand/saldo-bersama-mark.png", import.meta.url)),
@@ -145,30 +147,38 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
 
   // Desktop tetap memakai Google Identity Services existing.
   assert.match(login, /renderGoogleLoginButton/);
-  assert.match(auth, /identity\.renderButton\(element/);
+  assert.match(desktopAuth, /identity\.renderButton\(element/);
   assert.match(login, /shouldRenderDesktopGoogleButton/);
-  assert.match(login, /compact: false/);
+  assert.doesNotMatch(desktopAuth, /compact/);
 
   // Mobile tidak lagi memakai iframe GIS. Tombol React memanggil Firebase popup dan session existing.
+  assert.match(login, /import\("\.\.\/\.\.\/services\/auth\/mobileFirebaseGoogleAuth\.js"\)/);
+  assert.match(login, /preloadMobileGoogleAuth/);
+  assert.match(login, /mobileGoogleAuthReady/);
   assert.match(login, /signInWithGooglePopup/);
   assert.match(login, /className="login-mobile-google-button"/);
   assert.match(login, /\/login\/google-g-logo\.png/);
   assert.match(login, /Menghubungkan ke Google…/);
   assert.match(login, /pending: mobileLoginPending/);
   assert.doesNotMatch(login, /login-mobile-provider/);
-  assert.match(auth, /GoogleAuthProvider/);
-  assert.match(auth, /signInWithPopup/);
-  assert.match(auth, /inMemoryPersistence/);
-  assert.match(auth, /initializeAuth/);
-  assert.doesNotMatch(auth, /await setPersistence/);
-  assert.match(auth, /firebaseAuthDomain/);
-  assert.match(auth, /await onFirebaseToken\(firebaseIdToken\)/);
-  assert.match(auth, /await signOut\(auth\)\.catch/);
-  assert.match(auth, /auth\/popup-blocked/);
-  assert.doesNotMatch(auth, /console\.(?:log|error|warn)\(/);
+  assert.match(mobileAuth, /GoogleAuthProvider/);
+  assert.match(mobileAuth, /browserPopupRedirectResolver/);
+  assert.match(mobileAuth, /signInWithPopup\(auth, provider, browserPopupRedirectResolver\)/);
+  assert.match(mobileAuth, /inMemoryPersistence/);
+  assert.match(mobileAuth, /initializeAuth/);
+  assert.doesNotMatch(mobileAuth, /await setPersistence/);
+  assert.match(mobileAuth, /firebaseAuthDomain/);
+  assert.match(mobileAuth, /await onFirebaseToken\(firebaseIdToken\)/);
+  assert.match(mobileAuth, /await signOut\(auth\)\.catch/);
+  assert.match(mobileAuth, /auth\/popup-blocked/);
+  assert.doesNotMatch(mobileAuth, /console\.(?:log|error|warn)\(/);
+  assert.doesNotMatch(desktopAuth, /@firebase\/(?:app|auth)/);
 
   assert.match(login, /import "\.\/LoginPage\.css";/);
+  assert.match(app, /const AppShell = lazy\(\(\) => import\("\.\.\/layouts\/AppShell\.jsx"\)\);/);
   assert.match(app, /const LoginPage = lazy\(\(\) => import\("\.\.\/features\/auth\/LoginPage\.jsx"\)\);/);
+  assert.doesNotMatch(main, /styles\/app\.css/);
+  assert.doesNotMatch(main, /styles\/responsive\.css/);
   assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage\)\} \/>/);
   assert.doesNotMatch(pages, /\.login-page\b|\.login-mobile-|\.login-desktop-/);
   assert.match(loginStyles, /\.login-desktop-stage \{[\s\S]*height:\s*100dvh;/);
@@ -183,6 +193,14 @@ test("login mempertahankan desktop GIS dan memakai tombol Google custom Firebase
   assert.match(login, /!loginActive \? \([\s\S]*className="login-mobile-progress"/);
   assert.match(login, /!loginActive \? \([\s\S]*className="login-mobile-back"/);
   assert.match(loginStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-mobile-google-button__spinner/);
+  for (const staleAsset of [
+    "mobile-login.webp",
+    "mobile-onboarding-budget.webp",
+    "mobile-onboarding-saving.webp",
+    "coin-rp.webp",
+    "money-note.webp",
+    "money-stack.webp",
+  ]) assert.doesNotMatch(login, new RegExp(staleAsset.replace(".", "\\.")));
   for (const asset of [desktopLight, desktopDark, logo, googleLogo, ...mobileAssets]) assert.ok(asset.length > 1_000);
 });
 

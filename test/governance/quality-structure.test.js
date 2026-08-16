@@ -20,7 +20,8 @@ test("quality workflow menjalankan check, guard regression, browser journey, dan
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:guard/);
   assert.match(workflow, /npm run test:browser/);
-  assert.match(workflow, /npm run zip --/);
+  assert.match(workflow, /node scripts\/create-clean-archive\.mjs/);
+  assert.doesNotMatch(workflow, /npm run zip --/, "CI sudah menjalankan check/guard/browser sehingga archive tidak boleh mengulang full verify");
 });
 
 test("tooling kualitas canonical tidak bergantung pada task automation", async () => {
@@ -29,6 +30,8 @@ test("tooling kualitas canonical tidak bergantung pada task automation", async (
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
   assert.equal(packageJson.scripts["test:browser"], "node scripts/prepare-browser-test-build.mjs && node --test test/browser/*.test.mjs");
   assert.equal(packageJson.scripts.verify, "node scripts/verify-project.mjs");
+  assert.equal(packageJson.scripts.zip, "node scripts/verified-clean-archive.mjs");
+  assert.equal(packageJson.scripts.postinstall, "node scripts/install-git-hooks.mjs");
   assert.equal(packageJson.scripts["audit:production"], "npm audit --omit=dev --audit-level=high");
   assert.equal(packageJson.scripts["check:duplicates"], "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test");
   assert.equal(packageJson.scripts["task:check"], undefined);
@@ -74,4 +77,30 @@ test("document lifecycle labels retired task archive as historical and branch/PR
   assert.match(lifecycle, /docs\/tasks\/archive\//);
   assert.match(await source("docs/GIT_WORKFLOW.md"), /git push -u origin HEAD/);
   assert.match(await source("docs/GITHUB_RULESET.md"), /Require a pull request before merging/);
+});
+
+
+test("quality docs memakai routing perubahan, regression behavior, dan checklist evergreen", async () => {
+  const [agents, index, workflow, lifecycle, done, checklist, testPlan, prTemplate] = await Promise.all([
+    source("AGENTS.md"),
+    source("docs/INDEX.md"),
+    source("docs/WORKFLOW.md"),
+    source("docs/DOCUMENT_LIFECYCLE.md"),
+    source("docs/DEFINITION_OF_DONE.md"),
+    source("docs/QA_CHECKLIST.md"),
+    source("docs/TEST_PLAN.md"),
+    source(".github/PULL_REQUEST_TEMPLATE.md"),
+  ]);
+  assert.match(agents, /docs\/INDEX\.md.*Peta perubahan/s);
+  assert.match(index, /## Peta perubahan/);
+  assert.match(workflow, /source -> behavior\/contract -> test -> docs/);
+  assert.match(testPlan, /Static\/source contract test/);
+  assert.match(testPlan, /Jangan mengunci nama variabel lokal/);
+  assert.match(done, /targeted regression PASS/);
+  assert.match(lifecycle, /QA_CHECKLIST\.md.*checklist evergreen/);
+  assert.doesNotMatch(checklist, /- \[x\]/i, "QA checklist tidak boleh menyimpan status patch lama");
+  assert.doesNotMatch(checklist, /Baseline operator|sebelum patch browser-readiness/i);
+  assert.equal((checklist.match(/Login Google mobile/g) || []).length, 0, "Detail feature tidak boleh diduplikasi di QA checklist");
+  assert.match(prTemplate, /Regression test terkait/);
+  assert.match(prTemplate, /Docs canonical yang diperbarui/);
 });

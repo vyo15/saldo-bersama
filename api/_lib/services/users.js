@@ -3,40 +3,70 @@ import { appError, assertOwner, assertVersion, nowIso, publicRow, sanitizeText, 
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const assertCanonicalActor = (user, signedActor) => {
+  if (!user) throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
+  if (user.status !== "active") throw appError("ACCOUNT_INACTIVE", "Akun dinonaktifkan.", 403);
+  if (user.role !== signedActor.role) throw appError("ROLE_MISMATCH", "Role database tidak sesuai dengan allowlist Vercel.", 403);
+  if (user.firebase_uid && user.firebase_uid !== signedActor.uid) throw appError("IDENTITY_CONFLICT", "Email sudah terikat ke identitas Firebase lain.", 409);
+};
+
+const bootstrapOwner = async (db, signedActor, email) => db.transaction(async (tx) => {
+  const existing = await tx.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
+  if (existing) return existing;
+  if (signedActor.role !== "owner") {
+    throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
+  }
+
+  const timestamp = nowIso();
+  const candidate = {
+    user_id: uuid(), firebase_uid: signedActor.uid, email, name: sanitizeText(signedActor.name || email, 120),
+    role: "owner", status: "active", row_version: 1, created_at: timestamp, updated_at: timestamp,
+  };
+  const result = await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
+    SELECT ?,?,?,?,?,?,?,?,?
+    WHERE NOT EXISTS (SELECT 1 FROM users)
+      AND NOT EXISTS (SELECT 1 FROM accounts)
+      AND NOT EXISTS (SELECT 1 FROM transactions)
+      AND NOT EXISTS (SELECT 1 FROM categories)
+    ON CONFLICT DO NOTHING`, Object.values(candidate));
+
+  if (result.rowsAffected === 1) {
+    await appendAudit(tx, {
+      actor: candidate,
+      action: "bootstrap.owner",
+      requestId: signedActor.requestId || `bootstrap:${candidate.user_id}`,
+    }, { entityType: "user", entityId: candidate.user_id, next: publicRow(candidate) });
+    return candidate;
+  }
+
+  const canonical = await tx.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
+  if (canonical) return canonical;
+  throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
+});
+
+const bindFirebaseIdentity = async (db, user, signedActor) => {
+  const result = await db.execute(
+    `UPDATE users SET firebase_uid = ?, row_version = row_version + 1, updated_at = ?
+      WHERE user_id = ? AND firebase_uid IS NULL AND status = 'active' AND role = ?
+        AND NOT EXISTS (SELECT 1 FROM users AS bound_identity WHERE bound_identity.firebase_uid = ? AND bound_identity.user_id <> ?)`,
+    [signedActor.uid, nowIso(), user.user_id, signedActor.role, signedActor.uid, user.user_id],
+  );
+  const canonical = await db.one("SELECT * FROM users WHERE user_id = ?", [user.user_id]);
+  assertCanonicalActor(canonical, signedActor);
+  if (result.rowsAffected !== 1 && !canonical?.firebase_uid) {
+    const boundElsewhere = await db.one("SELECT user_id FROM users WHERE firebase_uid = ? AND user_id <> ?", [signedActor.uid, user.user_id]);
+    if (boundElsewhere) throw appError("IDENTITY_CONFLICT", "Identitas Firebase sudah terikat ke pengguna lain.", 409);
+    throw appError("IDENTITY_CONFLICT", "Identitas pengguna berubah saat proses login.", 409);
+  }
+  return canonical;
+};
+
 export const resolveActor = async (db, signedActor) => {
   const email = String(signedActor.email || "").trim().toLowerCase();
   let user = await db.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
-  if (!user) {
-    const countRow = await db.one(`SELECT
-      (SELECT COUNT(*) FROM users) AS users_count,
-      (SELECT COUNT(*) FROM accounts) + (SELECT COUNT(*) FROM transactions) + (SELECT COUNT(*) FROM categories) AS business_count`);
-    if (signedActor.role !== "owner" || Number(countRow?.users_count || 0) || Number(countRow?.business_count || 0)) {
-      throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
-    }
-    const timestamp = nowIso();
-    user = {
-      user_id: uuid(), firebase_uid: signedActor.uid, email, name: sanitizeText(signedActor.name || email, 120),
-      role: "owner", status: "active", row_version: 1, created_at: timestamp, updated_at: timestamp,
-    };
-    await db.transaction(async (tx) => {
-      await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
-        VALUES(?,?,?,?,?,?,?,?,?)`, Object.values(user));
-      await appendAudit(tx, {
-        actor: user,
-        action: "bootstrap.owner",
-        requestId: signedActor.requestId || `bootstrap:${user.user_id}`,
-      }, { entityType: "user", entityId: user.user_id, next: publicRow(user) });
-    });
-  } else {
-    if (user.status !== "active") throw appError("ACCOUNT_INACTIVE", "Akun dinonaktifkan.", 403);
-    if (user.role !== signedActor.role) throw appError("ROLE_MISMATCH", "Role database tidak sesuai dengan allowlist Vercel.", 403);
-    if (user.firebase_uid && user.firebase_uid !== signedActor.uid) throw appError("IDENTITY_CONFLICT", "Email sudah terikat ke identitas Firebase lain.", 409);
-    if (!user.firebase_uid) {
-      const result = await db.execute("UPDATE users SET firebase_uid = ?, row_version = row_version + 1, updated_at = ? WHERE user_id = ? AND firebase_uid IS NULL", [signedActor.uid, nowIso(), user.user_id]);
-      if (result.rowsAffected !== 1) throw appError("IDENTITY_CONFLICT", "Identitas pengguna berubah saat proses login.", 409);
-      user = await db.one("SELECT * FROM users WHERE user_id = ?", [user.user_id]);
-    }
-  }
+  if (!user) user = await bootstrapOwner(db, signedActor, email);
+  assertCanonicalActor(user, signedActor);
+  if (!user.firebase_uid) user = await bindFirebaseIdentity(db, user, signedActor);
   return publicRow(user);
 };
 

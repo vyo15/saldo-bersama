@@ -18,6 +18,24 @@ import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
 import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
 import OfflineBanner from "../components/pwa/OfflineBanner.jsx";
 import UpdateAvailableNotice from "../components/pwa/UpdateAvailableNotice.jsx";
+import "../styles/app.css";
+import "../styles/responsive.css";
+
+const OWNER_LOCAL_CREATE_ROUTES = new Set([
+  "/rekening",
+  "/anggaran",
+  "/alokasi",
+  "/tagihan",
+  "/target",
+  "/kategori",
+]);
+
+const transactionQuickAddAllowed = (pathname, role) => {
+  const normalizedPath = pathname === "/" ? "/" : `/${String(pathname || "").replace(/^\/+|\/+$/g, "")}`;
+  if (normalizedPath === "/404" || normalizedPath === "/anggota" || normalizedPath === "/pengaturan" || normalizedPath.startsWith("/pengaturan/")) return false;
+  if (role === "owner" && OWNER_LOCAL_CREATE_ROUTES.has(normalizedPath)) return false;
+  return true;
+};
 
 const AppShell = () => {
   const { user, logout } = useAuth();
@@ -31,8 +49,7 @@ const AppShell = () => {
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
-  const settingsRoute = location.pathname === "/pengaturan" || location.pathname.startsWith("/pengaturan/");
-  const transactionQuickAddVisible = !settingsRoute;
+  const transactionQuickAddVisible = transactionQuickAddAllowed(location.pathname, user?.role);
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();

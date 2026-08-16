@@ -420,6 +420,20 @@ test("aksi lifecycle rekening memakai label jujur sebelum server menentukan hapu
   assert.doesNotMatch(`${desktop}\n${card}`, />Arsipkan<\/(?:Button|button)>/);
 });
 
+test("error actor canonical membatalkan sesi lokal tanpa menganggap semua 403 sebagai logout", async () => {
+  const [errors, authContext] = await Promise.all([
+    read("src/services/api/errors.js"),
+    read("src/features/auth/AuthContext.jsx"),
+  ]);
+  for (const code of ["ACCOUNT_INACTIVE", "ROLE_MISMATCH", "IDENTITY_NOT_PROVISIONED", "IDENTITY_CONFLICT"]) assert.match(errors, new RegExp(code));
+  assert.match(errors, /actorFatalSessionReason/);
+  assert.doesNotMatch(errors, /OWNER_ONLY:\s*\{\s*status:/);
+  assert.match(errors, /actorFatal:\s*Boolean\(actorFatal\)/);
+  assert.match(authContext, /detail\.actorFatal/);
+  assert.match(authContext, /apiClient\.logout\(\)\.catch/);
+  assert.match(authContext, /apiClient\.setSessionScope\("anonymous"\)/);
+});
+
 test("inisialisasi Google Login dapat dibatalkan saat layout atau effect berubah", async () => {
   const [page, google] = await Promise.all([
     read("src/features/auth/LoginPage.jsx"),

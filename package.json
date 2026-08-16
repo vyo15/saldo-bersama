@@ -17,7 +17,7 @@
     "check": "npm run validate:source && npm run lint && npm run test && npm run test:coverage:backend && npm run build && npm run build:budget",
     "verify": "node scripts/verify-project.mjs",
     "validate:source": "node scripts/validate-source-tree.mjs",
-    "zip": "node scripts/create-clean-archive.mjs",
+    "zip": "node scripts/verified-clean-archive.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:integrity": "node scripts/db-integrity.mjs",
     "db:import-legacy": "node scripts/migrate-legacy-json.mjs",
@@ -35,7 +35,8 @@
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "audit:all": "npm audit --audit-level=high",
     "check:duplicates": "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test",
-    "test:coverage:backend": "node scripts/run-backend-tests.mjs --coverage"
+    "test:coverage:backend": "node scripts/run-backend-tests.mjs --coverage",
+    "postinstall": "node scripts/install-git-hooks.mjs"
   },
   "workspaces": [
     "frontend"

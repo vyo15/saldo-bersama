@@ -109,6 +109,74 @@ const ImpactPreview = ({ impact, isTransfer }) => impact ? <div className="notic
 
 const TransactionFields = (p) => <>{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} /><AccountCategoryFields {...p} /><OptionalFields form={p.form} update={p.update} errors={p.errors} detailsOpen={p.detailsOpen} setDetailsOpen={p.setDetailsOpen} /><ImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
 
+const isMobileTransferPresentation = ({ presentation, isTransfer, transaction }) => presentation === "mobile-transfer" && isTransfer && !transaction;
+
+const transactionDerivedData = ({ data, form, isTransfer, bootstrap, user }) => {
+  const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null;
+  const compatibleDestinationAccounts = destinationAccounts(data.accounts, sourceAccount, isTransfer);
+  const ownedEnvelopes = sourceAccount ? filterByOwnership(data.envelopes, sourceAccount) : data.envelopes;
+  const compatibleEnvelopes = filterByAssigneeAccess(ownedEnvelopes, bootstrap?.user || user);
+  return { compatibleDestinationAccounts, compatibleEnvelopes };
+};
+
+const useMobileTransferDestination = ({ open, enabled, destinationAccountId, compatibleDestinationAccounts, setForm }) => {
+  useEffect(() => {
+    if (!open || !enabled || destinationAccountId || compatibleDestinationAccounts.length === 0) return;
+    const firstDestinationId = compatibleDestinationAccounts[0].account_id;
+    setForm((current) => {
+      if (current.destination_account_id) return current;
+      return { ...current, destination_account_id: firstDestinationId };
+    });
+  }, [compatibleDestinationAccounts, destinationAccountId, enabled, open, setForm]);
+};
+
+const resolveTransactionPresentation = ({
+  mobileTransferMode,
+  transaction,
+  title,
+  description,
+  submitLabel,
+  submittingLabel,
+  submitting,
+  confirmation,
+  onClose,
+  amountRef,
+}) => {
+  if (mobileTransferMode) {
+    return {
+      modalTitle: "Transfer",
+      modalDescription: "",
+      modalFooter: null,
+      modalClassName: `${styles.modal} ${styles.mobileTransferModal}`,
+      initialFocusRef: undefined,
+      closeIcon: FiChevronLeft,
+      closeLabel: "Kembali",
+      formClassName: styles.mobileTransferForm,
+    };
+  }
+
+  const resolvedTitle = title || (transaction ? "Edit transaksi" : "Tambah transaksi");
+  const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
+  const progressLabel = submitting ? submittingLabel || "Menyimpan..." : idleSubmitLabel;
+  const modalTitle = <span className={styles.modalTitle}><span className={styles.walletBubble} aria-hidden="true"><img src={transactionWallet} alt="" /></span><span className={styles.modalTitleCopy}><span className={styles.modalTitleText}>{resolvedTitle}</span>{description ? <small>{description}</small> : null}</span></span>;
+  const modalFooter = <><Button type="button" onClick={onClose} disabled={submitting}>Batal</Button><Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{progressLabel}</Button></>;
+  return {
+    modalTitle,
+    modalDescription: undefined,
+    modalFooter,
+    modalClassName: styles.modal,
+    initialFocusRef: amountRef,
+    closeIcon: undefined,
+    closeLabel: "Tutup dialog",
+    formClassName: `form-grid transaction-form ${styles.form}`,
+  };
+};
+
+const TransactionFormBody = ({ mobileTransferMode, fields }) => {
+  if (mobileTransferMode) return <MobileTransferFields {...fields} />;
+  return <TransactionFields {...fields} />;
+};
+
 const TransactionForm = ({
   open,
   onClose,
@@ -124,18 +192,37 @@ const TransactionForm = ({
   notifyOnSuccess = true,
   presentation = "default",
 }) => {
-  const { bootstrap, overview, refreshOverview, invalidate } = useFinance(); const { user } = useAuth(); const { notify } = useFeedback(); const [form, setForm] = useState(emptyForm); const [errors, setErrors] = useState({}); const [confirmation, setConfirmation] = useState(null); const [detailsOpen, setDetailsOpen] = useState(false); const [submitState, setSubmitState] = useState({ status: "idle", error: null }); const idempotencyKeyRef = useRef(createIdempotencyKey()); const amountRef = useRef(null);
-  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef }); useEffect(() => { if (errors.overspend_reason) setDetailsOpen(true); }, [errors.overspend_reason]);
-  const data = useTransactionData(bootstrap, overview, form); const { isIncome, isTransfer } = transactionMode(form); const mobileTransferMode = presentation === "mobile-transfer" && isTransfer && !transaction; const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null; const compatibleDestinationAccounts = destinationAccounts(data.accounts, sourceAccount, isTransfer); const ownedEnvelopes = sourceAccount ? filterByOwnership(data.envelopes, sourceAccount) : data.envelopes; const compatibleEnvelopes = filterByAssigneeAccess(ownedEnvelopes, bootstrap?.user || user); const impact = useMemo(() => transactionImpact({ accountBalances: data.accountBalances, envelopes: data.envelopes, form }), [data.accountBalances, data.envelopes, form]);
-  const update = (field, value) => { setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => ({ ...current, [field]: value })); }; const onSourceAccountChange = (nextId) => applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm, setConfirmation, setSubmitState }); const setters = { setErrors, setConfirmation, setSubmitState }; const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setters, idempotencyKeyRef }); const submitting = submitState.status === "submitting";
-  useEffect(() => { if (!open || !mobileTransferMode || form.destination_account_id || !compatibleDestinationAccounts.length) return; setForm((current) => current.destination_account_id ? current : { ...current, destination_account_id: compatibleDestinationAccounts[0].account_id }); }, [compatibleDestinationAccounts, form.destination_account_id, mobileTransferMode, open]);
+  const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
+  const { user } = useAuth();
+  const { notify } = useFeedback();
+  const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState({});
+  const [confirmation, setConfirmation] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [submitState, setSubmitState] = useState({ status: "idle", error: null });
+  const idempotencyKeyRef = useRef(createIdempotencyKey());
+  const amountRef = useRef(null);
+
+  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef });
+  useEffect(() => { if (errors.overspend_reason) setDetailsOpen(true); }, [errors.overspend_reason]);
+
+  const data = useTransactionData(bootstrap, overview, form);
+  const { isIncome, isTransfer } = transactionMode(form);
+  const mobileTransferMode = isMobileTransferPresentation({ presentation, isTransfer, transaction });
+  const { compatibleDestinationAccounts, compatibleEnvelopes } = transactionDerivedData({ data, form, isTransfer, bootstrap, user });
+  const impact = useMemo(() => transactionImpact({ accountBalances: data.accountBalances, envelopes: data.envelopes, form }), [data.accountBalances, data.envelopes, form]);
+  const update = (field, value) => { setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => ({ ...current, [field]: value })); };
+  const onSourceAccountChange = (nextId) => applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm, setConfirmation, setSubmitState });
+  const setters = { setErrors, setConfirmation, setSubmitState };
+  const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setters, idempotencyKeyRef });
+  const submitting = submitState.status === "submitting";
+
+  useMobileTransferDestination({ open, enabled: mobileTransferMode, destinationAccountId: form.destination_account_id, compatibleDestinationAccounts, setForm });
+
   const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, visibleCategories: data.visibleCategories, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, setConfirmation, setSubmitState, detailsOpen, setDetailsOpen, impact, confirmation, submitState, lockType, onSourceAccountChange, submitting };
-  const resolvedTitle = title || (transaction ? "Edit transaksi" : "Tambah transaksi");
-  const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
-  const modalTitle = mobileTransferMode ? "Transfer" : <span className={styles.modalTitle}><span className={styles.walletBubble} aria-hidden="true"><img src={transactionWallet} alt="" /></span><span className={styles.modalTitleCopy}><span className={styles.modalTitleText}>{resolvedTitle}</span>{description ? <small>{description}</small> : null}</span></span>;
-  const modalFooter = mobileTransferMode ? null : <><Button type="button" onClick={onClose} disabled={submitting}>Batal</Button><Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{submitting ? submittingLabel || "Menyimpan..." : idleSubmitLabel}</Button></>;
-  const modalClassName = `${styles.modal}${mobileTransferMode ? ` ${styles.mobileTransferModal}` : ""}`;
-  return <Modal open={open} onClose={onClose} dismissible={!submitting} title={modalTitle} description={mobileTransferMode ? "" : undefined} size="lg" initialFocusRef={mobileTransferMode ? undefined : amountRef} className={modalClassName} footer={modalFooter} closeIcon={mobileTransferMode ? FiChevronLeft : undefined} closeLabel={mobileTransferMode ? "Kembali" : "Tutup dialog"}><form id="transaction-form" className={mobileTransferMode ? styles.mobileTransferForm : `form-grid transaction-form ${styles.form}`} onSubmit={handleSubmit} noValidate>{mobileTransferMode ? <MobileTransferFields {...fields} /> : <TransactionFields {...fields} />}</form></Modal>;
+  const modal = resolveTransactionPresentation({ mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, confirmation, onClose, amountRef });
+
+  return <Modal open={open} onClose={onClose} dismissible={!submitting} title={modal.modalTitle} description={modal.modalDescription} size="lg" initialFocusRef={modal.initialFocusRef} className={modal.modalClassName} footer={modal.modalFooter} closeIcon={modal.closeIcon} closeLabel={modal.closeLabel}><form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} noValidate><TransactionFormBody mobileTransferMode={mobileTransferMode} fields={fields} /></form></Modal>;
 };
 
 export default TransactionForm;

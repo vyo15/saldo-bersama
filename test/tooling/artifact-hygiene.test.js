@@ -14,6 +14,7 @@ import {
   isCleanSourceArchiveFilename,
 } from "../../scripts/artifact-policy.mjs";
 import { cleanupLegacyCleanArchives, replaceArchiveAtomically } from "../../scripts/create-clean-archive.mjs";
+import { cleanGeneratedArtifacts } from "../../scripts/clean-generated-artifacts.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -30,8 +31,37 @@ test("cleanup generated tidak boleh menyentuh dependency, repository, env, atau 
   for (const protectedPath of [".git", ".vercel", ".env.local", "node_modules", "frontend/node_modules"]) {
     assert.equal(generated.has(protectedPath), false, protectedPath);
   }
+  assert.equal(generated.has("frontend/node_modules/.vite"), true);
+  assert.equal(generated.has("frontend/node_modules/.vite-temp"), true);
   assert.deepEqual(DEPENDENCY_CLEAN_TARGETS, ["node_modules", "frontend/node_modules"]);
   for (const ignored of [".git", ".vercel", "node_modules", "dist", "coverage"]) assert.equal(ARCHIVE_IGNORED_SEGMENTS.has(ignored), true, ignored);
+});
+
+test("cleanup generated reusable hanya menghapus target generated dan mempertahankan local runtime", async () => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), "saldo-generated-clean-"));
+  try {
+    await mkdir(path.join(temp, "frontend", "dist"), { recursive: true });
+    await mkdir(path.join(temp, "coverage"), { recursive: true });
+    await mkdir(path.join(temp, "node_modules"), { recursive: true });
+    await mkdir(path.join(temp, "frontend", "node_modules", ".vite"), { recursive: true });
+    await mkdir(path.join(temp, "frontend", "node_modules", ".vite-temp"), { recursive: true });
+    await writeFile(path.join(temp, "frontend", "node_modules", "keep.txt"), "dependency tetap ada\n");
+    await writeFile(path.join(temp, ".env.local"), "LOCAL_ONLY=1\n");
+    const logs = [];
+    const removed = await cleanGeneratedArtifacts({ projectRoot: temp, logger: { log: (message) => logs.push(message) } });
+    assert.ok(removed.includes("frontend/dist"));
+    assert.ok(removed.includes("coverage"));
+    assert.equal(await exists(path.join(temp, "frontend", "dist")), false);
+    assert.equal(await exists(path.join(temp, "coverage")), false);
+    assert.equal(await exists(path.join(temp, "node_modules")), true);
+    assert.equal(await exists(path.join(temp, "frontend", "node_modules", ".vite")), false);
+    assert.equal(await exists(path.join(temp, "frontend", "node_modules", ".vite-temp")), false);
+    assert.equal(await exists(path.join(temp, "frontend", "node_modules", "keep.txt")), true);
+    assert.equal(await exists(path.join(temp, ".env.local")), true);
+    assert.match(logs.join("\n"), /Artefak generated dihapus/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
 });
 
 test("cleanup dependency fail closed tanpa flag force", () => {
@@ -53,7 +83,7 @@ test("cleanup dependency memberi recovery Windows untuk native module yang terku
 test("source validator membedakan jumlah Vercel Function aktif dari batas maksimum", () => {
   const result = runNode("scripts/validate-source-tree.mjs");
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /5 Vercel Functions canonical \(batas maksimum: 12\)\./);
+  assert.match(result.stdout, /Source canonical valid: .*5 Vercel Functions canonical \(batas maksimum: 12\)\./);
   assert.doesNotMatch(result.stdout, /5\/12 Vercel Functions canonical/);
 });
 
@@ -140,6 +170,12 @@ test("browser test membangun fixture public sendiri dan tidak bergantung pada en
 });
 
 
+
+test("local Git hooks tetap di luar clean source policy", async () => {
+  const policy = await import("../../scripts/artifact-policy.mjs");
+  assert.equal(policy.ARCHIVE_IGNORED_SEGMENTS.has(".git"), true);
+  assert.equal(policy.isCanonicalSourceFile(".git/hooks/pre-push"), false);
+});
 
 test("gitignore dan pin Node menjaga line ending canonical tanpa duplikasi CLI", async () => {
   const [gitignore, nodeVersion] = await Promise.all([
