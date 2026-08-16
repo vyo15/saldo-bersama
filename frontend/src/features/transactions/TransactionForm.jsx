@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
-import { FiAlertTriangle, FiArrowDown, FiArrowUp, FiCalendar, FiCheck, FiChevronDown, FiChevronLeft, FiCreditCard, FiGrid, FiLayers, FiRepeat, FiRotateCcw, FiTag } from "react-icons/fi";
+import { FiAlertTriangle, FiCalendar, FiCheck, FiChevronDown, FiChevronLeft, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
 import Modal from "../../components/common/Modal.jsx";
+import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
+import { AutoDebitIcon, BankTransferIcon, CashIcon, DebitCardIcon, EwalletIcon, MoneyInIcon, MoneyOutIcon, OtherIcon, RefundIcon, TransferIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import Button from "../../components/common/Button.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
@@ -22,8 +24,20 @@ import { createTransaction, updateTransaction } from "./transactions.api.js";
 const emptyForm = () => ({ transaction_type: TRANSACTION_TYPES.EXPENSE, transaction_date: todayInJakarta(), amount: "", source_account_id: "", destination_account_id: "", category_id: "", envelope_period_id: "", payment_method: "", merchant: "", description: "", overspend_reason: "" });
 const QUICK_EXPENSE_AMOUNTS = [2_000, 5_000, 10_000, 20_000, 50_000];
 const OPTIONAL_FIELDS = ["payment_method", "merchant", "description", "overspend_reason"];
-const TRANSACTION_TYPE_OPTIONS = [[TRANSACTION_TYPES.EXPENSE, "Pengeluaran"], [TRANSACTION_TYPES.INCOME, "Pemasukan"], [TRANSACTION_TYPES.TRANSFER, "Transfer"], [TRANSACTION_TYPES.REFUND, "Refund"]];
-const TRANSACTION_TYPE_ICONS = Object.freeze({ [TRANSACTION_TYPES.EXPENSE]: FiArrowDown, [TRANSACTION_TYPES.INCOME]: FiArrowUp, [TRANSACTION_TYPES.TRANSFER]: FiRepeat, [TRANSACTION_TYPES.REFUND]: FiRotateCcw });
+const TRANSACTION_TYPE_OPTIONS = Object.freeze([
+  { value: TRANSACTION_TYPES.EXPENSE, label: "Pengeluaran", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar" },
+  { value: TRANSACTION_TYPES.INCOME, label: "Pemasukan", icon: MoneyInIcon, tone: "income", description: "Uang masuk" },
+  { value: TRANSACTION_TYPES.TRANSFER, label: "Transfer", icon: TransferIcon, description: "Antar rekening" },
+  { value: TRANSACTION_TYPES.REFUND, label: "Refund", icon: RefundIcon, description: "Dana kembali" },
+]);
+const PAYMENT_METHOD_OPTIONS = Object.freeze([
+  { value: "transfer", label: "Transfer", icon: BankTransferIcon },
+  { value: "cash", label: "Tunai", icon: CashIcon },
+  { value: "debit", label: "Kartu debit", icon: DebitCardIcon },
+  { value: "ewallet", label: "E-wallet", icon: EwalletIcon },
+  { value: "autodebit", label: "Auto-debit", icon: AutoDebitIcon },
+  { value: "", label: "Belum dipilih", icon: OtherIcon },
+]);
 
 const editableTransactionForm = (transaction) => {
   const editable = { ...transaction }; delete editable.scope; delete editable.owner_user_id;
@@ -81,7 +95,7 @@ const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, refre
   } catch (error) { handleTransactionError(error, setters); }
 };
 
-const TypeSelector = ({ form, update }) => <fieldset className={`segmented-control form-grid__full ${styles.typeSelector}`}><legend>Jenis transaksi</legend>{TRANSACTION_TYPE_OPTIONS.map(([value, label]) => { const Icon = TRANSACTION_TYPE_ICONS[value]; return <label key={value}><input type="radio" name="transaction_type" checked={form.transaction_type === value} onChange={() => update("transaction_type", value)} /><span><Icon aria-hidden="true" /><b>{label}</b></span></label>; })}</fieldset>;
+const TypeSelector = ({ form, update }) => <VisualChoiceGroup className="form-grid__full" legend="Jenis transaksi" name="transaction_type" value={form.transaction_type} onChange={(value) => update("transaction_type", value)} options={TRANSACTION_TYPE_OPTIONS} columns={4} />;
 
 const FieldControl = ({ icon: Icon, children }) => <span className={styles.fieldControl}><Icon aria-hidden="true" /><span className={styles.fieldControlInput}>{children}</span></span>;
 
@@ -103,7 +117,7 @@ const EnvelopeField = ({ form, envelopes, update }) => <label className={`field 
 
 const AccountCategoryFields = (p) => <>{!p.isIncome ? <SourceAccountField {...p} /> : null}{p.isIncome || p.isTransfer ? <DestinationAccountField form={p.form} accounts={p.compatibleDestinationAccounts} update={p.update} errors={p.errors} /> : null}{!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} update={p.update} errors={p.errors} /> : null}{p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField form={p.form} envelopes={p.compatibleEnvelopes} update={p.update} /> : null}</>;
 
-const OptionalFields = ({ form, update, errors, detailsOpen, setDetailsOpen }) => <div className="form-grid__full optional-fields"><button className="optional-fields__toggle" type="button" aria-expanded={detailsOpen} aria-controls="transaction-optional-fields" onClick={() => setDetailsOpen((current) => !current)}><span><strong>Detail tambahan</strong></span><FiChevronDown aria-hidden="true" /></button><div id="transaction-optional-fields" className={`optional-fields__content${detailsOpen ? " is-open" : ""}`} hidden={!detailsOpen}><label className="field" htmlFor="payment-method"><span>Metode pembayaran</span><select id="payment-method" value={form.payment_method} onChange={(event) => update("payment_method", event.target.value)}><option value="">Belum dipilih</option><option value="transfer">Transfer</option><option value="cash">Tunai</option><option value="debit">Kartu debit</option><option value="ewallet">E-wallet</option><option value="autodebit">Auto-debit</option></select></label><label className="field" htmlFor="merchant"><span>Merchant/penerima</span><input id="merchant" maxLength="120" value={form.merchant} onChange={(event) => update("merchant", event.target.value)} /></label>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <label className="field form-grid__full" htmlFor="overspend-reason"><span>Alasan jika melebihi jatah</span><input id="overspend-reason" maxLength="180" value={form.overspend_reason} onChange={(event) => update("overspend_reason", event.target.value)} aria-invalid={Boolean(errors.overspend_reason)} placeholder="Wajib hanya jika sisa jatah tidak cukup" />{errors.overspend_reason ? <small className="field__error">{errors.overspend_reason}</small> : null}</label> : null}<label className="field form-grid__full" htmlFor="description"><span>Keterangan</span><textarea id="description" rows="3" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} /></label></div></div>;
+const OptionalFields = ({ form, update, errors, detailsOpen, setDetailsOpen }) => <div className="form-grid__full optional-fields"><button className="optional-fields__toggle" type="button" aria-expanded={detailsOpen} aria-controls="transaction-optional-fields" onClick={() => setDetailsOpen((current) => !current)}><span><strong>Detail tambahan</strong></span><FiChevronDown aria-hidden="true" /></button><div id="transaction-optional-fields" className={`optional-fields__content${detailsOpen ? " is-open" : ""}`} hidden={!detailsOpen}><VisualChoiceGroup className="form-grid__full" legend="Metode pembayaran" name="payment_method" value={form.payment_method} onChange={(value) => update("payment_method", value)} options={PAYMENT_METHOD_OPTIONS} columns={3} compact /><label className="field" htmlFor="merchant"><span>Merchant/penerima</span><input id="merchant" maxLength="120" value={form.merchant} onChange={(event) => update("merchant", event.target.value)} /></label>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <label className="field form-grid__full" htmlFor="overspend-reason"><span>Alasan jika melebihi jatah</span><input id="overspend-reason" maxLength="180" value={form.overspend_reason} onChange={(event) => update("overspend_reason", event.target.value)} aria-invalid={Boolean(errors.overspend_reason)} placeholder="Wajib hanya jika sisa jatah tidak cukup" />{errors.overspend_reason ? <small className="field__error">{errors.overspend_reason}</small> : null}</label> : null}<label className="field form-grid__full" htmlFor="description"><span>Keterangan</span><textarea id="description" rows="3" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} /></label></div></div>;
 
 const ImpactPreview = ({ impact, isTransfer }) => impact ? <div className="notice notice--info form-grid__full impact-preview" aria-live="polite"><strong>Preview dampak</strong>{impact.source ? <span>Saldo {impact.source.name}: {formatRupiah(impact.source.balance)} → {formatRupiah(impact.sourceAfter)}</span> : null}{impact.destination ? <span>Saldo {impact.destination.name}: {formatRupiah(impact.destination.balance)} → {formatRupiah(impact.destinationAfter)}</span> : null}{impact.envelope ? <span>Sisa {impact.envelope.name}: {formatRupiah(impact.envelope.remaining_amount)} → {formatRupiah(impact.envelopeAfter)}</span> : null}{isTransfer ? <span>Transfer antar rekening.</span> : null}</div> : null;
 

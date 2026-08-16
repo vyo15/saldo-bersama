@@ -2,6 +2,8 @@ import { useRef } from "react";
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
+import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
+import { AdminIcon, BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, PersonIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { parseRupiah } from "../../../domain/money.js";
 import { BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS } from "../../../shared/presentation/account.js";
 import { userOptionLabel } from "../../../shared/presentation/user.js";
@@ -17,8 +19,14 @@ const previewBalance = (value) => {
 };
 
 const ACCOUNT_TYPE_OPTIONS = Object.freeze([
-  ["bank", "Bank"], ["cash", "Tunai"], ["ewallet", "E-wallet"], ["savings", "Tabungan"],
-  ["emergency_fund", "Dana darurat"], ["sinking_fund", "Dana berkala"], ["investment", "Investasi"], ["other", "Lainnya"],
+  { value: "bank", label: "Bank", icon: BankIcon },
+  { value: "cash", label: "Tunai", icon: CashIcon },
+  { value: "ewallet", label: "E-wallet", icon: EwalletIcon },
+  { value: "savings", label: "Tabungan", icon: SavingsIcon },
+  { value: "emergency_fund", label: "Dana darurat", icon: EmergencyFundIcon },
+  { value: "sinking_fund", label: "Dana berkala", icon: SinkingFundIcon },
+  { value: "investment", label: "Investasi", icon: InvestmentIcon },
+  { value: "other", label: "Lainnya", icon: OtherIcon },
 ]);
 
 const ownershipSelectValue = (entity, fallbackUserId = "") => entity?.owner_scope === "personal"
@@ -33,16 +41,11 @@ const ownershipUpdates = (value, fallbackUserId = "") => {
 
 const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange }) => {
   const users = activeUsers.length ? activeUsers : defaultOwnerUserId ? [{ user_id: defaultOwnerUserId, name: currentOwnerLabel, role: "owner", is_current: true }] : [];
-  return (
-    <label className="field">
-      <span>Kepemilikan *</span>
-      <select required value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(event) => onChange(ownershipUpdates(event.target.value, defaultOwnerUserId))}>
-        <option value="shared">Bersama</option>
-        {users.map((member) => <option key={member.user_id} value={`user:${member.user_id}`}>{userOptionLabel(member)}</option>)}
-      </select>
-      <small>Pilih Bersama atau pengguna yang memiliki rekening ini. Hanya Administrator yang dapat membuat dan mengubah rekening. Perubahan kepemilikan dapat ditolak bila masih ada data aktif terkait.</small>
-    </label>
-  );
+  const options = [
+    { value: "shared", label: "Bersama", icon: SharedIcon, description: "Dipakai berdua" },
+    ...users.map((member) => ({ value: `user:${member.user_id}`, label: userOptionLabel(member), icon: member.role === "owner" ? AdminIcon : PersonIcon, description: "Rekening personal" })),
+  ];
+  return <VisualChoiceGroup className="form-grid__full" legend="Kepemilikan *" name="account-ownership" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} columns={Math.min(options.length, 3)} required helper="Pilih Bersama atau pengguna yang memiliki rekening ini. Hanya Administrator yang dapat membuat dan mengubah rekening. Perubahan kepemilikan dapat ditolak bila masih ada data aktif terkait." />;
 };
 
 const buildAccountPreview = ({ accountForm, activeUsers, defaultOwnerUserId, currentOwnerLabel }) => {
@@ -94,21 +97,15 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm, 
       <small>Gunakan nama sesuai tujuan rekening.</small>
     </label>
     {accountForm.account_type === "bank" ? <BankNumberField value={accountForm.account_number} onChange={(accountNumber) => updateAccountForm({ account_number: accountNumber })} /> : null}
-    <label className="field">
-      <span>Jenis</span>
-      <select value={accountForm.account_type} onChange={(event) => {
-        const accountType = event.target.value;
-        setAccountForm((current) => ({
-          ...current,
-          account_type: accountType,
-          account_number: accountType === "bank" ? current.account_number : "",
-          bank_template: accountType === "bank" ? current.bank_template : "generic",
-          ewallet_template: accountType === "ewallet" ? current.ewallet_template : "generic",
-        }));
-      }}>
-        {ACCOUNT_TYPE_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-      </select>
-    </label>
+    <VisualChoiceGroup className="form-grid__full" legend="Jenis rekening" name="account-type" value={accountForm.account_type} onChange={(accountType) => {
+      setAccountForm((current) => ({
+        ...current,
+        account_type: accountType,
+        account_number: accountType === "bank" ? current.account_number : "",
+        bank_template: accountType === "bank" ? current.bank_template : "generic",
+        ewallet_template: accountType === "ewallet" ? current.ewallet_template : "generic",
+      }));
+    }} options={ACCOUNT_TYPE_OPTIONS} columns={4} />
   </>
 );
 

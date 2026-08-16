@@ -5,6 +5,8 @@ import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
+import { MoneyInIcon, MoneyOutIcon, RefundIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -238,7 +240,8 @@ const useCategoryMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, se
   }, [activeMenuRef, menuTriggerRefs, openMenuId, setOpenMenuId]);
 };
 
-const CategoryTypeField = ({ form, setForm }) => <label className="field"><span>Dipakai untuk transaksi</span><select value={form.transaction_type} onChange={(event) => { const nextType = event.target.value; setForm((current) => ({ ...current, transaction_type: nextType, nature: categoryNatureForType(nextType, current.nature), icon: current.icon === DEFAULT_CATEGORY_ICON_BY_TYPE[current.transaction_type] ? DEFAULT_CATEGORY_ICON_BY_TYPE[nextType] : current.icon })); }}>{CATEGORY_TYPE_OPTIONS.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select></label>;
+const CATEGORY_TYPE_ICONS = Object.freeze({ expense: MoneyOutIcon, income: MoneyInIcon, refund: RefundIcon });
+const CategoryTypeField = ({ form, setForm }) => <VisualChoiceGroup className="form-grid__full" legend="Dipakai untuk transaksi" name="category-transaction-type" value={form.transaction_type} onChange={(nextType) => { setForm((current) => ({ ...current, transaction_type: nextType, nature: categoryNatureForType(nextType, current.nature), icon: current.icon === DEFAULT_CATEGORY_ICON_BY_TYPE[current.transaction_type] ? DEFAULT_CATEGORY_ICON_BY_TYPE[nextType] : current.icon })); }} options={CATEGORY_TYPE_OPTIONS.map((item) => ({ ...item, icon: CATEGORY_TYPE_ICONS[item.value] || RefundIcon, tone: item.value === "expense" ? "expense" : item.value === "income" ? "income" : undefined }))} columns={3} />;
 
 const ExpenseNatureField = ({ value, onChange, legacy = false }) => <label className="field"><span>Sifat pengeluaran</span><select value={value} onChange={(event) => onChange(event.target.value)}>{expenseNatureOptions({ includeLegacySavings: legacy }).map((item) => <option value={item.value} key={item.value}>{item.label}{item.example ? ` · ${item.example}` : ""}</option>)}</select>{legacy ? <small>Kategori lama tetap kompatibel sampai klasifikasinya diperbarui.</small> : null}</label>;
 

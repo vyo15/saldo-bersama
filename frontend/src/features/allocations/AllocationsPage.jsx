@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FiArchive, FiArrowRight, FiChevronDown, FiMoreHorizontal, FiPieChart, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
+import { AdminIcon, BiweeklyIcon, CarryForwardIcon, CustomPeriodIcon, DailyIcon, MonthlyIcon, PaycycleIcon, PersonIcon, ReturnRemainderIcon, SharedIcon, WeeklyIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
@@ -151,6 +153,22 @@ const assigneeOptionLabel = (item) => item.option_label || userOptionLabel(item)
 
 const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
   const assigneeState = envelopeAssigneeOptions(createForm, accounts, users);
+  const assigneeOptions = [
+    ...(!assigneeState.locked ? [{ value: "", label: "Bersama", icon: SharedIcon, description: "Jatah bersama" }] : []),
+    ...assigneeState.options.map((item) => ({ value: item.user_id, label: assigneeOptionLabel(item), icon: item.role === "owner" ? AdminIcon : PersonIcon, description: item.role === "owner" ? "Administrator" : "Member" })),
+  ];
+  const periodOptions = [
+    { value: "daily", label: "Harian", icon: DailyIcon },
+    { value: "weekly", label: "Mingguan", icon: WeeklyIcon },
+    { value: "biweekly", label: "Dua mingguan", icon: BiweeklyIcon },
+    { value: "monthly", label: "Bulanan", icon: MonthlyIcon },
+    { value: "paycycle", label: "Periode gajian", icon: PaycycleIcon },
+    { value: "custom", label: "Khusus", icon: CustomPeriodIcon },
+  ];
+  const rolloverOptions = [
+    { value: "unallocated", label: "Kembalikan sisa", icon: ReturnRemainderIcon, description: "Kembali ke belum dialokasikan" },
+    { value: "carry", label: "Bawa ke depan", icon: CarryForwardIcon, description: "Bawa ke periode berikutnya" },
+  ];
   const changeSource = (sourceAccountId) => {
     const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
     setCreateForm((current) => ({
@@ -164,12 +182,12 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts,
       <label className="field form-grid__full"><span>Nama kantong *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Jatah makan bulanan" /></label>
       <MoneyInput id="envelope-default" label="Nominal alokasi" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} />
       <label className="field"><span>Rekening sumber</span><select value={createForm.source_account_id} onChange={(event) => changeSource(event.target.value)}><option value="">Gabungan rekening bersama</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}</select></label>
-      <label className="field form-grid__full"><span>Jatah untuk</span><select value={createForm.assignee_user_id} onChange={(event) => setCreateForm((current) => ({ ...current, assignee_user_id: event.target.value }))} disabled={usersStatus === "loading" || assigneeState.locked}>{!assigneeState.locked ? <option value="">Bersama</option> : null}{assigneeState.options.map((item) => <option key={item.user_id} value={item.user_id}>{assigneeOptionLabel(item)}</option>)}</select><small>{assigneeState.locked ? "Rekening personal hanya dapat dialokasikan untuk pemilik rekening tersebut." : usersStatus === "loading" ? "Memuat pengguna aktif..." : "Pilih Bersama, Administrator, atau Member yang menerima jatah."}</small></label>
+      <VisualChoiceGroup className="form-grid__full" legend="Jatah untuk" name="allocation-assignee" value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} columns={Math.min(assigneeOptions.length, 3)} disabled={usersStatus === "loading" || assigneeState.locked} helper={assigneeState.locked ? "Rekening personal hanya dapat dialokasikan untuk pemilik rekening tersebut." : usersStatus === "loading" ? "Memuat pengguna aktif..." : "Pilih Bersama, Administrator, atau Member yang menerima jatah."} />
       <details className="allocation-advanced form-grid__full">
         <summary><span><strong>Periode dan rollover</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
         <div className="allocation-advanced__content">
-          <label className="field"><span>Periode jatah</span><select value={createForm.period_type} onChange={(event) => setCreateForm((current) => ({ ...current, period_type: event.target.value }))}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="paycycle">Periode gajian</option><option value="custom">Khusus</option></select></label>
-          <label className="field"><span>Rollover</span><select value={createForm.rollover_policy} onChange={(event) => setCreateForm((current) => ({ ...current, rollover_policy: event.target.value }))}><option value="unallocated">Kembali ke belum dialokasikan</option><option value="carry">Bawa sisa ke periode berikutnya</option></select></label>
+          <VisualChoiceGroup className="form-grid__full" legend="Periode jatah" name="allocation-period" value={createForm.period_type} onChange={(period_type) => setCreateForm((current) => ({ ...current, period_type }))} options={periodOptions} columns={3} compact />
+          <VisualChoiceGroup className="form-grid__full" legend="Rollover" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
           <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
           <label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
         </div>
