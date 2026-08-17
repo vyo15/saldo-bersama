@@ -14,3 +14,10 @@ test("assertPositiveRupiah menolak nol dan desimal", () => {
 test("formatRupiah menampilkan nominal tanpa desimal", () => {
   assert.match(formatRupiah(125000), /125\.000/);
 });
+
+
+test("assertPositiveRupiah mengikuti batas integer aman backend tanpa ceiling UI Rp100 miliar", () => {
+  assert.equal(assertPositiveRupiah(100_000_000_001), 100_000_000_001);
+  assert.throws(() => assertPositiveRupiah(Number.MAX_SAFE_INTEGER + 1));
+  assert.throws(() => assertPositiveRupiah(101, { max: 100 }));
+});

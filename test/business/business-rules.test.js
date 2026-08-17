@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { ACCOUNT_TYPE_VALUES, CATEGORY_NATURE_VALUES } from "../../api/_lib/domainConstants.js";
 import { addDays, dateValue, positiveInteger, safeSpreadsheetText, scopeFromAccountPair, strictBoolean } from "../../api/_lib/services/core.js";
 import { accountBalanceAsOf, firstNegativeBalance, transactionImpact, visibleAccounts } from "../../api/_lib/services/readModels.js";
 import { assertAffectedBalances } from "../../api/_lib/services/finance.js";
@@ -193,8 +194,8 @@ test("service menjaga budget exact-scope, recurring due-day, optimistic version,
   assert.match(planning, /Member hanya dapat membatalkan pembayaran rutin yang dibuat sendiri/);
   assert.match(planning, /Member hanya dapat membatalkan mutasi target yang dibuat sendiri/);
   const masterData = await readFile(new URL("../../api/_lib/services/masterData.js", import.meta.url), "utf8");
-  assert.match(masterData, /"ewallet"[\s\S]*"emergency_fund"[\s\S]*"sinking_fund"/);
-  assert.match(masterData, /"unexpected"[\s\S]*"discretionary"[\s\S]*"emergency"/);
+  assert.ok(["ewallet", "emergency_fund", "sinking_fund"].every((value) => ACCOUNT_TYPE_VALUES.includes(value)));
+  assert.ok(["unexpected", "discretionary", "emergency"].every((value) => CATEGORY_NATURE_VALUES.includes(value)));
   assert.match(masterData, /NEGATIVE_INITIAL_BALANCE_NOT_ALLOWED/);
   assert.match(masterData, /ACCOUNT_HAS_NEGATIVE_HISTORY/);
   assert.match(masterData, /ACCOUNT_NON_ZERO_BALANCE/);

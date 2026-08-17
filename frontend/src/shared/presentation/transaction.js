@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { DEFAULT_CATEGORY_ICON_BY_TYPE as DOMAIN_DEFAULT_CATEGORY_ICON_BY_TYPE, TRANSACTION_TYPES } from "../../domain/constants.js";
 import {
   FiActivity,
   FiAlertTriangle,
@@ -76,19 +77,19 @@ export const SavingsIcon = (props) => iconSvg(props, [
 ]);
 
 export const TRANSACTION_LABELS = Object.freeze({
-  expense: "Pengeluaran",
-  income: "Pemasukan",
-  transfer: "Transfer",
-  refund: "Pengembalian",
-  adjustment: "Penyesuaian",
+  [TRANSACTION_TYPES.EXPENSE]: "Pengeluaran",
+  [TRANSACTION_TYPES.INCOME]: "Pemasukan",
+  [TRANSACTION_TYPES.TRANSFER]: "Transfer",
+  [TRANSACTION_TYPES.REFUND]: "Pengembalian",
+  [TRANSACTION_TYPES.ADJUSTMENT]: "Penyesuaian",
 });
 
 export const TRANSACTION_ICONS = Object.freeze({
-  expense: FiArrowDownLeft,
-  income: FiArrowUpRight,
-  transfer: FiRepeat,
-  refund: FiRotateCcw,
-  adjustment: FiEdit3,
+  [TRANSACTION_TYPES.EXPENSE]: FiArrowDownLeft,
+  [TRANSACTION_TYPES.INCOME]: FiArrowUpRight,
+  [TRANSACTION_TYPES.TRANSFER]: FiRepeat,
+  [TRANSACTION_TYPES.REFUND]: FiRotateCcw,
+  [TRANSACTION_TYPES.ADJUSTMENT]: FiEdit3,
 });
 
 export const CATEGORY_ICON_GROUPS = Object.freeze([
@@ -130,11 +131,7 @@ export const CATEGORY_ICON_OPTIONS = Object.freeze([
 
 const CATEGORY_ICON_BY_KEY = new Map(CATEGORY_ICON_OPTIONS.map((option) => [option.key, option]));
 
-export const DEFAULT_CATEGORY_ICON_BY_TYPE = Object.freeze({
-  expense: "shopping",
-  income: "salary",
-  refund: "refund",
-});
+export const DEFAULT_CATEGORY_ICON_BY_TYPE = DOMAIN_DEFAULT_CATEGORY_ICON_BY_TYPE;
 
 export const categoryIconOption = (key, transactionType = "expense") => CATEGORY_ICON_BY_KEY.get(String(key || "").trim())
   || CATEGORY_ICON_BY_KEY.get(DEFAULT_CATEGORY_ICON_BY_TYPE[transactionType])

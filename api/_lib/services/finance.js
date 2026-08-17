@@ -1,4 +1,5 @@
 import { readBatchRows } from "../db/readBatchRows.js";
+import { TRANSACTION_TYPE_VALUES } from "../domainConstants.js";
 import { appendAudit } from "./audit.js";
 import { firstNegativeBalance } from "./readModels.js";
 import { isReservedTransactionField } from "../transactionContract.js";
@@ -7,7 +8,7 @@ import {
   readableLedgerSql, sanitizeText, scopeFromAccountPair, uuid,
 } from "./core.js";
 
-const TRANSACTION_TYPES = new Set(["income", "expense", "transfer", "refund", "adjustment"]);
+const TRANSACTION_TYPES = new Set(TRANSACTION_TYPE_VALUES);
 
 const assertNoReservedFields = (payload, allowInternalLinks = false) => {
   if (allowInternalLinks) return;

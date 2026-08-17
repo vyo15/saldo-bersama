@@ -59,9 +59,9 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
   assert.match(api, /categories\.create/);
   assert.match(api, /categories\.update/);
   assert.match(api, /categories\.archive/);
-  assert.match(categoryPresentation, /value: "expense", label: "Uang keluar"/);
-  assert.match(categoryPresentation, /value: "income", label: "Uang masuk"/);
-  assert.match(categoryPresentation, /value: "refund", label: "Pengembalian dana"/);
+  assert.match(categoryPresentation, /value: CATEGORY_TYPES\.EXPENSE, label: "Uang keluar"/);
+  assert.match(categoryPresentation, /value: CATEGORY_TYPES\.INCOME, label: "Uang masuk"/);
+  assert.match(categoryPresentation, /value: CATEGORY_TYPES\.REFUND, label: "Pengembalian dana"/);
   assert.doesNotMatch(page, /Transfer antar rekening tidak memakai kategori/);
   assert.doesNotMatch(page, /gunakan Transfer atau Target/);
   assert.match(styles, /\.iconGroups[\s\S]*flex-wrap: wrap/);

@@ -1,12 +1,13 @@
 import crypto from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
+import { BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConstants.js";
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
 const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, DATABASE_SCHEMA_VERSION]);
-const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
-const EWALLET_TEMPLATES = new Set(["generic", "shopeepay", "dana", "gopay", "ovo", "linkaja"]);
+const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
+const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "envelope_rules", "envelope_periods",
@@ -60,6 +61,17 @@ export const resolveMaintenanceOutcome = ({ committed, intentState, maintenanceM
   return "idle";
 };
 
+export const preferredMaintenanceValue = (primary, secondary, key, fallback = null) => {
+  if (primary && primary[key] !== undefined && primary[key] !== null) return primary[key];
+  if (secondary && secondary[key] !== undefined && secondary[key] !== null) return secondary[key];
+  return fallback;
+};
+
+export const maintenanceIntentPresentation = (intentRow, intent) => {
+  if (!intentRow) return null;
+  return { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at };
+};
+
 export const maintenanceBackupPresentation = (backup) => backup ? {
   backupId: backup.backup_id,
   status: backup.status,
@@ -68,6 +80,26 @@ export const maintenanceBackupPresentation = (backup) => backup ? {
   errorCode: backup.error_code || null,
   createdAt: backup.created_at || null,
 } : null;
+
+export const maintenanceStatusPresentation = ({ state, intentRow, intent, commit, requestedKey, committedReset, currentSummary }) => {
+  const outcome = resolveMaintenanceOutcome({
+    committed: commit.committed,
+    intentState: intent.state,
+    maintenanceMode: state.maintenanceMode,
+    requestedKey,
+  });
+  return {
+    checkedAt: nowIso(),
+    outcome,
+    requiresAttention: ["processing", "recovery_required"].includes(outcome),
+    canStartNewIntent: state.maintenanceMode ? false : outcome !== "processing",
+    maintenanceMode: state.maintenanceMode,
+    intent: maintenanceIntentPresentation(intentRow, intent),
+    backup: maintenanceBackupPresentation(commit.backup),
+    committedReset,
+    currentSummary,
+  };
+};
 
 export const claimMaintenanceMode = async (db, busyMessage) => {
   const result = await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode' AND value='false'", [nowIso()]);

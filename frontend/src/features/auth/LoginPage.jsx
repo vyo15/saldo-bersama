@@ -3,6 +3,7 @@ import { FiAlertCircle } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { useTheme } from "../../app/ThemeContext.jsx";
+import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { useAuth } from "./AuthContext.jsx";
 import "./LoginPage.css";
 
@@ -83,10 +84,6 @@ const preloadMobileGoogleAuth = () => {
   return mobileGoogleAuthModulePromise;
 };
 
-
-const readMobileLayout = () => typeof window !== "undefined"
-  && typeof window.matchMedia === "function"
-  && window.matchMedia(MOBILE_LOGIN_QUERY).matches;
 
 const MoneyRain = ({ compact = false, notes = MONEY_NOTES }) => (
   <div className={`login-money-field${compact ? " login-money-field--compact" : ""}`} aria-hidden="true">
@@ -323,20 +320,12 @@ const useMobileLoginInteraction = () => {
   const swipeStartYRef = useRef(null);
   const swipeDeltaXRef = useRef(0);
   const swipeHorizontalRef = useRef(null);
-  const [mobileLayout, setMobileLayout] = useState(readMobileLayout);
+  const mobileLayout = useMediaQuery(MOBILE_LOGIN_QUERY);
   const [mobileSlide, setMobileSlide] = useState(0);
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
-    const media = window.matchMedia(MOBILE_LOGIN_QUERY);
-    const syncLayout = (event) => {
-      setMobileLayout(event.matches);
-      if (event.matches) setMobileSlide(0);
-    };
-    setMobileLayout(media.matches);
-    media.addEventListener?.("change", syncLayout);
-    return () => media.removeEventListener?.("change", syncLayout);
-  }, []);
+    if (mobileLayout) setMobileSlide(0);
+  }, [mobileLayout]);
 
   const resetTrackMotion = () => {
     const track = trackRef.current;

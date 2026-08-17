@@ -12,6 +12,7 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
+import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { cancelTransaction as requestCancelTransaction, restoreTransaction as requestRestoreTransaction } from "./transactions.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
@@ -24,19 +25,7 @@ const MobileTransactionHistory = lazy(() => import("./components/MobileTransacti
 
 const PAGE_SIZE = 50;
 const MOBILE_TRANSACTIONS_QUERY = "(max-width: 820px)";
-const readMobileTransactionsLayout = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(MOBILE_TRANSACTIONS_QUERY).matches;
-const useMobileTransactionsLayout = () => {
-  const [mobile, setMobile] = useState(readMobileTransactionsLayout);
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
-    const media = window.matchMedia(MOBILE_TRANSACTIONS_QUERY);
-    const update = () => setMobile(media.matches);
-    update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
-  }, []);
-  return mobile;
-};
+const useMobileTransactionsLayout = () => useMediaQuery(MOBILE_TRANSACTIONS_QUERY);
 const refreshKeys = Object.freeze(["transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "dashboard.overview", "app.initialState", "archive.list"]);
 const defaultFilterOptions = Object.freeze({ accounts: [], categories: [], creators: [] });
 

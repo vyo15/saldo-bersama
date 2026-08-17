@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   FiArrowDownRight,
   FiArrowUpRight,
@@ -26,6 +26,7 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { formatCompactRupiah, formatRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { categoryIcon } from "../../shared/presentation/transaction.js";
 import FinancialAlertList from "../dashboard/components/FinancialAlertList.jsx";
 import styles from "./ReportsPage.module.css";
@@ -56,19 +57,7 @@ const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
   <Card className="panel"><div className="panel__header"><h2>Arus kas {trend.months} bulan</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" />}</Card>
 </>;
 
-const useMobileReportLayout = () => {
-  const canUseMatchMedia = () => typeof window !== "undefined" && typeof window.matchMedia === "function";
-  const [mobile, setMobile] = useState(() => canUseMatchMedia() && window.matchMedia(MOBILE_REPORT_QUERY).matches);
-  useEffect(() => {
-    if (!canUseMatchMedia()) return undefined;
-    const media = window.matchMedia(MOBILE_REPORT_QUERY);
-    const update = () => setMobile(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-  return mobile;
-};
+const useMobileReportLayout = () => useMediaQuery(MOBILE_REPORT_QUERY);
 
 const ReportDetails = ({ balanceTrend, categoryExpenses, accountExpenses, natureExpenses, creatorExpenses, budgets }) => {
   const compact = useMobileReportLayout();

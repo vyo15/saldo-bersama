@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { dispatchAction } from "../../api/_lib/actionDispatcher.js";
+import { CATEGORY_ICON_VALUES } from "../../api/_lib/domainConstants.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const OWNER_ID = "category-icon-owner";
@@ -126,14 +127,13 @@ test("backend menormalkan sifat non-pengeluaran dan menolak kategori tabungan ba
 });
 
 test("katalog icon frontend dan whitelist backend tidak drift", async () => {
-  const [frontendSource, backendSource] = await Promise.all([
-    readFile(new URL("../../frontend/src/shared/presentation/transaction.js", import.meta.url), "utf8"),
-    readFile(new URL("../../api/_lib/services/masterData.js", import.meta.url), "utf8"),
-  ]);
+  const frontendSource = await readFile(
+    new URL("../../frontend/src/shared/presentation/transaction.js", import.meta.url),
+    "utf8",
+  );
   const frontendBlock = frontendSource.match(/CATEGORY_ICON_OPTIONS = Object\.freeze\(\[([\s\S]*?)\]\);/)?.[1] || "";
-  const backendBlock = backendSource.match(/const CATEGORY_ICONS = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
   const frontendKeys = [...frontendBlock.matchAll(/key: "([a-z_]+)"/g)].map((match) => match[1]).sort();
-  const backendKeys = [...backendBlock.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]).sort();
+  const backendKeys = [...CATEGORY_ICON_VALUES].sort();
   assert.ok(frontendKeys.length >= 20);
   assert.deepEqual(backendKeys, frontendKeys);
 });

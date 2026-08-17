@@ -10,10 +10,10 @@ import {
   decodeMaintenanceIdempotency,
   digest,
   maintenanceBackupIdForIntent,
-  maintenanceBackupPresentation,
+  maintenanceStatusPresentation,
+  preferredMaintenanceValue,
   quoted,
   releaseMaintenanceMode,
-  resolveMaintenanceOutcome,
   selectMaintenanceIntentRow,
 } from "./shared.js";
 
@@ -246,20 +246,14 @@ const fullResetIntentQuery = (actorId, requestedKey, timestamp) => requestedKey
   ? { sql: "SELECT idempotency_key,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='fullReset.apply' AND idempotency_key=? AND expires_at>? LIMIT 1", args: [actorId, requestedKey, timestamp] }
   : { sql: "SELECT idempotency_key,response_json,created_at,expires_at FROM idempotency_keys WHERE actor_id=? AND action='fullReset.apply' AND expires_at>? ORDER BY created_at DESC LIMIT 12", args: [actorId, timestamp] };
 
-const preferredValue = (primary, secondary, key, fallback = null) => {
-  if (primary && primary[key] !== undefined && primary[key] !== null) return primary[key];
-  if (secondary && secondary[key] !== undefined && secondary[key] !== null) return secondary[key];
-  return fallback;
-};
-
 const fullResetCommittedPresentation = ({ completed, audit, backup }) => {
   if (!completed && !audit) return null;
   return {
-    resetId: preferredValue(completed, audit, "resetId"),
-    resetAt: preferredValue(completed, audit, "resetAt"),
-    safetyBackupId: preferredValue(completed, audit, "safetyBackupId"),
-    safetyBackupFileId: preferredValue(completed, backup, "safetyBackupFileId", backup ? backup.external_file_id : null),
-    summary: preferredValue(completed, audit, "summary"),
+    resetId: preferredMaintenanceValue(completed, audit, "resetId"),
+    resetAt: preferredMaintenanceValue(completed, audit, "resetAt"),
+    safetyBackupId: preferredMaintenanceValue(completed, audit, "safetyBackupId"),
+    safetyBackupFileId: preferredMaintenanceValue(completed, backup, "safetyBackupFileId", backup ? backup.external_file_id : null),
+    summary: preferredMaintenanceValue(completed, audit, "summary"),
   };
 };
 
@@ -280,16 +274,11 @@ const fullResetStatusCommit = async (db, actorId, requestedKey, intentRow, inten
   const audit = fullResetAuditDetails(auditRow);
   const completed = intent.state === "completed" && intent.result && intent.result.fullReset === true ? intent.result : null;
   const committed = completed || audit;
-  const safetyBackupId = preferredValue(completed, audit, "safetyBackupId", expectedBackupId);
+  const safetyBackupId = preferredMaintenanceValue(completed, audit, "safetyBackupId", expectedBackupId);
   const backup = safetyBackupId
     ? await db.one("SELECT backup_id,status,external_file_id,verified_at,error_code,created_at FROM backup_runs WHERE backup_id=?", [safetyBackupId])
     : null;
   return { audit, backup, committed, completed };
-};
-
-const maintenanceIntentPresentation = (intentRow, intent) => {
-  if (!intentRow) return null;
-  return { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at };
 };
 
 export const readFullDataResetStatus = async (db, context) => {
@@ -307,18 +296,11 @@ export const readFullDataResetStatus = async (db, context) => {
   const intentRow = selectMaintenanceIntentRow(state.intentRows, requestedKey);
   const intent = decodeMaintenanceIdempotency(intentRow);
   const commit = await fullResetStatusCommit(db, context.actor.user_id, requestedKey, intentRow, intent);
-  const outcome = resolveMaintenanceOutcome({ committed: commit.committed, intentState: intent.state, maintenanceMode: state.maintenanceMode, requestedKey });
-  return {
-    checkedAt: nowIso(),
-    outcome,
-    requiresAttention: ["processing", "recovery_required"].includes(outcome),
-    canStartNewIntent: state.maintenanceMode ? false : outcome !== "processing",
-    maintenanceMode: state.maintenanceMode,
-    intent: maintenanceIntentPresentation(intentRow, intent),
-    backup: maintenanceBackupPresentation(commit.backup),
+  return maintenanceStatusPresentation({
+    state, intentRow, intent, commit, requestedKey,
     committedReset: fullResetCommittedPresentation(commit),
     currentSummary: fullResetSummary(state.counts),
-  };
+  });
 };
 
 export const applyFullDataReset = async (db, context) => {

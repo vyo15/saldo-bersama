@@ -9,8 +9,7 @@ const isValidIsoDate = (value) => {
   if (!ISO_DATE.test(date)) return false;
   const [year, month, day] = date.split("-").map(Number);
   const parsed = new Date(Date.UTC(year, month - 1, day));
-  return year >= 2000 && year <= 2100
-    && parsed.getUTCFullYear() === year
+  return parsed.getUTCFullYear() === year
     && parsed.getUTCMonth() === month - 1
     && parsed.getUTCDate() === day;
 };
@@ -67,7 +66,7 @@ const normalizedTransactionValue = (input, type, amount) => ({
   destination_account_id: input.destination_account_id || "",
   category_id: input.category_id || "",
   envelope_period_id: input.envelope_period_id || "",
-  payment_method: String(input.payment_method || "").slice(0, 50),
+  payment_method: String(input.payment_method || "").slice(0, 40),
   description: neutralizeSpreadsheetFormula(input.description).slice(0, 250),
   merchant: neutralizeSpreadsheetFormula(input.merchant).slice(0, 120),
   overspend_reason: neutralizeSpreadsheetFormula(input.overspend_reason).slice(0, 180),

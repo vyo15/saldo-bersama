@@ -209,7 +209,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(goals, /FiMoreHorizontal/);
   assert.match(reports, /className="report-details"/);
   assert.match(reports, /Rincian laporan/);
-  assert.match(reports, /typeof window\.matchMedia === "function"/);
+  assert.match(reports, /useMediaQuery\(MOBILE_REPORT_QUERY\)/);
   assert.match(pages, /\.goal-action-menu__items/);
   assert.match(pages, /\.goal-action-menu:only-child \{ grid-column:\s*2; \}/);
   assert.match(responsive, /\.allocation-refresh-action > span \{ display:\s*none; \}/);
