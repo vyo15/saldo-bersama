@@ -511,7 +511,7 @@ const highestUsageThreshold = (percentage, customThreshold = 75) => {
   return 0;
 };
 
-const notificationRupiah = (value) => `Rp${Math.max(0, Math.round(Number(value || 0))).toLocaleString("id-ID")}`;
+export const notificationRupiah = (value) => `Rp${Math.max(0, Math.round(Number(value || 0))).toLocaleString("id-ID")}`;
 
 const dueTimingLabel = (today, dueDate) => {
   if (dueDate === today) return "hari ini";

@@ -14,8 +14,11 @@ const exists = async (relative) => {
 test("quality workflow menjalankan check, guard regression, dan verifikasi clean archive", async () => {
   const workflow = await source(".github/workflows/quality.yml");
   assert.match(workflow, /actions\/checkout@v5/);
+  assert.match(workflow, /fetch-depth:\s*0/);
   assert.match(workflow, /actions\/setup-node@v5/);
   assert.match(workflow, /node-version-file:\s*["']?\.node-version["']?/);
+  assert.match(workflow, /Check changed whitespace/);
+  assert.match(workflow, /git diff --check/);
   assert.match(workflow, /npm ci/);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:guard/);

@@ -2,6 +2,7 @@ import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, monthBounds, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
+import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
 export const budgetListStatement = (context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "b");
@@ -178,6 +179,7 @@ export const deleteUnusedBudget = async (db, context) => {
   if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan anggaran wajib diisi.", 400);
   const impact = await budgetLifecycleImpact(db, current);
   if (!impact.canDeleteUnused) throw appError("BUDGET_HAS_HISTORY", "Anggaran sudah menjadi bagian histori dan hanya dapat diarsipkan.", 409, { lifecycle: impact });
+  await cancelScheduledManualRemindersForEntity(db, context, "budget", current.budget_id, "ENTITY_DELETED");
   await appendAudit(db, context, {
     entityType: "budget",
     entityId: current.budget_id,
@@ -211,6 +213,7 @@ export const archiveBudget = async (db, context) => {
   };
   const r = await db.execute("UPDATE budgets SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE budget_id=? AND row_version=?", [next.row_version, next.updated_by, next.updated_at, current.budget_id, current.row_version]);
   if (r.rowsAffected !== 1) throw appError("CONFLICT", "Budget berubah di perangkat lain.", 409);
+  await cancelScheduledManualRemindersForEntity(db, context, "budget", current.budget_id, "ENTITY_ARCHIVED");
   await appendAudit(db, context, {
     entityType: "budget",
     entityId: current.budget_id,

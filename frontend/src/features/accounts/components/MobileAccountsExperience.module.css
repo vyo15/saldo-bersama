@@ -108,6 +108,44 @@
     height: 1.1rem;
   }
 
+.mobileOwnershipFilters {
+    margin: .1rem var(--mobile-page-gutter) .45rem;
+    padding: 3px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+    border: 1px solid color-mix(in srgb, var(--on-hero) 12%, transparent);
+    border-radius: 15px;
+    background: color-mix(in srgb, var(--account-mobile-deep-surface) 22%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+.mobileOwnershipFilter {
+    min-width: 0;
+    min-height: var(--mobile-control-height);
+    padding: 0 .45rem;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: color-mix(in srgb, var(--on-hero) 72%, transparent);
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+.mobileOwnershipFilter[aria-pressed="true"] {
+    color: var(--primary);
+    background: color-mix(in srgb, var(--on-hero) 8%, transparent);
+    box-shadow: var(--shadow-control);
+  }
+
+.mobileOwnershipFilter:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--account-mobile-accent) 38%, transparent);
+    outline-offset: 2px;
+  }
+
 .mobileStackStage {
     height: 31.6rem;
     position: relative;
@@ -254,41 +292,44 @@
     backdrop-filter: none;
   }
 
-.mobileStackSummary > div {
+.mobileStackIdentity,
+.mobileStackOwner {
     min-width: 0;
+    display: grid;
+    gap: .2rem;
   }
 
-.mobileStackSummary small {
-    display: block;
-    color: color-mix(in srgb, var(--on-hero) 58%, transparent);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: .08em;
-    text-transform: uppercase;
+.mobileStackOwner {
+    justify-items: end;
+    text-align: right;
   }
 
-.mobileStackSummary h2 {
-    margin: .25rem 0 0;
+.mobileStackAccountName,
+.mobileStackOwnerName {
     overflow: hidden;
     color: var(--on-hero);
     font-size: var(--font-size-body);
     font-weight: var(--font-weight-semibold);
     letter-spacing: -.02em;
+    line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-.mobileStackSummary > span {
-    flex: 0 0 auto;
-    min-height: 1.65rem;
-    padding: 0 .6rem;
-    display: inline-flex;
-    align-items: center;
-    border-radius: var(--radius-pill);
+.mobileStackOwnerName {
     color: var(--primary);
-    background: color-mix(in srgb, var(--account-mobile-accent) 14%, transparent);
+  }
+
+.mobileStackAccountMeta,
+.mobileStackOwnerScope {
+    display: block;
+    overflow: hidden;
+    color: color-mix(in srgb, var(--on-hero) 58%, transparent);
     font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
 .mobileStackHint {
@@ -314,6 +355,18 @@
 :global(:root[data-theme="light"]) .mobileStackHeaderTitle,
 :global(:root[data-theme="light"]) .mobileStackHeaderButton { color: var(--text); }
 
+:global(:root[data-theme="light"]) .mobileOwnershipFilters {
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--surface-soft) 92%, transparent);
+  }
+
+:global(:root[data-theme="light"]) .mobileOwnershipFilter { color: var(--text-muted); }
+
+:global(:root[data-theme="light"]) .mobileOwnershipFilter[aria-pressed="true"] {
+    color: var(--primary);
+    background: var(--surface);
+  }
+
 :global(:root[data-theme="light"]) .mobileStackAddButton { background: var(--primary-soft); color: var(--primary); }
 
 :global(:root[data-theme="light"]) .mobileStackHeaderButton:hover,
@@ -325,10 +378,11 @@
 
 :global(:root[data-theme="light"]) .mobileStackAmbient::after { background: radial-gradient(circle, color-mix(in srgb, var(--secondary-soft) 72%, transparent), transparent 72%); }
 
-:global(:root[data-theme="light"]) .mobileStackSummary small,
-:global(:root[data-theme="light"]) .mobileStackHint { color: var(--text-muted); }
+:global(:root[data-theme="light"]) .mobileStackAccountName { color: var(--text); }
 
-:global(:root[data-theme="light"]) .mobileStackSummary h2 { color: var(--text); }
+:global(:root[data-theme="light"]) .mobileStackAccountMeta,
+:global(:root[data-theme="light"]) .mobileStackOwnerScope,
+:global(:root[data-theme="light"]) .mobileStackHint { color: var(--text-muted); }
 }
 
 @media (max-width: 420px) {

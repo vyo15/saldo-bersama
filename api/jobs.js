@@ -210,8 +210,6 @@ const deliverPushNotifications = async (pushClient, item, deliveries) => Promise
       { endpoint: delivery.endpoint, keys: { p256dh: delivery.p256dh, auth: delivery.auth } },
       JSON.stringify({
         notificationType: item.notification_type,
-        title: sanitizeText(item.title, 80),
-        body: sanitizeText(item.body, 180),
         targetPath: safeNotificationTargetPath(item.target_path),
         notificationId: item.notification_id,
       }),

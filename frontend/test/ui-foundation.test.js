@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -60,6 +62,29 @@ test("feature code does not import UI toolkit directly and utility frameworks st
   for (const relative of sourceFiles) {
     const source = await read(`src/features/${relative}`);
     assert.doesNotMatch(source, /from\s+["']@mantine\//, `Feature must use project wrappers: ${relative}`);
+  }
+});
+
+test("setiap referensi CSS Module frontend memiliki class lokal yang dideklarasikan", async () => {
+  const testRoot = path.dirname(fileURLToPath(import.meta.url));
+  const sourceRoot = path.resolve(testRoot, "../src");
+  const sourceNames = await readdir(sourceRoot, { recursive: true });
+  const sourceFiles = sourceNames.filter((name) => /\.(?:js|jsx)$/.test(name));
+  const importPattern = /import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"']+\.module\.css)["'];/g;
+
+  for (const relative of sourceFiles) {
+    const absoluteSource = path.join(sourceRoot, relative);
+    const source = await readFile(absoluteSource, "utf8");
+    for (const match of source.matchAll(importPattern)) {
+      const variable = match[1];
+      const cssPath = path.resolve(path.dirname(absoluteSource), match[2]);
+      const css = await readFile(cssPath, "utf8");
+      const referenced = new Set([...source.matchAll(new RegExp(`\\b${variable}\\.([A-Za-z_][A-Za-z0-9_]*)`, "g"))].map((item) => item[1]));
+      const declared = new Set([...css.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((item) => item[1]));
+      for (const className of referenced) {
+        assert.equal(declared.has(className), true, `${relative} memakai ${variable}.${className} tetapi ${path.basename(cssPath)} tidak mendeklarasikannya.`);
+      }
+    }
   }
 });
 

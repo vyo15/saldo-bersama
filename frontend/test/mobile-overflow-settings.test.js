@@ -229,7 +229,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   ])).join("\n");
   assert.doesNotMatch(accountStyles, /font-size:\s*\.(?:55|58|62)rem;/);
   assert.match(accountStyles, /\.mobileStackBalance small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
-  assert.match(accountStyles, /\.mobileStackSummary small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(accountStyles, /\.mobileStackAccountMeta,\s*\n\.mobileStackOwnerScope \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(accountStyles, /\.mobileChartLabels \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(accountStyles, /\.mobileChartStats small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(accountStyles, /\.mobileTransferSuccessRoute small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);

@@ -3,6 +3,7 @@ import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal } from "../finance.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp, nextVersionTimestamp } from "../versioning.js";
+import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForRecurringRule } from "../reminders.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, dueDayValue, ruleScopeFromAccount } from "./shared.js";
 const FREQUENCIES = new Set(["daily", "weekly", "biweekly", "monthly", "bimonthly", "quarterly", "semiannual", "annual"]);
 const frequencyMonthStep = {
@@ -367,6 +368,7 @@ export const deleteUnusedRecurringRule = async (db, context) => {
   const impact = await recurringRuleLifecycleImpact(db, current);
   if (!impact.canDeleteUnused) throw appError("RECURRING_RULE_HAS_HISTORY", "Aturan rutin sudah memiliki histori dan hanya dapat diarsipkan.", 409, { lifecycle: impact });
 
+  await cancelScheduledManualRemindersForRecurringRule(db, context, current.recurring_rule_id, "ENTITY_DELETED");
   const removedFutureOccurrences = await removeUnpaidFutureOccurrences(db, current.recurring_rule_id);
   await appendAudit(db, context, {
     entityType: "recurring_rule",
@@ -398,6 +400,7 @@ export const archiveRecurringRule = async (db, context) => {
   const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE recurring_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
+  await cancelScheduledManualRemindersForRecurringRule(db, context, current.recurring_rule_id, "ENTITY_ARCHIVED");
   const removedFutureOccurrences = await removeUnpaidFutureOccurrences(db, current.recurring_rule_id);
   await appendAudit(db, context, { entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]), next: { ...publicRow(next, ["auto_debit"]), archive_reason: reason, future_projections_removed_count: removedFutureOccurrences } });
   await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
@@ -492,6 +495,7 @@ export const cancelOccurrence = async (db, context) => {
   const update = await db.execute("UPDATE recurring_occurrences SET status='cancelled',row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=? AND status<>'cancelled' AND actual_amount=0 AND transaction_ids_json='[]'", [next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
   const response = { ...publicRow(next), skip_reason: reason };
+  await cancelScheduledManualRemindersForEntity(db, context, "recurring_occurrence", occurrence.occurrence_id, "ENTITY_CANCELLED");
   await appendAudit(db, context, { entityType: "recurring_occurrence", entityId: occurrence.occurrence_id, previous: publicRow(occurrence), next: response });
   await enqueueRecurringOccurrenceSync(db, context, occurrence);
   return response;
@@ -543,6 +547,9 @@ export const payOccurrence = async (db, context) => {
   const result = await db.execute("UPDATE recurring_occurrences SET actual_amount=?,status=?,transaction_ids_json=?,row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=?", [next.actual_amount, next.status, next.transaction_ids_json, next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
   const response = occurrencePaymentResponse(rule, next, status, transaction);
+  if (next.status === "paid") {
+    await cancelScheduledManualRemindersForEntity(db, context, "recurring_occurrence", occurrence.occurrence_id, "ENTITY_COMPLETED");
+  }
   await appendAudit(db, context, { entityType: "recurring_occurrence", entityId: occurrence.occurrence_id, previous: publicRow(occurrence), next: response });
   await enqueueRecurringOccurrenceSync(db, context, occurrence);
   return response;

@@ -3,6 +3,7 @@ import { appendAudit } from "../audit.js";
 import { accountBalanceAsOf, envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
+import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
@@ -353,6 +354,7 @@ export const closeEnvelope = async (db, context) => {
   };
   const result = await db.execute("UPDATE envelope_periods SET status='closed',closed_by=?,closed_at=?,row_version=?,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=?", [next.closed_by, next.closed_at, next.row_version, next.updated_by, next.updated_at, period.envelope_period_id, period.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Periode kantong berubah di perangkat lain.", 409);
+  await cancelScheduledManualRemindersForEntity(db, context, "envelope_period", period.envelope_period_id, "ENTITY_CLOSED");
   const response = {
     period: publicRow(next),
     rollover
@@ -394,6 +396,7 @@ export const deleteUnusedEnvelopeRule = async (db, context) => {
   if (!impact.canDeleteUnused) throw appError("ENVELOPE_DELETE_BLOCKED", "Kantong tidak memenuhi syarat sebagai kantong belum pernah digunakan.", 409, impact);
   const period = await db.one("SELECT * FROM envelope_periods WHERE envelope_rule_id=?", [current.envelope_rule_id]);
   if (!period || period.status !== "active") throw appError("ENVELOPE_DELETE_BLOCKED", "Periode awal kantong tidak lagi aman untuk dihapus.", 409, impact);
+  await cancelScheduledManualRemindersForEnvelopeRule(db, context, current.envelope_rule_id, "ENTITY_DELETED");
   await appendAudit(db, context, {
     entityType: "envelope_rule",
     entityId: current.envelope_rule_id,
@@ -420,6 +423,7 @@ export const archiveEnvelopeRule = async (db, context) => {
   const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id, timestamp) };
   const update = await db.execute("UPDATE envelope_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.envelope_rule_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan kantong berubah di perangkat lain.", 409);
+  await cancelScheduledManualRemindersForEnvelopeRule(db, context, current.envelope_rule_id, "ENTITY_ARCHIVED");
   await db.execute("UPDATE envelope_periods SET status='archived',row_version=row_version+1,updated_by=?,updated_at=? WHERE envelope_rule_id=? AND status='active'", [context.actor.user_id, timestamp, current.envelope_rule_id]);
   await appendAudit(db, context, { entityType: "envelope_rule", entityId: current.envelope_rule_id, previous: publicRow(current), next: { ...publicRow(next), reason } });
   await context.enqueueMirror?.(db, "envelope", current.envelope_rule_id);

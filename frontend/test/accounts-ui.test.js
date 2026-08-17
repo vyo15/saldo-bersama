@@ -335,6 +335,10 @@ ${accountEditors}`;
   assert.match(mobileExperience, /formatAccountNumber\(selectedAccount\.account_number/);
   assert.match(mobileExperience, /accountOwnerName\(selectedAccount\)/);
   assert.match(mobileExperience, /Filter kepemilikan rekening/);
+  for (const className of ["mobileOwnershipFilters", "mobileOwnershipFilter", "mobileStackIdentity", "mobileStackOwner", "mobileStackAccountName", "mobileStackOwnerName", "mobileStackAccountMeta", "mobileStackOwnerScope"]) {
+    assert.match(mobileExperience, new RegExp(String.raw`styles\.${className}\b`));
+    assert.match(mobileExperienceStyles, new RegExp(String.raw`\.${className}\b`));
+  }
   assert.doesNotMatch(page, /account\.owner_scope === "shared" \? "Bersama" : "Pribadi"/);
   assert.match(accountPageSource, /setMobileAccountSheet\("detail"\)/);
   assert.doesNotMatch(accountPageSource, /title="Pembayaran keluar"|>Pembayaran keluar</);

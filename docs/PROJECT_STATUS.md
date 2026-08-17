@@ -66,7 +66,8 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 
 - Tujuh pengingat otomatis existing tetap dijadwalkan server dan memakai dedupe canonical.
 - Pengingat manual one-shot tersedia langsung pada Anggaran periode aktif, Kantong/Alokasi aktif, occurrence Jadwal Rutin yang belum selesai, dan Target aktif. Pengingat hanya milik actor, disimpan server-side, memakai `row_version`, idempotency, audit, dan diproses scheduler.
-- Push produk memakai mode detail yang disetujui: copy server dapat memuat nama objek dan nominal relevan. Service Worker memakai logo aplikasi sebagai `icon` dan badge monokrom khusus Android. Test Push tetap generik.
+- Push produk memakai privacy-safe lock-screen: copy detail boleh tetap ada di queue server, tetapi transport Web Push hanya membawa tipe/id/target dan Service Worker menampilkan copy generik tanpa nominal, rekening, merchant, atau nama objek finansial. Logo aplikasi tetap dipakai sebagai `icon` dan badge monokrom khusus Android.
+- Reminder manual menampilkan `lastDispatch` dari queue, menolak jadwal baru selama dispatch lama masih nonterminal, dan dibatalkan atomik saat entity selesai/ditutup/diarsipkan/dihapus; integrity check memeriksa drift user/entity/queue. UI memberi warning bila Web Push perangkat belum siap tanpa menganggap penyimpanan reminder gagal.
 - Real-device Android/iOS/desktop tetap memerlukan QA operasional karena browser/OS menentukan bentuk final notification card dan lock-screen privacy.
 
 ## Open operational risks

@@ -61,7 +61,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - Status transaksi normal berubah melalui soft cancel/archive, bukan hard delete.
 - Idempotency unik per actor dan key.
 - Antrean outbox dan Web Push menyimpan identitas worker; worker lama tidak boleh menyelesaikan row yang sudah direbut worker baru.
-- Satu pengguna hanya boleh memiliki satu `manual_reminders` berstatus `scheduled` untuk satu objek. Waktu disimpan UTC setelah input divalidasi sebagai waktu Asia/Jakarta; perubahan memakai `row_version`.
+- Satu pengguna hanya boleh memiliki satu `manual_reminders` berstatus `scheduled` untuk satu objek. Waktu disimpan UTC setelah input divalidasi sebagai waktu Asia/Jakarta; perubahan memakai `row_version`. Service juga menolak penjadwalan baru selama dispatch reminder sebelumnya masih nonterminal di `notification_queue`, sehingga partial unique index tidak menjadi satu-satunya guard duplikasi delivery.
 
 ## Enum penting
 
@@ -92,7 +92,8 @@ Versi aktif: `10`. API menolak operasi ketika schema belum dimigrasikan atau ver
 - Sebelum `npm run db:migrate`, buat backup teknis terverifikasi dan catat database target.
 - `008_manual_reminders.sql` bersifat additive. Migration hanya menambah tabel `manual_reminders`, unique partial index untuk satu pengingat aktif per user+objek, due index untuk scheduler, lalu menaikkan `schema_version` ke 10.
 - Pengingat manual hanya mendukung `recurring_occurrence`, `budget`, `envelope_period`, dan `goal`. Transaksi, laporan, kategori, serta rekening tidak mendapat reminder manual generik karena tidak sesuai lifecycle domain.
-- Waktu pengingat dipilih user dalam Asia/Jakarta, dikonversi server ke UTC, wajib future, dan maksimal 366 hari. Title/body Push dibuat server dari data objek terbaru. Client tidak boleh mengirim actor, title, body, nominal, atau audit field sebagai sumber kebenaran.
+- Waktu pengingat dipilih user dalam Asia/Jakarta, dikonversi server ke UTC, wajib future, dan maksimal 366 hari. Queue internal dapat membentuk title/body dari data objek terbaru, tetapi transport Web Push tidak membawa detail tersebut. Client tidak boleh mengirim actor, title, body, nominal, atau audit field sebagai sumber kebenaran.
+- Archive/delete/complete/close/cancel pada entity membatalkan reminder `scheduled` terkait dalam transaction lifecycle yang sama; restore entity tidak menghidupkan reminder lama otomatis. Integrity check memverifikasi user/entity/access reminder `scheduled` serta parity queue untuk reminder `queued`.
 - Runtime v10 tetap menerima backup schema v3-v9. Backup lama tidak memiliki `manual_reminders`; tabel tersebut diperlakukan kosong saat restore. Backup v10 menyertakan `manual_reminders`.
 - Migration v9 `007_envelope_assignee.sql` tetap menjadi dasar penerima jatah. Migration v8 `006_account_ewallet_template.sql`, v7 `005_notification_preferences.sql`, dan v6 `004_notification_deliveries.sql` tetap menjadi dasar field sebelumnya.
 - Bila deployment runtime v10 gagal, prioritaskan forward-fix. Rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP TABLE` atau mengubah data produksi langsung sebagai rollback cepat.

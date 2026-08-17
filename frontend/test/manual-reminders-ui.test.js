@@ -33,9 +33,18 @@ test("dialog pengingat memakai waktu Jakarta, row version, dan tidak menggantika
   ]);
 
   assert.match(modal, /type="date"/);
+  assert.match(modal, /max=\{maxDate\}/);
   assert.match(modal, /type="time"/);
+  assert.match(modal, /min=\{minTime\}/);
   assert.match(modal, /Asia\/Jakarta/);
+  assert.match(modal, /scheduler memproses pengingat secara berkala/i);
   assert.match(modal, /Pengingat otomatis tetap berjalan/);
+  assert.match(modal, /getPushNotificationState/);
+  assert.match(modal, /lastDispatch/);
+  assert.match(modal, /REMINDER_DELIVERY_PENDING|deliveryPending/);
+  assert.match(modal, /Belum ada perangkat aktif untuk Web Push/);
+  assert.match(modal, /Status Web Push belum dapat diverifikasi/);
+  assert.match(modal, /server_status_unavailable/);
   assert.match(modal, /current\?\.row_version/);
   assert.match(notifications, /"reminders\.get"/);
   assert.match(notifications, /"reminders\.upsert"/);

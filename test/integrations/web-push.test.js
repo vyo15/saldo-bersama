@@ -413,6 +413,36 @@ test("endpoint yang berubah ke alamat privat dinonaktifkan dan tidak terus di-re
   }
 });
 
+test("payload Web Push normal tidak membawa detail finansial dari queue server", async () => {
+  const db = await createSqliteTestDatabase();
+  const endpoint = "https://fcm.googleapis.com/fcm/send/privacy-device";
+  const calls = [];
+  const pushClient = {
+    setVapidDetails: () => {},
+    sendNotification: async (_subscription, payload) => calls.push(JSON.parse(payload)),
+  };
+  try {
+    await seedUsers(db);
+    await register(db, owner, endpoint);
+    await queueNotification(db, {
+      userId: owner.user_id,
+      type: "manual_reminder",
+      title: "Cek BCA Utama",
+      body: "Sisa Rp99.999.999 untuk Dana Darurat.",
+      targetPath: "/target",
+      dedupeKey: "privacy:manual-reminder",
+    });
+    const result = await withPushEnvironment(() => processPush(db, { pushClient }));
+    assert.equal(result.sent, 1);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(Object.keys(calls[0]).sort(), ["notificationId", "notificationType", "targetPath"]);
+    const serialized = JSON.stringify(calls[0]);
+    for (const sensitive of ["BCA Utama", "Rp99.999.999", "Dana Darurat"]) assert.equal(serialized.includes(sensitive), false);
+  } finally {
+    db.close();
+  }
+});
+
 test("retry multi-perangkat hanya mengulang delivery yang gagal dan tidak menggandakan perangkat sukses", async () => {
   const db = await createSqliteTestDatabase();
   const endpointA = "https://fcm.googleapis.com/fcm/send/device-a";
@@ -444,7 +474,9 @@ test("retry multi-perangkat hanya mengulang delivery yang gagal dan tidak mengga
     assert.equal(first.failed, 1);
     assert.equal(first.partial, 1);
     assert.equal(firstCalls.length, 2);
-    assert.ok(firstCalls.every((call) => call.payload.title === "Pengingat keuangan" && call.payload.body === "Periksa aplikasi."));
+    assert.ok(firstCalls.every((call) => Object.keys(call.payload).sort().join(",") === "notificationId,notificationType,targetPath"));
+    assert.ok(firstCalls.every((call) => call.payload.notificationType === "budget_threshold" && call.payload.targetPath === "/anggaran"));
+    assert.ok(firstCalls.every((call) => !JSON.stringify(call.payload).includes("Pengingat keuangan") && !JSON.stringify(call.payload).includes("Periksa aplikasi.")));
     assert.ok(firstCalls.every((call) => call.options.timeout === 8_000));
     assert.ok(firstCalls.every((call) => typeof call.options.agent?.options?.lookup === "function"));
     assert.equal((await db.one("SELECT status FROM notification_queue WHERE notification_id=?", [queued.notificationId])).status, "failed");

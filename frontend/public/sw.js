@@ -37,19 +37,20 @@ const safeTargetPath = (value) => {
   return candidate;
 };
 
-const safeNotificationText = (value, fallback, maxLength) => {
-  const text = String(value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
-  return (text || fallback).slice(0, maxLength);
-};
+const NOTIFICATION_COPY = Object.freeze({
+  test: { title: "Saldo Bersama", body: "Notifikasi uji berhasil diterima oleh perangkat ini." },
+  manual_reminder: { title: "Pengingat Saldo Bersama", body: "Pengingat Anda sudah waktunya. Buka aplikasi untuk melihat detail." },
+  recurring_due: { title: "Jadwal rutin perlu diperiksa", body: "Ada jadwal keuangan yang mendekati waktunya. Buka aplikasi untuk melihat detail." },
+  recurring_funding_shortage: { title: "Dana jadwal rutin perlu diperiksa", body: "Ada jadwal keuangan yang perlu perhatian. Buka aplikasi untuk melihat detail." },
+  recurring_completed: { title: "Jadwal rutin diperbarui", body: "Ada pembaruan pada jadwal keuangan Anda. Buka aplikasi untuk melihat detail." },
+  budget_threshold: { title: "Anggaran perlu diperiksa", body: "Ada anggaran yang membutuhkan perhatian. Buka aplikasi untuk melihat detail." },
+  envelope_threshold: { title: "Alokasi perlu diperiksa", body: "Ada alokasi yang membutuhkan perhatian. Buka aplikasi untuk melihat detail." },
+  goal_behind: { title: "Target perlu diperiksa", body: "Ada target yang membutuhkan perhatian. Buka aplikasi untuk melihat detail." },
+  unallocated_expense: { title: "Transaksi perlu dirapikan", body: "Ada transaksi yang membutuhkan perhatian. Buka aplikasi untuk melihat detail." },
+});
 
-const notificationCopy = (payload) => {
-  const type = String(payload.notificationType || "");
-  if (type === "test") return { title: "Saldo Bersama", body: "Notifikasi uji berhasil diterima oleh perangkat ini." };
-  return {
-    title: safeNotificationText(payload.title, "Saldo Bersama", 80),
-    body: safeNotificationText(payload.body, "Ada pengingat keuangan yang perlu diperiksa di aplikasi.", 180),
-  };
-};
+const notificationCopy = (payload) => NOTIFICATION_COPY[String(payload.notificationType || "")]
+  || { title: "Saldo Bersama", body: "Ada pengingat keuangan yang perlu diperiksa di aplikasi." };
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));

@@ -31,7 +31,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-13` | Laporan | Partial | `reports.monthly` + tren 3/6/12 + breakdown; mobile ≤820px `Ringkasan`/`Per kategori`, chart, KPI, compare, alerts, budget vs actual; desktop workspace existing | contribution/debt model pending |
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
-| `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert otomatis + preference per user + manual reminder one-shot pada Jadwal/Anggaran/Alokasi/Target + detail push server-generated + branded icon/badge + per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
+| `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert otomatis + preference per user + manual reminder one-shot pada Jadwal/Anggaran/Alokasi/Target + last-dispatch/pending guard + lifecycle auto-cancel + reminder integrity parity + privacy-safe lock-screen payload + branded icon/badge + per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
 | `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + canonical timezone/currency integrity + confirmation/browser-side single-flight | GitHub ruleset, Dev/Prod DB isolation, per-device session revoke (RFC-0018), platform rate limit, external alerting, dan operational drills tetap perlu evidence/decision |
 
 ## Infrastruktur dan deployment
@@ -44,7 +44,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |
 | Backup/restore | Implemented | Real-resource restore drill required |
-| PWA/Web Push | Partial | Source contract + centralized VAPID + detail server-generated automatic/manual alerts + branded icon/badge; desktop Production operator smoke reported, real Android/iOS tetap required |
+| PWA/Web Push | Partial | Source contract + centralized VAPID + privacy-safe automatic/manual lock-screen copy + branded icon/badge; desktop Production operator smoke reported, real Android/iOS tetap required |
 | Build budget | Implemented | Enforced pada local/CI quality gate; browser/device QA dilakukan manual sesuai perubahan UI |
 | External alerting | Not implemented | RFC/approved provider pending |
 

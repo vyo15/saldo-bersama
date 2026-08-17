@@ -1,6 +1,6 @@
 import { appendAudit } from "./audit.js";
 import { appError, assertVersion, nowIso, publicRow, sanitizeText, uuid } from "./core.js";
-import { queueNotification } from "./notifications.js";
+import { notificationRupiah, queueNotification } from "./notifications.js";
 
 export const MANUAL_REMINDER_ENTITY_TYPES = Object.freeze([
   "recurring_occurrence",
@@ -13,7 +13,6 @@ const ENTITY_TYPE_SET = new Set(MANUAL_REMINDER_ENTITY_TYPES);
 const JAKARTA_TIMEZONE = "Asia/Jakarta";
 const MAX_REMINDER_HORIZON_MS = 366 * 24 * 60 * 60_000;
 
-const rupiah = (value) => `Rp${Math.max(0, Math.round(Number(value || 0))).toLocaleString("id-ID")}`;
 
 const jakartaDateLabel = (value) => {
   const date = new Date(`${String(value || "").slice(0, 10)}T00:00:00+07:00`);
@@ -83,8 +82,8 @@ const resolveRecurringOccurrence = async (db, actor, entityId) => {
     targetPath: "/tagihan",
     title: `Pengingat ${sanitizeText(row.name, 72) || "jadwal rutin"}`,
     body: income
-      ? `${rupiah(remaining)} dijadwalkan masuk ${dateLabel} ke ${sanitizeText(row.account_name, 60)}.`
-      : `${rupiah(remaining)} dijadwalkan dibayar ${dateLabel} dari ${sanitizeText(row.account_name, 60)}.`,
+      ? `${notificationRupiah(remaining)} dijadwalkan masuk ${dateLabel} ke ${sanitizeText(row.account_name, 60)}.`
+      : `${notificationRupiah(remaining)} dijadwalkan dibayar ${dateLabel} dari ${sanitizeText(row.account_name, 60)}.`,
   };
 };
 
@@ -107,7 +106,7 @@ const resolveBudget = async (db, actor, entityId) => {
     name: sanitizeText(row.name, 100) || "Anggaran",
     targetPath: "/anggaran",
     title: `Cek Anggaran ${sanitizeText(row.name, 65) || "bulan ini"}`,
-    body: `Terpakai ${rupiah(used)} dari ${rupiah(amount)}. Sisa ${rupiah(remaining)}.`,
+    body: `Terpakai ${notificationRupiah(used)} dari ${notificationRupiah(amount)}. Sisa ${notificationRupiah(remaining)}.`,
   };
 };
 
@@ -129,7 +128,7 @@ const resolveEnvelopePeriod = async (db, actor, entityId) => {
     name: sanitizeText(row.name, 100) || "Kantong",
     targetPath: "/alokasi",
     title: `Cek Kantong ${sanitizeText(row.name, 67) || "aktif"}`,
-    body: `Terpakai ${rupiah(committed)} dari ${rupiah(allocated)}. Sisa ${rupiah(remaining)}.`,
+    body: `Terpakai ${notificationRupiah(committed)} dari ${notificationRupiah(allocated)}. Sisa ${notificationRupiah(remaining)}.`,
   };
 };
 
@@ -150,7 +149,7 @@ const resolveGoal = async (db, actor, entityId) => {
     name: sanitizeText(row.name, 100) || "Target",
     targetPath: "/target",
     title: `Cek Target ${sanitizeText(row.name, 69) || "keuangan"}`,
-    body: `Terkumpul ${rupiah(current)} dari ${rupiah(target)}. Sisa ${rupiah(remaining)}.`,
+    body: `Terkumpul ${notificationRupiah(current)} dari ${notificationRupiah(target)}. Sisa ${notificationRupiah(remaining)}.`,
   };
 };
 
@@ -168,12 +167,113 @@ const activeReminderForEntity = (db, userId, entityType, entityId) => db.one(
   [userId, entityType, entityId],
 );
 
+const latestQueuedReminderForEntity = (db, userId, entityType, entityId) => db.one(
+  "SELECT * FROM manual_reminders WHERE user_id=? AND entity_type=? AND entity_id=? AND status='queued' ORDER BY updated_at DESC,created_at DESC LIMIT 1",
+  [userId, entityType, entityId],
+);
+
+const pendingQueuedReminderForEntity = (db, userId, entityType, entityId) => db.one(
+  `SELECT r.* FROM manual_reminders r
+    LEFT JOIN notification_queue q ON q.dedupe_key=('manual-reminder:' || r.reminder_id) AND q.user_id=r.user_id AND q.notification_type='manual_reminder'
+    WHERE r.user_id=? AND r.entity_type=? AND r.entity_id=? AND r.status='queued'
+      AND (q.notification_id IS NULL OR q.status NOT IN ('sent','dead_letter'))
+    ORDER BY r.updated_at DESC,r.created_at DESC LIMIT 1`,
+  [userId, entityType, entityId],
+);
+
+const dispatchStatusForReminder = async (db, reminder) => {
+  if (!reminder || reminder.status !== "queued") return null;
+  const queue = await db.one(`SELECT notification_id,status,attempt_count,last_attempt_at,scheduled_at,created_at
+    FROM notification_queue WHERE dedupe_key=? AND user_id=? AND notification_type='manual_reminder' LIMIT 1`,
+  [`manual-reminder:${reminder.reminder_id}`, reminder.user_id]);
+  if (!queue) return { reminder_id: reminder.reminder_id, status: "missing", queued_at: reminder.updated_at, notification_id: null };
+  const delivery = await db.one(`SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN status='sent' THEN 1 ELSE 0 END) AS sent,
+      SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed,
+      SUM(CASE WHEN status='dead_letter' THEN 1 ELSE 0 END) AS dead_letter,
+      SUM(CASE WHEN status='expired' THEN 1 ELSE 0 END) AS expired
+    FROM notification_deliveries WHERE notification_id=?`, [queue.notification_id]);
+  return {
+    reminder_id: reminder.reminder_id,
+    notification_id: queue.notification_id,
+    status: queue.status,
+    attempt_count: Number(queue.attempt_count || 0),
+    last_attempt_at: queue.last_attempt_at || null,
+    queued_at: queue.created_at || reminder.updated_at,
+    delivery: {
+      total: Number(delivery?.total || 0),
+      sent: Number(delivery?.sent || 0),
+      failed: Number(delivery?.failed || 0),
+      dead_letter: Number(delivery?.dead_letter || 0),
+      expired: Number(delivery?.expired || 0),
+    },
+  };
+};
+
+const assertNoPendingDispatch = async (db, userId, entityType, entityId) => {
+  const pending = await pendingQueuedReminderForEntity(db, userId, entityType, entityId);
+  const dispatch = await dispatchStatusForReminder(db, pending);
+  if (!dispatch) return null;
+  throw appError(
+    "REMINDER_DELIVERY_PENDING",
+    dispatch.status === "missing"
+      ? "Status pengiriman pengingat sebelumnya belum dapat dipastikan. Periksa kembali sebelum membuat pengingat baru."
+      : "Pengingat sebelumnya masih dalam proses pengiriman. Tunggu hasilnya sebelum membuat pengingat baru.",
+    409,
+    { dispatchStatus: dispatch.status },
+  );
+};
+
+export const cancelScheduledManualRemindersForEntities = async (db, context, { entityType, entityIds, reason }) => {
+  const type = normalizeEntityType(entityType);
+  const ids = [...new Set((entityIds || []).map((value) => normalizeEntityId(value)))];
+  if (!ids.length) return { cancelled: 0 };
+  const placeholders = ids.map(() => "?").join(",");
+  const rows = await db.all(`SELECT * FROM manual_reminders WHERE entity_type=? AND entity_id IN (${placeholders}) AND status='scheduled' ORDER BY created_at`, [type, ...ids]);
+  let cancelled = 0;
+  for (const current of rows) {
+    const timestamp = nowIso();
+    const next = { ...current, status: "cancelled", row_version: Number(current.row_version) + 1, updated_at: timestamp };
+    const update = await db.execute(
+      "UPDATE manual_reminders SET status='cancelled',row_version=?,updated_at=? WHERE reminder_id=? AND status='scheduled' AND row_version=?",
+      [next.row_version, next.updated_at, current.reminder_id, current.row_version],
+    );
+    if (update.rowsAffected !== 1) throw appError("CONFLICT", "Pengingat terkait berubah di perangkat lain. Ulangi perubahan objek setelah memuat ulang data.", 409);
+    await appendAudit(db, { ...context, action: "reminders.autoCancel" }, {
+      entityType: "manual_reminder",
+      entityId: current.reminder_id,
+      previous: publicRow(current),
+      next: { ...publicRow(next), reason: sanitizeText(reason || "ENTITY_LIFECYCLE_CHANGED", 80), trigger_action: context.action },
+    });
+    cancelled += 1;
+  }
+  return { cancelled };
+};
+
+export const cancelScheduledManualRemindersForEntity = (db, context, entityType, entityId, reason) => (
+  cancelScheduledManualRemindersForEntities(db, context, { entityType, entityIds: [entityId], reason })
+);
+
+export const cancelScheduledManualRemindersForEnvelopeRule = async (db, context, ruleId, reason) => {
+  const periods = await db.all("SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?", [ruleId]);
+  return cancelScheduledManualRemindersForEntities(db, context, { entityType: "envelope_period", entityIds: periods.map((row) => row.envelope_period_id), reason });
+};
+
+export const cancelScheduledManualRemindersForRecurringRule = async (db, context, ruleId, reason) => {
+  const occurrences = await db.all("SELECT occurrence_id FROM recurring_occurrences WHERE recurring_rule_id=?", [ruleId]);
+  return cancelScheduledManualRemindersForEntities(db, context, { entityType: "recurring_occurrence", entityIds: occurrences.map((row) => row.occurrence_id), reason });
+};
+
 export const getManualReminder = async (db, context) => {
   const entityType = normalizeEntityType(context.payload?.entity_type);
   const entityId = normalizeEntityId(context.payload?.entity_id);
   const entity = await resolveManualReminderEntity(db, context.actor, entityType, entityId);
   const reminder = await activeReminderForEntity(db, context.actor.user_id, entityType, entityId);
-  return { item: publicRow(reminder), entity };
+  const pendingQueued = await pendingQueuedReminderForEntity(db, context.actor.user_id, entityType, entityId);
+  const latestQueued = pendingQueued || await latestQueuedReminderForEntity(db, context.actor.user_id, entityType, entityId);
+  const lastDispatch = await dispatchStatusForReminder(db, latestQueued);
+  return { item: publicRow(reminder), entity, lastDispatch };
 };
 
 export const upsertManualReminder = async (db, context) => {
@@ -185,6 +285,7 @@ export const upsertManualReminder = async (db, context) => {
   return db.transaction(async (tx) => {
     const entity = await resolveManualReminderEntity(tx, context.actor, entityType, entityId);
     const current = await activeReminderForEntity(tx, context.actor.user_id, entityType, entityId);
+    if (!current) await assertNoPendingDispatch(tx, context.actor.user_id, entityType, entityId);
     let next;
     if (current) {
       assertVersion(current, context.rowVersion ?? p.row_version);

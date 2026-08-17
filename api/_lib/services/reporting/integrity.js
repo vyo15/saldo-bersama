@@ -35,6 +35,62 @@ export const integrityBaseStatements = () => [
     WHERE a.allow_negative=0
     ORDER BY a.account_id,t.transaction_date,t.created_at,t.transaction_id`, args: [] },
   { sql: "SELECT key,value FROM system_config WHERE key IN ('timezone','currency') ORDER BY key", args: [] },
+  { sql: `WITH reminder_state AS (
+      SELECT m.reminder_id,m.user_id,m.entity_type,m.entity_id,m.status AS reminder_status,
+        u.status AS user_status,
+        b.budget_id,b.status AS budget_status,b.scope AS budget_scope,b.owner_user_id AS budget_owner_user_id,
+        g.goal_id,g.status AS goal_status,g.scope AS goal_scope,g.owner_user_id AS goal_owner_user_id,
+        ep.envelope_period_id,ep.status AS envelope_period_status,er.envelope_rule_id,er.status AS envelope_rule_status,
+        er.scope AS envelope_scope,er.owner_user_id AS envelope_owner_user_id,er.assignee_user_id AS envelope_assignee_user_id,
+        ro.occurrence_id,ro.status AS occurrence_status,rr.recurring_rule_id,rr.status AS recurring_rule_status,
+        rr.scope AS recurring_scope,rr.owner_user_id AS recurring_owner_user_id,
+        nq.notification_id,nq.user_id AS queue_user_id,nq.notification_type AS queue_type,nq.status AS queue_status
+      FROM manual_reminders m
+      LEFT JOIN users u ON u.user_id=m.user_id
+      LEFT JOIN budgets b ON m.entity_type='budget' AND b.budget_id=m.entity_id
+      LEFT JOIN savings_goals g ON m.entity_type='goal' AND g.goal_id=m.entity_id
+      LEFT JOIN envelope_periods ep ON m.entity_type='envelope_period' AND ep.envelope_period_id=m.entity_id
+      LEFT JOIN envelope_rules er ON er.envelope_rule_id=ep.envelope_rule_id
+      LEFT JOIN recurring_occurrences ro ON m.entity_type='recurring_occurrence' AND ro.occurrence_id=m.entity_id
+      LEFT JOIN recurring_rules rr ON rr.recurring_rule_id=ro.recurring_rule_id
+      LEFT JOIN notification_queue nq ON nq.dedupe_key=('manual-reminder:' || m.reminder_id)
+      WHERE m.status IN ('scheduled','queued')
+    ), reminder_issues AS (
+      SELECT 'REMINDER_USER_INACTIVE' AS code FROM reminder_state WHERE reminder_status='scheduled' AND COALESCE(user_status,'inactive')<>'active'
+      UNION ALL
+      SELECT 'REMINDER_ENTITY_MISSING' FROM reminder_state WHERE reminder_status='scheduled' AND (
+        (entity_type='budget' AND budget_id IS NULL) OR
+        (entity_type='goal' AND goal_id IS NULL) OR
+        (entity_type='envelope_period' AND (envelope_period_id IS NULL OR envelope_rule_id IS NULL)) OR
+        (entity_type='recurring_occurrence' AND (occurrence_id IS NULL OR recurring_rule_id IS NULL))
+      )
+      UNION ALL
+      SELECT 'REMINDER_ENTITY_INACTIVE' FROM reminder_state WHERE reminder_status='scheduled' AND (
+        (entity_type='budget' AND budget_id IS NOT NULL AND budget_status<>'active') OR
+        (entity_type='goal' AND goal_id IS NOT NULL AND goal_status<>'active') OR
+        (entity_type='envelope_period' AND envelope_period_id IS NOT NULL AND envelope_rule_id IS NOT NULL AND (envelope_period_status<>'active' OR envelope_rule_status<>'active')) OR
+        (entity_type='recurring_occurrence' AND occurrence_id IS NOT NULL AND recurring_rule_id IS NOT NULL AND (recurring_rule_status<>'active' OR occurrence_status IN ('paid','cancelled')))
+      )
+      UNION ALL
+      SELECT 'REMINDER_ENTITY_ACCESS_MISMATCH' FROM reminder_state WHERE reminder_status='scheduled' AND (
+        (entity_type='budget' AND budget_id IS NOT NULL AND budget_scope='personal' AND budget_owner_user_id<>user_id) OR
+        (entity_type='goal' AND goal_id IS NOT NULL AND goal_scope='personal' AND goal_owner_user_id<>user_id) OR
+        (entity_type='envelope_period' AND envelope_period_id IS NOT NULL AND envelope_rule_id IS NOT NULL AND ((envelope_scope='personal' AND envelope_owner_user_id<>user_id) OR (envelope_assignee_user_id IS NOT NULL AND envelope_assignee_user_id<>user_id))) OR
+        (entity_type='recurring_occurrence' AND occurrence_id IS NOT NULL AND recurring_rule_id IS NOT NULL AND recurring_scope='personal' AND recurring_owner_user_id<>user_id)
+      )
+      UNION ALL
+      SELECT 'REMINDER_QUEUE_MISSING' FROM reminder_state WHERE reminder_status='queued' AND notification_id IS NULL
+      UNION ALL
+      SELECT 'REMINDER_QUEUE_MISMATCH' FROM reminder_state WHERE reminder_status='queued' AND notification_id IS NOT NULL AND (queue_user_id<>user_id OR queue_type<>'manual_reminder')
+      UNION ALL
+      SELECT 'REMINDER_MULTIPLE_NONTERMINAL_DISPATCH' FROM (
+        SELECT user_id,entity_type,entity_id,COUNT(*) AS pending_count
+        FROM reminder_state
+        WHERE reminder_status='queued' AND (notification_id IS NULL OR queue_status NOT IN ('sent','dead_letter'))
+        GROUP BY user_id,entity_type,entity_id HAVING COUNT(*)>1
+      )
+    )
+    SELECT code,COUNT(*) AS count FROM reminder_issues GROUP BY code ORDER BY code`, args: [] },
 ];
 
 const appendSimpleIntegrityIssues = (issues, rows) => {
@@ -76,6 +132,13 @@ const appendConfigIntegrityIssues = (issues, rows) => {
   }
 };
 
+const appendReminderIntegrityIssues = (issues, rows) => {
+  for (const row of rows || []) {
+    const count = Number(row.count || 0);
+    if (count > 0) issues.push({ code: row.code, count });
+  }
+};
+
 const protectedAccountsFromRows = (rows) => {
   const protectedAccounts = new Map();
   for (const row of rows) {
@@ -107,6 +170,7 @@ export const integrityIssuesFromBaseRows = (baseRows) => {
   appendPushIntegrityIssues(issues, baseRows.slice(6, 9));
   appendBalanceIntegrityIssues(issues, baseRows[9] || []);
   appendConfigIntegrityIssues(issues, baseRows[10] || []);
+  appendReminderIntegrityIssues(issues, baseRows[11] || []);
   return issues;
 };
 

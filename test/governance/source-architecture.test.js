@@ -213,7 +213,7 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
 });
 
 
-test("Web Push memakai secure context, status backend, detail server-generated, dan delivery per perangkat", async () => {
+test("Web Push memakai secure context, status backend, lock-screen privacy, dan delivery per perangkat", async () => {
   const [frontendNotifications, serviceWorkerRegistration, notificationsPage, serviceWorker, backendNotifications, jobs, deliveryMigration, preferenceMigration] = await Promise.all([
     source("frontend/src/services/notifications.js"),
     source("frontend/src/services/serviceWorker.js"),
@@ -236,10 +236,10 @@ test("Web Push memakai secure context, status backend, detail server-generated, 
   assert.doesNotMatch(notificationsPage, /Uji notifikasi/);
   assert.match(notificationsPage, /tileAction/);
   assert.match(notificationsPage, /tileAction && runPushAction\(tileAction\)/);
-  assert.match(serviceWorker, /safeNotificationText/);
-  assert.match(serviceWorker, /payload\.title/);
-  assert.match(serviceWorker, /payload\.body/);
+  assert.match(serviceWorker, /NOTIFICATION_COPY/);
+  assert.doesNotMatch(serviceWorker, /payload\.title|payload\.body/);
   assert.match(serviceWorker, /Ada pengingat keuangan yang perlu diperiksa/);
+  assert.doesNotMatch(jobs, /title:\s*item\.title|body:\s*item\.body/);
   assert.match(serviceWorker, /notification-badge-96\.png/);
   assert.match(backendNotifications, /normalizePushEndpoint/);
   assert.match(backendNotifications, /PUSH_ENDPOINT_OWNERSHIP_CONFLICT/);
@@ -250,6 +250,37 @@ test("Web Push memakai secure context, status backend, detail server-generated, 
   assert.match(preferenceMigration, /CREATE TABLE IF NOT EXISTS notification_preferences/);
   assert.match(preferenceMigration, /PRIMARY KEY \(user_id, notification_type\)/);
   assert.match(backendNotifications, /enabled=0/);
+});
+
+test("manual reminder menjaga delivery pending, lifecycle cancellation, dan integrity parity", async () => {
+  const [reminders, budgets, envelopes, goals, recurring, integrity] = await Promise.all([
+    source("api/_lib/services/reminders.js"),
+    source("api/_lib/services/planning/budgets.js"),
+    source("api/_lib/services/planning/envelopes.js"),
+    source("api/_lib/services/planning/goals.js"),
+    source("api/_lib/services/planning/recurring.js"),
+    source("api/_lib/services/reporting/integrity.js"),
+  ]);
+  assert.match(reminders, /REMINDER_DELIVERY_PENDING/);
+  assert.match(reminders, /lastDispatch/);
+  assert.match(reminders, /cancelScheduledManualRemindersForEntity/);
+  assert.match(reminders, /cancelScheduledManualRemindersForEnvelopeRule/);
+  assert.match(reminders, /cancelScheduledManualRemindersForRecurringRule/);
+  for (const [sourceText, reason] of [
+    [budgets, "ENTITY_ARCHIVED"],
+    [envelopes, "ENTITY_CLOSED"],
+    [goals, "ENTITY_COMPLETED"],
+    [recurring, "ENTITY_CANCELLED"],
+  ]) assert.match(sourceText, new RegExp(reason));
+  for (const code of [
+    "REMINDER_USER_INACTIVE",
+    "REMINDER_ENTITY_MISSING",
+    "REMINDER_ENTITY_INACTIVE",
+    "REMINDER_ENTITY_ACCESS_MISMATCH",
+    "REMINDER_QUEUE_MISSING",
+    "REMINDER_QUEUE_MISMATCH",
+    "REMINDER_MULTIPLE_NONTERMINAL_DISPATCH",
+  ]) assert.match(integrity, new RegExp(code));
 });
 
 test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah dihapus", async () => {

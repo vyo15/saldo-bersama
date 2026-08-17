@@ -4,6 +4,7 @@ import { cancelTransactionInternal, createTransactionInternal, assertTransaction
 import { goalProgress } from "../readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
+import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
 import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 
 export const goalProjection = (row, currentAmount) => {
@@ -330,6 +331,9 @@ export const updateGoal = async (db, context) => {
   if (!next.name) throw appError("NAME_REQUIRED", "Nama target wajib diisi.", 400);
   const r = await db.execute("UPDATE savings_goals SET name=?,goal_type=?,target_amount=?,target_date=?,account_id=?,priority=?,status=?,scope=?,owner_user_id=?,row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=?", [next.name, next.goal_type, next.target_amount, next.target_date, next.account_id, next.priority, next.status, next.scope, next.owner_user_id, next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
   if (r.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
+  if (current.status !== "completed" && next.status === "completed") {
+    await cancelScheduledManualRemindersForEntity(db, context, "goal", current.goal_id, "ENTITY_COMPLETED");
+  }
   await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: publicRow(next) });
   await context.enqueueMirror?.(db, "goal", current.goal_id);
   return publicRow(next);
@@ -357,6 +361,7 @@ export const deleteUnusedGoal = async (db, context) => {
   if (!strictBoolean(p.acknowledged, false)) throw appError("ACKNOWLEDGEMENT_REQUIRED", "Konfirmasi pemahaman penghapusan target wajib dicentang.", 400);
   const impact = await goalLifecycleImpact(db, current);
   if (!impact.canDeleteUnused) throw appError("GOAL_DELETE_BLOCKED", "Target tidak memenuhi syarat sebagai target belum pernah digunakan.", 409, impact);
+  await cancelScheduledManualRemindersForEntity(db, context, "goal", current.goal_id, "ENTITY_DELETED");
   await appendAudit(db, context, {
     entityType: "goal",
     entityId: current.goal_id,
@@ -380,6 +385,7 @@ export const archiveGoal = async (db, context) => {
   const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE savings_goals SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=? AND status<>'archived'", [next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
+  await cancelScheduledManualRemindersForEntity(db, context, "goal", current.goal_id, "ENTITY_ARCHIVED");
   await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: { ...publicRow(next), archive_reason: reason } });
   await context.enqueueMirror?.(db, "goal", current.goal_id);
   return publicRow(next);

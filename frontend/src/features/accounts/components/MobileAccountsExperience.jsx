@@ -310,10 +310,14 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
         ))}
       </div>
       {selectedAccount ? <div className={styles.mobileStackSummary}>
-        <strong id="mobile-account-stack-title" className={styles.mobileStackAccountName}>{selectedAccount.name}</strong>
-        <strong className={styles.mobileStackOwnerName}>{selectedAccount.owner_scope === "shared" ? "Bersama" : accountOwnerName(selectedAccount) || "Pribadi"}</strong>
-        <small className={styles.mobileStackAccountMeta}>{selectedAccount.account_number ? formatAccountNumber(selectedAccount.account_number, { placeholder: false }) : accountProviderLabel(selectedAccount)}</small>
-        <small className={styles.mobileStackOwnerScope}>{selectedAccount.owner_scope === "shared" ? "Rekening bersama" : accountScopeLabel(selectedAccount.owner_scope)}</small>
+        <div className={styles.mobileStackIdentity}>
+          <strong id="mobile-account-stack-title" className={styles.mobileStackAccountName}>{selectedAccount.name}</strong>
+          <small className={styles.mobileStackAccountMeta}>{selectedAccount.account_number ? formatAccountNumber(selectedAccount.account_number, { placeholder: false }) : accountProviderLabel(selectedAccount)}</small>
+        </div>
+        <div className={styles.mobileStackOwner}>
+          <strong className={styles.mobileStackOwnerName}>{selectedAccount.owner_scope === "shared" ? "Bersama" : accountOwnerName(selectedAccount) || "Pribadi"}</strong>
+          <small className={styles.mobileStackOwnerScope}>{selectedAccount.owner_scope === "shared" ? "Rekening bersama" : accountScopeLabel(selectedAccount.owner_scope)}</small>
+        </div>
       </div> : null}
       <p id="mobile-account-stack-hint" className="sr-only">Geser kartu aktif ke atas atau bawah untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
       <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />

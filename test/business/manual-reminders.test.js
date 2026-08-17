@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
+import { archiveBudget } from "../../api/_lib/services/planning/budgets.js";
+import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
 import {
   cancelManualReminder,
   getManualReminder,
@@ -170,7 +172,7 @@ test("backend menolak pengingat manual pada objek personal atau jatah pengguna l
   }
 });
 
-test("scheduler mengantrikan pengingat manual sekali dengan detail server-side dan membatalkan objek yang sudah tidak aktif", async () => {
+test("scheduler mengantrikan pengingat manual sekali, mengekspos status dispatch, dan membatalkan objek yang sudah tidak aktif", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -203,6 +205,76 @@ test("scheduler mengantrikan pengingat manual sekali dengan detail server-side d
     assert.equal((await db.one("SELECT status FROM manual_reminders WHERE reminder_id=?", [goal.item.reminder_id])).status, "cancelled");
     assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='reminders.autoCancel'")).count), 1);
     assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='reminders.dispatch'")).count), 1);
+
+    const dispatched = await getManualReminder(db, context(owner, "reminders.get", { entity_type: "recurring_occurrence", entity_id: "reminder-occurrence" }));
+    assert.equal(dispatched.item, null);
+    assert.equal(dispatched.lastDispatch.status, "pending");
+    await assert.rejects(
+      upsertManualReminder(db, context(owner, "reminders.upsert", {
+        entity_type: "recurring_occurrence",
+        entity_id: "reminder-occurrence",
+        scheduled_local: futureLocal(3),
+      })),
+      (error) => error.code === "REMINDER_DELIVERY_PENDING" && error.status === 409,
+    );
+
+    const legacyCancelledAt = new Date(Date.now() + 1_000).toISOString();
+    await db.execute(
+      "INSERT INTO manual_reminders(reminder_id,user_id,entity_type,entity_id,scheduled_at,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+      ["legacy-later-cancelled", owner.user_id, "recurring_occurrence", "reminder-occurrence", new Date(Date.now() + (4 * 86_400_000)).toISOString(), "cancelled", 1, legacyCancelledAt, legacyCancelledAt],
+    );
+    const legacyState = await getManualReminder(db, context(owner, "reminders.get", { entity_type: "recurring_occurrence", entity_id: "reminder-occurrence" }));
+    assert.equal(legacyState.lastDispatch.status, "pending");
+    await assert.rejects(
+      upsertManualReminder(db, context(owner, "reminders.upsert", {
+        entity_type: "recurring_occurrence",
+        entity_id: "reminder-occurrence",
+        scheduled_local: futureLocal(3),
+      })),
+      (error) => error.code === "REMINDER_DELIVERY_PENDING" && error.status === 409,
+    );
+
+    await db.execute("UPDATE notification_queue SET status='sent' WHERE notification_type='manual_reminder' AND user_id=?", [owner.user_id]);
+    const replacementReminder = await upsertManualReminder(db, context(owner, "reminders.upsert", {
+      entity_type: "recurring_occurrence",
+      entity_id: "reminder-occurrence",
+      scheduled_local: futureLocal(3),
+    }));
+    assert.equal(replacementReminder.item.status, "scheduled");
+  } finally {
+    db.close();
+  }
+});
+
+test("archive objek membatalkan semua reminder scheduled terkait tanpa menghidupkannya kembali", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await upsertManualReminder(db, context(owner, "reminders.upsert", { entity_type: "budget", entity_id: "reminder-budget", scheduled_local: futureLocal(2) }));
+    await upsertManualReminder(db, context(member, "reminders.upsert", { entity_type: "budget", entity_id: "reminder-budget", scheduled_local: futureLocal(2) }));
+    await archiveBudget(db, context(owner, "budgets.archive", { budget_id: "reminder-budget", row_version: 1, reason: "Budget selesai diuji" }, 1));
+    const reminders = await db.all("SELECT user_id,status FROM manual_reminders WHERE entity_type='budget' AND entity_id='reminder-budget' ORDER BY user_id");
+    assert.deepEqual(reminders.map((row) => ({ ...row })), [
+      { user_id: member.user_id, status: "cancelled" },
+      { user_id: owner.user_id, status: "cancelled" },
+    ]);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='reminders.autoCancel'")).count), 2);
+  } finally {
+    db.close();
+  }
+});
+
+test("integrity check mendeteksi reminder scheduled yang menunjuk entity hilang", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const now = new Date().toISOString();
+    await db.execute(
+      "INSERT INTO manual_reminders(reminder_id,user_id,entity_type,entity_id,scheduled_at,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+      ["dangling-reminder", owner.user_id, "budget", "missing-budget", new Date(Date.now() + 86_400_000).toISOString(), "scheduled", 1, now, now],
+    );
+    const issues = await integrityIssues(db);
+    assert.equal(issues.some((issue) => issue.code === "REMINDER_ENTITY_MISSING" && Number(issue.count) === 1), true);
   } finally {
     db.close();
   }
