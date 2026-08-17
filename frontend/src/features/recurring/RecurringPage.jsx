@@ -17,11 +17,11 @@ import {
   useRecurringPaymentActions,
   useRecurringRuleActions,
 } from "./useRecurringActions.js";
-import { SchedulePeriodSection, ScheduleSummary } from "./RecurringSchedule.jsx";
 import { scheduleMatchesFilter } from "./recurringPresentation.js";
 import styles from "./RecurringPage.module.css";
 
 const RecurringDialogLayer = lazy(() => import("./RecurringDialogLayer.jsx"));
+const RecurringScheduleView = lazy(() => import("./RecurringScheduleView.jsx"));
 
 const activeAccounts = (bootstrap) => bootstrap?.accounts?.filter((item) => item.status === "active") || [];
 const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === kind) || [];
@@ -91,25 +91,9 @@ const RecurringPage = () => {
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <PageHeader title="Jadwal rutin" actions={headerActions} />{attentionOccurrenceId ? <div className="notice notice--info attention-guidance" role="status"><strong>Selesaikan jadwal yang dipilih.</strong><span>Jika transaksi sudah terjadi, catat nominal aktual dan rekeningnya. Saldo baru berubah setelah Anda menyimpan pembayaran/penerimaan.</span></div> : null}
-      <ScheduleSummary items={allItems} onAttention={() => {
-        const attentionItem = allItems.find((item) => scheduleMatchesFilter(item, "attention"));
-        setFilter("attention");
-        if (attentionItem) setKind(attentionItem.kind === "income" ? "income" : "expense");
-        setExpandedId(null);
-      }} />
-      <SchedulePeriodSection
-        items={filteredItems}
-        allItems={allItems}
-        kind={kind}
-        setKind={setKind}
-        filter={filter}
-        setFilter={setFilter}
-        actions={actions}
-        expandedId={expandedId}
-        setExpandedId={setExpandedId}
-        accounts={bootstrap?.accounts || []}
-        categories={bootstrap?.categories || []}
-      />
+      <Suspense fallback={null}>
+        <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} />
+      </Suspense>
       {recurringDialogOpen({ rules, payments, recovery }) ? (
         <Suspense fallback={null}>
           <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={accounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} />

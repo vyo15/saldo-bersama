@@ -7,6 +7,7 @@ import {
   CORE_RUNTIME_ENV_KEYS,
   GOOGLE_BRIDGE_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
+  PRODUCTION_AUTH_ENV_KEYS,
   PRODUCTION_SYNC_ENV_KEYS,
   optionalGroupStatus,
   parseEnvironmentText,
@@ -43,7 +44,7 @@ const forbiddenKeys = Object.freeze([
 ]);
 
 export const validateProductionEnvironment = (values = {}) => {
-  const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
+  const missing = [...CORE_RUNTIME_ENV_KEYS, ...PRODUCTION_AUTH_ENV_KEYS].filter((key) => !String(values[key] ?? "").trim());
   const forbidden = forbiddenKeys.filter((key) => Object.hasOwn(values, key));
   const googleBridge = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);
   const webPush = validateWebPushEnvironment(values);

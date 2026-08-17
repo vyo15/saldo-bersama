@@ -39,7 +39,7 @@ Mendukung bank, tunai, e-wallet, tabungan, dana darurat, sinking fund, investasi
 
 ### `REQ-PROD-02` Transaksi lengkap — Partial
 
-Mendukung income, expense, transfer, refund, adjustment; tanggal, nominal, rekening, kategori, pencatat, merchant, metode, catatan, status aktif/cancelled/archived, idempotency, conflict, dan audit.
+Mendukung income, expense, transfer, refund, adjustment; tanggal, nominal, rekening, kategori, pencatat, merchant, metode, catatan, status aktif/cancelled/archived, idempotency, conflict, dan audit. Mobile history memakai periode + trend read-only, filter progresif, grouped-by-date list, dan detail capability-driven tanpa mengubah ledger contract.
 
 **Gap yang memerlukan RFC/schema:** pengguna uang (`used_by`), bukti/struk privat, draft/rencana/belum dibayar, utang, dan piutang. Lihat RFC-0011 dan RFC-0012.
 
@@ -103,7 +103,7 @@ Harus memisahkan kontrak kewajiban, pencairan, cicilan, settlement, saldo tersis
 
 ### `REQ-PROD-13` Laporan — Partial
 
-Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan, total saldo lintas bulan, kategori, rekening, nature, budget vs actual, dan aktivitas pencatatan pengguna. Transfer internal tidak dihitung sebagai arus kas.
+Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan, total saldo lintas bulan, kategori, rekening, nature, budget vs actual, dan aktivitas pencatatan pengguna. Transfer internal tidak dihitung sebagai arus kas. Presentation mobile ≤820px memakai mode `Ringkasan` dan `Per kategori`, navigasi periode, chart tren pengeluaran, KPI utama, perbandingan bulan sebelumnya, alert actionable, serta progressive disclosure untuk breakdown; desktop mempertahankan workspace analitik existing. Seluruh presentation tetap read-only dan memakai contract canonical `reports.monthly`.
 
 **Gap:** kontribusi nyata, debt/receivable, dan target stages menunggu model datanya.
 

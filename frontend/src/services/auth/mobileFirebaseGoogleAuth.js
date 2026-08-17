@@ -1,26 +1,19 @@
 import { getApps, initializeApp } from "@firebase/app";
 import {
   browserPopupRedirectResolver,
-  browserLocalPersistence,
   getAuth,
-  getRedirectResult,
   GoogleAuthProvider,
   initializeAuth,
   inMemoryPersistence,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
 } from "@firebase/auth";
 import { env } from "../../config/env.js";
 
 const MOBILE_FIREBASE_APP_NAME = "saldo-bersama-mobile-auth";
 const CANONICAL_PRODUCTION_HOST = "saldo-bersama.vercel.app";
-const REDIRECT_INTENT_KEY = "saldo-bersama:mobile-google-redirect:v3";
-const LEGACY_REDIRECT_INTENT_KEY = "saldo-bersama:mobile-google-redirect:v2";
-const REDIRECT_INTENT_MAX_AGE_MS = 10 * 60_000;
-const REDIRECT_START_TIMEOUT_MS = 8_000;
+const SERVER_OAUTH_START_PATH = "/api/auth/google/start";
 let mobileFirebaseAuth = null;
-let redirectResultPromise = null;
 
 const friendlyMobileGoogleError = (error) => {
   const messages = {
@@ -42,62 +35,21 @@ const normalizeMobileGoogleError = (error) => String(error?.code || "").startsWi
   ? friendlyMobileGoogleError(error)
   : error;
 
-const redirectIntentStores = () => {
-  if (typeof window === "undefined") return [];
-  const stores = [];
-  for (const name of ["localStorage", "sessionStorage"]) {
-    try {
-      const storage = window[name];
-      if (storage) stores.push(storage);
-    } catch { /* Browser may disable one storage surface while leaving the other available. */ }
-  }
-  return stores;
-};
-
-const markRedirectIntent = () => {
-  const startedAt = String(Date.now());
-  for (const storage of redirectIntentStores()) {
-    try { storage.setItem(REDIRECT_INTENT_KEY, startedAt); } catch { /* Firebase reports storage failures separately. */ }
-  }
-};
-
-const clearRedirectIntent = () => {
-  for (const storage of redirectIntentStores()) {
-    try {
-      storage.removeItem(REDIRECT_INTENT_KEY);
-      storage.removeItem(LEGACY_REDIRECT_INTENT_KEY);
-    } catch { /* Best-effort cleanup only. */ }
-  }
-};
-
-const hasRecentRedirectIntent = () => redirectIntentStores().some((storage) => {
-  try {
-    const startedAt = Number(storage.getItem(REDIRECT_INTENT_KEY) || storage.getItem(LEGACY_REDIRECT_INTENT_KEY) || 0);
-    return startedAt > 0 && Date.now() - startedAt <= REDIRECT_INTENT_MAX_AGE_MS;
-  } catch {
-    return false;
-  }
-});
-
 const isCanonicalProduction = () => typeof window !== "undefined"
   && window.location.protocol === "https:"
   && window.location.hostname === CANONICAL_PRODUCTION_HOST;
 
-const resolveMobileAuthDomain = () => isCanonicalProduction()
-  ? window.location.host
-  : env.firebaseAuthDomain;
-
-const getMobileFirebaseAuth = () => {
+const getLocalFirebaseAuth = () => {
   if (mobileFirebaseAuth) return mobileFirebaseAuth;
   try {
     const existingApp = getApps().find((app) => app.name === MOBILE_FIREBASE_APP_NAME);
     const app = existingApp || initializeApp({
       apiKey: env.firebaseApiKey,
-      authDomain: resolveMobileAuthDomain(),
+      authDomain: env.firebaseAuthDomain,
     }, MOBILE_FIREBASE_APP_NAME);
     try {
       mobileFirebaseAuth = initializeAuth(app, {
-        persistence: isCanonicalProduction() ? browserLocalPersistence : inMemoryPersistence,
+        persistence: inMemoryPersistence,
         popupRedirectResolver: browserPopupRedirectResolver,
       });
     } catch (error) {
@@ -117,37 +69,8 @@ const googleProvider = () => {
   return provider;
 };
 
-const missingRedirectResultError = () => Object.assign(
-  new Error("Google sudah mengembalikan Anda ke aplikasi, tetapi sesi login belum dapat dipulihkan. Silakan coba lagi."),
-  { code: "AUTH_REDIRECT_RESULT_MISSING" },
-);
-
-const redirectStartTimeoutError = () => Object.assign(
-  new Error("Google tidak membuka halaman login. Periksa browser lalu coba lagi."),
-  { code: "AUTH_REDIRECT_START_TIMEOUT" },
-);
-
-const startProductionRedirect = async () => {
-  const auth = getMobileFirebaseAuth();
-  markRedirectIntent();
-  let timer;
-  try {
-    await Promise.race([
-      signInWithRedirect(auth, googleProvider(), browserPopupRedirectResolver),
-      new Promise((_, reject) => {
-        timer = window.setTimeout(() => reject(redirectStartTimeoutError()), REDIRECT_START_TIMEOUT_MS);
-      }),
-    ]);
-  } catch (error) {
-    clearRedirectIntent();
-    throw normalizeMobileGoogleError(error);
-  } finally {
-    if (timer) window.clearTimeout(timer);
-  }
-};
-
-const completePopup = async ({ onFirebaseToken }) => {
-  const auth = getMobileFirebaseAuth();
+const completeLocalPopup = async ({ onFirebaseToken }) => {
+  const auth = getLocalFirebaseAuth();
   try {
     const result = await signInWithPopup(auth, googleProvider(), browserPopupRedirectResolver);
     if (!result?.user) throw Object.assign(new Error("Google tidak mengembalikan akun login."), { code: "AUTH_LOGIN_RESULT_MISSING" });
@@ -161,50 +84,20 @@ const completePopup = async ({ onFirebaseToken }) => {
   }
 };
 
-const resolveRedirectUser = async (auth, result, hadRedirectIntent) => {
-  if (result?.user) return result.user;
-  await auth.authStateReady();
-  return hadRedirectIntent ? auth.currentUser : null;
+const normalizeReturnTo = (value) => {
+  const candidate = String(value || "/");
+  if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.includes("\\") || candidate.length > 1_024) return "/";
+  return candidate;
 };
 
-const completeProductionRedirect = async ({ onFirebaseToken }) => {
-  if (!isCanonicalProduction()) return { handled: false };
-  const auth = getMobileFirebaseAuth();
-  const hadRedirectIntent = hasRecentRedirectIntent();
-  let user;
-  try {
-    const result = await getRedirectResult(auth, browserPopupRedirectResolver);
-    user = await resolveRedirectUser(auth, result, hadRedirectIntent);
-  } catch (error) {
-    clearRedirectIntent();
-    await signOut(auth).catch(() => {});
-    throw normalizeMobileGoogleError(error);
-  }
-
-  if (!user) {
-    if (!hadRedirectIntent && auth.currentUser) await signOut(auth).catch(() => {});
-    clearRedirectIntent();
-    if (hadRedirectIntent) throw missingRedirectResultError();
-    return { handled: false };
-  }
-
-  try {
-    const firebaseIdToken = await user.getIdToken();
-    await onFirebaseToken(firebaseIdToken);
-    return { handled: true };
-  } catch (error) {
-    throw normalizeMobileGoogleError(error);
-  } finally {
-    clearRedirectIntent();
-    await signOut(auth).catch(() => {});
-  }
+const startProductionServerOAuth = ({ returnTo = "/" } = {}) => {
+  if (typeof window === "undefined") return { handled: false };
+  const target = new URL(SERVER_OAUTH_START_PATH, window.location.origin);
+  target.searchParams.set("returnTo", normalizeReturnTo(returnTo));
+  window.location.assign(target.toString());
+  return { handled: true };
 };
 
-export const consumeGoogleRedirectResult = ({ onFirebaseToken }) => {
-  if (!redirectResultPromise) redirectResultPromise = completeProductionRedirect({ onFirebaseToken });
-  return redirectResultPromise;
-};
-
-export const signInWithGoogleMobile = ({ onFirebaseToken }) => isCanonicalProduction()
-  ? startProductionRedirect()
-  : completePopup({ onFirebaseToken });
+export const signInWithGoogleMobile = ({ onFirebaseToken, returnTo = "/" }) => isCanonicalProduction()
+  ? startProductionServerOAuth({ returnTo })
+  : completeLocalPopup({ onFirebaseToken });

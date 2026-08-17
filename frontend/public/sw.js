@@ -24,9 +24,7 @@ const cacheResponse = (event, cacheName, request, response) => {
 const isLocalHostname = (hostname) => ["localhost", "127.0.0.1", "::1", "[::1]"].includes(hostname);
 
 const isInfrastructurePath = (pathname) => pathname === "/api"
-  || pathname.startsWith("/api/")
-  || pathname === "/__/auth"
-  || pathname.startsWith("/__/auth/");
+  || pathname.startsWith("/api/");
 
 const isHtmlResponse = (response) => String(response?.headers?.get("content-type") || "")
   .toLowerCase()

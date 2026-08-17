@@ -1,6 +1,6 @@
 # Secret Rotation Runbook
 
-Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_BRIDGE_SHARED_SECRET`, `JOBS_SHARED_SECRET`, atau credential privat lain pernah keluar dari secret store tepercaya, termasuk pernah masuk ZIP manual. Jangan menyalin nilai secret ke Git, issue, chat, screenshot, atau log.
+Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_BRIDGE_SHARED_SECRET`, `JOBS_SHARED_SECRET`, atau credential privat lain pernah keluar dari secret store tepercaya, termasuk pernah masuk ZIP manual. Jangan menyalin nilai secret ke Git, issue, chat, screenshot, atau log.
 
 ## Boundary saat ini
 
@@ -34,6 +34,16 @@ Jangan revoke token lama sebelum runtime yang diperlukan terbukti memakai token 
 3. Deploy ulang bila diperlukan.
 4. Verifikasi login baru berhasil. Session lama boleh menjadi invalid setelah rotasi dan user harus login ulang.
 5. Pastikan tidak ada nilai secret di log, source, ZIP, atau screenshot evidence.
+
+## Urutan rotasi `GOOGLE_OAUTH_CLIENT_SECRET`
+
+1. Buka Google Auth Platform pada project yang sama dengan Firebase dan OAuth Web Client yang ID-nya sama dengan `VITE_GOOGLE_CLIENT_ID`.
+2. Buat client secret baru. Salin nilainya satu kali langsung ke secret store/`.env.local` komputer tepercaya; jangan taruh di chat, screenshot, Git, atau ZIP.
+3. Pastikan authorized redirect URI production tetap `https://saldo-bersama.vercel.app/api/auth/google/callback`.
+4. Jalankan `npm run env:push:production`; tooling harus mengirim `GOOGLE_OAUTH_CLIENT_SECRET` sebagai Sensitive dan tidak mengirimkannya ke Vercel Development.
+5. Deploy Production baru lalu uji login mobile real-device sampai Vercel Logs menunjukkan `session.oauth.start`, `session.login` dengan `flow=google-oauth-server` status 200, dan `GET /api/session` 200.
+6. Setelah secret baru terbukti aktif, hapus/revoke client secret lama di Google Auth Platform.
+7. Verifikasi ulang login branded desktop dan mobile production tanpa mencatat nilai credential pada evidence.
 
 ## Google bridge dan jobs secret
 

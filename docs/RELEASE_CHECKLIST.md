@@ -9,7 +9,7 @@
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Backup/rollback tersedia bila data terdampak.
 - [ ] Environment change tervalidasi tanpa menampilkan secret.
-- [ ] Jika auth mobile berubah, Firebase Google provider dan Authorized Domains (`localhost`, `saldo-bersama.vercel.app`) sudah diverifikasi tanpa mengubah allowlist/role backend; OAuth Web Client memuat `https://saldo-bersama.vercel.app/__/auth/handler`, Vercel memproxy `/__/auth/*`, dan Service Worker melewatkan `/__/auth/*` tanpa cache/interception.
+- [ ] Jika auth mobile berubah, Firebase Google provider dan Authorized Domains (`localhost`, `saldo-bersama.vercel.app`) sudah diverifikasi tanpa mengubah allowlist/role backend; OAuth Web Client yang sama dengan `VITE_GOOGLE_CLIENT_ID` memuat `https://saldo-bersama.vercel.app/api/auth/google/callback`, `GOOGLE_OAUTH_CLIENT_SECRET` tersedia hanya pada secret store tepercaya/Vercel Production Sensitive, dan tidak ada secret pada `VITE_*`, Git, ZIP, log, screenshot, atau chat.
 - [ ] Security/privacy/accessibility/performance review relevan selesai.
 
 ## Deploy
@@ -17,7 +17,7 @@
 - [ ] Production env scope benar.
 - [ ] Migration hanya dijalankan bila disetujui.
 - [ ] Smoke test Administrator/Member sesuai scope.
-- [ ] Login desktop GIS dan login mobile diuji terpisah: production real-device harus berpindah full-page melalui Firebase redirect lalu kembali membentuk server session tanpa freeze/double-submit; localhost/device emulation boleh memakai popup fallback. Pada perangkat yang pernah membuka versi lama, pastikan waiting Service Worker dapat diaktifkan dari `/login` tanpa reload paksa dan sesudah login Vercel mencatat `POST /api/session` sukses.
+- [ ] Login desktop dan mobile memakai tombol branded yang sama: production harus berpindah full-page melalui Google OAuth server flow lalu callback membentuk server session tanpa freeze/double-submit; localhost/device emulation boleh memakai Firebase popup fallback. Vercel Logs harus menunjukkan `session.oauth.start`, callback `session.login` dengan `flow=google-oauth-server` dan status 200, lalu `GET /api/session` 200. Production tidak lagi diharapkan membuat client `POST /api/session`.
 - [ ] Saldo/data integrity diverifikasi bila transaksi/data terdampak.
 
 ## Close

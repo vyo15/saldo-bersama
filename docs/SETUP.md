@@ -73,10 +73,11 @@ Alur `npm run dev` pada terminal interaktif:
 4. Meminta login Vercel hanya bila sesi belum ada.
 5. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
 6. Menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
-7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, serta grup opsional parsial.
-8. Memvalidasi sembilan key core dan satu grup Web Push lengkap/valid.
-9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
-10. Menjalankan server lokal setelah dependency dan environment valid.
+7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key production-only itu salah ditempatkan pada Vercel Development.
+8. Mempertahankan `GOOGLE_OAUTH_CLIENT_SECRET` yang sudah ada hanya dari `.env.local` komputer tepercaya; nilainya tidak ditarik dari atau didorong ke Development.
+9. Memvalidasi sembilan key core dan satu grup Web Push lengkap/valid.
+10. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
+11. Menjalankan server lokal setelah dependency dan environment valid.
 
 Refresh Development setiap start disengaja agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Bila login, link, pull, atau validasi gagal, `.env.local` lama dipertahankan tetapi server tidak dijalankan. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
@@ -106,7 +107,7 @@ Production tetap terpisah:
 npm run env:push:production
 ```
 
-Setelah Production berubah, buat deployment Production baru. Command Production juga menyinkronkan grup Google bridge dan Web Push bila grup tersebut lengkap dan valid. Preview dibiarkan kosong.
+Setelah Production berubah, buat deployment Production baru. Command Production mewajibkan `GOOGLE_OAUTH_CLIENT_SECRET`, menyinkronkannya sebagai Sensitive, dan juga menyinkronkan grup Google bridge dan Web Push bila grup tersebut lengkap dan valid. Preview dibiarkan kosong. Secret OAuth tidak boleh dipindahkan ke Vercel Development karena scope tersebut dapat dipull oleh collaborator yang berwenang.
 
 Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local` atau `.vercel`.
 
@@ -126,6 +127,10 @@ Deploy Apps Script bridge, isi Script Properties, buat spreadsheet mirror, Calen
 Saat deploy Web App, pilih **Execute as me/deployer** dan **Anyone/anonymous**. Keamanan berasal dari HMAC + timestamp + nonce, bukan sesi browser Google.
 
 Jika Integrasi Google menampilkan `Gangguan`, jalankan `npm run diagnose` pada komputer tepercaya. Diagnostic membedakan liveness `/exec` dan signed health tanpa mencetak secret. `MESSAGE_EXPIRED` akan dicoba pulih satu kali dengan clock offset dari timestamp Apps Script, tetapi jam Windows tetap harus disinkronkan. `INVALID_SIGNATURE` berarti shared secret tidak cocok, sedangkan `UNKNOWN_ACTION`/`GOOGLE_BRIDGE_DEPLOYMENT_STALE` biasanya berarti deployment Web App masih versi lama dan perlu **New version**.
+
+### OAuth login mobile Production
+
+OAuth Web Client yang dipakai `VITE_GOOGLE_CLIENT_ID` harus mempunyai authorized redirect URI `https://saldo-bersama.vercel.app/api/auth/google/callback`. Simpan client secret Web Client tersebut hanya sebagai `GOOGLE_OAUTH_CLIENT_SECRET` pada `.env.local` komputer tepercaya, lalu sinkronkan ke Vercel Production dengan `npm run env:push:production`. Production desktop/mobile memakai server-side authorization-code callback; localhost/device emulation tetap memakai Firebase popup. Nilai secret tidak boleh ditempel ke chat, screenshot, Git, atau ZIP.
 
 ## 7. PWA dan Web Push
 

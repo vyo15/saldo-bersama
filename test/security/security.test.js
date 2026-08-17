@@ -138,33 +138,39 @@ test("reserved transaction field contract dijaga konsisten di gateway dan financ
   }
 });
 
-test("CSP dan reverse proxy Firebase Auth menjaga redirect mobile production tetap same-origin", async () => {
-  const [vercelSource, envExample, serviceWorker] = await Promise.all([
+test("CSP dan route OAuth server menjaga login mobile production tanpa Firebase browser redirect", async () => {
+  const [vercelSource, envExample, mobileAuth, sessionSource] = await Promise.all([
     readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
     readFile(new URL("../../.env.example", import.meta.url), "utf8"),
-    readFile(new URL("../../frontend/public/sw.js", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/src/services/auth/mobileFirebaseGoogleAuth.js", import.meta.url), "utf8"),
+    readFile(new URL("../../api/session.js", import.meta.url), "utf8"),
   ]);
   const vercel = JSON.parse(vercelSource);
   const authDomain = envExample.match(/^VITE_FIREBASE_AUTH_DOMAIN=(.+)$/m)?.[1]?.trim();
   assert.equal(authDomain, "saldo-bersama.firebaseapp.com");
+  assert.match(envExample, /^GOOGLE_OAUTH_CLIENT_SECRET=$/m);
 
-  const authProxy = vercel.rewrites?.find((entry) => entry.source === "/__/auth/:path*");
-  assert.deepEqual(authProxy, {
-    source: "/__/auth/:path*",
-    destination: "https://saldo-bersama.firebaseapp.com/__/auth/:path*",
-  });
-  assert.equal(vercel.rewrites?.[0]?.source, "/__/auth/:path*", "proxy Firebase auth harus dievaluasi sebelum catch-all SPA");
+  assert.deepEqual(vercel.rewrites?.slice(0, 2), [
+    { source: "/api/auth/google/start", destination: "/api/session?flow=google-start" },
+    { source: "/api/auth/google/callback", destination: "/api/session?flow=google-callback" },
+  ]);
+  assert.equal(vercel.rewrites?.some((entry) => String(entry.destination || "").includes("firebaseapp.com/__/auth")), false);
 
-  const appHeaderRule = vercel.headers?.find((entry) => entry.source === "/((?!__/auth/).*)");
-  assert.ok(appHeaderRule, "security header aplikasi harus mengecualikan helper Firebase yang diproxy");
+  const appHeaderRule = vercel.headers?.find((entry) => entry.source === "/(.*)");
+  assert.ok(appHeaderRule, "security header aplikasi harus kembali berlaku global setelah Firebase auth proxy dipensiunkan");
   const csp = appHeaderRule.headers?.find((header) => header.key === "Content-Security-Policy")?.value || "";
   assert.match(csp, /frame-src[^;]*'self'/);
-  assert.doesNotMatch(csp, /https:\/\/saldo-bersama\.firebaseapp\.com/);
-  assert.doesNotMatch(csp, /https:\/\/\*\.firebaseapp\.com|https:\/\/\*\.web\.app/);
   assert.doesNotMatch(csp, /unsafe-eval/);
 
-  assert.match(serviceWorker, /isInfrastructurePath\(url\.pathname\)\) return/);
-  assert.match(serviceWorker, /pathname === "\/__\/auth"/);
-  assert.match(serviceWorker, /pathname\.startsWith\("\/__\/auth\/"\)/);
-  assert.doesNotMatch(serviceWorker, /cache\.put\([^\n]*__\/auth/);
+  assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
+  assert.match(mobileAuth, /window\.location\.assign/);
+  assert.doesNotMatch(mobileAuth, /GOOGLE_OAUTH_CLIENT_SECRET/);
+  assert.doesNotMatch(mobileAuth, /signInWithRedirect|getRedirectResult|browserLocalPersistence/);
+  assert.match(sessionSource, /GOOGLE_OAUTH_CLIENT_SECRET/);
+  assert.match(sessionSource, /scope: "openid email profile"/);
+  assert.match(sessionSource, /nonce: transaction\.nonce/);
+  assert.match(sessionSource, /grant_type: "authorization_code"/);
+  assert.match(sessionSource, /providerId=google\.com/);
+  assert.match(sessionSource, /OAUTH_NETWORK_TIMEOUT_MS/);
+  assert.doesNotMatch(sessionSource, /console\.(?:log|error|warn)\(/);
 });

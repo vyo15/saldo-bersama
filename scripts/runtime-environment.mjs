@@ -17,6 +17,10 @@ export const OPTIONAL_LOGGING_ENV_KEYS = Object.freeze([
   "LOG_LEVEL",
 ]);
 
+export const PRODUCTION_AUTH_ENV_KEYS = Object.freeze([
+  "GOOGLE_OAUTH_CLIENT_SECRET",
+]);
+
 export const LEGACY_ENV_KEYS = Object.freeze([
   "INTERNAL_SHARED_SECRET",
   "APPS_SCRIPT_WEB_APP_URL",
@@ -50,6 +54,7 @@ export const SETTINGS_ENV_KEYS = Object.freeze([
 
 export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
   ...CORE_RUNTIME_ENV_KEYS,
+  ...PRODUCTION_AUTH_ENV_KEYS,
   ...OPTIONAL_LOGGING_ENV_KEYS,
   ...GOOGLE_BRIDGE_ENV_KEYS,
   ...WEB_PUSH_ENV_KEYS,

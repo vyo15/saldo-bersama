@@ -114,3 +114,12 @@ test("zip lokal dan pre-push memakai full verification canonical", async () => {
   assert.match(hookInstaller, /saldo-bersama-managed-pre-push/);
   assert.match(devStart, /installGitHooks\(\{ projectRoot \}\)/);
 });
+
+test("build budget memberi warning headroom sebelum route benar-benar melewati batas", async () => {
+  const budget = await readFile(new URL("../../scripts/check-build-budget.mjs", import.meta.url), "utf8");
+  assert.match(budget, /const warningRatio = 0\.9;/);
+  assert.match(budget, /headroom:/);
+  assert.match(budget, /Mendekati batas/);
+  assert.match(budget, /Budget terlampaui/);
+  assert.doesNotMatch(budget, /routeChunkGzip:\s*(?:9|1[0-9])\s*\*\s*1024/, "budget route tidak boleh dinaikkan sebagai shortcut");
+});

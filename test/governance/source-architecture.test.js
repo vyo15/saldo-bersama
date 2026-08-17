@@ -186,7 +186,7 @@ test("packager dan source validator menolak env, secret, archive, serta local da
   assert.match(validator, /"jobs\.js"/);
 });
 
-test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt, dan auth-safe service worker", async () => {
+test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt, dan API network-only service worker", async () => {
   const [manifestText, client, shell, sw, serviceWorkerRegistration, login] = await Promise.all([
     source("frontend/public/site.webmanifest"),
     source("frontend/src/services/api/client.js"),
@@ -205,14 +205,11 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
   assert.match(shell, /UpdateAvailableNotice/);
   assert.match(shell, /InstallAppCard/);
   assert.match(sw, /SKIP_WAITING/);
-  assert.match(sw, /pathname === "\/__\/auth"/);
-  assert.match(sw, /pathname\.startsWith\("\/__\/auth\/"\)/);
-  assert.match(serviceWorkerRegistration, /prepareLoginServiceWorker/);
-  assert.match(serviceWorkerRegistration, /registration\.update\(\)/);
-  assert.match(serviceWorkerRegistration, /requestWaitingWorkerActivation/);
-  assert.match(serviceWorkerRegistration, /window\.location\.pathname === "\/login"/);
+  assert.match(sw, /pathname === "\/api"/);
+  assert.match(sw, /pathname\.startsWith\("\/api\/"\)/);
+  assert.doesNotMatch(serviceWorkerRegistration, /prepareLoginServiceWorker|requestWaitingWorkerActivation|registration\.update\(\)/);
   assert.doesNotMatch(serviceWorkerRegistration, /window\.location\.reload/);
-  assert.match(login, /prepareLoginServiceWorker\(\)/);
+  assert.doesNotMatch(login, /prepareLoginServiceWorker/);
 });
 
 

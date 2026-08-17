@@ -63,6 +63,27 @@ test("feature code does not import UI toolkit directly and utility frameworks st
   }
 });
 
+test("named react-icons imports resolve to real exports", async () => {
+  const featherIcons = await import("react-icons/fi");
+  const sourceRoot = new URL("../src/", import.meta.url);
+  const sourceNames = await readdir(sourceRoot, { recursive: true });
+  const sourceFiles = sourceNames.filter((name) => /\.(?:js|jsx)$/.test(name));
+  const importPattern = /import\s*\{([^}]*)\}\s*from\s*["']react-icons\/fi["'];/g;
+
+  for (const relative of sourceFiles) {
+    const source = await read(`src/${relative}`);
+    for (const match of source.matchAll(importPattern)) {
+      const importedNames = match[1]
+        .split(",")
+        .map((entry) => entry.trim().split(/\s+as\s+/)[0])
+        .filter(Boolean);
+      for (const name of importedNames) {
+        assert.equal(typeof featherIcons[name], "function", `Unknown react-icons/fi export ${name} in ${relative}`);
+      }
+    }
+  }
+});
+
 test("design tokens expose shared control, motion, and layer contracts", async () => {
   const tokens = await read("src/styles/tokens.css");
   for (const token of [
@@ -80,7 +101,10 @@ test("design tokens expose shared control, motion, and layer contracts", async (
 
 test("halaman data utama memiliki representasi card mobile dan filter transaksi canonical", async () => {
   const [transactions, reports, accounts, accountSheets, mobileActivity, reconciliation, settings] = await Promise.all([
-    read("src/features/transactions/TransactionsPage.jsx"),
+    Promise.all([
+      read("src/features/transactions/TransactionsPage.jsx"),
+      read("src/features/transactions/components/MobileTransactionHistory.jsx"),
+    ]).then((parts) => parts.join("\n")),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
@@ -90,7 +114,9 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   ]);
 
   assert.match(transactions, /desktop-data-table/);
-  assert.match(transactions, /transaction-mobile-list/);
+  assert.match(transactions, /MobileTransactionList/);
+  assert.match(transactions, /MobileTransactionOverview/);
+  assert.match(transactions, /MobileTransactionFilters/);
   assert.match(reports, /budget-mobile-list/);
   assert.match(accounts + accountSheets + mobileActivity, /mobileTransactionList/);
   assert.match(reconciliation, /reconciliation-mobile-list/);
@@ -106,7 +132,7 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.doesNotMatch(transactions, /const initialFilters = \(location\)/);
 });
 
-test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi dengan popup fallback lokal pada mobile empat halaman", async () => {
+test("login desktop dan mobile memakai tombol branded dengan server OAuth production serta popup Firebase lokal", async () => {
   const assetNames = [
     "hand-phone-dashboard.webp",
     "piggy-bank.webp",
@@ -116,13 +142,12 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi de
     "house.webp",
     "phone-analytics.webp",
   ];
-  const [login, loginStyles, app, main, pages, desktopAuth, mobileAuth, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
+  const [login, loginStyles, app, main, pages, mobileAuth, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
     read("src/features/auth/LoginPage.jsx"),
     read("src/features/auth/LoginPage.css"),
     read("src/app/App.jsx"),
     read("src/main.jsx"),
     read("src/styles/pages.css"),
-    read("src/services/auth/googleFirebaseAuth.js"),
     read("src/services/auth/mobileFirebaseGoogleAuth.js"),
     readFile(new URL("../public/login/desktop-light.webp", import.meta.url)),
     readFile(new URL("../public/login/desktop-dark.webp", import.meta.url)),
@@ -149,40 +174,31 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi de
   assert.doesNotMatch(login, /login-mobile-next|nextLabel|FiArrowRight|FiArrowLeft|login-mobile-progress|login-mobile-back/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-(?:next|progress|back)/);
 
-  // Desktop tetap memakai Google Identity Services existing.
-  assert.match(login, /renderGoogleLoginButton/);
-  assert.match(desktopAuth, /identity\.renderButton\(element/);
-  assert.match(login, /shouldRenderDesktopGoogleButton/);
-  assert.doesNotMatch(desktopAuth, /compact/);
-
-  // Mobile mempertahankan tombol React branded. Production canonical memakai Firebase redirect same-origin; localhost tetap popup untuk dev/device emulation.
+  // Desktop dan mobile memakai tombol HTML branded yang sama. Production memakai server OAuth; localhost tetap popup Firebase untuk development.
+  assert.doesNotMatch(login, /renderGoogleLoginButton|google-login-button/);
   assert.match(login, /import\("\.\.\/\.\.\/services\/auth\/mobileFirebaseGoogleAuth\.js"\)/);
   assert.match(login, /preloadMobileGoogleAuth/);
-  assert.match(login, /prepareLoginServiceWorker/);
-  assert.match(login, /prepareLoginServiceWorker\(\)\.catch\(\(\) => false\)\.then\(\(\) => preloadMobileGoogleAuth\(\)\)/);
-  assert.match(login, /mobileGoogleAuthReady/);
-  assert.match(login, /consumeGoogleRedirectResult/);
+  assert.match(login, /useGoogleProvider/);
+  assert.doesNotMatch(login, /prepareLoginServiceWorker/);
+  assert.match(login, /googleAuthReady/);
   assert.match(login, /signInWithGoogleMobile/);
-  assert.match(login, /mobileGoogleAuthRef/);
+  assert.match(login, /returnTo: requestedPath/);
+  assert.match(login, /mobileOAuthErrorFromSearch/);
+  assert.match(login, /googleAuthRef/);
   assert.match(login, /className="login-mobile-google-button"/);
+  assert.match(login, /<MobileGoogleLogin \{\.\.\.authProps\}/);
+  assert.match(login, /mobileAuthProps=\{googleAuthProps\}/);
   assert.match(login, /\/login\/google-g-logo\.png/);
   assert.match(login, /Menghubungkan ke Google…/);
-  assert.match(login, /pending: mobileLoginPending/);
+  assert.match(login, /pending: googleLoginPending/);
   assert.doesNotMatch(login, /login-mobile-provider/);
   assert.match(mobileAuth, /GoogleAuthProvider/);
   assert.match(mobileAuth, /CANONICAL_PRODUCTION_HOST = "saldo-bersama\.vercel\.app"/);
-  assert.match(mobileAuth, /resolveMobileAuthDomain/);
-  assert.match(mobileAuth, /window\.location\.host/);
-  assert.match(mobileAuth, /browserLocalPersistence/);
-  assert.match(mobileAuth, /localStorage/);
-  assert.match(mobileAuth, /sessionStorage/);
-  assert.match(mobileAuth, /getRedirectResult/);
-  assert.match(mobileAuth, /signInWithRedirect/);
-  assert.match(mobileAuth, /REDIRECT_INTENT_KEY/);
-  assert.match(mobileAuth, /authStateReady\(\)/);
-  assert.match(mobileAuth, /AUTH_REDIRECT_RESULT_MISSING/);
-  assert.match(mobileAuth, /AUTH_REDIRECT_START_TIMEOUT/);
+  assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
+  assert.match(mobileAuth, /window\.location\.assign/);
   assert.match(mobileAuth, /signInWithPopup/);
+  assert.match(mobileAuth, /inMemoryPersistence/);
+  assert.doesNotMatch(mobileAuth, /signInWithRedirect|getRedirectResult|browserLocalPersistence|REDIRECT_INTENT_KEY|authStateReady/);
   assert.match(mobileAuth, /inMemoryPersistence/);
   assert.match(mobileAuth, /auth\/popup-blocked/);
   assert.match(mobileAuth, /auth\/web-storage-unsupported/);
@@ -192,7 +208,6 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi de
   assert.match(mobileAuth, /await onFirebaseToken\(firebaseIdToken\)/);
   assert.match(mobileAuth, /signOut\(auth\)\.catch/);
   assert.doesNotMatch(mobileAuth, /console\.(?:log|error|warn)\(/);
-  assert.doesNotMatch(desktopAuth, /@firebase\/(?:app|auth)/);
 
   assert.match(login, /import "\.\/LoginPage\.css";/);
   assert.match(app, /const AppShell = lazy\(\(\) => import\("\.\.\/layouts\/AppShell\.jsx"\)\);/);
@@ -207,6 +222,7 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi de
   assert.match(loginStyles, /\.login-mobile-track \{[\s\S]*width:\s*400%;/);
   assert.match(loginStyles, /\.login-mobile-slide \{[\s\S]*overflow:\s*hidden;/);
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
+  assert.match(loginStyles, /\.login-provider-slot--desktop \.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border-radius:\s*16px;/);
   assert.match(loginStyles, /\.login-mobile-google-button:disabled \{[^}]*cursor:\s*wait;/);
   assert.match(loginStyles, /@keyframes login-google-spin/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-provider/);

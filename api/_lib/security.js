@@ -3,6 +3,8 @@ import { requiresIdempotencyKey } from "./actions/policy.js";
 import { RESERVED_TRANSACTION_FIELDS } from "./transactionContract.js";
 
 const SESSION_COOKIE = "sb_session";
+const GOOGLE_OAUTH_COOKIE = "sb_google_oauth";
+const GOOGLE_OAUTH_MAX_AGE_SECONDS = 5 * 60;
 const encoder = (value) => Buffer.from(value).toString("base64url");
 const decoder = (value) => Buffer.from(value, "base64url").toString("utf8");
 
@@ -41,6 +43,85 @@ export const findAllowedUser = (email) => parseAllowedUsers().find((item) => ite
 
 const sign = (value, secret) => crypto.createHmac("sha256", secret).update(value).digest("base64url");
 
+const secureCookieSuffix = () => process.env.VERCEL_ENV === "development" ? "" : "; Secure";
+
+const signedCookieToken = (payload, secret) => {
+  const encoded = encoder(JSON.stringify(payload));
+  return `${encoded}.${sign(encoded, secret)}`;
+};
+
+const readSignedCookieToken = (token, secret) => {
+  const [payload, signature] = String(token || "").split(".");
+  if (!payload || !signature) return null;
+  const expected = sign(payload, secret);
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
+  try { return JSON.parse(decoder(payload)); } catch { return null; }
+};
+
+export const normalizeInternalReturnPath = (value) => {
+  const candidate = String(value || "/").trim();
+  if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.includes("\\") || candidate.length > 1_024) return "/";
+  try {
+    const parsed = new URL(candidate, "https://saldo-bersama.invalid");
+    if (parsed.origin !== "https://saldo-bersama.invalid") return "/";
+    if (parsed.pathname === "/api" || parsed.pathname.startsWith("/api/") || parsed.pathname === "/__" || parsed.pathname.startsWith("/__/")) return "/";
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return "/";
+  }
+};
+
+export const trustedRequestOrigin = (request) => {
+  const forwardedProto = String(request.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  const forwardedHost = String(request.headers["x-forwarded-host"] || "").split(",")[0].trim();
+  const protocol = forwardedProto || (process.env.VERCEL_ENV === "development" ? "http" : "https");
+  const host = forwardedHost || String(request.headers.host || "").trim();
+  if (!host || !["http", "https"].includes(protocol)) {
+    throw Object.assign(new Error("Origin aplikasi tidak dapat ditentukan."), { status: 403, code: "ORIGIN_UNTRUSTED" });
+  }
+  const origin = `${protocol}://${host}`;
+  const allowed = String(process.env.ALLOWED_ORIGINS || "").split(",").map((item) => item.trim()).filter(Boolean);
+  if (!allowed.includes(origin)) throw Object.assign(new Error("Origin aplikasi tidak diizinkan."), { status: 403, code: "ORIGIN_DENIED" });
+  return origin;
+};
+
+export const createGoogleOAuthTransaction = ({ returnTo = "/" } = {}) => {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) throw new Error("SESSION_SECRET minimal 32 karakter.");
+  const state = crypto.randomBytes(32).toString("base64url");
+  const nonce = crypto.randomBytes(32).toString("base64url");
+  const payload = {
+    state,
+    nonce,
+    returnTo: normalizeInternalReturnPath(returnTo),
+    exp: Math.floor(Date.now() / 1000) + GOOGLE_OAUTH_MAX_AGE_SECONDS,
+  };
+  const token = signedCookieToken(payload, secret);
+  return {
+    ...payload,
+    cookie: `${GOOGLE_OAUTH_COOKIE}=${token}; Path=/api/auth/google/callback; HttpOnly; SameSite=Lax; Max-Age=${GOOGLE_OAUTH_MAX_AGE_SECONDS}${secureCookieSuffix()}`,
+  };
+};
+
+export const readGoogleOAuthTransaction = (request) => {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return null;
+  const token = parseCookies(request.headers.cookie)[GOOGLE_OAUTH_COOKIE];
+  const payload = readSignedCookieToken(token, secret);
+  if (!payload?.state || !payload?.nonce || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
+  return { ...payload, returnTo: normalizeInternalReturnPath(payload.returnTo) };
+};
+
+export const clearGoogleOAuthTransactionCookie = () => `${GOOGLE_OAUTH_COOKIE}=; Path=/api/auth/google/callback; HttpOnly; SameSite=Lax; Max-Age=0${secureCookieSuffix()}`;
+
+export const safeEqualText = (left, right) => {
+  const leftBuffer = Buffer.from(String(left || ""));
+  const rightBuffer = Buffer.from(String(right || ""));
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
+
 export const createSessionCookie = (user, { maxAgeSeconds = 43_200 } = {}) => {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) throw new Error("SESSION_SECRET minimal 32 karakter.");
@@ -53,11 +134,10 @@ export const createSessionCookie = (user, { maxAgeSeconds = 43_200 } = {}) => {
     exp: Math.floor(Date.now() / 1000) + maxAgeSeconds,
   }));
   const token = `${payload}.${sign(payload, secret)}`;
-  const secure = process.env.VERCEL_ENV === "development" ? "" : "; Secure";
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSeconds}${secure}`;
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSeconds}${secureCookieSuffix()}`;
 };
 
-export const clearSessionCookie = () => `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${process.env.VERCEL_ENV === "development" ? "" : "; Secure"}`;
+export const clearSessionCookie = () => `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secureCookieSuffix()}`;
 
 const parseCookies = (header = "") => Object.fromEntries(header.split(";").map((part) => part.trim()).filter(Boolean).map((part) => {
   const separator = part.indexOf("=");

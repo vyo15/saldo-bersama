@@ -11,7 +11,7 @@ Dokumen ini adalah kontrak visual dan implementasi UI Saldo Bersama. Tujuannya m
 - Feature/page tidak boleh mengimpor Mantine secara langsung. Halaman memakai komponen project pada `frontend/src/components/common/` atau komponen domain yang relevan.
 - HTML native dan semantik diprioritaskan. Toolkit digunakan untuk perilaku kompleks seperti dialog, drawer, select, date picker, menu, tooltip, dan notification.
 
-Status source saat dokumen ini diperbarui: shared primitive sudah memakai CSS Modules dan dependency Mantine sudah ada pada `frontend/package.json` serta `package-lock.json`. Adopsi komponen Mantine pada runtime tetap bertahap melalui wrapper dan belum berarti seluruh primitive telah dimigrasikan.
+Status source saat dokumen ini diperbarui: shared primitive sudah memakai CSS Modules dan dependency Mantine sudah ada pada `frontend/package.json` serta `package-lock.json`. Adopsi komponen Mantine pada runtime tetap bertahap melalui wrapper dan belum berarti seluruh primitive telah dimigrasikan. Empat stylesheet feature masih transitional dan dilacak eksplisit pada tracker migrasi di bawah agar status source tidak tersamar oleh wording “selama migrasi”.
 
 ## Source of truth
 
@@ -67,10 +67,32 @@ Struktur target:
 frontend/src/components/
 ├── common/       shared project primitives dan wrappers
 ├── feedback/     loading, empty, error, offline, conflict
-├── finance/      komponen visual domain keuangan
+├── finance/      target opsional untuk visual domain yang benar-benar dipakai lintas feature
 ├── navigation/   navigasi desktop/mobile
 └── pwa/          install/update/connectivity state
 ```
+
+`components/finance/` belum dibuat pada source saat ini. Itu **bukan gap implementasi**: `BudgetHeroCard`, `AccountFinancialCard`, chart, dan visual keuangan lain tetap colocated pada feature atau `components/charts/` sampai sedikitnya dua feature membutuhkan contract reusable yang sama. Jangan membuat abstraction/folder hanya untuk menyamai diagram target.
+
+### Konvensi struktur feature
+
+- Helper kecil boleh tetap colocated dengan page. Lakukan review pemecahan ke `components/`/hook terpisah saat file melewati sekitar 400 baris atau memiliki lebih dari 6 sub-komponen/hook lokal substantif. Threshold ini adalah trigger review, bukan aturan mass-refactor.
+- Ekstraksi harus menurunkan coupling, duplication, atau cognitive load. Business rule tetap berada pada domain/service/view model yang canonical.
+- Auth/session adalah guarded area. `LoginPage.jsx` yang besar dicatat sebagai kandidat struktur, tetapi tidak boleh dipecah hanya sebagai cleanup pada patch UI/report karena login production yang stabil lebih penting daripada keseragaman folder.
+- Mobile Transaction History sudah diekstrak ke `features/transactions/components/MobileTransactionHistory.jsx` + CSS Module karena memiliki presentation contract sendiri (periode, tren ringkas, filter mobile, grouped history, dan pager). Presentation mobile dimuat lazy dari route agar penambahan UI tidak kembali mendorong route chunk melewati build budget. Desktop table/filter tetap di `TransactionsPage.jsx`; business rule, lifecycle, dan API tetap canonical di parent/service.
+- Dialog Alokasi dan Anggaran serta presentation Jadwal Rutin yang berat memakai lazy boundary lokal. Tujuannya memberi headroom pada route chunk tanpa memindahkan business rule atau mengubah behavior; build-budget warning >=90% menjadi trigger untuk review boundary serupa.
+- Abstraction shared baru dibuat ketika ada minimal dua consumer nyata dengan semantics yang sama.
+
+### Tracker migrasi CSS Modules feature
+
+Empat stylesheet berikut masih global/transitional dan merupakan backlog eksplisit ADR-0009:
+
+- [ ] `frontend/src/features/dashboard/DashboardPage.css`
+- [ ] `frontend/src/features/auth/LoginPage.css`
+- [ ] `frontend/src/features/transactions/TransactionsPage.css` — tersisa untuk desktop filter/table + detail modal; mobile history baru sudah memakai `MobileTransactionHistory.module.css`.
+- [ ] `frontend/src/features/dashboard/components/FinancialAlertList.css`
+
+Migrasi dilakukan satu per satu bersama regression visual/behavior. Jangan menggabungkan migrasi auth, dashboard, transaksi, dan alert dalam satu patch besar.
 
 ## Aturan styling
 
@@ -83,7 +105,16 @@ frontend/src/components/
 7. Feature tidak boleh membuat ulang Button, Dialog, Badge, Progress, atau Money input sendiri.
 8. Pertahankan global compatibility class selama migrasi bertahap; hapus hanya setelah usage search dan regression test membuktikan aman.
 9. Page/form melakukan request melalui facade `features/<domain>/<domain>.api.js`; transport global bukan dependency langsung feature.
+10. Token visual yang hanya dipakai satu feature harus diberi section ownership yang jelas pada `tokens.css` atau dipindahkan ke module feature ketika tidak membutuhkan theme-level override. Token `--account-*` saat ini sengaja dikelompokkan sebagai Accounts-only agar tidak menjadi precedent untuk menaruh semua token feature di global root.
 
+
+### Transaction History mobile
+
+- Pada viewport `<=820px`, halaman Transaksi memakai hierarchy **history-first**. Page header hanya membawa judul route; body tidak mengulang heading/description "Riwayat transaksi".
+- Periode dan grafik tren ringkas ditempatkan sebagai satu konteks visual tanpa card bertumpuk. Grafik membaca `reports.monthly` (6 bulan) dan tidak menghitung ulang ledger dari subset list transaksi.
+- Filter cepat hanya menampilkan `Semua`, `Pengeluaran`, `Pemasukan`, `Transfer`, Search, dan Filter. Rekening, kategori, pencatat, alokasi, Refund, serta Penyesuaian berada di dialog filter lanjutan agar list tidak penuh kontrol.
+- Badge pada row hanya untuk exception/asal penting: `Jadwal rutin`, `Target`, `Belum dialokasikan`, atau `Dibatalkan`. Metadata lain tersedia pada detail transaction sheet/modal.
+- Detail mobile menampilkan jenis, kategori, rekening, alokasi, pencatat, tanggal Asia/Jakarta, dan sumber transaksi. Lifecycle edit/cancel/restore tetap memakai capability backend canonical.
 
 ## Modal dan overflow mobile
 
@@ -196,16 +227,17 @@ Adopsi Mantine harus dilakukan bertahap:
 
 - Information architecture canonical: Perencanaan memuat Anggaran, Alokasi, Jadwal rutin, dan Target; Data keuangan memuat Rekening serta Kategori; Cocokkan Saldo (rekonsiliasi) berada pada Kontrol saldo; Pengaturan berada pada Aplikasi.
 - `/anggaran` adalah route pengelolaan. `/laporan` bersifat analitis dan tidak memuat mutation anggaran. Route `/tagihan` dipertahankan, tetapi label UI canonical adalah `Jadwal rutin`.
+- Mobile `/laporan` pada breakpoint ≤820px memakai presentation khusus yang clean dan analitis tanpa mengubah contract `reports.monthly`: header ringkas, segmented `Ringkasan`/`Per kategori`, navigasi bulan, pilihan tren 3/6/12 bulan, chart pengeluaran, tiga KPI utama, perbandingan dengan bulan sebelumnya, kategori terbesar, peringatan actionable, anggaran vs aktual, serta rincian rekening/nature/pencatat melalui progressive disclosure. Semua angka berasal dari response report existing atau turunan deterministik dari `trend.items`; UI tidak membuat agregasi dari page slice dan tidak menambah mutation. Ikon kategori memakai katalog canonical project dari bootstrap kategori. Desktop mempertahankan report workspace existing.
 - Sidebar desktop mempertahankan mask melengkung brand Saldo Bersama. Ukurannya boleh diperbesar untuk tap target dan proporsi layar, tetapi bentuk/aset canonical tidak boleh diganti tanpa approval visual baru.
 - Kontrol utama desktop minimum 44×44px. Enam kontrol canonical dikelompokkan rapat di tengah rail tanpa mengubah mask organik. Submenu grup memakai anchored flyout di samping trigger, label satu baris, trigger-toggle, Escape, click-outside, route-close, dan focus restoration; tombol X tidak diperlukan untuk flyout navigasi.
 - Theme toggle hanya tampil pada kontrol shell yang canonical. Menu mobile “Menu lainnya” tidak menduplikasi dark/light toggle; logout berada pada footer terpisah dan bottom navigation tetap tersedia. Quick add transaksi global disembunyikan pada seluruh subtree `/pengaturan` agar halaman konfigurasi, maintenance, reset, backup, dan recovery tidak memiliki aksi finansial yang tidak relevan.
 
 ## Login dan pengguna
 
-- Login desktop memakai artwork approved sebagai visual layer utuh agar komposisi light/dark konsisten dengan desain referensi. Artwork mempertahankan rasio 1672×941 dan ditampilkan tanpa menggambar ulang ilustrasi dengan CSS. Area autentikasi desktop tetap menampilkan satu host Google Identity Services canonical di atas artwork; error konfigurasi/login dan retry hanya muncul saat diperlukan.
+- Login desktop memakai artwork approved sebagai visual layer utuh agar komposisi light/dark konsisten dengan desain referensi. Artwork mempertahankan rasio 1672×941 dan ditampilkan tanpa menggambar ulang ilustrasi dengan CSS. Area autentikasi desktop memakai tombol Google branded yang sama dengan mobile, dengan logo Saldo Bersama, copy ringkas, security hints, dan error/retry hanya saat diperlukan.
 - Login mobile ≤820px memakai empat halaman: tiga onboarding (“Rajin menabung, bijak belanja”, “Atur anggaran, hindari boros”, “Keuangan bersama, tetap jelas”) lalu halaman login khusus. Onboarding memakai UI React semantik dengan hero card clean, aset transparan terpisah, white space yang cukup, serta maksimal tiga ilustrasi per scene; tidak memakai poster full-page 941×1672 dan tidak menampilkan pill fitur tambahan di bawah deskripsi. Pada viewport mobile normal 320–430px termasuk tinggi pendek yang didukung, setiap halaman harus muat dalam satu layar tanpa scroll vertikal internal. Swipe horizontal mengikuti pointer secara real time; `Lewati`, pagination, dan ArrowLeft/ArrowRight tetap tersedia. Progress bar, counter langkah, tombol kembali visual, dan tombol besar `Lanjut` tidak dipakai karena swipe/pagination sudah menjadi kontrol utama. `prefers-reduced-motion` mematikan transisi yang tidak esensial.
-- Artwork tidak boleh menggantikan kontrol autentikasi. Desktop tetap memakai Google Identity Services existing. Mobile tidak memakai `google.accounts.id.renderButton()`; halaman keempat mempertahankan tombol HTML branded Google milik Saldo Bersama. Production canonical memakai Firebase `GoogleAuthProvider` + `signInWithRedirect` same-origin, sementara localhost/device emulation memakai popup fallback, tanpa mengubah layout login.
-- Halaman login keempat memakai logo project `/brand/saldo-bersama-mark.png`, creator link aman, dan efek uang jatuh hanya ketika halaman login aktif. Progress bar onboarding dan tombol back tidak ditampilkan agar fokus pada autentikasi. Tombol `Masuk dengan Google` harus muat penuh dalam satu layar, memakai logo Google resmi tanpa modifikasi, disabled selama request, dan tidak mengubah bentuk setelah render. Module Firebase mobile dipreload sebelum tombol aktif. Production memakai browser-session persistence hanya selama round-trip redirect dan menandai redirect intent agar hasil dapat dipulihkan dengan aman; localhost/device emulation memakai in-memory popup fallback. Setelah Google selesai, Firebase ID token diteruskan ke session backend existing dan auth client mobile dibersihkan. Backend allowlist, role, dan verifikasi token tetap source of truth. Error redirect/popup/network/provider ditampilkan dengan copy ramah tanpa raw Firebase error. Label “Selamat datang” tampil sederhana tanpa garis eyebrow dekoratif. Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px. Theme toggle mobile adalah kontrol DOM asli pada header.
+- Artwork tidak boleh menggantikan kontrol autentikasi. Desktop dan mobile tidak memakai `google.accounts.id.renderButton()` pada halaman login; keduanya mempertahankan tombol HTML branded Google milik Saldo Bersama. Production canonical memakai full-page Google OAuth server flow dari tombol yang sama, sedangkan localhost/device emulation memakai Firebase popup fallback. Perbedaan transport auth tidak boleh mengubah layout, artwork, spacing, typography, swipe, dots, atau branded login button.
+- Halaman login keempat memakai logo project `/brand/saldo-bersama-mark.png`, creator link aman, dan efek uang jatuh hanya ketika halaman login aktif. Progress bar onboarding dan tombol back tidak ditampilkan agar fokus pada autentikasi. Tombol `Masuk dengan Google` harus muat penuh dalam satu layar, memakai logo Google resmi tanpa modifikasi, disabled selama request, dan tidak mengubah bentuk setelah render. Module auth mobile dipreload sebelum tombol aktif. Production menavigasi full-page ke server OAuth start; callback server menyelesaikan Google → Firebase → server session tanpa browser redirect state. Localhost/device emulation memakai in-memory Firebase popup fallback. Backend allowlist, role, dan verifikasi token tetap source of truth. Error OAuth/popup/network/provider ditampilkan dengan copy ramah tanpa raw provider error. Label “Selamat datang” tampil sederhana tanpa garis eyebrow dekoratif. Link creator eksternal harus memakai `noopener noreferrer`, focus-visible, dan target sentuh minimum 44px. Theme toggle mobile adalah kontrol DOM asli pada header.
 - Halaman `Anggota` tetap Administrator-only dan tampil sebagai menu tersendiri pada desktop serta grup `Akses` di Menu lainnya mobile. Daftar memakai card profil yang mudah dipindai, search nama/email, filter role, dan Modal canonical untuk tambah/ubah. Akun yang sedang login boleh ditonjolkan sebagai profile card, sedangkan destructive member action tetap memakai confirmation guarded dan backend authorization.
 - `UserAvatar` memakai foto Google hanya bila URL profil tersedia dari session/read model tepercaya. Session server mempertahankan `photoURL` Google yang host-nya sesuai CSP (`lh3.googleusercontent.com`) agar foto akun aktif tidak hilang setelah refresh. Jika `users.list` tidak menyediakan foto pengguna lain, gunakan initials fallback; jangan menambah kolom schema hanya untuk kosmetik, jangan mengambil foto dari Google Search, dan jangan mengarang URL.
 - Aktivitas pengguna adalah audit-friendly view atas ledger existing berdasarkan `created_by`, bukan ledger baru dan bukan ukuran kontribusi finansial. Copy wajib menyebutnya sebagai pencatat, bukan pembayar/pemakai.

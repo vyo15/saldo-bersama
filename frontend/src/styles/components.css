@@ -26,9 +26,9 @@
 .brand-wordmark span:first-child { color: var(--primary-deep); }
 .brand-wordmark span:last-child { color: var(--primary); }
 
-.button { min-height: 42px; padding: 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: var(--font-weight-semibold); cursor: pointer; transition: .18s ease; }
+.button { min-height: var(--control-height-md); padding: 0 16px; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: var(--font-weight-semibold); cursor: pointer; transition: .18s ease; }
 .button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--primary); }
-.button:disabled { opacity: .6; cursor: wait; }
+.button:disabled { opacity: .58; cursor: not-allowed; transform: none; }
 .button--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .button--primary:hover:not(:disabled) { background: var(--primary-hover); }
 .button--danger { background: var(--negative); border-color: var(--negative); color: var(--on-negative); }
@@ -208,7 +208,6 @@ input[type="file"] {
 .error-state__diagnostic code { padding: 2px 6px; border-radius: 6px; background: var(--surface-strong); color: var(--text); font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }
 
 /* Comfortable controls, elevated dialogs, and progressive transaction details */
-.button { min-height: 44px; }
 .button--loading svg { animation: spin .85s linear infinite; }
 .icon-button { min-width: 44px; min-height: 44px; }
 

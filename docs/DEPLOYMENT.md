@@ -21,9 +21,18 @@ npm run db:migrate
 npm run db:integrity
 ```
 
-## 3. Firebase
+## 3. Google OAuth + Firebase Authentication
 
-Aktifkan Google provider dan authorized domain untuk localhost serta `saldo-bersama.vercel.app`. Login mobile production memakai Firebase `signInWithRedirect` dari tombol custom Saldo Bersama dengan authDomain runtime `saldo-bersama.vercel.app` dan reverse proxy transparan `/__/auth/*` ke `saldo-bersama.firebaseapp.com`; localhost/device emulation tetap memakai popup fallback. Pada OAuth Web Client Firebase/Google, authorized redirect URI **wajib** memuat `https://saldo-bersama.vercel.app/__/auth/handler`. `VITE_FIREBASE_AUTH_DOMAIN` tetap `saldo-bersama.firebaseapp.com` sebagai upstream Firebase public config dan tidak diubah menjadi secret. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`. Service Worker production wajib membypass `/__/auth/*` sepenuhnya dan tidak boleh menyimpan response Firebase helper sebagai app-shell cache. Setelah deploy perubahan worker, halaman `/login` boleh mengaktifkan waiting worker tanpa reload paksa agar perangkat yang masih dikontrol versi lama menerima aturan bypass sebelum redirect dimulai.
+Aktifkan Google provider pada Firebase dan pertahankan authorized domain untuk localhost serta `saldo-bersama.vercel.app`. Desktop dan mobile memakai tombol Google branded Saldo Bersama. Localhost/device emulation memakai Firebase popup untuk development. **Production tidak memakai `signInWithRedirect()` atau `/__/auth/*` lagi.** Tombol branded membuka server OAuth flow `/api/auth/google/start`; Google kembali ke callback `https://saldo-bersama.vercel.app/api/auth/google/callback`. Server memvalidasi signed `state` dan `nonce`, menukar authorization code ke Google ID token, menukar Google ID token melalui Firebase Identity Toolkit, lalu memakai verifier Firebase + `ALLOWED_USERS_JSON` existing sebelum membuat signed HttpOnly session.
+
+Pada Google Auth Platform → Clients → OAuth Web Client yang sama dengan `VITE_GOOGLE_CLIENT_ID`:
+
+1. Authorized JavaScript origins tetap memuat `http://localhost:5173` dan `https://saldo-bersama.vercel.app` untuk Firebase popup development dan konfigurasi OAuth Web Client.
+2. Authorized redirect URIs **wajib** memuat `https://saldo-bersama.vercel.app/api/auth/google/callback` persis.
+3. URI lama `https://saldo-bersama.vercel.app/__/auth/handler` tidak lagi dipakai source canonical. Boleh dibiarkan sementara selama rollout, lalu dibersihkan setelah production desktop/mobile terbukti stabil.
+4. Simpan client secret Web Client hanya sebagai `GOOGLE_OAUTH_CLIENT_SECRET` pada `.env.local` komputer tepercaya dan Vercel **Production Sensitive**. Jangan memakai prefix `VITE_`, jangan menaruh nilai secret di Git, ZIP, screenshot, log, issue, atau chat.
+
+`VITE_FIREBASE_AUTH_DOMAIN=saldo-bersama.firebaseapp.com` tetap public Firebase config untuk fallback popup lokal dan compatibility, bukan secret. Server OAuth production tidak menyimpan Google access token/refresh token. Signed OAuth transaction cookie berumur 5 menit, `HttpOnly`, `SameSite=Lax`, dan hanya berlaku pada callback; session aplikasi existing tetap `HttpOnly` + `SameSite=Strict`.
 
 ## 4. Apps Script bridge
 

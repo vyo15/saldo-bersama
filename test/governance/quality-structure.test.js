@@ -37,7 +37,7 @@ test("tooling kualitas canonical tidak bergantung pada task automation", async (
   assert.equal(packageJson.scripts["task:check"], undefined);
   assert.equal(packageJson.scripts["task:list"], undefined);
   assert.equal(packageJson.scripts["task:finish"], undefined);
-  assert.equal(packageJson.scripts.check, "npm run validate:source && npm run lint && npm run test && npm run test:coverage:backend && npm run build && npm run build:budget");
+  assert.equal(packageJson.scripts.check, "npm run validate:source && npm run lint && npm run test && npm run build && npm run build:budget && npm run test:coverage:backend");
   assert.equal(packageJson.engines.node, "24.x");
   assert.equal((await source(".node-version")).trim(), "24.18.1");
   for (const retired of ["scripts/finish-task.mjs", "scripts/validate-task.mjs", "scripts/list-tasks.mjs"]) assert.equal(await exists(retired), false);

@@ -22,8 +22,9 @@ BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, A
 8. Setiap bug/regression wajib memperbarui atau menambah test yang memverifikasi **behavior/contract**, bukan nama variabel lokal atau bentuk JSX internal. Source-text test hanya untuk guard arsitektur, dependency, route, forbidden pattern, dan contract statis yang memang harus tetap literal.
 9. Jangan mass-format/refactor di luar scope.
 10. Jalankan targeted regression lebih dulu, lalu validation penuh dari tree **setelah patch final**; jangan mengklaim PASS dari tree versi sebelumnya.
-11. Setelah validation PASS, gunakan branch + Pull Request: `git add -A`, `git commit`, `git push -u origin HEAD`, tunggu workflow **Quality** PASS, lalu merge ke `main` sesuai ruleset.
-12. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
+11. Artifact patch tidak boleh disebut **final/ready/PASS** sebelum `npm run verify` atau `npm run zip` benar-benar PASS pada Node canonical `24.18.1`. Bila environment agent tidak dapat menjalankan Node canonical/build native, artifact hanya boleh disebut **candidate/unverified**, dan limitation wajib ditulis jelas.
+12. Setelah validation PASS, gunakan branch + Pull Request: `git add -A`, `git commit`, `git push -u origin HEAD`, tunggu workflow **Quality** PASS, lalu merge ke `main` sesuai ruleset.
+13. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
 
 Tidak ada lagi task card, Task ID, branch otomatis, atau `task:finish`. Beberapa ChatGPT tab boleh melakukan review/menyiapkan patch paralel, tetapi satu working folder user harus menerima patch secara **serial** agar perubahan tidak saling menimpa.
 
@@ -96,6 +97,14 @@ Default authorization adalah deny. Jangan percaya actor, role, email, timestamp,
 - Hindari full spreadsheet/database read tiap interaksi; gunakan API filter/pagination/read model existing.
 - Jangan menaruh data finansial pada URL/metadata.
 
+## Konvensi struktur feature
+
+- Page feature boleh menyimpan helper kecil di file yang sama selama alurnya tetap mudah dibaca. Review pemecahan ke `components/` atau hook terpisah wajib dilakukan ketika file melewati sekitar 400 baris **atau** memiliki lebih dari 6 sub-komponen/hook lokal yang substantif. Threshold ini memicu review, bukan refactor otomatis.
+- Jangan memecah file hanya untuk mengejar angka. Ekstraksi harus mengurangi coupling, duplication, atau cognitive load tanpa memindahkan business rule ke presentation helper.
+- Area guarded seperti auth/session tidak boleh direfactor struktural bersamaan dengan patch kosmetik atau bug yang tidak memerlukannya. Stabilitas behavior lebih penting daripada keseragaman folder.
+- Shared abstraction baru dibuat setelah sedikitnya dua feature benar-benar membutuhkan contract visual/behavior yang sama. Hindari folder atau primitive spekulatif.
+- Konvensi nama mengikuti peran, bukan satu gaya paksa untuk semua file: komponen React `PascalCase.jsx`, hook `useCamelCase.js`, helper/service/module non-komponen `camelCase.js`, folder feature lowercase. Jangan melakukan mass-rename hanya untuk menyeragamkan casing.
+
 ## Validation
 
 Minimal sesuai scope:
@@ -114,7 +123,7 @@ Gunakan frontend unit/static regression, lint, build, build budget, dan verifika
 
 Guarded/data/security harus menjalankan test domain terkait dan `npm run test:guard` bila relevan. Jangan menyatakan berhasil sebelum server/test benar-benar mengonfirmasi.
 
-Jika `build:budget` gagal, jangan menaikkan threshold sebagai shortcut. Audit static import dependency besar, CSS global yang seharusnya route/shell-scoped, asset publik tanpa usage, dan duplicate/legacy presentation logic. Generated build/test/cache dibersihkan setelah verification PASS maupun gagal; jangan menghapus `.env.local`, `.vercel`, `.git`, atau dependency canonical kecuali menjalankan workflow dependency-clean dengan `--force`.
+Jika `build:budget` gagal, jangan menaikkan threshold sebagai shortcut. Audit static import dependency besar, CSS global yang seharusnya route/shell-scoped, asset publik tanpa usage, dan duplicate/legacy presentation logic. Asset yang sudah mencapai **90%** budget adalah sinyal refactor sebelum feature berikutnya, bukan kondisi yang boleh dibiarkan sampai melewati batas. Generated build/test/cache dibersihkan setelah verification PASS maupun gagal; jangan menghapus `.env.local`, `.vercel`, `.git`, atau dependency canonical kecuali menjalankan workflow dependency-clean dengan `--force`.
 
 ## ZIP/source
 

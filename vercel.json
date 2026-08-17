@@ -21,8 +21,12 @@
   },
   "rewrites": [
     {
-      "source": "/__/auth/:path*",
-      "destination": "https://saldo-bersama.firebaseapp.com/__/auth/:path*"
+      "source": "/api/auth/google/start",
+      "destination": "/api/session?flow=google-start"
+    },
+    {
+      "source": "/api/auth/google/callback",
+      "destination": "/api/session?flow=google-callback"
     },
     {
       "source": "/api/:path*",
@@ -35,7 +39,7 @@
   ],
   "headers": [
     {
-      "source": "/((?!__/auth/).*)",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "X-Content-Type-Options",

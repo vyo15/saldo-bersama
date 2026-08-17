@@ -5,12 +5,14 @@
 | Endpoint | Method | Fungsi |
 |---|---|---|
 | `/api/session` | GET/POST | Membaca sesi, login Firebase ID token, logout. |
+| `/api/auth/google/start` | GET | Alias rewrite ke session handler untuk memulai Google OAuth production desktop/mobile; membuat signed state/nonce dan 302 ke Google. |
+| `/api/auth/google/callback` | GET | Alias rewrite ke session handler untuk callback Google OAuth; validasi state/nonce, Google→Firebase token exchange, allowlist/role, set session, lalu 303 ke route internal yang ditandatangani. |
 | `/api/gateway` | POST | Seluruh action bisnis. |
 | `/api/export` | POST | XLSX Administrator-only. |
 | `/api/health` | GET | Health teredaksi. |
 | `/api/jobs` | POST | Worker terjadwal dengan signature. |
 
-Frontend tidak boleh mengakses Turso atau Google bridge secara langsung.
+Frontend tidak boleh mengakses Turso atau Google bridge secara langsung. Dua route `/api/auth/google/*` bukan Vercel Function tambahan; keduanya rewrite internal ke `api/session.js` agar jumlah endpoint function canonical tetap lima.
 
 `/api/session` mengembalikan identitas terverifikasi minimum `uid`, `email`, `name`, `role`, dan `photoURL` bila Firebase menyediakan foto Google pada host yang diizinkan CSP. `photoURL` hanya metadata presentasi untuk akun yang sedang login; authorization tetap ditentukan allowlist, session signature, binding database, dan role backend.
 

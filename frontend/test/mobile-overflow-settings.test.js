@@ -26,28 +26,46 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
   assert.doesNotMatch(modal + components, /overflow-y:\s*hidden/);
 });
 
-test("filter transaksi mobile memprioritaskan filter utama dan memindahkan filter lanjutan ke dialog", async () => {
-  const [transactionStyles, transactions, categoryStyles] = await Promise.all([
-    read("src/features/transactions/TransactionsPage.css"),
+test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog lanjutan", async () => {
+  const [transactions, mobileHistory, mobileStyles, categoryStyles] = await Promise.all([
     read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/transactions/components/MobileTransactionHistory.jsx"),
+    read("src/features/transactions/components/MobileTransactionHistory.module.css"),
     read("src/features/categories/CategoriesPage.module.css"),
   ]);
-  assert.match(transactions, /title="Filter lainnya"/);
-  assert.match(transactions, /import "\.\/TransactionsPage\.css";/);
-  assert.match(transactions, /Buka filter lainnya/);
-  assert.match(transactions, /transaction-advanced-filter-grid/);
-  assert.match(transactions, /Filter rekening/);
-  assert.match(transactions, /Filter kategori/);
-  assert.match(transactions, /Filter pencatat/);
-  assert.match(transactionStyles, /\.transaction-filter-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) auto;[^}]*overflow:\s*visible;/);
-  assert.match(transactionStyles, /@media \(max-width: 420px\)[\s\S]*\.transaction-filter-row\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) var\(--mobile-control-height\);/);
-  assert.match(transactionStyles, /@media \(max-width: 420px\)[\s\S]*\.transaction-advanced-filter-grid\s*\{\s*grid-template-columns:\s*1fr;/);
-  assert.match(transactionStyles, /\.transaction-filter-more\s*\{[^}]*min-width:\s*var\(--mobile-control-height\)/);
-  assert.doesNotMatch(transactionStyles, /\.transaction-filter-row\s*\{[^}]*overflow-x:\s*auto/);
+  assert.match(transactions, /const MobileTransactionHistory = lazy/);
+  assert.match(mobileHistory, /MobileTransactionOverview/);
+  assert.match(mobileHistory, /MobileTransactionFilters/);
+  assert.match(transactions, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}, \{ enabled: mobileLayout \}\)/);
+  assert.match(mobileHistory, /title="Filter transaksi"/);
+  assert.match(mobileHistory, /title="Cari transaksi"/);
+  assert.match(mobileHistory, /Semua rekening/);
+  assert.match(mobileHistory, /Semua kategori/);
+  assert.match(mobileHistory, /Semua pencatat/);
+  assert.match(mobileHistory, /Belum dialokasikan/);
+  assert.match(mobileStyles, /\.filterBar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 40px 40px;/);
+  assert.match(mobileStyles, /\.typeScroller\s*\{[\s\S]*overflow-x:\s*auto;/);
+  assert.match(mobileStyles, /\.advancedGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(mobileStyles, /@media \(max-width: 390px\)[\s\S]*\.advancedGrid\s*\{\s*grid-template-columns:\s*1fr;/);
   assert.match(categoryStyles, /\.iconGroups\s*\{[^}]*flex-wrap:\s*wrap;[^}]*overflow:\s*visible;/);
   assert.doesNotMatch(categoryStyles, /\.iconGroups\s*\{[^}]*overflow-x:\s*auto/);
-  assert.match(categoryStyles, /@media \(max-width: 820px\)[\s\S]*\.categoryGroups/);
-  assert.doesNotMatch(categoryStyles, /47\.99rem|51\.25rem/);
+  assert.doesNotMatch(mobileStyles + categoryStyles, /47\.99rem|51\.25rem/);
+});
+
+test("history transaksi mobile memakai periode dan grafik compact tanpa judul body ganda", async () => {
+  const [transactions, mobileHistory, mobileStyles] = await Promise.all([
+    read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/transactions/components/MobileTransactionHistory.jsx"),
+    read("src/features/transactions/components/MobileTransactionHistory.module.css"),
+  ]);
+  assert.match(transactions, /description=\{mobileLayout \? undefined : "Semua transaksi dalam satu alur\."\}/);
+  assert.match(mobileHistory, /periodLabel\(period\)/);
+  assert.match(mobileHistory, /Tren arus kas enam bulan sampai periode terpilih/);
+  assert.match(mobileHistory, /formatCompactRupiah\(cashFlow\.income\)/);
+  assert.match(mobileHistory, /formatCompactRupiah\(cashFlow\.expense\)/);
+  assert.doesNotMatch(mobileHistory, /Riwayat transaksi|Aktivitas keuangan tersusun berdasarkan tanggal/);
+  assert.match(mobileStyles, /\.chart\s*\{[^}]*height:\s*108px;/);
+  assert.doesNotMatch(mobileStyles, /\.overview\s*\{[^}]*border:/);
 });
 
 test("pengaturan memakai route internal dan tidak memuat semua domain pada ringkasan", async () => {
@@ -165,7 +183,7 @@ test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provi
 test("mobile finance forms dan planning memakai hierarchy yang compact tanpa teks mikro 9px", async () => {
   const [transactionStyles, allocations, goals, reports, pages, responsive, budgets] = await Promise.all([
     read("src/features/transactions/TransactionForm.module.css"),
-    read("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/styles/pages.css"),

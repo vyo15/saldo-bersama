@@ -3,8 +3,6 @@ import { FiAlertCircle } from "react-icons/fi";
 import { Navigate, useLocation } from "react-router";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { useTheme } from "../../app/ThemeContext.jsx";
-import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
-import { prepareLoginServiceWorker } from "../../services/serviceWorker.js";
 import { useAuth } from "./AuthContext.jsx";
 import "./LoginPage.css";
 
@@ -140,19 +138,6 @@ const LoginFeedback = ({ configErrors, error, buttonError, status, refreshSessio
     </div>
   );
 };
-
-const LoginProvider = ({ buttonRef, configErrors, error, buttonError, status, refreshSession }) => (
-  <>
-    <LoginFeedback
-      configErrors={configErrors}
-      error={error}
-      buttonError={buttonError}
-      status={status}
-      refreshSession={refreshSession}
-    />
-    <div className="google-login-button" ref={buttonRef} aria-label="Masuk menggunakan Google" />
-  </>
-);
 
 const MobileGoogleLogin = ({ configErrors, error, buttonError, status, refreshSession, pending, ready, onLogin }) => {
   const disabled = pending || !ready || status !== "anonymous" || Boolean(configErrors.length);
@@ -369,7 +354,7 @@ const useMobileLoginInteraction = () => {
   };
 
   const beginSwipe = (event) => {
-    if (event.target.closest?.("button, a, .google-login-button")) return;
+    if (event.target.closest?.("button, a")) return;
     swipeStartXRef.current = event.clientX;
     swipeStartYRef.current = event.clientY;
     swipeDeltaXRef.current = 0;
@@ -418,7 +403,7 @@ const useMobileLoginInteraction = () => {
   return { mobileLayout, mobileSlide, trackRef, moveMobileSlide, beginSwipe, moveSwipe, finishSwipe };
 };
 
-const DesktopLoginLayout = ({ theme, providerProps }) => (
+const DesktopLoginLayout = ({ theme, authProps }) => (
   <main className="login-page login-page--desktop-minimal">
     <h1 className="sr-only">Saldo Bersama</h1>
     <section
@@ -457,20 +442,23 @@ const DesktopLoginLayout = ({ theme, providerProps }) => (
 
         <aside className="login-desktop-auth" aria-label="Masuk ke Saldo Bersama">
           <section className="login-desktop-auth-content">
-            <h2>Selamat datang.</h2>
-            <p>Masuk untuk melanjutkan ke Saldo Bersama.</p>
+            <div className="login-desktop-auth-logo" aria-hidden="true">
+              <img src="/brand/saldo-bersama-mark.png" alt="" draggable="false" />
+            </div>
+            <p className="login-desktop-auth-welcome">Selamat datang</p>
+            <h2>Saldo <strong>Bersama</strong></h2>
+            <p className="login-desktop-auth-description">Kelola keuangan pribadi dan bersama dengan akun Google yang sudah diizinkan.</p>
 
             <div className="login-provider-slot login-provider-slot--desktop">
-              <LoginProvider {...providerProps} />
+              <MobileGoogleLogin {...authProps} />
             </div>
 
-            <p className="login-desktop-auth-help">Hanya akun Google yang telah diizinkan yang dapat mengakses aplikasi ini.</p>
-            <div className="login-desktop-auth-divider" />
-            <div className="login-desktop-auth-facts">
-              <span><i />Login cepat tanpa form manual</span>
-              <span><i />Data tetap sinkron antarperangkat</span>
+            <div className="login-desktop-auth-security" aria-label="Keamanan login">
+              <span><i />Akun terverifikasi</span>
+              <span><i />Data privat</span>
+              <span><i />Sinkron perangkat</span>
             </div>
-            <p className="login-desktop-auth-note">Akses ditolak otomatis jika akun tidak termasuk allowlist.</p>
+            <p className="login-desktop-auth-note">Hanya akun Google dalam allowlist yang dapat masuk.</p>
           </section>
         </aside>
       </div>
@@ -478,50 +466,56 @@ const DesktopLoginLayout = ({ theme, providerProps }) => (
   </main>
 );
 
-const useMobileGoogleProvider = ({
+const useGoogleProvider = ({
   configErrorCount,
-  mobileAuthRef,
-  mobileLayout,
-  onFirebaseToken,
+  googleAuthRef,
   setButtonError,
-  setMobileGoogleAuthReady,
+  setGoogleAuthReady,
   status,
 }) => {
   useEffect(() => {
-    if (!mobileLayout || status !== "anonymous" || configErrorCount) {
-      mobileAuthRef.current = null;
-      setMobileGoogleAuthReady(false);
+    if (status !== "anonymous" || configErrorCount) {
+      googleAuthRef.current = null;
+      setGoogleAuthReady(false);
       return undefined;
     }
     let active = true;
-    setMobileGoogleAuthReady(false);
-    prepareLoginServiceWorker().catch(() => false).then(() => preloadMobileGoogleAuth()).then(async (mobileAuth) => {
+    setGoogleAuthReady(false);
+    preloadMobileGoogleAuth().then((googleAuth) => {
       if (!active) return;
-      mobileAuthRef.current = mobileAuth;
-      const redirectResult = await mobileAuth.consumeGoogleRedirectResult({ onFirebaseToken });
-      if (!active || redirectResult?.handled) return;
-      setMobileGoogleAuthReady(true);
+      googleAuthRef.current = googleAuth;
+      setGoogleAuthReady(true);
     }).catch((providerError) => {
       if (!active) return;
       setButtonError(providerError?.message ? providerError : new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
-      setMobileGoogleAuthReady(true);
+      setGoogleAuthReady(true);
     });
     return () => {
       active = false;
-      mobileAuthRef.current = null;
+      googleAuthRef.current = null;
     };
-  }, [configErrorCount, mobileAuthRef, mobileLayout, onFirebaseToken, setButtonError, setMobileGoogleAuthReady, status]);
+  }, [configErrorCount, googleAuthRef, setButtonError, setGoogleAuthReady, status]);
+};
+
+const mobileOAuthErrorFromSearch = (search) => {
+  const code = new URLSearchParams(search || "").get("authError");
+  const messages = {
+    cancelled: "Login Google dibatalkan sebelum selesai.",
+    config: "Konfigurasi login Google production belum lengkap.",
+    "not-allowed": "Akun Google ini tidak memiliki akses ke Saldo Bersama.",
+    failed: "Google belum dapat menyelesaikan login. Silakan coba lagi.",
+  };
+  return code && messages[code] ? new Error(messages[code]) : null;
 };
 
 const LoginPage = () => {
   const { status, error, configErrors, loginWithFirebaseToken, refreshSession } = useAuth();
   const { theme } = useTheme();
   const location = useLocation();
-  const buttonRef = useRef(null);
-  const mobileGoogleAuthRef = useRef(null);
-  const [buttonError, setButtonError] = useState(null);
-  const [mobileLoginPending, setMobileLoginPending] = useState(false);
-  const [mobileGoogleAuthReady, setMobileGoogleAuthReady] = useState(false);
+  const googleAuthRef = useRef(null);
+  const [buttonError, setButtonError] = useState(() => mobileOAuthErrorFromSearch(location.search));
+  const [googleLoginPending, setGoogleLoginPending] = useState(false);
+  const [googleAuthReady, setGoogleAuthReady] = useState(false);
   const {
     mobileLayout,
     mobileSlide,
@@ -531,73 +525,47 @@ const LoginPage = () => {
     moveSwipe,
     finishSwipe,
   } = useMobileLoginInteraction();
-  const shouldRenderDesktopGoogleButton = status === "anonymous" && !configErrors.length && !mobileLayout;
-
-  useMobileGoogleProvider({
+  useGoogleProvider({
     configErrorCount: configErrors.length,
-    mobileAuthRef: mobileGoogleAuthRef,
-    mobileLayout,
-    onFirebaseToken: loginWithFirebaseToken,
+    googleAuthRef,
     setButtonError,
-    setMobileGoogleAuthReady,
+    setGoogleAuthReady,
     status,
   });
-
-  useEffect(() => {
-    if (!shouldRenderDesktopGoogleButton) return undefined;
-    const controller = new AbortController();
-    let cleanup = () => {};
-    setButtonError(null);
-    renderGoogleLoginButton({
-      element: buttonRef.current,
-      onFirebaseToken: loginWithFirebaseToken,
-      onError: setButtonError,
-      signal: controller.signal,
-    }).then((dispose) => {
-      if (controller.signal.aborted) { dispose(); return; }
-      cleanup = dispose;
-    }).catch((error) => {
-      if (error?.name !== "AbortError") setButtonError(error);
-    });
-    return () => {
-      controller.abort();
-      cleanup();
-    };
-  }, [loginWithFirebaseToken, shouldRenderDesktopGoogleButton]);
-
-  const handleMobileGoogleLogin = async () => {
-    if (mobileLoginPending || !mobileGoogleAuthReady || status !== "anonymous" || configErrors.length) return;
-    const mobileAuth = mobileGoogleAuthRef.current;
-    if (!mobileAuth) {
-      setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
-      return;
-    }
-    setButtonError(null);
-    setMobileLoginPending(true);
-    try {
-      await mobileAuth.signInWithGoogleMobile({ onFirebaseToken: loginWithFirebaseToken });
-    } catch (loginError) {
-      setButtonError(loginError);
-    } finally {
-      setMobileLoginPending(false);
-    }
-  };
 
   const requestedPath = typeof location.state?.from === "string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")
     ? location.state.from
     : "/";
+
+  const handleGoogleLogin = async () => {
+    if (googleLoginPending || !googleAuthReady || status !== "anonymous" || configErrors.length) return;
+    const googleAuth = googleAuthRef.current;
+    if (!googleAuth) {
+      setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+      return;
+    }
+    setButtonError(null);
+    setGoogleLoginPending(true);
+    try {
+      await googleAuth.signInWithGoogleMobile({ onFirebaseToken: loginWithFirebaseToken, returnTo: requestedPath });
+    } catch (loginError) {
+      setButtonError(loginError);
+    } finally {
+      setGoogleLoginPending(false);
+    }
+  };
+
   if (status === "authenticated") return <Navigate to={requestedPath} replace />;
 
-  const providerProps = { buttonRef, configErrors, error, buttonError, status, refreshSession };
-  const mobileAuthProps = {
+  const googleAuthProps = {
     configErrors,
     error,
     buttonError,
     status,
     refreshSession,
-    pending: mobileLoginPending,
-    ready: mobileGoogleAuthReady,
-    onLogin: handleMobileGoogleLogin,
+    pending: googleLoginPending,
+    ready: googleAuthReady,
+    onLogin: handleGoogleLogin,
   };
   if (mobileLayout) return (
     <MobileLoginLayout
@@ -607,10 +575,10 @@ const LoginPage = () => {
       moveSwipe={moveSwipe}
       finishSwipe={finishSwipe}
       trackRef={trackRef}
-      mobileAuthProps={mobileAuthProps}
+      mobileAuthProps={googleAuthProps}
     />
   );
-  return <DesktopLoginLayout theme={theme} providerProps={providerProps} />;
+  return <DesktopLoginLayout theme={theme} authProps={googleAuthProps} />;
 };
 
 export default LoginPage;

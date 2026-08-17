@@ -8,8 +8,8 @@ import {
   DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS,
   ensureDevelopmentDependencies,
 } from "../../scripts/bootstrap-development-dependencies.mjs";
-import { ensureDevelopmentEnvironment, normalizeVercelGitignore } from "../../scripts/bootstrap-development-env.mjs";
-import { CORE_RUNTIME_ENV_KEYS, LEGACY_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
+import { ensureDevelopmentEnvironment, mergeDevelopmentEnvironment, normalizeVercelGitignore } from "../../scripts/bootstrap-development-env.mjs";
+import { CORE_RUNTIME_ENV_KEYS, LEGACY_ENV_KEYS, PRODUCTION_AUTH_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
 import { cleanEnvironmentText } from "../../scripts/clean-local-environment.mjs";
 import { validateDevelopmentEnvironment } from "../../scripts/push-vercel-development-env.mjs";
 import { createVapidTestEnvironment } from "../helpers/vapid-test-keys.js";
@@ -116,6 +116,31 @@ test("bootstrap interaktif selalu refresh Vercel Development walau .env.local le
   assert.equal(calls.some(({ args }) => args[0] === "env" && args[1] === "pull"), true);
   assert.equal(await readFile(envPath, "utf8"), remote);
 }));
+
+test("bootstrap mempertahankan secret OAuth production lokal tanpa menariknya dari Vercel Development", async () => withTempRoot(async (root) => {
+  const envPath = path.join(root, ".env.local");
+  const secretLine = "GOOGLE_OAUTH_CLIENT_SECRET=local-production-secret";
+  await writeFile(envPath, `${completeEnvironment()}${secretLine}\n`);
+  const result = await ensureDevelopmentEnvironment({
+    projectRoot: root,
+    interactive: true,
+    runner: successfulRefreshRunner(completeEnvironment()),
+  });
+  const refreshed = await readFile(envPath, "utf8");
+  assert.equal(result.source, "vercel-development");
+  assert.match(refreshed, new RegExp(`^${secretLine}$`, "m"));
+  assert.equal((refreshed.match(/^GOOGLE_OAUTH_CLIENT_SECRET=/gm) || []).length, 1);
+}));
+
+test("bootstrap membuang secret OAuth yang salah ditempatkan di Vercel Development", () => {
+  const key = PRODUCTION_AUTH_ENV_KEYS[0];
+  const merged = mergeDevelopmentEnvironment({
+    pulledSource: `${completeEnvironment()}${key}=development-must-not-be-imported\n`,
+    existingLocalSource: completeEnvironment(),
+  });
+  assert.doesNotMatch(merged.text, new RegExp(`^${key}=`, "m"));
+  assert.ok(merged.removed.includes(key));
+});
 
 test("bootstrap membersihkan OIDC dari .env.local lengkap pada mode non-interaktif", async () => withTempRoot(async (root) => {
   const envPath = path.join(root, ".env.local");

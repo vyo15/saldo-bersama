@@ -31,7 +31,7 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
   assert.doesNotMatch(reports, /alerts\.slice\(0,\s*8\)/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
-  const budgets = await source("src/features/budgets/BudgetsPage.jsx");
+  const budgets = await Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n"));
   assert.match(budgets, /useApiResource\("budgets\.list"/);
   assert.match(budgets, /upsertBudget/);
   assert.match(budgets, /requestArchiveBudget/);
@@ -49,6 +49,26 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(alertList, /state=\{guidance\.state\}/);
 });
 
+test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak report", async () => {
+  const [reports, reportStyles] = await Promise.all([
+    source("src/features/reports/ReportsPage.jsx"),
+    source("src/features/reports/ReportsPage.module.css"),
+  ]);
+  for (const label of ["Ringkasan", "Per kategori", "Pengeluaran periode ini", "Bandingkan", "Pengeluaran terbesar", "Anggaran vs aktual", "Rincian lainnya"]) {
+    assert.match(reports, new RegExp(label));
+  }
+  assert.match(reports, /MOBILE_REPORT_QUERY = "\(max-width: 820px\)"/);
+  assert.match(reports, /TREND_OPTIONS = \[3, 6, 12\]/);
+  assert.match(reports, /categoryIcon\(category\?\.icon, "expense"\)/);
+  assert.match(reports, /<MobileSummaryAlerts alerts=\{overview\?\.alerts\} \/>/);
+  assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
+  assert.match(reports, /to="\/anggaran"/);
+  assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|transactions\.create/);
+  assert.match(reportStyles, /@media \(max-width: 820px\)/);
+  assert.match(reportStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(reportStyles, /prefers-reduced-motion: reduce/);
+});
+
 test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dikonsumsi satu kali", async () => {
   const [presentation, attentionHook, transactions, reconciliation, recurring, recurringActions, goals, budgets, allocations] = await Promise.all([
     source("src/features/dashboard/dashboardPresentation.js"),
@@ -61,8 +81,8 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
       source("src/features/recurring/RecurringDialogs.jsx"),
     ]).then((parts) => parts.join("\n")),
     source("src/features/goals/GoalsPage.jsx"),
-    source("src/features/budgets/BudgetsPage.jsx"),
-    source("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
   ]);
   for (const type of ["reconciliation_difference", "reconciliation_stale", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(presentation, new RegExp(type));
@@ -107,7 +127,7 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", 
 
 test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang memakai kantong", async () => {
   const [allocations, recurring, navigation] = await Promise.all([
-    source("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([
       source("src/features/recurring/RecurringPage.jsx"),
       source("src/features/recurring/RecurringDialogs.jsx"),

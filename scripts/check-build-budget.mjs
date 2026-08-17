@@ -11,6 +11,7 @@ const limits = Object.freeze({
   globalCssGzip: 20 * 1024,
   routeChunkGzip: 8 * 1024,
 });
+const warningRatio = 0.9;
 
 const files = await readdir(assets);
 const measurements = [];
@@ -25,13 +26,29 @@ const globalCss = measurements.filter((item) => /^index-.*\.css$/.test(item.name
 if (!mainJs || !globalCss) throw new Error("Build budget tidak menemukan bundle utama Vite.");
 
 const violations = [];
-if (mainJs.gzip > limits.mainJsGzip) violations.push(`${mainJs.name} gzip ${mainJs.gzip} > ${limits.mainJsGzip}`);
-if (globalCss.gzip > limits.globalCssGzip) violations.push(`${globalCss.name} gzip ${globalCss.gzip} > ${limits.globalCssGzip}`);
-for (const item of measurements.filter((entry) => /Page-.*\.js$/.test(entry.name))) {
-  if (item.gzip > limits.routeChunkGzip) violations.push(`${item.name} gzip ${item.gzip} > ${limits.routeChunkGzip}`);
-}
+const warnings = [];
+const measureBudget = (item, limit, label) => {
+  if (item.gzip > limit) {
+    violations.push(`${item.name} gzip ${item.gzip} > ${limit}`);
+    return;
+  }
+  if (item.gzip >= Math.floor(limit * warningRatio)) {
+    warnings.push({ label, name: item.name, gzip: item.gzip, limit, headroom: limit - item.gzip });
+  }
+};
+
+measureBudget(mainJs, limits.mainJsGzip, "main JS");
+measureBudget(globalCss, limits.globalCssGzip, "global CSS");
+const routeChunks = measurements.filter((entry) => /Page-.*\.js$/.test(entry.name));
+for (const item of routeChunks) measureBudget(item, limits.routeChunkGzip, "route");
 
 console.log(`Build budget: main JS ${mainJs.gzip} B gzip; global CSS ${globalCss.gzip} B gzip; ${measurements.length} asset diperiksa.`);
+if (warnings.length) {
+  console.warn(`Build budget warning: asset >= ${Math.round(warningRatio * 100)}% batas harus dianggap sinyal refactor sebelum patch berikutnya.`);
+  warnings
+    .sort((left, right) => (left.headroom - right.headroom) || left.name.localeCompare(right.name))
+    .forEach((item) => console.warn(`Mendekati batas [${item.label}]: ${item.name} gzip ${item.gzip}/${item.limit} B; headroom ${item.headroom} B.`));
+}
 if (violations.length) {
   violations.forEach((item) => console.error(`Budget terlampaui: ${item}`));
   process.exit(1);

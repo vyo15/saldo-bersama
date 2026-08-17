@@ -56,6 +56,7 @@ Urutan validation patch:
 2. jalankan lint/build relevan;
 3. setelah seluruh edit dan docs final, jalankan full gate dari tree yang sama;
 4. bila edit dilakukan lagi setelah PASS, PASS lama gugur dan gate relevan harus diulang.
+5. handoff patch hanya boleh diberi status final bila full gate tree final PASS pada Node `24.18.1`; environment non-canonical hanya boleh menghasilkan candidate yang diberi label unverified.
 
 Default full local gate setelah setiap patch:
 
@@ -65,9 +66,9 @@ npm run verify
 
 `npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check` dan `npm run test:guard`. Ia tidak menjalankan `npm ci` atau menghapus dependency. Browser automation telah dipensiunkan dari quality gate; UI/responsive diperiksa dengan regression frontend dan manual device QA sesuai scope.
 
-`npm run check` tetap menjadi gate inti yang mencakup source validation, lint, frontend/backend tests, backend coverage, production build, dan build budget. Gunakan command penyusun secara terarah hanya untuk diagnosis kegagalan atau bila scope membutuhkan test tambahan:
+`npm run check` tetap menjadi gate inti yang mencakup source validation, lint, frontend/backend tests, production build, build budget, dan backend coverage. Build + budget dijalankan sebelum coverage backend agar kegagalan bundle/source frontend muncul lebih cepat dan tidak membuang waktu pada coverage yang mahal. Gunakan command penyusun secara terarah hanya untuk diagnosis kegagalan atau bila scope membutuhkan test tambahan.
 
-Jika build budget gagal, jangan ubah threshold sebagai shortcut. Audit route chunk, static dependency import, CSS global, dan asset tidak terpakai. Firebase auth mobile adalah lazy provider chunk: production canonical memakai redirect same-origin dengan reverse proxy `/__/auth/*`, sedangkan localhost/device emulation memakai popup fallback; desktop GIS tetap terpisah. Perubahan auth mobile wajib ikut security/deployment regression, memastikan `/__/auth/*` tetap network-only di Service Worker, dan tidak boleh memindahkan authorization dari backend. Verification wrapper selalu membersihkan generated build/test output sesudah PASS maupun gagal, sehingga retry dimulai dari artefak bersih tanpa menghapus dependency atau env lokal.
+Build-budget checker juga memberi warning saat main JS, global CSS, atau route chunk mencapai 90% batas. Warning bukan kegagalan gate, tetapi wajib dianggap sinyal headroom rendah dan dipertimbangkan untuk lazy boundary/ekstraksi sebelum feature berikutnya. Jika build budget gagal, jangan ubah threshold sebagai shortcut. Audit route chunk, static dependency import, CSS global, dan asset tidak terpakai. Auth Google tetap lazy: production canonical desktop/mobile memakai Google OAuth Authorization Code flow server-side melalui `/api/auth/google/start` dan `/api/auth/google/callback`, sedangkan localhost/device emulation memakai Firebase popup fallback. Perubahan auth wajib ikut security/deployment regression, menguji state/nonce, redirect internal, Google→Firebase token exchange, backend allowlist/session, dan tidak boleh memindahkan authorization dari backend. Verification wrapper selalu membersihkan generated build/test output sesudah PASS maupun gagal, sehingga retry dimulai dari artefak bersih tanpa menghapus dependency atau env lokal.
 
 ```bash
 npm run db:integrity   # hanya bila operasi DB memang disetujui

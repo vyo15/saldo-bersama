@@ -7,7 +7,7 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 test("halaman Anggaran memisahkan pengelolaan dari Laporan dengan guard Administrator dan concurrency", async () => {
   const [app, page, api, reports, dashboard, navigation] = await Promise.all([
     read("src/app/App.jsx"),
-    read("src/features/budgets/BudgetsPage.jsx"),
+    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
@@ -32,7 +32,7 @@ test("halaman Anggaran memisahkan pengelolaan dari Laporan dengan guard Administ
 
 test("form Anggaran mempertahankan validasi nominal, kategori aktif, dan ambang batas", async () => {
   const [page, moneyInput] = await Promise.all([
-    read("src/features/budgets/BudgetsPage.jsx"),
+    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/components/common/MoneyInput.jsx"),
   ]);
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
@@ -50,7 +50,7 @@ test("form Anggaran mempertahankan validasi nominal, kategori aktif, dan ambang 
 
 test("UI Anggaran memakai hero, pacing marker, filter perhatian, dan ikon kategori existing", async () => {
   const [page, card, pacing, hero, presentation, styles] = await Promise.all([
-    read("src/features/budgets/BudgetsPage.jsx"),
+    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/components/BudgetInsightCard.jsx"),
     read("src/features/budgets/components/BudgetPacingBar.jsx"),
     read("src/features/budgets/components/BudgetHeroCard.jsx"),
@@ -75,4 +75,11 @@ test("UI Anggaran memakai hero, pacing marker, filter perhatian, dan ikon katego
   assert.doesNotMatch(styles, /emptyStateArtwork|emptyStateArtworkWrap/);
   assert.doesNotMatch(styles, /\.tipArtwork\s*\{[^}]*bottom:\s*-/s);
   assert.match(presentation, /usedPercent > Number\(periodMeta\.elapsedPercent \|\| 0\) \+ 8/);
+});
+
+
+test("dialog Anggaran tetap lazy agar route memiliki headroom bundle", async () => {
+  const page = await read("src/features/budgets/BudgetsPage.jsx");
+  assert.match(page, /const BudgetDialogLayer = lazy\(\(\) => import\("\.\/BudgetDialogLayer\.jsx"\)\)/);
+  assert.match(page, /<Suspense fallback=\{null\}>[\s\S]*<BudgetDialogLayer/);
 });

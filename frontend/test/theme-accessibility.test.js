@@ -96,7 +96,7 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(dashboard, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
   assert.match(dashboard, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
   assert.doesNotMatch(pages, /\.premium-/);
-  assert.match(loginStyles, /\.google-login-button \{[^}]*min-height:\s*48px;/);
+  assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;/);
   assert.doesNotMatch(pages, /\.shared-account-panel \{/);
   const dashboardStart = dashboard.indexOf(".shared-account-panel {");
   const dashboardEnd = dashboard.indexOf(".shared-empty-state {", dashboardStart);

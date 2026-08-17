@@ -30,8 +30,8 @@ test("fixed-option finance forms use the shared visual selector while dynamic li
   const sources = await Promise.all([
     read("features/transactions/TransactionForm.jsx"),
     read("features/accounts/components/AccountEditorDialogs.jsx"),
-    read("features/budgets/BudgetsPage.jsx"),
-    read("features/allocations/AllocationsPage.jsx"),
+    Promise.all([read("features/budgets/BudgetsPage.jsx"), read("features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("features/allocations/AllocationsPage.jsx"), read("features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/goals/GoalsPage.jsx"),
     read("features/categories/CategoriesPage.jsx"),

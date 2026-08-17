@@ -72,13 +72,13 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
 
 test("planning master memakai server lifecycle preview sebelum hard-delete unused", async () => {
   const [allocations, allocationsApi, recurring, recurringApi, goals, goalsApi, budgets, budgetsApi] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/allocations/allocations.api.js"),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/recurring.api.js"),
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/goals/goals.api.js"),
-    read("src/features/budgets/BudgetsPage.jsx"),
+    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
   ]);
   for (const [page, api, previewAction, deleteAction] of [
@@ -219,8 +219,8 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
     transactionForm, budgets, allocations, goals, recurring, categories, accountDialogs, members,
   ] = await Promise.all([
     read("src/features/transactions/TransactionForm.jsx"),
-    read("src/features/budgets/BudgetsPage.jsx"),
-    read("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/recurring/RecurringDialogs.jsx"),
     read("src/features/categories/CategoriesPage.jsx"),
@@ -255,7 +255,7 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
     read("src/components/common/ConfirmationModal.jsx"),
     read("src/features/goals/GoalsPage.jsx"),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
-    read("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/transactions/TransactionForm.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
   ]);
@@ -299,10 +299,11 @@ test("jadwal rutin memuat dialog secara lazy dan helper filter tidak mengotori m
   const [page, layer, schedule, presentation] = await Promise.all([
     read("src/features/recurring/RecurringPage.jsx"),
     read("src/features/recurring/RecurringDialogLayer.jsx"),
-    read("src/features/recurring/RecurringSchedule.jsx"),
+    Promise.all([read("src/features/recurring/RecurringSchedule.jsx"), read("src/features/recurring/RecurringScheduleView.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/recurringPresentation.js"),
   ]);
   assert.match(page, /lazy\(\(\) => import\("\.\/RecurringDialogLayer\.jsx"\)\)/);
+  assert.match(page, /lazy\(\(\) => import\("\.\/RecurringScheduleView\.jsx"\)\)/);
   assert.match(page, /<Suspense fallback=\{null\}>/);
   assert.doesNotMatch(page, /from "\.\/RecurringDialogs\.jsx"/);
   assert.match(layer, /from "\.\/RecurringDialogs\.jsx"/);
@@ -434,18 +435,15 @@ test("error actor canonical membatalkan sesi lokal tanpa menganggap semua 403 se
   assert.match(authContext, /apiClient\.setSessionScope\("anonymous"\)/);
 });
 
-test("inisialisasi Google Login dapat dibatalkan saat layout atau effect berubah", async () => {
-  const [page, google] = await Promise.all([
-    read("src/features/auth/LoginPage.jsx"),
-    read("src/services/auth/googleFirebaseAuth.js"),
-  ]);
-  assert.match(page, /const controller = new AbortController\(\)/);
-  assert.match(page, /signal: controller\.signal/);
-  assert.match(page, /controller\.abort\(\)/);
-  assert.match(page, /error\?\.name !== "AbortError"/);
-  assert.match(google, /waitForGoogleIdentity\(8000, signal\)/);
-  assert.match(google, /signal\?\.aborted/);
-  assert.match(google, /removeEventListener\("abort", onAbort\)/);
+test("login branded desktop dan mobile berbagi satu transport auth tanpa GIS runtime desktop", async () => {
+  const page = await read("src/features/auth/LoginPage.jsx");
+  assert.match(page, /preloadMobileGoogleAuth/);
+  assert.match(page, /const useGoogleProvider/);
+  assert.match(page, /signInWithGoogleMobile/);
+  assert.match(page, /returnTo: requestedPath/);
+  assert.match(page, /<MobileGoogleLogin \{\.\.\.authProps\}/);
+  assert.match(page, /mobileAuthProps=\{googleAuthProps\}/);
+  assert.doesNotMatch(page, /renderGoogleLoginButton|google-login-button/);
 });
 
 
@@ -520,4 +518,15 @@ test("FinanceContext memakai epoch per resource agar refresh overview dan bootst
   assert.match(epoch, /session/);
   assert.match(epoch, /requestOwnsFinanceResource/);
   assert.match(epoch, /invalidateFinanceSession/);
+});
+
+test("dialog alokasi dimuat lazy agar route planning tidak kembali mendekati batas bundle", async () => {
+  const [page, layer] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationDialogLayer.jsx"),
+  ]);
+  assert.match(page, /const AllocationDialogLayer = lazy\(\(\) => import\("\.\/AllocationDialogLayer\.jsx"\)\)/);
+  assert.match(page, /<Suspense fallback=\{null\}>[\s\S]*<AllocationDialogLayer/);
+  assert.doesNotMatch(page, /from "\.\/AllocationDialogLayer\.jsx";/);
+  for (const modal of ["CreateEnvelopeModal", "MoveEnvelopeModal", "AllocationModals"]) assert.match(layer, new RegExp(`const ${modal}`));
 });

@@ -6,7 +6,9 @@ Turso adalah satu-satunya **source of truth**. React tidak berkomunikasi langsun
 
 ```text
 PWA React/Vite
-  -> Firebase Google Sign-In
+  -> Localhost/device emulation Firebase popup
+  -> Production desktop/mobile Google OAuth server callback
+       -> Google ID token -> Firebase Identity Toolkit -> verified Firebase identity
   -> HttpOnly signed session
   -> Vercel Functions
   -> Turso Database
@@ -25,7 +27,7 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 ## Trust boundaries
 
 1. Browser dianggap tidak tepercaya.
-2. Firebase ID token diverifikasi server-side sebelum session dibuat.
+2. Firebase ID token diverifikasi server-side sebelum session dibuat. Production memperoleh Firebase ID token untuk desktop dan mobile melalui Google OAuth Authorization Code callback server; signed state/nonce, callback origin, dan allowlist tetap diverifikasi sebelum session dibuat.
 3. `ALLOWED_USERS_JSON` adalah outer allowlist; tabel `users` adalah binding internal. Keduanya harus konsisten.
 4. UID, role, email actor, timestamp, audit, scope internal, dan status tidak diterima dari client sebagai kebenaran.
 5. Turso URL/token hanya berada di server environment.

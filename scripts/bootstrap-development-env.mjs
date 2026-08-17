@@ -7,6 +7,7 @@ import { buildVercelInvocation } from "./push-vercel-production-env.mjs";
 import {
   developmentEnvironmentStatus,
   parseEnvironmentText,
+  PRODUCTION_AUTH_ENV_KEYS,
 } from "./runtime-environment.mjs";
 
 export const DEFAULT_VERCEL_PROJECT = "saldo-bersama";
@@ -109,6 +110,47 @@ const developmentProblemMessage = (state) => {
   return details.join("; ");
 };
 
+const environmentAssignmentKey = (line) => {
+  const match = String(line).match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+  return match?.[1] || null;
+};
+
+const withoutEnvironmentKeys = (source, keys) => {
+  const blocked = new Set(keys);
+  return `${String(source || "")
+    .split(/\r?\n/)
+    .filter((line) => !blocked.has(environmentAssignmentKey(line)))
+    .join("\n")
+    .replace(/\n*$/, "")}\n`;
+};
+
+const lastEnvironmentAssignments = (source, keys) => {
+  const allowed = new Set(keys);
+  const assignments = new Map();
+  String(source || "").split(/\r?\n/).forEach((line) => {
+    const key = environmentAssignmentKey(line);
+    if (allowed.has(key)) assignments.set(key, line);
+  });
+  return assignments;
+};
+
+export const mergeDevelopmentEnvironment = ({ pulledSource = "", existingLocalSource = "" } = {}) => {
+  const cleanedPulled = cleanEnvironmentText(pulledSource);
+  const developmentOnly = withoutEnvironmentKeys(cleanedPulled.text, PRODUCTION_AUTH_ENV_KEYS);
+  const preserved = lastEnvironmentAssignments(existingLocalSource, PRODUCTION_AUTH_ENV_KEYS);
+  const preservedLines = PRODUCTION_AUTH_ENV_KEYS.map((key) => preserved.get(key)).filter(Boolean);
+  const text = preservedLines.length
+    ? `${developmentOnly.replace(/\n*$/, "")}\n${preservedLines.join("\n")}\n`
+    : developmentOnly;
+  return {
+    text,
+    removed: [...new Set([
+      ...cleanedPulled.removed,
+      ...PRODUCTION_AUTH_ENV_KEYS.filter((key) => Object.hasOwn(parseEnvironmentText(cleanedPulled.text), key)),
+    ])].sort(),
+  };
+};
+
 export const ensureDevelopmentEnvironment = async ({
   projectRoot,
   projectName = DEFAULT_VERCEL_PROJECT,
@@ -148,8 +190,8 @@ export const ensureDevelopmentEnvironment = async ({
     await pullDevelopmentEnvironment({ cwd: projectRoot, target: temporaryPath, runner });
 
     const pulledSource = await readFile(temporaryPath, "utf8");
-    const cleaned = cleanEnvironmentText(pulledSource);
-    const values = parseEnvironmentText(cleaned.text);
+    const merged = mergeDevelopmentEnvironment({ pulledSource, existingLocalSource: local.source });
+    const values = parseEnvironmentText(withoutEnvironmentKeys(merged.text, PRODUCTION_AUTH_ENV_KEYS));
     const status = developmentEnvironmentStatus(values);
     if (!status.complete) {
       const problem = developmentProblemMessage(status);
@@ -162,10 +204,10 @@ export const ensureDevelopmentEnvironment = async ({
       );
     }
 
-    await writeFile(temporaryPath, cleaned.text, { encoding: "utf8", mode: 0o600 });
-    await writeEnvironmentFileAtomic(envPath, cleaned.text);
+    await writeFile(temporaryPath, merged.text, { encoding: "utf8", mode: 0o600 });
+    await writeEnvironmentFileAtomic(envPath, merged.text);
     console.log("Environment Development terbaru berhasil ditarik dan disimpan sebagai .env.local.");
-    return { source: "vercel-development", envPath, missing: [], invalid: [], removed: cleaned.removed };
+    return { source: "vercel-development", envPath, missing: [], invalid: [], removed: merged.removed };
   } finally {
     await normalizeVercelGitignore(projectRoot).catch(() => false);
     await rm(temporaryPath, { force: true }).catch(() => undefined);

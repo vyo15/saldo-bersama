@@ -4,7 +4,7 @@ Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development 
 
 ## Kebijakan environment
 
-Runtime canonical terdiri dari **sembilan key core wajib dan satu key logging opsional**; grup Google bridge dan Web Push mengikuti aturan kelengkapan masing-masing.
+Runtime Development canonical terdiri dari **sembilan key core wajib dan satu key logging opsional**; grup Google bridge dan Web Push mengikuti aturan kelengkapan masing-masing. Production menambahkan **satu secret auth wajib** untuk Google OAuth server-side.
 
 - Project saat ini memakai satu database Turso untuk runtime lokal dan Vercel Production sesuai keputusan pemilik.
 - Vercel **Development** menjadi source of truth bootstrap `.env.local` untuk komputer tepercaya. `npm run dev` pada terminal interaktif selalu menarik ulang Development sebelum server dimulai agar konfigurasi antar-PC tidak drift.
@@ -14,7 +14,7 @@ Runtime canonical terdiri dari **sembilan key core wajib dan satu key logging op
 - `.env.local` hanya cache lokal terjaga. File ini tidak pernah di-commit, dimasukkan ZIP, log, issue, atau chat.
 - Variable `VITE_*` bersifat publik dan masuk ke bundle browser.
 - Setelah variable Production berubah, buat deployment Production baru.
-- Hanya collaborator Vercel yang dipercaya boleh memiliki akses project. Vercel Development dapat ditarik ke komputer lokal dan tidak mendukung mode Sensitive seperti Production/Preview.
+- Hanya collaborator Vercel yang dipercaya boleh memiliki akses project. Vercel Development dapat ditarik ke komputer lokal dan tidak mendukung mode Sensitive seperti Production/Preview. Karena itu `GOOGLE_OAUTH_CLIENT_SECRET` **tidak boleh disimpan pada scope Development**.
 - Karena runtime lokal dan Production memakai database yang sama, Web Push Development memakai pasangan VAPID yang sama dengan Production. Jangan membuat pasangan VAPID per perangkat.
 
 ## Scope Development canonical
@@ -63,13 +63,21 @@ Jika Google bridge diaktifkan, ketiga key harus lengkap. Satu konfigurasi pusat 
 
 ## Scope Production canonical
 
-Production memakai sembilan key core dan satu key logging opsional yang sama namanya. Google bridge dan Web Push ikut disinkronkan hanya bila seluruh key pada grup terkait lengkap dan valid.
+Production memakai sembilan key core dan satu key logging opsional yang sama namanya, ditambah satu secret auth wajib. Google bridge dan Web Push ikut disinkronkan hanya bila seluruh key pada grup terkait lengkap dan valid.
 
-Secret/token Production harus diperlakukan sebagai secret deployment. `npm run env:push:production` menyinkronkan core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap. Grup parsial atau key VAPID invalid membuat command berhenti sebelum mengubah Vercel.
+### Auth production — wajib dan Sensitive
+
+| Key | Sensitive data | Keterangan |
+|---|---:|---|
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Ya | Client secret untuk OAuth Web Client yang ID-nya sama dengan `VITE_GOOGLE_CLIENT_ID`; hanya dipakai server callback Google OAuth production dan tidak pernah masuk browser bundle |
+
+`GOOGLE_OAUTH_CLIENT_SECRET` tidak boleh dibuat sebagai `VITE_*`, tidak boleh disimpan pada Vercel Development, dan tidak boleh dipull dari Development. Jika secret sudah ada pada `.env.local` komputer tepercaya, bootstrap Development mempertahankan assignment lokal tersebut saat core/settings lain direfresh dari Vercel Development. Jika key yang sama tidak sengaja muncul pada hasil pull Development, bootstrap membuang nilai Development tersebut dan tidak mengimpornya ke `.env.local`.
+
+Secret/token Production harus diperlakukan sebagai secret deployment. `npm run env:push:production` mewajibkan `GOOGLE_OAUTH_CLIENT_SECRET` dan menyinkronkannya sebagai **Sensitive**, bersama core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap. Grup parsial atau key VAPID invalid membuat command berhenti sebelum mengubah Vercel.
 
 ## `.env.local` canonical
 
-`.env.local` memakai key canonical yang sama dengan Development. Pada kondisi database tunggal saat ini, nilai Turso, allowlist, session, Web Push, dan integrasi aktif harus mengikuti konfigurasi pusat yang disetujui. Jangan membuat fallback, token dummy, database lokal kedua, atau pasangan VAPID baru per komputer.
+`.env.local` memakai key canonical Development dan boleh menyimpan `GOOGLE_OAUTH_CLIENT_SECRET` sebagai **production-only local credential** pada komputer tepercaya. Pada kondisi database tunggal saat ini, nilai Turso, allowlist, session, Web Push, dan integrasi aktif harus mengikuti konfigurasi pusat yang disetujui. Jangan membuat fallback, token dummy, database lokal kedua, atau pasangan VAPID baru per komputer.
 
 `npm run dev` berperilaku sebagai berikut:
 
@@ -80,6 +88,8 @@ terminal interaktif
   → cek/link project saldo-bersama
   → vercel env pull <temporary-file> dari scope Development
   → hapus VERCEL_OIDC_TOKEN/key legacy dan grup parsial
+  → buang GOOGLE_OAUTH_CLIENT_SECRET bila salah ditempatkan di Development
+  → pertahankan GOOGLE_OAUTH_CLIENT_SECRET lama hanya dari .env.local tepercaya
   → validasi sembilan core + Web Push wajib
   → atomic replace .env.local
   → start server
@@ -139,7 +149,7 @@ npm run env:check
 npm run env:push:production
 ```
 
-Command mengirim core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap ke Production tanpa mencetak nilai secret. Jalankan deployment Production baru setelah sinkronisasi.
+Command mewajibkan dan mengirim `GOOGLE_OAUTH_CLIENT_SECRET` sebagai Sensitive, bersama core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap ke Production tanpa mencetak nilai secret. Jalankan deployment Production baru setelah sinkronisasi.
 
 Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sensitive. Simpan sumber canonical secret hanya pada workflow tepercaya dan rotasi bila sumber tersebut hilang.
 
@@ -194,5 +204,5 @@ Command hanya menampilkan status/nama variable, bukan isi secret. Source validat
 `VITE_FIREBASE_AUTH_DOMAIN` adalah public Firebase web config. Nilai production saat ini `saldo-bersama.firebaseapp.com`; jangan menaruh secret pada key `VITE_*`.
 ### Firebase Auth domain belum ada di Vercel
 
-`VITE_FIREBASE_AUTH_DOMAIN` termasuk **core environment**, bukan settings-only. Untuk project ini nilainya tetap `saldo-bersama.firebaseapp.com`. Jika bootstrap Development melaporkan key ini belum tersedia, tambahkan/sinkronkan key tersebut ke Vercel Development. `npm run env:push:development:settings` hanya untuk Web Push dan Google bridge, sehingga tidak dapat memperbaiki core key ini. Production juga harus mempunyai nilai yang sama. Pada production canonical, client auth mobile secara runtime memakai host aplikasi `saldo-bersama.vercel.app` sebagai `authDomain` same-origin dan `/__/auth/*` diproxy transparan ke nilai Firebase upstream tersebut. Jangan mengganti key environment menjadi domain Vercel. Backend session tetap menjadi authority setelah Firebase ID token diverifikasi.
+`VITE_FIREBASE_AUTH_DOMAIN` termasuk **core environment**, bukan settings-only. Untuk project ini nilainya tetap `saldo-bersama.firebaseapp.com`. Jika bootstrap Development melaporkan key ini belum tersedia, tambahkan/sinkronkan key tersebut ke Vercel Development. `npm run env:push:development:settings` hanya untuk Web Push dan Google bridge, sehingga tidak dapat memperbaiki core key ini. Production juga tetap mempunyai nilai yang sama untuk Firebase public config/compatibility. Production desktop/mobile server OAuth tidak memakai Firebase browser redirect atau `/__/auth/*`; callback server menukar Google ID token ke Firebase ID token lalu verifier backend tetap menjadi authority sebelum allowlist/role dan session dibuat.
 

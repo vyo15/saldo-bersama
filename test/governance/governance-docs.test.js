@@ -10,6 +10,7 @@ import {
   CORE_RUNTIME_ENV_KEYS,
   GOOGLE_BRIDGE_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
+  PRODUCTION_AUTH_ENV_KEYS,
   PRODUCTION_SYNC_ENV_KEYS,
   WEB_PUSH_ENV_KEYS,
 } from "../../scripts/runtime-environment.mjs";
@@ -288,11 +289,14 @@ test("every canonical environment key is documented and classifications use one 
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
   assert.deepEqual(PRODUCTION_SYNC_ENV_KEYS, [
     ...CORE_RUNTIME_ENV_KEYS,
+    ...PRODUCTION_AUTH_ENV_KEYS,
     ...OPTIONAL_LOGGING_ENV_KEYS,
     ...GOOGLE_BRIDGE_ENV_KEYS,
     ...WEB_PUSH_ENV_KEYS,
   ]);
   assert.match(environmentDocs, /sembilan key core wajib dan satu key logging opsional/);
+  assert.match(environmentDocs, /GOOGLE_OAUTH_CLIENT_SECRET/);
+  assert.match(environmentDocs, /Production Sensitive|Sensitive/);
   assert.match(environmentDocs, /Web Push wajib lengkap dan valid/i);
   assert.doesNotMatch(environmentDocs, /delapan key core/i);
 });
@@ -337,7 +341,7 @@ test("project status is a current-state snapshot with schema v9 and shared datab
 });
 
 
-test("current docs track desktop GIS, mobile Firebase redirect production, schema v9, dan manual accessibility QA", () => {
+test("current docs track branded desktop/mobile server OAuth production, schema v9, dan manual accessibility QA", () => {
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
   const deployment = read("docs/DEPLOYMENT.md");
   const status = read("docs/PROJECT_STATUS.md");
@@ -348,14 +352,14 @@ test("current docs track desktop GIS, mobile Firebase redirect production, schem
   assert.match(matrix, /manual device accessibility QA/);
   assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
   assert.match(deployment, /runtime v9 menerima traffic/);
-  assert.match(status, /Auth desktop:.*Google Identity Services/);
-  assert.match(status, /Auth mobile:.*signInWithRedirect.*same-origin/);
-  assert.match(status, /tombol Google custom pada UI Saldo Bersama/);
-  assert.match(testPlan, /production canonical.*`signInWithRedirect`/);
-  assert.match(testPlan, /localhost\/device emulation.*`signInWithPopup`/);
-  assert.match(testPlan, /tidak memakai `google\.accounts\.id\.renderButton\(\)`/);
-  assert.match(testPlan, /Firebase ID token dari hasil auth diteruskan ke session backend existing/);
-  assert.match(release, /https:\/\/saldo-bersama\.vercel\.app\/__\/auth\/handler/);
+  assert.match(status, /Auth desktop dan mobile:.*tombol Google branded Saldo Bersama/);
+  assert.match(status, /Authorization Code flow.*Firebase Identity Toolkit/);
+  assert.match(testPlan, /production canonical.*`\/api\/auth\/google\/start`/);
+  assert.match(testPlan, /[Ll]ocalhost\/device emulation.*`signInWithPopup`/);
+  assert.match(testPlan, /Desktop dan halaman login mobile tidak merender tombol\/iframe Google Identity Services/);
+  assert.match(testPlan, /Google ID token.*Firebase ID token.*Identity Toolkit/);
+  assert.match(release, /https:\/\/saldo-bersama\.vercel\.app\/api\/auth\/google\/callback/);
+  assert.match(release, /GOOGLE_OAUTH_CLIENT_SECRET/);
 });
 
 test("every canonical product requirement is tracked in the implementation matrix", () => {

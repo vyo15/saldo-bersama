@@ -38,8 +38,8 @@ test("branding assets and favicon references stay complete", async () => {
   assert.match(sw, /saldo-bersama-static-v8/);
   assert.match(sw, /SKIP_WAITING/);
   assert.match(sw, /isInfrastructurePath\(url\.pathname\)\) return;/);
-  assert.match(sw, /pathname === "\/__\/auth"/);
-  assert.match(sw, /pathname\.startsWith\("\/__\/auth\/"\)/);
+  assert.match(sw, /pathname === "\/api"/);
+  assert.match(sw, /pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw, /key\.startsWith\("saldo-bersama-"\)/);
   assert.equal(logo.subarray(1, 4).toString(), "PNG");
   // PNG color type 6 means RGBA, so the source logo keeps an alpha channel.

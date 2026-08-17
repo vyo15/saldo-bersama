@@ -21,6 +21,7 @@ import {
 import {
   CORE_RUNTIME_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
+  PRODUCTION_AUTH_ENV_KEYS,
   PRODUCTION_SYNC_ENV_KEYS,
 } from "../../scripts/runtime-environment.mjs";
 import { createVapidTestEnvironment, createVapidTestKeyPair } from "../helpers/vapid-test-keys.js";
@@ -29,6 +30,7 @@ const coreValues = () => Object.fromEntries([...CORE_RUNTIME_ENV_KEYS, ...OPTION
 const validWebPushValues = () => createVapidTestEnvironment();
 const canonicalValues = () => ({
   ...coreValues(),
+  GOOGLE_OAUTH_CLIENT_SECRET: "oauth-client-secret-at-least-32-characters",
   GOOGLE_BRIDGE_WEB_APP_URL: "https://script.google.com/macros/s/test/exec",
   GOOGLE_BRIDGE_SHARED_SECRET: "g".repeat(40),
   JOBS_SHARED_SECRET: "j".repeat(40),
@@ -56,7 +58,8 @@ test("sinkronisasi Vercel mencakup core, logging, dan grup integrasi Production"
   assert.equal(CORE_RUNTIME_ENV_KEYS.length, 9);
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
   assert.deepEqual(PRODUCTION_ENV_KEYS, PRODUCTION_SYNC_ENV_KEYS);
-  assert.equal(PRODUCTION_ENV_KEYS.length, 16);
+  assert.deepEqual(PRODUCTION_AUTH_ENV_KEYS, ["GOOGLE_OAUTH_CLIENT_SECRET"]);
+  assert.equal(PRODUCTION_ENV_KEYS.length, 17);
   assert.deepEqual(new Set([...PUBLIC_PRODUCTION_KEYS, ...SENSITIVE_PRODUCTION_KEYS]), new Set(PRODUCTION_ENV_KEYS));
   assert.equal(validateProductionEnvironment(canonicalValues()).valid, true);
 });
@@ -71,6 +74,16 @@ test("sinkronisasi menolak key legacy dan environment core yang tidak lengkap", 
   assert.deepEqual(status.forbidden, ["APPS_SCRIPT_WEB_APP_URL"]);
 });
 
+test("Production mewajibkan OAuth client secret sedangkan Development tidak pernah menyinkronkannya", () => {
+  const production = canonicalValues();
+  delete production.GOOGLE_OAUTH_CLIENT_SECRET;
+  const productionStatus = validateProductionEnvironment(production);
+  assert.equal(productionStatus.valid, false);
+  assert.deepEqual(productionStatus.missing, ["GOOGLE_OAUTH_CLIENT_SECRET"]);
+  assert.equal(DEVELOPMENT_ENV_KEYS.includes("GOOGLE_OAUTH_CLIENT_SECRET"), false);
+  assert.equal(DEVELOPMENT_SETTINGS_ENV_KEYS.includes("GOOGLE_OAUTH_CLIENT_SECRET"), false);
+});
+
 
 test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi sembilan core", async () => withTempProject(async (root) => {
   const values = canonicalValues();
@@ -83,7 +96,7 @@ test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi sembilan co
     projectRunner: async () => {},
     runner: async (request) => calls.push(request),
   });
-  assert.equal(result.synced.length, 15);
+  assert.equal(result.synced.length, 16);
   assert.equal(calls.some(({ key }) => key === "LOG_LEVEL"), false);
 }));
 
@@ -101,6 +114,7 @@ test("sinkronisasi mengirim nilai via runner tanpa mengekspos secret ke argumen 
   assert.deepEqual(result.synced, [...PRODUCTION_ENV_KEYS]);
   assert.deepEqual(calls.map(({ key }) => key), [...PRODUCTION_ENV_KEYS]);
   assert.equal(calls.find(({ key }) => key === "TURSO_AUTH_TOKEN").sensitive, true);
+  assert.equal(calls.find(({ key }) => key === "GOOGLE_OAUTH_CLIENT_SECRET").sensitive, true);
   assert.equal(calls.find(({ key }) => key === "GOOGLE_BRIDGE_SHARED_SECRET").sensitive, true);
   assert.equal(calls.find(({ key }) => key === "VAPID_PRIVATE_KEY").sensitive, true);
   assert.equal(calls.find(({ key }) => key === "VITE_APP_NAME").sensitive, false);
@@ -220,6 +234,7 @@ test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap
   assert.deepEqual(result.synced, [...DEVELOPMENT_ENV_KEYS]);
   assert.deepEqual(calls.map(({ key }) => key), [...DEVELOPMENT_ENV_KEYS]);
   assert.equal(calls.find(({ key }) => key === "TURSO_AUTH_TOKEN").value, values.TURSO_AUTH_TOKEN);
+  assert.equal(calls.some(({ key }) => key === "GOOGLE_OAUTH_CLIENT_SECRET"), false);
 }));
 
 test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idempotent", async () => withTempProject(async (root) => {

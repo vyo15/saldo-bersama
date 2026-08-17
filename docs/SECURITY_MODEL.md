@@ -6,7 +6,7 @@ Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel
 
 ## Identity
 
-- Firebase Google ID token diverifikasi saat login.
+- Firebase Google ID token diverifikasi saat login. Localhost/device emulation dapat mengirim Firebase ID token dari browser; production desktop/mobile memakai Google OAuth Authorization Code callback server, memverifikasi signed `state`/`nonce`, menukar Google ID token melalui Firebase Identity Toolkit, lalu menjalankan verifier Firebase yang sama.
 - Backend membuat signed HttpOnly `SameSite=Strict` session.
 - Allowlist email+role dan binding user Turso harus konsisten.
 - Authorization default deny.
@@ -21,7 +21,7 @@ Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel
 
 ## Secret classes
 
-Server-only: `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_BRIDGE_SHARED_SECRET`, `JOBS_SHARED_SECRET`, `VAPID_PRIVATE_KEY`.  
+Server-only: `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_BRIDGE_SHARED_SECRET`, `JOBS_SHARED_SECRET`, `VAPID_PRIVATE_KEY`.
 Public client config: key berprefix `VITE_*`; tidak boleh dianggap secret.
 
 Secret tidak boleh masuk source, frontend bundle, log, issue, screenshot, export, atau ZIP. Rotasi harus menilai session invalidation, bridge dual-side update, scheduler, dan redeploy.
