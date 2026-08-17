@@ -113,7 +113,7 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
 });
 
 test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode per route", async () => {
-  const [layout, notifications, members, recovery, period, audit, reset, fullReset, integrations, confirmationModal, feedbackCss, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi] = await Promise.all([
+  const [layout, notifications, members, recovery, period, audit, reset, fullReset, integrations, confirmationModal, feedbackCss, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi, maintenanceRecovery] = await Promise.all([
     read("src/features/settings/SettingsLayout.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
@@ -131,6 +131,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
     read("src/features/allocations/allocations.api.js"),
     read("src/features/goals/goals.api.js"),
     read("src/features/recurring/recurring.api.js"),
+    read("src/features/settings/useMaintenanceRecovery.js"),
   ]);
   assert.match(layout, /\/pengaturan\/notifikasi/);
   assert.doesNotMatch(layout, /\/pengaturan\/anggota/);
@@ -146,7 +147,8 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(reset, /runSettingsAction\("reset\.preview"/);
   assert.match(reset, /runSettingsAction\("reset\.apply"/);
   assert.match(reset, /useApiResource\("reset\.status"/);
-  assert.match(reset, /clearMaintenance: true/);
+  assert.match(reset, /useMaintenanceRecovery/);
+  assert.match(maintenanceRecovery, /clearMaintenance: true/);
   assert.match(reset, /idempotencyKey/);
   assert.match(reset, /newIntent: true/);
   assert.match(reset, /canStartNewIntent/);
@@ -168,7 +170,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.match(fullReset, /RESET SEMUA DATA SALDO BERSAMA/);
   assert.match(fullReset, /countdownSeconds=\{15\}/);
   assert.match(fullReset, /acknowledgementItems=\{FULL_RESET_ACKNOWLEDGEMENTS\}/);
-  assert.match(fullReset, /clearMaintenance: true/);
+  assert.match(fullReset, /useMaintenanceRecovery/);
   assert.match(integrations, /Google Drive/);
   assert.match(integrations, /FiHardDrive/);
   assert.match(confirmationModal, /confirmation-checklist/);
@@ -472,10 +474,11 @@ test("import dan restore teknis menginvalidasi cache finansial sebelum refresh b
 });
 
 test("import transaksi memblokir partial apply dan restore memakai konfirmasi destructive lengkap", async () => {
-  const [importPage, recoveryPage, maintenancePanel, integrations] = await Promise.all([
+  const [importPage, recoveryPage, maintenancePanel, maintenanceRecovery, integrations] = await Promise.all([
     read("src/features/settings/ImportTransactionsPage.jsx"),
     read("src/features/settings/RecoveryPage.jsx"),
     read("src/features/settings/MaintenanceRecoveryPanel.jsx"),
+    read("src/features/settings/useMaintenanceRecovery.js"),
     read("src/features/settings/GoogleIntegrationsPage.jsx"),
   ]);
 
@@ -495,7 +498,8 @@ test("import transaksi memblokir partial apply dan restore memakai konfirmasi de
   assert.match(recoveryPage, /preview\.fileName/);
   assert.match(recoveryPage, /preview\.createdAt/);
   assert.match(recoveryPage, /preview\.schemaVersion/);
-  assert.match(recoveryPage, /clearMaintenance: true/);
+  assert.match(recoveryPage, /useMaintenanceRecovery/);
+  assert.match(maintenanceRecovery, /clearMaintenance: true/);
   assert.match(recoveryPage, /healthResource\.status === "ready"/);
   assert.match(recoveryPage, /!healthReady \|\| maintenanceMode/);
   assert.match(recoveryPage, /<MaintenanceRecoveryPanel/);

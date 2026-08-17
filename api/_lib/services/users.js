@@ -1,7 +1,6 @@
 import { appendAudit } from "./audit.js";
+import { isValidEmail } from "../security.js";
 import { appError, assertOwner, assertVersion, nowIso, publicRow, sanitizeText, uuid } from "./core.js";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const assertCanonicalActor = (user, signedActor) => {
   if (!user) throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
@@ -81,7 +80,7 @@ export const upsertUser = async (db, context) => {
   const payload = context.payload || {};
   const email = String(payload.email || "").trim().toLowerCase();
   const role = String(payload.role || "member");
-  if (!EMAIL_PATTERN.test(email)) throw appError("INVALID_EMAIL", "Email pengguna tidak valid.", 400);
+  if (!isValidEmail(email)) throw appError("INVALID_EMAIL", "Email pengguna tidak valid.", 400);
   if (!["owner", "member"].includes(role)) throw appError("INVALID_ROLE", "Role pengguna tidak valid.", 400);
   const allowed = context.allowedUsers?.find((item) => item.email === email);
   if (!allowed || allowed.role !== role) throw appError("ALLOWLIST_MISMATCH", "Email dan role harus sama dengan ALLOWED_USERS_JSON di Vercel.", 409);

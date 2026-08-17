@@ -18,6 +18,7 @@ import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { isSettingsOutcomeUnknownError, runSettingsAction } from "./settings.api.js";
 import { formatMaintenanceCount as formatCount, readMaintenanceRecoveryToken, storeMaintenanceRecoveryToken, integrationProviderPresentation } from "./settingsPresentation.js";
+import { useMaintenanceRecovery } from "./useMaintenanceRecovery.js";
 import styles from "./Settings.module.css";
 
 const FULL_RESET_RECOVERY_STORAGE_KEY = "saldo-bersama:full-reset-recovery";
@@ -137,7 +138,6 @@ const FullResetConfirmation = ({ preview, open, busy, error, onCancel, onConfirm
 
 const useFullResetRecovery = ({ statusResource, integrationsResource, invalidate, refreshAll, setRecoveryToken }) => {
   const [result, setResult] = useState(null);
-  const [recoveryBusy, setRecoveryBusy] = useState(false);
 
   const clearRecovery = () => {
     storeMaintenanceRecoveryToken(FULL_RESET_RECOVERY_STORAGE_KEY, null);
@@ -176,25 +176,18 @@ const useFullResetRecovery = ({ statusResource, integrationsResource, invalidate
     catch (error) { setResult({ status: "danger", text: error.message }); }
   };
 
-  const recoverMaintenance = async () => {
-    if (recoveryBusy) return;
-    setRecoveryBusy(true);
-    setResult({ status: "loading", text: "Memeriksa konsistensi data sebelum membuka kembali perubahan..." });
-    try {
-      const data = await runSettingsAction("integrity.run", { clearMaintenance: true }, {});
-      invalidate(["system.health", "audit.list", "fullReset.status", "reset.status"]);
-      const status = await statusResource.reload();
-      if (!data.ok) setResult({ status: "danger", text: `Mode pemulihan tetap aktif. Pemeriksaan konsistensi menemukan ${data.issues?.length || 0} masalah.` });
-      else {
-        setResult({ status: "success", text: data.maintenanceCleared ? "Pemeriksaan konsistensi lulus dan perubahan data berhasil dibuka kembali." : "Pemeriksaan konsistensi lulus. Mode pemulihan sudah tidak aktif." });
-        await handleStatus(status);
-      }
-    } catch (error) {
-      setResult({ status: "danger", text: error.message });
-    } finally {
-      setRecoveryBusy(false);
-    }
-  };
+  const { recoveryBusy, recoverMaintenance } = useMaintenanceRecovery({
+    invalidate,
+    setResult,
+    invalidationKeys: ["system.health", "audit.list", "fullReset.status", "reset.status"],
+    loadingText: "Memeriksa konsistensi data sebelum membuka kembali perubahan...",
+    issueText: (count) => `Mode pemulihan tetap aktif. Pemeriksaan konsistensi menemukan ${count} masalah.`,
+    successText: (maintenanceCleared) => maintenanceCleared
+      ? "Pemeriksaan konsistensi lulus dan perubahan data berhasil dibuka kembali."
+      : "Pemeriksaan konsistensi lulus. Mode pemulihan sudah tidak aktif.",
+    onFailure: () => statusResource.reload(),
+    onSuccess: async () => handleStatus(await statusResource.reload()),
+  });
 
   return { result, setResult, recoveryBusy, clearRecovery, committed, handleStatus, checkStatus, recoverMaintenance };
 };

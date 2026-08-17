@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { neutralizeSpreadsheetFormula } from "../src/domain/security.js";
 import { validateTransactionInput } from "../src/domain/validation.js";
-import { formatDateLongIndonesia } from "../src/domain/dates.js";
+import { formatDateLongIndonesia, formatDateTimeJakarta } from "../src/domain/dates.js";
 
  test("formula injection dinetralkan", () => {
   assert.equal(neutralizeSpreadsheetFormula("=IMPORTXML(...)"), "'=IMPORTXML(...)");
@@ -85,4 +85,36 @@ test("tanggal kalender yang tidak nyata ditolak", () => {
 test("helper tanggal Indonesia menolak tanggal semu", () => {
   assert.equal(formatDateLongIndonesia("2026-07-31"), "31 Juli 2026");
   assert.equal(formatDateLongIndonesia("2026-02-31"), "");
+});
+
+
+test("validator transaksi mengikuti batas payment_method backend 40 karakter", () => {
+  const result = validateTransactionInput({
+    transaction_type: "expense",
+    transaction_date: "2026-08-17",
+    amount: 50000,
+    source_account_id: "acc-bank",
+    category_id: "cat-expense",
+    payment_method: "x".repeat(55),
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.payment_method.length, 40);
+});
+
+test("validator tanggal tidak membuat rentang tahun UI yang tidak ada di backend", () => {
+  for (const transactionDate of ["1999-12-31", "2101-01-01"]) {
+    const result = validateTransactionInput({
+      transaction_type: "expense",
+      transaction_date: transactionDate,
+      amount: 50000,
+      source_account_id: "acc-bank",
+      category_id: "cat-expense",
+    });
+    assert.equal(result.ok, true, transactionDate);
+  }
+});
+
+test("formatter datetime Jakarta dipusatkan dan fallback tetap eksplisit", () => {
+  assert.equal(formatDateTimeJakarta("", { fallback: "Tidak tersedia" }), "Tidak tersedia");
+  assert.match(formatDateTimeJakarta("2026-08-17T10:00:00.000Z"), /17 Agu 2026/);
 });

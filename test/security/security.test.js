@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, clientRateLimitKey, createSessionCookie, enforceBestEffortRateLimit, identityRateLimitKey, parseAllowedUsers, readSession } from "../../api/_lib/security.js";
+import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, clientRateLimitKey, createSessionCookie, enforceBestEffortRateLimit, identityRateLimitKey, isValidEmail, parseAllowedUsers, readSession } from "../../api/_lib/security.js";
 import { normalizeTransaction } from "../../api/_lib/services/finance.js";
 import { RESERVED_TRANSACTION_FIELDS } from "../../api/_lib/transactionContract.js";
 
@@ -10,6 +10,12 @@ const withEnv = (values, fn) => {
   Object.assign(process.env, values);
   try { return fn(); } finally { for (const [key, value] of Object.entries(previous)) value === undefined ? delete process.env[key] : process.env[key] = value; }
 };
+
+test("validator email server dipakai sebagai predicate canonical", () => {
+  assert.equal(isValidEmail(" USER@Example.COM "), true);
+  assert.equal(isValidEmail("bukan-email"), false);
+  assert.equal(isValidEmail(""), false);
+});
 
 test("allowlist menerima Administrator dan menormalisasinya ke compatibility role internal", () => withEnv({ ALLOWED_USERS_JSON: '[{"email":"Admin@Gmail.com","role":"administrator"}]' }, () => {
   assert.deepEqual(parseAllowedUsers(), [{ email: "admin@gmail.com", role: "owner" }]);

@@ -11,6 +11,7 @@ import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { formatCompactRupiah } from "../../../domain/money.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
+import { useMediaQuery } from "../../../hooks/useMediaQuery.js";
 import {
   accountTransactionDirection,
   formatTransactionDate,
@@ -26,19 +27,7 @@ const MOBILE_QUERY = "(max-width: 820px)";
 const HISTORY_LIMIT = 6;
 const TREND_OPTIONS = Object.freeze([3, 6, 12]);
 
-const useMobileAccountActivityEnabled = () => {
-  const [enabled, setEnabled] = useState(() => typeof window === "undefined" || window.matchMedia(MOBILE_QUERY).matches);
-
-  useEffect(() => {
-    const media = window.matchMedia(MOBILE_QUERY);
-    const update = (event) => setEnabled(event.matches);
-    setEnabled(media.matches);
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  return enabled;
-};
+const useMobileAccountActivityEnabled = () => useMediaQuery(MOBILE_QUERY, { fallback: true });
 
 const shortPeriodLabel = (period) => {
   if (!/^\d{4}-\d{2}$/.test(String(period || ""))) return period || "";

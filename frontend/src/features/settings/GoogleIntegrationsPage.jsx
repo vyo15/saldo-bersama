@@ -4,17 +4,12 @@ import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { formatDateTimeJakarta } from "../../domain/dates.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { runSettingsAction } from "./settings.api.js";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { integrationProviderPresentation, providerSummary } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
-
-const formatDateTimeJakarta = (value) => {
-  const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return value || "";
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(date);
-};
 
 const providerActivityText = (provider) => {
   if (provider.lastCompletedAt) return `Terakhir selesai ${formatDateTimeJakarta(provider.lastCompletedAt)}`;

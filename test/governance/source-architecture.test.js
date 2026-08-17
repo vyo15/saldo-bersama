@@ -431,3 +431,51 @@ test("frontend menjaga dependency direction, bebas cycle relatif, dan helper sta
   for (const file of sourceFiles) visit(file);
   assert.deepEqual(cycles, [], `Circular dependency ditemukan: ${JSON.stringify(cycles)}`);
 });
+
+
+test("frontend auth canonical tidak memuat Google GSI legacy", async () => {
+  const [indexHtml, loginPage, mobileAuth] = await Promise.all([
+    source("frontend/index.html"),
+    source("frontend/src/features/auth/LoginPage.jsx"),
+    source("frontend/src/services/auth/mobileFirebaseGoogleAuth.js"),
+  ]);
+  assert.doesNotMatch(indexHtml, /accounts\.google\.com\/gsi\/client/);
+  assert.equal(await exists("frontend/src/services/auth/googleFirebaseAuth.js"), false);
+  assert.doesNotMatch(loginPage, /google\.accounts\.id/);
+  assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
+});
+
+test("responsive page memakai useMediaQuery canonical tanpa listener matchMedia duplikat", async () => {
+  const files = [
+    "frontend/src/features/transactions/TransactionsPage.jsx",
+    "frontend/src/features/accounts/AccountsPage.jsx",
+    "frontend/src/features/dashboard/DashboardPage.jsx",
+    "frontend/src/features/reports/ReportsPage.jsx",
+    "frontend/src/features/accounts/components/DesktopAccountsWorkspace.jsx",
+    "frontend/src/features/accounts/components/MobileAccountActivity.jsx",
+    "frontend/src/features/auth/LoginPage.jsx",
+  ];
+  for (const file of files) {
+    const text = await source(file);
+    assert.match(text, /useMediaQuery/);
+    assert.doesNotMatch(text, /window\.matchMedia/);
+  }
+});
+
+test("maintenance recovery settings memakai satu guarded hook", async () => {
+  const files = [
+    "frontend/src/features/settings/RecoveryPage.jsx",
+    "frontend/src/features/settings/AuditPage.jsx",
+    "frontend/src/features/settings/ResetDataPage.jsx",
+    "frontend/src/features/settings/FullResetPage.jsx",
+  ];
+  for (const file of files) {
+    const text = await source(file);
+    assert.match(text, /useMaintenanceRecovery/);
+    assert.doesNotMatch(text, /integrity\.run[\s\S]{0,80}clearMaintenance:\s*true/);
+  }
+  const hook = await source("frontend/src/features/settings/useMaintenanceRecovery.js");
+  assert.match(hook, /busyRef/);
+  assert.match(hook, /integrity\.run/);
+  assert.match(hook, /clearMaintenance:\s*true/);
+});

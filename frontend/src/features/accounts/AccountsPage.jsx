@@ -11,6 +11,7 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import {
   archiveAccount,
   createAccount as requestCreateAccount,
@@ -30,19 +31,7 @@ const DesktopAccountsWorkspace = lazy(() => import("./components/DesktopAccounts
 const AccountEditorDialogs = lazy(() => import("./components/AccountEditorDialogs.jsx"));
 
 const MOBILE_ACCOUNTS_QUERY = "(max-width: 820px)";
-const readMobileAccountsLayout = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(MOBILE_ACCOUNTS_QUERY).matches;
-const useMobileAccountsLayout = () => {
-  const [mobile, setMobile] = useState(readMobileAccountsLayout);
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
-    const media = window.matchMedia(MOBILE_ACCOUNTS_QUERY);
-    const update = () => setMobile(media.matches);
-    update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
-  }, []);
-  return mobile;
-};
+const useMobileAccountsLayout = () => useMediaQuery(MOBILE_ACCOUNTS_QUERY);
 
 const EMPTY_ACCOUNTS = Object.freeze([]);
 

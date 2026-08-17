@@ -4,8 +4,9 @@ import Modal from "../../../components/common/Modal.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
 import { AdminIcon, BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, PersonIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
+import { ACCOUNT_TYPES } from "../../../domain/constants.js";
 import { parseRupiah } from "../../../domain/money.js";
-import { BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS } from "../../../shared/presentation/account.js";
+import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS } from "../../../shared/presentation/account.js";
 import { userOptionLabel } from "../../../shared/presentation/user.js";
 import styles from "./AccountEditorDialogs.module.css";
 import AccountFinancialCard from "./AccountFinancialCard.jsx";
@@ -19,15 +20,15 @@ const previewBalance = (value) => {
 };
 
 const ACCOUNT_TYPE_OPTIONS = Object.freeze([
-  { value: "bank", label: "Bank", icon: BankIcon },
-  { value: "cash", label: "Tunai", icon: CashIcon },
-  { value: "ewallet", label: "E-wallet", icon: EwalletIcon },
-  { value: "savings", label: "Tabungan", icon: SavingsIcon },
-  { value: "emergency_fund", label: "Dana darurat", icon: EmergencyFundIcon },
-  { value: "sinking_fund", label: "Dana berkala", icon: SinkingFundIcon },
-  { value: "investment", label: "Investasi", icon: InvestmentIcon },
-  { value: "other", label: "Lainnya", icon: OtherIcon },
-]);
+  [ACCOUNT_TYPES.BANK, BankIcon],
+  [ACCOUNT_TYPES.CASH, CashIcon],
+  [ACCOUNT_TYPES.EWALLET, EwalletIcon],
+  [ACCOUNT_TYPES.SAVINGS, SavingsIcon],
+  [ACCOUNT_TYPES.EMERGENCY_FUND, EmergencyFundIcon],
+  [ACCOUNT_TYPES.SINKING_FUND, SinkingFundIcon],
+  [ACCOUNT_TYPES.INVESTMENT, InvestmentIcon],
+  [ACCOUNT_TYPES.OTHER, OtherIcon],
+].map(([value, icon]) => ({ value, label: ACCOUNT_TYPE_LABELS[value], icon })));
 
 const ownershipSelectValue = (entity, fallbackUserId = "") => entity?.owner_scope === "personal"
   ? `user:${entity.owner_user_id || fallbackUserId}`

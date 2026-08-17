@@ -10,6 +10,7 @@ const decoder = (value) => Buffer.from(value, "base64url").toString("utf8");
 
 const ROLE_ALIASES = Object.freeze({ administrator: "owner", owner: "owner", member: "member" });
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const isValidEmail = (value) => EMAIL_PATTERN.test(String(value || "").trim().toLowerCase());
 const GOOGLE_PROFILE_PHOTO_PREFIX = "https://lh3.googleusercontent.com/";
 
 const trustedProfilePhotoUrl = (value) => {
@@ -29,7 +30,7 @@ export const parseAllowedUsers = (raw = process.env.ALLOWED_USERS_JSON || "[]") 
     const email = String(item.email || "").trim().toLowerCase();
     const configuredRole = String(item.role || "").trim().toLowerCase();
     const role = ROLE_ALIASES[configuredRole] || "";
-    if (!EMAIL_PATTERN.test(email)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki email tidak valid.`);
+    if (!isValidEmail(email)) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki email tidak valid.`);
     if (!role) throw new Error(`ALLOWED_USERS_JSON item ke-${index + 1} memiliki role tidak valid. Gunakan administrator atau member.`);
 
     const existing = uniqueUsers.get(email);

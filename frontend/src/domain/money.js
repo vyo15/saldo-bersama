@@ -17,7 +17,7 @@ export const parseRupiah = (value) => {
   return amount;
 };
 
-export const assertPositiveRupiah = (value, { max = 100_000_000_000 } = {}) => {
+export const assertPositiveRupiah = (value, { max = Number.MAX_SAFE_INTEGER } = {}) => {
   const amount = parseRupiah(value);
   if (amount <= 0) throw new RangeError("Nominal harus lebih besar dari nol.");
   if (amount > max) throw new RangeError("Nominal melebihi batas aman.");

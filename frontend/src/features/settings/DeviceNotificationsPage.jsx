@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FiBell } from "react-icons/fi";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
+import { NOTIFICATION_TYPES } from "../../domain/constants.js";
 import Button from "../../components/common/Button.jsx";
 import useGuardedMutation from "../../hooks/useGuardedMutation.js";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -18,13 +19,13 @@ import styles from "./Settings.module.css";
 
 
 const NOTIFICATION_PREFERENCE_META = Object.freeze({
-  recurring_due: ["Jatuh tempo rutin", "Pengingat jadwal rutin yang segera jatuh tempo."],
-  recurring_funding_shortage: ["Dana tagihan kurang", "Peringatan H-2 bila saldo rekening default belum cukup."],
-  recurring_completed: ["Jadwal selesai", "Konfirmasi saat pembayaran atau penerimaan rutin sudah tercatat selesai."],
-  budget_threshold: ["Batas anggaran", "Peringatan saat pemakaian anggaran melewati ambang."],
-  envelope_threshold: ["Kantong menipis", "Peringatan saat pemakaian kantong alokasi mendekati batas."],
-  goal_behind: ["Target tertinggal", "Peringatan saat progres target tertinggal dari rencana."],
-  unallocated_expense: ["Pengeluaran belum dialokasikan", "Pengingat transaksi pengeluaran yang belum masuk kantong."],
+  [NOTIFICATION_TYPES.RECURRING_DUE]: ["Jatuh tempo rutin", "Pengingat jadwal rutin yang segera jatuh tempo."],
+  [NOTIFICATION_TYPES.RECURRING_FUNDING_SHORTAGE]: ["Dana tagihan kurang", "Peringatan H-2 bila saldo rekening default belum cukup."],
+  [NOTIFICATION_TYPES.RECURRING_COMPLETED]: ["Jadwal selesai", "Konfirmasi saat pembayaran atau penerimaan rutin sudah tercatat selesai."],
+  [NOTIFICATION_TYPES.BUDGET_THRESHOLD]: ["Batas anggaran", "Peringatan saat pemakaian anggaran melewati ambang."],
+  [NOTIFICATION_TYPES.ENVELOPE_THRESHOLD]: ["Kantong menipis", "Peringatan saat pemakaian kantong alokasi mendekati batas."],
+  [NOTIFICATION_TYPES.GOAL_BEHIND]: ["Target tertinggal", "Peringatan saat progres target tertinggal dari rencana."],
+  [NOTIFICATION_TYPES.UNALLOCATED_EXPENSE]: ["Pengeluaran belum dialokasikan", "Pengingat transaksi pengeluaran yang belum masuk kantong."],
 });
 
 const initialPushState = { status: "loading", supported: true, permission: "default", enabled: false, reason: "loading", browserSubscribed: false };

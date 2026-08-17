@@ -5,6 +5,7 @@ import ErrorState from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { TRANSACTION_LABELS } from "../../shared/presentation/transaction.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { absoluteAmount } from "./dashboardPresentation.js";
@@ -15,19 +16,7 @@ const MobileDashboardFilters = lazy(() => import("./components/MobileDashboardFi
 const MobileTransactionDetail = lazy(() => import("./components/MobileTransactionDetail.jsx"));
 
 const MOBILE_DASHBOARD_QUERY = "(max-width: 820px)";
-const readMobileDashboardLayout = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(MOBILE_DASHBOARD_QUERY).matches;
-const useMobileDashboardLayout = () => {
-  const [mobile, setMobile] = useState(readMobileDashboardLayout);
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
-    const media = window.matchMedia(MOBILE_DASHBOARD_QUERY);
-    const update = () => setMobile(media.matches);
-    update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
-  }, []);
-  return mobile;
-};
+const useMobileDashboardLayout = () => useMediaQuery(MOBILE_DASHBOARD_QUERY);
 
 const buildLookups = (overview, bootstrap) => {
   const accountBalances = (overview.accountBalances || []).map((item) => ({ ...item, account_name: item.name, name: accountDisplayLabel(item) }));

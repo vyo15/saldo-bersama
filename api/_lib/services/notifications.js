@@ -1,4 +1,5 @@
 import { readBatchRows } from "../db/readBatchRows.js";
+import { NOTIFICATION_TYPE_VALUES } from "../domainConstants.js";
 import { decodeBase64Url } from "../encoding.js";
 import { WEB_PUSH_ENV_KEYS, validateVapidConfiguration } from "../webPushConfiguration.js";
 import dns from "node:dns";
@@ -11,15 +12,7 @@ import { goalProjection } from "./planning/goals.js";
 
 const BLOCKED_ENDPOINT_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".example", ".invalid", ".onion"];
 const TEST_COOLDOWN_MS = 30_000;
-export const NOTIFICATION_TYPES = Object.freeze([
-  "recurring_due",
-  "recurring_funding_shortage",
-  "recurring_completed",
-  "budget_threshold",
-  "envelope_threshold",
-  "goal_behind",
-  "unallocated_expense",
-]);
+export const NOTIFICATION_TYPES = NOTIFICATION_TYPE_VALUES;
 const NOTIFICATION_TYPE_SET = new Set(NOTIFICATION_TYPES);
 export const PUSH_REQUEST_TIMEOUT_MS = 8_000;
 

@@ -1,30 +1,32 @@
+import { ACCOUNT_TYPES, BANK_TEMPLATES, EWALLET_TEMPLATES } from "../../domain/constants.js";
+
 export const BANK_TEMPLATE_OPTIONS = Object.freeze([
-  { value: "generic", label: "Bank lainnya" },
-  { value: "bca", label: "BCA" },
-  { value: "bni", label: "BNI" },
-  { value: "btn", label: "BTN" },
-  { value: "mandiri", label: "Mandiri" },
-  { value: "permata", label: "Permata" },
+  { value: BANK_TEMPLATES.GENERIC, label: "Bank lainnya" },
+  { value: BANK_TEMPLATES.BCA, label: "BCA" },
+  { value: BANK_TEMPLATES.BNI, label: "BNI" },
+  { value: BANK_TEMPLATES.BTN, label: "BTN" },
+  { value: BANK_TEMPLATES.MANDIRI, label: "Mandiri" },
+  { value: BANK_TEMPLATES.PERMATA, label: "Permata" },
 ]);
 
 export const EWALLET_PROVIDER_OPTIONS = Object.freeze([
-  { value: "generic", label: "E-wallet lainnya" },
-  { value: "shopeepay", label: "ShopeePay" },
-  { value: "dana", label: "DANA" },
-  { value: "gopay", label: "GoPay" },
-  { value: "ovo", label: "OVO" },
-  { value: "linkaja", label: "LinkAja" },
+  { value: EWALLET_TEMPLATES.GENERIC, label: "E-wallet lainnya" },
+  { value: EWALLET_TEMPLATES.SHOPEEPAY, label: "ShopeePay" },
+  { value: EWALLET_TEMPLATES.DANA, label: "DANA" },
+  { value: EWALLET_TEMPLATES.GOPAY, label: "GoPay" },
+  { value: EWALLET_TEMPLATES.OVO, label: "OVO" },
+  { value: EWALLET_TEMPLATES.LINKAJA, label: "LinkAja" },
 ]);
 
 export const ACCOUNT_TYPE_LABELS = Object.freeze({
-  bank: "Bank",
-  cash: "Tunai",
-  ewallet: "E-wallet",
-  savings: "Tabungan",
-  emergency_fund: "Dana darurat",
-  sinking_fund: "Dana berkala",
-  investment: "Investasi",
-  other: "Lainnya",
+  [ACCOUNT_TYPES.BANK]: "Bank",
+  [ACCOUNT_TYPES.CASH]: "Tunai",
+  [ACCOUNT_TYPES.EWALLET]: "E-wallet",
+  [ACCOUNT_TYPES.SAVINGS]: "Tabungan",
+  [ACCOUNT_TYPES.EMERGENCY_FUND]: "Dana darurat",
+  [ACCOUNT_TYPES.SINKING_FUND]: "Dana berkala",
+  [ACCOUNT_TYPES.INVESTMENT]: "Investasi",
+  [ACCOUNT_TYPES.OTHER]: "Lainnya",
 });
 
 export const ACCOUNT_SCOPE_LABELS = Object.freeze({

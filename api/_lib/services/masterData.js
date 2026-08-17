@@ -1,22 +1,21 @@
 import { readBatchRows } from "../db/readBatchRows.js";
+import {
+  ACCOUNT_TYPE_VALUES, BANK_TEMPLATE_VALUES, CATEGORY_ICON_VALUES, CATEGORY_NATURE_VALUES, CATEGORY_TYPE_VALUES,
+  CURRENT_EXPENSE_CATEGORY_NATURE_VALUES, DEFAULT_CATEGORY_ICON_BY_TYPE, EWALLET_TEMPLATE_VALUES,
+} from "../domainConstants.js";
 import { appendAudit } from "./audit.js";
 import { accountBalanceAsOf, firstNegativeBalance, mapVisibleAccountRows, visibleAccounts, visibleAccountsStatement } from "./readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "./core.js";
 import { nextVersionStamp } from "./versioning.js";
 
-const ACCOUNT_TYPES = new Set(["cash", "bank", "ewallet", "savings", "emergency_fund", "sinking_fund", "investment", "other"]);
-const BANK_TEMPLATES = new Set(["generic", "bca", "bni", "btn", "mandiri", "permata"]);
-const EWALLET_TEMPLATES = new Set(["generic", "shopeepay", "dana", "gopay", "ovo", "linkaja"]);
-const CATEGORY_TYPES = new Set(["income", "expense", "refund"]);
-const CATEGORY_NATURES = new Set(["fixed", "variable", "unexpected", "discretionary", "emergency", "savings", "other"]);
-const CURRENT_EXPENSE_CATEGORY_NATURES = new Set(["fixed", "variable", "unexpected", "discretionary", "emergency", "other"]);
+const ACCOUNT_TYPES = new Set(ACCOUNT_TYPE_VALUES);
+const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
+const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
+const CATEGORY_TYPES = new Set(CATEGORY_TYPE_VALUES);
+const CATEGORY_NATURES = new Set(CATEGORY_NATURE_VALUES);
+const CURRENT_EXPENSE_CATEGORY_NATURES = new Set(CURRENT_EXPENSE_CATEGORY_NATURE_VALUES);
 const LEGACY_SAVINGS_NATURE = "savings";
-const CATEGORY_ICONS = new Set([
-  "wedding_ring", "savings", "target", "emergency", "money", "account", "salary", "business", "refund",
-  "shopping", "food", "transport", "home", "renovation", "bill", "electricity", "internet", "education",
-  "health", "travel", "entertainment", "music", "gift", "family", "partner", "other",
-]);
-const DEFAULT_CATEGORY_ICON_BY_TYPE = Object.freeze({ expense: "shopping", income: "salary", refund: "refund" });
+const CATEGORY_ICONS = new Set(CATEGORY_ICON_VALUES);
 
 const ACCOUNT_NUMBER_MIN_LENGTH = 6;
 const ACCOUNT_NUMBER_MAX_LENGTH = 34;

@@ -6,6 +6,7 @@ import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { formatDateTimeJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { categoryTypeLabel } from "../../shared/presentation/category.js";
@@ -13,6 +14,7 @@ import MaintenanceRecoveryPanel from "./MaintenanceRecoveryPanel.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { runSettingsAction } from "./settings.api.js";
+import { useMaintenanceRecovery } from "./useMaintenanceRecovery.js";
 import styles from "./Settings.module.css";
 
 const RECOVERY_TYPES = Object.freeze({
@@ -41,11 +43,7 @@ const RESTORE_TABLES = Object.freeze([
 ]);
 
 const formatCount = (value) => Number(value || 0).toLocaleString("id-ID");
-const formatDateTimeJakarta = (value) => {
-  const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return value || "Tidak tersedia";
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(date);
-};
+const formatRecoveryDateTime = (value) => formatDateTimeJakarta(value, { fallback: "Tidak tersedia" });
 
 const archiveGroups = (data = {}) => [
   ["account", data.accounts || [], (item) => accountDisplayLabel(item), () => "Rekening diarsipkan"],
@@ -77,7 +75,7 @@ const RestorePreviewSummary = ({ preview, compact = false }) => {
     <div className={`${styles.restorePreview}${compact ? ` ${styles.restorePreviewCompact}` : ""}`}>
       <div className={styles.restorePreviewIdentity}>
         <div><span>File backup</span><strong>{preview.fileName || "Tidak tersedia"}</strong></div>
-        <div><span>Dibuat</span><strong>{formatDateTimeJakarta(preview.createdAt)}</strong></div>
+        <div><span>Dibuat</span><strong>{formatRecoveryDateTime(preview.createdAt)}</strong></div>
         <div><span>Schema</span><strong>v{preview.schemaVersion || "-"}</strong></div>
       </div>
       <div className={styles.restorePreviewGrid} aria-label="Jumlah data dalam backup">
@@ -233,35 +231,6 @@ const useFullRestore = ({ archiveResource, healthResource, healthReady, maintena
   };
 };
 
-const useMaintenanceRecovery = ({ healthResource, invalidate, refreshAll, setResult }) => {
-  const [maintenanceBusy, setMaintenanceBusy] = useState(false);
-  const recoverMaintenance = async () => {
-    if (maintenanceBusy) return;
-    setMaintenanceBusy(true);
-    setResult({ status: "loading", text: "Menjalankan integrity check sebelum membuka maintenance..." });
-    try {
-      const data = await runSettingsAction("integrity.run", { clearMaintenance: true }, {});
-      invalidate(["system.health", "audit.list", "reset.status"]);
-      if (!data.ok) {
-        setResult({ status: "danger", text: `Maintenance tetap aktif. Integrity check menemukan ${data.issues?.length || 0} masalah.` });
-        return;
-      }
-      setResult({
-        status: "success",
-        text: data.maintenanceCleared
-          ? "Integrity check lulus dan maintenance berhasil dibuka kembali."
-          : "Integrity check lulus. Maintenance sudah tidak aktif.",
-      });
-      await Promise.allSettled([healthResource.reload(), refreshAll()]);
-    } catch (error) {
-      setResult({ status: "danger", text: error.message });
-    } finally {
-      setMaintenanceBusy(false);
-    }
-  };
-  return { maintenanceBusy, recoverMaintenance };
-};
-
 const RecoveryPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -273,7 +242,11 @@ const RecoveryPage = () => {
   const maintenanceMode = healthReady && Boolean(healthResource.data?.maintenanceMode);
   const archive = useArchiveRecovery({ archiveResource, invalidate, refreshAll, setResult });
   const restore = useFullRestore({ archiveResource, healthResource, healthReady, maintenanceMode, invalidate, refreshAll, setResult });
-  const maintenance = useMaintenanceRecovery({ healthResource, invalidate, refreshAll, setResult });
+  const maintenance = useMaintenanceRecovery({
+    invalidate,
+    setResult,
+    onSuccess: () => Promise.allSettled([healthResource.reload(), refreshAll()]),
+  });
 
   return (
     <OwnerSettingsGuard>

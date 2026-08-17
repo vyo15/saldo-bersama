@@ -10,10 +10,10 @@ import {
   decodeMaintenanceIdempotency,
   digest,
   maintenanceBackupIdForIntent,
-  maintenanceBackupPresentation,
+  maintenanceStatusPresentation,
+  preferredMaintenanceValue,
   quoted,
   releaseMaintenanceMode,
-  resolveMaintenanceOutcome,
   selectMaintenanceIntentRow,
 } from "./shared.js";
 
@@ -320,22 +320,16 @@ const trialResetStatusPlan = (actorId, requestedKey, timestamp) => {
   return { requestedBackupId, statements: [...RESET_COUNT_STATEMENTS, { sql: "SELECT value FROM system_config WHERE key='maintenance_mode'", args: [] }, intentStatement, auditStatement] };
 };
 
-const preferredResetValue = (primary, secondary, key, fallback = null) => {
-  if (primary && primary[key] !== undefined && primary[key] !== null) return primary[key];
-  if (secondary && secondary[key] !== undefined && secondary[key] !== null) return secondary[key];
-  return fallback;
-};
-
 const trialResetCommittedPresentation = ({ completed, audit, backup }) => {
   if (!completed && !audit) return null;
   return {
-    resetId: preferredResetValue(completed, audit, "resetId"),
-    resetAt: preferredResetValue(completed, audit, "resetAt"),
-    safetyBackupId: preferredResetValue(completed, audit, "safetyBackupId"),
-    safetyBackupFileId: preferredResetValue(completed, backup, "safetyBackupFileId", backup ? backup.external_file_id : null),
-    summary: preferredResetValue(completed, audit, "summary"),
-    balanceReset: preferredResetValue(completed, audit, "balanceReset"),
-    resetScope: preferredResetValue(completed, audit, "resetScope", TRIAL_RESET_SCOPE_ACTIVITY),
+    resetId: preferredMaintenanceValue(completed, audit, "resetId"),
+    resetAt: preferredMaintenanceValue(completed, audit, "resetAt"),
+    safetyBackupId: preferredMaintenanceValue(completed, audit, "safetyBackupId"),
+    safetyBackupFileId: preferredMaintenanceValue(completed, backup, "safetyBackupFileId", backup ? backup.external_file_id : null),
+    summary: preferredMaintenanceValue(completed, audit, "summary"),
+    balanceReset: preferredMaintenanceValue(completed, audit, "balanceReset"),
+    resetScope: preferredMaintenanceValue(completed, audit, "resetScope", TRIAL_RESET_SCOPE_ACTIVITY),
   };
 };
 
@@ -356,16 +350,11 @@ const trialResetStatusCommit = async (db, actorId, requestedKey, requestedBackup
   const audit = resetAuditDetails(matchingResetAudit(auditRows, expectedBackupId));
   const completed = intent.state === "completed" && intent.result && intent.result.reset === true ? intent.result : null;
   const committed = completed || audit;
-  const safetyBackupId = preferredResetValue(committed, audit, "safetyBackupId", expectedBackupId);
+  const safetyBackupId = preferredMaintenanceValue(committed, audit, "safetyBackupId", expectedBackupId);
   const backup = safetyBackupId
     ? await db.one("SELECT backup_id,status,external_file_id,verified_at,error_code,created_at FROM backup_runs WHERE backup_id=?", [safetyBackupId])
     : null;
   return { audit, backup, committed, completed };
-};
-
-const resetIntentPresentation = (intentRow, intent) => {
-  if (!intentRow) return null;
-  return { state: intent.state, createdAt: intentRow.created_at, expiresAt: intentRow.expires_at };
 };
 
 export const readTrialDataResetStatus = async (db, context) => {
@@ -378,18 +367,11 @@ export const readTrialDataResetStatus = async (db, context) => {
   const intentRow = selectMaintenanceIntentRow(state.intentRows, requestedKey);
   const intent = decodeMaintenanceIdempotency(intentRow);
   const commit = await trialResetStatusCommit(db, context.actor.user_id, requestedKey, plan.requestedBackupId, intentRow, intent, state.auditRows);
-  const outcome = resolveMaintenanceOutcome({ committed: commit.committed, intentState: intent.state, maintenanceMode: state.maintenanceMode, requestedKey });
-  return {
-    checkedAt: nowIso(),
-    outcome,
-    requiresAttention: ["processing", "recovery_required"].includes(outcome),
-    canStartNewIntent: state.maintenanceMode ? false : outcome !== "processing",
-    maintenanceMode: state.maintenanceMode,
-    intent: resetIntentPresentation(intentRow, intent),
-    backup: maintenanceBackupPresentation(commit.backup),
+  return maintenanceStatusPresentation({
+    state, intentRow, intent, commit, requestedKey,
     committedReset: trialResetCommittedPresentation(commit),
     currentSummary: resetSummary(state.counts),
-  };
+  });
 };
 
 export const applyTrialDataReset = async (db, context) => {

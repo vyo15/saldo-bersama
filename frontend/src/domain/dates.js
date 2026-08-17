@@ -35,6 +35,16 @@ export const currentMonthBoundsInJakarta = () => {
   };
 };
 
+export const formatDateTimeJakarta = (value, { fallback = "" } = {}) => {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return value || fallback;
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: TIMEZONE,
+  }).format(date);
+};
+
 export const formatDateLongIndonesia = (value) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return "";
   const parsed = new Date(`${value}T00:00:00+07:00`);
