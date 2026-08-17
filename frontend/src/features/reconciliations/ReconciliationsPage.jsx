@@ -11,6 +11,7 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import { formatDateTimeJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
@@ -21,12 +22,7 @@ import styles from "./ReconciliationsPage.module.css";
 const INITIAL_FORM = Object.freeze({ account_id: "", actual_balance: "", notes: "" });
 const EMPTY_ACCOUNTS = Object.freeze([]);
 
-const formatReconciledAt = (value) => {
-  if (!value) return "Waktu tidak tersedia";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(date);
-};
+const formatReconciledAt = (value) => formatDateTimeJakarta(value, { fallback: "Waktu tidak tersedia" });
 
 const parseActualBalance = (value, allowNegative) => {
   const raw = String(value || "").trim();

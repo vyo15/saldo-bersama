@@ -1,3 +1,43 @@
+.desktopAccountsArea {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ownershipFilters {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ownershipFilters::-webkit-scrollbar { display: none; }
+
+.ownershipFilter {
+  min-height: 2.35rem;
+  padding: 0 .9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.ownershipFilter[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.ownershipFilter:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 48%, transparent);
+  outline-offset: 2px;
+}
+
 .desktopWorkspace {
   min-width: 0;
   display: grid;
@@ -59,7 +99,6 @@
 
 .heroFacts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .heroFacts > div { min-width: 0; padding-top: var(--space-3); display: grid; gap: .35rem; border-top: 1px solid var(--border); }
-.heroFacts > div:last-child { grid-column: 1 / -1; }
 .heroFacts dt { color: var(--text-muted); font-size: var(--font-size-sm); }
 .heroFacts dd { min-width: 0; margin: 0; overflow: hidden; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }
 
@@ -157,8 +196,6 @@
 .carouselDot:hover::before { background: color-mix(in srgb, var(--primary) 68%, var(--text-muted)); transform: scale(1.12); }
 .carouselDot[aria-pressed="true"]::before { width: 1.35rem; background: var(--primary); }
 .carouselDot:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 1px; }
-
-.carouselHelper { margin: 0; color: var(--text-muted); font-size: .72rem; line-height: 1.45; text-align: center; }
 
 .transactionsPanel,
 .trendPanel,

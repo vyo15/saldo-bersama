@@ -167,6 +167,7 @@ test("CSP dan route OAuth server menjaga login mobile production tanpa Firebase 
   const csp = appHeaderRule.headers?.find((header) => header.key === "Content-Security-Policy")?.value || "";
   assert.match(csp, /frame-src[^;]*'self'/);
   assert.doesNotMatch(csp, /unsafe-eval/);
+  assert.doesNotMatch(csp, /accounts\.google\.com\/gsi\//, "CSP tidak boleh mempertahankan allowance Google GSI yang sudah dipensiunkan");
 
   assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
   assert.match(mobileAuth, /window\.location\.assign/);

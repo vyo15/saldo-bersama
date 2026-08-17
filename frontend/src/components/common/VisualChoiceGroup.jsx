@@ -13,6 +13,7 @@ const VisualChoiceGroup = ({
   options,
   name,
   columns = 4,
+  mobileColumns,
   compact = false,
   disabled = false,
   required = false,
@@ -20,10 +21,11 @@ const VisualChoiceGroup = ({
   className = "",
 }) => {
   const safeColumns = Math.max(1, Math.min(Number(columns) || 1, 4));
+  const safeMobileColumns = Math.max(1, Math.min(Number(mobileColumns) || Math.min(safeColumns, 2), 4));
   return (
     <fieldset
       className={`${styles.group}${compact ? ` ${styles.compact}` : ""}${className ? ` ${className}` : ""}`}
-      style={{ "--visual-choice-columns": safeColumns, "--visual-choice-mobile-columns": Math.min(safeColumns, 2) }}
+      style={{ "--visual-choice-columns": safeColumns, "--visual-choice-mobile-columns": safeMobileColumns }}
       disabled={disabled}
     >
       <legend>{legend}</legend>

@@ -43,10 +43,12 @@ test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog 
   assert.match(mobileHistory, /Semua kategori/);
   assert.match(mobileHistory, /Semua pencatat/);
   assert.match(mobileHistory, /Belum dialokasikan/);
-  assert.match(mobileStyles, /\.filterBar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 40px 40px;/);
+  assert.match(mobileStyles, /\.filterBar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--mobile-control-height\) var\(--mobile-control-height\);/);
   assert.match(mobileStyles, /\.typeScroller\s*\{[\s\S]*overflow-x:\s*auto;/);
   assert.match(mobileStyles, /\.advancedGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(mobileStyles, /@media \(max-width: 390px\)[\s\S]*\.advancedGrid\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(mobileStyles, /\.activeFilters button \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(mobileStyles, /\.periodNav button \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
   assert.match(categoryStyles, /\.iconGroups\s*\{[^}]*flex-wrap:\s*wrap;[^}]*overflow:\s*visible;/);
   assert.doesNotMatch(categoryStyles, /\.iconGroups\s*\{[^}]*overflow-x:\s*auto/);
   assert.doesNotMatch(mobileStyles + categoryStyles, /47\.99rem|51\.25rem/);
@@ -231,4 +233,30 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(accountStyles, /\.mobileChartLabels \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(accountStyles, /\.mobileChartStats small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(accountStyles, /\.mobileTransferSuccessRoute small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+});
+
+test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks penting tidak mikro", async () => {
+  const [reports, budgets, dashboard, transactionForm, accountActivity, accountCard, accountTransfer, accountExperience, settings] = await Promise.all([
+    read("src/features/reports/ReportsPage.module.css"),
+    read("src/features/budgets/BudgetsPage.module.css"),
+    read("src/features/dashboard/DashboardPage.css"),
+    read("src/features/transactions/TransactionForm.module.css"),
+    read("src/features/accounts/components/MobileAccountActivity.module.css"),
+    read("src/features/accounts/components/AccountFinancialCard.module.css"),
+    read("src/features/accounts/components/MobileAccountTransferAction.module.css"),
+    read("src/features/accounts/components/MobileAccountsExperience.module.css"),
+    read("src/features/settings/Settings.module.css"),
+  ]);
+
+  assert.match(reports, /\.segmentedControl button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(reports, /\.periodArrow \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
+  assert.match(reports, /\.rangeChips button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(reports, /\.sectionHeading > button,[\s\S]*?\.sectionHeading > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgets, /@media \(max-width: 580px\)[\s\S]*?\.segment,[\s\S]*?\.sortButton,[\s\S]*?\.detailButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(dashboard, /\.mobile-allocation-card__footer a \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(accountActivity, /\.mobileActivityHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(accountActivity, /\.mobileTrendControls > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(accountCard, /\.mobileSecondaryActions button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.doesNotMatch(accountActivity + accountTransfer + accountExperience + settings, /font-size:\s*\.(?:5|6)rem;/);
 });

@@ -85,6 +85,19 @@ Administrator dapat menjalankan `fullReset.preview` → `fullReset.apply` hanya 
 
 Scheduled housekeeping hanya boleh hard-delete state ephemeral yang sudah tidak berlaku: `request_nonces` expired, `idempotency_keys` expired, serta `import_previews`/`restore_previews` expired yang tidak sedang `applying`. Housekeeping tidak boleh menghapus ledger, audit, backup, integrity history, master, atau record preview yang sedang diproses.
 
+
+
+## Retention data operasional
+
+Housekeeping otomatis tetap fail-closed. Sebelum menambahkan purge baru, setiap tabel harus diklasifikasikan:
+
+- **Immutable financial/audit:** `transactions`, movement finansial, `audit_log`, rekonsiliasi, period closure. Tidak boleh dipurge housekeeping biasa.
+- **Recovery history:** `backup_runs`, `integrity_runs`. Retention harus mengikuti RPO/RTO/backup-retention yang disetujui dan tidak boleh dihapus sebelum evidence recovery yang diperlukan aman.
+- **Operational history:** `integration_outbox`, `notification_queue`, `notification_deliveries`. Boleh memiliki retention terkontrol hanya setelah durasi, status terminal yang eligible, dependency, audit kebutuhan, dan rollback/backup ditetapkan.
+- **Ephemeral:** `idempotency_keys`, `request_nonces`, `import_previews`, `restore_previews`. Cleanup expired existing tetap diperbolehkan sesuai guard saat ini.
+
+Tidak ada retention duration baru yang boleh di-hardcode sebelum keputusan operasional disetujui. Row `pending`, `processing`, `failed` yang masih retryable, serta state recovery aktif tidak boleh dipurge. `audit_log` tidak boleh dipindahkan ke generic retention hanya untuk mengecilkan database.
+
 ## Pemulihan per item
 
 ### Master/config yang diarsipkan

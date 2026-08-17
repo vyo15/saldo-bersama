@@ -1,5 +1,5 @@
-const STATIC_CACHE = "saldo-bersama-static-v8";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v8";
+const STATIC_CACHE = "saldo-bersama-static-v9";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v9";
 const STATIC_ASSETS = [
   "/",
   "/site.webmanifest",
@@ -7,7 +7,8 @@ const STATIC_ASSETS = [
   "/icons/favicon-32.png?v=4",
   "/icons/favicon-64.png?v=4",
   "/icons/icon-192.png?v=4",
-  "/icons/icon-512.png?v=4"
+  "/icons/icon-512.png?v=4",
+  "/icons/notification-badge-96.png?v=1"
 ];
 
 const cacheResponse = (event, cacheName, request, response) => {
@@ -36,9 +37,19 @@ const safeTargetPath = (value) => {
   return candidate;
 };
 
-const notificationCopy = (type) => type === "test"
-  ? { title: "Saldo Bersama", body: "Notifikasi uji berhasil diterima oleh perangkat ini." }
-  : { title: "Saldo Bersama", body: "Ada pengingat keuangan yang perlu diperiksa di aplikasi." };
+const safeNotificationText = (value, fallback, maxLength) => {
+  const text = String(value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  return (text || fallback).slice(0, maxLength);
+};
+
+const notificationCopy = (payload) => {
+  const type = String(payload.notificationType || "");
+  if (type === "test") return { title: "Saldo Bersama", body: "Notifikasi uji berhasil diterima oleh perangkat ini." };
+  return {
+    title: safeNotificationText(payload.title, "Saldo Bersama", 80),
+    body: safeNotificationText(payload.body, "Ada pengingat keuangan yang perlu diperiksa di aplikasi.", 180),
+  };
+};
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));
@@ -89,12 +100,12 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let payload = {};
   try { payload = event.data?.json() || {}; } catch { payload = {}; }
-  const copy = notificationCopy(String(payload.notificationType || ""));
+  const copy = notificationCopy(payload);
   const notificationId = String(payload.notificationId || "").slice(0, 120) || undefined;
   event.waitUntil(self.registration.showNotification(copy.title, {
     body: copy.body,
     icon: "/icons/icon-192.png?v=4",
-    badge: "/icons/favicon-64.png?v=4",
+    badge: "/icons/notification-badge-96.png?v=1",
     tag: notificationId,
     renotify: false,
     data: { targetPath: safeTargetPath(payload.targetPath) }

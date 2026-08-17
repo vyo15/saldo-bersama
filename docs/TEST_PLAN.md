@@ -27,6 +27,21 @@ npm run zip
 
 `npm run zip` adalah local release guard: perintah ini memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` sebelum packaging. Jika salah satu lint/test/build/guard gagal, ZIP tidak dibuat. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` akan dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung karena check/guard sudah dijalankan pada step sebelumnya, sehingga full verification tidak diduplikasi.
 
+
+
+### Hardening regression tambahan
+
+Patch hardening wajib mempertahankan regression berikut:
+
+- semantic danger foreground pada `negative-soft` memenuhi kontras AA untuk teks normal;
+- kontrol interaktif history transaksi mobile memakai effective target minimal 44×44px;
+- laporan mobile tidak memakai micro-text 9/10px untuk metrik/label finansial;
+- preferensi notifikasi menampilkan deskripsi dan switch mengacu ke deskripsi melalui `aria-describedby`;
+- CSP production tidak mempertahankan allowance Google GSI yang sudah dipensiunkan;
+- business integrity gagal bila `system_config.timezone` bukan `Asia/Jakarta` atau `currency` bukan `IDR`.
+
+Manual QA untuk perubahan ini: 360×800, 390×844, 768×1024, 1366×768, light/dark, keyboard focus, 200% zoom, serta real device untuk Push. Browser automation tetap bukan gate canonical.
+
 ### Backend coverage gate
 
 `npm run check` juga menjalankan `npm run test:coverage:backend` dengan Node built-in test coverage. Minimum canonical saat ini: **80% lines, 55% branches, 78% functions**. Coverage adalah blocking quality gate; jscpd tetap report-only/non-blocking dan tidak menggantikan behavioral test.
@@ -46,14 +61,15 @@ Cakupan wajib:
 - personal/shared authorization dan IDOR;
 - recurring, envelope, budget, goal, reconciliation, close/reopen period; archive/restore envelope rule dan reverse reallocation; restore Target/Jadwal rutin/Anggaran arsip; negative actual reconciliation hanya untuk account `allow_negative`;
 - recurring occurrence skip/restore: hanya owner, reason + row_version + idempotency, tidak mengubah ledger/saldo, status cancelled persisted, pay ditolak sampai dipulihkan, archive/restore rule tidak menghapus skip;
-- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v9;
+- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v10;
+- Manual reminder: create/get/update/cancel pada Jadwal Rutin, Anggaran, Alokasi, dan Target; waktu Asia/Jakarta future maksimal 366 hari; satu reminder `scheduled` per actor+entity; stale `row_version` dan create concurrent ditolak; actor tidak boleh membuat reminder untuk personal/assignee milik user lain; scheduler queue sekali dengan dedupe stabil; entity inactive/forbidden auto-cancel dan audit; reset/backup/restore schema v10 mencakup tabel reminder.
 - feedback global: `aria-live`, dedupe, mobile safe-area, reduced motion, tanpa generic hard rollback/undo;
 - read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, Calendar ScriptLock, dan duplicate managed-event self-healing;
 - formula injection dan valid XLSX;
 - backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, push credential exclusion, reason + acknowledgement + exact restore phrase, serta preservation reservation `restore.apply` agar retry key yang sama mereplay hasil dan tidak menjalankan restore kedua;
 - import all-or-nothing: mixed valid/invalid wajib ditolak tanpa partial apply, `confirm_duplicate` dari file diabaikan, duplicate antarbaris serta saldo/kantong diuji kumulatif saat preview, apply stale wajib rollback seluruh record, dan success wajib safety backup + integrity verification + audit;
 - service worker tanpa API cache, hanya menyimpan response navigation HTML sebagai app shell, dan tanpa offline write queue; production OAuth desktop/mobile berjalan melalui `/api/auth/google/*` sehingga otomatis mengikuti network-only `/api/*`;
-- Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, payload lock-screen privat, recurring shortage H-2 + completion notification tanpa detail finansial, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
+- Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, detail payload server-generated, recurring shortage H-2 + completion notification dengan copy actionable, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output; penggantian archive bersifat atomik, variasi clean lama dibersihkan dengan allowlist, dan ZIP patch/unrelated tidak disentuh;
 - summary visual Target/Alokasi/Jadwal rutin/Anggota wajib memakai aset existing yang benar, bersifat dekoratif (`alt` kosong/`aria-hidden`), tidak mengubah data source/domain contract, dan tidak ikut diterapkan ke Dashboard/Transaksi/Laporan hanya sebagai hiasan;
 - manual device QA summary-art pada 320/360/390/430px dan desktop wajib memeriksa overlap nominal/progress, light/dark mode, reduced motion, serta memastikan artwork tidak menangkap pointer atau menggeser action utama;
@@ -182,7 +198,7 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
 - Saat Modal mutation kritis memakai `dismissible=false`, tombol X harus disabled, Escape/backdrop/swipe tidak menutup dialog, tetapi Tab/Shift+Tab dan focus trap tetap berfungsi.
 - Loading di dalam shell tidak boleh merender nested `main`; loading panel/inline tidak boleh mengambil tinggi satu viewport. Empty/error inline harus tetap compact pada mobile.
-- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive; restore runtime v9 tetap menerima backup schema v3-v8; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
+- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive dan migration v10 menambah `manual_reminders`; restore runtime v10 tetap menerima backup schema v3-v9; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
 - Alokasi assigned harus memisahkan `assignee_user_id` dari ownership ledger: Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah sendiri, rekening personal mengunci penerima ke pemilik rekening, notifikasi assigned hanya menuju penerima, dan penonaktifan user diblok bila masih ada jatah aktif.
 - Budget personal harus dihitung hanya dari transaksi personal user terkait, tidak boleh dipakai sebagai substitusi jatah per orang dari rekening Bersama, dan user dengan Budget personal aktif tidak dapat dinonaktifkan.
 - Sidebar melengkung harus tetap terlihat, target sentuh minimal 44px, submenu minimal dapat ditutup, dan menu mobile tidak menduplikasi theme toggle.
@@ -254,7 +270,7 @@ Regression wajib membuktikan:
 ## Web Push desktop dan mobile
 
 - `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
-- Schema Production harus versi 9 dan `npm run db:integrity` harus lulus sebelum register subscription.
+- Schema Production harus versi 10 dan `npm run db:integrity` harus lulus sebelum register subscription.
 - `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
 - Bootstrap Development interaktif wajib menarik ulang Vercel Development walaupun `.env.local` lama terlihat lengkap; hasil pull mengganti file hanya setelah sembilan core + Web Push lolos validasi.
 - Mode non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
@@ -263,7 +279,7 @@ Regression wajib membuktikan:
 - Desktop Chrome/Edge dan Android Chrome: Aktifkan, izin granted, register server, verifikasi otomatis, click membuka `/pengaturan/notifikasi`, Nonaktifkan, dan register ulang.
 - iPhone/iPad: tab Safari harus menampilkan instruksi Home Screen; aplikasi standalone iOS/iPadOS yang mendukung harus dapat meminta izin melalui ketukan tile dan menerima verifikasi otomatis.
 - Dua perangkat pada akun yang sama harus memiliki subscription terpisah. Retry perangkat gagal tidak boleh mengirim ulang ke perangkat yang sudah sukses.
-- Subscription 404/410 harus dinonaktifkan. Endpoint lokal/private harus ditolak. Payload lock screen tidak boleh membawa nominal, saldo, nama rekening, kategori, atau detail transaksi.
+- Subscription 404/410 harus dinonaktifkan. Endpoint lokal/private harus ditolak. Payload queue normal boleh membawa detail server-generated sesuai mode detail produk, tetapi tidak boleh menerima title/body/actor/audit field bebas dari client. Test Push tetap generik. QA perangkat nyata wajib memeriksa bahwa user memahami detail dapat terlihat di lock screen.
 - Apps Script hanya memiliki satu trigger `runScheduledJobs`, secret scheduler sama dengan Vercel, dan `/api/jobs` berhasil memproses queue tanpa menggagalkan backup ketika Push gagal.
 
 ## Full reset

@@ -5,20 +5,20 @@ import { BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConst
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
 const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "envelope_rules", "envelope_periods",
   "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements",
-  "budgets", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "audit_log", "idempotency_keys",
+  "budgets", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "manual_reminders", "audit_log", "idempotency_keys",
 ];
 
 export const RESTORE_DELETE_ORDER = [
   "notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces", "goal_movements", "budgets", "envelope_movements",
   "transactions", "recurring_occurrences", "recurring_rules", "envelope_periods", "envelope_rules", "savings_goals",
-  "reconciliations", "period_closures", "categories", "accounts", "notification_preferences", "push_subscriptions", "idempotency_keys",
+  "reconciliations", "period_closures", "categories", "accounts", "manual_reminders", "notification_preferences", "push_subscriptions", "idempotency_keys",
 ];
 
 const MAX_BACKUP_COMPRESSED_BYTES = 20 * 1024 * 1024;
@@ -164,13 +164,18 @@ export const decodeBackup = (base64) => {
   }
 };
 
+const isLegacyOptionalBackupTable = (schemaVersion, table) => (
+  (schemaVersion < 7 && table === "notification_preferences")
+  || (schemaVersion < 10 && table === "manual_reminders")
+);
+
 export const validateSnapshot = (snapshot) => {
   if (!snapshot || snapshot.manifest?.format !== "saldo-bersama-backup" || !SUPPORTED_BACKUP_SCHEMA_VERSIONS.has(Number(snapshot.manifest?.schemaVersion)) || !snapshot.tables) {
     throw appError("BACKUP_SCHEMA_UNSUPPORTED", "Format atau versi backup tidak didukung.", 409);
   }
   const schemaVersion = Number(snapshot.manifest.schemaVersion);
   for (const table of BACKUP_TABLES) {
-    const legacyOptional = schemaVersion < 7 && table === "notification_preferences";
+    const legacyOptional = isLegacyOptionalBackupTable(schemaVersion, table);
     if (!Array.isArray(snapshot.tables[table])) {
       if (legacyOptional) continue;
       throw appError("BACKUP_TABLE_MISSING", `Tabel ${table} tidak tersedia pada backup.`, 409);

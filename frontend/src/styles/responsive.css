@@ -177,6 +177,8 @@
   .allocation-card__expand { min-height: var(--mobile-control-height); }
   .allocation-advanced__content { grid-template-columns: 1fr; }
   .goal-card__actions { grid-template-columns: minmax(0, 1fr) auto; }
+  .goal-card__quick-actions { gap: 6px; }
+  .goal-card__quick-actions > .button { min-height: var(--mobile-control-height); padding-inline: 10px; font-size: 12px; }
   .goal-action-menu > summary { width: var(--mobile-control-height); min-width: var(--mobile-control-height); padding: 0; }
   .goal-action-menu > summary span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 
@@ -266,7 +268,7 @@
 @media (max-width: 420px) {
   .goal-summary__content, .allocation-summary__content { width: 68%; }
   .goal-summary__art, .allocation-summary__art { right: -3%; width: min(7.2rem, 29%); }
-  .goal-summary__meta, .allocation-summary__metrics { font-size: 10px; }
+  .goal-summary__meta, .allocation-summary__metrics { font-size: var(--font-size-xs); }
 
   .report-period-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

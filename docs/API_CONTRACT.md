@@ -151,6 +151,9 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `notifications.register` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.unregister` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/notifications.js` |
 | `notifications.test` | Ya | Ya | External/operation | Wajib | `api/_lib/services/notifications.js` |
+| `reminders.get` | Ya | Ya | Read | Tidak | `api/_lib/services/reminders.js` |
+| `reminders.upsert` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/reminders.js` |
+| `reminders.cancel` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/reminders.js` |
 | `backup.create` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
 | `import.preview` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/maintenance/` |
 | `import.apply` | Ya | Tidak | External/operation | Wajib | `api/_lib/services/maintenance/` |
@@ -195,6 +198,10 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - `notifications.test` hanya mengirim ke endpoint aktif milik actor, wajib idempotency key, memakai cooldown, timeout, target `/pengaturan/notifikasi`, dan payload generik tanpa detail finansial. Frontend menjalankannya otomatis setelah registrasi; penerimaan oleh push service tidak membuktikan sistem operasi menampilkan notifikasi.
 - `notifications.unregister` menonaktifkan subscription dan menandai delivery tertunda pada perangkat tersebut sebagai `expired`.
 - Scheduled delivery memakai satu `notification_deliveries` per subscription. Retry hanya mengulang perangkat gagal dan tidak mengirim ulang ke perangkat yang sudah sukses.
+- Mode notifikasi produk adalah **detail**. Untuk notification queue normal, payload Web Push membawa `notificationType`, `title`, `body`, `targetPath`, dan `notificationId`; `title/body` wajib berasal dari backend, disanitasi, dan dapat memuat nama objek serta nominal yang relevan. Karena detail dapat terlihat pada lock screen, ini merupakan keputusan UX/privacy eksplisit dan harus diverifikasi pada perangkat nyata. `notifications.test` tetap generik tanpa detail finansial.
+- `reminders.get/upsert/cancel` hanya bekerja untuk actor aktif dan objek yang dapat diakses actor. Reminder manual didukung untuk `recurring_occurrence`, `budget`, `envelope_period`, dan `goal`; satu actor hanya memiliki satu reminder `scheduled` per objek.
+- `reminders.upsert` menerima `scheduled_local` format `YYYY-MM-DDTHH:mm` Asia/Jakarta, future, maksimal 366 hari. Server mengubahnya ke UTC. Update/cancel wajib `rowVersion`; concurrent change ditolak HTTP 409. User tidak boleh mengirim title/body reminder sebagai sumber kebenaran.
+- Scheduler mengklaim reminder due secara atomik, membaca ulang entity terbaru, membuat copy detail server-side, memakai dedupe `manual-reminder:<reminder_id>`, lalu mengubah status reminder menjadi `queued`. Entity yang hilang, tidak aktif, atau tidak lagi boleh diakses dibatalkan fail-closed dan diaudit. Pengingat otomatis tujuh tipe tetap berjalan terpisah.
 
 
 ### Kontrak kategori dan transfer

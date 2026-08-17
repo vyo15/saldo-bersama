@@ -274,8 +274,8 @@
 }
 .detailHeader strong { font-size: var(--font-size-body); }
 .closeDetail {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: var(--mobile-control-height);
+  height: var(--mobile-control-height);
   display: none;
   place-items: center;
   border: 1px solid var(--border);
@@ -414,7 +414,7 @@
 
 @media (max-width: 420px) {
   .accountSelect { grid-template-columns: 7.5rem minmax(0,1fr) 1rem; }
-  .rowHeader small { font-size: .68rem; }
+  .rowHeader small { font-size: var(--font-size-xs); }
   .detailList > div { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
   .detailBadges { align-items: flex-end; flex-direction: column; }
 }
@@ -654,7 +654,7 @@
 
 .mobileCopyNumber {
   max-width: 100%;
-  min-height: 2.5rem;
+  min-height: var(--mobile-control-height);
   margin-inline-start: auto;
   padding: .35rem .45rem;
   display: inline-flex;
@@ -716,7 +716,7 @@
 }
 
 .mobileSecondaryActions {
-  min-height: 2.5rem;
+  min-height: var(--mobile-control-height);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -728,7 +728,7 @@
 }
 
 .mobileSecondaryActions button {
-  min-height: 2.5rem;
+  min-height: var(--mobile-control-height);
   padding: .35rem .5rem;
   display: inline-flex;
   align-items: center;

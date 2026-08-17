@@ -19,13 +19,14 @@ test("backup memakai snapshot transaction, checksum, gzip limit, nama unik, dan 
   assert.match(maintenance, /maxOutputLength: MAX_BACKUP_JSON_BYTES/);
   assert.match(maintenance, /digest\(canonicalJson\(payload\)\)/);
   assert.match(maintenance, /"notification_preferences"/);
+  assert.match(maintenance, /"manual_reminders"/);
   assert.match(maintenance, /backupId\.slice\(-8\)/);
   assert.match(maintenance, /callGoogleBridge\("backup\.store"/);
 });
 
 test("gzip backup menyimpan nama JSON internal agar Google Drive tidak menampilkan item Unknown", () => {
   const payload = { manifest: { format: "saldo-bersama-backup" }, tables: {}, checksum: "test" };
-  const innerName = "saldo-bersama-backup-v9-20260813T081139Z-bc0c2716.json";
+  const innerName = "saldo-bersama-backup-v10-20260817T113606Z-bc0c2716.json";
   const compressed = Buffer.from(encodeBackup(payload, innerName), "base64");
   assert.equal(compressed[3] & 0x08, 0x08, "gzip wajib memiliki FNAME metadata");
   const nameEnd = compressed.indexOf(0, 10);
@@ -100,23 +101,26 @@ test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase s
 
 
 
-test("backup schema v9 menyimpan penerima jatah, notification preferences, dan provider E-wallet canonical", async () => {
+test("backup schema v10 menyimpan manual reminder, penerima jatah, notification preferences, dan provider E-wallet canonical", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
     await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-pref", "firebase-pref", "pref@example.com", "Preference", "owner", "active", 1, now, now]);
     await db.execute("INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", ["u-pref", "budget_threshold", 0, 1, now, now]);
+    await db.execute("INSERT INTO manual_reminders(reminder_id,user_id,entity_type,entity_id,scheduled_at,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["reminder-v10", "u-pref", "budget", "budget-v10", "2026-08-18T01:00:00.000Z", "scheduled", 1, now, now]);
     await db.execute("INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["wallet-v8", "Belanja", "ewallet", "", "generic", "gopay", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-pref", now, "u-pref", now]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 9);
+    assert.equal(snapshot.manifest.schemaVersion, 10);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
+    assert.equal(snapshot.manifest.tables.manual_reminders, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
+    assert.equal(snapshot.tables.manual_reminders[0].entity_type, "budget");
     assert.equal(snapshot.tables.accounts[0].ewallet_template, "gopay");
     assert.equal(validateSnapshot(snapshot), snapshot.checksum);
   } finally { db.close(); }
 });
 
-test("backup schema v3-v8 tetap dapat dimuat ke schema v9 dengan field additive canonical", async () => {
+test("backup schema v3-v9 tetap dapat dimuat ke schema v10 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -128,9 +132,11 @@ test("backup schema v3-v8 tetap dapat dimuat ke schema v9 dengan field additive 
     const current = await snapshotDatabase(sourceDb);
     const legacyTables = structuredClone(current.tables);
     delete legacyTables.notification_preferences;
+    delete legacyTables.manual_reminders;
     legacyTables.accounts = legacyTables.accounts.map(({ account_number: _accountNumber, bank_template: _bankTemplate, ewallet_template: _ewalletTemplate, ...row }) => row);
     const legacyManifestTables = { ...current.manifest.tables };
     delete legacyManifestTables.notification_preferences;
+    delete legacyManifestTables.manual_reminders;
     const manifest = { ...current.manifest, version: 3, schemaVersion: 3, tables: legacyManifestTables };
     const legacy = { manifest, tables: legacyTables };
     legacy.checksum = digest(canonicalJson(legacy));
@@ -149,6 +155,8 @@ test("backup schema v3-v8 tetap dapat dimuat ke schema v9 dengan field additive 
     v5.manifest.schemaVersion = 5;
     delete v5.tables.notification_preferences;
     delete v5.manifest.tables.notification_preferences;
+    delete v5.tables.manual_reminders;
+    delete v5.manifest.tables.manual_reminders;
     v5.checksum = digest(canonicalJson({ manifest: v5.manifest, tables: v5.tables }));
     assert.equal(validateSnapshot(v5), v5.checksum);
 
@@ -158,6 +166,8 @@ test("backup schema v3-v8 tetap dapat dimuat ke schema v9 dengan field additive 
     v6.manifest.schemaVersion = 6;
     delete v6.tables.notification_preferences;
     delete v6.manifest.tables.notification_preferences;
+    delete v6.tables.manual_reminders;
+    delete v6.manifest.tables.manual_reminders;
     v6.checksum = digest(canonicalJson({ manifest: v6.manifest, tables: v6.tables }));
     assert.equal(validateSnapshot(v6), v6.checksum);
 
@@ -165,8 +175,26 @@ test("backup schema v3-v8 tetap dapat dimuat ke schema v9 dengan field additive 
     v7.tables.accounts = v7.tables.accounts.map(({ ewallet_template: _ewalletTemplate, ...row }) => row);
     v7.manifest.version = 7;
     v7.manifest.schemaVersion = 7;
+    delete v7.tables.manual_reminders;
+    delete v7.manifest.tables.manual_reminders;
     v7.checksum = digest(canonicalJson({ manifest: v7.manifest, tables: v7.tables }));
     assert.equal(validateSnapshot(v7), v7.checksum);
+
+    const v8 = structuredClone(current);
+    v8.manifest.version = 8;
+    v8.manifest.schemaVersion = 8;
+    delete v8.tables.manual_reminders;
+    delete v8.manifest.tables.manual_reminders;
+    v8.checksum = digest(canonicalJson({ manifest: v8.manifest, tables: v8.tables }));
+    assert.equal(validateSnapshot(v8), v8.checksum);
+
+    const v9 = structuredClone(current);
+    v9.manifest.version = 9;
+    v9.manifest.schemaVersion = 9;
+    delete v9.tables.manual_reminders;
+    delete v9.manifest.tables.manual_reminders;
+    v9.checksum = digest(canonicalJson({ manifest: v9.manifest, tables: v9.tables }));
+    assert.equal(validateSnapshot(v9), v9.checksum);
 
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);

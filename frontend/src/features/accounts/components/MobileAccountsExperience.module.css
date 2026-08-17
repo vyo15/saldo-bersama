@@ -233,7 +233,7 @@
     border: 1px solid color-mix(in srgb, var(--on-hero) 24%, transparent);
     background: color-mix(in srgb, var(--account-mobile-deep-surface) 30%, transparent);
     color: var(--on-hero);
-    font-size: .6rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
     backdrop-filter: blur(8px);
     pointer-events: none;
@@ -294,7 +294,7 @@
 .mobileStackHint {
     margin: .65rem var(--mobile-page-gutter) 0;
     color: color-mix(in srgb, var(--on-hero) 52%, transparent);
-    font-size: .64rem;
+    font-size: var(--font-size-xs);
     line-height: 1.5;
     text-align: center;
   }

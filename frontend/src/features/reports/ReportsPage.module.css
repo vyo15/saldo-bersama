@@ -92,7 +92,7 @@
 
   .segmentedControl button {
     min-width: 0;
-    min-height: 36px;
+    min-height: var(--mobile-control-height);
     padding: 0 12px;
     border: 0;
     border-radius: 11px;
@@ -153,8 +153,8 @@
   }
 
   .periodArrow {
-    width: 42px;
-    height: 42px;
+    width: var(--mobile-control-height);
+    height: var(--mobile-control-height);
     border: 0;
     border-radius: 13px;
     display: grid;
@@ -189,7 +189,7 @@
 
   .rangeChips button {
     min-width: 74px;
-    min-height: 36px;
+    min-height: var(--mobile-control-height);
     padding: 0 12px;
     flex: 0 0 auto;
     border: 1px solid var(--border);
@@ -252,7 +252,7 @@
     max-width: 43%;
     padding-bottom: 2px;
     color: var(--warning);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
     line-height: 1.3;
     text-align: right;
@@ -308,7 +308,7 @@
     bottom: calc(var(--report-bar-height) + 5px);
     transform: translateX(-50%);
     color: var(--text-muted);
-    font-size: 8px;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     white-space: nowrap;
   }
@@ -316,7 +316,7 @@
   .trendLabel {
     overflow: hidden;
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
     text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -374,7 +374,7 @@
   .metricCard > span:last-child {
     margin-top: 4px;
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
     line-height: 1.3;
   }
 
@@ -401,7 +401,7 @@
 
   .sectionHeading span {
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
   }
 
   .sectionHeading h2 {
@@ -413,14 +413,14 @@
 
   .sectionHeading > button,
   .sectionHeading > a {
-    min-height: 36px;
+    min-height: var(--mobile-control-height);
     padding: 0 4px;
     border: 0;
     display: inline-flex;
     align-items: center;
     background: transparent;
     color: var(--primary);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
     text-decoration: none;
     cursor: pointer;
@@ -442,7 +442,7 @@
     justify-content: center;
     background: var(--warning-soft);
     color: var(--warning);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
   }
 
   .categoryList,
@@ -500,7 +500,7 @@
 
   .categoryMeta :global(.money) {
     flex: 0 0 auto;
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
   }
 
@@ -520,7 +520,7 @@
 
   .categoryPercent {
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
   }
 
   .comparisonRow {
@@ -546,7 +546,7 @@
   .comparisonRow > div:first-child span,
   .comparisonRow small {
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
   }
 
   .comparisonRow > div:first-child strong {
@@ -560,7 +560,7 @@
     align-items: center;
     gap: 3px;
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
   }
 
@@ -620,13 +620,13 @@
   .budgetMeta span,
   .budgetAmounts > span {
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
   }
 
   .budgetAmounts :global(.money) {
     margin-left: 3px;
     color: var(--text);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
   }
 
   .alertCard :global(.financial-alert-list--report) {
@@ -670,7 +670,7 @@
   .detailsCard > summary small {
     overflow: hidden;
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -706,7 +706,7 @@
   .detailsContent section > p {
     margin: -4px 0 8px;
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     line-height: 1.45;
   }
 
@@ -717,7 +717,7 @@
     align-items: flex-start;
     gap: 7px;
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: var(--font-size-xs);
     line-height: 1.45;
   }
 

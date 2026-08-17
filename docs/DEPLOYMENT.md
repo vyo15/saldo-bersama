@@ -6,9 +6,9 @@ Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variabl
 
 Variable `VITE_*` bersifat publik. Secret tidak boleh memakai prefix `VITE_`. Setelah environment berubah, deployment Production wajib dijalankan ulang. Development adalah source bootstrap lokal dan direfresh pada setiap `npm run dev` interaktif. Seed Development tetap operasi terpisah dari release gate rutin.
 
-## 2. Database Turso tunggal
+## 2. Database Turso: kondisi saat ini dan cutover isolation
 
-Sesuai keputusan pemilik, localhost dan Production memakai satu database Turso. Konsekuensinya:
+Sampai exit criteria ADR-0007 dibuktikan, localhost dan Production masih memakai satu database Turso. Konsekuensinya:
 
 - jangan memakai data dummy setelah aplikasi mulai digunakan;
 - jangan menjalankan restore/import/purge untuk eksperimen;
@@ -20,6 +20,23 @@ Sesuai keputusan pemilik, localhost dan Production memakai satu database Turso. 
 npm run db:migrate
 npm run db:integrity
 ```
+
+
+
+### Target hardening yang disetujui
+
+Sebelum aplikasi bergantung pada data finansial nyata, pindahkan Development ke database Turso terpisah:
+
+1. buat database Development;
+2. migrate sampai schema v10;
+3. jalankan integrity dan pastikan timezone/currency canonical;
+4. ubah **hanya** Vercel Development `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, dan `SESSION_SECRET`;
+5. tarik ulang Development melalui `npm run dev`;
+6. smoke dengan data dummy pada Development;
+7. verifikasi Production masih menunjuk database Production yang benar;
+8. rotasi/revoke credential lama per scope setelah cutover terbukti.
+
+Jangan menjalankan `npm run env:push:development` dari `.env.local` yang masih menunjuk Production setelah isolation dimulai. Jangan menyalin database Production ke Development sebagai default; gunakan data dummy/fixture aman kecuali ada drill terkontrol dengan data yang sudah dianonimkan dan approval khusus.
 
 ## 3. Google OAuth + Firebase Authentication
 
@@ -71,7 +88,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    npm run env:check
    ```
 
-5. Pastikan database sudah memakai schema v9 dan integrity check lulus:
+5. Pastikan database sudah memakai schema v10 dan integrity check lulus:
 
    ```bash
    npm run db:migrate
@@ -93,24 +110,24 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 
    Langkah ini dilakukan satu kali setelah aktivasi/rotasi settings. Laptop atau PC lain kemudian cukup menjalankan `npm run dev`; bootstrap menarik Development terbaru secara otomatis.
 8. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
-9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v9. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
+9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v10. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
 10. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 11. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
-## 6. Migration schema v9
+## 6. Migration schema v10
 
-Migration terbaru adalah `database/migrations/007_envelope_assignee.sql`. Migration bersifat additive, membackfill kantong personal ke pemiliknya, dan membiarkan kantong shared sebagai Jatah Bersama.
+Migration terbaru adalah `database/migrations/008_manual_reminders.sql`. Migration bersifat additive. Ia menambah tabel `manual_reminders`, unique partial index untuk satu reminder aktif per user dan objek, serta due index untuk scheduler. Ledger, saldo, transaksi, rekening, dan ownership entity existing tidak diubah.
 
-Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v9 menerima traffic:
+Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v10 menerima traffic:
 
 ```bash
 npm run db:migrate
 npm run db:integrity
 ```
 
-Migration `006_account_ewallet_template.sql` bersifat additive. Ia menambah provider E-wallet canonical (`generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`) tanpa mengubah nama rekening, saldo, transaksi, ownership, atau template bank. Rekening E-wallet existing dibackfill hanya untuk provider yang sudah dapat dikenali dengan aman oleh presentation layer.
+Migration v9 `007_envelope_assignee.sql` tetap menjadi dasar penerima jatah. Migration v8 `006_account_ewallet_template.sql` tetap menjadi dasar provider E-wallet canonical.
 
-Backup schema v9 menyertakan `assignee_user_id`, `ewallet_template`, dan notification preferences. Runtime v9 tetap dapat membaca backup v3-v8 melalui normalisasi additive. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus kolom/tabel langsung pada database aktif.
+Backup schema v10 menyertakan `manual_reminders`, `assignee_user_id`, `ewallet_template`, dan notification preferences. Runtime v10 tetap dapat membaca backup v3-v9 melalui normalisasi additive; backup lama diperlakukan memiliki daftar manual reminder kosong. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel/kolom langsung pada database aktif.
 
 ## 7. Release gate
 

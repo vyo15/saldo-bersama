@@ -360,6 +360,9 @@ test("pengaturan memakai kontrak system.health aktual dan status notifikasi akse
   assert.match(presentation, /data\.schemaVersion/);
   assert.doesNotMatch(overview + presentation, /healthResource\.data\?\.database|schema\?\.ready/);
   assert.match(notifications, /<h3>Notifikasi perangkat<\/h3>[\s\S]*role="status" aria-live="polite"/);
+  assert.match(notifications, /const \[label, description/);
+  assert.match(notifications, /<small id=\{descriptionId\}>\{description\}<\/small>/);
+  assert.match(notifications, /aria-describedby=\{descriptionId\}/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
   assert.match(notificationService, /lastTestFailure/);
   assert.match(serviceWorkerRegistration, /navigator\.serviceWorker\.register\("\/sw\.js"/);

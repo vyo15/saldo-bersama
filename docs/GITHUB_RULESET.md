@@ -49,3 +49,18 @@ Simpan bukti tanpa secret:
 - satu PR sehat yang lulus Quality dapat di-merge.
 
 Repository source hanya dapat menyediakan workflow dan policy. Enforcement dianggap selesai hanya setelah setting GitHub diverifikasi.
+
+## Fail-closed verification
+
+Local `pre-push` hanya quality guard dan **bukan** branch protection. Repository belum boleh diberi status "ruleset selesai" hanya karena `npm run verify` atau pre-push PASS.
+
+Verifikasi di GitHub Settings bahwa direct push ke `main` ditolak. Bukti yang valid:
+
+- ruleset menargetkan branch `main`;
+- Pull Request required;
+- required status check adalah `Quality / check`;
+- force push dan branch deletion diblokir;
+- bypass rutin tidak tersedia;
+- percobaan perubahan dari branch hanya dapat masuk melalui PR setelah Quality PASS.
+
+Jika `git push origin main` masih diterima untuk perubahan rutin, enforcement belum sesuai dokumen ini walaupun source dan hook lokal sehat. Jangan mencoba force-push untuk menguji protection.

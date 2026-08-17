@@ -9,6 +9,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Filter transaksi berdasarkan rekening, kategori, dan pencatat.
 - Tren 3/6/12 bulan, breakdown rekening/nature/pencatat, target projection, dashboard alerts.
 - Push actionable untuk recurring, budget, kantong, target, dan transaksi belum dialokasikan.
+- Pengingat manual one-shot actor-scoped untuk Jadwal Rutin, Anggaran, Alokasi, dan Target melalui scheduler/Web Push existing (RFC-0017).
 - Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
 
 ## Now — verification dan operasi
@@ -16,7 +17,8 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Jalankan full Node 24 `npm run verify` setelah patch. Perubahan UI tetap memerlukan pemeriksaan manual pada viewport/perangkat relevan.
 - Verifikasi operasional rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` yang pernah ikut ZIP manual mengikuti `SECRET_ROTATION_RUNBOOK.md`; source tidak dapat membuktikan credential lama sudah direvoke.
 - Migration parity Turso dan real-resource backup/restore drill.
-- Aktifkan branch protection/ruleset GitHub dan jadikan workflow **Quality** sebagai required check; source workflow/CONTRIBUTING sudah disiapkan, enforcement tetap setting GitHub.
+- Aktifkan branch protection/ruleset GitHub dan jadikan workflow **Quality** sebagai required check; source workflow/CONTRIBUTING sudah disiapkan, enforcement tetap setting GitHub. Direct push ke `main` yang masih diterima berarti langkah ini belum selesai.
+- Pisahkan database/token/session secret Development dan Production sesuai exit plan ADR-0007 sebelum data finansial nyata menjadi dependency operasional.
 - Verifikasi Google bridge, Calendar, Web Push, dan notification cadence pada resource nyata.
 
 ## Next — RFC sebelum schema/authorization berubah
@@ -27,6 +29,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - RFC-0014: kategori bertingkat dan tahapan target.
 - RFC-0015: privasi rekening granular dengan backend projection.
 - RFC-0016: perluasan hak member menjadi partner planning.
+- RFC-0018: registry session per perangkat dan revoke/logout-all server-side tanpa raw token storage.
 
 ## Later — maturity
 

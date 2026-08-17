@@ -12,6 +12,8 @@ test("shared visual choice control keeps radio semantics and balanced responsive
   assert.match(source, /<fieldset/);
   assert.match(source, /type="radio"/);
   assert.match(source, /required=\{required && index === 0\}/);
+  assert.match(source, /mobileColumns/);
+  assert.match(source, /safeMobileColumns/);
   assert.match(css, /--visual-choice-columns/);
   assert.match(css, /--visual-choice-mobile-columns/);
   assert.match(css, /focus-visible/);
@@ -41,6 +43,8 @@ test("fixed-option finance forms use the shared visual selector while dynamic li
 
   assert.match(sources[0], /legend="Metode pembayaran"/);
   assert.match(sources[1], /legend="Jenis rekening"/);
+  assert.match(sources[1], /mobileColumns=\{3\}/);
+  assert.match(sources[1], /description="Pilih jenis rekening\."/);
   assert.match(sources[2], /legend="Berlaku untuk"/);
   assert.match(sources[3], /legend="Rollover"/);
   assert.match(sources[4], /legend="Jenis"/);

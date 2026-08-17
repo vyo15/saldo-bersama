@@ -39,6 +39,7 @@ const RESET_BUSINESS_TABLES = Object.freeze([
 
 const RESET_OPERATIONAL_TABLES = Object.freeze([
   { table: "notification_deliveries", key: "delivery_id" },
+  { table: "manual_reminders", key: "reminder_id" },
   { table: "notification_queue", key: "notification_id" },
   { table: "integration_links", key: "link_id" },
   { table: "integration_outbox", key: "outbox_id" },

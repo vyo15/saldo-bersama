@@ -306,7 +306,7 @@ test("preferensi notifikasi default aktif, per pengguna, row-version guarded, da
   } finally { db.close(); }
 });
 
-test("notifikasi recurring memberi peringatan dana kurang H-2 dan status selesai tanpa membocorkan detail finansial", async () => {
+test("notifikasi recurring memberi detail actionable untuk dana kurang H-2 dan status selesai", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = await seed(db);
@@ -332,8 +332,10 @@ test("notifikasi recurring memberi peringatan dana kurang H-2 dan status selesai
     assert.deepEqual(shortage.map((item) => item.user_id).sort(), [member.user_id, owner.user_id].sort());
     for (const item of shortage) {
       assert.equal(item.target_path, "/tagihan");
-      assert.doesNotMatch(item.body, /Pembayaran Rumah|6[.]?000[.]?000|Bank Bersama/i);
-      assert.doesNotMatch(item.title, /Pembayaran Rumah|Rp/i);
+      assert.match(item.title, /Pembayaran Rumah/);
+      assert.match(item.body, /Rp1[.]000[.]000/);
+      assert.match(item.body, /Rp6[.]000[.]000/);
+      assert.match(item.body, /Bank Bersama/);
     }
     assert.equal(await queueActionableNotifications(db), 0, "dedupe mencegah push berulang untuk occurrence yang sama");
 
@@ -344,7 +346,8 @@ test("notifikasi recurring memberi peringatan dana kurang H-2 dan status selesai
     assert.equal(completed.length, 2);
     for (const item of completed) {
       assert.equal(item.target_path, "/tagihan");
-      assert.doesNotMatch(item.body, /Pembayaran Rumah|6[.]?000[.]?000|Bank Bersama/i);
+      assert.match(item.title, /Pembayaran Rumah/);
+      assert.match(item.body, /Rp6[.]000[.]000/);
     }
   } finally { db.close(); }
 });

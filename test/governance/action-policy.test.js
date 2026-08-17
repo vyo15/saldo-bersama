@@ -28,7 +28,7 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
     "envelopes.move", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
     "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.restoreRule",
     "budgets.deleteUnused", "budgets.restore", "goals.archive", "goals.deleteUnused", "goals.move", "goals.restore", "periods.close",
-    "notifications.updatePreference", "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply", "reset.apply", "fullReset.apply",
+    "notifications.updatePreference", "reminders.upsert", "reminders.cancel", "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply", "reset.apply", "fullReset.apply",
   ]) assert.equal(requiresIdempotencyKey(action), true, action);
   assert.equal(requiresIdempotencyKey("integrity.run"), true);
 });

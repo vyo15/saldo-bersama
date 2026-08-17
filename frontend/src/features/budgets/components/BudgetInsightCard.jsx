@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiArchive, FiChevronRight, FiEdit2 } from "react-icons/fi";
+import { FiArchive, FiBell, FiChevronRight, FiEdit2 } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import { categoryIcon } from "../../../shared/presentation/transaction.js";
@@ -9,7 +9,16 @@ import BudgetPacingBar from "./BudgetPacingBar.jsx";
 import BudgetStatusPill from "./BudgetStatusPill.jsx";
 import styles from "../BudgetsPage.module.css";
 
-const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, openBudgetLifecycle, attention = false }) => {
+const BudgetDetailActions = ({ item, isCurrent, canManage, openReminder, editBudget, openBudgetLifecycle }) => {
+  if (!isCurrent && !canManage) return null;
+  return <div className={styles.detailActions}>
+    {isCurrent ? <Button type="button" icon={FiBell} onClick={() => openReminder(item)}>Pengingat</Button> : null}
+    {canManage ? <Button type="button" icon={FiEdit2} onClick={() => editBudget(item)}>Edit</Button> : null}
+    {canManage ? <Button type="button" variant="danger" icon={FiArchive} onClick={() => openBudgetLifecycle(item)}>Hapus / Arsipkan</Button> : null}
+  </div>;
+};
+
+const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, openBudgetLifecycle, openReminder, attention = false }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const state = budgetVisualState(item, periodMeta);
   const Icon = categoryIcon(category?.icon, "expense");
@@ -59,10 +68,14 @@ const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, 
       {detailsOpen ? <div className={styles.cardDetails}>
         <div className={styles.detailMetric}><span>Batas aman / hari</span><strong>{periodMeta.isCurrent ? <Money value={safeDaily} /> : "—"}</strong></div>
         <div className={styles.detailMetric}><span>Ambang peringatan</span><strong>{state.warningThreshold}%</strong></div>
-        {canManage ? <div className={styles.detailActions}>
-          <Button type="button" icon={FiEdit2} onClick={() => editBudget(item)}>Edit</Button>
-          <Button type="button" variant="danger" icon={FiArchive} onClick={() => openBudgetLifecycle(item)}>Hapus / Arsipkan</Button>
-        </div> : null}
+        <BudgetDetailActions
+          item={item}
+          isCurrent={periodMeta.isCurrent}
+          canManage={canManage}
+          openReminder={openReminder}
+          editBudget={editBudget}
+          openBudgetLifecycle={openBudgetLifecycle}
+        />
       </div> : null}
     </article>
   );

@@ -8,6 +8,7 @@ Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel
 
 - Firebase Google ID token diverifikasi saat login. Localhost/device emulation dapat mengirim Firebase ID token dari browser; production desktop/mobile memakai Google OAuth Authorization Code callback server, memverifikasi signed `state`/`nonce`, menukar Google ID token melalui Firebase Identity Toolkit, lalu menjalankan verifier Firebase yang sama.
 - Backend membuat signed HttpOnly `SameSite=Strict` session.
+- Session memiliki expiry dan allowlist/role revalidation, tetapi belum memiliki per-device session registry/revoke. Jangan mengklaim “logout semua perangkat” tersedia sampai RFC-0018/schema/action guarded untuk capability tersebut disetujui.
 - Allowlist email+role dan binding user Turso harus konsisten.
 - Authorization default deny.
 - Apps Script bridge memakai HMAC, timestamp, nonce, dan action allowlist.

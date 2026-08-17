@@ -13,6 +13,7 @@ import {
   previewRestore, previewTrialDataReset, readFullDataResetStatus, readTrialDataResetStatus,
 } from "../services/maintenance/index.js";
 import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
+import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
   archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createEnvelope, createGoal, createRecurringRule, deleteUnusedBudget,
   deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence,
@@ -141,6 +142,9 @@ const ACTION_HANDLERS = Object.freeze({
   "notifications.register": registerPush,
   "notifications.unregister": unregisterPush,
   "notifications.test": testPush,
+  "reminders.get": getManualReminder,
+  "reminders.upsert": upsertManualReminder,
+  "reminders.cancel": cancelManualReminder,
   "calendar.sync": calendarSync,
   "mirror.sync": (db, context) => mirrorSync(db, context, false),
   "mirror.rebuild": (db, context) => mirrorSync(db, context, true),

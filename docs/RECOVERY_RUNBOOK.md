@@ -31,6 +31,20 @@ Import transaksi maksimal 50 record dan bersifat all-or-nothing. File dianggap i
 
 Jika apply atau integrity gagal, transaction rollback dan maintenance tetap aktif sampai owner menjalankan integrity/recovery yang terverifikasi. Restore menolak backup bila email aktif yang sama memiliki `user_id` berbeda, mempertahankan UID/status/role pengguna yang saat ini diizinkan, dan tidak menghidupkan kembali push credential perangkat. Jangan menyatakan restore berhasil sebelum seluruh verifikasi selesai.
 
+
+
+## Recovery objectives dan retention decision
+
+Sebelum aplikasi dipakai untuk data finansial nyata, owner wajib menetapkan dan mencatat tiga keputusan operasional berikut tanpa mengubah business logic:
+
+- **RPO:** kehilangan data maksimum yang masih dapat diterima.
+- **RTO:** durasi maksimum sampai aplikasi kembali dapat digunakan dengan data terverifikasi.
+- **Retention backup:** berapa lama backup harian/mingguan/bulanan dipertahankan.
+
+Source **tidak menetapkan angka secara sepihak** karena nilai tersebut memengaruhi biaya, privacy, kapasitas Drive, dan ekspektasi recovery. Release readiness untuk data nyata dianggap belum lengkap selama tiga nilai itu belum disetujui.
+
+Evidence restore drill minimal mencatat: commit/schema, database tujuan terisolasi, backup ID/file name (tanpa resource secret), checksum verification, row counts sebelum/sesudah, saldo per rekening, hasil `PRAGMA foreign_key_check`, business integrity, rebuild Sheets/Calendar, waktu mulai/selesai, serta hasil akhir. Drill tidak boleh menggunakan database Production aktif sebagai target.
+
 ## Incident response
 
 - Jangan mengubah data langsung melalui Turso console kecuali prosedur maintenance disetujui.

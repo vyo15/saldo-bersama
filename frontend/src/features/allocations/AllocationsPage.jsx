@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
-import { FiArchive, FiArrowRight, FiChevronDown, FiMoreHorizontal, FiPieChart, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
+import { FiArchive, FiArrowRight, FiBell, FiChevronDown, FiMoreHorizontal, FiPieChart, FiPlus, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -18,7 +18,8 @@ import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthBoundsInJakarta } from "../../domain/dates.js";
-import { filterByAssigneeAccess, filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
+import { canUseAssignedItem, filterByAssigneeAccess, filterByOwnership, hasSameAssignee, ownershipKey } from "../../domain/ownership.js";
+import ManualReminderModal from "../reminders/ManualReminderModal.jsx";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 
 const AllocationDialogLayer = lazy(() => import("./AllocationDialogLayer.jsx"));
@@ -122,15 +123,22 @@ const AllocationSummary = ({ items }) => {
   return <Card className="allocation-summary" aria-labelledby="allocation-summary-title"><div className="allocation-summary__content"><div className="allocation-summary__top"><span className="allocation-summary__eyebrow" id="allocation-summary-title">Ringkasan alokasi aktif</span><span className={`allocation-summary__status allocation-summary__status--${items.length ? usage.tone : "idle"}`}>{items.length ? usage.label : "Belum ada kantong"}</span></div><div className="allocation-summary__amount"><Money value={totals.remaining} tone={totals.remaining < 0 ? "negative" : "default"} /></div><p>Sisa dari <Money value={totals.allocated} /> yang dialokasikan.</p><div className="allocation-summary__progress"><ProgressBar value={usage.committed} max={totals.allocated} label="Pemakaian seluruh alokasi aktif" /></div><div className="allocation-summary__metrics"><div><span>Terpakai + dipesan</span><strong><Money value={usage.committed} /></strong></div><div><span>Kantong aktif</span><strong>{items.length} kantong</strong></div></div></div><img className="allocation-summary__art" src="/login/assets/mobile/wallet.webp" alt="" aria-hidden="true" draggable="false" /></Card>;
 };
 
-const AllocationCard = ({ item, onOpenActions, attention = false }) => {
+const AllocationCard = ({ item, onOpenActions, onReminder, canRemind, attention = false }) => {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
   const usage = allocationUsage(item);
   const hasActions = Boolean(item.can_close || item.can_archive_rule);
-  return <Card className={`allocation-card${expanded ? " is-expanded" : ""}${attention ? " allocation-card--attention" : ""}`} data-envelope-period-id={item.envelope_period_id}><div className="allocation-card__header"><span className="allocation-card__icon"><FiPieChart aria-hidden="true" /></span><div className="allocation-card__heading"><h2>{item.name}</h2><p>{allocationAssigneeLabel(item)} · {allocationPeriodLabel(item.period_start, item.period_end)}</p></div>{hasActions ? <button type="button" className="allocation-card__menu" aria-label={`Kelola kantong ${item.name}`} onClick={() => onOpenActions(item)}><FiMoreHorizontal aria-hidden="true" /></button> : null}</div><div className="allocation-card__balance"><span className="allocation-card__balance-label"><i aria-hidden="true" />Sisa alokasi</span><Money className="allocation-card__remaining" value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /><div className="allocation-card__progress-meta"><span>Terpakai + dipesan <strong><Money value={usage.committed} /></strong></span><strong>{usage.percentage}%</strong></div><div className="allocation-card__progress"><ProgressBar value={usage.committed} max={usage.allocated} label={item.name} /></div></div><div className="allocation-card__quick"><div><span>Total alokasi</span><strong><Money value={usage.allocated} /></strong></div><div><span>Status</span><strong className={`allocation-card__status allocation-card__status--${usage.tone}`}>{usage.label}</strong></div></div><button type="button" className="allocation-card__expand" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded((current) => !current)}>{expanded ? "Tutup detail" : "Lihat detail"}<FiChevronDown aria-hidden="true" /></button><div className="allocation-card__details" id={detailsId} aria-hidden={!expanded}><div><dl><div><dt>Jatah untuk</dt><dd>{allocationAssigneeLabel(item)}</dd></div><div><dt>Periode</dt><dd>{allocationPeriodLabel(item.period_start, item.period_end)}</dd></div><div><dt>Terpakai</dt><dd><Money value={usage.used} /></dd></div><div><dt>Dipesan</dt><dd><Money value={usage.reserved} /></dd></div><div><dt>Rollover</dt><dd>{allocationRolloverLabel(item.rollover_policy)}</dd></div></dl></div></div></Card>;
+  return <Card className={`allocation-card${expanded ? " is-expanded" : ""}${attention ? " allocation-card--attention" : ""}`} data-envelope-period-id={item.envelope_period_id}><div className="allocation-card__header"><span className="allocation-card__icon"><FiPieChart aria-hidden="true" /></span><div className="allocation-card__heading"><h2>{item.name}</h2><p>{allocationAssigneeLabel(item)} · {allocationPeriodLabel(item.period_start, item.period_end)}</p></div><div className="allocation-card__header-actions">{canRemind ? <button type="button" className="allocation-card__menu" aria-label={`Atur pengingat kantong ${item.name}`} onClick={() => onReminder(item)}><FiBell aria-hidden="true" /></button> : null}{hasActions ? <button type="button" className="allocation-card__menu" aria-label={`Kelola kantong ${item.name}`} onClick={() => onOpenActions(item)}><FiMoreHorizontal aria-hidden="true" /></button> : null}</div></div><div className="allocation-card__balance"><span className="allocation-card__balance-label"><i aria-hidden="true" />Sisa alokasi</span><Money className="allocation-card__remaining" value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /><div className="allocation-card__progress-meta"><span>Terpakai + dipesan <strong><Money value={usage.committed} /></strong></span><strong>{usage.percentage}%</strong></div><div className="allocation-card__progress"><ProgressBar value={usage.committed} max={usage.allocated} label={item.name} /></div></div><div className="allocation-card__quick"><div><span>Total alokasi</span><strong><Money value={usage.allocated} /></strong></div><div><span>Status</span><strong className={`allocation-card__status allocation-card__status--${usage.tone}`}>{usage.label}</strong></div></div><button type="button" className="allocation-card__expand" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded((current) => !current)}>{expanded ? "Tutup detail" : "Lihat detail"}<FiChevronDown aria-hidden="true" /></button><div className="allocation-card__details" id={detailsId} aria-hidden={!expanded}><div><dl><div><dt>Jatah untuk</dt><dd>{allocationAssigneeLabel(item)}</dd></div><div><dt>Periode</dt><dd>{allocationPeriodLabel(item.period_start, item.period_end)}</dd></div><div><dt>Terpakai</dt><dd><Money value={usage.used} /></dd></div><div><dt>Dipesan</dt><dd><Money value={usage.reserved} /></dd></div><div><dt>Rollover</dt><dd>{allocationRolloverLabel(item.rollover_policy)}</dd></div></dl></div></div></Card>;
 };
 
-const AllocationCards = ({ items, totalItems, onOpenActions, attentionEnvelopeId }) => <section className="allocation-grid" aria-label="Daftar kantong aktif">{items.length ? items.map((item) => <AllocationCard key={item.envelope_period_id} item={item} onOpenActions={onOpenActions} attention={item.envelope_period_id === attentionEnvelopeId} />) : <Card className="allocation-empty panel"><EmptyState variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada kantong yang sesuai filter" : "Belum ada kantong aktif"} description={totalItems ? "Pilih filter lain untuk menampilkan kantong aktif." : "Buat kantong untuk mulai membagi dana yang tersedia."} /></Card>}</section>;
+const canSetAllocationReminder = (item, actor) => {
+  if (!canUseAssignedItem(item, actor)) return false;
+  if (actor?.role === "owner") return true;
+  const ownerKey = ownershipKey(item);
+  return ownerKey === "shared:" || ownerKey === `personal:${actor?.user_id || ""}`;
+};
+
+const AllocationCards = ({ items, totalItems, onOpenActions, onReminder, actor, attentionEnvelopeId }) => <section className="allocation-grid" aria-label="Daftar kantong aktif">{items.length ? items.map((item) => <AllocationCard key={item.envelope_period_id} item={item} onOpenActions={onOpenActions} onReminder={onReminder} canRemind={canSetAllocationReminder(item, actor)} attention={item.envelope_period_id === attentionEnvelopeId} />) : <Card className="allocation-empty panel"><EmptyState variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada kantong yang sesuai filter" : "Belum ada kantong aktif"} description={totalItems ? "Pilih filter lain untuk menampilkan kantong aktif." : "Buat kantong untuk mulai membagi dana yang tersedia."} /></Card>}</section>;
 
 const AllocationHistory = ({ items }) => items.length ? <Card className="panel"><div className="panel__header"><h2>Riwayat periode</h2></div><div className="compact-list compact-list--stacked">{items.map((item) => <div key={item.envelope_period_id}><span><strong>{item.name}</strong><small>{item.period_start} – {item.period_end} · Jatah untuk {allocationAssigneeLabel(item)} · {item.status === "closed" ? "Ditutup" : item.status === "archived" ? "Diarsipkan" : item.status}</small></span><span><Money value={item.allocated_amount} /><small>Terpakai <Money value={item.used_amount} /></small></span></div>)}</div></Card> : null;
 
@@ -174,10 +182,10 @@ const AllocationHeaderActions = ({ administratorMode, canMove, openCreate, openM
   <Button className="allocation-refresh-action" icon={FiRefreshCw} onClick={reload} aria-label="Muat ulang alokasi">Muat ulang</Button>
 </div>;
 
-const AllocationActiveSection = ({ activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, attentionEnvelopeId }) => <section className="allocation-active" aria-labelledby="allocation-active-title">
+const AllocationActiveSection = ({ activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder, actor, attentionEnvelopeId }) => <section className="allocation-active" aria-labelledby="allocation-active-title">
   <div className="allocation-section-heading"><h2 id="allocation-active-title">Kantong aktif</h2><span>{filteredActiveItems.length} dari {activeItems.length}</span></div>
   {activeItems.length ? <div className="allocation-filters" role="group" aria-label="Filter kantong aktif">{ALLOCATION_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationFilter === filter.value ? "is-active" : ""} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}
-  <AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} attentionEnvelopeId={attentionEnvelopeId} />
+  <AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} onReminder={onReminder} actor={actor} attentionEnvelopeId={attentionEnvelopeId} />
 </section>;
 
 const AllocationsPage = () => {
@@ -198,6 +206,7 @@ const AllocationsPage = () => {
   const [message, setMessage] = useState(null);
   const [allocationFilter, setAllocationFilter] = useState("all");
   const [actionTarget, setActionTarget] = useState(null);
+  const [reminderTarget, setReminderTarget] = useState(null);
   const [closeTarget, setCloseTarget] = useState(null);
   const [closeState, setCloseState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
@@ -241,6 +250,7 @@ const AllocationsPage = () => {
   const closeMove = () => { if (!moveMutation.busy) setMoveOpen(false); };
   const startClosePeriod = (item) => { setActionTarget(null); setCloseTarget(item); setCloseState({ status: "idle", error: null }); };
   const startLifecycle = (item) => { setActionTarget(null); lifecycle.openRuleLifecycle(item); };
+  const openReminder = (item) => setReminderTarget({ entityType: "envelope_period", entityId: item.envelope_period_id, name: item.name, suggestedDate: item.period_end });
 
   return <div className="page-stack allocations-page">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
@@ -249,9 +259,10 @@ const AllocationsPage = () => {
     <AllocationAttentionNotice envelopeId={attentionEnvelopeId} />
     <AllocationSummary items={activeItems} />
     <AllocationHeaderActions administratorMode={administratorMode} canMove={canMove} openCreate={openCreate} openMove={openMove} reload={resource.reload} />
-    <AllocationActiveSection activeItems={activeItems} filteredActiveItems={filteredActiveItems} allocationFilter={allocationFilter} setAllocationFilter={setAllocationFilter} setActionTarget={setActionTarget} attentionEnvelopeId={attentionEnvelopeId} />
+    <AllocationActiveSection activeItems={activeItems} filteredActiveItems={filteredActiveItems} allocationFilter={allocationFilter} setAllocationFilter={setAllocationFilter} setActionTarget={setActionTarget} onReminder={openReminder} actor={allocationActor} attentionEnvelopeId={attentionEnvelopeId} />
     <AllocationHistory items={historicalItems} />
     <RecoveryPanels recentMovements={recentMovements} setReverseTarget={setReverseTarget} setReverseState={setReverseState} />
+    <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
     <AllocationActionModal target={actionTarget} onClose={() => setActionTarget(null)} onClosePeriod={startClosePeriod} onLifecycle={startLifecycle} />
     {createOpen || moveOpen || closeTarget || archiveTarget || reverseTarget ? (
       <Suspense fallback={null}>

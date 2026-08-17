@@ -76,7 +76,7 @@ test("service worker hanya meng-cache app shell dan melewatkan seluruh API", asy
   assert.match(sw, /pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw, /isInfrastructurePath\(url\.pathname\)\) return/);
   assert.doesNotMatch(sw, /cache\.put\([^\n]*\/api\//);
-  assert.match(sw, /saldo-bersama-static-v8/);
+  assert.match(sw, /saldo-bersama-static-v9/);
   assert.match(sw, /response\.bodyUsed/);
   assert.match(sw, /event\.waitUntil/);
   assert.match(sw, /if \(isHtmlResponse\(response\)\) cacheResponse\(event, RUNTIME_CACHE, "\/", response\)/);
@@ -249,7 +249,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   const preview = await previewTrialDataReset(resetDb, { actor, payload: {} });
   assert.equal(preview.summary.totalRows, 0);
   assert.equal(resetMetrics.network, 1, "reset.preview harus membaca state dan preserved count dalam satu batch");
-  assert.equal(resetMetrics.statements, 23);
+  assert.equal(resetMetrics.statements, 24);
 
   const fullResetMetrics = { network: 0, statements: 0 };
   const fullResetDb = {
@@ -262,7 +262,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   const fullResetPreview = await previewFullDataReset(fullResetDb, { actor, payload: {} });
   assert.equal(fullResetPreview.summary.totalRows, 0);
   assert.equal(fullResetMetrics.network, 1, "fullReset.preview harus membaca seluruh scope dan preserved count dalam satu batch");
-  assert.equal(fullResetMetrics.statements, 29);
+  assert.equal(fullResetMetrics.statements, 30);
 
   const integrityMetrics = { network: 0, statements: [] };
   const integrityDb = {
@@ -274,6 +274,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
           return { rows: [{ protected_account_id: "a1", protected_initial_balance: 0, protected_initial_balance_date: "2026-08-01", transaction_id: null }] };
         }
         if (statement.sql.includes("GROUP BY idempotency_key,created_by")) return { rows: [] };
+        if (statement.sql.includes("FROM system_config")) return { rows: [{ key: "currency", value: "IDR" }, { key: "timezone", value: "Asia/Jakarta" }] };
         if (statement.sql.trim().startsWith("SELECT COUNT(*) AS count") || statement.sql.includes("SELECT COUNT(DISTINCT")) return { rows: [{ count: 0 }] };
         return { rows: [] };
       });
@@ -281,7 +282,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   };
   assert.deepEqual(await integrityIssues(integrityDb), []);
   assert.equal(integrityMetrics.network, 1, "integrity check termasuk histori rekening protected harus satu batch");
-  assert.deepEqual(integrityMetrics.statements, [10]);
+  assert.deepEqual(integrityMetrics.statements, [11]);
 });
 
 test("preview lifecycle owner menggabungkan read independen menjadi satu batch snapshot", async () => {
@@ -364,7 +365,7 @@ test("status sistem dan notifikasi tidak memecah read independen ke beberapa pip
         healthNetwork += 1;
         assert.equal(statements.length, 3);
         return [
-          { rows: [{ key: "schema_version", value: "9" }, { key: "maintenance_mode", value: "false" }, { key: "timezone", value: "Asia/Jakarta" }, { key: "currency", value: "IDR" }] },
+          { rows: [{ key: "schema_version", value: "10" }, { key: "maintenance_mode", value: "false" }, { key: "timezone", value: "Asia/Jakarta" }, { key: "currency", value: "IDR" }] },
           { rows: [] },
           { rows: [] },
         ];
@@ -436,6 +437,7 @@ test("preview tutup periode menggabungkan statistik dan integrity base setelah b
         if (statement.sql.includes("transaction_count")) return { rows: [{ transaction_count: 0, active_count: 0, cancelled_count: 0, income_total: 0, expense_total: 0 }] };
         if (statement.sql.includes("envelope_period_id IS NULL")) return { rows: [{ count: 0 }] };
         if (statement.sql.includes("protected_account_id")) return { rows: [] };
+        if (statement.sql.includes("FROM system_config")) return { rows: [{ key: "currency", value: "IDR" }, { key: "timezone", value: "Asia/Jakarta" }] };
         if (statement.sql.includes("GROUP BY idempotency_key,created_by")) return { rows: [] };
         if (statement.sql.includes("COUNT(*) AS count") || statement.sql.includes("COUNT(DISTINCT")) return { rows: [{ count: 0 }] };
         return { rows: [] };
@@ -449,5 +451,5 @@ test("preview tutup periode menggabungkan statistik dan integrity base setelah b
   assert.equal(result.canClose, true);
   assert.equal(metrics.one, 1, "closure blocker tetap dibaca dulu agar closed period fail-fast");
   assert.equal(metrics.batch, 1, "integrity base, unallocated, dan statistik harus satu batch setelah blocker");
-  assert.deepEqual(metrics.statements, [12]);
+  assert.deepEqual(metrics.statements, [13]);
 });

@@ -4,7 +4,7 @@ Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_OAUTH_CLI
 
 ## Boundary saat ini
 
-Project **sengaja memakai satu database Turso** untuk runtime lokal dan Vercel Production sesuai ADR-0007. Runbook ini tidak membuat database Development terpisah dan tidak mengubah `TURSO_DATABASE_URL`.
+Runtime **masih memakai satu database Turso** untuk lokal dan Production sesuai kondisi aktual ADR-0007, tetapi exit plan pemisahan Development/Production sudah disetujui. Runbook ini tidak boleh menganggap isolation selesai sebelum environment evidence membuktikan dua database berbeda.
 
 Konsekuensinya:
 
@@ -16,16 +16,16 @@ Konsekuensinya:
 ## Urutan rotasi `TURSO_AUTH_TOKEN`
 
 1. Pastikan backup/integrity evidence terbaru tersedia sesuai risiko operasi.
-2. Buat token Turso baru untuk **database canonical yang sama**. Jangan membuat database baru sebagai bagian runbook ini.
+2. Jika ADR-0007 belum keluar dari mode single-database, buat token baru untuk database canonical yang sama. Jika isolation sudah terbukti, buat/rotasi token **secara terpisah** untuk database Development dan Production; jangan menyalin satu token lintas environment.
 3. Simpan token baru hanya pada secret store/runtime yang sah.
 4. Perbarui local `.env.local` pada komputer tepercaya.
-5. Sinkronkan environment Vercel Development/Production sesuai tooling canonical tanpa menampilkan nilai token.
+5. Sinkronkan environment sesuai scope tanpa menampilkan nilai token. Setelah isolation, Development hanya menerima token Development dan Production hanya menerima token Production.
 6. Buat deployment baru bila runtime memerlukan redeploy untuk membaca environment terbaru.
 7. Verifikasi login, `system.health`, read transaksi, dan operation non-destructive yang relevan. Untuk perubahan data, gunakan test dummy hanya bila aplikasi masih pada fase trial dan preview memastikan tidak ada data nyata terdampak.
 8. Setelah seluruh runtime yang diperlukan terbukti menggunakan token baru, revoke token lama di Turso.
 9. Verifikasi ulang health dan catat evidence tanpa nilai secret.
 
-Jangan revoke token lama sebelum runtime yang diperlukan terbukti memakai token baru karena satu database ini dipakai bersama.
+Jangan revoke token lama sebelum runtime yang diperlukan terbukti memakai token baru. Setelah isolation, verifikasi dan revoke dilakukan per environment agar kegagalan Development tidak memaksa rollback credential Production.
 
 ## Urutan rotasi `SESSION_SECRET`
 

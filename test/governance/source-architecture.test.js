@@ -213,7 +213,7 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
 });
 
 
-test("Web Push memakai secure context, status backend, payload privat, dan delivery per perangkat", async () => {
+test("Web Push memakai secure context, status backend, detail server-generated, dan delivery per perangkat", async () => {
   const [frontendNotifications, serviceWorkerRegistration, notificationsPage, serviceWorker, backendNotifications, jobs, deliveryMigration, preferenceMigration] = await Promise.all([
     source("frontend/src/services/notifications.js"),
     source("frontend/src/services/serviceWorker.js"),
@@ -236,8 +236,11 @@ test("Web Push memakai secure context, status backend, payload privat, dan deliv
   assert.doesNotMatch(notificationsPage, /Uji notifikasi/);
   assert.match(notificationsPage, /tileAction/);
   assert.match(notificationsPage, /tileAction && runPushAction\(tileAction\)/);
+  assert.match(serviceWorker, /safeNotificationText/);
+  assert.match(serviceWorker, /payload\.title/);
+  assert.match(serviceWorker, /payload\.body/);
   assert.match(serviceWorker, /Ada pengingat keuangan yang perlu diperiksa/);
-  assert.doesNotMatch(serviceWorker, /payload\.title|payload\.body/);
+  assert.match(serviceWorker, /notification-badge-96\.png/);
   assert.match(backendNotifications, /normalizePushEndpoint/);
   assert.match(backendNotifications, /PUSH_ENDPOINT_OWNERSHIP_CONFLICT/);
   assert.match(jobs, /notification_deliveries/);
@@ -308,7 +311,6 @@ test("presentation compatibility wrappers sudah dipensiunkan dan feature memakai
     "frontend/src/features/accounts/AccountsPage.jsx",
     "frontend/src/features/accounts/components/AccountEditorDialogs.jsx",
     "frontend/src/features/accounts/components/AccountFinancialCard.jsx",
-    "frontend/src/features/accounts/components/MobileAccountSheets.jsx",
     "frontend/src/features/categories/CategoriesPage.jsx",
     "frontend/src/features/transactions/TransactionsPage.jsx",
   ];
@@ -317,6 +319,10 @@ test("presentation compatibility wrappers sudah dipensiunkan dan feature memakai
     assert.match(text, /shared\/presentation\//, `${relative} harus memakai shared presentation canonical`);
     assert.doesNotMatch(text, /(?:account|category|transaction)Presentation\.js/);
   }
+
+  const mobileAccountSheets = await source("frontend/src/features/accounts/components/MobileAccountSheets.jsx");
+  assert.match(mobileAccountSheets, /AccountFinancialCard/, "Mobile account sheet harus mendelegasikan presentation ke card canonical");
+  assert.doesNotMatch(mobileAccountSheets, /(?:account|category|transaction)Presentation\.js/);
 });
 
 test("backend stable serialization memiliki satu implementasi canonical", async () => {
@@ -434,14 +440,16 @@ test("frontend menjaga dependency direction, bebas cycle relatif, dan helper sta
 
 
 test("frontend auth canonical tidak memuat Google GSI legacy", async () => {
-  const [indexHtml, loginPage, mobileAuth] = await Promise.all([
+  const [indexHtml, loginPage, mobileAuth, vercelConfig] = await Promise.all([
     source("frontend/index.html"),
     source("frontend/src/features/auth/LoginPage.jsx"),
     source("frontend/src/services/auth/mobileFirebaseGoogleAuth.js"),
+    source("vercel.json"),
   ]);
   assert.doesNotMatch(indexHtml, /accounts\.google\.com\/gsi\/client/);
   assert.equal(await exists("frontend/src/services/auth/googleFirebaseAuth.js"), false);
   assert.doesNotMatch(loginPage, /google\.accounts\.id/);
+  assert.doesNotMatch(vercelConfig, /accounts\.google\.com\/gsi\//);
   assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
 });
 

@@ -11,6 +11,7 @@ import { currentMonthInJakarta } from "../../domain/dates.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { filterByAssigneeAccess, filterByOwnership } from "../../domain/ownership.js";
+import ManualReminderModal from "../reminders/ManualReminderModal.jsx";
 import {
   useRecurringAttention,
   useRecurringOccurrenceRecovery,
@@ -67,6 +68,7 @@ const RecurringPage = () => {
   const [filter, setFilter] = useState("all");
   const [kind, setKind] = useState("expense");
   const [expandedId, setExpandedId] = useState(null);
+  const [reminderTarget, setReminderTarget] = useState(null);
   const resource = useApiResource("recurring.list", { period });
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
@@ -84,7 +86,8 @@ const RecurringPage = () => {
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
   const { allItems, filteredItems, accounts, categories, editCategories, paymentAccounts, paymentEnvelopes } = view;
-  const actions = { openPayment: payments.openPayment, openReverse: payments.openReverse, openSkip: recovery.openSkip, openRestore: recovery.openRestore, openRuleEditor: rules.openRuleEditor, openArchive: rules.openArchive };
+  const openReminder = (item) => setReminderTarget({ entityType: "recurring_occurrence", entityId: item.occurrence_id, name: item.name, suggestedDate: item.due_date });
+  const actions = { openPayment: payments.openPayment, openReverse: payments.openReverse, openSkip: recovery.openSkip, openRestore: recovery.openRestore, openRuleEditor: rules.openRuleEditor, openArchive: rules.openArchive, openReminder };
   const headerActions = <div className={styles.headerActions}><label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => { setPeriod(event.target.value); setFilter("all"); setKind("expense"); setExpandedId(null); }} /></label>{user?.role === "owner" ? <Button variant="primary" icon={FiPlus} onClick={rules.openCreate}>Tambah jadwal</Button> : null}</div>;
 
   return (
@@ -94,6 +97,7 @@ const RecurringPage = () => {
       <Suspense fallback={null}>
         <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} />
       </Suspense>
+      <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
       {recurringDialogOpen({ rules, payments, recovery }) ? (
         <Suspense fallback={null}>
           <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={accounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} />

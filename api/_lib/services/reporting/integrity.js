@@ -34,6 +34,7 @@ export const integrityBaseStatements = () => [
       AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
     WHERE a.allow_negative=0
     ORDER BY a.account_id,t.transaction_date,t.created_at,t.transaction_id`, args: [] },
+  { sql: "SELECT key,value FROM system_config WHERE key IN ('timezone','currency') ORDER BY key", args: [] },
 ];
 
 const appendSimpleIntegrityIssues = (issues, rows) => {
@@ -59,6 +60,19 @@ const appendPushIntegrityIssues = (issues, rows) => {
   for (const [items, code] of counts) {
     const count = Number(items[0]?.count || 0);
     if (count > 0) issues.push({ code, count });
+  }
+};
+
+
+const appendConfigIntegrityIssues = (issues, rows) => {
+  const config = new Map((rows || []).map((row) => [row.key, row.value]));
+  const expected = [
+    ["timezone", "Asia/Jakarta", "SYSTEM_TIMEZONE_MISMATCH"],
+    ["currency", "IDR", "SYSTEM_CURRENCY_MISMATCH"],
+  ];
+  for (const [key, expectedValue, code] of expected) {
+    const actualValue = config.get(key) ?? null;
+    if (actualValue !== expectedValue) issues.push({ code, key, expected: expectedValue, actual: actualValue });
   }
 };
 
@@ -92,6 +106,7 @@ export const integrityIssuesFromBaseRows = (baseRows) => {
   appendSimpleIntegrityIssues(issues, baseRows.slice(0, 6));
   appendPushIntegrityIssues(issues, baseRows.slice(6, 9));
   appendBalanceIntegrityIssues(issues, baseRows[9] || []);
+  appendConfigIntegrityIssues(issues, baseRows[10] || []);
   return issues;
 };
 

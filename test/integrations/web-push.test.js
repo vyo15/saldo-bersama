@@ -444,7 +444,7 @@ test("retry multi-perangkat hanya mengulang delivery yang gagal dan tidak mengga
     assert.equal(first.failed, 1);
     assert.equal(first.partial, 1);
     assert.equal(firstCalls.length, 2);
-    assert.ok(firstCalls.every((call) => !Object.hasOwn(call.payload, "title") && !Object.hasOwn(call.payload, "body")));
+    assert.ok(firstCalls.every((call) => call.payload.title === "Pengingat keuangan" && call.payload.body === "Periksa aplikasi."));
     assert.ok(firstCalls.every((call) => call.options.timeout === 8_000));
     assert.ok(firstCalls.every((call) => typeof call.options.agent?.options?.lookup === "function"));
     assert.equal((await db.one("SELECT status FROM notification_queue WHERE notification_id=?", [queued.notificationId])).status, "failed");

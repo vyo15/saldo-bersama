@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import {
-  FiAlertTriangle, FiArchive, FiArrowRight, FiCalendar, FiCheckCircle, FiChevronDown, FiChevronUp,
+  FiAlertTriangle, FiArchive, FiArrowRight, FiBell, FiCalendar, FiCheckCircle, FiChevronDown, FiChevronUp,
   FiClock, FiEdit2, FiMoreHorizontal, FiRepeat, FiRotateCcw,
 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
@@ -115,10 +115,12 @@ const ScheduleAttention = ({ item, guidance, actions }) => {
 
 const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false }) => {
   const hasManagement = item.can_reverse || item.can_cancel_occurrence || item.can_restore_occurrence || item.can_edit_rule || item.can_archive_rule;
+  const canRemind = !completedStatuses.has(item.status) && item.status !== "cancelled";
   return (
     <div className={styles.actions}>
       <div className={styles.actionPrimary}>
         {item.can_pay && !hidePay ? <Button variant="primary" onClick={() => actions.openPayment(item)}>Catat aktual</Button> : null}
+        {canRemind ? <Button icon={FiBell} onClick={() => actions.openReminder(item)}>Pengingat</Button> : null}
         {item.can_restore_occurrence ? <Button icon={FiRotateCcw} onClick={() => actions.openRestore(item)}>Pulihkan periode</Button> : null}
         {completedStatuses.has(item.status) ? <span className={styles.completedMark}><FiCheckCircle aria-hidden="true" /> Sudah tercatat</span> : null}
         {hasManagement ? (

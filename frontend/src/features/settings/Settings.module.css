@@ -248,7 +248,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .currentMemberBody { min-width: 0; padding: 0 var(--space-5) var(--space-5); display: grid; gap: var(--space-3); }
 .currentMemberAvatarRow { min-width: 0; margin-top: -2.9rem; position: relative; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
 .currentMemberAvatar { width: 5.4rem; height: 5.4rem; flex-basis: 5.4rem; border: .28rem solid var(--surface); box-shadow: var(--shadow-md); font-size: 1rem; }
-.googleIdentityBadge { margin-bottom: .35rem; padding: .4rem .62rem; border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--text-muted); background: var(--surface); font-size: .66rem; font-weight: var(--font-weight-semibold); box-shadow: var(--shadow-control); }
+.googleIdentityBadge { margin-bottom: .35rem; padding: .4rem .62rem; border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--text-muted); background: var(--surface); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); box-shadow: var(--shadow-control); }
 .currentMemberIdentity { min-width: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .currentMemberIdentity > div:first-child { min-width: 0; display: grid; gap: .2rem; }
 .currentMemberIdentity strong { overflow-wrap: anywhere; font-size: var(--font-size-heading-sm); line-height: 1.2; }
@@ -265,7 +265,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .memberCopy strong, .memberCopy small { overflow-wrap: anywhere; }
 .memberCopy strong { font-size: var(--font-size-body); }
 .memberCopy small { color: var(--text-muted); font-size: var(--font-size-xs); }
-.memberRole { width: max-content; margin-top: .25rem; padding: .28rem .5rem; border-radius: var(--radius-pill); color: var(--primary-strong); background: var(--primary-soft); font-size: .64rem; font-weight: var(--font-weight-bold); letter-spacing: .05em; text-transform: uppercase; }
+.memberRole { width: max-content; margin-top: .25rem; padding: .28rem .5rem; border-radius: var(--radius-pill); color: var(--primary-strong); background: var(--primary-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .05em; text-transform: uppercase; }
 .memberMeta { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 .memberFacts {
@@ -329,7 +329,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .memberActivityMetrics > div { min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-soft); }
 .memberActivityMetrics span { display: block; color: var(--text-muted); font-size: var(--font-size-xs); }
 .memberActivityMetrics strong, .memberActivityMetrics :global(.money) { display: block; margin-top: .35rem; color: var(--text); font-size: var(--font-size-heading-sm); font-weight: var(--font-weight-bold); }
-.memberActivityMetrics small { display: block; margin-top: .35rem; color: var(--text-muted); font-size: .65rem; line-height: 1.4; }
+.memberActivityMetrics small { display: block; margin-top: .35rem; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
 .memberActivityListSection { min-width: 0; }
 .memberActivitySectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
 .memberActivitySectionHeading h3 { font-size: var(--font-size-body); }
@@ -344,7 +344,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .memberActivityItemIcon svg { width: 1.1rem; height: 1.1rem; }
 .memberActivityItemCopy { min-width: 0; display: grid; gap: .2rem; }
 .memberActivityItemCopy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-sm); }
-.memberActivityItemCopy small, .memberActivityItemCopy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: .66rem; }
+.memberActivityItemCopy small, .memberActivityItemCopy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: var(--font-size-xs); }
 .memberActivityItemValue { min-width: max-content; display: grid; justify-items: end; gap: .4rem; }
 .memberActivityItemValue :global(.money) { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
 .memberActivityOpenAll { width: 100%; justify-content: center; margin-top: var(--space-4); }
@@ -430,7 +430,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 @media (max-width: 26rem) {
   .membersSummaryContent { width: 68%; }
   .membersSummaryArt { right: -4%; width: min(7.2rem, 29%); }
-  .membersSummaryMeta { font-size: .66rem; }
+  .membersSummaryMeta { font-size: var(--font-size-xs); }
   .currentMemberAvatarRow { align-items: center; }
   .googleIdentityBadge { margin-bottom: 0; }
   .memberFacts, .memberActivityMetrics { grid-template-columns: 1fr; }
@@ -531,7 +531,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .resetOverview > div { min-width: 0; padding: .8rem .9rem; border: 1px solid var(--border); border-radius: var(--radius-md); display: grid; gap: .15rem; background: var(--surface-soft); }
 .resetOverview span { color: var(--text-soft); font-size: var(--font-size-xs); }
 .resetOverview strong { font-size: clamp(1.25rem, 3vw, 1.6rem); line-height: 1.1; font-variant-numeric: tabular-nums; }
-.resetOverview small { color: var(--text-muted); font-size: .68rem; }
+.resetOverview small { color: var(--text-muted); font-size: var(--font-size-xs); }
 .resetPreviewSection, .resetPreserved { display: grid; gap: var(--space-3); }
 .resetPreviewSectionHeading { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-2); }
 .resetPreviewSectionHeading > svg { width: 1rem; height: 1rem; margin-top: .12rem; color: var(--primary); }
@@ -578,7 +578,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .resetRecoveryHeader p { margin: .18rem 0 0; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
 .resetRecoveryMeta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
 .resetRecoveryMeta > div { min-width: 0; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: .7rem; display: grid; gap: .12rem; background: var(--surface-soft); }
-.resetRecoveryMeta span { color: var(--text-muted); font-size: .68rem; }
+.resetRecoveryMeta span { color: var(--text-muted); font-size: var(--font-size-xs); }
 .resetRecoveryMeta strong { min-width: 0; color: var(--text); font-size: var(--font-size-xs); overflow-wrap: anywhere; }
 .resetRecoveryActions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
@@ -591,7 +591,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   .resetStepIcon { width: 1.65rem; height: 1.65rem; }
   .resetOverview { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; }
   .resetOverview > div { padding: .65rem .55rem; }
-  .resetOverview span { font-size: .66rem; }
+  .resetOverview span { font-size: var(--font-size-xs); }
   .resetOverview strong { font-size: 1.15rem; }
   .resetPreviewGrid, .resetPreservedGrid, .resetScopeSelector { grid-template-columns: 1fr; }
   .resetSafetyPreflight { grid-template-columns: auto minmax(0, 1fr); }
@@ -681,7 +681,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 }
 .resetBalanceAccounts span { min-width: 0; display: grid; gap: .12rem; }
 .resetBalanceAccounts span strong { overflow-wrap: anywhere; }
-.resetBalanceAccounts span small { color: var(--text-muted); font-size: .68rem; }
+.resetBalanceAccounts span small { color: var(--text-muted); font-size: var(--font-size-xs); }
 .resetBalanceAccounts > div > strong { align-self: center; color: var(--positive); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .resetBalanceEmpty { margin: 0; color: var(--text-muted); font-size: var(--font-size-xs); }
 .fullResetGuard { border-color: color-mix(in srgb, var(--negative) 32%, var(--border)); background: color-mix(in srgb, var(--surface-elevated) 95%, var(--negative) 5%); }

@@ -21,7 +21,6 @@ import {
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { loadAccountExpenseTrend } from "../accounts.api.js";
 import styles from "./MobileAccountActivity.module.css";
-import MobileAccountTransferAction from "./MobileAccountTransferAction.jsx";
 
 const MOBILE_QUERY = "(max-width: 820px)";
 const HISTORY_LIMIT = 6;
@@ -215,7 +214,7 @@ const MobileChartPanel = ({ currentPeriod, onViewTransactions, selectedAccount, 
   );
 };
 
-const MobileAccountActivity = ({ selectedAccount, bootstrap, onTransferSaved, onViewTransactions }) => {
+const MobileAccountActivity = ({ selectedAccount, bootstrap, onViewTransactions }) => {
   const mobileEnabled = useMobileAccountActivityEnabled();
   const currentPeriod = currentMonthInJakarta();
   const [activeTab, setActiveTab] = useState("history");
@@ -244,7 +243,6 @@ const MobileAccountActivity = ({ selectedAccount, bootstrap, onTransferSaved, on
   if (!selectedAccount) return null;
   return (
     <section className={styles.mobileAccountActivity} aria-label={`Aktivitas rekening ${selectedAccount.name}`}>
-      <MobileAccountTransferAction bootstrap={bootstrap} selectedAccount={selectedAccount} onTransferSaved={onTransferSaved} onViewTransactions={onViewTransactions} />
       <MobileActivityTabs activeTab={activeTab} chartTabRef={chartTabRef} handleTabKeyDown={handleTabKeyDown} historyTabRef={historyTabRef} setActiveTab={setActiveTab} />
       {activeTab === "history"
         ? <MobileHistoryPanel accountLookup={history.accountLookup} categoryLookup={history.categoryLookup} currentPeriod={currentPeriod} historyPeriod={historyPeriod} historyResource={history.historyResource} onViewTransactions={onViewTransactions} selectedAccount={selectedAccount} setHistoryPeriod={setHistoryPeriod} />

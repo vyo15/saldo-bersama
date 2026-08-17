@@ -6,7 +6,7 @@ Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development 
 
 Runtime Development canonical terdiri dari **sembilan key core wajib dan satu key logging opsional**; grup Google bridge dan Web Push mengikuti aturan kelengkapan masing-masing. Production menambahkan **satu secret auth wajib** untuk Google OAuth server-side.
 
-- Project saat ini memakai satu database Turso untuk runtime lokal dan Vercel Production sesuai keputusan pemilik.
+- Project **masih** memakai satu database Turso untuk runtime lokal dan Vercel Production sampai exit criteria ADR-0007 dibuktikan. Target hardening yang disetujui adalah Development dan Production memakai database/token/session secret yang berbeda.
 - Vercel **Development** menjadi source of truth bootstrap `.env.local` untuk komputer tepercaya. `npm run dev` pada terminal interaktif selalu menarik ulang Development sebelum server dimulai agar konfigurasi antar-PC tidak drift.
 - Vercel **Production** menjadi runtime deployment production.
 - Vercel **Preview** dibiarkan kosong agar preview tidak pernah menulis ke database aktif secara tidak sengaja.
@@ -15,7 +15,7 @@ Runtime Development canonical terdiri dari **sembilan key core wajib dan satu ke
 - Variable `VITE_*` bersifat publik dan masuk ke bundle browser.
 - Setelah variable Production berubah, buat deployment Production baru.
 - Hanya collaborator Vercel yang dipercaya boleh memiliki akses project. Vercel Development dapat ditarik ke komputer lokal dan tidak mendukung mode Sensitive seperti Production/Preview. Karena itu `GOOGLE_OAUTH_CLIENT_SECRET` **tidak boleh disimpan pada scope Development**.
-- Karena runtime lokal dan Production memakai database yang sama, Web Push Development memakai pasangan VAPID yang sama dengan Production. Jangan membuat pasangan VAPID per perangkat.
+- Selama database masih shared, Web Push Development memakai pasangan VAPID yang sama dengan Production agar subscription pada database bersama tetap konsisten. Setelah database Development terisolasi, pasangan VAPID boleh dipisahkan/dirotasi per environment melalui perubahan reviewed; jangan membuat pasangan VAPID per perangkat.
 
 ## Scope Development canonical
 
@@ -32,8 +32,8 @@ Development menyimpan sembilan key core wajib dan satu key logging opsional. Web
 | `ALLOWED_USERS_JSON` | Ya | Dua email dengan role `administrator` atau `member`; backend menormalisasi `administrator` ke compatibility key internal |
 | `ALLOWED_ORIGINS` | Tidak | Memuat `http://localhost:5173` dan domain Production |
 | `SESSION_SECRET` | Ya | Minimal 32 karakter acak |
-| `TURSO_DATABASE_URL` | Ya | URL database Turso yang disetujui |
-| `TURSO_AUTH_TOKEN` | Ya | Token database Turso |
+| `TURSO_DATABASE_URL` | Ya | URL database Turso sesuai scope; setelah isolation, Development wajib menunjuk database Development |
+| `TURSO_AUTH_TOKEN` | Ya | Token database Turso sesuai scope; setelah isolation tidak boleh sama dengan token Production |
 
 ### Logging — opsional
 
@@ -77,7 +77,7 @@ Secret/token Production harus diperlakukan sebagai secret deployment. `npm run e
 
 ## `.env.local` canonical
 
-`.env.local` memakai key canonical Development dan boleh menyimpan `GOOGLE_OAUTH_CLIENT_SECRET` sebagai **production-only local credential** pada komputer tepercaya. Pada kondisi database tunggal saat ini, nilai Turso, allowlist, session, Web Push, dan integrasi aktif harus mengikuti konfigurasi pusat yang disetujui. Jangan membuat fallback, token dummy, database lokal kedua, atau pasangan VAPID baru per komputer.
+`.env.local` memakai key canonical Development dan boleh menyimpan `GOOGLE_OAUTH_CLIENT_SECRET` sebagai **production-only local credential** pada komputer tepercaya. Pada kondisi database tunggal saat ini, nilai Turso masih mengikuti database aktif yang disetujui. Setelah exit plan ADR-0007 dijalankan, `.env.local` yang ditarik dari Vercel Development wajib memakai database/token/session secret Development dan tidak boleh diarahkan kembali ke Production. Jangan membuat fallback, token dummy, atau pasangan VAPID baru per komputer.
 
 `npm run dev` berperilaku sebagai berikut:
 
@@ -152,6 +152,29 @@ npm run env:push:production
 Command mewajibkan dan mengirim `GOOGLE_OAUTH_CLIENT_SECRET` sebagai Sensitive, bersama core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap ke Production tanpa mencetak nilai secret. Jalankan deployment Production baru setelah sinkronisasi.
 
 Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sensitive. Simpan sumber canonical secret hanya pada workflow tepercaya dan rotasi bila sumber tersebut hilang.
+
+
+
+## Cutover Development/Production database isolation
+
+Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan hanya dari komputer tepercaya setelah backup/integrity evidence tersedia.
+
+1. Buat database Turso **Development** baru.
+2. Terapkan migration canonical sampai schema v10:
+   ```bash
+   npm run db:migrate
+   npm run db:integrity
+   ```
+   Command di atas harus dijalankan dengan environment yang secara eksplisit menunjuk database Development.
+3. Pastikan `system_config.timezone=Asia/Jakarta`, `currency=IDR`, dan business integrity lulus.
+4. Siapkan token Development baru. Jangan reuse token Production setelah isolation.
+5. Ubah Vercel **Development** `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, dan `SESSION_SECRET` ke nilai Development. Jangan mengubah Production pada langkah ini.
+6. Jalankan `npm run dev`, lalu `npm run env:check` dan smoke read/write menggunakan data dummy pada Development.
+7. Verifikasi Vercel Production tetap memakai database/token Production dan aplikasi Production tetap sehat.
+8. Setelah kedua scope terbukti terpisah, rotasi credential lama sesuai `SECRET_ROTATION_RUNBOOK.md` dan revoke token yang tidak lagi dipakai.
+9. Simpan evidence tanpa nilai secret. Source baru boleh menyatakan isolation selesai setelah langkah di atas dibuktikan.
+
+`npm run env:push:development` membaca `.env.local`; jangan menjalankannya sebelum memastikan `.env.local` sudah menunjuk database Development yang benar.
 
 ## Apps Script Properties canonical
 

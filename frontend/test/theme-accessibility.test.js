@@ -65,6 +65,7 @@ test("token light dan dark memenuhi kontras teks serta tombol utama", () => {
   assert.ok(contrast(token(light, "--on-primary"), token(light, "--primary")) >= 4.5);
   assert.ok(contrast(token(light, "--on-primary"), token(light, "--primary-strong")) >= 4.5);
   assert.ok(contrast(token(light, "--on-negative"), token(light, "--negative")) >= 4.5);
+  assert.ok(contrast(token(light, "--negative"), token(light, "--negative-soft")) >= 4.5, "Status danger light harus memenuhi AA pada negative-soft");
   assert.ok(contrast(token(dark, "--on-primary"), token(dark, "--primary")) >= 4.5);
   assert.ok(contrast(token(dark, "--on-primary"), token(dark, "--primary-strong")) >= 4.5);
   assert.ok(contrast(token(dark, "--on-negative"), token(dark, "--negative")) >= 4.5);
@@ -103,6 +104,17 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.ok(dashboardStart >= 0 && dashboardEnd > dashboardStart, "Blok dashboard desktop harus tetap ditemukan di bundle fitur Dashboard");
   const dashboardStyles = dashboard.slice(dashboardStart, dashboardEnd);
   assert.doesNotMatch(dashboardStyles, /font-size:\s*(?:8|9|10)px;/);
+
+  const [mobileHistoryStyles, reportsStyles] = await Promise.all([
+    readFile(new URL("../src/features/transactions/components/MobileTransactionHistory.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/reports/ReportsPage.module.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(mobileHistoryStyles, /\.pager button \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
+  assert.match(mobileHistoryStyles, /\.iconFilter \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
+  assert.match(mobileHistoryStyles, /\.typeChip,[\s\S]*\.typeChipActive \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.doesNotMatch(mobileHistoryStyles, /font-size:\s*(?:8(?:\.5)?|9(?:\.5)?|10)px;/);
+  assert.doesNotMatch(reportsStyles, /font-size:\s*(?:8(?:\.5)?|9(?:\.5)?|10)px;/);
+  assert.match(loginStyles, /\.login-mobile-security \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
 });
 
 test("tipografi memakai Manrope canonical, fallback system, dan bobot standar tanpa synthetic weight ekstrem", async () => {

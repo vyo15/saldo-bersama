@@ -274,3 +274,29 @@ export const updateNotificationPreference = async ({ type, enabled, rowVersion =
   apiClient.invalidate("notifications.preferences");
   return result;
 };
+
+export const getManualReminder = async ({ entityType, entityId }) => apiClient.request(
+  "reminders.get",
+  { entity_type: entityType, entity_id: entityId },
+  { force: true },
+);
+
+export const saveManualReminder = async ({ entityType, entityId, scheduledLocal, rowVersion = null }) => {
+  const result = await apiClient.request(
+    "reminders.upsert",
+    { entity_type: entityType, entity_id: entityId, scheduled_local: scheduledLocal, row_version: rowVersion },
+    { rowVersion },
+  );
+  apiClient.invalidate("reminders.get");
+  return result;
+};
+
+export const cancelManualReminder = async ({ reminderId, rowVersion }) => {
+  const result = await apiClient.request(
+    "reminders.cancel",
+    { reminder_id: reminderId, row_version: rowVersion },
+    { rowVersion },
+  );
+  apiClient.invalidate("reminders.get");
+  return result;
+};

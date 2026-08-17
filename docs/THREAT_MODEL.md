@@ -3,7 +3,7 @@
 | Threat | Control aktif | Gap/aksi |
 |---|---|---|
 | Broken access control/IDOR | Action permission + service ownership query | Contract test harus mengikuti setiap action/read model baru. |
-| Token/session theft | HttpOnly, SameSite Strict, Secure production, expiry | Rotasi dan revoke runbook perlu dipraktikkan. |
+| Token/session theft | HttpOnly, SameSite Strict, Secure production, expiry | Belum ada per-device session registry/revoke; rotasi, user deactivation, dan incident runbook harus dipraktikkan sampai RFC-0018 session-device disetujui. |
 | CSRF/origin abuse | SameSite + strict origin allowlist | Semua state-changing endpoint baru wajib memakai guard sama. |
 | Replay/duplicate write | Idempotency, nonce, timestamp, scoped hashed best-effort rate-limit key | Bucket rate limit saat ini process-local; distributed/global throttling lintas instance masih perlu evaluasi. |
 | Concurrent overwrite | `row_version` conditional update | UI wajib menampilkan conflict, bukan retry overwrite. |
@@ -11,9 +11,10 @@
 | Formula injection | Neutralisasi export/import | Test setiap format baru. |
 | XSS | React escaping, larangan raw HTML | Audit dependency dan render HTML baru. |
 | Privilege escalation | Server role/allowlist/binding | Role change Administrator-only dan audit. |
-| Backup disclosure | Private Drive folder, checksum | Enkripsi aplikasi belum menjadi baseline teruji. |
+| Backup disclosure | Private Drive folder, checksum | Enkripsi aplikasi belum menjadi baseline teruji; desain key lifecycle wajib mendahului implementasi encryption. |
 | Malicious import/restore | Preview, fingerprint, safety backup, maintenance, integrity | Real-resource drill wajib. |
 | Log leakage | Structured redaction | Coverage terminal log/client crash masih perlu ditingkatkan. |
 | Supply-chain compromise | Lockfile, CI, source validation | Dependabot/code scanning belum dibuktikan aktif. |
+| Development/Production credential blast radius | Vercel scope terpisah, local bootstrap tidak menarik Production | Database Turso masih shared sampai exit criteria ADR-0007 terbukti; prioritas hardening adalah DB/token/session secret terpisah. |
 | Insider/manual SQL | Service-only policy, audit | Batasi token dan dokumentasikan break-glass. |
 | Offline duplicate | Offline write ditolak | Jangan menambah browser write queue. |

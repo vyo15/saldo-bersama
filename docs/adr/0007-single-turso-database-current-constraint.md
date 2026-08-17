@@ -2,7 +2,7 @@
 
 **Status:** Accepted with known risk; environment-bootstrap portion superseded by ADR-0010  
 **Date:** 2026-08-02  
-**Updated:** 2026-08-12
+**Updated:** 2026-08-17
 
 ## Context
 Pemilik memilih satu database agar setup lintas perangkat sederhana dan tidak ada database Development/Production terpisah. Pada fase saat ini aplikasi belum go-live dan data finansial yang dimasukkan masih dapat berupa trial/error.
@@ -25,3 +25,21 @@ Satu database tetap dipakai. Tidak dibuat database testing kedua. Selama fase pr
 - Perubahan menuju database terpisah atau scope runtime baru selain Development/Production yang telah disetujui harus melalui RFC dan approval.
 
 Bootstrap, refresh, dan kebijakan environment Development mengikuti `docs/adr/0010-vercel-development-environment-bootstrap.md`.
+
+## Approved exit plan
+
+Pemisahan Development dan Production telah disetujui sebagai target hardening, tetapi **belum dianggap efektif hanya karena source berubah**. Sampai bukti environment menunjukkan dua database berbeda, keputusan runtime aktual pada bagian Decision tetap berlaku dan semua larangan destructive terhadap database aktif tetap wajib.
+
+Urutan cutover:
+
+1. Buat database Turso Development baru tanpa menyalin credential Production ke source/chat/log.
+2. Terapkan seluruh migration canonical sampai schema v10 pada database Development.
+3. Verifikasi `timezone=Asia/Jakarta`, `currency=IDR`, foreign key, dan business integrity.
+4. Isi Vercel Development `TURSO_DATABASE_URL` dan `TURSO_AUTH_TOKEN` dengan database/token Development. Production tetap memakai database/token Production.
+5. Pastikan `.env.local` yang ditarik oleh `npm run dev` sekarang menunjuk Development.
+6. Jalankan test/smoke development dengan data dummy hanya pada database Development.
+7. Verifikasi Production tetap membaca database lama yang benar sebelum dan sesudah perubahan.
+8. Setelah isolation terbukti, rotasi token Turso dan `SESSION_SECRET` per environment agar credential Development dan Production tidak identik.
+9. Simpan evidence berupa nama/scope resource dan hasil health/integrity tanpa nilai secret.
+
+Exit criteria ADR single-database terpenuhi hanya bila Development dan Production terbukti memakai database berbeda, smoke kedua runtime lulus, dan rollback path telah diverifikasi. Setelah itu ADR baru/superseding decision harus mencatat kondisi final; jangan mengubah status ADR ini menjadi superseded sebelum cutover nyata selesai.

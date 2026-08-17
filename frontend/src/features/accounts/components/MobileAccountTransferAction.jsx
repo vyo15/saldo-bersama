@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
-import { FiArrowRight, FiCheck, FiChevronRight, FiRepeat } from "react-icons/fi";
+import { FiArrowRight, FiCheck } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import Money from "../../../components/common/Money.jsx";
@@ -9,6 +9,13 @@ import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import styles from "./MobileAccountTransferAction.module.css";
 
 const TransactionForm = lazy(() => import("../../transactions/TransactionForm.jsx"));
+
+const TransferArrowsIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 8h14" /><path d="m15 5 3 3-3 3" />
+    <path d="M20 16H6" /><path d="m9 13-3 3 3 3" />
+  </svg>
+);
 
 const activeTransactableAccounts = (bootstrap) => (bootstrap?.accounts || [])
   .filter((account) => account.status === "active" && account.can_transact !== false);
@@ -130,17 +137,12 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
     <>
       <button
         type="button"
-        className={styles.mobileTransferQuickAction}
+        className={styles.mobileTransferHeaderAction}
         onClick={() => setTransferOpen(true)}
         disabled={!canTransfer}
         aria-describedby={!canTransfer ? "mobile-transfer-unavailable" : undefined}
       >
-        <span className={styles.mobileTransferQuickIcon}><FiRepeat aria-hidden="true" /></span>
-        <span className={styles.mobileTransferQuickCopy}>
-          <strong>Transfer</strong>
-          <small>{canTransfer ? "Pindahkan saldo ke rekening lain" : "Tidak ada rekening tujuan yang kompatibel"}</small>
-        </span>
-        <FiChevronRight className={styles.mobileTransferQuickChevron} aria-hidden="true" />
+        <TransferArrowsIcon /><span>Transfer</span>
       </button>
       {!canTransfer ? <span id="mobile-transfer-unavailable" className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif dengan ruang kepemilikan yang sama.</span> : null}
 

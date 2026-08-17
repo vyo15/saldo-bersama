@@ -698,6 +698,12 @@
     font-size: 1.55rem;
   }
 
+  .segment,
+  .sortButton,
+  .detailButton {
+    min-height: var(--mobile-control-height);
+  }
+
   .controlsRow {
     grid-template-columns: minmax(0, 1fr) auto;
   }

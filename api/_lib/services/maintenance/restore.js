@@ -48,7 +48,7 @@ export const previewRestore = async (db, context) => {
 const restoredDataTables = Object.freeze([
   "notification_preferences", "accounts", "categories", "envelope_rules", "envelope_periods",
   "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements",
-  "budgets", "goal_movements", "reconciliations", "period_closures", "idempotency_keys",
+  "budgets", "goal_movements", "reconciliations", "period_closures", "manual_reminders", "idempotency_keys",
 ]);
 
 const loadRestorePreview = async (db, context, payload) => {

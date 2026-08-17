@@ -136,6 +136,7 @@ test("integrity check melaporkan histori negatif pada rekening yang melarang sal
   const db = {
     all: async (sql) => {
       if (sql.startsWith("PRAGMA")) return [];
+      if (sql.includes("FROM system_config")) return [{ key: "currency", value: "IDR" }, { key: "timezone", value: "Asia/Jakarta" }];
       if (sql.includes("protected_account_id")) return [{
         protected_account_id: account.account_id,
         protected_initial_balance: account.initial_balance,
@@ -146,6 +147,24 @@ test("integrity check melaporkan histori negatif pada rekening yang melarang sal
     },
   };
   assert.deepEqual(await integrityIssues(db), [{ code: "NEGATIVE_BALANCE", accountId: "a", date: "2026-01-02", balance: -100_000 }]);
+});
+
+test("integrity check mendeteksi drift timezone dan currency canonical", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await db.execute("UPDATE system_config SET value='UTC' WHERE key='timezone'");
+    await db.execute("UPDATE system_config SET value='USD' WHERE key='currency'");
+    const issues = await integrityIssues(db);
+    assert.deepEqual(
+      issues.filter((item) => item.code.startsWith("SYSTEM_")),
+      [
+        { code: "SYSTEM_TIMEZONE_MISMATCH", key: "timezone", expected: "Asia/Jakarta", actual: "UTC" },
+        { code: "SYSTEM_CURRENCY_MISMATCH", key: "currency", expected: "IDR", actual: "USD" },
+      ],
+    );
+  } finally {
+    db.close();
+  }
 });
 
 test("nominal, boolean, tanggal, dan formula injection divalidasi ketat", () => {

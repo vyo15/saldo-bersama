@@ -1,12 +1,27 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { FiList, FiPlus } from "react-icons/fi";
+import { FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
-import { accountOwnershipLabel, detectEwalletTemplate } from "../../../shared/presentation/account.js";
+import {
+  accountCardOwnershipLabel,
+  accountOwnerName,
+  accountProviderLabel,
+  accountScopeLabel,
+  detectEwalletTemplate,
+  formatAccountNumber,
+} from "../../../shared/presentation/account.js";
 import { AccountVisual } from "./AccountFinancialCard.jsx";
 import styles from "./MobileAccountsExperience.module.css";
 
 const MobileAccountActivity = lazy(() => import("./MobileAccountActivity.jsx"));
+const MobileAccountTransferAction = lazy(() => import("./MobileAccountTransferAction.jsx"));
+
+const OWNERSHIP_FILTERS = Object.freeze([
+  ["all", "Semua"],
+  ["self", "Saya"],
+  ["partner", "Pasangan"],
+  ["shared", "Bersama"],
+]);
 
 const MOBILE_STACK_SLOT_STYLES = Object.freeze({
   "-2": Object.freeze({ x: 72, y: -238, z: -285, rx: 68, ry: -10, rz: 24, opacity: 0, brightness: 0.63, saturate: 0.68, shadow: 0.1 }),
@@ -261,7 +276,7 @@ const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAcco
 
 const shouldRenderMobileStackOwnership = (account) => account.account_type !== "ewallet" || detectEwalletTemplate(account) === "generic";
 
-const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved }) => {
+const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved }) => {
   const navigate = useNavigate();
   const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
   const {
@@ -274,12 +289,13 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
       <header className={styles.mobileStackHeader}>
         <strong className={styles.mobileStackHeaderTitle}>Rekening</strong>
         <div className={styles.mobileStackHeaderActions}>
+          {selectedAccount ? <Suspense fallback={null}><MobileAccountTransferAction bootstrap={bootstrap} selectedAccount={selectedAccount} onTransferSaved={onTransferSaved} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
           {ownerMode ? <button type="button" className={styles.mobileStackAddButton} onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /></button> : null}
-          <button type="button" className={styles.mobileStackHeaderButton} onClick={() => setMobileAccountSheet("accounts")} aria-label={`Buka daftar ${accounts.length} rekening aktif`}>
-            <span>Daftar rekening</span><FiList aria-hidden="true" />
-          </button>
         </div>
       </header>
+      <div className={styles.mobileOwnershipFilters} role="group" aria-label="Filter kepemilikan rekening">
+        {OWNERSHIP_FILTERS.map(([value, label]) => <button key={value} type="button" className={styles.mobileOwnershipFilter} aria-pressed={ownershipFilter === value} onClick={() => onOwnershipFilterChange(value)}>{label}</button>)}
+      </div>
       <div ref={mobileStackStageRef} className={styles.mobileStackStage} tabIndex={0} aria-label="Geser ke atas atau bawah untuk mengganti rekening" aria-describedby="mobile-account-stack-hint" onKeyDown={handleMobileStackKeyDown}>
         <div className={styles.mobileStackAmbient} aria-hidden="true" />
         {accounts.map((account, index) => (
@@ -289,15 +305,20 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
             onPointerCancel={cancelMobileStackPointer} onClick={() => selectMobileStackAccount(account, index)}>
             <AccountVisual account={account} stack />
             <span className={styles.mobileStackBalance}><small>Saldo rekening</small><strong><Money value={account.balance || 0} /></strong></span>
-            {shouldRenderMobileStackOwnership(account) ? <span className={styles.mobileStackOwnership}>{accountOwnershipLabel(account)}</span> : null}
+            {shouldRenderMobileStackOwnership(account) ? <span className={styles.mobileStackOwnership}>{accountCardOwnershipLabel(account)}</span> : null}
           </button>
         ))}
       </div>
-      {selectedAccount ? <div className={styles.mobileStackSummary}><div><small>Rekening aktif</small><h2 id="mobile-account-stack-title">{selectedAccount.name}</h2></div><span>{Math.max(1, accounts.findIndex((account) => account.account_id === selectedAccount.account_id) + 1)} dari {accounts.length}</span></div> : null}
-      <p id="mobile-account-stack-hint" className={styles.mobileStackHint}>Geser kartu aktif ke atas atau bawah untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
+      {selectedAccount ? <div className={styles.mobileStackSummary}>
+        <strong id="mobile-account-stack-title" className={styles.mobileStackAccountName}>{selectedAccount.name}</strong>
+        <strong className={styles.mobileStackOwnerName}>{selectedAccount.owner_scope === "shared" ? "Bersama" : accountOwnerName(selectedAccount) || "Pribadi"}</strong>
+        <small className={styles.mobileStackAccountMeta}>{selectedAccount.account_number ? formatAccountNumber(selectedAccount.account_number, { placeholder: false }) : accountProviderLabel(selectedAccount)}</small>
+        <small className={styles.mobileStackOwnerScope}>{selectedAccount.owner_scope === "shared" ? "Rekening bersama" : accountScopeLabel(selectedAccount.owner_scope)}</small>
+      </div> : null}
+      <p id="mobile-account-stack-hint" className="sr-only">Geser kartu aktif ke atas atau bawah untuk mengganti rekening. Tekan kartu aktif untuk membuka detailnya.</p>
       <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />
     </section>
-    {selectedAccount ? <Suspense fallback={null}><MobileAccountActivity selectedAccount={selectedAccount} bootstrap={bootstrap} onTransferSaved={onTransferSaved} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
+    {selectedAccount ? <Suspense fallback={null}><MobileAccountActivity selectedAccount={selectedAccount} bootstrap={bootstrap} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
   </div>;
 };
 

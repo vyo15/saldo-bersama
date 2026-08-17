@@ -11,6 +11,7 @@ const notificationDeliveriesMigrationUrl = new URL("004_notification_deliveries.
 const notificationPreferencesMigrationUrl = new URL("005_notification_preferences.sql", migrationDirectory);
 const ewalletTemplateMigrationUrl = new URL("006_account_ewallet_template.sql", migrationDirectory);
 const envelopeAssigneeMigrationUrl = new URL("007_envelope_assignee.sql", migrationDirectory);
+const manualRemindersMigrationUrl = new URL("008_manual_reminders.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -100,10 +101,10 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v9 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v10 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "9");
-  assert.ok(result.table_count >= 25);
+  assert.equal(result.schema_version, "10");
+  assert.ok(result.table_count >= 26);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
 });
@@ -251,6 +252,35 @@ test("migration v9 menambah penerima jatah dan membackfill kantong personal tanp
     assert.equal(db.prepare("SELECT assignee_user_id FROM envelope_rules WHERE envelope_rule_id='rule-shared'").get().assignee_user_id, null);
     assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "9");
     assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_envelope_rules_assignee'").get());
+  } finally {
+    db.close();
+  }
+});
+
+
+test("migration v10 menambah pengingat manual one-shot dengan ownership user dan optimistic version", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("007_envelope_assignee.sql"));
+    const now = "2026-08-17T11:00:00.000Z";
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+      .run("u-reminder", "firebase-reminder", "reminder@example.com", "Reminder", "member", "active", 1, now, now);
+
+    db.exec((await readFile(manualRemindersMigrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+    const sql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='manual_reminders'").get().sql;
+    assert.match(sql, /entity_type IN \('recurring_occurrence','budget','envelope_period','goal'\)/);
+    assert.match(sql, /status IN \('scheduled','queued','cancelled'\)/);
+    assert.match(sql, /row_version INTEGER NOT NULL DEFAULT 1 CHECK \(row_version >= 1\)/);
+    assert.match(sql, /FOREIGN KEY \(user_id\) REFERENCES users\(user_id\) ON DELETE RESTRICT/);
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_manual_reminders_active_entity'").get());
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "10");
+
+    const insert = "INSERT INTO manual_reminders(reminder_id,user_id,entity_type,entity_id,scheduled_at,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)";
+    db.prepare(insert).run("m1", "u-reminder", "budget", "budget-1", "2026-08-18T01:00:00.000Z", "scheduled", 1, now, now);
+    assert.throws(() => db.prepare(insert).run("m2", "u-reminder", "budget", "budget-1", "2026-08-18T02:00:00.000Z", "scheduled", 1, now, now));
+    assert.throws(() => db.prepare(insert).run("m3", "missing-user", "goal", "goal-1", "2026-08-18T02:00:00.000Z", "scheduled", 1, now, now));
+    assert.throws(() => db.prepare(insert).run("m4", "u-reminder", "transaction", "tx-1", "2026-08-18T02:00:00.000Z", "scheduled", 1, now, now));
   } finally {
     db.close();
   }

@@ -35,8 +35,9 @@ const PreferenceSection = ({ preferenceState, preferenceMutation, refreshPrefere
   {preferenceState.status === "loading" ? <p role="status">Memuat preferensi notifikasi...</p> : null}
   {preferenceState.status === "error" ? <div className="notice notice--warning" role="status">Preferensi belum dapat dimuat. Pengaturan perangkat tetap aman dan tidak berubah.</div> : null}
   {preferenceState.status === "ready" ? <div className={styles.preferenceList}>{preferenceState.items.map((item) => {
-    const [label] = NOTIFICATION_PREFERENCE_META[item.type] || [item.type];
-    return <label className={styles.preferenceItem} key={item.type}><span className={styles.preferenceCopy}><strong>{label}</strong></span><input type="checkbox" role="switch" checked={item.enabled} disabled={preferenceMutation.busy} onChange={() => togglePreference(item)} aria-label={`${label}: ${item.enabled ? "aktif" : "nonaktif"}`} /></label>;
+    const [label, description = "Atur apakah jenis pengingat ini dikirim ke perangkat aktif."] = NOTIFICATION_PREFERENCE_META[item.type] || [item.type];
+    const descriptionId = `notification-preference-${item.type}-description`;
+    return <label className={styles.preferenceItem} key={item.type}><span className={styles.preferenceCopy}><strong>{label}</strong><small id={descriptionId}>{description}</small></span><input type="checkbox" role="switch" checked={item.enabled} disabled={preferenceMutation.busy} onChange={() => togglePreference(item)} aria-label={`${label}: ${item.enabled ? "aktif" : "nonaktif"}`} aria-describedby={descriptionId} /></label>;
   })}</div> : null}
 </section>;
 

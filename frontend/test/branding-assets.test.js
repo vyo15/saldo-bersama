@@ -21,6 +21,7 @@ test("branding assets and favicon references stay complete", async () => {
     "public/icons/icon-512.png",
     "public/icons/icon-maskable-192.png",
     "public/icons/icon-maskable-512.png",
+    "public/icons/notification-badge-96.png",
   ];
   await Promise.all(expected.map(read));
 
@@ -35,8 +36,9 @@ test("branding assets and favicon references stay complete", async () => {
   assert.match(html, /apple-touch-icon\.png\?v=4/);
   assert.match(html, /name="mobile-web-app-capable" content="yes"/);
   assert.equal(manifest.icons.some((icon) => icon.purpose === "maskable"), true);
-  assert.match(sw, /saldo-bersama-static-v8/);
+  assert.match(sw, /saldo-bersama-static-v9/);
   assert.match(sw, /SKIP_WAITING/);
+  assert.match(sw, /notification-badge-96\.png/);
   assert.match(sw, /isInfrastructurePath\(url\.pathname\)\) return;/);
   assert.match(sw, /pathname === "\/api"/);
   assert.match(sw, /pathname\.startsWith\("\/api\/"\)/);

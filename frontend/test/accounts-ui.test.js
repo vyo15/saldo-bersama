@@ -3,12 +3,14 @@ import { access, readFile, stat } from "node:fs/promises";
 import test from "node:test";
 import * as featherIcons from "react-icons/fi";
 import {
+  accountCardOwnershipLabel,
   accountCardholderName,
   accountCardNumberGroups,
   accountDisplayLabel,
   accountProviderLabel,
   accountNumberGroups,
   accountOwnershipLabel,
+  filterAccountsByOwnership,
   detectBankTemplate,
   detectEwalletTemplate,
   formatAccountNumber,
@@ -85,6 +87,19 @@ test("label kepemilikan rekening menampilkan Bersama atau nama pengguna, bukan r
   assert.equal(accountDisplayLabel({ name: "BTN", account_type: "bank", owner_scope: "personal", owner_name: "Puput" }), "BTN · Puput");
 });
 
+test("filter rekening membedakan milik saya, pasangan, dan bersama tanpa mengubah data rekening", () => {
+  const accounts = [
+    { account_id: "self", owner_scope: "personal", owner_user_id: "u-1", owner_name: "Vio Yusup" },
+    { account_id: "partner", owner_scope: "personal", owner_user_id: "u-2", owner_name: "Fuji Astuti" },
+    { account_id: "shared", owner_scope: "shared" },
+  ];
+  const currentUser = { user_id: "u-1", name: "Vio Yusup" };
+  assert.deepEqual(filterAccountsByOwnership(accounts, "self", currentUser).map((item) => item.account_id), ["self"]);
+  assert.deepEqual(filterAccountsByOwnership(accounts, "partner", currentUser).map((item) => item.account_id), ["partner"]);
+  assert.deepEqual(filterAccountsByOwnership(accounts, "shared", currentUser).map((item) => item.account_id), ["shared"]);
+  assert.equal(filterAccountsByOwnership(accounts, "all", currentUser), accounts);
+});
+
 test("arah transaksi rekening konsisten untuk desktop dan mobile", () => {
   assert.deepEqual(accountTransactionDirection({ transaction_type: "expense", status: "active" }, "acc-1"), { prefix: "−", tone: "negative" });
   assert.deepEqual(accountTransactionDirection({ transaction_type: "income", status: "active" }, "acc-1"), { prefix: "+", tone: "positive" });
@@ -109,17 +124,15 @@ test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta g
       read("src/features/accounts/AccountsPage.module.css"),
       read("src/features/accounts/components/AccountEditorDialogs.module.css"),
       read("src/features/accounts/components/MobileAccountActivity.module.css"),
-      read("src/features/accounts/components/MobileAccountSheets.module.css"),
       read("src/features/accounts/components/MobileAccountsExperience.module.css"),
       read("src/features/accounts/components/MobileAccountTransferAction.module.css"),
-    ]).then(([accountsPageStyles, accountEditorStyles, mobileActivityStyles, mobileSheetsStyles, mobileExperienceStyles, mobileTransferStyles]) => ({
+    ]).then(([accountsPageStyles, accountEditorStyles, mobileActivityStyles, mobileExperienceStyles, mobileTransferStyles]) => ({
       accountsPageStyles,
       accountEditorStyles,
       mobileActivityStyles,
-      mobileSheetsStyles,
       mobileExperienceStyles,
       mobileTransferStyles,
-      combined: [accountsPageStyles, accountEditorStyles, mobileActivityStyles, mobileSheetsStyles, mobileExperienceStyles, mobileTransferStyles].join("\n"),
+      combined: [accountsPageStyles, accountEditorStyles, mobileActivityStyles, mobileExperienceStyles, mobileTransferStyles].join("\n"),
     })),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
     read("src/features/categories/CategoriesPage.jsx"),
@@ -140,7 +153,6 @@ ${accountEditors}`;
     accountsPageStyles,
     accountEditorStyles,
     mobileActivityStyles,
-    mobileSheetsStyles,
     mobileExperienceStyles,
     mobileTransferStyles,
     combined: pageStyles,
@@ -163,7 +175,7 @@ ${accountEditors}`;
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/DesktopAccountsWorkspace\.jsx"\)\)/);
   assert.doesNotMatch(page, /import DesktopAccountsWorkspace from "\.\/components\/DesktopAccountsWorkspace\.jsx";/);
   assert.match(page, /\(createDialogOpen \|\| editAccount\) \? \(/);
-  assert.match(accountSheets, /title="Daftar rekening"/);
+  assert.doesNotMatch(accountSheets, /title="Daftar rekening"/);
   assert.match(accountPageSource, /aria-label="Tambah rekening"/);
   assert.match(accountPageSource, /title="Tambah rekening"/);
   assert.match(accountPageSource, /create-account-form/);
@@ -173,7 +185,7 @@ ${accountEditors}`;
   assert.match(accountPageSource, /bank_template/);
   assert.match(accountPageSource, /ewallet_template/);
   assert.match(accountPageSource, /Provider E-wallet/);
-  assert.match(accountPageSource, /initialFocusRef=\{createNameInputRef\}/);
+  assert.doesNotMatch(accountPageSource, /initialFocusRef=\{createNameInputRef\}|createNameInputRef/);
   assert.match(accountPageSource, /const BankTemplateField =/);
   assert.match(accountPageSource, /Template tersimpan sebagai tampilan kartu dan tidak mengubah nama rekening/);
   assert.match(accountPageSource, /accountForm\.account_type === "bank" \? <BankTemplateField/);
@@ -184,8 +196,8 @@ ${accountEditors}`;
   assert.match(accountPageSource, /legend="Kepemilikan \*"/);
   assert.match(accountPageSource, /name="account-ownership"/);
   assert.match(accountPageSource, /options=\{options\}[\s\S]*required/);
-  assert.match(accountPageSource, /userOptionLabel/);
-  assert.match(accountPageSource, /Administrator/);
+  assert.doesNotMatch(accountPageSource, /userOptionLabel/);
+  assert.match(accountPageSource, /member\.is_current \? "Saya"/);
   assert.doesNotMatch(accountPageSource, /<span>Pemilik rekening \*<\/span>/);
   assert.match(accountPageSource, /Promise\.allSettled\(\[accountsResource\.reload\(\), refreshAll\(\)\]\)/);
   assert.doesNotMatch(accountPageSource, /accountsResult\.status === "rejected"/);
@@ -217,6 +229,10 @@ ${accountEditors}`;
   assert.match(desktopWorkspace, /Rekening terpilih/);
   assert.match(desktopWorkspace, /const AccountCarousel =/);
   assert.match(desktopWorkspace, /Pilih rekening/);
+  assert.match(desktopWorkspace, /Filter kepemilikan rekening/);
+  assert.match(desktopWorkspace, /\["self", "Saya"\]/);
+  assert.match(desktopWorkspace, /\["partner", "Pasangan"\]/);
+  assert.match(desktopWorkspace, /\["shared", "Bersama"\]/);
   assert.match(desktopWorkspace, /Rekening sebelumnya/);
   assert.match(desktopWorkspace, /Rekening berikutnya/);
   assert.match(desktopWorkspace, /event\.key === "ArrowLeft"/);
@@ -247,7 +263,8 @@ ${accountEditors}`;
   assert.match(desktopStyles, /transactionList/);
   assert.match(desktopStyles, /distributionList/);
   assert.match(desktopWorkspace, /<progress className=\{styles\.distributionProgress\}/);
-  assert.doesNotMatch(desktopStyles, /overflow-x:\s*auto|scroll-snap-type/);
+  assert.match(desktopStyles, /\.ownershipFilters \{[^}]*overflow-x:\s*auto;/s);
+  assert.doesNotMatch(desktopStyles, /scroll-snap-type/);
   const referencedDesktopClasses = new Set([...desktopWorkspace.matchAll(/styles\.([A-Za-z0-9_]+)/g)].map((match) => match[1]));
   const declaredDesktopClasses = new Set([...desktopStyles.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((match) => match[1]));
   for (const className of referencedDesktopClasses) {
@@ -263,7 +280,8 @@ ${accountEditors}`;
   assert.match(mobileActivity, /requestAnimationFrame/);
   assert.match(mobileActivity, /<span>Riwayat<\/span>/);
   assert.match(mobileActivity, /<span>Grafik<\/span>/);
-  assert.match(mobileActivity, /MobileAccountTransferAction/);
+  assert.doesNotMatch(mobileActivity, /MobileAccountTransferAction/);
+  assert.match(mobileExperience, /MobileAccountTransferAction/);
   assert.match(mobileTransfer, /Transfer/);
   assert.match(mobileTransfer, /lazy\(\(\) => import\("\.\.\/\.\.\/transactions\/TransactionForm\.jsx"\)\)/);
   assert.match(mobileTransfer, /TransactionForm/);
@@ -313,11 +331,14 @@ ${accountEditors}`;
   assert.match(accountPageSource, /aria-label="Geser ke atas atau bawah untuk mengganti rekening"/);
   assert.match(accountPageSource, /Geser kartu aktif ke atas atau bawah/);
   assert.match(accountPageSource, /<AccountVisual account=\{account\} stack \/>/);
-  assert.match(mobileExperience, /accountOwnershipLabel\(account\)/);
+  assert.match(mobileExperience, /accountCardOwnershipLabel\(account\)/);
+  assert.match(mobileExperience, /formatAccountNumber\(selectedAccount\.account_number/);
+  assert.match(mobileExperience, /accountOwnerName\(selectedAccount\)/);
+  assert.match(mobileExperience, /Filter kepemilikan rekening/);
   assert.doesNotMatch(page, /account\.owner_scope === "shared" \? "Bersama" : "Pribadi"/);
   assert.match(accountPageSource, /setMobileAccountSheet\("detail"\)/);
   assert.doesNotMatch(accountPageSource, /title="Pembayaran keluar"|>Pembayaran keluar</);
-  assert.match(accountPageSource, /title="Daftar rekening"/);
+  assert.doesNotMatch(accountPageSource, /title="Daftar rekening"/);
   assert.match(mobileExperience, /<MobileAccountActivity/);
   assert.match(mobileExperience, /state: \{ accountId: item\.account_id, period \}/);
   assert.match(accountPageSource, /state: \{ accountId:/);
@@ -339,7 +360,7 @@ ${accountEditors}`;
   assert.doesNotMatch(pageStyles, /reconciliationInfoButton|reconciliationToggle|reconciliationPanel/);
   assert.match(pageStyles, /mobileStackPanel/);
   assert.match(pageStyles, /mobileAccountActivity/);
-  assert.match(pageStyles, /mobileTransferQuickAction/);
+  assert.match(pageStyles, /mobileTransferHeaderAction/);
   assert.match(pageStyles, /mobileActivityTabs/);
   assert.match(pageStyles, /mobileActivityTabIcon/);
   assert.match(pageStyles, /mobileTransferSuccessCheck/);
@@ -358,7 +379,6 @@ ${accountEditors}`;
   assert.equal(mobileBreakpointCount(accountsPageStyles), 1, "AccountsPage harus memiliki satu breakpoint mobile canonical 820px.");
   assert.equal(mobileBreakpointCount(accountEditorStyles), 0, "AccountEditorDialogs tidak membutuhkan breakpoint mobile 820px.");
   assert.equal(mobileBreakpointCount(mobileActivityStyles), 1, "MobileAccountActivity harus memiliki satu breakpoint mobile canonical 820px.");
-  assert.equal(mobileBreakpointCount(mobileSheetsStyles), 0, "MobileAccountSheets tidak membutuhkan breakpoint mobile 820px.");
   assert.equal(mobileBreakpointCount(mobileExperienceStyles), 1, "MobileAccountsExperience harus memiliki satu breakpoint mobile canonical 820px.");
   assert.equal(mobileBreakpointCount(mobileTransferStyles), 1, "MobileAccountTransferAction harus memiliki satu breakpoint mobile canonical 820px.");
   assert.doesNotMatch(pageStyles, /47\.99rem|51\.25rem/, "CSS rekening tidak boleh kembali ke breakpoint mobile legacy sekitar 768/820px.");
@@ -366,7 +386,7 @@ ${accountEditors}`;
   assert.match(mobileActivityStyles, /mobileAccountActivity/);
   assert.match(mobileActivityStyles, /mobileActivityTabs/);
   assert.match(mobileActivityStyles, /mobileExpenseChart/);
-  assert.match(mobileTransferStyles, /mobileTransferQuickAction/);
+  assert.match(mobileTransferStyles, /mobileTransferHeaderAction/);
   assert.match(accountsPageStyles, /impactSummary/);
   assert.match(pageStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid var\(--border\);[^}]*background:\s*var\(--surface-soft\);/s);
@@ -434,6 +454,9 @@ test("label kepemilikan kartu tetap ringkas dan nama pemilik tersedia terpisah",
   assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
   assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Vio Yusup" }), "Vio Yusup");
   assert.equal(accountOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
+  assert.equal(accountCardOwnershipLabel({ owner_scope: "shared" }), "Bersama");
+  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal", owner_name: "Fuji Astuti Dwiyanti" }), "Fuji");
+  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
 });
 
 test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FiArchive, FiArrowDown, FiArrowUp, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
+import { FiArchive, FiArrowDown, FiArrowUp, FiBell, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { EmergencyFundIcon, PriorityHighIcon, PriorityLowIcon, PriorityNormalIcon, SinkingFundIcon, TargetIcon } from "../../components/common/FinanceChoiceIcons.jsx";
@@ -32,6 +32,7 @@ import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
 import { filterByOwnership } from "../../domain/ownership.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import ManualReminderModal from "../reminders/ManualReminderModal.jsx";
 
 const GOAL_PACE_LABELS = Object.freeze({ completed: "Tercapai", on_track: "Sesuai rencana", behind: "Tertinggal", overdue: "Melewati target", no_target_date: "Tanpa tanggal target" });
 const emptyGoalForm = () => ({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
@@ -74,7 +75,7 @@ const GoalSummary = ({ items }) => {
   );
 };
 
-const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, openStatusChange }) => {
+const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, openStatusChange, openReminder }) => {
   const primaryAction = goal.can_deposit
     ? <Button className="goal-card__primary-action" variant="primary" icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Tambah dana</Button>
     : goal.can_complete
@@ -82,11 +83,12 @@ const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, o
       : goal.can_reopen
         ? <Button className="goal-card__primary-action" variant="primary" icon={FiRotateCcw} onClick={() => openStatusChange(goal, "active")}>Buka kembali</Button>
         : null;
+  const canRemind = goal.status === "active";
   const hasSecondaryActions = goal.can_withdraw || (goal.can_complete && goal.can_deposit) || goal.can_reverse || goal.can_update || goal.can_archive;
-  if (!primaryAction && !hasSecondaryActions) return null;
+  if (!primaryAction && !hasSecondaryActions && !canRemind) return null;
   return (
     <div className="goal-card__actions">
-      {primaryAction}
+      <div className="goal-card__quick-actions">{primaryAction}{canRemind ? <Button icon={FiBell} onClick={() => openReminder(goal)}>Pengingat</Button> : null}</div>
       {hasSecondaryActions ? <details className="goal-action-menu"><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className="goal-action-menu__items">{goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}{goal.can_complete && goal.can_deposit ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Hapus / Arsipkan</Button> : null}</div></details> : null}
     </div>
   );
@@ -343,6 +345,7 @@ const GoalsPage = () => {
   const { user } = useAuth();
   const { notify } = useFeedback();
   const ownerMode = user?.role === "owner";
+  const [reminderTarget, setReminderTarget] = useState(null);
   const accounts = bootstrap?.accounts?.filter((item) => item.status === "active") || [];
   const shared = { resource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation(shared);
@@ -359,12 +362,14 @@ const GoalsPage = () => {
   }, [attention?.attentionAction, attentionGoalId, consumeAttention, openMovement, resource.data?.items, resource.status]);
   if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
-  const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange };
+  const openReminder = (goal) => setReminderTarget({ entityType: "goal", entityId: goal.goal_id, name: goal.name, suggestedDate: goal.target_date });
+  const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder };
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
     <PageHeader title="Target" actions={ownerMode && (resource.data?.items || []).length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{attentionGoalId ? <div className="notice notice--info attention-guidance" role="status"><strong>Target ini tertinggal dari rencana.</strong><span>Tambahkan dana hanya jika saldo rekening sumber mencukupi. Form setoran akan dibuka otomatis bila target masih menerima setoran.</span></div> : null}
     <GoalSummary items={resource.data?.items || []} />
     <GoalGrid items={resource.data?.items || []} actions={actions} ownerMode={ownerMode} openCreate={creation.openCreate} />
+    <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
     <GoalCreateModal open={creation.open} close={creation.closeCreate} form={creation.form} setForm={creation.setForm} accounts={accounts} createGoal={creation.createGoal} createMutation={creation.createMutation} message={creation.message} />
     <GoalEditModal editGoal={lifecycle.editGoal} setEditGoal={lifecycle.setEditGoal} editState={lifecycle.editState} saveGoal={lifecycle.saveGoal} />
     <GoalMovementModal movement={movement.movement} setMovement={movement.setMovement} movementState={movement.movementState} movementMutation={movement.movementMutation} accounts={movement.compatibleMovementAccounts} submitMovement={movement.submitMovement} />

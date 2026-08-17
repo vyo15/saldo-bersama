@@ -40,6 +40,7 @@ const FULL_RESET_MASTER_TABLES = Object.freeze([
 
 const FULL_RESET_OPERATIONAL_TABLES = Object.freeze([
   { table: "notification_deliveries", orderBy: "delivery_id", key: "notificationDeliveries" },
+  { table: "manual_reminders", orderBy: "reminder_id", key: "manualReminders" },
   { table: "notification_queue", orderBy: "notification_id", key: "notificationQueue" },
   { table: "integration_links", orderBy: "link_id", key: "integrationLinks" },
   { table: "integration_outbox", orderBy: "outbox_id", key: "integrationOutbox" },
@@ -64,6 +65,7 @@ const FULL_RESET_GENERATED_OUTBOX_PREDICATE = `(
 
 const FULL_RESET_DELETE_ORDER = Object.freeze([
   "notification_deliveries",
+  "manual_reminders",
   "notification_queue",
   "integration_links",
   "integration_outbox",
@@ -158,6 +160,7 @@ const fullResetSummary = (counts) => {
     accounts: tableCount(counts, "accounts"),
     categories: tableCount(counts, "categories"),
     notificationDeliveries: tableCount(counts, "notification_deliveries"),
+    manualReminders: tableCount(counts, "manual_reminders"),
     notificationQueue: tableCount(counts, "notification_queue"),
     integrationLinks: tableCount(counts, "integration_links"),
     integrationOutbox: tableCount(counts, "integration_outbox"),

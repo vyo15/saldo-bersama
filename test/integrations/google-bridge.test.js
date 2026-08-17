@@ -24,7 +24,7 @@ const loadBridge = async () => {
         ["source_of_truth", "Turso"],
         ["mode", "read-only mirror"],
         ["generated_at", "2026-08-08T00:00:00.000Z"],
-        ["schema_version", 9],
+        ["schema_version", 10],
         ["warning", "managed"],
       ],
     }),
@@ -140,7 +140,7 @@ test("mirror hanya mengadopsi spreadsheet kosong atau target yang memiliki metad
         ["source_of_truth", "Turso"],
         ["mode", "read-only mirror"],
         ["generated_at", "2026-08-08T00:00:00.000Z"],
-        ["schema_version", 9],
+        ["schema_version", 10],
         ["warning", "managed"],
       ],
     }),
@@ -205,7 +205,7 @@ test("status integrasi membedakan queue, hasil sukses, dan kesiapan resource Goo
     ];
     const backupRows = [{
       backup_id: "backup-latest", backup_type: "manual", external_file_id: "drive-file", file_name: "backup-latest.json.gz",
-      schema_version: 9, status: "verified", created_at: "2026-08-08T03:02:00.000Z", verified_at: "2026-08-08T03:03:00.000Z", error_code: null,
+      schema_version: 10, status: "verified", created_at: "2026-08-08T03:02:00.000Z", verified_at: "2026-08-08T03:03:00.000Z", error_code: null,
     }];
     const db = { batch: async () => [{ rows: providerRows }, { rows: backupRows }] };
     const fetchImpl = async () => ({
@@ -238,7 +238,7 @@ test("status integrasi membedakan queue, hasil sukses, dan kesiapan resource Goo
     });
     assert.deepEqual(status.driveBackup, {
       backupId: "backup-latest", backupType: "manual", fileId: "drive-file", fileName: "backup-latest.json.gz",
-      schemaVersion: 9, status: "verified", createdAt: "2026-08-08T03:02:00.000Z", verifiedAt: "2026-08-08T03:03:00.000Z", errorCode: null,
+      schemaVersion: 10, status: "verified", createdAt: "2026-08-08T03:02:00.000Z", verifiedAt: "2026-08-08T03:03:00.000Z", errorCode: null,
     });
   } finally {
     if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;

@@ -29,6 +29,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "audit.list": 5_000,
   "notifications.status": 0,
   "notifications.preferences": 0,
+  "reminders.get": 0,
   "integrations.status": 0,
   "reset.preview": 0,
   "reset.status": 0,

@@ -21,7 +21,7 @@
 }
 
 .brand-copy { display: grid; gap: 3px; }
-.brand-copy small { color: var(--muted); font-size: 10px; font-weight: var(--font-weight-medium); letter-spacing: 0; }
+.brand-copy small { color: var(--muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); letter-spacing: 0; }
 .brand-wordmark { font-size: 16px; line-height: 1; }
 .brand-wordmark span:first-child { color: var(--primary-deep); }
 .brand-wordmark span:last-child { color: var(--primary); }

@@ -726,7 +726,7 @@ button.heroStatus {
   }
 
   .heroMetric > span {
-    font-size: .68rem;
+    font-size: var(--font-size-xs);
   }
 
   .heroMetric > strong {

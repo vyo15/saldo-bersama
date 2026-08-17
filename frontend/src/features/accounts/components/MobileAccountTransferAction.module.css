@@ -1,4 +1,40 @@
 @media (max-width: 820px) {
+.mobileTransferHeaderAction {
+    min-height: 2.75rem;
+    padding: 0 .55rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    background: transparent;
+    color: var(--on-hero);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing);
+  }
+
+.mobileTransferHeaderAction:hover:not(:disabled),
+.mobileTransferHeaderAction:focus-visible {
+    color: var(--primary);
+    background: color-mix(in srgb, var(--on-hero) 7%, transparent);
+  }
+
+.mobileTransferHeaderAction:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--account-mobile-accent) 38%, transparent);
+    outline-offset: 2px;
+  }
+
+.mobileTransferHeaderAction:disabled {
+    cursor: not-allowed;
+    opacity: .5;
+  }
+
+.mobileTransferHeaderAction svg { width: 1.1rem; height: 1.1rem; }
+
 .mobileTransferQuickAction {
     width: 100%;
     min-height: 3.9rem;
@@ -71,7 +107,7 @@
 
 .mobileTransferQuickCopy small {
     color: color-mix(in srgb, var(--on-hero) 48%, transparent);
-    font-size: .6rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
   }
 
@@ -267,7 +303,7 @@
 .mobileTransferSuccessCopy small {
     display: block;
     color: var(--primary);
-    font-size: .6rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
     letter-spacing: .1em;
   }
@@ -314,7 +350,7 @@
 
 .mobileTransferSuccessRoute small { color: var(--text-muted); font-size: var(--font-size-xs); }
 
-.mobileTransferSuccessRoute strong { overflow: hidden; color: var(--text); font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.mobileTransferSuccessRoute strong { overflow: hidden; color: var(--text); font-size: var(--font-size-xs); text-overflow: ellipsis; white-space: nowrap; }
 
 .mobileTransferSuccessRoute > svg { width: 1rem; height: 1rem; justify-self: center; color: var(--primary); }
 
@@ -327,7 +363,7 @@
     gap: var(--space-3);
     border-top: 1px solid var(--border);
     color: var(--text-muted);
-    font-size: .65rem;
+    font-size: var(--font-size-xs);
     opacity: 0;
     transform: translateY(.45rem);
     animation: mobile-transfer-rise .42s 1.14s cubic-bezier(.22, .7, .16, 1) forwards;
@@ -404,6 +440,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+.mobileTransferHeaderAction,
 .mobileTransferQuickAction,
 .mobileTransferSuccessVisual,
 .mobileTransferSuccessAmbient,

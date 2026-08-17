@@ -83,6 +83,31 @@ export const accountOwnerName = (account = {}) => String(account.owner_name || "
 
 export const accountOwnershipLabel = (account = {}) => account.owner_scope === "personal" ? accountOwnerName(account) || "Pribadi" : "Bersama";
 
+export const accountCardOwnershipLabel = (account = {}) => {
+  if (account.owner_scope !== "personal") return "Bersama";
+  const [firstName = ""] = accountOwnerName(account).split(/\s+/).filter(Boolean);
+  return firstName || "Pribadi";
+};
+
+const normalizedIdentity = (value) => String(value || "").trim().toLocaleLowerCase("id-ID");
+
+const accountBelongsToCurrentUser = (account = {}, currentUser = {}) => {
+  const ownerUserId = String(account.owner_user_id || "");
+  const currentUserId = String(currentUser.user_id || "");
+  if (ownerUserId && currentUserId) return ownerUserId === currentUserId;
+  const ownerName = normalizedIdentity(account.owner_name);
+  const currentUserName = normalizedIdentity(currentUser.name);
+  return Boolean(ownerName && currentUserName && ownerName === currentUserName);
+};
+
+export const filterAccountsByOwnership = (accounts = [], filter = "all", currentUser = {}) => {
+  if (filter === "all") return accounts;
+  if (filter === "shared") return accounts.filter((account) => account.owner_scope === "shared");
+  if (filter === "self") return accounts.filter((account) => account.owner_scope === "personal" && accountBelongsToCurrentUser(account, currentUser));
+  if (filter === "partner") return accounts.filter((account) => account.owner_scope === "personal" && !accountBelongsToCurrentUser(account, currentUser));
+  return accounts;
+};
+
 export const accountProviderLabel = (account = {}) => {
   if (account.account_type === "ewallet") {
     const template = detectEwalletTemplate(account);

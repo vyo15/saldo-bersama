@@ -322,15 +322,16 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
-test("project status is a current-state snapshot with schema v9 and shared database guard", () => {
+test("project status is a current-state snapshot with schema v10 and shared database guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
   const packageJson = JSON.parse(read("package.json"));
   const productionSync = read("scripts/push-vercel-production-env.mjs");
   const developmentSync = read("scripts/push-vercel-development-env.mjs");
   const singleDbAdr = read("docs/adr/0007-single-turso-database-current-constraint.md");
 
-  assert.match(status, /Active schema contract:\*\* v9/);
-  assert.match(status, /Runtime lokal dan Vercel Production dirancang memakai database Turso bersama/);
+  assert.match(status, /Active schema contract:\*\* v10/);
+  assert.match(status, /Runtime lokal dan Vercel Production .*masih.*database Turso bersama/);
+  assert.match(status, /exit criteria ADR-0007/);
   assert.match(status, /bukan jurnal perubahan/i);
   assert.match(singleDbAdr, /database Turso yang sama/);
   assert.match(productionSync, /envPath = path\.join\(cwd, "\.env\.local"\)/);
@@ -341,7 +342,7 @@ test("project status is a current-state snapshot with schema v9 and shared datab
 });
 
 
-test("current docs track branded desktop/mobile server OAuth production, schema v9, dan manual accessibility QA", () => {
+test("current docs track branded desktop/mobile server OAuth production, schema v10, dan manual accessibility QA", () => {
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
   const deployment = read("docs/DEPLOYMENT.md");
   const status = read("docs/PROJECT_STATUS.md");
@@ -349,9 +350,10 @@ test("current docs track branded desktop/mobile server OAuth production, schema 
   const release = read("docs/RELEASE_CHECKLIST.md");
 
   assert.doesNotMatch(matrix, /Chromium smoke/);
-  assert.match(matrix, /manual device accessibility QA/);
+  assert.match(matrix, /semantic\/static regression/);
+  assert.match(matrix, /real-device coverage pending/);
   assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
-  assert.match(deployment, /runtime v9 menerima traffic/);
+  assert.match(deployment, /runtime v10 menerima traffic/);
   assert.match(status, /Auth desktop dan mobile:.*tombol Google branded Saldo Bersama/);
   assert.match(status, /Authorization Code flow.*Firebase Identity Toolkit/);
   assert.match(testPlan, /production canonical.*`\/api\/auth\/google\/start`/);
@@ -376,19 +378,20 @@ test("every canonical product requirement is tracked in the implementation matri
   });
 });
 
-test("planned schema-changing product gaps are represented by proposed RFCs", () => {
+test("schema-changing roadmap gaps have RFC status that matches implementation state", () => {
   const roadmap = read("docs/product/ROADMAP.md");
   const rfcIndex = read("docs/rfc/README.md");
-  const rfcFiles = [
+  const proposedRfcFiles = [
     "0011-transaction-lifecycle-receipts-and-usage.md",
     "0012-debt-receivable-ledger.md",
     "0013-contribution-and-cost-sharing.md",
     "0014-category-hierarchy-and-goal-stages.md",
     "0015-granular-personal-privacy.md",
     "0016-partner-planning-permissions.md",
+    "0018-session-device-management.md",
   ];
 
-  rfcFiles.forEach((relative) => {
+  proposedRfcFiles.forEach((relative) => {
     const rfcId = `RFC-${relative.slice(0, 4)}`;
     const rfcSource = read(`docs/rfc/${relative}`);
     assert.match(rfcIndex, new RegExp(escapeRegExp(relative)));
@@ -396,4 +399,10 @@ test("planned schema-changing product gaps are represented by proposed RFCs", ()
     assert.match(rfcSource, new RegExp(`^# ${escapeRegExp(rfcId)}\\b`, "m"));
     assert.match(rfcSource, /Status:\*{0,2}\s*Proposed/i);
   });
+
+  const implementedManualReminder = read("docs/rfc/0017-manual-reminders.md");
+  assert.match(rfcIndex, /0017-manual-reminders\.md/);
+  assert.match(roadmap, /RFC-0017/);
+  assert.match(implementedManualReminder, /^# RFC-0017\b/m);
+  assert.match(implementedManualReminder, /Status:\*{0,2}\s*Accepted and implemented/i);
 });

@@ -36,6 +36,7 @@ import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import {
+  accountCardOwnershipLabel,
   accountCardholderName,
   accountCardNumberGroups,
   accountOwnershipLabel,
@@ -91,7 +92,7 @@ const visualModel = (account, templateOverride) => {
     Icon: ACCOUNT_ICONS[account.account_type] || FiCreditCard,
     numberGroups: isBank ? accountCardNumberGroups(account.account_number) : [],
     holderName: accountCardholderName(account.name) || "Nama rekening",
-    ownershipLabel: accountOwnershipLabel(account),
+    ownershipLabel: accountCardOwnershipLabel(account),
     typeLabel: accountTypeLabel(account.account_type),
     visualKind: isBank ? "bank" : hasEwalletImage ? "ewallet" : image ? account.account_type : "generic",
     isBank,

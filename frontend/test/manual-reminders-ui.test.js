@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, "..");
+const source = (relativePath) => readFile(path.join(root, relativePath), "utf8");
+
+test("pengingat manual hanya muncul pada empat lifecycle finansial yang membutuhkan reminder", async () => {
+  const [budgets, allocations, recurring, goals, transactions] = await Promise.all([
+    source("src/features/budgets/BudgetsPage.jsx"),
+    source("src/features/allocations/AllocationsPage.jsx"),
+    source("src/features/recurring/RecurringPage.jsx"),
+    source("src/features/goals/GoalsPage.jsx"),
+    source("src/features/transactions/TransactionsPage.jsx"),
+  ]);
+
+  assert.match(budgets, /entityType: "budget"/);
+  assert.match(allocations, /entityType: "envelope_period"/);
+  assert.match(allocations, /canSetAllocationReminder/);
+  assert.match(recurring, /entityType: "recurring_occurrence"/);
+  assert.match(goals, /entityType: "goal"/);
+  assert.doesNotMatch(transactions, /ManualReminderModal|reminders\.upsert/);
+});
+
+test("dialog pengingat memakai waktu Jakarta, row version, dan tidak menggantikan pengingat otomatis", async () => {
+  const [modal, notifications, cache] = await Promise.all([
+    source("src/features/reminders/ManualReminderModal.jsx"),
+    source("src/services/notifications.js"),
+    source("src/services/api/cache.js"),
+  ]);
+
+  assert.match(modal, /type="date"/);
+  assert.match(modal, /type="time"/);
+  assert.match(modal, /Asia\/Jakarta/);
+  assert.match(modal, /Pengingat otomatis tetap berjalan/);
+  assert.match(modal, /current\?\.row_version/);
+  assert.match(notifications, /"reminders\.get"/);
+  assert.match(notifications, /"reminders\.upsert"/);
+  assert.match(notifications, /"reminders\.cancel"/);
+  assert.match(cache, /"reminders\.get": 0/);
+});

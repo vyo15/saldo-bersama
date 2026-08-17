@@ -11,7 +11,6 @@ import {
 } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
-import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import LineChart from "../../../components/charts/LineChart.jsx";
 import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
@@ -33,6 +32,12 @@ import styles from "./DesktopAccountsWorkspace.module.css";
 const DESKTOP_QUERY = "(min-width: 821px)";
 const RECENT_TRANSACTION_LIMIT = 6;
 const CAROUSEL_SWIPE_MIN_DISTANCE = 42;
+const OWNERSHIP_FILTERS = Object.freeze([
+  ["all", "Semua"],
+  ["self", "Saya"],
+  ["partner", "Pasangan"],
+  ["shared", "Bersama"],
+]);
 
 const useDesktopWorkspaceEnabled = () => useMediaQuery(DESKTOP_QUERY, { fallback: true });
 
@@ -152,7 +157,6 @@ const AccountCarousel = ({ accounts, account, onSelectAccount }) => {
           ))}
         </div>
       ) : null}
-      <p className={styles.carouselHelper}>Geser kartu atau gunakan panah, keyboard, dan titik untuk berpindah rekening.</p>
     </div>
   );
 };
@@ -169,10 +173,7 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
             <h2 id="desktop-selected-account-title">{account.name}</h2>
             <p>{accountProviderLabel(account)} · {accountOwnershipLabel(account)}</p>
           </div>
-          <div className={styles.heroBadges}>
-            <StatusBadge status={account.status || "active"} />
-            {readOnly ? <span className={styles.readOnlyBadge}>Hanya lihat</span> : null}
-          </div>
+          {readOnly ? <div className={styles.heroBadges}><span className={styles.readOnlyBadge}>Hanya lihat</span></div> : null}
         </div>
         <div className={styles.heroBalance}>
           <span>Saldo saat ini</span>
@@ -180,7 +181,6 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
         </div>
         <dl className={styles.heroFacts}>
           <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
-          <div><dt>Saldo awal</dt><dd><Money value={account.initial_balance || 0} /></dd></div>
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>
         <div className={styles.heroActions}>
@@ -224,7 +224,7 @@ const AccountInsights = ({ accounts, totalBalance, balanceTrend, distribution, r
   </aside>
 );
 
-const DesktopAccountsWorkspace = ({ accounts, selectedAccount, ownerMode, bootstrap, onSelectAccount, onViewTransactions, onEditAccount, onArchiveAccount }) => {
+const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, ownershipFilter, onOwnershipFilterChange, ownerMode, bootstrap, onSelectAccount, onViewTransactions, onEditAccount, onArchiveAccount }) => {
   const desktopEnabled = useDesktopWorkspaceEnabled();
   const period = currentMonthInJakarta();
   const selectedId = selectedAccount?.account_id || "";
@@ -233,9 +233,10 @@ const DesktopAccountsWorkspace = ({ accounts, selectedAccount, ownerMode, bootst
     account_id: selectedId || "all", category_id: "all", created_by: "all",
   }, { enabled: desktopEnabled && Boolean(selectedId) });
   const reportResource = useApiResource("reports.monthly", { period, trend_months: 6 }, { enabled: desktopEnabled });
-  const totalBalance = useMemo(() => accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0), [accounts]);
-  const distributionBase = useMemo(() => accounts.reduce((sum, account) => sum + Math.abs(Number(account.balance || 0)), 0), [accounts]);
-  const distribution = useMemo(() => accounts.map((account) => ({ account, percentage: distributionBase > 0 ? Math.round((Math.abs(Number(account.balance || 0)) / distributionBase) * 100) : 0 })), [accounts, distributionBase]);
+  const insightAccounts = allAccounts?.length ? allAccounts : accounts;
+  const totalBalance = useMemo(() => insightAccounts.reduce((sum, account) => sum + Number(account.balance || 0), 0), [insightAccounts]);
+  const distributionBase = useMemo(() => insightAccounts.reduce((sum, account) => sum + Math.abs(Number(account.balance || 0)), 0), [insightAccounts]);
+  const distribution = useMemo(() => insightAccounts.map((account) => ({ account, percentage: distributionBase > 0 ? Math.round((Math.abs(Number(account.balance || 0)) / distributionBase) * 100) : 0 })), [distributionBase, insightAccounts]);
   const balanceTrend = useMemo(() => {
     const items = reportResource.data?.trend?.items || [];
     return items.length ? items.map((item) => ({ label: item.label, value: item.totalBalance })) : [{ label: "Saat ini", value: totalBalance }];
@@ -244,12 +245,17 @@ const DesktopAccountsWorkspace = ({ accounts, selectedAccount, ownerMode, bootst
   if (!desktopEnabled || !selectedAccount) return null;
 
   return (
-    <div className={styles.desktopWorkspace}>
-      <div className={styles.leftColumn}>
-        <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} />
-        <RecentTransactionsPanel resource={recentTransactionsResource} items={recentTransactionsResource.data?.items || []} categoryLookup={categoryLookup} selectedAccount={selectedAccount} onViewTransactions={onViewTransactions} />
+    <div className={styles.desktopAccountsArea}>
+      <div className={styles.ownershipFilters} role="group" aria-label="Filter kepemilikan rekening">
+        {OWNERSHIP_FILTERS.map(([value, label]) => <button key={value} type="button" className={styles.ownershipFilter} aria-pressed={ownershipFilter === value} onClick={() => onOwnershipFilterChange(value)}>{label}</button>)}
       </div>
-      <AccountInsights accounts={accounts} totalBalance={totalBalance} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} />
+      <div className={styles.desktopWorkspace}>
+        <div className={styles.leftColumn}>
+          <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} />
+          <RecentTransactionsPanel resource={recentTransactionsResource} items={recentTransactionsResource.data?.items || []} categoryLookup={categoryLookup} selectedAccount={selectedAccount} onViewTransactions={onViewTransactions} />
+        </div>
+        <AccountInsights accounts={insightAccounts} totalBalance={totalBalance} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} />
+      </div>
     </div>
   );
 };

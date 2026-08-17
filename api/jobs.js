@@ -13,6 +13,7 @@ import {
   webPushConfigurationStatus,
   webPushRequestOptions,
 } from "./_lib/services/notifications.js";
+import { queueDueManualReminders } from "./_lib/services/reminders.js";
 import { nowIso, safeSpreadsheetText, sanitizeText, todayJakarta, uuid } from "./_lib/services/core.js";
 
 const monthBoundary = (monthOffset, endOfMonth = false) => {
@@ -209,6 +210,8 @@ const deliverPushNotifications = async (pushClient, item, deliveries) => Promise
       { endpoint: delivery.endpoint, keys: { p256dh: delivery.p256dh, auth: delivery.auth } },
       JSON.stringify({
         notificationType: item.notification_type,
+        title: sanitizeText(item.title, 80),
+        body: sanitizeText(item.body, 180),
         targetPath: safeNotificationTargetPath(item.target_path),
         notificationId: item.notification_id,
       }),
@@ -333,7 +336,11 @@ export default async function handler(request, response) {
     await consumeScheduledNonce(db, String(message.nonce));
     const housekeeping = await runOptionalStage("housekeeping", requestId, () => cleanupExpiredEphemeralState(db), { idempotencyKeys: 0, importPreviews: 0, restorePreviews: 0 });
     const integration = await runOptionalStage("integrations", requestId, () => processIntegrations(db), { claimed: 0, completed: 0, failed: 0 });
-    const notificationQueue = await runOptionalStage("notification_queue", requestId, async () => ({ queued: await queueDueNotifications(db) }), { queued: 0 });
+    const notificationQueue = await runOptionalStage("notification_queue", requestId, async () => {
+      const automatic = await queueDueNotifications(db);
+      const manual = await queueDueManualReminders(db);
+      return { queued: automatic + manual, automatic, manual };
+    }, { queued: 0, automatic: 0, manual: 0 });
     const push = await runOptionalStage("push", requestId, () => processPush(db), { claimed: 0, sent: 0, failed: 0, skipped: true });
     const backup = message.includeBackup === false ? { skipped: true } : await maybeDailyBackup(db);
     logEvent("info", "jobs.request.completed", { requestId, status: 200, durationMs: Date.now() - startedAt, housekeeping, integration, notificationQueue, push });

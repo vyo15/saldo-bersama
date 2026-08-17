@@ -4,9 +4,9 @@
 }
 
 .periodNav {
-  min-height: 36px;
+  min-height: var(--mobile-control-height);
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  grid-template-columns: var(--mobile-control-height) minmax(0, 1fr) var(--mobile-control-height);
   align-items: center;
 }
 
@@ -20,8 +20,8 @@
 }
 
 .periodNav button {
-  width: 34px;
-  height: 34px;
+  width: var(--mobile-control-height);
+  height: var(--mobile-control-height);
   padding: 0;
   border-radius: 10px;
   display: grid;
@@ -44,7 +44,7 @@
 
 .periodCopy { min-width: 0; text-align: center; }
 .periodCopy strong { display: block; color: var(--text); font-size: 14px; font-weight: var(--font-weight-bold); letter-spacing: -.02em; }
-.periodCopy span { display: block; margin-top: 1px; color: var(--text-muted); font-size: 10px; }
+.periodCopy span { display: block; margin-top: 1px; color: var(--text-muted); font-size: var(--font-size-xs); }
 
 .chartWrap { min-width: 0; margin-top: 4px; }
 .chart { width: 100%; height: 108px; display: block; overflow: visible; color: var(--primary); }
@@ -53,27 +53,27 @@
 .chartSkeleton { height: 108px; margin-top: 4px; border-radius: 12px; background: linear-gradient(90deg, var(--surface-soft), var(--surface-strong), var(--surface-soft)); background-size: 200% 100%; animation: transaction-chart-loading 1.25s ease-in-out infinite; }
 .reportRetry { width: 100%; min-height: 52px; margin-top: 8px; border: 0; border-radius: 12px; color: var(--text-muted); background: var(--surface-soft); font: inherit; font-size: 11px; cursor: pointer; }
 
-.metrics { min-width: 0; margin-top: 4px; display: flex; align-items: baseline; justify-content: center; gap: 7px; color: var(--text-muted); font-size: 10px; line-height: 1.35; flex-wrap: wrap; }
+.metrics { min-width: 0; margin-top: 4px; display: flex; align-items: baseline; justify-content: center; gap: 7px; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; flex-wrap: wrap; }
 .metrics span { display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap; }
-.metrics strong { color: var(--text); font-size: 10.5px; font-weight: var(--font-weight-bold); }
+.metrics strong { color: var(--text); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
 .metrics .income { color: var(--positive); }
 .metrics .expense { color: var(--negative); }
 .metrics i { width: 3px; height: 3px; border-radius: 50%; background: var(--border-strong); }
 
-.filterBar { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 40px 40px; align-items: center; gap: 7px; }
+.filterBar { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--mobile-control-height) var(--mobile-control-height); align-items: center; gap: 7px; }
 .typeScroller { min-width: 0; display: flex; gap: 6px; overflow-x: auto; padding: 2px; margin: -2px; scrollbar-width: none; }
 .typeScroller::-webkit-scrollbar { display: none; }
 .typeChip,
-.typeChipActive { min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; flex: 0 0 auto; color: var(--text-soft); background: var(--surface); font: inherit; font-size: 11px; font-weight: var(--font-weight-semibold); cursor: pointer; }
+.typeChipActive { min-height: var(--mobile-control-height); padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; flex: 0 0 auto; color: var(--text-soft); background: var(--surface); font: inherit; font-size: 11px; font-weight: var(--font-weight-semibold); cursor: pointer; }
 .typeChipActive { border-color: color-mix(in srgb, var(--primary) 25%, var(--border)); color: var(--primary); background: var(--primary-soft); }
-.iconFilter { position: relative; width: 40px; height: 40px; padding: 0; border: 1px solid var(--border); border-radius: 13px; display: grid; place-items: center; background: var(--surface); }
+.iconFilter { position: relative; width: var(--mobile-control-height); height: var(--mobile-control-height); padding: 0; border: 1px solid var(--border); border-radius: 13px; display: grid; place-items: center; background: var(--surface); }
 .iconFilter svg { width: 17px; height: 17px; }
-.iconFilter > span { min-width: 17px; height: 17px; padding: 0 4px; position: absolute; top: -5px; right: -5px; border: 2px solid var(--page); border-radius: 999px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary); font-size: 8px; font-weight: var(--font-weight-bold); line-height: 1; }
+.iconFilter > span { min-width: 18px; height: 18px; padding: 0 4px; position: absolute; top: -5px; right: -5px; border: 2px solid var(--page); border-radius: 999px; display: grid; place-items: center; color: var(--on-primary); background: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); line-height: 1; }
 .iconFilterActive { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 28%, var(--border)); background: var(--primary-soft); }
 
 .activeFilters { min-width: 0; margin-top: 8px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .activeFilters::-webkit-scrollbar { display: none; }
-.activeFilters button { min-height: 30px; padding: 0 9px; border: 1px solid var(--border); border-radius: 999px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text-soft); background: var(--surface); font: inherit; font-size: 10px; font-weight: var(--font-weight-semibold); cursor: pointer; }
+.activeFilters button { min-height: var(--mobile-control-height); padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text-soft); background: var(--surface); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .activeFilters svg { width: 12px; height: 12px; }
 
 .searchForm { display: grid; gap: 14px; }
@@ -106,18 +106,18 @@
 .rowCopy > small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rowCopy > strong { font-size: 13px; line-height: 1.2; letter-spacing: -.01em; }
 .rowCopy > small { color: var(--text-muted); font-size: 11px; line-height: 1.25; }
-.flag { min-height: 20px; padding: 0 7px; border-radius: 999px; display: inline-flex; align-items: center; color: var(--text-muted); background: var(--surface-soft); font-size: 9px; font-style: normal; font-weight: var(--font-weight-semibold); line-height: 1; }
+.flag { min-height: 20px; padding: 0 7px; border-radius: 999px; display: inline-flex; align-items: center; color: var(--text-muted); background: var(--surface-soft); font-size: var(--font-size-xs); font-style: normal; font-weight: var(--font-weight-semibold); line-height: 1; }
 .flag_primary { color: var(--primary); background: var(--primary-soft); }
 .flag_warning { color: var(--warning); background: var(--warning-soft); }
 .flag_negative { color: var(--negative); background: var(--negative-soft); }
 .rowMoney { min-width: 78px; display: grid; gap: 4px; text-align: right; }
 .rowAmount { display: inline-flex; align-items: center; justify-content: flex-end; white-space: nowrap; font-size: 12.5px; font-weight: var(--font-weight-bold); line-height: 1.2; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
 .rowAmount :global(.money) { color: inherit; font-size: inherit; }
-.rowMoney small { color: var(--text-muted); font-size: 9.5px; white-space: nowrap; }
+.rowMoney small { color: var(--text-muted); font-size: var(--font-size-xs); white-space: nowrap; }
 
-.pager { min-width: 0; min-height: 42px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: 10px; }
+.pager { min-width: 0; min-height: 42px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: var(--font-size-xs); }
 .pager > div { display: flex; gap: 6px; }
-.pager button { width: 38px; height: 38px; padding: 0; border: 1px solid var(--border); border-radius: 12px; display: grid; place-items: center; background: var(--surface); }
+.pager button { width: var(--mobile-control-height); height: var(--mobile-control-height); padding: 0; border: 1px solid var(--border); border-radius: 12px; display: grid; place-items: center; background: var(--surface); }
 .pager svg { width: 16px; height: 16px; }
 
 @keyframes transaction-chart-loading { to { background-position: -200% 0; } }
@@ -125,12 +125,12 @@
 @media (max-width: 390px) {
   .overview { padding-inline: 0; }
   .chart { height: 100px; }
-  .metrics { gap: 5px; font-size: 9px; }
-  .metrics strong { font-size: 9.5px; }
-  .filterBar { grid-template-columns: minmax(0, 1fr) 38px 38px; gap: 6px; }
-  .iconFilter { width: 38px; height: 38px; }
+  .metrics { gap: 5px; font-size: var(--font-size-xs); }
+  .metrics strong { font-size: var(--font-size-xs); }
+  .filterBar { grid-template-columns: minmax(0, 1fr) var(--mobile-control-height) var(--mobile-control-height); gap: 6px; }
+  .iconFilter { width: var(--mobile-control-height); height: var(--mobile-control-height); }
   .typeChip,
-  .typeChipActive { min-height: 34px; padding-inline: 10px; font-size: 10.5px; }
+  .typeChipActive { min-height: var(--mobile-control-height); padding-inline: 10px; font-size: var(--font-size-xs); }
   .advancedGrid { grid-template-columns: 1fr; }
   .row { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; padding-inline: 8px; }
   .rowIcon { width: 36px; height: 36px; border-radius: 12px; }

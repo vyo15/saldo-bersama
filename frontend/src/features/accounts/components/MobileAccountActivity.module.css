@@ -87,7 +87,7 @@
 .mobileChartHeading small {
     display: block;
     color: color-mix(in srgb, var(--on-hero) 56%, transparent);
-    font-size: .6rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
     letter-spacing: .09em;
   }
@@ -101,12 +101,12 @@
   }
 
 .mobileActivityHeading > button {
-    min-height: 2.5rem;
+    min-height: var(--mobile-control-height);
     padding: 0 .2rem;
     border: 0;
     background: transparent;
     color: var(--primary);
-    font-size: .68rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
     cursor: pointer;
   }
@@ -160,19 +160,19 @@
     border-radius: .8rem;
     background: color-mix(in srgb, var(--on-hero) 4.5%, transparent);
     color: color-mix(in srgb, var(--on-hero) 70%, transparent);
-    font-size: .65rem;
+    font-size: var(--font-size-xs);
   }
 
 .mobileActivityNotice > button,
 .mobileActivityState > button,
 .mobileChartState > button {
-    min-height: 2.25rem;
+    min-height: var(--mobile-control-height);
     padding: 0 .55rem;
     border: 0;
     border-radius: .65rem;
     background: color-mix(in srgb, var(--account-mobile-accent) 13%, transparent);
     color: var(--primary);
-    font-size: .64rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
     cursor: pointer;
   }
@@ -218,7 +218,7 @@
 
 .mobileTransactionCopy strong { color: var(--on-hero); font-size: .72rem; font-weight: var(--font-weight-semibold); }
 
-.mobileTransactionCopy small { color: color-mix(in srgb, var(--on-hero) 46%, transparent); font-size: .6rem; }
+.mobileTransactionCopy small { color: color-mix(in srgb, var(--on-hero) 46%, transparent); font-size: var(--font-size-xs); }
 
 .mobileTransactionMeta {
     min-width: 5.9rem;
@@ -231,7 +231,7 @@
 .mobileTransactionMeta > strong,
 .mobileTransactionMeta > strong :global(.money) {
     color: var(--on-hero);
-    font-size: .68rem;
+    font-size: var(--font-size-xs);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -254,7 +254,7 @@
     border: 1px dashed color-mix(in srgb, var(--on-hero) 12%, transparent);
     border-radius: 1rem;
     color: color-mix(in srgb, var(--on-hero) 52%, transparent);
-    font-size: .68rem;
+    font-size: var(--font-size-xs);
     text-align: center;
   }
 
@@ -282,7 +282,7 @@
 .mobileTrendControls { margin-top: .9rem; display: flex; gap: .4rem; }
 
 .mobileTrendControls > button {
-    min-height: 2.15rem;
+    min-height: var(--mobile-control-height);
     padding: 0 .72rem;
     border: 1px solid color-mix(in srgb, var(--on-hero) 8%, transparent);
     border-radius: var(--radius-pill);
@@ -344,7 +344,7 @@
     gap: .55rem;
     align-items: start;
     color: color-mix(in srgb, var(--on-hero) 48%, transparent);
-    font-size: .6rem;
+    font-size: var(--font-size-xs);
     line-height: 1.45;
   }
 
@@ -370,7 +370,7 @@
     gap: var(--space-2);
     background: transparent;
     color: color-mix(in srgb, var(--on-hero) 70%, transparent);
-    font-size: .66rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
   }

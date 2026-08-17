@@ -95,6 +95,9 @@
 | `notifications.register` | Ya | Ya |
 | `notifications.unregister` | Ya | Ya |
 | `notifications.test` | Ya | Ya |
+| `reminders.get` | Ya | Ya |
+| `reminders.upsert` | Ya | Ya |
+| `reminders.cancel` | Ya | Ya |
 | `backup.create` | Ya | Tidak |
 | `import.preview` | Ya | Tidak |
 | `import.apply` | Ya | Tidak |
@@ -113,7 +116,8 @@
 
 - Melewati atau memulihkan satu occurrence (`recurring.cancelOccurrence` / `recurring.restoreOccurrence`) adalah keputusan planning Administrator-only. Aksi ini tidak membuat ledger entry dan tidak mengubah saldo.
 - Administrator dan Member boleh membaca serta mengubah **preference notifikasi miliknya sendiri**. `user_id`, actor, role, timestamp, dan audit identity tetap ditentukan backend; client tidak dapat mengubah preference pengguna lain.
-- Hak menerima alert tidak memperluas hak membaca data: payload Push tetap generik dan preference hanya memfilter tipe alert sebelum queue dibuat.
+- Administrator dan Member boleh membuat, membaca, mengubah, dan membatalkan **pengingat manual miliknya sendiri** untuk entity yang memang boleh diakses actor. Backend menentukan `user_id`, memvalidasi ownership/assignee, waktu, `row_version`, audit, dan status entity; client tidak dapat membuat reminder untuk scope pengguna lain.
+- Hak menerima alert tidak memperluas hak membaca data. Push detail hanya dibuat dari data yang sudah lolos guard backend dan hanya dikirim ke subscription milik penerima; preference tetap memfilter tipe alert otomatis sebelum queue dibuat.
 
 ## Guard recovery kantong
 

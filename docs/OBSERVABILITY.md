@@ -10,7 +10,9 @@ Log terstruktur minimal: request ID, action, status, duration, actor user ID ter
 
 ## Alert operasional
 
-Periksa:
+Status saat ini: event/log/health tersedia, tetapi external alerting independen belum diimplementasikan. Pemeriksaan manual atau monitor platform harus dipakai sampai provider/kanal alert disetujui. Jangan memakai Web Push aplikasi sebagai satu-satunya alarm untuk kegagalan Web Push itu sendiri.
+
+Kondisi minimum yang harus menghasilkan tindakan operator:
 
 - schema mismatch;
 - maintenance aktif;
@@ -18,7 +20,10 @@ Periksa:
 - notification queue macet;
 - backup harian gagal;
 - integrity run gagal;
-- repeated auth/rate-limit failure.
+- repeated auth/rate-limit failure;
+- scheduler tidak berjalan sesuai cadence yang diharapkan.
+
+Alert eksternal, bila nanti disetujui, hanya boleh membawa metadata operasional minimum seperti environment, status, timestamp, request ID, dan error code aman. Nominal, rekening, merchant, token, raw payload, stack trace, atau identifier resource Google tidak boleh dikirim.
 
 Worker `processing` yang melewati batas waktu direclaim secara terbatas. Dead-letter memerlukan tindakan owner, bukan retry tanpa batas.
 

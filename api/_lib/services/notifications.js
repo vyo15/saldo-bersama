@@ -511,6 +511,17 @@ const highestUsageThreshold = (percentage, customThreshold = 75) => {
   return 0;
 };
 
+const notificationRupiah = (value) => `Rp${Math.max(0, Math.round(Number(value || 0))).toLocaleString("id-ID")}`;
+
+const dueTimingLabel = (today, dueDate) => {
+  if (dueDate === today) return "hari ini";
+  if (dueDate === addDays(today, 1)) return "besok";
+  const delta = Math.round((new Date(`${dueDate}T00:00:00+07:00`).getTime() - new Date(`${today}T00:00:00+07:00`).getTime()) / 86_400_000);
+  return delta > 1 ? `${delta} hari lagi` : "segera";
+};
+
+const shortName = (value, fallback) => sanitizeText(value, 60) || fallback;
+
 const queueForRecipients = async (db, users, item, notification, disabledPreferences = new Set()) => {
   let queued = 0;
   for (const user of notificationRecipients(users, item)) {
@@ -541,7 +552,7 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
   add("recurringDue", {
     sql: `SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
       r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,
-      a.account_id,a.status AS account_status
+      a.account_id,a.name AS account_name,a.status AS account_status
     FROM recurring_occurrences o
     JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
     JOIN accounts a ON a.account_id=r.default_account_id
@@ -549,7 +560,7 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
     args: [today, dueEndDate],
   });
   add("recurringCompleted", {
-    sql: `SELECT o.occurrence_id,o.due_date,o.updated_at,r.kind,r.scope,r.owner_user_id
+    sql: `SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.updated_at,r.name,r.kind,r.scope,r.owner_user_id
       FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
       WHERE r.status='active' AND o.status='paid' AND substr(o.updated_at,1,10) BETWEEN ? AND ?`,
     args: [addDays(today, -3), today],
@@ -576,7 +587,7 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
     args: [],
   });
   add("unallocated", {
-    sql: `SELECT scope,owner_user_id,COUNT(*) AS count
+    sql: `SELECT scope,owner_user_id,COUNT(*) AS count,SUM(amount) AS total_amount
       FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id IS NULL AND substr(transaction_date,1,7)=?
       GROUP BY scope,owner_user_id`,
     args: [period],
@@ -605,8 +616,10 @@ const queueRecurringDueNotifications = async (db, state, recurring) => {
   for (const item of recurring) {
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_due",
-      title: "Pengingat keuangan",
-      body: "Ada jadwal keuangan yang perlu diperiksa di aplikasi.",
+      title: `${shortName(item.name, item.kind === "income" ? "Pemasukan rutin" : "Tagihan")} ${item.kind === "income" ? "dijadwalkan" : "jatuh tempo"} ${dueTimingLabel(today, item.due_date)}`,
+      body: item.kind === "income"
+        ? `${notificationRupiah(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)))} dijadwalkan masuk ke ${shortName(item.account_name, "rekening tujuan")}.`
+        : `${notificationRupiah(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)))} perlu dibayar dari ${shortName(item.account_name, "rekening sumber")}.`,
       targetPath: "/tagihan",
       dedupeKey: `recurring:${item.occurrence_id}:${item.due_date}`,
     }, disabledPreferences);
@@ -616,8 +629,8 @@ const queueRecurringDueNotifications = async (db, state, recurring) => {
     if (balance >= remaining) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_funding_shortage",
-      title: "Pengingat keuangan",
-      body: "Dana untuk jadwal pembayaran yang dekat jatuh tempo perlu diperiksa di aplikasi.",
+      title: `Dana ${shortName(item.name, "pembayaran")} belum cukup`,
+      body: `Masih kurang ${notificationRupiah(remaining - balance)} dari kebutuhan ${notificationRupiah(remaining)} di ${shortName(item.account_name, "rekening sumber")}.`,
       targetPath: "/tagihan",
       dedupeKey: `recurring-shortage:${item.occurrence_id}:${item.due_date}`,
     }, disabledPreferences);
@@ -631,8 +644,8 @@ const queueRecurringCompletedNotifications = async (db, state, items) => {
   for (const item of items) {
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_completed",
-      title: "Pengingat keuangan",
-      body: "Satu jadwal keuangan sudah tercatat selesai di aplikasi.",
+      title: `${shortName(item.name, "Jadwal rutin")} berhasil dicatat`,
+      body: `${notificationRupiah(Number(item.actual_amount || item.expected_amount || 0))} sudah tercatat sebagai ${item.kind === "income" ? "pemasukan" : "pembayaran"} rutin.`,
       targetPath: "/tagihan",
       dedupeKey: `recurring-completed:${item.occurrence_id}`,
     }, disabledPreferences);
@@ -649,8 +662,8 @@ const queueBudgetNotifications = async (db, state, budgets) => {
     if (!threshold) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "budget_threshold",
-      title: "Pengingat keuangan",
-      body: "Ada batas anggaran yang perlu diperiksa di aplikasi.",
+      title: `Anggaran ${shortName(item.name, "bulan ini")} sudah ${threshold}%`,
+      body: `Terpakai ${notificationRupiah(item.used_amount)} dari ${notificationRupiah(item.amount)}. Sisa ${notificationRupiah(Math.max(0, Number(item.amount || 0) - Number(item.used_amount || 0)))}.`,
       targetPath: "/anggaran",
       dedupeKey: `budget:${item.budget_id}:${period}:${threshold}`,
     }, disabledPreferences);
@@ -668,8 +681,8 @@ const queueEnvelopeNotifications = async (db, state, envelopes) => {
     if (!threshold) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "envelope_threshold",
-      title: "Pengingat keuangan",
-      body: "Ada kantong alokasi yang perlu diperiksa di aplikasi.",
+      title: `Kantong ${shortName(item.name, "aktif")} sudah ${threshold}%`,
+      body: `Terpakai ${notificationRupiah(Number(item.used_amount || 0) + Number(item.reserved_amount || 0))} dari ${notificationRupiah(item.allocated_amount)}. Sisa ${notificationRupiah(Math.max(0, allocated - Number(item.used_amount || 0) - Number(item.reserved_amount || 0)))}.`,
       targetPath: "/alokasi",
       dedupeKey: `envelope:${item.envelope_period_id}:${threshold}`,
     }, disabledPreferences);
@@ -685,8 +698,10 @@ const queueGoalNotifications = async (db, state, goals) => {
     if (projection.pace_status !== "behind" && projection.pace_status !== "overdue") continue;
     queued += await queueForRecipients(db, users, item, {
       type: "goal_behind",
-      title: "Pengingat keuangan",
-      body: "Ada target keuangan yang perlu diperiksa di aplikasi.",
+      title: `Target ${shortName(item.name, "keuangan")} ${projection.pace_status === "overdue" ? "melewati tenggat" : "tertinggal"}`,
+      body: projection.pace_status === "overdue"
+        ? `Masih kurang ${notificationRupiah(projection.remaining_amount)} dari target ${notificationRupiah(item.target_amount)}.`
+        : `Masih kurang ${notificationRupiah(projection.remaining_amount)}. Kebutuhan rata-rata ${notificationRupiah(projection.required_monthly_amount)} per bulan.`,
       targetPath: "/target",
       dedupeKey: `goal:${item.goal_id}:${period}:${projection.pace_status}`,
     }, disabledPreferences);
@@ -701,8 +716,8 @@ const queueUnallocatedExpenseNotifications = async (db, state, items) => {
     if (Number(item.count || 0) < 1) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "unallocated_expense",
-      title: "Pengingat keuangan",
-      body: "Ada transaksi yang perlu diperiksa di aplikasi.",
+      title: `${Number(item.count || 0)} pengeluaran belum dialokasikan`,
+      body: `Total ${notificationRupiah(item.total_amount)} belum masuk kantong. Rapikan agar laporan bulan ini tetap akurat.`,
       targetPath: "/transaksi",
       dedupeKey: `unallocated:${item.scope}:${item.owner_user_id || "shared"}:${today}`,
     }, disabledPreferences);

@@ -1,6 +1,6 @@
 # Data Dictionary
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `006_account_ewallet_template.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `008_manual_reminders.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -41,7 +41,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `integration_links` | Pemetaan entity internal dengan resource integrasi eksternal. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `notification_queue` | Antrean notifikasi per pengguna yang diproses worker. | Sedang | Service/API; data operasional, dibersihkan hanya melalui workflow maintenance |
 | `notification_deliveries` | Status pengiriman per notification dan subscription untuk retry tanpa duplikasi perangkat sukses. | Tinggi | Service/API; endpoint tidak disalin ke backup finansial |
-| `notification_preferences` | Preferensi tujuh tipe alert canonical untuk setiap pengguna. Row yang belum ada berarti tipe aktif; perubahan memakai `row_version` dan audit actor server-side. | Sedang | Service/API; ikut backup/restore, tidak menyimpan endpoint/credential Push |
+| `notification_preferences` | Preferensi tujuh tipe alert otomatis canonical untuk setiap pengguna. Row yang belum ada berarti tipe aktif; perubahan memakai `row_version` dan audit actor server-side. | Sedang | Service/API; ikut backup/restore, tidak menyimpan endpoint/credential Push |
+| `manual_reminders` | Pengingat manual one-shot per user untuk jadwal rutin, anggaran, periode kantong, atau target. Menyimpan UTC `scheduled_at`, status, dan `row_version`; isi Push dibuat server dari entity terbaru. | Sedang | Service/API; ikut backup/restore; cancel melalui soft state, tidak dipercaya dari title/body client |
 | `push_subscriptions` | Subscription Web Push per pengguna/perangkat. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `backup_runs` | Metadata backup teknis dan statusnya. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `import_previews` | Preview import yang memiliki fingerprint dan masa berlaku. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
@@ -71,7 +72,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - budget/kantong threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v9
+## Model planned — belum ada di schema v10
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
@@ -84,6 +85,6 @@ Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v9
+## Schema v10
 
-Migration canonical: `007_envelope_assignee.sql` pada `database/migrations/`.
+Migration canonical terbaru: `008_manual_reminders.sql` pada `database/migrations/`. Migration v10 menambah reminder manual one-shot tanpa mengubah tabel ledger finansial existing.

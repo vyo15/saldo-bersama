@@ -15,7 +15,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-OFFLINE-001` | Offline write deny | Implemented | service worker/front-end guards | Device smoke |
 | `REQ-AUDIT-001` | Audit append-only | Implemented | `audit_log` triggers/service | Retention operation |
 | `REQ-UX-001` | UI states | Implemented | feedback components/pages + shared responsive view model | Production/device smoke |
-| `REQ-A11Y-001` | Accessibility baseline | Partial | semantic/static regression + manual device accessibility QA | axe penuh dan Chrome/Firefox/Safari real-device coverage pending |
+| `REQ-A11Y-001` | Accessibility baseline | Partial | semantic/static regression, AA semantic danger-pair guard, 44px transaction mobile controls, readable financial micro-text, notification preference descriptions + `aria-describedby` | axe penuh dan Chrome/Firefox/Safari real-device coverage pending |
 | `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v5 account number/`bank_template` + schema v8 `ewallet_template` + schema v9 `assignee_user_id` pada Alokasi + list/detail financial-card UI + label/capability Administrator/Member + route rekening terpisah | Mode privacy granular pending RFC-0015; real-resource Administrator/Member smoke pending |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm + `MobileTransactionHistory` history-first UI | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
 | `REQ-PROD-03` | Kategori | Partial | route `/kategori`, facade feature, categories + `nature` | hierarchy pending RFC-0014 |
@@ -31,20 +31,20 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-13` | Laporan | Partial | `reports.monthly` + tren 3/6/12 + breakdown; mobile ≤820px `Ringkasan`/`Per kategori`, chart, KPI, compare, alerts, budget vs actual; desktop workspace existing | contribution/debt model pending |
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
-| `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert + preference per user + recurring due/H-2/completed + budget/envelope/goal/unallocated, privacy-safe payload, per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
-| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + confirmation/browser-side single-flight | Full operator quality + guard gate patch terbaru + external alerting/operational drills |
+| `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert otomatis + preference per user + manual reminder one-shot pada Jadwal/Anggaran/Alokasi/Target + detail push server-generated + branded icon/badge + per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
+| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + canonical timezone/currency integrity + confirmation/browser-side single-flight | GitHub ruleset, Dev/Prod DB isolation, per-device session revoke (RFC-0018), platform rate limit, external alerting, dan operational drills tetap perlu evidence/decision |
 
 ## Infrastruktur dan deployment
 
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Desktop/mobile branded login + local Firebase popup; production server OAuth memerlukan callback URI + `GOOGLE_OAUTH_CLIENT_SECRET` Production Sensitive dan real-device smoke |
-| Turso schema v9 | Implemented | Migration additive penerima jatah + provider E-wallet + compatibility backup v3-v8; production migration/parity evidence pending |
+| Turso schema v10 | Implemented | Migration additive manual reminder + penerima jatah + provider E-wallet + compatibility backup v3-v9; production migration/parity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |
 | Backup/restore | Implemented | Real-resource restore drill required |
-| PWA/Web Push | Partial | Source contract + centralized VAPID + privacy-safe smart recurring alerts; desktop Production operator smoke reported, real Android/iOS tetap required |
+| PWA/Web Push | Partial | Source contract + centralized VAPID + detail server-generated automatic/manual alerts + branded icon/badge; desktop Production operator smoke reported, real Android/iOS tetap required |
 | Build budget | Implemented | Enforced pada local/CI quality gate; browser/device QA dilakukan manual sesuai perubahan UI |
 | External alerting | Not implemented | RFC/approved provider pending |
 
