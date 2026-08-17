@@ -177,6 +177,16 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Rekening dan kategori tidak dicampur dalam satu halaman. `/rekening` memakai aksi `Tambah rekening`; `/kategori` memakai aksi `Tambah kategori`. Ketika dataset benar-benar kosong, primary create action dimiliki empty state agar tidak diduplikasi oleh header. Masing-masing membuka dialog desktop atau bottom sheet mobile tanpa tab domain lain. Field `No rekening` wajib untuk rekening bank dan memperbarui preview langsung.
 - Template bank disimpan pada `accounts.bank_template` schema v5 dan provider E-wallet disimpan pada `accounts.ewallet_template` schema v8. Keduanya bersifat presentational: perubahan template/provider tidak mengubah nama, saldo, ownership, atau aturan transaksi.
 
+
+## Ilustrasi ringkasan finansial
+
+- Artwork dekoratif hanya boleh memperkuat satu summary/hero utama atau empty state. Jangan membuat card baru hanya untuk gambar dan jangan mengulang artwork pada setiap item list.
+- Halaman yang saat ini memiliki summary-art canonical: Anggaran, Target (`piggy-bank.webp`), Alokasi (`wallet.webp`), Jadwal rutin (`finance-checklist.webp`), dan Anggota (`house.webp`). File fisik empat aset terakhir masih berada di `public/login/assets/mobile/` karena login juga menggunakannya; path tersebut diperlakukan sebagai shared visual asset sampai ada migrasi asset terpisah yang aman.
+- Artwork bersifat dekoratif: `alt=""`, `aria-hidden="true"`, `pointer-events: none`, tidak boleh menjadi sumber informasi atau authorization signal. Semua nominal, progress, status, dan capability tetap berasal dari read model/domain existing.
+- Desktop menempatkan artwork di sisi kanan hero dengan ruang copy sekitar dua pertiga lebar. Mobile mengecilkan artwork sekitar 29–31% lebar card dan menjaga copy utama tetap terbaca pada viewport 320–430px.
+- Dashboard, Transaksi, Laporan, Rekening, Kategori, serta halaman Pengaturan tidak menerima hero-art tambahan hanya demi konsistensi visual. Chart, kartu rekening, taxonomy icon, dan utility surface existing sudah menjadi fokus visual masing-masing route.
+- Satu surface hanya memiliki satu hierarchy visual: headline/nominal, progress atau status, metadata ringkas, lalu artwork. Hindari pola card-di-dalam-card atau deretan badge dekoratif yang tidak menambah informasi.
+
 ## Mobile dan PWA
 
 - Mobile adalah layout aplikasi, bukan desktop yang diperkecil.

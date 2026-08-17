@@ -125,6 +125,34 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", 
   assert.match(goals, /pace_status/);
 });
 
+test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis", async () => {
+  const [goals, allocations, recurring, members, dashboard, transactions, reports] = await Promise.all([
+    source("src/features/goals/GoalsPage.jsx"),
+    source("src/features/allocations/AllocationsPage.jsx"),
+    source("src/features/recurring/RecurringSchedule.jsx"),
+    source("src/features/settings/MembersSettingsPage.jsx"),
+    source("src/features/dashboard/DashboardPage.jsx"),
+    source("src/features/transactions/TransactionsPage.jsx"),
+    source("src/features/reports/ReportsPage.jsx"),
+  ]);
+  assert.match(goals, /piggy-bank\.webp/);
+  assert.match(goals, /<GoalSummary items=\{resource\.data\?\.items \|\| \[\]\}/);
+  assert.match(allocations, /wallet\.webp/);
+  assert.match(allocations, /<AllocationSummary items=\{activeItems\}/);
+  assert.match(recurring, /finance-checklist\.webp/);
+  assert.match(recurring, /aria-label="Ringkasan jadwal rutin periode ini"/);
+  assert.match(members, /house\.webp/);
+  assert.match(members, /<MembersSummaryHero members=\{members\}/);
+  for (const page of [dashboard, transactions, reports]) {
+    assert.doesNotMatch(page, /piggy-bank\.webp|finance-checklist\.webp|\/house\.webp|\/wallet\.webp/);
+  }
+  const assetNames = ["piggy-bank.webp", "wallet.webp", "finance-checklist.webp", "house.webp"];
+  for (const name of assetNames) {
+    const buffer = await readFile(path.join(root, "public", "login", "assets", "mobile", name));
+    assert.ok(buffer.length > 10_000, `${name} harus tetap tersedia sebagai aset visual existing`);
+  }
+});
+
 test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang memakai kantong", async () => {
   const [allocations, recurring, navigation] = await Promise.all([
     Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),

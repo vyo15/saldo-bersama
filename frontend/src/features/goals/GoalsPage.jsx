@@ -40,6 +40,40 @@ const goalTypeLabel = (type) => ({ emergency_fund: "Dana darurat", sinking_fund:
 const refreshGoalKeys = Object.freeze(["goals.list", "reports.monthly", "app.initialState"]);
 const goalLedgerRefreshKeys = Object.freeze(["goals.list", "transactions.list", "accounts.list", "reports.monthly", "app.initialState"]);
 
+const GOAL_HERO_ART = "/login/assets/mobile/piggy-bank.webp";
+
+const summarizeGoals = (items) => {
+  const active = items.filter((item) => item.status === "active");
+  const totals = active.reduce((sum, item) => ({
+    current: sum.current + Math.max(0, Number(item.current_amount || 0)),
+    target: sum.target + Math.max(0, Number(item.target_amount || 0)),
+    remaining: sum.remaining + Math.max(0, Number(item.remaining_amount || 0)),
+    monthly: sum.monthly + Math.max(0, Number(item.required_monthly_amount || 0)),
+    attention: sum.attention + (["behind", "overdue"].includes(item.pace_status) ? 1 : 0),
+  }), { current: 0, target: 0, remaining: 0, monthly: 0, attention: 0 });
+  return { ...totals, activeCount: active.length };
+};
+
+const GoalSummary = ({ items }) => {
+  const summary = summarizeGoals(items);
+  return (
+    <Card className="goal-summary" aria-labelledby="goal-summary-title">
+      <div className="goal-summary__content">
+        <p className="goal-summary__eyebrow" id="goal-summary-title">Progress target aktif</p>
+        <div className="goal-summary__amount"><Money value={summary.current} /></div>
+        <p className="goal-summary__description">Terkumpul dari target <Money value={summary.target} />.</p>
+        <div className="goal-summary__progress"><ProgressBar value={summary.current} max={summary.target} label="Progress seluruh target aktif" /></div>
+        <div className="goal-summary__meta">
+          <span>Sisa <strong><Money value={summary.remaining} /></strong></span>
+          <span>Estimasi/bulan <strong><Money value={summary.monthly} /></strong></span>
+          <span>{summary.activeCount} target aktif{summary.attention ? <> · <strong>{summary.attention} perlu perhatian</strong></> : ""}</span>
+        </div>
+      </div>
+      <img className="goal-summary__art" src={GOAL_HERO_ART} alt="" aria-hidden="true" draggable="false" />
+    </Card>
+  );
+};
+
 const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, openStatusChange }) => {
   const primaryAction = goal.can_deposit
     ? <Button className="goal-card__primary-action" variant="primary" icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Tambah dana</Button>
@@ -329,6 +363,7 @@ const GoalsPage = () => {
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
     <PageHeader title="Target" actions={ownerMode && (resource.data?.items || []).length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{attentionGoalId ? <div className="notice notice--info attention-guidance" role="status"><strong>Target ini tertinggal dari rencana.</strong><span>Tambahkan dana hanya jika saldo rekening sumber mencukupi. Form setoran akan dibuka otomatis bila target masih menerima setoran.</span></div> : null}
+    <GoalSummary items={resource.data?.items || []} />
     <GoalGrid items={resource.data?.items || []} actions={actions} ownerMode={ownerMode} openCreate={creation.openCreate} />
     <GoalCreateModal open={creation.open} close={creation.closeCreate} form={creation.form} setForm={creation.setForm} accounts={accounts} createGoal={creation.createGoal} createMutation={creation.createMutation} message={creation.message} />
     <GoalEditModal editGoal={lifecycle.editGoal} setEditGoal={lifecycle.setEditGoal} editState={lifecycle.editState} saveGoal={lifecycle.saveGoal} />

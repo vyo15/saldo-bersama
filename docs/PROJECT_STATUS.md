@@ -37,6 +37,14 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Row hanya menampilkan badge exception penting (managed recurring/goal, belum dialokasikan, cancelled). Detail transaksi memuat jenis, kategori, rekening, alokasi, pencatat, tanggal Asia/Jakarta, sumber, status, dan action capability existing.
 - Mobile presentation sudah dipisah ke CSS Module `MobileTransactionHistory.module.css`; `TransactionsPage.css` masih transitional untuk desktop table/filter dan detail modal. Backend finance, schema, saldo, authorization, audit, idempotency, serta login tidak berubah oleh redesign ini.
 
+
+## Visual summary planning saat ini
+
+- Target, Alokasi, Jadwal rutin, dan Anggota memakai summary hero responsif dengan artwork existing agar kualitas visual konsisten dengan Anggaran tanpa menambah route, request, mutation, atau schema baru.
+- Target mengagregasi target aktif dari `goals.list`; Alokasi tetap memakai data `envelopes.list`; Jadwal rutin tetap memakai summary occurrence existing; Anggota hanya merangkum `users.list`. Artwork tidak ikut menentukan nominal, status, capability, atau authorization.
+- Dashboard, Transaksi, Laporan, Rekening, Kategori, dan Pengaturan sengaja tidak diberi artwork hero tambahan karena masing-masing sudah memiliki chart, kartu domain, icon taxonomy, atau utility hierarchy sebagai fokus utama.
+- Empat ilustrasi reuse path login existing (`piggy-bank`, `wallet`, `finance-checklist`, `house`) dengan semantic dekoratif kosong agar login yang sudah stabil tidak memerlukan perpindahan asset.
+
 ## Laporan mobile saat ini
 
 - `/laporan` pada viewport ≤820px memakai hierarchy analitik compact yang terpisah dari workspace desktop, tetapi tetap membaca action canonical `reports.monthly`.

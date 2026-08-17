@@ -149,11 +149,13 @@
   .pagination-bar .button { width: 100%; }
 
 
-  .allocation-summary { padding: 15px; border-radius: 20px; box-shadow: none; }
-  .allocation-summary__amount .money { font-size: clamp(27px, 8vw, 32px); }
-  .allocation-summary > p { font-size: 12px; }
-  .allocation-summary__metrics { gap: 8px; margin-top: 12px; }
-  .allocation-summary__metrics > div { padding: 9px 10px; border-radius: 13px; }
+  .goal-summary, .allocation-summary { min-height: 12rem; padding: 15px; border-radius: 20px; box-shadow: none; }
+  .goal-summary__content, .allocation-summary__content { width: 72%; }
+  .goal-summary__amount .money, .allocation-summary__amount .money { font-size: clamp(27px, 8vw, 32px); }
+  .goal-summary__description, .allocation-summary__content > p { max-width: 18rem; font-size: 12px; }
+  .goal-summary__meta, .allocation-summary__metrics { gap: 7px 10px; margin-top: 10px; }
+  .goal-summary__meta { max-width: 18rem; }
+  .goal-summary__art, .allocation-summary__art { right: -1%; bottom: .2rem; width: min(8.5rem, 31%); max-height: 8.5rem; }
   .allocation-header-actions { width: 100%; display: grid; gap: 8px; }
   .allocation-header-actions--administrator { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) var(--mobile-control-height); }
   .allocation-header-actions--member { grid-template-columns: minmax(0, 1fr) var(--mobile-control-height); }
@@ -262,6 +264,9 @@
 }
 
 @media (max-width: 420px) {
+  .goal-summary__content, .allocation-summary__content { width: 68%; }
+  .goal-summary__art, .allocation-summary__art { right: -3%; width: min(7.2rem, 29%); }
+  .goal-summary__meta, .allocation-summary__metrics { font-size: 10px; }
 
   .report-period-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

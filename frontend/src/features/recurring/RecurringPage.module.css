@@ -22,6 +22,25 @@
   pointer-events: none;
 }
 
+.heroContent {
+  position: relative;
+  z-index: 2;
+  width: min(68%, 43rem);
+}
+
+.heroArt {
+  position: absolute;
+  z-index: 1;
+  inset-inline-end: 3%;
+  inset-block-end: -.55rem;
+  width: min(14rem, 28%);
+  max-height: 12rem;
+  object-fit: contain;
+  filter: drop-shadow(0 1.2rem 1.5rem rgba(0, 0, 0, .18));
+  pointer-events: none;
+  user-select: none;
+}
+
 .heroTop {
   position: relative;
   z-index: 1;
@@ -131,20 +150,18 @@ button.heroStatus {
   position: relative;
   z-index: 1;
   min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
   margin-top: var(--space-3);
 }
 
 .heroMetric {
   min-width: 0;
-  padding: .7rem .75rem;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  display: grid;
-  gap: .2rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .3rem;
 }
 
 .heroMetric > span {
@@ -168,7 +185,7 @@ button.heroStatus {
 }
 
 .heroMetricAttention {
-  border-color: color-mix(in srgb, var(--warning) 24%, var(--border));
+  color: var(--warning);
 }
 
 .headerActions {
@@ -618,6 +635,17 @@ button.heroStatus {
     box-shadow: none;
   }
 
+  .heroContent {
+    width: 72%;
+  }
+
+  .heroArt {
+    inset-inline-end: -1%;
+    inset-block-end: .1rem;
+    width: min(8.5rem, 31%);
+    max-height: 8.5rem;
+  }
+
   .filterBar {
     width: 100%;
   }
@@ -660,12 +688,24 @@ button.heroStatus {
   }
 
   .heroCard {
+    min-height: 12rem;
     padding: var(--space-4);
     border-radius: var(--radius-md);
   }
 
+  .heroContent {
+    width: 69%;
+  }
+
+  .heroArt {
+    inset-inline-end: -3%;
+    width: min(7.4rem, 30%);
+  }
+
   .heroTop {
     align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   .heroStatus {
@@ -683,10 +723,6 @@ button.heroStatus {
 
   .heroMetrics {
     gap: var(--space-1);
-  }
-
-  .heroMetric {
-    padding: .6rem .55rem;
   }
 
   .heroMetric > span {

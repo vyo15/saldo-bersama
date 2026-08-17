@@ -232,24 +232,27 @@ export const ScheduleSummary = ({ items, onAttention }) => {
   return (
     <section className={styles.heroCard} aria-label="Ringkasan jadwal rutin periode ini">
       <div className={styles.heroGlow} aria-hidden="true" />
-      <div className={styles.heroTop}>
-        <span className={styles.heroEyebrow}>Ringkasan periode</span>
-        {status.attention ? (
-          <button type="button" className={`${styles.heroStatus} ${styles.heroStatusAttention}`} aria-label="Lihat tindakan yang perlu perhatian" onClick={onAttention}>
-            <span>{status.label}</span><FiArrowRight aria-hidden="true" />
-          </button>
-        ) : <span className={styles.heroStatus}>{status.label}</span>}
+      <div className={styles.heroContent}>
+        <div className={styles.heroTop}>
+          <span className={styles.heroEyebrow}>Ringkasan periode</span>
+          {status.attention ? (
+            <button type="button" className={`${styles.heroStatus} ${styles.heroStatusAttention}`} aria-label="Lihat tindakan yang perlu perhatian" onClick={onAttention}>
+              <span>{status.label}</span><FiArrowRight aria-hidden="true" />
+            </button>
+          ) : <span className={styles.heroStatus}>{status.label}</span>}
+        </div>
+        <div className={styles.heroValue}><Money value={summary.expense} /></div>
+        <p className={styles.heroDescription}>Rencana pengeluaran rutin pada periode yang dipilih.</p>
+        <div className={styles.heroProgress} aria-label={`${progress}% jadwal periode terselesaikan`}>
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <div className={styles.heroMetrics}>
+          <div className={styles.heroMetric}><span>Pemasukan</span><strong><Money value={summary.income} /></strong></div>
+          <div className={styles.heroMetric}><span>Tuntas</span><strong>{resolved} dari {total}</strong></div>
+          <div className={`${styles.heroMetric} ${summary.attention ? styles.heroMetricAttention : ""}`}><span>Perhatian</span><strong>{summary.attention} jadwal</strong></div>
+        </div>
       </div>
-      <div className={styles.heroValue}><Money value={summary.expense} /></div>
-      <p className={styles.heroDescription}>Rencana pengeluaran rutin pada periode yang dipilih.</p>
-      <div className={styles.heroProgress} aria-label={`${progress}% jadwal periode terselesaikan`}>
-        <span style={{ width: `${progress}%` }} />
-      </div>
-      <div className={styles.heroMetrics}>
-        <div className={styles.heroMetric}><span>Pemasukan</span><strong><Money value={summary.income} /></strong></div>
-        <div className={styles.heroMetric}><span>Tuntas</span><strong>{resolved} dari {total}</strong></div>
-        <div className={`${styles.heroMetric} ${summary.attention ? styles.heroMetricAttention : ""}`}><span>Perhatian</span><strong>{summary.attention} jadwal</strong></div>
-      </div>
+      <img className={styles.heroArt} src="/login/assets/mobile/finance-checklist.webp" alt="" aria-hidden="true" draggable="false" />
     </section>
   );
 };
