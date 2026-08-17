@@ -23,7 +23,7 @@ npm run db:integrity
 
 ## 3. Firebase
 
-Aktifkan Google provider dan authorized domain untuk localhost serta `saldo-bersama.vercel.app`. Login mobile memakai Firebase `signInWithPopup` dari tombol custom Saldo Bersama, sehingga tidak membutuhkan reverse proxy `/__/auth/*` maupun OAuth redirect URI custom pada domain Vercel. `VITE_FIREBASE_AUTH_DOMAIN` tetap `saldo-bersama.firebaseapp.com`. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; Firebase Web API key bukan secret. Authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`.
+Aktifkan Google provider dan authorized domain untuk localhost serta `saldo-bersama.vercel.app`. Login mobile production memakai Firebase `signInWithRedirect` dari tombol custom Saldo Bersama dengan authDomain runtime `saldo-bersama.vercel.app` dan reverse proxy transparan `/__/auth/*` ke `saldo-bersama.firebaseapp.com`; localhost/device emulation tetap memakai popup fallback. Pada OAuth Web Client Firebase/Google, authorized redirect URI **wajib** memuat `https://saldo-bersama.vercel.app/__/auth/handler`. `VITE_FIREBASE_AUTH_DOMAIN` tetap `saldo-bersama.firebaseapp.com` sebagai upstream Firebase public config dan tidak diubah menjadi secret. Backend memverifikasi ID token memakai `VITE_FIREBASE_API_KEY`; authorization tetap ditentukan oleh `ALLOWED_USERS_JSON` dan binding tabel `users`.
 
 ## 4. Apps Script bridge
 

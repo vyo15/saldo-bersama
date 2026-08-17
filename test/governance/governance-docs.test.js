@@ -337,7 +337,7 @@ test("project status is a current-state snapshot with schema v9 and shared datab
 });
 
 
-test("current docs track desktop GIS, mobile Firebase popup, schema v9, dan manual accessibility QA", () => {
+test("current docs track desktop GIS, mobile Firebase redirect production, schema v9, dan manual accessibility QA", () => {
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
   const deployment = read("docs/DEPLOYMENT.md");
   const status = read("docs/PROJECT_STATUS.md");
@@ -349,12 +349,13 @@ test("current docs track desktop GIS, mobile Firebase popup, schema v9, dan manu
   assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
   assert.match(deployment, /runtime v9 menerima traffic/);
   assert.match(status, /Auth desktop:.*Google Identity Services/);
-  assert.match(status, /Auth mobile:.*Firebase Web SDK.*signInWithPopup/);
+  assert.match(status, /Auth mobile:.*signInWithRedirect.*same-origin/);
   assert.match(status, /tombol Google custom pada UI Saldo Bersama/);
-  assert.match(testPlan, /Firebase Web SDK `GoogleAuthProvider` \+ `signInWithPopup`/);
-  assert.match(testPlan, /tidak merender tombol\/iframe Google Identity Services/);
-  assert.match(testPlan, /Firebase ID token dari user hasil popup diteruskan ke session backend existing/);
-  assert.doesNotMatch(release, /OAuth redirect URI|login mobile redirect/);
+  assert.match(testPlan, /production canonical.*`signInWithRedirect`/);
+  assert.match(testPlan, /localhost\/device emulation.*`signInWithPopup`/);
+  assert.match(testPlan, /tidak memakai `google\.accounts\.id\.renderButton\(\)`/);
+  assert.match(testPlan, /Firebase ID token dari hasil auth diteruskan ke session backend existing/);
+  assert.match(release, /https:\/\/saldo-bersama\.vercel\.app\/__\/auth\/handler/);
 });
 
 test("every canonical product requirement is tracked in the implementation matrix", () => {

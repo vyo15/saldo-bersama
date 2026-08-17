@@ -106,7 +106,7 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.doesNotMatch(transactions, /const initialFilters = \(location\)/);
 });
 
-test("login mempertahankan desktop GIS dan memakai Firebase popup langsung pada mobile empat halaman", async () => {
+test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi dengan popup fallback lokal pada mobile empat halaman", async () => {
   const assetNames = [
     "hand-phone-dashboard.webp",
     "piggy-bank.webp",
@@ -155,11 +155,12 @@ test("login mempertahankan desktop GIS dan memakai Firebase popup langsung pada 
   assert.match(login, /shouldRenderDesktopGoogleButton/);
   assert.doesNotMatch(desktopAuth, /compact/);
 
-  // Mobile tidak memakai iframe GIS. Tombol React memanggil Firebase popup langsung dari user gesture setelah module dipreload.
+  // Mobile mempertahankan tombol React branded. Production canonical memakai Firebase redirect same-origin; localhost tetap popup untuk dev/device emulation.
   assert.match(login, /import\("\.\.\/\.\.\/services\/auth\/mobileFirebaseGoogleAuth\.js"\)/);
   assert.match(login, /preloadMobileGoogleAuth/);
   assert.match(login, /mobileGoogleAuthReady/);
-  assert.match(login, /signInWithGooglePopup/);
+  assert.match(login, /consumeGoogleRedirectResult/);
+  assert.match(login, /signInWithGoogleMobile/);
   assert.match(login, /mobileGoogleAuthRef/);
   assert.match(login, /className="login-mobile-google-button"/);
   assert.match(login, /\/login\/google-g-logo\.png/);
@@ -167,25 +168,25 @@ test("login mempertahankan desktop GIS dan memakai Firebase popup langsung pada 
   assert.match(login, /pending: mobileLoginPending/);
   assert.doesNotMatch(login, /login-mobile-provider/);
   assert.match(mobileAuth, /GoogleAuthProvider/);
-  assert.match(mobileAuth, /browserPopupRedirectResolver/);
-  assert.match(mobileAuth, /signInWithPopup\(auth, googleProvider\(\), browserPopupRedirectResolver\)/);
-  assert.doesNotMatch(mobileAuth, /getRedirectResult|signInWithRedirect/);
+  assert.match(mobileAuth, /CANONICAL_PRODUCTION_HOST = "saldo-bersama\.vercel\.app"/);
+  assert.match(mobileAuth, /resolveMobileAuthDomain/);
+  assert.match(mobileAuth, /window\.location\.host/);
+  assert.match(mobileAuth, /browserSessionPersistence/);
+  assert.match(mobileAuth, /getRedirectResult/);
+  assert.match(mobileAuth, /signInWithRedirect/);
+  assert.match(mobileAuth, /REDIRECT_INTENT_KEY/);
+  assert.match(mobileAuth, /authStateReady\(\)/);
+  assert.match(mobileAuth, /AUTH_REDIRECT_RESULT_MISSING/);
+  assert.match(mobileAuth, /AUTH_REDIRECT_START_TIMEOUT/);
+  assert.match(mobileAuth, /signInWithPopup/);
   assert.match(mobileAuth, /inMemoryPersistence/);
   assert.match(mobileAuth, /auth\/popup-blocked/);
-  assert.match(mobileAuth, /auth\/popup-closed-by-user/);
-  assert.match(mobileAuth, /auth\/cancelled-popup-request/);
-  assert.match(mobileAuth, /popupPromise = signInWithPopup/);
-  assert.doesNotMatch(login, /returningFromGoogle|consumeGoogleRedirectResult|startGoogleRedirect/);
+  assert.match(mobileAuth, /auth\/web-storage-unsupported/);
   assert.doesNotMatch(login, /await preloadMobileGoogleAuth\(\)/);
-  assert.match(mobileAuth, /inMemoryPersistence/);
   assert.match(mobileAuth, /initializeAuth/);
   assert.doesNotMatch(mobileAuth, /await setPersistence/);
-  assert.match(mobileAuth, /firebaseAuthDomain/);
   assert.match(mobileAuth, /await onFirebaseToken\(firebaseIdToken\)/);
-  assert.match(mobileAuth, /authDomain: env\.firebaseAuthDomain/);
   assert.match(mobileAuth, /signOut\(auth\)\.catch/);
-  assert.doesNotMatch(mobileAuth, /auth\/web-storage-unsupported/);
-  assert.doesNotMatch(mobileAuth, /browserSessionPersistence|REDIRECT_INTENT_KEY/);
   assert.doesNotMatch(mobileAuth, /console\.(?:log|error|warn)\(/);
   assert.doesNotMatch(desktopAuth, /@firebase\/(?:app|auth)/);
 

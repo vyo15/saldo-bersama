@@ -477,10 +477,11 @@ const DesktopLoginLayout = ({ theme, providerProps }) => (
   </main>
 );
 
-const useMobileGooglePopupProvider = ({
+const useMobileGoogleProvider = ({
   configErrorCount,
   mobileAuthRef,
   mobileLayout,
+  onFirebaseToken,
   setButtonError,
   setMobileGoogleAuthReady,
   status,
@@ -493,18 +494,22 @@ const useMobileGooglePopupProvider = ({
     }
     let active = true;
     setMobileGoogleAuthReady(false);
-    preloadMobileGoogleAuth().then((mobileAuth) => {
+    preloadMobileGoogleAuth().then(async (mobileAuth) => {
       if (!active) return;
       mobileAuthRef.current = mobileAuth;
+      const redirectResult = await mobileAuth.consumeGoogleRedirectResult({ onFirebaseToken });
+      if (!active || redirectResult?.handled) return;
       setMobileGoogleAuthReady(true);
-    }).catch(() => {
-      if (active) setButtonError(new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+    }).catch((providerError) => {
+      if (!active) return;
+      setButtonError(providerError?.message ? providerError : new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+      setMobileGoogleAuthReady(true);
     });
     return () => {
       active = false;
       mobileAuthRef.current = null;
     };
-  }, [configErrorCount, mobileAuthRef, mobileLayout, setButtonError, setMobileGoogleAuthReady, status]);
+  }, [configErrorCount, mobileAuthRef, mobileLayout, onFirebaseToken, setButtonError, setMobileGoogleAuthReady, status]);
 };
 
 const LoginPage = () => {
@@ -527,10 +532,11 @@ const LoginPage = () => {
   } = useMobileLoginInteraction();
   const shouldRenderDesktopGoogleButton = status === "anonymous" && !configErrors.length && !mobileLayout;
 
-  useMobileGooglePopupProvider({
+  useMobileGoogleProvider({
     configErrorCount: configErrors.length,
     mobileAuthRef: mobileGoogleAuthRef,
     mobileLayout,
+    onFirebaseToken: loginWithFirebaseToken,
     setButtonError,
     setMobileGoogleAuthReady,
     status,
@@ -568,7 +574,7 @@ const LoginPage = () => {
     setButtonError(null);
     setMobileLoginPending(true);
     try {
-      await mobileAuth.signInWithGooglePopup({ onFirebaseToken: loginWithFirebaseToken });
+      await mobileAuth.signInWithGoogleMobile({ onFirebaseToken: loginWithFirebaseToken });
     } catch (loginError) {
       setButtonError(loginError);
     } finally {

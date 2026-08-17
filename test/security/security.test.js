@@ -138,7 +138,7 @@ test("reserved transaction field contract dijaga konsisten di gateway dan financ
   }
 });
 
-test("CSP Firebase Auth tetap exact-domain dan popup mobile tidak mengekspos reverse proxy auth", async () => {
+test("CSP dan reverse proxy Firebase Auth menjaga redirect mobile production tetap same-origin", async () => {
   const [vercelSource, envExample] = await Promise.all([
     readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
     readFile(new URL("../../.env.example", import.meta.url), "utf8"),
@@ -148,12 +148,17 @@ test("CSP Firebase Auth tetap exact-domain dan popup mobile tidak mengekspos rev
   assert.equal(authDomain, "saldo-bersama.firebaseapp.com");
 
   const authProxy = vercel.rewrites?.find((entry) => entry.source === "/__/auth/:path*");
-  assert.equal(authProxy, undefined, "popup Firebase mobile tidak membutuhkan reverse proxy /__/auth");
+  assert.deepEqual(authProxy, {
+    source: "/__/auth/:path*",
+    destination: "https://saldo-bersama.firebaseapp.com/__/auth/:path*",
+  });
+  assert.equal(vercel.rewrites?.[0]?.source, "/__/auth/:path*", "proxy Firebase auth harus dievaluasi sebelum catch-all SPA");
 
-  const appHeaderRule = vercel.headers?.find((entry) => entry.source === "/(.*)");
-  assert.ok(appHeaderRule, "security header aplikasi harus tetap berlaku untuk seluruh route aplikasi");
+  const appHeaderRule = vercel.headers?.find((entry) => entry.source === "/((?!__/auth/).*)");
+  assert.ok(appHeaderRule, "security header aplikasi harus mengecualikan helper Firebase yang diproxy");
   const csp = appHeaderRule.headers?.find((header) => header.key === "Content-Security-Policy")?.value || "";
   assert.match(csp, /frame-src[^;]*'self'/);
-  assert.match(csp, new RegExp(`frame-src[^;]*https://${authDomain.replaceAll(".", "\\.")}(?:[ ;]|$)`));
+  assert.doesNotMatch(csp, /https:\/\/saldo-bersama\.firebaseapp\.com/);
   assert.doesNotMatch(csp, /https:\/\/\*\.firebaseapp\.com|https:\/\/\*\.web\.app/);
+  assert.doesNotMatch(csp, /unsafe-eval/);
 });
