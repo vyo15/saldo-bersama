@@ -171,7 +171,9 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi de
   assert.match(mobileAuth, /CANONICAL_PRODUCTION_HOST = "saldo-bersama\.vercel\.app"/);
   assert.match(mobileAuth, /resolveMobileAuthDomain/);
   assert.match(mobileAuth, /window\.location\.host/);
-  assert.match(mobileAuth, /browserSessionPersistence/);
+  assert.match(mobileAuth, /browserLocalPersistence/);
+  assert.match(mobileAuth, /localStorage/);
+  assert.match(mobileAuth, /sessionStorage/);
   assert.match(mobileAuth, /getRedirectResult/);
   assert.match(mobileAuth, /signInWithRedirect/);
   assert.match(mobileAuth, /REDIRECT_INTENT_KEY/);

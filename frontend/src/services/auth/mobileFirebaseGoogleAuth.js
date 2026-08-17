@@ -1,7 +1,7 @@
 import { getApps, initializeApp } from "@firebase/app";
 import {
   browserPopupRedirectResolver,
-  browserSessionPersistence,
+  browserLocalPersistence,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -15,7 +15,8 @@ import { env } from "../../config/env.js";
 
 const MOBILE_FIREBASE_APP_NAME = "saldo-bersama-mobile-auth";
 const CANONICAL_PRODUCTION_HOST = "saldo-bersama.vercel.app";
-const REDIRECT_INTENT_KEY = "saldo-bersama:mobile-google-redirect:v2";
+const REDIRECT_INTENT_KEY = "saldo-bersama:mobile-google-redirect:v3";
+const LEGACY_REDIRECT_INTENT_KEY = "saldo-bersama:mobile-google-redirect:v2";
 const REDIRECT_INTENT_MAX_AGE_MS = 10 * 60_000;
 const REDIRECT_START_TIMEOUT_MS = 8_000;
 let mobileFirebaseAuth = null;
@@ -41,26 +42,42 @@ const normalizeMobileGoogleError = (error) => String(error?.code || "").startsWi
   ? friendlyMobileGoogleError(error)
   : error;
 
-const redirectIntentStorage = () => {
-  try { return typeof window !== "undefined" ? window.sessionStorage : null; } catch { return null; }
+const redirectIntentStores = () => {
+  if (typeof window === "undefined") return [];
+  const stores = [];
+  for (const name of ["localStorage", "sessionStorage"]) {
+    try {
+      const storage = window[name];
+      if (storage) stores.push(storage);
+    } catch { /* Browser may disable one storage surface while leaving the other available. */ }
+  }
+  return stores;
 };
 
 const markRedirectIntent = () => {
-  try { redirectIntentStorage()?.setItem(REDIRECT_INTENT_KEY, String(Date.now())); } catch { /* Firebase reports storage failures separately. */ }
+  const startedAt = String(Date.now());
+  for (const storage of redirectIntentStores()) {
+    try { storage.setItem(REDIRECT_INTENT_KEY, startedAt); } catch { /* Firebase reports storage failures separately. */ }
+  }
 };
 
 const clearRedirectIntent = () => {
-  try { redirectIntentStorage()?.removeItem(REDIRECT_INTENT_KEY); } catch { /* Best-effort cleanup only. */ }
+  for (const storage of redirectIntentStores()) {
+    try {
+      storage.removeItem(REDIRECT_INTENT_KEY);
+      storage.removeItem(LEGACY_REDIRECT_INTENT_KEY);
+    } catch { /* Best-effort cleanup only. */ }
+  }
 };
 
-const hasRecentRedirectIntent = () => {
+const hasRecentRedirectIntent = () => redirectIntentStores().some((storage) => {
   try {
-    const startedAt = Number(redirectIntentStorage()?.getItem(REDIRECT_INTENT_KEY) || 0);
+    const startedAt = Number(storage.getItem(REDIRECT_INTENT_KEY) || storage.getItem(LEGACY_REDIRECT_INTENT_KEY) || 0);
     return startedAt > 0 && Date.now() - startedAt <= REDIRECT_INTENT_MAX_AGE_MS;
   } catch {
     return false;
   }
-};
+});
 
 const isCanonicalProduction = () => typeof window !== "undefined"
   && window.location.protocol === "https:"
@@ -80,7 +97,7 @@ const getMobileFirebaseAuth = () => {
     }, MOBILE_FIREBASE_APP_NAME);
     try {
       mobileFirebaseAuth = initializeAuth(app, {
-        persistence: isCanonicalProduction() ? browserSessionPersistence : inMemoryPersistence,
+        persistence: isCanonicalProduction() ? browserLocalPersistence : inMemoryPersistence,
         popupRedirectResolver: browserPopupRedirectResolver,
       });
     } catch (error) {
@@ -146,9 +163,8 @@ const completePopup = async ({ onFirebaseToken }) => {
 
 const resolveRedirectUser = async (auth, result, hadRedirectIntent) => {
   if (result?.user) return result.user;
-  if (!hadRedirectIntent) return null;
   await auth.authStateReady();
-  return auth.currentUser;
+  return hadRedirectIntent ? auth.currentUser : null;
 };
 
 const completeProductionRedirect = async ({ onFirebaseToken }) => {
@@ -166,6 +182,7 @@ const completeProductionRedirect = async ({ onFirebaseToken }) => {
   }
 
   if (!user) {
+    if (!hadRedirectIntent && auth.currentUser) await signOut(auth).catch(() => {});
     clearRedirectIntent();
     if (hadRedirectIntent) throw missingRedirectResultError();
     return { handled: false };

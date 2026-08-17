@@ -1,4 +1,5 @@
 # Changelog
+- Memperkuat completion Firebase redirect pada HP nyata tanpa mengubah UI login: redirect intent kini disimpan redundan di local/session storage dengan TTL, production memakai browser-local persistence, dan recovery hanya menerima Firebase currentUser ketika ada intent redirect valid.
 
 ## 16 Agustus 2026 — Automated browser gate dipensiunkan
 
