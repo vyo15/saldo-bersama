@@ -8,7 +8,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - **Backend:** Vercel Functions.
 - **Database/source of truth:** Turso/SQLite HTTP pipeline.
 - **Auth desktop:** Google Identity Services button → Firebase ID token exchange → server session.
-- **Auth mobile:** tombol Google custom pada UI Saldo Bersama tetap sama. Pada production canonical `saldo-bersama.vercel.app`, Firebase Web SDK memakai `signInWithRedirect` dengan authDomain same-origin `/__/auth/*` → Firebase ID token → server session; localhost/device emulation mempertahankan popup sebagai fallback development. Backend session tetap authority.
+- **Auth mobile:** tombol Google custom pada UI Saldo Bersama tetap sama. Pada production canonical `saldo-bersama.vercel.app`, Firebase Web SDK memakai `signInWithRedirect` dengan authDomain same-origin `/__/auth/*` → Firebase ID token → server session; localhost/device emulation mempertahankan popup sebagai fallback development. Service Worker v8 memperlakukan `/__/auth/*` sebagai network-only dan halaman `/login` mengaktifkan waiting worker sebelum flow redirect agar worker lama tidak memutus auth callback. Backend session tetap authority.
 - **Session/authorization authority:** signed HttpOnly server session + backend allowlist/role.
 - **Google integration:** Apps Script bridge; Sheets mirror satu arah, Calendar reminder bersama, Drive backup teknis.
 - **Active schema contract:** v9.

@@ -35,9 +35,11 @@ test("branding assets and favicon references stay complete", async () => {
   assert.match(html, /apple-touch-icon\.png\?v=4/);
   assert.match(html, /name="mobile-web-app-capable" content="yes"/);
   assert.equal(manifest.icons.some((icon) => icon.purpose === "maskable"), true);
-  assert.match(sw, /saldo-bersama-static-v7/);
+  assert.match(sw, /saldo-bersama-static-v8/);
   assert.match(sw, /SKIP_WAITING/);
-  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return;/);
+  assert.match(sw, /isInfrastructurePath\(url\.pathname\)\) return;/);
+  assert.match(sw, /pathname === "\/__\/auth"/);
+  assert.match(sw, /pathname\.startsWith\("\/__\/auth\/"\)/);
   assert.match(sw, /key\.startsWith\("saldo-bersama-"\)/);
   assert.equal(logo.subarray(1, 4).toString(), "PNG");
   // PNG color type 6 means RGBA, so the source logo keeps an alpha channel.

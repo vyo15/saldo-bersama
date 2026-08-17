@@ -158,6 +158,8 @@ test("login mempertahankan desktop GIS dan memakai Firebase redirect produksi de
   // Mobile mempertahankan tombol React branded. Production canonical memakai Firebase redirect same-origin; localhost tetap popup untuk dev/device emulation.
   assert.match(login, /import\("\.\.\/\.\.\/services\/auth\/mobileFirebaseGoogleAuth\.js"\)/);
   assert.match(login, /preloadMobileGoogleAuth/);
+  assert.match(login, /prepareLoginServiceWorker/);
+  assert.match(login, /prepareLoginServiceWorker\(\)\.catch\(\(\) => false\)\.then\(\(\) => preloadMobileGoogleAuth\(\)\)/);
   assert.match(login, /mobileGoogleAuthReady/);
   assert.match(login, /consumeGoogleRedirectResult/);
   assert.match(login, /signInWithGoogleMobile/);

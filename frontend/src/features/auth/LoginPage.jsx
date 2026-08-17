@@ -4,6 +4,7 @@ import { Navigate, useLocation } from "react-router";
 import ThemeToggle from "../../components/common/ThemeToggle.jsx";
 import { useTheme } from "../../app/ThemeContext.jsx";
 import { renderGoogleLoginButton } from "../../services/auth/googleFirebaseAuth.js";
+import { prepareLoginServiceWorker } from "../../services/serviceWorker.js";
 import { useAuth } from "./AuthContext.jsx";
 import "./LoginPage.css";
 
@@ -494,7 +495,7 @@ const useMobileGoogleProvider = ({
     }
     let active = true;
     setMobileGoogleAuthReady(false);
-    preloadMobileGoogleAuth().then(async (mobileAuth) => {
+    prepareLoginServiceWorker().catch(() => false).then(() => preloadMobileGoogleAuth()).then(async (mobileAuth) => {
       if (!active) return;
       mobileAuthRef.current = mobileAuth;
       const redirectResult = await mobileAuth.consumeGoogleRedirectResult({ onFirebaseToken });

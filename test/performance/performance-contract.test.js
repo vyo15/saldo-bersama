@@ -70,14 +70,18 @@ test("push notification diklaim atomik sebelum network untuk mencegah kirim gand
   assert.match(jobs, /notification_id=\? AND status='processing' AND locked_by=\?/);
 });
 
-test("service worker hanya meng-cache app shell dan tidak pernah meng-cache API finansial", async () => {
+test("service worker hanya meng-cache app shell dan melewatkan API serta Firebase auth helper", async () => {
   const sw = await source("frontend/public/sw.js");
-  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
-  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return/);
+  assert.match(sw, /pathname === "\/api"/);
+  assert.match(sw, /pathname\.startsWith\("\/api\/"\)/);
+  assert.match(sw, /pathname === "\/__\/auth"/);
+  assert.match(sw, /pathname\.startsWith\("\/__\/auth\/"\)/);
+  assert.match(sw, /isInfrastructurePath\(url\.pathname\)\) return/);
   assert.doesNotMatch(sw, /cache\.put\([^\n]*\/api\//);
-  assert.match(sw, /saldo-bersama-static-v7/);
+  assert.match(sw, /saldo-bersama-static-v8/);
   assert.match(sw, /response\.bodyUsed/);
   assert.match(sw, /event\.waitUntil/);
+  assert.match(sw, /if \(isHtmlResponse\(response\)\) cacheResponse\(event, RUNTIME_CACHE, "\/", response\)/);
 });
 
 

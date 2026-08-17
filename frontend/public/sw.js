@@ -1,5 +1,5 @@
-const STATIC_CACHE = "saldo-bersama-static-v7";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v7";
+const STATIC_CACHE = "saldo-bersama-static-v8";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v8";
 const STATIC_ASSETS = [
   "/",
   "/site.webmanifest",
@@ -22,6 +22,15 @@ const cacheResponse = (event, cacheName, request, response) => {
 };
 
 const isLocalHostname = (hostname) => ["localhost", "127.0.0.1", "::1", "[::1]"].includes(hostname);
+
+const isInfrastructurePath = (pathname) => pathname === "/api"
+  || pathname.startsWith("/api/")
+  || pathname === "/__/auth"
+  || pathname.startsWith("/__/auth/");
+
+const isHtmlResponse = (response) => String(response?.headers?.get("content-type") || "")
+  .toLowerCase()
+  .includes("text/html");
 
 const safeTargetPath = (value) => {
   const candidate = String(value || "/").trim();
@@ -53,14 +62,14 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
-  if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (request.method !== "GET" || url.origin !== self.location.origin || isInfrastructurePath(url.pathname)) return;
   if (isLocalHostname(url.hostname)) return;
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       try {
         const response = await fetch(request);
-        cacheResponse(event, RUNTIME_CACHE, "/", response);
+        if (isHtmlResponse(response)) cacheResponse(event, RUNTIME_CACHE, "/", response);
         return response;
       } catch {
         return (await caches.match("/")) || Response.error();

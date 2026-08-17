@@ -1,5 +1,6 @@
 # Changelog
 - Memperkuat completion Firebase redirect pada HP nyata tanpa mengubah UI login: redirect intent kini disimpan redundan di local/session storage dengan TTL, production memakai browser-local persistence, dan recovery hanya menerima Firebase currentUser ketika ada intent redirect valid.
+- Menutup konflik PWA dengan Firebase redirect mobile: Service Worker v8 melewatkan `/api/*` dan `/__/auth/*` langsung ke network, hanya menyimpan navigation HTML sebagai app shell, dan login mobile mengaktifkan waiting Service Worker secara aman sebelum tombol auth dinyatakan siap agar perangkat yang masih dikontrol worker lama tidak terus memutus round-trip `/__/auth/handler`. Tidak ada perubahan pada markup/CSS login, backend session, allowlist, role, saldo, atau schema.
 
 ## 16 Agustus 2026 — Automated browser gate dipensiunkan
 

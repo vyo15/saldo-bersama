@@ -186,9 +186,14 @@ test("packager dan source validator menolak env, secret, archive, serta local da
   assert.match(validator, /"jobs\.js"/);
 });
 
-test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt, dan tidak mengantre write offline", async () => {
-  const [manifestText, client, shell, sw] = await Promise.all([
-    source("frontend/public/site.webmanifest"), source("frontend/src/services/api/client.js"), source("frontend/src/layouts/AppShell.jsx"), source("frontend/public/sw.js"),
+test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt, dan auth-safe service worker", async () => {
+  const [manifestText, client, shell, sw, serviceWorkerRegistration, login] = await Promise.all([
+    source("frontend/public/site.webmanifest"),
+    source("frontend/src/services/api/client.js"),
+    source("frontend/src/layouts/AppShell.jsx"),
+    source("frontend/public/sw.js"),
+    source("frontend/src/services/serviceWorker.js"),
+    source("frontend/src/features/auth/LoginPage.jsx"),
   ]);
   const manifest = JSON.parse(manifestText);
   assert.equal(manifest.display, "standalone");
@@ -200,6 +205,14 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
   assert.match(shell, /UpdateAvailableNotice/);
   assert.match(shell, /InstallAppCard/);
   assert.match(sw, /SKIP_WAITING/);
+  assert.match(sw, /pathname === "\/__\/auth"/);
+  assert.match(sw, /pathname\.startsWith\("\/__\/auth\/"\)/);
+  assert.match(serviceWorkerRegistration, /prepareLoginServiceWorker/);
+  assert.match(serviceWorkerRegistration, /registration\.update\(\)/);
+  assert.match(serviceWorkerRegistration, /requestWaitingWorkerActivation/);
+  assert.match(serviceWorkerRegistration, /window\.location\.pathname === "\/login"/);
+  assert.doesNotMatch(serviceWorkerRegistration, /window\.location\.reload/);
+  assert.match(login, /prepareLoginServiceWorker\(\)/);
 });
 
 

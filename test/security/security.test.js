@@ -139,9 +139,10 @@ test("reserved transaction field contract dijaga konsisten di gateway dan financ
 });
 
 test("CSP dan reverse proxy Firebase Auth menjaga redirect mobile production tetap same-origin", async () => {
-  const [vercelSource, envExample] = await Promise.all([
+  const [vercelSource, envExample, serviceWorker] = await Promise.all([
     readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
     readFile(new URL("../../.env.example", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/public/sw.js", import.meta.url), "utf8"),
   ]);
   const vercel = JSON.parse(vercelSource);
   const authDomain = envExample.match(/^VITE_FIREBASE_AUTH_DOMAIN=(.+)$/m)?.[1]?.trim();
@@ -161,4 +162,9 @@ test("CSP dan reverse proxy Firebase Auth menjaga redirect mobile production tet
   assert.doesNotMatch(csp, /https:\/\/saldo-bersama\.firebaseapp\.com/);
   assert.doesNotMatch(csp, /https:\/\/\*\.firebaseapp\.com|https:\/\/\*\.web\.app/);
   assert.doesNotMatch(csp, /unsafe-eval/);
+
+  assert.match(serviceWorker, /isInfrastructurePath\(url\.pathname\)\) return/);
+  assert.match(serviceWorker, /pathname === "\/__\/auth"/);
+  assert.match(serviceWorker, /pathname\.startsWith\("\/__\/auth\/"\)/);
+  assert.doesNotMatch(serviceWorker, /cache\.put\([^\n]*__\/auth/);
 });
