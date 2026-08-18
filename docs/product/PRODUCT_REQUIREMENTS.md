@@ -45,7 +45,7 @@ Mendukung income, expense, transfer, refund, adjustment; tanggal, nominal, reken
 
 ### `REQ-PROD-02A` Alokasi per penerima — Implemented
 
-Kantong memisahkan ownership ledger (`scope`/`owner_user_id`) dari penerima jatah (`assignee_user_id`). `NULL` berarti Bersama; shared source dapat dialokasikan untuk Administrator atau Member. Rekening personal hanya dapat menjadi sumber jatah untuk pemilik rekening tersebut. Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah miliknya sendiri.
+Kantong memisahkan ownership ledger (`scope`/`owner_user_id`) dari penerima jatah (`assignee_user_id`). `NULL` berarti Bersama; shared source dapat dialokasikan untuk Administrator atau Member. Setiap Kantong canonical wajib memiliki satu `source_account_id`. Rekening personal hanya dapat menjadi sumber jatah untuk pemilik rekening tersebut. Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah miliknya sendiri, dan transaksi berkantong wajib memakai rekening sumber Kantong yang sama.
 
 ### `REQ-PROD-03` Kategori kebutuhan — Partial
 
@@ -55,7 +55,7 @@ Kategori memiliki jenis transaksi dan `nature` untuk fixed, variable, unexpected
 
 ### `REQ-PROD-04` Kantong dan alokasi — Implemented
 
-Pemasukan dapat dikendalikan melalui kantong daily, weekly, biweekly, monthly, paycycle, atau custom; shared/personal; rollover; overspend policy; realokasi; sisa alokasi; dan dana belum dialokasikan.
+Pemasukan dapat dikendalikan melalui kantong daily, weekly, biweekly, monthly, paycycle, atau custom; shared/personal; rollover; overspend policy; realokasi; sisa alokasi; dan dana belum dialokasikan. Alokasi bersifat account-bound: membuat Kantong tidak mengubah saldo ledger, tetapi langsung mengurangi `available_balance`; pemakaian Kantong mengurangi saldo fisik dan sisa alokasi bersama-sama; realokasi antar rekening wajib memakai transaksi Transfer.
 
 ### `REQ-PROD-05` Anggaran harian, mingguan, bulanan — Partial
 

@@ -282,7 +282,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   };
   assert.deepEqual(await integrityIssues(integrityDb), []);
   assert.equal(integrityMetrics.network, 1, "integrity check termasuk histori rekening protected harus satu batch");
-  assert.deepEqual(integrityMetrics.statements, [12]);
+  assert.deepEqual(integrityMetrics.statements, [16]);
 });
 
 test("preview lifecycle owner menggabungkan read independen menjadi satu batch snapshot", async () => {
@@ -451,5 +451,5 @@ test("preview tutup periode menggabungkan statistik dan integrity base setelah b
   assert.equal(result.canClose, true);
   assert.equal(metrics.one, 1, "closure blocker tetap dibaca dulu agar closed period fail-fast");
   assert.equal(metrics.batch, 1, "integrity base, unallocated, dan statistik harus satu batch setelah blocker");
-  assert.deepEqual(metrics.statements, [14]);
+  assert.deepEqual(metrics.statements, [18]);
 });

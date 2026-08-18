@@ -3,6 +3,7 @@ import { FiBell } from "react-icons/fi";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { NOTIFICATION_TYPES } from "../../domain/constants.js";
 import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import useGuardedMutation from "../../hooks/useGuardedMutation.js";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import {
@@ -47,7 +48,7 @@ const DeviceNotificationView = ({ pushState, view, tileAction, tileInteractive, 
   <button type="button" className={styles.serviceTile} disabled={!tileInteractive} onClick={() => tileAction && runPushAction(tileAction)} aria-label={tileAction === "enable" ? "Aktifkan notifikasi pada perangkat ini" : tileAction === "verify" ? "Verifikasi ulang notifikasi pada perangkat ini" : "Status notifikasi perangkat"}><span className={styles.serviceIcon}><FiBell aria-hidden="true" /></span><span className={styles.serviceCopy}><h3>Notifikasi perangkat</h3><p role="status" aria-live="polite">{view.text}</p>{pushState.activeDeviceCount ? <small>{pushState.activeDeviceCount} perangkat aktif</small> : null}</span><span className={`status-badge status-badge--${view.tone}`}>{busy ? "Memproses" : view.label}</span></button>
   {pushState.browserSubscribed ? <div className={styles.serviceActions}><Button type="button" disabled={busy} onClick={() => setDisableOpen(true)}>Nonaktifkan perangkat ini</Button></div> : null}
   <PreferenceSection preferenceState={preferenceState} preferenceMutation={preferenceMutation} refreshPreferences={refreshPreferences} togglePreference={togglePreference} />
-  <div className="notice notice--info"><span>iPhone/iPad: buka aplikasi dari Home Screen.</span></div>
+  <CompactNotice tone="info">iPhone/iPad: buka Saldo Bersama dari Home Screen agar Web Push tersedia.</CompactNotice>
   <ConfirmationModal open={disableOpen} title="Nonaktifkan notifikasi?" description="Notifikasi pada perangkat ini akan dinonaktifkan. Perangkat lain tetap aktif." confirmLabel="Nonaktifkan" busy={busy} onCancel={() => !busy && setDisableOpen(false)} onConfirm={() => runPushAction("disable")} />
 </section>;
 

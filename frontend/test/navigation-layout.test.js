@@ -72,7 +72,7 @@ test("navigasi mobile memakai safe area dan menyisakan ruang scroll untuk konten
 
   assert.match(responsiveCss, /--mobile-navigation-height:\s*68px;/);
   assert.match(responsiveCss, /html \{ scroll-padding-bottom:\s*calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ 12px\); \}/);
-  assert.match(responsiveCss, /\.app-content \{[^}]*padding:\s*16px var\(--mobile-page-gutter\) calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ var\(--mobile-navigation-content-gap\)\);/);
+  assert.match(responsiveCss, /\.app-content,[\s\S]*?\.app-content--wide \{[^}]*padding:\s*16px var\(--mobile-page-gutter\) calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ var\(--mobile-navigation-content-gap\)\);/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*position:\s*fixed;[^}]*inset-inline:\s*0;[^}]*bottom:\s*0;/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*safe-area-inset-left/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*safe-area-inset-right/);
@@ -133,7 +133,7 @@ test("shell terautentikasi menjadi satu-satunya main landmark untuk route intern
     read("src/features/settings/NotFoundPage.jsx"),
   ]);
 
-  assert.match(shell, /<main className="app-content">/);
+  assert.match(shell, /<main className=\{`app-content \${wideContentRoute \? "app-content--wide" : "app-content--standard"}`\}>/);
   assert.doesNotMatch(loading, /<main\b/);
   assert.doesNotMatch(dashboard, /<main\b/);
   assert.doesNotMatch(notFound, /<main\b/);

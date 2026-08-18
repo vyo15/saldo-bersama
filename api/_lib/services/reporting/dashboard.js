@@ -94,12 +94,14 @@ export const bootstrapData = async (db, context) => mapBootstrapRows(
 );
 
 const allocationSummary = (accounts, items) => {
-  const allocatedRemaining = items.reduce((sum, item) => sum + Math.max(0, Number(item.remaining_amount || 0)), 0);
-  const totalAvailable = accounts.reduce((sum, item) => sum + Math.max(0, Number(item.balance || 0)), 0);
+  const unboundRemaining = items.reduce((sum, item) => item.source_account_id ? sum : sum + Math.max(0, Number(item.allocated_amount || 0) - Number(item.used_amount || 0)), 0);
+  const allocatedRemaining = accounts.reduce((sum, item) => sum + Math.max(0, Number(item.allocated_remaining || 0)), 0) + unboundRemaining;
+  const totalAvailable = accounts.reduce((sum, item) => sum + Math.max(0, Number(item.available_balance ?? item.balance ?? 0)), 0);
   return {
     items,
     allocatedRemaining,
-    unallocatedAmount: Math.max(0, totalAvailable - allocatedRemaining),
+    unboundRemaining,
+    unallocatedAmount: Math.max(0, totalAvailable - unboundRemaining),
   };
 };
 
@@ -485,7 +487,7 @@ const dashboardBalanceMetrics = (accounts, openingAccounts, recurring) => {
   const emergencyBalance = accounts.filter((row) => row.account_type === "emergency_fund").reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const protectedBalance = accounts.filter((row) => protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const liquidBalance = accounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
-  const operableLiquidBalance = operableAccounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
+  const operableLiquidAvailable = operableAccounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Math.max(0, Number(row.available_balance ?? row.balance ?? 0)), 0);
   const reservedBills = recurring.filter((row) => row.kind === "expense" && !["paid", "cancelled"].includes(row.status)).reduce((sum, row) => sum + Math.max(0, Number(row.expected_amount) - Number(row.actual_amount)), 0);
   return {
     operableAccounts,
@@ -495,7 +497,7 @@ const dashboardBalanceMetrics = (accounts, openingAccounts, recurring) => {
     protectedBalance,
     liquidBalance,
     reservedBills,
-    safeToSpend: Math.max(0, operableLiquidBalance - reservedBills),
+    safeToSpend: Math.max(0, operableLiquidAvailable - reservedBills),
   };
 };
 
@@ -517,6 +519,7 @@ const dashboardResult = (context, periodContext, readState) => {
   const { accounts, openingAccounts, cashFlowRow, recentTransactionRows, categoryExpenses, recurring, goals, budgets, dashboardEnvelopes, reconciliationRows } = readState;
   const balance = dashboardBalanceMetrics(accounts, openingAccounts, recurring);
   const allocation = allocationSummary(balance.operableAccounts, dashboardEnvelopes);
+  const safeToSpend = Math.max(0, balance.safeToSpend - allocation.unboundRemaining);
   const income = Number(cashFlowRow.income || 0);
   const expense = Number(cashFlowRow.expense || 0);
   const refund = Number(cashFlowRow.refund || 0);
@@ -543,8 +546,8 @@ const dashboardResult = (context, periodContext, readState) => {
     openingBalance: balance.openingBalance,
     balanceChange: balance.totalBalance - balance.openingBalance,
     liquidBalance: balance.liquidBalance,
-    safeToSpend: balance.safeToSpend,
-    dailySafeToSpend: daysRemaining ? Math.floor(balance.safeToSpend / daysRemaining) : 0,
+    safeToSpend,
+    dailySafeToSpend: daysRemaining ? Math.floor(safeToSpend / daysRemaining) : 0,
     daysRemaining,
     emergencyBalance: balance.emergencyBalance,
     protectedBalance: balance.protectedBalance,

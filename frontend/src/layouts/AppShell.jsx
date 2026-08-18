@@ -49,6 +49,7 @@ const AppShell = () => {
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
+  const wideContentRoute = dashboardRoute || location.pathname === "/laporan";
   const transactionQuickAddVisible = transactionQuickAddAllowed(location.pathname, user?.role);
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
@@ -93,7 +94,7 @@ const AppShell = () => {
             </div>
           </header>
 
-          <main className="app-content">
+          <main className={`app-content ${wideContentRoute ? "app-content--wide" : "app-content--standard"}`}>
             {offline ? <OfflineBanner /> : null}
             {serviceWorkerUpdate.updateAvailable ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} /> : null}
             <InstallAppCard {...installPrompt} onInstall={installPrompt.install} />

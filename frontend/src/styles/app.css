@@ -416,6 +416,16 @@
   padding: 24px clamp(18px, 2.4vw, 40px) 72px;
 }
 
+.app-content--standard {
+  max-width: 1250px;
+  margin-inline: auto;
+}
+
+.app-content--wide {
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+
 .page-stack { display: grid; gap: 24px; }
 
 .floating-add {

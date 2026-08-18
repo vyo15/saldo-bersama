@@ -13,9 +13,9 @@ export const CATEGORY_TYPE_LABELS = Object.freeze(Object.fromEntries(
 export const EXPENSE_NATURE_OPTIONS = Object.freeze([
   { value: CATEGORY_NATURES.FIXED, label: "Kewajiban tetap", example: "KPR, sewa, internet" },
   { value: CATEGORY_NATURES.VARIABLE, label: "Kebutuhan rutin", example: "Makan, listrik, transportasi" },
-  { value: CATEGORY_NATURES.UNEXPECTED, label: "Kebutuhan tidak terduga", example: "Perbaikan kendaraan" },
-  { value: CATEGORY_NATURES.DISCRETIONARY, label: "Keinginan dan gaya hidup", example: "Hiburan atau nongkrong" },
-  { value: CATEGORY_NATURES.EMERGENCY, label: "Kondisi darurat", example: "Kebutuhan mendesak" },
+  { value: CATEGORY_NATURES.UNEXPECTED, label: "Tidak terduga", example: "Perbaikan kendaraan" },
+  { value: CATEGORY_NATURES.DISCRETIONARY, label: "Gaya hidup", example: "Hiburan atau nongkrong" },
+  { value: CATEGORY_NATURES.EMERGENCY, label: "Darurat", example: "Kebutuhan mendesak" },
   { value: CATEGORY_NATURES.OTHER, label: "Lainnya", example: "Pengeluaran khusus" },
 ]);
 

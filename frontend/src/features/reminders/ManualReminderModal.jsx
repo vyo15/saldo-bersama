@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiBell, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { formatDateTimeJakarta, todayInJakarta } from "../../domain/dates.js";
@@ -52,15 +53,16 @@ const dispatchNotice = (dispatch) => {
   return presentations[dispatch.status] || null;
 };
 
-const pushAvailabilityMessage = (state) => {
-  if (!state || state.enabled) return null;
+const pushAvailabilityNotice = (state) => {
+  if (!state) return null;
+  if (state.enabled) return { tone: "success", title: "Notifikasi aktif di perangkat ini", message: null };
   if (state.reason === "server_status_unavailable") {
-    return "Status Web Push belum dapat diverifikasi. Pengingat tetap disimpan; periksa Pengaturan > Notifikasi untuk memastikan perangkat penerima aktif.";
+    return { tone: "warning", title: "Status Web Push belum terverifikasi", message: "Pengingat tetap disimpan. Periksa Notifikasi di Pengaturan." };
   }
   if (Number(state.activeDeviceCount || 0) > 0) {
-    return "Notifikasi pada perangkat ini belum aktif. Pengingat tetap dapat dikirim ke perangkat lain yang masih terdaftar pada akun Anda.";
+    return { tone: "warning", title: "Notifikasi perangkat ini belum aktif", message: `Pengingat tetap dapat dikirim ke ${Number(state.activeDeviceCount)} perangkat aktif lain.` };
   }
-  return "Belum ada perangkat aktif untuk Web Push. Pengingat tetap disimpan, tetapi notifikasi tidak akan muncul sampai Web Push diaktifkan pada salah satu perangkat.";
+  return { tone: "warning", title: "Web Push belum aktif", message: "Pengingat tetap disimpan, tetapi notifikasi belum dapat muncul." };
 };
 
 const useReminderLoader = (target) => {
@@ -98,20 +100,17 @@ const useReminderLoader = (target) => {
   return { loadState, current, setCurrent, lastDispatch, setLastDispatch, pushState, form, setForm };
 };
 
-const ReminderNotices = ({ current, activeLabel, dispatch, pushMessage, loadState, error }) => <>
-  <div className="notice notice--info form-grid__full" role="status">
-    <strong>{current ? "Pengingat aktif" : "Atur waktu sendiri"}</strong>
-    <span>{current ? `Saat ini dijadwalkan ${activeLabel}.` : "Pengingat otomatis tetap berjalan. Pengingat ini menjadi tambahan khusus untuk Anda."}</span>
-  </div>
-  {dispatch ? <div className={`notice notice--${dispatch.tone} form-grid__full`} role={dispatch.tone === "danger" ? "alert" : "status"}>
-    <strong>{dispatch.title}</strong>
-    <span>{dispatch.message}</span>
-  </div> : null}
-  {pushMessage ? <div className="notice notice--warning form-grid__full" role="status">
-    <strong>Periksa notifikasi perangkat</strong>
-    <span>{pushMessage}</span>
-  </div> : null}
-  {loadState.status === "loading" ? <div className="notice notice--info form-grid__full">Memuat pengingat...</div> : null}
+const ReminderNotices = ({ current, activeLabel, dispatch, pushNotice, loadState, error }) => <>
+  <CompactNotice tone="info" title={current ? "Pengingat aktif" : "Pengingat otomatis tetap aktif"} className="form-grid__full" role="status">
+    {current ? `Dijadwalkan ${activeLabel}. Pengingat otomatis tetap berjalan.` : null}
+  </CompactNotice>
+  {dispatch ? <CompactNotice tone={dispatch.tone} title={dispatch.title} className="form-grid__full" role={dispatch.tone === "danger" ? "alert" : "status"}>
+    {dispatch.message}
+  </CompactNotice> : null}
+  {pushNotice ? <CompactNotice tone={pushNotice.tone} title={pushNotice.title} className="form-grid__full" role="status">
+    {pushNotice.message}
+  </CompactNotice> : null}
+  {loadState.status === "loading" ? <CompactNotice tone="loading" className="form-grid__full" role="status">Memuat pengingat...</CompactNotice> : null}
   {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message || "Pengingat tidak dapat diproses."}</div> : null}
 </>;
 
@@ -124,7 +123,7 @@ const ReminderFields = ({ form, setForm, maxDate, minTime, busy, ready }) => <>
     <span>Waktu *</span>
     <input required type="time" min={minTime} value={form.time} onChange={(event) => setForm((value) => ({ ...value, time: event.target.value }))} disabled={busy || !ready} />
   </label>
-  <p className="field-hint form-grid__full">Zona waktu Asia/Jakarta. Scheduler memproses pengingat secara berkala, jadi notifikasi dapat muncul beberapa menit setelah waktu yang dipilih. Pengingat manual tidak menggantikan pengingat otomatis.</p>
+  <p className="field-hint form-grid__full">Asia/Jakarta · notifikasi dapat terlambat beberapa menit.</p>
 </>;
 
 const ManualReminderModal = ({ target, onClose }) => {
@@ -171,7 +170,7 @@ const ManualReminderModal = ({ target, onClose }) => {
 
   return <Modal open={Boolean(target)} title="Pengingat manual" description={reminderDescription(target)} onClose={close} dismissible={!busy} mobileSwipeToClose size="sm" footer={footer}>
     <form id="manual-reminder-form" className="form-grid" onSubmit={save}>
-      <ReminderNotices current={current} activeLabel={current?.scheduled_at ? formatDateTimeJakarta(current.scheduled_at) : ""} dispatch={dispatchNotice(lastDispatch)} pushMessage={pushAvailabilityMessage(pushState)} loadState={loadState} error={error} />
+      <ReminderNotices current={current} activeLabel={current?.scheduled_at ? formatDateTimeJakarta(current.scheduled_at) : ""} dispatch={dispatchNotice(lastDispatch)} pushNotice={pushAvailabilityNotice(pushState)} loadState={loadState} error={error} />
       <ReminderFields form={form} setForm={setForm} maxDate={addLocalDays(todayInJakarta(), 365)} minTime={soon?.date === form.date ? soon.time : undefined} busy={busy} ready={ready} />
     </form>
   </Modal>;

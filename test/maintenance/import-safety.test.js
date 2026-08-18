@@ -45,7 +45,7 @@ const seed = async (db, { balance = 100_000, envelope = false } = {}) => {
   if (envelope) {
     await db.execute(
       "INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-      ["rule-import", "Kantong Import", "monthly", "shared", null, 100_000, null, "unallocated", "block", "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
+      ["rule-import", "Kantong Import", "monthly", "shared", null, 100_000, "account-import", "unallocated", "block", "active", 1, actor.user_id, timestamp, actor.user_id, timestamp],
     );
     await db.execute(
       "INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -123,7 +123,7 @@ test("preview import mensimulasikan saldo secara kumulatif", async () => {
     assert.equal(preview.acceptable, false);
     assert.equal(preview.validCount, 1);
     assert.equal(preview.invalid.length, 1);
-    assert.equal(preview.invalid[0].code, "INSUFFICIENT_BALANCE");
+    assert.equal(preview.invalid[0].code, "UNALLOCATED_FUNDS_INSUFFICIENT");
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 0, "Simulasi preview wajib rollback penuh.");
   } finally { db.close(); }
 });
@@ -164,7 +164,7 @@ test("perubahan saldo setelah preview membuat apply rollback seluruh record impo
     await createTransactionInternal(db, context("transactions.create", {}, "external-after-preview"), expense(30_000, "Transaksi sesudah preview"), { audit: false });
     await assert.rejects(
       () => withBridgeStub(() => applyImport(db, context("import.apply", { previewToken: preview.previewToken, confirmation: "IMPORT TRANSAKSI" }, "import-stale-apply"))),
-      (error) => error.code === "INSUFFICIENT_BALANCE",
+      (error) => error.code === "UNALLOCATED_FUNDS_INSUFFICIENT",
     );
     const rows = await db.all("SELECT description FROM transactions WHERE status='active' ORDER BY created_at,transaction_id");
     assert.deepEqual(rows.map((row) => row.description), ["Transaksi sesudah preview"], "Record import pertama juga harus rollback ketika record berikutnya gagal.");

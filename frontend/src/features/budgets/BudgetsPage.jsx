@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { FiPlus, FiSliders } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
+import PageInfoButton from "../../components/common/PageInfoButton.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
@@ -144,7 +146,7 @@ const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriti
 
 const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, message, canManage, user, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, formController, lifecycleController, openReminder, categories, users, usersStatus, attentionBudgetId }) => <div className={`page-stack budgets-page ${styles.page}`}>
   <header className={styles.pageHeader}>
-    <div className={styles.pageHeading}><h1>Anggaran</h1><span>{periodMeta.label}</span></div>
+    <div className={styles.pageHeading}><div className={styles.pageTitleRow}><h1>Anggaran</h1><PageInfoButton title="Tentang Anggaran">Anggaran membantu menetapkan batas pengeluaran untuk periode tertentu. Anggaran tidak memindahkan saldo rekening.</PageInfoButton></div><span>{periodMeta.label}</span></div>
     {canManage && (items.length > 0 || activeFilter !== "all") ? <button type="button" className={styles.addButton} onClick={formController.openBudgetForm} aria-label="Tambah anggaran" title="Tambah anggaran"><FiPlus aria-hidden="true" /></button> : null}
   </header>
   <div className={styles.controlsRow}>
@@ -152,9 +154,9 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
     <span className={styles.daysBadge}>{periodMeta.isCurrent ? `${periodMeta.daysLeft} hari tersisa` : "Periode selesai"}</span>
   </div>
   <BudgetTabs activeFilter={activeFilter} setActiveFilter={setActiveFilter} totalCount={items.length} attentionCount={attentionCount} />
-  {attentionBudgetId ? <div className="notice notice--info attention-guidance" role="status"><strong>Periksa anggaran yang disorot.</strong><span>Lihat pemakaian dan transaksi terkait. Ubah batas anggaran hanya jika rencana keuangan memang berubah, bukan sekadar untuk menghilangkan peringatan.</span></div> : null}
+  {attentionBudgetId ? <CompactNotice tone="info" title="Periksa anggaran yang disorot." role="status">Tinjau pemakaian dan transaksi terkait. Ubah batas hanya bila rencana keuangan memang berubah.</CompactNotice> : null}
   {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
-  {!canManage ? <div className={`notice notice--info ${styles.readOnlyNote}`} role="status">{user?.role !== "owner" ? "Member dapat memantau anggaran. Pembuatan dan perubahan anggaran hanya dapat dilakukan Administrator." : "Periode historis ditampilkan hanya-baca. Kelola anggaran pada periode aktif."}</div> : null}
+  {!canManage ? <CompactNotice tone="info" className={styles.readOnlyNote} role="status">{user?.role !== "owner" ? "Member dapat memantau anggaran. Pembuatan dan perubahan hanya untuk Administrator." : "Periode historis hanya-baca. Kelola anggaran pada periode aktif."}</CompactNotice> : null}
   <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
   <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} canManage={canManage} editBudget={formController.editBudget} openBudgetLifecycle={lifecycleController.openBudgetLifecycle} openReminder={openReminder} openBudgetForm={formController.openBudgetForm} attentionBudgetId={attentionBudgetId} />
   <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme anggaran</strong> membandingkan pemakaian dengan posisi hari ini dalam periode.</p><img className={styles.tipArtwork} src={budgetCalendarArtwork} alt="" aria-hidden="true" loading="lazy" decoding="async" /></aside>

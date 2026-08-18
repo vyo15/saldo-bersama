@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
@@ -24,7 +25,11 @@ import styles from "./RecurringPage.module.css";
 const RecurringDialogLayer = lazy(() => import("./RecurringDialogLayer.jsx"));
 const RecurringScheduleView = lazy(() => import("./RecurringScheduleView.jsx"));
 
-const activeAccounts = (bootstrap) => bootstrap?.accounts?.filter((item) => item.status === "active") || [];
+const activeAccounts = (bootstrap, overview) => {
+  const balanceLookup = new Map((overview?.accountBalances || []).map((item) => [item.account_id, item]));
+  return bootstrap?.accounts?.filter((item) => item.status === "active")
+    .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) })) || [];
+};
 const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === kind) || [];
 
 const eligiblePaymentEnvelopes = (items, payment, account, user) => {
@@ -32,13 +37,13 @@ const eligiblePaymentEnvelopes = (items, payment, account, user) => {
   const active = (items || []).filter((item) => item.status === "active"
     && payment.transaction_date >= item.period_start
     && payment.transaction_date <= item.period_end
-    && (!item.source_account_id || item.source_account_id === account.account_id));
+    && item.source_account_id === account.account_id);
   return filterByAssigneeAccess(filterByOwnership(active, account), user);
 };
 
-const recurringViewData = ({ resource, filter, bootstrap, rules, payments, envelopeResource, user }) => {
+const recurringViewData = ({ resource, filter, bootstrap, overview, rules, payments, envelopeResource, user }) => {
   const allItems = resource.data?.items || [];
-  const accounts = activeAccounts(bootstrap);
+  const accounts = activeAccounts(bootstrap, overview);
   const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
   const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
   return {
@@ -70,7 +75,7 @@ const RecurringPage = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [reminderTarget, setReminderTarget] = useState(null);
   const resource = useApiResource("recurring.list", { period });
-  const { bootstrap, refreshOverview, invalidate } = useFinance();
+  const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
   const { notify } = useFeedback();
   const shared = { resource, refreshOverview, invalidate, notify };
@@ -79,7 +84,7 @@ const RecurringPage = () => {
   const { openPayment } = payments;
   const recovery = useRecurringOccurrenceRecovery(shared);
   const envelopeResource = useApiResource("envelopes.list", { period }, { enabled: payments.payment.item?.kind === "expense" });
-  const view = recurringViewData({ resource, filter, bootstrap, rules, payments, envelopeResource, user });
+  const view = recurringViewData({ resource, filter, bootstrap, overview, rules, payments, envelopeResource, user });
   const attentionOccurrenceId = useRecurringAttention({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment });
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
@@ -93,7 +98,7 @@ const RecurringPage = () => {
   return (
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      <PageHeader title="Jadwal rutin" actions={headerActions} />{attentionOccurrenceId ? <div className="notice notice--info attention-guidance" role="status"><strong>Selesaikan jadwal yang dipilih.</strong><span>Jika transaksi sudah terjadi, catat nominal aktual dan rekeningnya. Saldo baru berubah setelah Anda menyimpan pembayaran/penerimaan.</span></div> : null}
+      <PageHeader title="Jadwal rutin" help="Jadwal rutin mengingatkan transaksi berulang. Saldo baru berubah setelah pembayaran atau penerimaan aktual disimpan." actions={headerActions} />{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal aktual dan rekening. Saldo berubah setelah pembayaran atau penerimaan disimpan.</CompactNotice> : null}
       <Suspense fallback={null}>
         <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} />
       </Suspense>

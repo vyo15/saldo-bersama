@@ -23,7 +23,10 @@ test("metode pembayaran tidak diasumsikan ketika detail tambahan belum dipilih",
   assert.match(text, /accountDisplayLabel/);
   assert.equal((text.match(/accountDisplayLabel\(item\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label kepemilikan yang konsisten.");
   assert.doesNotMatch(text, /includeOwner: false/);
-  assert.match(text, /filterByAssigneeAccess\(ownedEnvelopes, bootstrap\?\.user \|\| user\)/);
+  assert.match(text, /data\.envelopes\.filter\(\(item\) => item\.source_account_id === sourceAccount\.account_id\)/);
+  assert.match(text, /filterByAssigneeAccess\(accountEnvelopes, bootstrap\?\.user \|\| user\)/);
+  assert.match(text, /envelope\.source_account_id !== nextId/);
+  assert.match(text, /tersedia \$\{formatRupiah\(item\.available_balance \?\? item\.balance \?\? 0\)\}/);
   assert.match(text, /envelopeOptionLabel/);
 });
 
@@ -83,7 +86,9 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(form, /<MobileTransferFields \{\.\.\.fields\} \/>/);
   assert.doesNotMatch(mobileFields, /createTransaction|updateTransaction|createIdempotencyKey|transactions\.api|apiClient/);
   assert.match(mobileFields, /type="submit"/);
-  assert.match(mobileFields, /Saldo baru berubah setelah server mengonfirmasi transfer/);
+  assert.match(mobileFields, /Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer/);
+  assert.match(mobileFields, /Transfer memakai dana yang belum dialokasikan/);
+  assert.match(form, /Dana tersedia \{impact\.source\.name\}/);
   assert.match(modal, /closeIcon: CloseIcon = FiX/);
   assert.match(modal, /closeLabel = "Tutup dialog"/);
 });

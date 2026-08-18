@@ -2,6 +2,7 @@ import "./TransactionsPage.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FiChevronLeft, FiChevronRight, FiEdit2, FiPlus, FiRotateCcw, FiSearch, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -162,12 +163,12 @@ const TransactionAttentionNotice = ({ active, editableTarget }) => {
   const description = editableTarget
     ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Kantong pada form, lalu simpan setelah memastikan rekening dan nominal sudah benar."
     : "Daftar sudah difilter ke pengeluaran yang belum dialokasikan. Buka transaksi yang dapat diedit, lalu pilih Kantong pada form.";
-  return <div className="notice notice--info attention-guidance" role="status"><strong>{title}</strong><span>{description}</span></div>;
+  return <CompactNotice tone="info" title={title} role="status">{description}</CompactNotice>;
 };
 
 const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters }) => <>
   {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
-  {resource.status === "loading" ? <LoadingScreen label="Memuat transaksi..." /> : null}
+  {resource.status === "loading" ? <LoadingScreen variant="panel" label="Memuat transaksi..." /> : null}
   {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
   {resource.status === "ready" && !items.length ? <EmptyState title={filtersActive ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filtersActive ? "Ubah atau reset filter untuk melihat transaksi lain." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filtersActive ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
 </>;
@@ -221,7 +222,7 @@ const TransactionsPage = () => {
 
   return <div className="page-stack transactions-page">
     <RefreshWarning error={resource.refreshError || reportResource.refreshError} onRetry={() => Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])])} />
-    <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button> : null} />
+    <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} help="Catat pemasukan, pengeluaran, dan transfer di sini. Perubahan saldo baru dianggap selesai setelah server mengonfirmasi transaksi." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button> : null} />
     {mobileLayout ? (
       <Suspense fallback={null}>
         <MobileTransactionHistory

@@ -107,6 +107,19 @@ Migrasi dilakukan satu per satu bersama regression visual/behavior. Jangan mengg
 9. Page/form melakukan request melalui facade `features/<domain>/<domain>.api.js`; transport global bukan dependency langsung feature.
 10. Token visual yang hanya dipakai satu feature harus diberi section ownership yang jelas pada `tokens.css` atau dipindahkan ke module feature ketika tidak membutuhkan theme-level override. Token `--account-*` saat ini sengaja dikelompokkan sebagai Accounts-only agar tidak menjadi precedent untuk menaruh semua token feature di global root.
 
+## Feedback dan status ringkas
+
+- `CompactNotice` pada `frontend/src/components/common/CompactNotice.jsx` dipakai untuk informasi nonblocking yang tetap perlu terlihat: guidance dari Perlu perhatian, status perangkat, ringkasan read-only, dan hint singkat di dalam form.
+- Copy ringkas tidak memakai accordion atau tombol `Detail` bila satu sampai dua kalimat sudah cukup. Membuka informasi tambahan tidak boleh menyebabkan layout shift hanya untuk menjelaskan status sederhana.
+- Error, conflict, offline, destructive confirmation, warning finansial yang memblokir, preview dampak saldo, import/restore/reset, maintenance, dan gangguan integrasi tetap memakai notice persisten yang lebih kuat. Informasi yang memengaruhi keputusan pengguna tidak boleh disembunyikan di tooltip/popover.
+- Status dinamis menggunakan `role="status"` bila perlu diumumkan secara sopan. Error yang membutuhkan perhatian segera menggunakan `role="alert"`. State tidak boleh dibedakan hanya dengan warna.
+- Zona waktu reminder tetap **Asia/Jakarta**. Presentation ringkas tidak boleh mengganti contract waktu, scheduler, Web Push, authorization, atau business rule backend.
+
+- Bantuan edukatif per halaman memakai `PageInfoButton` pada `frontend/src/components/common/PageInfoButton.jsx`, idealnya tepat setelah judul halaman. Satu halaman cukup memiliki satu trigger `Info`; jangan menambahkan ikon info pada setiap card, filter, atau tombol.
+- `PageInfoButton` membuka `Modal` canonical, memiliki accessible name, focus management, target sentuh minimal 44×44px, dan swipe-to-close mobile. Isi bantuan maksimal beberapa kalimat yang menjelaskan fungsi halaman, bukan warning operasional.
+- Jika `PageHeader` memiliki contextual help, deskripsi edukatif di bawah judul boleh disembunyikan pada mobile `<=820px` agar header lebih compact. Deskripsi yang memengaruhi keputusan finansial tetap harus terlihat sebagai notice/panel, bukan dipindahkan ke modal info.
+- Empty state seluruh halaman memakai variant `panel`; empty state subsection memakai `inline`. Hindari membungkus `EmptyState` di `Card` kedua hanya untuk menghasilkan boundary visual yang sama.
+
 
 ### Transaction History mobile
 
@@ -165,6 +178,9 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Daftar rekening memakai komponen domain `AccountFinancialCard`, bukan card generik yang ditata ulang di page.
 - BCA, BNI, BTN, Mandiri, dan Permata memakai asset WebP 768×484 sebagai base visual. Tunai dan Tabungan memakai asset non-bank 768×484; E-wallet dapat memakai asset ShopeePay, DANA, GoPay, OVO, atau LinkAja ketika provider dapat dikenali dari nama rekening. Wordmark/logo dekoratif hanya berasal dari asset; HTML tidak boleh menggambarnya kembali.
 - Semua kartu memakai rasio 1.586:1, container, radius, dan object sizing yang sama. Tidak boleh ada bank yang tampak lebih panjang, pendek, atau terbungkus panel dekoratif tambahan.
+- Surface rekening yang menampilkan alokasi wajib membedakan **Saldo rekening**, **Dalam kantong**, dan **Dana tersedia**. `Dalam kantong` adalah bagian dari saldo, bukan nominal tambahan. Jangan menjumlahkan saldo rekening + Kantong sebagai total kekayaan.
+- Selector rekening untuk pengeluaran, Transfer, Alokasi, Jadwal rutin, dan Target menampilkan `available_balance` sebagai konteks dana bebas bila relevan. Preview tetap boleh menampilkan `balance` fisik agar pengguna memahami asal perhitungannya.
+- Kantong wajib menampilkan atau dapat ditelusuri ke satu rekening sumber. UI tidak menawarkan sumber “gabungan rekening” untuk pembuatan Kantong baru, dan pilihan Kantong pada transaksi difilter ke rekening sumber yang sama sebelum backend melakukan guard ulang.
 - Card face menambahkan contactless, nomor rekening yang sudah dinormalisasi, dan nama rekening. Pada stack mobile terautentikasi, saldo saat ini dan label kepemilikan boleh tampil sebagai overlay ringkas; status, timestamp, nomor lengkap, dan aksi tetap berada pada panel detail.
 - Nomor rekening berasal dari `accounts.account_number`, dikelompokkan empat digit, dan hanya ditampilkan setelah authentication serta binding user backend. Kedua pengguna terotorisasi dapat membacanya; tombol salin berada di panel detail dan memiliki accessible name.
 - Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap dilarang pada asset, DOM, payload, audit, dan integrasi.
@@ -172,7 +188,7 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Mobile memakai circular 3D card stack dengan node kartu yang stabil. Satu rekening menampilkan satu kartu, dua rekening menampilkan dua kartu, dan tiga atau lebih menampilkan maksimal tiga kartu terlihat dengan ukuran serta rasio yang identik. Swipe vertikal pada kartu aktif dan tombol Arrow Up/Down memutar urutan secara sirkular; wheel, auto-rotate, pagination dots, dan panah samping tidak digunakan.
 - Area kosong stack wajib memakai `touch-action: pan-y pinch-zoom`. Kartu aktif memakai `touch-action: pan-x pinch-zoom` agar gesture vertikal mengubah rekening tanpa mematikan pinch zoom. Gesture horizontal harus ditolak dan tidak boleh membuka detail atau mengubah rekening.
 - Selama gesture, seluruh tumpukan mengikuti jari menggunakan `transform`/`opacity`; kartu depan bergerak ke belakang dan kartu berikutnya maju ke depan. Swipe pendek kembali ke posisi semula, reduced-motion mengurangi rotasi dan durasi, dan rekening aktif diumumkan tanpa membacakan saldo.
-- Filter ownership pada Rekening memakai empat chip `Semua`, `Saya`, `Pasangan`, dan `Bersama`. Filter hanya mempersempit pilihan rekening yang ditampilkan; panel insight global desktop tetap menghitung seluruh rekening yang boleh dibaca pengguna.
+- Filter ownership pada Rekening memakai empat chip `Semua`, `Saya`, `Pasangan`, dan `Bersama` dalam **satu baris empat kolom** pada mobile normal 320–430px. Label tidak boleh turun ke baris kedua dan filter tidak memakai horizontal carousel. Filter hanya mempersempit pilihan rekening yang ditampilkan; panel insight global desktop tetap menghitung seluruh rekening yang boleh dibaca pengguna.
 - Label pemilik pada muka kartu mobile hanya memakai nama depan agar tidak wrap; identity strip tepat di bawah stack menampilkan nama rekening dan nama pemilik lengkap secara sejajar, lalu nomor rekening terformat empat digit dan scope `Pribadi`/`Rekening bersama`. Data nama dan nomor asli tidak dipotong atau diubah pada persistence.
 - Transfer mobile adalah aksi compact di header Rekening bersama tombol tambah. Trigger boleh berubah secara presentational, tetapi ketika ditekan wajib tetap membuka `TransactionForm` canonical `presentation="mobile-transfer"`; mutation, source account, idempotency, success state, dan refresh saldo tidak boleh diduplikasi di feature Rekening.
 - Nomor rekening panjang boleh dipadatkan hanya pada muka kartu agar tidak overflow; panel detail, accessible copy action, dan data backend tetap memakai nomor lengkap.
@@ -189,6 +205,13 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Desktop menempatkan artwork di sisi kanan hero dengan ruang copy sekitar dua pertiga lebar. Mobile mengecilkan artwork sekitar 29–31% lebar card dan menjaga copy utama tetap terbaca pada viewport 320–430px.
 - Dashboard, Transaksi, Laporan, Rekening, Kategori, serta halaman Pengaturan tidak menerima hero-art tambahan hanya demi konsistensi visual. Chart, kartu rekening, taxonomy icon, dan utility surface existing sudah menjadi fokus visual masing-masing route.
 - Satu surface hanya memiliki satu hierarchy visual: headline/nominal, progress atau status, metadata ringkas, lalu artwork. Hindari pola card-di-dalam-card atau deretan badge dekoratif yang tidak menambah informasi.
+
+## Lebar konten dan hierarchy aksi
+
+- Shell desktop memiliki dua density width: `app-content--standard` untuk halaman operasional dan `app-content--wide` untuk Dashboard/Laporan yang membutuhkan chart atau tabel lebar. Standard content dipusatkan dan dibatasi sekitar 1250px; wide content mengikuti `--content-max`. Pada `<=820px` kedua variant kembali `width: 100%` tanpa max-width.
+- Setiap halaman memprioritaskan satu primary action. Aksi penting kedua memakai secondary/default button, utility seperti reload memakai tertiary/icon action, dan aksi jarang seperti edit/archive boleh masuk overflow menu bila alur existing memang mendukungnya. Destructive action tetap memakai confirmation guard.
+- Nominal, status, atau copy nol tidak diulang pada beberapa surface dalam satu empty state. Contoh: Alokasi tanpa kantong cukup menyatakan belum ada dana dialokasikan dan menyediakan CTA; metrik `0 dari 0`, progress nol, dan label kosong yang identik tidak perlu ditampilkan bersamaan.
+- Radius, spacing, dan control size pada file yang disentuh memakai design token existing. Jangan melakukan mass-refactor CSS di luar scope hanya untuk menyamakan angka radius.
 
 ## Mobile dan PWA
 

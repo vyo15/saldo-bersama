@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
+import PageInfoButton from "../../../components/common/PageInfoButton.jsx";
 import {
   accountCardOwnershipLabel,
   accountOwnerName,
@@ -24,11 +25,11 @@ const OWNERSHIP_FILTERS = Object.freeze([
 ]);
 
 const MOBILE_STACK_SLOT_STYLES = Object.freeze({
-  "-2": Object.freeze({ x: 72, y: -238, z: -285, rx: 68, ry: -10, rz: 24, opacity: 0, brightness: 0.63, saturate: 0.68, shadow: 0.1 }),
-  "-1": Object.freeze({ x: 58, y: -126, z: -118, rx: 31, ry: -8, rz: 18, opacity: 0.82, brightness: 0.75, saturate: 0.76, shadow: 0.28 }),
-  0: Object.freeze({ x: 0, y: 0, z: 150, rx: 0, ry: 0, rz: 0, opacity: 1, brightness: 1, saturate: 1, shadow: 0.58 }),
-  1: Object.freeze({ x: 54, y: 132, z: -122, rx: -31, ry: 8, rz: -17, opacity: 0.72, brightness: 0.68, saturate: 0.72, shadow: 0.22 }),
-  2: Object.freeze({ x: 70, y: 244, z: -300, rx: -68, ry: 10, rz: -24, opacity: 0, brightness: 0.6, saturate: 0.66, shadow: 0.08 }),
+  "-2": Object.freeze({ x: 48, y: -192, z: -250, rx: 44, ry: -7, rz: 16, opacity: 0, brightness: 0.66, saturate: 0.72, shadow: 0.08 }),
+  "-1": Object.freeze({ x: 38, y: -104, z: -105, rx: 18, ry: -5, rz: 10, opacity: 0.76, brightness: 0.8, saturate: 0.82, shadow: 0.22 }),
+  0: Object.freeze({ x: 0, y: 0, z: 150, rx: 0, ry: 0, rz: 0, opacity: 1, brightness: 1, saturate: 1, shadow: 0.5 }),
+  1: Object.freeze({ x: 38, y: 108, z: -110, rx: -18, ry: 5, rz: -10, opacity: 0.68, brightness: 0.74, saturate: 0.78, shadow: 0.18 }),
+  2: Object.freeze({ x: 48, y: 196, z: -260, rx: -44, ry: 7, rz: -16, opacity: 0, brightness: 0.64, saturate: 0.7, shadow: 0.06 }),
 });
 
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
@@ -287,7 +288,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
   return <div className={styles.mobileAccountExperience}>
     <section className={styles.mobileStackPanel} aria-labelledby="mobile-account-stack-title">
       <header className={styles.mobileStackHeader}>
-        <strong className={styles.mobileStackHeaderTitle}>Rekening</strong>
+        <div className={styles.mobileStackHeaderLabel}><strong className={styles.mobileStackHeaderTitle}>Rekening</strong><PageInfoButton tone="hero" title="Tentang Rekening">Rekening menampilkan saldo, dana dalam kantong, dan dana yang masih tersedia. Gunakan Transfer untuk memindahkan dana antar rekening yang valid.</PageInfoButton></div>
         <div className={styles.mobileStackHeaderActions}>
           {selectedAccount ? <Suspense fallback={null}><MobileAccountTransferAction bootstrap={bootstrap} selectedAccount={selectedAccount} onTransferSaved={onTransferSaved} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
           {ownerMode ? <button type="button" className={styles.mobileStackAddButton} onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /></button> : null}
@@ -304,7 +305,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
             onPointerDown={handleMobileStackPointerDown} onPointerMove={handleMobileStackPointerMove} onPointerUp={finishMobileStackPointer}
             onPointerCancel={cancelMobileStackPointer} onClick={() => selectMobileStackAccount(account, index)}>
             <AccountVisual account={account} stack />
-            <span className={styles.mobileStackBalance}><small>Saldo rekening</small><strong><Money value={account.balance || 0} /></strong></span>
+            <span className={styles.mobileStackBalance}><small>Dana tersedia</small><strong><Money value={account.available_balance ?? account.balance ?? 0} /></strong><em className={styles.mobileStackBalanceMeta}>Saldo <Money value={account.balance || 0} /> · kantong <Money value={account.allocated_remaining || 0} /></em></span>
             {shouldRenderMobileStackOwnership(account) ? <span className={styles.mobileStackOwnership}>{accountCardOwnershipLabel(account)}</span> : null}
           </button>
         ))}

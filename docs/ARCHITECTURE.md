@@ -73,6 +73,15 @@ saldo awal + dampak transaksi aktif hingga cutoff date
 
 `visibleAccounts()` sengaja menghitung aggregate saldo dengan `CASE` SQL untuk menghindari N+1. Subquery transaksi membatasi `status` dan rentang tanggal di `WHERE` agar histori di luar cutoff tidak ikut diagregasi. Validasi point-in-time tetap memakai `transactionImpact()`/`accountBalanceAsOf()`. Kedua implementasi wajib tetap parity dan dijaga oleh regression test di `test/business/business-rules.test.js`.
 
+Alokasi memakai read model account-bound tanpa transaksi sintetis:
+
+```text
+allocated_remaining = total sisa Kantong aktif dari rekening sumber
+available_balance = balance - allocated_remaining
+```
+
+`balance` tetap saldo ledger fisik. Membuat Kantong hanya mengikat dana bebas. Expense berkantong wajib memakai rekening sumber Kantong yang sama; bagian yang ter-cover oleh Kantong menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Kantong dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif.
+
 ## Concurrency
 
 - Turso transaction digunakan untuk write atomik.

@@ -136,7 +136,8 @@ test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis",
     source("src/features/reports/ReportsPage.jsx"),
   ]);
   assert.match(goals, /piggy-bank\.webp/);
-  assert.match(goals, /<GoalSummary items=\{resource\.data\?\.items \|\| \[\]\}/);
+  assert.match(goals, /const items = resource\.data\?\.items \|\| \[\];/);
+  assert.match(goals, /<GoalSummary items=\{items\}/);
   assert.match(allocations, /wallet\.webp/);
   assert.match(allocations, /<AllocationSummary items=\{activeItems\}/);
   assert.match(recurring, /finance-checklist\.webp/);

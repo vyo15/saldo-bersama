@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
-import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -147,10 +146,10 @@ const AccountListSection = ({ mobileLayout, accounts, allAccounts, selectedAccou
       : <Suspense fallback={null}><DesktopAccountsWorkspace accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode} bootstrap={bootstrap}
           onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
           onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>)
-      : <Card className={styles.emptyPanel}><EmptyState variant="inline"
+      : <EmptyState className={styles.emptyPanel}
           title={allAccounts.length ? "Tidak ada rekening di filter ini" : "Belum ada rekening"}
           description={allAccounts.length ? "Pilih filter lain untuk menampilkan rekening yang tersedia." : ownerMode ? "Tambahkan rekening pertama untuk mulai mencatat saldo dan transaksi." : "Belum ada rekening aktif yang dapat ditampilkan."}
-          action={allAccounts.length ? <Button onClick={() => setOwnershipFilter("all")}>Tampilkan semua</Button> : ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null} /></Card>}
+          action={allAccounts.length ? <Button onClick={() => setOwnershipFilter("all")}>Tampilkan semua</Button> : ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>Tambah rekening</Button> : null} />}
   </section>
 );
 
@@ -211,6 +210,7 @@ const AccountsPageFeedback = ({ accountsResource, usersResource, ownerMode, relo
 const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
   <div className={styles.desktopPageHeader}><PageHeader title="Rekening"
     description={null}
+    help="Rekening menampilkan saldo, dana dalam kantong, dan dana yang masih tersedia. Gunakan Transfer untuk memindahkan dana antar rekening yang valid."
     actions={ownerMode && accounts.length ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog} aria-label="Tambah rekening desktop">Tambah rekening</Button> : null} />
   </div>
 );

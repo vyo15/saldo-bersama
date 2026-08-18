@@ -1,6 +1,6 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
-import { accountBalanceAsOf, envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
+import { accountAllocatedRemaining, accountBalanceAsOf, envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
@@ -51,15 +51,14 @@ const nextEnvelopeBounds = period => {
   };
 };
 const assertAllocationAvailable = async (db, sourceAccount, amount, excludePeriodId = null) => {
-  if (!sourceAccount) return;
+  if (!sourceAccount) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Rekening sumber wajib dipilih agar dana kantong memiliki asal yang jelas.", 400);
   const balance = await accountBalanceAsOf(db, sourceAccount, todayJakarta());
-  const allocated = await db.one(`SELECT COALESCE(SUM(p.allocated_amount - p.reserved_amount - COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0)),0) AS total
-    FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
-    WHERE p.status='active' AND r.status='active' AND r.source_account_id=? ${excludePeriodId ? "AND p.envelope_period_id<>?" : ""}`, [sourceAccount.account_id, ...(excludePeriodId ? [excludePeriodId] : [])]);
-  const available = balance - Number(allocated?.total || 0);
+  const allocated = await accountAllocatedRemaining(db, sourceAccount.account_id, { excludePeriodId });
+  const available = balance - allocated;
   if (amount > available) throw appError("ALLOCATION_EXCEEDS_AVAILABLE", "Alokasi melebihi dana rekening yang belum dialokasikan.", 409, {
     availableAmount: available,
-    accountBalance: balance
+    accountBalance: balance,
+    allocatedRemaining: allocated,
   });
 };
 const envelopeRuleDependencyStatement = (ruleId) => ({
@@ -149,9 +148,9 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
   const overspend = String(payload.overspend_policy || "confirm");
   if (!name) throw appError("NAME_REQUIRED", "Nama kantong wajib diisi.", 400);
   if (!PERIOD_TYPES.has(periodType) || !ROLLOVER_POLICIES.has(rollover) || !OVERSPEND_POLICIES.has(overspend)) throw appError("INVALID_ENVELOPE_RULE", "Aturan kantong tidak valid.", 400);
-  const account = await accountWithAccess(db, context.actor, payload.source_account_id, {
-    optional: true
-  });
+  const sourceAccountId = sanitizeText(payload.source_account_id, 100);
+  if (!sourceAccountId) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Rekening sumber wajib dipilih agar dana kantong memiliki asal yang jelas.", 400);
+  const account = await accountWithAccess(db, context.actor, sourceAccountId);
   const owned = ruleScopeFromAccount(account);
   const legacyAssignee = owned.scope === "personal" ? owned.owner_user_id : null;
   const requestedAssignee = Object.hasOwn(payload, "assignee_user_id") ? payload.assignee_user_id : legacyAssignee;
@@ -239,7 +238,7 @@ const resolveEnvelopeMove = async (db, context) => {
   const fromId = payload.fromEnvelopePeriodId || payload.from_envelope_period_id;
   const toId = payload.toEnvelopePeriodId || payload.to_envelope_period_id;
   if (!fromId || !toId || fromId === toId) throw appError("INVALID_ENVELOPE_MOVE", "Kantong sumber dan tujuan harus berbeda.", 400);
-  const query = `SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`;
+  const query = `SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active'`;
   const [from, to] = await Promise.all([db.one(query, [fromId]), db.one(query, [toId])]);
   if (!from || !to) throw appError("INVALID_ENVELOPE", "Kantong aktif tidak ditemukan.", 404);
   assertOwnedAccess(context.actor, from);
@@ -249,6 +248,8 @@ const resolveEnvelopeMove = async (db, context) => {
   assertVersion(from, payload.from_row_version);
   assertVersion(to, payload.to_row_version);
   if (from.scope !== to.scope || String(from.owner_user_id || "") !== String(to.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Alokasi hanya dapat dipindahkan antar kantong dengan kepemilikan ledger yang sama.", 409);
+  if (!from.source_account_id || !to.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Realokasi memerlukan rekening sumber yang jelas pada kedua kantong.", 409);
+  if (from.source_account_id !== to.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_MISMATCH", "Alokasi hanya dapat dipindahkan antar kantong dari rekening sumber yang sama. Gunakan Transfer untuk memindahkan uang antar rekening.", 409);
   if (context.actor.role !== "owner" && !hasSameEnvelopeAssignee(from, to)) throw appError("ENVELOPE_ASSIGNEE_MISMATCH", "Member hanya dapat memindahkan alokasi antar jatah dengan penerima yang sama.", 409);
   return { payload, fromId, toId, from, to };
 };
@@ -294,6 +295,7 @@ export const closeEnvelope = async (db, context) => {
   const remaining = Math.max(0, Number(period.allocated_amount) - Number(period.reserved_amount) - Number(usage?.used || 0));
   let rollover = null;
   if (period.rollover_policy === "carry" && remaining > 0) {
+    if (!period.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Kantong lama tanpa rekening sumber tidak dapat membuat rollover baru. Arsipkan kantong lalu buat ulang dengan rekening sumber.", 409);
     const bounds = nextEnvelopeBounds(period);
     let next = await db.one("SELECT * FROM envelope_periods WHERE envelope_rule_id=? AND period_start=? AND period_end=?", [period.envelope_rule_id, bounds.start, bounds.end]);
     if (next) {
@@ -438,10 +440,14 @@ export const restoreEnvelopeRule = async (db, context) => {
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan kantong wajib diisi.", 400);
-  if (current.source_account_id) {
-    const account = await db.one("SELECT status FROM accounts WHERE account_id=?", [current.source_account_id]);
-    if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening sumber kantong harus aktif sebelum dipulihkan.", 409);
-  }
+  if (!current.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Kantong lama tanpa rekening sumber tidak dapat dipulihkan. Buat ulang kantong dengan rekening sumber yang aktif.", 409);
+  const account = await db.one("SELECT * FROM accounts WHERE account_id=?", [current.source_account_id]);
+  if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening sumber kantong harus aktif sebelum dipulihkan.", 409);
+  const archivedPeriods = await db.all(`SELECT p.allocated_amount,COALESCE((SELECT SUM(t.amount) FROM transactions t
+      WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id AND t.transaction_date<=?),0) AS used_amount
+    FROM envelope_periods p WHERE p.envelope_rule_id=? AND p.status='archived' AND p.updated_at=?`, [todayJakarta(), current.envelope_rule_id, current.updated_at]);
+  const restoreAllocation = archivedPeriods.reduce((sum, period) => sum + Math.max(0, Number(period.allocated_amount || 0) - Number(period.used_amount || 0)), 0);
+  await assertAllocationAvailable(db, account, restoreAllocation);
   if (current.assignee_user_id) {
     const assignee = await db.one("SELECT status FROM users WHERE user_id=?", [current.assignee_user_id]);
     if (!assignee || assignee.status !== "active") throw appError("ASSIGNEE_INACTIVE", "Penerima jatah harus aktif sebelum kantong dipulihkan.", 409);
@@ -463,8 +469,8 @@ export const reverseEnvelopeMovement = async (db, context) => {
   if (context.actor.role !== "owner" && movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi alokasi yang dibuat sendiri.", 403);
   assertVersion(movement, context.rowVersion ?? payload.row_version);
   const [from, to] = await Promise.all([
-    db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.from_envelope_period_id]),
-    db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.to_envelope_period_id]),
+    db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.from_envelope_period_id]),
+    db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.to_envelope_period_id]),
   ]);
   if (!from || !to) throw appError("ENVELOPE_MOVEMENT_LOCKED", "Mutasi hanya dapat dibatalkan ketika kedua kantong masih aktif.", 409);
   assertOwnedAccess(context.actor, from);

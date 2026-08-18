@@ -15,6 +15,17 @@
   min-width: 0;
 }
 
+.pageTitleRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.pageTitleRow > button {
+  margin-inline-start: -2px;
+}
+
 .pageHeading h1 {
   margin: 0;
   color: var(--text);

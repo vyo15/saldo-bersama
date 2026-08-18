@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FiCheckCircle, FiChevronRight, FiCreditCard, FiDatabase, FiInfo, FiRefreshCw, FiShield } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -142,10 +143,7 @@ const ReconciliationForm = ({ accounts, selectedAccount, form, setForm, submitSt
       />
     </label>
 
-    <div className={`notice notice--info form-grid__full ${styles.guardNotice}`}>
-      <FiShield aria-hidden="true" />
-      <span>Tidak mengubah saldo secara otomatis.</span>
-    </div>
+    <CompactNotice tone="info" icon={FiShield} className={`form-grid__full ${styles.guardNotice}`}>Tidak mengubah saldo secara otomatis.</CompactNotice>
 
     {submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{submitState.error.message}</div> : null}
     <div className={`form-grid__full ${styles.formActions}`}>
@@ -251,7 +249,7 @@ const ReconciliationsPage = () => {
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
   if (data.historyResource.status === "error") return <ErrorState error={data.historyResource.error} onRetry={data.historyResource.reload} />;
   const attentionFromDashboard = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
-  return <div className={`page-stack ${styles.page}`}><RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} /><RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} /><PageHeader title="Cocokkan Saldo" />{attentionFromDashboard ? <div className="notice notice--info attention-guidance" role="status"><strong>Masukkan saldo sebenarnya saat ini.</strong><span>{selectedAccount?.account_id === attentionAccountId ? `${accountDisplayLabel(selectedAccount)} sudah dipilih otomatis. ` : ""}Cek saldo di bank atau hitung uang tunai Anda, lalu isi Saldo aktual. Sistem hanya membandingkan dan tidak mengubah saldo otomatis.</span></div> : null}{message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}<ReconciliationInputPanel accounts={data.reconcilableAccounts} selectedAccount={selectedAccount} form={form} setForm={setForm} submitState={submitState} setSubmitState={setSubmitState} onSubmit={submitReconciliation} preview={preview} onRefreshAccounts={data.accountsResource.reload} accountsRefreshing={data.accountsResource.isRefreshing} /><ReconciliationHistory accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} /></div>;
+  return <div className={`page-stack ${styles.page}`}><RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} /><RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} /><PageHeader title="Cocokkan Saldo" help="Bandingkan saldo aplikasi dengan saldo aktual dari bank atau uang tunai. Pencocokan hanya mencatat selisih dan tidak mengubah saldo otomatis." />{attentionFromDashboard ? <CompactNotice tone="info" title="Masukkan saldo sebenarnya saat ini." role="status">{selectedAccount?.account_id === attentionAccountId ? `${accountDisplayLabel(selectedAccount)} sudah dipilih otomatis. ` : ""}Cocokkan dengan bank atau uang tunai. Sistem hanya membandingkan, tidak mengubah saldo otomatis.</CompactNotice> : null}{message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}<ReconciliationInputPanel accounts={data.reconcilableAccounts} selectedAccount={selectedAccount} form={form} setForm={setForm} submitState={submitState} setSubmitState={setSubmitState} onSubmit={submitReconciliation} preview={preview} onRefreshAccounts={data.accountsResource.reload} accountsRefreshing={data.accountsResource.isRefreshing} /><ReconciliationHistory accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} /></div>;
 };
 
 export default ReconciliationsPage;

@@ -42,6 +42,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 
 - Target, Alokasi, Jadwal rutin, dan Anggota memakai summary hero responsif dengan artwork existing agar kualitas visual konsisten dengan Anggaran tanpa menambah route, request, mutation, atau schema baru.
 - Target mengagregasi target aktif dari `goals.list`; Alokasi tetap memakai data `envelopes.list`; Jadwal rutin tetap memakai summary occurrence existing; Anggota hanya merangkum `users.list`. Artwork tidak ikut menentukan nominal, status, capability, atau authorization.
+- Alokasi sekarang account-bound: Kantong baru wajib satu rekening sumber, read model rekening menyediakan saldo fisik, dana dalam Kantong, dan dana tersedia; transaksi berkantong wajib memakai rekening yang sama, transaksi bebas/Transfer tidak boleh mengambil dana Kantong, dan realokasi baru lintas rekening ditolak. Tidak ada migration baru karena `envelope_rules.source_account_id` sudah tersedia pada schema v10.
 - Dashboard, Transaksi, Laporan, Rekening, Kategori, dan Pengaturan sengaja tidak diberi artwork hero tambahan karena masing-masing sudah memiliki chart, kartu domain, icon taxonomy, atau utility hierarchy sebagai fokus utama.
 - Empat ilustrasi reuse path login existing (`piggy-bank`, `wallet`, `finance-checklist`, `house`) dengan semantic dekoratif kosong agar login yang sudah stabil tidak memerlukan perpindahan asset.
 

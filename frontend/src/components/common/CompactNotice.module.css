@@ -1,0 +1,88 @@
+.notice {
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  line-height: 1.4;
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.copy {
+  min-width: 0;
+  display: grid;
+  align-self: center;
+  gap: 1px;
+}
+
+.title {
+  color: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.35;
+}
+
+.body {
+  color: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.45;
+}
+
+.info {
+  border-color: color-mix(in srgb, var(--info) 28%, var(--border));
+  background: color-mix(in srgb, var(--info-soft) 72%, var(--surface));
+  color: var(--info);
+}
+
+.success {
+  border-color: color-mix(in srgb, var(--positive) 30%, var(--border));
+  background: color-mix(in srgb, var(--positive-soft) 74%, var(--surface));
+  color: var(--positive);
+}
+
+.warning {
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
+  background: color-mix(in srgb, var(--warning-soft) 76%, var(--surface));
+  color: var(--warning);
+}
+
+.danger {
+  border-color: color-mix(in srgb, var(--negative) 30%, var(--border));
+  background: color-mix(in srgb, var(--negative-soft) 76%, var(--surface));
+  color: var(--negative);
+}
+
+.loading {
+  background: var(--surface-soft);
+  color: var(--text-soft);
+}
+
+.loading .icon svg {
+  animation: compact-notice-spin 0.9s linear infinite;
+}
+
+@keyframes compact-notice-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading .icon svg { animation-duration: 1.6s; }
+}

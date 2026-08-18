@@ -1,17 +1,22 @@
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { AutoDebitIcon, BankTransferIcon, CashIcon, EwalletIcon, MoneyInIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 
 const FrequencyField = ({ value, onChange }) => <label className="field"><span>Frekuensi</span><select value={value} onChange={(event) => onChange(event.target.value)}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="bimonthly">Dua bulanan</option><option value="quarterly">Tiga bulanan</option><option value="semiannual">Semester</option><option value="annual">Tahunan</option></select></label>;
 const RECURRING_PAYMENT_OPTIONS = Object.freeze([{ value: "transfer", label: "Transfer", icon: BankTransferIcon }, { value: "cash", label: "Tunai", icon: CashIcon }, { value: "autodebit", label: "Auto-debit", icon: AutoDebitIcon }, { value: "ewallet", label: "E-wallet", icon: EwalletIcon }]);
 const PaymentMethodField = ({ value, onChange }) => <VisualChoiceGroup className="form-grid__full" legend="Metode" name="recurring-payment-method" value={value} onChange={onChange} options={RECURRING_PAYMENT_OPTIONS} columns={4} compact />;
-const AccountField = ({ label = "Rekening default", value, accounts, onChange }) => <label className="field"><span>{label} *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>;
+const AccountField = ({ label = "Rekening default", value, accounts, onChange }) => {
+  const selected = accounts.find((item) => item.account_id === value) || null;
+  return <label className="field"><span>{label} *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)} · tersedia {formatRupiah(item.available_balance ?? item.balance ?? 0)}</option>)}</select>{selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dalam kantong {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}</label>;
+};
 const CategoryField = ({ value, categories, onChange }) => <label className="field"><span>Kategori *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih kategori</option>{categories.map((item) => <option value={item.category_id} key={item.category_id}>{item.name}</option>)}</select></label>;
 
 export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message }) => (
@@ -67,7 +72,7 @@ const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeH
 const PaymentOverspendFields = ({ payment, setPayment, envelopeState }) => <>
   {envelopeState.blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa kantong. Kebijakan kantong ini memblokir overspend. Kurangi nominal atau pilih kantong lain.</div> : null}
   {envelopeState.needsOverspendReason ? <label className="field form-grid__full"><span>Alasan melebihi alokasi *</span><input required maxLength="180" value={payment.overspend_reason} onChange={(event) => setPayment((current) => ({ ...current, overspend_reason: event.target.value }))} placeholder="Contoh: tagihan aktual lebih tinggi dari perkiraan" /></label> : null}
-  {envelopeState.allowsOverspend ? <div className="notice notice--info form-grid__full">Nominal aktual melebihi sisa kantong. Kebijakan ini mengizinkan overspend.</div> : null}
+  {envelopeState.allowsOverspend ? <CompactNotice tone="info" title="Melebihi sisa kantong" className="form-grid__full" role="status">Kebijakan kantong ini mengizinkan overspend.</CompactNotice> : null}
 </>;
 
 const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, paymentEnvelopes, envelopeStatus, envelopeState, completeOccurrence }) => {

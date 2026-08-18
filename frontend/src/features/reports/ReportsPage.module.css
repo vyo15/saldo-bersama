@@ -30,6 +30,17 @@
     margin: 0;
   }
 
+  .mobileTitleRow {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  .mobileTitleRow > button {
+    margin-inline-start: -3px;
+  }
+
   .mobileTitle p {
     color: var(--text-muted);
     font-size: var(--font-size-xs);

@@ -28,6 +28,8 @@
 .data-table .align-right,
 .align-right { text-align: right; }
 .allocation-grid, .goal-grid, .settings-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+
+.goal-grid__empty { grid-column: 1 / -1; }
 .allocation-card, .goal-card, .settings-card { padding: 20px; display: grid; gap: 16px; }
 .allocation-card__header { display: flex; justify-content: space-between; gap: 14px; }
 .allocation-card h2, .goal-card h2, .settings-card h2 { font-size: 17px; }
@@ -117,6 +119,9 @@
 .allocation-summary__metrics span { color: var(--text-muted); font-size: 11px; }
 .allocation-summary__metrics strong { overflow: hidden; color: var(--text); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .allocation-summary__metrics .money { color: inherit; font-size: inherit; }
+.allocation-summary--empty { min-height: 10.5rem; }
+.allocation-summary--empty .allocation-summary__content { align-self: center; }
+.allocation-summary--empty .allocation-summary__art { width: min(11rem, 23%); opacity: .92; }
 .allocation-summary__art { position: absolute; z-index: 1; right: 3%; bottom: -.35rem; width: min(13.5rem, 27%); max-height: 12rem; object-fit: contain; filter: drop-shadow(0 1.15rem 1.5rem rgba(0, 0, 0, .18)); pointer-events: none; user-select: none; }
 .allocation-active { min-width: 0; display: grid; gap: 11px; }
 .allocation-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-inline: 2px; }
@@ -177,7 +182,7 @@
 .allocation-card__details dt { color: var(--text-muted); font-size: 11px; }
 .allocation-card__details dd { min-width: 0; color: var(--text); font-size: 11px; font-weight: var(--font-weight-semibold); text-align: right; overflow-wrap: anywhere; }
 .allocation-card__details .money { font-size: inherit; }
-.allocation-empty { grid-column: 1 / -1; min-height: 130px; display: grid; place-content: center; gap: 6px; text-align: center; }
+.allocation-empty { grid-column: 1 / -1; min-height: 112px; place-self: stretch; }
 .allocation-empty p { color: var(--text-muted); font-size: 12px; }
 .allocation-action-sheet { display: grid; gap: 12px; }
 .allocation-action-sheet__balance { padding: 13px 14px; border: 1px solid var(--border); border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface-soft); }

@@ -67,6 +67,11 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
   assert.match(styles, /\.iconGroups[\s\S]*flex-wrap: wrap/);
   assert.doesNotMatch(styles, /\.iconGroups[\s\S]{0,180}overflow-x:\s*auto/);
   assert.doesNotMatch(categoryPresentation.match(/EXPENSE_NATURE_OPTIONS[\s\S]*?\]\);/)?.[0] || "", /value: "savings"/);
+  assert.match(categoryPresentation, /value: CATEGORY_NATURES\.UNEXPECTED, label: "Tidak terduga"/);
+  assert.match(categoryPresentation, /value: CATEGORY_NATURES\.DISCRETIONARY, label: "Gaya hidup"/);
+  assert.match(categoryPresentation, /value: CATEGORY_NATURES\.EMERGENCY, label: "Darurat"/);
+  assert.doesNotMatch(categoryPresentation, /label: "Kebutuhan tidak terduga"|label: "Keinginan dan gaya hidup"|label: "Kondisi darurat"/);
+  assert.match(page, /<option value=\{item\.value\} key=\{item\.value\}>\{item\.label\}<\/option>/);
   assert.doesNotMatch(page, /accounts\.list|AccountFinancialCard/);
   assert.doesNotMatch(accountPage, /categories\.list|create-category-form|Kategori transaksi/);
 });

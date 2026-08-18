@@ -53,11 +53,13 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 
 - `transactions.amount`, `accounts.initial_balance`, budget, envelope, goal, occurrence, reconciliation: integer Rupiah.
 - `envelope_rules.assignee_user_id`: nullable; `NULL` berarti Jatah Bersama. Jika terisi, wajib menunjuk pengguna aktif pada create/restore dan tidak mengubah `scope`/`owner_user_id` ledger.
+- `envelope_rules.source_account_id`: kolom schema tetap nullable untuk kompatibilitas backup/data legacy, tetapi runtime mewajibkannya untuk Kantong baru, pemakaian transaksi, realokasi baru, dan restore rule. Satu Kantong aktif canonical terikat pada tepat satu rekening sumber.
 - `accounts.account_number`: string 6–34 digit untuk rekening bank. Backend menormalisasi spasi/tanda hubung, UI hanya menampilkan kepada actor yang lolos scope authorization, audit menyimpan empat digit terakhir, dan Sheets/export baca tidak menyertakannya.
 - `accounts.bank_template`: template visual kartu bank yang tidak mengubah nama rekening. Enum rekening bank: `generic`, `bca`, `bni`, `btn`, `mandiri`, `permata`; rekening non-bank wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `accounts.ewallet_template`: provider visual E-wallet yang tidak mengubah nama rekening. Enum E-wallet: `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`; rekening non-E-wallet wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
 - Transfer wajib source dan destination berbeda.
+- Expense yang memiliki `envelope_period_id` wajib memakai `source_account_id` yang sama dengan `envelope_rules.source_account_id`; expense tanpa Kantong dan Transfer tidak boleh memakai dana yang masih berada dalam `allocated_remaining` pada rekening non-`allow_negative`.
 - `transactions.status` menentukan dampak saldo; cancelled/archived tidak dihitung.
 - `owner_scope`/`scope`: `shared` atau `personal`.
 - `created_by`, `updated_by`, cancellation/reversal actor: server canonical.
@@ -67,7 +69,10 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 
 Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 
-- `balance`, `safeToSpend`, `unallocatedFunds`;
+- `balance`: saldo fisik rekening dari saldo awal + transaksi aktif hingga cutoff;
+- `allocated_remaining`: total bagian alokasi aktif yang masih tertahan pada rekening sumber. Dana `reserved_amount` tetap bagian dari alokasi dan tidak dibebaskan sebagai dana tersedia; pengeluaran Kantong hanya mengurangi sisa setelah tanggal transaksi mencapai cutoff;
+- `available_balance = balance - allocated_remaining`; membuat Kantong tidak mengubah `balance`, sedangkan pemakaian Kantong mengurangi `balance` dan `allocated_remaining` bersamaan;
+- `safeToSpend`, `unallocatedFunds`;
 - `progress_percent`, `remaining_amount`, `required_monthly_amount`, `pace_status` target;
 - tren 3/6/12 bulan dan breakdown laporan;
 - budget/kantong threshold serta alert rekonsiliasi.

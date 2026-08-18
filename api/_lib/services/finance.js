@@ -1,11 +1,11 @@
 import { readBatchRows } from "../db/readBatchRows.js";
 import { TRANSACTION_TYPE_VALUES } from "../domainConstants.js";
 import { appendAudit } from "./audit.js";
-import { firstNegativeBalance } from "./readModels.js";
+import { accountAllocatedRemaining, accountBalanceAsOf, firstNegativeBalance } from "./readModels.js";
 import { isReservedTransactionField } from "../transactionContract.js";
 import {
   appError, assertOwner, assertVersion, boundedInteger, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow,
-  readableLedgerSql, sanitizeText, scopeFromAccountPair, uuid,
+  readableLedgerSql, sanitizeText, scopeFromAccountPair, todayJakarta, uuid,
 } from "./core.js";
 
 const TRANSACTION_TYPES = new Set(TRANSACTION_TYPE_VALUES);
@@ -72,6 +72,8 @@ const assertEnvelopeCompatibility = (row, context, transaction) => {
   if (!row) throw appError("INVALID_ENVELOPE", "Kantong tidak ditemukan atau tidak aktif.", 400);
   if (transaction.transaction_date < row.period_start || transaction.transaction_date > row.period_end) throw appError("ENVELOPE_DATE_MISMATCH", "Tanggal transaksi berada di luar periode kantong.", 409);
   if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Kantong dan rekening transaksi harus memiliki kepemilikan ledger yang sama.", 409);
+  if (!row.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Kantong belum memiliki rekening sumber dan tidak aman dipakai untuk transaksi.", 409);
+  if (row.source_account_id !== transaction.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_MISMATCH", "Kantong hanya dapat dipakai dari rekening sumber yang sama.", 409, { sourceAccountId: row.source_account_id });
   if (context.actor.role !== "owner" && row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat memakai jatah Bersama atau jatah miliknya sendiri.", 403);
 };
 
@@ -82,7 +84,7 @@ const assertEnvelopeCapacity = (row, transaction, remaining) => {
 };
 
 const validateEnvelope = async (db, context, transaction, { excludeTransactionId = null } = {}) => {
-  if (transaction.transaction_type !== "expense" || !transaction.envelope_period_id) return;
+  if (transaction.transaction_type !== "expense" || !transaction.envelope_period_id) return null;
   const row = await db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.overspend_policy,r.source_account_id
     FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
     WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [transaction.envelope_period_id]);
@@ -91,6 +93,7 @@ const validateEnvelope = async (db, context, transaction, { excludeTransactionId
     WHERE status='active' AND transaction_type='expense' AND envelope_period_id=? ${excludeTransactionId ? "AND transaction_id<>?" : ""}`, [row.envelope_period_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
   const remaining = Number(row.allocated_amount) - Number(row.reserved_amount) - Number(usage?.used || 0);
   assertEnvelopeCapacity(row, transaction, remaining);
+  return { row, remaining };
 };
 
 const duplicateTransaction = async (db, transaction, excludeTransactionId = null) => db.one(`SELECT transaction_id FROM transactions
@@ -104,26 +107,73 @@ const assertSufficientBalance = async (db, account, transaction, excludeTransact
   if (issue) throw appError("INSUFFICIENT_BALANCE", `Saldo rekening tidak mencukupi pada proyeksi tanggal ${issue.date}.`, 409, { accountId: account.account_id, offendingDate: issue.date, balanceAfter: issue.balance });
 };
 
+const unallocatedDebitAmount = (transaction, envelopeState) => {
+  if (!transaction?.source_account_id) return 0;
+  if (transaction.transaction_type === "transfer") return Number(transaction.amount || 0);
+  if (transaction.transaction_type !== "expense") return 0;
+  if (!transaction.envelope_period_id) return Number(transaction.amount || 0);
+  const coveredByEnvelope = Math.max(0, Math.min(Number(transaction.amount || 0), Number(envelopeState?.remaining || 0)));
+  return Math.max(0, Number(transaction.amount || 0) - coveredByEnvelope);
+};
+
+const assertUnallocatedFunds = async (db, account, transaction, envelopeState, excludeTransactionId = null) => {
+  if (!account || Boolean(account.allow_negative)) return;
+  const debit = unallocatedDebitAmount(transaction, envelopeState);
+  if (debit <= 0) return;
+  const [balance, allocatedRemaining] = await Promise.all([
+    accountBalanceAsOf(db, account, transaction.transaction_date, { excludeTransactionId }),
+    accountAllocatedRemaining(db, account.account_id, { cutoffDate: transaction.transaction_date, excludeTransactionId }),
+  ]);
+  const available = balance - allocatedRemaining;
+  if (debit > available) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Dana rekening yang belum dialokasikan tidak mencukupi. Pilih kantong yang sesuai atau kurangi nominal.", 409, {
+    accountId: account.account_id,
+    availableAmount: available,
+    accountBalance: balance,
+    allocatedRemaining,
+    requiredUnallocatedAmount: debit,
+  });
+};
+
+const projectedTransactionCandidate = (current, candidate) => candidate ? {
+  ...candidate,
+  status: "active",
+  created_at: current?.created_at || candidate.created_at,
+  transaction_id: current?.transaction_id || candidate.transaction_id,
+} : null;
+
+const assertProjectedAccountFunds = async (db, { accountId, current, projectedCandidate, fromDate }) => {
+  const account = await db.one("SELECT * FROM accounts WHERE account_id=?", [accountId]);
+  if (!account || Boolean(account.allow_negative)) return;
+  const excludeTransactionId = current?.transaction_id || null;
+  const issue = await firstNegativeBalance(db, account, {
+    excludeTransactionId,
+    candidate: projectedCandidate,
+    fromDate: fromDate || account.initial_balance_date,
+  });
+  if (issue) throw appError("INSUFFICIENT_BALANCE", `Perubahan membuat saldo rekening negatif pada ${issue.date}.`, 409, { accountId, offendingDate: issue.date, balanceAfter: issue.balance });
+
+  const cutoffDate = todayJakarta();
+  const [projectedBalance, projectedAllocated] = await Promise.all([
+    accountBalanceAsOf(db, account, cutoffDate, { excludeTransactionId, candidate: projectedCandidate }),
+    accountAllocatedRemaining(db, accountId, { cutoffDate, excludeTransactionId, candidate: projectedCandidate }),
+  ]);
+  if (projectedBalance < projectedAllocated) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Perubahan akan memakai dana yang sudah dialokasikan ke kantong.", 409, {
+    accountId,
+    availableAmount: projectedBalance - projectedAllocated,
+    accountBalance: projectedBalance,
+    allocatedRemaining: projectedAllocated,
+  });
+};
+
 export const assertAffectedBalances = async (db, current, candidate = null) => {
   const accountIds = [...new Set([
     current?.source_account_id, current?.destination_account_id,
     candidate?.source_account_id, candidate?.destination_account_id,
   ].filter(Boolean))];
   const fromDate = [current?.transaction_date, candidate?.transaction_date].filter(Boolean).sort()[0];
+  const projectedCandidate = projectedTransactionCandidate(current, candidate);
   for (const accountId of accountIds) {
-    const account = await db.one("SELECT * FROM accounts WHERE account_id=?", [accountId]);
-    if (!account || Boolean(account.allow_negative)) continue;
-    const issue = await firstNegativeBalance(db, account, {
-      excludeTransactionId: current?.transaction_id || null,
-      candidate: candidate ? {
-        ...candidate,
-        status: "active",
-        created_at: current?.created_at || candidate.created_at,
-        transaction_id: current?.transaction_id || candidate.transaction_id,
-      } : null,
-      fromDate: fromDate || account.initial_balance_date,
-    });
-    if (issue) throw appError("INSUFFICIENT_BALANCE", `Perubahan membuat saldo rekening negatif pada ${issue.date}.`, 409, { accountId, offendingDate: issue.date, balanceAfter: issue.balance });
+    await assertProjectedAccountFunds(db, { accountId, current, projectedCandidate, fromDate });
   }
 };
 
@@ -250,7 +300,8 @@ export const normalizeTransaction = async (db, context, payload, { current = nul
     categoryId,
   });
   const excludeTransactionId = currentTransactionId(current);
-  await validateEnvelope(db, context, record, { excludeTransactionId });
+  const envelopeState = await validateEnvelope(db, context, record, { excludeTransactionId });
+  await assertUnallocatedFunds(db, accounts.source, record, envelopeState, excludeTransactionId);
   await assertSufficientBalance(db, accounts.source, { ...record, status: "active" }, excludeTransactionId);
   await assertNoUnconfirmedDuplicate(db, payload, record, excludeTransactionId);
   return record;

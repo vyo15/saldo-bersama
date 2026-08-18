@@ -9,7 +9,8 @@ const accountBalance = (accountBalances, accountId) => accountBalances.find((ite
 
 const accountBalanceLabel = (accountBalances, accountId) => {
   const balance = accountBalance(accountBalances, accountId);
-  return balance ? `Saldo ${formatRupiah(balance.balance || 0)}` : "Saldo belum tersedia";
+  if (!balance) return "Saldo belum tersedia";
+  return `Saldo ${formatRupiah(balance.balance || 0)} · tersedia ${formatRupiah(balance.available_balance ?? balance.balance ?? 0)}`;
 };
 
 const AccountIdentity = ({ account, accountBalances }) => (
@@ -146,11 +147,11 @@ const ImpactPreview = ({ impact }) => {
         <strong>Total aset tetap</strong>
       </div>
       <div className={styles.impactRoute}>
-        <span><small>{impact.source.name}</small><b>{formatRupiah(impact.source.balance || 0)} → {formatRupiah(impact.sourceAfter)}</b></span>
+        <span><small>{impact.source.name}</small><b>{formatRupiah(impact.source.balance || 0)} → {formatRupiah(impact.sourceAfter)}</b><small>Dana tersedia {formatRupiah(impact.sourceAvailable)} → {formatRupiah(impact.sourceAvailableAfter)}</small></span>
         <FiArrowRight aria-hidden="true" />
-        <span><small>{impact.destination.name}</small><b>{formatRupiah(impact.destination.balance || 0)} → {formatRupiah(impact.destinationAfter)}</b></span>
+        <span><small>{impact.destination.name}</small><b>{formatRupiah(impact.destination.balance || 0)} → {formatRupiah(impact.destinationAfter)}</b><small>Dana tersedia {formatRupiah(impact.destinationAvailable)} → {formatRupiah(impact.destinationAvailableAfter)}</small></span>
       </div>
-      <p>Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.</p>
+      <p>Transfer memakai dana yang belum dialokasikan. Dana di dalam kantong tidak ikut terpakai.</p>
     </section>
   );
 };
@@ -184,7 +185,7 @@ const MobileTransferFields = ({
     <TransferDate form={form} update={update} errors={errors} />
     <ImpactPreview impact={impact} />
     <TransferStatus confirmation={confirmation} submitState={submitState} />
-    <p className={styles.guard}>Saldo baru berubah setelah server mengonfirmasi transfer dan aplikasi menyegarkan data rekening.</p>
+    <p className={styles.guard}>Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer dan aplikasi menyegarkan data rekening.</p>
   </div>
 );
 

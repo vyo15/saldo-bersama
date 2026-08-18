@@ -29,12 +29,29 @@ export const visibleAccountsStatement = (actor, { includeArchived = false, cutof
         WHERE t.status='active'
           AND t.transaction_date BETWEEN a.initial_balance_date AND ?
           AND (t.source_account_id = a.account_id OR t.destination_account_id = a.account_id)
-      ),0) AS balance
+      ),0) AS balance,
+      COALESCE((
+        SELECT SUM(CASE
+          WHEN p.allocated_amount - COALESCE((
+            SELECT SUM(et.amount) FROM transactions et
+            WHERE et.status='active' AND et.transaction_type='expense' AND et.envelope_period_id=p.envelope_period_id
+              AND et.transaction_date <= ?
+          ),0) > 0
+          THEN p.allocated_amount - COALESCE((
+            SELECT SUM(et.amount) FROM transactions et
+            WHERE et.status='active' AND et.transaction_type='expense' AND et.envelope_period_id=p.envelope_period_id
+              AND et.transaction_date <= ?
+          ),0)
+          ELSE 0 END)
+        FROM envelope_periods p
+        JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+        WHERE p.status='active' AND r.status='active' AND r.source_account_id=a.account_id
+      ),0) AS allocated_remaining
       FROM accounts a
       LEFT JOIN users u ON u.user_id=a.owner_user_id
       WHERE ${access.sql} ${includeArchived ? "" : "AND a.status = 'active'"}
       ORDER BY a.status, a.name COLLATE NOCASE`,
-    args: [cutoffDate, cutoffDate, ...access.args],
+    args: [cutoffDate, cutoffDate, cutoffDate, cutoffDate, ...access.args],
   };
 };
 
@@ -42,8 +59,13 @@ export const mapVisibleAccountRows = (rows, actor) => rows.map((row) => {
   const item = publicRow(row, ["allow_negative"]);
   const actorOwnsAccount = item.owner_scope === "personal" && item.owner_user_id === actor.user_id;
   const canOperate = actor.role === "owner" || item.owner_scope === "shared" || actorOwnsAccount;
+  const balance = Number(item.balance || 0);
+  const allocatedRemaining = Math.max(0, Number(item.allocated_remaining || 0));
   return {
     ...item,
+    balance,
+    allocated_remaining: allocatedRemaining,
+    available_balance: balance - allocatedRemaining,
     owner_name: item.owner_scope === "personal" ? item.owner_name : "",
     is_owned_by_actor: actorOwnsAccount,
     can_transact: canOperate,
@@ -69,6 +91,35 @@ export const accountBalanceAsOf = async (db, account, cutoffDate = todayJakarta(
   for (const row of rows) total += transactionImpact(account.account_id, row);
   if (candidate && candidate.transaction_date >= account.initial_balance_date && candidate.transaction_date <= cutoffDate) total += transactionImpact(account.account_id, { status: "active", ...candidate });
   return total;
+};
+
+export const accountAllocatedRemaining = async (db, accountId, { cutoffDate = todayJakarta(), excludePeriodId = null, excludeTransactionId = null, candidate = null } = {}) => {
+  const rows = await db.all(`SELECT p.envelope_period_id,p.allocated_amount,p.reserved_amount,
+      COALESCE(SUM(CASE WHEN t.transaction_id IS NOT NULL THEN t.amount ELSE 0 END),0) AS used_amount
+    FROM envelope_periods p
+    JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+    LEFT JOIN transactions t ON t.envelope_period_id=p.envelope_period_id
+      AND t.status='active' AND t.transaction_type='expense' AND t.transaction_date<=?
+      ${excludeTransactionId ? "AND t.transaction_id<>?" : ""}
+    WHERE p.status='active' AND r.status='active' AND r.source_account_id=?
+      ${excludePeriodId ? "AND p.envelope_period_id<>?" : ""}
+    GROUP BY p.envelope_period_id,p.allocated_amount,p.reserved_amount`, [
+    cutoffDate,
+    ...(excludeTransactionId ? [excludeTransactionId] : []),
+    accountId,
+    ...(excludePeriodId ? [excludePeriodId] : []),
+  ]);
+  return rows.reduce((sum, row) => {
+    const candidateUsed = candidate
+      && candidate.status !== "cancelled"
+      && candidate.transaction_type === "expense"
+      && candidate.source_account_id === accountId
+      && candidate.envelope_period_id === row.envelope_period_id
+      && candidate.transaction_date <= cutoffDate
+      ? Number(candidate.amount || 0)
+      : 0;
+    return sum + Math.max(0, Number(row.allocated_amount || 0) - Number(row.used_amount || 0) - candidateUsed);
+  }, 0);
 };
 
 export const firstNegativeBalanceFromRows = (account, transactionRows = [], { candidate = null, fromDate = account.initial_balance_date } = {}) => {
@@ -140,9 +191,11 @@ export const envelopeItemsStatement = (actor, { period = null, includeClosed = t
   }
   return {
     sql: `SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
+      sa.name AS source_account_name,
       COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'') AS assignee_name,au.role AS assignee_role,
       COALESCE(usage.used_amount,0) AS used_amount
       FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+      LEFT JOIN accounts sa ON sa.account_id=r.source_account_id
       LEFT JOIN users au ON au.user_id=r.assignee_user_id
       LEFT JOIN (
         SELECT envelope_period_id,SUM(amount) AS used_amount FROM transactions

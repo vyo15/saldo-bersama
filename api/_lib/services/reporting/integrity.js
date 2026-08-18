@@ -1,9 +1,9 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { firstNegativeBalanceFromRows } from "../readModels.js";
-import { canonicalJson, nowIso, uuid } from "../core.js";
+import { canonicalJson, nowIso, todayJakarta, uuid } from "../core.js";
 
-export const integrityBaseStatements = () => [
+const INTEGRITY_STATIC_STATEMENTS = [
   { sql: "PRAGMA foreign_key_check", args: [] },
   { sql: "SELECT idempotency_key,created_by,COUNT(*) AS count FROM transactions GROUP BY idempotency_key,created_by HAVING COUNT(*)>1", args: [] },
   { sql: "SELECT transaction_id FROM transactions WHERE transaction_type='transfer' AND (source_account_id IS NULL OR destination_account_id IS NULL OR source_account_id=destination_account_id)", args: [] },
@@ -91,7 +91,52 @@ export const integrityBaseStatements = () => [
       )
     )
     SELECT code,COUNT(*) AS count FROM reminder_issues GROUP BY code ORDER BY code`, args: [] },
+  { sql: `SELECT r.envelope_rule_id
+    FROM envelope_rules r LEFT JOIN accounts a ON a.account_id=r.source_account_id
+    WHERE r.status='active' AND (TRIM(COALESCE(r.source_account_id,''))='' OR a.account_id IS NULL OR a.status<>'active')`, args: [] },
+  { sql: `SELECT t.transaction_id
+    FROM transactions t
+    JOIN envelope_periods p ON p.envelope_period_id=t.envelope_period_id
+    JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+    WHERE t.status='active' AND t.transaction_type='expense' AND p.status='active' AND r.status='active'
+      AND (TRIM(COALESCE(r.source_account_id,''))='' OR TRIM(COALESCE(t.source_account_id,''))='' OR t.source_account_id<>r.source_account_id)`, args: [] },
+  { sql: `SELECT m.movement_id
+    FROM envelope_movements m
+    JOIN envelope_periods fp ON fp.envelope_period_id=m.from_envelope_period_id
+    JOIN envelope_rules fr ON fr.envelope_rule_id=fp.envelope_rule_id
+    JOIN envelope_periods tp ON tp.envelope_period_id=m.to_envelope_period_id
+    JOIN envelope_rules tr ON tr.envelope_rule_id=tp.envelope_rule_id
+    WHERE m.status='active' AND m.movement_type='reallocation'
+      AND (TRIM(COALESCE(fr.source_account_id,''))='' OR TRIM(COALESCE(tr.source_account_id,''))='' OR fr.source_account_id<>tr.source_account_id)`, args: [] },
 ];
+
+const accountAllocationIntegrityStatement = () => ({
+  sql: `SELECT a.account_id,
+      CASE WHEN a.initial_balance_date<=? THEN a.initial_balance + COALESCE((
+        SELECT SUM(CASE
+          WHEN t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
+          WHEN t.transaction_type='expense' AND t.source_account_id=a.account_id THEN -t.amount
+          WHEN t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
+          WHEN t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
+          WHEN t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
+          ELSE 0 END)
+        FROM transactions t WHERE t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND ?
+          AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
+      ),0) ELSE 0 END AS balance,
+      COALESCE((SELECT SUM(CASE WHEN p.allocated_amount - COALESCE((
+        SELECT SUM(et.amount) FROM transactions et
+        WHERE et.status='active' AND et.transaction_type='expense' AND et.envelope_period_id=p.envelope_period_id AND et.transaction_date<=?
+      ),0)>0 THEN p.allocated_amount - COALESCE((
+        SELECT SUM(et.amount) FROM transactions et
+        WHERE et.status='active' AND et.transaction_type='expense' AND et.envelope_period_id=p.envelope_period_id AND et.transaction_date<=?
+      ),0) ELSE 0 END)
+      FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+      WHERE p.status='active' AND r.status='active' AND r.source_account_id=a.account_id),0) AS allocated_remaining
+    FROM accounts a WHERE a.status='active' AND a.allow_negative=0`,
+  args: [todayJakarta(), todayJakarta(), todayJakarta(), todayJakarta()],
+});
+
+export const integrityBaseStatements = () => [...INTEGRITY_STATIC_STATEMENTS, accountAllocationIntegrityStatement()];
 
 const appendSimpleIntegrityIssues = (issues, rows) => {
   const [fk = [], duplicates = [], invalidTransfer = [], brokenOwnership = [], invalidEnvelopeAssignee = [], linkedCancelled = []] = rows;
@@ -164,6 +209,24 @@ const appendBalanceIntegrityIssues = (issues, rows) => {
   }
 };
 
+const appendAllocationIntegrityIssues = (issues, rows) => {
+  const [invalidSources = [], mismatchedTransactions = [], mismatchedMovements = [], accountAvailability = []] = rows;
+  if (invalidSources.length) issues.push({ code: "INVALID_ENVELOPE_SOURCE_ACCOUNT", count: invalidSources.length });
+  if (mismatchedTransactions.length) issues.push({ code: "ENVELOPE_TRANSACTION_SOURCE_MISMATCH", count: mismatchedTransactions.length });
+  if (mismatchedMovements.length) issues.push({ code: "ENVELOPE_REALLOCATION_SOURCE_MISMATCH", count: mismatchedMovements.length });
+  for (const row of accountAvailability) {
+    const balance = Number(row.balance || 0);
+    const allocatedRemaining = Math.max(0, Number(row.allocated_remaining || 0));
+    if (balance < allocatedRemaining) issues.push({
+      code: "ALLOCATED_FUNDS_EXCEED_BALANCE",
+      accountId: row.account_id,
+      balance,
+      allocatedRemaining,
+      availableBalance: balance - allocatedRemaining,
+    });
+  }
+};
+
 export const integrityIssuesFromBaseRows = (baseRows) => {
   const issues = [];
   appendSimpleIntegrityIssues(issues, baseRows.slice(0, 6));
@@ -171,6 +234,7 @@ export const integrityIssuesFromBaseRows = (baseRows) => {
   appendBalanceIntegrityIssues(issues, baseRows[9] || []);
   appendConfigIntegrityIssues(issues, baseRows[10] || []);
   appendReminderIntegrityIssues(issues, baseRows[11] || []);
+  appendAllocationIntegrityIssues(issues, baseRows.slice(12, 16));
   return issues;
 };
 

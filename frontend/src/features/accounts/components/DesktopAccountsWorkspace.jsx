@@ -176,10 +176,12 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           {readOnly ? <div className={styles.heroBadges}><span className={styles.readOnlyBadge}>Hanya lihat</span></div> : null}
         </div>
         <div className={styles.heroBalance}>
-          <span>Saldo saat ini</span>
+          <span>Saldo rekening</span>
           <strong><Money value={account.balance || 0} tone={balanceTone(account.balance)} /></strong>
         </div>
         <dl className={styles.heroFacts}>
+          <div><dt>Dana tersedia</dt><dd><Money value={account.available_balance ?? account.balance ?? 0} tone={balanceTone(account.available_balance ?? account.balance)} /></dd></div>
+          <div><dt>Dalam kantong</dt><dd><Money value={account.allocated_remaining || 0} /></dd></div>
           <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>

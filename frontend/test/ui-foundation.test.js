@@ -9,8 +9,10 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 const moduleBackedComponents = [
   "Button",
   "Card",
+  "CompactNotice",
   "Modal",
   "MoneyInput",
+  "PageInfoButton",
   "ProgressBar",
   "StatusBadge",
   "ThemeToggle",
@@ -48,6 +50,46 @@ test("semantic primitives keep accessibility and avoid dynamic inline layout sty
   assert.match(moneyInput, /inputMode="numeric"/);
   assert.match(progress, /<progress/);
   assert.doesNotMatch(progress, /style=\{\{/);
+});
+
+test("compact notice owns lightweight guidance without dashboard stylesheet coupling", async () => {
+  const [component, css, dashboardCss, transactions, budgets, allocations, recurring, goals, reconciliations] = await Promise.all([
+    read("src/components/common/CompactNotice.jsx"),
+    read("src/components/common/CompactNotice.module.css"),
+    read("src/features/dashboard/DashboardPage.css"),
+    read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/budgets/BudgetsPage.jsx"),
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/recurring/RecurringPage.jsx"),
+    read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/reconciliations/ReconciliationsPage.jsx"),
+  ]);
+
+  assert.match(component, /data-ui="compact-notice"/);
+  assert.match(component, /role=\{role\}/);
+  assert.match(component, /aria-live=\{ariaLive\}/);
+  assert.match(css, /min-height:\s*40px/);
+  assert.doesNotMatch(dashboardCss, /attention-guidance/);
+  for (const source of [transactions, budgets, allocations, recurring, goals, reconciliations]) {
+    assert.match(source, /CompactNotice/, "Guidance lintas feature harus memakai primitive shared, bukan CSS Dashboard.");
+    assert.doesNotMatch(source, /attention-guidance/);
+  }
+});
+
+
+test("contextual page help remains accessible and keeps educational copy out of persistent mobile chrome", async () => {
+  const [infoButton, pageHeader, responsive] = await Promise.all([
+    read("src/components/common/PageInfoButton.jsx"),
+    read("src/components/common/PageHeader.jsx"),
+    read("src/styles/responsive.css"),
+  ]);
+
+  assert.match(infoButton, /aria-haspopup="dialog"/);
+  assert.match(infoButton, /aria-expanded=\{open\}/);
+  assert.match(infoButton, /mobileSwipeToClose/);
+  assert.match(pageHeader, /PageInfoButton/);
+  assert.match(pageHeader, /page-header--with-help/);
+  assert.match(responsive, /\.page-header--with-help\s+\.page-header__description\s*\{[^}]*display:\s*none/s);
 });
 
 test("feature code does not import UI toolkit directly and utility frameworks stay absent", async () => {
@@ -388,6 +430,7 @@ test("pengaturan memakai kontrak system.health aktual dan status notifikasi akse
   assert.match(notifications, /const \[label, description/);
   assert.match(notifications, /<small id=\{descriptionId\}>\{description\}<\/small>/);
   assert.match(notifications, /aria-describedby=\{descriptionId\}/);
+  assert.match(notifications, /<CompactNotice tone="info">iPhone\/iPad:/);
   assert.doesNotMatch(notifications, /Uji notifikasi/);
   assert.match(notificationService, /lastTestFailure/);
   assert.match(serviceWorkerRegistration, /navigator\.serviceWorker\.register\("\/sw\.js"/);

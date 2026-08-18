@@ -39,8 +39,11 @@
 .icon-button--danger:hover { border-color: var(--negative); color: var(--negative); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-.page-header h1 { font-size: clamp(28px, 3vw, 38px); font-weight: var(--font-weight-bold); line-height: 1.12; letter-spacing: -0.035em; }
+.page-header__copy { min-width: 0; }
+.page-header__title-row { min-width: 0; display: flex; align-items: center; gap: 2px; }
+.page-header h1 { min-width: 0; font-size: clamp(28px, 3vw, 38px); font-weight: var(--font-weight-bold); line-height: 1.12; letter-spacing: -0.035em; }
 .page-header p { max-width: 720px; margin-top: 8px; color: var(--text-soft); line-height: 1.65; }
+.page-header__title-row > button { flex: 0 0 auto; }
 .page-header__actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .eyebrow { color: var(--primary); text-transform: uppercase; letter-spacing: .1em; font-size: 11px; font-weight: var(--font-weight-bold); }
 .money { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold); }

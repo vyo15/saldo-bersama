@@ -54,8 +54,12 @@ const useTransactionReset = ({ open, transaction, initialType, initialSourceAcco
 };
 
 const useTransactionData = (bootstrap, overview, form) => {
-  const accounts = useMemo(() => bootstrap?.accounts?.filter((item) => item.status === "active" && item.can_transact !== false) || [], [bootstrap?.accounts]);
   const accountBalances = useMemo(() => overview?.accountBalances || [], [overview?.accountBalances]);
+  const accounts = useMemo(() => {
+    const balanceLookup = new Map(accountBalances.map((item) => [item.account_id, item]));
+    return bootstrap?.accounts?.filter((item) => item.status === "active" && item.can_transact !== false)
+      .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) })) || [];
+  }, [accountBalances, bootstrap?.accounts]);
   const categories = useMemo(() => bootstrap?.categories?.filter((item) => item.status === "active") || [], [bootstrap?.categories]);
   const envelopes = useMemo(() => overview?.envelopes?.filter((item) => item.status === "active") || [], [overview?.envelopes]);
   const visibleCategories = useMemo(() => categories.filter((item) => item.transaction_type === form.transaction_type || (form.transaction_type === "refund" && item.transaction_type === "expense")), [categories, form.transaction_type]);
@@ -65,10 +69,44 @@ const useTransactionData = (bootstrap, overview, form) => {
 const transactionMode = (form) => ({ isIncome: form.transaction_type === TRANSACTION_TYPES.INCOME || form.transaction_type === TRANSACTION_TYPES.REFUND, isTransfer: form.transaction_type === TRANSACTION_TYPES.TRANSFER });
 const destinationAccounts = (accounts, sourceAccount, isTransfer) => isTransfer && sourceAccount ? filterByOwnership(accounts, sourceAccount).filter((account) => account.account_id !== sourceAccount.account_id) : accounts;
 
+const transactionImpactDeltas = ({ transactionType, amount, envelopeRemaining, hasEnvelope }) => {
+  if (transactionType === TRANSACTION_TYPES.ADJUSTMENT) return { sourceDelta: amount, availableDelta: amount };
+  if (transactionType === TRANSACTION_TYPES.TRANSFER) return { sourceDelta: -amount, availableDelta: -amount };
+  if (transactionType === TRANSACTION_TYPES.EXPENSE) {
+    const freeDebit = hasEnvelope ? Math.max(0, amount - envelopeRemaining) : amount;
+    return { sourceDelta: -amount, availableDelta: -freeDebit };
+  }
+  return { sourceDelta: 0, availableDelta: 0 };
+};
+
+const parseTransactionAmount = (value) => { try { return parseRupiah(value); } catch { return null; } };
+const balanceAfter = (item, balance, delta) => item ? balance + delta : null;
+
 const transactionImpact = ({ accountBalances, envelopes, form }) => {
-  let amount; try { amount = parseRupiah(form.amount); } catch { return null; }
-  const source = accountBalances.find((item) => item.account_id === form.source_account_id); const destination = accountBalances.find((item) => item.account_id === form.destination_account_id); const envelope = envelopes.find((item) => item.envelope_period_id === form.envelope_period_id);
-  return { amount, source, destination, envelope, sourceAfter: source ? Number(source.balance || 0) - amount : null, destinationAfter: destination ? Number(destination.balance || 0) + amount : null, envelopeAfter: envelope ? Number(envelope.remaining_amount || 0) - amount : null };
+  const amount = parseTransactionAmount(form.amount);
+  if (amount === null) return null;
+  const source = accountBalances.find((item) => item.account_id === form.source_account_id);
+  const destination = accountBalances.find((item) => item.account_id === form.destination_account_id);
+  const envelope = envelopes.find((item) => item.envelope_period_id === form.envelope_period_id);
+  const sourceBalance = Number(source?.balance || 0);
+  const sourceAvailable = Number(source?.available_balance ?? source?.balance ?? 0);
+  const destinationBalance = Number(destination?.balance || 0);
+  const destinationAvailable = Number(destination?.available_balance ?? destination?.balance ?? 0);
+  const envelopeRemaining = Math.max(0, Number(envelope?.remaining_amount || 0));
+  const { sourceDelta, availableDelta } = transactionImpactDeltas({ transactionType: form.transaction_type, amount, envelopeRemaining, hasEnvelope: Boolean(envelope) });
+  return {
+    amount,
+    source,
+    destination,
+    envelope,
+    sourceAfter: balanceAfter(source, sourceBalance, sourceDelta),
+    sourceAvailable,
+    sourceAvailableAfter: balanceAfter(source, sourceAvailable, availableDelta),
+    destinationAfter: balanceAfter(destination, destinationBalance, amount),
+    destinationAvailable,
+    destinationAvailableAfter: balanceAfter(destination, destinationAvailable, amount),
+    envelopeAfter: balanceAfter(envelope, envelopeRemaining, -amount),
+  };
 };
 
 const transactionPreparedInput = ({ form, transaction, isIncome, confirmation }) => ({ ...form, transaction_id: transaction?.transaction_id, row_version: transaction?.row_version, source_account_id: isIncome ? "" : form.source_account_id, destination_account_id: form.destination_account_id, confirm_duplicate: confirmation?.code === "POSSIBLE_DUPLICATE" });
@@ -101,9 +139,15 @@ const FieldControl = ({ icon: Icon, children }) => <span className={styles.field
 
 const AmountDateFields = ({ form, update, errors, amountRef }) => <><div className={`money-entry ${styles.amountEntry}`}><div className={styles.amountVisual}><MoneyInput ref={amountRef} id="transaction-amount" value={form.amount} onChange={(value) => update("amount", value)} error={errors.amount} required /><span className={styles.currencyBadge} aria-hidden="true">Rp</span><FiGrid className={styles.amountIcon} aria-hidden="true" /></div>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <><span className={styles.quickLabel}>Pilih nominal cepat</span><div className={`quick-amounts ${styles.quickAmounts}`} aria-label="Nominal pengeluaran cepat">{QUICK_EXPENSE_AMOUNTS.map((amount) => <button key={amount} type="button" onClick={() => update("amount", String(amount))}>{formatRupiah(amount)}</button>)}</div></> : null}</div><label className={`field ${styles.visualField}`} htmlFor="transaction-date"><span>Tanggal *</span><FieldControl icon={FiCalendar}><input id="transaction-date" type="date" value={form.transaction_date} onChange={(event) => update("transaction_date", event.target.value)} aria-invalid={Boolean(errors.transaction_date)} /></FieldControl>{formatDateLongIndonesia(form.transaction_date) ? <small>{formatDateLongIndonesia(form.transaction_date)}</small> : null}{errors.transaction_date ? <small className="field__error">{errors.transaction_date}</small> : null}</label></>;
 
-const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState }) => { const nextAccount = accounts.find((item) => item.account_id === nextId) || null; setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => { const destination = accounts.find((item) => item.account_id === current.destination_account_id) || null; const envelope = envelopes.find((item) => item.envelope_period_id === current.envelope_period_id) || null; return { ...current, source_account_id: nextId, destination_account_id: isTransfer && destination && (destination.account_id === nextId || !hasSameOwnership(destination, nextAccount)) ? "" : current.destination_account_id, envelope_period_id: envelope && !hasSameOwnership(envelope, nextAccount) ? "" : current.envelope_period_id }; }); };
+const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState }) => { const nextAccount = accounts.find((item) => item.account_id === nextId) || null; setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => { const destination = accounts.find((item) => item.account_id === current.destination_account_id) || null; const envelope = envelopes.find((item) => item.envelope_period_id === current.envelope_period_id) || null; return { ...current, source_account_id: nextId, destination_account_id: isTransfer && destination && (destination.account_id === nextId || !hasSameOwnership(destination, nextAccount)) ? "" : current.destination_account_id, envelope_period_id: envelope && envelope.source_account_id !== nextId ? "" : current.envelope_period_id }; }); };
 
-const SourceAccountField = ({ form, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState, errors }) => { const change = (event) => applySourceAccountChange({ nextId: event.target.value, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState }); return <label className={`field ${styles.visualField}`} htmlFor="source-account"><span>Rekening sumber *</span><FieldControl icon={FiCreditCard}><select id="source-account" value={form.source_account_id} onChange={change} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></FieldControl>{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>; };
+const accountAvailableLabel = (item) => `${accountDisplayLabel(item)} · tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`;
+
+const SourceAccountField = ({ form, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState, errors }) => {
+  const change = (event) => applySourceAccountChange({ nextId: event.target.value, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState });
+  const selected = accounts.find((item) => item.account_id === form.source_account_id) || null;
+  return <label className={`field ${styles.visualField}`} htmlFor="source-account"><span>Rekening sumber *</span><FieldControl icon={FiCreditCard}><select id="source-account" value={form.source_account_id} onChange={change} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountAvailableLabel(item)}</option>)}</select></FieldControl>{selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dalam kantong {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}{errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}</label>;
+};
 
 const DestinationAccountField = ({ form, accounts, update, errors }) => <label className={`field ${styles.visualField}`} htmlFor="destination-account"><span>Rekening tujuan *</span><FieldControl icon={FiCreditCard}><select id="destination-account" value={form.destination_account_id} onChange={(event) => update("destination_account_id", event.target.value)} aria-invalid={Boolean(errors.destination_account_id)}><option value="">Pilih rekening</option>{accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></FieldControl>{errors.destination_account_id ? <small className="field__error">{errors.destination_account_id}</small> : null}</label>;
 
@@ -119,7 +163,7 @@ const AccountCategoryFields = (p) => <>{!p.isIncome ? <SourceAccountField {...p}
 
 const OptionalFields = ({ form, update, errors, detailsOpen, setDetailsOpen }) => <div className="form-grid__full optional-fields"><button className="optional-fields__toggle" type="button" aria-expanded={detailsOpen} aria-controls="transaction-optional-fields" onClick={() => setDetailsOpen((current) => !current)}><span><strong>Detail tambahan</strong></span><FiChevronDown aria-hidden="true" /></button><div id="transaction-optional-fields" className={`optional-fields__content${detailsOpen ? " is-open" : ""}`} hidden={!detailsOpen}><VisualChoiceGroup className="form-grid__full" legend="Metode pembayaran" name="payment_method" value={form.payment_method} onChange={(value) => update("payment_method", value)} options={PAYMENT_METHOD_OPTIONS} columns={3} compact /><label className="field" htmlFor="merchant"><span>Merchant/penerima</span><input id="merchant" maxLength="120" value={form.merchant} onChange={(event) => update("merchant", event.target.value)} /></label>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <label className="field form-grid__full" htmlFor="overspend-reason"><span>Alasan jika melebihi jatah</span><input id="overspend-reason" maxLength="180" value={form.overspend_reason} onChange={(event) => update("overspend_reason", event.target.value)} aria-invalid={Boolean(errors.overspend_reason)} placeholder="Wajib hanya jika sisa jatah tidak cukup" />{errors.overspend_reason ? <small className="field__error">{errors.overspend_reason}</small> : null}</label> : null}<label className="field form-grid__full" htmlFor="description"><span>Keterangan</span><textarea id="description" rows="3" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} /></label></div></div>;
 
-const ImpactPreview = ({ impact, isTransfer }) => impact ? <div className="notice notice--info form-grid__full impact-preview" aria-live="polite"><strong>Preview dampak</strong>{impact.source ? <span>Saldo {impact.source.name}: {formatRupiah(impact.source.balance)} → {formatRupiah(impact.sourceAfter)}</span> : null}{impact.destination ? <span>Saldo {impact.destination.name}: {formatRupiah(impact.destination.balance)} → {formatRupiah(impact.destinationAfter)}</span> : null}{impact.envelope ? <span>Sisa {impact.envelope.name}: {formatRupiah(impact.envelope.remaining_amount)} → {formatRupiah(impact.envelopeAfter)}</span> : null}{isTransfer ? <span>Transfer antar rekening.</span> : null}</div> : null;
+const ImpactPreview = ({ impact, isTransfer }) => impact ? <div className="notice notice--info form-grid__full impact-preview" aria-live="polite"><strong>Preview dampak</strong>{impact.source ? <span>Saldo {impact.source.name}: {formatRupiah(impact.source.balance)} → {formatRupiah(impact.sourceAfter)}</span> : null}{impact.source ? <span>Dana tersedia {impact.source.name}: {formatRupiah(impact.sourceAvailable)} → {formatRupiah(impact.sourceAvailableAfter)}</span> : null}{impact.destination ? <span>Saldo {impact.destination.name}: {formatRupiah(impact.destination.balance)} → {formatRupiah(impact.destinationAfter)}</span> : null}{impact.destination ? <span>Dana tersedia {impact.destination.name}: {formatRupiah(impact.destinationAvailable)} → {formatRupiah(impact.destinationAvailableAfter)}</span> : null}{impact.envelope ? <span>Sisa {impact.envelope.name}: {formatRupiah(impact.envelope.remaining_amount)} → {formatRupiah(impact.envelopeAfter)}</span> : null}{isTransfer ? <span>Transfer memakai dana yang belum dialokasikan dari rekening sumber.</span> : null}</div> : null;
 
 const TransactionFields = (p) => <>{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} /><AccountCategoryFields {...p} /><OptionalFields form={p.form} update={p.update} errors={p.errors} detailsOpen={p.detailsOpen} setDetailsOpen={p.setDetailsOpen} /><ImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
 
@@ -128,8 +172,10 @@ const isMobileTransferPresentation = ({ presentation, isTransfer, transaction })
 const transactionDerivedData = ({ data, form, isTransfer, bootstrap, user }) => {
   const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null;
   const compatibleDestinationAccounts = destinationAccounts(data.accounts, sourceAccount, isTransfer);
-  const ownedEnvelopes = sourceAccount ? filterByOwnership(data.envelopes, sourceAccount) : data.envelopes;
-  const compatibleEnvelopes = filterByAssigneeAccess(ownedEnvelopes, bootstrap?.user || user);
+  const accountEnvelopes = sourceAccount
+    ? data.envelopes.filter((item) => item.source_account_id === sourceAccount.account_id)
+    : [];
+  const compatibleEnvelopes = filterByAssigneeAccess(accountEnvelopes, bootstrap?.user || user);
   return { compatibleDestinationAccounts, compatibleEnvelopes };
 };
 

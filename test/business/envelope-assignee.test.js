@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createEnvelope, listEnvelopes, moveEnvelope } from "../../api/_lib/services/planning/envelopes.js";
+import { archiveEnvelopeRule, createEnvelope, listEnvelopes, moveEnvelope, restoreEnvelopeRule, reverseEnvelopeMovement } from "../../api/_lib/services/planning/envelopes.js";
 import { normalizeTransaction } from "../../api/_lib/services/finance.js";
 import { deactivateUser } from "../../api/_lib/services/users.js";
 import { normalizeRestoredRows } from "../../api/_lib/services/maintenance/shared.js";
@@ -39,6 +39,10 @@ const seed = async (db, { personalAccount = true } = {}) => {
   await db.execute(
     "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     ["account-shared", "Bank Bersama", "bank", "shared", null, 5_000_000, "2020-01-01", 0, "active", 1, administrator.user_id, now, administrator.user_id, now],
+  );
+  await db.execute(
+    "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    ["account-shared-2", "Bank Bersama 2", "bank", "shared", null, 5_000_000, "2020-01-01", 0, "active", 1, administrator.user_id, now, administrator.user_id, now],
   );
   if (personalAccount) {
     await db.execute(
@@ -96,6 +100,8 @@ test("Alokasi menyimpan penerima terpisah dari ownership ledger dan read model m
     assert.equal(item.assignee_user_id, member.user_id);
     assert.equal(item.assignee_name, member.name);
     assert.equal(item.assignee_role, "member");
+    assert.equal(item.source_account_id, "account-shared");
+    assert.equal(item.source_account_name, "Bank Bersama");
   } finally {
     db.close();
   }
@@ -231,4 +237,137 @@ test("restore backup legacy memberi assignee personal ke pemilik dan shared teta
   ]);
   assert.equal(restored[0].assignee_user_id, member.user_id);
   assert.equal(restored[1].assignee_user_id, null);
+});
+
+test("Kantong baru wajib memiliki rekening sumber aktif", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await assert.rejects(
+      createEnvelope(db, adminContext("envelopes.create", envelopePayload("Tanpa sumber", "", ""))),
+      (error) => error.code === "ENVELOPE_SOURCE_ACCOUNT_REQUIRED" && error.status === 400,
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test("Realokasi lintas rekening sumber ditolak dan harus memakai Transfer", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const from = await createAssignedEnvelope(db, "Makan BCA", "", "account-shared");
+    const to = await createAssignedEnvelope(db, "Transport Mandiri", "", "account-shared-2");
+
+    await assert.rejects(
+      moveEnvelope(db, {
+        actor: administrator,
+        action: "envelopes.move",
+        payload: {
+          fromEnvelopePeriodId: from.period.envelope_period_id,
+          toEnvelopePeriodId: to.period.envelope_period_id,
+          amount: 10_000,
+          reason: "uji lintas rekening",
+          from_row_version: from.period.row_version,
+          to_row_version: to.period.row_version,
+        },
+        requestId: "test:cross-account-move",
+        enqueueMirror: async () => {},
+      }),
+      (error) => error.code === "ENVELOPE_SOURCE_ACCOUNT_MISMATCH" && error.status === 409,
+    );
+  } finally {
+    db.close();
+  }
+});
+
+
+test("Kantong arsip tanpa rekening sumber tidak dapat dipulihkan", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const created = await createAssignedEnvelope(db, "Arsip legacy", "", "account-shared");
+    const archived = await archiveEnvelopeRule(db, adminContext("envelopes.archiveRule", {
+      envelope_rule_id: created.rule.envelope_rule_id,
+      row_version: created.rule.row_version,
+      reason: "uji arsip sebelum restore",
+    }));
+    await db.execute("UPDATE envelope_rules SET source_account_id=NULL WHERE envelope_rule_id=?", [created.rule.envelope_rule_id]);
+
+    await assert.rejects(
+      restoreEnvelopeRule(db, adminContext("envelopes.restoreRule", {
+        envelope_rule_id: created.rule.envelope_rule_id,
+        row_version: archived.row_version,
+        reason: "uji restore legacy tanpa sumber",
+      })),
+      (error) => error.code === "ENVELOPE_SOURCE_ACCOUNT_REQUIRED" && error.status === 409,
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test("Restore kantong ditolak jika dana tersedia tidak lagi cukup", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const first = await createAssignedEnvelope(db, "Dana lama", "", "account-shared");
+    const archived = await archiveEnvelopeRule(db, adminContext("envelopes.archiveRule", {
+      envelope_rule_id: first.rule.envelope_rule_id,
+      row_version: first.rule.row_version,
+      reason: "uji ketersediaan restore",
+    }));
+    await createEnvelope(db, adminContext("envelopes.create", {
+      ...envelopePayload("Dana pengganti", "", "account-shared"),
+      default_amount: 4_700_000,
+      allocated_amount: 4_700_000,
+    }));
+
+    await assert.rejects(
+      restoreEnvelopeRule(db, adminContext("envelopes.restoreRule", {
+        envelope_rule_id: first.rule.envelope_rule_id,
+        row_version: archived.row_version,
+        reason: "uji dana restore tidak cukup",
+      })),
+      (error) => error.code === "ALLOCATION_EXCEEDS_AVAILABLE" && error.status === 409,
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test("Pembatalan realokasi legacy lintas rekening tetap dapat memulihkan alokasi", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const from = await createAssignedEnvelope(db, "Legacy A", "", "account-shared");
+    const to = await createAssignedEnvelope(db, "Legacy B", "", "account-shared-2");
+    await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount-100000,row_version=row_version+1 WHERE envelope_period_id=?", [from.period.envelope_period_id]);
+    await db.execute("UPDATE envelope_periods SET allocated_amount=allocated_amount+100000,row_version=row_version+1 WHERE envelope_period_id=?", [to.period.envelope_period_id]);
+    await db.execute(
+      "INSERT INTO envelope_movements(movement_id,from_envelope_period_id,to_envelope_period_id,amount,movement_type,reason,status,row_version,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+      ["legacy-cross-move", from.period.envelope_period_id, to.period.envelope_period_id, 100_000, "reallocation", "legacy cross-account", "active", 1, administrator.user_id, now],
+    );
+    const [fromCurrent, toCurrent] = await Promise.all([
+      db.one("SELECT row_version FROM envelope_periods WHERE envelope_period_id=?", [from.period.envelope_period_id]),
+      db.one("SELECT row_version FROM envelope_periods WHERE envelope_period_id=?", [to.period.envelope_period_id]),
+    ]);
+
+    const reversed = await reverseEnvelopeMovement(db, adminContext("envelopes.reverseMovement", {
+      movement_id: "legacy-cross-move",
+      row_version: 1,
+      from_row_version: fromCurrent.row_version,
+      to_row_version: toCurrent.row_version,
+      reason: "pulihkan realokasi legacy",
+    }));
+    assert.equal(reversed.status, "reversed");
+    const [fromAfter, toAfter] = await Promise.all([
+      db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_period_id=?", [from.period.envelope_period_id]),
+      db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_period_id=?", [to.period.envelope_period_id]),
+    ]);
+    assert.equal(Number(fromAfter.allocated_amount), 500_000);
+    assert.equal(Number(toAfter.allocated_amount), 500_000);
+  } finally {
+    db.close();
+  }
 });

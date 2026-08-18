@@ -360,7 +360,11 @@ test("budget dan recurring tetap dapat create, update, pay, reverse, skip, dan r
     });
     assert.equal(afterPaymentState.overview.totalBalance, beforePaymentState.overview.totalBalance - 50_000);
     assert.equal(afterPaymentState.overview.reservedBills, beforePaymentState.overview.reservedBills - 50_000);
-    assert.equal(afterPaymentState.overview.safeToSpend, beforePaymentState.overview.safeToSpend, "tagihan yang sudah dibayar penuh mengganti reserve dengan pengurangan saldo aktual, bukan dihitung ganda");
+    assert.equal(
+      afterPaymentState.overview.safeToSpend,
+      beforePaymentState.overview.safeToSpend + 50_000,
+      "pembayaran dari Kantong membebaskan reserve tagihan tanpa mengurangi dana bebas dua kali karena balance dan allocated_remaining turun bersama",
+    );
     const envelopeAfterPayment = await dispatchAction({
       signedActor,
       action: "envelopes.list",
