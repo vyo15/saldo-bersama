@@ -38,6 +38,14 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Mobile presentation sudah dipisah ke CSS Module `MobileTransactionHistory.module.css`; `TransactionsPage.css` masih transitional untuk desktop table/filter dan detail modal. Backend finance, schema, saldo, authorization, audit, idempotency, serta login tidak berubah oleh redesign ini.
 
 
+## Beranda mobile dan mutation safety saat ini
+
+- Beranda mobile memakai data canonical `dashboard.overview` untuk saldo, batas aman harian, rekening aktif, arus kas, alert, lima transaksi terbaru, serta ringkasan Alokasi agregat. Shortcut utama tetap fokus pada aksi harian `Pemasukan`, `Pengeluaran`, dan `Transfer`; saat alert tersedia, `Perlu perhatian` diprioritaskan sebelum daftar rekening. Filter/search lengkap sengaja tetap berada di `/transaksi`; recent slice Dashboard tidak dipresentasikan seolah-olah mewakili seluruh ledger. Transfer baru pada viewport mobile memakai presentasi `mobile-transfer` dari `TransactionForm` canonical, bukan form terpisah.
+- Ringkasan Alokasi menjumlahkan nominal `used_amount + reserved_amount` sebagai **terpakai + dipesan** dan tidak lagi memilih kantong pertama berdasarkan urutan nama. Perhitungan saldo/ledger tidak berubah.
+- Mutation biasa yang berakhir `OUTCOME_UNKNOWN` mempertahankan idempotency intent di private-memory. Payload berbeda untuk action yang sama diblok sampai intent lama mendapat hasil definitif; form transaksi mengunci field dan menyediakan retry data yang sama. Reset/full reset tetap memakai recovery/status workflow khusus.
+- Close/reopen periode serta perubahan anggota menginvalidasi projection yang bergantung, termasuk transaksi/dashboard, agar capability dan label tidak tertahan cache lama.
+- Service Worker v10 tetap network-only untuk `/api/*`; stable image memakai stale-while-revalidate sehingga asset publik dapat diperbarui setelah deployment tanpa menunggu cache lama habis.
+
 ## Visual summary planning saat ini
 
 - Target, Alokasi, Jadwal rutin, dan Anggota memakai summary hero responsif dengan artwork existing agar kualitas visual konsisten dengan Anggaran tanpa menambah route, request, mutation, atau schema baru.

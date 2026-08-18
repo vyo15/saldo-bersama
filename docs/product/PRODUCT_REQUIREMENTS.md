@@ -125,7 +125,7 @@ Queue idempotent dan Web Push mendukung recurring due, budget threshold, kantong
 
 ### `REQ-PROD-17` Keamanan dan anti-kesalahan — Implemented
 
-Google login, signed session, allowlist, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation sekarang memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Kantong memiliki archive/restore rule dan reverse movement tanpa hard delete.
+Google login, signed session, allowlist, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation sekarang memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown. Selama hasil mutation biasa belum definitif, payload berbeda untuk action yang sama diblok di private-memory agar edit user tidak diam-diam menjadi mutation kedua; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Kantong memiliki archive/restore rule dan reverse movement tanpa hard delete.
 
 **Operasional yang belum terbukti:** full quality gate Node 24 pada patch terbaru, migration parity production, real-resource restore drill, external alerting, dan rotasi secret yang pernah ikut ZIP manual.
 

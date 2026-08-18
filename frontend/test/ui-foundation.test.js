@@ -309,15 +309,20 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   for (const asset of [desktopLight, desktopDark, logo, googleLogo, ...mobileAssets]) assert.ok(asset.length > 1_000);
 });
 
-test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", async () => {
+test("dashboard mobile memakai aksi transaksi harian, alert prioritas, dan privacy menyeluruh", async () => {
   const [dashboard, presentation, mobile] = await Promise.all([
     read("src/features/dashboard/DashboardPage.jsx"),
     read("src/features/dashboard/dashboardPresentation.js"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
   ]);
-  const quickActionEntries = presentation.match(/\{ to: "\/(?:rekening|alokasi|tagihan|target)"/g) || [];
 
-  assert.equal(quickActionEntries.length, 4);
+  assert.doesNotMatch(presentation, /QUICK_ACTIONS/);
+  assert.match(mobile, /TRANSACTION_QUICK_ACTIONS/);
+  assert.match(mobile, /TRANSACTION_TYPES\.INCOME/);
+  assert.match(mobile, /TRANSACTION_TYPES\.EXPENSE/);
+  assert.match(mobile, /TRANSACTION_TYPES\.TRANSFER/);
+  assert.match(mobile, /onOpenTransaction\(type\)/);
+  assert.match(dashboard, /presentation: initialType === TRANSACTION_TYPES\.TRANSFER \? "mobile-transfer" : "default"/);
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/MobileFinanceDashboard\.jsx"\)\)/);
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/DesktopFinanceDashboard\.jsx"\)\)/);
   assert.doesNotMatch(dashboard, /import MobileFinanceDashboard from "\.\/components\/MobileFinanceDashboard\.jsx";/);
@@ -327,6 +332,7 @@ test("dashboard mobile memakai empat shortcut sekunder dan privacy menyeluruh", 
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.match(mobile, /ThemeToggle tone="hero"/);
+  assert.ok(mobile.indexOf("<MobileAlerts") < mobile.indexOf("<MobileAccounts"), "Perlu perhatian harus muncul sebelum daftar rekening pada dashboard mobile.");
 });
 
 test("stylesheet global tidak menghidupkan kembali selector legacy tanpa pemilik runtime", async () => {
@@ -381,11 +387,10 @@ test("feature write memakai API facade lokal dan halaman tidak mengimpor transpo
 });
 
 test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi business form", async () => {
-  const [page, desktop, mobile, filters, detail, responsive] = await Promise.all([
+  const [page, desktop, mobile, detail, responsive] = await Promise.all([
     read("src/features/dashboard/DashboardPage.jsx"),
     read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
-    read("src/features/dashboard/components/MobileDashboardFilters.jsx"),
     read("src/features/dashboard/components/MobileTransactionDetail.jsx"),
     read("src/styles/responsive.css"),
   ]);
@@ -393,9 +398,8 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.equal((page.match(/<TransactionForm/g) || []).length, 0, "Dashboard tidak boleh memiliki implementasi form transaksi sendiri.");
   assert.match(page, /useTransactionComposer/, "Dashboard harus membuka composer transaksi milik application context.");
   assert.doesNotMatch(page, /transactions\/TransactionForm\.jsx/, "Dashboard tidak boleh mengimpor implementation detail TransactionForm.");
-  assert.match(page, /const MobileDashboardFilters = lazy\(\(\) => import\("\.\/components\/MobileDashboardFilters\.jsx"\)\)/);
+  assert.doesNotMatch(page, /MobileDashboardFilters|mobileFiltersOpen/);
   assert.match(page, /const MobileTransactionDetail = lazy\(\(\) => import\("\.\/components\/MobileTransactionDetail\.jsx"\)\)/);
-  assert.match(page, /mobileFiltersOpen \? \(/);
   assert.match(page, /mobileTransactionDetailOpen \? \(/);
   assert.match(desktop, /aria-label=\{balanceVisible \? "Sembunyikan seluruh nominal"/);
   assert.match(desktop, /<h2 id="dashboard-accounts-title">Rekening<\/h2>/);
@@ -405,7 +409,8 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.match(desktop, /shared-transaction-table/);
   assert.match(desktop, /shared-donut/);
   assert.match(mobile, /type="button" className="mobile-transaction-item"/);
-  assert.match(filters, /<form className="mobile-dashboard-filter-form"/);
+  assert.doesNotMatch(mobile, /mobile-dashboard-filter-button|onOpenFilters/);
+  assert.match(mobile, /recentTransactions\.slice\(0, 5\)/);
   assert.match(detail, /<Modal/);
   assert.match(detail, /<dl>/);
   assert.doesNotMatch(responsive, /\.premium-/);

@@ -24,7 +24,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection, owner restore arsip | split/stages pending RFC-0013/0014 |
 | `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences + skip/restore satu occurrence + owner restore arsip + H-2/completion notification | assignee/receipt pending RFC-0011/0013 |
 | `REQ-PROD-08` | Kalender keuangan | Partial | shared recurring Calendar bridge + ScriptLock + duplicate managed-event self-heal | internal multi-event calendar belum ada |
-| `REQ-PROD-09` | Dashboard pasangan | Implemented | shared dashboard view model, mobile/desktop filters, detail, alerts, privacy | Production/device smoke |
+| `REQ-PROD-09` | Dashboard pasangan | Implemented | shared dashboard view model; desktop filter; mobile 5 transaksi terbaru + detail, rekening, arus kas, ringkasan alokasi, alerts, privacy; filter/search lengkap canonical di `/transaksi` | Production/device smoke |
 | `REQ-PROD-10` | Kontribusi/split | Planned | hanya aktivitas pencatatan | RFC-0013 |
 | `REQ-PROD-11` | Quick/draft transaction | Partial | quick form, duplicate guard, unallocated alerts | draft/template pending RFC-0011 |
 | `REQ-PROD-12` | Utang/piutang | Planned | tidak ada runtime table/action | RFC-0012 |

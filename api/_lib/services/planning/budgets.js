@@ -1,7 +1,7 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, monthBounds, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
-import { nextVersionStamp } from "../versioning.js";
+import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
 export const budgetListStatement = (context) => {
   const period = periodKey(context.payload?.period);
@@ -71,11 +71,7 @@ export const upsertBudget = async (db, context) => {
       amount,
       warning_threshold: threshold,
       status: "active",
-      row_version: 1,
-      created_by: context.actor.user_id,
-      created_at: now,
-      updated_by: context.actor.user_id,
-      updated_at: now,
+      ...newVersionStamp(context.actor.user_id, now),
       scope: owned.scope,
       owner_user_id: owned.owner_user_id
     };

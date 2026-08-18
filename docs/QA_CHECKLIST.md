@@ -23,6 +23,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Nominal tetap integer Rupiah dan timezone/date contract tidak berubah diam-diam.
 - [ ] Transfer tetap netral terhadap total income/expense dan hanya antar rekening valid berbeda.
 - [ ] Mutation tetap memakai validation, idempotency, row-version/concurrency, server confirmation, dan audit canonical sesuai scope.
+- [ ] Simulasikan `OUTCOME_UNKNOWN`: retry payload yang sama memakai intent/key yang sama, payload berbeda pada action yang sama diblok, dan form transaksi tidak dapat diedit/didismiss sebelum hasil definitif.
 - [ ] Authorization tetap deny-by-default; actor/role/email/audit field dari client tidak dipercaya.
 - [ ] Secret/token/raw financial data/raw stack trace tidak masuk frontend, log, fixture, commit, atau ZIP.
 - [ ] Delete/import/restore/reset/migration mengikuti preview, backup, confirmation, integrity check, dan audit bila relevan.

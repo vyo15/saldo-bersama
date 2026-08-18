@@ -193,12 +193,11 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(navigation, /Kumpulkan dana ke rekening tujuan/);
 });
 
-test("dashboard desktop dan mobile memakai view model, filter, detail, alert, dan privacy yang sama", async () => {
-  const [page, desktop, mobile, filters, detail] = await Promise.all([
+test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap tetap canonical di desktop/transaksi", async () => {
+  const [page, desktop, mobile, detail] = await Promise.all([
     source("src/features/dashboard/DashboardPage.jsx"),
     source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
-    source("src/features/dashboard/components/MobileDashboardFilters.jsx"),
     source("src/features/dashboard/components/MobileTransactionDetail.jsx"),
   ]);
 
@@ -207,7 +206,10 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   assert.match(page, /accountBalances = \(overview\.accountBalances \|\| \[\]\)\.map/);
   assert.match(page, /displayOverview = \{ \.\.\.overview, accountBalances: dashboardViewModel\.accountBalances \}/);
   assert.match(page, /viewModel=\{dashboardViewModel\}/);
-  assert.match(page, /MobileDashboardFilters/);
+  assert.doesNotMatch(page, /MobileDashboardFilters|mobileFiltersOpen/);
+  assert.match(page, /selectedTransaction = filteredTransactions\.find/);
+  assert.match(page, /mobileSelectedTransaction = recentTransactions\.find/);
+  assert.match(page, /transaction=\{dashboardViewModel\.mobileSelectedTransaction\}/);
   assert.match(page, /MobileTransactionDetail/);
   assert.match(desktop, /SensitiveMoney/);
   assert.match(desktop, /Transaksi rekening/);
@@ -226,12 +228,11 @@ test("dashboard desktop dan mobile memakai view model, filter, detail, alert, da
   assert.match(mobile, /Batas aman per hari/);
   assert.match(mobile, /Belum dialokasikan/);
   assert.match(mobile, /Rincian rekening dan kategori/);
-  assert.match(mobile, /onOpenFilters/);
+  assert.doesNotMatch(mobile, /onOpenFilters|mobile-dashboard-filter-button|FiSliders/);
+  assert.match(mobile, /recentTransactions\.slice\(0, 5\)/);
+  assert.match(mobile, /terpakai \+ dipesan/);
+  assert.match(mobile, /allocationSummary/);
   assert.match(mobile, /onOpenTransactionDetail/);
-  assert.match(filters, /TRANSACTION_LABELS/);
-  assert.match(filters, /Semua rekening/);
-  assert.match(filters, /Semua kategori/);
-  assert.match(filters, /categories\.map\(\(item\) => <option[^>]+>\{item\.name\}<\/option>\)/);
   assert.match(detail, /Detail transaksi/);
   assert.match(detail, /lastSyncedAt/);
 });

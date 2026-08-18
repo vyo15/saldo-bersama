@@ -320,7 +320,7 @@ const envelopeAlerts = (envelopes) => {
       id: `envelope:${item.envelope_period_id}:${crossed.threshold}`,
       type: "envelope_threshold",
       severity: crossed.severity,
-      title: `${item.name} ${percentage}% terpakai`,
+      title: `${item.name} ${percentage}% terpakai + dipesan`,
       message: percentage >= 100 ? "Kantong sudah habis atau terlampaui." : `Sisa kantong mendekati batas ${crossed.threshold}%.`,
       targetPath: "/alokasi",
     });

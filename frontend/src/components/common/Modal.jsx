@@ -39,7 +39,7 @@ const Modal = ({
   size = "md",
   initialFocusRef,
   className = "",
-  mobileSwipeToClose = false,
+  mobileSwipeToClose = true,
   dismissible = true,
   closeIcon: CloseIcon = FiX,
   closeLabel = "Tutup dialog",
@@ -68,7 +68,7 @@ const Modal = ({
   const handleBackdropPointerDown = (event) => { if (canDismiss && event.target === event.currentTarget) closeModal(); };
   return createPortal(
     <div
-      className={`${styles.backdrop} modal-backdrop`}
+      className={`${styles.backdrop} ${dismissing ? styles.backdropDismissing : ""} modal-backdrop`.trim()}
       role="presentation"
       onPointerDown={handleBackdropPointerDown}
     >

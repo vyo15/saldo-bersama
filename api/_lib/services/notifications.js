@@ -682,7 +682,7 @@ const queueEnvelopeNotifications = async (db, state, envelopes) => {
     queued += await queueForRecipients(db, users, item, {
       type: "envelope_threshold",
       title: `Kantong ${shortName(item.name, "aktif")} sudah ${threshold}%`,
-      body: `Terpakai ${notificationRupiah(Number(item.used_amount || 0) + Number(item.reserved_amount || 0))} dari ${notificationRupiah(item.allocated_amount)}. Sisa ${notificationRupiah(Math.max(0, allocated - Number(item.used_amount || 0) - Number(item.reserved_amount || 0)))}.`,
+      body: `Terpakai + dipesan ${notificationRupiah(Number(item.used_amount || 0) + Number(item.reserved_amount || 0))} dari ${notificationRupiah(item.allocated_amount)}. Sisa ${notificationRupiah(Math.max(0, allocated - Number(item.used_amount || 0) - Number(item.reserved_amount || 0)))}.`,
       targetPath: "/alokasi",
       dedupeKey: `envelope:${item.envelope_period_id}:${threshold}`,
     }, disabledPreferences);

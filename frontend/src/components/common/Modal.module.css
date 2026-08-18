@@ -8,7 +8,10 @@
   background: var(--overlay);
   backdrop-filter: blur(10px);
   animation: modal-backdrop-in var(--motion-normal) var(--motion-easing);
+  transition: opacity 180ms ease-in;
 }
+
+.backdropDismissing { opacity: 0; }
 
 .dialog {
   width: min(100%, 42.5rem);
@@ -144,6 +147,11 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes mobile-sheet-in {
+  from { opacity: 0.96; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 820px) {
   .backdrop {
     padding: 0;
@@ -160,6 +168,9 @@
     border-bottom: 0;
     border-left: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation-name: mobile-sheet-in;
+    animation-duration: 340ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .header,
@@ -227,5 +238,6 @@
 @media (prefers-reduced-motion: reduce) {
   .backdrop,
   .dialog { animation: none; }
+  .backdrop { transition: none; }
   .swipeEnabled { transition: none; }
 }

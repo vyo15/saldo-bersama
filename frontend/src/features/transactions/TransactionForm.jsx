@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
-import { FiAlertTriangle, FiCalendar, FiCheck, FiChevronDown, FiChevronLeft, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
+import { useMediaQuery } from "../../hooks/useMediaQuery.js";
+import { FiAlertTriangle, FiCalendar, FiCheck, FiChevronLeft, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
 import Modal from "../../components/common/Modal.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
-import { AutoDebitIcon, BankTransferIcon, CashIcon, DebitCardIcon, EwalletIcon, MoneyInIcon, MoneyOutIcon, OtherIcon, RefundIcon, TransferIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { MoneyInIcon, MoneyOutIcon, RefundIcon, TransferIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import Button from "../../components/common/Button.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { createIdempotencyKey } from "../../domain/security.js";
-import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
+import { todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
 import { filterByAssigneeAccess, filterByOwnership, hasSameOwnership } from "../../domain/ownership.js";
@@ -22,21 +24,22 @@ import MobileTransferFields from "./MobileTransferFields.jsx";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
 
 const emptyForm = () => ({ transaction_type: TRANSACTION_TYPES.EXPENSE, transaction_date: todayInJakarta(), amount: "", source_account_id: "", destination_account_id: "", category_id: "", envelope_period_id: "", payment_method: "", merchant: "", description: "", overspend_reason: "" });
-const QUICK_EXPENSE_AMOUNTS = [2_000, 5_000, 10_000, 20_000, 50_000];
-const OPTIONAL_FIELDS = ["payment_method", "merchant", "description", "overspend_reason"];
+const QUICK_EXPENSE_AMOUNTS = [20_000, 50_000, 100_000, 200_000, 500_000];
+const MOBILE_TRANSACTION_QUERY = "(max-width: 820px)";
+const quickAmountLabel = (amount) => `${Math.round(amount / 1_000)} rb`;
 const TRANSACTION_TYPE_OPTIONS = Object.freeze([
-  { value: TRANSACTION_TYPES.EXPENSE, label: "Pengeluaran", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar" },
-  { value: TRANSACTION_TYPES.INCOME, label: "Pemasukan", icon: MoneyInIcon, tone: "income", description: "Uang masuk" },
-  { value: TRANSACTION_TYPES.TRANSFER, label: "Transfer", icon: TransferIcon, description: "Antar rekening" },
-  { value: TRANSACTION_TYPES.REFUND, label: "Refund", icon: RefundIcon, description: "Dana kembali" },
+  { value: TRANSACTION_TYPES.EXPENSE, label: "Pengeluaran", icon: MoneyOutIcon, tone: "expense" },
+  { value: TRANSACTION_TYPES.INCOME, label: "Pemasukan", icon: MoneyInIcon, tone: "income" },
+  { value: TRANSACTION_TYPES.TRANSFER, label: "Transfer", icon: TransferIcon },
+  { value: TRANSACTION_TYPES.REFUND, label: "Refund", icon: RefundIcon },
 ]);
 const PAYMENT_METHOD_OPTIONS = Object.freeze([
-  { value: "transfer", label: "Transfer", icon: BankTransferIcon },
-  { value: "cash", label: "Tunai", icon: CashIcon },
-  { value: "debit", label: "Kartu debit", icon: DebitCardIcon },
-  { value: "ewallet", label: "E-wallet", icon: EwalletIcon },
-  { value: "autodebit", label: "Auto-debit", icon: AutoDebitIcon },
-  { value: "", label: "Belum dipilih", icon: OtherIcon },
+  { value: "", label: "Belum dipilih" },
+  { value: "transfer", label: "Transfer" },
+  { value: "cash", label: "Tunai" },
+  { value: "debit", label: "Kartu debit" },
+  { value: "ewallet", label: "E-wallet" },
+  { value: "autodebit", label: "Auto-debit" },
 ]);
 
 const editableTransactionForm = (transaction) => {
@@ -44,13 +47,12 @@ const editableTransactionForm = (transaction) => {
   return { ...emptyForm(), ...editable, amount: String(transaction.amount || ""), overspend_reason: transaction.overspend_reason || "" };
 };
 
-const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef }) => {
+const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, setForm, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef }) => {
   useEffect(() => {
     if (!open) return;
     setForm(transaction ? editableTransactionForm(transaction) : { ...emptyForm(), transaction_type: initialType, source_account_id: initialSourceAccountId });
-    setDetailsOpen(transaction ? OPTIONAL_FIELDS.some((field) => Boolean(transaction[field])) : false);
     setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); idempotencyKeyRef.current = createIdempotencyKey();
-  }, [initialSourceAccountId, initialType, open, transaction, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef]);
+  }, [initialSourceAccountId, initialType, open, transaction, setForm, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef]);
 };
 
 const useTransactionData = (bootstrap, overview, form) => {
@@ -114,7 +116,7 @@ const transactionPreparedInput = ({ form, transaction, isIncome, confirmation })
 const handleTransactionError = (error, setters) => {
   if (error.code === "POSSIBLE_DUPLICATE") { setters.setConfirmation({ code: error.code, message: error.message, details: error.details }); setters.setSubmitState({ status: "idle", error: null }); return; }
   if (error.code === "OVER_BUDGET_CONFIRMATION_REQUIRED") setters.setErrors((current) => ({ ...current, overspend_reason: "Isi alasan penggunaan di atas sisa jatah." }));
-  setters.setSubmitState({ status: "error", error });
+  setters.setSubmitState({ status: isOutcomeUnknownError(error) ? "unknown" : "error", error });
   if (error.details && !Array.isArray(error.details)) setters.setErrors((current) => ({ ...current, ...error.details }));
 };
 
@@ -137,7 +139,7 @@ const TypeSelector = ({ form, update }) => <VisualChoiceGroup className="form-gr
 
 const FieldControl = ({ icon: Icon, children }) => <span className={styles.fieldControl}><Icon aria-hidden="true" /><span className={styles.fieldControlInput}>{children}</span></span>;
 
-const AmountDateFields = ({ form, update, errors, amountRef }) => <><div className={`money-entry ${styles.amountEntry}`}><div className={styles.amountVisual}><MoneyInput ref={amountRef} id="transaction-amount" value={form.amount} onChange={(value) => update("amount", value)} error={errors.amount} required /><span className={styles.currencyBadge} aria-hidden="true">Rp</span><FiGrid className={styles.amountIcon} aria-hidden="true" /></div>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <><span className={styles.quickLabel}>Pilih nominal cepat</span><div className={`quick-amounts ${styles.quickAmounts}`} aria-label="Nominal pengeluaran cepat">{QUICK_EXPENSE_AMOUNTS.map((amount) => <button key={amount} type="button" onClick={() => update("amount", String(amount))}>{formatRupiah(amount)}</button>)}</div></> : null}</div><label className={`field ${styles.visualField}`} htmlFor="transaction-date"><span>Tanggal *</span><FieldControl icon={FiCalendar}><input id="transaction-date" type="date" value={form.transaction_date} onChange={(event) => update("transaction_date", event.target.value)} aria-invalid={Boolean(errors.transaction_date)} /></FieldControl>{formatDateLongIndonesia(form.transaction_date) ? <small>{formatDateLongIndonesia(form.transaction_date)}</small> : null}{errors.transaction_date ? <small className="field__error">{errors.transaction_date}</small> : null}</label></>;
+const AmountDateFields = ({ form, update, errors, amountRef }) => <><div className={`money-entry ${styles.amountEntry}`}><div className={styles.amountVisual}><MoneyInput ref={amountRef} id="transaction-amount" value={form.amount} onChange={(value) => update("amount", value)} error={errors.amount} required /><span className={styles.currencyBadge} aria-hidden="true">Rp</span><FiGrid className={styles.amountIcon} aria-hidden="true" /></div>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <div className={`quick-amounts ${styles.quickAmounts}`} aria-label="Nominal pengeluaran cepat">{QUICK_EXPENSE_AMOUNTS.map((amount) => <button key={amount} type="button" aria-pressed={Number(form.amount || 0) === amount} onClick={() => update("amount", String(amount))}>{quickAmountLabel(amount)}</button>)}</div> : null}</div><label className={`field ${styles.visualField}`} htmlFor="transaction-date"><span>Tanggal *</span><FieldControl icon={FiCalendar}><input id="transaction-date" type="date" value={form.transaction_date} onChange={(event) => update("transaction_date", event.target.value)} aria-invalid={Boolean(errors.transaction_date)} /></FieldControl>{errors.transaction_date ? <small className="field__error">{errors.transaction_date}</small> : null}</label></>;
 
 const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState }) => { const nextAccount = accounts.find((item) => item.account_id === nextId) || null; setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => { const destination = accounts.find((item) => item.account_id === current.destination_account_id) || null; const envelope = envelopes.find((item) => item.envelope_period_id === current.envelope_period_id) || null; return { ...current, source_account_id: nextId, destination_account_id: isTransfer && destination && (destination.account_id === nextId || !hasSameOwnership(destination, nextAccount)) ? "" : current.destination_account_id, envelope_period_id: envelope && envelope.source_account_id !== nextId ? "" : current.envelope_period_id }; }); };
 
@@ -161,13 +163,13 @@ const EnvelopeField = ({ form, envelopes, update }) => <label className={`field 
 
 const AccountCategoryFields = (p) => <>{!p.isIncome ? <SourceAccountField {...p} /> : null}{p.isIncome || p.isTransfer ? <DestinationAccountField form={p.form} accounts={p.compatibleDestinationAccounts} update={p.update} errors={p.errors} /> : null}{!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} update={p.update} errors={p.errors} /> : null}{p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField form={p.form} envelopes={p.compatibleEnvelopes} update={p.update} /> : null}</>;
 
-const OptionalFields = ({ form, update, errors, detailsOpen, setDetailsOpen }) => <div className="form-grid__full optional-fields"><button className="optional-fields__toggle" type="button" aria-expanded={detailsOpen} aria-controls="transaction-optional-fields" onClick={() => setDetailsOpen((current) => !current)}><span><strong>Detail tambahan</strong></span><FiChevronDown aria-hidden="true" /></button><div id="transaction-optional-fields" className={`optional-fields__content${detailsOpen ? " is-open" : ""}`} hidden={!detailsOpen}><VisualChoiceGroup className="form-grid__full" legend="Metode pembayaran" name="payment_method" value={form.payment_method} onChange={(value) => update("payment_method", value)} options={PAYMENT_METHOD_OPTIONS} columns={3} compact /><label className="field" htmlFor="merchant"><span>Merchant/penerima</span><input id="merchant" maxLength="120" value={form.merchant} onChange={(event) => update("merchant", event.target.value)} /></label>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <label className="field form-grid__full" htmlFor="overspend-reason"><span>Alasan jika melebihi jatah</span><input id="overspend-reason" maxLength="180" value={form.overspend_reason} onChange={(event) => update("overspend_reason", event.target.value)} aria-invalid={Boolean(errors.overspend_reason)} placeholder="Wajib hanya jika sisa jatah tidak cukup" />{errors.overspend_reason ? <small className="field__error">{errors.overspend_reason}</small> : null}</label> : null}<label className="field form-grid__full" htmlFor="description"><span>Keterangan</span><textarea id="description" rows="3" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} /></label></div></div>;
+const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`} htmlFor="payment-method"><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><select id="payment-method" value={form.payment_method} onChange={(event) => update("payment_method", event.target.value)}>{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item.value || "unset"} value={item.value}>{item.label}</option>)}</select></FieldControl></label><label className={`field ${styles.visualField}`} htmlFor="merchant"><span>Merchant / penerima</span><input id="merchant" maxLength="120" value={form.merchant} onChange={(event) => update("merchant", event.target.value)} /></label>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <label className="field form-grid__full" htmlFor="overspend-reason"><span>Alasan jika melebihi jatah</span><input id="overspend-reason" maxLength="180" value={form.overspend_reason} onChange={(event) => update("overspend_reason", event.target.value)} aria-invalid={Boolean(errors.overspend_reason)} placeholder="Wajib hanya jika sisa jatah tidak cukup" />{errors.overspend_reason ? <small className="field__error">{errors.overspend_reason}</small> : null}</label> : null}<label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" /></label></>;
 
 const ImpactPreview = ({ impact, isTransfer }) => impact ? <div className="notice notice--info form-grid__full impact-preview" aria-live="polite"><strong>Preview dampak</strong>{impact.source ? <span>Saldo {impact.source.name}: {formatRupiah(impact.source.balance)} → {formatRupiah(impact.sourceAfter)}</span> : null}{impact.source ? <span>Dana tersedia {impact.source.name}: {formatRupiah(impact.sourceAvailable)} → {formatRupiah(impact.sourceAvailableAfter)}</span> : null}{impact.destination ? <span>Saldo {impact.destination.name}: {formatRupiah(impact.destination.balance)} → {formatRupiah(impact.destinationAfter)}</span> : null}{impact.destination ? <span>Dana tersedia {impact.destination.name}: {formatRupiah(impact.destinationAvailable)} → {formatRupiah(impact.destinationAvailableAfter)}</span> : null}{impact.envelope ? <span>Sisa {impact.envelope.name}: {formatRupiah(impact.envelope.remaining_amount)} → {formatRupiah(impact.envelopeAfter)}</span> : null}{isTransfer ? <span>Transfer memakai dana yang belum dialokasikan dari rekening sumber.</span> : null}</div> : null;
 
-const TransactionFields = (p) => <>{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} /><AccountCategoryFields {...p} /><OptionalFields form={p.form} update={p.update} errors={p.errors} detailsOpen={p.detailsOpen} setDetailsOpen={p.setDetailsOpen} /><ImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
+const TransactionFields = (p) => <>{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} /><AccountCategoryFields {...p} /><DirectDetailsFields form={p.form} update={p.update} errors={p.errors} /><ImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
 
-const isMobileTransferPresentation = ({ presentation, isTransfer, transaction }) => presentation === "mobile-transfer" && isTransfer && !transaction;
+const isMobileTransferPresentation = ({ presentation, isTransfer, transaction, mobileLayout }) => !transaction && isTransfer && (presentation === "mobile-transfer" || mobileLayout);
 
 const transactionDerivedData = ({ data, form, isTransfer, bootstrap, user }) => {
   const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null;
@@ -198,6 +200,7 @@ const resolveTransactionPresentation = ({
   submitLabel,
   submittingLabel,
   submitting,
+  outcomeUnknown,
   confirmation,
   onClose,
   amountRef,
@@ -212,14 +215,15 @@ const resolveTransactionPresentation = ({
       closeIcon: FiChevronLeft,
       closeLabel: "Kembali",
       formClassName: styles.mobileTransferForm,
+      mobileSwipeToClose: true,
     };
   }
 
   const resolvedTitle = title || (transaction ? "Edit transaksi" : "Tambah transaksi");
   const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
-  const progressLabel = submitting ? submittingLabel || "Menyimpan..." : idleSubmitLabel;
+  const progressLabel = submitting ? submittingLabel || "Menyimpan..." : outcomeUnknown ? "Coba lagi data yang sama" : idleSubmitLabel;
   const modalTitle = <span className={styles.modalTitle}><span className={styles.walletBubble} aria-hidden="true"><img src={transactionWallet} alt="" /></span><span className={styles.modalTitleCopy}><span className={styles.modalTitleText}>{resolvedTitle}</span>{description ? <small>{description}</small> : null}</span></span>;
-  const modalFooter = <><Button type="button" onClick={onClose} disabled={submitting}>Batal</Button><Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{progressLabel}</Button></>;
+  const modalFooter = <><Button type="button" onClick={onClose} disabled={submitting || outcomeUnknown}>Batal</Button><Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{progressLabel}</Button></>;
   return {
     modalTitle,
     modalDescription: undefined,
@@ -229,12 +233,13 @@ const resolveTransactionPresentation = ({
     closeIcon: undefined,
     closeLabel: "Tutup dialog",
     formClassName: `form-grid transaction-form ${styles.form}`,
+    mobileSwipeToClose: true,
   };
 };
 
 const TransactionFormBody = ({ mobileTransferMode, fields }) => {
   if (mobileTransferMode) return <MobileTransferFields {...fields} />;
-  return <TransactionFields {...fields} />;
+  return <fieldset className={styles.intentFieldset} disabled={fields.outcomeUnknown}><TransactionFields {...fields} /></fieldset>;
 };
 
 const TransactionForm = ({
@@ -255,34 +260,34 @@ const TransactionForm = ({
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
   const { notify } = useFeedback();
+  const mobileLayout = useMediaQuery(MOBILE_TRANSACTION_QUERY);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [confirmation, setConfirmation] = useState(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [submitState, setSubmitState] = useState({ status: "idle", error: null });
   const idempotencyKeyRef = useRef(createIdempotencyKey());
   const amountRef = useRef(null);
 
-  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, setForm, setDetailsOpen, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef });
-  useEffect(() => { if (errors.overspend_reason) setDetailsOpen(true); }, [errors.overspend_reason]);
+  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, setForm, setErrors, setConfirmation, setSubmitState, idempotencyKeyRef });
 
   const data = useTransactionData(bootstrap, overview, form);
   const { isIncome, isTransfer } = transactionMode(form);
-  const mobileTransferMode = isMobileTransferPresentation({ presentation, isTransfer, transaction });
+  const mobileTransferMode = isMobileTransferPresentation({ presentation, isTransfer, transaction, mobileLayout });
   const { compatibleDestinationAccounts, compatibleEnvelopes } = transactionDerivedData({ data, form, isTransfer, bootstrap, user });
   const impact = useMemo(() => transactionImpact({ accountBalances: data.accountBalances, envelopes: data.envelopes, form }), [data.accountBalances, data.envelopes, form]);
-  const update = (field, value) => { setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => ({ ...current, [field]: value })); };
-  const onSourceAccountChange = (nextId) => applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm, setConfirmation, setSubmitState });
+  const outcomeUnknown = submitState.status === "unknown";
+  const update = (field, value) => { if (outcomeUnknown) return; setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => ({ ...current, [field]: value })); };
+  const onSourceAccountChange = (nextId) => { if (outcomeUnknown) return; applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm, setConfirmation, setSubmitState }); };
   const setters = { setErrors, setConfirmation, setSubmitState };
   const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setters, idempotencyKeyRef });
   const submitting = submitState.status === "submitting";
 
   useMobileTransferDestination({ open, enabled: mobileTransferMode, destinationAccountId: form.destination_account_id, compatibleDestinationAccounts, setForm });
 
-  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, visibleCategories: data.visibleCategories, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, setConfirmation, setSubmitState, detailsOpen, setDetailsOpen, impact, confirmation, submitState, lockType, onSourceAccountChange, submitting };
-  const modal = resolveTransactionPresentation({ mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, confirmation, onClose, amountRef });
+  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, visibleCategories: data.visibleCategories, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, setConfirmation, setSubmitState, impact, confirmation, submitState, lockType, onSourceAccountChange, submitting, outcomeUnknown };
+  const modal = resolveTransactionPresentation({ mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown, confirmation, onClose, amountRef });
 
-  return <Modal open={open} onClose={onClose} dismissible={!submitting} title={modal.modalTitle} description={modal.modalDescription} size="lg" initialFocusRef={modal.initialFocusRef} className={modal.modalClassName} footer={modal.modalFooter} closeIcon={modal.closeIcon} closeLabel={modal.closeLabel}><form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} noValidate><TransactionFormBody mobileTransferMode={mobileTransferMode} fields={fields} /></form></Modal>;
+  return <Modal open={open} onClose={onClose} dismissible={!submitting && !outcomeUnknown} title={modal.modalTitle} description={modal.modalDescription} size="lg" initialFocusRef={modal.initialFocusRef} className={modal.modalClassName} footer={modal.modalFooter} closeIcon={modal.closeIcon} closeLabel={modal.closeLabel} mobileSwipeToClose={modal.mobileSwipeToClose}><form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} noValidate><TransactionFormBody mobileTransferMode={mobileTransferMode} fields={fields} /></form></Modal>;
 };
 
 export default TransactionForm;

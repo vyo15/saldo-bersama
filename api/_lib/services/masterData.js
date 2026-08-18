@@ -6,7 +6,7 @@ import {
 import { appendAudit } from "./audit.js";
 import { accountBalanceAsOf, firstNegativeBalance, mapVisibleAccountRows, visibleAccounts, visibleAccountsStatement } from "./readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "./core.js";
-import { nextVersionStamp } from "./versioning.js";
+import { newVersionStamp, nextVersionStamp } from "./versioning.js";
 
 const ACCOUNT_TYPES = new Set(ACCOUNT_TYPE_VALUES);
 const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
@@ -325,7 +325,7 @@ export const createAccount = async (db, context) => {
   const record = {
     account_id: uuid(), name, account_type: type, account_number: accountNumber, bank_template: bankTemplate, ewallet_template: ewalletTemplate, owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
     initial_balance: initialBalance, initial_balance_date: initialDate, allow_negative: allowNegative ? 1 : 0,
-    status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp,
+    status: "active", ...newVersionStamp(context.actor.user_id, timestamp),
   };
   await db.execute(`INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at)
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
@@ -475,7 +475,7 @@ export const createCategory = async (db, context) => {
   if (duplicate?.status === "archived") throw appError("CATEGORY_RESTORE_REQUIRED", "Kategori dengan nama dan jenis yang sama berada di arsip. Pulihkan kategori tersebut agar histori tetap konsisten.", 409, { categoryId: duplicate.category_id });
   if (duplicate) throw appError("DUPLICATE_CATEGORY", "Kategori aktif dengan nama yang sama sudah ada.", 409);
   const timestamp = nowIso();
-  const record = { category_id: uuid(), name, transaction_type: type, nature, icon: categoryIconValue(payload.icon, type), status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp };
+  const record = { category_id: uuid(), name, transaction_type: type, nature, icon: categoryIconValue(payload.icon, type), status: "active", ...newVersionStamp(context.actor.user_id, timestamp) };
   await db.execute("INSERT INTO categories(category_id,name,transaction_type,nature,icon,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", Object.values(record));
   await appendAudit(db, context, { entityType: "category", entityId: record.category_id, next: publicRow(record) });
   await context.enqueueMirror?.(db, "category", record.category_id);

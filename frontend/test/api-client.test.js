@@ -345,6 +345,37 @@ test("network putus saat write mempertahankan idempotency key untuk retry intent
   }
 });
 
+test("outcome unknown mengunci action dari payload berbeda sampai intent lama mendapat hasil definitif", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  let attempt = 0;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    requests.push(body);
+    attempt += 1;
+    if (attempt === 1) throw new Error("connection reset after request");
+    return successfulResponse({ created: true });
+  };
+  try {
+    const { apiClient, isOutcomeUnknownError } = await import("../src/services/api/client.js");
+    apiClient.clearCache();
+    apiClient.setSessionScope("mutation-unknown-lock");
+    const original = { name: "Jatah rumah", default_amount: 750_000 };
+    const changed = { ...original, default_amount: 700_000 };
+    await assert.rejects(() => apiClient.request("envelopes.create", original, {}), isOutcomeUnknownError);
+    await assert.rejects(
+      () => apiClient.request("envelopes.create", changed, {}),
+      (error) => error.code === "MUTATION_INTENT_LOCKED" && error.status === 409,
+    );
+    assert.equal(requests.length, 1, "payload yang berubah tidak boleh dikirim ke server selama intent lama belum terkonfirmasi");
+    assert.deepEqual(await apiClient.request("envelopes.create", original, {}), { created: true });
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].idempotencyKey, requests[0].idempotencyKey, "retry intent lama wajib mempertahankan key yang sama");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("success HTTP dengan body rusak dianggap outcome write tidak pasti dan bukan aman untuk intent baru", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => ({

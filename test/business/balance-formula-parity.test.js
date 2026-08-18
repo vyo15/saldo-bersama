@@ -8,6 +8,7 @@ const BALANCE_SOURCES = Object.freeze([
   "../../api/_lib/services/notifications.js",
   "../../api/_lib/services/maintenance/reset.js",
   "../../api/_lib/services/reporting/dashboard.js",
+  "../../api/_lib/services/reporting/integrity.js",
 ]);
 
 const readBalanceSources = () => Promise.all(BALANCE_SOURCES.map(async (relative) => ({

@@ -55,7 +55,7 @@ Cakupan wajib:
 - income/expense/transfer/refund/adjustment;
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
 - row-version conflict dan idempotency replay;
-- guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage` untuk mutation biasa, dengan satu pengecualian reset berupa opaque recovery idempotency key pada `sessionStorage` tab, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
+- guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage` untuk mutation biasa, payload berbeda pada action yang sama diblok selama outcome lama belum definitif, dengan satu pengecualian reset berupa opaque recovery idempotency key pada `sessionStorage` tab, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
 - human-error guard memastikan double-submit/coalescing tidak menghasilkan mutation intent ganda;
 - linked worktree release check: `.git` berbentuk file tidak gagal source validator dan clean archive tetap tidak bergantung pada `.env.local`;
 - personal/shared authorization dan IDOR;
@@ -70,7 +70,7 @@ Cakupan wajib:
 - formula injection dan valid XLSX;
 - backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, push credential exclusion, reason + acknowledgement + exact restore phrase, serta preservation reservation `restore.apply` agar retry key yang sama mereplay hasil dan tidak menjalankan restore kedua;
 - import all-or-nothing: mixed valid/invalid wajib ditolak tanpa partial apply, `confirm_duplicate` dari file diabaikan, duplicate antarbaris serta saldo/kantong diuji kumulatif saat preview, apply stale wajib rollback seluruh record, dan success wajib safety backup + integrity verification + audit;
-- service worker tanpa API cache, hanya menyimpan response navigation HTML sebagai app shell, dan tanpa offline write queue; production OAuth desktop/mobile berjalan melalui `/api/auth/google/*` sehingga otomatis mengikuti network-only `/api/*`;
+- service worker tanpa API cache, hanya menyimpan response navigation HTML sebagai app shell, tanpa offline write queue, dan memakai stale-while-revalidate untuk image URL stabil agar asset publik tidak tertahan versi lama setelah deploy; production OAuth desktop/mobile berjalan melalui `/api/auth/google/*` sehingga otomatis mengikuti network-only `/api/*`;
 - Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, queue detail server-generated tetapi transport lock-screen hanya `notificationType`/`targetPath`/`notificationId`, recurring shortage H-2 + completion notification dengan copy generic privacy-safe, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
 - artifact cleanup/archive tidak menghapus protected path atau memuat secret/generated output; penggantian archive bersifat atomik, variasi clean lama dibersihkan dengan allowlist, dan ZIP patch/unrelated tidak disentuh;
 - summary visual Target/Alokasi/Jadwal rutin/Anggota wajib memakai aset existing yang benar, bersifat dekoratif (`alt` kosong/`aria-hidden`), tidak mengubah data source/domain contract, dan tidak ikut diterapkan ke Dashboard/Transaksi/Laporan hanya sebagai hiasan;
@@ -93,12 +93,13 @@ Perubahan write baru belum boleh dianggap selesai bila belum membuktikan:
 2. double-click/Enter berulang tidak membuat mutation kedua;
 3. network putus setelah request dikirim menghasilkan `OUTCOME_UNKNOWN`, bukan pesan “gagal menyimpan” yang mendorong intent baru;
 4. retry payload + `rowVersion` yang sama memakai key yang sama;
-5. same-key concurrent external action tidak menjalankan side effect dua kali; `restore.apply` tetap memiliki reservation setelah snapshot mengembalikan tabel idempotency;
-6. refresh read-model yang gagal setelah server success hanya menjadi refresh warning;
-7. destructive action memiliki local reentrancy lock + backend idempotency;
-8. human error dipulihkan melalui cancel/archive/restore/reverse, termasuk Kantong/Target/Jadwal rutin/Anggaran, bukan hard delete atau SQL manual;
-9. role/ownership/row-version/audit tetap diperiksa backend;
-10. unit/service, guard regression, source validation, build budget, dan clean archive tetap hijau.
+5. selama outcome belum definitif, payload berbeda untuk action yang sama tidak boleh dikirim sebagai intent baru secara diam-diam; form kritis mengunci field dan menawarkan retry data yang sama;
+6. same-key concurrent external action tidak menjalankan side effect dua kali; `restore.apply` tetap memiliki reservation setelah snapshot mengembalikan tabel idempotency;
+7. refresh read-model yang gagal setelah server success hanya menjadi refresh warning;
+8. destructive action memiliki local reentrancy lock + backend idempotency;
+9. human error dipulihkan melalui cancel/archive/restore/reverse, termasuk Kantong/Target/Jadwal rutin/Anggaran, bukan hard delete atau SQL manual;
+10. role/ownership/row-version/audit tetap diperiksa backend;
+11. unit/service, guard regression, source validation, build budget, dan clean archive tetap hijau.
 
 ## Manual
 
@@ -146,7 +147,7 @@ Manual capability QA memakai akun/fixture aman Administrator dan Member pada env
 
 - seluruh route `/`, `/transaksi`, `/anggaran`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, `/pengaturan`, dan nested route Pengaturan dapat dirender pada mobile;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
-- dashboard mobile membawa batas aman harian, dana belum dialokasikan, rincian rekening/kategori, seluruh peringatan melalui progressive disclosure, filter lengkap, privacy nominal, serta detail transaksi;
+- dashboard mobile membawa batas aman harian, dana belum dialokasikan, rekening, arus kas, ringkasan alokasi agregat, seluruh peringatan melalui progressive disclosure, privacy nominal, lima transaksi terbaru, serta detail transaksi; shortcut utama harus tetap `Pemasukan`, `Pengeluaran`, dan `Transfer`, `Perlu perhatian` harus berada sebelum rekening ketika alert tersedia, transfer baru pada viewport mobile harus memakai `TransactionForm` canonical dengan presentasi `mobile-transfer`, dan filter/search lengkap tetap canonical di `/transaksi` karena `dashboard.overview` hanya membawa recent slice;
 - dashboard desktop menampilkan kartu rekening aktual yang dapat dipilih, transaksi rekening terpilih, filter kategori/jenis/pencarian, privacy nominal, statistik global yang tidak salah diklaim sebagai statistik rekening, KPI arus kas, anggaran, tagihan, target, dan insight;
 - `/laporan` mobile ≤820px menampilkan mode `Ringkasan` dan `Per kategori`, navigasi periode, pilihan tren 3/6/12 bulan, chart pengeluaran, KPI arus kas/total saldo/saldo aman, perbandingan bulan sebelumnya, kategori terbesar, alert actionable, anggaran vs aktual, serta rincian rekening/nature/pencatat tanpa mutation;
 - perubahan periode mobile tidak boleh maju melewati bulan berjalan; kategori memakai ikon katalog canonical dan seluruh nominal berasal dari `reports.monthly` atau derivasi deterministik `trend.items`, bukan dari page slice;
@@ -254,7 +255,7 @@ Regression wajib membuktikan:
 
 - `npm-audit-YYYYMMDD.json` adalah diagnostic lokal: boleh berada sementara di working directory, wajib di-ignore Git/source validator, dan **tidak boleh** masuk clean ZIP. Validator dan packager memakai policy local-only yang sama.
 - `cache.js` dan `client.js` wajib memakai serializer canonical yang sama agar query key dan mutation fingerprint tidak drift ketika urutan property payload berubah.
-- Helper versioning hanya mengekstrak stamp `row_version`/`updated_at`/`updated_by` yang benar-benar identik; ownership guard, optimistic `WHERE row_version=?`, reversal metadata, dan business transition tetap eksplisit di service domain.
+- Helper versioning mengekstrak stamp update (`row_version`/`updated_at`/`updated_by`) dan create (`row_version`/`created_*`/`updated_*`) yang benar-benar identik; ownership (`scope`, `owner_user_id`, `owner_scope`), optimistic `WHERE row_version=?`, reversal metadata, dan business transition tetap eksplisit di service domain.
 - `npm run check:duplicates` memakai jscpd pinned dan **report-only/non-blocking**. Prioritas refactor adalah clone JavaScript/JSX yang berisiko drift; migration SQL dan CSS module deklaratif tidak dikejar hanya demi persentase.
 - Feedback transient success/info/warning memakai `FeedbackProvider`; error mutation, conflict, maintenance/read-only, backup/restore/import, dan status integrasi yang perlu tetap terlihat memakai notice persisten. Generic hard undo/rollback tidak tersedia; reversal finansial tetap action domain audited.
 - Recurring occurrence mutation wajib enqueue Calendar dengan `recurring_occurrence:<occurrence_id>` dan mirror recurring melalui `<recurring_rule_id>`; pay/reverse/skip/restore harus memakai identitas sinkronisasi yang sama.

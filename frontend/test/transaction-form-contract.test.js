@@ -14,11 +14,14 @@ test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori waji
   assert.match(text, /form\.transaction_type === "refund" && item\.transaction_type === "expense"/);
 });
 
-test("metode pembayaran tidak diasumsikan ketika detail tambahan belum dipilih", async () => {
+test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail tambahan", async () => {
   const text = await source();
   assert.match(text, /payment_method: ""/);
-  assert.match(text, /\{ value: "", label: "Belum dipilih", icon: OtherIcon \}/);
-  assert.match(text, /legend="Metode pembayaran"[\s\S]*name="payment_method"/);
+  assert.match(text, /\{ value: "", label: "Belum dipilih" \}/);
+  assert.match(text, /id="payment-method"[\s\S]*form\.payment_method/);
+  assert.doesNotMatch(text, /Detail tambahan|optional-fields__toggle/);
+  assert.match(text, /100_000/);
+  assert.match(text, /quickAmountLabel/);
   assert.doesNotMatch(text, /payment_method: "transfer"/);
   assert.match(text, /accountDisplayLabel/);
   assert.equal((text.match(/accountDisplayLabel\(item\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label kepemilikan yang konsisten.");
@@ -78,6 +81,10 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   ]);
   assert.match(action, /presentation="mobile-transfer"/);
   assert.match(form, /presentation = "default"/);
+  assert.match(form, /MOBILE_TRANSACTION_QUERY = "\(max-width: 820px\)"/);
+  assert.match(form, /useMediaQuery\(MOBILE_TRANSACTION_QUERY\)/);
+  assert.match(form, /!transaction && isTransfer && \(presentation === "mobile-transfer" \|\| mobileLayout\)/);
+  assert.match(form, /mobileSwipeToClose: true/);
   assert.match(form, /validateTransactionInput\(transactionPreparedInput/);
   assert.match(form, /createIdempotencyKey\(\)/);
   assert.match(form, /const saveTransaction = transaction \? updateTransaction : createTransaction/);

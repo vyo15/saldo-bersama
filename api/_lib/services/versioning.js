@@ -9,3 +9,11 @@ export const nextVersionStamp = (current, actorUserId, timestamp = nowIso()) => 
   ...nextVersionTimestamp(current, timestamp),
   updated_by: actorUserId,
 });
+
+export const newVersionStamp = (actorUserId, timestamp = nowIso()) => ({
+  row_version: 1,
+  created_by: actorUserId,
+  created_at: timestamp,
+  updated_by: actorUserId,
+  updated_at: timestamp,
+});

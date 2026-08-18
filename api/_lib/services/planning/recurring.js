@@ -2,7 +2,7 @@ import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal } from "../finance.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
-import { nextVersionStamp, nextVersionTimestamp } from "../versioning.js";
+import { newVersionStamp, nextVersionStamp, nextVersionTimestamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForRecurringRule } from "../reminders.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, dueDayValue, ruleScopeFromAccount } from "./shared.js";
 const FREQUENCIES = new Set(["daily", "weekly", "biweekly", "monthly", "bimonthly", "quarterly", "semiannual", "annual"]);
@@ -295,11 +295,7 @@ export const createRecurringRule = async (db, context) => {
     end_date: end,
     priority: ["low", "normal", "high"].includes(String(p.priority || "normal")) ? String(p.priority || "normal") : "normal",
     status: "active",
-    row_version: 1,
-    created_by: context.actor.user_id,
-    created_at: now,
-    updated_by: context.actor.user_id,
-    updated_at: now,
+    ...newVersionStamp(context.actor.user_id, now),
     scope: owned.scope,
     owner_user_id: owned.owner_user_id
   };

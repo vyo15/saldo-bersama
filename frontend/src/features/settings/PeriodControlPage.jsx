@@ -7,6 +7,7 @@ import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { currentMonthInJakarta, previousMonthInJakarta } from "../../domain/dates.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { invalidationActionsFor } from "../../services/api/invalidation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
@@ -83,7 +84,7 @@ const PeriodControlPage = () => {
       setResult({ status: "success", text: `Periode ${form.period_key} berhasil ditutup setelah validasi ulang.` });
       setClosePreview(null);
       setCloseState({ status: "idle", error: null });
-      invalidate(["audit.list"]);
+      invalidate(invalidationActionsFor("period"));
       await Promise.allSettled([refreshAll(), resource.reload()]);
     } catch (error) {
       setCloseState({ status: "error", error });
@@ -99,7 +100,7 @@ const PeriodControlPage = () => {
       setReopenTarget(null);
       setReopenState({ status: "idle", error: null });
       setResult({ status: "success", text: `Periode ${key} berhasil dibuka kembali dan tercatat di audit.` });
-      invalidate(["audit.list"]);
+      invalidate(invalidationActionsFor("period"));
       await Promise.allSettled([refreshAll(), resource.reload()]);
     } catch (error) {
       setReopenState({ status: "error", error });

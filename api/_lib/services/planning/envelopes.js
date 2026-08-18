@@ -2,7 +2,7 @@ import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { accountAllocatedRemaining, accountBalanceAsOf, envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
 import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
-import { nextVersionStamp } from "../versioning.js";
+import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
 import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
@@ -172,11 +172,7 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
     rollover_policy: rollover,
     overspend_policy: overspend,
     status: "active",
-    row_version: 1,
-    created_by: context.actor.user_id,
-    created_at: timestamp,
-    updated_by: context.actor.user_id,
-    updated_at: timestamp
+    ...newVersionStamp(context.actor.user_id, timestamp)
   };
   await db.execute(`INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   return record;
@@ -203,11 +199,7 @@ export const createEnvelopePeriod = async (db, context, payload = context.payloa
     allocated_amount: amount,
     reserved_amount: 0,
     status: "active",
-    row_version: 1,
-    created_by: context.actor.user_id,
-    created_at: timestamp,
-    updated_by: context.actor.user_id,
-    updated_at: timestamp,
+    ...newVersionStamp(context.actor.user_id, timestamp),
     closed_by: null,
     closed_at: null
   };
@@ -318,11 +310,7 @@ export const closeEnvelope = async (db, context) => {
         allocated_amount: remaining,
         reserved_amount: 0,
         status: "active",
-        row_version: 1,
-        created_by: context.actor.user_id,
-        created_at: timestamp,
-        updated_by: context.actor.user_id,
-        updated_at: timestamp,
+        ...newVersionStamp(context.actor.user_id, timestamp),
         closed_by: null,
         closed_at: null
       };

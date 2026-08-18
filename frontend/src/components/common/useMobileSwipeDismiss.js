@@ -29,13 +29,23 @@ export const useMobileSwipeDismiss = ({ enabled, containerRef, onClose }) => {
     if (snapBack) setDragY(0);
   }, []);
 
-  const closeModal = useCallback(() => {
+  const finalizeClose = useCallback(() => {
     if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
     dismissTimerRef.current = null;
     resetGesture();
     setDismissing(false);
     onClose();
   }, [onClose, resetGesture]);
+
+  const closeModal = useCallback(() => {
+    if (dismissTimerRef.current) return;
+    if (!enabled || !isMobileSwipeViewport() || prefersReducedMotion()) { finalizeClose(); return; }
+    const dialogHeight = containerRef.current?.getBoundingClientRect().height || window.innerHeight;
+    resetGesture({ snapBack: false });
+    setDismissing(true);
+    setDragY(Math.max(dialogHeight, window.innerHeight * 0.6));
+    dismissTimerRef.current = window.setTimeout(finalizeClose, SWIPE_DISMISS_DURATION_MS);
+  }, [containerRef, enabled, finalizeClose, resetGesture]);
 
   useEffect(() => () => {
     if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
@@ -46,15 +56,6 @@ export const useMobileSwipeDismiss = ({ enabled, containerRef, onClose }) => {
     if (!captureElement?.hasPointerCapture?.(event.pointerId)) return;
     try { captureElement.releasePointerCapture(event.pointerId); }
     catch { /* Synthetic browser tests may not own native pointer capture. */ }
-  };
-
-  const beginGestureDismiss = () => {
-    const dialogHeight = containerRef.current?.getBoundingClientRect().height || window.innerHeight;
-    resetGesture({ snapBack: false });
-    setDismissing(true);
-    setDragY(Math.max(dialogHeight, window.innerHeight * 0.6));
-    if (prefersReducedMotion()) { closeModal(); return; }
-    dismissTimerRef.current = window.setTimeout(closeModal, SWIPE_DISMISS_DURATION_MS);
   };
 
   const onPointerDown = (event) => {
@@ -97,7 +98,7 @@ export const useMobileSwipeDismiss = ({ enabled, containerRef, onClose }) => {
     const dialogHeight = containerRef.current?.getBoundingClientRect().height || 0;
     const distanceThreshold = Math.min(SWIPE_MAX_DISMISS_DISTANCE_PX, Math.max(SWIPE_MIN_DISMISS_DISTANCE_PX, dialogHeight * SWIPE_DISMISS_RATIO));
     const fastSwipe = totalDeltaY >= SWIPE_MIN_FAST_DISTANCE_PX && (gesture.velocityY >= SWIPE_VELOCITY_PX_MS || averageVelocity >= SWIPE_VELOCITY_PX_MS);
-    if (totalDeltaY >= distanceThreshold || fastSwipe) { beginGestureDismiss(); return; }
+    if (totalDeltaY >= distanceThreshold || fastSwipe) { closeModal(); return; }
     resetGesture();
   };
 

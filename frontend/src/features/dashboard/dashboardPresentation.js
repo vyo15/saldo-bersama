@@ -1,12 +1,3 @@
-import { FiCreditCard, FiPieChart, FiRepeat, FiTarget } from "react-icons/fi";
-
-export const QUICK_ACTIONS = Object.freeze([
-  { to: "/rekening", label: "Rekening", icon: FiCreditCard },
-  { to: "/alokasi", label: "Alokasi", icon: FiPieChart },
-  { to: "/tagihan", label: "Jadwal rutin", icon: FiRepeat },
-  { to: "/target", label: "Target", icon: FiTarget },
-]);
-
 const ALERT_TARGETS = Object.freeze({
   reconciliation_difference: { prefix: "reconciliation-difference", fallbackPath: "/rekonsiliasi" },
   reconciliation_stale: { prefix: "reconciliation-stale", fallbackPath: "/rekonsiliasi" },

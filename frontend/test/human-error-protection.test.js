@@ -230,7 +230,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
     read("src/features/settings/MembersSettingsPage.jsx"),
   ]);
 
-  assert.match(transactionForm, /dismissible=\{!submitting\}/);
+  assert.match(transactionForm, /dismissible=\{!submitting && !outcomeUnknown\}/);
   assert.doesNotMatch(transactionForm, /onClose=\{submitting \? \(\) => \{\} : onClose\}/);
 
   assert.match(budgets, /dismissible=\{saveState\.status !== "submitting"\}/);
@@ -264,7 +264,9 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
   assert.match(client, /memoryMutationIntents/);
   assert.match(client, /readPersistedIntent/);
   assert.doesNotMatch(client, /localStorage|sessionStorage|MUTATION_INTENT_STORAGE_PREFIX/, "mutation intent tidak boleh persisten di browser storage; state finansial/cache tetap private-memory");
-  assert.match(client, /if \(isOutcomeUnknownError\(error\)\) persistIntent/);
+  assert.match(client, /if \(isOutcomeUnknownError\(error\)\) \{/);
+  assert.match(client, /persistIntent\(fingerprint, idempotencyKey\)/);
+  assert.match(client, /unresolvedMutationIntents\.set\(action/);
   assert.match(client, /const existingFlight = inFlightMutations\.get\(fingerprint\)/);
   assert.match(hook, /if \(inFlightRef\.current && promiseRef\.current\) return promiseRef\.current/);
   assert.match(modal, /submitLockRef\.current/);
@@ -354,8 +356,10 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(feedback, /transactions\.create/);
   assert.match(feedback, /Menyimpan transaksi/);
   assert.match(feedback, /Server sudah mengonfirmasi perubahan/);
-  assert.match(feedback, /Jangan kirim ulang sebelum status diperiksa agar tidak terjadi duplikasi/);
+  assert.match(feedback, /Coba lagi dengan data yang sama agar idempotency key yang sama dapat memverifikasi hasil/);
+  assert.match(feedback, /Jangan ubah data sampai server memberi hasil definitif/);
   assert.match(feedback, /"reset\.apply": "Jangan kirim ulang\. Buka Reset data testing lalu gunakan Periksa status operasi/);
+  assert.match(await read("src/services/api/client.js"), /MUTATION_INTENT_LOCKED/);
   assert.match(feedback, /\["success", "info", "warning", "danger"\]/, "feedback error wajib mempertahankan tone danger");
   assert.match(feedbackContext, /useFeedback/);
   assert.doesNotMatch(feedback, /undo|rollback|deleteTransaction|DELETE FROM/i);
@@ -533,4 +537,32 @@ test("dialog alokasi dimuat lazy agar route planning tidak kembali mendekati bat
   assert.match(page, /<Suspense fallback=\{null\}>[\s\S]*<AllocationDialogLayer/);
   assert.doesNotMatch(page, /from "\.\/AllocationDialogLayer\.jsx";/);
   for (const modal of ["CreateEnvelopeModal", "MoveEnvelopeModal", "AllocationModals"]) assert.match(layer, new RegExp(`const ${modal}`));
+});
+
+
+test("period/member invalidation menjaga projection yang bergantung tetap segar", async () => {
+  const [policy, periodPage, membersPage] = await Promise.all([
+    read("src/services/api/invalidation.js"),
+    read("src/features/settings/PeriodControlPage.jsx"),
+    read("src/features/settings/MembersSettingsPage.jsx"),
+  ]);
+  assert.match(policy, /period:[\s\S]*"transactions\.list"[\s\S]*"dashboard\.overview"[\s\S]*"reports\.monthly"/);
+  assert.match(policy, /users:[\s\S]*"accounts\.list"[\s\S]*"transactions\.list"[\s\S]*"dashboard\.overview"/);
+  assert.equal((periodPage.match(/invalidate\(invalidationActionsFor\("period"\)\)/g) || []).length, 2);
+  assert.equal((membersPage.match(/invalidate\(invalidationActionsFor\("users"\)\)/g) || []).length, 2);
+});
+
+test("form transaksi mengunci field setelah outcome unknown dan hanya menawarkan retry data yang sama", async () => {
+  const [form, transfer, money] = await Promise.all([
+    read("src/features/transactions/TransactionForm.jsx"),
+    read("src/features/transactions/MobileTransferFields.jsx"),
+    read("src/components/common/MoneyInput.jsx"),
+  ]);
+  assert.match(form, /submitState\.status === "unknown"/);
+  assert.match(form, /disabled=\{fields\.outcomeUnknown\}/);
+  assert.match(form, /Coba lagi data yang sama/);
+  assert.match(form, /dismissible=\{!submitting && !outcomeUnknown\}/);
+  assert.match(transfer, /intentLocked=\{outcomeUnknown\}/);
+  assert.match(transfer, /Data transfer dikunci sementara/);
+  assert.match(money, /disabled=\{disabled\}/);
 });

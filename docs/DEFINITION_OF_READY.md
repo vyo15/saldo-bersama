@@ -11,6 +11,6 @@ Perubahan siap dikerjakan bila:
 - perubahan guarded sudah melalui source review;
 - plan sudah disetujui user bila approval diperlukan.
 
-Branch, Pull Request, atau task card tidak menjadi syarat universal. Gunakan mekanisme tersebut hanya bila diminta user, aturan repository, atau kebutuhan review spesifik.
+Branch dan Pull Request bukan prasyarat **Definition of Ready**, tetapi perubahan yang akan masuk `main` tetap mengikuti delivery workflow canonical repository: branch, Pull Request, dan Quality gate. Task card lintas-agent sudah dipensiunkan dan bukan requirement aktif.
 
 Perubahan guarded tetap membutuhkan approval eksplisit setelah source review.

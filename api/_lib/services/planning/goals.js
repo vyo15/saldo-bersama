@@ -3,7 +3,7 @@ import { appendAudit } from "../audit.js";
 import { cancelTransactionInternal, createTransactionInternal, assertTransactionDateUnlocked } from "../finance.js";
 import { goalProgress } from "../readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
-import { nextVersionStamp } from "../versioning.js";
+import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
 import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
 
@@ -296,11 +296,7 @@ export const createGoal = async (db, context) => {
     account_id: account.account_id,
     priority,
     status: "active",
-    row_version: 1,
-    created_by: context.actor.user_id,
-    created_at: now,
-    updated_by: context.actor.user_id,
-    updated_at: now,
+    ...newVersionStamp(context.actor.user_id, now),
     scope: owned.scope,
     owner_user_id: owned.owner_user_id
   };

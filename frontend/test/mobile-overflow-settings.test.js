@@ -16,10 +16,16 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
   assert.match(modal, /\.swipeHeader\s*\{[\s\S]*touch-action:\s*pan-x pinch-zoom;/);
   assert.match(modal, /prefers-reduced-motion:[\s\S]*\.swipeEnabled \{ transition:\s*none;/);
   assert.doesNotMatch(modal, /touch-action:\s*none/);
-  assert.match(modalSource, /mobileSwipeToClose = false/);
+  assert.match(modalSource, /mobileSwipeToClose = true/);
   assert.match(modalSource, /MOBILE_SWIPE_QUERY = "\(max-width: 820px\)"/);
   assert.doesNotMatch(modalSource, /47\.99rem|51\.25rem/);
   assert.match(modalSource, /event\.target\.closest\?\.\(INTERACTIVE_GESTURE_TARGET\)/);
+  assert.match(modalSource, /const finalizeClose = useCallback/);
+  assert.match(modalSource, /if \(!enabled \|\| !isMobileSwipeViewport\(\) \|\| prefersReducedMotion\(\)\) \{ finalizeClose\(\); return; \}/);
+  assert.match(modalSource, /dismissTimerRef\.current = window\.setTimeout\(finalizeClose, SWIPE_DISMISS_DURATION_MS\)/);
+  assert.match(modalSource, /event\.target === event\.currentTarget\) closeModal\(\)/);
+  assert.match(modalSource, /onEscape: canDismiss \? closeModal : undefined/);
+  assert.match(modal, /\.backdropDismissing \{ opacity:\s*0; \}/);
   assert.match(components, /\.segmented-control\s*\{[\s\S]*min-inline-size:\s*0;/);
   assert.match(components, /\.form-grid,[\s\S]*\.segmented-control\s*\{[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
   assert.match(components, /input\[type="file"\][\s\S]*max-width:\s*100%;/);
@@ -193,7 +199,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
     read("src/features/budgets/BudgetsPage.module.css"),
   ]);
 
-  assert.match(transactionStyles, /@media \(max-width: 25rem\)[\s\S]*\.typeSelector\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.typeSelector\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(transactionStyles, /font-size:\s*9px/);
   assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.modal/);
   assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);

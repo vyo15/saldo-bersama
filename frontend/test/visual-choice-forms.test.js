@@ -41,7 +41,8 @@ test("fixed-option finance forms use the shared visual selector while dynamic li
   ]);
   for (const source of sources) assert.match(source, /VisualChoiceGroup/);
 
-  assert.match(sources[0], /legend="Metode pembayaran"/);
+  assert.match(sources[0], /legend="Jenis transaksi"/);
+  assert.match(sources[0], /id="payment-method"/);
   assert.match(sources[1], /legend="Jenis rekening"/);
   assert.match(sources[1], /mobileColumns=\{3\}/);
   assert.match(sources[1], /description="Pilih jenis rekening\."/);

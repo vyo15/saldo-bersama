@@ -1,9 +1,8 @@
-const STATIC_CACHE = "saldo-bersama-static-v9";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v9";
+const STATIC_CACHE = "saldo-bersama-static-v10";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v10";
 const STATIC_ASSETS = [
   "/",
   "/site.webmanifest",
-  "/brand/saldo-bersama-mark.png",
   "/icons/favicon-32.png?v=4",
   "/icons/favicon-64.png?v=4",
   "/icons/icon-192.png?v=4",
@@ -88,7 +87,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (!["script", "style", "font", "image", "manifest"].includes(request.destination)) return;
+  if (request.destination === "image") {
+    const network = caches.open(RUNTIME_CACHE).then((cache) => fetch(request).then(async (response) => {
+      if (response?.ok && !response.bodyUsed) {
+        try { await cache.put(request, response.clone()); } catch { /* cache update is best-effort */ }
+      }
+      return response;
+    })).catch(() => null);
+    event.waitUntil(network.then(() => {}));
+    event.respondWith(caches.match(request).then((cached) => cached || network.then((response) => response || Response.error())));
+    return;
+  }
+
+  if (!["script", "style", "font", "manifest"].includes(request.destination)) return;
   event.respondWith((async () => {
     const cached = await caches.match(request);
     if (cached) return cached;

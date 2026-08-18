@@ -19,6 +19,7 @@ Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel
 - Rate-limit key yang berasal dari alamat client atau authenticated identity memakai SHA-256 dan scope prefix; raw UID/alamat tidak menjadi bucket key. Session memakai `clientRateLimitKey()` dan `identityRateLimitKey()`, sedangkan gateway dan export memakai `identityRateLimitKey()` dari `api/_lib/security.js`.
 - Rate limiter saat ini bersifat best-effort dan process-local. Distributed throttling/global quota lintas instance bukan jaminan dari control ini.
 - Exact reserved transaction-field contract berada di `api/_lib/transactionContract.js` dan ditegakkan kembali pada gateway serta finance service.
+- Client anti-error tidak dipercaya sebagai authorization, tetapi mutation biasa memakai private-memory intent lock setelah `OUTCOME_UNKNOWN`: retry data yang sama mempertahankan idempotency key, sedangkan payload berbeda untuk action yang sama ditolak sampai hasil lama definitif. Guard server tetap canonical dan tidak bergantung pada state browser.
 
 ## Secret classes
 

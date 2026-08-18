@@ -98,7 +98,7 @@ const processPresentation = (state) => {
     };
   }
   if (state.status === "success") return { module, label: labels?.[1] || `${module} berhasil diperbarui`, detail: "Server sudah mengonfirmasi perubahan.", icon: FiCheckCircle };
-  if (state.status === "unknown") return { module, label: `${module} belum terkonfirmasi`, detail: ACTION_UNKNOWN_DETAILS[state.action] || "Jangan kirim ulang sebelum status diperiksa agar tidak terjadi duplikasi.", icon: FiAlertCircle };
+  if (state.status === "unknown") return { module, label: `${module} belum terkonfirmasi`, detail: ACTION_UNKNOWN_DETAILS[state.action] || "Coba lagi dengan data yang sama agar idempotency key yang sama dapat memverifikasi hasil. Jangan ubah data sampai server memberi hasil definitif.", icon: FiAlertCircle };
   if (state.status === "error") return { module, label: `${module} gagal diproses`, detail: "Perubahan belum tersimpan. Periksa pesan pada formulir lalu coba lagi.", icon: FiAlertCircle };
   return null;
 };

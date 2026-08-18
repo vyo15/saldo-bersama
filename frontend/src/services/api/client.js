@@ -13,6 +13,7 @@ const SESSION_CACHE_TTL_MS = 2_000;
 let sessionCache = { expiresAt: 0, value: null, promise: null };
 const inFlightMutations = new Map();
 const memoryMutationIntents = new Map();
+const unresolvedMutationIntents = new Map();
 const mutationActivityListeners = new Set();
 const activeMutationActions = new Map();
 let activeMutationCount = 0;
@@ -91,9 +92,25 @@ const clearIntent = (fingerprint) => {
   memoryMutationIntents.delete(fingerprint);
 };
 
+const clearUnresolvedIntent = (action, fingerprint = null) => {
+  const current = unresolvedMutationIntents.get(action);
+  if (!current || (fingerprint && current.fingerprint !== fingerprint)) return;
+  unresolvedMutationIntents.delete(action);
+};
+
+const assertCompatibleUnknownIntent = (action, fingerprint, options) => {
+  const unresolved = unresolvedMutationIntents.get(action);
+  if (!unresolved || unresolved.fingerprint === fingerprint || options.newIntent) return;
+  throw new ApiError(
+    "Perubahan sebelumnya untuk tindakan ini belum terkonfirmasi. Data yang sekarang berbeda dari request terakhir. Coba lagi request lama dengan data yang sama sebelum membuat perubahan baru.",
+    { code: "MUTATION_INTENT_LOCKED", status: 409, details: { action } },
+  );
+};
+
 const clearMutationState = () => {
   inFlightMutations.clear();
   memoryMutationIntents.clear();
+  unresolvedMutationIntents.clear();
   resetMutationActivity();
 };
 
@@ -105,10 +122,12 @@ const clearClientState = () => {
 
 const guardedMutationRequest = (action, payload, options = {}) => {
   const fingerprint = mutationIntentFingerprint(action, payload, options.rowVersion ?? null);
+  assertCompatibleUnknownIntent(action, fingerprint, options);
   if (!options.newIntent) {
     const existingFlight = inFlightMutations.get(fingerprint);
     if (existingFlight) return existingFlight;
   } else {
+    clearUnresolvedIntent(action);
     clearIntent(fingerprint);
   }
   const persisted = readPersistedIntent(fingerprint);
@@ -118,12 +137,18 @@ const guardedMutationRequest = (action, payload, options = {}) => {
   const promise = gatewayFetch(action, payload, requestOptions, options.signal)
     .then((result) => {
       clearIntent(fingerprint);
+      clearUnresolvedIntent(action, fingerprint);
       settleMutationActivity(activityToken, "success");
       return result;
     })
     .catch((error) => {
-      if (isOutcomeUnknownError(error)) persistIntent(fingerprint, idempotencyKey);
-      else clearIntent(fingerprint);
+      if (isOutcomeUnknownError(error)) {
+        persistIntent(fingerprint, idempotencyKey);
+        unresolvedMutationIntents.set(action, { fingerprint, idempotencyKey });
+      } else {
+        clearIntent(fingerprint);
+        clearUnresolvedIntent(action, fingerprint);
+      }
       settleMutationActivity(activityToken, isOutcomeUnknownError(error) ? "unknown" : "error");
       throw error;
     })
@@ -184,6 +209,7 @@ export const apiClient = {
   },
 
   startNewMutationIntent(action, payload = {}, rowVersion = null) {
+    clearUnresolvedIntent(action);
     clearIntent(mutationIntentFingerprint(action, payload, rowVersion));
   },
 

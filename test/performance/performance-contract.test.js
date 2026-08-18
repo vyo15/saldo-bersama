@@ -76,10 +76,14 @@ test("service worker hanya meng-cache app shell dan melewatkan seluruh API", asy
   assert.match(sw, /pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw, /isInfrastructurePath\(url\.pathname\)\) return/);
   assert.doesNotMatch(sw, /cache\.put\([^\n]*\/api\//);
-  assert.match(sw, /saldo-bersama-static-v9/);
+  assert.match(sw, /saldo-bersama-static-v10/);
   assert.match(sw, /response\.bodyUsed/);
   assert.match(sw, /event\.waitUntil/);
   assert.match(sw, /if \(isHtmlResponse\(response\)\) cacheResponse\(event, RUNTIME_CACHE, "\/", response\)/);
+  assert.match(sw, /request\.destination === "image"/);
+  assert.match(sw, /const network = caches\.open\(RUNTIME_CACHE\)[\s\S]*fetch\(request\)/);
+  assert.match(sw, /event\.waitUntil\(network\.then/);
+  assert.match(sw, /caches\.match\(request\)[\s\S]*cached \|\| network/);
 });
 
 

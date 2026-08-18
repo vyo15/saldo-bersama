@@ -1,44 +1,24 @@
 .modal {
-  border-color: color-mix(in srgb, var(--primary) 14%, var(--border-strong));
-  background: color-mix(in srgb, var(--surface-elevated) 96%, var(--primary) 4%);
+  border-color: color-mix(in srgb, var(--primary) 10%, var(--border-strong));
+  background: color-mix(in srgb, var(--surface-elevated) 98%, var(--primary) 2%);
 }
 
 .modal :global(.modal__header) {
   position: relative;
   margin: var(--space-4) var(--space-4) 0;
   padding: var(--space-4);
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary) 52%, var(--border));
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at 12% 22%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 31%),
-    linear-gradient(135deg, color-mix(in srgb, var(--primary-soft) 78%, var(--surface-elevated)), var(--surface-elevated) 66%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-hero) 4%, transparent);
-}
-
-.modal :global(.modal__header)::after {
-  content: "";
-  position: absolute;
-  right: -2rem;
-  bottom: -4.5rem;
-  width: 10rem;
-  height: 10rem;
-  border: 1.25rem solid color-mix(in srgb, var(--primary) 5%, transparent);
-  border-radius: 42% 58% 55% 45%;
-  transform: rotate(-18deg);
-  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-elevated) 96%, var(--primary) 4%);
 }
 
 .modal :global(.modal__header) > div:first-child {
-  position: relative;
-  z-index: 1;
+  min-width: 0;
   width: 100%;
 }
 
 .modal :global(.modal__header) > button {
-  position: relative;
-  z-index: 2;
-  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
 }
 
 .modal :global(.modal__body) {
@@ -47,13 +27,12 @@
 
 .modal :global(.modal__footer) {
   gap: var(--space-3);
-  background: color-mix(in srgb, var(--surface-elevated) 95%, var(--primary) 5%);
+  background: color-mix(in srgb, var(--surface-elevated) 97%, var(--primary) 3%);
   backdrop-filter: blur(12px);
 }
 
 .modal :global(.modal__footer) :global(.button--primary) {
   min-width: 12rem;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .modalTitle {
@@ -61,116 +40,110 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .walletBubble {
-  width: 5.25rem;
-  height: 5.25rem;
-  flex: 0 0 5.25rem;
-  border: 1px solid color-mix(in srgb, var(--primary) 52%, var(--border));
-  border-radius: 50%;
+  width: 4.6rem;
+  height: 4.6rem;
+  flex: 0 0 4.6rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border));
+  border-radius: var(--radius-lg);
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(circle at 36% 28%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 48%),
-    color-mix(in srgb, var(--surface) 84%, transparent);
-  box-shadow: 0 0 28px color-mix(in srgb, var(--primary) 10%, transparent);
+  background: color-mix(in srgb, var(--primary-soft) 34%, var(--surface));
 }
 
 .walletBubble img {
-  width: 4.2rem;
-  height: 4.2rem;
+  width: 3.7rem;
+  height: 3.7rem;
   object-fit: contain;
 }
 
 .modalTitleCopy {
   min-width: 0;
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .modalTitleText {
   color: var(--text);
-  font-size: clamp(1.25rem, 3vw, 1.65rem);
+  font-size: clamp(1.15rem, 2.5vw, 1.45rem);
   font-weight: var(--font-weight-bold);
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: -0.025em;
 }
 
 .modalTitleCopy small {
   max-width: 34rem;
   color: var(--text-soft);
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-regular);
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .form {
-  gap: 18px;
+  gap: 14px;
+}
+
+.form :global(.field) > span:first-child,
+.typeSelector legend {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
 }
 
 .typeSelector {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .typeSelector legend {
-  margin-bottom: 2px;
-  color: var(--text);
-  font-size: 14px;
+  margin-bottom: 1px;
 }
 
 .typeSelector label > span {
-  min-height: 82px;
-  padding: 10px 6px;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: linear-gradient(155deg, var(--surface-soft), color-mix(in srgb, var(--input) 94%, var(--primary) 6%));
+  min-height: 72px;
+  padding: 8px 7px;
+  border-radius: var(--radius-md);
+  gap: 6px;
+  background: var(--surface-soft);
   color: var(--text-soft);
-  transition:
-    transform var(--motion-fast) var(--motion-easing),
-    border-color var(--motion-fast) var(--motion-easing),
-    color var(--motion-fast) var(--motion-easing),
-    background var(--motion-fast) var(--motion-easing),
-    box-shadow var(--motion-fast) var(--motion-easing);
+  box-shadow: none;
 }
 
 .typeSelector label > span svg {
-  width: 2.1rem;
-  height: 2.1rem;
-  padding: 0.45rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.42rem;
   border: 1px solid var(--border-strong);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-strong) 86%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
 }
 
 .typeSelector label > span b {
   overflow: hidden;
   max-width: 100%;
-  font-size: 12px;
+  color: var(--text);
+  font-size: 11.5px;
   font-weight: var(--font-weight-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .typeSelector input:checked + span {
-  border-color: var(--primary);
-  background: linear-gradient(145deg, color-mix(in srgb, var(--primary-soft) 88%, var(--surface)), color-mix(in srgb, var(--surface) 82%, var(--primary) 18%));
+  border-color: color-mix(in srgb, var(--primary) 74%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 70%, var(--surface-soft));
   color: var(--primary-strong);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent), 0 8px 20px color-mix(in srgb, var(--primary) 10%, transparent);
+  box-shadow: none;
 }
 
 .typeSelector input:checked + span svg {
-  border-color: color-mix(in srgb, var(--primary) 66%, var(--border));
-  background: color-mix(in srgb, var(--primary-soft) 76%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 66%, transparent);
 }
 
-.typeSelector label:active > span { transform: scale(0.98); }
+.typeSelector label:active > span { transform: scale(0.985); }
 
 .amountEntry {
   gap: 7px;
@@ -181,97 +154,117 @@
 }
 
 .amountVisual :global([data-ui="money-input"]) {
-  gap: 8px;
+  gap: 6px;
 }
 
 .amountVisual :global([data-ui="money-input"] > span:first-child) {
   color: var(--text);
-  font-size: 14px;
-  font-weight: var(--font-weight-bold);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
 }
 
 .amountVisual :global([data-ui="money-input"] input) {
-  min-height: 82px;
-  padding-left: 4.6rem;
-  padding-right: 3.4rem;
+  min-height: 66px;
+  padding-left: 4.15rem;
+  padding-right: 3.1rem;
   border-color: var(--border-strong);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 10% 50%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 28%),
-    var(--input);
-  font-size: clamp(1.55rem, 4vw, 2rem);
-  font-weight: var(--font-weight-bold);
+  border-radius: var(--radius-md);
+  background: var(--input);
+  font-size: clamp(1.45rem, 3.6vw, 1.8rem);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: -0.025em;
+}
+
+.amountVisual :global([data-ui="money-input"] > small:not(.field__error)) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .currencyBadge {
   position: absolute;
-  left: 0.75rem;
-  top: 2.25rem;
-  min-width: 2.9rem;
-  height: 2.75rem;
-  padding: 0 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--primary) 44%, var(--border));
-  border-radius: 12px;
+  left: 0.7rem;
+  top: 2.05rem;
+  min-width: 2.75rem;
+  height: 2.55rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 11px;
   display: grid;
   place-items: center;
   color: var(--primary-strong);
-  background: color-mix(in srgb, var(--primary-soft) 78%, var(--surface));
-  font-size: 1rem;
-  font-weight: var(--font-weight-bold);
+  background: color-mix(in srgb, var(--primary-soft) 64%, var(--surface));
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-semibold);
   pointer-events: none;
 }
 
 .amountIcon {
   position: absolute;
-  right: 1rem;
-  top: 2.9rem;
-  width: 1.35rem;
-  height: 1.35rem;
+  right: 0.9rem;
+  top: 2.65rem;
+  width: 1.2rem;
+  height: 1.2rem;
   color: var(--primary);
   pointer-events: none;
 }
 
-.quickLabel {
-  margin-top: 1px;
-  color: var(--text-muted);
-  font-size: 12px;
+.quickAmounts {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
+.quickAmounts::-webkit-scrollbar { display: none; }
+
 .quickAmounts button {
-  min-height: var(--mobile-control-height);
-  padding-inline: 13px;
-  border-color: var(--border-strong);
-  background: linear-gradient(180deg, var(--surface-soft), var(--input));
+  min-height: 32px;
+  flex: 0 0 auto;
+  padding-inline: 10px;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  box-shadow: none;
 }
 
 .quickAmounts button:hover,
-.quickAmounts button:focus-visible {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 8%, transparent);
+.quickAmounts button:focus-visible,
+.quickAmounts button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--primary) 46%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 42%, transparent);
+  color: var(--primary-strong);
+  transform: none;
+  box-shadow: none;
 }
 
 .visualField > span:first-child {
-  color: var(--text-soft);
-  font-size: 14px;
+  color: var(--text);
+  font-size: 13px;
   font-weight: var(--font-weight-semibold);
 }
 
 .fieldControl {
   width: 100%;
   min-width: 0;
-  min-height: 52px;
-  padding-left: 13px;
+  min-height: 48px;
+  padding-left: 11px;
   border: 1px solid var(--border);
-  border-radius: 15px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: linear-gradient(180deg, var(--surface-soft), var(--input));
+  gap: 8px;
+  background: var(--input);
   transition:
     border-color var(--motion-fast) var(--motion-easing),
-    box-shadow var(--motion-fast) var(--motion-easing),
-    background-color var(--motion-fast) var(--motion-easing);
+    box-shadow var(--motion-fast) var(--motion-easing);
 }
 
 .fieldControl:hover { border-color: var(--border-strong); }
@@ -281,8 +274,8 @@
 }
 
 .fieldControl > svg {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.1rem;
+  height: 1.1rem;
   flex: 0 0 auto;
   color: var(--primary);
 }
@@ -294,13 +287,14 @@
 
 .fieldControlInput > :global(input),
 .fieldControlInput > :global(select) {
-  min-height: 50px;
+  min-height: 46px;
   padding-left: 0;
   border: 0;
   border-radius: 0;
   outline: 0;
   background: transparent;
   box-shadow: none;
+  font-weight: var(--font-weight-regular);
 }
 
 .fieldControlInput > :global(input):focus-visible,
@@ -310,8 +304,13 @@
   box-shadow: none;
 }
 
+.notesField textarea {
+  min-height: 3.5rem;
+  resize: vertical;
+}
+
 .form :global(.notice) {
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 }
 
 .form :global(.transaction-scope-note) {
@@ -319,20 +318,10 @@
   background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface-soft));
 }
 
-.form :global(.optional-fields) {
-  border-radius: 16px;
-  background: linear-gradient(180deg, var(--surface-soft), var(--input));
-}
-
-.form :global(.optional-fields__toggle) {
-  min-height: 62px;
-}
-
 .form :global(.impact-preview) {
-  border-color: color-mix(in srgb, var(--primary) 26%, var(--border));
-  background: color-mix(in srgb, var(--primary-soft) 52%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 40%, var(--surface));
 }
-
 
 .mobileTransferForm {
   min-width: 0;
@@ -341,92 +330,174 @@
 
 @media (max-width: 820px) {
   .modal {
-    max-height: min(96dvh, 57.5rem);
+    max-height: min(91dvh, 53rem);
   }
 
   .modal :global(.modal__header) {
-    margin: 10px 10px 0;
-    padding: 13px;
-    border-radius: 18px;
+    margin: 0;
+    padding: calc(var(--space-4) + 0.35rem) 14px 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .modal :global(.modal__body) {
-    padding: 14px 12px 18px;
+    padding: 5px 14px 18px;
   }
 
   .modal :global(.modal__footer) {
     display: grid;
-    grid-template-columns: minmax(0, .8fr) minmax(0, 1.5fr);
+    grid-template-columns: minmax(0, .78fr) minmax(0, 1.5fr);
     flex-wrap: nowrap;
-    padding: 11px 12px calc(11px + env(safe-area-inset-bottom));
+    padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+    border-top-color: var(--border);
+    background: color-mix(in srgb, var(--surface-elevated) 97%, transparent);
   }
 
   .modal :global(.modal__footer) :global(.button) {
     width: 100%;
     min-width: 0;
-    min-height: 49px;
-    padding-inline: 10px;
+    min-height: 47px;
+    padding-inline: 9px;
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
   }
 
   .walletBubble {
-    width: 4.5rem;
-    height: 4.5rem;
-    flex-basis: 4.5rem;
+    width: 2.95rem;
+    height: 2.95rem;
+    flex-basis: 2.95rem;
+    border-radius: 14px;
   }
 
   .walletBubble img {
-    width: 3.6rem;
-    height: 3.6rem;
+    width: 2.7rem;
+    height: 2.7rem;
   }
 
   .modalTitle {
-    gap: 12px;
+    gap: 10px;
     padding-right: 2px;
   }
 
   .modalTitleText {
-    font-size: 1.25rem;
+    font-size: 1.12rem;
+    font-weight: var(--font-weight-bold);
   }
 
   .modalTitleCopy small {
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 11px;
+    line-height: 1.4;
   }
 
   .form {
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 8px;
+    row-gap: 12px;
+  }
+
+  .form :global(.form-grid__full),
+  .typeSelector,
+  .amountEntry {
+    grid-column: 1 / -1;
   }
 
   .typeSelector {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .typeSelector label > span {
-    min-height: 78px;
-    padding-inline: 3px;
+    min-height: 56px;
+    padding: 7px 9px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 9px;
   }
 
   .typeSelector label > span svg {
-    width: 2rem;
-    height: 2rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 2.25rem;
+    padding: 0.42rem;
+    border-radius: 11px;
   }
 
   .typeSelector label > span b {
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
   }
 
   .amountVisual :global([data-ui="money-input"] input) {
-    min-height: 78px;
-    padding-left: 4.4rem;
+    min-height: 58px;
+    padding-left: 3.9rem;
+    padding-right: 2.9rem;
+    border-radius: 15px;
+    font-size: 1.55rem;
   }
 
   .currencyBadge {
-    top: 2.2rem;
+    top: 1.95rem;
+    left: 0.45rem;
+    min-width: 2.75rem;
+    height: 2.55rem;
   }
 
   .amountIcon {
-    top: 2.85rem;
+    top: 2.55rem;
+    right: 0.8rem;
+  }
+
+  .quickAmounts {
+    gap: 6px;
+  }
+
+  .quickAmounts button {
+    min-height: var(--mobile-control-height);
+    padding: 5px 10px;
+    font-size: 11.5px;
+  }
+
+  .fieldControl {
+    min-height: 45px;
+    padding-left: 10px;
+  }
+
+  .fieldControlInput > :global(input),
+  .fieldControlInput > :global(select) {
+    min-height: var(--mobile-control-height);
+    font-size: var(--font-size-body);
+  }
+
+  .form :global(.field) {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .form :global(.field) > span:first-child,
+  .visualField > span:first-child,
+  .typeSelector legend {
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .form :global(.field) > input,
+  .form :global(.field) > select,
+  .form :global(.field) > textarea {
+    min-height: 45px;
+    border-radius: 13px;
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-regular);
+  }
+
+  .form :global(.field) > small {
+    font-size: 11.5px;
+    line-height: 1.35;
+  }
+
+  .notesField textarea {
+    min-height: 3.25rem !important;
   }
 
   .mobileTransferModal {
@@ -494,45 +565,45 @@
     background: var(--page);
     overscroll-behavior: contain;
   }
-
 }
 
-@media (max-width: 25rem) {
+@media (max-width: 350px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .form > *,
+  .form :global(.form-grid__full),
+  .typeSelector,
+  .amountEntry {
+    grid-column: 1;
+  }
+
   .walletBubble {
-    width: 3.9rem;
-    height: 3.9rem;
-    flex-basis: 3.9rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-basis: 2.75rem;
   }
 
   .walletBubble img {
-    width: 3.1rem;
-    height: 3.1rem;
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
-  .typeSelector {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .typeSelector label > span {
-    min-height: 66px;
-    flex-direction: row;
-    justify-content: flex-start;
-    padding-inline: 10px;
-  }
-
-  .typeSelector label > span svg {
-    width: 1.9rem;
-    height: 1.9rem;
-    flex: 0 0 auto;
-  }
-
-  .typeSelector label > span b {
-    font-size: 12px;
+  .modalTitleText {
+    font-size: 1.05rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .typeSelector label > span,
   .quickAmounts button { transition: none; }
+}
+
+.intentFieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: contents;
 }

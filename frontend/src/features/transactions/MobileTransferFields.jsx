@@ -20,7 +20,7 @@ const AccountIdentity = ({ account, accountBalances }) => (
   </span>
 );
 
-const SourceAccount = ({ accounts, accountBalances, form, onSourceAccountChange, errors }) => {
+const SourceAccount = ({ accounts, accountBalances, form, onSourceAccountChange, errors, intentLocked }) => {
   const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
   return (
     <section className={styles.section}>
@@ -34,6 +34,7 @@ const SourceAccount = ({ accounts, accountBalances, form, onSourceAccountChange,
           value={form.source_account_id}
           onChange={(event) => onSourceAccountChange(event.target.value)}
           aria-invalid={Boolean(errors.source_account_id)}
+          disabled={intentLocked}
         >
           <option value="">Pilih rekening</option>
           {accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}
@@ -44,8 +45,8 @@ const SourceAccount = ({ accounts, accountBalances, form, onSourceAccountChange,
   );
 };
 
-const DestinationAccounts = ({ accounts, accountBalances, form, update, errors }) => (
-  <fieldset className={styles.destinationFieldset}>
+const DestinationAccounts = ({ accounts, accountBalances, form, update, errors, intentLocked }) => (
+  <fieldset className={styles.destinationFieldset} disabled={intentLocked}>
     <legend className={styles.sectionLabel}>Ke rekening</legend>
     {accounts.length ? (
       <div className={styles.destinationScroller}>
@@ -70,7 +71,7 @@ const DestinationAccounts = ({ accounts, accountBalances, form, update, errors }
   </fieldset>
 );
 
-const TransferNote = ({ form, update }) => (
+const TransferNote = ({ form, update, intentLocked }) => (
   <section className={styles.section}>
     <div className={styles.labelRow}>
       <label className={styles.sectionLabel} htmlFor="mobile-transfer-description">Catatan</label>
@@ -84,11 +85,12 @@ const TransferNote = ({ form, update }) => (
       value={form.description}
       onChange={(event) => update("description", event.target.value)}
       placeholder="Contoh: Pindah saldo untuk kebutuhan bulanan"
+      disabled={intentLocked}
     />
   </section>
 );
 
-const TransferAmount = ({ form, update, errors, amountRef, submitting, confirmation }) => (
+const TransferAmount = ({ form, update, errors, amountRef, submitting, confirmation, intentLocked }) => (
   <section className={styles.section}>
     <span className={styles.sectionLabel}>Nominal</span>
     <div className={styles.amountCard}>
@@ -102,14 +104,15 @@ const TransferAmount = ({ form, update, errors, amountRef, submitting, confirmat
           onChange={(value) => update("amount", value)}
           error={errors.amount}
           required
+          disabled={intentLocked}
         />
       </div>
       <button
         className={styles.submitButton}
         type="submit"
         disabled={submitting}
-        aria-label={submitting ? "Memproses transfer" : confirmation ? "Konfirmasi transfer tetap" : "Transfer sekarang"}
-        title={confirmation ? "Konfirmasi transfer tetap" : "Transfer sekarang"}
+        aria-label={submitting ? "Memproses transfer" : intentLocked ? "Coba lagi transfer dengan data yang sama" : confirmation ? "Konfirmasi transfer tetap" : "Transfer sekarang"}
+        title={intentLocked ? "Coba lagi data yang sama" : confirmation ? "Konfirmasi transfer tetap" : "Transfer sekarang"}
       >
         <FiArrowRight aria-hidden="true" />
       </button>
@@ -117,7 +120,7 @@ const TransferAmount = ({ form, update, errors, amountRef, submitting, confirmat
   </section>
 );
 
-const TransferDate = ({ form, update, errors }) => (
+const TransferDate = ({ form, update, errors, intentLocked }) => (
   <section className={styles.section}>
     <span className={styles.sectionLabel}>Tanggal transaksi</span>
     <label className={styles.dateCard} htmlFor="mobile-transfer-date">
@@ -132,6 +135,7 @@ const TransferDate = ({ form, update, errors }) => (
         value={form.transaction_date}
         onChange={(event) => update("transaction_date", event.target.value)}
         aria-invalid={Boolean(errors.transaction_date)}
+        disabled={intentLocked}
       />
     </label>
     {errors.transaction_date ? <small className={styles.error}>{errors.transaction_date}</small> : null}
@@ -176,16 +180,17 @@ const MobileTransferFields = ({
   confirmation,
   submitState,
   submitting,
+  outcomeUnknown,
 }) => (
   <div className={styles.composer}>
-    <SourceAccount accounts={accounts} accountBalances={accountBalances} form={form} onSourceAccountChange={onSourceAccountChange} errors={errors} />
-    <DestinationAccounts accounts={compatibleDestinationAccounts} accountBalances={accountBalances} form={form} update={update} errors={errors} />
-    <TransferNote form={form} update={update} />
-    <TransferAmount form={form} update={update} errors={errors} amountRef={amountRef} submitting={submitting} confirmation={confirmation} />
-    <TransferDate form={form} update={update} errors={errors} />
+    <SourceAccount accounts={accounts} accountBalances={accountBalances} form={form} onSourceAccountChange={onSourceAccountChange} errors={errors} intentLocked={outcomeUnknown} />
+    <DestinationAccounts accounts={compatibleDestinationAccounts} accountBalances={accountBalances} form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
+    <TransferNote form={form} update={update} intentLocked={outcomeUnknown} />
+    <TransferAmount form={form} update={update} errors={errors} amountRef={amountRef} submitting={submitting} confirmation={confirmation} intentLocked={outcomeUnknown} />
+    <TransferDate form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
     <ImpactPreview impact={impact} />
     <TransferStatus confirmation={confirmation} submitState={submitState} />
-    <p className={styles.guard}>Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer dan aplikasi menyegarkan data rekening.</p>
+    <p className={styles.guard}>{outcomeUnknown ? "Data transfer dikunci sementara. Tekan tombol transfer lagi untuk mencoba request yang sama; jangan ubah nominal atau rekening sampai server memberi hasil definitif." : "Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer dan aplikasi menyegarkan data rekening."}</p>
   </div>
 );
 

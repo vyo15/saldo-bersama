@@ -184,6 +184,8 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
   assert.match(dashboardCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero \.theme-toggle \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(dashboardCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
   assert.match(dashboardCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
+  assert.match(dashboardCss, /\.mobile-account-scroller \{[^}]*scroll-snap-type:\s*x mandatory;[^}]*touch-action:\s*pan-x pan-y;/);
+  assert.match(dashboardCss, /\.mobile-account-preview \{[^}]*scroll-snap-align:\s*start;[^}]*scroll-snap-stop:\s*always;/);
   assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*flex; \}/);
   assert.match(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*none; \}/);
 });
@@ -248,7 +250,7 @@ test("selector responsive tidak boleh menggantung sebelum selector berikutnya", 
 });
 
 
-test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan mendukung swipe opt-in", async () => {
+test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan memakai swipe canonical", async () => {
   const [shell, components, modal, modalStyles] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
     read("src/styles/components.css"),
@@ -270,10 +272,12 @@ test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan 
   assert.match(components, /\.mobile-menu-link \{[^}]*border:\s*0;/);
   assert.match(components, /\.mobile-menu-footer \{[^}]*safe-area-inset-bottom/);
   assert.doesNotMatch(components, /mobile-menu-theme/);
-  assert.match(modal, /mobileSwipeToClose = false/);
+  assert.match(modal, /mobileSwipeToClose = true/);
   assert.match(modal, /data-mobile-swipe-to-close/);
   assert.match(modal, /onPointerDown|swipeHandlers/);
   assert.match(modal, /SWIPE_DISMISS_RATIO/);
+  assert.match(modalStyles, /@keyframes mobile-sheet-in/);
+  assert.match(modalStyles, /animation-name:\s*mobile-sheet-in/);
   assert.match(modalStyles, /\.mobileDragHandle/);
   assert.match(modalStyles, /\.swipeHeader \{[\s\S]*touch-action:\s*pan-x pinch-zoom;/);
 });

@@ -88,7 +88,7 @@ available_balance = balance - allocated_remaining
 - Record yang dapat diedit membawa `row_version`.
 - SQL update memakai `WHERE id=? AND row_version=?`.
 - affected row nol menghasilkan HTTP 409.
-- Retry hanya terbatas dan memakai idempotency key yang sama.
+- Retry hanya terbatas dan memakai idempotency key yang sama. Untuk mutation biasa, client mempertahankan intent outcome-unknown di private-memory; payload berbeda pada action yang sama diblok sampai intent lama mendapat hasil definitif. Backend idempotency tetap menjadi sumber kebenaran canonical.
 - Outbox memakai coalescing pending/failed dan dapat merebut kembali worker macet. Penyelesaian job wajib cocok dengan `locked_by` agar worker lama tidak menutup pekerjaan worker baru.
 - Read multi-query penting (`app.initialState`, dashboard, transaksi terfilter, laporan, export, mirror, Calendar snapshot) memakai read transaction agar berasal dari snapshot database yang konsisten. Statement independen di dalam snapshot digabung dengan `tx.batch()` supaya konsistensi snapshot tetap terjaga tanpa satu HTTP round-trip per statement.
 - Read action tidak melakukan query `maintenance_mode` karena maintenance memang mengizinkan read. Write tetap memeriksa `maintenance_mode` sebelum dispatch dan membacanya ulang di dalam write transaction untuk menutup race dengan restore/import.
@@ -100,7 +100,7 @@ Sheets adalah mirror satu arah dan dapat dibangun ulang. Calendar hanya menerima
 
 ## PWA
 
-Service worker hanya meng-cache app shell dan asset statis. `/api/*` tidak pernah dicache. Offline write ditolak agar tidak terjadi transaksi ganda atau status ambigu. Instalasi iOS dilakukan melalui Safari → Share → Add to Home Screen.
+Service worker meng-cache app shell dan asset statis non-image sesuai policy runtime. `/api/*` tidak pernah dicache. Image URL stabil memakai stale-while-revalidate agar deployment asset baru tidak tertahan cache lama, sedangkan offline write tetap ditolak agar tidak terjadi transaksi ganda atau status ambigu. Instalasi iOS dilakukan melalui Safari → Share → Add to Home Screen.
 
 ## UI architecture
 

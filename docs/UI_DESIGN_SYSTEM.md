@@ -129,13 +129,22 @@ Migrasi dilakukan satu per satu bersama regression visual/behavior. Jangan mengg
 - Badge pada row hanya untuk exception/asal penting: `Jadwal rutin`, `Target`, `Belum dialokasikan`, atau `Dibatalkan`. Metadata lain tersedia pada detail transaction sheet/modal.
 - Detail mobile menampilkan jenis, kategori, rekening, alokasi, pencatat, tanggal Asia/Jakarta, dan sumber transaksi. Lifecycle edit/cancel/restore tetap memakai capability backend canonical.
 
+
+### Composer transaksi mobile
+
+- `Tambah transaksi` memakai satu bottom sheet compact. Header hanya memuat asset transaksi, judul, drag handle, dan tombol tutup; hindari hero card dekoratif di dalam modal.
+- Jenis transaksi memakai ikon `FinanceChoiceIcons` canonical dan grid 2×2 pada `<=820px`. Label tidak boleh mengulang makna melalui subtitle seperti “Uang keluar” atau “Dana kembali”.
+- Nominal tetap kosong saat composer baru dibuka untuk mencegah salah input. Quick amount yang tersedia adalah 20 rb, 50 rb, 100 rb, 200 rb, dan 500 rb; memilih chip hanya mengisi input, bukan menyimpan transaksi.
+- Field pembayaran, merchant/penerima, alasan over-budget bila relevan, dan catatan tampil langsung pada alur form. Jangan memakai accordion `Detail tambahan` untuk field transaksi yang memang bisa dibutuhkan saat pencatatan.
+- Footer `Batal` dan `Simpan transaksi` tetap sticky. Saat submit berjalan, modal menjadi non-dismissible sehingga Escape, backdrop, tombol tutup, dan swipe tidak dapat membatalkan request yang outcome-nya belum diketahui.
+
 ## Modal dan overflow mobile
 
 - `.modal__body` adalah satu-satunya scroll container internal dialog dan hanya boleh menggulir vertikal. Horizontal overflow harus ditutup pada container, bukan pada konten dengan clipping acak.
-- `form-grid`, child grid, `fieldset`, `.field`, money input, optional section, dan native file input wajib memiliki `min-width: 0` serta `max-width: 100%`.
+- `form-grid`, child grid, `fieldset`, `.field`, money input, dan native file input wajib memiliki `min-width: 0` serta `max-width: 100%`.
 - Indikator scrollbar dapat disembunyikan pada mobile, tetapi `overflow-y: hidden`, pembatasan zoom viewport, dan konten footer yang tidak dapat dijangkau dilarang.
 - Carousel horizontal hanya boleh dipakai untuk kontrol yang memang memilih urutan item, saat ini rekening. Filter, tab kategori, dan kelompok ikon harus wrap atau grid.
-- Boundary mobile canonical adalah `<=820px`; gesture swipe-to-dismiss dan presentation bottom sheet wajib memakai boundary yang sama. `>=821px` kembali ke perilaku dialog desktop.
+- Boundary mobile canonical adalah `<=820px`; dialog dismissible memakai bottom-sheet dengan animasi masuk dari bawah dan swipe-to-dismiss sebagai default canonical. `>=821px` kembali ke perilaku dialog desktop. Full-screen flow khusus boleh opt-out dari swipe bila gesture akan bertabrakan dengan navigasi utama.
 - Modal yang sedang menjalankan mutation kritis wajib memakai state `dismissible=false`: tombol tutup tidak terlihat aktif, Escape/backdrop/swipe tidak menutup modal, dan focus trap tetap berjalan sampai server memberi hasil.
 
 ## Information architecture Pengaturan
@@ -221,7 +230,7 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 - Full-height app memakai fallback `100vh` lalu `100dvh` pada root dan shell. Jangan memakai `100vh` sebagai satu-satunya sumber tinggi mobile.
 - Route full-bleed atau route dengan surface khusus wajib memasang background pada shell/main/content, bukan hanya page component, agar reserved navigation gap dan safe area tetap menyatu secara visual.
 - Loading/fatal error di luar shell memenuhi viewport. Loading/fatal error/404 di dalam shell memenuhi sisa area content, bukan menambah viewport penuh di dalam shell.
-- Dialog menjadi bottom sheet pada viewport kecil tanpa menduplikasi business form.
+- Dialog menjadi bottom sheet pada viewport kecil tanpa menduplikasi business form. Animasi masuk memakai gerak bawah-ke-atas yang singkat dan halus; `prefers-reduced-motion` wajib menonaktifkan gerak non-esensial.
 - `input`, `select`, dan `textarea` memakai token canonical `--font-size-body: 16px` agar pencegahan auto-zoom Safari tidak bergantung pada breakpoint; aturan ini juga berlaku pada filter CSS Module dan dashboard tablet. Viewport zoom tidak boleh dinonaktifkan.
 - Setiap `var(--token)` statis harus memiliki definisi canonical. Custom property runtime hanya diizinkan untuk nilai yang benar-benar disuntikkan komponen dan wajib tercakup regression test. Jangan membuat alias semantik baru jika token existing seperti `--border`, `--surface-soft`, `--text`, atau `--negative` sudah sesuai.
 - Gradient yang memuat teks atau ikon informatif harus lolos kontras pada setiap endpoint warna di light dan dark theme. Text shadow tidak dihitung sebagai pengganti rasio WCAG.
@@ -303,7 +312,7 @@ Adopsi Mantine harus dilakukan bertahap:
 - Semua route, data, aksi, state, dan izin yang tersedia pada desktop wajib dapat dijangkau pada mobile PWA; begitu juga sebaliknya.
 - Kesetaraan berarti **capability parity**, bukan tampilan piksel-identik. Desktop boleh memakai toolbar/panel, sedangkan mobile boleh memakai drawer, bottom sheet, `details`, atau card ringkas.
 - Authorization dan business behavior tidak boleh bercabang berdasarkan viewport, user agent, atau status PWA. Keduanya memakai handler, API facade, serta backend guard yang sama.
-- Komponen presentasi desktop/mobile wajib memakai view model dan state filter yang sama ketika menampilkan domain yang sama. Business form tidak boleh diduplikasi hanya untuk perangkat berbeda.
+- Komponen presentasi desktop/mobile wajib memakai domain/read model canonical yang sama ketika menampilkan data yang sama. Kontrol presentasi boleh berbeda bila dataset yang tersedia memang berbeda cakupan; contoh: Dashboard mobile hanya menampilkan lima transaksi terbaru dari recent slice, sedangkan search/filter lengkap tetap di `/transaksi`. Shortcut utama Beranda mobile adalah `Pemasukan`, `Pengeluaran`, dan `Transfer`; shortcut perencanaan tetap dijangkau melalui navigasi feature terkait agar Beranda tidak menduplikasi fungsi. Jika ada alert actionable, `Perlu perhatian` tampil sebelum informasi rekening sekunder. Transfer baru pada viewport mobile tetap memakai `TransactionForm` canonical dengan presentasi `mobile-transfer`. Business form tidak boleh diduplikasi hanya untuk perangkat berbeda.
 - Setiap breakpoint harus menyediakan jalur sesi yang terlihat. Desktop logout tidak boleh disembunyikan sebelum navigasi mobile yang memuat logout aktif.
 - Route sekunder pada navigasi mobile harus memberi orientasi aktif melalui menu `Lainnya` dan `aria-current`.
 - Pengurangan informasi pada mobile hanya boleh melalui progressive disclosure; data atau aksi tidak boleh dihapus tanpa pengganti yang dapat dijangkau.

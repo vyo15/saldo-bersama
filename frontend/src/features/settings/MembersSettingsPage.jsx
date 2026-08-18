@@ -10,7 +10,9 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import UserAvatar from "../../components/common/UserAvatar.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
+import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { invalidationActionsFor } from "../../services/api/invalidation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import MemberActivityPanel from "./components/MemberActivityPanel.jsx";
 import { deactivateUser, reactivateUser, runSettingsAction } from "./settings.api.js";
@@ -96,6 +98,7 @@ const useMemberMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, setO
 
 const MembersSettingsPage = () => {
   const { user } = useAuth();
+  const { invalidate, refreshAll } = useFinance();
   const ownerMode = user?.role === "owner";
   const resource = useApiResource("users.list", {}, { enabled: ownerMode });
   const [memberForm, setMemberForm] = useState(EMPTY_MEMBER_FORM);
@@ -159,7 +162,8 @@ const MembersSettingsPage = () => {
       setEditingMember(null);
       setMemberFormOpen(false);
       setResult({ status: "success", text: "Akses anggota berhasil disimpan." });
-      await Promise.allSettled([resource.reload()]);
+      invalidate(invalidationActionsFor("users"));
+      await Promise.allSettled([resource.reload(), refreshAll()]);
     } catch (error) {
       setResult({ status: "danger", text: error.message });
     } finally {
@@ -178,7 +182,8 @@ const MembersSettingsPage = () => {
       setResult({ status: "success", text: target.action === "deactivate" ? "Anggota berhasil dinonaktifkan." : "Anggota berhasil diaktifkan kembali." });
       setTarget(null);
       setActionState({ status: "idle", error: null });
-      await Promise.allSettled([resource.reload()]);
+      invalidate(invalidationActionsFor("users"));
+      await Promise.allSettled([resource.reload(), refreshAll()]);
     } catch (error) {
       setActionState({ status: "error", error });
     }
