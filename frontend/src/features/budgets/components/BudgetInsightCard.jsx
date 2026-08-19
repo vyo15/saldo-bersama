@@ -9,16 +9,16 @@ import BudgetPacingBar from "./BudgetPacingBar.jsx";
 import BudgetStatusPill from "./BudgetStatusPill.jsx";
 import styles from "../BudgetsPage.module.css";
 
-const BudgetDetailActions = ({ item, isCurrent, canManage, openReminder, editBudget, openBudgetLifecycle }) => {
-  if (!isCurrent && !canManage) return null;
+const BudgetDetailActions = ({ item, isCurrent, canEdit, canLifecycle, openReminder, editBudget, openBudgetLifecycle }) => {
+  if (!isCurrent && !canEdit && !canLifecycle) return null;
   return <div className={styles.detailActions}>
     {isCurrent ? <Button type="button" icon={FiBell} onClick={() => openReminder(item)}>Pengingat</Button> : null}
-    {canManage ? <Button type="button" icon={FiEdit2} onClick={() => editBudget(item)}>Edit</Button> : null}
-    {canManage ? <Button type="button" variant="danger" icon={FiArchive} onClick={() => openBudgetLifecycle(item)}>Hapus / Arsipkan</Button> : null}
+    {canEdit ? <Button type="button" icon={FiEdit2} onClick={() => editBudget(item)}>Edit</Button> : null}
+    {canLifecycle ? <Button type="button" variant="danger" icon={FiArchive} onClick={() => openBudgetLifecycle(item)}>Hapus / Arsipkan</Button> : null}
   </div>;
 };
 
-const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, openBudgetLifecycle, openReminder, attention = false }) => {
+const BudgetInsightCard = ({ item, category, periodMeta, canEdit, canLifecycle, editBudget, openBudgetLifecycle, openReminder, attention = false }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const state = budgetVisualState(item, periodMeta);
   const Icon = categoryIcon(category?.icon, "expense");
@@ -54,7 +54,7 @@ const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, 
 
       <div className={styles.cardStats}>
         <div><span>Terpakai</span><strong><Money value={item.used_amount} /></strong></div>
-        <div><span>Anggaran</span><strong><Money value={item.amount} /></strong></div>
+        <div><span>Batas</span><strong><Money value={item.amount} /></strong></div>
         <button
           type="button"
           className={`${styles.detailButton}${detailsOpen ? ` ${styles.detailButtonOpen}` : ""}`}
@@ -71,7 +71,8 @@ const BudgetInsightCard = ({ item, category, periodMeta, canManage, editBudget, 
         <BudgetDetailActions
           item={item}
           isCurrent={periodMeta.isCurrent}
-          canManage={canManage}
+          canEdit={canEdit}
+          canLifecycle={canLifecycle}
           openReminder={openReminder}
           editBudget={editBudget}
           openBudgetLifecycle={openBudgetLifecycle}

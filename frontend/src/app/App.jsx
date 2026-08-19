@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import LoadingScreen from "../components/feedback/LoadingScreen.jsx";
 import RequireAuth from "../features/auth/RequireAuth.jsx";
 
@@ -7,9 +7,7 @@ const AppShell = lazy(() => import("../layouts/AppShell.jsx"));
 const LoginPage = lazy(() => import("../features/auth/LoginPage.jsx"));
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage.jsx"));
 const TransactionsPage = lazy(() => import("../features/transactions/TransactionsPage.jsx"));
-const BudgetsPage = lazy(() => import("../features/budgets/BudgetsPage.jsx"));
-const AllocationsPage = lazy(() => import("../features/allocations/AllocationsPage.jsx"));
-const RecurringPage = lazy(() => import("../features/recurring/RecurringPage.jsx"));
+const PlanningPage = lazy(() => import("../features/planning/PlanningPage.jsx"));
 const GoalsPage = lazy(() => import("../features/goals/GoalsPage.jsx"));
 const ReportsPage = lazy(() => import("../features/reports/ReportsPage.jsx"));
 const AccountsPage = lazy(() => import("../features/accounts/AccountsPage.jsx"));
@@ -32,6 +30,11 @@ const NotFoundPage = lazy(() => import("../features/settings/NotFoundPage.jsx"))
 
 const routeElement = (Component) => <Suspense fallback={<LoadingScreen />}><Component /></Suspense>;
 
+const LegacyPlanningRedirect = ({ to }) => {
+  const location = useLocation();
+  return <Navigate to={to} replace state={location.state} />;
+};
+
 const App = () => (
   <Routes>
     <Route path="/login" element={routeElement(LoginPage)} />
@@ -39,9 +42,12 @@ const App = () => (
       <Route element={routeElement(AppShell)}>
         <Route index element={routeElement(DashboardPage)} />
         <Route path="transaksi" element={routeElement(TransactionsPage)} />
-        <Route path="anggaran" element={routeElement(BudgetsPage)} />
-        <Route path="alokasi" element={routeElement(AllocationsPage)} />
-        <Route path="tagihan" element={routeElement(RecurringPage)} />
+        <Route path="perencanaan" element={<Navigate to="/perencanaan/kantong" replace />} />
+        <Route path="perencanaan/kantong" element={routeElement(PlanningPage)} />
+        <Route path="perencanaan/jadwal" element={routeElement(PlanningPage)} />
+        <Route path="anggaran" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
+        <Route path="alokasi" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
+        <Route path="tagihan" element={<LegacyPlanningRedirect to="/perencanaan/jadwal" />} />
         <Route path="target" element={routeElement(GoalsPage)} />
         <Route path="laporan" element={routeElement(ReportsPage)} />
         <Route path="rekening" element={routeElement(AccountsPage)} />

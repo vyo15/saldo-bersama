@@ -1,6 +1,6 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, lazy, Suspense, useContext, useMemo, useState } from "react";
 import { TRANSACTION_TYPES } from "../domain/constants.js";
-import TransactionForm from "../features/transactions/TransactionForm.jsx";
+const TransactionForm = lazy(() => import("../features/transactions/TransactionForm.jsx"));
 
 const TransactionComposerContext = createContext(null);
 
@@ -51,13 +51,13 @@ export const TransactionComposerProvider = ({ children }) => {
   return (
     <TransactionComposerContext.Provider value={value}>
       {children}
-      <TransactionForm
-        open={composer.open}
+      {composer.open ? <Suspense fallback={null}><TransactionForm
+        open
         onClose={closeComposer}
         initialType={composer.initialType}
         initialSourceAccountId={composer.initialSourceAccountId}
         presentation={composer.presentation}
-      />
+      /></Suspense> : null}
     </TransactionComposerContext.Provider>
   );
 };

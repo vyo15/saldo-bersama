@@ -19,7 +19,7 @@ import EmptyState from "../../../components/feedback/EmptyState.jsx";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { accountOwnershipLabel, accountProviderLabel } from "../../../shared/presentation/account.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
-import { formatPeriod } from "../dashboardPresentation.js";
+import { dashboardAlertGuidance, formatPeriod } from "../dashboardPresentation.js";
 import FinancialAlertList from "./FinancialAlertList.jsx";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
@@ -41,7 +41,7 @@ const compactSyncLabel = (value) => {
   return `Diperbarui ${time}`;
 };
 
-const AttentionSheet = ({ alerts, open, onClose }) => <Modal open={open} onClose={onClose} title="Perlu perhatian" description="Selesaikan yang paling penting terlebih dahulu. Tidak ada perubahan data sebelum Anda mengonfirmasi tindakan pada halaman tujuan." size="sm" mobileSwipeToClose>
+const AttentionSheet = ({ alerts, open, onClose }) => <Modal open={open} onClose={onClose} title="Perlu perhatian" description="Periksa item berikut. Data baru berubah setelah Anda mengonfirmasi tindakan pada halaman tujuan." size="sm" mobileSwipeToClose>
   <FinancialAlertList alerts={alerts} variant="mobile" />
 </Modal>;
 
@@ -172,21 +172,26 @@ const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAcc
   </section>
 );
 
-const MobileAllocation = ({ allocationSummary, balanceVisible, unallocatedFunds, unallocatedCount }) => {
-  if (!allocationSummary.count && !unallocatedCount) return null;
+const MobileAllocation = ({ allocationSummary, balanceVisible, unallocatedFunds, unallocatedCount, unallocatedExpenseAmount, hasActiveGoal, periodKey }) => {
+  const freeFunds = Math.max(0, Number(unallocatedFunds || 0));
+  const unassignedExpenses = Math.max(0, Number(unallocatedCount || 0));
+  if (!allocationSummary.count && !freeFunds && !unassignedExpenses) return null;
   const attentionLabel = allocationSummary.attentionCount ? `${allocationSummary.attentionCount} perlu perhatian` : "Semua masih aman";
+  const freeFundsGuidance = dashboardAlertGuidance({ type: "unallocated_funds", id: `unallocated-funds:${periodKey}`, targetPath: "/perencanaan/kantong" });
   return (
     <section className="mobile-finance-section" aria-labelledby="mobile-allocation-title">
-      <div className="mobile-section-heading"><h2 id="mobile-allocation-title">Alokasi bulan ini</h2></div>
-      {allocationSummary.count ? <div className="mobile-allocation-card" aria-label="Ringkasan alokasi bulan ini"><div className="mobile-allocation-card__header"><span className="mobile-allocation-card__icon"><FiPieChart aria-hidden="true" /></span><div><h3>{allocationSummary.count} kantong aktif</h3><p><SensitiveMoney visible={balanceVisible} value={allocationSummary.committed} /> terpakai + dipesan dari <SensitiveMoney visible={balanceVisible} value={allocationSummary.allocated} /></p></div><strong>{allocationSummary.percentage}%</strong></div><ProgressBar value={allocationSummary.committed} max={allocationSummary.allocated} label="Pemakaian dan dana dipesan seluruh alokasi" /><div className="mobile-allocation-card__footer"><span>Sisa <SensitiveMoney visible={balanceVisible} value={allocationSummary.remaining} /> · {attentionLabel}</span><Link to="/alokasi">Kelola alokasi</Link></div></div> : null}
-      {unallocatedCount ? <div className="mobile-unallocated-note"><span>Belum dialokasikan</span><strong><SensitiveMoney visible={balanceVisible} value={unallocatedFunds || 0} /></strong><small>{unallocatedCount} transaksi</small></div> : null}
+      <div className="mobile-section-heading"><h2 id="mobile-allocation-title">Kantong bulan ini</h2></div>
+      {allocationSummary.count ? <div className="mobile-allocation-card" aria-label="Ringkasan Kantong bulan ini"><div className="mobile-allocation-card__header"><span className="mobile-allocation-card__icon"><FiPieChart aria-hidden="true" /></span><div><h3>{allocationSummary.count} kantong aktif</h3><p><SensitiveMoney visible={balanceVisible} value={allocationSummary.committed} /> terpakai + dipesan dari <SensitiveMoney visible={balanceVisible} value={allocationSummary.allocated} /></p></div><strong>{allocationSummary.percentage}%</strong></div><ProgressBar value={allocationSummary.committed} max={allocationSummary.allocated} label="Pemakaian dan dana dipesan seluruh Kantong" /><div className="mobile-allocation-card__footer"><span>Sisa <SensitiveMoney visible={balanceVisible} value={allocationSummary.remaining} /> · {attentionLabel}</span><Link to="/perencanaan/kantong">Kelola Kantong</Link></div></div> : null}
+      {freeFunds ? <Link className="mobile-unallocated-note" to={freeFundsGuidance.to} state={freeFundsGuidance.state} aria-label="Atur dana tersedia ke Kantong"><span>Dana tersedia belum dibagi</span><strong><SensitiveMoney visible={balanceVisible} value={freeFunds} /></strong><small>Atur Kantong</small></Link> : null}
+      {unassignedExpenses ? <Link className="mobile-unallocated-note" to="/transaksi" aria-label="Lihat pengeluaran yang belum punya Kantong"><span>Pengeluaran tanpa Kantong</span><strong><SensitiveMoney visible={balanceVisible} value={unallocatedExpenseAmount || 0} /></strong><small>{unassignedExpenses} transaksi</small></Link> : null}
+      {freeFunds && hasActiveGoal ? <Link className="mobile-unallocated-note" to="/target" aria-label="Setor sebagian dana tersedia ke Target"><span>Ada Target aktif</span><strong>Sisa dana tersedia</strong><small>Setor ke Target</small></Link> : null}
     </section>
   );
 };
 
 const MobileFinanceDashboard = ({ overview, viewModel, user, displayName, balanceVisible, onToggleBalance, onRefresh, isRefreshing, onOpenTransaction, onOpenTransactionDetail }) => {
   const { accountBars, expenseBars, recentTransactions, categoryLookup, transactionAccountLabel, allocationSummary } = viewModel;
-  return <section className="mobile-finance-dashboard" aria-label="Ringkasan keuangan mobile"><h1 className="sr-only">Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className="mobile-finance-content"><MobileQuickActions onOpenTransaction={onOpenTransaction} /><MobileAlerts alerts={overview.alerts} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} /><MobileInsights accountBars={accountBars} expenseBars={expenseBars} balanceVisible={balanceVisible} /></div></section>;
+  return <section className="mobile-finance-dashboard" aria-label="Ringkasan keuangan mobile"><h1 className="sr-only">Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className="mobile-finance-content"><MobileQuickActions onOpenTransaction={onOpenTransaction} /><MobileAlerts alerts={overview.alerts} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} unallocatedExpenseAmount={overview.unallocatedExpenseAmount} hasActiveGoal={(overview.goals || []).some((item) => item.status === "active")} periodKey={overview.periodKey} /><MobileInsights accountBars={accountBars} expenseBars={expenseBars} balanceVisible={balanceVisible} /></div></section>;
 };
 
 export default MobileFinanceDashboard;

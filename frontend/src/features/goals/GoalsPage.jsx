@@ -108,22 +108,25 @@ const GoalCard = ({ goal, actions }) => (
       <div><dt>Proyeksi</dt><dd data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</dd></div>
     </dl>
     {goal.status === "active" && goal.pace_status === "completed" ? <p className="goal-card__completion">Target tercapai. Selesaikan target untuk mengunci mutasi.</p> : null}
+    {goal.deposit_blocked_reason ? <CompactNotice tone="info" title="Setoran belum tersedia">{goal.deposit_blocked_reason}</CompactNotice> : null}
     <GoalActions goal={goal} {...actions} />
   </Card>
 );
 
-const GoalGrid = ({ items, actions, ownerMode, openCreate }) => (
+const GoalGrid = ({ items, actions, canCreate, openCreate }) => (
   <section className="goal-grid">
     {items.length ? items.map((goal) => <GoalCard key={goal.goal_id} goal={goal} actions={actions} />) : (
-      <EmptyState className="goal-grid__empty" icon={FiTarget} title="Belum ada target keuangan" description="Buat target untuk memantau progres dana dan kebutuhan bulanan." action={ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : null} />
+      <EmptyState className="goal-grid__empty" icon={FiTarget} title="Belum ada target keuangan" description="Buat target untuk memantau progres dana dan kebutuhan bulanan." action={canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : null} />
     )}
   </section>
 );
 
 const accountFundsLabel = (account) => `${accountDisplayLabel(account)} · tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`;
 
-const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, createMutation, message }) => (
-  <Modal
+const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, createMutation, message }) => {
+  const targetAccount = accounts.find((item) => item.account_id === form.account_id) || null;
+  const compatibleSource = targetAccount ? filterByOwnership(accounts, targetAccount).some((item) => item.account_id !== targetAccount.account_id) : true;
+  return <Modal
     open={open}
     onClose={close}
     dismissible={!createMutation.busy}
@@ -136,10 +139,11 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
       <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
       <label className="field"><span>Tanggal target</span><input required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
       <label className="field"><span>Rekening tujuan</span><select required value={form.account_id} onChange={(event) => setForm((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountFundsLabel(account)}</option>)}</select></label>
+      {targetAccount && !compatibleSource ? <CompactNotice className="form-grid__full" tone="info" title="Target dapat dibuat, tetapi belum dapat disetor">Tambahkan rekening sumber lain dengan kepemilikan yang sama. Setoran target selalu berupa transfer antar rekening yang berbeda.</CompactNotice> : null}
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
-  </Modal>
-);
+  </Modal>;
+};
 
 const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => (
   <Modal open={Boolean(editGoal)} onClose={() => setEditGoal(null)} dismissible={editState.status !== "submitting"} title="Edit target" footer={<><Button type="button" disabled={editState.status === "submitting"} onClick={() => setEditGoal(null)}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={editState.status === "submitting"}>{editState.status === "submitting" ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
@@ -366,8 +370,10 @@ const GoalsPage = () => {
   const { user } = useAuth();
   const { notify } = useFeedback();
   const ownerMode = user?.role === "owner";
+  const canCreate = Boolean(ownerMode || user?.role === "member");
   const [reminderTarget, setReminderTarget] = useState(null);
   const accounts = goalPageAccounts(bootstrap, overview);
+  const creationAccounts = ownerMode ? accounts : accounts.filter((item) => item.owner_scope === "shared");
   const items = resource.data?.items || [];
   const shared = { resource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation(shared);
@@ -382,11 +388,11 @@ const GoalsPage = () => {
   const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder };
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={ownerMode && items.length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}
+    <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={canCreate && items.length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}
     <GoalSummary items={items} />
-    <GoalGrid items={items} actions={actions} ownerMode={ownerMode} openCreate={creation.openCreate} />
+    <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
     <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
-    <GoalCreateModal open={creation.open} close={creation.closeCreate} form={creation.form} setForm={creation.setForm} accounts={accounts} createGoal={creation.createGoal} createMutation={creation.createMutation} message={creation.message} />
+    <GoalCreateModal open={creation.open} close={creation.closeCreate} form={creation.form} setForm={creation.setForm} accounts={creationAccounts} createGoal={creation.createGoal} createMutation={creation.createMutation} message={creation.message} />
     <GoalEditModal editGoal={lifecycle.editGoal} setEditGoal={lifecycle.setEditGoal} editState={lifecycle.editState} saveGoal={lifecycle.saveGoal} />
     <GoalMovementModal movement={movement.movement} setMovement={movement.setMovement} movementState={movement.movementState} movementMutation={movement.movementMutation} accounts={movement.compatibleMovementAccounts} submitMovement={movement.submitMovement} />
     <GoalConfirmations reverseTarget={lifecycle.reverseTarget} reverseState={lifecycle.reverseState} setReverseTarget={lifecycle.setReverseTarget} reverseLastMovement={lifecycle.reverseLastMovement} archiveTarget={lifecycle.archiveTarget} archiveState={lifecycle.archiveState} setArchiveTarget={lifecycle.setArchiveTarget} applyGoalLifecycle={lifecycle.applyGoalLifecycle} statusTarget={lifecycle.statusTarget} statusState={lifecycle.statusState} setStatusTarget={lifecycle.setStatusTarget} applyGoalStatus={lifecycle.applyGoalStatus} />

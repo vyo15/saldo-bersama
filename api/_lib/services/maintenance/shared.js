@@ -5,7 +5,7 @@ import { BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConst
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
 const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
@@ -222,6 +222,13 @@ const normalizedStoredTemplate = ({ row, accountType, field, allowed, requiredTy
 };
 
 export const normalizeRestoredRows = (table, rows) => {
+  if (table === "transactions") {
+    return rows.map((row) => ({
+      ...row,
+      cost_share_mode: Object.hasOwn(row, "cost_share_mode") ? String(row.cost_share_mode || "unspecified") : "unspecified",
+      cost_share_json: Object.hasOwn(row, "cost_share_json") ? String(row.cost_share_json || "[]") : "[]",
+    }));
+  }
   if (table === "envelope_rules") {
     return rows.map((row) => ({
       ...row,

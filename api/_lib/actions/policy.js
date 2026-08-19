@@ -43,6 +43,7 @@ export const ACTION_POLICIES = Object.freeze({
   "transactions.restore": write(),
   "envelopes.list": snapshotRead(),
   "envelopes.create": write(),
+  "envelopes.adjustAllocation": write(),
   "envelopes.move": write(),
   "envelopes.close": write(),
   "envelopes.previewRuleLifecycle": snapshotRead(),

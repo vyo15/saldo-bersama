@@ -4,7 +4,7 @@ import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
 import { AdminIcon, BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, PersonIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { ACCOUNT_TYPES } from "../../../domain/constants.js";
-import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS } from "../../../shared/presentation/account.js";
+import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS, accountTypeUsesAutomaticName } from "../../../shared/presentation/account.js";
 import styles from "./AccountEditorDialogs.module.css";
 
 const ACCOUNT_TYPE_OPTIONS = Object.freeze([
@@ -28,17 +28,19 @@ const ownershipUpdates = (value, fallbackUserId = "") => {
   return { owner_scope: "personal", owner_user_id: userId };
 };
 
+const shortPersonLabel = (value, fallback = "Pengguna") => String(value || fallback).trim().split(/\s+/).filter(Boolean)[0] || fallback;
+
 const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange }) => {
   const users = activeUsers.length ? activeUsers : defaultOwnerUserId ? [{ user_id: defaultOwnerUserId, name: currentOwnerLabel, role: "owner", is_current: true }] : [];
   const options = [
     { value: "shared", label: "Bersama", icon: SharedIcon },
     ...users.map((member) => ({
       value: `user:${member.user_id}`,
-      label: member.is_current ? "Saya" : member.name || member.email || "Pengguna",
+      label: member.is_current ? "Saya" : shortPersonLabel(member.name || member.email),
       icon: member.role === "owner" ? AdminIcon : PersonIcon,
     })),
   ];
-  return <VisualChoiceGroup className="form-grid__full" legend="Kepemilikan *" name="account-ownership" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} columns={Math.min(options.length, 3)} mobileColumns={Math.min(options.length, 3)} compact required />;
+  return <VisualChoiceGroup className="form-grid__full" legend="Kepemilikan *" name="account-ownership" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} columns={Math.min(options.length, 3)} mobileColumns={Math.min(options.length, 3)} compact wrapLabels required />;
 };
 
 const BankNumberField = ({ value, onChange, showHelper = true }) => (
@@ -71,15 +73,26 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm }
       setAccountForm((current) => ({
         ...current,
         account_type: accountType,
+        name: accountTypeUsesAutomaticName(accountType) ? "" : current.name,
         account_number: accountType === "bank" ? current.account_number : "",
         bank_template: accountType === "bank" ? current.bank_template : "generic",
         ewallet_template: accountType === "ewallet" ? current.ewallet_template : "generic",
       }));
-    }} options={ACCOUNT_TYPE_OPTIONS} columns={4} mobileColumns={3} compact />
-    <label className="field form-grid__full">
+    }} options={ACCOUNT_TYPE_OPTIONS} columns={4} mobileColumns={2} compact wrapLabels />
+    {accountTypeUsesAutomaticName(accountForm.account_type) ? <div className={`${styles.autoNameGroup} form-grid__full`}>
+      <p className={styles.autoNameNote}>Nama rekening dibuat otomatis dari jenis atau provider. Kepemilikan tetap menentukan apakah rekening Bersama atau Pribadi.</p>
+      <details className={styles.qualifierDisclosure}>
+        <summary>Butuh lebih dari satu? Tambah nama pembeda</summary>
+        <label className="field">
+          <span>Nama pembeda (opsional)</span>
+          <input maxLength="60" placeholder="Contoh: Rumah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
+          <small>Biarkan kosong bila satu rekening jenis ini sudah cukup.</small>
+        </label>
+      </details>
+    </div> : <label className="field form-grid__full">
       <span>Nama rekening *</span>
       <input required maxLength="100" placeholder="Contoh: Tabungan nikah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
-    </label>
+    </label>}
     {accountForm.account_type === "bank" ? <BankNumberField showHelper={false} value={accountForm.account_number} onChange={(accountNumber) => updateAccountForm({ account_number: accountNumber })} /> : null}
   </>
 );

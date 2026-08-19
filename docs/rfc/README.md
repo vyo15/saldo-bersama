@@ -6,16 +6,16 @@ RFC wajib sebelum perubahan lintas arsitektur atau guarded area: database, auth/
 
 - `0011-transaction-lifecycle-receipts-and-usage.md`
 - `0012-debt-receivable-ledger.md`
-- `0013-contribution-and-cost-sharing.md`
 - `0014-category-hierarchy-and-goal-stages.md`
 - `0015-granular-personal-privacy.md`
-- `0016-partner-planning-permissions.md`
 - `0018-session-device-management.md`
 
 RFC Proposed belum merupakan fitur runtime atau approval schema. Setelah keputusan Accepted, buat migration/API plan file-by-file dan minta approval implementasi.
 
 ## Accepted dan implemented
 
+- `0013-contribution-and-cost-sharing.md` menerapkan MVP pembagian beban biaya `equal`/`percentage` pada expense shared melalui schema v11. Payer/beneficiary/kontribusi aktual tetap deferred.
+- `0016-partner-planning-permissions.md` menerapkan Option 2: Member dapat mengelola planning shared dengan guard backend; destructive lifecycle/recovery tetap Administrator-only.
 - `0017-manual-reminders.md` menerapkan reminder manual one-shot actor-scoped pada Jadwal Rutin, Anggaran, Alokasi, dan Target melalui schema v10 serta scheduler/Web Push existing.
 
 ## Alur

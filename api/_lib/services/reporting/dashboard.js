@@ -1,4 +1,5 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
+import { aggregateCostShareRows } from "../costSharing.js";
 import {
   budgetListStatement,
   goalListStatements,
@@ -70,15 +71,17 @@ const bootstrapReadStatements = (context) => [
   visibleAccountsStatement(context.actor),
   { sql: "SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE", args: [] },
   { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','timezone','currency','maintenance_mode')", args: [] },
+  { sql: "SELECT user_id,name,role,status FROM users WHERE status='active' ORDER BY CASE role WHEN 'owner' THEN 0 ELSE 1 END,name COLLATE NOCASE", args: [] },
 ];
 
-const mapBootstrapRows = ([accountRows = [], categories = [], configRows = []], context) => {
+const mapBootstrapRows = ([accountRows = [], categories = [], configRows = [], memberRows = []], context) => {
   const accounts = mapVisibleAccountRows(accountRows, context.actor);
   const config = Object.fromEntries(configRows.map((row) => [row.key, row.value]));
   return {
     user: publicRow(context.actor),
     accounts,
     categories: categories.map((row) => publicRow(row)),
+    members: memberRows.map((row) => ({ ...publicRow(row), is_current: row.user_id === context.actor.user_id })),
     config: {
       schemaVersion: Number(config.schema_version || 0),
       timezone: config.timezone || "Asia/Jakarta",
@@ -123,16 +126,21 @@ const reportBreakdownStatements = (actor, startDate, endDate) => {
       FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id
       WHERE ${commonWhere}
       GROUP BY COALESCE(c.nature,'other') ORDER BY amount DESC`, args },
+    { sql: `SELECT t.cost_share_json
+      FROM transactions t
+      WHERE ${commonWhere} AND t.scope='shared' AND t.cost_share_mode<>'unspecified'`, args },
+    { sql: "SELECT user_id,name,role FROM users ORDER BY name COLLATE NOCASE,user_id", args: [] },
   ];
 };
 
-const mapReportBreakdowns = ([accounts = [], creators = [], natures = []]) => ({
+const mapReportBreakdowns = ([accounts = [], creators = [], natures = [], costShareRows = [], users = []]) => ({
   accountExpenses: accounts.map((row) => ({
     ...publicRow(row),
     label: row.owner_scope === "personal" ? `${row.name} · Pribadi · ${row.owner_name}` : `${row.name} · Bersama`,
   })),
   creatorExpenses: creators.map((row) => ({ ...publicRow(row), label: row.name })),
   natureExpenses: natures.map((row) => ({ ...publicRow(row), label: NATURE_LABELS[row.nature] || NATURE_LABELS.other })),
+  costShareExpenses: aggregateCostShareRows(costShareRows, users),
 });
 
 const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {}) => {
@@ -282,8 +290,8 @@ const unallocatedAlerts = (period, count) => count > 0 ? [{
   id: `unallocated:${period}`,
   type: "unallocated_expense",
   severity: "warning",
-  title: `${count} pengeluaran belum masuk alokasi`,
-  message: "Pilih kantong agar sisa jatah dan laporan alokasi tetap akurat.",
+  title: `${count} pengeluaran belum masuk Kantong`,
+  message: "Pilih Kantong agar sisa dana dan laporan perencanaan tetap akurat.",
   targetPath: "/transaksi",
 }] : [];
 
@@ -300,8 +308,8 @@ const budgetAlerts = (budgets) => {
       type: "budget_threshold",
       severity: crossed.severity,
       title: `${item.name} ${percentage}% terpakai`,
-      message: percentage >= 100 ? "Anggaran telah terlampaui." : `Pemakaian melewati ambang ${crossed.threshold}%.`,
-      targetPath: "/anggaran",
+      message: percentage >= 100 ? "Batas pengeluaran telah terlampaui." : `Pemakaian melewati ambang ${crossed.threshold}%.`,
+      targetPath: "/perencanaan/kantong",
     });
   }
   return alerts;
@@ -322,7 +330,7 @@ const envelopeAlerts = (envelopes) => {
       severity: crossed.severity,
       title: `${item.name} ${percentage}% terpakai + dipesan`,
       message: percentage >= 100 ? "Kantong sudah habis atau terlampaui." : `Sisa kantong mendekati batas ${crossed.threshold}%.`,
-      targetPath: "/alokasi",
+      targetPath: "/perencanaan/kantong",
     });
   }
   return alerts;
@@ -335,11 +343,11 @@ const recurringAlerts = (recurring) => {
     if (["paid", "received", "cancelled"].includes(item.status)) continue;
     const dueInDays = dayDifference(today, item.due_date);
     if (item.status === "overdue" || dueInDays < 0) {
-      alerts.push({ id: `recurring-overdue:${item.occurrence_id}`, type: "recurring_overdue", severity: "danger", title: `${item.name} terlambat`, message: `Jatuh tempo ${item.due_date} dan belum diselesaikan.`, targetPath: "/tagihan" });
+      alerts.push({ id: `recurring-overdue:${item.occurrence_id}`, type: "recurring_overdue", severity: "danger", title: `${item.name} terlambat`, message: `Jatuh tempo ${item.due_date} dan belum diselesaikan.`, targetPath: "/perencanaan/jadwal" });
       continue;
     }
     if (dueInDays <= 7) {
-      alerts.push({ id: `recurring-due:${item.occurrence_id}`, type: "recurring_due", severity: "warning", title: `${item.name} segera jatuh tempo`, message: `Jatuh tempo ${item.due_date}.`, targetPath: "/tagihan" });
+      alerts.push({ id: `recurring-due:${item.occurrence_id}`, type: "recurring_due", severity: "warning", title: `${item.name} segera jatuh tempo`, message: `Jatuh tempo ${item.due_date}.`, targetPath: "/perencanaan/jadwal" });
     }
   }
   return alerts;
@@ -387,13 +395,18 @@ const dashboardCashFlowStatement = (actor, startDate, endDate) => {
   const readable = readableLedgerSql(actor, "t");
   const operable = operableScopeSql(actor, "t");
   return {
-    sql: `SELECT
-      COALESCE(SUM(CASE WHEN t.transaction_type='income' THEN t.amount ELSE 0 END),0) AS income,
-      COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
-      COALESCE(SUM(CASE WHEN t.transaction_type='refund' THEN t.amount ELSE 0 END),0) AS refund,
-      COALESCE(SUM(CASE WHEN t.transaction_type='expense' AND t.envelope_period_id IS NULL AND ${operable.sql} THEN 1 ELSE 0 END),0) AS unallocated_count
+    sql: `WITH scoped AS (
+      SELECT t.*,CASE WHEN ${operable.sql} THEN 1 ELSE 0 END AS can_operate
       FROM transactions t
-      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${readable.sql}`,
+      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${readable.sql}
+    )
+    SELECT
+      COALESCE(SUM(CASE WHEN transaction_type='income' THEN amount ELSE 0 END),0) AS income,
+      COALESCE(SUM(CASE WHEN transaction_type='expense' THEN amount ELSE 0 END),0) AS expense,
+      COALESCE(SUM(CASE WHEN transaction_type='refund' THEN amount ELSE 0 END),0) AS refund,
+      COALESCE(SUM(CASE WHEN transaction_type='expense' AND envelope_period_id IS NULL AND can_operate=1 THEN 1 ELSE 0 END),0) AS unallocated_count,
+      COALESCE(SUM(CASE WHEN transaction_type='expense' AND envelope_period_id IS NULL AND can_operate=1 THEN amount ELSE 0 END),0) AS unallocated_amount
+    FROM scoped`,
     args: [...operable.args, startDate, endDate, ...readable.args],
   };
 };
@@ -524,6 +537,7 @@ const dashboardResult = (context, periodContext, readState) => {
   const expense = Number(cashFlowRow.expense || 0);
   const refund = Number(cashFlowRow.refund || 0);
   const unallocatedCount = Number(cashFlowRow.unallocated_count || 0);
+  const unallocatedExpenseAmount = Number(cashFlowRow.unallocated_amount || 0);
   const daysRemaining = dashboardDaysRemaining({ historical, period, currentPeriod, today, bounds });
   const recentTransactions = dashboardRecentTransactions(recentTransactionRows, context.actor);
   const alerts = buildFinancialAlerts({
@@ -560,6 +574,7 @@ const dashboardResult = (context, periodContext, readState) => {
     categoryExpenses,
     alerts,
     unallocatedCount,
+    unallocatedExpenseAmount,
     unallocatedFunds: allocation.unallocatedAmount,
     allocatedRemaining: allocation.allocatedRemaining,
     reservedBills: balance.reservedBills,

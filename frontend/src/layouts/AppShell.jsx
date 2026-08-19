@@ -23,9 +23,7 @@ import "../styles/responsive.css";
 
 const OWNER_LOCAL_CREATE_ROUTES = new Set([
   "/rekening",
-  "/anggaran",
-  "/alokasi",
-  "/tagihan",
+  "/perencanaan",
   "/target",
   "/kategori",
 ]);
@@ -33,7 +31,7 @@ const OWNER_LOCAL_CREATE_ROUTES = new Set([
 const transactionQuickAddAllowed = (pathname, role) => {
   const normalizedPath = pathname === "/" ? "/" : `/${String(pathname || "").replace(/^\/+|\/+$/g, "")}`;
   if (normalizedPath === "/404" || normalizedPath === "/anggota" || normalizedPath === "/pengaturan" || normalizedPath.startsWith("/pengaturan/")) return false;
-  if (role === "owner" && OWNER_LOCAL_CREATE_ROUTES.has(normalizedPath)) return false;
+  if (role === "owner" && (OWNER_LOCAL_CREATE_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/perencanaan/"))) return false;
   return true;
 };
 

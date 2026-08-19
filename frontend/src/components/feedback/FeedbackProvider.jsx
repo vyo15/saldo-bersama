@@ -8,15 +8,16 @@ const MAX_VISIBLE = 3;
 const DEFAULT_DURATION_MS = 4_500;
 const PROCESS_SUCCESS_MS = 1_600;
 const PROCESS_ERROR_MS = 4_500;
+const LOCAL_PROCESS_ACTIONS = new Set(["reconciliations.create"]);
 
 const safeTone = (tone) => ["success", "info", "warning", "danger"].includes(tone) ? tone : "info";
 
 const ACTION_MODULES = Object.freeze({
   accounts: "Rekening",
   backup: "Backup",
-  budgets: "Anggaran",
+  budgets: "Batas Pengeluaran",
   categories: "Kategori",
-  envelopes: "Alokasi",
+  envelopes: "Kantong Dana",
   goals: "Target",
   integrity: "Integritas",
   notifications: "Notifikasi",
@@ -41,16 +42,17 @@ const ACTION_LABELS = Object.freeze({
   "accounts.update": ["Memperbarui rekening...", "Rekening berhasil diperbarui"],
   "accounts.archive": ["Mengarsipkan rekening...", "Rekening berhasil diarsipkan"],
   "accounts.deleteUnused": ["Menghapus rekening...", "Rekening berhasil dihapus"],
-  "budgets.upsert": ["Menyimpan anggaran...", "Anggaran berhasil disimpan"],
-  "budgets.archive": ["Mengarsipkan anggaran...", "Anggaran berhasil diarsipkan"],
-  "budgets.deleteUnused": ["Menghapus anggaran...", "Anggaran berhasil dihapus"],
+  "budgets.upsert": ["Menyimpan batas pengeluaran...", "Batas pengeluaran berhasil disimpan"],
+  "budgets.archive": ["Mengarsipkan batas pengeluaran...", "Batas pengeluaran berhasil diarsipkan"],
+  "budgets.deleteUnused": ["Menghapus batas pengeluaran...", "Batas pengeluaran berhasil dihapus"],
   "categories.create": ["Membuat kategori...", "Kategori berhasil dibuat"],
   "categories.update": ["Memperbarui kategori...", "Kategori berhasil diperbarui"],
   "categories.archive": ["Mengarsipkan kategori...", "Kategori berhasil diarsipkan"],
   "categories.deleteUnused": ["Menghapus kategori...", "Kategori berhasil dihapus"],
-  "envelopes.create": ["Membuat alokasi...", "Alokasi berhasil dibuat"],
-  "envelopes.move": ["Memindahkan alokasi...", "Alokasi berhasil dipindahkan"],
-  "envelopes.close": ["Menutup alokasi...", "Alokasi berhasil ditutup"],
+  "envelopes.create": ["Membuat Kantong Dana...", "Kantong Dana berhasil dibuat"],
+  "envelopes.adjustAllocation": ["Memperbarui alokasi Kantong...", "Alokasi Kantong berhasil diperbarui"],
+  "envelopes.move": ["Memindahkan dana antar Kantong...", "Dana antar Kantong berhasil dipindahkan"],
+  "envelopes.close": ["Menutup Kantong...", "Kantong berhasil ditutup"],
   "envelopes.archiveRule": ["Mengarsipkan aturan alokasi...", "Aturan alokasi berhasil diarsipkan"],
   "envelopes.deleteUnusedRule": ["Menghapus aturan alokasi...", "Aturan alokasi berhasil dihapus"],
   "envelopes.reverseMovement": ["Membatalkan perpindahan alokasi...", "Perpindahan alokasi berhasil dibatalkan"],
@@ -116,7 +118,7 @@ const GlobalProcessIndicator = () => {
   }, [activity]);
 
   const presentation = processPresentation(visible);
-  if (!presentation) return null;
+  if (!presentation || LOCAL_PROCESS_ACTIONS.has(visible.action)) return null;
   const Icon = presentation.icon;
   return (
     <div className={`${styles.process} ${styles[`process_${visible.status}`] || ""}`} role="status" aria-live="polite" aria-atomic="true">

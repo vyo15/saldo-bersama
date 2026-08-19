@@ -200,10 +200,6 @@ test("goal projection dan mutation menjaga target, ownership, status, dan accoun
     await seedAccount(db, { id: "goal-account-2" });
 
     await assert.rejects(
-      () => createGoal(db, context(member, "goals.create", { name: "Tidak boleh", account_id: "goal-account", target_amount: 100_000 })),
-      (error) => error.code === "OWNER_ONLY",
-    );
-    await assert.rejects(
       () => createGoal(db, context(owner, "goals.create", { name: "Invalid", goal_type: "crypto", account_id: "goal-account", target_amount: 100_000 })),
       (error) => error.code === "INVALID_GOAL",
     );
@@ -371,10 +367,6 @@ test("envelope creation menolak enum, range, duplicate period, dan alokasi meleb
     await seedAccount(db, { id: "envelope-account", balance: 200_000 });
 
     await assert.rejects(
-      () => createEnvelopeRule(db, context(member, "envelopes.create", { name: "No", default_amount: 10_000 })),
-      (error) => error.code === "OWNER_ONLY",
-    );
-    await assert.rejects(
       () => createEnvelopeRule(db, context(owner, "envelopes.create", { name: "Bad", period_type: "yearly", default_amount: 10_000 })),
       (error) => error.code === "INVALID_ENVELOPE_RULE",
     );
@@ -423,7 +415,7 @@ test("envelope creation menolak enum, range, duplicate period, dan alokasi meleb
   }
 });
 
-test("recurring rule menjaga owner-only, kategori, due day, status lifecycle, dan occurrence generation", async () => {
+test("recurring rule menjaga scope, kategori, due day, status lifecycle, dan occurrence generation", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
@@ -432,10 +424,6 @@ test("recurring rule menjaga owner-only, kategori, due day, status lifecycle, da
     await seedCategory(db, { id: "recurring-expense", type: "expense" });
     await seedCategory(db, { id: "recurring-income", type: "income" });
 
-    await assert.rejects(
-      () => createRecurringRule(db, context(member, "recurring.create", { name: "No" })),
-      (error) => error.code === "OWNER_ONLY",
-    );
     await assert.rejects(
       () => createRecurringRule(db, context(owner, "recurring.create", {
         name: "Bad frequency",

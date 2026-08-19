@@ -59,7 +59,7 @@ test("compact notice owns lightweight guidance without dashboard stylesheet coup
     read("src/features/dashboard/DashboardPage.css"),
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/budgets/BudgetsPage.jsx"),
-    read("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/RecurringPage.jsx"),
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.jsx"),

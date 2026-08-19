@@ -30,7 +30,7 @@ Status source saat dokumen ini diperbarui: shared primitive sudah memakai CSS Mo
 - Font utama seluruh UI adalah **Manrope Variable** dari dependency `@fontsource-variable/manrope` dan di-load satu kali pada `frontend/src/main.jsx`. Asset font dibundle oleh Vite dan dilayani dari origin aplikasi sendiri.
 - `--font-sans` pada `frontend/src/styles/tokens.css` adalah satu-satunya sumber family sans-serif aplikasi. Page, feature, shared component, form, button, input, dan navigasi baru wajib mewarisi font global atau memakai `var(--font-sans)` bila deklarasi eksplisit memang diperlukan.
 - Jangan menambahkan Google Fonts/CDN, `@import` font eksternal, atau `font-family` sans-serif hardcoded per komponen. Fallback system pada `--font-sans` hanya digunakan bila asset Manrope gagal dimuat.
-- Bobot canonical tetap memakai token `--font-weight-regular` 400, `--font-weight-medium` 500, `--font-weight-semibold` 600, dan `--font-weight-bold` 700. Manrope Variable menyediakan rentang weight yang mencakup seluruh token tersebut.
+- Bobot canonical desktop memakai token `--font-weight-regular` 400, `--font-weight-medium` 500, `--font-weight-semibold` 600, dan `--font-weight-bold` 700. Pada mobile `<=820px`, token presentasi menurunkan `semibold` ke 550 dan `bold` ke 650 agar Manrope tidak terasa terlalu tebal di layar kecil. Body mobile memakai 14px, body-sm 12px, sm 11.5px, dan xs 10.5px. Kontrol sentuh tetap minimal 44px sehingga density font tidak mengurangi accessibility.
 - `--font-mono` tetap khusus untuk data teknis/diagnostik yang memang membutuhkan monospace. Nominal finansial tetap memakai font utama dengan `font-variant-numeric: tabular-nums` melalui pola `.money`.
 
 ## Palet warna canonical
@@ -209,7 +209,7 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 ## Ilustrasi ringkasan finansial
 
 - Artwork dekoratif hanya boleh memperkuat satu summary/hero utama atau empty state. Jangan membuat card baru hanya untuk gambar dan jangan mengulang artwork pada setiap item list.
-- Halaman yang saat ini memiliki summary-art canonical: Anggaran, Target (`piggy-bank.webp`), Alokasi (`wallet.webp`), Jadwal rutin (`finance-checklist.webp`), dan Anggota (`house.webp`). File fisik empat aset terakhir masih berada di `public/login/assets/mobile/` karena login juga menggunakannya; path tersebut diperlakukan sebagai shared visual asset sampai ada migrasi asset terpisah yang aman.
+- Halaman yang saat ini memiliki summary-art canonical: Perencanaan/Kantong Dana (`wallet.webp`), Perencanaan/Jadwal Rutin (`finance-checklist.webp`), Target (`piggy-bank.webp`), dan Anggota (`house.webp`). File fisik empat aset terakhir masih berada di `public/login/assets/mobile/` karena login juga menggunakannya; path tersebut diperlakukan sebagai shared visual asset sampai ada migrasi asset terpisah yang aman.
 - Artwork bersifat dekoratif: `alt=""`, `aria-hidden="true"`, `pointer-events: none`, tidak boleh menjadi sumber informasi atau authorization signal. Semua nominal, progress, status, dan capability tetap berasal dari read model/domain existing.
 - Desktop menempatkan artwork di sisi kanan hero dengan ruang copy sekitar dua pertiga lebar. Mobile mengecilkan artwork sekitar 29–31% lebar card dan menjaga copy utama tetap terbaca pada viewport 320–430px.
 - Dashboard, Transaksi, Laporan, Rekening, Kategori, serta halaman Pengaturan tidak menerima hero-art tambahan hanya demi konsistensi visual. Chart, kartu rekening, taxonomy icon, dan utility surface existing sudah menjadi fokus visual masing-masing route.
@@ -270,8 +270,8 @@ Adopsi Mantine harus dilakukan bertahap:
 
 ## Navigasi shell
 
-- Information architecture canonical: Perencanaan memuat Anggaran, Alokasi, Jadwal rutin, dan Target; Data keuangan memuat Rekening serta Kategori; Cocokkan Saldo (rekonsiliasi) berada pada Kontrol saldo; Pengaturan berada pada Aplikasi.
-- `/anggaran` adalah route pengelolaan. `/laporan` bersifat analitis dan tidak memuat mutation anggaran. Route `/tagihan` dipertahankan, tetapi label UI canonical adalah `Jadwal rutin`.
+- Information architecture canonical: menu `Perencanaan` membuka satu workspace dengan dua tab, `Kantong Dana` dan `Jadwal Rutin`. Batas Pengeluaran bukan tab/menu terpisah; ia berada di detail Kantong dan memakai kategori sebagai batas pemakaian. Target tetap feature Perencanaan tersendiri; Data keuangan memuat Rekening serta Kategori; Cocokkan Saldo (rekonsiliasi) berada pada Kontrol saldo; Pengaturan berada pada Aplikasi.
+- Route canonical workspace adalah `/perencanaan/kantong` dan `/perencanaan/jadwal`. Route lama `/anggaran`, `/alokasi`, dan `/tagihan` hanya compatibility redirect dan harus mempertahankan navigation state yang relevan. `/laporan` tetap analitis dan tidak memuat mutation batas pengeluaran.
 - Mobile `/laporan` pada breakpoint ≤820px memakai presentation khusus yang clean dan analitis tanpa mengubah contract `reports.monthly`: header ringkas, segmented `Ringkasan`/`Per kategori`, navigasi bulan, pilihan tren 3/6/12 bulan, chart pengeluaran, tiga KPI utama, perbandingan dengan bulan sebelumnya, kategori terbesar, peringatan actionable, anggaran vs aktual, serta rincian rekening/nature/pencatat melalui progressive disclosure. Semua angka berasal dari response report existing atau turunan deterministik dari `trend.items`; UI tidak membuat agregasi dari page slice dan tidak menambah mutation. Ikon kategori memakai katalog canonical project dari bootstrap kategori. Desktop mempertahankan report workspace existing.
 - Sidebar desktop mempertahankan mask melengkung brand Saldo Bersama. Ukurannya boleh diperbesar untuk tap target dan proporsi layar, tetapi bentuk/aset canonical tidak boleh diganti tanpa approval visual baru.
 - Kontrol utama desktop minimum 44×44px. Enam kontrol canonical dikelompokkan rapat di tengah rail tanpa mengubah mask organik. Submenu grup memakai anchored flyout di samping trigger, label satu baris, trigger-toggle, Escape, click-outside, route-close, dan focus restoration; tombol X tidak diperlukan untuk flyout navigasi.
@@ -303,6 +303,8 @@ Adopsi Mantine harus dilakukan bertahap:
 ## Feedback dan status aksi
 
 - Success/info/warning yang transient memakai `FeedbackProvider`/`useFeedback` dengan `aria-live=polite`, dedupe, safe-area mobile, dan reduced-motion.
+- Workflow yang sudah memiliki feedback lokal kaya tidak boleh menduplikasi GlobalProcessIndicator + toast. Route Cocokkan Saldo memiliki progress lokal yang membedakan fase simpan server dan refresh read-model, lalu memakai result overlay terfokus setelah server mengonfirmasi write.
+- Pencocokan saldo yang matched pada mobile boleh memakai full-screen success experience dengan animasi uang satu-shot dari visual MoneyRain existing; animasi wajib staggered, berada di belakang konten, berhenti sendiri, dan hilang pada `prefers-reduced-motion`. Hasil difference tidak memakai celebration dan tetap mempertahankan warning yang dapat ditindaklanjuti.
 - Error mutation, `row_version` conflict, outcome write yang tidak pasti, maintenance/read-only, backup/restore/import, dan status integrasi yang perlu ditindaklanjuti **tidak boleh** hanya berupa toast yang auto-dismiss; gunakan notice/error state persisten.
 - Aksi destructive tetap memakai modal/confirmation guard. Label “undo” hanya boleh memanggil compensating action domain yang audited (mis. cancel/reverse), bukan hard rollback atau penghapusan histori.
 - Halaman baru tidak boleh membuat toast/snackbar implementation sendiri; gunakan primitive feedback canonical.

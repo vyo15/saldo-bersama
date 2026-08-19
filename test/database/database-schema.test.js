@@ -12,6 +12,7 @@ const notificationPreferencesMigrationUrl = new URL("005_notification_preference
 const ewalletTemplateMigrationUrl = new URL("006_account_ewallet_template.sql", migrationDirectory);
 const envelopeAssigneeMigrationUrl = new URL("007_envelope_assignee.sql", migrationDirectory);
 const manualRemindersMigrationUrl = new URL("008_manual_reminders.sql", migrationDirectory);
+const transactionCostSharingMigrationUrl = new URL("009_transaction_cost_sharing.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -101,9 +102,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v10 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v11 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "10");
+  assert.equal(result.schema_version, "11");
   assert.ok(result.table_count >= 26);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -284,4 +285,23 @@ test("migration v10 menambah pengingat manual one-shot dengan ownership user dan
   } finally {
     db.close();
   }
+});
+
+
+test("migration v11 menambah snapshot pembagian beban tanpa mengubah transaksi lama", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("008_manual_reminders.sql"));
+    const now = "2026-08-19T03:00:00.000Z";
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").run("u-cost", "uid-cost", "cost@example.com", "Cost", "owner", "active", 1, now, now);
+    db.prepare("INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("a-cost", "Kas", "cash", "shared", null, 1000, "2026-01-01", 0, "active", 1, "u-cost", now, "u-cost", now);
+    db.prepare("INSERT INTO categories(category_id,name,transaction_type,nature,icon,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").run("c-cost", "Makan", "expense", "variable", "", "active", 1, "u-cost", now, "u-cost", now);
+    db.prepare("INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("t-legacy", "2026-08-19", "expense", "a-cost", null, "c-cost", null, null, null, 100, "Legacy", "", "", "", "shared", null, "active", 1, "legacy-key", "u-cost", now, "u-cost", now, null, null, "");
+    db.exec((await readFile(transactionCostSharingMigrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+    const row = db.prepare("SELECT cost_share_mode,cost_share_json FROM transactions WHERE transaction_id='t-legacy'").get();
+    assert.equal(row.cost_share_mode, "unspecified");
+    assert.equal(row.cost_share_json, "[]");
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "11");
+  } finally { db.close(); }
 });

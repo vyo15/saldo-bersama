@@ -82,6 +82,15 @@
   text-overflow: ellipsis;
 }
 
+.wrapLabels .label {
+  overflow: visible;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .description {
   max-width: 10.5rem;
   color: var(--text-muted);

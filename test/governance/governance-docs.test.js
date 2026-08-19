@@ -322,14 +322,14 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
-test("project status is a current-state snapshot with schema v10 and shared database guard", () => {
+test("project status is a current-state snapshot with schema v11 and shared database guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
   const packageJson = JSON.parse(read("package.json"));
   const productionSync = read("scripts/push-vercel-production-env.mjs");
   const developmentSync = read("scripts/push-vercel-development-env.mjs");
   const singleDbAdr = read("docs/adr/0007-single-turso-database-current-constraint.md");
 
-  assert.match(status, /Active schema contract:\*\* v10/);
+  assert.match(status, /Active schema contract:\*\* v11/);
   assert.match(status, /Runtime lokal dan Vercel Production .*masih.*database Turso bersama/);
   assert.match(status, /exit criteria ADR-0007/);
   assert.match(status, /bukan jurnal perubahan/i);
@@ -342,7 +342,7 @@ test("project status is a current-state snapshot with schema v10 and shared data
 });
 
 
-test("current docs track branded desktop/mobile server OAuth production, schema v10, dan manual accessibility QA", () => {
+test("current docs track branded desktop/mobile server OAuth production, schema v11, dan manual accessibility QA", () => {
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
   const deployment = read("docs/DEPLOYMENT.md");
   const status = read("docs/PROJECT_STATUS.md");
@@ -353,7 +353,7 @@ test("current docs track branded desktop/mobile server OAuth production, schema 
   assert.match(matrix, /semantic\/static regression/);
   assert.match(matrix, /real-device coverage pending/);
   assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
-  assert.match(deployment, /runtime v10 menerima traffic/);
+  assert.match(deployment, /runtime v11 menerima traffic/);
   assert.match(status, /Auth desktop dan mobile:.*tombol Google branded Saldo Bersama/);
   assert.match(status, /Authorization Code flow.*Firebase Identity Toolkit/);
   assert.match(testPlan, /production canonical.*`\/api\/auth\/google\/start`/);
@@ -384,10 +384,8 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
   const proposedRfcFiles = [
     "0011-transaction-lifecycle-receipts-and-usage.md",
     "0012-debt-receivable-ledger.md",
-    "0013-contribution-and-cost-sharing.md",
     "0014-category-hierarchy-and-goal-stages.md",
     "0015-granular-personal-privacy.md",
-    "0016-partner-planning-permissions.md",
     "0018-session-device-management.md",
   ];
 
@@ -398,6 +396,19 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
     assert.match(roadmap, new RegExp(escapeRegExp(rfcId)));
     assert.match(rfcSource, new RegExp(`^# ${escapeRegExp(rfcId)}\\b`, "m"));
     assert.match(rfcSource, /Status:\*{0,2}\s*Proposed/i);
+  });
+
+  const acceptedRfcFiles = [
+    "0013-contribution-and-cost-sharing.md",
+    "0016-partner-planning-permissions.md",
+  ];
+  acceptedRfcFiles.forEach((relative) => {
+    const rfcId = `RFC-${relative.slice(0, 4)}`;
+    const rfcSource = read(`docs/rfc/${relative}`);
+    assert.match(rfcIndex, new RegExp(escapeRegExp(relative)));
+    assert.match(roadmap, new RegExp(escapeRegExp(rfcId)));
+    assert.match(rfcSource, new RegExp(`^# ${escapeRegExp(rfcId)}\\b`, "m"));
+    assert.match(rfcSource, /Status:\*{0,2}\s*Accepted/i);
   });
 
   const implementedManualReminder = read("docs/rfc/0017-manual-reminders.md");

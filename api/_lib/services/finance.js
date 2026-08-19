@@ -1,6 +1,7 @@
 import { readBatchRows } from "../db/readBatchRows.js";
 import { TRANSACTION_TYPE_VALUES } from "../domainConstants.js";
 import { appendAudit } from "./audit.js";
+import { resolveTransactionCostShare, transactionCostSharePresentation } from "./costSharing.js";
 import { accountAllocatedRemaining, accountBalanceAsOf, firstNegativeBalance } from "./readModels.js";
 import { isReservedTransactionField } from "../transactionContract.js";
 import {
@@ -80,7 +81,7 @@ const assertEnvelopeCompatibility = (row, context, transaction) => {
 const assertEnvelopeCapacity = (row, transaction, remaining) => {
   if (transaction.amount <= remaining) return;
   if (row.overspend_policy === "block") throw appError("ENVELOPE_LIMIT", "Nominal melebihi sisa kantong.", 409, { remainingAmount: remaining });
-  if (row.overspend_policy === "confirm" && !transaction.overspend_reason) throw appError("OVERSPEND_REASON_REQUIRED", "Alasan melebihi alokasi wajib diisi.", 409, { remainingAmount: remaining });
+  if (row.overspend_policy === "confirm" && !transaction.overspend_reason) throw appError("OVERSPEND_REASON_REQUIRED", "Alasan melebihi dana Kantong wajib diisi.", 409, { remainingAmount: remaining });
 };
 
 const validateEnvelope = async (db, context, transaction, { excludeTransactionId = null } = {}) => {
@@ -125,7 +126,7 @@ const assertUnallocatedFunds = async (db, account, transaction, envelopeState, e
     accountAllocatedRemaining(db, account.account_id, { cutoffDate: transaction.transaction_date, excludeTransactionId }),
   ]);
   const available = balance - allocatedRemaining;
-  if (debit > available) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Dana rekening yang belum dialokasikan tidak mencukupi. Pilih kantong yang sesuai atau kurangi nominal.", 409, {
+  if (debit > available) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Dana rekening di luar Kantong tidak mencukupi. Pilih Kantong yang sesuai atau kurangi nominal.", 409, {
     accountId: account.account_id,
     availableAmount: available,
     accountBalance: balance,
@@ -157,7 +158,7 @@ const assertProjectedAccountFunds = async (db, { accountId, current, projectedCa
     accountBalanceAsOf(db, account, cutoffDate, { excludeTransactionId, candidate: projectedCandidate }),
     accountAllocatedRemaining(db, accountId, { cutoffDate, excludeTransactionId, candidate: projectedCandidate }),
   ]);
-  if (projectedBalance < projectedAllocated) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Perubahan akan memakai dana yang sudah dialokasikan ke kantong.", 409, {
+  if (projectedBalance < projectedAllocated) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Perubahan akan memakai dana yang sudah disiapkan di Kantong.", 409, {
     accountId,
     availableAmount: projectedBalance - projectedAllocated,
     accountBalance: projectedBalance,
@@ -289,7 +290,7 @@ export const normalizeTransaction = async (db, context, payload, { current = nul
   await assertTransactionDatesUnlocked(db, input.transactionDate, current);
   const accounts = await resolveTransactionAccounts(db, context, input);
   const categoryId = await resolveTransactionCategory(db, payload, current, input.type);
-  const record = buildNormalizedTransactionRecord({
+  const baseRecord = buildNormalizedTransactionRecord({
     payload,
     current,
     allowInternalLinks,
@@ -299,6 +300,8 @@ export const normalizeTransaction = async (db, context, payload, { current = nul
     ...accounts,
     categoryId,
   });
+  const costShare = await resolveTransactionCostShare(db, payload, current, baseRecord);
+  const record = { ...baseRecord, ...costShare };
   const excludeTransactionId = currentTransactionId(current);
   const envelopeState = await validateEnvelope(db, context, record, { excludeTransactionId });
   await assertUnallocatedFunds(db, accounts.source, record, envelopeState, excludeTransactionId);
@@ -315,11 +318,11 @@ export const createTransactionInternal = async (db, context, payload, { allowInt
     created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp,
     cancelled_by: null, cancelled_at: null, cancellation_reason: "",
   };
-  await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
-  if (audit) await appendAudit(db, context, { entityType: "transaction", entityId: record.transaction_id, next: publicRow(record) });
+  await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,cost_share_mode,cost_share_json,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  if (audit) await appendAudit(db, context, { entityType: "transaction", entityId: record.transaction_id, next: { ...publicRow(record), ...transactionCostSharePresentation(record) } });
   await context.enqueueMirror?.(db, "transaction", record.transaction_id);
-  return publicRow(record);
+  return { ...publicRow(record), ...transactionCostSharePresentation(record) };
 };
 
 export const createTransaction = (db, context) => createTransactionInternal(db, context, context.payload || {});
@@ -333,12 +336,17 @@ export const updateTransaction = async (db, context) => {
   const normalized = await normalizeTransaction(db, context, payload, { current });
   await assertAffectedBalances(db, current, normalized);
   const next = { ...current, ...normalized, row_version: Number(current.row_version)+1, updated_by: context.actor.user_id, updated_at: nowIso() };
-  const result = await db.execute(`UPDATE transactions SET transaction_date=?,transaction_type=?,source_account_id=?,destination_account_id=?,category_id=?,envelope_period_id=?,amount=?,description=?,overspend_reason=?,merchant=?,payment_method=?,scope=?,owner_user_id=?,row_version=?,updated_by=?,updated_at=?
-    WHERE transaction_id=? AND row_version=? AND status='active'`, [next.transaction_date,next.transaction_type,next.source_account_id,next.destination_account_id,next.category_id,next.envelope_period_id,next.amount,next.description,next.overspend_reason,next.merchant,next.payment_method,next.scope,next.owner_user_id,next.row_version,next.updated_by,next.updated_at,current.transaction_id,current.row_version]);
+  const result = await db.execute(`UPDATE transactions SET transaction_date=?,transaction_type=?,source_account_id=?,destination_account_id=?,category_id=?,envelope_period_id=?,amount=?,description=?,overspend_reason=?,merchant=?,payment_method=?,scope=?,owner_user_id=?,cost_share_mode=?,cost_share_json=?,row_version=?,updated_by=?,updated_at=?
+    WHERE transaction_id=? AND row_version=? AND status='active'`, [next.transaction_date,next.transaction_type,next.source_account_id,next.destination_account_id,next.category_id,next.envelope_period_id,next.amount,next.description,next.overspend_reason,next.merchant,next.payment_method,next.scope,next.owner_user_id,next.cost_share_mode,next.cost_share_json,next.row_version,next.updated_by,next.updated_at,current.transaction_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Transaksi berubah di perangkat lain.", 409);
-  await appendAudit(db, context, { entityType:"transaction", entityId:current.transaction_id, previous:publicRow(current), next:publicRow(next) });
+  await appendAudit(db, context, {
+    entityType: "transaction",
+    entityId: current.transaction_id,
+    previous: { ...publicRow(current), ...transactionCostSharePresentation(current) },
+    next: { ...publicRow(next), ...transactionCostSharePresentation(next) },
+  });
   await context.enqueueMirror?.(db,"transaction",current.transaction_id);
-  return publicRow(next);
+  return { ...publicRow(next), ...transactionCostSharePresentation(next) };
 };
 
 export const cancelTransactionInternal = async (db, context, transaction, reason, { allowLinked = false, audit = true } = {}) => {
@@ -350,9 +358,15 @@ export const cancelTransactionInternal = async (db, context, transaction, reason
   const next = { ...transaction, status:"cancelled", cancelled_by:context.actor.user_id, cancelled_at:nowIso(), cancellation_reason:cleanReason, row_version:Number(transaction.row_version)+1, updated_by:context.actor.user_id, updated_at:nowIso() };
   const result = await db.execute("UPDATE transactions SET status='cancelled',cancelled_by=?,cancelled_at=?,cancellation_reason=?,row_version=?,updated_by=?,updated_at=? WHERE transaction_id=? AND row_version=? AND status='active'", [next.cancelled_by,next.cancelled_at,next.cancellation_reason,next.row_version,next.updated_by,next.updated_at,transaction.transaction_id,transaction.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Transaksi berubah di perangkat lain.",409);
-  if (audit) await appendAudit(db, context, { action:context.action, entityType:"transaction", entityId:transaction.transaction_id, previous:publicRow(transaction), next:publicRow(next) });
+  if (audit) await appendAudit(db, context, {
+    action: context.action,
+    entityType: "transaction",
+    entityId: transaction.transaction_id,
+    previous: { ...publicRow(transaction), ...transactionCostSharePresentation(transaction) },
+    next: { ...publicRow(next), ...transactionCostSharePresentation(next) },
+  });
   await context.enqueueMirror?.(db,"transaction",transaction.transaction_id);
-  return publicRow(next);
+  return { ...publicRow(next), ...transactionCostSharePresentation(next) };
 };
 
 export const cancelTransaction = async (db, context) => {
@@ -393,11 +407,11 @@ export const restoreTransaction = async (db, context) => {
   await appendAudit(db, context, {
     entityType: "transaction",
     entityId: current.transaction_id,
-    previous: publicRow(current),
-    next: { ...publicRow(next), restoration_reason: reason },
+    previous: { ...publicRow(current), ...transactionCostSharePresentation(current) },
+    next: { ...publicRow(next), ...transactionCostSharePresentation(next), restoration_reason: reason },
   });
   await context.enqueueMirror?.(db, "transaction", current.transaction_id);
-  return publicRow(next);
+  return { ...publicRow(next), ...transactionCostSharePresentation(next) };
 };
 
 const transactionListRequest = (context) => {
@@ -414,7 +428,7 @@ const transactionListRequest = (context) => {
     createdBy: sanitizeText(payload.created_by, 100),
   };
   if (!["all", ...TRANSACTION_TYPES].includes(request.type)) throw appError("INVALID_TRANSACTION_TYPE", "Filter jenis transaksi tidak valid.", 400);
-  if (!["all", "allocated", "unallocated"].includes(request.allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter alokasi tidak valid.", 400);
+  if (!["all", "allocated", "unallocated"].includes(request.allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter Kantong tidak valid.", 400);
   return request;
 };
 
@@ -472,7 +486,7 @@ const transactionListResponse = (context, request, resultRows) => {
   const [countRows, rows, filterAccounts, filterCategories, filterCreators, closureRows] = resultRows;
   const periodLocked = Boolean(closureRows[0]);
   const periodOpen = !periodLocked;
-  const items = rows.map((row) => ({ ...publicRow(row), ...transactionCapabilities(context, row, { periodOpen }) }));
+  const items = rows.map((row) => ({ ...publicRow(row), ...transactionCostSharePresentation(row), ...transactionCapabilities(context, row, { periodOpen }) }));
   const total = Number(countRows[0]?.total || 0);
   return {
     items,

@@ -346,11 +346,14 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(recurring, /Perlu perhatian/);
   assert.match(recurring, /Lihat tindakan/);
   assert.match(recurring, /Lengkapi aktual/);
-  assert.match(recurring, /Periksa auto-debit/);
+  assert.doesNotMatch(recurring, /Periksa auto-debit|Penanda auto-debit/);
+  assert.match(recurring, /Menunggu konfirmasi/);
+  assert.match(recurring, /Konfirmasi aktual/);
   assert.match(recurring, /ScheduleAttention/);
   assert.match(feedback, /aria-live="polite"/);
   assert.match(feedback, /dedupeKey/);
   assert.match(feedback, /GlobalProcessIndicator/);
+  assert.match(feedback, /LOCAL_PROCESS_ACTIONS/);
   assert.match(feedback, /subscribeToMutationActivity/);
   assert.match(feedback, /ACTION_MODULES/);
   assert.match(feedback, /transactions\.create/);
@@ -371,12 +374,12 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
 
 test("feedback transient konsisten tanpa mengganti notice persisten untuk operasi kritis", async () => {
   const transientPages = await Promise.all([
-    "src/features/goals/GoalsPage.jsx",
-    "src/features/budgets/BudgetsPage.jsx",
-    "src/features/categories/CategoriesPage.jsx",
-    "src/features/accounts/AccountsPage.jsx",
-    "src/features/settings/ExportDataPage.jsx",
-  ].map(read));
+    read("src/features/goals/GoalsPage.jsx"),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/budgets/useBudgetActions.js")]).then((parts) => parts.join("\n")),
+    read("src/features/categories/CategoriesPage.jsx"),
+    read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/settings/ExportDataPage.jsx"),
+  ]);
   for (const source of transientPages) {
     assert.match(source, /useFeedback/);
     assert.match(source, /notify\(\{[\s\S]*tone:\s*"success"/);
@@ -528,15 +531,21 @@ test("FinanceContext memakai epoch per resource agar refresh overview dan bootst
   assert.match(epoch, /invalidateFinanceSession/);
 });
 
-test("dialog alokasi dimuat lazy agar route planning tidak kembali mendekati batas bundle", async () => {
-  const [page, layer] = await Promise.all([
+test("lapisan alokasi sekunder dimuat lazy agar route planning menjaga headroom bundle", async () => {
+  const [page, layer, overview] = await Promise.all([
     read("src/features/allocations/AllocationsPage.jsx"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
+    read("src/features/allocations/AllocationOverviewLayer.jsx"),
   ]);
   assert.match(page, /const AllocationDialogLayer = lazy\(\(\) => import\("\.\/AllocationDialogLayer\.jsx"\)\)/);
+  assert.match(page, /const AllocationOverviewLayer = lazy\(\(\) => import\("\.\/AllocationOverviewLayer\.jsx"\)\)/);
+  assert.match(page, /const ManualReminderModal = lazy\(\(\) => import\("\.\.\/reminders\/ManualReminderModal\.jsx"\)\)/);
   assert.match(page, /<Suspense fallback=\{null\}>[\s\S]*<AllocationDialogLayer/);
+  assert.match(page, /<AllocationOverviewLayer \{\.\.\.overviewProps\} \/>/);
   assert.doesNotMatch(page, /from "\.\/AllocationDialogLayer\.jsx";/);
+  assert.doesNotMatch(page, /from "\.\/AllocationOverviewLayer\.jsx";/);
   for (const modal of ["CreateEnvelopeModal", "MoveEnvelopeModal", "AllocationModals"]) assert.match(layer, new RegExp(`const ${modal}`));
+  for (const marker of ["AllocationSummary", "allocation-header-actions", "allocation-filters", "allocation-card__expand"]) assert.match(overview, new RegExp(marker));
 });
 
 

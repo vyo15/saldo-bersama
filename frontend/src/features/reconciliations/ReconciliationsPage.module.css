@@ -5,13 +5,12 @@
 .layout {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(17rem, .65fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-5);
 }
 
 .formPanel,
-.guidePanel,
 .historyPanel {
   min-width: 0;
 }
@@ -47,23 +46,6 @@
   color: var(--text-muted);
 }
 
-.eyebrowPill {
-  width: fit-content;
-  padding: 5px 9px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--primary-soft);
-  letter-spacing: .065em;
-}
-
-.eyebrowPill > span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
 
 .refreshButton {
   width: var(--control-height-md);
@@ -222,64 +204,6 @@
   box-shadow: var(--shadow-control);
 }
 
-.systemBalance {
-  min-height: 4.75rem;
-  padding: .75rem;
-  display: grid;
-  grid-template-columns: 2.55rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: .7rem;
-  border: 1px solid color-mix(in srgb, var(--primary) 15%, var(--border));
-  border-radius: var(--control-radius);
-  background: linear-gradient(135deg, var(--primary-soft), color-mix(in srgb, var(--surface) 88%, var(--primary-soft)));
-}
-
-.systemBalanceIcon {
-  width: 2.55rem;
-  height: 2.55rem;
-  display: grid;
-  place-items: center;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  color: var(--primary);
-}
-
-.systemBalanceIcon svg {
-  width: 1.2rem;
-  height: 1.2rem;
-}
-
-.systemBalanceCopy {
-  min-width: 0;
-  display: grid;
-  gap: .2rem;
-}
-
-.systemBalanceCopy small {
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-}
-
-.systemBalanceCopy strong,
-.systemBalanceCopy :global(.money) {
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--text);
-  font-size: var(--font-size-body);
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-}
-
-.snapshotBadge {
-  padding: 4px 7px;
-  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-}
 
 .summaryFull {
   min-width: 0;
@@ -420,56 +344,10 @@
   min-width: 12.5rem;
 }
 
-.guidePanel {
-  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--primary-soft) 35%, var(--surface)));
+.progressFull {
+  min-width: 0;
 }
 
-.guideLead {
-  margin-bottom: var(--space-4);
-  padding: var(--space-3);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
-  border-radius: var(--control-radius);
-  background: color-mix(in srgb, var(--primary-soft) 66%, var(--surface));
-}
-
-.guideLead > svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex: 0 0 auto;
-  color: var(--primary);
-}
-
-.guideLead > span {
-  display: grid;
-  gap: .2rem;
-}
-
-.guideLead strong {
-  color: var(--primary);
-  font-size: var(--font-size-body-sm);
-}
-
-.guideLead small {
-  color: var(--text-soft);
-  line-height: 1.45;
-}
-
-.guidePanel ol {
-  margin: 0;
-  padding: 0 0 0 1.2rem;
-  display: grid;
-  gap: var(--space-4);
-  color: var(--text-soft);
-  line-height: 1.6;
-}
-
-.guidePanel li::marker {
-  color: var(--primary);
-  font-weight: var(--font-weight-bold);
-}
 
 .emptyAction {
   min-height: 10rem;
@@ -501,12 +379,6 @@
 
 @keyframes reconciliation-spin {
   to { transform: rotate(360deg); }
-}
-
-@media (max-width: 940px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 580px) {
@@ -566,17 +438,6 @@
     font-size: var(--font-size-body);
   }
 
-  .systemBalance {
-    grid-template-columns: 2.45rem minmax(0, 1fr) auto;
-    min-height: 4.5rem;
-    padding: .7rem;
-  }
-
-  .systemBalanceIcon {
-    width: 2.45rem;
-    height: 2.45rem;
-  }
-
   .comparisonSummary {
     padding: .65rem;
     gap: .55rem;
@@ -608,21 +469,6 @@
     min-height: 48px;
   }
 
-  .guidePanel {
-    padding: var(--mobile-card-padding);
-    border-radius: var(--mobile-card-radius);
-    box-shadow: none;
-  }
-
-  .guidePanel :global(.panel__header),
-  .guidePanel ol {
-    display: none;
-  }
-
-  .guideLead {
-    margin-bottom: 0;
-  }
-
   .historyHeader {
     align-items: stretch;
     flex-direction: column;
@@ -635,14 +481,6 @@
 }
 
 @media (max-width: 360px) {
-  .snapshotBadge {
-    display: none;
-  }
-
-  .systemBalance {
-    grid-template-columns: 2.35rem minmax(0, 1fr);
-  }
-
   .summaryIcon {
     display: none;
   }

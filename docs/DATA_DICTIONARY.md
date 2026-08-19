@@ -1,6 +1,6 @@
 # Data Dictionary
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `008_manual_reminders.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `009_transaction_cost_sharing.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -58,6 +58,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `accounts.bank_template`: template visual kartu bank yang tidak mengubah nama rekening. Enum rekening bank: `generic`, `bca`, `bni`, `btn`, `mandiri`, `permata`; rekening non-bank wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `accounts.ewallet_template`: provider visual E-wallet yang tidak mengubah nama rekening. Enum E-wallet: `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`; rekening non-E-wallet wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
+- `transactions.cost_share_mode`: `unspecified`, `equal`, atau `percentage`. Hanya expense shared yang boleh memiliki mode selain `unspecified`.
+- `transactions.cost_share_json`: JSON snapshot server-side berisi `{user_id,basis_points,share_amount}`. Total `basis_points` wajib 10.000 dan total `share_amount` wajib sama dengan `transactions.amount`; field tidak dipercaya dari client.
 - Transfer wajib source dan destination berbeda.
 - Expense yang memiliki `envelope_period_id` wajib memakai `source_account_id` yang sama dengan `envelope_rules.source_account_id`; expense tanpa Kantong dan Transfer tidak boleh memakai dana yang masih berada dalam `allocated_remaining` pada rekening non-`allow_negative`.
 - `transactions.status` menentukan dampak saldo; cancelled/archived tidak dihitung.
@@ -77,19 +79,19 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - budget/kantong threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v10
+## Model planned — belum ada di schema v11
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
 - transaction lifecycle, `used_by`, receipt reference, draft/planned: RFC-0011;
 - obligation/debt/receivable/settlement: RFC-0012;
-- contribution, payer, beneficiary, cost split: RFC-0013;
+- payer, beneficiary, actual contribution, settlement, dan template split lanjutan: follow-up RFC-0013;
 - category parent dan goal stage: RFC-0014;
 - account visibility policy/backend projection: RFC-0015.
 
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v10
+## Schema v11
 
-Migration canonical terbaru: `008_manual_reminders.sql` pada `database/migrations/`. Migration v10 menambah reminder manual one-shot tanpa mengubah tabel ledger finansial existing.
+Migration canonical terbaru: `009_transaction_cost_sharing.sql` pada `database/migrations/`. Migration v11 menambah field additive pembagian beban biaya pada `transactions` tanpa mengubah saldo ledger historis. Histori dan backup lama dinormalisasi ke `cost_share_mode=unspecified` serta `cost_share_json=[]`. Migration v10 `008_manual_reminders.sql` tetap menjadi dasar reminder manual one-shot.

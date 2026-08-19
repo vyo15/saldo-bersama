@@ -1,0 +1,37 @@
+import { lazy, Suspense } from "react";
+import { useLocation, useNavigate } from "react-router";
+import PageHeader from "../../components/common/PageHeader.jsx";
+const AllocationsPage = lazy(() => import("../allocations/AllocationsPage.jsx"));
+const RecurringPage = lazy(() => import("../recurring/RecurringPage.jsx"));
+import styles from "./PlanningPage.module.css";
+
+const tabFromPath = (pathname) => pathname.includes("/jadwal") ? "jadwal" : "kantong";
+
+const PlanningPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = tabFromPath(location.pathname);
+  const selectTab = (tab) => {
+    const path = tab === "jadwal" ? "/perencanaan/jadwal" : "/perencanaan/kantong";
+    if (path !== location.pathname) navigate(path);
+  };
+
+  return <div className={`page-stack ${styles.page}`}>
+    <PageHeader title="Perencanaan" description="Atur Kantong Dana dan transaksi rutin dalam satu tempat." help="Kantong Dana menyiapkan sumber penggunaan uang. Batas pengeluaran berada di dalam Kantong. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Saldo hanya berubah setelah transaksi aktual disimpan." />
+    <div className={styles.tabs} role="tablist" aria-label="Perencanaan keuangan">
+      <button type="button" role="tab" aria-selected={activeTab === "kantong"} className={`${styles.tab}${activeTab === "kantong" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("kantong")}>
+        <strong>Kantong Dana</strong><span>Dana dan batas pengeluaran</span>
+      </button>
+      <button type="button" role="tab" aria-selected={activeTab === "jadwal"} className={`${styles.tab}${activeTab === "jadwal" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("jadwal")}>
+        <strong>Jadwal Rutin</strong><span>Transaksi berulang dan konfirmasi aktual</span>
+      </button>
+    </div>
+    <section role="tabpanel" aria-label={activeTab === "kantong" ? "Kantong Dana" : "Jadwal Rutin"}>
+      <Suspense fallback={<div className="notice notice--info" role="status">Memuat perencanaan...</div>}>
+        {activeTab === "kantong" ? <AllocationsPage embedded onOpenRecurring={() => selectTab("jadwal")} /> : <RecurringPage embedded />}
+      </Suspense>
+    </section>
+  </div>;
+};
+
+export default PlanningPage;

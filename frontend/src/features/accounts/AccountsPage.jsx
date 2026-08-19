@@ -21,7 +21,7 @@ import {
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { todayInJakarta } from "../../domain/dates.js";
-import { accountCardholderName, detectBankTemplate, detectEwalletTemplate, filterAccountsByOwnership } from "../../shared/presentation/account.js";
+import { accountCardholderName, accountTypeUsesAutomaticName, defaultAccountName, detectBankTemplate, detectEwalletTemplate, filterAccountsByOwnership } from "../../shared/presentation/account.js";
 import styles from "./AccountsPage.module.css";
 
 const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));
@@ -38,6 +38,19 @@ const emptyAccountForm = () => ({
   name: "", account_type: "bank", bank_template: "generic", ewallet_template: "generic", account_number: "", owner_scope: "shared", owner_user_id: "",
   initial_balance: "", initial_balance_date: todayInJakarta(), allow_negative: false,
 });
+
+
+const accountCreatePayload = (form) => {
+  const qualifier = String(form.name || "").trim();
+  const automaticName = defaultAccountName(form);
+  return {
+    ...form,
+    name: accountTypeUsesAutomaticName(form.account_type)
+      ? [automaticName, qualifier].filter(Boolean).join(" · ")
+      : form.name,
+    initial_balance: Number(form.initial_balance || 0),
+  };
+};
 
 const accountUpdatePayload = (account) => ({
   account_id: account.account_id,
@@ -63,7 +76,7 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
     event.preventDefault();
     setDialogState({ status: "submitting", error: null });
     try {
-      await requestCreateAccount({ ...accountForm, initial_balance: Number(accountForm.initial_balance || 0) }, {});
+      await requestCreateAccount(accountCreatePayload(accountForm), {});
       setAccountForm(emptyAccountForm());
       setCreateDialogOpen(false);
       setDialogState({ status: "idle", error: null });

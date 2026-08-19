@@ -101,26 +101,33 @@ test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase s
 
 
 
-test("backup schema v10 menyimpan manual reminder, penerima jatah, notification preferences, dan provider E-wallet canonical", async () => {
+test("backup schema v11 menyimpan cost sharing, manual reminder, penerima jatah, notification preferences, dan provider E-wallet canonical", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
     await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-pref", "firebase-pref", "pref@example.com", "Preference", "owner", "active", 1, now, now]);
+    await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-member", "firebase-member", "member@example.com", "Member", "member", "active", 1, now, now]);
     await db.execute("INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", ["u-pref", "budget_threshold", 0, 1, now, now]);
     await db.execute("INSERT INTO manual_reminders(reminder_id,user_id,entity_type,entity_id,scheduled_at,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["reminder-v10", "u-pref", "budget", "budget-v10", "2026-08-18T01:00:00.000Z", "scheduled", 1, now, now]);
     await db.execute("INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["wallet-v8", "Belanja", "ewallet", "", "generic", "gopay", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-pref", now, "u-pref", now]);
+    await db.execute("INSERT INTO categories(category_id,name,transaction_type,nature,icon,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", ["category-cost-v11", "Biaya Bersama", "expense", "variable", "other", "active", 1, "u-pref", now, "u-pref", now]);
+    const costShareJson = JSON.stringify([{ user_id: "u-pref", basis_points: 5000, share_amount: 50 }, { user_id: "u-member", basis_points: 5000, share_amount: 50 }]);
+    await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,cost_share_mode,cost_share_json,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["tx-cost-v11", "2026-08-09", "expense", "wallet-v8", null, "category-cost-v11", null, null, null, 100, "Shared split", "", "", "", "shared", null, "equal", costShareJson, "active", 1, "backup-cost-v11", "u-pref", now, "u-pref", now, null, null, ""]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 10);
+    assert.equal(snapshot.manifest.schemaVersion, 11);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
     assert.equal(snapshot.manifest.tables.manual_reminders, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
     assert.equal(snapshot.tables.manual_reminders[0].entity_type, "budget");
     assert.equal(snapshot.tables.accounts[0].ewallet_template, "gopay");
+    assert.equal(snapshot.tables.transactions[0].cost_share_mode, "equal");
+    assert.equal(snapshot.tables.transactions[0].cost_share_json, costShareJson);
     assert.equal(validateSnapshot(snapshot), snapshot.checksum);
   } finally { db.close(); }
 });
 
-test("backup schema v3-v9 tetap dapat dimuat ke schema v10 dengan field additive canonical", async () => {
+test("backup schema v3-v10 tetap dapat dimuat ke schema v11 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -195,6 +202,14 @@ test("backup schema v3-v9 tetap dapat dimuat ke schema v10 dengan field additive
     delete v9.manifest.tables.manual_reminders;
     v9.checksum = digest(canonicalJson({ manifest: v9.manifest, tables: v9.tables }));
     assert.equal(validateSnapshot(v9), v9.checksum);
+
+    const v10 = structuredClone(current);
+    v10.manifest.version = 10;
+    v10.manifest.schemaVersion = 10;
+    v10.tables.transactions = v10.tables.transactions.map(({ cost_share_mode: _mode, cost_share_json: _json, ...row }) => row);
+    v10.checksum = digest(canonicalJson({ manifest: v10.manifest, tables: v10.tables }));
+    assert.equal(validateSnapshot(v10), v10.checksum);
+    assert.deepEqual(normalizeRestoredRows("transactions", [{ transaction_id: "tx-v10" }])[0], { transaction_id: "tx-v10", cost_share_mode: "unspecified", cost_share_json: "[]" });
 
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);

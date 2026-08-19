@@ -2,10 +2,11 @@ const ALERT_TARGETS = Object.freeze({
   reconciliation_difference: { prefix: "reconciliation-difference", fallbackPath: "/rekonsiliasi" },
   reconciliation_stale: { prefix: "reconciliation-stale", fallbackPath: "/rekonsiliasi" },
   unallocated_expense: { prefix: "unallocated", fallbackPath: "/transaksi" },
-  budget_threshold: { prefix: "budget", fallbackPath: "/anggaran" },
-  envelope_threshold: { prefix: "envelope", fallbackPath: "/alokasi" },
-  recurring_overdue: { prefix: "recurring-overdue", fallbackPath: "/tagihan" },
-  recurring_due: { prefix: "recurring-due", fallbackPath: "/tagihan" },
+  unallocated_funds: { prefix: "unallocated-funds", fallbackPath: "/perencanaan/kantong" },
+  budget_threshold: { prefix: "budget", fallbackPath: "/perencanaan/kantong" },
+  envelope_threshold: { prefix: "envelope", fallbackPath: "/perencanaan/kantong" },
+  recurring_overdue: { prefix: "recurring-overdue", fallbackPath: "/perencanaan/jadwal" },
+  recurring_due: { prefix: "recurring-due", fallbackPath: "/perencanaan/jadwal" },
   goal_behind: { prefix: "goal-behind", fallbackPath: "/target" },
 });
 
@@ -56,17 +57,27 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
     const period = alertPeriod(alert);
     return guidance({
       instruction: "Pilih pengeluaran yang belum memiliki kantong, buka Edit, lalu tentukan alokasi seperti Makan, Bensin, Rumah, atau jatah lainnya.",
-      actionLabel: "Pilih alokasi",
+      actionLabel: "Pilih Kantong",
       to,
       baseState,
       state: { allocation: "unallocated", ...entityState("period", period) },
+    });
+  },
+  unallocated_funds: ({ alert, to, baseState }) => {
+    const period = alertPeriod(alert);
+    return guidance({
+      instruction: "Dana ini masih tersedia di rekening dan belum dibagi ke Kantong. Tambahkan hanya jumlah yang memang ingin dialokasikan; saldo rekening tidak berubah.",
+      actionLabel: "Atur Kantong",
+      to,
+      baseState,
+      state: { attentionAction: "fund", ...entityState("period", period) },
     });
   },
   budget_threshold: ({ alert, to, baseState, entityId }) => guidance({
     instruction: alert.severity === "danger"
       ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah batas hanya jika rencana anggarannya memang berubah."
       : "Periksa pemakaian kategori ini dan pastikan sisa anggaran cukup sampai akhir periode.",
-    actionLabel: "Periksa anggaran",
+    actionLabel: "Periksa batas",
     to,
     baseState,
     state: entityState("attentionBudgetId", entityId),
@@ -75,7 +86,7 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
     instruction: alert.severity === "danger"
       ? "Periksa transaksi pada kantong ini karena jatah sudah habis atau terlampaui."
       : "Periksa sisa jatah sebelum membuat pengeluaran berikutnya dari kantong ini.",
-    actionLabel: "Periksa alokasi",
+    actionLabel: "Periksa Kantong",
     to,
     baseState,
     state: entityState("attentionEnvelopeId", entityId),

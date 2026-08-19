@@ -620,7 +620,7 @@ const queueRecurringDueNotifications = async (db, state, recurring) => {
       body: item.kind === "income"
         ? `${notificationRupiah(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)))} dijadwalkan masuk ke ${shortName(item.account_name, "rekening tujuan")}.`
         : `${notificationRupiah(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)))} perlu dibayar dari ${shortName(item.account_name, "rekening sumber")}.`,
-      targetPath: "/tagihan",
+      targetPath: "/perencanaan/jadwal",
       dedupeKey: `recurring:${item.occurrence_id}:${item.due_date}`,
     }, disabledPreferences);
     const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0));
@@ -631,7 +631,7 @@ const queueRecurringDueNotifications = async (db, state, recurring) => {
       type: "recurring_funding_shortage",
       title: `Dana ${shortName(item.name, "pembayaran")} belum cukup`,
       body: `Masih kurang ${notificationRupiah(remaining - balance)} dari kebutuhan ${notificationRupiah(remaining)} di ${shortName(item.account_name, "rekening sumber")}.`,
-      targetPath: "/tagihan",
+      targetPath: "/perencanaan/jadwal",
       dedupeKey: `recurring-shortage:${item.occurrence_id}:${item.due_date}`,
     }, disabledPreferences);
   }
@@ -646,7 +646,7 @@ const queueRecurringCompletedNotifications = async (db, state, items) => {
       type: "recurring_completed",
       title: `${shortName(item.name, "Jadwal rutin")} berhasil dicatat`,
       body: `${notificationRupiah(Number(item.actual_amount || item.expected_amount || 0))} sudah tercatat sebagai ${item.kind === "income" ? "pemasukan" : "pembayaran"} rutin.`,
-      targetPath: "/tagihan",
+      targetPath: "/perencanaan/jadwal",
       dedupeKey: `recurring-completed:${item.occurrence_id}`,
     }, disabledPreferences);
   }
@@ -662,9 +662,9 @@ const queueBudgetNotifications = async (db, state, budgets) => {
     if (!threshold) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "budget_threshold",
-      title: `Anggaran ${shortName(item.name, "bulan ini")} sudah ${threshold}%`,
+      title: `Batas ${shortName(item.name, "bulan ini")} sudah ${threshold}%`,
       body: `Terpakai ${notificationRupiah(item.used_amount)} dari ${notificationRupiah(item.amount)}. Sisa ${notificationRupiah(Math.max(0, Number(item.amount || 0) - Number(item.used_amount || 0)))}.`,
-      targetPath: "/anggaran",
+      targetPath: "/perencanaan/kantong",
       dedupeKey: `budget:${item.budget_id}:${period}:${threshold}`,
     }, disabledPreferences);
   }
@@ -683,7 +683,7 @@ const queueEnvelopeNotifications = async (db, state, envelopes) => {
       type: "envelope_threshold",
       title: `Kantong ${shortName(item.name, "aktif")} sudah ${threshold}%`,
       body: `Terpakai + dipesan ${notificationRupiah(Number(item.used_amount || 0) + Number(item.reserved_amount || 0))} dari ${notificationRupiah(item.allocated_amount)}. Sisa ${notificationRupiah(Math.max(0, allocated - Number(item.used_amount || 0) - Number(item.reserved_amount || 0)))}.`,
-      targetPath: "/alokasi",
+      targetPath: "/perencanaan/kantong",
       dedupeKey: `envelope:${item.envelope_period_id}:${threshold}`,
     }, disabledPreferences);
   }

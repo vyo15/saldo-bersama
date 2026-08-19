@@ -56,11 +56,12 @@ test("quick add transaksi mengikuti route dan tidak bersaing dengan aksi create 
     read("src/styles/responsive.css"),
   ]);
   assert.match(shell, /OWNER_LOCAL_CREATE_ROUTES = new Set/);
-  for (const route of ["/rekening", "/anggaran", "/alokasi", "/tagihan", "/target", "/kategori"]) assert.match(shell, new RegExp(`"${route}"`));
+  for (const route of ["/rekening", "/perencanaan", "/target", "/kategori"]) assert.match(shell, new RegExp(`"${route}"`));
+  assert.match(shell, /normalizedPath\.startsWith\("\/perencanaan\/"\)/);
   assert.match(shell, /normalizedPath === "\/404"/);
   assert.match(shell, /normalizedPath === "\/anggota"/);
   assert.match(shell, /normalizedPath === "\/pengaturan" \|\| normalizedPath\.startsWith\("\/pengaturan\/"\)/);
-  assert.match(shell, /role === "owner" && OWNER_LOCAL_CREATE_ROUTES\.has\(normalizedPath\)/);
+  assert.match(shell, /role === "owner" && \(OWNER_LOCAL_CREATE_ROUTES\.has\(normalizedPath\) \|\| normalizedPath\.startsWith\("\/perencanaan\/"\)\)/);
   assert.match(shell, /quickAddVisible=\{transactionQuickAddVisible\}/);
   assert.match(mobileNavigation, /quickAddVisible = true/);
   assert.match(mobileNavigation, /mobile-navigation--without-add/);
@@ -209,10 +210,10 @@ test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoin
   assert.match(mobileNavigation, /mobile-navigation__more\$\{moreActive \? " active"/);
 });
 
-test("navigasi mengelompokkan menu berdasarkan fungsi tanpa mengubah route lama", async () => {
+test("navigasi mengelompokkan Perencanaan sebagai satu menu dengan route legacy ditangani router", async () => {
   const source = await read("src/config/navigation.js");
   assert.match(source, /FiList/);
-  assert.match(source, /FiRepeat/);
+  assert.match(source, /FiPieChart/);
   assert.match(source, /FiCreditCard/);
   assert.match(source, /FiTag/);
   assert.match(source, /FiCheckCircle/);
@@ -220,9 +221,9 @@ test("navigasi mengelompokkan menu berdasarkan fungsi tanpa mengubah route lama"
   assert.match(source, /to: "\/rekonsiliasi", label: "Cocokkan saldo"/);
   assert.match(source, /to: "\/anggota", label: "Anggota"[\s\S]*ownerOnly: true/);
   assert.match(source, /label: "Perencanaan"/);
-  assert.match(source, /to: "\/anggaran", label: "Anggaran"/);
-  assert.match(source, /to: "\/tagihan", label: "Jadwal rutin"/);
-  assert.match(source, /items: pickNavigation\("\/anggaran", "\/alokasi", "\/tagihan", "\/target"\)/);
+  assert.match(source, /to: "\/perencanaan", label: "Perencanaan"/);
+  assert.doesNotMatch(source, /to: "\/(?:anggaran|alokasi|tagihan)"/);
+  assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target"\)/);
   assert.match(source, /label: "Data keuangan"/);
   assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
   assert.match(source, /label: "Kontrol saldo"/);

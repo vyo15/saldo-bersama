@@ -456,7 +456,7 @@ test("retry multi-perangkat hanya mengulang delivery yang gagal dan tidak mengga
       type: "budget_threshold",
       title: "Pengingat keuangan",
       body: "Periksa aplikasi.",
-      targetPath: "/anggaran",
+      targetPath: "/perencanaan/kantong",
       dedupeKey: "multi-device:owner",
     });
 
@@ -475,7 +475,7 @@ test("retry multi-perangkat hanya mengulang delivery yang gagal dan tidak mengga
     assert.equal(first.partial, 1);
     assert.equal(firstCalls.length, 2);
     assert.ok(firstCalls.every((call) => Object.keys(call.payload).sort().join(",") === "notificationId,notificationType,targetPath"));
-    assert.ok(firstCalls.every((call) => call.payload.notificationType === "budget_threshold" && call.payload.targetPath === "/anggaran"));
+    assert.ok(firstCalls.every((call) => call.payload.notificationType === "budget_threshold" && call.payload.targetPath === "/perencanaan/kantong"));
     assert.ok(firstCalls.every((call) => !JSON.stringify(call.payload).includes("Pengingat keuangan") && !JSON.stringify(call.payload).includes("Periksa aplikasi.")));
     assert.ok(firstCalls.every((call) => call.options.timeout === 8_000));
     assert.ok(firstCalls.every((call) => typeof call.options.agent?.options?.lookup === "function"));

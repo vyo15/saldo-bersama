@@ -4,35 +4,39 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("halaman Anggaran memisahkan pengelolaan dari Laporan dengan guard Administrator dan concurrency", async () => {
+test("Batas Pengeluaran dikelola dari detail Kantong Dana dengan guard Administrator dan concurrency", async () => {
   const [app, page, api, reports, dashboard, navigation] = await Promise.all([
     read("src/app/App.jsx"),
-    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/features/planning/PlanningPage.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     read("src/config/navigation.js"),
   ]);
 
-  assert.match(app, /path="anggaran"/);
+  assert.match(app, /path="perencanaan\/kantong"/);
+  assert.match(app, /path="anggaran"[\s\S]*LegacyPlanningRedirect/);
   assert.match(page, /useApiResource\("budgets\.list", \{ period \}\)/);
-  assert.match(page, /administratorMode && period === currentPeriod/);
+  assert.match(page, /lockedEnvelope=\{item\}/);
+  assert.match(page, /Batas Pengeluaran/);
+  assert.match(page, /canManage: canManagePlanningItem\(item, user\)/);
+  assert.match(page, /canLifecycle: administratorMode/);
+  assert.match(page, /sharedOnly: user\?\.role === "member"/);
   assert.match(page, /row_version: existingBudget\?\.row_version/);
   assert.doesNotMatch(page, /createIdempotencyKey|idempotencyKey:/, "Anggaran harus memakai mutation intent canonical dari apiClient, bukan membuat key per klik");
-  assert.match(page, /Promise\.allSettled\(\[resource\.reload\(\), refreshOverview\(\)\]\)/);
+  assert.match(page, /Promise\.allSettled\(\[budgetResource\.reload\(\), resource\.reload\(\), refreshOverview\(\)\]\)/);
   assert.doesNotMatch(page, /Transfer internal tidak dihitung/);
-  assert.match(page, /Member dapat memantau anggaran/);
   assert.match(api, /budgets\.upsert/);
   assert.match(api, /budgets\.archive/);
-  assert.match(reports, /to="\/anggaran"/);
+  assert.match(reports, /to="\/perencanaan\/kantong"/);
   assert.doesNotMatch(reports, /upsertBudget|archiveBudget|MoneyInput/);
-  assert.match(dashboard, /to="\/anggaran"/);
-  assert.match(navigation, /to: "\/anggaran", label: "Anggaran"/);
+  assert.match(dashboard, /to="\/perencanaan\/kantong"/);
+  assert.match(navigation, /to: "\/perencanaan", label: "Perencanaan"/);
 });
 
 test("form Anggaran mempertahankan validasi nominal, kategori aktif, dan ambang batas", async () => {
   const [page, moneyInput] = await Promise.all([
-    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/features/planning/PlanningPage.jsx")]).then((parts) => parts.join("\n")),
     read("src/components/common/MoneyInput.jsx"),
   ]);
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
@@ -42,44 +46,43 @@ test("form Anggaran mempertahankan validasi nominal, kategori aktif, dan ambang 
   assert.match(page, /budgetOwnershipUpdates/);
   assert.match(page, /\{ \.\.\.nextForm, amount: "", warning_threshold: 80 \}/);
   assert.match(page, /useApiResource\("users\.list"/);
-  assert.match(page, /Untuk jatah per orang dari rekening bersama, gunakan Alokasi/);
+  assert.match(page, /hubungkan batas ke Kantong Dana/);
+  assert.match(page, /envelope_rule_id/);
   assert.match(moneyInput, /required=\{required\}/);
   assert.doesNotMatch(page, /<form[^>]+noValidate/);
 });
 
 
-test("UI Anggaran memakai hero, pacing marker, filter perhatian, dan ikon kategori existing", async () => {
-  const [page, card, pacing, hero, presentation, styles] = await Promise.all([
-    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
-    read("src/features/budgets/components/BudgetInsightCard.jsx"),
-    read("src/features/budgets/components/BudgetPacingBar.jsx"),
-    read("src/features/budgets/components/BudgetHeroCard.jsx"),
-    read("src/features/budgets/budgetPresentation.js"),
-    read("src/features/budgets/BudgetsPage.module.css"),
+test("detail Kantong menampilkan Batas Pengeluaran dan Jadwal terkait tanpa membuat tab ketiga", async () => {
+  const [allocations, detail, planning, styles] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationPlanningDetail.jsx"),
+    read("src/features/planning/PlanningPage.jsx"),
+    read("src/styles/pages.css"),
   ]);
 
-  assert.match(page, /BudgetHeroCard/);
-  assert.match(page, /Perlu perhatian/);
-  assert.match(page, /Paling kritis/);
-  assert.match(card, /categoryIcon\(category\?\.icon, "expense"\)/);
-  assert.match(card, /Batas aman \/ hari/);
-  assert.match(pacing, /Hari ini/);
-  assert.match(pacing, /role="img"/);
-  assert.match(hero, /Sisa anggaran bulan ini/);
-  assert.match(hero, /budget-wallet-hero\.webp/);
-  assert.match(page, /budget-calendar\.webp/);
-  assert.doesNotMatch(page, /budget-empty-wallet\.webp|emptyStateArtwork/);
-  assert.match(page, /<EmptyState title=\{emptyTitle\} action=\{emptyAction\} \/>/);
-  assert.match(styles, /\.heroArtwork\s*\{[\s\S]*top:\s*50%;[\s\S]*transform:\s*translateY\(-50%\);/);
-  assert.match(styles, /\.tipArtwork\s*\{[\s\S]*top:\s*50%;[\s\S]*transform:\s*translateY\(-50%\);/);
-  assert.doesNotMatch(styles, /emptyStateArtwork|emptyStateArtworkWrap/);
-  assert.doesNotMatch(styles, /\.tipArtwork\s*\{[^}]*bottom:\s*-/s);
-  assert.match(presentation, /usedPercent > Number\(periodMeta\.elapsedPercent \|\| 0\) \+ 8/);
+  assert.match(planning, /Kantong Dana/);
+  assert.match(planning, /Jadwal Rutin/);
+  assert.doesNotMatch(planning, /value="batas"|Batas Pengeluaran<\/button>/);
+  assert.match(allocations, /lazy\(\(\) => import\("\.\/AllocationPlanningDetail\.jsx"\)\)/);
+  assert.match(detail, /Batas Pengeluaran/);
+  assert.match(detail, /Jadwal Terkait/);
+  assert.match(allocations, /linkedBudgetsForEnvelope/);
+  assert.match(allocations, /relatedRecurringForEnvelope/);
+  assert.match(allocations, /detailRuleId/);
+  assert.match(styles, /allocation-detail-grid/);
+  assert.match(styles, /allocation-limit-row/);
+  assert.match(styles, /allocation-related-row/);
 });
 
 
-test("dialog Anggaran tetap lazy agar route memiliki headroom bundle", async () => {
-  const page = await read("src/features/budgets/BudgetsPage.jsx");
-  assert.match(page, /const BudgetDialogLayer = lazy\(\(\) => import\("\.\/BudgetDialogLayer\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{null\}>[\s\S]*<BudgetDialogLayer/);
+test("detail Kantong dan dialog Batas Pengeluaran tetap lazy agar route planning memiliki headroom bundle", async () => {
+  const [page, detail] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationPlanningDetail.jsx"),
+  ]);
+  assert.match(page, /const AllocationPlanningDetail = lazy\(\(\) => import\("\.\/AllocationPlanningDetail\.jsx"\)\)/);
+  assert.match(page, /<Suspense fallback=\{<div className="notice notice--info" role="status">Memuat detail Kantong\.\.\.<\/div>\}>/);
+  assert.match(detail, /const BudgetDialogLayer = lazy\(\(\) => import\("\.\.\/budgets\/BudgetDialogLayer\.jsx"\)\)/);
+  assert.match(detail, /<Suspense fallback=\{null\}>[\s\S]*<BudgetDialogLayer/);
 });

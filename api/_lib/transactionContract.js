@@ -3,6 +3,7 @@ export const RESERVED_TRANSACTION_FIELDS = Object.freeze([
   "goal_id",
   "scope",
   "owner_user_id",
+  "cost_share_json",
   "idempotency_key",
   "created_by",
   "created_at",

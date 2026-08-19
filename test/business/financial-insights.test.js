@@ -151,6 +151,43 @@ test("anggaran Bersama dan personal menghitung transaksi sesuai ownership ledger
   }
 });
 
+test("batas pengeluaran yang terhubung Kantong hanya menghitung transaksi dari Kantong tersebut", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const period = todayJakarta().slice(0, 7);
+    const date = `${period}-02`;
+    const [year, month] = period.split("-").map(Number);
+    const periodStart = `${period}-01`;
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const periodEnd = `${period}-${String(lastDay).padStart(2, "0")}`;
+
+    await db.execute(
+      "INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["rule-tagihan", "Tagihan Rumah", "monthly", "shared", null, null, 500_000, "account-bank", "unallocated", "confirm", "active", 1, owner.user_id, now, owner.user_id, now],
+    );
+    await db.execute(
+      "INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["period-tagihan", "rule-tagihan", "Tagihan Rumah", periodStart, periodEnd, 500_000, 0, "active", 1, owner.user_id, now, owner.user_id, now, null, null],
+    );
+    await insertTransaction(db, { id: "internet-tagihan", date, type: "expense", amount: 60_000, source: "account-bank", category: "category-food", envelope: "period-tagihan" });
+    await insertTransaction(db, { id: "internet-di-luar-kantong", date, type: "expense", amount: 40_000, source: "account-bank", category: "category-food" });
+    await db.execute(
+      "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["budget-tagihan", period, "category-food", "rule-tagihan", "Makan", 200_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
+    );
+
+    const listed = await listBudgets(db, { actor: owner, payload: { period } });
+    const linked = listed.items.find((item) => item.budget_id === "budget-tagihan");
+    assert.equal(linked?.used_amount, 60_000);
+    assert.equal(linked?.envelope_rule_id, "rule-tagihan");
+    assert.equal(linked?.envelope_name, "Tagihan Rumah");
+    assert.equal(linked?.envelope_source_account_id, "account-bank");
+  } finally {
+    db.close();
+  }
+});
+
 test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari data yang sudah ada", async () => {
   const db = await createSqliteTestDatabase();
   try {
@@ -195,7 +232,7 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
     const reconciliationAlert = report.overview.alerts.find((item) => item.type === "reconciliation_stale" || item.type === "reconciliation_difference");
     if (reconciliationAlert) assert.equal(reconciliationAlert.targetPath, "/rekonsiliasi");
     const unallocatedAlert = report.overview.alerts.find((item) => item.type === "unallocated_expense");
-    if (unallocatedAlert) assert.match(unallocatedAlert.title, /pengeluaran belum masuk alokasi/);
+    if (unallocatedAlert) assert.match(unallocatedAlert.title, /pengeluaran belum masuk Kantong/);
 
     const goals = await listGoals(db, { actor: owner, payload: {} });
     assert.equal(goals.items[0].remaining_amount, 12_000_000);
@@ -331,7 +368,7 @@ test("notifikasi recurring memberi detail actionable untuk dana kurang H-2 dan s
     assert.equal(shortage.length, 2);
     assert.deepEqual(shortage.map((item) => item.user_id).sort(), [member.user_id, owner.user_id].sort());
     for (const item of shortage) {
-      assert.equal(item.target_path, "/tagihan");
+      assert.equal(item.target_path, "/perencanaan/jadwal");
       assert.match(item.title, /Pembayaran Rumah/);
       assert.match(item.body, /Rp1[.]000[.]000/);
       assert.match(item.body, /Rp6[.]000[.]000/);
@@ -345,7 +382,7 @@ test("notifikasi recurring memberi detail actionable untuk dana kurang H-2 dan s
     const completed = await db.all("SELECT user_id,title,body,target_path FROM notification_queue WHERE notification_type='recurring_completed'");
     assert.equal(completed.length, 2);
     for (const item of completed) {
-      assert.equal(item.target_path, "/tagihan");
+      assert.equal(item.target_path, "/perencanaan/jadwal");
       assert.match(item.title, /Pembayaran Rumah/);
       assert.match(item.body, /Rp6[.]000[.]000/);
     }

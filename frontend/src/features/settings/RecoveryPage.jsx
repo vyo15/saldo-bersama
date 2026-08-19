@@ -23,7 +23,7 @@ const RECOVERY_TYPES = Object.freeze({
   envelopeRule: { action: "envelopes.restoreRule", idKey: "envelope_rule_id", label: "Kantong" },
   goal: { action: "goals.restore", idKey: "goal_id", label: "Target" },
   recurringRule: { action: "recurring.restoreRule", idKey: "recurring_rule_id", label: "Aturan rutin" },
-  budget: { action: "budgets.restore", idKey: "budget_id", label: "Anggaran" },
+  budget: { action: "budgets.restore", idKey: "budget_id", label: "Batas Pengeluaran" },
 });
 const RESTORE_REFRESH_KEYS = Object.freeze([
   "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
@@ -39,7 +39,7 @@ const RESTORE_ACKNOWLEDGEMENTS = Object.freeze([
 const RESTORE_TABLES = Object.freeze([
   ["transactions", "Transaksi"], ["accounts", "Rekening"], ["categories", "Kategori"], ["users", "Pengguna"],
   ["envelope_rules", "Aturan alokasi"], ["savings_goals", "Target"], ["recurring_rules", "Jadwal rutin"],
-  ["budgets", "Anggaran"], ["audit_log", "Audit log"],
+  ["budgets", "Batas Pengeluaran"], ["audit_log", "Audit log"],
 ]);
 
 const formatCount = (value) => Number(value || 0).toLocaleString("id-ID");
@@ -51,7 +51,7 @@ const archiveGroups = (data = {}) => [
   ["envelopeRule", data.envelopeRules || [], (item) => item.name, () => "Kantong/alokasi diarsipkan"],
   ["goal", data.goals || [], (item) => item.name, () => "Target tabungan diarsipkan"],
   ["recurringRule", data.recurringRules || [], (item) => item.name, () => "Aturan rutin diarsipkan"],
-  ["budget", data.budgets || [], (item) => item.name, (item) => `Anggaran ${item.period_key} diarsipkan`],
+  ["budget", data.budgets || [], (item) => item.name, (item) => `Batas pengeluaran ${item.period_key} diarsipkan`],
 ];
 
 const archivedItemId = (type, item) => item[RECOVERY_TYPES[type].idKey];

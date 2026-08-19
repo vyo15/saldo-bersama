@@ -4,7 +4,7 @@ import { cancelTransactionInternal, createTransactionInternal } from "../finance
 import { addDays, appError, assertOwner, assertVersion, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp, nextVersionTimestamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForRecurringRule } from "../reminders.js";
-import { addMonths, accountWithAccess, assertOwnedAccess, dueDayValue, ruleScopeFromAccount } from "./shared.js";
+import { addMonths, accountWithAccess, assertOwnedAccess, assertPlanningManageScope, dueDayValue, ruleScopeFromAccount } from "./shared.js";
 const FREQUENCIES = new Set(["daily", "weekly", "biweekly", "monthly", "bimonthly", "quarterly", "semiannual", "annual"]);
 const frequencyMonthStep = {
   monthly: 1,
@@ -236,6 +236,8 @@ const buildOccurrencePaymentTransaction = (rule, occurrence, account, payload, a
   amount,
   description: rule.name,
   overspend_reason: rule.kind === "expense" ? payload.overspend_reason || "" : "",
+  cost_share_mode: rule.kind === "expense" ? payload.cost_share_mode || "unspecified" : "unspecified",
+  cost_share_percentages: rule.kind === "expense" ? payload.cost_share_percentages || [] : [],
   payment_method: rule.payment_method,
   recurring_occurrence_id: occurrence.occurrence_id,
 });
@@ -266,7 +268,6 @@ const occurrencePaymentResponse = (rule, next, status, transaction) => ({
 });
 
 export const createRecurringRule = async (db, context) => {
-  assertOwner(context.actor);
   const p = context.payload || {};
   const name = sanitizeText(p.name, 100);
   const kind = String(p.kind || "expense");
@@ -276,6 +277,7 @@ export const createRecurringRule = async (db, context) => {
   if (!category || category.transaction_type !== kind) throw appError("INVALID_CATEGORY", "Kategori jadwal tidak valid.", 400);
   const account = await accountWithAccess(db, context.actor, p.default_account_id);
   const owned = ruleScopeFromAccount(account);
+  assertPlanningManageScope(context.actor, owned);
   const start = dateValue(p.start_date || todayJakarta(), "Tanggal mulai");
   const end = p.end_date ? dateValue(p.end_date, "Tanggal akhir") : null;
   if (end && end < start) throw appError("INVALID_DATE_RANGE", "Tanggal akhir sebelum tanggal mulai.", 400);
@@ -310,10 +312,10 @@ export const createRecurringRule = async (db, context) => {
   return publicRow(rule, ["auto_debit"]);
 };
 export const updateRecurringRule = async (db, context) => {
-  assertOwner(context.actor);
   const p = context.payload || {};
   const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=?", [p.recurring_rule_id]);
   if (!current) throw appError("NOT_FOUND", "Aturan rutin tidak ditemukan.", 404);
+  assertPlanningManageScope(context.actor, current);
   assertVersion(current, context.rowVersion ?? p.row_version);
   if (p.status !== undefined && String(p.status) !== "active") {
     throw appError("INVALID_STATUS", "Status aturan hanya dapat diubah melalui aksi arsip/pulihkan.", 400);
@@ -325,6 +327,7 @@ export const updateRecurringRule = async (db, context) => {
     db.one("SELECT * FROM categories WHERE category_id=? AND status='active'", [categoryId]),
   ]);
   const owned = ruleScopeFromAccount(account);
+  assertPlanningManageScope(context.actor, owned);
   const next = buildUpdatedRecurringRule(current, p, account, owned, category, context.actor.user_id);
   assertRecurringUpdateShape(next);
   await assertRecurringIdentityChangeAllowed(db, current, next);
@@ -459,7 +462,7 @@ export const mapRecurringRows = (rows, context) => {
       can_reverse: transactionIds.length > 0,
       can_cancel_occurrence: canSkip,
       can_restore_occurrence: context.actor.role === "owner" && row.rule_status === "active" && status === "cancelled",
-      can_edit_rule: context.actor.role === "owner" && row.rule_status === "active",
+      can_edit_rule: row.rule_status === "active" && (context.actor.role === "owner" || row.scope === "shared"),
       can_archive_rule: context.actor.role === "owner" && row.rule_status === "active",
       transaction_type: row.kind,
     };

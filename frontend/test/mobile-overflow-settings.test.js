@@ -48,7 +48,7 @@ test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog 
   assert.match(mobileHistory, /Semua rekening/);
   assert.match(mobileHistory, /Semua kategori/);
   assert.match(mobileHistory, /Semua pencatat/);
-  assert.match(mobileHistory, /Belum dialokasikan/);
+  assert.match(mobileHistory, /Belum masuk Kantong/);
   assert.match(mobileStyles, /\.filterBar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--mobile-control-height\) var\(--mobile-control-height\);/);
   assert.match(mobileStyles, /\.typeScroller\s*\{[\s\S]*overflow-x:\s*auto;/);
   assert.match(mobileStyles, /\.advancedGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
@@ -191,7 +191,7 @@ test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provi
 test("mobile finance forms dan planning memakai hierarchy yang compact tanpa teks mikro 9px", async () => {
   const [transactionStyles, allocations, goals, reports, pages, responsive, budgets] = await Promise.all([
     read("src/features/transactions/TransactionForm.module.css"),
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationOverviewLayer.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/styles/pages.css"),
@@ -205,8 +205,8 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);
   assert.match(allocations, /allocation-header-actions/);
   assert.match(allocations, /className="allocation-advanced form-grid__full"/);
-  assert.match(allocations, /aria-label="Muat ulang alokasi"/);
-  assert.match(allocations, /PageHeader title="Alokasi dana"/);
+  assert.match(allocations, /aria-label="Muat ulang Kantong Dana"/);
+  assert.match(allocations, /PageHeader title="Kantong Dana"/);
   assert.match(allocations, /allocation-summary/);
   assert.match(allocations, /allocation-filters/);
   assert.match(allocations, /allocation-card__expand/);

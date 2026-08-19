@@ -5,11 +5,13 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 ## Completed / active source
 
 - Ledger rekening, transaksi, transfer netral, soft cancel, audit, idempotency, dan conflict.
-- Kantong lintas periode, recurring/tagihan, target, budget, rekonsiliasi, laporan bulanan.
+- Kantong lintas periode termasuk add/release dana tersedia ke Kantong existing, recurring/tagihan, target, budget, rekonsiliasi, laporan bulanan.
 - Filter transaksi berdasarkan rekening, kategori, dan pencatat.
-- Tren 3/6/12 bulan, breakdown rekening/nature/pencatat, target projection, dashboard alerts.
+- Tren 3/6/12 bulan, breakdown rekening/nature/pencatat/pembagian beban biaya, target projection, dashboard alerts.
 - Push actionable untuk recurring, budget, kantong, target, dan transaksi belum dialokasikan.
 - Pengingat manual one-shot actor-scoped untuk Jadwal Rutin, Anggaran, Alokasi, dan Target melalui scheduler/Web Push existing (RFC-0017).
+- Partner planning shared untuk Member dengan guard backend RFC-0016; destructive lifecycle tetap Administrator-only.
+- Pembagian beban biaya expense shared `equal`/`percentage` melalui schema v11 sebagai MVP RFC-0013; payer/beneficiary/kontribusi aktual tetap deferred.
 - Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
 
 ## Now — verification dan operasi
@@ -25,11 +27,10 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 
 - RFC-0011: lifecycle transaksi, `used_by`, draft/rencana, dan receipt privat.
 - RFC-0012: utang/piutang sebagai obligation + settlement ledger.
-- RFC-0013: kontribusi pasangan dan cost sharing.
 - RFC-0014: kategori bertingkat dan tahapan target.
 - RFC-0015: privasi rekening granular dengan backend projection.
-- RFC-0016: perluasan hak member menjadi partner planning.
 - RFC-0018: registry session per perangkat dan revoke/logout-all server-side tanpa raw token storage.
+- Follow-up RFC-0013: payer/beneficiary/actual contribution serta relasi refund ke expense asli sebelum refund boleh mengembalikan Kantong/budget/cost split.
 
 ## Later — maturity
 

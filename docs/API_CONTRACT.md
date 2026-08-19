@@ -100,7 +100,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `transactions.cancel` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `transactions.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `envelopes.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
-| `envelopes.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `envelopes.adjustAllocation` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.close` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.previewRuleLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
@@ -109,8 +110,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `envelopes.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `envelopes.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
-| `recurring.createRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
-| `recurring.updateRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.createRule` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `recurring.updateRule` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.previewRuleLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
 | `recurring.archiveRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.deleteUnusedRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -120,14 +121,14 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `recurring.reversePayment` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
-| `budgets.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `budgets.upsert` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.previewLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
 | `budgets.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
-| `goals.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
-| `goals.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.previewLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/planning/` |
 | `goals.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -233,13 +234,23 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 
 ### Kontrak Kantong/Alokasi account-bound
 
-- `envelopes.create` wajib menerima `source_account_id` rekening aktif yang dapat dioperasikan Administrator. Pilihan gabungan tanpa rekening sumber tidak lagi valid untuk Kantong baru.
-- Membuat atau memindahkan alokasi tidak membuat transaksi ledger dan tidak mengubah `balance`. Alokasi hanya mengikat sebagian saldo rekening sehingga `available_balance` turun secara realtime.
+- `envelopes.create` wajib menerima `source_account_id` rekening aktif yang dapat dioperasikan actor. Administrator dapat memakai scope yang memang operable; Member hanya dapat membuat planning `shared` dan backend menolak sumber personal dengan `SHARED_PLANNING_ONLY`. Pilihan tanpa rekening sumber tidak valid untuk Kantong baru.
+- Membuat, menambah, melepas, atau memindahkan alokasi tidak membuat transaksi ledger dan tidak mengubah `balance`. Alokasi hanya mengikat atau melepas sebagian saldo rekening sehingga `available_balance` berubah secara realtime.
+- `envelopes.adjustAllocation` menerima `envelope_period_id`, `direction=fund|release`, `amount`, dan `row_version`. `fund` memindahkan dana tersedia ke Kantong existing; `release` mengembalikan hanya bagian yang belum `used`/`reserved` ke dana tersedia. Backend memvalidasi rekening sumber, scope, penerima jatah, dana bebas, optimistic version, idempotency, dan audit.
 - Pengeluaran yang memakai `envelope_period_id` wajib memakai `source_account_id` yang sama dengan rekening sumber rule Kantong. Mismatch ditolak backend dengan `ENVELOPE_SOURCE_ACCOUNT_MISMATCH`.
 - Pengeluaran tanpa Kantong dan transaksi `transfer` memakai dana bebas. Untuk rekening yang tidak mengizinkan saldo negatif, server menolak write dengan `UNALLOCATED_FUNDS_INSUFFICIENT` bila write tersebut akan memakai dana yang masih dialokasikan. Overspend Kantong hanya memakai dana bebas untuk bagian nominal yang melampaui sisa Kantong, sesuai `overspend_policy` existing.
 - `envelopes.move` hanya boleh memindahkan alokasi antar Kantong dengan rekening sumber yang sama. Pemindahan nilai antar rekening harus dicatat sebagai transaksi `transfer`. `envelopes.reverseMovement` tetap dapat membalik movement legacy sebagai recovery agar realokasi lintas rekening lama dapat dikoreksi.
 - `envelopes.restoreRule` memerlukan rekening sumber aktif dan memeriksa ulang dana bebas sebelum mengaktifkan kembali alokasi arsip. Rule legacy tanpa rekening sumber tidak dapat dipulihkan atau dipakai untuk transaksi/realokasi; owner harus mengarsipkan lalu membuat ulang Kantong dengan sumber yang jelas.
 - Update/cancel/restore transaksi wajib menjaga proyeksi `balance >= allocated_remaining` pada rekening non-`allow_negative`. Integrity check juga mendeteksi sumber Kantong invalid, transaksi Kantong beda rekening, realokasi aktif lintas rekening, dan alokasi yang melebihi saldo fisik.
+
+### Pembagian beban biaya transaksi shared
+
+- `transactions.create` dan `transactions.update` menerima `cost_share_mode=unspecified|equal|percentage` hanya untuk `expense` dengan `scope=shared`. Transaksi lain dinormalisasi ke `unspecified`.
+- `recurring.payOccurrence` menerima kontrak cost sharing yang sama ketika occurrence aktual adalah `expense` shared. Rule jadwal tidak menyimpan split sebagai asumsi permanen; pembagian dipilih saat transaksi aktual dicatat.
+- Mode `equal` membagi nominal integer Rupiah secara deterministik ke seluruh pengguna aktif. Mode `percentage` menerima `cost_share_percentages: [{ "user_id": "...", "percentage": 50 }]`, wajib mencakup seluruh pengguna aktif, tidak duplikat, integer 0–100, dan total tepat 100%.
+- Backend menyimpan snapshot participant, basis points, dan nominal hasil split pada `transactions.cost_share_json`. Edit biasa atau edit nominal dengan mode yang sama mempertahankan participant/basis snapshot transaksi, termasuk bila daftar user aktif kemudian berubah. Mengubah mode atau persentase berarti keputusan split baru dan wajib divalidasi terhadap pengguna aktif saat itu. Histori lama tetap `unspecified` dan tidak di-backfill 50:50.
+- Pembagian beban hanya metadata analitis. Ia tidak menambah ledger entry, tidak mengubah `balance`, dan tidak mengganti `created_by` sebagai actor pencatat. Payer, beneficiary, settlement, dan kontribusi aktual tetap belum dimodelkan.
+- Refund belum mengembalikan alokasi Kantong atau cost split expense asli secara otomatis. Relasi refund-ke-expense asli tetap keputusan produk terpisah dan tidak boleh disimulasikan dengan memilih Kantong sembarang.
 
 ## Read payload dan response penting
 
@@ -279,6 +290,7 @@ Payload:
 - `trend.items`: income, expense, refund, net, dan totalBalance per bulan;
 - `accountExpenses`: expense menurut rekening sumber;
 - `creatorExpenses`: expense menurut actor pencatat, **bukan** kontribusi/penanggung biaya;
+- `costShareExpenses`: pembagian beban analitis pada expense shared yang memiliki snapshot `equal` atau `percentage`; jumlah ini bukan bukti siapa yang benar-benar membayar;
 - `natureExpenses`: expense menurut `categories.nature`;
 - `overview.alerts`: peringatan actionable dari budget, kantong, recurring, target, transaksi belum dialokasikan, dan rekonsiliasi.
 

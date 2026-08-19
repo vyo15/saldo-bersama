@@ -28,7 +28,7 @@ npm run db:integrity
 Sebelum aplikasi bergantung pada data finansial nyata, pindahkan Development ke database Turso terpisah:
 
 1. buat database Development;
-2. migrate sampai schema v10;
+2. migrate sampai schema v11;
 3. jalankan integrity dan pastikan timezone/currency canonical;
 4. ubah **hanya** Vercel Development `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, dan `SESSION_SECRET`;
 5. tarik ulang Development melalui `npm run dev`;
@@ -88,7 +88,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    npm run env:check
    ```
 
-5. Pastikan database sudah memakai schema v10 dan integrity check lulus:
+5. Pastikan database sudah memakai schema v11 dan integrity check lulus:
 
    ```bash
    npm run db:migrate
@@ -110,24 +110,24 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 
    Langkah ini dilakukan satu kali setelah aktivasi/rotasi settings. Laptop atau PC lain kemudian cukup menjalankan `npm run dev`; bootstrap menarik Development terbaru secara otomatis.
 8. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
-9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v10. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
+9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v11. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
 10. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 11. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
-## 6. Migration schema v10
+## 6. Migration schema v11
 
-Migration terbaru adalah `database/migrations/008_manual_reminders.sql`. Migration bersifat additive. Ia menambah tabel `manual_reminders`, unique partial index untuk satu reminder aktif per user dan objek, serta due index untuk scheduler. Ledger, saldo, transaksi, rekening, dan ownership entity existing tidak diubah.
+Migration terbaru adalah `database/migrations/009_transaction_cost_sharing.sql`. Migration bersifat additive. Ia menambah `transactions.cost_share_mode` dan `transactions.cost_share_json` untuk snapshot pembagian beban biaya, lalu menaikkan schema ke v11. Histori tidak di-backfill 50:50 dan saldo/ledger existing tidak diubah.
 
-Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v10 menerima traffic:
+Sebelum migration, buat backup teknis terverifikasi. Jalankan migration secara eksplisit sebelum runtime v11 menerima traffic:
 
 ```bash
 npm run db:migrate
 npm run db:integrity
 ```
 
-Migration v9 `007_envelope_assignee.sql` tetap menjadi dasar penerima jatah. Migration v8 `006_account_ewallet_template.sql` tetap menjadi dasar provider E-wallet canonical.
+Migration v10 `008_manual_reminders.sql` tetap menjadi dasar pengingat manual, migration v9 `007_envelope_assignee.sql` menjadi dasar penerima jatah, dan migration v8 `006_account_ewallet_template.sql` menjadi dasar provider E-wallet canonical.
 
-Backup schema v10 menyertakan `manual_reminders`, `assignee_user_id`, `ewallet_template`, dan notification preferences. Runtime v10 tetap dapat membaca backup v3-v9 melalui normalisasi additive; backup lama diperlakukan memiliki daftar manual reminder kosong. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel/kolom langsung pada database aktif.
+Backup schema v11 menyertakan snapshot cost sharing, `manual_reminders`, `assignee_user_id`, `ewallet_template`, dan notification preferences. Runtime v11 tetap dapat membaca backup v3-v10 melalui normalisasi additive; backup lama diperlakukan memiliki cost sharing `unspecified`/`[]` dan daftar manual reminder kosong. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel/kolom langsung pada database aktif.
 
 ## 7. Release gate
 

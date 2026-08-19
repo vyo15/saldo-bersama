@@ -10,7 +10,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - **Auth desktop dan mobile:** tombol Google branded Saldo Bersama memakai transport yang sama. Pada production canonical `saldo-bersama.vercel.app`, browser memulai Google OAuth Authorization Code flow ke `/api/auth/google/start`; callback server memverifikasi signed `state`/`nonce`, menukar code menjadi Google ID token, menukarnya lagi melalui Firebase Identity Toolkit menjadi Firebase ID token, lalu memakai verifier Firebase + allowlist/role existing sebelum membuat signed HttpOnly server session. Localhost/device emulation mempertahankan Firebase popup sebagai fallback development. Tidak ada Firebase browser redirect state pada production.
 - **Session/authorization authority:** signed HttpOnly server session + backend allowlist/role.
 - **Google integration:** Apps Script bridge; Sheets mirror satu arah, Calendar reminder bersama, Drive backup teknis.
-- **Active schema contract:** v10.
+- **Active schema contract:** v11.
 - Runtime lokal dan Vercel Production **masih** memakai database Turso bersama sampai exit criteria ADR-0007 dibuktikan. Target hardening yang disetujui adalah database/token/session secret Development dan Production yang terpisah; source tidak boleh mengklaim cutover selesai tanpa evidence environment.
 
 ## Workflow saat ini
@@ -28,7 +28,10 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Empat stylesheet feature masih transitional sesuai ADR-0009 dan dilacak eksplisit di `UI_DESIGN_SYSTEM.md`: Dashboard, Login, Transactions, dan FinancialAlertList. Migrasinya dilakukan serial, bukan mass-refactor.
 - Token `--account-*` tetap global karena perlu theme-level contract, tetapi diberi ownership Accounts-only. `components/finance/` tetap target opsional dan belum dibuat sampai ada reusable consumer lintas feature nyata.
 - Named import `react-icons/fi` kini memiliki regression contract yang memverifikasi symbol benar-benar diekspor package, sehingga typo/ikon yang tidak tersedia gagal pada test sebelum mencapai build.
-- Route Transaksi, Alokasi, Anggaran, dan presentation Jadwal Rutin memakai lazy boundary untuk presentation/dialog berat. Build budget kini memberi warning mulai 90% batas agar headroom rendah terlihat sebelum patch berikutnya menjadi failure.
+- Route Transaksi dan workspace Perencanaan memakai lazy boundary untuk presentation/dialog berat. Perencanaan kini memiliki dua tab canonical: Kantong Dana dan Jadwal Rutin; Batas Pengeluaran dikelola di detail Kantong. Build budget tetap memberi warning mulai 90% batas agar headroom rendah terlihat sebelum patch berikutnya menjadi failure.
+- Tipografi mobile `<=820px` tetap memakai Manrope Variable tetapi dengan density yang lebih ringan: body 14px dan bobot semantic semibold/bold 550/650. Token desktop tetap 16px dan 600/700; perubahan ini presentation-only dan tidak memengaruhi data, saldo, atau accessibility target sentuh.
+- Cocokkan Saldo sekarang memiliki feedback lokal canonical: input dikunci selama submit, fase `submitting` dan `syncing` dibedakan, global mutation pill/toast untuk `reconciliations.create` disupresi agar tidak ganda, dan server-success ditampilkan sebagai result overlay. Matched memakai one-shot staggered MoneyRain dengan reduced-motion fallback; difference tidak dirayakan dan tetap menyisakan warning untuk pemeriksaan transaksi.
+- Alert `Perlu perhatian` mobile sudah diringkas: instruksi tidak lagi memakai card bersarang “Yang perlu dilakukan”, sementara CTA, severity, target route, dan dashboard state tetap sama. CSS rekonsiliasi legacy yang tidak memiliki consumer serta kolom desktop kosong dari guide panel lama sudah dibersihkan.
 
 ## Transaksi mobile saat ini
 
@@ -46,19 +49,29 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Close/reopen periode serta perubahan anggota menginvalidasi projection yang bergantung, termasuk transaksi/dashboard, agar capability dan label tidak tertahan cache lama.
 - Service Worker v10 tetap network-only untuk `/api/*`; stable image memakai stale-while-revalidate sehingga asset publik dapat diperbarui setelah deployment tanpa menunggu cache lama habis.
 
-## Visual summary planning saat ini
+## Workspace Perencanaan saat ini
 
-- Target, Alokasi, Jadwal rutin, dan Anggota memakai summary hero responsif dengan artwork existing agar kualitas visual konsisten dengan Anggaran tanpa menambah route, request, mutation, atau schema baru.
-- Target mengagregasi target aktif dari `goals.list`; Alokasi tetap memakai data `envelopes.list`; Jadwal rutin tetap memakai summary occurrence existing; Anggota hanya merangkum `users.list`. Artwork tidak ikut menentukan nominal, status, capability, atau authorization.
-- Alokasi sekarang account-bound: Kantong baru wajib satu rekening sumber, read model rekening menyediakan saldo fisik, dana dalam Kantong, dan dana tersedia; transaksi berkantong wajib memakai rekening yang sama, transaksi bebas/Transfer tidak boleh mengambil dana Kantong, dan realokasi baru lintas rekening ditolak. Tidak ada migration baru karena `envelope_rules.source_account_id` sudah tersedia pada schema v10.
+- Navigation hanya menampilkan satu menu `Perencanaan`. Workspace memakai dua tab canonical: `Kantong Dana` (`/perencanaan/kantong`) dan `Jadwal Rutin` (`/perencanaan/jadwal`). Route lama `/anggaran`, `/alokasi`, dan `/tagihan` dipertahankan sebagai compatibility redirect.
+- Kantong Dana tidak meminta kategori. Klik Kantong membuka detail dana, Batas Pengeluaran kategori, dan Jadwal Rutin terkait. Batas memakai `budgets.envelope_rule_id` existing, sehingga pemakaian hanya menghitung transaksi kategori yang benar-benar memakai Kantong tersebut. Tidak ada migration/schema baru.
+- Jadwal Rutin tidak lagi mengekspos penanda Auto-debit. Occurrence yang jatuh tempo menunggu konfirmasi transaksi aktual; ledger/saldo tidak berubah sebelum transaksi aktual berhasil disimpan. Bila kategori Batas Pengeluaran memiliki relasi Kantong yang tidak ambigu, Jadwal dapat menyarankan rekening sumber dan konfirmasi aktual menyarankan Kantong terkait tanpa mempercayai data client untuk authorization.
+- Target, Kantong Dana, Jadwal Rutin, dan Anggota tetap memakai artwork existing secara dekoratif. Nominal, status, capability, authorization, saldo, serta ledger tetap berasal dari read model/service canonical.
+- Kantong tetap account-bound: Kantong baru wajib satu rekening sumber, read model rekening menyediakan saldo fisik, dana dalam Kantong, dan dana tersedia; transaksi berkantong wajib memakai rekening yang sama, transaksi bebas/Transfer tidak boleh mengambil dana Kantong, dan realokasi baru lintas rekening ditolak.
+- Dana tersedia kini dapat ditambahkan ke Kantong existing atau dilepas kembali melalui `envelopes.adjustAllocation` tanpa membuat ledger transaction. Member dapat mengelola planning shared sesuai RFC-0016, sedangkan lifecycle destruktif/recovery tetap Administrator-only.
+- Dashboard memisahkan dana tersedia yang belum dibagi dari pengeluaran tanpa Kantong dan menyediakan CTA berbeda. First-run checklist mengarahkan Rekening → Kategori → Kantong → Target berdasarkan capability actor. Target memberi warning bila belum ada rekening sumber lain yang kompatibel untuk setoran.
 - Dashboard, Transaksi, Laporan, Rekening, Kategori, dan Pengaturan sengaja tidak diberi artwork hero tambahan karena masing-masing sudah memiliki chart, kartu domain, icon taxonomy, atau utility hierarchy sebagai fokus utama.
 - Empat ilustrasi reuse path login existing (`piggy-bank`, `wallet`, `finance-checklist`, `house`) dengan semantic dekoratif kosong agar login yang sudah stabil tidak memerlukan perpindahan asset.
+
+## Pembagian beban biaya saat ini
+
+- Schema v11 menambah `transactions.cost_share_mode` dan `cost_share_json` untuk expense shared. Mode MVP `equal` dan `percentage` menghasilkan snapshot integer Rupiah deterministik; histori lama tetap `unspecified`.
+- Split bersifat analitis dan tidak mengubah ledger atau saldo. `created_by` tetap aktivitas pencatatan. `reports.monthly` menampilkan breakdown “Pembagian beban biaya” terpisah dan tidak menyebutnya kontribusi aktual.
+- Payer, beneficiary, settlement, template split lanjutan, serta hubungan refund ke expense asli tetap deferred sesuai RFC-0013.
 
 ## Laporan mobile saat ini
 
 - `/laporan` pada viewport ≤820px memakai hierarchy analitik compact yang terpisah dari workspace desktop, tetapi tetap membaca action canonical `reports.monthly`.
 - Mode `Ringkasan` menampilkan tren pengeluaran 3/6/12 bulan, arus kas bersih, total saldo, saldo aman, perbandingan dengan bulan sebelumnya, kategori pengeluaran terbesar, serta seluruh alert actionable.
-- Mode `Per kategori` menampilkan distribusi kategori memakai ikon kategori canonical, analisis anggaran vs aktual read-only, dan progressive disclosure untuk breakdown rekening, nature, serta aktivitas pencatatan.
+- Mode `Per kategori` menampilkan distribusi kategori memakai ikon kategori canonical, analisis batas pengeluaran vs aktual read-only, dan progressive disclosure untuk breakdown rekening, nature, serta aktivitas pencatatan.
 - Navigasi periode mendukung bulan sebelumnya/berikutnya sampai bulan berjalan dan picker bulan native. Perbandingan dihitung dari `trend.items` yang sama, sehingga tidak menambah request, schema, mutation, atau business rule baru.
 - Desktop `/laporan` tetap memakai panel analitik existing. Backend, auth, saldo, ledger, authorization, dan contract API tidak berubah oleh redesign mobile ini.
 - Route `/laporan` kembali buildable setelah import ikon `FiWallet` yang tidak tersedia pada `react-icons/fi` diganti dengan export Feather yang valid. Regression import-symbol dan production build menjadi guard agar route lazy tidak kembali gagal dibuka karena named export invalid.
@@ -68,13 +81,14 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - `MobileAccountsExperience` tetap lazy untuk menjaga route-chunk budget. Capability mobile/desktop divalidasi oleh frontend regression dan pemeriksaan manual pada viewport relevan; browser automation tidak menjadi gate canonical.
 - Transfer adalah quick action, bukan tab. Form tetap memakai `TransactionForm` canonical dan sukses hanya ditampilkan setelah server mengonfirmasi write.
 - `Riwayat` dan `Grafik` adalah dua tab informasi. Transfer tetap tidak dihitung sebagai pemasukan/pengeluaran.
+- Form Tambah rekening mobile memakai selector jenis 2 kolom dengan label utuh. Tunai, Dana darurat, dan E-wallet memakai nama canonical/default agar user tidak dipaksa mengisi nama yang tidak diperlukan; backend `name` dan duplicate guard tetap dipertahankan. Kepemilikan memakai label ringkas `Bersama`, `Saya`, atau nama depan pasangan.
 - Kartu rekening memakai asset WebP 768×484 untuk bank, Tunai, Tabungan, serta provider E-wallet ShopeePay, DANA, GoPay, OVO, dan LinkAja. Provider E-wallet disimpan canonical pada `accounts.ewallet_template` schema v8; nama rekening hanya dipakai sebagai fallback untuk object/backup legacy yang belum memiliki field tersebut. Provider `generic` tetap aman untuk E-wallet lain.
 
 
 ## Notifikasi dan pengingat saat ini
 
 - Tujuh pengingat otomatis existing tetap dijadwalkan server dan memakai dedupe canonical.
-- Pengingat manual one-shot tersedia langsung pada Anggaran periode aktif, Kantong/Alokasi aktif, occurrence Jadwal Rutin yang belum selesai, dan Target aktif. Pengingat hanya milik actor, disimpan server-side, memakai `row_version`, idempotency, audit, dan diproses scheduler.
+- Pengingat manual one-shot tersedia langsung pada Batas Pengeluaran periode aktif, Kantong Dana aktif, occurrence Jadwal Rutin yang belum selesai, dan Target aktif. Pengingat hanya milik actor, disimpan server-side, memakai `row_version`, idempotency, audit, dan diproses scheduler.
 - Push produk memakai privacy-safe lock-screen: copy detail boleh tetap ada di queue server, tetapi transport Web Push hanya membawa tipe/id/target dan Service Worker menampilkan copy generik tanpa nominal, rekening, merchant, atau nama objek finansial. Logo aplikasi tetap dipakai sebagai `icon` dan badge monokrom khusus Android.
 - Reminder manual menampilkan `lastDispatch` dari queue, menolak jadwal baru selama dispatch lama masih nonterminal, dan dibatalkan atomik saat entity selesai/ditutup/diarsipkan/dihapus; integrity check memeriksa drift user/entity/queue. UI memberi warning bila Web Push perangkat belum siap tanpa menganggap penyimpanan reminder gagal.
 - Real-device Android/iOS/desktop tetap memerlukan QA operasional karena browser/OS menentukan bentuk final notification card dan lock-screen privacy.

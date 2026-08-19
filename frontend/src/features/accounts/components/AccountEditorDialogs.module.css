@@ -7,3 +7,43 @@
 .createAccountLayout :global(.form-grid) {
   gap: var(--space-3);
 }
+
+.autoNameGroup {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.autoNameNote {
+  margin: -2px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.qualifierDisclosure {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.qualifierDisclosure summary {
+  min-height: 44px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.qualifierDisclosure[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.qualifierDisclosure :global(.field) {
+  padding: 10px 12px 12px;
+}
+

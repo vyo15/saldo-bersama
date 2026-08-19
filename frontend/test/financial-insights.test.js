@@ -27,17 +27,22 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(reports, /Pengeluaran per rekening/);
   assert.match(reports, /Aktivitas pencatatan/);
   assert.match(reports, /Menunjukkan pencatat, bukan penanggung biaya/);
-  assert.match(reports, /to="\/anggaran"/);
+  assert.match(reports, /to="\/perencanaan\/kantong"/);
   assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
   assert.doesNotMatch(reports, /alerts\.slice\(0,\s*8\)/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
-  const budgets = await Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n"));
+  const budgets = await Promise.all([
+    source("src/features/allocations/AllocationsPage.jsx"),
+    source("src/features/budgets/useBudgetActions.js"),
+    source("src/features/budgets/BudgetDialogLayer.jsx"),
+  ]).then((parts) => parts.join("\n"));
   assert.match(budgets, /useApiResource\("budgets\.list"/);
   assert.match(budgets, /upsertBudget/);
   assert.match(budgets, /requestArchiveBudget/);
   assert.match(budgets, /Berlaku untuk/);
   assert.match(budgets, /scope: "personal"/);
   assert.match(budgets, /userOptionLabel/);
+  assert.match(budgets, /envelope_rule_id/);
   assert.match(desktop, /overview\.alerts/);
   assert.doesNotMatch(desktop, /shared-alert-count-button/);
   assert.match(desktop, /Peringatan aktif<\/dt><dd>\{model\.alerts\.length\}<\/dd>/);
@@ -54,7 +59,7 @@ test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak r
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/reports/ReportsPage.module.css"),
   ]);
-  for (const label of ["Ringkasan", "Per kategori", "Pengeluaran periode ini", "Bandingkan", "Pengeluaran terbesar", "Anggaran vs aktual", "Rincian lainnya"]) {
+  for (const label of ["Ringkasan", "Per kategori", "Pengeluaran periode ini", "Bandingkan", "Pengeluaran terbesar", "Batas pengeluaran vs aktual", "Rincian lainnya"]) {
     assert.match(reports, new RegExp(label));
   }
   assert.match(reports, /MOBILE_REPORT_QUERY = "\(max-width: 820px\)"/);
@@ -62,7 +67,7 @@ test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak r
   assert.match(reports, /categoryIcon\(category\?\.icon, "expense"\)/);
   assert.match(reports, /<MobileSummaryAlerts alerts=\{overview\?\.alerts\} \/>/);
   assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
-  assert.match(reports, /to="\/anggaran"/);
+  assert.match(reports, /to="\/perencanaan\/kantong"/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|transactions\.create/);
   assert.match(reportStyles, /@media \(max-width: 820px\)/);
   assert.match(reportStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
@@ -82,12 +87,12 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
     ]).then((parts) => parts.join("\n")),
     source("src/features/goals/GoalsPage.jsx"),
     Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
   ]);
-  for (const type of ["reconciliation_difference", "reconciliation_stale", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
+  for (const type of ["reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(presentation, new RegExp(type));
   }
-  for (const label of ["Cocokkan saldo", "Pilih alokasi", "Periksa anggaran", "Periksa alokasi", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
+  for (const label of ["Cocokkan saldo", "Atur Kantong", "Pilih Kantong", "Periksa batas", "Periksa Kantong", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
     assert.match(presentation, new RegExp(label));
   }
   assert.match(presentation, /safeTargetPath/);
@@ -116,6 +121,9 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(budgets, /consumeAttention\(\)/);
   assert.match(allocations, /attentionEnvelopeId/);
   assert.match(allocations, /consumeAttention\(\)/);
+  assert.match(allocations, /Dana kembali tersedia/);
+  assert.match(allocations, /Setor ke Target/);
+  assert.match(allocations, /result\?\.rollover \? 0/);
 });
 
 test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", async () => {
@@ -128,7 +136,7 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", 
 test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis", async () => {
   const [goals, allocations, recurring, members, dashboard, transactions, reports] = await Promise.all([
     source("src/features/goals/GoalsPage.jsx"),
-    source("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationOverviewLayer.jsx")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringSchedule.jsx"),
     source("src/features/settings/MembersSettingsPage.jsx"),
     source("src/features/dashboard/DashboardPage.jsx"),
@@ -156,7 +164,7 @@ test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis",
 
 test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang memakai kantong", async () => {
   const [allocations, recurring, navigation] = await Promise.all([
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationOverviewLayer.jsx"), source("src/features/allocations/allocationPresentation.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx"), source("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([
       source("src/features/recurring/RecurringPage.jsx"),
       source("src/features/recurring/RecurringDialogs.jsx"),
@@ -178,8 +186,9 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /allocationFilter === "shared"/);
   assert.match(allocations, /allocationFilter === "mine"/);
   assert.match(allocations, /allocationFilter === "unused"/);
-  assert.match(allocations, /Melebihi alokasi/);
-  assert.match(allocations, /aria-hidden=\{!expanded\}/);
+  assert.match(allocations, /Melebihi dana Kantong/);
+  assert.match(allocations, /Batas Pengeluaran/);
+  assert.match(allocations, /Jadwal Terkait/);
   assert.match(allocations, /<AllocationSummary items=\{activeItems\}/);
   assert.match(allocations, /items=\{filteredActiveItems\}/);
   assert.match(recurring, /envelope_period_id/);
@@ -188,17 +197,17 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.doesNotMatch(recurring, /sekaligus mengurangi sisa alokasi/);
   assert.match(recurring, /"envelopes\.list"/);
   assert.match(recurring, /bootstrap\?\.user \|\| user/);
-  assert.match(navigation, /Bagi dana yang sudah tersedia ke kantong kebutuhan tanpa memindahkan saldo/);
-  assert.match(navigation, /catat aktualnya ke ledger/);
+  assert.match(navigation, /Kelola Kantong Dana, batas pengeluaran, dan Jadwal Rutin/);
   assert.match(navigation, /Kumpulkan dana ke rekening tujuan/);
 });
 
 test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap tetap canonical di desktop/transaksi", async () => {
-  const [page, desktop, mobile, detail] = await Promise.all([
+  const [page, desktop, mobile, detail, setupChecklist] = await Promise.all([
     source("src/features/dashboard/DashboardPage.jsx"),
     source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     source("src/features/dashboard/components/MobileTransactionDetail.jsx"),
+    source("src/features/dashboard/FinancialSetupChecklist.jsx"),
   ]);
 
   assert.match(page, /dashboardViewModel/);
@@ -211,11 +220,20 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(page, /mobileSelectedTransaction = recentTransactions\.find/);
   assert.match(page, /transaction=\{dashboardViewModel\.mobileSelectedTransaction\}/);
   assert.match(page, /MobileTransactionDetail/);
+  assert.match(page, /FinancialSetupChecklist/);
+  for (const label of ["Rekening", "Kategori", "Kantong", "Target"]) assert.match(setupChecklist, new RegExp(label));
+  assert.match(setupChecklist, /Administrator menyiapkan rekening Bersama/);
+  assert.match(setupChecklist, /Administrator menyiapkan kategori/);
+  assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);
+  assert.match(mobile, /Dana tersedia belum dibagi/);
+  assert.match(mobile, /Pengeluaran tanpa Kantong/);
+  assert.match(mobile, /unallocatedExpenseAmount/);
+  assert.match(mobile, /Setor ke Target/);
   assert.match(desktop, /SensitiveMoney/);
   assert.match(desktop, /Transaksi rekening/);
   assert.match(desktop, /data-dashboard-account/);
   assert.match(desktop, /<h2 id="dashboard-statistics-title">Pengeluaran<\/h2>/);
-  assert.match(desktop, /Anggaran bulan ini/);
+  assert.match(desktop, /Batas pengeluaran/);
   assert.match(desktop, /Tagihan terdekat/);
   assert.match(desktop, /Target tabungan/);
   assert.doesNotMatch(desktop, /Aksi cepat/);
@@ -226,7 +244,8 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
   assert.match(mobile, /Batas aman per hari/);
-  assert.match(mobile, /Belum dialokasikan/);
+  assert.match(mobile, /Dana tersedia belum dibagi/);
+  assert.match(mobile, /Pengeluaran tanpa Kantong/);
   assert.match(mobile, /Rincian rekening dan kategori/);
   assert.doesNotMatch(mobile, /onOpenFilters|mobile-dashboard-filter-button|FiSliders/);
   assert.match(mobile, /recentTransactions\.slice\(0, 5\)/);

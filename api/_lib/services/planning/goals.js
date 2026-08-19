@@ -5,7 +5,7 @@ import { goalProgress } from "../readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
-import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
+import { accountWithAccess, assertOwnedAccess, assertPlanningManageScope, ruleScopeFromAccount } from "./shared.js";
 
 export const goalProjection = (row, currentAmount) => {
   const targetAmount = Number(row.target_amount || 0);
@@ -98,7 +98,10 @@ export const goalListStatements = (context) => {
   const today = todayJakarta();
   return [
     {
-      sql: `SELECT g.*,a.name AS account_name,a.status AS account_status FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`,
+      sql: `SELECT g.*,a.name AS account_name,a.status AS account_status,EXISTS(
+        SELECT 1 FROM accounts src WHERE src.status='active' AND src.account_id<>g.account_id
+          AND ((g.scope='shared' AND src.owner_scope='shared') OR (g.scope='personal' AND src.owner_scope='personal' AND src.owner_user_id=g.owner_user_id))
+      ) AS has_deposit_source FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`,
       args: access.args,
     },
     {
@@ -128,6 +131,46 @@ export const goalListStatements = (context) => {
   ];
 };
 
+const goalMovementState = (row, current, last) => {
+  const lastRow = last || {};
+  const reached = current >= Number(row.target_amount || 0);
+  const activeMovement = [row.status === "active", row.account_status === "active"].every(Boolean);
+  const hasDepositSource = Boolean(Number(row.has_deposit_source || 0));
+  const canDeposit = [activeMovement, !reached, hasDepositSource].every(Boolean);
+  const canWithdraw = [activeMovement, current > 0].every(Boolean);
+  return {
+    reached,
+    last_movement_id: lastRow.goal_movement_id || "",
+    last_movement_row_version: lastRow.row_version || null,
+    can_move: canDeposit || canWithdraw,
+    can_deposit: canDeposit,
+    deposit_blocked_reason: [activeMovement, !reached, !hasDepositSource].every(Boolean)
+      ? "Setoran membutuhkan rekening sumber lain dengan kepemilikan yang sama."
+      : "",
+    can_withdraw: canWithdraw,
+    can_reverse: [row.status === "active", Boolean(last), !Boolean(lastRow.movement_locked)].every(Boolean),
+  };
+};
+
+const goalManagementCapabilities = (row, reached, context) => {
+  const ownerMode = context.actor.role === "owner";
+  return {
+    can_complete: [ownerMode, row.status === "active", reached].every(Boolean),
+    can_reopen: [ownerMode, row.status === "completed"].every(Boolean),
+    can_update: [row.status === "active", ownerMode || row.scope === "shared"].every(Boolean),
+    can_archive: [ownerMode, row.status !== "archived"].every(Boolean),
+  };
+};
+
+const goalMovementCapabilities = (row, current, last, context) => {
+  const movement = goalMovementState(row, current, last);
+  const { reached, ...movementCapabilities } = movement;
+  return {
+    ...movementCapabilities,
+    ...goalManagementCapabilities(row, reached, context),
+  };
+};
+
 export const mapGoalListRows = (resultRows, context) => {
   const [rows = [], progressRows = [], movementRows = []] = resultRows;
   const progressLookup = new Map(progressRows.map((row) => [row.goal_id, Number(row.current_amount || 0)]));
@@ -135,26 +178,11 @@ export const mapGoalListRows = (resultRows, context) => {
   const items = rows.map((row) => {
     const current = progressLookup.get(row.goal_id) || 0;
     const last = movementLookup.get(row.goal_id) || null;
-    const targetAmount = Number(row.target_amount || 0);
-    const reached = current >= targetAmount;
-    const activeMovement = row.status === "active" && row.account_status === "active";
-    const canDeposit = activeMovement && !reached;
-    const canWithdraw = activeMovement && current > 0;
-    const ownerMode = context.actor.role === "owner";
     return {
       ...publicRow(row),
       current_amount: current,
       ...goalProjection(row, current),
-      last_movement_id: last?.goal_movement_id || "",
-      last_movement_row_version: last?.row_version || null,
-      can_move: canDeposit || canWithdraw,
-      can_deposit: canDeposit,
-      can_withdraw: canWithdraw,
-      can_complete: ownerMode && row.status === "active" && reached,
-      can_reopen: ownerMode && row.status === "completed",
-      can_reverse: row.status === "active" && Boolean(last) && !Boolean(last?.movement_locked),
-      can_update: ownerMode && row.status === "active",
-      can_archive: ownerMode && row.status !== "archived",
+      ...goalMovementCapabilities(row, current, last, context),
     };
   });
   return { items };
@@ -280,10 +308,10 @@ const buildGoalMovementResponse = (goal, movement, transaction, current, amount,
 });
 
 export const createGoal = async (db, context) => {
-  assertOwner(context.actor);
   const p = context.payload || {};
   const account = await accountWithAccess(db, context.actor, p.account_id);
   const owned = ruleScopeFromAccount(account);
+  assertPlanningManageScope(context.actor, owned);
   const now = nowIso();
   const priority = String(p.priority || "normal");
   const goalType = String(p.goal_type || "savings");
@@ -311,14 +339,15 @@ export const createGoal = async (db, context) => {
   return publicRow(record);
 };
 export const updateGoal = async (db, context) => {
-  assertOwner(context.actor);
   const p = context.payload || {};
   const current = await db.one("SELECT * FROM savings_goals WHERE goal_id=?", [p.goal_id]);
   if (!current) throw appError("NOT_FOUND", "Target tidak ditemukan.", 404);
+  assertPlanningManageScope(context.actor, current);
   assertVersion(current, context.rowVersion ?? p.row_version);
   assertGoalLifecycleUpdateShape(current, p);
   const account = await accountWithAccess(db, context.actor, goalPayloadValue(p, current, "account_id"));
   const owned = ruleScopeFromAccount(account);
+  assertPlanningManageScope(context.actor, owned);
   const next = buildUpdatedGoal(current, p, account, owned, context.actor.user_id);
   assertGoalEnums({ status: next.status, goalType: next.goal_type, priority: next.priority });
   await assertGoalTargetAmountAllowed(db, current, p, next.target_amount);

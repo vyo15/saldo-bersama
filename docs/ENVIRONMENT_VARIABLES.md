@@ -160,7 +160,7 @@ Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sen
 Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan hanya dari komputer tepercaya setelah backup/integrity evidence tersedia.
 
 1. Buat database Turso **Development** baru.
-2. Terapkan migration canonical sampai schema v10:
+2. Terapkan migration canonical sampai schema v11:
    ```bash
    npm run db:migrate
    npm run db:integrity

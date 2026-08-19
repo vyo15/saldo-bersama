@@ -33,7 +33,7 @@ Pemisahan Development dan Production telah disetujui sebagai target hardening, t
 Urutan cutover:
 
 1. Buat database Turso Development baru tanpa menyalin credential Production ke source/chat/log.
-2. Terapkan seluruh migration canonical sampai schema v10 pada database Development.
+2. Terapkan seluruh migration canonical sampai schema v11 pada database Development.
 3. Verifikasi `timezone=Asia/Jakarta`, `currency=IDR`, foreign key, dan business integrity.
 4. Isi Vercel Development `TURSO_DATABASE_URL` dan `TURSO_AUTH_TOKEN` dengan database/token Development. Production tetap memakai database/token Production.
 5. Pastikan `.env.local` yang ditarik oleh `npm run dev` sekarang menunjuk Development.

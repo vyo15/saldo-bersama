@@ -44,7 +44,8 @@
 | `transactions.cancel` | Ya | Ya |
 | `transactions.restore` | Ya | Tidak |
 | `envelopes.list` | Ya | Ya |
-| `envelopes.create` | Ya | Tidak |
+| `envelopes.create` | Ya | Ya |
+| `envelopes.adjustAllocation` | Ya | Ya |
 | `envelopes.move` | Ya | Ya |
 | `envelopes.close` | Ya | Tidak |
 | `envelopes.previewRuleLifecycle` | Ya | Tidak |
@@ -53,8 +54,8 @@
 | `envelopes.restoreRule` | Ya | Tidak |
 | `envelopes.reverseMovement` | Ya | Ya |
 | `recurring.list` | Ya | Ya |
-| `recurring.createRule` | Ya | Tidak |
-| `recurring.updateRule` | Ya | Tidak |
+| `recurring.createRule` | Ya | Ya |
+| `recurring.updateRule` | Ya | Ya |
 | `recurring.previewRuleLifecycle` | Ya | Tidak |
 | `recurring.archiveRule` | Ya | Tidak |
 | `recurring.deleteUnusedRule` | Ya | Tidak |
@@ -64,14 +65,14 @@
 | `recurring.reversePayment` | Ya | Ya |
 | `recurring.restoreRule` | Ya | Tidak |
 | `budgets.list` | Ya | Ya |
-| `budgets.upsert` | Ya | Tidak |
+| `budgets.upsert` | Ya | Ya |
 | `budgets.previewLifecycle` | Ya | Tidak |
 | `budgets.archive` | Ya | Tidak |
 | `budgets.deleteUnused` | Ya | Tidak |
 | `budgets.restore` | Ya | Tidak |
 | `goals.list` | Ya | Ya |
-| `goals.create` | Ya | Tidak |
-| `goals.update` | Ya | Tidak |
+| `goals.create` | Ya | Ya |
+| `goals.update` | Ya | Ya |
 | `goals.previewLifecycle` | Ya | Tidak |
 | `goals.archive` | Ya | Tidak |
 | `goals.deleteUnused` | Ya | Tidak |
@@ -121,7 +122,7 @@
 
 ## Guard recovery kantong
 
-- Archive/restore aturan kantong tetap Administrator-only karena mengubah master planning.
+- Archive/restore/delete-unused aturan kantong tetap Administrator-only. Member boleh membuat Kantong shared, menambah/melepas alokasi pada Kantong shared yang dapat diakses, memindahkan jatahnya/Jatah Bersama, dan membalik movement miliknya sendiri.
 - Member boleh membatalkan `envelopes.reverseMovement` hanya untuk movement miliknya dan tetap tunduk pada ownership scope, `row_version`, ketersediaan nominal di kantong tujuan, idempotency, dan audit backend.
 - Movement kantong tidak pernah hard-delete. Envelope rule baru boleh memakai `envelopes.deleteUnusedRule` hanya bila server membuktikan rule belum pernah dipakai dan satu-satunya child adalah initial empty period; selain itu gunakan archive/restore.
 
@@ -133,17 +134,17 @@
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
 - Kantong memiliki dimensi `assignee_user_id` terpisah dari ownership ledger. `NULL` berarti Jatah Bersama. Setiap Kantong canonical juga terikat pada tepat satu `source_account_id`; transaksi yang memakai Kantong wajib memakai rekening sumber yang sama dan realokasi baru hanya boleh antar Kantong dari rekening sumber yang sama. Member hanya boleh memakai atau memindahkan Jatah Bersama dan jatah miliknya sendiri; jatah pengguna lain ditolak backend. Rekening personal hanya boleh menjadi sumber jatah untuk pemilik rekening tersebut.
 - `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
-- User management, master create/update/archive, budget management, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix.
+- User management, rekening/kategori master, lifecycle destruktif planning, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix. Member dapat create/update planning hanya pada scope `shared`: Kantong/alokasi, Batas Pengeluaran, Target, dan Jadwal Rutin. Backend memaksa scope ini; disabled button frontend bukan boundary keamanan.
 - Export lengkap Administrator-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.
 - `totalBalance` adalah metrik readable/transparan. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` adalah metrik actionable sehingga hanya boleh memakai rekening/scope operable actor.
 
 ## Keputusan role pasangan
 
-UI menggunakan role **Administrator** dan **Member**. Untuk kompatibilitas data/session existing, key internal database/permission untuk Administrator tetap `owner`; konfigurasi `ALLOWED_USERS_JSON` menerima `administrator` dan menormalisasinya ke key internal tersebut. Member tidak dapat membuat rekening atau mengubah master planning selama permission source tetap Administrator-only. Perubahan `envelopes.create`, `budgets.upsert`, `goals.create/update`, atau recurring rule management memerlukan RFC-0016, review backend/frontend, dan test authorization.
+UI menggunakan role **Administrator** dan **Member**. Untuk kompatibilitas data/session existing, key internal database/permission untuk Administrator tetap `owner`; konfigurasi `ALLOWED_USERS_JSON` menerima `administrator` dan menormalisasinya ke key internal tersebut. RFC-0016 memilih Option 2: Member boleh mengelola planning **hanya** untuk scope `shared`. Rekening, kategori, user management, archive/delete/restore planning, recovery, import/restore, schema, dan maintenance tetap Administrator-only. Backend memvalidasi scope/ownership pada setiap write dan default authorization tetap deny.
 
 ## Privasi data turunan
 
 - Filter dan laporan hanya boleh dibangun dari transaksi/rekening yang lolos scope backend.
-- `creatorExpenses` adalah aktivitas pencatatan, bukan kontribusi biaya.
+- `creatorExpenses` adalah aktivitas pencatatan, bukan kontribusi biaya. `costShareExpenses` adalah pembagian beban analitis pada expense shared, bukan bukti payer atau kontribusi aktual.
 - Mode balance-only/contribution-only/private penuh belum ada; jangan menyembunyikan detail hanya di frontend. Rencana berada pada RFC-0015.

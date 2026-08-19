@@ -5,6 +5,10 @@ import { dashboardAlertGuidance } from "../dashboardPresentation.js";
 
 const SeverityIcon = ({ severity }) => severity === "info" ? <FiInfo aria-hidden="true" /> : <FiAlertTriangle aria-hidden="true" />;
 
+const AlertInstruction = ({ mobile, instruction }) => mobile
+  ? <p className="mobile-attention-guidance">{instruction}</p>
+  : <div className="financial-alert-instruction"><span>Yang perlu dilakukan</span><p>{instruction}</p></div>;
+
 const FinancialAlertList = ({ alerts = [], variant = "default" }) => {
   if (!alerts.length) return null;
   const mobile = variant === "mobile";
@@ -18,7 +22,7 @@ const FinancialAlertList = ({ alerts = [], variant = "default" }) => {
             <div className={`financial-alert-item__content${mobile ? " mobile-attention-item__content" : ""}`}>
               <strong>{alert.title}</strong>
               <p>{alert.message}</p>
-              <div className={`financial-alert-instruction${mobile ? " mobile-attention-instruction" : ""}`}><span>Yang perlu dilakukan</span><p>{guidance.instruction}</p></div>
+              <AlertInstruction mobile={mobile} instruction={guidance.instruction} />
               <Link className={`financial-alert-action${mobile ? " mobile-attention-action" : ""}`} to={guidance.to} state={guidance.state}>{guidance.actionLabel}<FiChevronRight aria-hidden="true" /></Link>
             </div>
           </li>

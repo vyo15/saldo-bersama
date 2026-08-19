@@ -79,7 +79,7 @@ const resolveRecurringOccurrence = async (db, actor, entityId) => {
     entityType: "recurring_occurrence",
     entityId: row.occurrence_id,
     name: sanitizeText(row.name, 100) || "Jadwal rutin",
-    targetPath: "/tagihan",
+    targetPath: "/perencanaan/jadwal",
     title: `Pengingat ${sanitizeText(row.name, 72) || "jadwal rutin"}`,
     body: income
       ? `${notificationRupiah(remaining)} dijadwalkan masuk ${dateLabel} ke ${sanitizeText(row.account_name, 60)}.`
@@ -94,18 +94,18 @@ const resolveBudget = async (db, actor, entityId) => {
         AND substr(t.transaction_date,1,7)=b.period_key
         AND ((b.scope='shared' AND t.scope='shared') OR (b.scope='personal' AND t.scope='personal' AND t.owner_user_id=b.owner_user_id))),0) AS used_amount
     FROM budgets b WHERE b.budget_id=?`, [entityId]);
-  if (!row) throw appError("REMINDER_ENTITY_NOT_FOUND", "Anggaran tidak ditemukan.", 404);
+  if (!row) throw appError("REMINDER_ENTITY_NOT_FOUND", "Batas pengeluaran tidak ditemukan.", 404);
   assertScopedAccess(actor, row);
-  if (row.status !== "active") throw appError("REMINDER_ENTITY_INACTIVE", "Anggaran ini sudah tidak aktif.", 409);
+  if (row.status !== "active") throw appError("REMINDER_ENTITY_INACTIVE", "Batas pengeluaran ini sudah tidak aktif.", 409);
   const used = Number(row.used_amount || 0);
   const amount = Number(row.amount || 0);
   const remaining = Math.max(0, amount - used);
   return {
     entityType: "budget",
     entityId: row.budget_id,
-    name: sanitizeText(row.name, 100) || "Anggaran",
-    targetPath: "/anggaran",
-    title: `Cek Anggaran ${sanitizeText(row.name, 65) || "bulan ini"}`,
+    name: sanitizeText(row.name, 100) || "Batas pengeluaran",
+    targetPath: "/perencanaan/kantong",
+    title: `Cek batas pengeluaran ${sanitizeText(row.name, 65) || "bulan ini"}`,
     body: `Terpakai ${notificationRupiah(used)} dari ${notificationRupiah(amount)}. Sisa ${notificationRupiah(remaining)}.`,
   };
 };
@@ -116,7 +116,7 @@ const resolveEnvelopePeriod = async (db, actor, entityId) => {
       COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.status='active' AND t.transaction_type='expense' AND t.envelope_period_id=p.envelope_period_id),0) AS used_amount
     FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
     WHERE p.envelope_period_id=?`, [entityId]);
-  if (!row) throw appError("REMINDER_ENTITY_NOT_FOUND", "Kantong alokasi tidak ditemukan.", 404);
+  if (!row) throw appError("REMINDER_ENTITY_NOT_FOUND", "Kantong Dana tidak ditemukan.", 404);
   assertScopedAccess(actor, row);
   if (row.status !== "active" || row.rule_status !== "active") throw appError("REMINDER_ENTITY_INACTIVE", "Kantong ini sudah tidak aktif.", 409);
   const allocated = Number(row.allocated_amount || 0);
@@ -126,7 +126,7 @@ const resolveEnvelopePeriod = async (db, actor, entityId) => {
     entityType: "envelope_period",
     entityId: row.envelope_period_id,
     name: sanitizeText(row.name, 100) || "Kantong",
-    targetPath: "/alokasi",
+    targetPath: "/perencanaan/kantong",
     title: `Cek Kantong ${sanitizeText(row.name, 67) || "aktif"}`,
     body: `Terpakai + dipesan ${notificationRupiah(committed)} dari ${notificationRupiah(allocated)}. Sisa ${notificationRupiah(remaining)}.`,
   };

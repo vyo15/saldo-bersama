@@ -196,9 +196,10 @@ test("service menjaga budget exact-scope, recurring due-day, optimistic version,
   ]);
   const planning = planningParts.join("\n");
   assert.match(planning, /dueDayValue[\s\S]*parsed < 1 \|\| parsed > 31/);
-  assert.match(planning, /GROUP BY t\.category_id,t\.scope,t\.owner_user_id/);
-  assert.match(planning, /u\.scope=b\.scope/);
-  assert.match(planning, /COALESCE\(u\.owner_user_id,''\)=COALESCE\(b\.owner_user_id,''\)/);
+  assert.match(planning, /t\.category_id=b\.category_id/);
+  assert.match(planning, /t\.scope=b\.scope/);
+  assert.match(planning, /COALESCE\(t\.owner_user_id,''\)=COALESCE\(b\.owner_user_id,''\)/);
+  assert.match(planning, /b\.envelope_rule_id IS NULL OR ep\.envelope_rule_id=b\.envelope_rule_id/);
   assert.match(finance, /WHERE transaction_id=\? AND row_version=\?/);
   assert.match(finance, /rowsAffected !== 1/);
   assert.match(finance, /status='cancelled'/);

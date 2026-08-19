@@ -36,7 +36,7 @@ const DOMAIN_LABELS = Object.freeze([
   ["reconciliations", "Pencocokan saldo"],
   ["goals", "Target"],
   ["goalMovements", "Mutasi target"],
-  ["budgets", "Anggaran"],
+  ["budgets", "Batas Pengeluaran"],
   ["allocationRules", "Aturan alokasi"],
   ["allocationPeriods", "Periode alokasi"],
   ["allocationMovements", "Mutasi alokasi"],

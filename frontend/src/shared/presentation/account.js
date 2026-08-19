@@ -77,6 +77,22 @@ export const detectEwalletTemplate = (account = {}) => {
 export const accountCardholderName = (name) => String(name || "").replace(KNOWN_BANK_SUFFIX, "").trim();
 
 export const accountTypeLabel = (type) => ACCOUNT_TYPE_LABELS[type] || String(type || "Lainnya");
+export const accountTypeUsesAutomaticName = (type) => [
+  ACCOUNT_TYPES.CASH,
+  ACCOUNT_TYPES.EWALLET,
+  ACCOUNT_TYPES.EMERGENCY_FUND,
+].includes(type);
+
+export const defaultAccountName = ({ account_type: type, ewallet_template: ewalletTemplate } = {}) => {
+  if (type === ACCOUNT_TYPES.CASH) return ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.CASH];
+  if (type === ACCOUNT_TYPES.EMERGENCY_FUND) return ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.EMERGENCY_FUND];
+  if (type === ACCOUNT_TYPES.EWALLET) {
+    const provider = EWALLET_LABEL_BY_TEMPLATE.get(String(ewalletTemplate || "generic"));
+    return provider || ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.EWALLET];
+  }
+  return "";
+};
+
 export const accountScopeLabel = (scope) => ACCOUNT_SCOPE_LABELS[scope] || String(scope || "");
 
 export const accountOwnerName = (account = {}) => String(account.owner_name || "").trim();
@@ -123,7 +139,10 @@ export const accountProviderLabel = (account = {}) => {
 export const accountDisplayLabel = (account = {}, { includeOwner = true } = {}) => {
   const name = accountCardholderName(account.account_name || account.name) || "Rekening tanpa nama";
   const provider = accountProviderLabel(account);
-  const parts = provider && provider.toLocaleLowerCase("id-ID") !== name.toLocaleLowerCase("id-ID")
+  const normalizedProvider = provider.toLocaleLowerCase("id-ID");
+  const normalizedName = name.toLocaleLowerCase("id-ID");
+  const nameAlreadyIncludesProvider = normalizedName === normalizedProvider || normalizedName.startsWith(`${normalizedProvider} · `);
+  const parts = provider && !nameAlreadyIncludesProvider
     ? [provider, name]
     : [name];
 

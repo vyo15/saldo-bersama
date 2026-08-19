@@ -19,16 +19,16 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-01` | Rekening/sumber uang | Partial | accounts/read models/dashboard + schema v5 account number/`bank_template` + schema v8 `ewallet_template` + schema v9 `assignee_user_id` pada Alokasi + list/detail financial-card UI + label/capability Administrator/Member + route rekening terpisah | Mode privacy granular pending RFC-0015; real-resource Administrator/Member smoke pending |
 | `REQ-PROD-02` | Transaksi lengkap | Partial | finance service/TransactionForm + `MobileTransactionHistory` history-first UI | `used_by`, receipt, draft, debt pending RFC-0011/0012 |
 | `REQ-PROD-03` | Kategori | Partial | route `/kategori`, facade feature, categories + `nature` | hierarchy pending RFC-0014 |
-| `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods + archive/restore rule + reverse reallocation | Full device regression setelah patch terbaru |
+| `REQ-PROD-04` | Kantong/alokasi | Implemented | envelope rules/periods + add/release alokasi existing tanpa ledger + archive/restore rule + reverse reallocation | Full device regression setelah patch terbaru |
 | `REQ-PROD-05` | Anggaran multi-cadence | Partial | envelope cadence + monthly budgets + alerts | recurring budget rules belum ada |
-| `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection, owner restore arsip | split/stages pending RFC-0013/0014 |
+| `REQ-PROD-06` | Target tabungan | Partial | goals, movements, projection, source-account deposit guard, owner restore arsip | kontribusi aktual/stages pending follow-up RFC-0013/0014 |
 | `REQ-PROD-07` | Tagihan rutin | Partial | recurring rules/occurrences + skip/restore satu occurrence + owner restore arsip + H-2/completion notification | assignee/receipt pending RFC-0011/0013 |
 | `REQ-PROD-08` | Kalender keuangan | Partial | shared recurring Calendar bridge + ScriptLock + duplicate managed-event self-heal | internal multi-event calendar belum ada |
-| `REQ-PROD-09` | Dashboard pasangan | Implemented | shared dashboard view model; desktop filter; mobile 5 transaksi terbaru + detail, rekening, arus kas, ringkasan alokasi, alerts, privacy; filter/search lengkap canonical di `/transaksi` | Production/device smoke |
-| `REQ-PROD-10` | Kontribusi/split | Planned | hanya aktivitas pencatatan | RFC-0013 |
+| `REQ-PROD-09` | Dashboard pasangan | Implemented | shared dashboard view model; free funds dan expense tanpa Kantong dipisah; CTA alokasi/Target; first-run checklist; desktop filter; mobile recent/detail/rekening/arus kas/alerts/privacy | Production/device smoke |
+| `REQ-PROD-10` | Kontribusi/split | Partial | schema v11 snapshot pembagian beban `equal`/`percentage` untuk expense shared + report terpisah | payer/beneficiary/actual contribution/template split masih deferred RFC-0013 |
 | `REQ-PROD-11` | Quick/draft transaction | Partial | quick form, duplicate guard, unallocated alerts | draft/template pending RFC-0011 |
 | `REQ-PROD-12` | Utang/piutang | Planned | tidak ada runtime table/action | RFC-0012 |
-| `REQ-PROD-13` | Laporan | Partial | `reports.monthly` + tren 3/6/12 + breakdown; mobile ≤820px `Ringkasan`/`Per kategori`, chart, KPI, compare, alerts, budget vs actual; desktop workspace existing | contribution/debt model pending |
+| `REQ-PROD-13` | Laporan | Partial | `reports.monthly` + tren 3/6/12 + breakdown rekening/nature/recorder + pembagian beban biaya; mobile ≤820px `Ringkasan`/`Per kategori`, chart, KPI, compare, alerts, budget vs actual | actual contribution/debt model pending |
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
 | `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert otomatis + preference per user + manual reminder one-shot pada Jadwal/Anggaran/Alokasi/Target + last-dispatch/pending guard + lifecycle auto-cancel + reminder integrity parity + privacy-safe lock-screen payload + branded icon/badge + per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
@@ -39,7 +39,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Desktop/mobile branded login + local Firebase popup; production server OAuth memerlukan callback URI + `GOOGLE_OAUTH_CLIENT_SECRET` Production Sensitive dan real-device smoke |
-| Turso schema v10 | Implemented | Migration additive manual reminder + penerima jatah + provider E-wallet + compatibility backup v3-v9; production migration/parity evidence pending |
+| Turso schema v11 | Implemented | Migration additive cost-sharing transaction + manual reminder + penerima jatah + provider E-wallet; runtime v11 menerima backup v3-v10; production migration/parity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

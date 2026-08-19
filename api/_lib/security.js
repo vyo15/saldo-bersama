@@ -178,7 +178,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "accounts.list", "accounts.create", "accounts.update", "accounts.previewLifecycle", "accounts.archive", "accounts.restore", "accounts.deleteUnused",
     "categories.list", "categories.create", "categories.update", "categories.previewArchive", "categories.archive", "categories.restore", "categories.deleteUnused",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
-    "envelopes.list", "envelopes.create", "envelopes.move", "envelopes.close", "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
+    "envelopes.list", "envelopes.create", "envelopes.adjustAllocation", "envelopes.move", "envelopes.close", "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
     "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.previewRuleLifecycle", "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.reversePayment", "recurring.restoreRule",
     "budgets.list", "budgets.upsert", "budgets.previewLifecycle", "budgets.archive", "budgets.deleteUnused", "budgets.restore", "goals.list", "goals.create", "goals.update", "goals.previewLifecycle", "goals.archive", "goals.deleteUnused", "goals.move", "goals.reverseMovement", "goals.restore", "reports.monthly",
     "reconciliations.list", "reconciliations.create", "periods.list", "periods.previewClose", "periods.close", "periods.reopen",
@@ -188,8 +188,8 @@ export const ACTION_PERMISSIONS = Object.freeze({
   member: new Set([
     "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
-    "envelopes.list", "envelopes.move", "envelopes.reverseMovement", "recurring.list", "recurring.payOccurrence", "recurring.reversePayment",
-    "budgets.list", "goals.list", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",
+    "envelopes.list", "envelopes.create", "envelopes.adjustAllocation", "envelopes.move", "envelopes.reverseMovement", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
+    "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",
     "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "reminders.get", "reminders.upsert", "reminders.cancel", "integrations.status",
   ]),
 });

@@ -55,23 +55,23 @@ Kategori memiliki jenis transaksi dan `nature` untuk fixed, variable, unexpected
 
 ### `REQ-PROD-04` Kantong dan alokasi — Implemented
 
-Pemasukan dapat dikendalikan melalui kantong daily, weekly, biweekly, monthly, paycycle, atau custom; shared/personal; rollover; overspend policy; realokasi; sisa alokasi; dan dana belum dialokasikan. Alokasi bersifat account-bound: membuat Kantong tidak mengubah saldo ledger, tetapi langsung mengurangi `available_balance`; pemakaian Kantong mengurangi saldo fisik dan sisa alokasi bersama-sama; realokasi antar rekening wajib memakai transaksi Transfer.
+Pemasukan dapat dikendalikan melalui kantong daily, weekly, biweekly, monthly, paycycle, atau custom; shared/personal; rollover; overspend policy; realokasi; sisa alokasi; dan dana belum dialokasikan. Dana tersedia dapat ditambahkan ke Kantong existing atau dilepas kembali tanpa membuat transaksi ledger. Alokasi bersifat account-bound: membuat/menambah Kantong tidak mengubah saldo ledger, tetapi mengurangi `available_balance`; pemakaian Kantong mengurangi saldo fisik dan sisa alokasi bersama-sama; realokasi antar rekening wajib memakai transaksi Transfer.
 
-### `REQ-PROD-05` Anggaran harian, mingguan, bulanan — Partial
+### `REQ-PROD-05` Batas pengeluaran dalam Kantong — Partial
 
-Kantong mendukung periodisasi harian sampai custom. Budget kategori bulanan memiliki ambang configurable. Dashboard, laporan, dan push memberi peringatan actionable ketika batas terlampaui.
+Kantong mendukung periodisasi harian sampai custom. Batas pengeluaran kategori bulanan dikelola dari detail Kantong Dana dan memakai relasi existing `budgets.envelope_rule_id`. Pemakaian batas hanya menghitung transaksi aktif pada kategori, ownership, periode, dan Kantong yang sama. Dashboard, laporan, dan push tetap memberi peringatan actionable ketika batas terlampaui.
 
-**Batas saat ini:** budget kategori bukan rule multi-periode; level 90/100 diturunkan saat runtime tanpa kolom baru.
+**Batas saat ini:** batas kategori bukan rule multi-periode; level 90/100 diturunkan saat runtime tanpa kolom baru. Data budget legacy yang belum memiliki `envelope_rule_id` tetap dapat dibaca dan dapat dihubungkan ke Kantong tanpa migration.
 
 ### `REQ-PROD-06` Target tabungan — Partial
 
 Target menyimpan nominal, tanggal, rekening, prioritas, saldo terkumpul, sisa, proyeksi pace, dan kebutuhan setoran bulanan. Kontribusi/penarikan menghasilkan transfer ledger.
 
-**Gap:** kontribusi per orang dan tahap renovasi menunggu RFC-0013/RFC-0014.
+**Gap:** kontribusi aktual per orang dan tahap renovasi menunggu model payer/beneficiary lanjutan RFC-0013 serta RFC-0014. Pembagian beban transaksi shared sudah tersedia, tetapi bukan bukti kontribusi Target.
 
 ### `REQ-PROD-07` Tagihan dan kewajiban rutin — Partial
 
-Recurring rule/occurrence mendukung nominal, frekuensi, jatuh tempo, rekening, metode, auto-debit, priority, payment/reversal, overdue, status pembayaran, serta **skip/restore satu occurrence** tanpa membuat ledger entry atau mengubah saldo.
+Recurring rule/occurrence mendukung nominal, frekuensi, jatuh tempo, rekening, metode pembayaran, priority, payment/reversal, overdue, status pembayaran, serta **skip/restore satu occurrence**. UI tidak lagi memiliki penanda Auto-debit. Saat occurrence jatuh tempo, sistem menempatkannya sebagai transaksi rutin yang perlu dikonfirmasi; saldo/ledger baru berubah setelah nominal aktual disimpan. Kolom `auto_debit` legacy dipertahankan hanya untuk kompatibilitas data lama dan write baru menetapkannya `false`.
 
 **Gap:** penanggung jawab eksplisit dan receipt terhubung menunggu RFC-0011/RFC-0013.
 
@@ -83,13 +83,13 @@ Google Calendar mirror menampilkan recurring shared dan tidak menjadi source sta
 
 ### `REQ-PROD-09` Dashboard pasangan — Implemented
 
-Menampilkan total saldo, saldo aman, dana terlindungi, dana belum dialokasikan, cash flow, tagihan, target, transaksi terbaru, dan peringatan budget/kantong/tagihan/target/rekonsiliasi.
+Menampilkan total saldo, saldo aman, dana terlindungi, dana tersedia yang belum dibagi, pengeluaran yang belum memiliki Kantong, cash flow, tagihan, target, transaksi terbaru, dan peringatan budget/kantong/tagihan/target/rekonsiliasi. Dana tersedia dan pengeluaran tanpa Kantong adalah metrik terpisah dan memiliki CTA berbeda.
 
-### `REQ-PROD-10` Kontribusi dan pembagian pasangan — Planned
+### `REQ-PROD-10` Kontribusi dan pembagian pasangan — Partial
 
-Sistem perlu membedakan pencatat, pengguna, pembayar, penanggung, dan aturan split 50:50/persentase/nominal/tanggung jawab tertentu.
+MVP menyediakan **pembagian beban biaya** untuk expense shared dengan mode `unspecified`, `equal`, atau `percentage`. Snapshot split integer disimpan per transaksi, histori lama tidak diubah menjadi 50:50, dan split tidak mengubah saldo ledger.
 
-**Catatan:** laporan “aktivitas pencatatan” saat ini bukan laporan kontribusi. Lihat RFC-0013.
+**Gap:** payer, beneficiary, liable party, settlement, nominal/template split, dan kontribusi aktual belum dimodelkan. Laporan “aktivitas pencatatan” tetap bukan laporan kontribusi. Lihat RFC-0013.
 
 ### `REQ-PROD-11` Pencatatan cepat dan transaksi belum jelas — Partial
 
@@ -103,9 +103,9 @@ Harus memisahkan kontrak kewajiban, pencairan, cicilan, settlement, saldo tersis
 
 ### `REQ-PROD-13` Laporan — Partial
 
-Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan, total saldo lintas bulan, kategori, rekening, nature, budget vs actual, dan aktivitas pencatatan pengguna. Transfer internal tidak dihitung sebagai arus kas. Presentation mobile ≤820px memakai mode `Ringkasan` dan `Per kategori`, navigasi periode, chart tren pengeluaran, KPI utama, perbandingan bulan sebelumnya, alert actionable, serta progressive disclosure untuk breakdown; desktop mempertahankan workspace analitik existing. Seluruh presentation tetap read-only dan memakai contract canonical `reports.monthly`.
+Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan, total saldo lintas bulan, kategori, rekening, nature, budget vs actual, aktivitas pencatatan pengguna, dan breakdown pembagian beban biaya shared yang dipisahkan dari recorder activity. Transfer internal tidak dihitung sebagai arus kas. Presentation mobile ≤820px memakai mode `Ringkasan` dan `Per kategori`, navigasi periode, chart tren pengeluaran, KPI utama, perbandingan bulan sebelumnya, alert actionable, serta progressive disclosure untuk breakdown; desktop mempertahankan workspace analitik existing. Seluruh presentation tetap read-only dan memakai contract canonical `reports.monthly`.
 
-**Gap:** kontribusi nyata, debt/receivable, dan target stages menunggu model datanya.
+**Gap:** payer/beneficiary dan kontribusi nyata, debt/receivable, serta target stages menunggu model datanya.
 
 ### `REQ-PROD-14` Rekonsiliasi saldo — Implemented
 

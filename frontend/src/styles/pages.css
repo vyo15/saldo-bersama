@@ -256,3 +256,74 @@
 .goal-card__projection dd[data-pace="on_track"],
 .goal-card__projection dd[data-pace="completed"] { color: var(--positive); }
 .goal-card__completion { margin: 0; padding: .65rem .75rem; border: 1px solid color-mix(in srgb, var(--positive) 28%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--positive) 8%, var(--surface-soft)); color: var(--text); font-size: 12px; line-height: 1.5; }
+
+/* Perencanaan: Kantong Dana owns category limits and linked recurring schedules. */
+.allocation-embedded-header { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.allocation-embedded-header h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+.allocation-embedded-header p { max-width: 68ch; margin: 4px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.allocation-planning-detail { display: grid; gap: 14px; }
+.allocation-detail-back { width: max-content; min-height: 40px; padding: 0 8px; border: 0; border-radius: 11px; display: inline-flex; align-items: center; gap: 7px; background: transparent; color: var(--primary); font: inherit; font-size: 12px; font-weight: var(--font-weight-bold); cursor: pointer; }
+.allocation-detail-back:hover { background: var(--primary-soft); }
+.allocation-detail-back:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.allocation-detail-back svg { width: 16px; height: 16px; }
+.allocation-detail-hero { padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 24px; align-items: start; }
+.allocation-detail-hero > div:first-child { min-width: 0; }
+.allocation-detail-hero > div:first-child > span,
+.allocation-detail-hero__amount > span,
+.allocation-detail-hero__metrics span { color: var(--text-muted); font-size: 11px; }
+.allocation-detail-hero h2 { margin: 3px 0 0; font-size: clamp(22px, 3vw, 28px); letter-spacing: -.035em; }
+.allocation-detail-hero p { margin: 5px 0 0; color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.allocation-detail-hero__amount { min-width: 150px; display: grid; gap: 4px; justify-items: end; text-align: right; }
+.allocation-detail-hero__amount .money { font-size: 24px; font-weight: var(--font-weight-bold); letter-spacing: -.035em; }
+.allocation-detail-hero__metrics { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.allocation-detail-hero__metrics > div { min-width: 0; padding: 10px 12px; border-radius: 13px; display: grid; gap: 4px; background: var(--surface-soft); }
+.allocation-detail-hero__metrics strong { min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.allocation-detail-hero__metrics .money { font-size: inherit; }
+.allocation-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.allocation-detail-panel { min-width: 0; padding: 16px; }
+.allocation-detail-panel__header { margin-bottom: 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.allocation-detail-panel__header > div { min-width: 0; }
+.allocation-detail-panel__header h3 { margin: 0; font-size: 15px; }
+.allocation-detail-panel__header p { max-width: 52ch; margin: 4px 0 0; color: var(--text-muted); font-size: 10.5px; line-height: 1.45; }
+.allocation-limit-list,
+.allocation-related-list { display: grid; }
+.allocation-limit-row { padding: 12px 0; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+.allocation-limit-row:last-child,
+.allocation-related-row:last-child { border-bottom: 0; }
+.allocation-limit-row__main { min-width: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.allocation-limit-row__main > div { min-width: 0; display: grid; gap: 3px; }
+.allocation-limit-row__main strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.allocation-limit-row__main small { color: var(--text-muted); font-size: 10px; }
+.allocation-limit-row__main small .money { font-size: inherit; }
+.allocation-limit-row__main > span { flex: 0 0 auto; padding: 4px 7px; border-radius: 999px; background: var(--surface-soft); color: var(--positive); font-size: 9.5px; font-weight: var(--font-weight-bold); }
+.allocation-limit-row__main > span.is-warning { background: color-mix(in srgb, var(--warning) 10%, var(--surface)); color: var(--warning); }
+.allocation-limit-row__main > span.is-danger { background: color-mix(in srgb, var(--negative) 10%, var(--surface)); color: var(--negative); }
+.allocation-limit-row > .progress { grid-template-columns: minmax(0, 1fr); }
+.allocation-limit-row > .progress > span { display: none; }
+.allocation-limit-row__actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.allocation-limit-row__actions .button { min-height: 34px; padding-inline: 9px; font-size: 10px; }
+.allocation-related-row { min-width: 0; padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.allocation-related-row > div { min-width: 0; display: grid; gap: 3px; }
+.allocation-related-row > div:last-child { justify-items: end; text-align: right; }
+.allocation-related-row strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.allocation-related-row small { color: var(--text-muted); font-size: 9.5px; }
+.allocation-related-row .money { font-size: 12px; font-weight: var(--font-weight-bold); }
+
+@media (max-width: 760px) {
+  .allocation-embedded-header { align-items: flex-start; }
+  .allocation-detail-grid { grid-template-columns: 1fr; }
+  .allocation-detail-hero { grid-template-columns: 1fr; gap: 14px; }
+  .allocation-detail-hero__amount { justify-items: start; text-align: left; }
+  .allocation-detail-hero__metrics { grid-column: auto; }
+  .allocation-detail-panel__header { align-items: flex-start; }
+}
+
+@media (max-width: 480px) {
+  .allocation-detail-hero__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .allocation-detail-hero__metrics > div:last-child { grid-column: 1 / -1; }
+  .allocation-detail-panel__header { display: grid; }
+  .allocation-detail-panel__header .button { width: 100%; justify-content: center; }
+  .allocation-limit-row__actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .allocation-limit-row__actions .button { min-width: 0; justify-content: center; }
+  .allocation-limit-row__actions .button span { display: none; }
+}

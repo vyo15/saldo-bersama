@@ -48,10 +48,11 @@ test("quick transfer dapat mengunci jenis, mengisi rekening sumber, dan menyegar
 
 
 test("quick add memakai composer global dan invalidation transaksi mencakup resource finansial turunan", async () => {
-  const [form, page, hook] = await Promise.all([
+  const [form, page, hook, composer] = await Promise.all([
     readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/TransactionsPage.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/hooks/useApiResource.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/TransactionComposerContext.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(form, /invalidate\(\["transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly"/);
   assert.match(page, /useTransactionComposer/);
@@ -60,6 +61,8 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   assert.match(page, /<TransactionForm open=\{Boolean\(editingTransaction\)\} transaction=\{editingTransaction\}/, "form lokal hanya untuk edit transaksi");
   assert.match(page, /"budgets\.list"/, "cancel/restore transaksi juga harus menginvalidasi pemakaian anggaran");
   assert.match(hook, /subscribeToInvalidation\(action/);
+  assert.match(composer, /lazy\(\(\) => import\("\.\.\/features\/transactions\/TransactionForm\.jsx"\)\)/, "composer global tidak boleh memaksa form transaksi masuk main bundle");
+  assert.match(composer, /composer\.open \? <Suspense fallback=\{null\}>/);
 });
 
 

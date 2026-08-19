@@ -136,7 +136,12 @@ const accountAllocationIntegrityStatement = () => ({
   args: [todayJakarta(), todayJakarta(), todayJakarta(), todayJakarta()],
 });
 
-export const integrityBaseStatements = () => [...INTEGRITY_STATIC_STATEMENTS, accountAllocationIntegrityStatement()];
+const costShareIntegrityStatement = () => ({
+  sql: "SELECT transaction_id,transaction_type,scope,amount,cost_share_mode,cost_share_json FROM transactions ORDER BY transaction_id",
+  args: [],
+});
+
+export const integrityBaseStatements = () => [...INTEGRITY_STATIC_STATEMENTS, accountAllocationIntegrityStatement(), costShareIntegrityStatement()];
 
 const appendSimpleIntegrityIssues = (issues, rows) => {
   const [fk = [], duplicates = [], invalidTransfer = [], brokenOwnership = [], invalidEnvelopeAssignee = [], linkedCancelled = []] = rows;
@@ -227,6 +232,55 @@ const appendAllocationIntegrityIssues = (issues, rows) => {
   }
 };
 
+
+const parsedCostShareSplits = (row) => {
+  try {
+    const value = JSON.parse(String(row.cost_share_json || "[]"));
+    return Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const validCostShareTotals = (splits, amount) => {
+  const userIds = new Set();
+  let basisTotal = 0;
+  let amountTotal = 0;
+  for (const split of splits) {
+    const userId = String(split?.user_id || "");
+    const basisPoints = Number(split?.basis_points);
+    const shareAmount = Number(split?.share_amount);
+    const valid = userId
+      && !userIds.has(userId)
+      && Number.isInteger(basisPoints)
+      && basisPoints >= 0
+      && Number.isInteger(shareAmount)
+      && shareAmount >= 0;
+    if (!valid) return false;
+    userIds.add(userId);
+    basisTotal += basisPoints;
+    amountTotal += shareAmount;
+  }
+  return splits.length >= 2 && basisTotal === 10_000 && amountTotal === Number(amount || 0);
+};
+
+const costShareIssueForRow = (row) => {
+  const mode = String(row.cost_share_mode || "unspecified");
+  const splits = parsedCostShareSplits(row);
+  if (!splits) return "COST_SHARE_JSON_INVALID";
+  const eligible = row.transaction_type === "expense" && row.scope === "shared";
+  if (!eligible && (mode !== "unspecified" || splits.length)) return "COST_SHARE_SCOPE_INVALID";
+  if (mode === "unspecified") return splits.length ? "COST_SHARE_UNSPECIFIED_WITH_SPLITS" : "";
+  return validCostShareTotals(splits, row.amount) ? "" : "COST_SHARE_TOTAL_INVALID";
+};
+
+const appendCostShareIntegrityIssues = (issues, rows) => {
+  for (const row of rows || []) {
+    const code = costShareIssueForRow(row);
+    if (code) issues.push({ code, transactionId: row.transaction_id });
+  }
+};
+
 export const integrityIssuesFromBaseRows = (baseRows) => {
   const issues = [];
   appendSimpleIntegrityIssues(issues, baseRows.slice(0, 6));
@@ -235,6 +289,7 @@ export const integrityIssuesFromBaseRows = (baseRows) => {
   appendConfigIntegrityIssues(issues, baseRows[10] || []);
   appendReminderIntegrityIssues(issues, baseRows[11] || []);
   appendAllocationIntegrityIssues(issues, baseRows.slice(12, 16));
+  appendCostShareIntegrityIssues(issues, baseRows[16] || []);
   return issues;
 };
 

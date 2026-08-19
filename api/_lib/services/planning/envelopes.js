@@ -4,7 +4,7 @@ import { accountAllocatedRemaining, accountBalanceAsOf, envelopeItemsStatement, 
 import { addDays, appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
-import { addMonths, accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
+import { addMonths, accountWithAccess, assertOwnedAccess, assertPlanningManageScope, ruleScopeFromAccount } from "./shared.js";
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
 const OVERSPEND_POLICIES = new Set(["block", "confirm", "allow"]);
@@ -141,7 +141,6 @@ export const listEnvelopes = async (db, context) => {
 };
 
 export const createEnvelopeRule = async (db, context, payload = context.payload || {}) => {
-  assertOwner(context.actor);
   const name = sanitizeText(payload.name, 100);
   const periodType = String(payload.period_type || "monthly");
   const rollover = String(payload.rollover_policy || "unallocated");
@@ -152,6 +151,7 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
   if (!sourceAccountId) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Rekening sumber wajib dipilih agar dana kantong memiliki asal yang jelas.", 400);
   const account = await accountWithAccess(db, context.actor, sourceAccountId);
   const owned = ruleScopeFromAccount(account);
+  assertPlanningManageScope(context.actor, owned);
   const legacyAssignee = owned.scope === "personal" ? owned.owner_user_id : null;
   const requestedAssignee = Object.hasOwn(payload, "assignee_user_id") ? payload.assignee_user_id : legacyAssignee;
   const assignee = await resolveEnvelopeAssignee(db, requestedAssignee);
@@ -174,13 +174,15 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
     status: "active",
     ...newVersionStamp(context.actor.user_id, timestamp)
   };
+  assertEnvelopeAssigneeAccess(context.actor, record);
   await db.execute(`INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   return record;
 };
 export const createEnvelopePeriod = async (db, context, payload = context.payload || {}) => {
-  assertOwner(context.actor);
   const rule = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
   if (!rule) throw appError("INVALID_ENVELOPE_RULE", "Aturan kantong tidak ditemukan.", 404);
+  assertPlanningManageScope(context.actor, rule);
+  assertEnvelopeAssigneeAccess(context.actor, rule);
   const start = dateValue(payload.period_start, "Tanggal mulai kantong");
   const end = dateValue(payload.period_end, "Tanggal akhir kantong");
   if (start > end) throw appError("INVALID_PERIOD_RANGE", "Tanggal akhir harus setelah tanggal mulai.", 400);
@@ -275,6 +277,47 @@ export const moveEnvelope = async (db, context) => {
   await appendAudit(db, context, { entityType: "envelope_movement", entityId: movement.movement_id, next: publicRow(movement) });
   await context.enqueueMirror?.(db, "envelope", move.fromId);
   return publicRow(movement);
+};
+
+const envelopePeriodForAdjustment = async (db, periodId) => db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id
+  FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
+  WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [periodId]);
+
+export const adjustEnvelopeAllocation = async (db, context) => {
+  const payload = context.payload || {};
+  const periodId = sanitizeText(payload.envelope_period_id, 100);
+  const direction = String(payload.direction || "fund");
+  const amount = positiveInteger(payload.amount, "Nominal alokasi");
+  if (!periodId) throw appError("ENVELOPE_REQUIRED", "Kantong aktif wajib dipilih.", 400);
+  if (!["fund", "release"].includes(direction)) throw appError("INVALID_ALLOCATION_DIRECTION", "Arah perubahan alokasi tidak valid.", 400);
+  const current = await envelopePeriodForAdjustment(db, periodId);
+  if (!current) throw appError("INVALID_ENVELOPE", "Kantong aktif tidak ditemukan.", 404);
+  assertOwnedAccess(context.actor, current);
+  assertPlanningManageScope(context.actor, current);
+  assertEnvelopeAssigneeAccess(context.actor, current);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const source = await accountWithAccess(db, context.actor, current.source_account_id);
+  if (direction === "fund") {
+    await assertAllocationAvailable(db, source, amount);
+  } else {
+    const usage = await db.one("SELECT COALESCE(SUM(amount),0) AS used FROM transactions WHERE status='active' AND transaction_type='expense' AND envelope_period_id=?", [periodId]);
+    const removable = Number(current.allocated_amount) - Number(current.reserved_amount) - Number(usage?.used || 0);
+    if (amount > removable) throw appError("INSUFFICIENT_ENVELOPE", "Nominal melebihi dana Kantong yang belum terpakai atau dipesan.", 409, { removableAmount: Math.max(0, removable) });
+  }
+  const timestamp = nowIso();
+  const nextAmount = Number(current.allocated_amount) + (direction === "fund" ? amount : -amount);
+  const next = { ...current, allocated_amount: nextAmount, ...nextVersionStamp(current, context.actor.user_id, timestamp) };
+  const result = await db.execute("UPDATE envelope_periods SET allocated_amount=?,row_version=?,updated_by=?,updated_at=? WHERE envelope_period_id=? AND row_version=? AND status='active'", [next.allocated_amount, next.row_version, next.updated_by, next.updated_at, periodId, current.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Kantong berubah di perangkat lain.", 409);
+  const reason = sanitizeText(payload.reason, 180) || (direction === "fund" ? "Tambah dana dari dana tersedia" : "Kembalikan dana ke dana tersedia");
+  await appendAudit(db, context, {
+    entityType: "envelope_period",
+    entityId: periodId,
+    previous: publicRow(current),
+    next: { ...publicRow(next), allocation_adjustment: { direction, amount, reason } },
+  });
+  await context.enqueueMirror?.(db, "envelope", periodId);
+  return { period: publicRow(next), direction, amount };
 };
 export const closeEnvelope = async (db, context) => {
   assertOwner(context.actor);

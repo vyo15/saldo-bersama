@@ -13,6 +13,7 @@ const RecurringScheduleView = ({
   setExpandedId,
   accounts,
   categories,
+  budgets,
 }) => <>
   <ScheduleSummary items={allItems} onAttention={() => {
     const attentionItem = allItems.find((item) => scheduleMatchesFilter(item, "attention"));
@@ -32,6 +33,7 @@ const RecurringScheduleView = ({
     setExpandedId={setExpandedId}
     accounts={accounts}
     categories={categories}
+    budgets={budgets}
   />
 </>;
 

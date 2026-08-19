@@ -35,7 +35,7 @@ const FREQUENCY_LABELS = Object.freeze({
 const PAYMENT_METHOD_LABELS = Object.freeze({
   transfer: "Transfer",
   cash: "Tunai",
-  autodebit: "Auto-debit",
+  autodebit: "Transfer",
   ewallet: "E-wallet",
 });
 
@@ -56,7 +56,7 @@ const duePresentation = (item) => {
   if (due === null || today === null) return { label: "Terjadwal", tone: "muted" };
   const delta = due - today;
   if (delta < 0) return { label: `Terlambat ${Math.abs(delta)} hari`, tone: "negative" };
-  if (delta === 0) return { label: "Jatuh tempo hari ini", tone: "warning" };
+  if (delta === 0) return { label: "Menunggu konfirmasi", tone: "warning" };
   if (delta === 1) return { label: "Besok", tone: "warning" };
   return { label: `${delta} hari lagi`, tone: "muted" };
 };
@@ -67,14 +67,24 @@ const recurringSummary = (items) => items.reduce((summary, item) => {
   else summary.expense += expected;
   if (completedStatuses.has(item.status)) summary.completed += 1;
   if (item.status === "cancelled") summary.cancelled += 1;
-  if (attentionStatuses.has(item.status)) summary.attention += 1;
+  if (attentionStatuses.has(item.status) || (item.status === "expected" && item.due_date === todayInJakarta())) summary.attention += 1;
   return summary;
 }, { expense: 0, income: 0, completed: 0, cancelled: 0, attention: 0 });
 
 const lookupLabel = (items, id, idKey, fallback) => items?.find((item) => item[idKey] === id)?.name || fallback;
 
+const samePlanningOwnership = (left, right) => String(left?.scope || "") === String(right?.scope || "")
+  && String(left?.owner_user_id || "") === String(right?.owner_user_id || "");
+
+const linkedBudgetLabel = (budgets, item) => {
+  if (item?.kind !== "expense") return "";
+  const budget = (budgets || []).find((entry) => entry.category_id === item.category_id && samePlanningOwnership(entry, item) && (!entry.envelope_source_account_id || entry.envelope_source_account_id === item.default_account_id));
+  return budget?.envelope_name ? `Kantong ${budget.envelope_name}` : "";
+};
+
 const attentionGuidance = (item) => {
-  if (!attentionStatuses.has(item.status)) return null;
+  const dueToday = item.status === "expected" && item.due_date === todayInJakarta();
+  if (!attentionStatuses.has(item.status) && !dueToday) return null;
   const expected = Number(item.expected_amount || 0);
   const actual = Number(item.actual_amount || 0);
   const remaining = Math.max(0, expected - actual);
@@ -85,11 +95,11 @@ const attentionGuidance = (item) => {
       primaryLabel: "Lengkapi aktual",
     };
   }
-  if (item.auto_debit) {
+  if (dueToday) {
     return {
-      title: "Periksa auto-debit",
-      description: "Cek mutasi rekening. Jika transaksi sudah terjadi, catat aktual.",
-      primaryLabel: "Catat aktual",
+      title: "Menunggu konfirmasi",
+      description: "Pastikan transaksi rutin ini benar-benar terjadi, lalu simpan nominal aktualnya.",
+      primaryLabel: "Konfirmasi aktual",
     };
   }
   return {
@@ -143,11 +153,12 @@ const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false })
   );
 };
 
-const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories }) => {
+const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories, budgets }) => {
   const due = duePresentation(item);
   const account = accounts?.find((entry) => entry.account_id === item.default_account_id);
   const accountLabel = account ? accountDisplayLabel(account) : "Rekening tidak tersedia";
   const categoryLabel = lookupLabel(categories, item.category_id, "category_id", "Kategori tidak tersedia");
+  const budgetLabel = linkedBudgetLabel(budgets, item);
   const actual = Number(item.actual_amount || 0);
   const guidance = attentionGuidance(item);
   return (
@@ -160,7 +171,6 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories 
         <div className={styles.titleBlock}>
           <div className={styles.titleLine}>
             <h3>{item.name}</h3>
-            {item.auto_debit ? <span className={styles.autoDebit}>Auto-debit</span> : null}
           </div>
           <p>{categoryLabel}</p>
         </div>
@@ -175,7 +185,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories 
       <div className={styles.metaGrid}>
         <span><FiClock aria-hidden="true" /><span><strong>{formatDateLongIndonesia(item.due_date) || item.due_date}</strong><small className={styles[due.tone]}>{due.label}</small></span></span>
         <span><FiRepeat aria-hidden="true" /><span><strong>{FREQUENCY_LABELS[item.frequency] || item.frequency}</strong><small>{PAYMENT_METHOD_LABELS[item.payment_method] || item.payment_method || "Metode belum diatur"}</small></span></span>
-        <span className={styles.accountMeta}><span className={styles.accountDot} aria-hidden="true" /><span><strong>{accountLabel}</strong></span></span>
+        <span className={styles.accountMeta}><span className={styles.accountDot} aria-hidden="true" /><span><strong>{accountLabel}</strong>{budgetLabel ? <small>{budgetLabel}</small> : null}</span></span>
       </div>
 
       <ScheduleAttention item={item} guidance={guidance} actions={actions} />
@@ -184,7 +194,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories 
   );
 };
 
-const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories }) => (
+const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories, budgets }) => (
   <div className={styles.scheduleList}>
     {items.length ? items.map((item) => (
       <ScheduleItem
@@ -195,6 +205,7 @@ const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, ac
         onToggle={() => setExpandedId((current) => current === item.occurrence_id ? null : item.occurrence_id)}
         accounts={accounts}
         categories={categories}
+        budgets={budgets}
       />
     )) : (
       <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title="Belum ada jadwal" description={emptyText} headingLevel={3} />
@@ -273,7 +284,7 @@ const ScheduleFilters = ({ filter, setFilter, items }) => {
   );
 };
 
-export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, setFilter, actions, expandedId, setExpandedId, accounts, categories }) => {
+export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, setFilter, actions, expandedId, setExpandedId, accounts, categories, budgets }) => {
   const visibleItems = items.filter((item) => item.kind === kind);
   const typeLabel = kind === "expense" ? "pengeluaran" : "pemasukan";
   const selectFilter = (next) => {
@@ -304,6 +315,7 @@ export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, 
         setExpandedId={setExpandedId}
         accounts={accounts}
         categories={categories}
+        budgets={budgets}
       />
     </section>
   );

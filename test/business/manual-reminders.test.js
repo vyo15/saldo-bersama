@@ -195,7 +195,7 @@ test("scheduler mengantrikan pengingat manual sekali, mengekspos status dispatch
 
     const queue = await db.one("SELECT user_id,notification_type,title,body,target_path,dedupe_key FROM notification_queue WHERE notification_type='manual_reminder'");
     assert.equal(queue.user_id, owner.user_id);
-    assert.equal(queue.target_path, "/tagihan");
+    assert.equal(queue.target_path, "/perencanaan/jadwal");
     assert.match(queue.title, /Internet Rumah/);
     assert.match(queue.body, /Rp325[.]000/);
     assert.match(queue.body, /BCA Utama/);

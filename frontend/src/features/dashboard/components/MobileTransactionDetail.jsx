@@ -45,7 +45,7 @@ const MobileTransactionDetail = ({
           <div><dt>Deskripsi</dt><dd>{title}</dd></div>
           <div><dt>Kategori</dt><dd>{category}</dd></div>
           <div><dt>Rekening</dt><dd>{accountLabel}</dd></div>
-          <div><dt>Alokasi</dt><dd>{envelope}<small>{envelopeNote}</small></dd></div>
+          <div><dt>Kantong Dana</dt><dd>{envelope}<small>{envelopeNote}</small></dd></div>
           <div><dt>Tanggal</dt><dd>{formatTransactionDate(transaction.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div>
           <div><dt>Sinkron terakhir</dt><dd>{lastSyncedAt}</dd></div>
         </dl>

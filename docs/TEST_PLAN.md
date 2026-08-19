@@ -63,8 +63,8 @@ Cakupan wajib:
 - account-bound allocation: Kantong baru wajib satu `source_account_id`; `balance` fisik tidak berubah saat alokasi dibuat; `allocated_remaining` dan `available_balance` harus membentuk pembagian saldo tanpa double counting; expense berkantong mengurangi saldo + sisa Kantong tetapi menjaga dana bebas untuk bagian yang ter-cover; expense tanpa Kantong/Transfer mengurangi dana bebas dan ditolak jika mengambil dana Kantong; expense Kantong beda rekening ditolak; realokasi baru lintas rekening ditolak dan reversal movement legacy tetap dapat dipakai untuk recovery;
 - lifecycle allocation integrity: future-dated expense Kantong tidak membebaskan dana sebelum cutoff fisik, restore rule memeriksa dana tersedia terbaru, rule legacy tanpa sumber fail-closed, update/cancel/restore transaksi tidak boleh membuat `balance < allocated_remaining`, serta integrity mendeteksi source invalid, transaction source mismatch, active cross-account reallocation, dan `ALLOCATED_FUNDS_EXCEED_BALANCE`;
 - recurring occurrence skip/restore: hanya owner, reason + row_version + idempotency, tidak mengubah ledger/saldo, status cancelled persisted, pay ditolak sampai dipulihkan, archive/restore rule tidak menghapus skip;
-- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v10;
-- Manual reminder: create/get/update/cancel pada Jadwal Rutin, Anggaran, Alokasi, dan Target; waktu Asia/Jakarta future maksimal 366 hari; satu reminder `scheduled` per actor+entity; stale `row_version` dan create concurrent ditolak; actor tidak boleh membuat reminder untuk personal/assignee milik user lain; scheduler queue sekali dengan dedupe stabil; `reminders.get` mengembalikan `lastDispatch`; dispatch `pending/processing/failed/missing` menolak reminder baru dengan `REMINDER_DELIVERY_PENDING` sedangkan `sent/dead_letter` terminal; archive/delete/complete/close/cancel membatalkan reminder `scheduled` secara atomik; integrity mendeteksi user/entity/queue reminder yang drift; reset/backup/restore schema v10 mencakup tabel reminder.
+- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v11;
+- Manual reminder: create/get/update/cancel pada Jadwal Rutin, Anggaran, Alokasi, dan Target; waktu Asia/Jakarta future maksimal 366 hari; satu reminder `scheduled` per actor+entity; stale `row_version` dan create concurrent ditolak; actor tidak boleh membuat reminder untuk personal/assignee milik user lain; scheduler queue sekali dengan dedupe stabil; `reminders.get` mengembalikan `lastDispatch`; dispatch `pending/processing/failed/missing` menolak reminder baru dengan `REMINDER_DELIVERY_PENDING` sedangkan `sent/dead_letter` terminal; archive/delete/complete/close/cancel membatalkan reminder `scheduled` secara atomik; integrity mendeteksi user/entity/queue reminder yang drift; reset/backup/restore schema v11 mencakup tabel reminder dan tetap menerima snapshot lama secara additive.
 - feedback global: `aria-live`, dedupe, mobile safe-area, reduced motion, tanpa generic hard rollback/undo;
 - read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, Calendar ScriptLock, dan duplicate managed-event self-healing;
 - formula injection dan valid XLSX;
@@ -128,8 +128,8 @@ Perubahan sistem pengendali uang bersama wajib mencakup skenario berikut:
 - filter transaksi berdasarkan rekening, kategori, dan pencatat tetap mengikuti projection personal/shared backend;
 - regression saldo wajib membandingkan aggregate SQL `visibleAccounts()` dengan `accountBalanceAsOf()` pada fixture income, expense, refund, transfer, adjustment, inactive transaction, initial-balance date, dan beberapa cutoff date; perubahan semantik `transactionImpact()` wajib menjaga parity ini;
 - laporan tren 3, 6, dan 12 bulan tidak menghitung transfer sebagai pemasukan atau pengeluaran;
-- `/anggaran` mengelola create/update/archive dengan idempotency dan `row_version`; `/laporan` hanya menampilkan analisis anggaran vs aktual tanpa mutation;
-- member dan periode historis melihat Anggaran secara read-only, sedangkan owner hanya dapat mengelola periode aktif;
+- `/perencanaan/kantong` mengelola Kantong dan Batas Pengeluaran nested dengan idempotency serta `row_version`; batas yang terhubung Kantong hanya menghitung transaksi dari `envelope_rule_id` yang sama; `/laporan` hanya menampilkan analisis batas vs aktual tanpa mutation;
+- member dan periode historis melihat Batas Pengeluaran secara read-only, sedangkan owner hanya dapat mengelola periode aktif;
 - breakdown per pencatat diberi label aktivitas pencatatan, bukan kontribusi finansial;
 - breakdown rekening, kategori, dan nature hanya memakai transaksi aktif yang terlihat oleh actor;
 - peringatan budget dan kantong muncul pada threshold, tidak menggandakan notifikasi, dan tidak membocorkan scope personal;
@@ -139,13 +139,13 @@ Perubahan sistem pengendali uang bersama wajib mencakup skenario berikut:
 - setiap `REQ-*` dalam product requirements tercatat pada implementation matrix;
 - setiap gap yang membutuhkan schema baru memiliki RFC `Proposed` sebelum migration atau API baru dibuat.
 
-Fitur planned seperti receipt, utang/piutang, contribution split, category hierarchy, goal stages, privacy granular, dan Partner role tidak boleh dianggap implemented hanya karena RFC tersedia.
+Fitur yang masih planned seperti receipt terhubung, utang/piutang, category hierarchy, goal stages, privacy granular lanjutan, payer/beneficiary/settlement, dan kontribusi aktual tidak boleh dianggap implemented hanya karena RFC tersedia. Pembagian beban biaya expense shared serta hak Member untuk planning `shared` sudah memiliki implementasi MVP dan harus diuji sesuai kontrak runtime, bukan lagi diperlakukan sebagai RFC-only.
 
 ## Authenticated desktop/mobile capability parity
 
 Manual capability QA memakai akun/fixture aman Administrator dan Member pada environment testing. Cakupan minimum:
 
-- seluruh route `/`, `/transaksi`, `/anggaran`, `/alokasi`, `/tagihan`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, `/pengaturan`, dan nested route Pengaturan dapat dirender pada mobile;
+- seluruh route `/`, `/transaksi`, `/perencanaan/kantong`, `/perencanaan/jadwal`, `/target`, `/laporan`, `/rekening`, `/rekonsiliasi`, `/kategori`, `/pengaturan`, dan nested route Pengaturan dapat dirender pada mobile; route legacy `/anggaran`, `/alokasi`, `/tagihan` harus redirect ke workspace Perencanaan tanpa error;
 - heading utama, navigation landmark, route aktif, dan error state tetap benar;
 - dashboard mobile membawa batas aman harian, dana belum dialokasikan, rekening, arus kas, ringkasan alokasi agregat, seluruh peringatan melalui progressive disclosure, privacy nominal, lima transaksi terbaru, serta detail transaksi; shortcut utama harus tetap `Pemasukan`, `Pengeluaran`, dan `Transfer`, `Perlu perhatian` harus berada sebelum rekening ketika alert tersedia, transfer baru pada viewport mobile harus memakai `TransactionForm` canonical dengan presentasi `mobile-transfer`, dan filter/search lengkap tetap canonical di `/transaksi` karena `dashboard.overview` hanya membawa recent slice;
 - dashboard desktop menampilkan kartu rekening aktual yang dapat dipilih, transaksi rekening terpilih, filter kategori/jenis/pencarian, privacy nominal, statistik global yang tidak salah diklaim sebagai statistik rekening, KPI arus kas, anggaran, tagihan, target, dan insight;
@@ -153,7 +153,7 @@ Manual capability QA memakai akun/fixture aman Administrator dan Member pada env
 - perubahan periode mobile tidak boleh maju melewati bulan berjalan; kategori memakai ikon katalog canonical dan seluruh nominal berasal dari `reports.monthly` atau derivasi deterministik `trend.items`, bukan dari page slice;
 - menu `Lainnya` aktif dengan `aria-current="page"` pada route sekunder;
 - menu `Lainnya` tidak memuat quick-add duplikat dan menampilkan link Rekonsiliasi pada kelompok Kontrol saldo;
-- grup mobile harus berurutan Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi; route `/tagihan` menampilkan heading `Jadwal rutin`;
+- grup mobile harus berurutan Perencanaan, Data keuangan, Kontrol saldo, dan Aplikasi; hanya satu item `Perencanaan` tampil di navigation dan workspace mempunyai tab `Kantong Dana` serta `Jadwal Rutin`;
 - Administrator dan Member memakai route yang sama, sementara kontrol write tetap mengikuti authorization data/API;
 - viewport tidak overflow horizontal dan business form tidak diduplikasi per perangkat.
 
@@ -198,11 +198,13 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - `accounts.update` wajib menolak perubahan `account_type` walaupun dikirim langsung oleh client; jenis hanya ditentukan saat create, sehingga template/provider tidak dapat dipakai untuk menyamarkan perubahan jenis rekening setelah rekening memiliki histori.
 - Setelah create/update/archive rekening atau kategori, daftar aktif dan dashboard diperbarui tanpa refresh manual.
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
+- Submit rekonsiliasi wajib mengunci input selama write, menampilkan progress lokal `simpan ke server -> perbarui tampilan`, tidak menduplikasi GlobalProcessIndicator/toast untuk `reconciliations.create`, dan baru menampilkan result overlay setelah server mengonfirmasi write. Matched memakai celebration satu-shot; difference memakai hasil warning tanpa money rain.
+- Result overlay rekonsiliasi wajib focus-trap, dapat ditutup dengan Escape/tombol, mengembalikan fokus, menjaga safe-area mobile, dan menghormati `prefers-reduced-motion`. Refresh read-model yang gagal setelah write success tidak boleh mengubah outcome write menjadi gagal; UI harus menyatakan bahwa server sudah menyimpan tetapi tampilan mungkin perlu dimuat ulang.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
 - Saat Modal mutation kritis memakai `dismissible=false`, tombol X harus disabled, Escape/backdrop/swipe tidak menutup dialog, tetapi Tab/Shift+Tab dan focus trap tetap berfungsi.
 - Loading di dalam shell tidak boleh merender nested `main`; loading panel/inline tidak boleh mengambil tinggi satu viewport. Empty/error inline harus tetap compact pada mobile.
-- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive dan migration v10 menambah `manual_reminders`; restore runtime v10 tetap menerima backup schema v3-v9; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
+- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive, migration v10 menambah `manual_reminders`, dan migration v11 menambah `transactions.cost_share_mode` + `cost_share_json`; restore runtime v11 tetap menerima backup schema v3-v10; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
 - Alokasi assigned harus memisahkan `assignee_user_id` dari ownership ledger: Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah sendiri, rekening personal mengunci penerima ke pemilik rekening, notifikasi assigned hanya menuju penerima, dan penonaktifan user diblok bila masih ada jatah aktif.
 - Budget personal harus dihitung hanya dari transaksi personal user terkait, tidak boleh dipakai sebagai substitusi jatah per orang dari rekening Bersama, dan user dengan Budget personal aktif tidak dapat dinonaktifkan.
 - Sidebar melengkung harus tetap terlihat, target sentuh minimal 44px, submenu minimal dapat ditutup, dan menu mobile tidak menduplikasi theme toggle.
@@ -212,12 +214,16 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Member harus menerima seluruh rekening shared/personal beserta `owner_name`; rekening personal pasangan wajib `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
 - Member harus dapat membaca transaksi pasangan untuk menelusuri saldo, tetapi update/cancel hanya boleh untuk transaksi sendiri pada scope operable; transaksi legacy pada rekening personal pasangan tetap harus ditolak.
 - `totalBalance` harus mencakup semua rekening readable, sedangkan `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` hanya boleh memakai rekening/scope operable actor.
+- Lifecycle finansial end-to-end backend harus menguji income → dana tersedia → tambah alokasi Kantong existing → expense berkantong → budget → release sisa → setor Target → rekonsiliasi, termasuk bukti bahwa adjust alokasi tidak mengubah saldo ledger.
+- Shared planning Member harus diuji positif untuk Kantong/adjustment/Batas/Target/Jadwal shared dan negatif untuk scope personal serta lifecycle destruktif.
+- Cost sharing schema v11 harus menguji `unspecified`, `equal`, `percentage`, total 100%, rounding integer deterministik, edit nominal, report aggregation, audit, integrity, backup/restore, dan bahwa split tidak mengubah saldo di luar expense canonical. Regression juga wajib membuktikan participant/basis snapshot transaksi lama tetap stabil ketika roster user berubah dan pembayaran occurrence Jadwal Rutin shared memakai kontrak split yang sama.
+- Dashboard wajib membedakan `unallocatedFunds` dari `unallocatedExpenseAmount`/`unallocatedCount`; free funds harus tetap tampil walau jumlah expense tanpa Kantong nol.
 - Label pemilik wajib konsisten pada filter transaksi, account breakdown, reconciliation history, dan reconciliation alert.
 - `reconciliations.list` bersifat readable; `reconciliations.create` tetap operable. Negative authorization test wajib memakai request langsung ke service, bukan hanya tombol tersembunyi.
 - Form transaksi hanya menawarkan rekening dengan `can_transact !== false`; backend tetap mengulang guard ownership.
 - Form rekening personal Administrator dapat memilih user aktif. Saat `users.list` gagal, create harus fallback ke actor backend dan edit harus mempertahankan `owner_user_id` existing tanpa field required kosong.
 - Route `/kategori` harus menyediakan tipe refund sesuai `CATEGORY_TYPES` backend. Mutation master yang sudah sukses tidak boleh dilaporkan gagal karena reload domain atau refresh dashboard/bootstrap sesudahnya gagal; UI harus mempertahankan status sukses server dan mengekspos refresh warning.
-- Manual mobile QA pada viewport representatif memeriksa dua panel `/tagihan`, kedua mode mobile `/laporan` beserta pergantian periode/rentang tren dan chart tanpa overflow, nested route `/pengaturan` sesuai role, detail read-only pasangan `/rekening`, route `/kategori`, overflow horizontal modal, focus trap, Escape close, body scroll lock, dan focus restoration.
+- Manual mobile QA pada viewport representatif memeriksa dua tab `/perencanaan` termasuk drill-down detail Kantong dan konfirmasi Jadwal Rutin, kedua mode mobile `/laporan` beserta pergantian periode/rentang tren dan chart tanpa overflow, nested route `/pengaturan` sesuai role, detail read-only pasangan `/rekening`, route `/kategori`, overflow horizontal modal, focus trap, Escape close, body scroll lock, dan focus restoration.
 - Regression dependency UI memverifikasi setiap named import `react-icons/fi` pada `frontend/src` benar-benar tersedia pada package. `npm run build` tetap blocking karena route lazy seperti `/laporan` dapat lolos source-text/unit test tetapi gagal dimuat bila bundler menemukan named export invalid.
 - Nomor rekening panjang wajib dipadatkan pada visual kartu tanpa mengubah nilai lengkap pada detail/copy.
 - Boundary responsive wajib mencakup 580/581, 820/821, dan 940/941. Static test menolak dangling selector serta `.two-column-grid { display:none }`.
@@ -249,7 +255,7 @@ Regression wajib membuktikan:
 - Asset publik yang sudah tidak direferensikan source, test, manifest, atau docs wajib dihapus setelah usage scan.
 - Build budget harus dijalankan setelah production build dan tetap menjadi blocking quality gate.
 - Asset main JS, global CSS, atau route yang mencapai 90% batas menghasilkan warning headroom. Warning adalah trigger review static import/lazy boundary sebelum feature berikutnya, bukan alasan menaikkan threshold.
-- Regression statis menjaga presentation/dialog besar Transaksi, Alokasi, Anggaran, dan Jadwal Rutin tetap berada di lazy boundary yang sengaja dibuat untuk headroom.
+- Regression statis menjaga presentation/dialog besar Transaksi serta dialog Kantong/Batas Pengeluaran/Jadwal Rutin tetap berada di lazy boundary yang sengaja dibuat untuk headroom.
 
 ## Maintainability, artifact hygiene, dan duplicate-report policy
 
@@ -274,7 +280,7 @@ Regression wajib membuktikan:
 ## Web Push desktop dan mobile
 
 - `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
-- Schema Production harus versi 10 dan `npm run db:integrity` harus lulus sebelum register subscription.
+- Schema Production harus versi 11 dan `npm run db:integrity` harus lulus sebelum register subscription.
 - `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
 - Bootstrap Development interaktif wajib menarik ulang Vercel Development walaupun `.env.local` lama terlihat lengkap; hasil pull mengganti file hanya setelah sembilan core + Web Push lolos validasi.
 - Mode non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.

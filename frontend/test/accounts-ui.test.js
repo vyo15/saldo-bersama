@@ -7,6 +7,8 @@ import {
   accountCardholderName,
   accountCardNumberGroups,
   accountDisplayLabel,
+  accountTypeUsesAutomaticName,
+  defaultAccountName,
   accountProviderLabel,
   accountNumberGroups,
   accountOwnershipLabel,
@@ -41,6 +43,18 @@ const webpSize = async (url) => {
   }
   throw new Error(`Format WebP ${chunk} belum didukung test`);
 };
+
+test("nama rekening otomatis hanya dipakai untuk jenis yang memang tidak perlu nama manual", () => {
+  assert.equal(accountTypeUsesAutomaticName("cash"), true);
+  assert.equal(accountTypeUsesAutomaticName("ewallet"), true);
+  assert.equal(accountTypeUsesAutomaticName("emergency_fund"), true);
+  assert.equal(accountTypeUsesAutomaticName("bank"), false);
+  assert.equal(accountTypeUsesAutomaticName("savings"), false);
+  assert.equal(defaultAccountName({ account_type: "cash" }), "Tunai");
+  assert.equal(defaultAccountName({ account_type: "emergency_fund" }), "Dana darurat");
+  assert.equal(defaultAccountName({ account_type: "ewallet", ewallet_template: "dana" }), "DANA");
+  assert.equal(defaultAccountName({ account_type: "ewallet", ewallet_template: "generic" }), "E-wallet lainnya");
+});
 
 test("template kartu memakai field bank_template dan fallback nama hanya untuk data legacy", () => {
   assert.equal(detectBankTemplate({ account_type: "bank", bank_template: "bni", name: "Tabungan nikah" }), "bni");
@@ -85,6 +99,7 @@ test("label kepemilikan rekening menampilkan Bersama atau nama pengguna, bukan r
   assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
   assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Puput" }), "Puput");
   assert.equal(accountDisplayLabel({ name: "BTN", account_type: "bank", owner_scope: "personal", owner_name: "Puput" }), "BTN · Puput");
+  assert.equal(accountDisplayLabel({ name: "DANA · Belanja", account_type: "ewallet", ewallet_template: "dana", owner_scope: "shared" }), "DANA · Belanja");
 });
 
 test("filter rekening membedakan milik saya, pasangan, dan bersama tanpa mengubah data rekening", () => {
@@ -143,6 +158,10 @@ test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta g
     read("src/features/transactions/MobileTransferFields.jsx"),
     read("src/features/transactions/TransactionForm.jsx"),
   ]);
+  assert.match(accountEditors, /mobileColumns=\{2\}/);
+  assert.match(accountEditors, /Butuh lebih dari satu\? Tambah nama pembeda/);
+  assert.match(accountEditors, /Nama pembeda \(opsional\)/);
+  assert.match(page, /\[automaticName, qualifier\]\.filter\(Boolean\)\.join\(" · "\)/);
   const accountPageSource = `${page}
 ${accountSheets}
 ${mobileExperience}
@@ -486,4 +505,39 @@ test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () =
     assert.ok(info.size <= 160_000, `${name}.webp terlalu besar untuk kartu responsif (${info.size} byte)`);
     assert.deepEqual(dimensions, { width: 1536, height: 968 }, `${name}.webp harus memakai kanvas 1536x968`);
   }
+});
+
+
+test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celebration tetap aksesibel", async () => {
+  const [page, pageStyles, feedback, result, resultStyles, alertList, alertStyles] = await Promise.all([
+    read("src/features/reconciliations/ReconciliationsPage.jsx"),
+    read("src/features/reconciliations/ReconciliationsPage.module.css"),
+    read("src/components/feedback/FeedbackProvider.jsx"),
+    read("src/features/reconciliations/components/ReconciliationFeedback.jsx"),
+    read("src/features/reconciliations/components/ReconciliationFeedback.module.css"),
+    read("src/features/dashboard/components/FinancialAlertList.jsx"),
+    read("src/features/dashboard/components/FinancialAlertList.css"),
+  ]);
+
+  assert.match(page, /ReconciliationSubmitProgress/);
+  assert.match(page, /ReconciliationResultOverlay/);
+  assert.match(page, /status: "syncing"/);
+  assert.match(page, /refreshOutcomes = await Promise\.allSettled/);
+  assert.match(page, /actual_balance: "", notes: ""/);
+  assert.doesNotMatch(page, /notify\(/, "Pencocokan saldo tidak boleh menampilkan toast kedua setelah result overlay.");
+  assert.match(feedback, /LOCAL_PROCESS_ACTIONS = new Set\(\["reconciliations\.create"\]\)/);
+  assert.match(feedback, /LOCAL_PROCESS_ACTIONS\.has\(visible\.action\)/);
+  assert.match(result, /MONEY_COUNT = 30/);
+  assert.match(result, /MoneyRainCelebration/);
+  assert.match(result, /role="dialog"/);
+  assert.match(result, /useFocusTrap/);
+  assert.match(result, /refreshIncomplete/);
+  assert.match(resultStyles, /@media \(max-width: 820px\)[\s\S]*height: 100dvh/);
+  assert.match(resultStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(resultStyles, /reconciliation-money-fall/);
+  assert.doesNotMatch(pageStyles, /guidePanel|guideLead|systemBalance|snapshotBadge|eyebrowPill/, "Style rekonsiliasi lama yang tidak terpakai harus dibersihkan.");
+  assert.match(pageStyles, /grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(alertList, /mobile-attention-guidance/);
+  assert.doesNotMatch(alertList, /mobile-attention-instruction/);
+  assert.match(alertStyles, /financial-alert-list--mobile/);
 });

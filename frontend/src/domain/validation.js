@@ -56,7 +56,28 @@ const validateTransactionDetails = (input, type, errors) => {
   }
 };
 
-const normalizedTransactionValue = (input, type, amount) => ({
+
+const normalizeCostShare = (input, errors) => {
+  const mode = String(input.cost_share_mode || "unspecified");
+  if (!["unspecified", "equal", "percentage"].includes(mode)) {
+    errors.cost_share_mode = "Mode pembagian biaya tidak valid.";
+    return { mode: "unspecified", percentages: [] };
+  }
+  if (mode !== "percentage") return { mode, percentages: [] };
+  const percentages = Array.isArray(input.cost_share_percentages) ? input.cost_share_percentages.map((item) => ({ user_id: String(item?.user_id || ""), percentage: Number(item?.percentage) })) : [];
+  if (!percentages.length || percentages.some((item) => !item.user_id || !Number.isInteger(item.percentage) || item.percentage < 0 || item.percentage > 100) || percentages.reduce((sum, item) => sum + item.percentage, 0) !== 100 || new Set(percentages.map((item) => item.user_id)).size !== percentages.length) {
+    errors.cost_share_percentages = "Total persentase pembagian biaya harus tepat 100%.";
+  }
+  return { mode, percentages };
+};
+
+export const validateCostShareInput = (input) => {
+  const errors = {};
+  const value = normalizeCostShare(input, errors);
+  return Object.keys(errors).length ? { ok: false, errors, value } : { ok: true, errors: {}, value };
+};
+
+const normalizedTransactionValue = (input, type, amount, costShare) => ({
   transaction_id: input.transaction_id || undefined,
   row_version: input.row_version,
   transaction_type: type,
@@ -70,6 +91,8 @@ const normalizedTransactionValue = (input, type, amount) => ({
   description: neutralizeSpreadsheetFormula(input.description).slice(0, 250),
   merchant: neutralizeSpreadsheetFormula(input.merchant).slice(0, 120),
   overspend_reason: neutralizeSpreadsheetFormula(input.overspend_reason).slice(0, 180),
+  cost_share_mode: costShare.mode,
+  cost_share_percentages: costShare.percentages,
   confirm_duplicate: Boolean(input.confirm_duplicate),
 });
 
@@ -80,6 +103,9 @@ export const validateTransactionInput = (input) => {
   const amount = validateAmount(input, errors);
   validateTransactionDetails(input, type, errors);
   validateTransactionReferences(input, type, errors);
+  const costShareResult = validateCostShareInput(input);
+  Object.assign(errors, costShareResult.errors);
+  const costShare = costShareResult.value;
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, value: normalizedTransactionValue(input, type, amount) };
+  return { ok: true, value: normalizedTransactionValue(input, type, amount, costShare) };
 };

@@ -14,6 +14,7 @@ import { absoluteAmount } from "./dashboardPresentation.js";
 const DesktopFinanceDashboard = lazy(() => import("./components/DesktopFinanceDashboard.jsx"));
 const MobileFinanceDashboard = lazy(() => import("./components/MobileFinanceDashboard.jsx"));
 const MobileTransactionDetail = lazy(() => import("./components/MobileTransactionDetail.jsx"));
+const FinancialSetupChecklist = lazy(() => import("./FinancialSetupChecklist.jsx"));
 
 const MOBILE_DASHBOARD_QUERY = "(max-width: 820px)";
 const useMobileDashboardLayout = () => useMediaQuery(MOBILE_DASHBOARD_QUERY);
@@ -68,7 +69,7 @@ const selectedTransactionPresentation = ({ selectedTransaction, categoryLookup, 
   return {
     selectedTitle,
     selectedCategory,
-    selectedEnvelope: hasEnvelope ? envelopeLookup[selectedTransaction.envelope_period_id] || "Alokasi tidak tersedia" : expense ? "Belum dialokasikan" : "Tidak menggunakan alokasi",
+    selectedEnvelope: hasEnvelope ? envelopeLookup[selectedTransaction.envelope_period_id] || "Kantong tidak tersedia" : expense ? "Belum masuk Kantong" : "Tidak menggunakan Kantong",
     selectedEnvelopeNote: hasEnvelope ? "Terhubung ke kantong aktif" : expense ? "Perlu ditinjau sebelum tutup periode" : "Jenis transaksi ini tidak memerlukan kantong",
   };
 };
@@ -121,7 +122,7 @@ const DashboardPage = () => {
   const openMobileTransactionDetail = (transactionId) => { setSelectedTransactionId(transactionId); setMobileTransactionDetailOpen(true); };
   const surfaces = { mobileLayout, displayOverview, bootstrap, dashboardViewModel, user, displayName, balanceVisible, setBalanceVisible, refreshOverview, isRefreshing, openTransactionComposer, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };
   const overlays = { mobileTransactionDetailOpen, setMobileTransactionDetailOpen, dashboardViewModel, balanceVisible, openTransactionComposer };
-  return <div className="dashboard-page"><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
+  return <div className="dashboard-page"><Suspense fallback={null}><FinancialSetupChecklist bootstrap={bootstrap} overview={displayOverview} user={user} /></Suspense><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
 };
 
 export default DashboardPage;

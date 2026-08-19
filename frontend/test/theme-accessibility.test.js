@@ -84,9 +84,10 @@ test("komponen memakai semantic foreground dan reduced motion", () => {
 });
 
 test("density mobile memakai token readable dan tidak mengecilkan kontrol pada layar sempit", async () => {
-  const [tokens, responsive, pages, dashboard, loginStyles] = await Promise.all([
+  const [tokens, responsive, reset, pages, dashboard, loginStyles] = await Promise.all([
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
@@ -94,6 +95,9 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
 
   assert.match(tokens, /--font-size-xs:\s*11px;/);
   assert.match(tokens, /--mobile-control-height:\s*44px;/);
+  assert.match(reset, /body \{[^}]*font-size:\s*var\(--font-size-body\);/s);
+  assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-size-xs:\s*10\.5px;[\s\S]*--font-size-body:\s*14px;/);
+  assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-weight-semibold:\s*550;[\s\S]*--font-weight-bold:\s*650;/);
   assert.match(dashboard, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
   assert.match(dashboard, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
   assert.doesNotMatch(pages, /\.premium-/);

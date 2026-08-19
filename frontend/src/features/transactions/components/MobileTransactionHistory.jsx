@@ -149,7 +149,7 @@ export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, s
     <Modal open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Filter transaksi" description="Gunakan hanya saat Anda perlu menyaring riwayat lebih spesifik." size="sm" footer={<><Button type="button" onClick={resetAll}>Reset semua</Button><Button type="button" variant="primary" onClick={applyAdvanced}>Terapkan</Button></>}>
       <div className={styles.advancedGrid}>
         <label className="field"><span>Jenis transaksi</span><select value={advancedDraft.type} onChange={(event) => setAdvancedDraft((current) => ({ ...current, type: event.target.value }))}>{ALL_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label className="field"><span>Alokasi</span><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))}><option value="all">Semua alokasi</option><option value="unallocated">Belum dialokasikan</option><option value="allocated">Sudah dialokasikan</option></select></label>
+        <label className="field"><span>Kantong Dana</span><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))}><option value="all">Semua Kantong</option><option value="unallocated">Belum masuk Kantong</option><option value="allocated">Menggunakan Kantong</option></select></label>
         <label className="field"><span>Rekening</span><select value={advancedDraft.account} onChange={(event) => setAdvancedDraft((current) => ({ ...current, account: event.target.value }))}><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>
         <label className="field"><span>Kategori</span><select value={advancedDraft.category} onChange={(event) => setAdvancedDraft((current) => ({ ...current, category: event.target.value }))}><option value="all">Semua kategori</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
         <label className="field"><span>Pencatat</span><select value={advancedDraft.creator} onChange={(event) => setAdvancedDraft((current) => ({ ...current, creator: event.target.value }))}><option value="all">Semua pencatat</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select></label>
@@ -162,7 +162,7 @@ const mobileFlag = (item) => {
   if (item.status === "cancelled") return { label: "Dibatalkan", tone: "negative" };
   if (item.managed_by === "recurring") return { label: "Jadwal rutin", tone: "primary" };
   if (item.managed_by === "goal") return { label: "Target", tone: "primary" };
-  if (item.transaction_type === "expense" && !item.envelope_period_id) return { label: "Belum dialokasikan", tone: "warning" };
+  if (item.transaction_type === "expense" && !item.envelope_period_id) return { label: "Belum masuk Kantong", tone: "warning" };
   return null;
 };
 
@@ -195,7 +195,7 @@ export const MobileActiveFilterSummary = ({ filters, setFilters, setDraftQuery }
   const labels = [];
   if (filters.query) labels.push({ key: "query", label: `Cari: ${filters.query}` });
   if (!COMMON_TYPES.some((item) => item.value === filters.type)) labels.push({ key: "type", label: TRANSACTION_LABELS[filters.type] || filters.type });
-  if (filters.allocation !== "all") labels.push({ key: "allocation", label: filters.allocation === "allocated" ? "Sudah dialokasikan" : "Belum dialokasikan" });
+  if (filters.allocation !== "all") labels.push({ key: "allocation", label: filters.allocation === "allocated" ? "Menggunakan Kantong" : "Belum masuk Kantong" });
   if (filters.account !== "all") labels.push({ key: "account", label: "Rekening terpilih" });
   if (filters.category !== "all") labels.push({ key: "category", label: "Kategori terpilih" });
   if (filters.creator !== "all") labels.push({ key: "creator", label: "Pencatat terpilih" });
