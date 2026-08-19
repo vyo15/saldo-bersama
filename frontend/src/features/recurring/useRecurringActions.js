@@ -44,6 +44,7 @@ export const useRecurringPaymentActions = (shared) => {
   const [payment, setPayment] = useState(initialPayment);
   const [paymentState, setPaymentState] = useState({ status: "idle", error: null });
   const [reverseTarget, setReverseTarget] = useState(null);
+  const [incomeSuccess, setIncomeSuccess] = useState(null);
   const [reverseState, setReverseState] = useState({ status: "idle", error: null });
   const openPayment = useCallback((item) => { const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""; setPayment({ item, account_id: item.default_account_id || "", amount: String(remaining), transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "", cost_share_mode: "unspecified", cost_share_percentages: [] }); setPaymentState({ status: "idle", error: null }); }, []);
   const completeOccurrence = (event) => {
@@ -58,11 +59,13 @@ export const useRecurringPaymentActions = (shared) => {
     setPaymentState({ status: "submitting", error: null, fieldErrors: {} });
     return paymentMutation.run(async () => {
       const received = payment.item.kind === "income";
+      const actualAmount = assertPositiveRupiah(payment.amount);
+      const incomeSourceAccountId = received ? payment.account_id : "";
       await payRecurringOccurrence({
         occurrence_id: payment.item.occurrence_id,
         row_version: payment.item.row_version,
         account_id: payment.account_id,
-        amount: assertPositiveRupiah(payment.amount),
+        amount: actualAmount,
         transaction_date: payment.transaction_date,
         envelope_period_id: payment.item.kind === "expense" ? payment.envelope_period_id : "",
         overspend_reason: payment.item.kind === "expense" ? payment.overspend_reason : "",
@@ -72,13 +75,14 @@ export const useRecurringPaymentActions = (shared) => {
       const allocated = Boolean(payment.item.kind === "expense" && payment.envelope_period_id);
       setPayment(initialPayment());
       setPaymentState({ status: "idle", error: null, fieldErrors: {} });
-      shared.notify({ message: allocated ? "Aktual berhasil dicatat ke ledger dan sisa kantong diperbarui." : received ? "Penerimaan rutin berhasil dicatat. Dana yang belum dibagi dapat diatur dari Kantong Dana." : "Pembayaran aktual berhasil dicatat ke ledger." });
+      shared.notify({ message: allocated ? "Aktual berhasil dicatat ke ledger dan sisa alokasi diperbarui." : received ? "Penerimaan rutin berhasil dicatat." : "Pembayaran aktual berhasil dicatat ke ledger." });
+      if (received) setIncomeSuccess({ sourceAccountId: incomeSourceAccountId, suggestedAmount: actualAmount });
       await refreshRecurring({ ...shared, keys: recurringLedgerRefreshKeys });
     }).catch((error) => setPaymentState({ status: "error", error, fieldErrors: {} }));
   };
   const reversePayment = async (reason) => { if (!reverseTarget) return; const transactionId = String(reverseTarget.transaction_ids || "").split(",").map((value) => value.trim()).filter(Boolean).at(-1); if (!transactionId) return; setReverseState({ status: "submitting", error: null }); try { await reverseRecurringPayment({ occurrence_id: reverseTarget.occurrence_id, transaction_id: transactionId, row_version: reverseTarget.row_version, reason }, { rowVersion: reverseTarget.row_version }); setReverseTarget(null); setReverseState({ status: "idle", error: null }); shared.notify({ message: "Pembayaran/penerimaan terakhir dibatalkan dan status jadwal dihitung ulang." }); await refreshRecurring({ ...shared, keys: recurringLedgerRefreshKeys }); } catch (error) { setReverseState({ status: "error", error }); } };
   const openReverse = (item) => { setReverseTarget(item); setReverseState({ status: "idle", error: null }); };
-  return { paymentMutation, payment, setPayment, paymentState, reverseTarget, setReverseTarget, reverseState, openPayment, completeOccurrence, reversePayment, openReverse };
+  return { paymentMutation, payment, setPayment, paymentState, incomeSuccess, setIncomeSuccess, reverseTarget, setReverseTarget, reverseState, openPayment, completeOccurrence, reversePayment, openReverse };
 };
 
 export const useRecurringOccurrenceRecovery = (shared) => {

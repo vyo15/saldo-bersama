@@ -281,7 +281,8 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(app, /const LoginPage = lazy\(\(\) => import\("\.\.\/features\/auth\/LoginPage\.jsx"\)\);/);
   assert.doesNotMatch(main, /styles\/app\.css/);
   assert.doesNotMatch(main, /styles\/responsive\.css/);
-  assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage\)\} \/>/);
+  assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage, \{ loadingVariant: "page" \}\)\} \/>/);
+  assert.match(app, /loadingVariant = "content"/);
   assert.doesNotMatch(pages, /\.login-page\b|\.login-mobile-|\.login-desktop-/);
   assert.match(loginStyles, /\.login-desktop-stage \{[\s\S]*height:\s*100dvh;/);
   assert.match(loginStyles, /\.login-mobile-stage \{[\s\S]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto;/);
@@ -309,7 +310,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   for (const asset of [desktopLight, desktopDark, logo, googleLogo, ...mobileAssets]) assert.ok(asset.length > 1_000);
 });
 
-test("dashboard mobile memakai aksi transaksi harian, alert prioritas, dan privacy menyeluruh", async () => {
+test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas, dan privacy menyeluruh", async () => {
   const [dashboard, presentation, mobile] = await Promise.all([
     read("src/features/dashboard/DashboardPage.jsx"),
     read("src/features/dashboard/dashboardPresentation.js"),
@@ -317,12 +318,13 @@ test("dashboard mobile memakai aksi transaksi harian, alert prioritas, dan priva
   ]);
 
   assert.doesNotMatch(presentation, /QUICK_ACTIONS/);
-  assert.match(mobile, /TRANSACTION_QUICK_ACTIONS/);
-  assert.match(mobile, /TRANSACTION_TYPES\.INCOME/);
-  assert.match(mobile, /TRANSACTION_TYPES\.EXPENSE/);
-  assert.match(mobile, /TRANSACTION_TYPES\.TRANSFER/);
-  assert.match(mobile, /onOpenTransaction\(type\)/);
-  assert.match(dashboard, /presentation: initialType === TRANSACTION_TYPES\.TRANSFER \? "mobile-transfer" : "default"/);
+  assert.match(mobile, /FEATURE_QUICK_ACTIONS/);
+  assert.match(mobile, /to: "\/perencanaan\/kantong", label: "Alokasi Dana"/);
+  assert.match(mobile, /to: "\/perencanaan\/jadwal", label: "Jadwal Rutin"/);
+  assert.match(mobile, /to: "\/target", label: "Target"/);
+  assert.match(mobile, /<Link key=\{to\} to=\{to\} className=\{`mobile-quick-action/);
+  assert.doesNotMatch(mobile, /TRANSACTION_QUICK_ACTIONS|TRANSACTION_TYPES|onOpenTransaction\(type\)/);
+  assert.doesNotMatch(dashboard, /presentation: initialType === TRANSACTION_TYPES\.TRANSFER/);
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/MobileFinanceDashboard\.jsx"\)\)/);
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/DesktopFinanceDashboard\.jsx"\)\)/);
   assert.doesNotMatch(dashboard, /import MobileFinanceDashboard from "\.\/components\/MobileFinanceDashboard\.jsx";/);

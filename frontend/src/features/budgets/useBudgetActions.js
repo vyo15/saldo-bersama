@@ -21,9 +21,16 @@ const budgetOwnershipUpdates = (value) => value === "shared"
   ? { scope: "shared", owner_user_id: "" }
   : { scope: "personal", owner_user_id: String(value).replace(/^user:/, "") };
 
-export const budgetMatchesForm = (item, form) => item.category_id === form.category_id
+const budgetMatchesOwnership = (item, form) => item.category_id === form.category_id
   && item.scope === form.scope
   && String(item.owner_user_id || "") === String(form.owner_user_id || "");
+
+export const budgetMatchesForm = (item, form) => budgetMatchesOwnership(item, form)
+  && String(item.envelope_rule_id || "") === String(form.envelope_rule_id || "");
+
+const findBudgetForForm = (items, form) => items.find((item) => budgetMatchesForm(item, form))
+  || (form.envelope_rule_id ? items.find((item) => budgetMatchesOwnership(item, form) && !item.envelope_rule_id) : null)
+  || null;
 
 const formFromBudget = (item, envelopeRuleId = item?.envelope_rule_id || "") => ({
   category_id: item?.category_id || "",
@@ -39,7 +46,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [message, setMessage] = useState(null);
   const [saveState, setSaveState] = useState({ status: "idle", error: null });
-  const existingBudget = items.find((item) => budgetMatchesForm(item, form)) || null;
+  const existingBudget = findBudgetForForm(items, form);
 
   const resetSaveState = () => setSaveState({ status: "idle", error: null });
   const selectCategory = (categoryId) => {
@@ -47,7 +54,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     resetSaveState();
     setForm((currentForm) => {
       const nextForm = { ...currentForm, category_id: categoryId };
-      const current = items.find((item) => budgetMatchesForm(item, nextForm)) || null;
+      const current = findBudgetForForm(items, nextForm);
       if (!current) return { ...nextForm, amount: "", warning_threshold: 80 };
       return formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "");
     });
@@ -57,7 +64,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     resetSaveState();
     setForm((currentForm) => {
       const nextForm = { ...currentForm, ...budgetOwnershipUpdates(value) };
-      const current = items.find((item) => budgetMatchesForm(item, nextForm)) || null;
+      const current = findBudgetForForm(items, nextForm);
       if (!current) return { ...nextForm, amount: "", warning_threshold: 80 };
       return formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "");
     });
@@ -97,7 +104,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
       setFormOpen(false);
       resetSaveState();
       notify({
-        message: existingBudget ? "Batas pengeluaran berhasil diperbarui." : "Batas pengeluaran berhasil dibuat.",
+        message: existingBudget ? "Kebutuhan berhasil diperbarui." : "Kebutuhan berhasil dibuat.",
         tone: "success",
         dedupeKey: existingBudget ? "budgets:update" : "budgets:create",
       });
@@ -120,7 +127,7 @@ export const useBudgetLifecycleController = ({ notify, refresh, setForm, setForm
       setArchiveState({ status: "idle", error: null });
     } catch (error) {
       setArchiveState({ status: "idle", error: null });
-      notify({ message: error.message || "Status batas pengeluaran gagal diperiksa.", tone: "danger", dedupeKey: "budgets:lifecycle-preview-error" });
+      notify({ message: error.message || "Status kebutuhan gagal diperiksa.", tone: "danger", dedupeKey: "budgets:lifecycle-preview-error" });
     }
   };
   const applyBudgetLifecycle = async (reason) => {
@@ -130,10 +137,10 @@ export const useBudgetLifecycleController = ({ notify, refresh, setForm, setForm
     try {
       if (preview.canDeleteUnused) {
         await requestDeleteUnusedBudget({ budget_id: budget.budget_id, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
-        notify({ message: "Batas pengeluaran yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "budgets:delete-unused" });
+        notify({ message: "Kebutuhan yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "budgets:delete-unused" });
       } else {
         await requestArchiveBudget({ budget_id: budget.budget_id, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
-        notify({ message: "Batas pengeluaran berhasil diarsipkan. Transaksi dan laporan historis tetap tersimpan.", tone: "success", dedupeKey: "budgets:archive" });
+        notify({ message: "Kebutuhan berhasil diarsipkan. Transaksi dan laporan historis tetap tersimpan.", tone: "success", dedupeKey: "budgets:archive" });
       }
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });

@@ -16,7 +16,7 @@ const RECURRING_PAYMENT_OPTIONS = Object.freeze([{ value: "transfer", label: "Tr
 const PaymentMethodField = ({ value, onChange }) => <VisualChoiceGroup className="form-grid__full" legend="Metode" name="recurring-payment-method" value={value} onChange={onChange} options={RECURRING_PAYMENT_OPTIONS} columns={3} compact />;
 const AccountField = ({ label = "Rekening default", value, accounts, onChange }) => {
   const selected = accounts.find((item) => item.account_id === value) || null;
-  return <label className="field"><span>{label} *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)} · tersedia {formatRupiah(item.available_balance ?? item.balance ?? 0)}</option>)}</select>{selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dalam kantong {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}</label>;
+  return <label className="field"><span>{label} *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)} · tersedia {formatRupiah(item.available_balance ?? item.balance ?? 0)}</option>)}</select>{selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dialokasikan {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}</label>;
 };
 const CategoryField = ({ value, categories, onChange }) => <label className="field"><span>Kategori *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih kategori</option>{categories.map((item) => <option value={item.category_id} key={item.category_id}>{item.name}</option>)}</select></label>;
 
@@ -30,7 +30,7 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
       <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: Number(event.target.value) }))} /></label>
       <CategoryField value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => ({ ...current, category_id, default_account_id: current.kind === "expense" && budgetSuggestions[category_id]?.account_id ? budgetSuggestions[category_id].account_id : current.default_account_id }))} />
       <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => ({ ...current, default_account_id }))} />
-      {form.kind === "expense" && budgetSuggestions[form.category_id]?.account_id === form.default_account_id ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {budgetSuggestions[form.category_id].envelope_name}. Rekening sumber dipilih otomatis dari Kantong Dana tersebut.</CompactNotice> : null}
+      {form.kind === "expense" && budgetSuggestions[form.category_id]?.account_id === form.default_account_id ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {budgetSuggestions[form.category_id].envelope_name}. Rekening sumber dipilih otomatis dari Alokasi Dana tersebut.</CompactNotice> : null}
       <PaymentMethodField value={form.payment_method} onChange={(payment_method) => setForm((current) => ({ ...current, payment_method }))} /><CompactNotice className="form-grid__full" tone="info">Saat tanggal jadwal tiba, sistem menunggu konfirmasi aktual. Saldo tidak berubah sebelum aktual disimpan.</CompactNotice>
       <label className="field"><span>Tanggal mulai *</span><input required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
@@ -39,9 +39,9 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
 );
 
 const paymentEnvelopeHint = (status, envelopes) => {
-  if (status === "loading") return "Memuat kantong aktif...";
-  if (status === "error") return "Kantong tidak dapat dimuat. Aktual tetap dapat dicatat tanpa Kantong Dana, atau muat ulang halaman sebelum memilih kantong.";
-  return envelopes.length ? "" : "Tidak ada kantong aktif yang cocok.";
+  if (status === "loading") return "Memuat Alokasi Dana aktif...";
+  if (status === "error") return "Alokasi Dana tidak dapat dimuat. Aktual tetap dapat dicatat tanpa Alokasi Dana, atau muat ulang halaman sebelum memilih alokasi.";
+  return envelopes.length ? "" : "Tidak ada Alokasi Dana aktif yang cocok.";
 };
 
 const paymentEnvelopeState = (payment, paymentEnvelopes) => {
@@ -62,7 +62,7 @@ const recurringEnvelopeOptionLabel = (item) => {
 };
 
 const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeHint }) => <label className="field form-grid__full">
-  <span>Kantong dana</span>
+  <span>Alokasi dana</span>
   <select value={payment.envelope_period_id} onChange={(event) => setPayment((current) => ({ ...current, envelope_period_id: event.target.value, overspend_reason: "" }))}>
     <option value="">Belum dialokasikan</option>
     {paymentEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{recurringEnvelopeOptionLabel(item)}</option>)}
@@ -71,9 +71,9 @@ const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeH
 </label>;
 
 const PaymentOverspendFields = ({ payment, setPayment, envelopeState }) => <>
-  {envelopeState.blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa kantong. Kebijakan kantong ini memblokir overspend. Kurangi nominal atau pilih kantong lain.</div> : null}
-  {envelopeState.needsOverspendReason ? <label className="field form-grid__full"><span>Alasan melebihi sisa Kantong *</span><input required maxLength="180" value={payment.overspend_reason} onChange={(event) => setPayment((current) => ({ ...current, overspend_reason: event.target.value }))} placeholder="Contoh: tagihan aktual lebih tinggi dari perkiraan" /></label> : null}
-  {envelopeState.allowsOverspend ? <CompactNotice tone="info" title="Melebihi sisa kantong" className="form-grid__full" role="status">Kebijakan kantong ini mengizinkan overspend.</CompactNotice> : null}
+  {envelopeState.blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa alokasi. Kebijakan alokasi ini memblokir overspend. Kurangi nominal atau pilih alokasi lain.</div> : null}
+  {envelopeState.needsOverspendReason ? <label className="field form-grid__full"><span>Alasan melebihi dana alokasi *</span><input required maxLength="180" value={payment.overspend_reason} onChange={(event) => setPayment((current) => ({ ...current, overspend_reason: event.target.value }))} placeholder="Contoh: tagihan aktual lebih tinggi dari perkiraan" /></label> : null}
+  {envelopeState.allowsOverspend ? <CompactNotice tone="info" title="Melebihi dana alokasi" className="form-grid__full" role="status">Kebijakan alokasi ini mengizinkan overspend.</CompactNotice> : null}
 </>;
 
 const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, paymentEnvelopes, envelopeStatus, envelopeState, members, completeOccurrence }) => {
@@ -121,7 +121,7 @@ const EditRulePlanningFields = ({ editRule, setEditRule, editCategories, account
   return <>
     <CategoryField value={editRule?.category_id || ""} categories={editCategories} onChange={changeCategory} />
     <AccountField value={editRule?.default_account_id || ""} accounts={accounts} onChange={(default_account_id) => setEditRule((current) => ({ ...current, default_account_id }))} />
-    {followsLinkedAccount ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {linkedBudget.envelope_name}. Rekening sumber mengikuti Kantong Dana terkait.</CompactNotice> : null}
+    {followsLinkedAccount ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {linkedBudget.envelope_name}. Rekening sumber mengikuti Alokasi Dana terkait.</CompactNotice> : null}
     <PaymentMethodField value={editRule?.payment_method || "transfer"} onChange={(payment_method) => setEditRule((current) => ({ ...current, payment_method }))} />
   </>;
 };

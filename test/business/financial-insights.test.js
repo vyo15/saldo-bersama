@@ -151,7 +151,7 @@ test("anggaran Bersama dan personal menghitung transaksi sesuai ownership ledger
   }
 });
 
-test("batas pengeluaran yang terhubung Kantong hanya menghitung transaksi dari Kantong tersebut", async () => {
+test("Kebutuhan yang terhubung Alokasi Dana hanya menghitung transaksi dari Alokasi Dana tersebut", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = await seed(db);
@@ -232,7 +232,7 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
     const reconciliationAlert = report.overview.alerts.find((item) => item.type === "reconciliation_stale" || item.type === "reconciliation_difference");
     if (reconciliationAlert) assert.equal(reconciliationAlert.targetPath, "/rekonsiliasi");
     const unallocatedAlert = report.overview.alerts.find((item) => item.type === "unallocated_expense");
-    if (unallocatedAlert) assert.match(unallocatedAlert.title, /pengeluaran belum masuk Kantong/);
+    if (unallocatedAlert) assert.match(unallocatedAlert.title, /pengeluaran belum masuk Alokasi Dana/);
 
     const goals = await listGoals(db, { actor: owner, payload: {} });
     assert.equal(goals.items[0].remaining_amount, 12_000_000);

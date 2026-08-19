@@ -85,7 +85,7 @@ const accountSnapshot = async (db, accountId = "account-a") => {
   return rows.find((item) => item.account_id === accountId);
 };
 
-test("alokasi membagi saldo menjadi dana tersedia dan dana dalam kantong tanpa mengubah saldo ledger", async () => {
+test("Alokasi Dana membagi saldo menjadi dana tersedia dan dana dialokasikan tanpa mengubah saldo ledger", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -98,14 +98,14 @@ test("alokasi membagi saldo menjadi dana tersedia dan dana dalam kantong tanpa m
 
     await db.execute("UPDATE envelope_periods SET reserved_amount=? WHERE envelope_period_id=?", [200_000, "period-belanja"]);
     account = await accountSnapshot(db);
-    assert.equal(account.allocated_remaining, 1_500_000, "Dana yang dipesan di dalam kantong tetap harus ditahan dari dana bebas.");
+    assert.equal(account.allocated_remaining, 1_500_000, "Dana yang dipesan di dalam Alokasi Dana tetap harus ditahan dari dana bebas.");
     assert.equal(account.available_balance, 3_500_000);
   } finally {
     db.close();
   }
 });
 
-test("pengeluaran dari kantong menurunkan saldo dan sisa kantong tetapi menjaga dana tersedia", async () => {
+test("pengeluaran dari Alokasi Dana menurunkan saldo dan sisa alokasi tetapi menjaga dana tersedia", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -114,7 +114,7 @@ test("pengeluaran dari kantong menurunkan saldo dan sisa kantong tetapi menjaga 
     await createExpense(db, {
       amount: 500_000,
       envelopePeriodId: envelope.periodId,
-      description: "Belanja dari kantong",
+      description: "Belanja dari Alokasi Dana",
     });
 
     let account = await accountSnapshot(db);
@@ -124,7 +124,7 @@ test("pengeluaran dari kantong menurunkan saldo dan sisa kantong tetapi menjaga 
 
     await createExpense(db, {
       amount: 200_000,
-      description: "Belanja tanpa kantong",
+      description: "Belanja tanpa Alokasi Dana",
     });
 
     account = await accountSnapshot(db);
@@ -136,7 +136,7 @@ test("pengeluaran dari kantong menurunkan saldo dan sisa kantong tetapi menjaga 
   }
 });
 
-test("transaksi tanpa kantong dan transfer tidak boleh memakai dana yang sudah dialokasikan", async () => {
+test("transaksi tanpa Alokasi Dana dan transfer tidak boleh memakai dana yang sudah dialokasikan", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -168,7 +168,7 @@ test("transaksi tanpa kantong dan transfer tidak boleh memakai dana yang sudah d
   }
 });
 
-test("transaksi dengan kantong wajib memakai rekening sumber kantong yang sama", async () => {
+test("transaksi dengan Alokasi Dana wajib memakai rekening sumber yang sama", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -188,7 +188,7 @@ test("transaksi dengan kantong wajib memakai rekening sumber kantong yang sama",
   }
 });
 
-test("transaksi kantong bertanggal masa depan tidak melepaskan dana sebelum saldo benar-benar berkurang", async () => {
+test("transaksi Alokasi Dana bertanggal masa depan tidak melepaskan dana sebelum saldo benar-benar berkurang", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -209,7 +209,7 @@ test("transaksi kantong bertanggal masa depan tidak melepaskan dana sebelum sald
     const current = await accountSnapshot(db);
     assert.equal(current.balance, 5_000_000);
     assert.equal(current.allocated_remaining, 1_500_000);
-    assert.equal(current.available_balance, 3_500_000, "Pengeluaran masa depan belum boleh membebaskan dana kantong hari ini.");
+    assert.equal(current.available_balance, 3_500_000, "Pengeluaran masa depan belum boleh membebaskan dana Alokasi Dana hari ini.");
 
     const future = (await visibleAccounts(db, owner, { cutoffDate: futureDate })).find((item) => item.account_id === "account-a");
     assert.equal(future.balance, 4_500_000);

@@ -24,9 +24,9 @@ const NOTIFICATION_PREFERENCE_META = Object.freeze({
   [NOTIFICATION_TYPES.RECURRING_FUNDING_SHORTAGE]: ["Dana tagihan kurang", "Peringatan H-2 bila saldo rekening default belum cukup."],
   [NOTIFICATION_TYPES.RECURRING_COMPLETED]: ["Jadwal selesai", "Konfirmasi saat pembayaran atau penerimaan rutin sudah tercatat selesai."],
   [NOTIFICATION_TYPES.BUDGET_THRESHOLD]: ["Batas anggaran", "Peringatan saat pemakaian anggaran melewati ambang."],
-  [NOTIFICATION_TYPES.ENVELOPE_THRESHOLD]: ["Kantong menipis", "Peringatan saat pemakaian kantong alokasi mendekati batas."],
+  [NOTIFICATION_TYPES.ENVELOPE_THRESHOLD]: ["Alokasi menipis", "Peringatan saat dana tersisa pada Alokasi Dana mendekati batas aman."],
   [NOTIFICATION_TYPES.GOAL_BEHIND]: ["Target tertinggal", "Peringatan saat progres target tertinggal dari rencana."],
-  [NOTIFICATION_TYPES.UNALLOCATED_EXPENSE]: ["Pengeluaran belum dialokasikan", "Pengingat transaksi pengeluaran yang belum masuk kantong."],
+  [NOTIFICATION_TYPES.UNALLOCATED_EXPENSE]: ["Pengeluaran belum dialokasikan", "Pengingat transaksi pengeluaran yang belum masuk alokasi."],
 });
 
 const initialPushState = { status: "loading", supported: true, permission: "default", enabled: false, reason: "loading", browserSubscribed: false };

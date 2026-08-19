@@ -155,7 +155,7 @@ const ImpactPreview = ({ impact }) => {
         <FiArrowRight aria-hidden="true" />
         <span><small>{impact.destination.name}</small><b>{formatRupiah(impact.destination.balance || 0)} → {formatRupiah(impact.destinationAfter)}</b><small>Dana tersedia {formatRupiah(impact.destinationAvailable)} → {formatRupiah(impact.destinationAvailableAfter)}</small></span>
       </div>
-      <p>Transfer memakai dana yang belum dialokasikan. Dana di dalam kantong tidak ikut terpakai.</p>
+      <p>Transfer memakai dana yang belum dialokasikan. Dana di dalam alokasi tidak ikut terpakai.</p>
     </section>
   );
 };

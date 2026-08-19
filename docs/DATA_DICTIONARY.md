@@ -23,13 +23,13 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `users` | Identitas aplikasi yang terikat pada Firebase UID, email, role, dan status. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `accounts` | Rekening shared/personal beserta nomor rekening bank, template visual bank/E-wallet, saldo awal, dan kebijakan saldo negatif. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `categories` | Kategori pemasukan/pengeluaran. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
-| `envelope_rules` | Definisi kantong/alokasi berkala, ownership ledger, dan penerima jatah (`assignee_user_id`). | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
-| `envelope_periods` | Instance kantong per periode dan alokasi aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `envelope_rules` | Definisi internal Alokasi Dana berkala, ownership ledger, dan penerima jatah (`assignee_user_id`). | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `envelope_periods` | Instance Alokasi Dana per periode dan alokasi aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `recurring_rules` | Aturan tagihan atau pemasukan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `recurring_occurrences` | Kejadian per jatuh tempo dari aturan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `savings_goals` | Target tabungan yang terhubung ke rekening. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `transactions` | Ledger transaksi income, expense, transfer, refund, dan adjustment. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
-| `envelope_movements` | Realokasi atau mutasi kantong yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `envelope_movements` | Realokasi atau mutasi Alokasi Dana yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `budgets` | Anggaran kategori per periode. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `goal_movements` | Setoran/penarikan target yang terhubung ke transaksi. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `reconciliations` | Perbandingan saldo sistem dan saldo aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
@@ -42,7 +42,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `notification_queue` | Antrean notifikasi per pengguna yang diproses worker. | Sedang | Service/API; data operasional, dibersihkan hanya melalui workflow maintenance |
 | `notification_deliveries` | Status pengiriman per notification dan subscription untuk retry tanpa duplikasi perangkat sukses. | Tinggi | Service/API; endpoint tidak disalin ke backup finansial |
 | `notification_preferences` | Preferensi tujuh tipe alert otomatis canonical untuk setiap pengguna. Row yang belum ada berarti tipe aktif; perubahan memakai `row_version` dan audit actor server-side. | Sedang | Service/API; ikut backup/restore, tidak menyimpan endpoint/credential Push |
-| `manual_reminders` | Pengingat manual one-shot per user untuk jadwal rutin, anggaran, periode kantong, atau target. Menyimpan UTC `scheduled_at`, status, dan `row_version`; queue internal dapat membentuk copy server-side, sedangkan transport Web Push hanya membawa type/id/target privacy-safe. | Sedang | Service/API; ikut backup/restore; cancel melalui soft state; status `queued` ditautkan ke `notification_queue` lewat dedupe `manual-reminder:<reminder_id>`; title/body client tidak dipercaya |
+| `manual_reminders` | Pengingat manual one-shot per user untuk Jadwal Rutin, Kebutuhan, periode Alokasi Dana, atau Target. Menyimpan UTC `scheduled_at`, status, dan `row_version`; queue internal dapat membentuk copy server-side, sedangkan transport Web Push hanya membawa type/id/target privacy-safe. | Sedang | Service/API; ikut backup/restore; cancel melalui soft state; status `queued` ditautkan ke `notification_queue` lewat dedupe `manual-reminder:<reminder_id>`; title/body client tidak dipercaya |
 | `push_subscriptions` | Subscription Web Push per pengguna/perangkat. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `backup_runs` | Metadata backup teknis dan statusnya. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `import_previews` | Preview import yang memiliki fingerprint dan masa berlaku. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
@@ -53,7 +53,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 
 - `transactions.amount`, `accounts.initial_balance`, budget, envelope, goal, occurrence, reconciliation: integer Rupiah.
 - `envelope_rules.assignee_user_id`: nullable; `NULL` berarti Jatah Bersama. Jika terisi, wajib menunjuk pengguna aktif pada create/restore dan tidak mengubah `scope`/`owner_user_id` ledger.
-- `envelope_rules.source_account_id`: kolom schema tetap nullable untuk kompatibilitas backup/data legacy, tetapi runtime mewajibkannya untuk Kantong baru, pemakaian transaksi, realokasi baru, dan restore rule. Satu Kantong aktif canonical terikat pada tepat satu rekening sumber.
+- `envelope_rules.source_account_id`: kolom schema tetap nullable untuk kompatibilitas backup/data legacy, tetapi runtime mewajibkannya untuk Alokasi Dana baru, pemakaian transaksi, realokasi baru, dan restore rule. Satu Alokasi Dana aktif canonical terikat pada tepat satu rekening sumber.
 - `accounts.account_number`: string 6–34 digit untuk rekening bank. Backend menormalisasi spasi/tanda hubung, UI hanya menampilkan kepada actor yang lolos scope authorization, audit menyimpan empat digit terakhir, dan Sheets/export baca tidak menyertakannya.
 - `accounts.bank_template`: template visual kartu bank yang tidak mengubah nama rekening. Enum rekening bank: `generic`, `bca`, `bni`, `btn`, `mandiri`, `permata`; rekening non-bank wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `accounts.ewallet_template`: provider visual E-wallet yang tidak mengubah nama rekening. Enum E-wallet: `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`; rekening non-E-wallet wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
@@ -61,7 +61,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `transactions.cost_share_mode`: `unspecified`, `equal`, atau `percentage`. Hanya expense shared yang boleh memiliki mode selain `unspecified`.
 - `transactions.cost_share_json`: JSON snapshot server-side berisi `{user_id,basis_points,share_amount}`. Total `basis_points` wajib 10.000 dan total `share_amount` wajib sama dengan `transactions.amount`; field tidak dipercaya dari client.
 - Transfer wajib source dan destination berbeda.
-- Expense yang memiliki `envelope_period_id` wajib memakai `source_account_id` yang sama dengan `envelope_rules.source_account_id`; expense tanpa Kantong dan Transfer tidak boleh memakai dana yang masih berada dalam `allocated_remaining` pada rekening non-`allow_negative`.
+- Expense yang memiliki `envelope_period_id` wajib memakai `source_account_id` yang sama dengan `envelope_rules.source_account_id`; expense tanpa Alokasi Dana dan Transfer tidak boleh memakai dana yang masih berada dalam `allocated_remaining` pada rekening non-`allow_negative`.
 - `transactions.status` menentukan dampak saldo; cancelled/archived tidak dihitung.
 - `owner_scope`/`scope`: `shared` atau `personal`.
 - `created_by`, `updated_by`, cancellation/reversal actor: server canonical.
@@ -72,12 +72,12 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 
 - `balance`: saldo fisik rekening dari saldo awal + transaksi aktif hingga cutoff;
-- `allocated_remaining`: total bagian alokasi aktif yang masih tertahan pada rekening sumber. Dana `reserved_amount` tetap bagian dari alokasi dan tidak dibebaskan sebagai dana tersedia; pengeluaran Kantong hanya mengurangi sisa setelah tanggal transaksi mencapai cutoff;
-- `available_balance = balance - allocated_remaining`; membuat Kantong tidak mengubah `balance`, sedangkan pemakaian Kantong mengurangi `balance` dan `allocated_remaining` bersamaan;
+- `allocated_remaining`: total bagian alokasi aktif yang masih tertahan pada rekening sumber. Dana `reserved_amount` tetap bagian dari alokasi dan tidak dibebaskan sebagai dana tersedia; pengeluaran Alokasi Dana hanya mengurangi sisa setelah tanggal transaksi mencapai cutoff;
+- `available_balance = balance - allocated_remaining`; membuat Alokasi Dana tidak mengubah `balance`, sedangkan pemakaian Alokasi Dana mengurangi `balance` dan `allocated_remaining` bersamaan;
 - `safeToSpend`, `unallocatedFunds`;
 - `progress_percent`, `remaining_amount`, `required_monthly_amount`, `pace_status` target;
 - tren 3/6/12 bulan dan breakdown laporan;
-- budget/kantong threshold serta alert rekonsiliasi.
+- Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
 
 ## Model planned — belum ada di schema v11
 

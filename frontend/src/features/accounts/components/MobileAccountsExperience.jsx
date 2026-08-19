@@ -288,10 +288,10 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
   return <div className={styles.mobileAccountExperience}>
     <section className={styles.mobileStackPanel} aria-labelledby="mobile-account-stack-title">
       <header className={styles.mobileStackHeader}>
-        <div className={styles.mobileStackHeaderLabel}><strong className={styles.mobileStackHeaderTitle}>Rekening</strong><PageInfoButton tone="hero" title="Tentang Rekening">Rekening menampilkan saldo, dana dalam kantong, dan dana yang masih tersedia. Gunakan Transfer untuk memindahkan dana antar rekening yang valid.</PageInfoButton></div>
+        <div className={styles.mobileStackHeaderLabel}><strong className={styles.mobileStackHeaderTitle}>Rekening</strong><PageInfoButton tone="hero" title="Tentang Rekening">Rekening menampilkan saldo, dana yang dialokasikan, dan dana yang masih tersedia. Gunakan Transfer untuk memindahkan dana antar rekening yang valid.</PageInfoButton></div>
         <div className={styles.mobileStackHeaderActions}>
           {selectedAccount ? <Suspense fallback={null}><MobileAccountTransferAction bootstrap={bootstrap} selectedAccount={selectedAccount} onTransferSaved={onTransferSaved} onViewTransactions={(item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } })} /></Suspense> : null}
-          {ownerMode ? <button type="button" className={styles.mobileStackAddButton} onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /></button> : null}
+          {ownerMode ? <button type="button" className={styles.mobileStackHeaderButton} onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /><span>Tambah</span></button> : null}
         </div>
       </header>
       <div className={styles.mobileOwnershipFilters} role="group" aria-label="Filter kepemilikan rekening">
@@ -305,7 +305,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
             onPointerDown={handleMobileStackPointerDown} onPointerMove={handleMobileStackPointerMove} onPointerUp={finishMobileStackPointer}
             onPointerCancel={cancelMobileStackPointer} onClick={() => selectMobileStackAccount(account, index)}>
             <AccountVisual account={account} stack />
-            <span className={styles.mobileStackBalance}><small>Dana tersedia</small><strong><Money value={account.available_balance ?? account.balance ?? 0} /></strong><em className={styles.mobileStackBalanceMeta}>Saldo <Money value={account.balance || 0} /> · kantong <Money value={account.allocated_remaining || 0} /></em></span>
+            <span className={styles.mobileStackBalance}><small>Dana tersedia</small><strong><Money value={account.available_balance ?? account.balance ?? 0} /></strong><em className={styles.mobileStackBalanceMeta}>Saldo <Money value={account.balance || 0} /> · alokasi <Money value={account.allocated_remaining || 0} /></em></span>
             {shouldRenderMobileStackOwnership(account) ? <span className={styles.mobileStackOwnership}>{accountCardOwnershipLabel(account)}</span> : null}
           </button>
         ))}

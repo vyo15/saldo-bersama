@@ -681,7 +681,7 @@ const queueEnvelopeNotifications = async (db, state, envelopes) => {
     if (!threshold) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "envelope_threshold",
-      title: `Kantong ${shortName(item.name, "aktif")} sudah ${threshold}%`,
+      title: `Alokasi Dana ${shortName(item.name, "aktif")} sudah ${threshold}%`,
       body: `Terpakai + dipesan ${notificationRupiah(Number(item.used_amount || 0) + Number(item.reserved_amount || 0))} dari ${notificationRupiah(item.allocated_amount)}. Sisa ${notificationRupiah(Math.max(0, allocated - Number(item.used_amount || 0) - Number(item.reserved_amount || 0)))}.`,
       targetPath: "/perencanaan/kantong",
       dedupeKey: `envelope:${item.envelope_period_id}:${threshold}`,
@@ -717,7 +717,7 @@ const queueUnallocatedExpenseNotifications = async (db, state, items) => {
     queued += await queueForRecipients(db, users, item, {
       type: "unallocated_expense",
       title: `${Number(item.count || 0)} pengeluaran belum dialokasikan`,
-      body: `Total ${notificationRupiah(item.total_amount)} belum masuk kantong. Rapikan agar laporan bulan ini tetap akurat.`,
+      body: `Total ${notificationRupiah(item.total_amount)} belum masuk Alokasi Dana. Rapikan agar laporan bulan ini tetap akurat.`,
       targetPath: "/transaksi",
       dedupeKey: `unallocated:${item.scope}:${item.owner_user_id || "shared"}:${today}`,
     }, disabledPreferences);

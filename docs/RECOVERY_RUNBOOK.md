@@ -13,7 +13,7 @@ Backup wajib berisi manifest, schema version, created_at/by, table counts, check
 
 ## Import guarded
 
-Import transaksi maksimal 50 record dan bersifat all-or-nothing. File dianggap input tidak tepercaya; field kontrol internal seperti `confirm_duplicate`, actor, role, audit field, atau reserved linkage tidak boleh dipakai untuk melewati guard backend. Preview mensimulasikan record secara berurutan di transaction rollback-only sehingga dampak saldo, kantong, period lock, reference aktif, dan duplicate antarbaris ikut dihitung secara kumulatif. Satu baris invalid atau duplicate membuat seluruh preview `acceptable=false` dan `import.apply` wajib menolak tanpa membuat transaksi. Apply yang acceptable membuat safety backup, memvalidasi ulang semua record dalam satu transaction, menjalankan integrity check, menulis audit, lalu commit. Kegagalan pada record mana pun harus rollback seluruh record import.
+Import transaksi maksimal 50 record dan bersifat all-or-nothing. File dianggap input tidak tepercaya; field kontrol internal seperti `confirm_duplicate`, actor, role, audit field, atau reserved linkage tidak boleh dipakai untuk melewati guard backend. Preview mensimulasikan record secara berurutan di transaction rollback-only sehingga dampak saldo, Alokasi Dana, period lock, reference aktif, dan duplicate antarbaris ikut dihitung secara kumulatif. Satu baris invalid atau duplicate membuat seluruh preview `acceptable=false` dan `import.apply` wajib menolak tanpa membuat transaksi. Apply yang acceptable membuat safety backup, memvalidasi ulang semua record dalam satu transaction, menjalankan integrity check, menulis audit, lalu commit. Kegagalan pada record mana pun harus rollback seluruh record import.
 
 ## Restore guarded
 

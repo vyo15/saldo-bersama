@@ -48,7 +48,7 @@ test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog 
   assert.match(mobileHistory, /Semua rekening/);
   assert.match(mobileHistory, /Semua kategori/);
   assert.match(mobileHistory, /Semua pencatat/);
-  assert.match(mobileHistory, /Belum masuk Kantong/);
+  assert.match(mobileHistory, /Belum masuk Alokasi/);
   assert.match(mobileStyles, /\.filterBar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--mobile-control-height\) var\(--mobile-control-height\);/);
   assert.match(mobileStyles, /\.typeScroller\s*\{[\s\S]*overflow-x:\s*auto;/);
   assert.match(mobileStyles, /\.advancedGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
@@ -205,8 +205,8 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);
   assert.match(allocations, /allocation-header-actions/);
   assert.match(allocations, /className="allocation-advanced form-grid__full"/);
-  assert.match(allocations, /aria-label="Muat ulang Kantong Dana"/);
-  assert.match(allocations, /PageHeader title="Kantong Dana"/);
+  assert.match(allocations, /aria-label="Muat ulang Alokasi Dana"/);
+  assert.match(allocations, /PageHeader title="Alokasi Dana"/);
   assert.match(allocations, /allocation-summary/);
   assert.match(allocations, /allocation-filters/);
   assert.match(allocations, /allocation-card__expand/);

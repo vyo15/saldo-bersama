@@ -60,7 +60,7 @@
 }
 
 .heroStatus {
-  min-height: 1.9rem;
+  min-height: 2.75rem;
   max-width: 12rem;
   padding: .3rem .65rem;
   border: 1px solid color-mix(in srgb, var(--positive) 22%, var(--border));
@@ -856,3 +856,6 @@ button.heroStatus {
     flex-direction: column;
   }
 }
+
+.incomeSuccess { display: grid; gap: 8px; }
+.incomeSuccessActions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }

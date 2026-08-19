@@ -18,10 +18,10 @@ Kebijakan ini mencegah kehilangan histori, saldo tidak konsisten, dan kesalahan 
 | Entity | Tindakan normal | Pemulihan | Permanent delete |
 |---|---|---|---|
 | Transaksi termasuk transfer | Batalkan dengan alasan | Administrator dapat memulihkan transaksi cancelled yang aman | Dilarang |
-| Movement kantong/target | Reverse dengan alasan | Histori original + reversal dipertahankan | Dilarang |
+| Movement Alokasi Dana/Target | Reverse dengan alasan | Histori original + reversal dipertahankan | Dilarang |
 | Rekening | Arsipkan bila pernah dipakai | Administrator dapat mengaktifkan kembali | Hanya `accounts.deleteUnused` bila seluruh histori/dependensi = 0 |
 | Kategori | Arsipkan bila pernah dipakai | Administrator dapat mengaktifkan kembali | Hanya `categories.deleteUnused` bila transaksi/recurring/budget semua status = 0 |
-| Kantong/envelope rule | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `envelopes.deleteUnusedRule` bila hanya ada satu initial empty period dan tidak ada transaksi/movement/budget/closed history |
+| Alokasi Dana (`envelope` rule) | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `envelopes.deleteUnusedRule` bila hanya ada satu initial empty period dan tidak ada transaksi/movement/budget/closed history |
 | Tagihan rutin/recurring rule | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `recurring.deleteUnusedRule` bila semua child hanyalah future generated projections yang belum pernah materialized/paid/skipped/cancelled |
 | Target tabungan | Arsipkan bila pernah dipakai | Administrator dapat memulihkan goal | Hanya `goals.deleteUnused` bila saldo progres = 0 dan tidak ada movement/transaksi semua status |
 | Anggaran | Arsipkan bila pernah menjadi histori planning | Administrator dapat memulihkan budget | Hanya `budgets.deleteUnused` bila tidak ada transaksi terkait dan tidak ada histori period closure |
@@ -37,7 +37,7 @@ Administrator boleh menghapus row rekening hanya bila **seluruh** kondisi beriku
 2. Saldo awal tepat Rp0.
 3. Saldo saat ini yang dihitung dari ledger tepat Rp0.
 4. Tidak pernah memiliki transaksi dalam status apa pun, termasuk cancelled.
-5. Tidak pernah atau sedang direferensikan kantong, tagihan rutin, atau target.
+5. Tidak pernah atau sedang direferensikan Alokasi Dana, Jadwal Rutin, atau Target.
 6. Tidak pernah memiliki rekonsiliasi.
 7. Actor adalah owner yang terverifikasi.
 8. Alasan wajib diisi.
@@ -58,7 +58,7 @@ Semua action `deleteUnused` wajib memenuhi aturan berikut:
 3. Frontend hanya menampilkan keputusan server-side lifecycle preview; frontend tidak menentukan sendiri apakah record unused.
 4. Apply membaca ulang record dan seluruh dependency di dalam write transaction sebelum hard delete.
 5. **Histori semua status dihitung**, termasuk cancelled, reversed, archived, skipped, completed, closed, atau status historis lain sesuai domain. Record yang pernah dipakai tidak pernah kembali eligible untuk hard delete.
-6. Alasan wajib diisi. Rekening memakai acknowledgement + exact typed phrase + countdown; kantong/recurring/target memakai acknowledgement; kategori/anggaran memakai reason + explicit confirm.
+6. Alasan wajib diisi. Rekening memakai acknowledgement + exact typed phrase + countdown; Alokasi Dana/Jadwal Rutin/Target memakai acknowledgement; kategori/Kebutuhan memakai reason + explicit confirm.
 7. Mutation memakai idempotency key yang sama untuk retry intent yang sama.
 8. Audit append-only ditulis dalam transaction yang sama dengan delete dan menyimpan before snapshot yang aman.
 9. `rowsAffected` harus tepat satu untuk row utama; stale version atau dependency yang berubah menghasilkan conflict/validation error, bukan silent success.
@@ -66,7 +66,7 @@ Semua action `deleteUnused` wajib memenuhi aturan berikut:
 
 ### Derived child yang bukan histori
 
-Kantong dan recurring mempunyai child yang dapat tercipta otomatis. Child tersebut tidak otomatis dianggap histori:
+Alokasi Dana dan Jadwal Rutin mempunyai child yang dapat tercipta otomatis. Child tersebut tidak otomatis dianggap histori:
 
 - envelope rule baru boleh menghapus **satu initial empty period** bersamaan dengan rule bila tidak ada transaksi, movement, budget, reserved amount, closed/archived period, atau histori lain;
 - recurring rule boleh membersihkan **future generated projections yang reproducible** hanya bila status masih `expected`, `actual_amount=0`, tidak mempunyai transaction link, belum menjadi keputusan user seperti cancelled/skipped, dan bukan occurrence masa lalu. Paid/partial/past/cancelled/linked occurrence selalu memblokir hard delete rule.
@@ -102,7 +102,7 @@ Tidak ada retention duration baru yang boleh di-hardcode sebelum keputusan opera
 
 ### Master/config yang diarsipkan
 
-Administrator dapat memulihkan rekening, kategori, kantong, recurring rule, goal, atau budget yang diarsipkan melalui workflow domain/arsip yang tersedia. Backend wajib memeriksa versi terbaru, duplicate, status pemilik, dan constraint lain sebelum mengaktifkan kembali data.
+Administrator dapat memulihkan rekening, kategori, Alokasi Dana, Jadwal Rutin, Target, atau Kebutuhan yang diarsipkan melalui workflow domain/arsip yang tersedia. Backend wajib memeriksa versi terbaru, duplicate, status pemilik, dan constraint lain sebelum mengaktifkan kembali data.
 Master/config yang diarsipkan tidak boleh dipakai untuk transaksi atau workflow baru. Jika histori aktif perlu dikoreksi dan validasinya membutuhkan master aktif, owner harus memulihkan master tersebut terlebih dahulu, melakukan koreksi guarded, lalu mengarsipkannya kembali bila masih diperlukan.
 
 ### Transaksi cancelled

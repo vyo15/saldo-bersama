@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -49,7 +50,7 @@ const recurringBudgetSuggestions = (budgets) => {
     const accountIds = new Set(values.map((item) => item.envelope_source_account_id));
     if (accountIds.size !== 1) return [];
     const item = values[0];
-    return [[categoryId, { account_id: item.envelope_source_account_id, envelope_name: values.length === 1 ? item.envelope_name : "Kantong terkait" }]];
+    return [[categoryId, { account_id: item.envelope_source_account_id, envelope_name: values.length === 1 ? item.envelope_name : "Alokasi terkait" }]];
   }));
 };
 
@@ -127,6 +128,7 @@ const useRecurringEnvelopeSuggestion = ({ payment, setPayment, envelopeResource,
 
 const RecurringPage = ({ embedded = false }) => {
   const { attention, consumeAttention } = useDashboardAttentionState();
+  const navigate = useNavigate();
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [filter, setFilter] = useState("all");
   const [kind, setKind] = useState("expense");
@@ -168,6 +170,7 @@ const RecurringPage = ({ embedded = false }) => {
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       {memberMode ? <CompactNotice tone="info" role="status">Member dapat membuat dan mengubah jadwal rutin Bersama. Jadwal personal dan tindakan arsip tetap dikelola Administrator.</CompactNotice> : null}
+      {payments.incomeSuccess ? <div className={styles.incomeSuccess}><CompactNotice tone="success" title="Penerimaan rutin berhasil dicatat." role="status">Dana sudah masuk ke rekening. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti.</CompactNotice><div className={styles.incomeSuccessActions}><Button type="button" onClick={() => payments.setIncomeSuccess(null)}>Nanti</Button><Button type="button" variant="primary" onClick={() => { const success = payments.incomeSuccess; payments.setIncomeSuccess(null); navigate("/perencanaan/kantong", { state: { workflowSource: "recurring-income", workflowAction: "fund", sourceAccountId: success.sourceAccountId, suggestedAmount: success.suggestedAmount } }); }}>Bagi ke Alokasi Dana</Button></div></div> : null}
       {embedded ? <div className={styles.embeddedHeader}><div><h2>Jadwal Rutin</h2><p>Sistem menyiapkan jadwal berulang. Saat waktunya tiba, konfirmasi nominal aktual sebelum saldo berubah.</p></div>{headerActions}</div> : <PageHeader title="Jadwal Rutin" help="Jadwal rutin mengingatkan transaksi berulang. Saldo baru berubah setelah pembayaran atau penerimaan aktual disimpan." actions={headerActions} />}{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal aktual dan rekening. Saldo berubah setelah pembayaran atau penerimaan disimpan.</CompactNotice> : null}
       <Suspense fallback={null}>
         <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} budgets={budgets} />

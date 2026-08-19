@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { FiArchive, FiArrowDown, FiArrowUp, FiBell, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -90,7 +91,7 @@ const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, o
   return (
     <div className="goal-card__actions">
       <div className="goal-card__quick-actions">{primaryAction}{canRemind ? <Button icon={FiBell} onClick={() => openReminder(goal)}>Pengingat</Button> : null}</div>
-      {hasSecondaryActions ? <details className="goal-action-menu"><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className="goal-action-menu__items">{goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}{goal.can_complete && goal.can_deposit ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Hapus / Arsipkan</Button> : null}</div></details> : null}
+      {hasSecondaryActions ? <details className="goal-action-menu"><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className="goal-action-menu__items">{goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}{goal.can_complete && goal.can_deposit ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Kelola data</Button> : null}</div></details> : null}
     </div>
   );
 };
@@ -159,7 +160,7 @@ const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => (
 
 const MovementAccountField = ({ label, value, accounts, onChange }) => {
   const selected = accounts.find((account) => account.account_id === value) || null;
-  return <label className="field"><span>{label} *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountFundsLabel(account)}</option>)}</select>{selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dalam kantong {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}</label>;
+  return <label className="field"><span>{label} *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountFundsLabel(account)}</option>)}</select>{selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dialokasikan {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}</label>;
 };
 
 const GoalMovementModal = ({ movement, setMovement, movementState, movementMutation, accounts, submitMovement }) => {
@@ -201,7 +202,7 @@ const GoalConfirmations = ({ reverseTarget, reverseState, setReverseTarget, reve
   <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus target yang belum dipakai?" : "Arsipkan target?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.goal.name} masih Rp0 dan belum pernah memiliki mutasi maupun transaksi terkait.` : `${archiveTarget.goal.name} sudah memiliki histori. Target tidak dihapus permanen dan riwayat tetap tersimpan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan target"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={archiveTarget?.preview.canDeleteUnused ? "Saya memahami target ini belum pernah digunakan dan penghapusan bersifat permanen." : ""} busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyGoalLifecycle}>{archiveTarget ? <div className="notice notice--info">Progress saat ini <Money value={archiveTarget.preview.currentAmount} /> · mutasi historis {archiveTarget.preview.dependencies.movements} · transaksi terkait {archiveTarget.preview.dependencies.transactions}.</div> : null}</ConfirmationModal>
 </>;
 
-const useGoalCreation = ({ resource, refreshOverview, invalidate, notify }) => {
+const useGoalCreation = ({ resource, refreshOverview, invalidate, notify, onCreated }) => {
   const createMutation = useGuardedMutation();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState(emptyGoalForm);
@@ -218,6 +219,7 @@ const useGoalCreation = ({ resource, refreshOverview, invalidate, notify }) => {
       notify({ message: "Target keuangan berhasil dibuat.", tone: "success", dedupeKey: "goals:create" });
       invalidate(refreshGoalKeys);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
+      onCreated?.();
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
   };
   return { createMutation, message, form, setForm, open, openCreate, closeCreate, createGoal };
@@ -231,17 +233,30 @@ const movementError = (movement, amount) => {
   return null;
 };
 
+
+const goalMovementDraft = ({ goal, movementType, accounts, prefill }) => {
+  const withdrawal = movementType === "withdrawal";
+  if (withdrawal) return { goal, movement_type: movementType, amount: "", source_account_id: goal.account_id || "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "Penggunaan dana target" };
+  const goalAccount = accounts.find((account) => account.account_id === goal.account_id) || null;
+  const compatible = filterByOwnership(accounts, goalAccount).filter((account) => account.account_id !== goal.account_id);
+  const preferredSource = prefill?.sourceAccountId ? compatible.find((account) => account.account_id === prefill.sourceAccountId) || null : null;
+  const suggested = Math.max(0, Number(prefill?.suggestedAmount || 0));
+  const remaining = Math.max(0, Number(goal.remaining_amount || 0));
+  const sourceAvailable = Math.max(0, Number(preferredSource?.available_balance ?? preferredSource?.balance ?? 0));
+  const allowed = preferredSource ? Math.min(suggested, remaining, sourceAvailable) : 0;
+  return { goal, movement_type: movementType, amount: allowed > 0 ? String(allowed) : "", source_account_id: preferredSource?.account_id || "", destination_account_id: goal.account_id || "", transaction_date: todayInJakarta(), reason: "Kontribusi target" };
+};
+
 const useGoalMovement = ({ accounts, resource, refreshOverview, invalidate, notify }) => {
   const movementMutation = useGuardedMutation();
   const [movement, setMovement] = useState(emptyMovement);
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
   const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
   const compatibleMovementAccounts = filterByOwnership(accounts, goalAccount);
-  const openMovement = useCallback((goal, movement_type) => {
-    const withdrawal = movement_type === "withdrawal";
-    setMovement({ goal, movement_type, amount: "", source_account_id: withdrawal ? goal.account_id || "" : "", destination_account_id: withdrawal ? "" : goal.account_id || "", transaction_date: todayInJakarta(), reason: withdrawal ? "Penggunaan dana target" : "Kontribusi target" });
+  const openMovement = useCallback((goal, movement_type, prefill = null) => {
+    setMovement(goalMovementDraft({ goal, movementType: movement_type, accounts, prefill }));
     setMovementState({ status: "idle", error: null });
-  }, []);
+  }, [accounts]);
   const submitMovement = (event) => {
     event.preventDefault();
     if (!movement.goal) return;
@@ -364,6 +379,8 @@ const useGoalAttention = ({ attention, attentionGoalId, consumeAttention, items,
 
 const GoalsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
+  const location = useLocation();
+  const navigate = useNavigate();
   const attentionHandled = useRef(false);
   const resource = useApiResource("goals.list");
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
@@ -372,23 +389,34 @@ const GoalsPage = () => {
   const ownerMode = user?.role === "owner";
   const canCreate = Boolean(ownerMode || user?.role === "member");
   const [reminderTarget, setReminderTarget] = useState(null);
+  const [workflowPrefill, setWorkflowPrefill] = useState(null);
+  const [setupCreated, setSetupCreated] = useState(false);
   const accounts = goalPageAccounts(bootstrap, overview);
   const creationAccounts = ownerMode ? accounts : accounts.filter((item) => item.owner_scope === "shared");
-  const items = resource.data?.items || [];
+  const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const shared = { resource, refreshOverview, invalidate, notify };
-  const creation = useGoalCreation(shared);
+  const creation = useGoalCreation({ ...shared, onCreated: () => { if (location.state?.setupFlow) setSetupCreated(true); } });
   const movement = useGoalMovement({ ...shared, accounts });
   const { openMovement } = movement;
   const lifecycle = useGoalLifecycle(shared);
   const attentionGoalId = String(attention?.attentionGoalId || "");
   useGoalAttention({ attention, attentionGoalId, consumeAttention, items, resourceStatus: resource.status, openMovement, attentionHandled });
+  useEffect(() => {
+    if (resource.status !== "ready" || location.state?.workflowAction !== "goal-deposit") return;
+    const nextPrefill = { sourceAccountId: String(location.state.sourceAccountId || ""), suggestedAmount: Number(location.state.suggestedAmount || 0) };
+    setWorkflowPrefill(nextPrefill);
+    const eligible = items.filter((item) => item.status === "active" && item.can_deposit);
+    if (eligible.length === 1) openMovement(eligible[0], "deposit", nextPrefill);
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+  }, [items, location.hash, location.pathname, location.search, location.state, navigate, openMovement, resource.status]);
   if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const openReminder = (goal) => setReminderTarget({ entityType: "goal", entityId: goal.goal_id, name: goal.name, suggestedDate: goal.target_date });
-  const actions = { openMovement: movement.openMovement, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder };
+  const openMovementWithPrefill = (goal, type) => { movement.openMovement(goal, type, type === "deposit" ? workflowPrefill : null); if (type === "deposit" && workflowPrefill) setWorkflowPrefill(null); };
+  const actions = { openMovement: openMovementWithPrefill, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder };
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={canCreate && items.length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}
+    <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={canCreate && items.length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{setupCreated ? <div><CompactNotice tone="success" title="Penyiapan selesai." role="status">Rekening, kategori, Alokasi Dana, dan Target sudah dapat dipakai bersama alur transaksi.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Mulai catat transaksi</Button></div></div> : null}{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}{workflowPrefill ? <CompactNotice tone="success" title="Dana tersedia siap diarahkan ke Target." role="status">Pilih Target lalu tekan Setor dana. Rekening sumber dan nominal akan diprefill bila masih valid.</CompactNotice> : null}
     <GoalSummary items={items} />
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
     <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />

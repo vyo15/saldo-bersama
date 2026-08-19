@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { FiArchive, FiBell, FiChevronRight, FiEdit2 } from "react-icons/fi";
-import Button from "../../../components/common/Button.jsx";
+import { Link } from "react-router";
+import { FiArrowRight, FiChevronRight } from "react-icons/fi";
 import Money from "../../../components/common/Money.jsx";
 import { categoryIcon } from "../../../shared/presentation/transaction.js";
 import { userRoleLabel } from "../../../shared/presentation/user.js";
@@ -9,16 +9,7 @@ import BudgetPacingBar from "./BudgetPacingBar.jsx";
 import BudgetStatusPill from "./BudgetStatusPill.jsx";
 import styles from "../BudgetsPage.module.css";
 
-const BudgetDetailActions = ({ item, isCurrent, canEdit, canLifecycle, openReminder, editBudget, openBudgetLifecycle }) => {
-  if (!isCurrent && !canEdit && !canLifecycle) return null;
-  return <div className={styles.detailActions}>
-    {isCurrent ? <Button type="button" icon={FiBell} onClick={() => openReminder(item)}>Pengingat</Button> : null}
-    {canEdit ? <Button type="button" icon={FiEdit2} onClick={() => editBudget(item)}>Edit</Button> : null}
-    {canLifecycle ? <Button type="button" variant="danger" icon={FiArchive} onClick={() => openBudgetLifecycle(item)}>Hapus / Arsipkan</Button> : null}
-  </div>;
-};
-
-const BudgetInsightCard = ({ item, category, periodMeta, canEdit, canLifecycle, editBudget, openBudgetLifecycle, openReminder, attention = false }) => {
+const BudgetInsightCard = ({ item, category, periodMeta }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const state = budgetVisualState(item, periodMeta);
   const Icon = categoryIcon(category?.icon, "expense");
@@ -28,12 +19,14 @@ const BudgetInsightCard = ({ item, category, periodMeta, canEdit, canLifecycle, 
   const ownershipLabel = item.scope === "personal"
     ? `${item.owner_name || "Pribadi"} · ${userRoleLabel(item.owner_role)}`
     : "Bersama";
+  const allocationLabel = item.envelope_name ? `Alokasi: ${item.envelope_name}` : "Belum terhubung ke Alokasi Dana";
+  const manageState = { attentionSource: "dashboard", attentionBudgetId: item.budget_id };
 
   return (
-    <article className={`${styles.budgetCard} ${styles[`budgetCard_${state.key}`] || ""}${attention ? ` ${styles.budgetCardAttention}` : ""}`} data-budget-status={state.key} data-budget-id={item.budget_id}>
+    <article className={`${styles.budgetCard} ${styles[`budgetCard_${state.key}`] || ""}`} data-budget-status={state.key} data-budget-id={item.budget_id}>
       <header className={styles.cardHeader}>
         <span className={styles.categoryIcon}><Icon aria-hidden="true" /></span>
-        <div className={styles.cardTitle}><strong>{name}</strong><small>{periodMeta.rangeLabel} · {ownershipLabel}</small></div>
+        <div className={styles.cardTitle}><strong>{name}</strong><small>{periodMeta.rangeLabel} · {ownershipLabel}</small><small>{allocationLabel}</small></div>
         <BudgetStatusPill state={state} />
       </header>
 
@@ -54,7 +47,7 @@ const BudgetInsightCard = ({ item, category, periodMeta, canEdit, canLifecycle, 
 
       <div className={styles.cardStats}>
         <div><span>Terpakai</span><strong><Money value={item.used_amount} /></strong></div>
-        <div><span>Batas</span><strong><Money value={item.amount} /></strong></div>
+        <div><span>Anggaran</span><strong><Money value={item.amount} /></strong></div>
         <button
           type="button"
           className={`${styles.detailButton}${detailsOpen ? ` ${styles.detailButtonOpen}` : ""}`}
@@ -66,17 +59,9 @@ const BudgetInsightCard = ({ item, category, periodMeta, canEdit, canLifecycle, 
       </div>
 
       {detailsOpen ? <div className={styles.cardDetails}>
-        <div className={styles.detailMetric}><span>Batas aman / hari</span><strong>{periodMeta.isCurrent ? <Money value={safeDaily} /> : "—"}</strong></div>
-        <div className={styles.detailMetric}><span>Ambang peringatan</span><strong>{state.warningThreshold}%</strong></div>
-        <BudgetDetailActions
-          item={item}
-          isCurrent={periodMeta.isCurrent}
-          canEdit={canEdit}
-          canLifecycle={canLifecycle}
-          openReminder={openReminder}
-          editBudget={editBudget}
-          openBudgetLifecycle={openBudgetLifecycle}
-        />
+        <div className={styles.detailMetric}><span>Aman / hari</span><strong>{periodMeta.isCurrent ? <Money value={safeDaily} /> : "—"}</strong></div>
+        <div className={styles.detailMetric}><span>Peringatan</span><strong>{state.warningThreshold}%</strong></div>
+        {periodMeta.isCurrent ? <div className={styles.detailActions}><Link className="button button--secondary" to="/perencanaan/kantong" state={manageState}>Kelola di Alokasi Dana <FiArrowRight aria-hidden="true" /></Link></div> : null}
       </div> : null}
     </article>
   );

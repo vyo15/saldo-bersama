@@ -79,7 +79,7 @@ const samePlanningOwnership = (left, right) => String(left?.scope || "") === Str
 const linkedBudgetLabel = (budgets, item) => {
   if (item?.kind !== "expense") return "";
   const budget = (budgets || []).find((entry) => entry.category_id === item.category_id && samePlanningOwnership(entry, item) && (!entry.envelope_source_account_id || entry.envelope_source_account_id === item.default_account_id));
-  return budget?.envelope_name ? `Kantong ${budget.envelope_name}` : "";
+  return budget?.envelope_name ? `Alokasi ${budget.envelope_name}` : "";
 };
 
 const attentionGuidance = (item) => {
@@ -146,7 +146,7 @@ const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false })
           {item.can_edit_rule ? <Button className={styles.manageAction} icon={FiEdit2} onClick={() => actions.openRuleEditor(item)}>Edit jadwal</Button> : null}
           {item.can_cancel_occurrence ? <Button className={styles.manageAction} onClick={() => actions.openSkip(item)}>Lewati periode</Button> : null}
           {item.can_reverse ? <Button className={styles.manageAction} icon={FiRotateCcw} onClick={() => actions.openReverse(item)}>Batalkan aktual terakhir</Button> : null}
-          {item.can_archive_rule ? <Button className={styles.manageAction} variant="danger" icon={FiArchive} onClick={() => actions.openArchive(item)}>Arsipkan / hapus</Button> : null}
+          {item.can_archive_rule ? <Button className={styles.manageAction} variant="danger" icon={FiArchive} onClick={() => actions.openArchive(item)}>Kelola data</Button> : null}
         </div>
       ) : null}
     </div>

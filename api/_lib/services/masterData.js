@@ -84,7 +84,7 @@ const accountLifecycleResult = (current, dependencies, currentBalance) => {
   if (current.status !== "active") archiveBlockers.push("Rekening tidak aktif.");
   if (currentBalance !== 0) archiveBlockers.push("Saldo saat ini harus Rp0.");
   if (dependencies.active_transactions) archiveBlockers.push("Masih memiliki transaksi aktif.");
-  if (dependencies.active_envelopes) archiveBlockers.push("Masih dipakai kantong aktif.");
+  if (dependencies.active_envelopes) archiveBlockers.push("Masih dipakai Alokasi Dana aktif.");
   if (dependencies.active_recurring) archiveBlockers.push("Masih dipakai tagihan rutin aktif.");
   if (dependencies.active_goals) archiveBlockers.push("Masih dipakai target aktif atau selesai.");
 
@@ -93,7 +93,7 @@ const accountLifecycleResult = (current, dependencies, currentBalance) => {
   if (Number(current.initial_balance || 0) !== 0) deleteBlockers.push("Saldo awal harus Rp0.");
   if (currentBalance !== 0) deleteBlockers.push("Saldo saat ini harus Rp0.");
   if (dependencies.transactions) deleteBlockers.push("Rekening pernah memiliki transaksi, termasuk transaksi cancelled atau archived.");
-  if (dependencies.envelopes) deleteBlockers.push("Rekening pernah atau masih dipakai kantong.");
+  if (dependencies.envelopes) deleteBlockers.push("Rekening pernah atau masih dipakai Alokasi Dana.");
   if (dependencies.recurring) deleteBlockers.push("Rekening pernah atau masih dipakai tagihan rutin.");
   if (dependencies.goals) deleteBlockers.push("Rekening pernah atau masih dipakai target.");
   if (dependencies.reconciliations) deleteBlockers.push("Rekening pernah direkonsiliasi.");
@@ -159,13 +159,13 @@ const categoryLifecycleResult = (current, dependencies) => {
   const archiveBlockers = [];
   if (current.status !== "active") archiveBlockers.push("Kategori tidak aktif.");
   if (dependencies.active_recurring) archiveBlockers.push("Masih digunakan tagihan rutin aktif.");
-  if (dependencies.active_budgets) archiveBlockers.push("Masih digunakan anggaran aktif.");
+  if (dependencies.active_budgets) archiveBlockers.push("Masih digunakan Kebutuhan aktif.");
 
   const deleteBlockers = [];
   if (current.status !== "active") deleteBlockers.push("Hanya kategori aktif yang dapat dihapus sebagai data belum dipakai.");
   if (dependencies.transactions) deleteBlockers.push("Kategori pernah digunakan transaksi, termasuk transaksi cancelled atau archived.");
   if (dependencies.recurring) deleteBlockers.push("Kategori pernah atau masih digunakan tagihan rutin.");
-  if (dependencies.budgets) deleteBlockers.push("Kategori pernah atau masih digunakan anggaran.");
+  if (dependencies.budgets) deleteBlockers.push("Kategori pernah atau masih digunakan Kebutuhan.");
 
   return {
     category: publicRow(current),

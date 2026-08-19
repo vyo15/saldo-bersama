@@ -4,8 +4,8 @@
 |---|---|
 | Rekening | Wadah saldo dengan saldo awal dan transaksi; dapat `shared` atau `personal`. |
 | Saldo | Saldo fisik rekening: saldo awal ditambah dampak seluruh transaksi aktif hingga cutoff. Alokasi tidak membuat saldo baru. |
-| Dana tersedia | Saldo fisik rekening dikurangi seluruh sisa Kantong aktif yang bersumber dari rekening tersebut. Ini adalah dana yang masih bebas dipakai untuk transaksi tanpa Kantong atau Transfer. |
-| Dalam kantong | Total sisa alokasi aktif yang masih terikat pada rekening sumber. Nilai ini merupakan bagian dari Saldo, bukan tambahan di atas Saldo. |
+| Dana tersedia | Saldo fisik rekening dikurangi seluruh sisa Alokasi Dana aktif yang bersumber dari rekening tersebut. Ini adalah dana yang masih bebas dipakai untuk transaksi tanpa Alokasi Dana atau Transfer. |
+| Dialokasikan | Total sisa Alokasi Dana aktif yang masih terikat pada rekening sumber. Nilai ini merupakan bagian dari Saldo, bukan tambahan di atas Saldo. |
 | Pemasukan | Transaksi `income` yang menambah rekening tujuan. |
 | Pengeluaran | Transaksi `expense` yang mengurangi rekening sumber. |
 | Transfer | Pemindahan antar dua rekening valid yang berbeda; bukan income/expense. |
@@ -14,7 +14,9 @@
 | Active | Record masih berlaku terhadap perhitungan/operasi. |
 | Cancelled | Transaksi dibatalkan secara audit-safe dan tidak memengaruhi saldo. |
 | Archived | Record tidak aktif untuk penggunaan normal tetapi tidak dihapus permanen. |
-| Kantong/Envelope | Bagian saldo yang di-earmark dari satu rekening sumber untuk kebutuhan/periode tertentu; tidak membuat transaksi atau saldo baru dan dapat memiliki penerima jatah Bersama/Administrator/Member tanpa mengubah ownership ledger. |
+| Alokasi Dana | Bagian saldo yang dialokasikan dari satu rekening sumber untuk tujuan/periode tertentu. Tidak membuat saldo atau transaksi ledger baru. Implementasi internal tetap memakai entitas `envelope_rules`/`envelope_periods` dan route compatibility `/perencanaan/kantong`. |
+| Kebutuhan | Anggaran kategori di dalam satu Alokasi Dana. Implementasi internal memakai record `budgets` yang terhubung melalui `envelope_rule_id`; kategori master tetap dipakai ulang dan tidak diduplikasi. |
+| Anggaran | Halaman ringkasan read-only seluruh Kebutuhan lintas Alokasi Dana. Pembuatan dan perubahan Kebutuhan dilakukan dari detail Alokasi Dana. |
 | Budget | Batas nominal kategori per periode. |
 | Recurring | Aturan pemasukan/tagihan yang menghasilkan occurrence. |
 | Occurrence | Kejadian per tanggal dari recurring rule. |

@@ -31,7 +31,7 @@ const ImportIssueList = ({ title, issues = [] }) => {
 const ImportImpact = ({ impact = {} }) => (
   <div className="compact-list compact-list--stacked" aria-label="Dampak kumulatif import">
     <div><span><strong>Total pemasukan</strong><small>Sudah diperiksa bersama seluruh baris import</small></span><strong>{formatRupiah(impact.income)}</strong></div>
-    <div><span><strong>Total pengeluaran</strong><small>Saldo dan kantong disimulasikan secara kumulatif</small></span><strong>{formatRupiah(impact.expense)}</strong></div>
+    <div><span><strong>Total pengeluaran</strong><small>Saldo dan alokasi disimulasikan secara kumulatif</small></span><strong>{formatRupiah(impact.expense)}</strong></div>
     <div><span><strong>Total refund</strong><small>Refund tetap divalidasi terhadap rekening tujuan dan kategori</small></span><strong>{formatRupiah(impact.refund)}</strong></div>
     <div><span><strong>Total transfer</strong><small>Transfer tidak dihitung sebagai pemasukan/pengeluaran</small></span><strong>{formatRupiah(impact.transfer)}</strong></div>
     <div><span><strong>Penyesuaian saldo</strong><small>Hanya Administrator dan tetap masuk integrity check</small></span><strong>{formatRupiah(impact.adjustment)}</strong></div>

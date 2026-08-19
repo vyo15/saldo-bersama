@@ -212,8 +212,8 @@
 }
 
 .categoryMenuTrigger {
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   display: grid;
   place-items: center;
@@ -577,7 +577,7 @@
   .categoryList { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
   .categoryItem { min-height: 5.65rem; padding: 0.6rem; border-radius: 0.85rem; }
   .categoryIcon { width: 2.25rem; height: 2.25rem; flex-basis: 2.25rem; border-radius: 0.7rem; }
-  .categoryMenuTrigger { width: 2.25rem; height: 2.25rem; }
+  .categoryMenuTrigger { width: 2.75rem; height: 2.75rem; }
   .categoryMenu { top: auto; left: var(--mobile-page-gutter); right: var(--mobile-page-gutter); bottom: calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom) + 0.75rem); width: auto; padding: 0.45rem; grid-template-columns: repeat(2, minmax(0, 1fr)); border-radius: var(--radius-lg); }
   .categoryMenu button { min-height: var(--mobile-control-height); justify-content: center; }
   .iconPickerHeading { display: grid; }
@@ -606,7 +606,7 @@
   .categoryList { gap: 0.4rem; }
   .categoryItem { min-height: 5.25rem; padding: 0.45rem; }
   .categoryIcon { width: 2.1rem; height: 2.1rem; flex-basis: 2.1rem; }
-  .categoryMenuTrigger { width: 2.1rem; height: 2.1rem; }
+  .categoryMenuTrigger { width: 2.75rem; height: 2.75rem; }
   .categoryName { font-size: 0.66rem; }
 }
 

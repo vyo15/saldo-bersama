@@ -76,11 +76,11 @@ saldo awal + dampak transaksi aktif hingga cutoff date
 Alokasi memakai read model account-bound tanpa transaksi sintetis:
 
 ```text
-allocated_remaining = total sisa Kantong aktif dari rekening sumber
+allocated_remaining = total sisa Alokasi Dana aktif dari rekening sumber
 available_balance = balance - allocated_remaining
 ```
 
-`balance` tetap saldo ledger fisik. Membuat Kantong hanya mengikat dana bebas. Expense berkantong wajib memakai rekening sumber Kantong yang sama; bagian yang ter-cover oleh Kantong menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Kantong dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif.
+`balance` tetap saldo ledger fisik. Membuat Alokasi Dana hanya mengikat dana bebas. Expense yang memakai Alokasi Dana wajib memakai rekening sumber Alokasi Dana yang sama; bagian yang ter-cover oleh Alokasi Dana menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Alokasi Dana dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif.
 
 ## Concurrency
 
@@ -109,7 +109,7 @@ Shared UI primitive memakai CSS Modules dan design tokens project. Feature mengi
 
 ## Batas privasi mirror
 
-Google Sheets mirror hanya memuat rekening, transaksi, anggaran, kantong, recurring, target, dan rekonsiliasi dengan scope `shared`. Data personal tetap berada di Turso dan hanya diakses melalui API dengan authorization.
+Google Sheets mirror hanya memuat rekening, transaksi, anggaran, Alokasi Dana, Jadwal Rutin, Target, dan rekonsiliasi dengan scope `shared`. Data personal tetap berada di Turso dan hanya diakses melalui API dengan authorization.
 
 
 ## Keputusan arsitektur

@@ -290,8 +290,8 @@ const unallocatedAlerts = (period, count) => count > 0 ? [{
   id: `unallocated:${period}`,
   type: "unallocated_expense",
   severity: "warning",
-  title: `${count} pengeluaran belum masuk Kantong`,
-  message: "Pilih Kantong agar sisa dana dan laporan perencanaan tetap akurat.",
+  title: `${count} pengeluaran belum masuk Alokasi Dana`,
+  message: "Pilih Alokasi Dana agar dana tersisa dan laporan perencanaan tetap akurat.",
   targetPath: "/transaksi",
 }] : [];
 
@@ -308,7 +308,7 @@ const budgetAlerts = (budgets) => {
       type: "budget_threshold",
       severity: crossed.severity,
       title: `${item.name} ${percentage}% terpakai`,
-      message: percentage >= 100 ? "Batas pengeluaran telah terlampaui." : `Pemakaian melewati ambang ${crossed.threshold}%.`,
+      message: percentage >= 100 ? "Anggaran kebutuhan telah terlampaui." : `Pemakaian melewati ambang ${crossed.threshold}%.`,
       targetPath: "/perencanaan/kantong",
     });
   }
@@ -329,7 +329,7 @@ const envelopeAlerts = (envelopes) => {
       type: "envelope_threshold",
       severity: crossed.severity,
       title: `${item.name} ${percentage}% terpakai + dipesan`,
-      message: percentage >= 100 ? "Kantong sudah habis atau terlampaui." : `Sisa kantong mendekati batas ${crossed.threshold}%.`,
+      message: percentage >= 100 ? "Dana pada Alokasi Dana sudah habis atau terlampaui." : `Dana tersisa pada Alokasi Dana mendekati batas ${crossed.threshold}%.`,
       targetPath: "/perencanaan/kantong",
     });
   }

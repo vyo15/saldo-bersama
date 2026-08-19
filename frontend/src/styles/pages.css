@@ -165,6 +165,7 @@
 .allocation-card__quick span { color: var(--text-muted); font-size: var(--font-size-xs); }
 .allocation-card__quick strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .allocation-card__quick .money { font-size: inherit; }
+.allocation-card__needs-preview { margin: 8px 2px 0; overflow: hidden; color: var(--text-muted); font-size: 11px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 .allocation-card__status--idle { color: var(--text-soft); }
 .allocation-card__status--active { color: var(--positive); }
 .allocation-card__status--warning { color: var(--warning); }
@@ -257,7 +258,7 @@
 .goal-card__projection dd[data-pace="completed"] { color: var(--positive); }
 .goal-card__completion { margin: 0; padding: .65rem .75rem; border: 1px solid color-mix(in srgb, var(--positive) 28%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--positive) 8%, var(--surface-soft)); color: var(--text); font-size: 12px; line-height: 1.5; }
 
-/* Perencanaan: Kantong Dana owns category limits and linked recurring schedules. */
+/* Perencanaan: Alokasi Dana owns category limits and linked recurring schedules. */
 .allocation-embedded-header { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
 .allocation-embedded-header h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
 .allocation-embedded-header p { max-width: 68ch; margin: 4px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
@@ -277,8 +278,10 @@
 .allocation-detail-hero__amount .money { font-size: 24px; font-weight: var(--font-weight-bold); letter-spacing: -.035em; }
 .allocation-detail-hero__metrics { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .allocation-detail-hero__metrics > div { min-width: 0; padding: 10px 12px; border-radius: 13px; display: grid; gap: 4px; background: var(--surface-soft); }
-.allocation-detail-hero__metrics strong { min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.allocation-detail-hero__metrics strong { min-width: 0; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
 .allocation-detail-hero__metrics .money { font-size: inherit; }
+.allocation-detail-reserved-note { grid-column: 1 / -1; margin: -4px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.allocation-detail-reserved-note .money { color: inherit; font-size: inherit; }
 .allocation-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .allocation-detail-panel { min-width: 0; padding: 16px; }
 .allocation-detail-panel__header { margin-bottom: 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

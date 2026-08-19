@@ -76,7 +76,7 @@ Jangan mem-bypass safety-backup guard pada reset/restore/import hanya untuk mele
 - Mirror tidak memuat Firebase UID, token, push endpoint/key, idempotency response, raw audit payload, atau secret.
 - Formula-like input dinetralkan sebelum ditulis.
 
-Tab mirror canonical: Ringkasan, Transaksi, Rekening, Kategori, Anggaran, Kantong, Tagihan, Target, Rekonsiliasi.
+Tab mirror canonical tetap: Ringkasan, Transaksi, Rekening, Kategori, Anggaran, Kantong, Tagihan, Target, Rekonsiliasi. Nama `Kantong` dan `Tagihan` di mirror adalah kontrak integrasi legacy; UI aplikasi menampilkan konsep tersebut sebagai Alokasi Dana dan Jadwal Rutin.
 
 ## Google Calendar
 

@@ -429,6 +429,19 @@
 :global(:root[data-theme="light"]) .mobileTransferQuickCopy small,
 :global(:root[data-theme="light"]) .mobileTransferQuickChevron { color: var(--text-muted); }
 
+:global(:root[data-theme="light"]) .mobileTransferHeaderAction {
+    border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+:global(:root[data-theme="light"]) .mobileTransferHeaderAction:hover:not(:disabled),
+:global(:root[data-theme="light"]) .mobileTransferHeaderAction:focus-visible {
+    border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+    background: color-mix(in srgb, var(--primary-soft) 72%, var(--surface));
+    color: var(--primary-strong);
+  }
+
 :global(:root[data-theme="light"]) .mobileTransferQuickAction,
 :global(:root[data-theme="light"]) .mobileTransferQuickCopy strong { color: var(--text); }
 

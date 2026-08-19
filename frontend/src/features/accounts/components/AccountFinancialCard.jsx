@@ -200,7 +200,7 @@ const MobileDetailData = ({ account, model, copied, onCopy }) => (
     <MobileDetailRow icon={FiUsers} label="Kepemilikan"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
     <MobileDetailRow icon={FiDollarSign} label="Saldo rekening"><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
     <MobileDetailRow icon={FiDollarSign} label="Dana tersedia"><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong></MobileDetailRow>
-    <MobileDetailRow icon={FiDollarSign} label="Dalam kantong"><span><Money value={account.allocated_remaining || 0} /></span></MobileDetailRow>
+    <MobileDetailRow icon={FiDollarSign} label="Dialokasikan"><span><Money value={account.allocated_remaining || 0} /></span></MobileDetailRow>
     <MobileDetailRow icon={FiFlag} label="Saldo awal"><span><Money value={account.initial_balance || 0} /></span></MobileDetailRow>
     <MobileDetailRow icon={FiClock} label="Diperbarui"><span className={styles.mobileUpdatedAt}>{formatUpdatedAt(account.updated_at)}</span></MobileDetailRow>
   </dl>
@@ -214,7 +214,7 @@ const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTran
     </div>
     {account.status === "active" && canManage ? (
       <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
-        <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Hapus / Arsipkan</button>
+        <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Kelola data</button>
       </div>
     ) : null}
   </>

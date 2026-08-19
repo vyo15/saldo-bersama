@@ -4,6 +4,7 @@ import {
   FiCreditCard,
   FiHome,
   FiList,
+  FiLayers,
   FiPieChart,
   FiSettings,
   FiTag,
@@ -14,7 +15,8 @@ import {
 export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/", label: "Beranda", icon: FiHome, end: true },
   { to: "/transaksi", label: "Transaksi", icon: FiList },
-  { to: "/perencanaan", label: "Perencanaan", description: "Kelola Kantong Dana, batas pengeluaran, dan Jadwal Rutin dalam satu tempat.", icon: FiPieChart },
+  { to: "/perencanaan", label: "Perencanaan", description: "Kelola Alokasi Dana, kebutuhan, dan Jadwal Rutin dalam satu tempat.", icon: FiPieChart },
+  { to: "/anggaran", label: "Anggaran", description: "Ringkasan seluruh Kebutuhan dari Alokasi Dana untuk periode yang dipilih.", icon: FiLayers },
   { to: "/target", label: "Target", description: "Kumpulkan dana ke rekening tujuan dan pantau progres sampai nominal target.", icon: FiTarget },
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
   { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: FiCreditCard },
@@ -34,9 +36,9 @@ export const DESKTOP_NAVIGATION = Object.freeze([
   freezeGroup({
     id: "planning",
     label: "Perencanaan",
-    description: "Kantong Dana, Jadwal Rutin, dan target keuangan.",
+    description: "Alokasi Dana, Anggaran, Jadwal Rutin, dan target keuangan.",
     icon: FiPieChart,
-    items: pickNavigation("/perencanaan", "/target"),
+    items: pickNavigation("/perencanaan", "/anggaran", "/target"),
   }),
   navigationByPath.get("/laporan"),
   freezeGroup({
@@ -53,7 +55,7 @@ export const DESKTOP_NAVIGATION = Object.freeze([
 export const MOBILE_PRIMARY_NAVIGATION = Object.freeze(pickNavigation("/", "/transaksi", "/laporan"));
 
 export const MOBILE_SECONDARY_GROUPS = Object.freeze([
-  freezeGroup({ id: "planning", label: "Perencanaan", items: pickNavigation("/perencanaan", "/target") }),
+  freezeGroup({ id: "planning", label: "Perencanaan", items: pickNavigation("/perencanaan", "/anggaran", "/target") }),
   freezeGroup({ id: "financial-data", label: "Data keuangan", items: pickNavigation("/rekening", "/kategori") }),
   freezeGroup({ id: "balance-control", label: "Kontrol saldo", items: pickNavigation("/rekonsiliasi") }),
   freezeGroup({ id: "people", label: "Akses", items: pickNavigation("/anggota") }),

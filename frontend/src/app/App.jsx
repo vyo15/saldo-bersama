@@ -8,6 +8,7 @@ const LoginPage = lazy(() => import("../features/auth/LoginPage.jsx"));
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage.jsx"));
 const TransactionsPage = lazy(() => import("../features/transactions/TransactionsPage.jsx"));
 const PlanningPage = lazy(() => import("../features/planning/PlanningPage.jsx"));
+const BudgetsPage = lazy(() => import("../features/budgets/BudgetsPage.jsx"));
 const GoalsPage = lazy(() => import("../features/goals/GoalsPage.jsx"));
 const ReportsPage = lazy(() => import("../features/reports/ReportsPage.jsx"));
 const AccountsPage = lazy(() => import("../features/accounts/AccountsPage.jsx"));
@@ -28,7 +29,9 @@ const PeriodControlPage = lazy(() => import("../features/settings/PeriodControlP
 const AuditPage = lazy(() => import("../features/settings/AuditPage.jsx"));
 const NotFoundPage = lazy(() => import("../features/settings/NotFoundPage.jsx"));
 
-const routeElement = (Component) => <Suspense fallback={<LoadingScreen />}><Component /></Suspense>;
+const routeElement = (Component, { loadingVariant = "content" } = {}) => (
+  <Suspense fallback={<LoadingScreen variant={loadingVariant} />}><Component /></Suspense>
+);
 
 const LegacyPlanningRedirect = ({ to }) => {
   const location = useLocation();
@@ -37,15 +40,15 @@ const LegacyPlanningRedirect = ({ to }) => {
 
 const App = () => (
   <Routes>
-    <Route path="/login" element={routeElement(LoginPage)} />
+    <Route path="/login" element={routeElement(LoginPage, { loadingVariant: "page" })} />
     <Route element={<RequireAuth />}>
-      <Route element={routeElement(AppShell)}>
+      <Route element={routeElement(AppShell, { loadingVariant: "page" })}>
         <Route index element={routeElement(DashboardPage)} />
         <Route path="transaksi" element={routeElement(TransactionsPage)} />
         <Route path="perencanaan" element={<Navigate to="/perencanaan/kantong" replace />} />
         <Route path="perencanaan/kantong" element={routeElement(PlanningPage)} />
         <Route path="perencanaan/jadwal" element={routeElement(PlanningPage)} />
-        <Route path="anggaran" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
+        <Route path="anggaran" element={routeElement(BudgetsPage)} />
         <Route path="alokasi" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
         <Route path="tagihan" element={<LegacyPlanningRedirect to="/perencanaan/jadwal" />} />
         <Route path="target" element={routeElement(GoalsPage)} />

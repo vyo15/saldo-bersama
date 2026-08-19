@@ -1,6 +1,6 @@
 import "./TransactionsPage.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { FiChevronLeft, FiChevronRight, FiEdit2, FiPlus, FiRotateCcw, FiSearch, FiSliders, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiCopy, FiEdit2, FiPlus, FiRotateCcw, FiSearch, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -43,14 +43,26 @@ const initialFilters = (state) => ({
 
 const transactionQuery = (filters) => ({ period: filters.period, limit: PAGE_SIZE, offset: filters.offset, query: filters.query, transaction_type: filters.type, allocation: filters.allocation, account_id: filters.account, category_id: filters.category, created_by: filters.creator });
 const accountLabelFor = (lookup, item) => item.transaction_type === "transfer" ? `${lookup[item.source_account_id] || "Rekening asal"} → ${lookup[item.destination_account_id] || "Rekening tujuan"}` : lookup[item.source_account_id] || lookup[item.destination_account_id] || "Rekening tidak tersedia";
-const categoryLabelFor = (lookup, item) => lookup[item.category_id]?.name || (item.transaction_type === "transfer" ? "Transfer internal" : "Belum masuk Kantong");
+const categoryLabelFor = (lookup, item) => lookup[item.category_id]?.name || (item.transaction_type === "transfer" ? "Transfer internal" : "Belum masuk Alokasi Dana");
 const managedModule = (item) => ({ recurring: "Jadwal rutin", goal: "Target" }[item.managed_by] || "");
 const transactionTitle = (item) => item.description || item.merchant || "Tanpa keterangan";
-const TransactionActions = ({ item, linkedModule, openEdit, openCancel, openRestore }) => {
+const canRepeatTransaction = (item) => item.status === "active" && ["expense", "income", "transfer"].includes(item.transaction_type);
+const repeatDraftFromTransaction = (item) => ({
+  transaction_type: item.transaction_type,
+  amount: String(item.amount || ""),
+  source_account_id: item.source_account_id || "",
+  destination_account_id: item.destination_account_id || "",
+  category_id: item.category_id || "",
+  payment_method: item.payment_method || "",
+  merchant: item.merchant || "",
+  description: item.description || "",
+});
+
+const TransactionActions = ({ item, linkedModule, openEdit, openCancel, openRestore, openRepeat }) => {
   if (item.status === "cancelled") return item.can_restore ? <Button type="button" icon={FiRotateCcw} onClick={() => openRestore(item)}>Pulihkan</Button> : null;
   if (item.status !== "active") return null;
   if (linkedModule) return <small className="managed-transaction-note">Kelola dari menu {linkedModule}</small>;
-  return <div className="button-group transaction-actions">{item.can_edit ? <Button type="button" icon={FiEdit2} onClick={() => openEdit(item)}>Edit</Button> : null}{item.can_cancel ? <Button type="button" variant="danger" icon={FiTrash2} onClick={() => openCancel(item)}>Batalkan</Button> : null}</div>;
+  return <div className="button-group transaction-actions">{canRepeatTransaction(item) ? <Button type="button" icon={FiCopy} onClick={() => openRepeat(item)}>Pakai lagi</Button> : null}{item.can_edit ? <Button type="button" icon={FiEdit2} onClick={() => openEdit(item)}>Edit</Button> : null}{item.can_cancel ? <Button type="button" variant="danger" icon={FiTrash2} onClick={() => openCancel(item)}>Batalkan</Button> : null}</div>;
 };
 
 const advancedFilterState = (filters) => ({ allocation: filters.allocation, account: filters.account, category: filters.category, creator: filters.creator });
@@ -62,7 +74,7 @@ const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, fi
   const [advancedDraft, setAdvancedDraft] = useState(() => advancedFilterState(filters));
   const activeAdvancedCount = advancedFilterCount(filters);
   const chips = [
-    filters.allocation !== "all" ? { key: "allocation", label: filters.allocation === "allocated" ? "Menggunakan Kantong" : "Belum masuk Kantong" } : null,
+    filters.allocation !== "all" ? { key: "allocation", label: filters.allocation === "allocated" ? "Menggunakan Alokasi Dana" : "Belum masuk Alokasi Dana" } : null,
     filters.account !== "all" ? { key: "account", label: `Rekening: ${filterOptionLabel(filterOptions.accounts, filters.account, "account_id", "Terpilih")}` } : null,
     filters.category !== "all" ? { key: "category", label: `Kategori: ${filterOptionLabel(filterOptions.categories, filters.category, "category_id", "Terpilih")}` } : null,
     filters.creator !== "all" ? { key: "creator", label: `Pencatat: ${filterOptionLabel(filterOptions.creators, filters.creator, "user_id", "Terpilih")}` } : null,
@@ -91,7 +103,7 @@ const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, fi
       </form>
       <Modal open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Filter lainnya" description="Gunakan saat Anda perlu menyaring transaksi lebih spesifik." size="sm" footer={<><Button type="button" onClick={resetAdvancedDraft}>Reset pilihan</Button><Button type="button" variant="primary" onClick={applyAdvanced}>Terapkan filter</Button></>}>
         <div className="transaction-advanced-filter-grid">
-          <label className="field"><span>Kantong Dana</span><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))} aria-label="Filter Kantong Dana"><option value="all">Semua Kantong</option><option value="unallocated">Belum masuk Kantong</option><option value="allocated">Menggunakan Kantong</option></select></label>
+          <label className="field"><span>Alokasi Dana</span><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))} aria-label="Filter Alokasi Dana"><option value="all">Semua Alokasi</option><option value="unallocated">Belum masuk Alokasi</option><option value="allocated">Menggunakan Alokasi</option></select></label>
           <label className="field"><span>Rekening</span><select value={advancedDraft.account} onChange={(event) => setAdvancedDraft((current) => ({ ...current, account: event.target.value }))} aria-label="Filter rekening"><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>
           <label className="field"><span>Kategori</span><select value={advancedDraft.category} onChange={(event) => setAdvancedDraft((current) => ({ ...current, category: event.target.value }))} aria-label="Filter kategori"><option value="all">Semua kategori</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
           <label className="field"><span>Pencatat</span><select value={advancedDraft.creator} onChange={(event) => setAdvancedDraft((current) => ({ ...current, creator: event.target.value }))} aria-label="Filter pencatat"><option value="all">Semua pencatat</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select></label>
@@ -109,10 +121,10 @@ const TransactionDetailModal = ({ target, onClose, accountLabel, categoryLabel, 
   const tone = transactionTone(target.transaction_type);
   const sign = transactionSign(target.transaction_type);
   const linkedModule = managedModule(target);
-  const allocationLabel = target.transaction_type === "expense" ? (target.envelope_period_id ? "Menggunakan Kantong" : "Belum masuk Kantong") : "Tidak berlaku";
+  const allocationLabel = target.transaction_type === "expense" ? (target.envelope_period_id ? "Menggunakan Alokasi Dana" : "Belum masuk Alokasi Dana") : "Tidak berlaku";
   const sourceLabel = linkedModule || "Transaksi manual";
-  const hasActions = target.status === "cancelled" ? Boolean(target.can_restore) : target.status === "active" && Boolean(linkedModule || target.can_edit || target.can_cancel);
-  return <Modal open title="Detail transaksi" description={`${TRANSACTION_LABELS[target.transaction_type] || target.transaction_type} · ${formatTransactionDate(target.transaction_date)}`} onClose={onClose} size="sm" className="transaction-detail-modal" footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}><article className="transaction-history-detail"><header className="transaction-history-detail__amount"><div><span>Nominal</span><span className={`transaction-history-detail__money money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span></div><StatusBadge status={target.status} /></header><dl><div><dt>Deskripsi</dt><dd>{transactionTitle(target)}</dd></div><div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}</dd></div><div><dt>Kategori</dt><dd>{categoryLabel(target)}</dd></div><div><dt>Rekening</dt><dd>{accountLabel(target)}</dd></div><div><dt>Kantong Dana</dt><dd>{allocationLabel}</dd></div><div><dt>Pencatat</dt><dd>{creatorLabel(target)}</dd></div><div><dt>Tanggal</dt><dd>{formatTransactionDate(target.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div><div><dt>Sumber</dt><dd>{sourceLabel}</dd></div></dl></article></Modal>;
+  const hasActions = target.status === "cancelled" ? Boolean(target.can_restore) : target.status === "active" && Boolean(linkedModule || canRepeatTransaction(target) || target.can_edit || target.can_cancel);
+  return <Modal open title="Detail transaksi" description={`${TRANSACTION_LABELS[target.transaction_type] || target.transaction_type} · ${formatTransactionDate(target.transaction_date)}`} onClose={onClose} size="sm" className="transaction-detail-modal" footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}><article className="transaction-history-detail"><header className="transaction-history-detail__amount"><div><span>Nominal</span><span className={`transaction-history-detail__money money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span></div><StatusBadge status={target.status} /></header><dl><div><dt>Deskripsi</dt><dd>{transactionTitle(target)}</dd></div><div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}</dd></div><div><dt>Kategori</dt><dd>{categoryLabel(target)}</dd></div><div><dt>Rekening</dt><dd>{accountLabel(target)}</dd></div><div><dt>Alokasi Dana</dt><dd>{allocationLabel}</dd></div><div><dt>Pencatat</dt><dd>{creatorLabel(target)}</dd></div><div><dt>Tanggal</dt><dd>{formatTransactionDate(target.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div><div><dt>Sumber</dt><dd>{sourceLabel}</dd></div></dl></article></Modal>;
 };
 
 const Pagination = ({ resource, filters, setFilters, itemCount }) => {
@@ -157,13 +169,14 @@ const dashboardTransactionAttention = (attention, filters, items) => {
   return { active, editableTarget };
 };
 
-const TransactionAttentionNotice = ({ active, editableTarget }) => {
+const TransactionAttentionNotice = ({ active, editableTarget, remaining = null, done = false }) => {
+  if (done) return <CompactNotice tone="success" title="Review transaksi selesai." role="status">Semua pengeluaran yang dapat diperbaiki pada daftar ini sudah ditinjau.</CompactNotice>;
   if (!active) return null;
-  const title = editableTarget ? "Pilih kantong pada transaksi yang dibuka." : "Pilih Kantong Dana untuk pengeluaran di bawah.";
+  const title = editableTarget ? "Pilih Alokasi Dana pada transaksi yang dibuka." : "Pilih Alokasi Dana untuk pengeluaran di bawah.";
   const description = editableTarget
-    ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Kantong pada form, lalu simpan setelah memastikan rekening dan nominal sudah benar."
-    : "Daftar sudah difilter ke pengeluaran yang belum dialokasikan. Buka transaksi yang dapat diedit, lalu pilih Kantong pada form.";
-  return <CompactNotice tone="info" title={title} role="status">{description}</CompactNotice>;
+    ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Alokasi Dana pada form, lalu simpan setelah memastikan rekening dan nominal sudah benar."
+    : "Daftar sudah difilter ke pengeluaran yang belum dialokasikan. Buka transaksi yang dapat diedit, lalu pilih Alokasi Dana pada form.";
+  return <CompactNotice tone="info" title={title} role="status">{description}{Number.isFinite(remaining) ? ` ${remaining} transaksi masih perlu ditinjau.` : ""}</CompactNotice>;
 };
 
 const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters }) => <>
@@ -173,12 +186,34 @@ const TransactionResourceStates = ({ resource, items, filtersActive, openTransac
   {resource.status === "ready" && !items.length ? <EmptyState title={filtersActive ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filtersActive ? "Ubah atau reset filter untuk melihat transaksi lain." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filtersActive ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
 </>;
 
+const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, mobileLayout, reportResource, setEditingTransaction }) => {
+  const attentionHandled = useRef(false);
+  const [state, setState] = useState(() => attention?.attentionType === "unallocated_expense" ? { active: true, remaining: null, done: false } : { active: false, remaining: null, done: false });
+  useEffect(() => {
+    if (attentionHandled.current || !attentionFromDashboard || resource.status !== "ready") return;
+    attentionHandled.current = true;
+    setState({ active: true, remaining: Number(resource.data?.total || items.length || 0), done: false });
+    if (attentionEditableTarget) setEditingTransaction(attentionEditableTarget);
+    consumeAttention();
+  }, [attentionEditableTarget, attentionFromDashboard, consumeAttention, items.length, resource.data?.total, resource.status, setEditingTransaction]);
+  const handleSaved = async () => {
+    const [nextData] = await Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])]);
+    if (!state.active) return;
+    const nextItems = nextData?.items || [];
+    const nextEditable = nextItems.find((item) => item.status === "active" && item.can_edit) || null;
+    const remaining = Number(nextData?.total || nextItems.length || 0);
+    if (!nextEditable) { setState({ active: false, remaining: 0, done: true }); return; }
+    setState({ active: true, remaining, done: false });
+    window.setTimeout(() => setEditingTransaction(nextEditable), 220);
+  };
+  return { state, handleSaved };
+};
+
 const TransactionsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { openTransactionComposer } = useTransactionComposer();
   const mobileLayout = useMobileTransactionsLayout();
-  const attentionHandled = useRef(false);
   const [draftQuery, setDraftQuery] = useState("");
   const [filters, setFilters] = useState(() => initialFilters(attention));
   const [editingTransaction, setEditingTransaction] = useState(null);
@@ -204,21 +239,23 @@ const TransactionsPage = () => {
   const creatorLabel = (item) => creatorLookup[item.created_by] || "Pencatat tidak tersedia";
   const openEdit = (item) => setEditingTransaction(item);
   const closeDetail = () => setDetailTransaction(null);
-  const actions = { openEdit, openCancel: lifecycle.openCancel, openRestore: lifecycle.openRestore };
+  const openRepeat = (item) => {
+    closeDetail();
+    openTransactionComposer({ initialType: item.transaction_type, initialSourceAccountId: item.source_account_id || "", initialDraft: repeatDraftFromTransaction(item) });
+  };
+  const actions = { openEdit, openCancel: lifecycle.openCancel, openRestore: lifecycle.openRestore, openRepeat };
   const detailActions = {
     openEdit: (item) => { closeDetail(); openEdit(item); },
     openCancel: (item) => { closeDetail(); lifecycle.openCancel(item); },
     openRestore: (item) => { closeDetail(); lifecycle.openRestore(item); },
+    openRepeat,
   };
   const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, resource, filters, setFilters };
   const modalProps = { ...lifecycle, accountLabel, categoryLabel };
 
-  useEffect(() => {
-    if (attentionHandled.current || !attentionFromDashboard || resource.status !== "ready") return;
-    attentionHandled.current = true;
-    if (attentionEditableTarget) setEditingTransaction(attentionEditableTarget);
-    consumeAttention();
-  }, [attentionEditableTarget, attentionFromDashboard, consumeAttention, resource.status]);
+  const reviewQueue = useTransactionReviewQueue({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, mobileLayout, reportResource, setEditingTransaction });
+  const reviewQueueState = reviewQueue.state;
+  const handleEditSaved = reviewQueue.handleSaved;
 
   return <div className="page-stack transactions-page">
     <RefreshWarning error={resource.refreshError || reportResource.refreshError} onRetry={() => Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])])} />
@@ -245,20 +282,20 @@ const TransactionsPage = () => {
           onOpenDetail={setDetailTransaction}
           resource={resource}
           pageSize={PAGE_SIZE}
-          attentionNotice={<TransactionAttentionNotice active={attentionFromDashboard} editableTarget={attentionEditableTarget} />}
+          attentionNotice={<TransactionAttentionNotice active={reviewQueueState.active} editableTarget={attentionEditableTarget} remaining={reviewQueueState.remaining} done={reviewQueueState.done} />}
           resourceStates={<TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} />}
         />
       </Suspense>
     ) : (
       <>
-        <TransactionAttentionNotice active={attentionFromDashboard} editableTarget={attentionEditableTarget} />
+        <TransactionAttentionNotice active={reviewQueueState.active} editableTarget={attentionEditableTarget} remaining={reviewQueueState.remaining} done={reviewQueueState.done} />
         <TransactionFilters draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} filterOptions={filterOptions} updateFilter={updateFilter} submitSearch={submitSearch} filtersActive={filtersActive} />
         <TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} />
         <TransactionResults {...resultProps} />
       </>
     )}
     <TransactionDetailModal target={detailTransaction} onClose={closeDetail} accountLabel={accountLabel} categoryLabel={categoryLabel} creatorLabel={creatorLabel} actions={detailActions} />
-    <TransactionForm open={Boolean(editingTransaction)} transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={() => Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])])} />
+    <TransactionForm open={Boolean(editingTransaction)} transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={handleEditSaved} />
     <TransactionLifecycleModals {...modalProps} />
   </div>;
 };

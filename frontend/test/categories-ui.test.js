@@ -45,7 +45,7 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
   assert.match(page, /FiMoreHorizontal/);
   assert.match(page, /createPortal/);
   assert.match(page, /document\.body/);
-  assert.match(page, /Hapus \/ Arsipkan/);
+  assert.match(page, /Kelola data/);
   assert.match(page, /active \? null : <span className=\{styles\.categoryStatus\}/);
   assert.match(page, /event\.key === "Escape"/);
   assert.match(page, /event\.key === "ArrowDown"/);

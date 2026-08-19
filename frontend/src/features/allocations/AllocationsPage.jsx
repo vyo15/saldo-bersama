@@ -1,5 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import ErrorState from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
@@ -13,6 +16,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain/dates.js";
 import { canUseAssignedItem, filterByAssigneeAccess, filterByOwnership, hasSameAssignee, ownershipKey } from "../../domain/ownership.js";
 const AllocationDialogLayer = lazy(() => import("./AllocationDialogLayer.jsx"));
+const AllocationFundingFlow = lazy(() => import("./AllocationFundingFlow.jsx"));
 const AllocationOverviewLayer = lazy(() => import("./AllocationOverviewLayer.jsx"));
 const AllocationNoticesLayer = lazy(() => import("./AllocationNoticesLayer.jsx"));
 const AllocationPlanningDetail = lazy(() => import("./AllocationPlanningDetail.jsx"));
@@ -34,7 +38,7 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
       await requestCreateEnvelope({ ...createForm, default_amount: amount, allocated_amount: amount }, {});
       setCreateForm(defaultCreateForm());
       onCreated?.();
-      notify({ message: "Kantong dan periode aktif berhasil dibuat." });
+      notify({ message: "Alokasi dan periode aktif berhasil dibuat." });
       await refreshAfterMutation();
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
   };
@@ -43,13 +47,13 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
     return moveMutation.run(async () => {
       const amount = assertPositiveRupiah(move.amount);
       const from = lookup[move.fromEnvelopePeriodId]; const to = lookup[move.toEnvelopePeriodId];
-      if (!from || !to) throw new Error("Kantong sumber dan tujuan wajib dipilih.");
-      if (from.envelope_period_id === to.envelope_period_id) throw new Error("Kantong sumber dan tujuan harus berbeda.");
-      if (amount > Number(from.remaining_amount || 0)) throw new Error("Nominal melebihi sisa kantong sumber.");
+      if (!from || !to) throw new Error("Alokasi sumber dan tujuan wajib dipilih.");
+      if (from.envelope_period_id === to.envelope_period_id) throw new Error("Alokasi sumber dan tujuan harus berbeda.");
+      if (amount > Number(from.remaining_amount || 0)) throw new Error("Nominal melebihi sisa alokasi sumber.");
       await requestMoveEnvelope({ ...move, amount, from_row_version: from.row_version, to_row_version: to.row_version }, {});
       setMove({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
       onMoved?.();
-      notify({ message: "Dana antar Kantong berhasil dipindahkan tanpa mengubah total saldo." });
+      notify({ message: "Dana berhasil dipindahkan antar alokasi tanpa mengubah total saldo." });
       await refreshAfterMutation();
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
   };
@@ -57,38 +61,46 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
 };
 
 const useAllocationAdjustment = ({ adjustTarget, setAdjustTarget, adjustForm, setAdjustForm, adjustMutation, refreshAfterMutation, notify, setMessage, onReleased }) => {
+  const applyAdjustment = async ({ target, direction, amount: rawAmount, reason = "" }) => {
+    const amount = assertPositiveRupiah(rawAmount);
+    await requestAdjustEnvelopeAllocation({
+      envelope_period_id: target.envelope_period_id,
+      direction,
+      amount,
+      reason,
+      row_version: target.row_version,
+    }, { rowVersion: target.row_version });
+    const funded = direction === "fund";
+    setAdjustTarget(null);
+    setAdjustForm({ direction: "fund", amount: "", reason: "" });
+    if (!funded) onReleased?.({ amount, sourceAccountId: target.source_account_id || "" });
+    notify({ message: funded ? "Dana tersedia berhasil ditambahkan ke Alokasi Dana." : "Dana Alokasi Dana berhasil dikembalikan menjadi dana tersedia." });
+    await refreshAfterMutation();
+    return true;
+  };
   const submitAdjustment = (event) => {
     event.preventDefault();
     setMessage(null);
-    if (!adjustTarget) return Promise.resolve();
-    return adjustMutation.run(async () => {
-      const amount = assertPositiveRupiah(adjustForm.amount);
-      await requestAdjustEnvelopeAllocation({
-        envelope_period_id: adjustTarget.envelope_period_id,
-        direction: adjustForm.direction,
-        amount,
-        reason: adjustForm.reason,
-        row_version: adjustTarget.row_version,
-      }, { rowVersion: adjustTarget.row_version });
-      const funded = adjustForm.direction === "fund";
-      setAdjustTarget(null);
-      setAdjustForm({ direction: "fund", amount: "", reason: "" });
-      if (!funded) onReleased?.(amount);
-      notify({ message: funded ? "Dana tersedia berhasil ditambahkan ke Kantong." : "Dana Kantong berhasil dikembalikan menjadi dana tersedia." });
-      await refreshAfterMutation();
-    }).catch((error) => setMessage({ type: "danger", text: error.message }));
+    if (!adjustTarget) return Promise.resolve(false);
+    return adjustMutation.run(() => applyAdjustment({ target: adjustTarget, direction: adjustForm.direction, amount: adjustForm.amount, reason: adjustForm.reason }))
+      .catch((error) => { setMessage({ type: "danger", text: error.message }); return false; });
   };
-  return { submitAdjustment };
+  const fundAvailable = ({ target, amount, reason }) => {
+    setMessage(null);
+    return adjustMutation.run(() => applyAdjustment({ target, direction: "fund", amount, reason }))
+      .catch((error) => { setMessage({ type: "danger", text: error.message }); return false; });
+  };
+  return { submitAdjustment, fundAvailable };
 };
 
 const useAllocationLifecycle = ({ closeTarget, setCloseTarget, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation, notify, onReleased }) => {
   const closeEnvelope = async () => {
     if (!closeTarget) return; setCloseState({ status: "submitting", error: null });
-    try { const result = await requestCloseEnvelope({ envelope_period_id: closeTarget.envelope_period_id, row_version: closeTarget.row_version }, { rowVersion: closeTarget.row_version }); const releasedAmount = result?.rollover ? 0 : Math.max(0, Number(closeTarget.remaining_amount || 0)); setCloseTarget(null); setCloseState({ status: "idle", error: null }); const rolloverAmount = Number(result?.rollover?.amount || 0); if (releasedAmount > 0) onReleased?.(releasedAmount); notify({ message: rolloverAmount > 0 ? `Periode berhasil ditutup. Sisa Rp ${rolloverAmount.toLocaleString("id-ID")} dibawa ke periode berikutnya.` : "Periode kantong berhasil ditutup. Sisa dana Kantong kembali menjadi dana belum dialokasikan." }); await refreshAfterMutation(); } catch (error) { setCloseState({ status: "error", error }); }
+    try { const result = await requestCloseEnvelope({ envelope_period_id: closeTarget.envelope_period_id, row_version: closeTarget.row_version }, { rowVersion: closeTarget.row_version }); const releasedAmount = result?.rollover ? 0 : Math.max(0, Number(closeTarget.remaining_amount || 0)); setCloseTarget(null); setCloseState({ status: "idle", error: null }); const rolloverAmount = Number(result?.rollover?.amount || 0); if (releasedAmount > 0) onReleased?.({ amount: releasedAmount, sourceAccountId: closeTarget.source_account_id || "" }); notify({ message: rolloverAmount > 0 ? `Periode berhasil ditutup. Sisa Rp ${rolloverAmount.toLocaleString("id-ID")} dibawa ke periode berikutnya.` : "Periode Alokasi Dana berhasil ditutup. Sisa dana kembali menjadi dana tersedia." }); await refreshAfterMutation(); } catch (error) { setCloseState({ status: "error", error }); }
   };
-  const openRuleLifecycle = async (item) => { setArchiveState({ status: "submitting", error: null }); try { const preview = await previewEnvelopeRuleLifecycle({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version }, { force: true }); setArchiveTarget({ item, preview }); setArchiveState({ status: "idle", error: null }); } catch (error) { setArchiveState({ status: "idle", error: null }); notify({ message: error.message || "Status kantong gagal diperiksa.", tone: "danger", dedupeKey: "envelopes:lifecycle-preview-error" }); } };
-  const applyRuleLifecycle = async (reason, confirmation) => { if (!archiveTarget) return; const { item, preview } = archiveTarget; setArchiveState({ status: "submitting", error: null }); try { if (preview.canDeleteUnused) { await requestDeleteUnusedEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: item.rule_row_version }); notify({ message: "Kantong yang belum pernah digunakan berhasil dihapus permanen." }); } else { await requestArchiveEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version }); notify({ message: "Aturan kantong diarsipkan. Riwayat periode dan mutasi tetap tersimpan." }); } setArchiveTarget(null); setArchiveState({ status: "idle", error: null }); await refreshAfterMutation(); } catch (error) { setArchiveState({ status: "error", error }); } };
-  const reverseMovement = async (reason) => { if (!reverseTarget) return; setReverseState({ status: "submitting", error: null }); try { await requestReverseEnvelopeMovement({ movement_id: reverseTarget.movement_id, row_version: reverseTarget.row_version, from_row_version: reverseTarget.from_row_version, to_row_version: reverseTarget.to_row_version, reason }, { rowVersion: reverseTarget.row_version }); setReverseTarget(null); setReverseState({ status: "idle", error: null }); notify({ message: "Pemindahan dana antar Kantong berhasil dibatalkan tanpa menghapus riwayat audit." }); await refreshAfterMutation(); } catch (error) { setReverseState({ status: "error", error }); } };
+  const openRuleLifecycle = async (item) => { setArchiveState({ status: "submitting", error: null }); try { const preview = await previewEnvelopeRuleLifecycle({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version }, { force: true }); setArchiveTarget({ item, preview }); setArchiveState({ status: "idle", error: null }); } catch (error) { setArchiveState({ status: "idle", error: null }); notify({ message: error.message || "Status alokasi gagal diperiksa.", tone: "danger", dedupeKey: "envelopes:lifecycle-preview-error" }); } };
+  const applyRuleLifecycle = async (reason, confirmation) => { if (!archiveTarget) return; const { item, preview } = archiveTarget; setArchiveState({ status: "submitting", error: null }); try { if (preview.canDeleteUnused) { await requestDeleteUnusedEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: item.rule_row_version }); notify({ message: "Alokasi yang belum pernah digunakan berhasil dihapus permanen." }); } else { await requestArchiveEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version }); notify({ message: "Aturan alokasi diarsipkan. Riwayat periode dan mutasi tetap tersimpan." }); } setArchiveTarget(null); setArchiveState({ status: "idle", error: null }); await refreshAfterMutation(); } catch (error) { setArchiveState({ status: "error", error }); } };
+  const reverseMovement = async (reason) => { if (!reverseTarget) return; setReverseState({ status: "submitting", error: null }); try { await requestReverseEnvelopeMovement({ movement_id: reverseTarget.movement_id, row_version: reverseTarget.row_version, from_row_version: reverseTarget.from_row_version, to_row_version: reverseTarget.to_row_version, reason }, { rowVersion: reverseTarget.row_version }); setReverseTarget(null); setReverseState({ status: "idle", error: null }); notify({ message: "Pemindahan dana antar alokasi berhasil dibatalkan tanpa menghapus riwayat audit." }); await refreshAfterMutation(); } catch (error) { setReverseState({ status: "error", error }); } };
   return { closeEnvelope, openRuleLifecycle, applyRuleLifecycle, reverseMovement };
 };
 
@@ -182,11 +194,12 @@ const useAllocationViewData = ({ resource, budgetResource, recurringResource, bo
   };
 };
 
-const useAllocationAttentionNavigation = ({ attentionHandled, resourceStatus, budgetStatus, attentionEnvelopeId, attentionBudgetId, activeItems, budgets, consumeAttention, setDetailRuleId, setLegacyBudgetAttention }) => {
+const useAllocationAttentionNavigation = ({ attentionHandled, resourceStatus, budgetStatus, attentionAction, attentionEnvelopeId, attentionBudgetId, activeItems, budgets, consumeAttention, setDetailRuleId, setLegacyBudgetAttention, openFunding }) => {
   useEffect(() => {
     if (attentionHandled.current || resourceStatus !== "ready" || budgetStatus === "loading") return undefined;
-    if (!attentionEnvelopeId && !attentionBudgetId) return undefined;
+    if (!attentionEnvelopeId && !attentionBudgetId && attentionAction !== "fund") return undefined;
     attentionHandled.current = true;
+    if (attentionAction === "fund") { openFunding({ sourceAccountId: "", suggestedAmount: 0 }); consumeAttention(); return undefined; }
     const targetEnvelope = attentionEnvelopeId ? activeItems.find((item) => item.envelope_period_id === attentionEnvelopeId) : null;
     const targetBudget = !targetEnvelope && attentionBudgetId ? budgets.find((item) => item.budget_id === attentionBudgetId) : null;
     if (targetEnvelope) setDetailRuleId(targetEnvelope.envelope_rule_id);
@@ -196,16 +209,36 @@ const useAllocationAttentionNavigation = ({ attentionHandled, resourceStatus, bu
     if (!targetBudget?.budget_id) return undefined;
     const frame = window.requestAnimationFrame(() => document.querySelector(`[data-budget-id="${CSS.escape(targetBudget.budget_id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     return () => window.cancelAnimationFrame(frame);
-  }, [activeItems, attentionBudgetId, attentionEnvelopeId, attentionHandled, budgetStatus, budgets, consumeAttention, resourceStatus, setDetailRuleId, setLegacyBudgetAttention]);
+  }, [activeItems, attentionAction, attentionBudgetId, attentionEnvelopeId, attentionHandled, budgetStatus, budgets, consumeAttention, openFunding, resourceStatus, setDetailRuleId, setLegacyBudgetAttention]);
 };
 
 const AllocationMainContent = ({ detailItem, detailProps, overviewProps }) => {
-  if (detailItem) return <Suspense fallback={<div className="notice notice--info" role="status">Memuat detail Kantong...</div>}><AllocationPlanningDetail item={detailItem} {...detailProps} /></Suspense>;
-  return <Suspense fallback={<div className="notice notice--info" role="status">Memuat Kantong Dana...</div>}><AllocationOverviewLayer {...overviewProps} /></Suspense>;
+  if (detailItem) return <Suspense fallback={<div className="notice notice--info" role="status">Memuat detail Alokasi Dana...</div>}><AllocationPlanningDetail item={detailItem} {...detailProps} /></Suspense>;
+  return <Suspense fallback={<div className="notice notice--info" role="status">Memuat Alokasi Dana...</div>}><AllocationOverviewLayer {...overviewProps} /></Suspense>;
 };
+
+const AllocationOptionalLayers = ({ showSecondaryLayer, secondaryProps, fundingIntent, fundingProps, reminderTarget, setReminderTarget }) => <>
+  {showSecondaryLayer ? <Suspense fallback={null}><AllocationSecondaryLayer {...secondaryProps} /></Suspense> : null}
+  {fundingIntent ? <Suspense fallback={null}><AllocationFundingFlow open {...fundingProps} /></Suspense> : null}
+  {reminderTarget ? <Suspense fallback={null}><ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} /></Suspense> : null}
+</>;
+
+const AllocationResourceState = ({ resource, children }) => {
+  if (resource.status === "loading") return <LoadingScreen label="Memuat Alokasi Dana..." />;
+  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  return children;
+};
+
+const AllocationHeading = ({ embedded }) => embedded
+  ? <div className="allocation-embedded-header"><div><h2>Alokasi Dana</h2><p>Pisahkan uang berdasarkan tujuan, lalu atur kebutuhan di dalamnya.</p></div></div>
+  : <PageHeader title="Alokasi Dana" description="Pisahkan uang berdasarkan tujuan, lalu atur kebutuhan di dalamnya." help="Alokasi Dana mengelompokkan uang berdasarkan tujuan. Kebutuhan tetap memakai kategori dan anggaran yang sudah ada agar transaksi serta laporan tetap konsisten." />;
+
+const AllocationSetupContinuation = ({ open, onDismiss, onContinue }) => open ? <div><CompactNotice tone="success" title="Alokasi Dana pertama sudah siap." role="status">Lanjutkan ke Target atau selesai jika belum membutuhkannya.</CompactNotice><div className="form-actions"><Button type="button" onClick={onDismiss}>Selesai</Button><Button type="button" variant="primary" onClick={onContinue}>Lanjut buat Target</Button></div></div> : null;
 
 const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const { attention, consumeAttention } = useDashboardAttentionState();
+  const location = useLocation();
+  const navigate = useNavigate();
   const attentionHandled = useRef(false);
   const period = currentMonthInJakarta();
   const resource = useApiResource("envelopes.list", { period });
@@ -238,13 +271,17 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
   const [reverseTarget, setReverseTarget] = useState(null);
   const [reverseState, setReverseState] = useState({ status: "idle", error: null });
-  const [releasedFunds, setReleasedFunds] = useState(0);
+  const [releasedFunds, setReleasedFunds] = useState(null);
+  const [fundingIntent, setFundingIntent] = useState(null);
+  const [fundingError, setFundingError] = useState(null);
+  const [setupCreated, setSetupCreated] = useState(false);
   const allocationActor = bootstrap?.user || user;
   const view = useAllocationViewData({ resource, budgetResource, recurringResource, bootstrap, overview, usersResource, allocationFilter, move, administratorMode, allocationActor });
   const detailItem = view.activeItems.find((item) => item.envelope_rule_id === detailRuleId) || null;
-  const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup: view.lookup, notify, setMessage, onCreated: () => setCreateOpen(false), onMoved: () => setMoveOpen(false) });
+  const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup: view.lookup, notify, setMessage, onCreated: () => { setCreateOpen(false); if (location.state?.setupFlow) setSetupCreated(true); }, onMoved: () => setMoveOpen(false) });
   const adjustment = useAllocationAdjustment({ adjustTarget, setAdjustTarget, adjustForm, setAdjustForm, adjustMutation, refreshAfterMutation: createMove.refreshAfterMutation, notify, setMessage, onReleased: setReleasedFunds });
   const lifecycle = useAllocationLifecycle({ closeTarget, setCloseTarget, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation: createMove.refreshAfterMutation, notify, onReleased: setReleasedFunds });
+  const attentionAction = String(attention?.attentionAction || "");
   const attentionEnvelopeId = String(attention?.attentionEnvelopeId || "");
   const attentionBudgetId = String(attention?.attentionBudgetId || "");
   const refreshBudgetPlanning = async () => { invalidate(["budgets.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState"]); await Promise.allSettled([budgetResource.reload(), resource.reload(), refreshOverview()]); };
@@ -252,33 +289,39 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const usersStatus = allocationUsersStatus(administratorMode, usersResource);
   const showSecondaryLayer = hasAllocationSecondaryContent(detailItem, view, actionTarget);
 
-  useAllocationAttentionNavigation({ attentionHandled, resourceStatus: resource.status, budgetStatus: budgetResource.status, attentionEnvelopeId, attentionBudgetId, activeItems: view.activeItems, budgets: view.budgets, consumeAttention, setDetailRuleId, setLegacyBudgetAttention });
+  const openFunding = useCallback(({ sourceAccountId = "", suggestedAmount = 0 } = {}) => { setFundingError(null); setFundingIntent({ sourceAccountId, suggestedAmount: Number(suggestedAmount || 0) }); }, []);
+  useAllocationAttentionNavigation({ attentionHandled, resourceStatus: resource.status, budgetStatus: budgetResource.status, attentionAction, attentionEnvelopeId, attentionBudgetId, activeItems: view.activeItems, budgets: view.budgets, consumeAttention, setDetailRuleId, setLegacyBudgetAttention, openFunding });
   useEffect(() => { if (detailRuleId && resource.status === "ready" && !detailItem) setDetailRuleId(""); }, [detailItem, detailRuleId, resource.status]);
+  useEffect(() => {
+    if (resource.status !== "ready" || location.state?.workflowAction !== "fund") return;
+    openFunding({ sourceAccountId: String(location.state.sourceAccountId || ""), suggestedAmount: Number(location.state.suggestedAmount || 0) });
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+  }, [location.hash, location.pathname, location.search, location.state, navigate, openFunding, resource.status]);
 
-  if (resource.status === "loading") return <LoadingScreen label="Memuat Kantong Dana..." />;
-  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
   const closeCreate = () => { if (!createMutation.busy) setCreateOpen(false); };
   const closeMove = () => { if (!moveMutation.busy) setMoveOpen(false); };
   const closeAdjust = () => { if (!adjustMutation.busy) setAdjustTarget(null); };
+  const closeFunding = () => { if (!adjustMutation.busy) { setFundingIntent(null); setFundingError(null); } };
+  const submitFunding = async ({ target, amount, reason }) => { const ok = await adjustment.fundAvailable({ target, amount, reason }); if (ok) closeFunding(); else setFundingError(new Error("Dana belum berhasil ditambahkan. Periksa pesan lalu coba lagi.")); };
   const openAdjust = (item, direction = "fund") => { setMessage(null); setAdjustForm({ direction, amount: "", reason: "" }); setAdjustTarget(item); };
   const startClosePeriod = (item) => { setActionTarget(null); setCloseTarget(item); setCloseState({ status: "idle", error: null }); };
   const startLifecycle = (item) => { setActionTarget(null); lifecycle.openRuleLifecycle(item); };
   const openReminder = (item) => setReminderTarget({ entityType: "envelope_period", entityId: item.envelope_period_id, name: item.name, suggestedDate: item.period_end });
-  const openBudgetReminder = (budget) => setReminderTarget({ entityType: "budget", entityId: budget.budget_id, name: budget.name || "Batas pengeluaran" });
+  const openBudgetReminder = (budget) => setReminderTarget({ entityType: "budget", entityId: budget.budget_id, name: budget.name || "Kebutuhan" });
   const openDetail = (item) => { setLegacyBudgetAttention(false); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" })); };
   const closeDetail = () => { setDetailRuleId(""); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" })); };
   const reloadPlanning = () => Promise.allSettled([resource.reload(), budgetResource.reload(), recurringResource.reload()]);
   const modalProps = { closeTarget, setCloseTarget, closeState, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 
-  return <div className="page-stack allocations-page">
-    <Suspense fallback={null}><AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={(overview?.goals || []).some((goal) => goal.status === "active")} onDismissReleasedFunds={() => setReleasedFunds(0)} /></Suspense>
-    {embedded ? <div className="allocation-embedded-header"><div><h2>Kantong Dana</h2><p>Pisahkan dana berdasarkan tujuan. Kategori hanya dipakai saat membuat batas pengeluaran di dalam Kantong.</p></div></div> : <PageHeader title="Kantong Dana" description="Pisahkan dana berdasarkan tujuan, lalu atur batas dan jadwal yang terkait." help="Kantong Dana tidak memakai kategori dan tidak mengubah saldo rekening. Batas pengeluaran di dalam Kantong memakai kategori untuk mengukur transaksi aktual." />}
+  return <AllocationResourceState resource={resource}><div className="page-stack allocations-page">
+    <Suspense fallback={null}><AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={(overview?.goals || []).some((goal) => goal.status === "active")} onDismissReleasedFunds={() => setReleasedFunds(null)} /></Suspense>
+    <AllocationHeading embedded={embedded} />
+    <AllocationSetupContinuation open={setupCreated} onDismiss={() => setSetupCreated(false)} onContinue={() => navigate("/target", { state: { setupFlow: true } })} />
     <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, sharedOnly: user?.role === "member", period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, users: view.activeUsers, usersStatus, onBack: closeDetail, onBudgetReminder: openBudgetReminder, onOpenRecurring }} overviewProps={{ activeItems: view.activeItems, filteredActiveItems: view.filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder: openReminder, onAdjust: openAdjust, actor: allocationActor, attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, onOpenDetail: openDetail, canCreate, administratorMode, canMove: view.canMove, openCreate: () => { setMessage(null); setCreateOpen(true); }, openMove: () => { setMessage(null); setMoveOpen(true); }, reload: reloadPlanning, canAdjustItem: canAdjustAllocation, canRemindItem: canSetAllocationReminder, linkedBudgetsForItem: linkedBudgetsForEnvelope, relatedRecurringForItem: relatedRecurringForEnvelope }} />
-    {showSecondaryLayer ? <Suspense fallback={null}><AllocationSecondaryLayer historicalItems={view.historicalItems} recentMovements={view.recentMovements} actionTarget={actionTarget} onCloseAction={() => setActionTarget(null)} onClosePeriod={startClosePeriod} onLifecycle={startLifecycle} setReverseTarget={setReverseTarget} setReverseState={setReverseState} /></Suspense> : null}
-    {reminderTarget ? <Suspense fallback={null}><ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} /></Suspense> : null}
+    <AllocationOptionalLayers showSecondaryLayer={showSecondaryLayer} secondaryProps={{ historicalItems: view.historicalItems, recentMovements: view.recentMovements, actionTarget, onCloseAction: () => setActionTarget(null), onClosePeriod: startClosePeriod, onLifecycle: startLifecycle, setReverseTarget, setReverseState }} fundingIntent={fundingIntent} fundingProps={{ accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item, allocationActor) && item.source_account_id), initialSourceAccountId: fundingIntent?.sourceAccountId || "", suggestedAmount: fundingIntent?.suggestedAmount || 0, busy: adjustMutation.busy, error: fundingError, onClose: closeFunding, onSubmit: submitFunding }} reminderTarget={reminderTarget} setReminderTarget={setReminderTarget} />
     <AllocationDialogs createOpen={createOpen} moveOpen={moveOpen} adjustTarget={adjustTarget} closeTarget={closeTarget} archiveTarget={archiveTarget} reverseTarget={reverseTarget} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus: administratorMode ? usersResource.status : "ready", createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} />
-  </div>;
+  </div></AllocationResourceState>;
 };
 
 export default AllocationsPage;

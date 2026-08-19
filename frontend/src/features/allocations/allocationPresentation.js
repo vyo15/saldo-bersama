@@ -31,8 +31,8 @@ export const allocationUsage = (item) => {
   const committed = used + reserved;
   const percentage = allocated > 0 ? Math.max(0, Math.round((committed / allocated) * 100)) : 0;
   if (committed <= 0) return { allocated, used, reserved, committed, percentage, label: "Belum terpakai", tone: "idle" };
-  if (allocated <= 0 || committed > allocated) return { allocated, used, reserved, committed, percentage, label: "Melebihi dana Kantong", tone: "danger" };
-  if (percentage >= 100) return { allocated, used, reserved, committed, percentage, label: "Dana Kantong penuh", tone: "danger" };
+  if (allocated <= 0 || committed > allocated) return { allocated, used, reserved, committed, percentage, label: "Dana terlampaui", tone: "danger" };
+  if (percentage >= 100) return { allocated, used, reserved, committed, percentage, label: "Dana alokasi habis", tone: "danger" };
   if (percentage >= 80) return { allocated, used, reserved, committed, percentage, label: "Menipis", tone: "warning" };
   return { allocated, used, reserved, committed, percentage, label: "Sedang digunakan", tone: "active" };
 };

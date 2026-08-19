@@ -1,125 +1,92 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { FiPlus, FiSliders } from "react-icons/fi";
-import Button from "../../components/common/Button.jsx";
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
+import { FiSliders } from "react-icons/fi";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageInfoButton from "../../components/common/PageInfoButton.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
-import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
-import { useAuth } from "../auth/AuthContext.jsx";
-import { emptyBudgetForm, useBudgetFormController, useBudgetLifecycleController } from "./useBudgetActions.js";
 import { budgetPeriodMeta, budgetTotals, budgetVisualState } from "./budgetPresentation.js";
 import BudgetHeroCard from "./components/BudgetHeroCard.jsx";
 import BudgetInsightCard from "./components/BudgetInsightCard.jsx";
-import ManualReminderModal from "../reminders/ManualReminderModal.jsx";
 import budgetCalendarArtwork from "../../assets/budget-illustrations/budget-calendar.webp";
 import styles from "./BudgetsPage.module.css";
 
-const BudgetDialogLayer = lazy(() => import("./BudgetDialogLayer.jsx"));
-
 const EMPTY_BUDGET_ITEMS = Object.freeze([]);
 
-const BudgetTabs = ({ activeFilter, setActiveFilter, totalCount, attentionCount }) => <div className={styles.segmented} role="group" aria-label="Filter Batas Pengeluaran">
+const BudgetTabs = ({ activeFilter, setActiveFilter, totalCount, attentionCount }) => <div className={styles.segmented} role="group" aria-label="Filter kebutuhan anggaran">
   <button type="button" className={`${styles.segment}${activeFilter === "all" ? ` ${styles.segmentActive}` : ""}`} aria-pressed={activeFilter === "all"} onClick={() => setActiveFilter("all")}>Semua <span>{totalCount}</span></button>
   <button type="button" className={`${styles.segment}${activeFilter === "attention" ? ` ${styles.segmentActive}` : ""}`} aria-pressed={activeFilter === "attention"} onClick={() => setActiveFilter("attention")}>Perlu perhatian <span>{attentionCount}</span></button>
 </div>;
 
-const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, periodMeta, canCreate, canEditBudget, canLifecycle, editBudget, openBudgetLifecycle, openReminder, openBudgetForm, attentionBudgetId }) => {
-  const title = activeFilter === "attention" ? "Perlu perhatian" : "Batas pengeluaran aktif";
-  const emptyTitle = activeFilter === "attention" ? "Tidak ada batas yang perlu perhatian" : "Belum ada batas pengeluaran";
-  const emptyAction = canCreate && activeFilter === "all" ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah batas</Button> : undefined;
+const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, periodMeta }) => {
+  const title = activeFilter === "attention" ? "Perlu perhatian" : "Kebutuhan aktif";
+  const emptyTitle = activeFilter === "attention" ? "Tidak ada kebutuhan yang perlu perhatian" : "Belum ada kebutuhan";
+  const emptyDescription = activeFilter === "attention"
+    ? "Semua kebutuhan pada periode ini masih dalam kondisi aman."
+    : "Buat kebutuhan dari detail Alokasi Dana agar anggarannya muncul di ringkasan ini.";
+
   return <section className={styles.listSection} aria-labelledby="budget-list-title">
     <div className={styles.listHeading}>
       <h2 id="budget-list-title">{title}</h2>
       {visibleItems.length > 1 ? <button type="button" className={styles.sortButton} onClick={() => setCriticalFirst((current) => !current)} aria-pressed={criticalFirst}><FiSliders aria-hidden="true" />{criticalFirst ? "Paling kritis" : "Urutan awal"}</button> : null}
     </div>
-    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} attention={item.budget_id === attentionBudgetId} category={categoryLookup[item.category_id]} periodMeta={periodMeta} canEdit={canEditBudget(item)} canLifecycle={canLifecycle} editBudget={editBudget} openBudgetLifecycle={openBudgetLifecycle} openReminder={openReminder} />)}</div> : <EmptyState title={emptyTitle} action={emptyAction} />}
+    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} category={categoryLookup[item.category_id]} periodMeta={periodMeta} />)}</div> : <EmptyState title={emptyTitle} description={emptyDescription} />}
   </section>;
 };
 
-const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, message, canCreate, canEditBudget, canLifecycle, sharedOnly, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, formController, lifecycleController, openReminder, categories, users, usersStatus, attentionBudgetId }) => <div className={`page-stack budgets-page ${styles.page}`}>
+const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, unlinkedCount }) => <div className={`page-stack budgets-page ${styles.page}`}>
   <header className={styles.pageHeader}>
-    <div className={styles.pageHeading}><div className={styles.pageTitleRow}><h1>Batas Pengeluaran</h1><PageInfoButton title="Tentang Batas Pengeluaran">Batas Pengeluaran membantu menjaga pemakaian kategori untuk periode tertentu dan tidak memindahkan saldo rekening.</PageInfoButton></div><span>{periodMeta.label}</span></div>
-    {canCreate && (items.length > 0 || activeFilter !== "all") ? <button type="button" className={styles.addButton} onClick={formController.openBudgetForm} aria-label="Tambah batas" title="Tambah batas"><FiPlus aria-hidden="true" /></button> : null}
+    <div className={styles.pageHeading}>
+      <div className={styles.pageTitleRow}><h1>Anggaran</h1><PageInfoButton title="Tentang Anggaran">Anggaran adalah ringkasan seluruh Kebutuhan dari Alokasi Dana. Pembuatan dan perubahan Kebutuhan tetap dilakukan dari detail Alokasi Dana agar tidak ada fungsi ganda.</PageInfoButton></div>
+      <span>{periodMeta.label}</span>
+    </div>
   </header>
   <div className={styles.controlsRow}>
-    <label className={styles.periodControl}><span className="sr-only">Periode</span><input type="month" max={currentPeriod} value={period} onChange={(event) => { setPeriod(event.target.value); setActiveFilter("all"); formController.setForm(emptyBudgetForm()); formController.setFormOpen(false); formController.setMessage(null); }} /></label>
+    <label className={styles.periodControl}><span className="sr-only">Periode</span><input type="month" max={currentPeriod} value={period} onChange={(event) => { setPeriod(event.target.value); setActiveFilter("all"); }} /></label>
     <span className={styles.daysBadge}>{periodMeta.isCurrent ? `${periodMeta.daysLeft} hari tersisa` : "Periode selesai"}</span>
   </div>
   <BudgetTabs activeFilter={activeFilter} setActiveFilter={setActiveFilter} totalCount={items.length} attentionCount={attentionCount} />
-  {attentionBudgetId ? <CompactNotice tone="info" title="Periksa batas pengeluaran yang disorot." role="status">Tinjau pemakaian dan transaksi terkait. Ubah batas hanya bila rencana keuangan memang berubah.</CompactNotice> : null}
-  {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
-  {!canCreate ? <CompactNotice tone="info" className={styles.readOnlyNote} role="status">Periode historis hanya-baca. Kelola batas pengeluaran pada periode aktif.</CompactNotice> : sharedOnly ? <CompactNotice tone="info" className={styles.readOnlyNote} role="status">Member dapat membuat dan mengubah Batas Pengeluaran untuk ruang Bersama. Batas personal tetap hanya dapat dikelola Administrator.</CompactNotice> : null}
+  <CompactNotice tone="info" className={styles.readOnlyNote} role="status">
+    <span>Halaman ini hanya merangkum anggaran. <Link to="/perencanaan/kantong">Kelola Kebutuhan di Alokasi Dana</Link>.</span>
+  </CompactNotice>
+  {unlinkedCount ? <CompactNotice tone="warning" className={styles.readOnlyNote} role="status" title={`${unlinkedCount} kebutuhan lama belum terhubung ke Alokasi Dana.`}>Data tetap dihitung. Hubungkan dari detail Alokasi Dana agar sumber dana dan laporan tetap mudah ditelusuri.</CompactNotice> : null}
   <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
-  <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} canCreate={canCreate} canEditBudget={canEditBudget} canLifecycle={canLifecycle} editBudget={formController.editBudget} openBudgetLifecycle={lifecycleController.openBudgetLifecycle} openReminder={openReminder} openBudgetForm={formController.openBudgetForm} attentionBudgetId={attentionBudgetId} />
-  <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme pengeluaran</strong> membandingkan pemakaian dengan posisi hari ini dalam periode.</p><img className={styles.tipArtwork} src={budgetCalendarArtwork} alt="" aria-hidden="true" loading="lazy" decoding="async" /></aside>
-  {formController.formOpen || lifecycleController.archiveTarget ? <Suspense fallback={null}><BudgetDialogLayer canManage={canCreate || Boolean(formController.existingBudget && canEditBudget(formController.existingBudget))} canLifecycle={canLifecycle} sharedOnly={sharedOnly} categories={categories} users={users} usersStatus={usersStatus} formController={formController} lifecycleController={lifecycleController} /></Suspense> : null}
+  <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} />
+  <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme pengeluaran</strong> membandingkan pemakaian setiap kebutuhan dengan posisi hari ini dalam periode.</p><img className={styles.tipArtwork} src={budgetCalendarArtwork} alt="" aria-hidden="true" loading="lazy" decoding="async" /></aside>
 </div>;
 
 const BudgetsPage = () => {
-  const { attention, consumeAttention } = useDashboardAttentionState();
-  const attentionHandled = useRef(false);
   const currentPeriod = currentMonthInJakarta();
   const today = todayInJakarta();
   const [period, setPeriod] = useState(currentPeriod);
   const [activeFilter, setActiveFilter] = useState("all");
   const [criticalFirst, setCriticalFirst] = useState(true);
-  const [reminderTarget, setReminderTarget] = useState(null);
   const resource = useApiResource("budgets.list", { period });
-  const { bootstrap, invalidate, refreshOverview } = useFinance();
-  const { user } = useAuth();
-  const { notify } = useFeedback();
-  const administratorMode = user?.role === "owner";
-  const usersResource = useApiResource("users.list", {}, { enabled: administratorMode });
-  const activeUsers = usersResource.data?.items?.filter((item) => item.status === "active") || [];
+  const { bootstrap } = useFinance();
   const items = resource.data?.items ?? EMPTY_BUDGET_ITEMS;
-  const categories = useMemo(() => (bootstrap?.categories || []).filter((item) => item.status === "active" && item.transaction_type === "expense"), [bootstrap?.categories]);
   const categoryLookup = useMemo(() => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])), [bootstrap?.categories]);
-  const canCreate = (administratorMode || user?.role === "member") && period === currentPeriod;
-  const canEditBudget = (item) => period === currentPeriod && (administratorMode || (user?.role === "member" && item?.scope === "shared"));
-  const canLifecycle = administratorMode;
-  const sharedOnly = user?.role === "member";
   const totals = budgetTotals(items);
   const periodMeta = useMemo(() => budgetPeriodMeta(period, today), [period, today]);
   const presentationItems = useMemo(() => items.map((item) => ({ item, state: budgetVisualState(item, periodMeta) })), [items, periodMeta]);
   const attentionCount = presentationItems.filter(({ state }) => state.attention).length;
-  const attentionBudgetId = String(attention?.attentionBudgetId || "");
+  const unlinkedCount = items.filter((item) => !item.envelope_rule_id).length;
   const visibleItems = useMemo(() => {
     const filtered = activeFilter === "attention" ? presentationItems.filter(({ state }) => state.attention) : [...presentationItems];
     if (!criticalFirst) return filtered;
     const rank = { danger: 4, warning: 3, pace: 2, safe: 1 };
     return filtered.sort((a, b) => (rank[b.state.key] || 0) - (rank[a.state.key] || 0) || b.state.usedPercent - a.state.usedPercent);
   }, [activeFilter, criticalFirst, presentationItems]);
-  const refresh = async () => {
-    invalidate(["budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
-    await Promise.allSettled([resource.reload(), refreshOverview()]);
-  };
-  const formController = useBudgetFormController({ items, period, notify, refresh });
-  const lifecycleController = useBudgetLifecycleController({ notify, refresh, setForm: formController.setForm, setFormOpen: formController.setFormOpen });
-  const openReminder = (item) => setReminderTarget({ entityType: "budget", entityId: item.budget_id, name: item.name || categoryLookup[item.category_id]?.name || "Batas pengeluaran" });
-  useEffect(() => {
-    if (attentionHandled.current || !attentionBudgetId || resource.status !== "ready") return undefined;
-    attentionHandled.current = true;
-    const target = presentationItems.find(({ item }) => item.budget_id === attentionBudgetId);
-    consumeAttention();
-    if (!target) return undefined;
-    setActiveFilter(target.state.attention ? "attention" : "all");
-    const frame = window.requestAnimationFrame(() => document.querySelector(`[data-budget-id="${CSS.escape(attentionBudgetId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
-    return () => window.cancelAnimationFrame(frame);
-  }, [attentionBudgetId, consumeAttention, presentationItems, resource.status]);
 
-  if (resource.status === "loading") return <LoadingScreen label="Memuat batas pengeluaran..." />;
+  if (resource.status === "loading") return <LoadingScreen label="Memuat ringkasan anggaran..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+
   return <>
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    {administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}
-    <BudgetLoadedView period={period} setPeriod={setPeriod} currentPeriod={currentPeriod} periodMeta={periodMeta} activeFilter={activeFilter} setActiveFilter={setActiveFilter} items={items} attentionCount={attentionCount} message={formController.message} canCreate={canCreate} canEditBudget={canEditBudget} canLifecycle={canLifecycle} sharedOnly={sharedOnly} totals={totals} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} formController={formController} lifecycleController={lifecycleController} categories={categories} users={activeUsers} usersStatus={administratorMode ? usersResource.status : "ready"} attentionBudgetId={attentionBudgetId} openReminder={openReminder} />
-    <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
+    <BudgetLoadedView period={period} setPeriod={setPeriod} currentPeriod={currentPeriod} periodMeta={periodMeta} activeFilter={activeFilter} setActiveFilter={setActiveFilter} items={items} attentionCount={attentionCount} totals={totals} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} unlinkedCount={unlinkedCount} />
   </>;
 };
 

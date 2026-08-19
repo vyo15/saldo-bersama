@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FiPlus } from "react-icons/fi";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
@@ -64,7 +65,7 @@ const accountUpdatePayload = (account) => ({
   row_version: account.row_version,
 });
 
-const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts }) => {
+const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts, onCreated }) => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const openCreateDialog = () => { setDialogState({ status: "idle", error: null }); setCreateDialogOpen(true); };
   const closeCreateDialog = () => {
@@ -82,6 +83,7 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
       setDialogState({ status: "idle", error: null });
       notify({ message: "Rekening berhasil dibuat dan daftar telah diperbarui.", tone: "success", dedupeKey: "accounts:create" });
       await reloadAccounts();
+      onCreated?.();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
   const openEditAccount = (account) => {
@@ -196,7 +198,7 @@ const AccountArchiveConfirmation = ({ archiveTarget, dialogState, setArchiveTarg
       <div><span>Saldo saat ini</span><strong><Money value={archiveTarget.preview.currentBalance} /></strong></div>
       <div><span>Seluruh transaksi</span><strong>{archiveTarget.preview.dependencies.transactions}</strong></div>
       <div><span>Rekonsiliasi</span><strong>{archiveTarget.preview.dependencies.reconciliations}</strong></div>
-      <div><span>Referensi kantong/tagihan/target</span><strong>{archiveTarget.preview.dependencies.envelopes + archiveTarget.preview.dependencies.recurring + archiveTarget.preview.dependencies.goals}</strong></div>
+      <div><span>Referensi alokasi/tagihan/target</span><strong>{archiveTarget.preview.dependencies.envelopes + archiveTarget.preview.dependencies.recurring + archiveTarget.preview.dependencies.goals}</strong></div>
       <p>{archiveTarget.preview.canDeleteUnused ? "Rekening dapat dihapus permanen. Lengkapi alasan, frasa konfirmasi, dan pernyataan pemahaman di bawah." : "Rekening pernah digunakan atau memiliki histori, sehingga data hanya diarsipkan dan tidak dihapus."}</p>
     </div> : null}
   </ConfirmationModal>
@@ -223,7 +225,7 @@ const AccountsPageFeedback = ({ accountsResource, usersResource, ownerMode, relo
 const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
   <div className={styles.desktopPageHeader}><PageHeader title="Rekening"
     description={null}
-    help="Rekening menampilkan saldo, dana dalam kantong, dan dana yang masih tersedia. Gunakan Transfer untuk memindahkan dana antar rekening yang valid."
+    help="Rekening menampilkan saldo, dana yang dialokasikan, dan dana yang masih tersedia. Gunakan Transfer untuk memindahkan dana antar rekening yang valid."
     actions={ownerMode && accounts.length ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog} aria-label="Tambah rekening desktop">Tambah rekening</Button> : null} />
   </div>
 );
@@ -231,6 +233,7 @@ const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
 const AccountsPage = () => {
   const { notify } = useFeedback();
   const navigate = useNavigate();
+  const location = useLocation();
   const accountsResource = useApiResource("accounts.list");
   const { bootstrap, refreshAll, invalidate } = useFinance();
   const { user } = useAuth();
@@ -245,13 +248,14 @@ const AccountsPage = () => {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [mobileAccountSheet, setMobileAccountSheet] = useState(null);
   const [ownershipFilter, setOwnershipFilter] = useState("all");
+  const [setupCreated, setSetupCreated] = useState(false);
   const accounts = accountsResource.data?.items ?? EMPTY_ACCOUNTS;
   const reloadAccounts = async () => {
     invalidate(["accounts.list", "transactions.list", "envelopes.list", "recurring.list", "goals.list", "reports.monthly", "reconciliations.list", "dashboard.overview", "app.initialState", "archive.list"]);
     const [accountsResult, financeResult] = await Promise.allSettled([accountsResource.reload(), refreshAll()]);
     return { accountsResult, financeResult };
   };
-  const crud = useAccountCrudActions({ accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts });
+  const crud = useAccountCrudActions({ accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts, onCreated: () => { if (location.state?.setupFlow) setSetupCreated(true); } });
   const lifecycle = useAccountLifecycleActions({ archiveTarget, setArchiveTarget, setDialogState, setMessage, notify, reloadAccounts });
   const { activeUsers, currentDatabaseUser, currentOwnerLabel } = accountUserContext(usersResource, user);
   const currentAccountUser = useMemo(() => ({
@@ -263,11 +267,12 @@ const AccountsPage = () => {
     if (!visibleAccounts.length) { setSelectedAccountId(""); setMobileAccountSheet(null); return; }
     if (!visibleAccounts.some((account) => account.account_id === selectedAccountId)) setSelectedAccountId(visibleAccounts[0].account_id);
   }, [selectedAccountId, visibleAccounts]);
-  if (accountsResource.status === "loading") return <LoadingScreen label="Memuat rekening..." />;
+  if (accountsResource.status === "loading") return <LoadingScreen variant="content" label="Memuat rekening..." />;
   if (accountsResource.status === "error") return <ErrorState error={accountsResource.error} onRetry={accountsResource.reload} />;
   const selectedAccount = selectedAccountFrom(visibleAccounts, selectedAccountId);
   return <div className={`page-stack ${styles.accountsPage}`}>
     <AccountsPageFeedback accountsResource={accountsResource} usersResource={usersResource} ownerMode={ownerMode} reloadAccounts={reloadAccounts} message={message} />
+    {setupCreated ? <div><CompactNotice tone="success" title="Rekening siap." role="status">Lanjutkan penyiapan agar transaksi harian langsung siap digunakan.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/kategori", { state: { setupFlow: true } })}>Lanjut siapkan kategori</Button></div></div> : null}
     <AccountsPageHeading accounts={accounts} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} />
     <AccountListSection mobileLayout={mobileLayout} accounts={visibleAccounts} allAccounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} setOwnershipFilter={setOwnershipFilter} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
       navigate={navigate} bootstrap={bootstrap} setSelectedAccountId={setSelectedAccountId} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} onTransferSaved={reloadAccounts} />

@@ -56,8 +56,8 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
   unallocated_expense: ({ alert, to, baseState }) => {
     const period = alertPeriod(alert);
     return guidance({
-      instruction: "Pilih pengeluaran yang belum memiliki kantong, buka Edit, lalu tentukan alokasi seperti Makan, Bensin, Rumah, atau jatah lainnya.",
-      actionLabel: "Pilih Kantong",
+      instruction: "Pilih pengeluaran yang belum memiliki alokasi, buka Edit, lalu tentukan Alokasi Dana yang sesuai.",
+      actionLabel: "Pilih Alokasi Dana",
       to,
       baseState,
       state: { allocation: "unallocated", ...entityState("period", period) },
@@ -66,8 +66,8 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
   unallocated_funds: ({ alert, to, baseState }) => {
     const period = alertPeriod(alert);
     return guidance({
-      instruction: "Dana ini masih tersedia di rekening dan belum dibagi ke Kantong. Tambahkan hanya jumlah yang memang ingin dialokasikan; saldo rekening tidak berubah.",
-      actionLabel: "Atur Kantong",
+      instruction: "Dana ini masih tersedia di rekening dan belum dibagi ke Alokasi Dana. Tambahkan hanya jumlah yang memang ingin dialokasikan; saldo rekening tidak berubah.",
+      actionLabel: "Atur Alokasi Dana",
       to,
       baseState,
       state: { attentionAction: "fund", ...entityState("period", period) },
@@ -75,18 +75,18 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
   },
   budget_threshold: ({ alert, to, baseState, entityId }) => guidance({
     instruction: alert.severity === "danger"
-      ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah batas hanya jika rencana anggarannya memang berubah."
+      ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah anggaran kebutuhan hanya jika rencana memang berubah."
       : "Periksa pemakaian kategori ini dan pastikan sisa anggaran cukup sampai akhir periode.",
-    actionLabel: "Periksa batas",
+    actionLabel: "Periksa kebutuhan",
     to,
     baseState,
     state: entityState("attentionBudgetId", entityId),
   }),
   envelope_threshold: ({ alert, to, baseState, entityId }) => guidance({
     instruction: alert.severity === "danger"
-      ? "Periksa transaksi pada kantong ini karena jatah sudah habis atau terlampaui."
-      : "Periksa sisa jatah sebelum membuat pengeluaran berikutnya dari kantong ini.",
-    actionLabel: "Periksa Kantong",
+      ? "Periksa transaksi pada Alokasi Dana ini karena dana yang dialokasikan sudah habis atau terlampaui."
+      : "Periksa dana tersisa sebelum membuat pengeluaran berikutnya dari Alokasi Dana ini.",
+    actionLabel: "Periksa Alokasi Dana",
     to,
     baseState,
     state: entityState("attentionEnvelopeId", entityId),

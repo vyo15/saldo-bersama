@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTransaction } from "../../api/_lib/services/finance.js";
 import { accountAllocatedRemaining, accountBalanceAsOf } from "../../api/_lib/services/readModels.js";
 import { adjustEnvelopeAllocation, createEnvelope } from "../../api/_lib/services/planning/envelopes.js";
-import { upsertBudget, listBudgets } from "../../api/_lib/services/planning/budgets.js";
+import { archiveBudget, listBudgets, restoreBudget, upsertBudget } from "../../api/_lib/services/planning/budgets.js";
 import { createGoal, listGoals, moveGoal } from "../../api/_lib/services/planning/goals.js";
 import { dashboardOverview } from "../../api/_lib/services/reporting/dashboard.js";
 import { createReconciliation } from "../../api/_lib/services/reporting/reconciliations.js";
@@ -53,7 +53,7 @@ const seedCategory = async (db, id, type) => {
   );
 };
 
-test("journey uang masuk sampai rekonsiliasi menjaga ledger, alokasi, budget, target, dan audit konsisten", async () => {
+test("journey uang masuk sampai rekonsiliasi menjaga ledger, Alokasi Dana, Kebutuhan, Target, dan audit konsisten", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
@@ -125,7 +125,7 @@ test("journey uang masuk sampai rekonsiliasi menjaga ledger, alokasi, budget, ta
     assert.equal(expense.cost_share_mode, "equal");
     assert.equal(expense.cost_share.reduce((sum, item) => sum + item.share_amount, 0), 150_000);
     assert.equal(await accountBalanceAsOf(db, sourceAccount, today), 1_350_000);
-    assert.equal(await accountAllocatedRemaining(db, "rekening-bersama"), 250_000, "Expense Kantong menurunkan sisa alokasi tanpa mengubah dana bebas sebelum release.");
+    assert.equal(await accountAllocatedRemaining(db, "rekening-bersama"), 250_000, "Expense Alokasi Dana menurunkan sisa alokasi tanpa mengubah dana bebas sebelum release.");
 
     const budgetAfterExpense = (await listBudgets(db, context(owner, "budgets.list", { period: month }))).items[0];
     assert.equal(Number(budgetAfterExpense.used_amount), 150_000);
@@ -179,6 +179,81 @@ test("journey uang masuk sampai rekonsiliasi menjaga ledger, alokasi, budget, ta
     for (const action of ["transactions.create", "envelopes.create", "envelopes.adjustAllocation", "budgets.upsert", "goals.create", "goals.move", "reconciliations.create"]) {
       assert.equal(actionSet.has(action), true, `Audit ${action} wajib tersedia.`);
     }
+  } finally {
+    db.close();
+  }
+});
+
+
+test("kategori kebutuhan yang sama dapat dipakai pada dua Alokasi Dana dalam periode yang sama", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner);
+    await seedAccount(db, "rekening-budget-multi", 1_000_000);
+    await seedCategory(db, "transportasi", "expense");
+    const month = todayJakarta().slice(0, 7);
+    const monthStart = `${month}-01`;
+    const monthEndDate = new Date(`${monthStart}T00:00:00Z`);
+    monthEndDate.setUTCMonth(monthEndDate.getUTCMonth() + 1);
+    monthEndDate.setUTCDate(0);
+    const monthEnd = monthEndDate.toISOString().slice(0, 10);
+
+    const education = await createEnvelope(db, context(owner, "envelopes.create", {
+      name: "Pendidikan",
+      source_account_id: "rekening-budget-multi",
+      period_type: "monthly",
+      period_start: monthStart,
+      period_end: monthEnd,
+      default_amount: 100_000,
+      allocated_amount: 100_000,
+    }));
+    const partner = await createEnvelope(db, context(owner, "envelopes.create", {
+      name: "Pasangan",
+      source_account_id: "rekening-budget-multi",
+      period_type: "monthly",
+      period_start: monthStart,
+      period_end: monthEnd,
+      default_amount: 100_000,
+      allocated_amount: 100_000,
+    }));
+
+    const educationNeed = await upsertBudget(db, context(owner, "budgets.upsert", {
+      period_key: month,
+      category_id: "transportasi",
+      envelope_rule_id: education.rule.envelope_rule_id,
+      amount: 75_000,
+      scope: "shared",
+    }));
+    const partnerNeed = await upsertBudget(db, context(owner, "budgets.upsert", {
+      period_key: month,
+      category_id: "transportasi",
+      envelope_rule_id: partner.rule.envelope_rule_id,
+      amount: 50_000,
+      scope: "shared",
+    }));
+
+    assert.notEqual(educationNeed.budget_id, partnerNeed.budget_id);
+    assert.equal(educationNeed.category_id, partnerNeed.category_id);
+    assert.equal(educationNeed.envelope_rule_id, education.rule.envelope_rule_id);
+    assert.equal(partnerNeed.envelope_rule_id, partner.rule.envelope_rule_id);
+    const listed = (await listBudgets(db, context(owner, "budgets.list", { period: month }))).items;
+    assert.equal(listed.filter((item) => item.category_id === "transportasi").length, 2);
+
+    const archivedEducationNeed = await archiveBudget(db, context(owner, "budgets.archive", {
+      budget_id: educationNeed.budget_id,
+      row_version: educationNeed.row_version,
+      reason: "Uji lifecycle kebutuhan",
+    }, educationNeed.row_version));
+    assert.equal(archivedEducationNeed.status, "archived");
+
+    const restoredEducationNeed = await restoreBudget(db, context(owner, "budgets.restore", {
+      budget_id: educationNeed.budget_id,
+      row_version: archivedEducationNeed.row_version,
+      reason: "Pulihkan kebutuhan",
+    }, archivedEducationNeed.row_version));
+    assert.equal(restoredEducationNeed.status, "active");
+    assert.equal(restoredEducationNeed.envelope_rule_id, education.rule.envelope_rule_id);
+    assert.equal((await listBudgets(db, context(owner, "budgets.list", { period: month }))).items.filter((item) => item.category_id === "transportasi").length, 2);
   } finally {
     db.close();
   }

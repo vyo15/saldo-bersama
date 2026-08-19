@@ -9,6 +9,7 @@ const DEFAULT_COMPOSER_STATE = Object.freeze({
   initialType: TRANSACTION_TYPES.EXPENSE,
   initialSourceAccountId: "",
   presentation: "default",
+  initialDraft: null,
 });
 
 const SUPPORTED_TRANSACTION_TYPES = new Set([
@@ -27,7 +28,8 @@ const normalizeComposerOptions = (options) => {
     ? source.initialSourceAccountId
     : "";
   const presentation = source.presentation === "mobile-transfer" ? "mobile-transfer" : "default";
-  return { initialType, initialSourceAccountId, presentation };
+  const initialDraft = source.initialDraft && typeof source.initialDraft === "object" ? { ...source.initialDraft } : null;
+  return { initialType, initialSourceAccountId, presentation, initialDraft };
 };
 
 export const useTransactionComposer = () => {
@@ -57,6 +59,7 @@ export const TransactionComposerProvider = ({ children }) => {
         initialType={composer.initialType}
         initialSourceAccountId={composer.initialSourceAccountId}
         presentation={composer.presentation}
+        initialDraft={composer.initialDraft}
       /></Suspense> : null}
     </TransactionComposerContext.Provider>
   );

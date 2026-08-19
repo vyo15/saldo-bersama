@@ -6,7 +6,6 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { TRANSACTION_LABELS } from "../../shared/presentation/transaction.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { absoluteAmount } from "./dashboardPresentation.js";
@@ -69,8 +68,8 @@ const selectedTransactionPresentation = ({ selectedTransaction, categoryLookup, 
   return {
     selectedTitle,
     selectedCategory,
-    selectedEnvelope: hasEnvelope ? envelopeLookup[selectedTransaction.envelope_period_id] || "Kantong tidak tersedia" : expense ? "Belum masuk Kantong" : "Tidak menggunakan Kantong",
-    selectedEnvelopeNote: hasEnvelope ? "Terhubung ke kantong aktif" : expense ? "Perlu ditinjau sebelum tutup periode" : "Jenis transaksi ini tidak memerlukan kantong",
+    selectedEnvelope: hasEnvelope ? envelopeLookup[selectedTransaction.envelope_period_id] || "Alokasi Dana tidak tersedia" : expense ? "Belum masuk Alokasi Dana" : "Tidak menggunakan Alokasi Dana",
+    selectedEnvelopeNote: hasEnvelope ? "Terhubung ke Alokasi Dana aktif" : expense ? "Perlu ditinjau sebelum tutup periode" : "Jenis transaksi ini tidak memerlukan Alokasi Dana",
   };
 };
 
@@ -98,15 +97,10 @@ const useDesktopAccountSelection = (overview) => {
 const MobileDashboardOverlays = ({ mobileTransactionDetailOpen, setMobileTransactionDetailOpen, dashboardViewModel, balanceVisible, openTransactionComposer }) => <>{mobileTransactionDetailOpen ? (<Suspense fallback={null}><MobileTransactionDetail open onClose={() => setMobileTransactionDetailOpen(false)} transaction={dashboardViewModel.mobileSelectedTransaction} title={dashboardViewModel.mobileSelectedTitle} category={dashboardViewModel.mobileSelectedCategory} accountLabel={dashboardViewModel.transactionAccountLabel(dashboardViewModel.mobileSelectedTransaction)} envelope={dashboardViewModel.mobileSelectedEnvelope} envelopeNote={dashboardViewModel.mobileSelectedEnvelopeNote} lastSyncedAt={dashboardViewModel.lastSyncedAt} balanceVisible={balanceVisible} onOpenTransaction={() => { setMobileTransactionDetailOpen(false); openTransactionComposer(); }} /></Suspense>) : null}</>;
 
 const DashboardSurfaces = ({ mobileLayout, displayOverview, bootstrap, dashboardViewModel, user, displayName, balanceVisible, setBalanceVisible, refreshOverview, isRefreshing, openTransactionComposer, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters }) => {
-  const openMobileTransaction = (initialType) => openTransactionComposer({
-    initialType,
-    presentation: initialType === TRANSACTION_TYPES.TRANSFER ? "mobile-transfer" : "default",
-  });
-
   return (
-    <Suspense fallback={<LoadingScreen />}>
+    <Suspense fallback={<LoadingScreen variant="content" label="Menyiapkan ringkasan..." />}>
       {mobileLayout
-        ? <MobileFinanceDashboard overview={displayOverview} viewModel={dashboardViewModel} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} isRefreshing={isRefreshing} onOpenTransaction={openMobileTransaction} onOpenTransactionDetail={openMobileTransactionDetail} />
+        ? <MobileFinanceDashboard overview={displayOverview} viewModel={dashboardViewModel} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} isRefreshing={isRefreshing} onOpenTransactionDetail={openMobileTransactionDetail} />
         : <DesktopFinanceDashboard overview={displayOverview} bootstrap={bootstrap} viewModel={dashboardViewModel} displayName={displayName} selectedAccountId={desktopAccountId} onSelectAccount={(accountId) => { setDesktopAccountId(accountId); setters.setSelectedTransactionId(""); }} categoryFilter={filters.categoryFilter} setCategoryFilter={setters.setCategoryFilter} typeFilter={filters.typeFilter} setTypeFilter={setters.setTypeFilter} searchTerm={filters.searchTerm} setSearchTerm={setters.setSearchTerm} selectedTransactionId={filters.selectedTransactionId} setSelectedTransactionId={setters.setSelectedTransactionId} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} onOpenTransaction={() => openTransactionComposer()} />}
     </Suspense>
   );
@@ -117,7 +111,7 @@ const DashboardPage = () => {
   const [balanceVisible, setBalanceVisible] = useState(true); const [searchTerm, setSearchTerm] = useState(""); const [accountFilter, setAccountFilter] = useState("all"); const [categoryFilter, setCategoryFilter] = useState("all"); const [typeFilter, setTypeFilter] = useState("all"); const [selectedTransactionId, setSelectedTransactionId] = useState(""); const [desktopAccountId, setDesktopAccountId] = useDesktopAccountSelection(overview); const [mobileTransactionDetailOpen, setMobileTransactionDetailOpen] = useState(false);
   const filters = { searchTerm, accountFilter, categoryFilter, typeFilter, selectedTransactionId }; const setters = { setSearchTerm, setAccountFilter, setCategoryFilter, setTypeFilter, setSelectedTransactionId };
   const dashboardViewModel = useMemo(() => createDashboardViewModel({ overview, bootstrap, filters: { searchTerm, accountFilter, categoryFilter, typeFilter, selectedTransactionId } }), [accountFilter, bootstrap, categoryFilter, overview, searchTerm, selectedTransactionId, typeFilter]);
-  if (status === "loading" || status === "idle") return <LoadingScreen />; if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />; if (!overview || !dashboardViewModel) return null;
+  if (status === "loading" || status === "idle") return <LoadingScreen variant="content" label="Memuat ringkasan keuangan..." />; if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />; if (!overview || !dashboardViewModel) return null;
   const displayOverview = { ...overview, accountBalances: dashboardViewModel.accountBalances }; const displayName = String(user?.name || user?.email || "").trim().split(/\s+/)[0] || "Kamu";
   const openMobileTransactionDetail = (transactionId) => { setSelectedTransactionId(transactionId); setMobileTransactionDetailOpen(true); };
   const surfaces = { mobileLayout, displayOverview, bootstrap, dashboardViewModel, user, displayName, balanceVisible, setBalanceVisible, refreshOverview, isRefreshing, openTransactionComposer, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };

@@ -17,7 +17,7 @@ test("pengingat manual hanya muncul pada empat lifecycle finansial yang membutuh
     source("src/features/transactions/TransactionsPage.jsx"),
   ]);
 
-  assert.match(budgets, /entityType: "budget"/);
+  assert.match(allocations, /entityType: "budget"/);
   assert.match(allocations, /entityType: "envelope_period"/);
   assert.match(allocations, /canSetAllocationReminder/);
   assert.match(recurring, /entityType: "recurring_occurrence"/);

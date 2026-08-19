@@ -120,7 +120,7 @@ export const deactivateUser = async (db, context) => {
     (SELECT COUNT(*) FROM budgets WHERE owner_user_id=? AND status='active') AS budgets,
     (SELECT COUNT(*) FROM recurring_rules WHERE owner_user_id=? AND status='active') AS recurring,
     (SELECT COUNT(*) FROM savings_goals WHERE owner_user_id=? AND status='active') AS goals`, [current.user_id, current.user_id, current.user_id, current.user_id, current.user_id, current.user_id]);
-  if (Object.values(dependencies || {}).some((value) => Number(value) > 0)) throw appError("USER_HAS_ACTIVE_DATA", "Pengguna masih memiliki data personal, anggaran personal, atau jatah aktif. Arsipkan atau pindahkan data terlebih dahulu.", 409, dependencies);
+  if (Object.values(dependencies || {}).some((value) => Number(value) > 0)) throw appError("USER_HAS_ACTIVE_DATA", "Pengguna masih memiliki data personal, kebutuhan personal, atau Alokasi Dana aktif. Arsipkan atau pindahkan data terlebih dahulu.", 409, dependencies);
   const next = { ...current, status: "inactive", row_version: Number(current.row_version) + 1, updated_at: nowIso() };
   await db.execute("UPDATE push_subscriptions SET status='inactive',updated_at=? WHERE user_id=? AND status='active'", [next.updated_at, current.user_id]);
   await db.execute(`UPDATE notification_deliveries SET status='dead_letter',locked_by=NULL,error_code='USER_INACTIVE',updated_at=?

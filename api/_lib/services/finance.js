@@ -70,18 +70,18 @@ const transactionCapabilities = (context, transaction, { periodOpen }) => {
 };
 
 const assertEnvelopeCompatibility = (row, context, transaction) => {
-  if (!row) throw appError("INVALID_ENVELOPE", "Kantong tidak ditemukan atau tidak aktif.", 400);
-  if (transaction.transaction_date < row.period_start || transaction.transaction_date > row.period_end) throw appError("ENVELOPE_DATE_MISMATCH", "Tanggal transaksi berada di luar periode kantong.", 409);
-  if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Kantong dan rekening transaksi harus memiliki kepemilikan ledger yang sama.", 409);
-  if (!row.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Kantong belum memiliki rekening sumber dan tidak aman dipakai untuk transaksi.", 409);
-  if (row.source_account_id !== transaction.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_MISMATCH", "Kantong hanya dapat dipakai dari rekening sumber yang sama.", 409, { sourceAccountId: row.source_account_id });
-  if (context.actor.role !== "owner" && row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat memakai jatah Bersama atau jatah miliknya sendiri.", 403);
+  if (!row) throw appError("INVALID_ENVELOPE", "Alokasi Dana tidak ditemukan atau tidak aktif.", 400);
+  if (transaction.transaction_date < row.period_start || transaction.transaction_date > row.period_end) throw appError("ENVELOPE_DATE_MISMATCH", "Tanggal transaksi berada di luar periode Alokasi Dana.", 409);
+  if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Alokasi Dana dan rekening transaksi harus memiliki kepemilikan ledger yang sama.", 409);
+  if (!row.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Alokasi Dana belum memiliki rekening sumber dan tidak aman dipakai untuk transaksi.", 409);
+  if (row.source_account_id !== transaction.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_MISMATCH", "Alokasi Dana hanya dapat dipakai dari rekening sumber yang sama.", 409, { sourceAccountId: row.source_account_id });
+  if (context.actor.role !== "owner" && row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat memakai Alokasi Dana Bersama atau alokasi miliknya sendiri.", 403);
 };
 
 const assertEnvelopeCapacity = (row, transaction, remaining) => {
   if (transaction.amount <= remaining) return;
-  if (row.overspend_policy === "block") throw appError("ENVELOPE_LIMIT", "Nominal melebihi sisa kantong.", 409, { remainingAmount: remaining });
-  if (row.overspend_policy === "confirm" && !transaction.overspend_reason) throw appError("OVERSPEND_REASON_REQUIRED", "Alasan melebihi dana Kantong wajib diisi.", 409, { remainingAmount: remaining });
+  if (row.overspend_policy === "block") throw appError("ENVELOPE_LIMIT", "Nominal melebihi dana tersisa pada Alokasi Dana.", 409, { remainingAmount: remaining });
+  if (row.overspend_policy === "confirm" && !transaction.overspend_reason) throw appError("OVERSPEND_REASON_REQUIRED", "Alasan melebihi dana Alokasi Dana wajib diisi.", 409, { remainingAmount: remaining });
 };
 
 const validateEnvelope = async (db, context, transaction, { excludeTransactionId = null } = {}) => {
@@ -126,7 +126,7 @@ const assertUnallocatedFunds = async (db, account, transaction, envelopeState, e
     accountAllocatedRemaining(db, account.account_id, { cutoffDate: transaction.transaction_date, excludeTransactionId }),
   ]);
   const available = balance - allocatedRemaining;
-  if (debit > available) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Dana rekening di luar Kantong tidak mencukupi. Pilih Kantong yang sesuai atau kurangi nominal.", 409, {
+  if (debit > available) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Dana rekening yang belum dialokasikan tidak mencukupi. Pilih Alokasi Dana yang sesuai atau kurangi nominal.", 409, {
     accountId: account.account_id,
     availableAmount: available,
     accountBalance: balance,
@@ -158,7 +158,7 @@ const assertProjectedAccountFunds = async (db, { accountId, current, projectedCa
     accountBalanceAsOf(db, account, cutoffDate, { excludeTransactionId, candidate: projectedCandidate }),
     accountAllocatedRemaining(db, accountId, { cutoffDate, excludeTransactionId, candidate: projectedCandidate }),
   ]);
-  if (projectedBalance < projectedAllocated) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Perubahan akan memakai dana yang sudah disiapkan di Kantong.", 409, {
+  if (projectedBalance < projectedAllocated) throw appError("UNALLOCATED_FUNDS_INSUFFICIENT", "Perubahan akan memakai dana yang sudah disiapkan di Alokasi Dana.", 409, {
     accountId,
     availableAmount: projectedBalance - projectedAllocated,
     accountBalance: projectedBalance,
@@ -428,7 +428,7 @@ const transactionListRequest = (context) => {
     createdBy: sanitizeText(payload.created_by, 100),
   };
   if (!["all", ...TRANSACTION_TYPES].includes(request.type)) throw appError("INVALID_TRANSACTION_TYPE", "Filter jenis transaksi tidak valid.", 400);
-  if (!["all", "allocated", "unallocated"].includes(request.allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter Kantong tidak valid.", 400);
+  if (!["all", "allocated", "unallocated"].includes(request.allocation)) throw appError("INVALID_ALLOCATION_FILTER", "Filter Alokasi Dana tidak valid.", 400);
   return request;
 };
 

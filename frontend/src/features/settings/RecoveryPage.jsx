@@ -20,10 +20,10 @@ import styles from "./Settings.module.css";
 const RECOVERY_TYPES = Object.freeze({
   account: { action: "accounts.restore", idKey: "account_id", label: "Rekening" },
   category: { action: "categories.restore", idKey: "category_id", label: "Kategori" },
-  envelopeRule: { action: "envelopes.restoreRule", idKey: "envelope_rule_id", label: "Kantong" },
+  envelopeRule: { action: "envelopes.restoreRule", idKey: "envelope_rule_id", label: "Alokasi" },
   goal: { action: "goals.restore", idKey: "goal_id", label: "Target" },
   recurringRule: { action: "recurring.restoreRule", idKey: "recurring_rule_id", label: "Aturan rutin" },
-  budget: { action: "budgets.restore", idKey: "budget_id", label: "Batas Pengeluaran" },
+  budget: { action: "budgets.restore", idKey: "budget_id", label: "Kebutuhan" },
 });
 const RESTORE_REFRESH_KEYS = Object.freeze([
   "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
@@ -39,7 +39,7 @@ const RESTORE_ACKNOWLEDGEMENTS = Object.freeze([
 const RESTORE_TABLES = Object.freeze([
   ["transactions", "Transaksi"], ["accounts", "Rekening"], ["categories", "Kategori"], ["users", "Pengguna"],
   ["envelope_rules", "Aturan alokasi"], ["savings_goals", "Target"], ["recurring_rules", "Jadwal rutin"],
-  ["budgets", "Batas Pengeluaran"], ["audit_log", "Audit log"],
+  ["budgets", "Kebutuhan"], ["audit_log", "Audit log"],
 ]);
 
 const formatCount = (value) => Number(value || 0).toLocaleString("id-ID");
@@ -48,10 +48,10 @@ const formatRecoveryDateTime = (value) => formatDateTimeJakarta(value, { fallbac
 const archiveGroups = (data = {}) => [
   ["account", data.accounts || [], (item) => accountDisplayLabel(item), () => "Rekening diarsipkan"],
   ["category", data.categories || [], (item) => item.name, (item) => `Kategori · ${categoryTypeLabel(item.transaction_type)}`],
-  ["envelopeRule", data.envelopeRules || [], (item) => item.name, () => "Kantong/alokasi diarsipkan"],
+  ["envelopeRule", data.envelopeRules || [], (item) => item.name, () => "Alokasi/alokasi diarsipkan"],
   ["goal", data.goals || [], (item) => item.name, () => "Target tabungan diarsipkan"],
   ["recurringRule", data.recurringRules || [], (item) => item.name, () => "Aturan rutin diarsipkan"],
-  ["budget", data.budgets || [], (item) => item.name, (item) => `Batas pengeluaran ${item.period_key} diarsipkan`],
+  ["budget", data.budgets || [], (item) => item.name, (item) => `Kebutuhan ${item.period_key} diarsipkan`],
 ];
 
 const archivedItemId = (type, item) => item[RECOVERY_TYPES[type].idKey];

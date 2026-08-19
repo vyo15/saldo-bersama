@@ -45,7 +45,7 @@ Mendukung income, expense, transfer, refund, adjustment; tanggal, nominal, reken
 
 ### `REQ-PROD-02A` Alokasi per penerima — Implemented
 
-Kantong memisahkan ownership ledger (`scope`/`owner_user_id`) dari penerima jatah (`assignee_user_id`). `NULL` berarti Bersama; shared source dapat dialokasikan untuk Administrator atau Member. Setiap Kantong canonical wajib memiliki satu `source_account_id`. Rekening personal hanya dapat menjadi sumber jatah untuk pemilik rekening tersebut. Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah miliknya sendiri, dan transaksi berkantong wajib memakai rekening sumber Kantong yang sama.
+Alokasi Dana memisahkan ownership ledger (`scope`/`owner_user_id`) dari penerima jatah (`assignee_user_id`). `NULL` berarti Bersama; shared source dapat dialokasikan untuk Administrator atau Member. Setiap Alokasi Dana canonical wajib memiliki satu `source_account_id`. Rekening personal hanya dapat menjadi sumber jatah untuk pemilik rekening tersebut. Member hanya dapat memakai/memindahkan Jatah Bersama atau jatahnya sendiri, dan transaksi yang memakai Alokasi Dana wajib memakai rekening sumber yang sama. Nama internal `envelope`/route `/perencanaan/kantong` dipertahankan hanya untuk compatibility.
 
 ### `REQ-PROD-03` Kategori kebutuhan — Partial
 
@@ -53,15 +53,15 @@ Kategori memiliki jenis transaksi dan `nature` untuk fixed, variable, unexpected
 
 **Gap:** parent/subcategory dan taxonomy bertingkat menunggu RFC-0014.
 
-### `REQ-PROD-04` Kantong dan alokasi — Implemented
+### `REQ-PROD-04` Alokasi Dana — Implemented
 
-Pemasukan dapat dikendalikan melalui kantong daily, weekly, biweekly, monthly, paycycle, atau custom; shared/personal; rollover; overspend policy; realokasi; sisa alokasi; dan dana belum dialokasikan. Dana tersedia dapat ditambahkan ke Kantong existing atau dilepas kembali tanpa membuat transaksi ledger. Alokasi bersifat account-bound: membuat/menambah Kantong tidak mengubah saldo ledger, tetapi mengurangi `available_balance`; pemakaian Kantong mengurangi saldo fisik dan sisa alokasi bersama-sama; realokasi antar rekening wajib memakai transaksi Transfer.
+Pemasukan dapat dibagi melalui Alokasi Dana daily, weekly, biweekly, monthly, paycycle, atau custom; shared/personal; rollover; overspend policy; realokasi; sisa alokasi; dan dana belum dialokasikan. Dana tersedia dapat ditambahkan ke Alokasi Dana existing atau dilepas kembali tanpa membuat transaksi ledger. Dashboard serta success flow pemasukan dapat membuka funding flow dengan rekening sumber dan nominal sebagai prefill saja; user tetap memilih Alokasi Dana dan mengonfirmasi alokasi. Alokasi bersifat account-bound: membuat/menambah Alokasi Dana tidak mengubah saldo ledger, tetapi mengurangi `available_balance`; pemakaian Alokasi Dana mengurangi saldo fisik dan sisa alokasi bersama-sama; realokasi antar rekening wajib memakai transaksi Transfer. Sisa dana yang dilepas dari Alokasi Dana dapat diteruskan ke flow setoran Target dengan konteks rekening asal tanpa auto-submit.
 
-### `REQ-PROD-05` Batas pengeluaran dalam Kantong — Partial
+### `REQ-PROD-05` Kebutuhan dalam Alokasi Dana — Partial
 
-Kantong mendukung periodisasi harian sampai custom. Batas pengeluaran kategori bulanan dikelola dari detail Kantong Dana dan memakai relasi existing `budgets.envelope_rule_id`. Pemakaian batas hanya menghitung transaksi aktif pada kategori, ownership, periode, dan Kantong yang sama. Dashboard, laporan, dan push tetap memberi peringatan actionable ketika batas terlampaui.
+Alokasi Dana mendukung periodisasi harian sampai custom. Kebutuhan kategori dikelola dari detail Alokasi Dana dan memakai record budget serta relasi existing `budgets.envelope_rule_id`. Kategori tetap master data bersama dan kategori yang sama boleh dipakai pada lebih dari satu Alokasi Dana; identitas Kebutuhan periode karena itu mencakup kategori, ownership, dan Alokasi Dana. Pemakaian anggaran Kebutuhan hanya menghitung transaksi aktif pada kategori, ownership, periode, dan Alokasi Dana yang sama. Halaman Anggaran menjadi overview read-only lintas Kebutuhan. Dashboard, laporan, dan push tetap memberi peringatan actionable ketika anggaran terlampaui.
 
-**Batas saat ini:** batas kategori bukan rule multi-periode; level 90/100 diturunkan saat runtime tanpa kolom baru. Data budget legacy yang belum memiliki `envelope_rule_id` tetap dapat dibaca dan dapat dihubungkan ke Kantong tanpa migration.
+**Batas saat ini:** batas kategori bukan rule multi-periode; level 90/100 diturunkan saat runtime tanpa kolom baru. Data budget legacy yang belum memiliki `envelope_rule_id` tetap dapat dibaca dan dapat dihubungkan ke Alokasi Dana tanpa migration.
 
 ### `REQ-PROD-06` Target tabungan — Partial
 
@@ -83,7 +83,7 @@ Google Calendar mirror menampilkan recurring shared dan tidak menjadi source sta
 
 ### `REQ-PROD-09` Dashboard pasangan — Implemented
 
-Menampilkan total saldo, saldo aman, dana terlindungi, dana tersedia yang belum dibagi, pengeluaran yang belum memiliki Kantong, cash flow, tagihan, target, transaksi terbaru, dan peringatan budget/kantong/tagihan/target/rekonsiliasi. Dana tersedia dan pengeluaran tanpa Kantong adalah metrik terpisah dan memiliki CTA berbeda.
+Menampilkan total saldo, saldo aman, dana terlindungi, dana tersedia yang belum dibagi, pengeluaran yang belum memiliki Alokasi Dana, cash flow, tagihan, target, transaksi terbaru, dan peringatan Kebutuhan/Alokasi Dana/Jadwal Rutin/Target/rekonsiliasi. Dana tersedia dan pengeluaran tanpa Alokasi Dana adalah metrik terpisah dan memiliki CTA berbeda.
 
 ### `REQ-PROD-10` Kontribusi dan pembagian pasangan — Partial
 
@@ -93,9 +93,9 @@ MVP menyediakan **pembagian beban biaya** untuk expense shared dengan mode `unsp
 
 ### `REQ-PROD-11` Pencatatan cepat dan transaksi belum jelas — Partial
 
-Quick entry, pencarian, deteksi duplikat, dan transaksi belum dialokasikan tersedia. Dashboard/push mengingatkan transaksi expense tanpa kantong.
+Quick entry, pencarian, deteksi duplikat, transaksi belum dialokasikan, review queue transaksi tanpa Alokasi Dana, dan aksi **Pakai lagi** tersedia. `Pakai lagi` hanya melakukan prefill field transaksi yang aman, memakai tanggal hari ini, tidak membawa ID/row-version/idempotency lama, dan tetap memerlukan konfirmasi Simpan sehingga duplicate guard canonical tetap berlaku. Dashboard/push mengingatkan transaksi expense tanpa Alokasi Dana.
 
-**Gap:** draft sementara, kategori “belum dikategorikan”, clone/template, dan reminder kelengkapan menunggu RFC-0011.
+**Gap:** draft sementara, kategori “belum dikategorikan”, template transaksi tersimpan, dan reminder kelengkapan menunggu RFC-0011.
 
 ### `REQ-PROD-12` Utang dan piutang — Planned
 
@@ -109,7 +109,7 @@ Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan, total saldo lin
 
 ### `REQ-PROD-14` Rekonsiliasi saldo — Implemented
 
-Menyimpan saldo sistem, saldo aktual, selisih, status, catatan, dan actor. Dashboard memberi peringatan selisih atau rekonsiliasi lebih dari 30 hari.
+Menyimpan saldo sistem, saldo aktual, selisih, status, catatan, dan actor. Dashboard memberi peringatan selisih atau rekonsiliasi lebih dari 30 hari. Jika hasil pencocokan masih berbeda, UI menawarkan pemeriksaan transaksi rekening terkait tanpa membuat adjustment otomatis.
 
 ### `REQ-PROD-15` Hak akses dan privasi — Partial
 
@@ -119,18 +119,20 @@ Administrator/Member, shared/personal, ownership query, dan backend authorizatio
 
 ### `REQ-PROD-16` Notifikasi berguna — Partial
 
-Queue idempotent dan Web Push mendukung recurring due, budget threshold, kantong threshold, target tertinggal, transaksi belum dialokasikan, **peringatan dana recurring expense kurang pada H-2**, dan konfirmasi occurrence recurring yang berhasil dicatat. Saldo untuk shortage dihitung dari ledger Turso melalui read-model canonical. Queue normal dibuat server dari objek yang sudah lolos guard, tetapi transport Web Push memakai privacy-safe lock-screen payload: hanya tipe/id/target yang dikirim dan Service Worker menampilkan copy generik tanpa nominal, rekening, merchant, atau nama objek finansial. Setiap user dapat mengaktifkan/mematikan tujuh tipe alert otomatis canonical secara account-level. Pengingat manual one-shot tambahan tersedia pada occurrence Jadwal Rutin, Anggaran periode aktif, Kantong/Alokasi aktif, dan Target aktif, disimpan per user dengan row version, audit, serta dedupe scheduler. Push hanya aktif bila VAPID lengkap.
+Queue idempotent dan Web Push mendukung recurring due, Kebutuhan threshold, Alokasi Dana threshold, target tertinggal, transaksi belum dialokasikan, **peringatan dana recurring expense kurang pada H-2**, dan konfirmasi occurrence recurring yang berhasil dicatat. Saldo untuk shortage dihitung dari ledger Turso melalui read-model canonical. Queue normal dibuat server dari objek yang sudah lolos guard, tetapi transport Web Push memakai privacy-safe lock-screen payload: hanya tipe/id/target yang dikirim dan Service Worker menampilkan copy generik tanpa nominal, rekening, merchant, atau nama objek finansial. Setiap user dapat mengaktifkan/mematikan tujuh tipe alert otomatis canonical secara account-level. Pengingat manual one-shot tambahan tersedia pada occurrence Jadwal Rutin, Kebutuhan periode aktif, Alokasi Dana aktif, dan Target aktif, disimpan per user dengan row version, audit, serta dedupe scheduler. Push hanya aktif bila VAPID lengkap.
 
 **Gap:** transaksi besar configurable, saldo rendah umum configurable, perubahan pasangan, cadence rekonsiliasi configurable, dan verifikasi real Android/iOS masih belum tersedia.
 
 ### `REQ-PROD-17` Keamanan dan anti-kesalahan — Implemented
 
-Google login, signed session, allowlist, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation sekarang memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown. Selama hasil mutation biasa belum definitif, payload berbeda untuk action yang sama diblok di private-memory agar edit user tidak diam-diam menjadi mutation kedua; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Kantong memiliki archive/restore rule dan reverse movement tanpa hard delete.
+Google login, signed session, allowlist, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation sekarang memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown. Selama hasil mutation biasa belum definitif, payload berbeda untuk action yang sama diblok di private-memory agar edit user tidak diam-diam menjadi mutation kedua; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Alokasi Dana memiliki archive/restore rule dan reverse movement tanpa hard delete.
 
 **Operasional yang belum terbukti:** full quality gate Node 24 pada patch terbaru, migration parity production, real-resource restore drill, external alerting, dan rotasi secret yang pernah ikut ZIP manual.
 
 ## Alur produk
 
-**Uang masuk → dibagi ke kantong → digunakan lewat ledger → dibandingkan dengan budget → sisa diarahkan ke target → saldo direkonsiliasi.**
+**Setup usable → uang masuk → opsional dibagi ke Alokasi Dana → digunakan lewat ledger → transaksi tanpa Alokasi Dana direview sampai selesai → dibandingkan dengan Kebutuhan/anggaran → sisa Alokasi Dana dapat diarahkan ke Target → saldo direkonsiliasi → blocker period close diselesaikan sebelum penutupan.**
+
+Continuation UI hanya memberi prefill atau navigasi. Tidak ada workflow baru yang boleh auto-submit mutation finansial, membuat adjustment rekonsiliasi, atau mengubah blocker period-close di luar contract backend canonical. Restore master tetap terpusat di **Pengaturan → Pemulihan data**; feedback global tidak menjadi generic undo/rollback.
 
 Fitur planned tidak boleh memengaruhi saldo sampai model, migration, authorization, audit, backup/restore, dan test disetujui melalui RFC.

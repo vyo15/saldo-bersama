@@ -5,7 +5,7 @@ const AllocationsPage = lazy(() => import("../allocations/AllocationsPage.jsx"))
 const RecurringPage = lazy(() => import("../recurring/RecurringPage.jsx"));
 import styles from "./PlanningPage.module.css";
 
-const tabFromPath = (pathname) => pathname.includes("/jadwal") ? "jadwal" : "kantong";
+const tabFromPath = (pathname) => pathname.includes("/jadwal") ? "jadwal" : "allocation";
 
 const PlanningPage = () => {
   const location = useLocation();
@@ -17,18 +17,22 @@ const PlanningPage = () => {
   };
 
   return <div className={`page-stack ${styles.page}`}>
-    <PageHeader title="Perencanaan" description="Atur Kantong Dana dan transaksi rutin dalam satu tempat." help="Kantong Dana menyiapkan sumber penggunaan uang. Batas pengeluaran berada di dalam Kantong. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Saldo hanya berubah setelah transaksi aktual disimpan." />
+    <PageHeader
+      title="Perencanaan"
+      description="Atur Alokasi Dana dan transaksi rutin dalam satu tempat."
+      help="Alokasi Dana memisahkan dana berdasarkan tujuan. Kebutuhan di dalamnya memakai kategori untuk mengatur anggaran. Halaman Anggaran hanya merangkum seluruh Kebutuhan. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Saldo hanya berubah setelah transaksi aktual disimpan."
+    />
     <div className={styles.tabs} role="tablist" aria-label="Perencanaan keuangan">
-      <button type="button" role="tab" aria-selected={activeTab === "kantong"} className={`${styles.tab}${activeTab === "kantong" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("kantong")}>
-        <strong>Kantong Dana</strong><span>Dana dan batas pengeluaran</span>
+      <button type="button" role="tab" aria-selected={activeTab === "allocation"} className={`${styles.tab}${activeTab === "allocation" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("allocation")}>
+        <strong>Alokasi Dana</strong><span>Dana berdasarkan tujuan dan kebutuhan</span>
       </button>
       <button type="button" role="tab" aria-selected={activeTab === "jadwal"} className={`${styles.tab}${activeTab === "jadwal" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("jadwal")}>
         <strong>Jadwal Rutin</strong><span>Transaksi berulang dan konfirmasi aktual</span>
       </button>
     </div>
-    <section role="tabpanel" aria-label={activeTab === "kantong" ? "Kantong Dana" : "Jadwal Rutin"}>
+    <section role="tabpanel" aria-label={activeTab === "allocation" ? "Alokasi Dana" : "Jadwal Rutin"}>
       <Suspense fallback={<div className="notice notice--info" role="status">Memuat perencanaan...</div>}>
-        {activeTab === "kantong" ? <AllocationsPage embedded onOpenRecurring={() => selectTab("jadwal")} /> : <RecurringPage embedded />}
+        {activeTab === "allocation" ? <AllocationsPage embedded onOpenRecurring={() => selectTab("jadwal")} /> : <RecurringPage embedded />}
       </Suspense>
     </section>
   </div>;

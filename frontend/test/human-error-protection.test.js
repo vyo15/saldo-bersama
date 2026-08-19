@@ -59,7 +59,7 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
   assert.match(categories, /dependencies\.transactions/);
   assert.match(categories, /dependencies\.recurring/);
   assert.match(categories, /dependencies\.budgets/);
-  assert.match(categories, /aria-label=\{`Hapus atau arsipkan kategori \$\{category\.name\}`\}/);
+  assert.match(categories, /aria-label=\{`Kelola data kategori \$\{category\.name\}`\}/);
   assert.match(categories, /reasonLabel=\{archiveTarget\?\.preview\.canDeleteUnused \? "Alasan penghapusan" : "Alasan pengarsipan"\}/);
   assert.match(categories, /"archive\.list"/);
   assert.match(transactionApi, /transactions\.restore/);
@@ -341,7 +341,7 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(recurring, /setKind\(item\.kind === "income"/);
   assert.doesNotMatch(recurring, /const SchedulePanel/);
   assert.match(recurring, /Edit jadwal/);
-  assert.match(recurring, /Arsipkan \/ hapus/);
+  assert.match(recurring, /Kelola data/);
   assert.match(recurring, /id: "attention"/);
   assert.match(recurring, /Perlu perhatian/);
   assert.match(recurring, /Lihat tindakan/);
@@ -424,9 +424,9 @@ test("aksi lifecycle rekening memakai label jujur sebelum server menentukan hapu
     read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
     read("src/features/accounts/components/AccountFinancialCard.jsx"),
   ]);
-  assert.match(desktop, />Hapus \/ Arsipkan<\/Button>/);
-  assert.equal((card.match(/Hapus \/ Arsipkan/g) || []).length, 1);
-  assert.equal((`${desktop}\n${card}`.match(/Hapus \/ Arsipkan/g) || []).length, 2);
+  assert.match(desktop, />Kelola data<\/Button>/);
+  assert.equal((card.match(/Kelola data/g) || []).length, 1);
+  assert.equal((`${desktop}\n${card}`.match(/Kelola data/g) || []).length, 2);
   assert.doesNotMatch(`${desktop}\n${card}`, />Arsipkan<\/(?:Button|button)>/);
 });
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { FiCheckCircle, FiChevronRight, FiCreditCard, FiDatabase, FiInfo, FiRefreshCw, FiShield } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
@@ -11,7 +12,7 @@ import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
-import { formatDateTimeJakarta } from "../../domain/dates.js";
+import { currentMonthInJakarta, formatDateTimeJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
@@ -214,6 +215,7 @@ const useReconciliationData = () => {
 
 const ReconciliationsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
+  const navigate = useNavigate();
   const attentionHandled = useRef(false);
   const { refreshAll, invalidate } = useFinance();
   const data = useReconciliationData();
@@ -247,7 +249,7 @@ const ReconciliationsPage = () => {
       const matched = difference === 0;
       if (!matched) {
         const differenceLabel = `Rp ${Math.abs(difference).toLocaleString("id-ID")}`;
-        setMessage({ type: "warning", text: `Pencocokan tersimpan dengan selisih ${differenceLabel}. Periksa transaksi tertinggal sebelum membuat penyesuaian.` });
+        setMessage({ type: "warning", text: `Pencocokan tersimpan dengan selisih ${differenceLabel}. Periksa transaksi tertinggal sebelum membuat penyesuaian.`, accountId: selectedAccount.account_id });
       }
       setForm((current) => ({ ...current, actual_balance: "", notes: "" }));
       setSubmitState({ status: "syncing", error: null });
@@ -271,7 +273,7 @@ const ReconciliationsPage = () => {
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
   if (data.historyResource.status === "error") return <ErrorState error={data.historyResource.error} onRetry={data.historyResource.reload} />;
   const attentionFromDashboard = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
-  return <div className={`page-stack ${styles.page}`}><RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} /><RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} /><PageHeader title="Cocokkan Saldo" help="Bandingkan saldo aplikasi dengan saldo aktual dari bank atau uang tunai. Pencocokan hanya mencatat selisih dan tidak mengubah saldo otomatis." />{attentionFromDashboard ? <CompactNotice tone="info" title="Masukkan saldo sebenarnya saat ini." role="status">{selectedAccount?.account_id === attentionAccountId ? `${accountDisplayLabel(selectedAccount)} sudah dipilih otomatis. ` : ""}Cocokkan dengan bank atau uang tunai. Sistem hanya membandingkan, tidak mengubah saldo otomatis.</CompactNotice> : null}{message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}<ReconciliationInputPanel accounts={data.reconcilableAccounts} selectedAccount={selectedAccount} form={form} setForm={setForm} submitState={submitState} setSubmitState={setSubmitState} onSubmit={submitReconciliation} preview={preview} onRefreshAccounts={data.accountsResource.reload} accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submitState.status)} /><ReconciliationHistory accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} /><ReconciliationResultOverlay result={resultOverlay} onClose={() => setResultOverlay(null)} /></div>;
+  return <div className={`page-stack ${styles.page}`}><RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} /><RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} /><PageHeader title="Cocokkan Saldo" help="Bandingkan saldo aplikasi dengan saldo aktual dari bank atau uang tunai. Pencocokan hanya mencatat selisih dan tidak mengubah saldo otomatis." />{attentionFromDashboard ? <CompactNotice tone="info" title="Masukkan saldo sebenarnya saat ini." role="status">{selectedAccount?.account_id === attentionAccountId ? `${accountDisplayLabel(selectedAccount)} sudah dipilih otomatis. ` : ""}Cocokkan dengan bank atau uang tunai. Sistem hanya membandingkan, tidak mengubah saldo otomatis.</CompactNotice> : null}{message ? <div className={`notice notice--${message.type}`} role="status"><span>{message.text}</span>{message.accountId ? <div className="form-actions"><Button type="button" onClick={() => navigate("/transaksi", { state: { accountId: message.accountId, period: currentMonthInJakarta() } })}>Lihat transaksi rekening</Button></div> : null}</div> : null}<ReconciliationInputPanel accounts={data.reconcilableAccounts} selectedAccount={selectedAccount} form={form} setForm={setForm} submitState={submitState} setSubmitState={setSubmitState} onSubmit={submitReconciliation} preview={preview} onRefreshAccounts={data.accountsResource.reload} accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submitState.status)} /><ReconciliationHistory accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} /><ReconciliationResultOverlay result={resultOverlay} onClose={() => setResultOverlay(null)} /></div>;
 };
 
 export default ReconciliationsPage;

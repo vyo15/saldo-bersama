@@ -33,6 +33,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Loading, empty, error, offline/unauthorized/conflict state relevan tersedia.
 - [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa.
 - [ ] Mobile dan desktop tidak drift pada business rule yang sama.
+- [ ] Workflow continuation hanya memberi navigasi/prefill; tidak ada auto-submit finansial, duplicate recovery entry point, atau blocker UI yang melampaui contract backend.
 - [ ] Device/viewport journey relevan mengikuti skenario manual `TEST_PLAN.md` bila perubahan menyentuh UI/responsive.
 
 ## 5. Dokumentasi

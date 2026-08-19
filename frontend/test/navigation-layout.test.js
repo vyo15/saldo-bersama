@@ -41,7 +41,7 @@ test("dock dirender sebagai sibling shell agar fixed tetap mengikuti viewport", 
 test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti viewport", async () => {
   const source = await read("src/layouts/AppShell.jsx");
   const shellIndex = source.indexOf('<div className={`app-shell');
-  const shellEndIndex = source.indexOf("\n      </div>\n\n      {transactionQuickAddVisible");
+  const shellEndIndex = source.indexOf("\n      </div>\n\n      {desktopTransactionQuickAddVisible");
   const mobileNavigationIndex = source.indexOf("<MobileNavigation ");
 
   assert.ok(shellIndex >= 0, "shell aplikasi harus dirender");
@@ -49,23 +49,26 @@ test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti 
   assert.ok(mobileNavigationIndex > shellEndIndex, "navigasi mobile harus menjadi sibling shell, bukan child dari backdrop-filter");
 });
 
-test("quick add transaksi mengikuti route dan tidak bersaing dengan aksi create lokal Administrator", async () => {
+test("quick add transaksi mobile selalu tersedia sementara aksi floating desktop tetap menghormati create lokal Administrator", async () => {
   const [shell, mobileNavigation, responsiveCss] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
     read("src/components/navigation/MobileNavigation.jsx"),
     read("src/styles/responsive.css"),
   ]);
-  assert.match(shell, /OWNER_LOCAL_CREATE_ROUTES = new Set/);
+  assert.match(shell, /DESKTOP_LOCAL_CREATE_ROUTES = new Set/);
   for (const route of ["/rekening", "/perencanaan", "/target", "/kategori"]) assert.match(shell, new RegExp(`"${route}"`));
   assert.match(shell, /normalizedPath\.startsWith\("\/perencanaan\/"\)/);
   assert.match(shell, /normalizedPath === "\/404"/);
   assert.match(shell, /normalizedPath === "\/anggota"/);
   assert.match(shell, /normalizedPath === "\/pengaturan" \|\| normalizedPath\.startsWith\("\/pengaturan\/"\)/);
-  assert.match(shell, /role === "owner" && \(OWNER_LOCAL_CREATE_ROUTES\.has\(normalizedPath\) \|\| normalizedPath\.startsWith\("\/perencanaan\/"\)\)/);
-  assert.match(shell, /quickAddVisible=\{transactionQuickAddVisible\}/);
-  assert.match(mobileNavigation, /quickAddVisible = true/);
-  assert.match(mobileNavigation, /mobile-navigation--without-add/);
-  assert.match(responsiveCss, /\.mobile-navigation--without-add \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/);
+  assert.match(shell, /role === "owner" && \(DESKTOP_LOCAL_CREATE_ROUTES\.has\(normalizedPath\) \|\| normalizedPath\.startsWith\("\/perencanaan\/"\)\)/);
+  assert.match(shell, /desktopTransactionQuickAddVisible/);
+  assert.match(shell, /<MobileNavigation[\s\S]*quickAddDisabled=\{offline\}/);
+  assert.match(mobileNavigation, /className="mobile-navigation__add"/);
+  assert.match(mobileNavigation, /aria-label="Tambah transaksi"/);
+  assert.match(mobileNavigation, /title="Tambah transaksi"/);
+  assert.doesNotMatch(mobileNavigation, /quickAddVisible|mobile-navigation--without-add/);
+  assert.doesNotMatch(responsiveCss, /mobile-navigation--without-add/);
 });
 
 test("navigasi mobile memakai safe area dan menyisakan ruang scroll untuk konten terakhir", async () => {
@@ -120,7 +123,10 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(responsiveCss, /\.app-shell--accounts \.app-content \{ padding-top:\s*0; color:\s*var\(--on-hero\); \}/);
   assert.match(accountCss, /background:\s*var\(--accounts-mobile-background, var\(--accounts-mobile-surface\)\);/);
   assert.match(componentCss, /\.loading-screen--page, \.fatal-error \{ min-height:\s*100vh; min-height:\s*100dvh; \}/);
-  assert.match(responsiveCss, /\.app-content > \.loading-screen--page,[\s\S]*min-height:\s*calc\(100dvh - 56px/);
+  assert.match(componentCss, /\.loading-screen--content \{[^}]*min-height:\s*clamp\(12rem, 42dvh, 24rem\);/);
+  assert.match(componentCss, /\.app-content \.loading-screen--page \.brand-lockup \{ display:\s*none; \}/);
+  assert.match(responsiveCss, /\.app-content > \.loading-screen--page,\s*\n\s*\.app-content > \.loading-screen--content \{[^}]*min-height:\s*min\(54dvh, 28rem\);/s);
+  assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page \{[^}]*min-height:\s*calc\(100dvh - 56px/);
   assert.match(accountDetailCss, /max-height:\s*calc\(100vh[^;]+;\s*\n\s*max-height:\s*calc\(100dvh/);
   assert.match(loginCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);
 });
@@ -210,7 +216,7 @@ test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoin
   assert.match(mobileNavigation, /mobile-navigation__more\$\{moreActive \? " active"/);
 });
 
-test("navigasi mengelompokkan Perencanaan sebagai satu menu dengan route legacy ditangani router", async () => {
+test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kembali route legacy", async () => {
   const source = await read("src/config/navigation.js");
   assert.match(source, /FiList/);
   assert.match(source, /FiPieChart/);
@@ -222,8 +228,9 @@ test("navigasi mengelompokkan Perencanaan sebagai satu menu dengan route legacy 
   assert.match(source, /to: "\/anggota", label: "Anggota"[\s\S]*ownerOnly: true/);
   assert.match(source, /label: "Perencanaan"/);
   assert.match(source, /to: "\/perencanaan", label: "Perencanaan"/);
-  assert.doesNotMatch(source, /to: "\/(?:anggaran|alokasi|tagihan)"/);
-  assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target"\)/);
+  assert.match(source, /to: "\/anggaran", label: "Anggaran"/);
+  assert.doesNotMatch(source, /to: "\/(?:alokasi|tagihan)"/);
+  assert.match(source, /items: pickNavigation\("\/perencanaan", "\/anggaran", "\/target"\)/);
   assert.match(source, /label: "Data keuangan"/);
   assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
   assert.match(source, /label: "Kontrol saldo"/);

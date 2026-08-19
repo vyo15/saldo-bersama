@@ -9,7 +9,7 @@
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Untuk schema v11, backup teknis pra-migration terverifikasi tersedia; `009_transaction_cost_sharing.sql` diterapkan eksplisit dan `npm run db:integrity` lulus sebelum traffic normal.
 - [ ] Shared planning diuji dengan Administrator dan Member: Member hanya dapat mengelola scope Bersama; personal, lifecycle destruktif, dan recovery tetap ditolak.
-- [ ] Alokasi existing diuji add/release tanpa perubahan saldo ledger; dashboard memisahkan dana tersedia dari pengeluaran tanpa Kantong.
+- [ ] Alokasi existing diuji add/release tanpa perubahan saldo ledger; dashboard memisahkan dana tersedia dari pengeluaran tanpa Alokasi Dana.
 - [ ] Cost sharing expense shared diuji `unspecified`/50:50/persentase dan report menyebut pembagian beban, bukan kontribusi aktual.
 - [ ] Backup/rollback tersedia bila data terdampak.
 - [ ] Environment change tervalidasi tanpa menampilkan secret.

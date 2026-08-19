@@ -31,7 +31,7 @@ const BUSINESS_SUMMARY_LABELS = Object.freeze([
   ["reconciliations", "Pencocokan saldo"],
   ["goals", "Target"],
   ["goalMovements", "Mutasi target"],
-  ["budgets", "Batas Pengeluaran"],
+  ["budgets", "Kebutuhan"],
   ["allocationRules", "Aturan alokasi"],
   ["allocationPeriods", "Periode alokasi"],
   ["allocationMovements", "Mutasi alokasi"],

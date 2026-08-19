@@ -35,7 +35,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `notification_queue`
 - `notification_deliveries`
 - `notification_preferences` — preference tujuh tipe alert otomatis canonical per pengguna; row yang belum ada berarti aktif secara default.
-- `manual_reminders` — pengingat one-shot milik pengguna yang terikat ke jadwal rutin, anggaran, periode kantong, atau target.
+- `manual_reminders` — pengingat one-shot milik pengguna yang terikat ke Jadwal Rutin, Kebutuhan, periode Alokasi Dana, atau Target.
 - `push_subscriptions`
 - `backup_runs`
 - `import_previews`

@@ -21,17 +21,17 @@ import UpdateAvailableNotice from "../components/pwa/UpdateAvailableNotice.jsx";
 import "../styles/app.css";
 import "../styles/responsive.css";
 
-const OWNER_LOCAL_CREATE_ROUTES = new Set([
+const DESKTOP_LOCAL_CREATE_ROUTES = new Set([
   "/rekening",
   "/perencanaan",
   "/target",
   "/kategori",
 ]);
 
-const transactionQuickAddAllowed = (pathname, role) => {
+const desktopTransactionQuickAddAllowed = (pathname, role) => {
   const normalizedPath = pathname === "/" ? "/" : `/${String(pathname || "").replace(/^\/+|\/+$/g, "")}`;
   if (normalizedPath === "/404" || normalizedPath === "/anggota" || normalizedPath === "/pengaturan" || normalizedPath.startsWith("/pengaturan/")) return false;
-  if (role === "owner" && (OWNER_LOCAL_CREATE_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/perencanaan/"))) return false;
+  if (role === "owner" && (DESKTOP_LOCAL_CREATE_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/perencanaan/"))) return false;
   return true;
 };
 
@@ -48,7 +48,7 @@ const AppShell = () => {
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
   const wideContentRoute = dashboardRoute || location.pathname === "/laporan";
-  const transactionQuickAddVisible = transactionQuickAddAllowed(location.pathname, user?.role);
+  const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();
@@ -103,8 +103,8 @@ const AppShell = () => {
         </div>
       </div>
 
-      {transactionQuickAddVisible && !dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
-      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} quickAddVisible={transactionQuickAddVisible} />
+      {desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
+      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
 
       <Modal
         key={`mobile-more-${location.pathname}`}

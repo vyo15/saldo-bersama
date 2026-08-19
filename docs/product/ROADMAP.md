@@ -5,10 +5,10 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 ## Completed / active source
 
 - Ledger rekening, transaksi, transfer netral, soft cancel, audit, idempotency, dan conflict.
-- Kantong lintas periode termasuk add/release dana tersedia ke Kantong existing, recurring/tagihan, target, budget, rekonsiliasi, laporan bulanan.
+- Alokasi Dana lintas periode termasuk add/release dana tersedia ke Alokasi Dana existing, Jadwal Rutin, Target, Kebutuhan, rekonsiliasi, dan laporan bulanan.
 - Filter transaksi berdasarkan rekening, kategori, dan pencatat.
 - Tren 3/6/12 bulan, breakdown rekening/nature/pencatat/pembagian beban biaya, target projection, dashboard alerts.
-- Push actionable untuk recurring, budget, kantong, target, dan transaksi belum dialokasikan.
+- Push actionable untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, Target, dan transaksi belum dialokasikan.
 - Pengingat manual one-shot actor-scoped untuk Jadwal Rutin, Anggaran, Alokasi, dan Target melalui scheduler/Web Push existing (RFC-0017).
 - Partner planning shared untuk Member dengan guard backend RFC-0016; destructive lifecycle tetap Administrator-only.
 - Pembagian beban biaya expense shared `equal`/`percentage` melalui schema v11 sebagai MVP RFC-0013; payer/beneficiary/kontribusi aktual tetap deferred.
@@ -30,7 +30,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - RFC-0014: kategori bertingkat dan tahapan target.
 - RFC-0015: privasi rekening granular dengan backend projection.
 - RFC-0018: registry session per perangkat dan revoke/logout-all server-side tanpa raw token storage.
-- Follow-up RFC-0013: payer/beneficiary/actual contribution serta relasi refund ke expense asli sebelum refund boleh mengembalikan Kantong/budget/cost split.
+- Follow-up RFC-0013: payer/beneficiary/actual contribution serta relasi refund ke expense asli sebelum refund boleh mengembalikan Alokasi Dana/Kebutuhan/cost split.
 
 ## Later — maturity
 

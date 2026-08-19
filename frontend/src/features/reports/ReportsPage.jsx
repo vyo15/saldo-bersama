@@ -76,7 +76,7 @@ const BreakdownPanels = ({ categoryExpenses, accountExpenses, natureExpenses, cr
   <Card className="panel"><div className="panel__header"><div><h2>Pembagian beban biaya</h2><p className="panel__description">Hanya transaksi Bersama yang pembagiannya ditentukan. Ini bukan laporan siapa yang benar-benar membayar.</p></div></div>{costShareExpenses.length ? <BarChart data={costShareExpenses} label="Pembagian beban biaya bersama" /> : <EmptyState title="Belum ada pembagian beban" />}</Card>
 </>;
 
-const BudgetDesktopTable = ({ budgets }) => <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Batas pengeluaran</th><th className="align-right">Rencana</th><th className="align-right">Aktual</th><th className="align-right">Sisa</th></tr></thead><tbody>{budgets.map((item) => <tr key={item.budget_id}><td>{item.name || item.category_id}</td><td className="align-right"><Money value={item.amount} /></td><td className="align-right"><Money value={item.used_amount} /></td><td className="align-right"><Money value={item.amount - item.used_amount} tone={item.amount - item.used_amount < 0 ? "negative" : "default"} /></td></tr>)}</tbody></table></div>;
+const BudgetDesktopTable = ({ budgets }) => <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Kebutuhan</th><th className="align-right">Rencana</th><th className="align-right">Aktual</th><th className="align-right">Sisa</th></tr></thead><tbody>{budgets.map((item) => <tr key={item.budget_id}><td>{item.name || item.category_id}</td><td className="align-right"><Money value={item.amount} /></td><td className="align-right"><Money value={item.used_amount} /></td><td className="align-right"><Money value={item.amount - item.used_amount} tone={item.amount - item.used_amount < 0 ? "negative" : "default"} /></td></tr>)}</tbody></table></div>;
 
 const BudgetMobileList = ({ budgets }) => <div className="mobile-data-list budget-mobile-list" aria-label="Kinerja anggaran">{budgets.map((item) => {
   const remaining = Number(item.amount || 0) - Number(item.used_amount || 0);
@@ -85,8 +85,8 @@ const BudgetMobileList = ({ budgets }) => <div className="mobile-data-list budge
 })}</div>;
 
 const BudgetPerformance = ({ budgets }) => <Card className="panel panel--wide budget-performance-panel">
-  <div className="panel__header"><h2>Batas pengeluaran vs aktual</h2><Link className="button button--secondary" to="/perencanaan/kantong">Kelola batas</Link></div>
-  {budgets.length ? <><BudgetDesktopTable budgets={budgets} /><BudgetMobileList budgets={budgets} /></> : <EmptyState title="Belum ada batas pengeluaran" />}
+  <div className="panel__header"><h2>Kebutuhan vs aktual</h2><Link className="button button--secondary" to="/anggaran">Lihat anggaran</Link></div>
+  {budgets.length ? <><BudgetDesktopTable budgets={budgets} /><BudgetMobileList budgets={budgets} /></> : <EmptyState title="Belum ada kebutuhan" />}
 </Card>;
 
 const shiftMonth = (period, delta) => {
@@ -152,7 +152,7 @@ const MobileCategoryList = ({ items = [], categoryLookup, limit }) => {
 };
 
 const MobileBudgetList = ({ budgets = [] }) => {
-  if (!budgets.length) return <EmptyState variant="inline" title="Belum ada batas pengeluaran" description="Batas aktif akan dibandingkan dengan realisasi pengeluaran di sini." />;
+  if (!budgets.length) return <EmptyState variant="inline" title="Belum ada kebutuhan" description="Batas aktif akan dibandingkan dengan realisasi pengeluaran di sini." />;
   return <div className={styles.budgetList}>{budgets.map((item) => {
     const planned = Number(item.amount || 0);
     const used = Number(item.used_amount || 0);
@@ -289,7 +289,7 @@ const MobileCategoryView = ({ model, categoryLookup }) => <>
     <MobileCategoryList items={model.categoryExpenses} categoryLookup={categoryLookup} />
   </section>
   <section className={styles.contentCard}>
-    <div className={styles.sectionHeading}><div><span>Rencana bulan ini</span><h2>Batas pengeluaran vs aktual</h2></div><Link to="/perencanaan/kantong">Kelola</Link></div>
+    <div className={styles.sectionHeading}><div><span>Rencana bulan ini</span><h2>Kebutuhan vs aktual</h2></div><Link to="/anggaran">Lihat anggaran</Link></div>
     <MobileBudgetList budgets={model.budgets} />
   </section>
   <MobileBreakdownDetails accountExpenses={model.accountExpenses} natureExpenses={model.natureExpenses} creatorExpenses={model.creatorExpenses} costShareExpenses={model.costShareExpenses} />

@@ -103,3 +103,29 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(modal, /closeLabel = "Tutup dialog"/);
 });
 
+
+test("Pakai lagi memakai composer canonical sebagai prefill aman dan tetap menunggu Simpan", async () => {
+  const [form, page, composer] = await Promise.all([
+    source(),
+    readFile(new URL("../src/features/transactions/TransactionsPage.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/TransactionComposerContext.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /Pakai lagi/);
+  assert.match(page, /canRepeatTransaction\(target\)/, "detail mobile tetap menampilkan footer Pakai lagi walau transaksi lama tidak editable");
+  assert.match(page, /initialDraft: repeatDraftFromTransaction\(item\)/);
+  assert.match(composer, /initialDraft/);
+  assert.match(form, /initialTransactionForm/);
+  assert.match(form, /todayInJakarta\(\)/);
+  assert.doesNotMatch(page, /initialDraft:[\s\S]{0,300}(transaction_id|row_version|idempotency_key)/);
+  assert.match(form, /type="submit"/);
+});
+
+test("income sukses menawarkan Alokasi Dana hanya setelah mutation sukses tanpa auto-submit alokasi", async () => {
+  const text = await source();
+  assert.match(text, /setPostSave\(\{ type: "income"/);
+  assert.match(text, /workflowSource: "transaction-income"/);
+  assert.match(text, /workflowAction: "fund"/);
+  assert.match(text, />Bagi ke Alokasi Dana<\/Button>/);
+  assert.match(text, /Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru/);
+  assert.doesNotMatch(text, /envelopes\.adjustAllocation|adjustAllocation\(/, "TransactionForm tidak boleh membuat allocation mutation sendiri");
+});

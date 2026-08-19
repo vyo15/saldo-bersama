@@ -55,7 +55,6 @@
   .app-content--wide { width: 100%; max-width: none; margin-inline: 0; min-height: 0; flex: 1 1 auto; padding: 16px var(--mobile-page-gutter) calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom) + var(--mobile-navigation-content-gap)); }
   .floating-add { display: none; }
   .mobile-navigation { position: fixed; inset-inline: 0; bottom: 0; z-index: 50; width: 100%; height: calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom)); padding: 6px max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; background: var(--navigation-surface); border-top: 1px solid var(--border); box-shadow: 0 -5px 18px color-mix(in srgb, var(--text) 8%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-  .mobile-navigation--without-add { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .mobile-navigation a,
   .mobile-navigation__more { min-width: 0; min-height: 50px; padding-top: 3px; border: 0; background: transparent; display: grid; place-items: center; gap: 3px; color: var(--muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; touch-action: manipulation; }
   .mobile-navigation a.active, .mobile-navigation__more.active, .mobile-navigation__more[aria-expanded="true"] { color: var(--primary); }
@@ -86,15 +85,18 @@
   :root[data-theme="light"] .app-shell--accounts .app-content { color: var(--text); }
   .app-shell--dashboard .app-content > .notice { margin: 14px; }
   .app-content > .loading-screen--page,
+  .app-content > .loading-screen--content {
+    min-height: min(54vh, 28rem);
+    min-height: min(54dvh, 28rem);
+    padding-block: 28px;
+  }
   .app-content > .fatal-error,
   .app-content > .centered-page {
     min-height: calc(100vh - 56px - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
     min-height: calc(100dvh - 56px - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
   }
-  .app-shell--dashboard .app-content > .loading-screen--page,
   .app-shell--dashboard .app-content > .fatal-error,
   .app-shell--dashboard .app-content > .centered-page,
-  .app-shell--accounts .app-content > .loading-screen--page,
   .app-shell--accounts .app-content > .fatal-error,
   .app-shell--accounts .app-content > .centered-page {
     min-height: calc(100vh - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));

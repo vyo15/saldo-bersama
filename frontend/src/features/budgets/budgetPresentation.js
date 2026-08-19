@@ -57,14 +57,17 @@ export const budgetVisualState = (item = {}, periodMeta = {}) => {
   const pacingAhead = Boolean(periodMeta.isCurrent)
     && usedPercent > Number(periodMeta.elapsedPercent || 0) + 8;
 
+  if (usedPercent > 100) {
+    return { key: "danger", label: "Melebihi anggaran", attention: true, usedPercent, warningThreshold, remaining };
+  }
   if (usedPercent >= 100) {
-    return { key: "danger", label: "Melewati batas", attention: true, usedPercent, warningThreshold, remaining };
+    return { key: "danger", label: "Anggaran habis", attention: true, usedPercent, warningThreshold, remaining };
   }
   if (usedPercent >= warningThreshold) {
-    return { key: "warning", label: "Hampir batas", attention: true, usedPercent, warningThreshold, remaining };
+    return { key: "warning", label: "Hampir habis", attention: true, usedPercent, warningThreshold, remaining };
   }
   if (pacingAhead) {
-    return { key: "pace", label: "Lebih cepat", attention: true, usedPercent, warningThreshold, remaining };
+    return { key: "pace", label: "Pemakaian cepat", attention: true, usedPercent, warningThreshold, remaining };
   }
   return { key: "safe", label: "Aman", attention: false, usedPercent, warningThreshold, remaining };
 };

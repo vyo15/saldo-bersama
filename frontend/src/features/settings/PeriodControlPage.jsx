@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { FiCheckCircle, FiLock, FiUnlock } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
@@ -14,7 +15,13 @@ import SettingsNotice from "./SettingsNotice.jsx";
 import { reopenPeriod as requestReopenPeriod, runSettingsAction } from "./settings.api.js";
 import styles from "./Settings.module.css";
 
-const PeriodPanels = ({ resource, form, setForm, previewPeriodClose, runIntegrity, integrityBusy, closeState, setReopenTarget, setReopenState }) => <>
+const PeriodBlockers = ({ preview, onFixTransactions, onRunIntegrity }) => {
+  if (!preview?.issues?.length) return null;
+  return <Card className="panel"><div className="panel__header"><div><h2>Harus diselesaikan</h2><p>Selesaikan blocker berikut sebelum periode dapat ditutup.</p></div><FiLock aria-hidden="true" /></div><div className="compact-list compact-list--stacked">{preview.issues.map((issue, index) => { const code = String(issue?.code || ""); const unallocated = code === "UNALLOCATED_EXPENSE"; const count = Number(issue?.count || issue?.total || 0); return <div key={`${code || "issue"}-${index}`}><span><strong>{unallocated ? `${count || "Ada"} pengeluaran belum masuk Alokasi Dana` : "Integritas data perlu diperiksa"}</strong><small>{unallocated ? "Lengkapi Alokasi Dana pada transaksi periode ini lalu validasi ulang." : "Jalankan pemeriksaan integritas dan selesaikan masalah yang ditemukan."}</small></span><Button type="button" onClick={unallocated ? onFixTransactions : onRunIntegrity}>{unallocated ? "Perbaiki transaksi" : "Periksa integritas"}</Button></div>; })}</div></Card>;
+};
+
+const PeriodPanels = ({ resource, form, setForm, previewPeriodClose, runIntegrity, integrityBusy, closeState, blockedPreview, onFixTransactions, setReopenTarget, setReopenState }) => <>
+  <PeriodBlockers preview={blockedPreview} onFixTransactions={onFixTransactions} onRunIntegrity={runIntegrity} />
   <div className="two-column-grid">
     <Card className="panel"><div className="panel__header"><div><h2>Periksa integritas</h2></div><FiCheckCircle aria-hidden="true" /></div><Button variant="primary" onClick={runIntegrity} loading={integrityBusy} disabled={integrityBusy}>Periksa integritas</Button></Card>
     <Card className="panel"><div className="panel__header"><div><h2>Tutup periode</h2></div><FiLock aria-hidden="true" /></div><form className="form-grid" onSubmit={previewPeriodClose}><label className="field"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={form.period_key} onChange={(event) => setForm((current) => ({ ...current, period_key: event.target.value }))} /></label><label className="field form-grid__full"><span>Catatan penutupan</span><input required maxLength="200" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} /></label><div className="form-grid__full form-actions"><Button variant="primary" type="submit" loading={closeState.status === "submitting"} disabled={closeState.status === "submitting"}>Validasi dan tutup periode</Button></div></form></Card>
@@ -31,6 +38,7 @@ const PeriodModals = ({ closePreview, closeState, setClosePreview, closePeriod, 
 
 const PeriodControlPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const ownerMode = user?.role === "owner";
   const { refreshAll, invalidate } = useFinance();
   const resource = useApiResource("periods.list", {}, { enabled: ownerMode });
@@ -38,6 +46,7 @@ const PeriodControlPage = () => {
   const [result, setResult] = useState(null);
   const [integrityBusy, setIntegrityBusy] = useState(false);
   const [closePreview, setClosePreview] = useState(null);
+  const [blockedPreview, setBlockedPreview] = useState(null);
   const [closeState, setCloseState] = useState({ status: "idle", error: null });
   const [reopenTarget, setReopenTarget] = useState(null);
   const [reopenState, setReopenState] = useState({ status: "idle", error: null });
@@ -63,10 +72,12 @@ const PeriodControlPage = () => {
     try {
       const preview = await runSettingsAction("periods.previewClose", { period_key: form.period_key }, { force: true });
       if (!preview.canClose) {
+        setBlockedPreview(preview);
         setResult({ status: "warning", text: `Periode belum dapat ditutup. Ditemukan ${preview.issues.length} masalah yang harus diselesaikan.` });
         setCloseState({ status: "idle", error: null });
         return;
       }
+      setBlockedPreview(null);
       setClosePreview(preview);
       setResult(null);
       setCloseState({ status: "idle", error: null });
@@ -82,6 +93,7 @@ const PeriodControlPage = () => {
     try {
       await runSettingsAction("periods.close", { ...form, confirmation: confirmationState.confirmation }, {});
       setResult({ status: "success", text: `Periode ${form.period_key} berhasil ditutup setelah validasi ulang.` });
+      setBlockedPreview(null);
       setClosePreview(null);
       setCloseState({ status: "idle", error: null });
       invalidate(invalidationActionsFor("period"));
@@ -111,7 +123,7 @@ const PeriodControlPage = () => {
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
     <div className={styles.pageHeading}><h2 id="period-settings-title">Periode dan integritas</h2></div>
     <SettingsNotice result={result} />
-    <PeriodPanels resource={resource} form={form} setForm={setForm} previewPeriodClose={previewPeriodClose} runIntegrity={runIntegrity} integrityBusy={integrityBusy} closeState={closeState} setReopenTarget={setReopenTarget} setReopenState={setReopenState} />
+    <PeriodPanels resource={resource} form={form} setForm={setForm} previewPeriodClose={previewPeriodClose} runIntegrity={runIntegrity} integrityBusy={integrityBusy} closeState={closeState} blockedPreview={blockedPreview} onFixTransactions={() => navigate("/transaksi", { state: { period: form.period_key, allocation: "unallocated" } })} setReopenTarget={setReopenTarget} setReopenState={setReopenState} />
     <PeriodModals closePreview={closePreview} closeState={closeState} setClosePreview={setClosePreview} closePeriod={closePeriod} reopenTarget={reopenTarget} reopenState={reopenState} setReopenTarget={setReopenTarget} reopenPeriod={reopenPeriod} />
   </section></OwnerSettingsGuard>;
 };

@@ -58,7 +58,7 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 ## Hapus rekening belum dipakai
 
 - Hanya Administrator dapat menjalankan `accounts.deleteUnused` dari detail rekening setelah preview server.
-- Pastikan saldo awal/saat ini Rp0 dan seluruh hitungan transaksi, rekonsiliasi, kantong, tagihan, serta target bernilai nol.
+- Pastikan saldo awal/saat ini Rp0 dan seluruh hitungan transaksi, rekonsiliasi, Alokasi Dana, Jadwal Rutin, serta Target bernilai nol.
 - Isi alasan, centang acknowledgement, dan ketik frasa yang diminta.
 - Bila muncul conflict, jangan retry dengan data lama; refresh lalu tinjau ulang.
 - Hasil hard delete tidak memiliki tombol undo karena row rekening sudah hilang. Audit tetap ada; bila rekening ternyata masih dibutuhkan, buat rekening baru. Jangan restore database hanya untuk rekening kosong yang belum pernah digunakan.
