@@ -93,10 +93,33 @@ const useAllocationAdjustment = ({ adjustTarget, setAdjustTarget, adjustForm, se
   return { submitAdjustment, fundAvailable };
 };
 
-const useAllocationLifecycle = ({ closeTarget, setCloseTarget, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation, notify, onReleased }) => {
+const useAllocationLifecycle = ({ closeTarget, closeReuseNeeds, setCloseTarget, setCloseReuseNeeds, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation, notify, onReleased }) => {
   const closeEnvelope = async () => {
-    if (!closeTarget) return; setCloseState({ status: "submitting", error: null });
-    try { const result = await requestCloseEnvelope({ envelope_period_id: closeTarget.envelope_period_id, row_version: closeTarget.row_version }, { rowVersion: closeTarget.row_version }); const releasedAmount = result?.rollover ? 0 : Math.max(0, Number(closeTarget.remaining_amount || 0)); setCloseTarget(null); setCloseState({ status: "idle", error: null }); const rolloverAmount = Number(result?.rollover?.amount || 0); if (releasedAmount > 0) onReleased?.({ amount: releasedAmount, sourceAccountId: closeTarget.source_account_id || "" }); notify({ message: rolloverAmount > 0 ? `Periode berhasil ditutup. Sisa Rp ${rolloverAmount.toLocaleString("id-ID")} dibawa ke periode berikutnya.` : "Periode Alokasi Dana berhasil ditutup. Sisa dana kembali menjadi dana tersedia." }); await refreshAfterMutation(); } catch (error) { setCloseState({ status: "error", error }); }
+    if (!closeTarget) return;
+    setCloseState({ status: "submitting", error: null });
+    try {
+      const result = await requestCloseEnvelope({
+        envelope_period_id: closeTarget.envelope_period_id,
+        row_version: closeTarget.row_version,
+        reuse_needs: closeReuseNeeds,
+      }, { rowVersion: closeTarget.row_version });
+      const releasedAmount = Math.max(0, Number(result?.released_amount || 0));
+      const rolloverAmount = Math.max(0, Number(result?.rollover?.amount || 0));
+      const copiedNeeds = Math.max(0, Number(result?.needs_continuity?.copied || 0));
+      if (releasedAmount > 0) onReleased?.({ amount: releasedAmount, sourceAccountId: closeTarget.source_account_id || "" });
+      setCloseTarget(null);
+      setCloseReuseNeeds(false);
+      setCloseState({ status: "idle", error: null });
+      const continuationText = copiedNeeds > 0 ? ` ${copiedNeeds} kebutuhan disiapkan untuk periode berikutnya.` : " Periode berikutnya sudah disiapkan.";
+      notify({
+        message: rolloverAmount > 0
+          ? `Periode berhasil ditutup. Sisa Rp ${rolloverAmount.toLocaleString("id-ID")} dibawa ke periode berikutnya.${continuationText}`
+          : `Periode berhasil ditutup. Sisa dana kembali menjadi dana tersedia.${continuationText}`,
+      });
+      await refreshAfterMutation();
+    } catch (error) {
+      setCloseState({ status: "error", error });
+    }
   };
   const openRuleLifecycle = async (item) => { setArchiveState({ status: "submitting", error: null }); try { const preview = await previewEnvelopeRuleLifecycle({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version }, { force: true }); setArchiveTarget({ item, preview }); setArchiveState({ status: "idle", error: null }); } catch (error) { setArchiveState({ status: "idle", error: null }); notify({ message: error.message || "Status alokasi gagal diperiksa.", tone: "danger", dedupeKey: "envelopes:lifecycle-preview-error" }); } };
   const applyRuleLifecycle = async (reason, confirmation) => { if (!archiveTarget) return; const { item, preview } = archiveTarget; setArchiveState({ status: "submitting", error: null }); try { if (preview.canDeleteUnused) { await requestDeleteUnusedEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: item.rule_row_version }); notify({ message: "Alokasi yang belum pernah digunakan berhasil dihapus permanen." }); } else { await requestArchiveEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version }); notify({ message: "Aturan alokasi diarsipkan. Riwayat periode dan mutasi tetap tersimpan." }); } setArchiveTarget(null); setArchiveState({ status: "idle", error: null }); await refreshAfterMutation(); } catch (error) { setArchiveState({ status: "error", error }); } };
@@ -122,6 +145,22 @@ const relatedRecurringForEnvelope = (recurringItems, budgets, item) => {
     && entry.default_account_id === item.source_account_id
     && categoryIds.has(entry.category_id)
     && sameOwnership(entry, item));
+};
+
+const nextAllocationPeriodKey = (item) => {
+  const end = new Date(`${item?.period_end || ""}T00:00:00Z`);
+  if (Number.isNaN(end.getTime())) return "";
+  end.setUTCDate(end.getUTCDate() + 1);
+  return end.toISOString().slice(0, 7);
+};
+
+const allocationClosePlanning = (target, budgets) => {
+  if (!target) return { needsCount: 0, canReuseNeeds: false };
+  const needsCount = linkedBudgetsForEnvelope(budgets, target).length;
+  return {
+    needsCount,
+    canReuseNeeds: needsCount > 0 && target.period_start?.slice(0, 7) !== nextAllocationPeriodKey(target),
+  };
 };
 
 const canAdjustAllocation = (item, actor) => actor?.role === "owner" || (item?.scope === "shared" && canUseAssignedItem(item, actor));
@@ -266,6 +305,7 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const [actionTarget, setActionTarget] = useState(null);
   const [reminderTarget, setReminderTarget] = useState(null);
   const [closeTarget, setCloseTarget] = useState(null);
+  const [closeReuseNeeds, setCloseReuseNeeds] = useState(false);
   const [closeState, setCloseState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
@@ -280,12 +320,13 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const detailItem = view.activeItems.find((item) => item.envelope_rule_id === detailRuleId) || null;
   const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup: view.lookup, notify, setMessage, onCreated: () => { setCreateOpen(false); if (location.state?.setupFlow) setSetupCreated(true); }, onMoved: () => setMoveOpen(false) });
   const adjustment = useAllocationAdjustment({ adjustTarget, setAdjustTarget, adjustForm, setAdjustForm, adjustMutation, refreshAfterMutation: createMove.refreshAfterMutation, notify, setMessage, onReleased: setReleasedFunds });
-  const lifecycle = useAllocationLifecycle({ closeTarget, setCloseTarget, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation: createMove.refreshAfterMutation, notify, onReleased: setReleasedFunds });
+  const lifecycle = useAllocationLifecycle({ closeTarget, closeReuseNeeds, setCloseTarget, setCloseReuseNeeds, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation: createMove.refreshAfterMutation, notify, onReleased: setReleasedFunds });
   const attentionAction = String(attention?.attentionAction || "");
   const attentionEnvelopeId = String(attention?.attentionEnvelopeId || "");
   const attentionBudgetId = String(attention?.attentionBudgetId || "");
   const refreshBudgetPlanning = async () => { invalidate(["budgets.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState"]); await Promise.allSettled([budgetResource.reload(), resource.reload(), refreshOverview()]); };
   const detail = allocationDetailData(detailItem, view.budgets, view.recurringItems, user);
+  const closePlanning = allocationClosePlanning(closeTarget, view.budgets);
   const usersStatus = allocationUsersStatus(administratorMode, usersResource);
   const showSecondaryLayer = hasAllocationSecondaryContent(detailItem, view, actionTarget);
 
@@ -305,14 +346,14 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const closeFunding = () => { if (!adjustMutation.busy) { setFundingIntent(null); setFundingError(null); } };
   const submitFunding = async ({ target, amount, reason }) => { const ok = await adjustment.fundAvailable({ target, amount, reason }); if (ok) closeFunding(); else setFundingError(new Error("Dana belum berhasil ditambahkan. Periksa pesan lalu coba lagi.")); };
   const openAdjust = (item, direction = "fund") => { setMessage(null); setAdjustForm({ direction, amount: "", reason: "" }); setAdjustTarget(item); };
-  const startClosePeriod = (item) => { setActionTarget(null); setCloseTarget(item); setCloseState({ status: "idle", error: null }); };
+  const startClosePeriod = (item) => { setActionTarget(null); setCloseReuseNeeds(false); setCloseTarget(item); setCloseState({ status: "idle", error: null }); };
   const startLifecycle = (item) => { setActionTarget(null); lifecycle.openRuleLifecycle(item); };
   const openReminder = (item) => setReminderTarget({ entityType: "envelope_period", entityId: item.envelope_period_id, name: item.name, suggestedDate: item.period_end });
   const openBudgetReminder = (budget) => setReminderTarget({ entityType: "budget", entityId: budget.budget_id, name: budget.name || "Kebutuhan" });
   const openDetail = (item) => { setLegacyBudgetAttention(false); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" })); };
   const closeDetail = () => { setDetailRuleId(""); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" })); };
   const reloadPlanning = () => Promise.allSettled([resource.reload(), budgetResource.reload(), recurringResource.reload()]);
-  const modalProps = { closeTarget, setCloseTarget, closeState, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
+  const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 
   return <AllocationResourceState resource={resource}><div className="page-stack allocations-page">
     <Suspense fallback={null}><AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={(overview?.goals || []).some((goal) => goal.status === "active")} onDismissReleasedFunds={() => setReleasedFunds(null)} /></Suspense>

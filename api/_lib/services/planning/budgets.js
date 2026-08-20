@@ -46,6 +46,57 @@ export const listBudgets = async (db, context) => {
   return mapBudgetListRows(await db.all(statement.sql, statement.args));
 };
 
+export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, sourcePeriodKey, targetPeriodKey }) => {
+  const sourcePeriod = periodKey(sourcePeriodKey);
+  const targetPeriod = periodKey(targetPeriodKey);
+  if (sourcePeriod === targetPeriod) return { copied: 0, skipped: 0, source_period_key: sourcePeriod, target_period_key: targetPeriod };
+  const sourceItems = await db.all(`SELECT b.* FROM budgets b
+    JOIN categories c ON c.category_id=b.category_id
+    WHERE b.period_key=? AND b.envelope_rule_id=? AND b.status='active'
+      AND c.status='active' AND c.transaction_type='expense'
+    ORDER BY b.budget_id`, [sourcePeriod, envelopeRuleId]);
+  let copied = 0;
+  let skipped = 0;
+  for (const current of sourceItems) {
+    const identityArgs = budgetIdentityArgs({
+      period_key: targetPeriod,
+      category_id: current.category_id,
+      scope: current.scope,
+      owner_user_id: current.owner_user_id,
+      envelope_rule_id: current.envelope_rule_id,
+    });
+    const existing = await db.one(`SELECT * FROM budgets WHERE ${BUDGET_IDENTITY_SQL}`, identityArgs);
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+    const timestamp = nowIso();
+    const next = {
+      budget_id: uuid(),
+      period_key: targetPeriod,
+      category_id: current.category_id,
+      envelope_rule_id: current.envelope_rule_id,
+      name: current.name,
+      amount: Number(current.amount),
+      warning_threshold: Number(current.warning_threshold || 80),
+      status: 'active',
+      ...newVersionStamp(context.actor.user_id, timestamp),
+      scope: current.scope,
+      owner_user_id: current.owner_user_id,
+    };
+    await db.execute("INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", Object.values(next));
+    await appendAudit(db, context, {
+      entityType: 'budget',
+      entityId: next.budget_id,
+      previous: null,
+      next: { ...publicRow(next), continuity_from_budget_id: current.budget_id },
+    });
+    await context.enqueueMirror?.(db, 'budget', next.budget_id);
+    copied += 1;
+  }
+  return { copied, skipped, source_period_key: sourcePeriod, target_period_key: targetPeriod };
+};
+
 const resolveBudgetEnvelope = async (db, envelopeRuleId, owned) => {
   if (!envelopeRuleId) return null;
   const envelope = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [envelopeRuleId]);

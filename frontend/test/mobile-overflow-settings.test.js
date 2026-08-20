@@ -199,7 +199,9 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
     read("src/features/budgets/BudgetsPage.module.css"),
   ]);
 
-  assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.typeSelector\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.form\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.typeSelector label > span \{[\s\S]*flex-direction:\s*column/);
+  assert.match(transactionStyles, /@media \(max-width: 350px\)[\s\S]*\.typeSelector > div \{[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(transactionStyles, /font-size:\s*9px/);
   assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.modal/);
   assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);

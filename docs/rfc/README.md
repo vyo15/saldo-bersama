@@ -16,7 +16,7 @@ RFC Proposed belum merupakan fitur runtime atau approval schema. Setelah keputus
 
 - `0013-contribution-and-cost-sharing.md` menerapkan MVP pembagian beban biaya `equal`/`percentage` pada expense shared melalui schema v11. Payer/beneficiary/kontribusi aktual tetap deferred.
 - `0016-partner-planning-permissions.md` menerapkan Option 2: Member dapat mengelola planning shared dengan guard backend; destructive lifecycle/recovery tetap Administrator-only.
-- `0017-manual-reminders.md` menerapkan reminder manual one-shot actor-scoped pada Jadwal Rutin, Anggaran, Alokasi, dan Target melalui schema v10 serta scheduler/Web Push existing.
+- `0017-manual-reminders.md` menerapkan reminder manual one-shot actor-scoped pada Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target melalui schema v10 serta scheduler/Web Push existing.
 
 ## Alur
 

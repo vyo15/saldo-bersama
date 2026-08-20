@@ -19,7 +19,7 @@ MVP mengimplementasikan **pembagian beban biaya** untuk transaksi `expense` shar
 - Snapshot split disimpan pada transaksi agar perubahan user atau pilihan di masa depan tidak mengubah histori.
 - Transaksi aktual dari Jadwal Rutin shared memakai kontrak split yang sama saat occurrence dibayar. Rule jadwal tidak menyimpan split sebagai asumsi permanen.
 - `equal` dan `percentage` membagi integer Rupiah secara deterministik. Total nominal split harus tepat sama dengan nominal expense.
-- Split tidak membuat ledger entry dan tidak mengubah saldo rekening, Kantong, atau Target.
+- Split tidak membuat ledger entry dan tidak mengubah saldo rekening, Alokasi Dana, atau Target.
 - `created_by` tetap recorder dan tidak boleh dipakai sebagai fallback kontribusi.
 
 Schema additive berada pada `database/migrations/009_transaction_cost_sharing.sql` dan menaikkan schema ke v11 melalui `transactions.cost_share_mode` serta `transactions.cost_share_json`. API, validation, audit, integrity, backup/restore, export, dan `reports.monthly.costShareExpenses` mengikuti snapshot tersebut.
@@ -32,7 +32,7 @@ Hanya transaksi shared yang dapat memiliki split. Client tidak dapat mengirim sn
 
 MVP **belum** memodelkan payer, beneficiary, liable party terpisah, settlement, template split berdasarkan pendapatan, nominal tetap, atau kontribusi aktual. Fitur tersebut membutuhkan keputusan dan migration lanjutan sebelum label “kontribusi” boleh digunakan.
 
-Refund juga belum terhubung ke expense asli untuk mengembalikan cost split atau alokasi Kantong. Partial/multiple refund dan dampaknya ke budget/Kantong harus diputuskan secara terpisah; UI tidak boleh memalsukannya dengan memilih Kantong sembarang.
+Refund juga belum terhubung ke expense asli untuk mengembalikan cost split atau Alokasi Dana. Partial/multiple refund dan dampaknya ke Kebutuhan/Alokasi Dana harus diputuskan secara terpisah; UI tidak boleh memalsukannya dengan memilih Alokasi Dana sembarang.
 
 ## Test and acceptance criteria
 

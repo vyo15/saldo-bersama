@@ -58,6 +58,21 @@
 .progress { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; color: var(--muted); font-size: 11px; font-weight: var(--font-weight-semibold); }
 .field { display: grid; align-content: start; gap: 7px; color: var(--text-soft); font-size: 13px; font-weight: var(--font-weight-semibold); }
 .field input, .field select, .field textarea, .toolbar select, .search-field { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: var(--text); padding: 10px 12px; }
+.field select option,
+.toolbar select option,
+.search-field option,
+select option,
+select optgroup {
+  background-color: var(--surface-elevated);
+  color: var(--text);
+  font-weight: var(--font-weight-medium);
+}
+select option { padding: 9px 12px; }
+select option:checked {
+  background-color: var(--primary-soft);
+  color: var(--primary-strong);
+}
+select option:disabled { color: var(--text-muted); }
 .field textarea { resize: vertical; }
 .field small { color: var(--muted); font-weight: var(--font-weight-regular); }
 .field__error { color: var(--negative); }

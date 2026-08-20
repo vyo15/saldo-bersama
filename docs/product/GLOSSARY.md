@@ -15,6 +15,7 @@
 | Cancelled | Transaksi dibatalkan secara audit-safe dan tidak memengaruhi saldo. |
 | Archived | Record tidak aktif untuk penggunaan normal tetapi tidak dihapus permanen. |
 | Alokasi Dana | Bagian saldo yang dialokasikan dari satu rekening sumber untuk tujuan/periode tertentu. Tidak membuat saldo atau transaksi ledger baru. Implementasi internal tetap memakai entitas `envelope_rules`/`envelope_periods` dan route compatibility `/perencanaan/kantong`. |
+| Periode Alokasi Dana | Siklus aktif satu Alokasi Dana. Saat periode ditutup, sistem selalu menyiapkan periode aktif berikutnya. Policy `unallocated` memulai periode berikutnya pada Rp0, sedangkan `carry` hanya membawa sisa aktual. |
 | Kebutuhan | Anggaran kategori di dalam satu Alokasi Dana. Implementasi internal memakai record `budgets` yang terhubung melalui `envelope_rule_id`; kategori master tetap dipakai ulang dan tidak diduplikasi. |
 | Anggaran | Halaman ringkasan read-only seluruh Kebutuhan lintas Alokasi Dana. Pembuatan dan perubahan Kebutuhan dilakukan dari detail Alokasi Dana. |
 | Budget | Batas nominal kategori per periode. |

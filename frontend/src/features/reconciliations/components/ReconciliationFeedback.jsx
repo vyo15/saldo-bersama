@@ -1,6 +1,6 @@
 import { useId, useRef } from "react";
 import { createPortal } from "react-dom";
-import { FiAlertTriangle, FiCheck, FiLoader, FiX } from "react-icons/fi";
+import { FiAlertTriangle, FiLoader, FiX } from "react-icons/fi";
 import Money from "../../../components/common/Money.jsx";
 import { useFocusTrap } from "../../../hooks/useFocusTrap.js";
 import styles from "./ReconciliationFeedback.module.css";
@@ -129,9 +129,11 @@ export const ReconciliationResultOverlay = ({ result, onClose }) => {
     <div className={`${styles.resultBackdrop}${result.matched ? "" : ` ${styles.resultBackdropDifference}`}`} role="presentation">
       <section className={styles.resultDialog} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} ref={containerRef} tabIndex={-1}>
         {result.matched ? <MoneyRainCelebration /> : null}
-        <button type="button" className={styles.resultClose} onClick={onClose} aria-label="Tutup hasil pencocokan"><FiX aria-hidden="true" /></button>
+        {!result.matched ? <button type="button" className={styles.resultClose} onClick={onClose} aria-label="Tutup hasil pencocokan"><FiX aria-hidden="true" /></button> : null}
         <div className={styles.resultContent}>
-          <div className={`${styles.resultIcon} ${result.matched ? styles.resultIconMatched : styles.resultIconDifference}`} aria-hidden="true">{result.matched ? <FiCheck /> : <FiAlertTriangle />}</div>
+          <div className={`${styles.resultIcon} ${result.matched ? styles.resultIconMatched : styles.resultIconDifference}`} aria-hidden="true">
+            {result.matched ? <span className={styles.resultSuccessMark}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m6.75 12.4 3.3 3.35 7.2-7.45" /></svg></span> : <FiAlertTriangle />}
+          </div>
           <span className={styles.resultEyebrow}>{result.matched ? "Tersimpan dengan aman" : "Perlu diperiksa"}</span>
           <h2 id={titleId}>{title}</h2>
           <strong className={styles.resultAmount}><Money value={result.actualBalance} /></strong>

@@ -79,6 +79,8 @@ test("token light dan dark memenuhi kontras teks serta tombol utama", () => {
 test("komponen memakai semantic foreground dan reduced motion", () => {
   assert.match(componentSource, /\.button--primary[^}]*color:\s*var\(--on-primary\)/);
   assert.match(componentSource, /\.button--danger[^}]*color:\s*var\(--on-negative\)/);
+  assert.match(componentSource, /select option,[\s\S]*select optgroup \{[^}]*background-color:\s*var\(--surface-elevated\);[^}]*color:\s*var\(--text\);/);
+  assert.match(componentSource, /select option:checked \{[^}]*background-color:\s*var\(--primary-soft\);[^}]*color:\s*var\(--primary-strong\);/);
   assert.match(componentSource, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(componentSource, /:focus-visible/);
 });

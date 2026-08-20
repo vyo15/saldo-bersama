@@ -29,8 +29,33 @@ test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail ta
   assert.match(text, /data\.envelopes\.filter\(\(item\) => item\.source_account_id === sourceAccount\.account_id\)/);
   assert.match(text, /filterByAssigneeAccess\(accountEnvelopes, bootstrap\?\.user \|\| user\)/);
   assert.match(text, /envelope\.source_account_id !== nextId/);
-  assert.match(text, /tersedia \$\{formatRupiah\(item\.available_balance \?\? item\.balance \?\? 0\)\}/);
+  assert.match(text, /sourceAccountPicker/);
+  assert.match(text, /Tampilkan semua/);
+  assert.match(text, /hiddenAccountLabel/);
   assert.match(text, /envelopeOptionLabel/);
+  assert.match(text, /mobileColumns=\{4\}/, "jenis transaksi mobile harus tetap satu baris empat opsi pada lebar normal");
+  assert.match(text, /styles\.typeSelector/);
+});
+
+test("form tambah transaksi mobile memakai Catatan sebagai satu-satunya detail teks dan menjaga guard overspend", async () => {
+  const text = await source();
+  assert.doesNotMatch(text, /Merchant \/ penerima/);
+  assert.doesNotMatch(text, /id="merchant"/);
+  assert.doesNotMatch(text, /Alasan jika melebihi dana alokasi/);
+  assert.doesNotMatch(text, /id="overspend-reason"/);
+  assert.match(text, /htmlFor="description"><span>Catatan<\/span>/);
+  assert.match(text, /overspend_reason: overspendNoteRequired \? String\(form\.description \|\| form\.overspend_reason/);
+  assert.match(text, /OVERSPEND_REASON_REQUIRED/);
+  assert.match(text, /errors\.description/);
+  assert.match(text, /merchant: ""/);
+});
+
+test("modal transaksi mobile tidak autofocus nominal dan memakai asset wallet project", async () => {
+  const text = await source();
+  assert.match(text, /src="\/login\/assets\/mobile\/wallet\.webp"/);
+  assert.match(text, /draggable="false"/);
+  assert.match(text, /initialFocusRef: mobileLayout \? undefined : amountRef/);
+  assert.doesNotMatch(text, /transaction-wallet\.svg/);
 });
 
 
@@ -88,7 +113,8 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(form, /useMediaQuery\(MOBILE_TRANSACTION_QUERY\)/);
   assert.match(form, /!transaction && isTransfer && \(presentation === "mobile-transfer" \|\| mobileLayout\)/);
   assert.match(form, /mobileSwipeToClose: true/);
-  assert.match(form, /validateTransactionInput\(transactionPreparedInput/);
+  assert.match(form, /const preparedInput = transactionPreparedInput/);
+  assert.match(form, /validateTransactionInput\(preparedInput\)/);
   assert.match(form, /createIdempotencyKey\(\)/);
   assert.match(form, /const saveTransaction = transaction \? updateTransaction : createTransaction/);
   assert.match(form, /destination\.account_id === nextId/);
@@ -122,10 +148,43 @@ test("Pakai lagi memakai composer canonical sebagai prefill aman dan tetap menun
 
 test("income sukses menawarkan Alokasi Dana hanya setelah mutation sukses tanpa auto-submit alokasi", async () => {
   const text = await source();
-  assert.match(text, /setPostSave\(\{ type: "income"/);
+  assert.match(text, /form\.transaction_type === TRANSACTION_TYPES\.INCOME \? "income" : "created"/);
   assert.match(text, /workflowSource: "transaction-income"/);
   assert.match(text, /workflowAction: "fund"/);
   assert.match(text, />Bagi ke Alokasi Dana<\/Button>/);
   assert.match(text, /Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru/);
   assert.doesNotMatch(text, /envelopes\.adjustAllocation|adjustAllocation\(/, "TransactionForm tidak boleh membuat allocation mutation sendiri");
+});
+
+test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Tambah lagi tanpa auto-submit", async () => {
+  const [form, smart] = await Promise.all([
+    source(),
+    readFile(new URL("../src/features/transactions/transactionFormSmartDefaults.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(form, /sourceAccountPicker/);
+  assert.match(form, /placeholder="Cari rekening"/);
+  assert.match(form, /frequentCategories/);
+  assert.match(form, /Sering dipakai/);
+  assert.match(form, /smartAllocationCandidates/);
+  assert.match(form, /useSmartAllocationSelection/);
+  assert.match(form, /allocationMode !== "auto"/);
+  assert.match(smart, /Dipilih dari Kebutuhan/);
+  assert.match(form, /earlyFundsWarning/);
+  assert.match(form, /Lihat dampak lengkap/);
+  assert.match(form, />Tambah lagi<\/Button>/);
+  assert.match(form, /idempotencyKeyRef\.current = createIdempotencyKey\(\)/);
+  assert.match(smart, /sourceAccountHasFunds/);
+  assert.match(smart, /budget\.category_id !== form\.category_id/);
+  assert.match(smart, /envelope\.source_account_id !== form\.source_account_id/);
+});
+
+test("detail Alokasi Dana membuka composer canonical dengan rekening, Alokasi, dan Kebutuhan sebagai prefill", async () => {
+  const detail = await readFile(new URL("../src/features/allocations/AllocationPlanningDetail.jsx", import.meta.url), "utf8");
+  assert.match(detail, /useTransactionComposer/);
+  assert.match(detail, /Catat pengeluaran/);
+  assert.match(detail, /canRecordExpense/);
+  assert.match(detail, /today >= item\.period_start/);
+  assert.match(detail, /category_id: budget\?\.category_id \|\| ""/);
+  assert.match(detail, /envelope_period_id: item\.envelope_period_id/);
+  assert.doesNotMatch(detail, /createTransaction|updateTransaction|transactions\.api/, "detail Alokasi hanya boleh membuka composer, bukan menyimpan transaksi sendiri");
 });

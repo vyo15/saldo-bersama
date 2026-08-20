@@ -112,6 +112,7 @@ Migrasi dilakukan satu per satu bersama regression visual/behavior. Jangan mengg
 - `CompactNotice` pada `frontend/src/components/common/CompactNotice.jsx` dipakai untuk informasi nonblocking yang tetap perlu terlihat: guidance dari Perlu perhatian, status perangkat, ringkasan read-only, dan hint singkat di dalam form.
 - Copy ringkas tidak memakai accordion atau tombol `Detail` bila satu sampai dua kalimat sudah cukup. Membuka informasi tambahan tidak boleh menyebabkan layout shift hanya untuk menjelaskan status sederhana.
 - Error, conflict, offline, destructive confirmation, warning finansial yang memblokir, preview dampak saldo, import/restore/reset, maintenance, dan gangguan integrasi tetap memakai notice persisten yang lebih kuat. Informasi yang memengaruhi keputusan pengguna tidak boleh disembunyikan di tooltip/popover.
+- Modal Tutup periode Alokasi Dana wajib menjelaskan dampak pada sisa dana dan bahwa periode berikutnya tetap disiapkan. Opsi `Pakai lagi kebutuhan di periode berikutnya` default off, hanya menyalin kategori + nominal rencana, dan tidak boleh memberi kesan transaksi, saldo, atau dana dipindahkan otomatis.
 - Status dinamis menggunakan `role="status"` bila perlu diumumkan secara sopan. Error yang membutuhkan perhatian segera menggunakan `role="alert"`. State tidak boleh dibedakan hanya dengan warna.
 - Zona waktu reminder tetap **Asia/Jakarta**. Presentation ringkas tidak boleh mengganti contract waktu, scheduler, Web Push, authorization, atau business rule backend.
 

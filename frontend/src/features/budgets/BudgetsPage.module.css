@@ -42,39 +42,11 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.addButton {
-  width: var(--control-height-md);
-  height: var(--control-height-md);
-  border: 1px solid var(--primary);
-  border-radius: 14px;
-  background: var(--primary);
-  color: var(--on-primary);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: var(--shadow-primary-control);
-  transition: transform var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing);
-}
-
-.addButton:hover {
-  background: var(--primary-hover);
-}
-
-.addButton:active {
-  transform: scale(0.96);
-}
-
-.addButton:focus-visible,
 .segment:focus-visible,
 .sortButton:focus-visible,
 .detailButton:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
-}
-
-.addButton svg {
-  width: 20px;
-  height: 20px;
 }
 
 .controlsRow {
@@ -357,12 +329,6 @@
 
 .budgetCard_danger {
   border-color: color-mix(in srgb, var(--negative) 24%, var(--border));
-}
-
-.budgetCardAttention {
-  outline: 3px solid color-mix(in srgb, var(--primary) 52%, transparent);
-  outline-offset: 3px;
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--primary) 13%, transparent);
 }
 
 .cardHeader {
@@ -860,7 +826,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .addButton,
   .segment,
   .budgetCard,
   .detailButton svg,

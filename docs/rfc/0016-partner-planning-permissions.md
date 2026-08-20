@@ -16,10 +16,10 @@ Dipilih **Option 2: Member dapat mengelola planning hanya untuk scope shared**.
 
 Member diizinkan untuk:
 
-- membuat Kantong shared;
-- menambah/melepas alokasi Kantong shared yang dapat diakses;
+- membuat Alokasi Dana shared;
+- menambah/melepas dana Alokasi Dana shared yang dapat diakses;
 - memindahkan alokasi Jatah Bersama atau jatahnya sendiri dan membalik movement miliknya;
-- membuat/mengubah Batas Pengeluaran shared;
+- membuat/mengubah Kebutuhan shared;
 - membuat/mengubah Target shared serta melakukan/reverse movement yang memang diizinkan;
 - membuat/mengubah Jadwal Rutin shared serta pay/reverse occurrence yang memang diizinkan.
 
@@ -36,7 +36,7 @@ Tetap Administrator-only:
 
 Frontend hanya menyembunyikan atau menampilkan aksi berdasarkan capability. Backend tetap boundary keamanan. Service planning memanggil scope guard server-side dan menolak Member bila object/payload bukan `shared` atau membawa `owner_user_id`. Actor, role, owner, email, dan audit identity tidak dipercaya dari client. Default authorization tetap deny.
 
-Kantong mempertahankan guard `assignee_user_id`: Member hanya dapat memakai Jatah Bersama atau jatahnya sendiri. Rekening sumber tetap harus operable dan account-bound.
+Alokasi Dana mempertahankan guard `assignee_user_id`: Member hanya dapat memakai Jatah Bersama atau jatahnya sendiri. Rekening sumber tetap harus operable dan account-bound.
 
 ## Test and acceptance criteria
 

@@ -123,7 +123,9 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(allocations, /consumeAttention\(\)/);
   assert.match(allocations, /Dana kembali tersedia/);
   assert.match(allocations, /Setor ke Target/);
-  assert.match(allocations, /result\?\.rollover \? 0/);
+  assert.match(allocations, /released_amount/);
+  assert.match(allocations, /reuse_needs: closeReuseNeeds/);
+  assert.match(allocations, /Periode berikutnya tetap disiapkan/);
 });
 
 test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", async () => {

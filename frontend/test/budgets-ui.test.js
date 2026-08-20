@@ -107,3 +107,19 @@ test("kategori yang sama dapat dipakai pada beberapa Alokasi Dana tanpa mendupli
   assert.match(backend, /envelope_rule_id IS NULL/);
   assert.doesNotMatch(backend, /SELECT \* FROM budgets WHERE period_key=\? AND category_id=\? AND scope=\? AND COALESCE\(owner_user_id,'?'?\)=COALESCE\(\?,'?'?\)"/);
 });
+
+
+test("penutupan Alokasi Dana menjaga continuity periode dan Kebutuhan tetap opt-in", async () => {
+  const [page, dialogs, detail] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationDialogLayer.jsx"),
+    read("src/features/allocations/AllocationPlanningDetail.jsx"),
+  ]);
+  assert.match(page, /reuse_needs: closeReuseNeeds/);
+  assert.match(page, /released_amount/);
+  assert.match(dialogs, /Periode berikutnya tetap disiapkan agar alokasi tidak terputus/);
+  assert.match(dialogs, /Pakai lagi \{p\.closeNeedsCount\} kebutuhan di periode berikutnya/);
+  assert.match(dialogs, /Transaksi, saldo, serta dana Alokasi tidak ikut dipindahkan/);
+  assert.match(detail, /budgetVisualState\(budget, periodMeta\)/);
+  assert.doesNotMatch(detail, /const needStatus/);
+});

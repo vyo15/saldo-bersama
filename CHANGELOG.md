@@ -1,3 +1,23 @@
+## 20 Agustus 2026 - Dropdown dark-mode dan quality gate ZIP
+
+- Menyeragamkan popup seluruh native `select` agar opsi tetap terbaca pada light/dark theme, termasuk Rekonsiliasi, Transaksi, Alokasi Dana, Target, Jadwal Rutin, dan filter. Opsi memakai surface/text semantic, selected state primary-soft, serta disabled state muted tanpa mengganti native select sehingga keyboard, screen reader, dan mobile picker tetap dipertahankan.
+- Memecah validasi/finalisasi submit serta post-save modal di `TransactionForm.jsx` tanpa mengubah API, ledger, saldo, idempotency, duplicate guard, atau flow income/expense/transfer. Refactor ini menurunkan complexity dan panjang fungsi kembali di bawah threshold ESLint canonical.
+- Menghapus redundant `Boolean()` pada smart account picker. `npm run lint` tidak lagi gagal pada empat temuan yang sebelumnya memblokir `npm run zip`.
+
+## 20 Agustus 2026 - Smart transaksi dan auto Alokasi Dana
+
+- Mempercepat Tambah Transaksi tanpa mengubah ledger/API: rekening sumber Pengeluaran menyembunyikan rekening saldo Rp0 dari daftar utama dan sumber Transfer menyembunyikan dana tersedia Rp0, tetapi rekening terpilih serta rekening `allow_negative` tetap ditampilkan; rekening tujuan Pemasukan/Transfer tidak disembunyikan. Picker rekening mendukung pencarian dan memprioritaskan rekening yang baru dipakai.
+- Menghubungkan Kategori → Kebutuhan → Alokasi Dana pada form expense. Satu kandidat valid pada rekening/periode yang sama dipilih otomatis, beberapa kandidat tetap meminta pilihan user, dan tidak ada kandidat tetap boleh `Belum dialokasikan`. Edit existing dan prefill explicit tidak ditimpa smart default; backend tetap memvalidasi source, periode, assignee, overspend, saldo, dan dana tersedia.
+- Menambah shortcut kategori sering dipakai per rekening, warning dana dini untuk transaksi hari ini, impact preview ringkas dengan detail progresif, serta success flow `Tambah lagi` dengan idempotency key baru dan tanpa menyalin nominal/kategori/Alokasi/catatan. Flow khusus refund/adjustment dan mobile transfer existing tidak diubah.
+- Detail Alokasi Dana aktif pada periode hari ini dapat membuka composer canonical lewat `Catat pengeluaran`; dari Kebutuhan, rekening sumber, Alokasi, dan kategori diprefill tanpa auto-submit. Touch target baru pada flow transaksi/detail Alokasi dijaga minimal 44px pada mobile.
+
+## 20 Agustus 2026 - Continuity Alokasi Dana dan Kebutuhan
+
+- Menutup gap lifecycle Alokasi Dana saat periode ditutup: rule aktif sekarang selalu memiliki periode aktif berikutnya. Policy `unallocated` menyiapkan periode berikutnya pada Rp0 dan melepaskan sisa ke dana tersedia; policy `carry` hanya membawa sisa aktual dan tetap menyiapkan periode berikutnya bila sisa Rp0. Tidak ada schema, transaksi ledger, atau rumus saldo baru.
+- Menambah opsi eksplisit `Pakai lagi kebutuhan di periode berikutnya` pada penutupan periode. Backend hanya menyalin Kebutuhan aktif yang belum ada di periode tujuan, tidak menimpa rencana existing, dan tidak menyalin transaksi, saldo, histori pemakaian, atau dana Alokasi.
+- Menyatukan status Kebutuhan di detail Alokasi Dana dengan presentation contract Anggaran agar `Aman`, `Pemakaian cepat`, `Hampir habis`, `Anggaran habis`, dan `Melebihi anggaran` tidak drift antarhalaman.
+- Menghapus `MobileDashboardFilters.jsx` dan `transaction-wallet.svg` yang benar-benar orphan serta membersihkan selector Budget tanpa consumer. Regression baru mencakup continuity `unallocated`, `carry` dengan sisa/Rp0, copy Kebutuhan opt-in, target existing, dan parity status Kebutuhan.
+
 # Changelog
 - Menyelesaikan konsistensi konsep **Alokasi Dana → Kebutuhan → Transaksi**: halaman Anggaran menjadi overview read-only, lifecycle Kebutuhan memakai identitas periode + kategori + ownership + `envelope_rule_id` termasuk saat restore, copy runtime/test memakai istilah produk terbaru, dan dokumen canonical menjelaskan bahwa nama internal `envelope` serta route `/perencanaan/kantong` tetap dipertahankan untuk compatibility.
 - Menutup gap flow uang masuk sampai perencanaan sebagai satu rangkaian: Dashboard memisahkan dana tersedia yang belum dibagi dari pengeluaran tanpa Kantong, income manual/rutin memberi nudge nonblocking, `envelopes.adjustAllocation` dapat menambah atau melepas alokasi Kantong existing tanpa membuat transaksi ledger, dan first-run checklist mengarahkan Rekening → Kategori → Kantong → Target. Target memberi warning bila belum ada rekening sumber lain yang kompatibel untuk setoran; sisa dana tersedia hanya disarankan ke Target dan tidak pernah dipindah otomatis.

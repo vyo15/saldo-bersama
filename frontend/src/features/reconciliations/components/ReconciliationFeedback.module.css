@@ -24,8 +24,10 @@
 .resultIcon { width: 4.8rem; height: 4.8rem; display: grid; place-items: center; border-radius: 50%; animation: reconciliation-feedback-check-in .72s .18s var(--motion-easing) both; }
 .resultIcon::before, .resultIcon::after { content: ""; position: absolute; width: 4.8rem; height: 4.8rem; border: 1px solid currentColor; border-radius: 50%; opacity: 0; animation: reconciliation-feedback-ring 1.25s .28s ease-out both; }
 .resultIcon::after { animation-delay: .42s; }
-.resultIconMatched { position: relative; color: color-mix(in srgb, var(--positive) 84%, var(--text)); background: linear-gradient(145deg, color-mix(in srgb, var(--positive) 92%, white), color-mix(in srgb, var(--positive) 74%, var(--primary))); box-shadow: 0 18px 48px color-mix(in srgb, var(--positive) 21%, transparent); }
+.resultIconMatched { position: relative; color: white; background: radial-gradient(circle at 30% 28%, color-mix(in srgb, var(--positive) 88%, white), color-mix(in srgb, var(--positive) 82%, var(--primary)) 58%, color-mix(in srgb, var(--positive) 72%, black) 100%); box-shadow: 0 18px 48px color-mix(in srgb, var(--positive) 18%, transparent); }
 .resultIconDifference { position: relative; color: var(--warning); background: var(--warning-soft); box-shadow: 0 18px 48px color-mix(in srgb, var(--warning) 13%, transparent); }
+.resultSuccessMark { width: 2.55rem; height: 2.55rem; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .04)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 8px 20px rgba(0, 0, 0, .10); }
+.resultSuccessMark svg { width: 1.55rem; height: 1.55rem; }
 .resultIcon svg { width: 2.35rem; height: 2.35rem; stroke-width: 2.8; }
 .resultEyebrow { margin-top: 1.2rem; color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .1em; text-transform: uppercase; }
 .resultBackdropDifference .resultEyebrow { color: var(--warning); }

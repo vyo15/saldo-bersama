@@ -79,8 +79,8 @@ Queue server tetap boleh membentuk `title` dan `body` dari data entity terbaru u
 
 Shortcut manual reminder tersedia pada:
 
-- Anggaran periode aktif
-- Kantong/Alokasi aktif
+- Kebutuhan periode aktif
+- Alokasi Dana aktif
 - occurrence Jadwal Rutin yang belum selesai atau dibatalkan
 - Target aktif
 

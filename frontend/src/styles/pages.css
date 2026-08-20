@@ -269,6 +269,8 @@
 .allocation-detail-back svg { width: 16px; height: 16px; }
 .allocation-detail-hero { padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 24px; align-items: start; }
 .allocation-detail-hero > div:first-child { min-width: 0; }
+.allocation-detail-hero__action { display: flex; justify-content: flex-end; }
+.allocation-detail-hero__action .button { min-height: 44px; }
 .allocation-detail-hero > div:first-child > span,
 .allocation-detail-hero__amount > span,
 .allocation-detail-hero__metrics span { color: var(--text-muted); font-size: 11px; }
@@ -316,6 +318,10 @@
   .allocation-embedded-header { align-items: flex-start; }
   .allocation-detail-grid { grid-template-columns: 1fr; }
   .allocation-detail-hero { grid-template-columns: 1fr; gap: 14px; }
+  .allocation-detail-hero__action { justify-content: flex-start; }
+  .allocation-detail-hero__action .button { width: 100%; justify-content: center; }
+  .allocation-detail-back,
+  .allocation-limit-row__actions .button { min-height: 44px; }
   .allocation-detail-hero__amount { justify-items: start; text-align: left; }
   .allocation-detail-hero__metrics { grid-column: auto; }
   .allocation-detail-panel__header { align-items: flex-start; }
@@ -326,7 +332,7 @@
   .allocation-detail-hero__metrics > div:last-child { grid-column: 1 / -1; }
   .allocation-detail-panel__header { display: grid; }
   .allocation-detail-panel__header .button { width: 100%; justify-content: center; }
-  .allocation-limit-row__actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .allocation-limit-row__actions .button { min-width: 0; justify-content: center; }
+  .allocation-limit-row__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .allocation-limit-row__actions .button { min-width: 0; min-height: 44px; justify-content: center; }
   .allocation-limit-row__actions .button span { display: none; }
 }
