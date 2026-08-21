@@ -23,6 +23,8 @@ test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail ta
   assert.match(text, /100_000/);
   assert.match(text, /quickAmountLabel/);
   assert.doesNotMatch(text, /payment_method: "transfer"/);
+  assert.doesNotMatch(text, /\{ value: "autodebit", label: "Auto-debit" \}/, "Auto-debit tidak boleh menjadi pilihan transaksi manual baru.");
+  assert.match(text, /form\.payment_method === "autodebit"[\s\S]*hidden>Auto-debit \(data lama\)/, "Nilai Auto-debit lama tetap harus dapat dibaca tanpa menjadi opsi baru.");
   assert.match(text, /accountDisplayLabel/);
   assert.equal((text.match(/accountDisplayLabel\(item\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label kepemilikan yang konsisten.");
   assert.doesNotMatch(text, /includeOwner: false/);
@@ -30,8 +32,8 @@ test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail ta
   assert.match(text, /filterByAssigneeAccess\(accountEnvelopes, bootstrap\?\.user \|\| user\)/);
   assert.match(text, /envelope\.source_account_id !== nextId/);
   assert.match(text, /sourceAccountPicker/);
-  assert.match(text, /Tampilkan semua/);
-  assert.match(text, /hiddenAccountLabel/);
+  assert.doesNotMatch(text, /Tampilkan semua|Lihat semua|hiddenAccountLabel/);
+  assert.match(text, /Belum ada rekening sumber dengan dana yang dapat digunakan/);
   assert.match(text, /envelopeOptionLabel/);
   assert.match(text, /mobileColumns=\{4\}/, "jenis transaksi mobile harus tetap satu baris empat opsi pada lebar normal");
   assert.match(text, /styles\.typeSelector/);
@@ -56,6 +58,8 @@ test("modal transaksi mobile tidak autofocus nominal dan memakai asset wallet pr
   assert.match(text, /draggable="false"/);
   assert.match(text, /initialFocusRef: mobileLayout \? undefined : amountRef/);
   assert.doesNotMatch(text, /transaction-wallet\.svg/);
+  assert.match(text, /FinancialSuccessOverlay/);
+  assert.doesNotMatch(text, /postSaveSuccess/);
 });
 
 
@@ -149,9 +153,10 @@ test("Pakai lagi memakai composer canonical sebagai prefill aman dan tetap menun
 test("income sukses menawarkan Alokasi Dana hanya setelah mutation sukses tanpa auto-submit alokasi", async () => {
   const text = await source();
   assert.match(text, /form\.transaction_type === TRANSACTION_TYPES\.INCOME \? "income" : "created"/);
+  assert.match(text, /TRANSACTION_TYPES\.REFUND/);
   assert.match(text, /workflowSource: "transaction-income"/);
   assert.match(text, /workflowAction: "fund"/);
-  assert.match(text, />Bagi ke Alokasi Dana<\/Button>/);
+  assert.match(text, /label: "Bagi ke Alokasi Dana"/);
   assert.match(text, /Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru/);
   assert.doesNotMatch(text, /envelopes\.adjustAllocation|adjustAllocation\(/, "TransactionForm tidak boleh membuat allocation mutation sendiri");
 });
@@ -162,7 +167,9 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
     readFile(new URL("../src/features/transactions/transactionFormSmartDefaults.js", import.meta.url), "utf8"),
   ]);
   assert.match(form, /sourceAccountPicker/);
-  assert.match(form, /placeholder="Cari rekening"/);
+  assert.doesNotMatch(form, /placeholder="Cari rekening"|Cari rekening|Lihat semua/, "Rekening sumber tidak lagi memakai search/show-all yang memenuhi form.");
+  assert.match(form, /picker\.visible\.map/);
+  assert.match(form, /Belum ada rekening sumber dengan dana yang dapat digunakan/);
   assert.match(form, /frequentCategories/);
   assert.match(form, /Sering dipakai/);
   assert.match(form, /smartAllocationCandidates/);
@@ -171,7 +178,7 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   assert.match(smart, /Dipilih dari Kebutuhan/);
   assert.match(form, /earlyFundsWarning/);
   assert.match(form, /Lihat dampak lengkap/);
-  assert.match(form, />Tambah lagi<\/Button>/);
+  assert.match(form, /label: "Tambah lagi"/);
   assert.match(form, /idempotencyKeyRef\.current = createIdempotencyKey\(\)/);
   assert.match(smart, /sourceAccountHasFunds/);
   assert.match(smart, /budget\.category_id !== form\.category_id/);

@@ -108,22 +108,31 @@
 }
 
 .typeSelector label > span {
-  min-height: 72px;
-  padding: 8px 7px;
+  min-height: 68px;
+  padding: 8px 6px;
   border-radius: var(--radius-md);
-  gap: 6px;
-  background: var(--surface-soft);
+  gap: 4px;
+  background: color-mix(in srgb, var(--surface-soft) 96%, var(--primary) 4%);
   color: var(--text-soft);
   box-shadow: none;
 }
 
+.typeSelector label > span > span:first-child {
+  width: 2.15rem;
+  height: 2.15rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
 .typeSelector label > span svg {
-  width: 2rem;
-  height: 2rem;
-  padding: 0.42rem;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+  width: 1.72rem;
+  height: 1.72rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .typeSelector label > span > span:last-child {
@@ -138,14 +147,14 @@
 
 .typeSelector input:checked + span {
   border-color: color-mix(in srgb, var(--primary) 74%, var(--border));
-  background: color-mix(in srgb, var(--primary-soft) 70%, var(--surface-soft));
+  background: color-mix(in srgb, var(--primary-soft) 50%, var(--surface-soft));
   color: var(--primary-strong);
   box-shadow: none;
 }
 
-.typeSelector input:checked + span svg {
-  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
-  background: color-mix(in srgb, var(--primary-soft) 66%, transparent);
+.typeSelector input:checked + span > span:first-child {
+  border: 0;
+  background: transparent;
 }
 
 .typeSelector label:active > span { transform: scale(0.985); }
@@ -169,13 +178,13 @@
 }
 
 .amountVisual :global([data-ui="money-input"] input) {
-  min-height: 66px;
-  padding-left: 4.15rem;
-  padding-right: 3.1rem;
+  min-height: 58px;
+  padding-left: 4.25rem;
+  padding-right: 2.9rem;
   border-color: var(--border-strong);
-  border-radius: var(--radius-md);
+  border-radius: 15px;
   background: var(--input);
-  font-size: clamp(1.45rem, 3.6vw, 1.8rem);
+  font-size: clamp(1.28rem, 3.2vw, 1.55rem);
   font-weight: var(--font-weight-semibold);
   letter-spacing: -0.025em;
 }
@@ -194,17 +203,19 @@
 
 .currencyBadge {
   position: absolute;
-  left: 0.7rem;
-  top: 2.05rem;
-  min-width: 2.75rem;
-  height: 2.55rem;
-  padding: 0 0.5rem;
+  left: 0.95rem;
+  top: 2.22rem;
+  min-width: 2.55rem;
+  height: 1.75rem;
+  padding: 0 0.8rem 0 0;
   border: 0;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   color: var(--primary-strong);
-  background: color-mix(in srgb, var(--primary-soft) 64%, var(--surface));
+  background: transparent;
   font-size: 0.95rem;
   font-weight: var(--font-weight-semibold);
   pointer-events: none;
@@ -213,10 +224,11 @@
 .amountIcon {
   position: absolute;
   right: 0.9rem;
-  top: 2.65rem;
-  width: 1.2rem;
-  height: 1.2rem;
+  top: 2.48rem;
+  width: 1.05rem;
+  height: 1.05rem;
   color: var(--primary);
+  opacity: 0.86;
   pointer-events: none;
 }
 
@@ -229,9 +241,9 @@
 .quickAmounts::-webkit-scrollbar { display: none; }
 
 .quickAmounts button {
-  min-height: 32px;
+  min-height: 30px;
   flex: 0 0 auto;
-  padding-inline: 10px;
+  padding-inline: 11px;
   border-color: var(--border);
   background: transparent;
   color: var(--text-muted);
@@ -414,19 +426,22 @@
   }
 
   .typeSelector label > span {
-    min-height: 66px;
-    padding: 7px 4px;
+    min-height: 64px;
+    padding: 7px 4px 6px;
     flex-direction: column;
     justify-content: center;
-    gap: 5px;
+    gap: 3px;
+  }
+
+  .typeSelector label > span > span:first-child {
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 2rem;
   }
 
   .typeSelector label > span svg {
-    width: 2.2rem;
-    height: 2.2rem;
-    flex: 0 0 2.2rem;
-    padding: 0.4rem;
-    border-radius: 11px;
+    width: 1.62rem;
+    height: 1.62rem;
   }
 
   .typeSelector label > span > span:last-child {
@@ -435,23 +450,24 @@
   }
 
   .amountVisual :global([data-ui="money-input"] input) {
-    min-height: 58px;
-    padding-left: 3.9rem;
-    padding-right: 2.9rem;
+    min-height: 55px;
+    padding-left: 4rem;
+    padding-right: 2.65rem;
     border-radius: 15px;
-    font-size: 1.55rem;
+    font-size: 1.3rem;
   }
 
   .currencyBadge {
-    top: 1.95rem;
-    left: 0.45rem;
-    min-width: 2.75rem;
-    height: 2.55rem;
+    top: 1.93rem;
+    left: 0.9rem;
+    min-width: 2.45rem;
+    height: 1.6rem;
+    padding-right: 0.72rem;
   }
 
   .amountIcon {
-    top: 2.55rem;
-    right: 0.8rem;
+    top: 2.2rem;
+    right: 0.85rem;
   }
 
   .quickAmounts {
@@ -619,33 +635,7 @@
 }
 
 
-.postSaveSuccess { min-height: 8rem; display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); border: 1px solid color-mix(in srgb, var(--positive) 28%, var(--border)); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--positive-soft) 58%, var(--surface)); }
-.postSaveIcon { width: 3rem; height: 3rem; flex: 0 0 3rem; display: grid; place-items: center; border-radius: 50%; background: var(--positive-soft); color: var(--positive); }
-.postSaveIcon svg { width: 1.35rem; height: 1.35rem; }
-.postSaveSuccess > div { min-width: 0; display: grid; gap: var(--space-2); }
-.postSaveSuccess strong { font-size: var(--font-size-body); }
-.postSaveSuccess p { margin: 0; color: var(--text-muted); font-size: var(--font-size-sm); line-height: 1.5; }
-@media (max-width: 480px) { .postSaveSuccess { align-items: flex-start; padding: var(--space-3); } }
 
-.accountPickerTools {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.accountPickerTools input {
-  min-width: 0;
-  min-height: 2.5rem;
-  flex: 1;
-  padding: 0.5rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--input);
-  color: var(--text);
-  font: inherit;
-}
-
-.accountPickerTools button,
 .categoryQuickChoices button {
   min-height: var(--mobile-control-height);
   border: 1px solid var(--border);
@@ -657,13 +647,6 @@
   font-weight: var(--font-weight-medium);
 }
 
-.accountPickerTools button {
-  flex: 0 0 auto;
-  padding: 0.45rem 0.7rem;
-}
-
-.accountPickerTools button:hover,
-.accountPickerTools button:focus-visible,
 .categoryQuickChoices button:hover,
 .categoryQuickChoices button:focus-visible,
 .categoryQuickChoices button[aria-pressed="true"] {
@@ -723,10 +706,6 @@
   font-size: var(--font-size-sm);
 }
 
-.postSaveInlineAction {
-  width: fit-content;
-  margin-top: 0.25rem;
-}
 
 .visualField > label {
   color: var(--text);
@@ -739,32 +718,11 @@
     font-size: 12px;
   }
 
-  .accountPickerTools {
-    align-items: stretch;
-  }
-
-  .accountPickerTools input,
-  .accountPickerTools button,
   .categoryQuickChoices button {
     min-height: var(--mobile-control-height);
   }
 
-  .accountPickerTools input {
-    font-size: var(--font-size-body);
-  }
-
   .impactDetails summary {
     min-height: var(--mobile-control-height);
-  }
-}
-
-@media (max-width: 420px) {
-  .accountPickerTools {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .accountPickerTools button {
-    width: 100%;
   }
 }

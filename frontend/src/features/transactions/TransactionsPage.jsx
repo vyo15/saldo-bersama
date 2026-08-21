@@ -20,7 +20,7 @@ import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx
 import TransactionForm from "./TransactionForm.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
-import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionSign, transactionTone } from "../../shared/presentation/transaction.js";
+import { formatTransactionDate, transactionCategoryIcon, transactionDisplayTitle, TRANSACTION_LABELS, transactionSign, transactionTone } from "../../shared/presentation/transaction.js";
 
 const MobileTransactionHistory = lazy(() => import("./components/MobileTransactionHistory.jsx"));
 
@@ -45,7 +45,7 @@ const transactionQuery = (filters) => ({ period: filters.period, limit: PAGE_SIZ
 const accountLabelFor = (lookup, item) => item.transaction_type === "transfer" ? `${lookup[item.source_account_id] || "Rekening asal"} → ${lookup[item.destination_account_id] || "Rekening tujuan"}` : lookup[item.source_account_id] || lookup[item.destination_account_id] || "Rekening tidak tersedia";
 const categoryLabelFor = (lookup, item) => lookup[item.category_id]?.name || (item.transaction_type === "transfer" ? "Transfer internal" : "Belum masuk Alokasi Dana");
 const managedModule = (item) => ({ recurring: "Jadwal rutin", goal: "Target" }[item.managed_by] || "");
-const transactionTitle = (item) => item.description || item.merchant || "Tanpa keterangan";
+const transactionTitle = (item, categoryLookup = {}) => transactionDisplayTitle(item, categoryLookup[item.category_id]);
 const canRepeatTransaction = (item) => item.status === "active" && ["expense", "income", "transfer"].includes(item.transaction_type);
 const repeatDraftFromTransaction = (item) => ({
   transaction_type: item.transaction_type,
@@ -113,7 +113,7 @@ const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, fi
   );
 };
 
-const TransactionTableRow = ({ item, categoryLookup, accountLabel, categoryLabel, actions }) => { const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type); return <tr><td><time>{item.transaction_date}</time></td><td><div className="transaction-table-primary"><span className={`transaction-category-icon transaction-category-icon--${item.transaction_type || "default"}`}><Icon aria-hidden="true" /></span><span><strong>{item.description || item.merchant || "Tanpa keterangan"}</strong><small>{TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</small></span></div></td><td>{accountLabel(item)}</td><td>{categoryLabel(item)}</td><td><StatusBadge status={item.status} /></td><td className="align-right"><Money value={item.amount} tone={transactionTone(item.transaction_type)} /></td><td><TransactionActions item={item} linkedModule={managedModule(item)} {...actions} /></td></tr>; };
+const TransactionTableRow = ({ item, categoryLookup, accountLabel, categoryLabel, actions }) => { const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type); return <tr><td><time>{item.transaction_date}</time></td><td><div className="transaction-table-primary"><span className={`transaction-category-icon transaction-category-icon--${item.transaction_type || "default"}`}><Icon aria-hidden="true" /></span><span><strong>{transactionTitle(item, categoryLookup)}</strong><small>{TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</small></span></div></td><td>{accountLabel(item)}</td><td>{categoryLabel(item)}</td><td><StatusBadge status={item.status} /></td><td className="align-right"><Money value={item.amount} tone={transactionTone(item.transaction_type)} /></td><td><TransactionActions item={item} linkedModule={managedModule(item)} {...actions} /></td></tr>; };
 const TransactionTable = (p) => <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Tanggal</th><th>Transaksi</th><th>Rekening</th><th>Kategori</th><th>Status</th><th className="align-right">Nominal</th><th><span className="sr-only">Aksi</span></th></tr></thead><tbody>{p.items.map((item) => <TransactionTableRow key={item.transaction_id} item={item} categoryLookup={p.categoryLookup} accountLabel={p.accountLabel} categoryLabel={p.categoryLabel} actions={p.actions} />)}</tbody></table></div>;
 
 const TransactionDetailModal = ({ target, onClose, accountLabel, categoryLabel, creatorLabel, actions }) => {
@@ -124,7 +124,7 @@ const TransactionDetailModal = ({ target, onClose, accountLabel, categoryLabel, 
   const allocationLabel = target.transaction_type === "expense" ? (target.envelope_period_id ? "Menggunakan Alokasi Dana" : "Belum masuk Alokasi Dana") : "Tidak berlaku";
   const sourceLabel = linkedModule || "Transaksi manual";
   const hasActions = target.status === "cancelled" ? Boolean(target.can_restore) : target.status === "active" && Boolean(linkedModule || canRepeatTransaction(target) || target.can_edit || target.can_cancel);
-  return <Modal open title="Detail transaksi" description={`${TRANSACTION_LABELS[target.transaction_type] || target.transaction_type} · ${formatTransactionDate(target.transaction_date)}`} onClose={onClose} size="sm" className="transaction-detail-modal" footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}><article className="transaction-history-detail"><header className="transaction-history-detail__amount"><div><span>Nominal</span><span className={`transaction-history-detail__money money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span></div><StatusBadge status={target.status} /></header><dl><div><dt>Deskripsi</dt><dd>{transactionTitle(target)}</dd></div><div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}</dd></div><div><dt>Kategori</dt><dd>{categoryLabel(target)}</dd></div><div><dt>Rekening</dt><dd>{accountLabel(target)}</dd></div><div><dt>Alokasi Dana</dt><dd>{allocationLabel}</dd></div><div><dt>Pencatat</dt><dd>{creatorLabel(target)}</dd></div><div><dt>Tanggal</dt><dd>{formatTransactionDate(target.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div><div><dt>Sumber</dt><dd>{sourceLabel}</dd></div></dl></article></Modal>;
+  return <Modal open title="Detail transaksi" description={`${TRANSACTION_LABELS[target.transaction_type] || target.transaction_type} · ${formatTransactionDate(target.transaction_date)}`} onClose={onClose} size="sm" className="transaction-detail-modal" footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}><article className="transaction-history-detail"><header className="transaction-history-detail__amount"><div><span>Nominal</span><span className={`transaction-history-detail__money money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span></div><StatusBadge status={target.status} /></header><dl><div><dt>Deskripsi</dt><dd>{transactionDisplayTitle(target)}</dd></div><div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}</dd></div><div><dt>Kategori</dt><dd>{categoryLabel(target)}</dd></div><div><dt>Rekening</dt><dd>{accountLabel(target)}</dd></div><div><dt>Alokasi Dana</dt><dd>{allocationLabel}</dd></div><div><dt>Pencatat</dt><dd>{creatorLabel(target)}</dd></div><div><dt>Tanggal</dt><dd>{formatTransactionDate(target.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div><div><dt>Sumber</dt><dd>{sourceLabel}</dd></div></dl></article></Modal>;
 };
 
 const Pagination = ({ resource, filters, setFilters, itemCount }) => {
@@ -278,7 +278,7 @@ const TransactionsPage = () => {
           items={items}
           categoryLookup={categoryLookup}
           accountLabel={accountLabel}
-          categoryLabel={categoryLabel}
+          creatorLabel={creatorLabel}
           onOpenDetail={setDetailTransaction}
           resource={resource}
           pageSize={PAGE_SIZE}

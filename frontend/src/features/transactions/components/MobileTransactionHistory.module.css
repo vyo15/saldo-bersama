@@ -78,8 +78,34 @@
 
 .searchForm { display: grid; gap: 14px; }
 .modalActions { display: flex; justify-content: flex-end; gap: 8px; }
-.advancedGrid { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-.advancedGrid > * { min-width: 0; }
+
+.filterModal :global(.modal__body) { padding: 0; }
+.filterModal :global(.modal__footer) { padding: 12px var(--space-4) calc(12px + env(safe-area-inset-bottom)); }
+.filterTypeSection { min-width: 0; padding: var(--space-4); display: grid; gap: 10px; }
+.filterTypeSection > strong { font-size: 13px; font-weight: var(--font-weight-semibold); line-height: 1.3; }
+.filterTypeGrid { min-width: 0; padding: 4px; border: 1px solid var(--border); border-radius: 15px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: var(--surface-soft); }
+.filterTypeButton,
+.filterTypeButtonActive { min-width: 0; min-height: var(--mobile-control-height); padding: 0 8px; border: 0; border-radius: 11px; color: var(--text-muted); background: transparent; font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); cursor: pointer; transition: color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing); }
+.filterTypeButtonActive { color: var(--primary); background: var(--primary-soft); }
+.filterTypeButton:hover { color: var(--text); background: var(--surface); }
+.filterTypeButton:focus-visible,
+.filterTypeButtonActive:focus-visible,
+.filterSelect select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.filterSettings { min-width: 0; border-top: 1px solid var(--border); }
+.filterSetting { min-width: 0; min-height: 66px; padding: 10px var(--space-4); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: minmax(0, 1fr) minmax(116px, 44%); align-items: center; gap: 12px; cursor: pointer; }
+.filterSetting:last-child { border-bottom: 0; }
+.filterSettingCopy { min-width: 0; display: grid; gap: 2px; }
+.filterSettingCopy strong { color: var(--text); font-size: 13px; font-weight: var(--font-weight-semibold); line-height: 1.25; }
+.filterSettingCopy small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.3; }
+.filterSelect { min-width: 0; position: relative; display: flex; align-items: center; border-radius: 10px; transition: background-color var(--motion-fast) var(--motion-easing); }
+.filterSelect:focus-within { background: var(--surface-soft); }
+.filterSelect select { width: 100%; min-width: 0; min-height: var(--mobile-control-height); padding: 0 26px 0 8px; border: 0; border-radius: 10px; appearance: none; color: var(--text-soft); background: transparent; font: inherit; font-size: var(--font-size-body); text-align: right; text-align-last: right; cursor: pointer; }
+.filterSelect select:focus-visible { outline-offset: -2px; }
+.filterSelect svg { width: 15px; height: 15px; position: absolute; right: 7px; color: var(--text-muted); pointer-events: none; }
+.filterFooterActions { width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.filterResetButton { min-width: 68px; padding-inline: 8px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-muted); }
+.filterResetButton:hover:not(:disabled) { border-color: transparent; background: var(--surface-soft); box-shadow: none; transform: none; }
+.filterApplyButton { min-width: 0; flex: 1 1 auto; }
 
 .list { min-width: 0; display: grid; gap: 18px; }
 .group { min-width: 0; display: grid; gap: 7px; }
@@ -101,16 +127,14 @@
 .rowIcon_refund { color: var(--positive); background: var(--positive-soft); }
 .rowIcon_transfer,
 .rowIcon_adjustment { color: var(--text-soft); background: var(--surface-strong); }
-.rowCopy { min-width: 0; display: grid; justify-items: start; gap: 3px; }
-.rowCopy > strong,
-.rowCopy > small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rowCopy > strong { font-size: 13px; line-height: 1.2; letter-spacing: -.01em; }
-.rowCopy > small { color: var(--text-muted); font-size: 11px; line-height: 1.25; }
+.rowCopy { min-width: 0; display: grid; justify-items: start; gap: 2px; }
+.rowCopy > strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 1.2; letter-spacing: -.01em; }
+.rowCopy > small { max-width: 100%; color: var(--text-muted); font-size: 11px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
 .flag { min-height: 20px; padding: 0 7px; border-radius: 999px; display: inline-flex; align-items: center; color: var(--text-muted); background: var(--surface-soft); font-size: var(--font-size-xs); font-style: normal; font-weight: var(--font-weight-semibold); line-height: 1; }
 .flag_primary { color: var(--primary); background: var(--primary-soft); }
 .flag_warning { color: var(--warning); background: var(--warning-soft); }
 .flag_negative { color: var(--negative); background: var(--negative-soft); }
-.rowMoney { min-width: 78px; display: grid; gap: 4px; text-align: right; }
+.rowMoney { min-width: 76px; display: grid; gap: 2px; text-align: right; }
 .rowAmount { display: inline-flex; align-items: center; justify-content: flex-end; white-space: nowrap; font-size: 12.5px; font-weight: var(--font-weight-bold); line-height: 1.2; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
 .rowAmount :global(.money) { color: inherit; font-size: inherit; }
 .rowMoney small { color: var(--text-muted); font-size: var(--font-size-xs); white-space: nowrap; }
@@ -122,6 +146,10 @@
 
 @keyframes transaction-chart-loading { to { background-position: -200% 0; } }
 
+@media (max-width: 360px) {
+  .filterTypeGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 390px) {
   .overview { padding-inline: 0; }
   .chart { height: 100px; }
@@ -131,12 +159,11 @@
   .iconFilter { width: var(--mobile-control-height); height: var(--mobile-control-height); }
   .typeChip,
   .typeChipActive { min-height: var(--mobile-control-height); padding-inline: 10px; font-size: var(--font-size-xs); }
-  .advancedGrid { grid-template-columns: 1fr; }
   .row { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; padding-inline: 8px; }
   .rowIcon { width: 36px; height: 36px; border-radius: 12px; }
   .rowCopy > strong { font-size: 12.5px; }
   .rowCopy > small { font-size: 10.5px; }
-  .rowMoney { min-width: 72px; }
+  .rowMoney { min-width: 70px; }
   .rowAmount { font-size: 12px; }
 }
 

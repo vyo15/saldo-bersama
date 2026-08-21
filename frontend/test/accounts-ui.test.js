@@ -177,6 +177,7 @@ ${accountEditors}`;
     combined: pageStyles,
   } = accountStyleSources;
   const accountsApi = await read("src/features/accounts/accounts.api.js");
+  const financialSuccessStyles = await read("src/components/feedback/FinancialSuccessOverlay.module.css");
 
   assert.match(accountPageSource, /title="Rekening"/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
@@ -327,7 +328,7 @@ ${accountEditors}`;
   assert.match(mobileTransfer, /pendingSavedRef/);
   assert.match(mobileTransfer, /onTransferSaved/);
   assert.match(mobileTransfer, /Transfer memerlukan rekening sumber aktif/);
-  assert.match(mobileTransfer, /mobileTransferSuccess/);
+  assert.match(mobileTransfer, /FinancialSuccessOverlay/);
   assert.doesNotMatch(mobileTransfer, /createTransaction|transactions\.create/);
   assert.match(mobileActivity, /TREND_OPTIONS = Object\.freeze\(\[3, 6, 12\]\)/);
   assert.match(mobileActivity, /useApiResource\("transactions\.list"/);
@@ -395,7 +396,7 @@ ${accountEditors}`;
   assert.match(pageStyles, /mobileTransferHeaderAction/);
   assert.match(pageStyles, /mobileActivityTabs/);
   assert.match(pageStyles, /mobileActivityTabIcon/);
-  assert.match(pageStyles, /mobileTransferSuccessCheck/);
+  assert.match(financialSuccessStyles, /brandCheckBadge/);
   assert.match(pageStyles, /mobileTransactionList/);
   assert.match(pageStyles, /mobileExpenseChart/);
   assert.match(pageStyles, /\.mobileStackSummary \{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s);
@@ -512,12 +513,14 @@ test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () =
 
 
 test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celebration tetap aksesibel", async () => {
-  const [page, pageStyles, feedback, result, resultStyles, alertList, alertStyles] = await Promise.all([
+  const [page, pageStyles, feedback, result, resultStyles, successOverlay, successStyles, alertList, alertStyles] = await Promise.all([
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.module.css"),
     read("src/components/feedback/FeedbackProvider.jsx"),
     read("src/features/reconciliations/components/ReconciliationFeedback.jsx"),
     read("src/features/reconciliations/components/ReconciliationFeedback.module.css"),
+    read("src/components/feedback/FinancialSuccessOverlay.jsx"),
+    read("src/components/feedback/FinancialSuccessOverlay.module.css"),
     read("src/features/dashboard/components/FinancialAlertList.jsx"),
     read("src/features/dashboard/components/FinancialAlertList.css"),
   ]);
@@ -547,18 +550,22 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(pageStyles, /\.mobileHistoryDifference/);
   assert.doesNotMatch(page, /<details className=\{styles\.helpDetails\}/);
   assert.doesNotMatch(page, /notify\(/, "Pencocokan saldo tidak boleh menampilkan toast kedua setelah result overlay.");
-  assert.match(feedback, /LOCAL_PROCESS_ACTIONS = new Set\(\["reconciliations\.create"\]\)/);
+  assert.match(feedback, /LOCAL_PROCESS_ACTIONS = new Set\(\["reconciliations\.create", "transactions\.create"\]\)/);
   assert.match(feedback, /LOCAL_PROCESS_ACTIONS\.has\(visible\.action\)/);
-  assert.match(result, /MONEY_COUNT = 30/);
-  assert.match(result, /MoneyRainCelebration/);
-  assert.match(result, /role="dialog"/);
-  assert.match(result, /useFocusTrap/);
+  assert.match(result, /FinancialSuccessOverlay/);
+  assert.match(result, /ReconciliationDifferenceOverlay/);
   assert.match(result, /refreshIncomplete/);
-  assert.match(result, /!result\.matched \? <button type="button" className=\{styles\.resultClose\}/);
-  assert.match(result, /resultSuccessMark/);
-  assert.match(resultStyles, /@media \(max-width: 820px\)[\s\S]*height: 100dvh/);
+  assert.match(successOverlay, /MONEY_COUNT = 38/);
+  assert.match(successOverlay, /MoneyRainCelebration/);
+  assert.match(successOverlay, /saldo-bersama-mark\.png/);
+  assert.match(successOverlay, /brandCheckPath/);
+  assert.match(successOverlay, /role="dialog"/);
+  assert.match(successOverlay, /useFocusTrap/);
+  assert.doesNotMatch(successOverlay, /FiX|aria-label="Tutup/);
+  assert.match(successStyles, /@media \(max-width: 820px\)[\s\S]*height: 100dvh/);
+  assert.match(successStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(successStyles, /success-money-fall/);
   assert.match(resultStyles, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(resultStyles, /reconciliation-money-fall/);
   assert.doesNotMatch(pageStyles, /guidePanel|guideLead|systemBalance|snapshotBadge|eyebrowPill/, "Style rekonsiliasi lama yang tidak terpakai harus dibersihkan.");
   assert.match(pageStyles, /grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(alertList, /mobile-attention-guidance/);

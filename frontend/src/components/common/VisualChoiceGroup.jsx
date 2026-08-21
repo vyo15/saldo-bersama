@@ -20,12 +20,13 @@ const VisualChoiceGroup = ({
   helper = "",
   className = "",
   wrapLabels = false,
+  plainIcons = false,
 }) => {
   const safeColumns = Math.max(1, Math.min(Number(columns) || 1, 4));
   const safeMobileColumns = Math.max(1, Math.min(Number(mobileColumns) || Math.min(safeColumns, 2), 4));
   return (
     <fieldset
-      className={`${styles.group}${compact ? ` ${styles.compact}` : ""}${wrapLabels ? ` ${styles.wrapLabels}` : ""}${className ? ` ${className}` : ""}`}
+      className={`${styles.group}${compact ? ` ${styles.compact}` : ""}${wrapLabels ? ` ${styles.wrapLabels}` : ""}${plainIcons ? ` ${styles.plainIcons}` : ""}${className ? ` ${className}` : ""}`}
       style={{ "--visual-choice-columns": safeColumns, "--visual-choice-mobile-columns": safeMobileColumns }}
       disabled={disabled}
     >

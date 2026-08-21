@@ -24,10 +24,7 @@
 .resultIcon { width: 4.8rem; height: 4.8rem; display: grid; place-items: center; border-radius: 50%; animation: reconciliation-feedback-check-in .72s .18s var(--motion-easing) both; }
 .resultIcon::before, .resultIcon::after { content: ""; position: absolute; width: 4.8rem; height: 4.8rem; border: 1px solid currentColor; border-radius: 50%; opacity: 0; animation: reconciliation-feedback-ring 1.25s .28s ease-out both; }
 .resultIcon::after { animation-delay: .42s; }
-.resultIconMatched { position: relative; color: white; background: radial-gradient(circle at 30% 28%, color-mix(in srgb, var(--positive) 88%, white), color-mix(in srgb, var(--positive) 82%, var(--primary)) 58%, color-mix(in srgb, var(--positive) 72%, black) 100%); box-shadow: 0 18px 48px color-mix(in srgb, var(--positive) 18%, transparent); }
 .resultIconDifference { position: relative; color: var(--warning); background: var(--warning-soft); box-shadow: 0 18px 48px color-mix(in srgb, var(--warning) 13%, transparent); }
-.resultSuccessMark { width: 2.55rem; height: 2.55rem; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .04)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 8px 20px rgba(0, 0, 0, .10); }
-.resultSuccessMark svg { width: 1.55rem; height: 1.55rem; }
 .resultIcon svg { width: 2.35rem; height: 2.35rem; stroke-width: 2.8; }
 .resultEyebrow { margin-top: 1.2rem; color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .1em; text-transform: uppercase; }
 .resultBackdropDifference .resultEyebrow { color: var(--warning); }
@@ -44,62 +41,11 @@
 .resultDone { width: 100%; min-height: 3rem; border: 0; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, white), var(--primary)); color: var(--on-primary); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-bold); cursor: pointer; box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 16%, transparent); }
 .resultFooter small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
 
-.moneyField {
-  --note-alpha: .3;
-  --note-delay: 0s;
-  --note-drift-a: 0px;
-  --note-drift-b: 0px;
-  --note-duration: 6s;
-  --note-left: 0%;
-  --note-rotation: 0deg;
-  --note-scale: 1;
-  --note-size: 4rem;
-  --note-tilt: 8deg;
-  --note-tilt-negative: -8deg;
-  --note-top: -20vh;
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  perspective: 800px;
-}
-.moneyNote { position: absolute; top: var(--note-top); left: var(--note-left); width: var(--note-size); aspect-ratio: 2 / 1; padding: .42rem .48rem; display: grid; align-content: space-between; border: 1px solid rgba(255, 255, 255, .24); border-radius: .5rem; color: rgba(15, 26, 24, .62); box-shadow: 0 .7rem 1.5rem rgba(0, 0, 0, .08); opacity: 0; transform-origin: 50% 50%; animation: reconciliation-money-fall var(--note-duration) var(--note-delay) linear both, reconciliation-money-fade var(--note-duration) var(--note-delay) ease-in-out both; will-change: transform, opacity; }
-.moneyNote::before { content: "Rp"; position: absolute; right: .44rem; bottom: .32rem; font-size: .44rem; font-weight: var(--font-weight-bold); opacity: .46; }
-.moneyNote::after { content: ""; position: absolute; inset: 19% 29%; border: 1px solid currentColor; border-radius: 50%; opacity: .12; }
-.moneyNote strong { font-size: .64rem; line-height: 1; }
-.moneyNote small { font-size: .33rem; font-weight: var(--font-weight-semibold); letter-spacing: .09em; }
-.money_red { background: linear-gradient(135deg, #ffd1ca, #e77870); }
-.money_blue { background: linear-gradient(135deg, #d2edff, #72bce8); }
-.money_green { background: linear-gradient(135deg, #dcf1d8, #83c68d); }
-.money_purple { background: linear-gradient(135deg, #eedcf5, #af86c5); }
-.money_gold { background: linear-gradient(135deg, #ffe8bc, #d1ae67); }
-.money_mint { background: linear-gradient(135deg, #d7f5e8, #82cdaa); }
-.money_far { filter: blur(.8px) saturate(.84); }
-.money_near { filter: blur(.14px) saturate(.94); }
-.spark { position: absolute; width: 5px; height: 5px; border-radius: 1px; background: #e3c455; opacity: 0; transform: rotate(45deg); animation: reconciliation-spark 1.6s ease-out both; }
-.spark1 { top: 18%; left: 14%; animation-delay: .3s; }
-.spark2 { top: 23%; right: 13%; animation-delay: .45s; }
-.spark3 { top: 34%; left: 10%; animation-delay: .68s; }
-.spark4 { top: 38%; right: 20%; animation-delay: .82s; }
-.spark5 { top: 48%; left: 19%; animation-delay: 1.05s; }
-.spark6 { top: 51%; right: 12%; animation-delay: 1.2s; }
-
 @keyframes reconciliation-feedback-spin { to { transform: rotate(360deg); } }
 @keyframes reconciliation-feedback-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes reconciliation-feedback-dialog-in { from { opacity: 0; transform: translateY(.7rem) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes reconciliation-feedback-check-in { 0% { opacity: 0; transform: scale(.68); } 58% { opacity: 1; transform: scale(1.08); } 78% { transform: scale(.96); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes reconciliation-feedback-ring { 0% { opacity: 0; transform: scale(.55); } 35% { opacity: .62; } 100% { opacity: 0; transform: scale(1.8); } }
-@keyframes reconciliation-money-fall {
-  0% { transform: translate3d(0, -14vh, 0) rotate(var(--note-rotation)) rotateX(0deg) rotateY(0deg) scale(var(--note-scale)); }
-  16% { transform: translate3d(var(--note-drift-a), 14vh, 0) rotate(calc(var(--note-rotation) + 3deg)) rotateX(var(--note-tilt)) rotateY(var(--note-tilt-negative)) scale(var(--note-scale)); }
-  34% { transform: translate3d(var(--note-drift-b), 39vh, 0) rotate(calc(var(--note-rotation) - 3deg)) rotateX(var(--note-tilt-negative)) rotateY(var(--note-tilt)) scale(var(--note-scale)); }
-  54% { transform: translate3d(var(--note-drift-a), 66vh, 0) rotate(calc(var(--note-rotation) + 2deg)) rotateX(var(--note-tilt)) rotateY(var(--note-tilt-negative)) scale(var(--note-scale)); }
-  76% { transform: translate3d(var(--note-drift-b), 94vh, 0) rotate(calc(var(--note-rotation) - 2deg)) rotateX(var(--note-tilt-negative)) rotateY(var(--note-tilt)) scale(var(--note-scale)); }
-  100% { transform: translate3d(0, 136vh, 0) rotate(var(--note-rotation)) rotateX(0deg) rotateY(0deg) scale(var(--note-scale)); }
-}
-@keyframes reconciliation-money-fade { 0% { opacity: 0; } 5% { opacity: var(--note-alpha); } 79% { opacity: var(--note-alpha); } 95% { opacity: .07; } 100% { opacity: 0; } }
-@keyframes reconciliation-spark { 0% { opacity: 0; transform: rotate(45deg) scale(.25); } 32% { opacity: .55; transform: rotate(90deg) scale(1); } 100% { opacity: 0; transform: rotate(160deg) scale(.2); } }
 
 @media (max-width: 820px) {
   .progressCard { padding: 11px 12px; grid-template-columns: 2rem minmax(0, 1fr); border-radius: 13px; }
@@ -112,13 +58,10 @@
   .resultIcon { margin-top: 2.2rem; }
   .resultAmount, .resultAmount :global(.money) { font-size: clamp(2.05rem, 10vw, 2.6rem); }
   .resultSummary { margin-top: 1.1rem; }
-  .moneyNote { border-color: rgba(255, 255, 255, .18); filter: saturate(.78) brightness(.88); }
-  .money_far { filter: blur(.8px) saturate(.72) brightness(.82); }
-  .money_near { filter: blur(.12px) saturate(.84) brightness(.9); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .progressSpinner svg { animation-duration: 1.5s; }
   .resultBackdrop, .resultDialog, .resultIcon { animation: none; }
-  .resultIcon::before, .resultIcon::after, .moneyField, .spark { display: none; }
+  .resultIcon::before, .resultIcon::after { display: none; }
 }

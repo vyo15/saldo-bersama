@@ -1,3 +1,9 @@
+## 21 Agustus 2026 - Unified financial success feedback
+
+- Menyatukan feedback sukses Pengeluaran, Pemasukan, Transfer, Refund, dan rekonsiliasi matched ke `FinancialSuccessOverlay` reusable dengan logo Saldo Bersama, badge ceklis animasi, nominal utama, ringkasan kontekstual, MoneyRain staggered, safe-area mobile, focus trap, dan reduced-motion fallback. Success result tidak memakai tombol X; aksi tambahan seperti `Tambah lagi`, `Bagi ke Alokasi Dana`, atau `Lihat transaksi` tetap tersedia sebagai aksi sekunder.
+- Menghapus modal sukses transaksi lama dan animasi sukses Transfer Rekening yang terduplikasi. `transactions.create` bersama `reconciliations.create` disupresi dari global mutation pill pada success flow agar tidak menghasilkan feedback ganda; error/outcome unknown dan rekonsiliasi difference tetap memakai feedback persisten yang dapat ditindaklanjuti.
+- Perubahan hanya pada presentation/feedback frontend dan regression test. API, auth, ledger, saldo, idempotency, row version, audit, schema, dan backend reconciliation tidak diubah.
+
 ## 20 Agustus 2026 - Dropdown dark-mode dan quality gate ZIP
 
 - Menyeragamkan popup seluruh native `select` agar opsi tetap terbaca pada light/dark theme, termasuk Rekonsiliasi, Transaksi, Alokasi Dana, Target, Jadwal Rutin, dan filter. Opsi memakai surface/text semantic, selected state primary-soft, serta disabled state muted tanpa mengganti native select sehingga keyboard, screen reader, dan mobile picker tetap dipertahankan.

@@ -139,6 +139,14 @@
 
 .option > input:checked + .card.income .iconWrap { color: var(--primary-strong); }
 
+.plainIcons .iconWrap,
+.plainIcons .option > input:checked + .card .iconWrap,
+.plainIcons .option > input:checked + .card.expense .iconWrap {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
 .optionDisabled .card,
 .group:disabled .card {
   cursor: not-allowed;

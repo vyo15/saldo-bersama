@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { transactionDisplayTitle, transactionListMetadata } from "../src/shared/presentation/transaction.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -38,4 +39,24 @@ test("presentasi history mobile transaksi tetap lazy agar route utama punya head
   assert.match(page, /const MobileTransactionHistory = lazy\(\(\) => import\("\.\/components\/MobileTransactionHistory\.jsx"\)\)/);
   assert.match(page, /<Suspense fallback=\{null\}>[\s\S]*<MobileTransactionHistory/);
   assert.doesNotMatch(page, /import\s*\{[^}]*MobileTransactionOverview[^}]*\}\s*from\s*"\.\/components\/MobileTransactionHistory\.jsx"/s);
+});
+
+
+test("judul dan metadata transaksi memakai fallback informatif tanpa memotong identitas", () => {
+  const category = { category_id: "salary", name: "Gajian" };
+  const item = { transaction_type: "income", description: "", merchant: "Rejeki Anak Soleh" };
+  assert.equal(transactionDisplayTitle(item, category), "Gajian");
+  assert.deepEqual(transactionListMetadata({
+    item,
+    category,
+    account: "BCA",
+    creator: "Fuji Astuti Dwijayanti",
+  }), ["Rejeki Anak Soleh", "BCA", "Fuji Astuti Dwijayanti"]);
+
+  assert.equal(transactionDisplayTitle({ transaction_type: "transfer" }), "Transfer");
+  assert.deepEqual(transactionListMetadata({
+    item: { transaction_type: "transfer" },
+    account: "BCA → Tunai",
+    creator: "Fuji Astuti Dwijayanti",
+  }), ["BCA → Tunai", "Fuji Astuti Dwijayanti"]);
 });

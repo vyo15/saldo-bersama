@@ -8,7 +8,7 @@ const MAX_VISIBLE = 3;
 const DEFAULT_DURATION_MS = 4_500;
 const PROCESS_SUCCESS_MS = 1_600;
 const PROCESS_ERROR_MS = 4_500;
-const LOCAL_PROCESS_ACTIONS = new Set(["reconciliations.create"]);
+const LOCAL_PROCESS_ACTIONS = new Set(["reconciliations.create", "transactions.create"]);
 
 const safeTone = (tone) => ["success", "info", "warning", "danger"].includes(tone) ? tone : "info";
 

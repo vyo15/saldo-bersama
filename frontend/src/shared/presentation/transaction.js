@@ -84,6 +84,26 @@ export const TRANSACTION_LABELS = Object.freeze({
   [TRANSACTION_TYPES.ADJUSTMENT]: "Penyesuaian",
 });
 
+const cleanTransactionText = (value) => String(value || "").trim();
+
+export const transactionDisplayTitle = (item = {}, category = null) => cleanTransactionText(item.description)
+  || cleanTransactionText(category?.name)
+  || cleanTransactionText(item.merchant)
+  || TRANSACTION_LABELS[item.transaction_type]
+  || "Transaksi";
+
+export const transactionListMetadata = ({ item = {}, category = null, account = "", creator = "" } = {}) => {
+  const title = transactionDisplayTitle(item, category);
+  const seen = new Set([title]);
+  return [item.merchant, account, category?.name, creator]
+    .map(cleanTransactionText)
+    .filter((value) => {
+      if (!value || seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+};
+
 export const TRANSACTION_ICONS = Object.freeze({
   [TRANSACTION_TYPES.EXPENSE]: FiArrowDownLeft,
   [TRANSACTION_TYPES.INCOME]: FiArrowUpRight,

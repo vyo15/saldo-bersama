@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { FiChevronLeft, FiChevronRight, FiFilter, FiSearch, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronLeft, FiChevronRight, FiFilter, FiSearch, FiX } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../../domain/dates.js";
 import { formatCompactRupiah } from "../../../domain/money.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
-import { formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
+import { formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionDisplayTitle, transactionListMetadata, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import styles from "./MobileTransactionHistory.module.css";
 
 
@@ -47,7 +47,7 @@ const COMMON_TYPES = Object.freeze([
 
 const ALL_TYPES = Object.freeze([
   ...COMMON_TYPES,
-  { value: "refund", label: "Refund" },
+  { value: "refund", label: "Pengembalian" },
   { value: "adjustment", label: "Penyesuaian" },
 ]);
 
@@ -124,11 +124,7 @@ export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, s
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedDraft, setAdvancedDraft] = useState(() => advancedDraftFrom(filters));
   const filterCount = advancedCount(filters);
-  const resetAll = () => {
-    setDraftQuery("");
-    setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 }));
-    setAdvancedDraft({ type: "all", allocation: "all", account: "all", category: "all", creator: "all" });
-  };
+  const resetAdvancedDraft = () => setAdvancedDraft({ type: "all", allocation: "all", account: "all", category: "all", creator: "all" });
   const openAdvanced = () => { setAdvancedDraft(advancedDraftFrom(filters)); setAdvancedOpen(true); };
   const applyAdvanced = () => { setFilters((current) => ({ ...current, ...advancedDraft, offset: 0 })); setAdvancedOpen(false); };
   const submitMobileSearch = (event) => { submitSearch(event); setSearchOpen(false); };
@@ -146,13 +142,38 @@ export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, s
         <div className={styles.modalActions}>{filters.query ? <Button type="button" onClick={() => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", offset: 0 })); setSearchOpen(false); }}>Hapus pencarian</Button> : null}<Button type="submit" variant="primary">Cari</Button></div>
       </form>
     </Modal>
-    <Modal open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Filter transaksi" description="Gunakan hanya saat Anda perlu menyaring riwayat lebih spesifik." size="sm" footer={<><Button type="button" onClick={resetAll}>Reset semua</Button><Button type="button" variant="primary" onClick={applyAdvanced}>Terapkan</Button></>}>
-      <div className={styles.advancedGrid}>
-        <label className="field"><span>Jenis transaksi</span><select value={advancedDraft.type} onChange={(event) => setAdvancedDraft((current) => ({ ...current, type: event.target.value }))}>{ALL_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label className="field"><span>Alokasi Dana</span><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))}><option value="all">Semua Alokasi Dana</option><option value="unallocated">Belum masuk Alokasi Dana</option><option value="allocated">Menggunakan Alokasi Dana</option></select></label>
-        <label className="field"><span>Rekening</span><select value={advancedDraft.account} onChange={(event) => setAdvancedDraft((current) => ({ ...current, account: event.target.value }))}><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>
-        <label className="field"><span>Kategori</span><select value={advancedDraft.category} onChange={(event) => setAdvancedDraft((current) => ({ ...current, category: event.target.value }))}><option value="all">Semua kategori</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
-        <label className="field"><span>Pencatat</span><select value={advancedDraft.creator} onChange={(event) => setAdvancedDraft((current) => ({ ...current, creator: event.target.value }))}><option value="all">Semua pencatat</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select></label>
+    <Modal
+      open={advancedOpen}
+      onClose={() => setAdvancedOpen(false)}
+      title="Filter transaksi"
+      description="Tampilkan transaksi yang ingin dilihat."
+      size="sm"
+      className={styles.filterModal}
+      footer={<div className={styles.filterFooterActions}><Button type="button" className={styles.filterResetButton} onClick={resetAdvancedDraft}>Reset</Button><Button type="button" className={styles.filterApplyButton} variant="primary" onClick={applyAdvanced}>Terapkan filter</Button></div>}
+    >
+      <section className={styles.filterTypeSection} aria-labelledby="mobile-transaction-type-filter">
+        <strong id="mobile-transaction-type-filter">Jenis transaksi</strong>
+        <div className={styles.filterTypeGrid}>
+          {ALL_TYPES.map((item) => <button key={item.value} type="button" className={advancedDraft.type === item.value ? styles.filterTypeButtonActive : styles.filterTypeButton} aria-pressed={advancedDraft.type === item.value} onClick={() => setAdvancedDraft((current) => ({ ...current, type: item.value }))}>{item.label}</button>)}
+        </div>
+      </section>
+      <div className={styles.filterSettings}>
+        <label className={styles.filterSetting}>
+          <span className={styles.filterSettingCopy}><strong>Alokasi Dana</strong><small>Sumber alokasi transaksi</small></span>
+          <span className={styles.filterSelect}><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))} aria-label="Filter Alokasi Dana"><option value="all">Semua</option><option value="unallocated">Belum dialokasikan</option><option value="allocated">Menggunakan alokasi</option></select><FiChevronDown aria-hidden="true" /></span>
+        </label>
+        <label className={styles.filterSetting}>
+          <span className={styles.filterSettingCopy}><strong>Rekening</strong><small>Rekening yang digunakan</small></span>
+          <span className={styles.filterSelect}><select value={advancedDraft.account} onChange={(event) => setAdvancedDraft((current) => ({ ...current, account: event.target.value }))} aria-label="Filter rekening"><option value="all">Semua</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select><FiChevronDown aria-hidden="true" /></span>
+        </label>
+        <label className={styles.filterSetting}>
+          <span className={styles.filterSettingCopy}><strong>Kategori</strong><small>Kategori transaksi</small></span>
+          <span className={styles.filterSelect}><select value={advancedDraft.category} onChange={(event) => setAdvancedDraft((current) => ({ ...current, category: event.target.value }))} aria-label="Filter kategori"><option value="all">Semua</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select><FiChevronDown aria-hidden="true" /></span>
+        </label>
+        <label className={styles.filterSetting}>
+          <span className={styles.filterSettingCopy}><strong>Pencatat</strong><small>Siapa yang mencatat</small></span>
+          <span className={styles.filterSelect}><select value={advancedDraft.creator} onChange={(event) => setAdvancedDraft((current) => ({ ...current, creator: event.target.value }))} aria-label="Filter pencatat"><option value="all">Semua</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select><FiChevronDown aria-hidden="true" /></span>
+        </label>
       </div>
     </Modal>
   </>;
@@ -166,21 +187,22 @@ const mobileFlag = (item) => {
   return null;
 };
 
-export const MobileTransactionRow = ({ item, categoryLookup, accountLabel, categoryLabel, onOpenDetail }) => {
-  const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type);
-  const title = item.description || item.merchant || "Tanpa keterangan";
+export const MobileTransactionRow = ({ item, categoryLookup, accountLabel, creatorLabel, onOpenDetail }) => {
+  const category = categoryLookup[item.category_id];
+  const Icon = transactionCategoryIcon(category, item.transaction_type);
+  const title = transactionDisplayTitle(item, category);
   const tone = transactionTone(item.transaction_type);
   const sign = transactionSign(item.transaction_type);
-  const metadata = item.transaction_type === "transfer" ? accountLabel(item) : `${categoryLabel(item)} · ${accountLabel(item)}`;
+  const metadata = transactionListMetadata({ item, category, account: accountLabel(item), creator: creatorLabel(item) }).join(" · ");
   const flag = mobileFlag(item);
   return <button type="button" className={`${styles.row}${item.status === "cancelled" ? ` ${styles.rowCancelled}` : ""}`} onClick={() => onOpenDetail(item)} aria-label={`Buka detail ${title}`}>
     <span className={`${styles.rowIcon} ${styles[`rowIcon_${item.transaction_type || "default"}`] || ""}`}><Icon aria-hidden="true" /></span>
-    <span className={styles.rowCopy}><strong>{title}</strong><small>{metadata}</small>{flag ? <em className={`${styles.flag} ${styles[`flag_${flag.tone}`]}`}>{flag.label}</em> : null}</span>
+    <span className={styles.rowCopy}><strong>{title}</strong>{metadata ? <small>{metadata}</small> : null}{flag ? <em className={`${styles.flag} ${styles[`flag_${flag.tone}`]}`}>{flag.label}</em> : null}</span>
     <span className={styles.rowMoney}><span className={`${styles.rowAmount} money--${tone}`}>{sign}<span className="money">{formatCompactRupiah(item.amount)}</span></span><small>{TRANSACTION_LABELS[item.transaction_type] || "Transaksi"}</small></span>
   </button>;
 };
 
-export const MobileTransactionList = ({ groups, categoryLookup, accountLabel, categoryLabel, onOpenDetail }) => <div className={styles.list} aria-label="Daftar transaksi">{groups.map((group) => <section key={group.key} className={styles.group} aria-labelledby={`transaction-date-${group.key}`}><header><h2 id={`transaction-date-${group.key}`}>{group.label}</h2><span>{group.items.length} transaksi</span></header><div className={styles.groupList}>{group.items.map((item) => <MobileTransactionRow key={item.transaction_id} item={item} categoryLookup={categoryLookup} accountLabel={accountLabel} categoryLabel={categoryLabel} onOpenDetail={onOpenDetail} />)}</div></section>)}</div>;
+export const MobileTransactionList = ({ groups, categoryLookup, accountLabel, creatorLabel, onOpenDetail }) => <div className={styles.list} aria-label="Daftar transaksi">{groups.map((group) => <section key={group.key} className={styles.group} aria-labelledby={`transaction-date-${group.key}`}><header><h2 id={`transaction-date-${group.key}`}>{group.label}</h2><span>{group.items.length} transaksi</span></header><div className={styles.groupList}>{group.items.map((item) => <MobileTransactionRow key={item.transaction_id} item={item} categoryLookup={categoryLookup} accountLabel={accountLabel} creatorLabel={creatorLabel} onOpenDetail={onOpenDetail} />)}</div></section>)}</div>;
 
 export const MobileTransactionPager = ({ resource, filters, setFilters, itemCount, pageSize }) => {
   const hasPrevious = Boolean(filters.offset);
@@ -224,7 +246,7 @@ const MobileTransactionHistory = ({
   items,
   categoryLookup,
   accountLabel,
-  categoryLabel,
+  creatorLabel,
   onOpenDetail,
   resource,
   pageSize,
@@ -239,7 +261,7 @@ const MobileTransactionHistory = ({
     {resourceStates}
     {items.length ? (
       <>
-        <MobileTransactionList groups={groupTransactionsByDate(items)} categoryLookup={categoryLookup} accountLabel={accountLabel} categoryLabel={categoryLabel} onOpenDetail={onOpenDetail} />
+        <MobileTransactionList groups={groupTransactionsByDate(items)} categoryLookup={categoryLookup} accountLabel={accountLabel} creatorLabel={creatorLabel} onOpenDetail={onOpenDetail} />
         <MobileTransactionPager resource={resource} filters={filters} setFilters={setFilters} itemCount={items.length} pageSize={pageSize} />
       </>
     ) : null}

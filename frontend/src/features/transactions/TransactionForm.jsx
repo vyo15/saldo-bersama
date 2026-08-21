@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
+import FinancialSuccessOverlay from "../../components/feedback/FinancialSuccessOverlay.jsx";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { FiAlertTriangle, FiCalendar, FiCheck, FiChevronLeft, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
 import Modal from "../../components/common/Modal.jsx";
@@ -41,7 +42,6 @@ const PAYMENT_METHOD_OPTIONS = Object.freeze([
   { value: "cash", label: "Tunai" },
   { value: "debit", label: "Kartu debit" },
   { value: "ewallet", label: "E-wallet" },
-  { value: "autodebit", label: "Auto-debit" },
 ]);
 
 const editableTransactionForm = (transaction) => {
@@ -184,7 +184,7 @@ const finalizeTransactionSave = async ({ saved, transaction, form, refreshOvervi
   setters.setSubmitState({ status: "success", error: null });
   const created = !transaction;
   const amount = Number(saved?.amount || parseTransactionAmount(form.amount) || 0);
-  const supportsPostSaveFlow = [TRANSACTION_TYPES.INCOME, TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.TRANSFER].includes(form.transaction_type);
+  const supportsPostSaveFlow = [TRANSACTION_TYPES.INCOME, TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.REFUND].includes(form.transaction_type);
   if (created && notifyOnSuccess && supportsPostSaveFlow) {
     const type = form.transaction_type === TRANSACTION_TYPES.INCOME ? "income" : "created";
     setPostSave({
@@ -194,7 +194,6 @@ const finalizeTransactionSave = async ({ saved, transaction, form, refreshOvervi
       sourceAccountId: String(saved?.source_account_id || form.source_account_id || ""),
       destinationAccountId: String(saved?.destination_account_id || form.destination_account_id || ""),
     });
-    notify({ message: form.transaction_type === TRANSACTION_TYPES.INCOME ? "Pemasukan berhasil dicatat." : "Transaksi berhasil disimpan.", tone: "success", dedupeKey: `transactions:${form.transaction_type}-created` });
     return true;
   }
   if (notifyOnSuccess) notify({ message: transaction ? "Perubahan transaksi berhasil disimpan." : "Transaksi berhasil disimpan." });
@@ -219,7 +218,7 @@ const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, envel
   } catch (error) { handleTransactionError(error, setters); }
 };
 
-const TypeSelector = ({ form, update }) => <VisualChoiceGroup className={`form-grid__full ${styles.typeSelector}`} legend="Jenis transaksi" name="transaction_type" value={form.transaction_type} onChange={(value) => update("transaction_type", value)} options={TRANSACTION_TYPE_OPTIONS} columns={4} mobileColumns={4} />;
+const TypeSelector = ({ form, update }) => <VisualChoiceGroup className={`form-grid__full ${styles.typeSelector}`} legend="Jenis transaksi" name="transaction_type" value={form.transaction_type} onChange={(value) => update("transaction_type", value)} options={TRANSACTION_TYPE_OPTIONS} columns={4} mobileColumns={4} plainIcons />;
 
 const FieldControl = ({ icon: Icon, children }) => <span className={styles.fieldControl}><Icon aria-hidden="true" /><span className={styles.fieldControlInput}>{children}</span></span>;
 
@@ -236,29 +235,18 @@ const sourceAccountOptionLabel = (item, transactionType) => {
 };
 
 const SourceAccountField = ({ form, accounts, recentTransactions, onSourceAccountChange, errors }) => {
-  const [query, setQuery] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const picker = useMemo(() => sourceAccountPicker({
     accounts,
     transactionType: form.transaction_type,
     selectedAccountId: form.source_account_id,
-    showAll,
-    query,
     recentTransactions,
-  }), [accounts, form.source_account_id, form.transaction_type, query, recentTransactions, showAll]);
+  }), [accounts, form.source_account_id, form.transaction_type, recentTransactions]);
   const selected = accounts.find((item) => item.account_id === form.source_account_id) || null;
-  const showSearch = accounts.length > 5;
-  const showTools = showSearch || picker.hiddenCount > 0;
-  const hiddenAccountLabel = form.transaction_type === TRANSACTION_TYPES.TRANSFER ? "dana tersedia Rp0" : "saldo Rp0";
   return <div className={`field ${styles.visualField}`}>
     <label htmlFor="source-account">Rekening sumber *</label>
-    {showTools ? <div className={styles.accountPickerTools}>
-      {showSearch ? <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari rekening" aria-label="Cari rekening sumber" /> : null}
-      {picker.hiddenCount > 0 || showAll ? <button type="button" onClick={() => setShowAll((current) => !current)}>{showAll ? `Sembunyikan ${hiddenAccountLabel}` : `Tampilkan semua (${picker.hiddenCount})`}</button> : null}
-    </div> : null}
     <FieldControl icon={FiCreditCard}><select id="source-account" value={form.source_account_id} onChange={(event) => onSourceAccountChange(event.target.value)} aria-invalid={Boolean(errors.source_account_id)}><option value="">Pilih rekening</option>{picker.visible.map((item) => <option key={item.account_id} value={item.account_id}>{sourceAccountOptionLabel(item, form.transaction_type)}</option>)}</select></FieldControl>
     {selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dialokasikan {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}
-    {!showAll && picker.hiddenCount > 0 ? <small>{picker.hiddenCount} rekening {hiddenAccountLabel} disembunyikan dari daftar utama.</small> : null}
+    {!selected && picker.visible.length === 0 ? <small>Belum ada rekening sumber dengan dana yang dapat digunakan.</small> : null}
     {errors.source_account_id ? <small className="field__error">{errors.source_account_id}</small> : null}
   </div>;
 };
@@ -304,7 +292,7 @@ const AccountCategoryFields = (p) => {
   </>;
 };
 
-const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`} htmlFor="payment-method"><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><select id="payment-method" value={form.payment_method} onChange={(event) => update("payment_method", event.target.value)}>{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item.value || "unset"} value={item.value}>{item.label}</option>)}</select></FieldControl></label><label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" aria-invalid={Boolean(errors.description)} />{errors.description ? <small className="field__error">{errors.description}</small> : null}</label></>;
+const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`} htmlFor="payment-method"><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><select id="payment-method" value={form.payment_method} onChange={(event) => update("payment_method", event.target.value)}>{form.payment_method === "autodebit" ? <option value="autodebit" hidden>Auto-debit (data lama)</option> : null}{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item.value || "unset"} value={item.value}>{item.label}</option>)}</select></FieldControl></label><label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" aria-invalid={Boolean(errors.description)} />{errors.description ? <small className="field__error">{errors.description}</small> : null}</label></>;
 
 const impactPrimaryLine = (impact, isTransfer) => {
   if (impact.envelope) return `Sisa ${impact.envelope.name}: ${formatRupiah(impact.envelope.remaining_amount)} → ${formatRupiah(impact.envelopeAfter)}`;
@@ -439,19 +427,75 @@ const TransactionFormBody = ({ mobileTransferMode, fields }) => {
   return <fieldset className={styles.intentFieldset} disabled={fields.outcomeUnknown}><TransactionFields {...fields} /></fieldset>;
 };
 
-const PostSaveModal = ({ open, postSave, onClose, navigate, onAddAnother }) => {
-  if (postSave.type === "income") {
-    const allocate = () => {
-      const state = { workflowSource: "transaction-income", workflowAction: "fund", sourceAccountId: postSave.destinationAccountId, suggestedAmount: postSave.amount };
-      onClose();
-      navigate("/perencanaan/kantong", { state });
-    };
-    return <Modal open={open} onClose={onClose} title="Pemasukan berhasil" description="Server sudah mengonfirmasi transaksi." size="sm" footer={<><Button type="button" onClick={onClose}>Selesai</Button><Button type="button" variant="primary" onClick={allocate}>Bagi ke Alokasi Dana</Button></>}><div className={styles.postSaveSuccess} role="status" aria-live="polite"><span className={styles.postSaveIcon}><FiCheck aria-hidden="true" /></span><div><strong>{formatRupiah(postSave.amount)} sudah masuk.</strong><p>Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru.</p><Button type="button" className={styles.postSaveInlineAction} onClick={onAddAnother}>Tambah pemasukan lagi</Button></div></div></Modal>;
-  }
+const postSaveAccountLabel = (accounts, accountId, fallback) => {
+  const account = accounts.find((item) => item.account_id === accountId) || null;
+  return account ? accountDisplayLabel(account) : fallback;
+};
 
-  const canAddAnother = [TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.TRANSFER].includes(postSave.transactionType);
-  const label = postSave.transactionType === TRANSACTION_TYPES.EXPENSE ? "Pengeluaran" : postSave.transactionType === TRANSACTION_TYPES.TRANSFER ? "Transfer" : "Transaksi";
-  return <Modal open={open} onClose={onClose} title="Transaksi tersimpan" description="Server sudah mengonfirmasi transaksi." size="sm" footer={<><Button type="button" onClick={onClose}>Selesai</Button>{canAddAnother ? <Button type="button" variant="primary" onClick={onAddAnother}>Tambah lagi</Button> : null}</>}><div className={styles.postSaveSuccess} role="status" aria-live="polite"><span className={styles.postSaveIcon}><FiCheck aria-hidden="true" /></span><div><strong>{label} {formatRupiah(postSave.amount)} berhasil disimpan.</strong><p>{canAddAnother ? "Tambah transaksi berikutnya tanpa menyalin nominal, kategori, Alokasi Dana, atau catatan sebelumnya." : "Data transaksi sudah tersimpan."}</p></div></div></Modal>;
+const PostSaveModal = ({ open, postSave, accounts, onClose, navigate, onAddAnother }) => {
+  const type = postSave.transactionType;
+  const sourceLabel = postSaveAccountLabel(accounts, postSave.sourceAccountId, "Rekening sumber");
+  const destinationLabel = postSaveAccountLabel(accounts, postSave.destinationAccountId, "Rekening tujuan");
+  const allocate = () => {
+    const state = { workflowSource: "transaction-income", workflowAction: "fund", sourceAccountId: postSave.destinationAccountId, suggestedAmount: postSave.amount };
+    onClose();
+    navigate("/perencanaan/kantong", { state });
+  };
+
+  const presentation = type === TRANSACTION_TYPES.INCOME
+    ? {
+      title: "Pemasukan berhasil",
+      description: "Dana sudah masuk ke rekening. Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru.",
+      summaryRows: [
+        { label: "Rekening tujuan", value: destinationLabel },
+        { label: "Status", value: "Berhasil", tone: "positive" },
+      ],
+      secondaryActions: [
+        { label: "Tambah pemasukan lagi", onClick: onAddAnother },
+        { label: "Bagi ke Alokasi Dana", onClick: allocate },
+      ],
+    }
+    : type === TRANSACTION_TYPES.TRANSFER
+      ? {
+        title: "Transfer berhasil",
+        description: "Dana sudah berhasil dipindahkan ke rekening tujuan dan server telah mengonfirmasi transaksi.",
+        summaryRows: [
+          { label: "Dari rekening", value: sourceLabel },
+          { label: "Ke rekening", value: destinationLabel },
+          { label: "Status", value: "Berhasil", tone: "positive" },
+        ],
+        secondaryActions: [{ label: "Tambah lagi", onClick: onAddAnother }],
+      }
+      : type === TRANSACTION_TYPES.REFUND
+        ? {
+          title: "Refund berhasil",
+          description: "Refund sudah tercatat dan saldo rekening telah diperbarui oleh server.",
+          summaryRows: [
+            { label: "Rekening", value: sourceLabel },
+            { label: "Status", value: "Berhasil", tone: "positive" },
+          ],
+          secondaryActions: [],
+        }
+        : {
+          title: "Pengeluaran berhasil",
+          description: "Pengeluaran sudah tercatat dan saldo rekening telah diperbarui oleh server.",
+          summaryRows: [
+            { label: "Rekening", value: sourceLabel },
+            { label: "Status", value: "Berhasil", tone: "positive" },
+          ],
+          secondaryActions: [{ label: "Tambah lagi", onClick: onAddAnother }],
+        };
+
+  return <FinancialSuccessOverlay
+    open={open}
+    title={presentation.title}
+    amount={postSave.amount}
+    description={presentation.description}
+    summaryRows={presentation.summaryRows}
+    secondaryActions={presentation.secondaryActions}
+    onClose={onClose}
+    footerNote="Riwayat transaksi sudah diperbarui."
+  />;
 };
 
 const TransactionForm = ({
@@ -552,7 +596,7 @@ const TransactionForm = ({
     window.requestAnimationFrame(() => amountRef.current?.focus?.());
   };
 
-  if (postSave) return <PostSaveModal open={open} postSave={postSave} onClose={onClose} navigate={navigate} onAddAnother={addAnother} />;
+  if (postSave) return <PostSaveModal open={open} postSave={postSave} accounts={data.accounts} onClose={onClose} navigate={navigate} onAddAnother={addAnother} />;
 
   return <Modal open={open} onClose={onClose} dismissible={!submitting && !outcomeUnknown} title={modal.modalTitle} description={modal.modalDescription} size="lg" initialFocusRef={modal.initialFocusRef} className={modal.modalClassName} footer={modal.modalFooter} closeIcon={modal.closeIcon} closeLabel={modal.closeLabel} mobileSwipeToClose={modal.mobileSwipeToClose}><form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} noValidate><TransactionFormBody mobileTransferMode={mobileTransferMode} fields={fields} /></form></Modal>;
 };
