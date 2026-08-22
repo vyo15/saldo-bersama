@@ -1,6 +1,6 @@
 # ADR-0005 Idempotency, row version, dan soft cancel
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-02
 
 ## Decision

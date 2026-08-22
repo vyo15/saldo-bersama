@@ -1,10 +1,10 @@
 # RFC-0013 Contribution and Cost Sharing
 
-**Status:** Accepted, MVP implemented; follow-up design hardened but not implemented  
-**Owner:** Product owner  
-**Reviewers:** Backend, privacy/security, frontend, QA  
-**Date:** 2026-08-02  
-**Decision date:** 2026-08-19  
+**Status:** Accepted, MVP implemented; follow-up design hardened but not implemented
+**Owner:** Product owner
+**Reviewers:** Backend, privacy/security, frontend, QA
+**Date:** 2026-08-02
+**Decision date:** 2026-08-19
 **Follow-up review:** 2026-08-21 against schema v11
 
 ## Problem

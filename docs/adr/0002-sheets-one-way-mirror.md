@@ -1,6 +1,6 @@
 # ADR-0002 Google Sheets sebagai mirror satu arah
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-02
 
 ## Decision

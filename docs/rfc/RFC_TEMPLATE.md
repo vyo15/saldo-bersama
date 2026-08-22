@@ -1,9 +1,9 @@
 # RFC-NNNN Judul
 
-**Status:** Draft  
-**Owner:**  
-**Reviewers:**  
-**Date:**  
+**Status:** Draft
+**Owner:**
+**Reviewers:**
+**Date:**
 
 ## Problem
 

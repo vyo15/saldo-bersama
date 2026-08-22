@@ -1,6 +1,6 @@
 # ADR-0003 Firebase Google Auth dan server session
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-02
 
 ## Decision

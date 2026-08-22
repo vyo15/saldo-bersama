@@ -1,9 +1,9 @@
 # RFC-0012 Debt and Receivable Obligation + Settlement Ledger
 
-**Status:** Proposed, design hardened  
-**Owner:** Product owner + finance-domain owner  
-**Reviewers:** Backend, QA, recovery owner  
-**Date:** 2026-08-02  
+**Status:** Proposed, design hardened
+**Owner:** Product owner + finance-domain owner
+**Reviewers:** Backend, QA, recovery owner
+**Date:** 2026-08-02
 **Last reviewed:** 2026-08-21 against schema v11
 
 ## Problem

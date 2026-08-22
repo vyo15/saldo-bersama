@@ -1,7 +1,7 @@
 # ADR-0010 Vercel Development Environment Bootstrap
 
-**Status:** Accepted  
-**Date:** 2026-08-02  
+**Status:** Accepted
+**Date:** 2026-08-02
 **Updated:** 2026-08-17
 
 ## Context

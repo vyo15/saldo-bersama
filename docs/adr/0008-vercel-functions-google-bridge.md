@@ -1,6 +1,6 @@
 # ADR-0008 Vercel Functions dan Google Apps Script bridge
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-02
 
 ## Decision

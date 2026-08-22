@@ -1,7 +1,7 @@
 # ADR-0007 Satu database Turso untuk runtime lokal dan Production
 
-**Status:** Accepted with known risk; environment-bootstrap portion superseded by ADR-0010  
-**Date:** 2026-08-02  
+**Status:** Accepted with known risk; environment-bootstrap portion superseded by ADR-0010
+**Date:** 2026-08-02
 **Updated:** 2026-08-17
 
 ## Context

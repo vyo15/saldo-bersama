@@ -1,9 +1,9 @@
 # RFC-0016 Partner Planning Permissions
 
-**Status:** Accepted, implemented  
-**Owner:** Product owner + security owner  
-**Reviewers:** Backend, frontend, QA  
-**Date:** 2026-08-02  
+**Status:** Accepted, implemented
+**Owner:** Product owner + security owner
+**Reviewers:** Backend, frontend, QA
+**Date:** 2026-08-02
 **Decision date:** 2026-08-19
 
 ## Problem

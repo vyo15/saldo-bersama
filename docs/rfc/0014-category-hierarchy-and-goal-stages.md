@@ -1,9 +1,9 @@
 # RFC-0014 Category Hierarchy and Goal Stages
 
-**Status:** Proposed, design hardened  
-**Owner:** Product owner + data owner  
-**Reviewers:** Backend, reports, import/export, QA  
-**Date:** 2026-08-02  
+**Status:** Proposed, design hardened
+**Owner:** Product owner + data owner
+**Reviewers:** Backend, reports, import/export, QA
+**Date:** 2026-08-02
 **Last reviewed:** 2026-08-21 against schema v11
 
 ## Problem

@@ -1,6 +1,6 @@
 # ADR-0001 Turso sebagai source of truth
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-02
 
 ## Context

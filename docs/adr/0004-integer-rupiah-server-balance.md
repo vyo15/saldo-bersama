@@ -1,6 +1,6 @@
 # ADR-0004 Integer Rupiah dan saldo server-side
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-02
 
 ## Decision

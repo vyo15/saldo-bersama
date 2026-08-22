@@ -1,6 +1,6 @@
 # ADR-0006 Tidak ada offline financial writes
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-02
 
 ## Decision

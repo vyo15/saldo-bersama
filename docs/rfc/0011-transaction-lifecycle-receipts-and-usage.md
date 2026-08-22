@@ -1,9 +1,9 @@
 # RFC-0011 Transaction Lifecycle, Participants, and Private Receipts
 
-**Status:** Proposed, design hardened  
-**Owner:** Product owner + backend/security  
-**Reviewers:** Frontend, QA, recovery owner  
-**Date:** 2026-08-02  
+**Status:** Proposed, design hardened
+**Owner:** Product owner + backend/security
+**Reviewers:** Frontend, QA, recovery owner
+**Date:** 2026-08-02
 **Last reviewed:** 2026-08-21 against schema v11
 
 ## Problem

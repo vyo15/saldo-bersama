@@ -1,9 +1,9 @@
 # RFC-0015 Granular Personal Account Privacy and Backend Projection
 
-**Status:** Proposed, design hardened  
-**Owner:** Security/privacy owner  
-**Reviewers:** Backend, frontend, product, QA  
-**Date:** 2026-08-02  
+**Status:** Proposed, design hardened
+**Owner:** Security/privacy owner
+**Reviewers:** Backend, frontend, product, QA
+**Date:** 2026-08-02
 **Last reviewed:** 2026-08-21 against schema v11
 
 ## Problem

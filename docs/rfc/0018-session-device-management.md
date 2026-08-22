@@ -1,9 +1,9 @@
 # RFC-0018 Session Device Management
 
-**Status:** Proposed, design hardened  
-**Owner:** Product owner + security owner  
-**Reviewers:** Backend, frontend, QA  
-**Date:** 2026-08-17  
+**Status:** Proposed, design hardened
+**Owner:** Product owner + security owner
+**Reviewers:** Backend, frontend, QA
+**Date:** 2026-08-17
 **Last reviewed:** 2026-08-21 against current server-session runtime
 
 ## Problem
