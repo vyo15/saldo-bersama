@@ -8,9 +8,9 @@ RFC wajib sebelum perubahan lintas arsitektur atau guarded area: database, auth/
 - `0012-debt-receivable-ledger.md`
 - `0014-category-hierarchy-and-goal-stages.md`
 - `0015-granular-personal-privacy.md`
-- `0018-session-device-management.md`
+- `0019-transaction-line-items.md`
 
-RFC Proposed belum merupakan fitur runtime atau approval schema. RFC-0018 sudah Accepted and implemented pada schema v12; RFC proposed lain tetap memerlukan approval sebelum implementasi.
+RFC Proposed belum merupakan fitur runtime atau approval schema. Semua RFC pada daftar Proposed di atas tetap memerlukan keputusan Accepted sebelum migration/runtime implementation.
 
 ## Accepted dan implemented
 

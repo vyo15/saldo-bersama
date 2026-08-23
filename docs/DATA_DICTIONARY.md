@@ -84,11 +84,12 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
-- transaction lifecycle, `used_by`, receipt reference, draft/planned: RFC-0011;
+- transaction lifecycle, participant role eksplisit (`payer`, `beneficiary`, `liable_party`), receipt reference, draft/planned: RFC-0011;
 - obligation/debt/receivable/settlement: RFC-0012;
 - payer, beneficiary, actual contribution, settlement, dan template split lanjutan: follow-up RFC-0013;
 - category parent dan goal stage: RFC-0014;
-- account visibility policy/backend projection: RFC-0015.
+- account visibility policy/backend projection: RFC-0015;
+- transaction line item multi-kategori/multi-Kebutuhan dengan satu cash movement: RFC-0019.
 
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 

@@ -49,6 +49,24 @@ test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti 
   assert.ok(mobileNavigationIndex > shellEndIndex, "navigasi mobile harus menjadi sibling shell, bukan child dari backdrop-filter");
 });
 
+test("tab utama mobile memulihkan scroll per tab, route sekunder mulai dari atas, dan browser Back memulihkan entry sebelumnya", async () => {
+  const [shell, restorationHook] = await Promise.all([
+    read("src/layouts/AppShell.jsx"),
+    read("src/hooks/useMobileTabScrollRestoration.js"),
+  ]);
+
+  assert.match(shell, /useNavigationType\(\)/);
+  assert.match(shell, /useMobileTabScrollRestoration\(location, navigationType\);/);
+  assert.match(restorationHook, /PRIMARY_TAB_PATHS = new Set\(\["\/", "\/transaksi", "\/laporan"\]\)/);
+  assert.match(restorationHook, /window\.history\.scrollRestoration = "manual"/);
+  assert.match(restorationHook, /rememberHistoryPosition\(previousLocation\.key, previousTop\)/);
+  assert.match(restorationHook, /primaryTabScrollPositions\.set\(previousLocation\.pathname, previousTop\)/);
+  assert.match(restorationHook, /navigationType === "POP" && location\.key && historyEntryScrollPositions\.has\(location\.key\)/);
+  assert.match(restorationHook, /PRIMARY_TAB_PATHS\.has\(location\.pathname\)/);
+  assert.match(restorationHook, /return 0;/);
+  assert.match(restorationHook, /window\.scrollTo\(\{ top, left: 0, behavior: "auto" \}\)/);
+});
+
 test("quick add transaksi mobile selalu tersedia sementara aksi floating desktop tetap menghormati create lokal Administrator", async () => {
   const [shell, mobileNavigation, responsiveCss] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
@@ -74,7 +92,7 @@ test("quick add transaksi mobile selalu tersedia sementara aksi floating desktop
 test("navigasi mobile memakai safe area dan menyisakan ruang scroll untuk konten terakhir", async () => {
   const responsiveCss = await read("src/styles/responsive.css");
 
-  assert.match(responsiveCss, /--mobile-navigation-height:\s*68px;/);
+  assert.match(responsiveCss, /--mobile-navigation-height:\s*72px;/);
   assert.match(responsiveCss, /html \{ scroll-padding-bottom:\s*calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ 12px\); \}/);
   assert.match(responsiveCss, /\.app-content,[\s\S]*?\.app-content--wide \{[^}]*padding:\s*16px var\(--mobile-page-gutter\) calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\) \+ var\(--mobile-navigation-content-gap\)\);/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*position:\s*fixed;[^}]*inset-inline:\s*0;[^}]*bottom:\s*0;/);
@@ -126,7 +144,7 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(componentCss, /\.loading-screen--content \{[^}]*min-height:\s*clamp\(12rem, 42dvh, 24rem\);/);
   assert.match(componentCss, /\.app-content \.loading-screen--page \.brand-lockup \{ display:\s*none; \}/);
   assert.match(responsiveCss, /\.app-content > \.loading-screen--page,\s*\n\s*\.app-content > \.loading-screen--content \{[^}]*min-height:\s*min\(54dvh, 28rem\);/s);
-  assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page \{[^}]*min-height:\s*calc\(100dvh - 56px/);
+  assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page \{[^}]*min-height:\s*calc\(100dvh - var\(--mobile-topbar-height\)/);
   assert.match(accountDetailCss, /max-height:\s*calc\(100vh[^;]+;\s*\n\s*max-height:\s*calc\(100dvh/);
   assert.match(loginCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);
 });
@@ -186,8 +204,18 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
     read("src/features/dashboard/DashboardPage.css"),
   ]);
 
-  assert.match(responsiveCss, /--mobile-navigation-height:\s*68px;/);
-  assert.match(responsiveCss, /\.mobile-navigation a,\s*\n\s*\.mobile-navigation__more \{[^}]*min-height:\s*50px;/);
+  assert.match(responsiveCss, /--mobile-navigation-height:\s*72px;/);
+  assert.match(responsiveCss, /\.mobile-navigation a,\s*\n\s*\.mobile-navigation__more \{[^}]*height:\s*var\(--mobile-navigation-height\);[^}]*min-height:\s*var\(--mobile-navigation-height\);/);
+  assert.match(responsiveCss, /--mobile-navigation-label-size:\s*12px;/);
+  assert.match(responsiveCss, /--mobile-navigation-icon-size:\s*24px;/);
+  assert.match(responsiveCss, /--mobile-navigation-add-size:\s*52px;/);
+  assert.match(responsiveCss, /--mobile-navigation-add-lift:\s*26px;/);
+  assert.match(responsiveCss, /\.mobile-navigation \{[^}]*grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\);/);
+  assert.match(responsiveCss, /\.mobile-navigation__add \{[^}]*margin-top:\s*calc\(var\(--mobile-navigation-add-lift\) \* -1\);/);
+  assert.match(responsiveCss, /--mobile-topbar-height:\s*calc\(var\(--mobile-topbar-content-height\) \+ env\(safe-area-inset-top\)\);/);
+  assert.match(responsiveCss, /\.topbar \{[^}]*height:\s*var\(--mobile-topbar-height\);[^}]*padding:\s*env\(safe-area-inset-top\) var\(--mobile-page-gutter\) 0;/);
+  assert.match(responsiveCss, /\.mobile-navigation a::before,[\s\S]*\.mobile-navigation__more::before \{[^}]*height:\s*3px;[^}]*opacity:\s*0;/);
+  assert.match(responsiveCss, /\.mobile-navigation a\.active::before,[^}]*opacity:\s*1;/);
   assert.match(dashboardCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero \.theme-toggle \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(dashboardCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
   assert.match(dashboardCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
@@ -248,8 +276,13 @@ test("responsive mobile tidak menyembunyikan two-column-grid dan breakpoint semp
   assert.doesNotMatch(source, /\.two-column-grid\s*\{[^}]*display:\s*none/);
   const width820 = source.indexOf("@media (max-width: 820px)");
   const width580 = source.indexOf("@media (max-width: 580px)");
+  const width420 = source.indexOf("@media (max-width: 420px)");
+  const width370 = source.indexOf("@media (max-width: 370px)");
+  const width340 = source.indexOf("@media (max-width: 340px)");
   assert.ok(width820 >= 0 && width580 > width820, "Breakpoint 580px harus berada setelah 820px agar override mobile sempit menang.");
+  assert.ok(width420 > width580 && width370 > width420 && width340 > width370, "Breakpoint mobile sempit harus terurut 420px → 370px → 340px.");
   assert.match(source.slice(width580), /\.settings-card > :last-child \{ grid-column: 1 \/ -1; width: 100%; \}/);
+  assert.match(source.slice(width340), /:root \{ --mobile-page-gutter:\s*12px; --mobile-card-padding:\s*14px; \}/);
 });
 
 test("selector responsive tidak boleh menggantung sebelum selector berikutnya", async () => {

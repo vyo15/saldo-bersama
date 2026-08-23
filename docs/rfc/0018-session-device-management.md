@@ -250,7 +250,9 @@ Destructive DROP registry tidak dilakukan pada Production.
 
 Design baseline memilih **session_id + secret verifier hash**, **async authoritative resolver**, **one-time forced re-login saat cutover**, **revoke-all termasuk current session**, **30-day registry retention**, dan **logical restore tidak menghidupkan session**.
 
-RFC tetap Proposed. Ini **bukan approval migration/auth runtime**. Implementasi hanya boleh dimulai setelah migration, endpoint/action contract, deploy sequence, rollback/forward-fix, audit event, dan UI confirmation plan disetujui eksplisit.
+RFC **Accepted and implemented** pada schema v12/session-v2 runtime. Migration, action contract, resolver authoritative, revoke own/all, PKCE S256, audit, backup/restore exclusion, dan UI session management sudah memiliki source/test canonical.
+
+Pekerjaan tersisa bersifat operasional: real-device smoke, evidence live Dev/Prod environment separation, dan retention/cleanup verification. Perubahan semantics session baru tetap memerlukan RFC/approval guarded terpisah; status implemented ini tidak memberi izin untuk melemahkan resolver, cookie, CSRF/origin, atau revocation guard.
 
 ## Links
 

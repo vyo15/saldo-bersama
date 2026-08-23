@@ -33,7 +33,7 @@
     gap: .4rem;
     background: transparent;
     color: color-mix(in srgb, var(--on-hero) 48%, transparent);
-    font-size: .7rem;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
     touch-action: manipulation;
@@ -140,7 +140,7 @@
     outline: 0;
     background: transparent;
     color: var(--on-hero);
-    font-size: var(--font-size-body);
+    font-size: var(--mobile-native-control-font-size);
     color-scheme: dark;
   }
 
@@ -216,7 +216,7 @@
 .mobileTransactionCopy strong,
 .mobileTransactionCopy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.mobileTransactionCopy strong { color: var(--on-hero); font-size: .72rem; font-weight: var(--font-weight-semibold); }
+.mobileTransactionCopy strong { color: var(--on-hero); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 
 .mobileTransactionCopy small { color: color-mix(in srgb, var(--on-hero) 46%, transparent); font-size: var(--font-size-xs); }
 
@@ -335,7 +335,7 @@
 
 .mobileChartStats small { display: block; color: color-mix(in srgb, var(--on-hero) 43%, transparent); font-size: var(--font-size-xs); }
 
-.mobileChartStats strong { display: block; margin-top: .25rem; overflow: hidden; color: var(--on-hero); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.mobileChartStats strong { display: block; margin-top: .25rem; overflow: hidden; color: var(--on-hero); font-size: var(--font-size-xs); text-overflow: ellipsis; white-space: nowrap; }
 
 .mobileChartNote {
     margin-top: .8rem;

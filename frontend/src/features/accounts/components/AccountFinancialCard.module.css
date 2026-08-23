@@ -100,10 +100,11 @@
 
 .contactless {
   position: absolute;
-  top: 29%;
-  right: 5.5%;
-  width: 9%;
-  height: 9%;
+  top: 31%;
+  right: auto;
+  left: 25%;
+  width: 8.5%;
+  height: 8.5%;
   min-width: 1rem;
   min-height: 1rem;
   transform: rotate(90deg);
@@ -493,14 +494,6 @@
   box-shadow: 0 20px 48px color-mix(in srgb, var(--shadow-ink) 38%, transparent), 0 0 0 2px color-mix(in srgb, var(--primary) 42%, transparent);
 }
 
-.carouselVisual .contactless {
-  top: 31%;
-  right: auto;
-  left: 25%;
-  width: 8.5%;
-  height: 8.5%;
-}
-
 .carouselVisual .accountNumber {
   bottom: 22%;
   font-size: clamp(.78rem, 3.55vw, 1.08rem);
@@ -520,14 +513,6 @@
   border: 0;
   border-radius: inherit;
   box-shadow: none;
-}
-
-.stackVisual .contactless {
-  top: 31%;
-  right: auto;
-  left: 25%;
-  width: 8.5%;
-  height: 8.5%;
 }
 
 .stackVisual .accountNumber {

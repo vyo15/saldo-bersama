@@ -10,7 +10,7 @@ import EmptyState from "../../components/feedback/EmptyState.jsx";
 import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { budgetPeriodMeta, budgetVisualState } from "../../shared/presentation/budget.js";
 import { useBudgetFormController, useBudgetLifecycleController } from "../budgets/useBudgetActions.js";
-import { allocationAssigneeLabel, allocationPeriodLabel, allocationSourceLabel, allocationUsage } from "./allocationPresentation.js";
+import { allocationAssigneeLabel, allocationNeedsFundingSummary, allocationPeriodLabel, allocationSourceLabel, allocationUsage } from "./allocationPresentation.js";
 
 const BudgetDialogLayer = lazy(() => import("../budgets/BudgetDialogLayer.jsx"));
 
@@ -27,6 +27,21 @@ const BudgetLimitRow = ({ budget, periodMeta, canManage, onRecord, onEdit, onLif
 };
 
 const RecurringRelatedRow = ({ item }) => <div className="allocation-related-row"><div><strong>{item.name}</strong><small>{formatDateLongIndonesia(item.due_date) || item.due_date}</small></div><div><Money value={item.expected_amount} /><small>{item.status === "paid" || item.status === "received" ? "Selesai" : item.status === "overdue" ? "Terlambat" : item.due_date === todayInJakarta() ? "Menunggu konfirmasi" : "Terjadwal"}</small></div></div>;
+
+const AllocationNeedsFundingSummary = ({ item, linkedBudgets, canAdjustAllocation, onAdjustAllocation }) => {
+  const summary = allocationNeedsFundingSummary(item, linkedBudgets);
+  return <>
+    <div className="allocation-needs-summary" aria-label="Ringkasan kebutuhan dan dana alokasi">
+      <div><span>Total kebutuhan</span><strong><Money value={summary.planned} /></strong></div>
+      <div><span>Dana alokasi</span><strong><Money value={summary.allocated} /></strong></div>
+      <div data-tone={summary.gap > 0 ? "warning" : "neutral"}><span>{summary.gap > 0 ? "Kurang" : "Belum direncanakan"}</span><strong><Money value={summary.gap > 0 ? summary.gap : summary.unplanned} tone={summary.gap > 0 ? "negative" : "default"} /></strong></div>
+    </div>
+    {summary.gap > 0 ? <div className="allocation-needs-gap" role="status">
+      <div><strong>Kebutuhan melebihi dana alokasi.</strong><span>Tambahkan <Money value={summary.gap} /> bila Anda memang ingin seluruh Kebutuhan tercakup. Dana tidak berubah otomatis.</span></div>
+      {canAdjustAllocation ? <Button variant="primary" icon={FiPlus} onClick={() => onAdjustAllocation(item, summary.gap)}>Tambah <Money value={summary.gap} /> ke alokasi</Button> : null}
+    </div> : null}
+  </>;
+};
 
 const AllocationPlanningDetail = ({
   item,
@@ -45,6 +60,8 @@ const AllocationPlanningDetail = ({
   onBack,
   onBudgetReminder,
   onOpenRecurring,
+  canAdjustAllocation,
+  onAdjustAllocation,
 }) => {
   const { openTransactionComposer } = useTransactionComposer();
   const usage = allocationUsage(item);
@@ -88,7 +105,7 @@ const AllocationPlanningDetail = ({
         {usage.reserved > 0 ? <p className="allocation-detail-reserved-note">Dipesan <Money value={usage.reserved} /> untuk transaksi terjadwal. Nilai ini sudah mengurangi dana yang tersisa.</p> : null}
       </Card>
       <div className="allocation-detail-grid">
-        <Card className="allocation-detail-panel"><div className="allocation-detail-panel__header"><div><h3>Kebutuhan</h3><p>Atur kategori dan anggaran yang menggunakan Alokasi Dana ini.</p></div>{canManage ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}</div>{linkedBudgets.length ? <div className="allocation-limit-list">{linkedBudgets.map((budget) => <BudgetLimitRow key={budget.budget_id} budget={budget} periodMeta={periodMeta} canManage={canManage} onRecord={canRecordExpense ? recordExpense : null} onEdit={editBudget} onLifecycle={budgetLifecycleController.openBudgetLifecycle} onReminder={onBudgetReminder} />)}</div> : <EmptyState variant="inline" title="Belum ada kebutuhan" description="Pilih kategori dan tentukan anggarannya. Kategori yang sama tetap dapat digunakan pada Alokasi Dana lain tanpa membuat master data baru." />}</Card>
+        <Card className="allocation-detail-panel"><div className="allocation-detail-panel__header"><div><h3>Kebutuhan</h3><p>Atur kategori dan anggaran yang menggunakan Alokasi Dana ini.</p></div>{canManage ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}</div>{linkedBudgets.length ? <><AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} /><div className="allocation-limit-list">{linkedBudgets.map((budget) => <BudgetLimitRow key={budget.budget_id} budget={budget} periodMeta={periodMeta} canManage={canManage} onRecord={canRecordExpense ? recordExpense : null} onEdit={editBudget} onLifecycle={budgetLifecycleController.openBudgetLifecycle} onReminder={onBudgetReminder} />)}</div></> : <EmptyState variant="inline" title="Belum ada kebutuhan" description="Pilih kategori dan tentukan anggarannya. Kategori yang sama tetap dapat digunakan pada Alokasi Dana lain tanpa membuat master data baru." />}</Card>
         <Card className="allocation-detail-panel"><div className="allocation-detail-panel__header"><div><h3>Jadwal Terkait</h3><p>Jadwal pengeluaran dengan rekening dan kategori yang terhubung ke kebutuhan pada Alokasi Dana ini.</p></div><Button onClick={onOpenRecurring}>Lihat semua jadwal</Button></div>{relatedRecurring.length ? <div className="allocation-related-list">{relatedRecurring.map((entry) => <RecurringRelatedRow key={entry.occurrence_id} item={entry} />)}</div> : <EmptyState variant="inline" title="Belum ada jadwal terkait" description="Jadwal akan muncul saat kategori Kebutuhan dipakai pada Jadwal Rutin dengan rekening sumber yang sama." />}</Card>
       </div>
     </div>

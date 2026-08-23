@@ -267,7 +267,7 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
   assert.match(reports, /\.periodArrow \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.rangeChips button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.sectionHeading > button,[\s\S]*?\.sectionHeading > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(budgets, /@media \(max-width: 580px\)[\s\S]*?\.segment,[\s\S]*?\.sortButton,[\s\S]*?\.detailButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgets, /@media \(max-width: 820px\)[\s\S]*?\.segment,[\s\S]*?\.sortButton,[\s\S]*?\.detailButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
   assert.match(dashboard, /\.mobile-allocation-card__footer a \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(accountActivity, /\.mobileActivityHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);

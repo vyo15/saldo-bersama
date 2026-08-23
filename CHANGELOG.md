@@ -1,4 +1,37 @@
+## 23 Agustus 2026 - Canonical gap registry dan RFC truth cleanup
+
+- Menyelaraskan RFC-0018 dengan runtime schema v12: session registry per perangkat, revoke own/all, PKCE S256, dan authoritative resolver sudah Accepted/implemented; pekerjaan tersisa hanya evidence operasional dan tidak lagi ditulis sebagai RFC Proposed.
+- Menghapus terminology ambigu `used_by` dari product contract dan menggantinya dengan participant role eksplisit `payer`/`beneficiary`/`liable_party` sesuai RFC-0011/0013.
+- Mendaftarkan gap satu pembayaran multi-kategori/multi-Kebutuhan sebagai `REQ-PROD-19` + RFC-0019 dengan invariant satu cash movement, exact integer line sum, no double-count, dan boundary refund/Alokasi/backup; belum ada migration/runtime approval.
+- Mendaftarkan reminder konsistensi pencatatan sebagai `REQ-PROD-18` Planned dengan cadence configurable/opt-in dan privacy-safe notification boundary; belum ada alert runtime baru.
+
+## 23 Agustus 2026 - Redesign kartu bank dan recovery ZIP terbaru
+
+- Mengganti asset kartu bank BCA, BNI, BTN, Mandiri, dan Permata dengan artwork baru berlogo bank, chip EMV, safe area overlay, serta alpha/transparansi di luar siluet kartu. Seluruh asset tetap `1536x968`, rasio 1.586:1, dan berada di bawah budget 160 KB agar perceived size konsisten pada desktop, detail, dan stack mobile.
+- Menyesuaikan posisi contactless overlay existing agar berada di area chip dan tidak bertabrakan dengan logo bank pada artwork baru; account number, nama rekening, saldo, ownership, dan seluruh data tetap dirender dari read model aplikasi, bukan dibakar ke asset.
+- Menutup dua blocker lint pada source UNVERIFIED terbaru tanpa mengubah behavior: dependency `useLayoutEffect` scroll restoration diselaraskan dengan object `location`, dan isi menu mobile diekstrak dari `AppShell` agar fungsi shell kembali di bawah batas `max-lines-per-function`.
+- Menyelaraskan dokumentasi/test asset dari ukuran lama `768x484` ke contract aktual `1536x968`, serta menambah regression bahwa lima asset bank mempertahankan alpha/transparansi.
+
+## 23 Agustus 2026 - Konsistensi UX mobile dan readability
+
+- Menyatukan rhythm mobile ke gutter/section/card 16px pada viewport normal dengan fallback sempit `<=340px`, native form control 16px untuk mencegah Safari auto-zoom, target sentuh minimum 44px, dan metadata finansial meaningful sekitar 12px atau lebih.
+- Menambahkan safe-area top pada shell/topbar serta route Rekening/Dashboard, memperkuat safe-area feedback, dan menjaga true-empty full-page tetap optical-center tanpa menjauhkan filtered/subsection empty dari konteksnya.
+- Memoles bottom navigation menjadi lima hit area penuh 72px dengan indikator aktif non-color, mempertahankan ikon 24px/label 12px/FAB 52px, serta menambahkan scroll restoration per primary tab Beranda/Transaksi/Laporan, secondary route baru dari atas, dan pemulihan posisi entry saat browser Back/Forward.
+- Merapikan readability mobile pada Beranda, Login, Transaksi, Rekening, Kategori, Anggaran, Laporan, dan Rekonsiliasi tanpa mengubah business rule; teks di bawah 12px pada mobile hanya dipertahankan untuk dekorasi/facsimile non-informatif seperti miniature kartu dan money-rain, sementara informasi operasional memiliki copy semantik yang terbaca.
+- Memperbaiki regression test yang sebelumnya false-positive terhadap auto-zoom mobile, menambah guard safe-area/navigation/history-scroll/empty-state/microcopy/touch-target, menghapus `!important` non-compatibility yang tersisa, dan menyelaraskan UI Design System, Test Plan, Project Status, Implementation Matrix, serta QA Checklist dengan source aktual.
+- Mengurangi complexity lint `AllocationsPage` melalui helper presentation-only tanpa memindahkan atau mengubah rule Alokasi Dana, saldo, mutation, authorization, API, atau database.
+
+## 23 Agustus 2026 - Kebutuhan dan dana Alokasi lebih jelas
+
+- Form Alokasi Dana memakai copy `Alokasi untuk apa?` dan `Dana awal alokasi` agar tujuan dan nominal awal tidak tertukar.
+- Detail Alokasi Dana menghitung total Kebutuhan aktif periode berjalan lalu membandingkannya dengan dana yang dialokasikan, bukan sisa setelah transaksi.
+- Bila total Kebutuhan lebih besar, UI hanya memberi suggestion nominal dan membuka flow `envelopes.adjustAllocation` existing; dana tidak berubah otomatis dan tetap memerlukan konfirmasi user serta guard backend canonical.
+- Tambah regression untuk perhitungan gap/unplanned dan wiring UI agar business mutation tidak berpindah ke komponen detail.
+
 ## 23 Agustus 2026 - Fix CLI database environment binding
+
+- Memperbaiki drift kontrak `npm run db:bind-environment -- development|production`: script binding sekarang benar-benar membaca target positional yang sudah didokumentasikan, tetap menerima fallback `DATABASE_ENVIRONMENT` untuk penggunaan programmatic, dan fail-closed bila target CLI bertentangan dengan marker environment lokal.
+- Menambah regression test untuk positional target, fallback marker, conflict detection, dan argumen ganda agar workflow `migrate → bind → integrity → env push` tidak kembali rusak.
 
 ## 23 Agustus 2026 - GitHub repository hygiene
 
@@ -7,9 +40,6 @@
 - Governance GitHub mendokumentasikan source-side controls tanpa menganggapnya pengganti ruleset `main`.
 - Path historical task pada `docs/INDEX.md` diselaraskan dengan tree aktual `docs/tasks/archive/`.
 - Tidak ada perubahan API, database, auth, saldo, deployment Production, atau data finansial.
-
-- Memperbaiki drift kontrak `npm run db:bind-environment -- development|production`: script binding sekarang benar-benar membaca target positional yang sudah didokumentasikan, tetap menerima fallback `DATABASE_ENVIRONMENT` untuk penggunaan programmatic, dan fail-closed bila target CLI bertentangan dengan marker environment lokal.
-- Menambah regression test untuk positional target, fallback marker, conflict detection, dan argumen ganda agar workflow `migrate → bind → integrity → env push` tidak kembali rusak.
 
 ## 23 Agustus 2026 - Recovery Development database isolation
 
@@ -114,6 +144,7 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 
 ## [Unreleased]
 
+- Merapikan mobile empty-state: Rekening true-empty kini berada di optical center area layar yang tersisa, Kategori true-empty mendapat ruang vertikal lebih proporsional, sedangkan hasil filter kosong Rekening/Kategori/Transaksi tetap kontekstual dekat filter. Bottom navigation mobile diselaraskan ke guideline 72px dengan lima slot sama lebar, ikon 24px, label 12px, dan quick-add 52px yang terangkat di garis atas; safe-area dan focus-visible tetap dipertahankan.
 - Menutup continuity flow harian tanpa contract backend baru: income biasa/recurring dapat lanjut membagi dana ke Kantong, dashboard free-funds membuka funding flow account-bound, release Kantong dapat meneruskan source/nominal ke Target, dan rekonsiliasi mismatch menawarkan pemeriksaan transaksi tanpa adjustment otomatis.
 - Menambahkan `Pakai lagi` sebagai safe prefill composer, review queue transaksi tanpa Kantong, blocker period-close yang actionable, serta setup checklist berbasis usable-state dengan guided continuation hanya saat onboarding.
 - Menyeragamkan lifecycle CTA menjadi `Kelola data` sebelum preview server menentukan hard delete-unused atau archive, mempertahankan recovery master hanya melalui Pengaturan → Pemulihan data, serta menaikkan hit target balance visibility, menu Kategori, dan attention Jadwal menjadi minimal 44px.

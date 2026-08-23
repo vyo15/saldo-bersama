@@ -662,7 +662,7 @@
   gap: 7px;
   background: color-mix(in srgb, var(--surface) 82%, transparent);
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
   backdrop-filter: blur(8px);
@@ -679,7 +679,7 @@
 .login-mobile-hero__meta {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   letter-spacing: .02em;
   text-overflow: ellipsis;
@@ -741,7 +741,7 @@
   align-items: center;
   background: var(--surface-soft);
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -824,11 +824,11 @@
 }
 
 @media (max-width: 390px) {
-  .login-mobile-header { padding-inline: 13px; }
-  .login-mobile-slide { padding-inline: 14px; }
+  .login-mobile-header { padding-inline: var(--mobile-page-gutter); }
+  .login-mobile-slide { padding-inline: var(--mobile-page-gutter); }
   .login-mobile-hero { min-height: 205px; max-height: 286px; }
   .login-mobile-copy h2, .login-mobile-login-content h2 { font-size: 27px; }
-  .login-mobile-navigation { padding-inline: 14px; }
+  .login-mobile-navigation { padding-inline: var(--mobile-page-gutter); }
   .login-mobile-pagination { gap: 2px; }
 }
 
@@ -844,12 +844,12 @@
   .login-mobile-asset--shared-main { width: 28%; top: 70px; }
   .login-mobile-asset--shared-house { width: 17%; bottom: 18px; }
   .login-mobile-asset--shared-checklist { width: 17%; top: 76px; }
-  .login-mobile-eyebrow { margin-bottom: 6px; font-size: 11px; }
+  .login-mobile-eyebrow { margin-bottom: 6px; font-size: var(--font-size-xs); }
   .login-mobile-copy h2,
   .login-mobile-login-content h2 { font-size: 25px; }
   .login-mobile-description { margin-top: 8px; font-size: 12.5px; line-height: 1.42; }
   .login-mobile-login-logo { width: 78px; height: 78px; margin-bottom: 10px; padding: 12px; border-radius: 24px; }
-  .login-mobile-welcome { margin-bottom: 6px; font-size: 11px; }
+  .login-mobile-welcome { margin-bottom: 6px; font-size: var(--font-size-xs); }
   .login-mobile-login-content > p:not(.login-mobile-welcome) { margin: 8px auto 12px; font-size: 12.5px; line-height: 1.42; }
   .login-mobile-security { margin-top: 8px; gap: 6px 10px; font-size: var(--font-size-xs); }
   .login-mobile-creator-link { margin-top: 3px; }
@@ -858,11 +858,11 @@
 
 @media (max-height: 620px) and (max-width: 820px) {
   .login-mobile-hero { min-height: 168px; max-height: 198px; }
-  .login-mobile-hero__kicker { min-height: 28px; padding: 4px 8px; font-size: 10px; }
-  .login-mobile-hero__meta { font-size: 10px; }
+  .login-mobile-hero__kicker { min-height: 28px; padding: 4px 8px; font-size: var(--font-size-xs); }
+  .login-mobile-hero__meta { font-size: var(--font-size-xs); }
   .login-mobile-hero__panel { top: 50px; bottom: 12px; }
   .login-mobile-hero__badges { bottom: 10px; }
-  .login-mobile-hero__badges span { min-height: 24px; padding: 3px 7px; font-size: 10px; }
+  .login-mobile-hero__badges span { min-height: 24px; padding: 3px 7px; font-size: var(--font-size-xs); }
   .login-mobile-asset--saving-main { width: 22%; top: 54px; }
   .login-mobile-asset--saving-support { width: 21%; bottom: 12px; }
   .login-mobile-asset--budget-main { width: 29%; bottom: 9px; }
@@ -872,9 +872,9 @@
   .login-mobile-asset--shared-checklist { width: 15%; top: 62px; }
   .login-mobile-copy h2,
   .login-mobile-login-content h2 { font-size: 23px; }
-  .login-mobile-description { font-size: 11.5px; line-height: 1.36; }
+  .login-mobile-description { font-size: var(--font-size-body-sm); line-height: 1.4; }
   .login-mobile-login-logo { width: 68px; height: 68px; margin-bottom: 8px; padding: 10px; border-radius: 22px; }
-  .login-mobile-login-content > p:not(.login-mobile-welcome) { margin: 6px auto 9px; font-size: 11.5px; line-height: 1.36; }
+  .login-mobile-login-content > p:not(.login-mobile-welcome) { margin: 6px auto 9px; font-size: var(--font-size-body-sm); line-height: 1.4; }
   .login-mobile-security { margin-top: 6px; font-size: var(--font-size-xs); }
   .login-mobile-creator-link { min-height: 44px; margin-top: 0; padding-block: 6px; }
 }

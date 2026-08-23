@@ -116,11 +116,13 @@
   --font-size-xs: 11px;
   --font-size-body-sm: 13px;
   --font-size-body: 16px;
-  --mobile-page-gutter: 14px;
-  --mobile-section-gap: 14px;
-  --mobile-card-padding: 14px;
+  --mobile-page-gutter: 16px;
+  --mobile-section-gap: 16px;
+  --mobile-card-padding: 16px;
   --mobile-card-radius: 16px;
   --mobile-control-height: 44px;
+  --mobile-native-control-font-size: 16px;
+  --mobile-financial-meta-size: 12px;
 }
 
 :root[data-theme="dark"] {

@@ -96,12 +96,17 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   ]);
 
   assert.match(tokens, /--font-size-xs:\s*11px;/);
+  assert.match(tokens, /--mobile-page-gutter:\s*16px;/);
+  assert.match(tokens, /--mobile-section-gap:\s*16px;/);
+  assert.match(tokens, /--mobile-card-padding:\s*16px;/);
   assert.match(tokens, /--mobile-control-height:\s*44px;/);
+  assert.match(tokens, /--mobile-native-control-font-size:\s*16px;/);
+  assert.match(tokens, /--mobile-financial-meta-size:\s*12px;/);
   assert.match(reset, /body \{[^}]*font-size:\s*var\(--font-size-body\);/s);
-  assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-size-xs:\s*10\.5px;[\s\S]*--font-size-body:\s*14px;/);
+  assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-size-xs:\s*12px;[\s\S]*--font-size-sm:\s*12\.5px;[\s\S]*--font-size-body-sm:\s*13px;[\s\S]*--font-size-body:\s*14px;/);
   assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-weight-semibold:\s*550;[\s\S]*--font-weight-bold:\s*650;/);
-  assert.match(dashboard, /\.mobile-finance-summary span \{ font-size:\s*11px;/);
-  assert.match(dashboard, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*11px;/);
+  assert.match(dashboard, /\.mobile-finance-summary span \{ font-size:\s*var\(--font-size-xs\);/);
+  assert.match(dashboard, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*var\(--font-size-xs\);/);
   assert.doesNotMatch(pages, /\.premium-/);
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;/);
   assert.doesNotMatch(pages, /\.shared-account-panel \{/);
@@ -121,6 +126,9 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.doesNotMatch(mobileHistoryStyles, /font-size:\s*(?:8(?:\.5)?|9(?:\.5)?|10)px;/);
   assert.doesNotMatch(reportsStyles, /font-size:\s*(?:8(?:\.5)?|9(?:\.5)?|10)px;/);
   assert.match(loginStyles, /\.login-mobile-security \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(loginStyles, /\.login-mobile-eyebrow \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(loginStyles, /\.login-mobile-hero__kicker \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(loginStyles, /\.login-mobile-description \{[^}]*font-size:\s*var\(--font-size-body-sm\);/s);
 });
 
 test("tipografi memakai Manrope canonical, fallback system, dan bobot standar tanpa synthetic weight ekstrem", async () => {
@@ -189,7 +197,18 @@ test("gradient avatar dan login menjaga focus, motion preference, dan full-scree
 });
 
 test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir scroll vertikal", async () => {
-  const [responsive, accountStyles, indexHtml, components, modalStyles, reset, dashboard] = await Promise.all([
+  const [
+    responsive,
+    accountStyles,
+    indexHtml,
+    components,
+    modalStyles,
+    reset,
+    dashboard,
+    transactionFormStyles,
+    mobileHistoryStyles,
+    reconciliationStyles,
+  ] = await Promise.all([
     readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
     Promise.all([
       readFile(new URL("../src/features/accounts/AccountsPage.module.css", import.meta.url), "utf8"),
@@ -202,12 +221,20 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
     readFile(new URL("../src/components/common/Modal.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/components/MobileTransactionHistory.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/reconciliations/ReconciliationsPage.module.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(tokenSource, /--font-size-body:\s*16px;/);
+  assert.match(tokenSource, /--mobile-native-control-font-size:\s*16px;/);
   assert.match(components, /\.field input,\s*\n\.field select,\s*\n\.field textarea,\s*\n\.toolbar select,\s*\n\.search-field \{[^}]*font-size:\s*var\(--font-size-body\);/s);
-  assert.match(accountStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
-  assert.match(dashboard, /\.shared-transaction-tools input,\s*\n\.shared-transaction-tools select \{[^}]*font-size:\s*var\(--font-size-body\);/s);
+  assert.match(responsive, /:root body input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\),\s*\n\s*:root body select,\s*\n\s*:root body textarea \{ font-size:\s*var\(--mobile-native-control-font-size\); \}/);
+  assert.match(accountStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(transactionFormStyles, /\.fieldControlInput > :global\(input\),\s*\n\s*\.fieldControlInput > :global\(select\) \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(transactionFormStyles, /\.form :global\(\.field\) > input,\s*\n\s*\.form :global\(\.field\) > select,\s*\n\s*\.form :global\(\.field\) > textarea \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(mobileHistoryStyles, /\.filterSelect select \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(reconciliationStyles, /@media \(max-width:\s*820px\) \{[\s\S]*\.accountField \.selectShell select,[\s\S]*font-size:\s*var\(--mobile-native-control-font-size\);/);
+  assert.match(reconciliationStyles, /\.historyFilter select \{[^}]*min-height:\s*var\(--mobile-control-height\);[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
   assert.match(dashboard, /\.shared-transaction-tools label \{[^}]*min-height:\s*var\(--control-height-md\);/s);
   assert.match(responsive, /scrollbar-width:\s*none;/);
   assert.match(responsive, /html::-webkit-scrollbar,\s*\n\s*body::-webkit-scrollbar \{[^}]*display:\s*none;/s);
@@ -224,4 +251,45 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
   assert.match(reset, /#root \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/);
   assert.doesNotMatch(reset, /body \{[^}]*overflow:\s*hidden/);
   assert.match(responsive, /\.app-shell--accounts \.app-content \{ padding-top:\s*0; color:\s*var\(--on-hero\); \}/);
+});
+
+test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=44px", async () => {
+  const [
+    visualChoice,
+    categories,
+    planning,
+    transactionForm,
+    budgets,
+    pages,
+  ] = await Promise.all([
+    readFile(new URL("../src/components/common/VisualChoiceGroup.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/categories/CategoriesPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/planning/PlanningPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/budgets/BudgetsPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(visualChoice, /\.label \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(visualChoice, /\.helper \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(categories, /\.categoryStatus \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(categories, /\.iconOption span \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(planning, /\.tab span \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(transactionForm, /@media \(max-width: 820px\)[\s\S]*?\.categoryQuickChoices > small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(transactionForm, /\.form \.notesField textarea \{[\s\S]*?min-height:\s*3\.25rem;/);
+  assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
+  assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.segment,[\s\S]*?\.sortButton,[\s\S]*?\.detailButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap \.button,[\s\S]*?\.allocation-limit-row__actions \.button \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-related-row small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+});
+
+test("!important hanya tersisa untuk reduced-motion compatibility yang terdokumentasi", async () => {
+  const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
+  const withImportant = cssFiles.filter((file) => file.source.includes("!important"));
+  assert.equal(withImportant.length, 2);
+
+  const components = withImportant.find((file) => file.path.endsWith("/styles/components.css"))?.source || "";
+  const login = withImportant.find((file) => file.path.endsWith("/features/auth/LoginPage.css"))?.source || "";
+  assert.match(components, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?!important/);
+  assert.match(login, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?--login-mobile-parallax-soft:\s*0px !important/);
 });

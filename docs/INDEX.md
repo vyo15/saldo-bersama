@@ -51,6 +51,7 @@ Jika perubahan menyentuh lebih dari satu area, gabungkan contract dan test dari 
 - `DEFINITION_OF_READY.md`
 - `DEFINITION_OF_DONE.md`
 - `rfc/README.md`
+- `rfc/0019-transaction-line-items.md` — proposed contract untuk satu cash movement dengan beberapa kategori/Kebutuhan.
 - `adr/README.md`
 - `RELEASE_CHECKLIST.md`
 - `ROLLBACK_RUNBOOK.md`

@@ -2,6 +2,11 @@ import { userRoleLabel } from "../../shared/presentation/user.js";
 
 const MONTH_LABELS = Object.freeze(["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]);
 
+const nonNegativeNumber = (value) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
+};
+
 const parseDateParts = (value) => {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
@@ -25,9 +30,9 @@ export const allocationPeriodLabel = (startValue, endValue) => {
 };
 
 export const allocationUsage = (item) => {
-  const allocated = Math.max(0, Number(item?.allocated_amount || 0));
-  const used = Math.max(0, Number(item?.used_amount || 0));
-  const reserved = Math.max(0, Number(item?.reserved_amount || 0));
+  const allocated = nonNegativeNumber(item?.allocated_amount);
+  const used = nonNegativeNumber(item?.used_amount);
+  const reserved = nonNegativeNumber(item?.reserved_amount);
   const committed = used + reserved;
   const percentage = allocated > 0 ? Math.max(0, Math.round((committed / allocated) * 100)) : 0;
   if (committed <= 0) return { allocated, used, reserved, committed, percentage, label: "Belum terpakai", tone: "idle" };
@@ -35,4 +40,13 @@ export const allocationUsage = (item) => {
   if (percentage >= 100) return { allocated, used, reserved, committed, percentage, label: "Dana alokasi habis", tone: "danger" };
   if (percentage >= 80) return { allocated, used, reserved, committed, percentage, label: "Menipis", tone: "warning" };
   return { allocated, used, reserved, committed, percentage, label: "Sedang digunakan", tone: "active" };
+};
+
+export const allocationNeedsFundingSummary = (item, budgets = []) => {
+  const allocated = nonNegativeNumber(item?.allocated_amount);
+  const planned = (budgets || []).reduce((total, budget) => total + nonNegativeNumber(budget?.amount), 0);
+  const gap = Math.max(0, planned - allocated);
+  const unplanned = Math.max(0, allocated - planned);
+  const status = gap > 0 ? "needs-funding" : planned > 0 && unplanned === 0 ? "balanced" : "available";
+  return { allocated, planned, gap, unplanned, status };
 };

@@ -20,6 +20,7 @@ import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx
 import TransactionForm from "./TransactionForm.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionDisplayTitle, TRANSACTION_LABELS, transactionSign, transactionTone } from "../../shared/presentation/transaction.js";
 
 const MobileTransactionHistory = lazy(() => import("./components/MobileTransactionHistory.jsx"));
@@ -179,12 +180,16 @@ const TransactionAttentionNotice = ({ active, editableTarget, remaining = null, 
   return <CompactNotice tone="info" title={title} role="status">{description}{Number.isFinite(remaining) ? ` ${remaining} transaksi masih perlu ditinjau.` : ""}</CompactNotice>;
 };
 
-const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters }) => <>
-  {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
-  {resource.status === "loading" ? <LoadingScreen variant="panel" label="Memuat transaksi..." /> : null}
-  {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
-  {resource.status === "ready" && !items.length ? <EmptyState title={filtersActive ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filtersActive ? "Ubah atau reset filter untuk melihat transaksi lain." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filtersActive ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
-</>;
+const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters }) => {
+  const emptyState = collectionEmptyState({ visibleCount: items.length, totalCount: resource.data?.total, filtersActive });
+  const filteredEmpty = emptyState === EMPTY_COLLECTION_STATE.FILTERED;
+  return <>
+    {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
+    {resource.status === "loading" ? <LoadingScreen variant="panel" label="Memuat transaksi..." /> : null}
+    {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
+    {resource.status === "ready" && !items.length ? <EmptyState className={`transaction-empty-state ${filteredEmpty ? "transaction-empty-state--filtered" : "transaction-empty-state--initial"}`} title={filteredEmpty ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filteredEmpty ? "Ubah atau reset filter untuk melihat transaksi lain." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filteredEmpty ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
+  </>;
+};
 
 const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, mobileLayout, reportResource, setEditingTransaction }) => {
   const attentionHandled = useRef(false);

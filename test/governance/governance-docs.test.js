@@ -384,6 +384,20 @@ test("every canonical product requirement is tracked in the implementation matri
   });
 });
 
+test("planned participant and transaction-line terminology follows hardened RFC vocabulary", () => {
+  const requirements = read("docs/product/PRODUCT_REQUIREMENTS.md");
+  const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
+  const dictionary = read("docs/DATA_DICTIONARY.md");
+  assert.match(requirements, /payer.*beneficiary.*liable_party/s);
+  assert.match(requirements, /REQ-PROD-19/);
+  assert.match(requirements, /REQ-PROD-18/);
+  assert.match(matrix, /REQ-PROD-19/);
+  assert.match(matrix, /REQ-PROD-18/);
+  assert.match(dictionary, /RFC-0019/);
+  assert.doesNotMatch(matrix, /`used_by`/);
+  assert.doesNotMatch(dictionary, /`used_by`/);
+});
+
 test("schema-changing roadmap gaps have RFC status that matches implementation state", () => {
   const roadmap = read("docs/product/ROADMAP.md");
   const rfcIndex = read("docs/rfc/README.md");
@@ -392,6 +406,7 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
     "0012-debt-receivable-ledger.md",
     "0014-category-hierarchy-and-goal-stages.md",
     "0015-granular-personal-privacy.md",
+    "0019-transaction-line-items.md",
   ];
 
   proposedRfcFiles.forEach((relative) => {
@@ -427,4 +442,8 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
   assert.match(roadmap, /RFC-0018/);
   assert.match(implementedSessionRegistry, /^# RFC-0018\b/m);
   assert.match(implementedSessionRegistry, /Status:\*{0,2}\s*Accepted and implemented/i);
+  const proposedSection = rfcIndex.match(/## Proposed RFC([\s\S]*?)## Accepted dan implemented/)?.[1] || "";
+  assert.doesNotMatch(proposedSection, /0018-session-device-management\.md/);
+  assert.doesNotMatch(implementedSessionRegistry, /RFC tetap Proposed/);
+  assert.match(implementedSessionRegistry, /RFC \*\*Accepted and implemented\*\*/);
 });

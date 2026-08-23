@@ -82,6 +82,27 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(styles, /allocation-related-row/);
 });
 
+test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesuaian dana eksplisit", async () => {
+  const [page, dialogs, detail, presentation] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationDialogLayer.jsx"),
+    read("src/features/allocations/AllocationPlanningDetail.jsx"),
+    read("src/features/allocations/allocationPresentation.js"),
+  ]);
+
+  assert.match(dialogs, /Alokasi untuk apa\? \*/);
+  assert.match(dialogs, /label="Dana awal alokasi"/);
+  assert.match(dialogs, /id="envelope-default"[\s\S]*required/);
+  assert.match(detail, /Total kebutuhan/);
+  assert.match(detail, /Dana alokasi/);
+  assert.match(detail, /Dana tidak berubah otomatis/);
+  assert.match(detail, /onAdjustAllocation\(item, summary\.gap\)/);
+  assert.match(page, /Menyesuaikan dana dengan total Kebutuhan/);
+  assert.match(page, /openAdjust\(item, "fund", amount\)/);
+  assert.match(presentation, /allocationNeedsFundingSummary/);
+  assert.doesNotMatch(detail, /requestAdjustEnvelopeAllocation|adjustEnvelopeAllocation/);
+});
+
 test("detail Alokasi Dana dan dialog Kebutuhan tetap lazy agar route planning memiliki headroom bundle", async () => {
   const [page, detail] = await Promise.all([
     read("src/features/allocations/AllocationsPage.jsx"),

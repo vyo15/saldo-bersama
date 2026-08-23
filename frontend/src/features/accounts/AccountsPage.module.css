@@ -26,6 +26,13 @@
   .accountsPage { gap: var(--space-4); }
   .desktopPageHeader { display: none; }
   .accountSection { gap: var(--space-3); }
+  .accountSectionInitialEmpty {
+    min-height: calc(100vh - env(safe-area-inset-top) - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
+    min-height: calc(100dvh - env(safe-area-inset-top) - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
+    padding-block: env(safe-area-inset-top) clamp(2.5rem, 8dvh, 5rem);
+    align-content: center;
+  }
+  .emptyPanelInitial { width: 100%; max-width: 40rem; justify-self: center; }
 }
 
 .impactSummary {

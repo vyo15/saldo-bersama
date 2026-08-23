@@ -26,10 +26,11 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 
 ## Next — RFC sebelum schema/authorization berubah
 
-- RFC-0011: lifecycle transaksi, `used_by`, draft/rencana, dan receipt privat.
+- RFC-0011: lifecycle transaksi, participant role eksplisit (`payer`/`beneficiary`/`liable_party`), draft/rencana, dan receipt privat.
 - RFC-0012: utang/piutang sebagai obligation + settlement ledger.
 - RFC-0014: kategori bertingkat dan tahapan target.
 - RFC-0015: privasi rekening granular dengan backend projection.
+- RFC-0019: satu cash movement dengan beberapa line item kategori/Kebutuhan tanpa double-count saldo/report.
 - Follow-up RFC-0013: payer/beneficiary/actual contribution serta relasi refund ke expense asli sebelum refund boleh mengembalikan Alokasi Dana/Kebutuhan/cost split.
 
 ## Later — maturity
@@ -40,3 +41,5 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Enkripsi backup aplikasi dengan key lifecycle yang disetujui.
 - Contract schema machine-readable per action.
 - Disaster-recovery drill berkala.
+
+- Candidate product gap: reminder konsistensi pencatatan actor-scoped dengan cadence configurable/opt-in; belum ada runtime alert type dan tidak boleh hardcode inactivity global.

@@ -75,6 +75,8 @@
 @media (max-width: 820px) {
   .transactions-page { gap: 10px; }
   .transactions-page .page-header__actions { display: none; }
+  .transactions-page .transaction-empty-state { margin-top: 8px; min-height: clamp(11rem, 28dvh, 16rem); }
+  .transactions-page .transaction-empty-state--filtered { min-height: 9rem; }
   .transaction-detail-modal .transaction-actions { width: 100%; }
   .transaction-detail-modal .transaction-actions .button { flex: 1 1 0; }
   .transaction-detail-modal .managed-transaction-note { max-width: none; width: 100%; text-align: left; }

@@ -54,6 +54,16 @@ Patch continuity wajib mempertahankan kontrak berikut:
 - Kontrol sentuh dashboard balance visibility, menu Kategori, dan CTA perhatian Jadwal tetap memiliki effective hit target minimal 44×44px.
 
 
+### Mobile UI consistency regression
+
+- Static/UI regression mengunci token mobile normal: outer gutter/card/section 16px, control minimum 44px, `--mobile-native-control-font-size` 16px, dan metadata finansial meaningful sekitar 12px atau lebih. Teks facsimile/dekoratif non-informatif seperti miniature kartu atau elemen money-rain `aria-hidden` boleh lebih kecil hanya bila informasi operasional yang relevan tetap tersedia pada copy semantik yang terbaca.
+- Verifikasi effective CSS `<=820px` untuk native `input`/`select`/`textarea` pada shared form, Transaction composer/history filter, Rekening, dan Rekonsiliasi; keberadaan `--font-size-body: 16px` desktop saja tidak cukup membuktikan Safari anti-auto-zoom.
+- Generic topbar dan route full-bleed yang menyembunyikannya harus menghormati `safe-area-inset-top`; bottom navigation, feedback, modal footer, dan content gap menghormati safe-area bottom. Uji browser biasa dan installed PWA bila perangkat mendukung notch/Dynamic Island/cutout.
+- Bottom navigation mobile tetap lima slot, tinggi 72px, ikon 24px, label 12px, FAB 52px, hit area tab non-FAB penuh 72px, serta active indicator non-color. Primary tab `/`, `/transaksi`, `/laporan` memulihkan scroll per tab; secondary route baru dimulai dari atas; browser Back/Forward memulihkan posisi entry history sebelumnya.
+- Manual matrix minimum untuk patch responsive: 320×568, 360×640, 375×812, 390×844, 430×932, 768/820, boundary 820/821 dan 940/941, serta sanity desktop 1440px. Lakukan portrait utama + landscape sanity, light/dark, keyboard/focus-visible, reduced motion, zoom 200%, nama/email panjang, dan nominal Rupiah besar.
+- Dengan virtual keyboard terbuka, Search, nominal, textarea, date/month/select, dan sticky modal action tetap dapat dijangkau. `scrollWidth <= clientWidth + 1` berlaku pada page/dialog kecuali scroller horizontal yang memang intentional.
+- Data-state QA mencakup populated, true-empty, filtered-empty, loading, error, offline, dan conflict. True-empty full-page boleh optical-center; filtered/subsection empty tetap kontekstual dan tidak menjauh dari filter/action penyebab.
+
 ### Hardening regression tambahan
 
 Patch hardening wajib mempertahankan regression berikut:
@@ -219,7 +229,7 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Asset base bank memuat logo dan chip hanya satu kali; komponen tidak merender wordmark atau chip HTML yang menumpuk di atas asset.
 - Nomor rekening bank 6–34 digit divalidasi backend, ditampilkan hanya pada rekening yang lolos scope authorization, dapat disalin dari detail, dan audit hanya menyimpan empat digit terakhir. Nomor kartu debit, PIN, CVV, masa berlaku, serta identifier internal tetap tidak boleh berada pada asset/DOM.
 - Create bank tanpa nomor, karakter non-digit yang tidak diizinkan, account number terlalu pendek/panjang, dan constraint database harus ditolak.
-- Asset BCA/BNI/BTN/Mandiri/Permata, ShopeePay/DANA/GoPay/OVO/LinkAja, Tunai, dan Tabungan harus tepat 768×484, maksimal 160 KB, dan memakai rasio CSS 1.586:1 pada list, detail, preview, desktop, serta mobile.
+- Asset BCA/BNI/BTN/Mandiri/Permata, ShopeePay/DANA/GoPay/OVO/LinkAja, Tunai, dan Tabungan harus tepat 1536×968, maksimal 160 KB, dan memakai rasio CSS 1.586:1 pada list, detail, preview, desktop, serta mobile. Lima asset bank wajib mempertahankan alpha/transparansi di luar siluet kartu agar tidak membawa background kotak saat ditumpuk atau ditampilkan di atas surface tema.
 - Provider E-wallet canonical berasal dari `accounts.ewallet_template` (`generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`). Deteksi nama hanya boleh dipakai untuk object/backup legacy tanpa field tersebut; nilai `generic` yang tersimpan tidak boleh dioverride oleh inferensi nama. Provider tidak boleh memengaruhi authorization/business logic dan E-wallet lain wajib tetap aman pada fallback generic.
 - `accounts.update` wajib menolak perubahan `account_type` walaupun dikirim langsung oleh client; jenis hanya ditentukan saat create, sehingga template/provider tidak dapat dipakai untuk menyamarkan perubahan jenis rekening setelah rekening memiliki histori.
 - Setelah create/update/archive rekening atau kategori, daftar aktif dan dashboard diperbarui tanpa refresh manual.
@@ -256,7 +266,7 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Manual mobile QA pada viewport representatif memeriksa dua tab `/perencanaan` termasuk drill-down detail Alokasi Dana dan konfirmasi Jadwal Rutin, kedua mode mobile `/laporan` beserta pergantian periode/rentang tren dan chart tanpa overflow, nested route `/pengaturan` sesuai role, detail read-only pasangan `/rekening`, route `/kategori`, overflow horizontal modal, focus trap, Escape close, body scroll lock, dan focus restoration.
 - Regression dependency UI memverifikasi setiap named import `react-icons/fi` pada `frontend/src` benar-benar tersedia pada package. `npm run build` tetap blocking karena route lazy seperti `/laporan` dapat lolos source-text/unit test tetapi gagal dimuat bila bundler menemukan named export invalid.
 - Nomor rekening panjang wajib dipadatkan pada visual kartu tanpa mengubah nilai lengkap pada detail/copy.
-- Boundary responsive wajib mencakup 580/581, 820/821, dan 940/941. Static test menolak dangling selector serta `.two-column-grid { display:none }`.
+- Boundary responsive wajib mencakup fallback sempit 340/341 dan 370/371/420/421 bila styling terkait disentuh, plus 580/581, 820/821, dan 940/941. Static test menolak dangling selector serta `.two-column-grid { display:none }`.
 
 ## Human-error protection dan data lifecycle
 

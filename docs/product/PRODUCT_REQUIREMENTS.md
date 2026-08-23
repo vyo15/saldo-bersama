@@ -2,7 +2,7 @@
 
 ## Tujuan
 
-Saldo Bersama adalah sistem pengendali uang privat untuk dua akun Google. Sistem harus menjawab: uang berasal dari mana, berada di rekening mana, sudah dialokasikan untuk apa, dipakai oleh siapa, tersisa berapa, dan apakah kewajiban serta target bersama masih aman.
+Saldo Bersama adalah sistem pengendali uang privat untuk dua akun Google. Sistem harus menjawab: uang berasal dari mana, berada di rekening mana, sudah dialokasikan untuk apa, siapa yang membayar/menerima manfaat/menanggung kewajiban, tersisa berapa, dan apakah kewajiban serta target bersama masih aman.
 
 ## Pengguna dan istilah role
 
@@ -41,11 +41,18 @@ Mendukung bank, tunai, e-wallet, tabungan, dana darurat, sinking fund, investasi
 
 Mendukung income, expense, transfer, refund, adjustment; tanggal, nominal, rekening, kategori, pencatat, merchant, metode, catatan, status aktif/cancelled/archived, idempotency, conflict, dan audit. Mobile history memakai periode + trend read-only, filter progresif, grouped-by-date list, dan detail capability-driven tanpa mengubah ledger contract.
 
-**Gap yang memerlukan RFC/schema:** pengguna uang (`used_by`), bukti/struk privat, draft/rencana/belum dibayar, utang, dan piutang. Lihat RFC-0011 dan RFC-0012.
+**Gap yang memerlukan RFC/schema:** participant role eksplisit (`payer`, `beneficiary`, `liable_party`), bukti/struk privat, draft/rencana/belum dibayar, utang, dan piutang. Field generik `used_by` tidak menjadi contract canonical. Lihat RFC-0011 dan RFC-0012.
 
 ### `REQ-PROD-02A` Alokasi per penerima — Implemented
 
 Alokasi Dana memisahkan ownership ledger (`scope`/`owner_user_id`) dari penerima jatah (`assignee_user_id`). `NULL` berarti Bersama; shared source dapat dialokasikan untuk Administrator atau Member. Setiap Alokasi Dana canonical wajib memiliki satu `source_account_id`. Rekening personal hanya dapat menjadi sumber jatah untuk pemilik rekening tersebut. Member hanya dapat memakai/memindahkan Jatah Bersama atau jatahnya sendiri, dan transaksi yang memakai Alokasi Dana wajib memakai rekening sumber yang sama. Nama internal `envelope`/route `/perencanaan/kantong` dipertahankan hanya untuk compatibility.
+
+
+### `REQ-PROD-19` Satu pembayaran dengan beberapa kategori/Kebutuhan — Planned
+
+Satu cash movement perlu dapat direpresentasikan sebagai beberapa line item kategori/Kebutuhan tanpa membuat saldo rekening berubah lebih dari sekali. Total line item wajib integer Rupiah dan tepat sama dengan nominal transaksi header; setiap line harus mengikuti category/Alokasi Dana yang valid dan reporting tidak boleh double-count.
+
+**Status:** belum ada schema/runtime. `transactions.category_id` dan `transactions.envelope_period_id` masih singular. Desain dibahas di RFC-0019; multi-source payment bukan bagian MVP dan tidak boleh diakali dengan array JSON pada kolom transaksi.
 
 ### `REQ-PROD-03` Kategori kebutuhan — Partial
 
@@ -59,7 +66,7 @@ Pemasukan dapat dibagi melalui Alokasi Dana daily, weekly, biweekly, monthly, pa
 
 ### `REQ-PROD-05` Kebutuhan dalam Alokasi Dana — Partial
 
-Alokasi Dana mendukung periodisasi harian sampai custom. Kebutuhan kategori dikelola dari detail Alokasi Dana dan memakai record budget serta relasi existing `budgets.envelope_rule_id`. Kategori tetap master data bersama dan kategori yang sama boleh dipakai pada lebih dari satu Alokasi Dana; identitas Kebutuhan periode karena itu mencakup kategori, ownership, dan Alokasi Dana. Pemakaian anggaran Kebutuhan hanya menghitung transaksi aktif pada kategori, ownership, periode, dan Alokasi Dana yang sama. Halaman Anggaran menjadi overview read-only lintas Kebutuhan. Dashboard, laporan, dan push tetap memberi peringatan actionable ketika anggaran terlampaui. Saat menutup periode, user dapat memilih `Pakai lagi kebutuhan di periode berikutnya`. Sistem hanya menyalin kategori dan nominal rencana Kebutuhan aktif ke periode tujuan bila identitas Kebutuhan tersebut belum ada. Rencana target yang sudah ada tidak ditimpa, dan transaksi, saldo, histori pemakaian, serta dana Alokasi tidak ikut disalin.
+Alokasi Dana mendukung periodisasi harian sampai custom. Kebutuhan kategori dikelola dari detail Alokasi Dana dan memakai record budget serta relasi existing `budgets.envelope_rule_id`. Kategori tetap master data bersama dan kategori yang sama boleh dipakai pada lebih dari satu Alokasi Dana; identitas Kebutuhan periode karena itu mencakup kategori, ownership, dan Alokasi Dana. Pemakaian anggaran Kebutuhan hanya menghitung transaksi aktif pada kategori, ownership, periode, dan Alokasi Dana yang sama. Detail Alokasi Dana merangkum total nominal Kebutuhan aktif periode berjalan terhadap `allocated_amount`, bukan terhadap sisa setelah transaksi; selisih lebih ditampilkan sebagai dana belum direncanakan, sedangkan kekurangan hanya menjadi suggestion untuk `envelopes.adjustAllocation` yang tetap memerlukan konfirmasi user dan guard backend. Menambah atau mengedit Kebutuhan tidak boleh otomatis memindahkan dana. Halaman Anggaran menjadi overview read-only lintas Kebutuhan. Dashboard, laporan, dan push tetap memberi peringatan actionable ketika anggaran terlampaui. Saat menutup periode, user dapat memilih `Pakai lagi kebutuhan di periode berikutnya`. Sistem hanya menyalin kategori dan nominal rencana Kebutuhan aktif ke periode tujuan bila identitas Kebutuhan tersebut belum ada. Rencana target yang sudah ada tidak ditimpa, dan transaksi, saldo, histori pemakaian, serta dana Alokasi tidak ikut disalin.
 
 **Batas saat ini:** Kebutuhan masih berupa record budget per periode, bukan rule recurrence/multi-periode independen. Continuity tersedia sebagai copy opt-in saat penutupan Alokasi Dana, bukan auto-renew tanpa konfirmasi. Level 90/100 diturunkan saat runtime tanpa kolom baru. Data budget legacy yang belum memiliki `envelope_rule_id` tetap dapat dibaca dan dapat dihubungkan ke Alokasi Dana tanpa migration.
 
@@ -128,6 +135,12 @@ Queue idempotent dan Web Push mendukung recurring due, Kebutuhan threshold, Alok
 Google login, signed session v2 + registry `user_sessions`, registry `users` canonical, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown. Selama hasil mutation biasa belum definitif, payload berbeda untuk action yang sama diblok dan metadata intent aman dipersist lintas reload tanpa payload finansial agar edit user tidak diam-diam menjadi mutation kedua; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Alokasi Dana memiliki archive/restore rule dan reverse movement tanpa hard delete. `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama; anggota runtime dikelola Administrator melalui registry `users`.
 
 **Operasional yang belum terbukti:** full quality gate Node 24 pada patch terbaru, migration parity production, real-resource restore drill, external alerting, dan rotasi secret yang pernah ikut ZIP manual.
+
+### `REQ-PROD-18` Reminder konsistensi pencatatan — Planned
+
+Sistem dapat memberi nudge actor-scoped bila tidak ada aktivitas pencatatan transaksi dalam cadence yang dipilih user, tanpa menganggap hari tanpa transaksi sebagai error dan tanpa menampilkan nominal/detail privat pada lock screen. Cadence harus configurable/opt-in dan memakai scheduler + preference notification canonical, bukan hardcode “5 hari” untuk semua user.
+
+**Status:** belum ada runtime alert type khusus inactivity/completeness. Implementasi baru boleh dilakukan setelah product cadence, opt-in default, dedupe, timezone, dan privacy copy disetujui serta ditambahkan ke notification contract.
 
 ## Alur produk
 

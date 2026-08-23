@@ -663,6 +663,14 @@
   }
 }
 
+@media (max-width: 820px) {
+  .segment,
+  .sortButton,
+  .detailButton {
+    min-height: var(--mobile-control-height);
+  }
+}
+
 @media (max-width: 580px) {
   .page {
     gap: var(--mobile-section-gap);
@@ -674,12 +682,6 @@
 
   .pageHeading h1 {
     font-size: 1.55rem;
-  }
-
-  .segment,
-  .sortButton,
-  .detailButton {
-    min-height: var(--mobile-control-height);
   }
 
   .controlsRow {
@@ -721,7 +723,7 @@
 
   .heroMeta {
     max-width: 18rem;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
   }
 
   .heroProgress {

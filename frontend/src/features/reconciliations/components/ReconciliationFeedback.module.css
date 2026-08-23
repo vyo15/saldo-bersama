@@ -7,16 +7,16 @@
 .progressSteps { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 7px 12px; }
 .progressSteps span { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 .progressSteps i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--border-strong); }
-.stepActive { color: var(--text) !important; }
+.progressSteps .stepActive { color: var(--text); }
 .stepActive i { background: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 13%, transparent); }
-.stepDone { color: var(--positive) !important; }
+.progressSteps .stepDone { color: var(--positive); }
 .stepDone i { background: var(--positive); }
 .stepQueued { color: var(--text-muted); }
 
 .resultBackdrop { position: fixed; z-index: var(--layer-modal); inset: 0; padding: max(var(--space-4), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right)) max(var(--space-4), env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left)); display: grid; place-items: center; background: var(--overlay); backdrop-filter: blur(8px); animation: reconciliation-feedback-backdrop-in var(--motion-normal) var(--motion-easing); }
 .resultDialog { position: relative; width: min(31rem, 100%); max-height: min(48rem, calc(100dvh - (var(--space-4) * 2))); overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border)); border-radius: 24px; background: radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 19rem), var(--surface-elevated); box-shadow: var(--shadow-floating); animation: reconciliation-feedback-dialog-in var(--motion-normal) var(--motion-easing); }
 .resultBackdropDifference .resultDialog { border-color: color-mix(in srgb, var(--warning) 28%, var(--border)); background: radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--warning) 10%, transparent), transparent 18rem), var(--surface-elevated); }
-.resultClose { position: absolute; z-index: 5; inset-block-start: 14px; inset-inline-end: 14px; width: 2.5rem; height: 2.5rem; padding: 0; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--border-strong) 78%, transparent); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); color: var(--text-muted); backdrop-filter: blur(10px); cursor: pointer; }
+.resultClose { position: absolute; z-index: 5; inset-block-start: 14px; inset-inline-end: 14px; width: 2.75rem; height: 2.75rem; padding: 0; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--border-strong) 78%, transparent); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); color: var(--text-muted); backdrop-filter: blur(10px); cursor: pointer; }
 .resultClose:hover { color: var(--text); border-color: var(--border-strong); }
 .resultClose:focus-visible, .resultDone:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .resultClose svg { width: 1.1rem; height: 1.1rem; }
@@ -35,8 +35,8 @@
 .resultSummary > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3); }
 .resultSummary dt { color: var(--text-muted); font-size: var(--font-size-sm); text-align: left; }
 .resultSummary dd { margin: 0; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); text-align: right; }
-.resultMatched, .resultMatched :global(.money) { color: var(--positive) !important; }
-.resultDifference, .resultDifference :global(.money) { color: var(--warning) !important; }
+.resultMatched, .resultMatched :global(.money) { color: var(--positive); }
+.resultDifference, .resultDifference :global(.money) { color: var(--warning); }
 .resultFooter { width: 100%; margin-top: auto; padding-top: 1.35rem; display: grid; gap: 9px; }
 .resultDone { width: 100%; min-height: 3rem; border: 0; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, white), var(--primary)); color: var(--on-primary); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-bold); cursor: pointer; box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 16%, transparent); }
 .resultFooter small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
@@ -53,7 +53,7 @@
   .resultBackdrop { padding: 0; background: var(--page); backdrop-filter: none; }
   .resultDialog { width: 100vw; max-width: none; height: 100dvh; max-height: none; border: 0; border-radius: 0; box-shadow: none; background: radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 19rem), linear-gradient(180deg, color-mix(in srgb, var(--page) 88%, var(--primary-soft)), var(--page) 58%); }
   .resultBackdropDifference .resultDialog { background: radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--warning) 10%, transparent), transparent 18rem), var(--page); }
-  .resultClose { inset-block-start: max(14px, env(safe-area-inset-top)); inset-inline-end: max(14px, env(safe-area-inset-right)); }
+  .resultClose { inset-block-start: calc(env(safe-area-inset-top) + 14px); inset-inline-end: calc(env(safe-area-inset-right) + 14px); }
   .resultContent { min-height: 100dvh; padding: calc(max(3.75rem, env(safe-area-inset-top) + 3rem)) var(--space-4) calc(max(1rem, env(safe-area-inset-bottom) + .75rem)); }
   .resultIcon { margin-top: 2.2rem; }
   .resultAmount, .resultAmount :global(.money) { font-size: clamp(2.05rem, 10vw, 2.6rem); }

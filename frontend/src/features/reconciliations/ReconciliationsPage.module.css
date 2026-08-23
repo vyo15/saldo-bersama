@@ -577,6 +577,14 @@
   to { transform: rotate(360deg); }
 }
 
+@media (max-width: 820px) {
+  .accountField .selectShell select,
+  .actualBalanceEditor :global(input),
+  .notesField textarea {
+    font-size: var(--mobile-native-control-font-size);
+  }
+}
+
 @media (max-width: 580px) {
   .page :global(.page-header) {
     padding: 0 1px;
@@ -606,11 +614,6 @@
   .refreshButton {
     width: var(--mobile-control-height);
     height: var(--mobile-control-height);
-  }
-
-  .accountField .selectShell select,
-  .notesField textarea {
-    font-size: var(--font-size-body);
   }
 
   .actualBalanceCard {
@@ -657,8 +660,8 @@
   }
 
   .historyFilter select {
-    min-height: 40px;
-    font-size: var(--font-size-xs);
+    min-height: var(--mobile-control-height);
+    font-size: var(--mobile-native-control-font-size);
   }
 
   .mobileHistoryCard {

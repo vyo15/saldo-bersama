@@ -33,6 +33,7 @@ import {
   categoryTypeLabel,
   expenseNatureOptions,
 } from "../../shared/presentation/category.js";
+import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import styles from "./CategoriesPage.module.css";
 
 const emptyCategoryForm = () => ({
@@ -185,7 +186,12 @@ const orderedCategoryGroups = (grouped) => Object.entries(grouped).sort(([left],
   return leftIndex - rightIndex;
 });
 
-const CategoryList = ({ items, totalItems, grouped, filtersActive, clearFilters, ownerMode, openCreate, openEdit, openArchivePreview, menuProps }) => items.length ? <Card className={styles.categoryPanel}><div className={styles.categoryGroups}>{orderedCategoryGroups(grouped).map(([type, categories]) => { const meta = CATEGORY_SECTION_META[type] || { label: categoryTypeLabel(type), icon: null, className: "" }; const TypeIcon = meta.icon; return <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}><div className={styles.categoryGroupHeading}><div className={`${styles.categoryGroupTitle} ${meta.className}`}><h2 id={`category-${type}`}>{meta.label}</h2>{TypeIcon ? <TypeIcon aria-hidden="true" /> : null}</div><span>{categories.length}</span></div><div className={styles.categoryList}>{categories.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} menuProps={menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div></section>; })}</div></Card> : <EmptyState className={styles.emptyPanel} title={totalItems ? filtersActive ? "Kategori tidak ditemukan" : "Belum ada kategori aktif" : "Belum ada kategori"} description={totalItems && filtersActive ? "Ubah pencarian atau filter untuk menampilkan kategori lain." : !totalItems ? "Kategori membantu mengelompokkan pemasukan dan pengeluaran." : "Tidak ada kategori aktif pada status yang dipilih."} action={totalItems && filtersActive ? <Button onClick={clearFilters}>Reset pencarian</Button> : !totalItems && ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />;
+const CategoryList = ({ items, totalItems, grouped, filtersActive, clearFilters, ownerMode, openCreate, openEdit, openArchivePreview, menuProps }) => {
+  const emptyState = collectionEmptyState({ visibleCount: items.length, totalCount: totalItems, filtersActive });
+  if (items.length) return <Card className={styles.categoryPanel}><div className={styles.categoryGroups}>{orderedCategoryGroups(grouped).map(([type, categories]) => { const meta = CATEGORY_SECTION_META[type] || { label: categoryTypeLabel(type), icon: null, className: "" }; const TypeIcon = meta.icon; return <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}><div className={styles.categoryGroupHeading}><div className={`${styles.categoryGroupTitle} ${meta.className}`}><h2 id={`category-${type}`}>{meta.label}</h2>{TypeIcon ? <TypeIcon aria-hidden="true" /> : null}</div><span>{categories.length}</span></div><div className={styles.categoryList}>{categories.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} menuProps={menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div></section>; })}</div></Card>;
+  const initialEmpty = emptyState === EMPTY_COLLECTION_STATE.INITIAL;
+  return <EmptyState className={`${styles.emptyPanel}${initialEmpty ? ` ${styles.emptyPanelInitial}` : ""}`} title={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Kategori tidak ditemukan" : "Belum ada kategori aktif" : "Belum ada kategori"} description={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Ubah pencarian atau filter untuk menampilkan kategori lain." : "Tidak ada kategori aktif pada status yang dipilih." : "Kategori membantu mengelompokkan pemasukan dan pengeluaran."} action={emptyState === EMPTY_COLLECTION_STATE.FILTERED && filtersActive ? <Button onClick={clearFilters}>Reset pencarian</Button> : initialEmpty && ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />;
+};
 
 const useCategoryMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId }) => {
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { FiLogOut, FiPlus, FiRefreshCw, FiSettings } from "react-icons/fi";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigationType } from "react-router";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import SideNavigation from "../components/navigation/SideNavigation.jsx";
 import MobileNavigation from "../components/navigation/MobileNavigation.jsx";
@@ -14,6 +14,7 @@ import { useFinance } from "../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../app/TransactionComposerContext.jsx";
 import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
 import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
+import useMobileTabScrollRestoration from "../hooks/useMobileTabScrollRestoration.js";
 import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
 import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
 import OfflineBanner from "../components/pwa/OfflineBanner.jsx";
@@ -35,11 +36,41 @@ const desktopTransactionQuickAddAllowed = (pathname, role) => {
   return true;
 };
 
+const MobileMoreMenu = ({ open, user, initialFocusRef, onClose, onLogout }) => (
+  <Modal open={open} onClose={onClose} title="Menu lainnya" size="sm" initialFocusRef={initialFocusRef} mobileSwipeToClose>
+    <div className="mobile-menu-list">
+      {MOBILE_SECONDARY_GROUPS
+        .map((group) => ({ ...group, items: group.items.filter((item) => !item.ownerOnly || user?.role === "owner") }))
+        .filter((group) => group.items.length)
+        .map(({ id, label, items }, groupIndex) => (
+          <section key={id} className="mobile-menu-section" aria-labelledby={`mobile-menu-${id}`}>
+            <h3 id={`mobile-menu-${id}`}>{label}</h3>
+            {items.map(({ to, label: itemLabel, icon: Icon }, itemIndex) => (
+              <NavLink
+                key={to}
+                ref={groupIndex === 0 && itemIndex === 0 ? initialFocusRef : undefined}
+                to={to}
+                className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`}
+                onClick={onClose}
+              >
+                <Icon aria-hidden="true" /><span>{itemLabel}</span>
+              </NavLink>
+            ))}
+          </section>
+        ))}
+      <div className="mobile-menu-footer">
+        <Button className="mobile-menu-logout" icon={FiLogOut} type="button" onClick={onLogout}>Keluar</Button>
+      </div>
+    </div>
+  </Modal>
+);
+
 const AppShell = () => {
   const { user, logout } = useAuth();
   const { isRefreshing, refreshError, refreshAll } = useFinance();
   const { openTransactionComposer } = useTransactionComposer();
   const location = useLocation();
+  const navigationType = useNavigationType();
   const [mobileMenuRoute, setMobileMenuRoute] = useState("");
   const [logoutError, setLogoutError] = useState("");
   const mobileMenuInitialFocusRef = useRef(null);
@@ -52,6 +83,7 @@ const AppShell = () => {
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();
+  useMobileTabScrollRestoration(location, navigationType);
 
   const handleLogout = async () => {
     setLogoutError("");
@@ -106,40 +138,14 @@ const AppShell = () => {
       {desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
       <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
 
-      <Modal
+      <MobileMoreMenu
         key={`mobile-more-${location.pathname}`}
         open={mobileMenuOpen}
-        onClose={() => setMobileMenuRoute("")}
-        title="Menu lainnya"
-        size="sm"
+        user={user}
         initialFocusRef={mobileMenuInitialFocusRef}
-        mobileSwipeToClose
-      >
-        <div className="mobile-menu-list">
-          {MOBILE_SECONDARY_GROUPS
-            .map((group) => ({ ...group, items: group.items.filter((item) => !item.ownerOnly || user?.role === "owner") }))
-            .filter((group) => group.items.length)
-            .map(({ id, label, items }, groupIndex) => (
-            <section key={id} className="mobile-menu-section" aria-labelledby={`mobile-menu-${id}`}>
-              <h3 id={`mobile-menu-${id}`}>{label}</h3>
-              {items.map(({ to, label: itemLabel, icon: Icon }, itemIndex) => (
-                <NavLink
-                  key={to}
-                  ref={groupIndex === 0 && itemIndex === 0 ? mobileMenuInitialFocusRef : undefined}
-                  to={to}
-                  className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`}
-                  onClick={() => setMobileMenuRoute("")}
-                >
-                  <Icon aria-hidden="true" /><span>{itemLabel}</span>
-                </NavLink>
-              ))}
-            </section>
-          ))}
-          <div className="mobile-menu-footer">
-            <Button className="mobile-menu-logout" icon={FiLogOut} type="button" onClick={handleMobileLogout}>Keluar</Button>
-          </div>
-        </div>
-      </Modal>
+        onClose={() => setMobileMenuRoute("")}
+        onLogout={handleMobileLogout}
+      />
     </>
   );
 };

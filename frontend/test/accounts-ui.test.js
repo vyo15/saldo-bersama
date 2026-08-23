@@ -44,6 +44,12 @@ const webpSize = async (url) => {
   throw new Error(`Format WebP ${chunk} belum didukung test`);
 };
 
+const webpHasAlpha = async (url) => {
+  const buffer = await readFile(url);
+  if (buffer.toString("ascii", 12, 16) !== "VP8X") return false;
+  return (buffer[20] & 0x10) === 0x10;
+};
+
 test("nama rekening otomatis hanya dipakai untuk jenis yang memang tidak perlu nama manual", () => {
   assert.equal(accountTypeUsesAutomaticName("cash"), true);
   assert.equal(accountTypeUsesAutomaticName("ewallet"), true);
@@ -428,7 +434,7 @@ ${accountEditors}`;
   assert.match(mobileTransferStyles, /:global\(:root\[data-theme="light"\]\) \.mobileTransferHeaderAction \{[^}]*background:\s*var\(--primary-soft\);[^}]*color:\s*var\(--primary\);/s);
   assert.match(mobileTransferStyles, /:global\(:root\[data-theme="light"\]\) \.mobileTransferHeaderAction:hover:not\(:disabled\),[\s\S]*color:\s*var\(--primary-strong\);/s);
   assert.match(accountsPageStyles, /impactSummary/);
-  assert.match(pageStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--font-size-body\);/s);
+  assert.match(pageStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
   assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid var\(--border\);[^}]*background:\s*var\(--surface-soft\);/s);
   assert.match(pageStyles, /\.impactSummary strong \{ color:\s*var\(--text\);/);
   assert.match(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileAccountExperience/);
@@ -512,6 +518,7 @@ test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () =
     assert.ok(file, `${name}.webp harus tersedia`);
     assert.ok(info.size <= 160_000, `${name}.webp terlalu besar untuk kartu responsif (${info.size} byte)`);
     assert.deepEqual(dimensions, { width: 1536, height: 968 }, `${name}.webp harus memakai kanvas 1536x968`);
+    if (directory === "bank-cards") assert.equal(await webpHasAlpha(file), true, `${name}.webp harus mempertahankan alpha di luar siluet kartu`);
   }
 });
 

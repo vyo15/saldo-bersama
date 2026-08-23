@@ -156,7 +156,7 @@
 .summary > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3); }
 .summary dt { min-width: 0; overflow: hidden; color: var(--text-muted); font-size: var(--font-size-sm); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .summary dd { margin: 0; max-width: 15rem; overflow: hidden; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-.summaryPositive, .summaryPositive :global(.money) { color: var(--positive) !important; }
+.summaryPositive, .summaryPositive :global(.money) { color: var(--positive); }
 
 .footer {
   width: 100%;
