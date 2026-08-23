@@ -1,3 +1,4 @@
+/** Lazy UI composer only; transaction validation and persistence remain in canonical form/API paths. */
 import { createContext, lazy, Suspense, useContext, useMemo, useState } from "react";
 import { TRANSACTION_TYPES } from "../domain/constants.js";
 const TransactionForm = lazy(() => import("../features/transactions/TransactionForm.jsx"));

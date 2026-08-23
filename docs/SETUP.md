@@ -75,7 +75,7 @@ Alur `npm run dev` pada terminal interaktif:
 6. Menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
 7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key production-only itu salah ditempatkan pada Vercel Development.
 8. Mempertahankan `GOOGLE_OAUTH_CLIENT_SECRET` yang sudah ada hanya dari `.env.local` komputer tepercaya; nilainya tidak ditarik dari atau didorong ke Development.
-9. Memvalidasi sembilan key core dan satu grup Web Push lengkap/valid.
+9. Memvalidasi sepuluh key core dan satu grup Web Push lengkap/valid.
 10. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
 11. Menjalankan server lokal setelah dependency dan environment valid.
 
@@ -94,7 +94,7 @@ npm run env:push:development
 Untuk kebutuhan settings saja, gunakan command scoped berikut agar Turso, allowlist, Firebase, dan session tidak disentuh:
 
 ```bash
-npm run env:push:development:settings
+npm run env:push:development -- --settings-only
 ```
 
 Command settings selalu menyinkronkan pasangan Web Push yang valid dan ikut menyinkronkan Google bridge bila grup tersebut sudah aktif di `.env.local`. Gunakan komputer yang sudah memakai pasangan VAPID canonical. Jangan generate VAPID baru per laptop atau browser.
@@ -118,7 +118,7 @@ npm run db:migrate
 npm run db:integrity
 ```
 
-Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta signed allowlist role adalah Administrator (`administrator`, dinormalisasi ke compatibility key internal). Karena runtime lokal dan Vercel Production memakai database yang sama, jangan membuat data dummy atau menjalankan destructive operation.
+Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Karena runtime lokal dan Vercel Production memakai database yang sama, jangan membuat data dummy atau menjalankan destructive operation.
 
 ## 6. Integrasi Google
 

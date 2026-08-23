@@ -25,7 +25,7 @@ Semua request memakai HMAC SHA-256, timestamp window, dan nonce replay guard. Re
 Google bridge tidak dikonfigurasi per laptop/browser. Nilai `GOOGLE_BRIDGE_WEB_APP_URL`, `GOOGLE_BRIDGE_SHARED_SECRET`, dan `JOBS_SHARED_SECRET` disimpan sebagai satu grup pada Vercel Development/Production yang disetujui. Bila grup sudah tersedia pada `.env.local` komputer tepercaya, sinkronkan settings tanpa menyentuh core environment:
 
 ```bash
-npm run env:push:development:settings
+npm run env:push:development -- --settings-only
 ```
 
 `npm run dev` kemudian menarik Development terbaru pada setiap start interaktif. Resource ID Google tetap berada satu kali di Apps Script Properties pada project bridge Production; laptop/PC lain tidak perlu mengisi Spreadsheet/Calendar/Drive ID atau secret secara manual. Jika bridge belum diaktifkan secara pusat, halaman Integrasi Google tetap menampilkan status belum siap, sedangkan fitur Turso lain tetap dapat berjalan.

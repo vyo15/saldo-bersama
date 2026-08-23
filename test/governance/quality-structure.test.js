@@ -11,7 +11,7 @@ const exists = async (relative) => {
   catch { return false; }
 };
 
-test("quality workflow menjalankan check, guard regression, dan verifikasi clean archive", async () => {
+test("quality workflow menjalankan verify canonical dan verifikasi clean archive", async () => {
   const workflow = await source(".github/workflows/quality.yml");
   assert.match(workflow, /actions\/checkout@v5/);
   assert.match(workflow, /fetch-depth:\s*0/);
@@ -20,30 +20,43 @@ test("quality workflow menjalankan check, guard regression, dan verifikasi clean
   assert.match(workflow, /Check changed whitespace/);
   assert.match(workflow, /git diff --check/);
   assert.match(workflow, /npm ci/);
-  assert.match(workflow, /npm run check/);
-  assert.match(workflow, /npm run test:guard/);
-  assert.doesNotMatch(workflow, /npm run test:browser/);
+  assert.match(workflow, /npm run verify/);
+  assert.doesNotMatch(workflow, /npm run (?:check|test:guard|test:browser)/);
+  assert.match(workflow, /npx --yes jscpd@4\.2\.5/);
   assert.match(workflow, /node scripts\/create-clean-archive\.mjs/);
-  assert.doesNotMatch(workflow, /npm run zip --/, "CI sudah menjalankan check/guard sehingga archive tidak boleh mengulang full verify");
+  assert.doesNotMatch(workflow, /npm run zip --/, "CI sudah menjalankan verify sehingga archive tidak boleh mengulang full verification");
 });
 
-test("tooling kualitas canonical tidak bergantung pada task automation", async () => {
+test("tooling kualitas canonical mengekspos command manusia yang ringkas", async () => {
   const packageJson = JSON.parse(await source("package.json"));
+  const frontendPackage = JSON.parse(await source("frontend/package.json"));
   assert.equal(packageJson.scripts.clean, "node scripts/clean-generated-artifacts.mjs");
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
-  assert.equal(packageJson.scripts["test:browser"], undefined);
   assert.equal(packageJson.scripts.verify, "node scripts/verify-project.mjs");
   assert.equal(packageJson.scripts.zip, "node scripts/verified-clean-archive.mjs");
   assert.equal(packageJson.scripts.postinstall, "node scripts/install-git-hooks.mjs");
-  assert.equal(packageJson.scripts["audit:production"], "npm audit --omit=dev --audit-level=high");
-  assert.equal(packageJson.scripts["check:duplicates"], "npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test");
-  assert.equal(packageJson.scripts["task:check"], undefined);
-  assert.equal(packageJson.scripts["task:list"], undefined);
-  assert.equal(packageJson.scripts["task:finish"], undefined);
-  assert.equal(packageJson.scripts.check, "npm run validate:source && npm run lint && npm run test && npm run build && npm run build:budget && npm run test:coverage:backend");
+  assert.match(packageJson.scripts.lint, /node_modules\/eslint\/bin\/eslint\.js api scripts test/);
+
+  for (const retired of [
+    "check", "test:guard", "validate:source", "build:budget", "lint:backend",
+    "audit:production", "audit:all", "check:duplicates", "test:coverage:backend",
+    "env:push:development:settings", "clean:dry-run", "test:browser",
+    "task:check", "task:list", "task:finish",
+  ]) assert.equal(packageJson.scripts[retired], undefined, `Script ${retired} harus tetap internal/retired`);
+
+  assert.equal(frontendPackage.scripts.dev, undefined);
+  assert.equal(frontendPackage.scripts.preview, undefined);
+  assert.deepEqual(Object.keys(frontendPackage.scripts).sort(), ["build", "lint", "test"]);
   assert.equal(packageJson.engines.node, "24.x");
   assert.equal((await source(".node-version")).trim(), "24.18.1");
   for (const retired of ["scripts/finish-task.mjs", "scripts/validate-task.mjs", "scripts/list-tasks.mjs"]) assert.equal(await exists(retired), false);
+});
+
+test("dependency audit tetap berjalan langsung di CI tanpa menambah npm alias", async () => {
+  const workflow = await source(".github/workflows/dependency-audit.yml");
+  assert.match(workflow, /npm audit --omit=dev --audit-level=high/);
+  assert.match(workflow, /npm audit --audit-level=high/);
+  assert.doesNotMatch(workflow, /npm run audit:/);
 });
 
 test("test backend terkelompok berdasarkan tanggung jawab dan namespace runtime tetap bersih", async () => {
@@ -82,7 +95,6 @@ test("document lifecycle labels retired task archive as historical and branch/PR
   assert.match(await source("docs/GITHUB_RULESET.md"), /Require a pull request before merging/);
 });
 
-
 test("quality docs memakai routing perubahan, regression behavior, dan checklist evergreen", async () => {
   const [agents, index, workflow, lifecycle, done, checklist, testPlan, prTemplate] = await Promise.all([
     source("AGENTS.md"),
@@ -106,4 +118,21 @@ test("quality docs memakai routing perubahan, regression behavior, dan checklist
   assert.equal((checklist.match(/Login Google mobile/g) || []).length, 0, "Detail feature tidak boleh diduplikasi di QA checklist");
   assert.match(prTemplate, /Regression test terkait/);
   assert.match(prTemplate, /Docs canonical yang diperbarui/);
+});
+
+test("maintainability convention menjadi dokumentasi canonical dan terhubung dari governance", async () => {
+  const [guide, agents, contributing, index, done] = await Promise.all([
+    source("docs/CODE_MAINTAINABILITY.md"),
+    source("AGENTS.md"),
+    source("CONTRIBUTING.md"),
+    source("docs/INDEX.md"),
+    source("docs/DEFINITION_OF_DONE.md"),
+  ]);
+  assert.match(guide, /Code menjelaskan WHAT/i);
+  assert.match(guide, /saldo\/ledger invariant|financial invariant|invariant finansial/i);
+  assert.match(guide, /public facade|stable facade|façade/i);
+  assert.match(agents, /CODE_MAINTAINABILITY\.md/);
+  assert.match(contributing, /CODE_MAINTAINABILITY\.md/);
+  assert.match(index, /CODE_MAINTAINABILITY\.md/);
+  assert.match(done, /rationale|invariant/i);
 });

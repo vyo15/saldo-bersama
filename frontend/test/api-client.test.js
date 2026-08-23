@@ -345,6 +345,43 @@ test("network putus saat write mempertahankan idempotency key untuk retry intent
   }
 });
 
+test("outcome unknown mempertahankan idempotency metadata lintas cache reset seperti reload tanpa menyimpan payload", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalStorage = globalThis.localStorage;
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (key) => store.get(String(key)) ?? null,
+    setItem: (key, value) => store.set(String(key), String(value)),
+    removeItem: (key) => store.delete(String(key)),
+  };
+  const keys = [];
+  let attempt = 0;
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    keys.push(body.idempotencyKey);
+    attempt += 1;
+    if (attempt === 1) throw new Error("connection reset after commit");
+    return successfulResponse({ created: true });
+  };
+  try {
+    const { apiClient, isOutcomeUnknownError } = await import("../src/services/api/client.js");
+    apiClient.setSessionScope("mutation-persistent-retry");
+    apiClient.clearCache();
+    const payload = { name: "Persist retry", target_amount: 1250000, account_id: "a1" };
+    await assert.rejects(() => apiClient.request("goals.create", payload, {}), isOutcomeUnknownError);
+    const serialized = [...store.values()].join("\n");
+    assert.doesNotMatch(serialized, /Persist retry|1250000|account_id/, "browser storage tidak boleh berisi payload finansial");
+    apiClient.clearCache();
+    assert.deepEqual(await apiClient.request("goals.create", payload, {}), { created: true });
+    assert.equal(keys.length, 2);
+    assert.equal(keys[1], keys[0], "retry setelah reload wajib memakai idempotency key yang sama");
+    assert.equal(store.size, 0, "metadata intent harus dibersihkan setelah hasil definitif");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage = originalStorage;
+  }
+});
+
 test("outcome unknown mengunci action dari payload berbeda sampai intent lama mendapat hasil definitif", async () => {
   const originalFetch = globalThis.fetch;
   const requests = [];

@@ -52,7 +52,7 @@ test("restore melakukan preview, safety backup, maintenance fail-closed, transac
   assert.match(maintenance, /maintenanceUpdate\.rowsAffected !== 1/);
 });
 
-test("restore menghapus queue dan push credential lama, mempertahankan audit, serta mengikat identitas ke konfigurasi aktif", async () => {
+test("restore menghapus credential runtime lama, mempertahankan audit, dan tidak mengubah authorization canonical dari backup", async () => {
   const maintenance = await maintenanceSource();
   assert.match(maintenance, /"notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces"/);
   assert.match(maintenance, /"push_subscriptions"/);
@@ -60,13 +60,16 @@ test("restore menghapus queue dan push credential lama, mempertahankan audit, se
   assert.doesNotMatch(maintenance, /insertRows\(tx, "push_subscriptions"/);
   assert.doesNotMatch(maintenance, /RESTORE_DELETE_ORDER[\s\S]{0,400}"audit_log"/);
   assert.match(maintenance, /currentByEmail/);
-  assert.match(maintenance, /allowedRoleByEmail/);
   assert.match(maintenance, /context\.signedActor\.uid/);
   assert.match(maintenance, /RESTORE_IDENTITY_CONFLICT/);
-  assert.match(maintenance, /allowedRole \|\| current\?\.role \|\| user\.role/);
-  assert.match(maintenance, /allowedRole\s*\?\s*(?:\()?current\?\.status\s*\|\|\s*user\.status(?:\))?\s*:\s*"inactive"/);
-  assert.match(maintenance, /nextStatus = allowedRole \? current\.status : "inactive"/);
+  assert.match(maintenance, /current\?\.role \|\| user\.role/);
+  assert.match(maintenance, /current\?\.status \|\| "inactive"/);
+  assert.match(maintenance, /User canonical yang tidak ada di backup sengaja dibiarkan apa adanya/);
+  assert.doesNotMatch(maintenance, /context\.allowedUsers|allowedRoleByEmail/);
   assert.match(maintenance, /insertRows\(tx, "audit_log"[\s\S]*INSERT OR IGNORE/);
+  assert.match(maintenance, /DELETE FROM user_sessions/);
+  assert.match(maintenance, /database_environment/);
+  assert.match(maintenance, /scheduler_last_success_at/);
 });
 
 test("import dibatasi 50 row, preview tervalidasi, safety backup, atomic apply, dan replay-safe", async () => {
@@ -101,7 +104,7 @@ test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase s
 
 
 
-test("backup schema v11 menyimpan cost sharing, manual reminder, penerima jatah, notification preferences, dan provider E-wallet canonical", async () => {
+test("backup schema v12 menyimpan data finansial canonical tanpa session atau binding runtime", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
@@ -115,7 +118,7 @@ test("backup schema v11 menyimpan cost sharing, manual reminder, penerima jatah,
     await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,cost_share_mode,cost_share_json,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["tx-cost-v11", "2026-08-09", "expense", "wallet-v8", null, "category-cost-v11", null, null, null, 100, "Shared split", "", "", "", "shared", null, "equal", costShareJson, "active", 1, "backup-cost-v11", "u-pref", now, "u-pref", now, null, null, ""]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 11);
+    assert.equal(snapshot.manifest.schemaVersion, 12);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
     assert.equal(snapshot.manifest.tables.manual_reminders, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
@@ -123,11 +126,15 @@ test("backup schema v11 menyimpan cost sharing, manual reminder, penerima jatah,
     assert.equal(snapshot.tables.accounts[0].ewallet_template, "gopay");
     assert.equal(snapshot.tables.transactions[0].cost_share_mode, "equal");
     assert.equal(snapshot.tables.transactions[0].cost_share_json, costShareJson);
+    assert.equal(Object.hasOwn(snapshot.tables, "user_sessions"), false);
+    assert.equal(snapshot.tables.system_config.some((row) => [
+      "database_environment", "maintenance_mode", "scheduler_last_run_at", "scheduler_last_success_at", "scheduler_last_failure_at", "scheduler_last_error_code",
+    ].includes(row.key)), false);
     assert.equal(validateSnapshot(snapshot), snapshot.checksum);
   } finally { db.close(); }
 });
 
-test("backup schema v3-v10 tetap dapat dimuat ke schema v11 dengan field additive canonical", async () => {
+test("backup schema v3-v11 tetap dapat dimuat ke schema v12 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -210,6 +217,12 @@ test("backup schema v3-v10 tetap dapat dimuat ke schema v11 dengan field additiv
     v10.checksum = digest(canonicalJson({ manifest: v10.manifest, tables: v10.tables }));
     assert.equal(validateSnapshot(v10), v10.checksum);
     assert.deepEqual(normalizeRestoredRows("transactions", [{ transaction_id: "tx-v10" }])[0], { transaction_id: "tx-v10", cost_share_mode: "unspecified", cost_share_json: "[]" });
+
+    const v11 = structuredClone(current);
+    v11.manifest.version = 11;
+    v11.manifest.schemaVersion = 11;
+    v11.checksum = digest(canonicalJson({ manifest: v11.manifest, tables: v11.tables }));
+    assert.equal(validateSnapshot(v11), v11.checksum);
 
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);

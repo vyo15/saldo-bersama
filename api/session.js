@@ -1,3 +1,9 @@
+/**
+ * Session trust boundary for Firebase token login and server-side Google OAuth. Successful
+ * provider authentication is followed by Firebase verification and canonical backend user
+ * resolution before an HttpOnly registered application session is issued. The environment
+ * allowlist is bootstrap-only; active runtime membership is stored server-side.
+ */
 import {
   assertAllowedOrigin,
   clearGoogleOAuthTransactionCookie,
@@ -6,13 +12,16 @@ import {
   createGoogleOAuthTransaction,
   createSessionCookie,
   enforceBestEffortRateLimit,
-  findAllowedUser,
   identityRateLimitKey,
   readGoogleOAuthTransaction,
-  readSession,
   safeEqualText,
   trustedRequestOrigin,
 } from "./_lib/security.js";
+import { getDatabase } from "./_lib/db/httpClient.js";
+import { assertDatabaseReady } from "./_lib/db/schema.js";
+import { createRegisteredSession, resolveRegisteredSession, revokeSessionFromRequest } from "./_lib/sessionRegistry.js";
+import { resolveLoginIdentity } from "./_lib/services/users.js";
+import { appendAudit } from "./_lib/services/audit.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { verifyFirebaseIdToken } from "./_lib/firebase.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
@@ -87,7 +96,7 @@ const assertGoogleIdTokenBinding = (idToken, { clientId, nonce }) => {
   }
 };
 
-const exchangeGoogleCode = async ({ code, clientId, clientSecret, redirectUri }) => {
+const exchangeGoogleCode = async ({ code, clientId, clientSecret, redirectUri, codeVerifier }) => {
   let response;
   try {
     response = await fetchWithTimeout(GOOGLE_TOKEN_ENDPOINT, {
@@ -99,6 +108,7 @@ const exchangeGoogleCode = async ({ code, clientId, clientSecret, redirectUri })
         client_secret: clientSecret,
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
+        code_verifier: codeVerifier,
       }),
     });
   } catch {
@@ -133,18 +143,30 @@ const exchangeGoogleIdTokenForFirebase = async ({ googleIdToken, firebaseApiKey,
   return body.idToken;
 };
 
+// Identity is always re-verified server-side. Runtime access comes from the canonical
+// backend user registry; ALLOWED_USERS_JSON is only consulted by resolveLoginIdentity
+// for guarded first-owner bootstrap on an empty database.
 const establishSessionFromFirebaseToken = async (firebaseIdToken) => {
   const verified = await verifyFirebaseIdToken(firebaseIdToken);
   enforceBestEffortRateLimit(identityRateLimitKey("session:identity", `${verified.uid}:${verified.email}`), { limit: 20, windowMs: 5 * 60_000 });
-  const allowed = findAllowedUser(verified.email);
-  if (!allowed) {
-    throw Object.assign(new Error("Akun Google ini tidak memiliki akses ke Saldo Bersama."), { status: 403, code: "ACCOUNT_NOT_ALLOWED" });
-  }
-  return { session: { ...verified, role: allowed.role }, role: allowed.role };
+  return verified;
 };
 
-const readCurrentSession = (request, response, requestId, startedAt) => {
-  const session = readSession(request);
+const databaseForRequest = (request) => request.database || getDatabase();
+
+const issueSession = async (request, verifiedIdentity, requestId) => {
+  const db = databaseForRequest(request);
+  await assertDatabaseReady(db);
+  const actor = await resolveLoginIdentity(db, verifiedIdentity, { requestId });
+  const signedActor = { ...verifiedIdentity, role: actor.role };
+  const create = (tx) => createRegisteredSession(tx, { actor, signedActor, request, requestId, photoURL: verifiedIdentity.photoURL || "" });
+  return typeof db.transaction === "function" ? db.transaction(create) : create(db);
+};
+
+const readCurrentSession = async (request, response, requestId, startedAt) => {
+  const db = databaseForRequest(request);
+  await assertDatabaseReady(db);
+  const session = await resolveRegisteredSession(db, request);
   logEvent(session ? "debug" : "info", "session.request.completed", {
     requestId,
     action: "session.read",
@@ -153,10 +175,28 @@ const readCurrentSession = (request, response, requestId, startedAt) => {
     role: session?.role,
     durationMs: requestDuration(startedAt),
   });
-  return session ? ok(response, session) : fail(response, 401, "UNAUTHENTICATED", "Sesi tidak ditemukan.", { requestId });
+  if (session) return ok(response, session);
+  response.setHeader("Set-Cookie", clearSessionCookie());
+  return fail(response, 401, "UNAUTHENTICATED", "Sesi tidak ditemukan.", { requestId });
 };
 
-const logoutSession = (response, requestId, startedAt) => {
+const logoutSession = async (request, response, requestId, startedAt) => {
+  const db = databaseForRequest(request);
+  await assertDatabaseReady(db);
+  const revoke = async (tx) => {
+    const revoked = await revokeSessionFromRequest(tx, request, "logout");
+    if (revoked.revoked && !revoked.alreadyRevoked && revoked.sessionId && revoked.userId) {
+      const actor = await tx.one("SELECT * FROM users WHERE user_id=?", [revoked.userId]);
+      if (actor) await appendAudit(tx, { actor, action: "session.logout", requestId }, {
+        entityType: "session",
+        entityId: revoked.sessionId,
+        next: { revoked: true, reason: "logout" },
+      });
+    }
+    return revoked;
+  };
+  if (typeof db.transaction === "function") await db.transaction(revoke);
+  else await revoke(db);
   response.setHeader("Set-Cookie", clearSessionCookie());
   logEvent("info", "session.request.completed", { requestId, action: "session.logout", status: 200, durationMs: requestDuration(startedAt) });
   return ok(response, { loggedOut: true });
@@ -168,10 +208,12 @@ const loginSession = async (request, response, body, requestId, startedAt) => {
   }
   enforceBestEffortRateLimit(clientRateLimitKey(request, "session:login"), { limit: 10, windowMs: 60_000 });
   try {
-    const { session, role } = await establishSessionFromFirebaseToken(body.firebaseIdToken);
-    response.setHeader("Set-Cookie", createSessionCookie(session));
+    const verifiedIdentity = await establishSessionFromFirebaseToken(body.firebaseIdToken);
+    const issued = await issueSession(request, verifiedIdentity, requestId);
+    const role = issued.session.role;
+    response.setHeader("Set-Cookie", createSessionCookie(issued.credential));
     logEvent("info", "session.request.completed", { requestId, action: "session.login", role, status: 200, durationMs: requestDuration(startedAt) });
-    return ok(response, session);
+    return ok(response, issued.session);
   } catch (error) {
     if (error?.code === "ACCOUNT_NOT_ALLOWED") {
       logEvent("warn", "session.request.rejected", { requestId, action: "session.login", status: 403, code: error.code, durationMs: requestDuration(startedAt) });
@@ -184,7 +226,7 @@ const processSessionPost = async (request, response, requestId, startedAt, reque
   assertAllowedOrigin(request);
   const body = await readJsonBody(request, 20_000);
   requestState.action = body.action === "logout" ? "session.logout" : "session.login";
-  if (body.action === "logout") return logoutSession(response, requestId, startedAt);
+  if (body.action === "logout") return logoutSession(request, response, requestId, startedAt);
   return loginSession(request, response, body, requestId, startedAt);
 };
 
@@ -202,6 +244,8 @@ const startGoogleOAuth = (request, response, requestId, startedAt) => {
     state: transaction.state,
     nonce: transaction.nonce,
     prompt: "select_account",
+    code_challenge: transaction.codeChallenge,
+    code_challenge_method: "S256",
   });
   appendSetCookie(response, transaction.cookie);
   logEvent("info", "session.request.completed", {
@@ -216,7 +260,9 @@ const startGoogleOAuth = (request, response, requestId, startedAt) => {
 const googleOAuthFailureCode = (error) => {
   if (error?.code === "OAUTH_ACCESS_DENIED") return "cancelled";
   if (error?.code === "OAUTH_CONFIG_INCOMPLETE") return "config";
-  if (error?.code === "ACCOUNT_NOT_ALLOWED") return "not-allowed";
+  if (["ACCOUNT_NOT_ALLOWED", "IDENTITY_NOT_PROVISIONED"].includes(error?.code)) return "not-allowed";
+  if (error?.code === "ACCOUNT_INACTIVE") return "inactive";
+  if (error?.code === "IDENTITY_CONFLICT") return "identity-conflict";
   return "failed";
 };
 
@@ -234,6 +280,8 @@ const failGoogleOAuthFlow = (response, error, { requestId, action, startedAt }) 
   return redirectNoStore(response, `/login?authError=${encodeURIComponent(googleOAuthFailureCode(error))}`, 303);
 };
 
+// Bind callback state + nonce to the short-lived server transaction before exchanging
+// credentials; then establish the same Firebase-backed application session used elsewhere.
 const completeGoogleOAuth = async (request, response, requestId, startedAt) => {
   enforceBestEffortRateLimit(clientRateLimitKey(request, "session:oauth-callback"), { limit: 12, windowMs: 60_000 });
   const origin = trustedRequestOrigin(request);
@@ -258,13 +306,15 @@ const completeGoogleOAuth = async (request, response, requestId, startedAt) => {
   }
 
   const redirectUri = `${origin}${GOOGLE_OAUTH_CALLBACK_PATH}`;
-  const googleIdToken = await exchangeGoogleCode({ code, clientId, clientSecret, redirectUri });
+  const googleIdToken = await exchangeGoogleCode({ code, clientId, clientSecret, redirectUri, codeVerifier: transaction.codeVerifier });
   assertGoogleIdTokenBinding(googleIdToken, { clientId, nonce: transaction.nonce });
   const firebaseIdToken = await exchangeGoogleIdTokenForFirebase({ googleIdToken, firebaseApiKey, requestUri: origin });
-  const { session, role } = await establishSessionFromFirebaseToken(firebaseIdToken);
+  const verifiedIdentity = await establishSessionFromFirebaseToken(firebaseIdToken);
+  const issued = await issueSession(request, verifiedIdentity, requestId);
+  const role = issued.session.role;
 
   appendSetCookie(response, clearGoogleOAuthTransactionCookie());
-  appendSetCookie(response, createSessionCookie(session));
+  appendSetCookie(response, createSessionCookie(issued.credential));
   logEvent("info", "session.request.completed", {
     requestId,
     action: "session.login",
@@ -312,12 +362,12 @@ export default async function handler(request, response) {
       try { return await completeGoogleOAuth(request, response, requestId, startedAt); }
       catch (error) { return failGoogleOAuthFlow(response, error, { requestId, action: requestState.action, startedAt }); }
     }
-    if (request.method === "GET") return readCurrentSession(request, response, requestId, startedAt);
+    if (request.method === "GET") return await readCurrentSession(request, response, requestId, startedAt);
     if (request.method !== "POST") {
       logEvent("warn", "session.request.rejected", { requestId, action: requestState.action, status: 405, code: "METHOD_NOT_ALLOWED", durationMs: requestDuration(startedAt) });
       return methodNotAllowed(response, ["GET", "POST"]);
     }
-    return processSessionPost(request, response, requestId, startedAt, requestState);
+    return await processSessionPost(request, response, requestId, startedAt, requestState);
   } catch (error) {
     return failSessionRequest(response, error, { requestId, action: requestState.action, startedAt });
   }

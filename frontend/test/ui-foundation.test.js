@@ -176,7 +176,11 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
     read("src/features/accounts/components/MobileAccountActivity.jsx"),
-    read("src/features/reconciliations/ReconciliationsPage.jsx"),
+    Promise.all([
+      read("src/features/reconciliations/ReconciliationsPage.jsx"),
+      read("src/features/reconciliations/components/ReconciliationForm.jsx"),
+      read("src/features/reconciliations/components/ReconciliationHistory.jsx"),
+    ]).then((parts) => parts.join("\n")),
     read("src/features/settings/AuditPage.jsx"),
   ]);
 
@@ -210,7 +214,13 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     "phone-analytics.webp",
   ];
   const [login, loginStyles, app, main, pages, mobileAuth, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
-    read("src/features/auth/LoginPage.jsx"),
+    Promise.all([
+      read("src/features/auth/LoginPage.jsx"),
+      read("src/features/auth/loginPresentation.js"),
+      read("src/features/auth/components/LoginDesktopLayout.jsx"),
+      read("src/features/auth/components/LoginMobileLayout.jsx"),
+      read("src/features/auth/components/LoginFeedback.jsx"),
+    ]).then((parts) => parts.join("\n")),
     read("src/features/auth/LoginPage.css"),
     read("src/app/App.jsx"),
     read("src/main.jsx"),
@@ -253,7 +263,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(login, /mobileOAuthErrorFromSearch/);
   assert.match(login, /googleAuthRef/);
   assert.match(login, /className="login-mobile-google-button"/);
-  assert.match(login, /<MobileGoogleLogin \{\.\.\.authProps\}/);
+  assert.match(login, /<GoogleLoginPanel \{\.\.\.mobileAuthProps\}/);
   assert.match(login, /mobileAuthProps=\{googleAuthProps\}/);
   assert.match(login, /\/login\/google-g-logo\.png/);
   assert.match(login, /Menghubungkan ke Google…/);

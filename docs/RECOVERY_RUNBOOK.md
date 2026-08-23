@@ -58,7 +58,7 @@ Kesalahan pengguna biasa harus ditangani melalui lifecycle per-item:
 
 - rekening/kategori arsip → action restore dengan alasan dan `row_version`;
 - transaksi cancelled → restore khusus owner bila period, reference, duplicate, dan balance guard lulus;
-- member nonaktif → reaktivasi eksplisit setelah allowlist diverifikasi;
+- member nonaktif → reaktivasi eksplisit oleh Administrator setelah status/role/row version diverifikasi;
 - periode salah ditutup → buka kembali secara berurutan dengan alasan.
 
 Full database restore bukan mekanisme undo harian. Gunakan restore guarded hanya bila kerusakan mencakup banyak data atau lifecycle per-item tidak dapat menjaga konsistensi. Rekening kosong yang dihapus melalui `accounts.deleteUnused` tidak dipulihkan per item; audit tetap tersedia dan rekening baru dapat dibuat kembali tanpa memalsukan histori.

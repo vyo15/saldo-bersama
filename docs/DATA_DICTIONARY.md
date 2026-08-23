@@ -1,6 +1,6 @@
 # Data Dictionary
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `009_transaction_cost_sharing.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `010_environment_sessions.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -20,6 +20,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 |---|---|---|---|
 | `schema_migrations` | Riwayat migration yang sudah diterapkan. | Sedang | Migration-only |
 | `system_config` | Konfigurasi runtime internal seperti schema version, maintenance, timezone, dan currency. | Sedang | Migration-only |
+| `user_sessions` | Registry session perangkat server-side dengan verifier hash, expiry/revoke state, dan metadata perangkat coarse. Raw secret/cookie tidak pernah disimpan. | Tinggi | Backend auth/session lifecycle; tidak masuk logical backup |
 | `users` | Identitas aplikasi yang terikat pada Firebase UID, email, role, dan status. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `accounts` | Rekening shared/personal beserta nomor rekening bank, template visual bank/E-wallet, saldo awal, dan kebijakan saldo negatif. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `categories` | Kategori pemasukan/pengeluaran. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
@@ -79,7 +80,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v11
+## Model planned — belum ada di schema v12
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
@@ -92,6 +93,6 @@ Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v11
+## Schema v12
 
-Migration canonical terbaru: `009_transaction_cost_sharing.sql` pada `database/migrations/`. Migration v11 menambah field additive pembagian beban biaya pada `transactions` tanpa mengubah saldo ledger historis. Histori dan backup lama dinormalisasi ke `cost_share_mode=unspecified` serta `cost_share_json=[]`. Migration v10 `008_manual_reminders.sql` tetap menjadi dasar reminder manual one-shot.
+Migration canonical terbaru: `010_environment_sessions.sql` pada `database/migrations/`. Migration v12 menambah registry session perangkat, binding environment, dan heartbeat scheduler tanpa mengubah ledger/saldo. Migration v11 `009_transaction_cost_sharing.sql` tetap menjadi dasar field pembagian beban biaya; histori dan backup lama dinormalisasi secara additive.

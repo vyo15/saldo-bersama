@@ -1,16 +1,16 @@
 # RFC-0018 Session Device Management
 
-**Status:** Proposed, design hardened
+**Status:** Accepted and implemented, design hardened
 **Owner:** Product owner + security owner
 **Reviewers:** Backend, frontend, QA
 **Date:** 2026-08-17
-**Last reviewed:** 2026-08-21 against current server-session runtime
+**Last reviewed:** 2026-08-23 against schema v12/session-v2 runtime
 
 ## Problem
 
-Session canonical saat ini adalah signed HttpOnly cookie berumur terbatas dengan allowlist/role revalidation pada authenticated gateway flow. Session belum mempunyai registry per perangkat. User tidak dapat melihat session aktif, mencabut satu perangkat yang hilang, atau melakukan logout seluruh perangkat secara authoritative tanpa user deactivation atau rotasi `SESSION_SECRET`.
+Session canonical sekarang adalah signed HttpOnly credential opaque v2 yang di-resolve melalui registry `user_sessions`. User dapat melihat session miliknya, revoke satu perangkat, atau revoke seluruh session; raw verifier tidak disimpan di database. Gateway, export, dan `/api/session` memakai resolver authoritative yang sama, dan role change/deactivation mencabut session aktif. Registry `users` adalah authority anggota runtime; `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama.
 
-`readSession(request)` saat ini synchronous dan dipakai oleh `api/gateway.js`, `api/session.js`, dan `api/export.js`. Session registry membutuhkan server-side database validation, sehingga auth pipeline harus diubah secara terkoordinasi. Menambah tabel saja tidak cukup.
+Implementasi memakai resolver async `resolveRegisteredSession()` dan registry server-side; signed cookie saja tidak cukup. Cutover v12 menolak legacy cookie dan memaksa login ulang satu kali.
 
 ## Goals
 
@@ -18,7 +18,7 @@ Session canonical saat ini adalah signed HttpOnly cookie berumur terbatas dengan
 - User dapat melihat session miliknya dengan metadata perangkat coarse.
 - User dapat revoke satu session atau logout seluruh session miliknya.
 - Revoke berlaku server-side pada request yang melakukan auth resolution setelah revoke.
-- Role/allowlist/user status tetap dihitung dari canonical server state, bukan registry/client.
+- Role/status/binding identity tetap dihitung dari tabel `users` canonical, bukan session registry/client.
 - Create/revoke/logout-all tercatat audit tanpa raw secret.
 - Registry expired/revoked mempunyai retention bounded.
 - Legacy cookie transition fail-safe dan tidak mempertahankan bypass tanpa batas.
@@ -70,18 +70,18 @@ Exact indexes/constraints ditentukan pada migration plan. Raw secret, exact IP, 
 
 ### Resolver split
 
-Current `readSession()` tidak boleh diam-diam melakukan async DB call sambil mempertahankan call contract lama.
+Pada implementasi v12, helper cookie-only lama tidak diubah diam-diam menjadi DB call async. Resolver registry dipisah secara eksplisit agar caller yang membutuhkan authorization authoritative wajib memilih jalur tersebut.
 
-Future auth pipeline dipisah secara eksplisit:
+Auth pipeline canonical sekarang:
 
 1. parse + verify signed cookie format/expiry;
 2. resolve `session_id` pada registry;
 3. constant-time verify secret hash;
 4. reject revoked/expired/missing row;
-5. resolve canonical user state/allowlist/role;
+5. resolve canonical `users` state/status/role/UID binding;
 6. return authenticated session/actor context.
 
-Nama helper final diputuskan saat code plan, tetapi seluruh caller `gateway`, `/api/session`, dan export harus menggunakan resolver authoritative yang sama.
+Helper final adalah `resolveRegisteredSession()`; `gateway`, `/api/session`, dan export menggunakan resolver authoritative yang sama.
 
 GET `/api/session` tidak boleh menganggap signed cookie saja cukup setelah registry aktif.
 
@@ -197,7 +197,7 @@ Setelah restore/migration besar, safest baseline adalah force login ulang. Resto
 
 - User hanya list/revoke session sendiri.
 - Administrator tidak dapat list session secret atau metadata user lain melalui action normal.
-- Role/allowlist tidak dipercaya dari cookie registry.
+- Role/status tidak dipercaya dari cookie registry; authority tetap tabel `users` canonical.
 - Disabled/inactive canonical user ditolak walaupun registry session masih active.
 - Default deny untuk unknown session/action.
 

@@ -1,98 +1,15 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
-import { cancelTransactionInternal, createTransactionInternal, assertTransactionDateUnlocked } from "../finance.js";
 import { goalProgress } from "../readModels.js";
-import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
+import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
-import { accountWithAccess, assertOwnedAccess, assertPlanningManageScope, ruleScopeFromAccount } from "./shared.js";
+import { accountWithAccess, assertPlanningManageScope, ruleScopeFromAccount } from "./shared.js";
+import { assertGoalLifecycleUpdateShape, goalLifecycleImpact } from "./goalLifecycle.js";
+import { goalProjection } from "./goalMovements.js";
 
-export const goalProjection = (row, currentAmount) => {
-  const targetAmount = Number(row.target_amount || 0);
-  const current = Number(currentAmount || 0);
-  const remaining = Math.max(0, targetAmount - current);
-  const progress = targetAmount > 0 ? Math.min(100, Math.round((current / targetAmount) * 100)) : 0;
-  if (!row.target_date) {
-    return {
-      progress_percent: progress,
-      remaining_amount: remaining,
-      days_remaining: null,
-      months_remaining: null,
-      required_monthly_amount: 0,
-      pace_status: row.status === "completed" ? "completed" : "no_target_date",
-    };
-  }
-  const today = todayJakarta();
-  const targetTime = new Date(`${row.target_date}T00:00:00+07:00`).getTime();
-  const todayTime = new Date(`${today}T00:00:00+07:00`).getTime();
-  const createdDate = String(row.created_at || today).slice(0, 10);
-  const createdTime = new Date(`${createdDate}T00:00:00+07:00`).getTime();
-  const daysRemaining = Math.ceil((targetTime - todayTime) / 86_400_000);
-  const monthsRemaining = Math.max(0, Math.ceil(daysRemaining / 30));
-  const requiredMonthly = remaining > 0 ? Math.ceil(remaining / Math.max(1, monthsRemaining)) : 0;
-  const totalDuration = Math.max(1, targetTime - createdTime);
-  const elapsed = Math.min(totalDuration, Math.max(0, todayTime - createdTime));
-  const expectedAmount = Math.floor(targetAmount * (elapsed / totalDuration));
-  const paceStatus = row.status === "completed" || remaining === 0
-    ? "completed"
-    : daysRemaining < 0
-      ? "overdue"
-      : current + Math.max(1, Math.floor(targetAmount * 0.05)) < expectedAmount
-        ? "behind"
-        : "on_track";
-  return {
-    progress_percent: progress,
-    remaining_amount: remaining,
-    days_remaining: daysRemaining,
-    months_remaining: monthsRemaining,
-    required_monthly_amount: requiredMonthly,
-    pace_status: paceStatus,
-  };
-};
-const goalLifecycleResult = (current, dependencies, currentAmount) => {
-  const normalized = {
-    movements: Number(dependencies?.movements || 0),
-    transactions: Number(dependencies?.transactions || 0),
-  };
-  const deleteBlockers = [];
-  if (current.status !== "active") deleteBlockers.push("Hanya target aktif yang dapat dihapus sebagai target belum dipakai.");
-  if (currentAmount !== 0) deleteBlockers.push("Progress target harus Rp0.");
-  if (normalized.movements) deleteBlockers.push("Target pernah memiliki mutasi, termasuk mutasi reversed.");
-  if (normalized.transactions) deleteBlockers.push("Target pernah memiliki transaksi terkait, termasuk transaksi cancelled atau archived.");
-  return {
-    goal: publicRow(current),
-    currentAmount,
-    dependencies: normalized,
-    canArchive: current.status !== "archived",
-    canDeleteUnused: deleteBlockers.length === 0,
-    archiveBlockers: [],
-    deleteBlockers,
-  };
-};
-
-const goalLifecycleImpact = async (db, current) => goalLifecycleResult(
-  current,
-  await db.one(`SELECT
-    (SELECT COUNT(*) FROM goal_movements WHERE goal_id=?) AS movements,
-    (SELECT COUNT(*) FROM transactions WHERE goal_id=?) AS transactions`, [current.goal_id, current.goal_id]),
-  await goalProgress(db, current.goal_id),
-);
-
-const goalLifecyclePreviewStatements = (goalId, cutoffDate = todayJakarta()) => [{
-  sql: "SELECT * FROM savings_goals WHERE goal_id=? AND status<>'archived'",
-  args: [goalId],
-}, {
-  sql: `SELECT
-    (SELECT COUNT(*) FROM goal_movements WHERE goal_id=?) AS movements,
-    (SELECT COUNT(*) FROM transactions WHERE goal_id=?) AS transactions`,
-  args: [goalId, goalId],
-}, {
-  sql: `SELECT COALESCE(SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END),0) AS total
-    FROM goal_movements m LEFT JOIN transactions t ON t.transaction_id=m.transaction_id
-    WHERE m.goal_id=? AND m.status='active' AND COALESCE(t.transaction_date,substr(m.created_at,1,10)) <= ?`,
-  args: [goalId, cutoffDate],
-}];
-
+// Stable goal facade. Read/update orchestration stays here while destructive lifecycle
+// and ledger-linked movements are isolated behind compatible exports.
 export const goalListStatements = (context) => {
   const access = visibleScopeSql(context.actor, "g");
   const today = todayJakarta();
@@ -225,28 +142,6 @@ const assertGoalAccountChangeAllowed = async (db, current, account, owned) => {
   throw appError("GOAL_ACCOUNT_LOCKED", "Rekening dan kepemilikan target tidak dapat diubah setelah memiliki mutasi.", 409);
 };
 
-const GOAL_EDIT_FIELDS = Object.freeze(["name", "goal_type", "target_amount", "target_date", "account_id", "priority"]);
-
-const assertGoalLifecycleUpdateShape = (current, payload) => {
-  if (current.status === "archived") {
-    throw appError("GOAL_ARCHIVED_LOCKED", "Target arsip hanya dapat dipulihkan melalui aksi pemulihan.", 409);
-  }
-  if (payload.status === undefined) {
-    if (current.status === "completed") {
-      throw appError("GOAL_COMPLETED_LOCKED", "Target selesai harus dibuka kembali sebelum diedit.", 409);
-    }
-    return;
-  }
-  const nextStatus = String(payload.status);
-  const hasEditFields = GOAL_EDIT_FIELDS.some((key) => payload[key] !== undefined);
-  if (hasEditFields && nextStatus !== current.status) {
-    throw appError("GOAL_LIFECYCLE_MIXED", "Perubahan status target harus dilakukan terpisah dari perubahan data target.", 400);
-  }
-  if (current.status === "completed" && nextStatus === "completed" && hasEditFields) {
-    throw appError("GOAL_COMPLETED_LOCKED", "Target selesai harus dibuka kembali sebelum diedit.", 409);
-  }
-};
-
 const buildUpdatedGoal = (current, payload, account, owned, actorId) => {
   const status = String(goalPayloadValue(payload, current, "status"));
   const goalType = String(goalPayloadValue(payload, current, "goal_type"));
@@ -268,44 +163,6 @@ const buildUpdatedGoal = (current, payload, account, owned, actorId) => {
     ...nextVersionStamp(current, actorId),
   };
 };
-
-const normalizeGoalMovementType = (value) => ({ contribution: "deposit", withdraw: "withdrawal" }[value] || value);
-
-const assertGoalMovementAccounts = (goal, type, source, destination) => {
-  const owned = scopeFromAccountPair(source, destination);
-  if (owned.scope !== goal.scope || String(owned.owner_user_id || "") !== String(goal.owner_user_id || "")) {
-    throw appError("GOAL_SCOPE_MISMATCH", "Rekening mutasi harus satu kepemilikan dengan target.", 409);
-  }
-  if (type === "deposit" && destination.account_id !== goal.account_id) {
-    throw appError("GOAL_ACCOUNT_MISMATCH", "Setoran target harus masuk ke rekening target.", 409);
-  }
-  if (type === "withdrawal" && source.account_id !== goal.account_id) {
-    throw appError("GOAL_ACCOUNT_MISMATCH", "Penarikan target harus berasal dari rekening target.", 409);
-  }
-};
-
-const assertGoalMovementAmount = (goal, type, amount, current) => {
-  const targetAmount = Number(goal.target_amount || 0);
-  const remainingAmount = Math.max(0, targetAmount - current);
-  if (type === "deposit" && remainingAmount <= 0) {
-    throw appError("GOAL_REACHED", "Target sudah mencapai nominal tujuan. Selesaikan target atau naikkan nominal target sebelum menambah dana.", 409, { currentAmount: current, targetAmount });
-  }
-  if (type === "deposit" && amount > remainingAmount) {
-    throw appError("GOAL_OVERFUND", "Nominal setoran melebihi sisa target.", 409, { currentAmount: current, targetAmount, remainingAmount });
-  }
-  if (type === "withdrawal" && amount > current) {
-    throw appError("GOAL_INSUFFICIENT", "Nominal penarikan melebihi progress target.", 409, { currentAmount: current });
-  }
-};
-
-const buildGoalMovementResponse = (goal, movement, transaction, current, amount, type) => ({
-  movement: publicRow(movement),
-  transaction,
-  goal: {
-    ...publicRow(goal),
-    current_amount: type === "deposit" ? current + amount : current - amount,
-  },
-});
 
 export const createGoal = async (db, context) => {
   const p = context.payload || {};
@@ -363,18 +220,6 @@ export const updateGoal = async (db, context) => {
   await context.enqueueMirror?.(db, "goal", current.goal_id);
   return publicRow(next);
 };
-
-export const previewGoalLifecycle = async (db, context) => {
-  assertOwner(context.actor);
-  const p = context.payload || {};
-  const goalId = p.goal_id;
-  const [currentRows, dependencyRows, progressRows] = await readBatchRows(db, goalLifecyclePreviewStatements(goalId));
-  const current = currentRows[0] || null;
-  if (!current) throw appError("NOT_FOUND", "Target aktif tidak ditemukan.", 404);
-  assertVersion(current, context.rowVersion ?? p.row_version);
-  return goalLifecycleResult(current, dependencyRows[0] || {}, Number(progressRows[0]?.total || 0));
-};
-
 export const deleteUnusedGoal = async (db, context) => {
   assertOwner(context.actor);
   const p = context.payload || {};
@@ -399,124 +244,5 @@ export const deleteUnusedGoal = async (db, context) => {
   return { goal_id: current.goal_id, deleted: true, audit_preserved: true };
 };
 
-export const archiveGoal = async (db, context) => {
-  assertOwner(context.actor);
-  const p = context.payload || {};
-  const current = await db.one("SELECT * FROM savings_goals WHERE goal_id=? AND status<>'archived'", [p.goal_id]);
-  if (!current) throw appError("NOT_FOUND", "Target aktif tidak ditemukan.", 404);
-  assertVersion(current, context.rowVersion ?? p.row_version);
-  const reason = sanitizeText(p.reason, 200);
-  if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip target wajib diisi.", 400);
-  const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
-  const update = await db.execute("UPDATE savings_goals SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=? AND status<>'archived'", [next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
-  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
-  await cancelScheduledManualRemindersForEntity(db, context, "goal", current.goal_id, "ENTITY_ARCHIVED");
-  await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: { ...publicRow(next), archive_reason: reason } });
-  await context.enqueueMirror?.(db, "goal", current.goal_id);
-  return publicRow(next);
-};
-export const restoreGoal = async (db, context) => {
-  assertOwner(context.actor);
-  const p = context.payload || {};
-  const current = await db.one("SELECT * FROM savings_goals WHERE goal_id=? AND status='archived'", [p.goal_id]);
-  if (!current) throw appError("NOT_FOUND", "Target arsip tidak ditemukan.", 404);
-  assertVersion(current, context.rowVersion ?? p.row_version);
-  const reason = sanitizeText(p.reason, 200);
-  if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan target wajib diisi.", 400);
-  const account = await db.one("SELECT status FROM accounts WHERE account_id=?", [current.account_id]);
-  if (!account || account.status !== "active") throw appError("ACCOUNT_INACTIVE", "Rekening target harus aktif sebelum target dipulihkan.", 409);
-  const currentAmount = await goalProgress(db, current.goal_id);
-  const nextStatus = currentAmount >= Number(current.target_amount) ? "completed" : "active";
-  const next = { ...current, status: nextStatus, ...nextVersionStamp(current, context.actor.user_id) };
-  const update = await db.execute("UPDATE savings_goals SET status=?,row_version=?,updated_by=?,updated_at=? WHERE goal_id=? AND row_version=? AND status='archived'", [next.status, next.row_version, next.updated_by, next.updated_at, current.goal_id, current.row_version]);
-  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Target berubah di perangkat lain.", 409);
-  await appendAudit(db, context, { entityType: "goal", entityId: current.goal_id, previous: publicRow(current), next: { ...publicRow(next), restore_reason: reason } });
-  await context.enqueueMirror?.(db, "goal", current.goal_id);
-  return publicRow(next);
-};
-
-export const moveGoal = async (db, context) => {
-  const p = context.payload || {};
-  const goal = await db.one("SELECT * FROM savings_goals WHERE goal_id=? AND status='active'", [p.goal_id]);
-  if (!goal) throw appError("NOT_FOUND", "Target aktif tidak ditemukan.", 404);
-  assertOwnedAccess(context.actor, goal);
-  const amount = positiveInteger(p.amount, "Nominal mutasi target");
-  const type = normalizeGoalMovementType(String(p.movement_type || "deposit"));
-  if (!["deposit", "withdrawal"].includes(type)) throw appError("INVALID_GOAL_MOVEMENT", "Jenis mutasi target tidak valid.", 400);
-  const [source, destination] = await Promise.all([
-    accountWithAccess(db, context.actor, p.source_account_id),
-    accountWithAccess(db, context.actor, p.destination_account_id),
-  ]);
-  assertGoalMovementAccounts(goal, type, source, destination);
-  const current = await goalProgress(db, goal.goal_id);
-  assertGoalMovementAmount(goal, type, amount, current);
-  const transaction = await createTransactionInternal(db, { ...context, action: "goals.move" }, {
-    transaction_type: "transfer",
-    transaction_date: p.transaction_date || todayJakarta(),
-    source_account_id: source.account_id,
-    destination_account_id: destination.account_id,
-    amount,
-    description: sanitizeText(p.reason || `Mutasi target ${goal.name}`, 180),
-    goal_id: goal.goal_id,
-  }, { allowInternalLinks: true, audit: false });
-  const movement = {
-    goal_movement_id: uuid(), goal_id: goal.goal_id, transaction_id: transaction.transaction_id,
-    movement_type: type, amount, reason: sanitizeText(p.reason, 180), status: "active", row_version: 1,
-    created_by: context.actor.user_id, created_at: nowIso(), reversed_by: null, reversed_at: null, reversal_reason: "",
-  };
-  if (!movement.reason) throw appError("REASON_REQUIRED", "Alasan mutasi target wajib diisi.", 400);
-  await db.execute("INSERT INTO goal_movements(goal_movement_id,goal_id,transaction_id,movement_type,amount,reason,status,row_version,created_by,created_at,reversed_by,reversed_at,reversal_reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", Object.values(movement));
-  const response = buildGoalMovementResponse(goal, movement, transaction, current, amount, type);
-  await appendAudit(db, context, { entityType: "goal_movement", entityId: movement.goal_movement_id, next: response });
-  await context.enqueueMirror?.(db, "goal", goal.goal_id);
-  return response;
-};
-
-export const reverseGoalMovement = async (db, context) => {
-  const p = context.payload || {};
-  const movement = await db.one(`SELECT m.*,g.scope,g.owner_user_id,g.name,g.status AS goal_status FROM goal_movements m JOIN savings_goals g ON g.goal_id=m.goal_id WHERE m.goal_movement_id=? AND m.status='active'`, [p.goal_movement_id]);
-  if (!movement) throw appError("NOT_FOUND", "Mutasi target aktif tidak ditemukan.", 404);
-  assertOwnedAccess(context.actor, movement);
-  if (movement.goal_status === "completed") throw appError("GOAL_COMPLETED_LOCKED", "Target harus dibuka kembali sebelum mutasi terakhir dibatalkan.", 409);
-  if (movement.goal_status === "archived") throw appError("GOAL_ARCHIVED_LOCKED", "Target harus dipulihkan sebelum mutasi terakhir dibatalkan.", 409);
-  if (context.actor.role !== "owner" && movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi target yang dibuat sendiri.", 403);
-  assertVersion(movement, context.rowVersion ?? p.row_version);
-  const reason = sanitizeText(p.reason, 180);
-  if (!reason) throw appError("REASON_REQUIRED", "Alasan pembatalan wajib diisi.", 400);
-  const transaction = movement.transaction_id ? await db.one("SELECT * FROM transactions WHERE transaction_id=? AND status='active'", [movement.transaction_id]) : null;
-  let cancelledTransaction = null;
-  if (transaction) {
-    await assertTransactionDateUnlocked(db, transaction.transaction_date);
-    cancelledTransaction = await cancelTransactionInternal(db, context, transaction, reason, {
-      allowLinked: true,
-      audit: false
-    });
-  }
-  const next = {
-    ...movement,
-    status: "reversed",
-    row_version: Number(movement.row_version) + 1,
-    reversed_by: context.actor.user_id,
-    reversed_at: nowIso(),
-    reversal_reason: reason
-  };
-  const update = await db.execute("UPDATE goal_movements SET status='reversed',row_version=?,reversed_by=?,reversed_at=?,reversal_reason=? WHERE goal_movement_id=? AND row_version=? AND status='active'", [next.row_version, next.reversed_by, next.reversed_at, next.reversal_reason, movement.goal_movement_id, movement.row_version]);
-  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Mutasi target berubah di perangkat lain.", 409);
-  const goal = await db.one("SELECT * FROM savings_goals WHERE goal_id=?", [movement.goal_id]);
-  const response = {
-    movement: publicRow(next),
-    transaction: cancelledTransaction,
-    goal: {
-      ...publicRow(goal),
-      current_amount: await goalProgress(db, movement.goal_id)
-    }
-  };
-  await appendAudit(db, context, {
-    entityType: "goal_movement",
-    entityId: movement.goal_movement_id,
-    previous: publicRow(movement),
-    next: response
-  });
-  await context.enqueueMirror?.(db, "goal", movement.goal_id);
-  return response;
-};
+export { archiveGoal, previewGoalLifecycle, restoreGoal } from "./goalLifecycle.js";
+export { goalProjection, moveGoal, reverseGoalMovement } from "./goalMovements.js";

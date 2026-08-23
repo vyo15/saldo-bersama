@@ -30,12 +30,12 @@ test("money in and money out use the same cash-note language with opposite arrow
 
 test("fixed-option finance forms use the shared visual selector while dynamic lists stay selects", async () => {
   const sources = await Promise.all([
-    read("features/transactions/TransactionForm.jsx"),
+    Promise.all([read("features/transactions/TransactionForm.jsx"), read("features/transactions/components/TransactionFields.jsx")]).then((parts) => parts.join("\n")),
     read("features/accounts/components/AccountEditorDialogs.jsx"),
     Promise.all([read("features/budgets/BudgetsPage.jsx"), read("features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("features/allocations/AllocationsPage.jsx"), read("features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("features/recurring/RecurringDialogs.jsx"),
-    read("features/goals/GoalsPage.jsx"),
+    Promise.all([read("features/goals/GoalsPage.jsx"), read("features/goals/components/GoalDialogs.jsx")]).then((parts) => parts.join("\n")),
     read("features/categories/CategoriesPage.jsx"),
     read("features/settings/MembersSettingsPage.jsx"),
   ]);

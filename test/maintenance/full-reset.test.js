@@ -39,6 +39,8 @@ const seed = async (db) => {
   await db.execute("INSERT INTO integrity_runs(integrity_run_id,status,issues_json,created_by,created_at) VALUES(?,?,?,?,?)", ["integrity-before-full", "passed", "[]", owner.user_id, now]);
   await db.execute("INSERT INTO idempotency_keys(actor_id,idempotency_key,action,request_fingerprint,entity_id,response_json,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)", [owner.user_id, "keep-idempotency", "transactions.create", "keep-fp", null, JSON.stringify({ ok: true }), now, new Date(Date.now() + 3_600_000).toISOString()]);
   await db.execute("INSERT INTO request_nonces(nonce,channel,expires_at,created_at) VALUES(?,?,?,?)", ["keep-replay-nonce", "scheduled_job", new Date(Date.now() + 60_000).toISOString(), now]);
+  await db.execute(`INSERT INTO user_sessions(session_id,user_id,verifier_hash,issued_at,expires_at,last_seen_at,revoked_at,revoked_reason,device_label,client_family,row_version,created_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["session-full-reset-000000", owner.user_id, "a".repeat(64), now, new Date(Date.now() + 3_600_000).toISOString(), now, null, null, "Chrome · Desktop", "chrome", 1, now, now]);
 };
 
 const withBridgeStub = async (fn) => {
@@ -110,6 +112,7 @@ test("full reset owner-only, preview-aware, safety-backup, dan mempertahankan ba
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM integrity_runs WHERE integrity_run_id='integrity-before-full'")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM idempotency_keys WHERE idempotency_key='keep-idempotency'")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM request_nonces WHERE nonce='keep-replay-nonce'")).count, 1, "Nonce anti-replay tidak boleh dihapus full reset.");
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM user_sessions WHERE session_id='session-full-reset-000000'")).count, 1, "Session keamanan aktif tidak termasuk data finansial yang dihapus full reset.");
     assert.equal((await db.one("SELECT value FROM system_config WHERE key='maintenance_mode'")).value, "false");
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM integration_outbox WHERE event_type='rebuild'")).count, 2);
     const after = await previewFullDataReset(db, context(owner, "fullReset.preview"));

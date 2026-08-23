@@ -4,19 +4,19 @@ Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_OAUTH_CLI
 
 ## Boundary saat ini
 
-Runtime **masih memakai satu database Turso** untuk lokal dan Production sesuai kondisi aktual ADR-0007, tetapi exit plan pemisahan Development/Production sudah disetujui. Runbook ini tidak boleh menganggap isolation selesai sebelum environment evidence membuktikan dua database berbeda.
+Source v12 mewajibkan binding environment fail-closed dan tidak mendukung sharing Development/Production sebagai konfigurasi normal. Runbook tetap tidak boleh menganggap live isolation selesai sebelum evidence membuktikan dua database/token berbeda.
 
 Konsekuensinya:
 
-- token Turso yang dirotasi tetap mengarah ke database Turso canonical yang sama;
-- rotasi harus dikoordinasikan agar local tooling dan Production tidak memakai token yang sudah direvoke;
-- data lokal bukan sandbox terisolasi. Jangan menjalankan migration eksperimen, reset destructive, atau data dummy setelah data nyata mulai digunakan;
+- rotasi token dilakukan per environment; jangan menyalin token Development ke Production atau sebaliknya;
+- `DATABASE_ENVIRONMENT` dan database binding harus tetap cocok saat rotasi;
+- jika live isolation belum terbukti, hentikan operasi destructive sampai target database dipastikan;
 - `.env.local` tetap local-only dan tidak boleh masuk Git/ZIP/log/chat.
 
 ## Urutan rotasi `TURSO_AUTH_TOKEN`
 
 1. Pastikan backup/integrity evidence terbaru tersedia sesuai risiko operasi.
-2. Jika ADR-0007 belum keluar dari mode single-database, buat token baru untuk database canonical yang sama. Jika isolation sudah terbukti, buat/rotasi token **secara terpisah** untuk database Development dan Production; jangan menyalin satu token lintas environment.
+2. Buat/rotasi token **secara terpisah** untuk database Development dan Production; jangan menyalin satu token lintas environment. Jika live target belum dapat dibedakan dengan pasti, hentikan rotasi dan verifikasi infrastruktur lebih dulu.
 3. Simpan token baru hanya pada secret store/runtime yang sah.
 4. Perbarui local `.env.local` pada komputer tepercaya.
 5. Sinkronkan environment sesuai scope tanpa menampilkan nilai token. Setelah isolation, Development hanya menerima token Development dan Production hanya menerima token Production.

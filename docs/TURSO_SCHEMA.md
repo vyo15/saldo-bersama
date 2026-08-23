@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, dan `database/migrations/009_transaction_cost_sharing.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, `database/migrations/009_transaction_cost_sharing.sql`, dan `database/migrations/010_environment_sessions.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -30,6 +30,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `audit_log`
 - `idempotency_keys`
 - `request_nonces` — nonce persisten untuk mencegah replay request scheduler/bridge bertanda tangan.
+- `user_sessions` — registry session perangkat server-side; hanya menyimpan hash verifier, metadata perangkat coarse, expiry/revoke state, dan FK user. Raw session secret/cookie tidak disimpan.
 - `integration_outbox`
 - `integration_links`
 - `notification_queue`
@@ -86,13 +87,21 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `11`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `12`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+
+### Migration v12 dan rollback
+
+- `010_environment_sessions.sql` bersifat additive: menambah `user_sessions`, `database_environment`, dan scheduler heartbeat di `system_config`, lalu menaikkan `schema_version` ke 12. Ledger, transaksi, saldo, kategori, rekening, dan cost-sharing tidak diubah.
+- `database_environment` dimulai `unbound` dan harus di-bind eksplisit dengan `npm run db:bind-environment -- development|production`. Runtime fail-closed bila `VERCEL_ENV`, `DATABASE_ENVIRONMENT`, dan binding database tidak konsisten; Preview tidak boleh memakai database aktif.
+- Session v2 memakai `session_id` + secret acak pada cookie signed/HttpOnly dan hanya SHA-256 verifier hash di `user_sessions`. Legacy cookie v1 tidak diterima sehingga cutover memerlukan login ulang.
+- Backup logical v12 tidak membawa `user_sessions`, `database_environment`, maintenance flag, atau scheduler heartbeat. Restore backup v3-v11 tetap didukung; restore sukses menghapus session registry agar credential lama tidak hidup kembali.
+- Sebelum migration Production wajib ada backup teknis terverifikasi. Setelah migration jalankan binding environment dan integrity check. Rollback ke runtime yang menerima legacy cookie dilarang; gunakan forward-fix atau restore pra-migration ke database terpisah lalu repoint setelah approval.
 
 ### Migration v11 dan rollback
 
 - `009_transaction_cost_sharing.sql` bersifat additive. Migration menambah `transactions.cost_share_mode` dengan default `unspecified`, menambah `transactions.cost_share_json` dengan default `[]`, lalu menaikkan `schema_version` ke 11. Tidak ada backfill 50:50 dan tidak ada perubahan nilai saldo/ledger historis.
-- Runtime v11 menerima backup schema v3-v10 melalui normalisasi additive. Backup v10 dan lebih lama mendapat `cost_share_mode=unspecified` dan `cost_share_json=[]` saat restore. Backup v11 menyimpan snapshot split canonical.
-- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila runtime v11 gagal, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
+- Runtime v12 tetap menerima backup schema v3-v11 melalui normalisasi additive. Backup v10 dan lebih lama mendapat `cost_share_mode=unspecified` dan `cost_share_json=[]` saat restore; backup v11 menyimpan snapshot split canonical. Field v12 yang bersifat runtime/security tidak diambil dari backup lama.
+- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila perilaku cost-sharing dari migration v11 bermasalah pada runtime v12, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
 
 ### Migration v10 dan rollback
 

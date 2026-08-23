@@ -15,6 +15,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain/dates.js";
 import { canUseAssignedItem, filterByAssigneeAccess, filterByOwnership, hasSameAssignee, ownershipKey } from "../../domain/ownership.js";
+import { canManageBudgetScope } from "../budgets/budgetAccess.js";
 const AllocationDialogLayer = lazy(() => import("./AllocationDialogLayer.jsx"));
 const AllocationFundingFlow = lazy(() => import("./AllocationFundingFlow.jsx"));
 const AllocationOverviewLayer = lazy(() => import("./AllocationOverviewLayer.jsx"));
@@ -167,14 +168,13 @@ const canAdjustAllocation = (item, actor) => actor?.role === "owner" || (item?.s
 
 const isAllocationAdministrator = (user) => user?.role === "owner";
 const canCreateSharedPlanning = (user) => Boolean(user?.role === "owner" || user?.role === "member");
-const canManagePlanningItem = (item, user) => Boolean(user?.role === "owner" || (user?.role === "member" && item?.scope === "shared"));
 const allocationUsersStatus = (administratorMode, usersResource) => administratorMode ? usersResource.status : "ready";
 const allocationDetailData = (item, budgets, recurringItems, user) => {
   if (!item) return { linkedBudgets: [], relatedRecurring: [], canManage: false };
   return {
     linkedBudgets: linkedBudgetsForEnvelope(budgets, item),
     relatedRecurring: relatedRecurringForEnvelope(recurringItems, budgets, item),
-    canManage: canManagePlanningItem(item, user),
+    canManage: canManageBudgetScope(item, user),
   };
 };
 const hasAllocationSecondaryContent = (detailItem, view, actionTarget) => !detailItem && Boolean(view.historicalItems.length || view.recentMovements.length || actionTarget);
@@ -325,7 +325,7 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const attentionEnvelopeId = String(attention?.attentionEnvelopeId || "");
   const attentionBudgetId = String(attention?.attentionBudgetId || "");
   const refreshBudgetPlanning = async () => { invalidate(["budgets.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState"]); await Promise.allSettled([budgetResource.reload(), resource.reload(), refreshOverview()]); };
-  const detail = allocationDetailData(detailItem, view.budgets, view.recurringItems, user);
+  const detail = allocationDetailData(detailItem, view.budgets, view.recurringItems, allocationActor);
   const closePlanning = allocationClosePlanning(closeTarget, view.budgets);
   const usersStatus = allocationUsersStatus(administratorMode, usersResource);
   const showSecondaryLayer = hasAllocationSecondaryContent(detailItem, view, actionTarget);
@@ -359,7 +359,7 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
     <Suspense fallback={null}><AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={(overview?.goals || []).some((goal) => goal.status === "active")} onDismissReleasedFunds={() => setReleasedFunds(null)} /></Suspense>
     <AllocationHeading embedded={embedded} />
     <AllocationSetupContinuation open={setupCreated} onDismiss={() => setSetupCreated(false)} onContinue={() => navigate("/target", { state: { setupFlow: true } })} />
-    <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, sharedOnly: user?.role === "member", period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, users: view.activeUsers, usersStatus, onBack: closeDetail, onBudgetReminder: openBudgetReminder, onOpenRecurring }} overviewProps={{ activeItems: view.activeItems, filteredActiveItems: view.filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder: openReminder, onAdjust: openAdjust, actor: allocationActor, attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, onOpenDetail: openDetail, canCreate, administratorMode, canMove: view.canMove, openCreate: () => { setMessage(null); setCreateOpen(true); }, openMove: () => { setMessage(null); setMoveOpen(true); }, reload: reloadPlanning, canAdjustItem: canAdjustAllocation, canRemindItem: canSetAllocationReminder, linkedBudgetsForItem: linkedBudgetsForEnvelope, relatedRecurringForItem: relatedRecurringForEnvelope }} />
+    <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, sharedOnly: allocationActor?.role === "member", period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, users: view.activeUsers, usersStatus, onBack: closeDetail, onBudgetReminder: openBudgetReminder, onOpenRecurring }} overviewProps={{ activeItems: view.activeItems, filteredActiveItems: view.filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder: openReminder, onAdjust: openAdjust, actor: allocationActor, attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, onOpenDetail: openDetail, canCreate, administratorMode, canMove: view.canMove, openCreate: () => { setMessage(null); setCreateOpen(true); }, openMove: () => { setMessage(null); setMoveOpen(true); }, reload: reloadPlanning, canAdjustItem: canAdjustAllocation, canRemindItem: canSetAllocationReminder, linkedBudgetsForItem: linkedBudgetsForEnvelope, relatedRecurringForItem: relatedRecurringForEnvelope }} />
     <AllocationOptionalLayers showSecondaryLayer={showSecondaryLayer} secondaryProps={{ historicalItems: view.historicalItems, recentMovements: view.recentMovements, actionTarget, onCloseAction: () => setActionTarget(null), onClosePeriod: startClosePeriod, onLifecycle: startLifecycle, setReverseTarget, setReverseState }} fundingIntent={fundingIntent} fundingProps={{ accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item, allocationActor) && item.source_account_id), initialSourceAccountId: fundingIntent?.sourceAccountId || "", suggestedAmount: fundingIntent?.suggestedAmount || 0, busy: adjustMutation.busy, error: fundingError, onClose: closeFunding, onSubmit: submitFunding }} reminderTarget={reminderTarget} setReminderTarget={setReminderTarget} />
     <AllocationDialogs createOpen={createOpen} moveOpen={moveOpen} adjustTarget={adjustTarget} closeTarget={closeTarget} archiveTarget={archiveTarget} reverseTarget={reverseTarget} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus: administratorMode ? usersResource.status : "ready", createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} />
   </div></AllocationResourceState>;

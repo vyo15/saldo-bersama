@@ -1,3 +1,4 @@
+/* Category page presentation; lifecycle/business rules remain in API/service boundaries. */
 .categoryPage {
   min-width: 0;
 }

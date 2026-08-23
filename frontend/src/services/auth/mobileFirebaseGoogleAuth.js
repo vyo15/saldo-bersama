@@ -1,3 +1,7 @@
+/**
+ * Google sign-in acquisition only. The resulting Firebase ID token must still be exchanged
+ * for a backend-validated application session; popup success alone never grants access.
+ */
 import { getApps, initializeApp } from "@firebase/app";
 import {
   browserPopupRedirectResolver,

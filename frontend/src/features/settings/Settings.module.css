@@ -1,4 +1,21 @@
+/* Settings presentation shared by guarded maintenance pages and their extracted panels. */
 .settingsNavigation {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.settingsNavigationGroup {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settingsNavigationGroupTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.settingsNavigationGroupItems {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: var(--space-2);
@@ -782,4 +799,11 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
     align-items: center;
     column-gap: var(--space-3);
   }
+}
+
+.sessionList { display: grid; gap: var(--space-3); }
+.sessionAction { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .sessionAction { grid-column: 2; justify-content: flex-start; }
 }

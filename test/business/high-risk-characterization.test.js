@@ -5,7 +5,7 @@ import { createEnvelopePeriod, createEnvelopeRule } from "../../api/_lib/service
 import { createGoal, goalProjection, listGoals, moveGoal, reverseGoalMovement, updateGoal } from "../../api/_lib/services/planning/goals.js";
 import { createRecurringRule, updateRecurringRule } from "../../api/_lib/services/planning/recurring.js";
 import { reopenPeriod } from "../../api/_lib/services/reporting/periods.js";
-import { deactivateUser, reactivateUser, resolveActor, upsertUser } from "../../api/_lib/services/users.js";
+import { deactivateUser, listUsers, reactivateUser, resolveActor, resolveLoginIdentity, upsertUser } from "../../api/_lib/services/users.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const owner = {
@@ -27,7 +27,7 @@ const member = {
   row_version: 1,
 };
 
-const context = (actor, action, payload = {}, rowVersion = null, allowedUsers = []) => ({
+const context = (actor, action, payload = {}, rowVersion = null) => ({
   actor,
   signedActor: { uid: actor.firebase_uid, email: actor.email, name: actor.name },
   action,
@@ -35,7 +35,6 @@ const context = (actor, action, payload = {}, rowVersion = null, allowedUsers = 
   rowVersion,
   requestId: `character:${action}`,
   idempotencyKey: `character:${action}`,
-  allowedUsers,
   enqueueMirror: async () => {},
   enqueueCalendar: async () => {},
 });
@@ -66,22 +65,23 @@ const seedCategory = async (db, { id, type = "expense" }) => {
   );
 };
 
-test("identity bootstrap dan user lifecycle fail closed pada role, allowlist, ownership, dan concurrency", async () => {
+test("identity bootstrap dan user lifecycle fail closed pada registry backend, ownership, dan concurrency", async () => {
+  const originalAllowlist = process.env.ALLOWED_USERS_JSON;
+  process.env.ALLOWED_USERS_JSON = JSON.stringify([{ email: "first-owner@example.com", role: "administrator" }]);
   const db = await createSqliteTestDatabase();
   try {
-    const bootstrapped = await resolveActor(db, {
+    const bootstrapped = await resolveLoginIdentity(db, {
       uid: "firebase-first-owner",
       email: "first-owner@example.com",
       name: "First Owner",
-      role: "owner",
-      requestId: "bootstrap:first-owner",
-    });
+    }, { requestId: "bootstrap:first-owner" });
     assert.equal(bootstrapped.role, "owner");
+    assert.equal("firebase_uid" in bootstrapped, false, "Firebase UID tidak boleh keluar dari service user");
     assert.ok(await db.one("SELECT audit_id FROM audit_log WHERE action='bootstrap.owner'"));
 
     await assert.rejects(
-      () => resolveActor(db, { uid: "unknown", email: "unknown@example.com", name: "Unknown", role: "member" }),
-      (error) => error.code === "IDENTITY_NOT_PROVISIONED",
+      () => resolveLoginIdentity(db, { uid: "unknown", email: "unknown@example.com", name: "Unknown" }),
+      (error) => error.code === "ACCOUNT_NOT_ALLOWED",
     );
 
     const db2 = await createSqliteTestDatabase();
@@ -93,12 +93,31 @@ test("identity bootstrap dan user lifecycle fail closed pada role, allowlist, ow
         (error) => error.code === "ROLE_MISMATCH",
       );
       await assert.rejects(
-        () => upsertUser(db2, context(owner, "users.upsert", { email: "bad-email", role: "member" }, null, [])),
+        () => upsertUser(db2, context(owner, "users.upsert", { email: "bad-email", role: "member" })),
         (error) => error.code === "INVALID_EMAIL",
       );
+
+      const pending = await upsertUser(db2, context(owner, "users.upsert", { email: "new@example.com", name: "New Member", role: "member" }));
+      assert.equal(pending.identity_status, "pending");
+      assert.equal("firebase_uid" in pending, false);
+      const listedPending = await listUsers(db2, context(owner, "users.list"));
+      const pendingFromList = listedPending.items.find((item) => item.email === "new@example.com");
+      assert.equal(pendingFromList?.identity_status, "pending");
+      assert.equal("firebase_uid" in pendingFromList, false);
+
+      const linked = await resolveLoginIdentity(db2, { uid: "firebase-new-member", email: "NEW@example.com", name: "Google New Member" }, { requestId: "login:new-member" });
+      assert.equal(linked.role, "member");
+      assert.equal("firebase_uid" in linked, false);
+      const linkedCanonical = await db2.one("SELECT firebase_uid,row_version FROM users WHERE email=? COLLATE NOCASE", ["new@example.com"]);
+      assert.equal(linkedCanonical.firebase_uid, "firebase-new-member");
+      assert.equal(Number(linkedCanonical.row_version), 2);
+      assert.equal(Number((await db2.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='identity.firebase.bind' AND entity_id=?", [pending.user_id]))?.count), 1);
+      await resolveLoginIdentity(db2, { uid: "firebase-new-member", email: "new@example.com", name: "Google New Member" }, { requestId: "login:new-member:repeat" });
+      assert.equal(Number((await db2.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='identity.firebase.bind' AND entity_id=?", [pending.user_id]))?.count), 1, "login ulang tidak boleh menggandakan audit binding");
+
       await assert.rejects(
-        () => upsertUser(db2, context(owner, "users.upsert", { email: "new@example.com", role: "member" }, null, [])),
-        (error) => error.code === "ALLOWLIST_MISMATCH",
+        () => upsertUser(db2, context(owner, "users.upsert", { email: owner.email, name: owner.name, role: "member", row_version: owner.row_version }, owner.row_version)),
+        (error) => error.code === "SELF_ROLE_CHANGE_DENIED",
       );
 
       await seedAccount(db2, { id: "member-personal", ownerScope: "personal", ownerUserId: member.user_id });
@@ -109,17 +128,17 @@ test("identity bootstrap dan user lifecycle fail closed pada role, allowlist, ow
       await db2.execute("UPDATE accounts SET status='archived' WHERE account_id='member-personal'");
       const inactive = await deactivateUser(db2, context(owner, "users.deactivate", { user_id: member.user_id, row_version: 1, reason: "Offboarding" }, 1));
       assert.equal(inactive.status, "inactive");
-      await assert.rejects(
-        () => reactivateUser(db2, context(owner, "users.reactivate", { user_id: member.user_id, row_version: inactive.row_version, reason: "Kembali" }, inactive.row_version, [])),
-        (error) => error.code === "ALLOWLIST_MISMATCH",
-      );
-      const restored = await reactivateUser(db2, context(owner, "users.reactivate", { user_id: member.user_id, row_version: inactive.row_version, reason: "Kembali" }, inactive.row_version, [{ email: member.email, role: "member" }]));
+      assert.equal("firebase_uid" in inactive, false);
+      const restored = await reactivateUser(db2, context(owner, "users.reactivate", { user_id: member.user_id, row_version: inactive.row_version, reason: "Kembali" }, inactive.row_version));
       assert.equal(restored.status, "active");
+      assert.equal("firebase_uid" in restored, false);
     } finally {
       db2.close();
     }
   } finally {
     db.close();
+    if (originalAllowlist === undefined) delete process.env.ALLOWED_USERS_JSON;
+    else process.env.ALLOWED_USERS_JSON = originalAllowlist;
   }
 });
 
@@ -129,8 +148,8 @@ test("binding Firebase pertama idempotent saat request paralel dan tetap fail cl
     await seedUser(db, owner, { firebase_uid: null });
     const signed = { uid: "firebase-first-bind", email: owner.email, name: owner.name, role: owner.role };
     const [first, second] = await Promise.all([resolveActor(db, signed), resolveActor(db, signed)]);
-    assert.equal(first.firebase_uid, signed.uid);
-    assert.equal(second.firebase_uid, signed.uid);
+    assert.equal("firebase_uid" in first, false);
+    assert.equal("firebase_uid" in second, false);
     const canonical = await db.one("SELECT firebase_uid,row_version FROM users WHERE user_id = ?", [owner.user_id]);
     assert.equal(canonical.firebase_uid, signed.uid);
     assert.equal(Number(canonical.row_version), 2, "binding UID yang sama tidak boleh menaikkan versi dua kali");
@@ -169,19 +188,27 @@ test("binding Firebase pertama idempotent saat request paralel dan tetap fail cl
 });
 
 test("bootstrap owner idempotent saat dua request pertama datang paralel", async () => {
+  const originalAllowlist = process.env.ALLOWED_USERS_JSON;
+  process.env.ALLOWED_USERS_JSON = JSON.stringify([{ email: "bootstrap-race@example.com", role: "administrator" }]);
   const db = await createSqliteTestDatabase();
   try {
-    const signed = { uid: "firebase-bootstrap-race", email: "bootstrap-race@example.com", name: "Bootstrap Race", role: "owner", requestId: "bootstrap-race" };
-    const [first, second] = await Promise.all([resolveActor(db, signed), resolveActor(db, signed)]);
+    const identity = { uid: "firebase-bootstrap-race", email: "bootstrap-race@example.com", name: "Bootstrap Race" };
+    const [first, second] = await Promise.all([
+      resolveLoginIdentity(db, identity, { requestId: "bootstrap-race:a" }),
+      resolveLoginIdentity(db, identity, { requestId: "bootstrap-race:b" }),
+    ]);
     assert.equal(first.user_id, second.user_id);
-    assert.equal(first.firebase_uid, signed.uid);
+    assert.equal("firebase_uid" in first, false);
     const users = await db.all("SELECT user_id,firebase_uid,email,row_version FROM users");
     assert.equal(users.length, 1);
-    assert.equal(users[0].email, signed.email);
+    assert.equal(users[0].email, identity.email);
+    assert.equal(users[0].firebase_uid, identity.uid);
     const audits = await db.all("SELECT action,entity_id FROM audit_log WHERE action='bootstrap.owner'");
     assert.equal(audits.length, 1, "bootstrap paralel hanya boleh menghasilkan satu audit owner");
   } finally {
     db.close();
+    if (originalAllowlist === undefined) delete process.env.ALLOWED_USERS_JSON;
+    else process.env.ALLOWED_USERS_JSON = originalAllowlist;
   }
 });
 

@@ -9,9 +9,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const REQUIRED_NODE_VERSION = readFileSync(path.join(root, ".node-version"), "utf8").trim();
 export const REQUIRED_NODE_MAJOR = Number.parseInt(REQUIRED_NODE_VERSION.split(".")[0], 10);
+
+// Satu full gate canonical tanpa alias npm internal. Frontend test dijalankan sekali,
+// sedangkan seluruh backend test dijalankan sekali dengan coverage agar tidak diduplikasi.
 export const VERIFY_STEPS = Object.freeze([
-  Object.freeze({ script: "check", label: "Quality gate inti" }),
-  Object.freeze({ script: "test:guard", label: "Guard regression" }),
+  Object.freeze({ id: "source", label: "Validasi source canonical", command: "node", args: ["scripts/validate-source-tree.mjs"] }),
+  Object.freeze({ id: "lint", label: "Lint dan syntax", command: "npm", args: ["run", "lint"] }),
+  Object.freeze({ id: "frontend-test", label: "Frontend regression", command: "npm", args: ["run", "test", "--workspace", "saldo-bersama-frontend"] }),
+  Object.freeze({ id: "build", label: "Production build", command: "npm", args: ["run", "build"] }),
+  Object.freeze({ id: "build-budget", label: "Build budget", command: "node", args: ["scripts/check-build-budget.mjs"] }),
+  Object.freeze({ id: "backend-coverage", label: "Backend regression dan coverage", command: "node", args: ["scripts/run-backend-tests.mjs", "--coverage"] }),
 ]);
 
 const npmInvocation = (args) => {
@@ -24,6 +31,12 @@ const npmInvocation = (args) => {
     };
   }
   return { executable: "npm", args };
+};
+
+const commandInvocation = (step) => {
+  if (step.command === "npm") return npmInvocation(step.args);
+  if (step.command === "node") return { executable: process.execPath, args: step.args };
+  throw new Error(`Verification command tidak dikenal: ${step.command}`);
 };
 
 const spawnNpm = (args, { cwd = root, stdio = "inherit" } = {}) => {
@@ -39,6 +52,22 @@ const spawnNpm = (args, { cwd = root, stdio = "inherit" } = {}) => {
   if (result.error) throw result.error;
   return result;
 };
+
+const spawnStep = (step, { cwd = root, stdio = "inherit" } = {}) => {
+  const invocation = commandInvocation(step);
+  const result = spawnSync(invocation.executable, invocation.args, {
+    cwd,
+    env: process.env,
+    stdio,
+    encoding: stdio === "pipe" ? "utf8" : undefined,
+    windowsHide: true,
+    shell: false,
+  });
+  if (result.error) throw result.error;
+  return result;
+};
+
+export const executeVerificationStep = (step, options = {}) => spawnStep(step, options);
 
 const nodeMajor = (version) => Number.parseInt(String(version || "").replace(/^v/, "").split(".")[0], 10);
 
@@ -73,29 +102,32 @@ export const verifyInstalledDependencies = ({ runner = spawnNpm } = {}) => {
   );
 };
 
+const displayStepCommand = (step) => step.command === "npm"
+  ? `npm ${step.args.join(" ")}`
+  : `node ${step.args.join(" ")}`;
+
 export const runVerification = ({
   nodeVersion = process.version,
   dependencyCheck = verifyInstalledDependencies,
-  runScript = (script) => spawnNpm(["run", script]),
+  runStep = (step) => spawnStep(step),
   logger = console,
 } = {}) => {
   assertCanonicalNode(nodeVersion);
   dependencyCheck();
 
   for (const [index, step] of VERIFY_STEPS.entries()) {
-    logger.log(`\n[verify ${index + 1}/${VERIFY_STEPS.length}] ${step.label}: npm run ${step.script}`);
-    const result = runScript(step.script);
+    logger.log(`\n[verify ${index + 1}/${VERIFY_STEPS.length}] ${step.label}: ${displayStepCommand(step)}`);
+    const result = runStep(step);
     if (result?.status === 0) continue;
     throw Object.assign(
-      new Error(`Verification berhenti karena \`npm run ${step.script}\` gagal.`),
-      { code: "VERIFY_STEP_FAILED", step: step.script, exitCode: result?.status ?? 1 },
+      new Error(`Verification berhenti karena step \`${step.id}\` gagal.`),
+      { code: "VERIFY_STEP_FAILED", step: step.id, exitCode: result?.status ?? 1 },
     );
   }
 
   logger.log("\nVerification lengkap PASS. Source siap untuk review commit sesuai scope perubahan.");
   return true;
 };
-
 
 export const runVerificationWithCleanup = async (options = {}) => {
   try {

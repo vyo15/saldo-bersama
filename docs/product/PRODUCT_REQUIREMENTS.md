@@ -8,7 +8,7 @@ Saldo Bersama adalah sistem pengendali uang privat untuk dua akun Google. Sistem
 
 - **Administrator**: mengelola member, master data, rekening, maintenance, backup/restore, dan operasi administratif.
 - **Member**: pengguna kedua dengan permission operasional terbatas; tidak dapat membuat atau mengelola master rekening.
-- UI memakai istilah Administrator/Member. Backend mempertahankan key internal `owner` untuk Administrator demi kompatibilitas data/session existing; konfigurasi allowlist menerima `administrator`.
+- UI memakai istilah Administrator/Member. Backend mempertahankan key internal `owner` untuk Administrator demi kompatibilitas data/session existing; `ALLOWED_USERS_JSON` menerima `administrator` hanya untuk bootstrap/recovery Administrator, sedangkan anggota operasional dikelola di registry `users`.
 
 ## Invariant produk
 
@@ -125,7 +125,7 @@ Queue idempotent dan Web Push mendukung recurring due, Kebutuhan threshold, Alok
 
 ### `REQ-PROD-17` Keamanan dan anti-kesalahan — Implemented
 
-Google login, signed session, allowlist, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation sekarang memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown. Selama hasil mutation biasa belum definitif, payload berbeda untuk action yang sama diblok di private-memory agar edit user tidak diam-diam menjadi mutation kedua; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Alokasi Dana memiliki archive/restore rule dan reverse movement tanpa hard delete.
+Google login, signed session v2 + registry `user_sessions`, registry `users` canonical, backend authorization, audit append-only, soft cancel, idempotency, row version, duplicate guard, formula neutralization, XLSX, backup/restore guarded, filter transaksi, dan integrity check tersedia. Frontend mutation memakai intent coordinator untuk coalescing double-submit dan reuse idempotency key pada retry outcome-unknown. Selama hasil mutation biasa belum definitif, payload berbeda untuk action yang sama diblok dan metadata intent aman dipersist lintas reload tanpa payload finansial agar edit user tidak diam-diam menjadi mutation kedua; external action mereservasi key sebelum side effect. Confirmation destructive action memiliki synchronous reentrancy lock. Alokasi Dana memiliki archive/restore rule dan reverse movement tanpa hard delete. `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama; anggota runtime dikelola Administrator melalui registry `users`.
 
 **Operasional yang belum terbukti:** full quality gate Node 24 pada patch terbaru, migration parity production, real-resource restore drill, external alerting, dan rotasi secret yang pernah ikut ZIP manual.
 

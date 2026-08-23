@@ -15,6 +15,10 @@ Konvensi nama mengikuti peran: komponen React `PascalCase.jsx`, hook `useCamelCa
 3. Untuk area guarded/high-risk, dapatkan approval eksplisit terlebih dahulu.
 4. Jangan memasukkan secret, data finansial nyata, dependency/generated output, atau perubahan di luar scope.
 
+## Maintainability review
+
+Ikuti `docs/CODE_MAINTAINABILITY.md`. Reviewer harus memastikan extraction benar-benar mengurangi responsibility/coupling, bukan hanya memindahkan baris. Comment dipakai untuk rationale/invariant non-obvious; business rule kritis tidak boleh diduplikasi demi membuat component atau service tampak lebih sederhana. Guarded refactor wajib menjaga public facade/API, authorization, saldo, idempotency, lifecycle, dan recovery semantics.
+
 ## Validation
 
 Setelah setiap patch, jalankan full local gate:

@@ -24,6 +24,8 @@ export const assertTransactionDateUnlocked = async (db, date) => {
   if (closure) throw appError("PERIOD_CLOSED", `Transaksi periode ${String(date).slice(0,7)} dikunci karena periode ${closure.period_key} sudah ditutup.`, 409, { closureId: closure.closure_id, lockingPeriod: closure.period_key });
 };
 
+// Account ids from the client are references only. Resolve active status and ownership
+// again on the server before any financial rule uses the account.
 const activeAccount = async (db, actor, accountId) => {
   const account = await db.one("SELECT * FROM accounts WHERE account_id=? AND status='active'", [accountId]);
   if (!account) throw appError("INVALID_ACCOUNT", "Rekening tidak ditemukan atau tidak aktif.", 400);
@@ -31,6 +33,8 @@ const activeAccount = async (db, actor, accountId) => {
   return account;
 };
 
+// Category existence, active status, and transaction-type compatibility are all
+// server-authoritative; a frontend select option is not sufficient validation.
 const activeCategory = async (db, categoryId, type) => {
   if (!categoryId) return null;
   const category = await db.one("SELECT * FROM categories WHERE category_id=? AND status='active'", [categoryId]);
@@ -166,6 +170,9 @@ const assertProjectedAccountFunds = async (db, { accountId, current, projectedCa
   });
 };
 
+// Validate the projected historical ledger, not only today's balance. Backdated edits,
+// cancellation, or restoration can make an intermediate account balance invalid even
+// when the current balance would still look sufficient.
 export const assertAffectedBalances = async (db, current, candidate = null) => {
   const accountIds = [...new Set([
     current?.source_account_id, current?.destination_account_id,
@@ -283,6 +290,8 @@ const assertNoUnconfirmedDuplicate = async (db, payload, record, excludeTransact
   throw appError("POSSIBLE_DUPLICATE", "Transaksi mirip sudah tercatat. Konfirmasi diperlukan.", 409, { transactionId: duplicate.transaction_id });
 };
 
+// Canonical transaction normalization composes all server-side references and financial
+// invariants before a row is written. Keep this as the single mutation preparation path.
 export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false } = {}) => {
   assertNoReservedFields(payload, allowInternalLinks);
   const input = resolveTransactionInput(context, payload, current);
@@ -327,6 +336,8 @@ export const createTransactionInternal = async (db, context, payload, { allowInt
 
 export const createTransaction = (db, context) => createTransactionInternal(db, context, context.payload || {});
 
+// Optimistic row_version protects edits made from another device. The projected ledger
+// is revalidated before the compare-and-swap update is committed.
 export const updateTransaction = async (db, context) => {
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM transactions WHERE transaction_id=? AND status='active'", [payload.transaction_id]);
@@ -349,6 +360,8 @@ export const updateTransaction = async (db, context) => {
   return { ...publicRow(next), ...transactionCostSharePresentation(next) };
 };
 
+// Normal financial deletion is a lifecycle transition, never a hard delete. Validate
+// downstream balances first, then preserve the row and cancellation audit metadata.
 export const cancelTransactionInternal = async (db, context, transaction, reason, { allowLinked = false, audit = true } = {}) => {
   if (!allowLinked) assertCanModify(context, transaction);
   await assertTransactionDateUnlocked(db, transaction.transaction_date);
@@ -378,6 +391,8 @@ export const cancelTransaction = async (db, context) => {
   return cancelTransactionInternal(db, context, current, payload.reason);
 };
 
+// Restore is owner-only and re-runs current validation instead of blindly reactivating
+// stale data; linked recurring/goal transactions must be recovered through their owner flow.
 export const restoreTransaction = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};

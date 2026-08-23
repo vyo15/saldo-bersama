@@ -4,9 +4,9 @@
 
 | Endpoint | Method | Fungsi |
 |---|---|---|
-| `/api/session` | GET/POST | Membaca sesi, login Firebase ID token, logout. |
-| `/api/auth/google/start` | GET | Alias rewrite ke session handler untuk memulai Google OAuth production desktop/mobile; membuat signed state/nonce dan 302 ke Google. |
-| `/api/auth/google/callback` | GET | Alias rewrite ke session handler untuk callback Google OAuth; validasi state/nonce, Google→Firebase token exchange, allowlist/role, set session, lalu 303 ke route internal yang ditandatangani. |
+| `/api/session` | GET/POST | Membaca sesi terdaftar, login Firebase ID token terhadap registry `users` canonical, dan logout/revoke session current. |
+| `/api/auth/google/start` | GET | Alias rewrite ke session handler untuk memulai Google OAuth production desktop/mobile; membuat signed state/nonce + PKCE S256 dan 302 ke Google. |
+| `/api/auth/google/callback` | GET | Alias rewrite ke session handler untuk callback Google OAuth; validasi state/nonce, memakai PKCE `code_verifier` untuk Google→Firebase token exchange, resolve registry `users`/role, membuat registered session, lalu 303 ke route internal yang ditandatangani. |
 | `/api/gateway` | POST | Seluruh action bisnis. |
 | `/api/export` | POST | XLSX Administrator-only. |
 | `/api/health` | GET | Health teredaksi. |
@@ -14,7 +14,7 @@
 
 Frontend tidak boleh mengakses Turso atau Google bridge secara langsung. Dua route `/api/auth/google/*` bukan Vercel Function tambahan; keduanya rewrite internal ke `api/session.js` agar jumlah endpoint function canonical tetap lima.
 
-`/api/session` mengembalikan identitas terverifikasi minimum `uid`, `email`, `name`, `role`, dan `photoURL` bila Firebase menyediakan foto Google pada host yang diizinkan CSP. `photoURL` hanya metadata presentasi untuk akun yang sedang login; authorization tetap ditentukan allowlist, session signature, binding database, dan role backend.
+`/api/session` mengembalikan identitas terverifikasi minimum `uid`, `email`, `name`, `role`, dan `photoURL` bila Firebase menyediakan foto Google pada host yang diizinkan CSP. `photoURL` hanya metadata presentasi untuk akun yang sedang login; authorization tetap ditentukan credential session opaque bertanda tangan, registry `user_sessions`, status/role/binding Firebase UID pada tabel `users`, dan guard backend. `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama pada database kosong, bukan registry anggota runtime.
 
 `/api/health` adalah endpoint HTTP `GET` publik dengan contract minimum `{ status, timestamp, requestId }`; `status` publik hanya `ok` atau `degraded`. Detail database/schema/maintenance/build hanya tersedia melalui action terautentikasi `system.health` di `/api/gateway`; keduanya memiliki handler dan response contract yang berbeda.
 
@@ -77,6 +77,9 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `users.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
 | `users.deactivate` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
 | `users.reactivate` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/users.js` |
+| `sessions.listOwn` | Ya | Ya | Read | Tidak | `api/_lib/services/sessions.js` |
+| `sessions.revokeOwn` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/sessions.js` |
+| `sessions.revokeAllOwn` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/sessions.js` |
 | `archive.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `audit.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/audit.js` |
 | `dashboard.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
@@ -172,9 +175,9 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 ### Kontrak idempotency dan outcome mutation
 
 - Setiap `Write/operation` dan `External/operation` yang mensyaratkan idempotency diperlakukan sebagai **satu intent logis**. Double-click dan retry untuk payload + `rowVersion` yang sama wajib memakai idempotency key yang sama sampai server memberi hasil definitif.
-- Client membedakan kegagalan definitif dari `OUTCOME_UNKNOWN`. Mutation biasa mempertahankan intent hanya di private-memory dan retry payload yang sama menggunakan key yang sama. Selama action tersebut masih memiliki outcome tidak pasti, payload/fingerprint berbeda diblok di client dengan `MUTATION_INTENT_LOCKED` agar perubahan user tidak diam-diam menjadi mutation kedua; form transaksi juga mengunci field sampai retry data yang sama mendapat hasil definitif. Lock private-memory ini bukan pengganti server idempotency dan hilang saat reload. Khusus `reset.apply`, UI boleh menyimpan **hanya opaque recovery idempotency key** pada `sessionStorage` tab agar `reset.status` dapat merekonsiliasi hasil setelah reload; payload finansial, auth token, actor, dan hasil audit tidak boleh disimpan sebagai sumber kebenaran client.
+- Client membedakan kegagalan definitif dari `OUTCOME_UNKNOWN`. Mutation biasa menyimpan **hanya metadata intent aman** (`action`, fingerprint hash, idempotency key, timestamp) pada storage browser yang di-namespace per session/user agar reload tetap memakai key yang sama; payload finansial, nominal, deskripsi, rekening, auth token, actor, atau hasil audit tidak dipersist. Payload/fingerprint berbeda diblok dengan `MUTATION_INTENT_LOCKED` sampai intent lama mendapat hasil definitif, lalu metadata dibersihkan. Metadata client bukan sumber kebenaran dan tidak menggantikan idempotency server. Khusus `reset.apply`, UI tetap memakai recovery/status workflow opaque yang terpisah.
 - External action mereservasi idempotency key **sebelum** side effect. Request same-key yang masih berjalan ditolak sebagai `IDEMPOTENCY_IN_PROGRESS`.
-- `notifications.test` dan `reset.apply` tidak boleh diulang otomatis setelah outcome 5xx/unknown karena side effect eksternal/destructive mungkin sudah terjadi. `reset.status` adalah read maintenance-safe yang merekonsiliasi idempotency server, audit append-only, deterministic safety-backup ID, dan maintenance mode. Reset lama yang sudah `committed` tidak boleh dikirim ulang. Intent destructive yang benar-benar baru hanya boleh dibuat dari preview terbaru setelah status menyatakan `canStartNewIntent=true`; client wajib membuang intent-memory lama sebelum memakai idempotency key baru. `backup.create`, `import.apply`, `restore.preview`, dan `restore.apply` boleh melanjutkan same-key unknown intent hanya karena service masing-masing memiliki durable recovery/idempotent claim.
+- `notifications.test` dan `reset.apply` tidak boleh diulang otomatis setelah outcome 5xx/unknown karena side effect eksternal/destructive mungkin sudah terjadi. `reset.status` adalah read maintenance-safe yang merekonsiliasi idempotency server, audit append-only, deterministic safety-backup ID, dan maintenance mode. Reset lama yang sudah `committed` tidak boleh dikirim ulang. Intent destructive yang benar-benar baru hanya boleh dibuat dari preview terbaru setelah status menyatakan `canStartNewIntent=true`; client wajib membuang metadata recovery intent lama sebelum memakai idempotency key baru. `backup.create`, `import.apply`, `restore.preview`, dan `restore.apply` boleh melanjutkan same-key unknown intent hanya karena service masing-masing memiliki durable recovery/idempotent claim.
 - Refresh read-model setelah mutation dipisahkan dari konfirmasi write: kegagalan refresh tidak boleh dilaporkan sebagai kegagalan penyimpanan yang sudah dikonfirmasi server.
 
 ### Recovery human error planning
@@ -238,6 +241,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 ### Kontrak Alokasi Dana account-bound
 
 - `envelopes.create` wajib menerima `source_account_id` rekening aktif yang dapat dioperasikan actor. Administrator dapat memakai scope yang memang operable; Member hanya dapat membuat planning `shared` dan backend menolak sumber personal dengan `SHARED_PLANNING_ONLY`. Pilihan tanpa rekening sumber tidak valid untuk Alokasi Dana baru.
+- `budgets.upsert` mengizinkan Member membuat/mengubah Kebutuhan pada scope `shared` atau scope `personal` milik actor sendiri. Bila Kebutuhan dihubungkan ke Alokasi Dana melalui `envelope_rule_id`, scope dan `owner_user_id` harus sama dengan Alokasi Dana tersebut. Scope personal milik pengguna lain tetap ditolak backend. Pengecualian ini tidak memperluas hak Member untuk membuat Alokasi Dana, Target, atau Jadwal Rutin personal.
 - Membuat, menambah, melepas, atau memindahkan alokasi tidak membuat transaksi ledger dan tidak mengubah `balance`. Alokasi hanya mengikat atau melepas sebagian saldo rekening sehingga `available_balance` berubah secara realtime.
 - `envelopes.adjustAllocation` menerima `envelope_period_id`, `direction=fund|release`, `amount`, dan `row_version`. `fund` memindahkan dana tersedia ke Alokasi Dana existing; `release` mengembalikan hanya bagian yang belum `used`/`reserved` ke dana tersedia. Backend memvalidasi rekening sumber, scope, penerima jatah, dana bebas, optimistic version, idempotency, dan audit.
 - Pengeluaran yang memakai `envelope_period_id` wajib memakai `source_account_id` yang sama dengan rekening sumber rule Alokasi Dana. Mismatch ditolak backend dengan `ENVELOPE_SOURCE_ACCOUNT_MISMATCH`.

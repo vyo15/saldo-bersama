@@ -17,6 +17,7 @@ const ReconciliationsPage = lazy(() => import("../features/reconciliations/Recon
 const SettingsLayout = lazy(() => import("../features/settings/SettingsLayout.jsx"));
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage.jsx"));
 const DeviceNotificationsPage = lazy(() => import("../features/settings/DeviceNotificationsPage.jsx"));
+const ActiveSessionsPage = lazy(() => import("../features/settings/ActiveSessionsPage.jsx"));
 const GoogleIntegrationsPage = lazy(() => import("../features/settings/GoogleIntegrationsPage.jsx"));
 const MembersSettingsPage = lazy(() => import("../features/settings/MembersSettingsPage.jsx"));
 const ExportDataPage = lazy(() => import("../features/settings/ExportDataPage.jsx"));
@@ -60,6 +61,7 @@ const App = () => (
         <Route path="pengaturan" element={routeElement(SettingsLayout)}>
           <Route index element={routeElement(SettingsPage)} />
           <Route path="notifikasi" element={routeElement(DeviceNotificationsPage)} />
+          <Route path="perangkat" element={routeElement(ActiveSessionsPage)} />
           <Route path="integrasi" element={routeElement(GoogleIntegrationsPage)} />
           <Route path="anggota" element={<Navigate to="/anggota" replace />} />
           <Route path="export" element={routeElement(ExportDataPage)} />

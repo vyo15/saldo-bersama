@@ -1,3 +1,8 @@
+/**
+ * Canonical backend execution boundary. Requests flow through database readiness,
+ * signed-actor resolution, maintenance policy, idempotency, and exactly one action
+ * handler. Business services must not bypass this dispatcher for public mutations.
+ */
 import { getDatabase } from "./db/httpClient.js";
 import { assertDatabaseReady } from "./db/schema.js";
 import { getActionDefinition, isExternalAction, isMaintenanceAllowedAction, isReadAction } from "./actions/registry.js";
@@ -15,7 +20,7 @@ import {
 import { resolveActor } from "./services/users.js";
 import { appError, todayJakarta } from "./services/core.js";
 import { integrationEnqueuers } from "./services/integrations.js";
-import { parseAllowedUsers, requiresIdempotencyKey } from "./security.js";
+import { requiresIdempotencyKey } from "./security.js";
 
 const MAINTENANCE_QUERY = "SELECT value FROM system_config WHERE key='maintenance_mode'";
 
@@ -86,6 +91,8 @@ const instrumentReadDatabase = (db, metrics) => {
   return measured;
 };
 
+// Snapshot reads use one read transaction so dashboard/report responses cannot mix
+// rows from different committed states while the request is being assembled.
 const executeRead = async (db, context, metrics = newReadMetrics()) => {
   const measuredDb = instrumentReadDatabase(db, metrics);
   try {
@@ -106,6 +113,9 @@ const executeRead = async (db, context, metrics = newReadMetrics()) => {
   }
 };
 
+// External side effects cannot be rolled back with the database transaction. Reserve
+// the idempotency key first and preserve an explicit "unknown" state on 5xx failures
+// instead of claiming the side effect definitely failed.
 const executeExternal = async (db, context, definition, needsIdempotency, fingerprint) => {
   if (!needsIdempotency) return executeAction(db, context);
   const reservation = await reserveExternalIdempotency(db, context, fingerprint, {
@@ -131,6 +141,8 @@ const executeExternal = async (db, context, definition, needsIdempotency, finger
   }
 };
 
+// Database mutations and their idempotency result are committed atomically. A replay
+// therefore returns the original result without executing the business handler twice.
 const executeTransactional = (db, context, needsIdempotency, fingerprint) => db.transaction(async (tx) => {
   await assertMaintenanceAllows(tx, context.action);
   if (needsIdempotency) {
@@ -151,7 +163,6 @@ const createActionContext = (actor, signedActor, action, payload, requestId, ide
   idempotencyKey,
   rowVersion,
   today: todayJakarta(),
-  allowedUsers: parseAllowedUsers(),
 });
 
 export const dispatchAction = async ({ signedActor, action, payload = {}, requestId, idempotencyKey = null, rowVersion = null, database = null }) => {

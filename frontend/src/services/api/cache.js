@@ -1,3 +1,4 @@
+/** Read cache only; it never serves as authority for mutation success or financial state. */
 import { abortError } from "./errors.js";
 import { gatewayFetch } from "./transport.js";
 import { stableStringify } from "./serialization.js";
@@ -26,6 +27,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "periods.previewClose": 0,
   "reconciliations.list": 60_000,
   "users.list": 30_000,
+  "sessions.listOwn": 0,
   "audit.list": 5_000,
   "notifications.status": 0,
   "notifications.preferences": 0,
@@ -44,6 +46,8 @@ const actionVersions = new Map();
 const invalidationListeners = new Map();
 let sessionScope = "anonymous";
 
+// Session scope prevents data cached for one authenticated actor from being reused after
+// logout/login on the same browser process.
 export const stableQueryKey = (action, payload = {}, scope = sessionScope) => {
   const version = actionVersions.get(action) || 0;
   return `${scope}:${action}:v${version}:${stableStringify(payload)}`;

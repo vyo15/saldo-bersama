@@ -1,3 +1,4 @@
+/* Budget page presentation; keep responsive overrides near their owning section. */
 .page {
   gap: var(--space-4);
   max-width: 1180px;

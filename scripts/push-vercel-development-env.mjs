@@ -49,8 +49,10 @@ export const validateDevelopmentEnvironment = (values = {}) => {
   const missing = CORE_RUNTIME_ENV_KEYS.filter((key) => !String(values[key] ?? "").trim());
   const forbidden = FORBIDDEN_DEVELOPMENT_KEYS.filter((key) => Object.hasOwn(values, key));
   const groups = groupValidation(values);
+  const environmentMismatch = String(values.DATABASE_ENVIRONMENT || "").trim().toLowerCase() !== "development";
   return {
     valid: !missing.length
+      && !environmentMismatch
       && !forbidden.length
       && !groups.incompleteGoogleBridge.length
       && !groups.incompleteWebPush.length
@@ -58,6 +60,7 @@ export const validateDevelopmentEnvironment = (values = {}) => {
       && !groups.invalidWebPush.length,
     missing,
     forbidden,
+    environmentMismatch,
     ...groups,
   };
 };
@@ -114,6 +117,7 @@ const validationError = (status, { settingsOnly }) => {
   const messages = [];
   if (!settingsOnly && status.missing?.length) messages.push(`key wajib belum lengkap: ${status.missing.join(", ")}`);
   if (status.forbidden.length) messages.push(`key legacy/forbidden terdeteksi: ${status.forbidden.join(", ")}`);
+  if (status.environmentMismatch) messages.push("DATABASE_ENVIRONMENT untuk Development wajib bernilai development");
   if (status.incompleteGoogleBridge.length) messages.push(`Google bridge belum lengkap: ${status.incompleteGoogleBridge.join(", ")}`);
   if (status.missingWebPush.length) messages.push(`Web Push wajib belum tersedia: ${status.missingWebPush.join(", ")}`);
   if (status.incompleteWebPush.length) messages.push(`Web Push belum lengkap: ${status.incompleteWebPush.join(", ")}`);

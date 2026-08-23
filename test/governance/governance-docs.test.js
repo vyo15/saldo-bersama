@@ -108,7 +108,7 @@ test("branch + Pull Request workflow is canonical and retired task automation st
   assert.equal(packageJson.scripts["task:check"], undefined);
   assert.equal(packageJson.scripts["task:list"], undefined);
   assert.equal(packageJson.scripts["task:finish"], undefined);
-  assert.doesNotMatch(packageJson.scripts.check, /task:check/);
+  assert.equal(packageJson.scripts.check, undefined);
   retiredTaskFiles.forEach((relative) => assert.equal(exists(relative), false, `Retired task file returned: ${relative}`));
 });
 
@@ -285,7 +285,7 @@ test("every canonical environment key is documented and classifications use one 
   keys.forEach((key) => {
     assert.ok(environmentDocs.includes(`\`${key}\``), `Environment key missing from docs: ${key}`);
   });
-  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 9);
+  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 10);
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
   assert.deepEqual(PRODUCTION_SYNC_ENV_KEYS, [
     ...CORE_RUNTIME_ENV_KEYS,
@@ -294,7 +294,7 @@ test("every canonical environment key is documented and classifications use one 
     ...GOOGLE_BRIDGE_ENV_KEYS,
     ...WEB_PUSH_ENV_KEYS,
   ]);
-  assert.match(environmentDocs, /sembilan key core wajib dan satu key logging opsional/);
+  assert.match(environmentDocs, /sepuluh key core wajib dan satu key logging opsional/);
   assert.match(environmentDocs, /GOOGLE_OAUTH_CLIENT_SECRET/);
   assert.match(environmentDocs, /Production Sensitive|Sensitive/);
   assert.match(environmentDocs, /Web Push wajib lengkap dan valid/i);
@@ -317,32 +317,33 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.match(bootstrap, /cleanEnvironmentText/);
   assert.match(bootstrap, /VERCEL_DEVELOPMENT_ENV_INCOMPLETE/);
   assert.match(packageJson, /env:push:development/);
-  assert.match(packageJson, /env:push:development:settings/);
+  assert.doesNotMatch(packageJson, /env:push:development:settings/);
+  assert.match(environmentDocs, /npm run env:push:development -- --settings-only/);
   assert.match(bootstrap, /Memperbarui environment canonical dari Vercel Development/);
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
-test("project status is a current-state snapshot with schema v11 and shared database guard", () => {
+test("project status is a current-state snapshot with schema v12 and environment isolation guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
   const packageJson = JSON.parse(read("package.json"));
   const productionSync = read("scripts/push-vercel-production-env.mjs");
   const developmentSync = read("scripts/push-vercel-development-env.mjs");
   const singleDbAdr = read("docs/adr/0007-single-turso-database-current-constraint.md");
 
-  assert.match(status, /Active schema contract:\*\* v11/);
-  assert.match(status, /Runtime lokal dan Vercel Production .*masih.*database Turso bersama/);
+  assert.match(status, /Active schema contract:\*\* v12/);
+  assert.match(status, /DATABASE_ENVIRONMENT/);
   assert.match(status, /exit criteria ADR-0007/);
   assert.match(status, /bukan jurnal perubahan/i);
   assert.match(singleDbAdr, /database Turso yang sama/);
   assert.match(productionSync, /envPath = path\.join\(cwd, "\.env\.local"\)/);
   assert.match(developmentSync, /envPath = path\.join\(cwd, "\.env\.local"\)/);
-  assert.equal(packageJson.scripts["env:check:isolation"], undefined);
-  assert.equal(exists("scripts/environment-isolation.mjs"), false);
+  assert.equal(packageJson.scripts["db:bind-environment"], "node scripts/db-bind-environment.mjs");
+  assert.equal(exists("scripts/db-bind-environment.mjs"), true);
   assert.equal(exists("docs/adr/0011-separated-development-production-turso.md"), false);
 });
 
 
-test("current docs track branded desktop/mobile server OAuth production, schema v11, dan manual accessibility QA", () => {
+test("current docs track branded desktop/mobile server OAuth production, schema v12, dan manual accessibility QA", () => {
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
   const deployment = read("docs/DEPLOYMENT.md");
   const status = read("docs/PROJECT_STATUS.md");
@@ -353,7 +354,7 @@ test("current docs track branded desktop/mobile server OAuth production, schema 
   assert.match(matrix, /semantic\/static regression/);
   assert.match(matrix, /real-device coverage pending/);
   assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
-  assert.match(deployment, /runtime v11 menerima traffic/);
+  assert.match(deployment, /runtime v12 menerima traffic/);
   assert.match(status, /Auth desktop dan mobile:.*tombol Google branded Saldo Bersama/);
   assert.match(status, /Authorization Code flow.*Firebase Identity Toolkit/);
   assert.match(testPlan, /production canonical.*`\/api\/auth\/google\/start`/);
@@ -386,7 +387,6 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
     "0012-debt-receivable-ledger.md",
     "0014-category-hierarchy-and-goal-stages.md",
     "0015-granular-personal-privacy.md",
-    "0018-session-device-management.md",
   ];
 
   proposedRfcFiles.forEach((relative) => {
@@ -416,4 +416,10 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
   assert.match(roadmap, /RFC-0017/);
   assert.match(implementedManualReminder, /^# RFC-0017\b/m);
   assert.match(implementedManualReminder, /Status:\*{0,2}\s*Accepted and implemented/i);
+
+  const implementedSessionRegistry = read("docs/rfc/0018-session-device-management.md");
+  assert.match(rfcIndex, /0018-session-device-management\.md/);
+  assert.match(roadmap, /RFC-0018/);
+  assert.match(implementedSessionRegistry, /^# RFC-0018\b/m);
+  assert.match(implementedSessionRegistry, /Status:\*{0,2}\s*Accepted and implemented/i);
 });

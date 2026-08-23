@@ -1,3 +1,23 @@
+## 23 Agustus 2026 - Merge patch terpadu dan ZIP diagnostik fail-visible
+
+- Menggabungkan maintainability refactor, hardening session v12, command cleanup, dan provisioning anggota otomatis pada source canonical yang sama. Runtime membership kini berasal dari tabel `users`; `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama, sementara session tetap memakai registry `user_sessions`, verifier hashed, PKCE S256, role terbaru, serta revocation saat role/deaktivasi berubah.
+- Menutup regression hasil merge/refactor tanpa mengubah formula saldo atau schema: import `CompactNotice` pada dialog Target, import/helper reporting yang tertinggal, unused import, complexity lint environment-readiness, serta source-contract test yang masih menunjuk file monolitik sebelum decomposition.
+- Menutup blocker quality gate Windows berikutnya pada `ActiveSessionsPage.jsx`: presentation sesi aktif dipecah menjadi helper/component lokal yang lebih sempit agar complexity tetap di bawah batas ESLint, sementara action `sessions.listOwn`/`sessions.revokeOwn`/`sessions.revokeAllOwn`, logout saat sesi saat ini dicabut, dan konfirmasi destructive tetap identik serta dikunci regression test.
+- Mengubah `npm run zip` menjadi fail-visible tetapi archive-producing: verification PASS tetap menghasilkan `saldo-bersama-clean.zip`; verification gagal tetap exit non-zero namun, selama source canonical masih valid, menghasilkan `saldo-bersama-UNVERIFIED.zip` khusus diagnosis dengan `docs/UNVERIFIED_BUILD_REPORT.md` tersanitasi yang hanya ditambahkan ke staging ZIP. Archive UNVERIFIED tidak menghapus atau menyamar sebagai clean ZIP verified dan tidak boleh dipakai untuk release/deploy.
+
+## 23 Agustus 2026 - Session v2, idempotency recovery, dan environment isolation
+
+- Menaikkan schema secara additive ke v12 dengan server-side `user_sessions`, verifier secret SHA-256, device-session list/revoke, forced invalidation pada perubahan role/deaktivasi, serta Google OAuth Authorization Code + PKCE S256. Gateway, export, dan `/api/session` memakai resolver registry authoritative; signed cookie saja tidak menjadi authorization authority.
+- Mempertahankan idempotency key mutation setelah `OUTCOME_UNKNOWN` melewati reload menggunakan metadata recovery terbatas tanpa payload transaksi, serta tetap menolak payload berbeda sampai intent lama mendapat hasil definitif.
+- Menambah binding `database_environment` fail-closed untuk Development/Production, tooling bind/sync yang menolak cross-environment, scheduler heartbeat operational health, dan kompatibilitas backup/restore v3-v11 menuju runtime v12 tanpa membackup session registry atau menimpa binding environment. Restore sukses mencabut session lama.
+- Menambah halaman Pengaturan untuk perangkat/sesi aktif serta regression source/security/schema/tooling/maintenance/governance terkait. Tidak ada perubahan formula saldo, nominal Rupiah, transfer, cost-sharing ledger, atau lifecycle transaksi canonical. Live separation Turso/Vercel tetap harus dibuktikan saat deployment dan tidak dianggap selesai hanya dari perubahan source.
+
+## 23 Agustus 2026 - NPM command surface disederhanakan
+
+- Menjadikan `npm run verify` satu-satunya full quality gate publik. Source validation, build budget, backend coverage, dan guard regression tetap berjalan internal tanpa alias npm terpisah; backend regression tidak lagi dijalankan dua kali.
+- Memindahkan dependency audit dan jscpd report-only ke invocation langsung GitHub Actions, menghapus frontend-only `dev`/`preview`, serta menggabungkan settings Development ke `npm run env:push:development -- --settings-only`.
+- `npm run clean` sekarang default dry-run dan penghapusan nyata memerlukan `npm run clean -- --apply`; command database guarded, environment, ZIP, postinstall Git hook, serta dependency-recovery tetap dipertahankan.
+
 ## 21 Agustus 2026 - Unified financial success feedback
 
 - Menyatukan feedback sukses Pengeluaran, Pemasukan, Transfer, Refund, dan rekonsiliasi matched ke `FinancialSuccessOverlay` reusable dengan logo Saldo Bersama, badge ceklis animasi, nominal utama, ringkasan kontekstual, MoneyRain staggered, safe-area mobile, focus trap, dan reduced-motion fallback. Success result tidak memakai tombol X; aksi tambahan seperti `Tambah lagi`, `Bagi ke Alokasi Dana`, atau `Lihat transaksi` tetap tersedia sebagai aksi sekunder.

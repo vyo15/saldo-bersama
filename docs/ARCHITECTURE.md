@@ -1,5 +1,10 @@
 # Arsitektur Saldo Bersama
 
+## Auth/session dan environment hardening v12
+
+Runtime memakai session v2 server-side: cookie signed HttpOnly hanya membawa credential opaque, sedangkan `user_sessions` mengikat session ke user canonical dan menyimpan verifier hash. Gateway/export/session resolver tidak mempercayai role/email dari cookie. OAuth production memakai PKCE S256. Database juga memiliki `database_environment`; runtime harus cocok dengan `DATABASE_ENVIRONMENT` dan `VERCEL_ENV`, sehingga Development/Production silang serta Preview bercredential fail-closed.
+
+
 ## Ringkasan
 
 Turso adalah satu-satunya **source of truth**. React tidak berkomunikasi langsung dengan Turso, Google Sheets, Calendar, atau Drive. Semua akses data melewati Vercel Functions yang memverifikasi session Firebase, role, ownership, payload, idempotency, dan versi row.
@@ -27,8 +32,8 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 ## Trust boundaries
 
 1. Browser dianggap tidak tepercaya.
-2. Firebase ID token diverifikasi server-side sebelum session dibuat. Production memperoleh Firebase ID token untuk desktop dan mobile melalui Google OAuth Authorization Code callback server; signed state/nonce, callback origin, dan allowlist tetap diverifikasi sebelum session dibuat.
-3. `ALLOWED_USERS_JSON` adalah outer allowlist; tabel `users` adalah binding internal. Keduanya harus konsisten.
+2. Firebase ID token diverifikasi server-side sebelum session dibuat. Production memperoleh Firebase ID token untuk desktop dan mobile melalui Google OAuth Authorization Code callback server; signed state/nonce, PKCE S256, callback origin, dan token binding diverifikasi sebelum session dibuat.
+3. `users` di Turso adalah registry authorization canonical untuk akun aktif, role, dan binding Firebase UID; `user_sessions` adalah registry credential perangkat. `ALLOWED_USERS_JSON` hanya menjadi bootstrap/recovery gate Administrator pertama pada database kosong; anggota operasional ditambahkan dari UI Administrator dan tidak perlu dimasukkan ke environment.
 4. UID, role, email actor, timestamp, audit, scope internal, dan status tidak diterima dari client sebagai kebenaran.
 5. Turso URL/token hanya berada di server environment.
 6. Apps Script bridge hanya menerima request HMAC dengan timestamp dan nonce.
@@ -88,7 +93,7 @@ available_balance = balance - allocated_remaining
 - Record yang dapat diedit membawa `row_version`.
 - SQL update memakai `WHERE id=? AND row_version=?`.
 - affected row nol menghasilkan HTTP 409.
-- Retry hanya terbatas dan memakai idempotency key yang sama. Untuk mutation biasa, client mempertahankan intent outcome-unknown di private-memory; payload berbeda pada action yang sama diblok sampai intent lama mendapat hasil definitif. Backend idempotency tetap menjadi sumber kebenaran canonical.
+- Retry hanya terbatas dan memakai idempotency key yang sama. Untuk mutation biasa, client mempertahankan metadata intent outcome-unknown aman lintas reload tanpa payload finansial; payload berbeda pada action yang sama diblok sampai intent lama mendapat hasil definitif. Backend idempotency tetap menjadi sumber kebenaran canonical.
 - Outbox memakai coalescing pending/failed dan dapat merebut kembali worker macet. Penyelesaian job wajib cocok dengan `locked_by` agar worker lama tidak menutup pekerjaan worker baru.
 - Read multi-query penting (`app.initialState`, dashboard, transaksi terfilter, laporan, export, mirror, Calendar snapshot) memakai read transaction agar berasal dari snapshot database yang konsisten. Statement independen di dalam snapshot digabung dengan `tx.batch()` supaya konsistensi snapshot tetap terjaga tanpa satu HTTP round-trip per statement.
 - Read action tidak melakukan query `maintenance_mode` karena maintenance memang mengizinkan read. Write tetap memeriksa `maintenance_mode` sebelum dispatch dan membacanya ulang di dalam write transaction untuk menutup race dengan restore/import.

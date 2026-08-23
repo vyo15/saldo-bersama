@@ -196,7 +196,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   const [transactionStyles, allocations, goals, reports, pages, responsive, budgets] = await Promise.all([
     read("src/features/transactions/TransactionForm.module.css"),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationOverviewLayer.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
-    read("src/features/goals/GoalsPage.jsx"),
+    Promise.all([read("src/features/goals/GoalsPage.jsx"), read("src/features/goals/components/GoalCards.jsx"), read("src/features/goals/components/GoalDialogs.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/styles/pages.css"),
     read("src/styles/responsive.css"),

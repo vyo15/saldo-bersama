@@ -213,7 +213,10 @@ test("service menjaga budget exact-scope, recurring due-day, optimistic version,
   assert.match(planning, /contribution:\s*"deposit"[\s\S]*withdraw:\s*"withdrawal"/);
   assert.match(planning, /Member hanya dapat membatalkan pembayaran rutin yang dibuat sendiri/);
   assert.match(planning, /Member hanya dapat membatalkan mutasi target yang dibuat sendiri/);
-  const masterData = await readFile(new URL("../../api/_lib/services/masterData.js", import.meta.url), "utf8");
+  const masterData = (await Promise.all([
+    readFile(new URL("../../api/_lib/services/masterData.js", import.meta.url), "utf8"),
+    readFile(new URL("../../api/_lib/services/masterData/accounts.js", import.meta.url), "utf8"),
+  ])).join("\n");
   assert.ok(["ewallet", "emergency_fund", "sinking_fund"].every((value) => ACCOUNT_TYPE_VALUES.includes(value)));
   assert.ok(["unexpected", "discretionary", "emergency"].every((value) => CATEGORY_NATURE_VALUES.includes(value)));
   assert.match(masterData, /NEGATIVE_INITIAL_BALANCE_NOT_ALLOWED/);

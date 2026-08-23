@@ -427,7 +427,7 @@ test("housekeeping scheduler hanya menghapus state ephemeral yang expired dan ti
     await db.execute("INSERT INTO restore_previews(preview_id,backup_id,actor_id,checksum,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["applying-restore", "backup-preview", owner.user_id, "checksum", "{}", "applying", null, null, expired, expired]);
 
     const result = await cleanupExpiredEphemeralState(db, "2026-08-12T00:00:00.000Z");
-    assert.deepEqual(result, { idempotencyKeys: 1, importPreviews: 1, restorePreviews: 1 });
+    assert.deepEqual(result, { idempotencyKeys: 1, importPreviews: 1, restorePreviews: 1, userSessions: 0 });
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM idempotency_keys")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM import_previews")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM restore_previews")).count, 1);

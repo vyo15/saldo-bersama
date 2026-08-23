@@ -1,5 +1,10 @@
 # Security Model
 
+## Session v2 dan device registry
+
+Cookie session canonical adalah signed/HttpOnly/SameSite credential opaque (`session_id` + secret acak). Database `user_sessions` hanya menyimpan SHA-256 verifier hash dan metadata perangkat coarse; raw secret, cookie, token Firebase, IP, dan raw user-agent tidak disimpan. Row session yang expired/revoked dapat dipurge setelah retention sebagai credential ephemeral; restore terkontrol mengosongkan registry agar credential pra-restore tidak hidup kembali. `api/gateway.js`, `api/export.js`, dan `/api/session` memakai resolver registry authoritative yang sama, lalu memvalidasi user aktif, Firebase UID binding, dan role terbaru pada registry `users` canonical. User hanya dapat list/revoke session miliknya; role change/deactivation mencabut seluruh session user. Google OAuth production memakai state + nonce + PKCE S256.
+
+
 ## Trust boundary
 
 Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel Functions memverifikasi session, origin, rate limit, action, payload reserved field, role, ownership, idempotency, dan version. Turso hanya diakses backend.
@@ -8,8 +13,8 @@ Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel
 
 - Firebase Google ID token diverifikasi saat login. Localhost/device emulation dapat mengirim Firebase ID token dari browser; production desktop/mobile memakai Google OAuth Authorization Code callback server, memverifikasi signed `state`/`nonce`, menukar Google ID token melalui Firebase Identity Toolkit, lalu menjalankan verifier Firebase yang sama.
 - Backend membuat signed HttpOnly `SameSite=Strict` session.
-- Session memiliki expiry dan allowlist/role revalidation, tetapi belum memiliki per-device session registry/revoke. Jangan mengklaim “logout semua perangkat” tersedia sampai RFC-0018/schema/action guarded untuk capability tersebut disetujui.
-- Allowlist email+role dan binding user Turso harus konsisten.
+- Session v2 memiliki expiry, server-side per-device registry, revalidasi status/role/UID terhadap registry `users`, serta revoke satu/semua perangkat. Signed cookie saja tidak menjadi authority; backend wajib menyelesaikan credential terhadap `user_sessions` dan user canonical pada setiap jalur data.
+- Registry `users` adalah authorization canonical. `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama; role/status/UID binding operasional tidak berasal dari environment.
 - Authorization default deny.
 - Apps Script bridge memakai HMAC, timestamp, nonce, dan action allowlist.
 - Jobs memakai signature terpisah.
@@ -19,7 +24,7 @@ Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel
 - Rate-limit key yang berasal dari alamat client atau authenticated identity memakai SHA-256 dan scope prefix; raw UID/alamat tidak menjadi bucket key. Session memakai `clientRateLimitKey()` dan `identityRateLimitKey()`, sedangkan gateway dan export memakai `identityRateLimitKey()` dari `api/_lib/security.js`.
 - Rate limiter saat ini bersifat best-effort dan process-local. Distributed throttling/global quota lintas instance bukan jaminan dari control ini.
 - Exact reserved transaction-field contract berada di `api/_lib/transactionContract.js` dan ditegakkan kembali pada gateway serta finance service.
-- Client anti-error tidak dipercaya sebagai authorization, tetapi mutation biasa memakai private-memory intent lock setelah `OUTCOME_UNKNOWN`: retry data yang sama mempertahankan idempotency key, sedangkan payload berbeda untuk action yang sama ditolak sampai hasil lama definitif. Guard server tetap canonical dan tidak bergantung pada state browser.
+- Client anti-error tidak dipercaya sebagai authorization, tetapi mutation biasa memakai intent lock persisten setelah `OUTCOME_UNKNOWN`: hanya metadata aman di-namespace per session/user yang dipertahankan agar retry data sama memakai idempotency key lama; payload finansial tidak disimpan dan payload berbeda ditolak sampai hasil lama definitif. Guard server tetap canonical dan tidak bergantung pada state browser.
 
 ## Secret classes
 

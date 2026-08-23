@@ -1,3 +1,4 @@
+// Scheduled calls use a fresh nonce/timestamp plus HMAC because they do not have an interactive user session.
 function signedJobPayload_() {
   var properties = PropertiesService.getScriptProperties();
   var secret = properties.getProperty("JOBS_SHARED_SECRET") || "";

@@ -7,7 +7,7 @@ const read = (path) => readFile(new URL(`../src/${path}`, import.meta.url), "utf
 test("pembagian beban shared dipakai ulang oleh transaksi manual dan pembayaran rutin", async () => {
   const [field, transactionForm, recurringDialogs, recurringActions, recurringPage] = await Promise.all([
     read("features/transactions/CostShareField.jsx"),
-    read("features/transactions/TransactionForm.jsx"),
+    Promise.all([read("features/transactions/TransactionForm.jsx"), read("features/transactions/components/TransactionFields.jsx")]).then((parts) => parts.join("\n")),
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/recurring/useRecurringActions.js"),
     read("features/recurring/RecurringPage.jsx"),

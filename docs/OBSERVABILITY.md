@@ -12,6 +12,8 @@ Log terstruktur minimal: request ID, action, status, duration, actor user ID ter
 
 Status saat ini: event/log/health tersedia, tetapi external alerting independen belum diimplementasikan. Pemeriksaan manual atau monitor platform harus dipakai sampai provider/kanal alert disetujui. Jangan memakai Web Push aplikasi sebagai satu-satunya alarm untuk kegagalan Web Push itu sendiri.
 
+Scheduler menulis heartbeat aman ke `system_config` (`last_run`, `last_success`, `last_failure`, error code teredaksi). Bila `JOBS_SHARED_SECRET` dikonfigurasi tetapi heartbeat sukses belum ada, stale >35 menit, atau failure lebih baru dari success, health menjadi `degraded`. Public `/api/health` tetap tidak mengekspos detail heartbeat; detail tersedia pada `system.health` terautentikasi.
+
 Kondisi minimum yang harus menghasilkan tindakan operator:
 
 - schema mismatch;

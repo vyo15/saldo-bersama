@@ -57,19 +57,18 @@ Untuk validasi lokal setelah setiap patch, gunakan satu command canonical:
 npm run verify
 ```
 
-`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check` dan `npm run test:guard`. Command ini **tidak menjalankan `npm ci`** dan tidak menghapus `node_modules`.
+`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, serta seluruh backend regression dengan coverage. Guard security/governance ikut tercakup oleh suite frontend/backend sehingga tidak dijalankan dua kali. Command ini **tidak menjalankan `npm ci`** dan tidak menghapus `node_modules`.
 
-Gate penyusunnya tetap tersedia untuk diagnosis terarah:
+Command harian sengaja dibuat ringkas:
 
 ```bash
-npm run validate:source
-npm run lint
-npm run test
-npm run build
-npm run build:budget
-npm run check
-npm run test:guard
-npm run zip
+npm run dev       # development lokal lengkap
+npm run diagnose  # diagnosis runtime/integrasi
+npm run lint      # lint + syntax terarah
+npm run test      # frontend + backend test tanpa coverage gate
+npm run build     # production build frontend
+npm run verify    # full quality gate canonical
+npm run zip       # verify + clean ZIP; gagal -> ZIP diagnostik UNVERIFIED
 ```
 
 `npm ci` hanya dipakai untuk clone/bootstrap baru, perubahan package/lockfile, dependency hilang/rusak, atau clean runner CI. Jangan menjalankan `npm ci` sebagai kebiasaan setelah setiap patch.

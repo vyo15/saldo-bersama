@@ -105,25 +105,32 @@ Default authorization adalah deny. Jangan percaya actor, role, email, timestamp,
 - Shared abstraction baru dibuat setelah sedikitnya dua feature benar-benar membutuhkan contract visual/behavior yang sama. Hindari folder atau primitive spekulatif.
 - Konvensi nama mengikuti peran, bukan satu gaya paksa untuk semua file: komponen React `PascalCase.jsx`, hook `useCamelCase.js`, helper/service/module non-komponen `camelCase.js`, folder feature lowercase. Jangan melakukan mass-rename hanya untuk menyeragamkan casing.
 
+## Maintainability dan komentar
+
+- Ikuti `docs/CODE_MAINTAINABILITY.md` untuk aturan comment/JSDoc, decomposition, public facade, dan characterization test.
+- Code harus menjelaskan **WHAT** melalui naming/structure; comment menjelaskan **WHY**, invariant, compatibility constraint, atau risiko non-obvious. Jangan menambah comment yang hanya menerjemahkan syntax.
+- Rationale wajib dipertahankan dekat financial/security/idempotency/concurrency/recovery/destructive guard yang tidak obvious.
+- Refactor maintainability menjaga public contract dan behavior. Jika refactor membutuhkan perubahan schema, action/payload, authorization, saldo, retry semantics, backup/restore, reset, atau deployment, perlakukan sebagai perubahan guarded terpisah.
+- Service besar boleh memakai stable facade + child module. Child module tidak boleh mengimport facade induknya dan shared helper tidak boleh menjadi dumping ground.
+
 ## Validation
 
-Minimal sesuai scope:
+Minimal sesuai scope gunakan targeted regression yang relevan, lalu full gate canonical:
 
 ```bash
-npm run validate:source
 npm run lint
 npm run test
 npm run build
-npm run build:budget
+npm run verify
 ```
 
 Frontend/UI:
 
-Gunakan frontend unit/static regression, lint, build, build budget, dan verifikasi manual perangkat bila perubahan UI memerlukannya. Browser automation bukan bagian quality gate canonical.
+Gunakan frontend unit/static regression, lint, build, build-budget yang tercakup oleh `npm run verify`, dan verifikasi manual perangkat bila perubahan UI memerlukannya. Browser automation bukan bagian quality gate canonical.
 
-Guarded/data/security harus menjalankan test domain terkait dan `npm run test:guard` bila relevan. Jangan menyatakan berhasil sebelum server/test benar-benar mengonfirmasi.
+Guarded/data/security harus menjalankan test domain terkait; full frontend/backend suite pada `npm run verify` juga mencakup guard security/governance tanpa re-run terpisah. Jangan menyatakan berhasil sebelum server/test benar-benar mengonfirmasi.
 
-Jika `build:budget` gagal, jangan menaikkan threshold sebagai shortcut. Audit static import dependency besar, CSS global yang seharusnya route/shell-scoped, asset publik tanpa usage, dan duplicate/legacy presentation logic. Asset yang sudah mencapai **90%** budget adalah sinyal refactor sebelum feature berikutnya, bukan kondisi yang boleh dibiarkan sampai melewati batas. Generated build/test/cache dibersihkan setelah verification PASS maupun gagal; jangan menghapus `.env.local`, `.vercel`, `.git`, atau dependency canonical kecuali menjalankan workflow dependency-clean dengan `--force`.
+Jika build-budget pada `npm run verify` gagal, jangan menaikkan threshold sebagai shortcut. Audit static import dependency besar, CSS global yang seharusnya route/shell-scoped, asset publik tanpa usage, dan duplicate/legacy presentation logic. Asset yang sudah mencapai **90%** budget adalah sinyal refactor sebelum feature berikutnya, bukan kondisi yang boleh dibiarkan sampai melewati batas. Generated build/test/cache dibersihkan setelah verification PASS maupun gagal; jangan menghapus `.env.local`, `.vercel`, `.git`, atau dependency canonical kecuali menjalankan workflow dependency-clean dengan `--force`.
 
 ## ZIP/source
 

@@ -46,19 +46,19 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 
 ## 6. Automated gate
 
-- [ ] `npm run validate:source` PASS.
+- [ ] Source validation yang tercakup oleh `npm run verify` PASS.
 - [ ] `npm run lint` PASS tanpa warning.
 - [ ] `npm run test` PASS.
-- [ ] `npm run build` dan `npm run build:budget` PASS.
-- [ ] `npm run test:guard` dijalankan untuk guarded/data/security change.
+- [ ] `npm run build` PASS dan build-budget internal pada `npm run verify` PASS.
+- [ ] Guarded/data/security regression tercakup oleh frontend/backend suite pada `npm run verify`; targeted domain test tambahan dijalankan bila scope memerlukannya.
 - [ ] Untuk frontend/user-flow change, manual device QA dicatat bila diperlukan; tidak ada automated browser gate.
 - [ ] Final `npm run verify` PASS pada tree yang sama dengan patch yang akan dikirim.
 
 ## 7. Artifact hygiene dan delivery
 
-- [ ] `npm run clean:dry-run` tidak menunjukkan protected path seperti `.git`, `.vercel`, `.env.local`, atau `node_modules`.
-- [ ] Clean source dibuat dengan `npm run zip`, bukan ZIP manual seluruh workspace.
-- [ ] Clean ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, build/dist, coverage, cache, export/data privat, patch/diff, atau secret.
+- [ ] `npm run clean` (default dry-run) tidak menunjukkan protected path seperti `.git`, `.vercel`, `.env.local`, atau `node_modules`; penghapusan nyata hanya dengan `npm run clean -- --apply`.
+- [ ] Clean source dibuat dengan `npm run zip`, bukan ZIP manual seluruh workspace. PASS menghasilkan `saldo-bersama-clean.zip`; failure boleh menghasilkan `saldo-bersama-UNVERIFIED.zip` hanya untuk diagnosis dan command harus tetap non-zero.
+- [ ] Clean/UNVERIFIED ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, build/dist, coverage, cache, export/data privat, patch/diff, atau secret. `docs/UNVERIFIED_BUILD_REPORT.md` hanya boleh ada pada staging archive UNVERIFIED.
 - [ ] Setelah `npm run verify`, `npm run zip`, atau pre-push selesai baik PASS maupun gagal, generated build/test artifact dibersihkan otomatis; dependency, `.env.local`, `.vercel`, dan repository Git tetap dipertahankan. Cache Vite di `frontend/node_modules/.vite*` boleh dibersihkan karena generated dan akan dibuat ulang.
 - [ ] `git status --short` ditinjau sebelum commit.
 - [ ] Pull Request menuliskan test aktual dan docs impact; merge hanya setelah **Quality / check** PASS.

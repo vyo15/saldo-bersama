@@ -1,3 +1,4 @@
+// Integration requests are authenticated here; formula-safe cell encoding prevents spreadsheet formula injection.
 var SB_BRIDGE_MAX_SKEW_MS = 120000;
 var SB_MIRROR_SHEETS = ["Ringkasan", "Transaksi", "Rekening", "Kategori", "Anggaran", "Kantong", "Tagihan", "Target", "Rekonsiliasi"];
 

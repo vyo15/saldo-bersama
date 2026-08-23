@@ -1,3 +1,4 @@
+/* Account financial card presentation; monetary behavior remains outside CSS/presentation. */
 .accountItem {
   min-width: 0;
   font-family: var(--font-sans);

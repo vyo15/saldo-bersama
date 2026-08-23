@@ -1,3 +1,4 @@
+/* Transaction form presentation shared by the orchestrator and extracted field/preview components. */
 .modal {
   border-color: color-mix(in srgb, var(--primary) 10%, var(--border-strong));
   background: color-mix(in srgb, var(--surface-elevated) 98%, var(--primary) 2%);

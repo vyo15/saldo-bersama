@@ -8,7 +8,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-FIN-002` | Saldo dari ledger aktif | Implemented | balance projection, finance tests | Real bank reconciliation wajib |
 | `REQ-FIN-003` | Transfer netral income/expense | Implemented | finance service/report tests | Production smoke wajib |
 | `REQ-FIN-004` | Soft cancel/archive + guarded delete-unused | Implemented | transaction status, master/config lifecycle preview, exact hard-delete allowlist, audit, tests | Backup/operational retention policy tetap terpisah |
-| `REQ-FIN-005` | Idempotency + audit append-only | Implemented | internal transaction replay + external pre-side-effect reservation + restore reservation preservation + private-memory frontend mutation intent + integrity-run idempotency + audit triggers | Full Node 24 quality + guard gate pada patch terbaru |
+| `REQ-FIN-005` | Idempotency + audit append-only | Implemented | internal transaction replay + external pre-side-effect reservation + restore reservation preservation + reload-persistent safe frontend mutation metadata + integrity-run idempotency + audit triggers | Full Node 24 quality + guard gate pada patch terbaru |
 | `REQ-FIN-006` | Optimistic row version | Implemented | version guards/conflict tests | Multi-device smoke |
 | `REQ-SEC-001`–`REQ-SEC-002` | Auth/authorization | Implemented | `security.js`, local Firebase popup, production desktop/mobile Google OAuth server callback → Firebase verification, signed session, ownership query | Real Administrator/Member smoke termasuk iPhone/Android production |
 | `REQ-DATA-001`–`REQ-DATA-002` | Turso/recovery | Implemented | migration, cumulative all-or-nothing import preview/apply, safety backup, guarded restore, integrity verification, maintenance recovery | Restore drill nyata |
@@ -32,14 +32,14 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` + mismatch CTA ke transaksi rekening tanpa auto-adjustment | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
 | `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert otomatis + preference per user + manual reminder one-shot pada Jadwal Rutin/Kebutuhan/Alokasi Dana/Target + last-dispatch/pending guard + lifecycle auto-cancel + reminder integrity parity + privacy-safe lock-screen payload + branded icon/badge + per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
-| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + private-memory guarded mutation intent + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + canonical timezone/currency integrity + confirmation/browser-side single-flight | GitHub ruleset, Dev/Prod DB isolation, per-device session revoke (RFC-0018), platform rate limit, external alerting, dan operational drills tetap perlu evidence/decision |
+| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + reload-persistent guarded mutation metadata + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + canonical timezone/currency integrity + confirmation/browser-side single-flight | GitHub ruleset, live Dev/Prod DB separation evidence, platform rate limit, external alerting, dan operational drills tetap perlu evidence/decision |
 
 ## Infrastruktur dan deployment
 
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Desktop/mobile branded login + local Firebase popup; production server OAuth memerlukan callback URI + `GOOGLE_OAUTH_CLIENT_SECRET` Production Sensitive dan real-device smoke |
-| Turso schema v11 | Implemented | Migration additive cost-sharing transaction + manual reminder + penerima jatah + provider E-wallet; runtime v11 menerima backup v3-v10; production migration/parity evidence pending |
+| Turso schema v12 | Implemented | Migration additive session registry + environment binding + scheduler heartbeat di atas cost-sharing/manual reminder; runtime v12 menerima backup v3-v11; production migration/parity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

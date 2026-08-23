@@ -170,7 +170,12 @@ test("gradient avatar dan login menjaga focus, motion preference, dan full-scree
   const [app, loginStyles, login] = await Promise.all([
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/auth/LoginPage.jsx", import.meta.url), "utf8"),
+    Promise.all([
+      "../src/features/auth/LoginPage.jsx",
+      "../src/features/auth/components/LoginDesktopLayout.jsx",
+      "../src/features/auth/components/LoginMobileLayout.jsx",
+      "../src/features/auth/loginPresentation.js",
+    ].map((relative) => readFile(new URL(relative, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
   assert.match(app, /\.desktop-user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
   assert.match(app, /\.user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);

@@ -1,6 +1,9 @@
+/** Transport only: credentials, request ids, and outcome-sensitive network semantics. */
 import { createSecureRandomId } from "../../domain/security.js";
 import { ApiError, isAbortError, outcomeUnknownError, parseResponse } from "./errors.js";
 
+// For outcome-sensitive writes, a network break or malformed success response is not
+// proof of failure. Surface an explicit unknown outcome so callers do not create a retry.
 const fetchJson = async (url, options, { outcomeSensitive = false } = {}) => {
   let response;
   try {

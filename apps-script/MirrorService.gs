@@ -1,3 +1,4 @@
+// Google Sheets is a one-way read-only mirror. Manual edits are intentionally overwritten by canonical Turso state.
 function getMirrorSpreadsheet_() {
   var id = PropertiesService.getScriptProperties().getProperty("MIRROR_SPREADSHEET_ID");
   if (!id) throw sbError_("MIRROR_NOT_CONFIGURED", "MIRROR_SPREADSHEET_ID belum diatur.", 503);

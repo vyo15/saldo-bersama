@@ -19,6 +19,8 @@ const trustedProfilePhotoUrl = (value) => {
   return photoUrl.startsWith(GOOGLE_PROFILE_PHOTO_PREFIX) ? photoUrl : "";
 };
 
+// The environment allowlist is backend authority. Frontend visibility or a client-
+// supplied email/role never grants access.
 export const parseAllowedUsers = (raw = process.env.ALLOWED_USERS_JSON || "[]") => {
   let users;
   try { users = JSON.parse(raw); } catch { throw new Error("ALLOWED_USERS_JSON tidak valid."); }
@@ -40,7 +42,7 @@ export const parseAllowedUsers = (raw = process.env.ALLOWED_USERS_JSON || "[]") 
   return [...uniqueUsers.values()];
 };
 
-export const findAllowedUser = (email) => parseAllowedUsers().find((item) => item.email === String(email || "").toLowerCase()) || null;
+export const findBootstrapUser = (email) => parseAllowedUsers().find((item) => item.email === String(email || "").toLowerCase()) || null;
 
 const sign = (value, secret) => crypto.createHmac("sha256", secret).update(value).digest("base64url");
 
@@ -61,6 +63,8 @@ const readSignedCookieToken = (token, secret) => {
   try { return JSON.parse(decoder(payload)); } catch { return null; }
 };
 
+// OAuth return paths are intentionally limited to internal UI routes to prevent an
+// authenticated callback from becoming an open redirect into /api or another origin.
 export const normalizeInternalReturnPath = (value) => {
   const candidate = String(value || "/").trim();
   if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.includes("\\") || candidate.length > 1_024) return "/";
@@ -88,20 +92,29 @@ export const trustedRequestOrigin = (request) => {
   return origin;
 };
 
+// State and nonce are signed into a short-lived HttpOnly cookie. The callback must bind
+// to this server-created transaction; values returned by the browser are not authority.
 export const createGoogleOAuthTransaction = ({ returnTo = "/" } = {}) => {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) throw new Error("SESSION_SECRET minimal 32 karakter.");
   const state = crypto.randomBytes(32).toString("base64url");
   const nonce = crypto.randomBytes(32).toString("base64url");
+  const codeVerifier = crypto.randomBytes(48).toString("base64url");
+  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const payload = {
     state,
     nonce,
+    codeVerifier,
     returnTo: normalizeInternalReturnPath(returnTo),
     exp: Math.floor(Date.now() / 1000) + GOOGLE_OAUTH_MAX_AGE_SECONDS,
   };
   const token = signedCookieToken(payload, secret);
   return {
-    ...payload,
+    state,
+    nonce,
+    codeChallenge,
+    returnTo: payload.returnTo,
+    exp: payload.exp,
     cookie: `${GOOGLE_OAUTH_COOKIE}=${token}; Path=/api/auth/google/callback; HttpOnly; SameSite=Lax; Max-Age=${GOOGLE_OAUTH_MAX_AGE_SECONDS}${secureCookieSuffix()}`,
   };
 };
@@ -111,7 +124,7 @@ export const readGoogleOAuthTransaction = (request) => {
   if (!secret) return null;
   const token = parseCookies(request.headers.cookie)[GOOGLE_OAUTH_COOKIE];
   const payload = readSignedCookieToken(token, secret);
-  if (!payload?.state || !payload?.nonce || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
+  if (!payload?.state || !payload?.nonce || !payload?.codeVerifier || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
   return { ...payload, returnTo: normalizeInternalReturnPath(payload.returnTo) };
 };
 
@@ -123,19 +136,19 @@ export const safeEqualText = (left, right) => {
   return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 };
 
-export const createSessionCookie = (user, { maxAgeSeconds = 43_200 } = {}) => {
+export const createSessionCookie = ({ sessionId, sessionSecret, expiresAt, photoURL = "" }, { maxAgeSeconds = 43_200 } = {}) => {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) throw new Error("SESSION_SECRET minimal 32 karakter.");
-  const payload = encoder(JSON.stringify({
-    uid: user.uid,
-    email: user.email,
-    name: user.name || user.email,
-    photoURL: trustedProfilePhotoUrl(user.photoURL || user.photoUrl || user.picture),
-    role: user.role,
-    exp: Math.floor(Date.now() / 1000) + maxAgeSeconds,
-  }));
-  const token = `${payload}.${sign(payload, secret)}`;
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSeconds}${secureCookieSuffix()}`;
+  const exp = expiresAt ? Math.floor(new Date(expiresAt).getTime() / 1000) : Math.floor(Date.now() / 1000) + maxAgeSeconds;
+  const effectiveMaxAge = Math.max(0, Math.min(maxAgeSeconds, exp - Math.floor(Date.now() / 1000)));
+  const token = signedCookieToken({
+    v: 2,
+    sid: String(sessionId || ""),
+    verifier: String(sessionSecret || ""),
+    photoURL: trustedProfilePhotoUrl(photoURL),
+    exp,
+  }, secret);
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${effectiveMaxAge}${secureCookieSuffix()}`;
 };
 
 export const clearSessionCookie = () => `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secureCookieSuffix()}`;
@@ -145,26 +158,27 @@ const parseCookies = (header = "") => Object.fromEntries(header.split(";").map((
   return [part.slice(0, separator), part.slice(separator + 1)];
 }));
 
-export const readSession = (request) => {
+// A valid cookie signature only yields a session credential, never an authorized actor.
+// The session registry + canonical backend user record must validate the credential
+// before uid/email/role may be trusted for authorization. The environment allowlist is
+// bootstrap-only and is not the runtime membership registry.
+export const readSessionCredential = (request) => {
   const secret = process.env.SESSION_SECRET;
   if (!secret) return null;
-  const token = parseCookies(request.headers.cookie)[SESSION_COOKIE];
-  if (!token) return null;
-  const [payload, signature] = token.split(".");
-  if (!payload || !signature) return null;
-  const expected = sign(payload, secret);
-  const actualBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
-  try {
-    const session = JSON.parse(decoder(payload));
-    if (!session.exp || session.exp <= Math.floor(Date.now() / 1000)) return null;
-    const allowed = findAllowedUser(session.email);
-    if (!allowed || allowed.role !== session.role) return null;
-    return session;
-  } catch { return null; }
+  const token = parseCookies(request?.headers?.cookie)[SESSION_COOKIE];
+  const payload = readSignedCookieToken(token, secret);
+  if (payload?.v !== 2 || !payload?.sid || !payload?.verifier || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
+  if (String(payload.sid).length > 128 || String(payload.verifier).length > 256) return null;
+  return {
+    sessionId: String(payload.sid),
+    sessionSecret: String(payload.verifier),
+    photoURL: trustedProfilePhotoUrl(payload.photoURL),
+    exp: Number(payload.exp),
+  };
 };
 
+// SameSite cookies reduce CSRF risk but do not replace explicit Origin validation for
+// state-changing session/API requests.
 export const assertAllowedOrigin = (request) => {
   const origin = request.headers.origin;
   if (!origin) throw Object.assign(new Error("Origin request wajib diisi."), { status: 403, code: "ORIGIN_REQUIRED" });
@@ -174,7 +188,7 @@ export const assertAllowedOrigin = (request) => {
 
 export const ACTION_PERMISSIONS = Object.freeze({
   owner: new Set([
-    "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "users.reactivate", "audit.list", "archive.list", "dashboard.overview",
+    "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "users.reactivate", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "audit.list", "archive.list", "dashboard.overview",
     "accounts.list", "accounts.create", "accounts.update", "accounts.previewLifecycle", "accounts.archive", "accounts.restore", "accounts.deleteUnused",
     "categories.list", "categories.create", "categories.update", "categories.previewArchive", "categories.archive", "categories.restore", "categories.deleteUnused",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
@@ -186,13 +200,15 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "reminders.get", "reminders.upsert", "reminders.cancel", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "reset.preview", "reset.status", "reset.apply", "fullReset.preview", "fullReset.status", "fullReset.apply", "integrity.run",
   ]),
   member: new Set([
-    "system.health", "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
+    "system.health", "app.initialState", "bootstrap.get", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "dashboard.overview", "accounts.list", "categories.list",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.create", "envelopes.adjustAllocation", "envelopes.move", "envelopes.reverseMovement", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",
     "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "reminders.get", "reminders.upsert", "reminders.cancel", "integrations.status",
   ]),
 });
+// Authorization defaults to deny: only the server-resolved role and this canonical
+// permission map may authorize a public action.
 export const authorizeAction = (session, action) => Boolean(session && ACTION_PERMISSIONS[session.role]?.has(action));
 
 const assertNoReservedTransactionFields = (payload) => {
@@ -206,6 +222,8 @@ const assertNoReservedTransactionFields = (payload) => {
   }
 };
 
+// Identity/audit/reserved linkage fields are server-owned. Reject them rather than
+// silently accepting client values that could create an IDOR or audit spoofing path.
 export const assertPayloadAuthorization = (session, action, payload = {}) => {
   if (action === "transactions.create" || action === "transactions.update") {
     assertNoReservedTransactionFields(payload);
@@ -250,6 +268,8 @@ export const clientRateLimitKey = (request, scope) => {
   return `${scope}:${digest}`;
 };
 
+// Best-effort rate limiting is abuse resistance only. Correctness and authorization
+// must remain safe even when requests reach different serverless instances.
 export const enforceBestEffortRateLimit = (key, { limit = 80, windowMs = 60_000 } = {}) => {
   const now = Date.now();
   const current = buckets.get(key);
@@ -274,6 +294,8 @@ export const identityRateLimitKey = (scope, identity) => {
 };
 
 
+// Scheduled jobs have no interactive session, so a time-bounded HMAC is their explicit
+// trust boundary. Never substitute a client-provided actor/role for this verification.
 export const verifyScheduledJobSignature = (body, { now = Date.now() } = {}) => {
   const secret = String(process.env.JOBS_SHARED_SECRET || "");
   if (secret.length < 32 || !body?.message || !body?.signature) return null;

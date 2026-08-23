@@ -20,9 +20,9 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan Anggaran menjadi overview 
   assert.match(allocationPage, /useApiResource\("budgets\.list", \{ period \}\)/);
   assert.match(allocationPage, /lockedEnvelope=\{item\}/);
   assert.match(allocationPage, /Kebutuhan/);
-  assert.match(allocationPage, /canManage: canManagePlanningItem\(item, user\)/);
+  assert.match(allocationPage, /canManage: canManageBudgetScope\(item, user\)/);
   assert.match(allocationPage, /canLifecycle: administratorMode/);
-  assert.match(allocationPage, /sharedOnly: user\?\.role === "member"/);
+  assert.match(allocationPage, /sharedOnly: allocationActor\?\.role === "member"/);
   assert.match(allocationPage, /row_version: existingBudget\?\.row_version/);
   assert.doesNotMatch(allocationPage, /createIdempotencyKey|idempotencyKey:/, "Kebutuhan harus memakai mutation intent canonical dari apiClient, bukan membuat key per klik");
   assert.match(allocationPage, /Promise\.allSettled\(\[budgetResource\.reload\(\), resource\.reload\(\), refreshOverview\(\)\]\)/);

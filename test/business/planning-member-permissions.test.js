@@ -46,7 +46,7 @@ const seedCategory = async (db, { id, type = "expense" }) => {
   );
 };
 
-test("Member dapat mengelola planning Bersama tetapi planning personal tetap fail closed", async () => {
+test("Member dapat mengelola planning Bersama dan Kebutuhan personal miliknya sendiri", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
@@ -87,6 +87,30 @@ test("Member dapat mengelola planning Bersama tetapi planning personal tetap fai
       scope: "shared",
     }));
     assert.equal(budget.scope, "shared");
+
+    const personalEnvelope = await createEnvelope(db, context(owner, "envelopes.create", {
+      name: "Belanja Member",
+      source_account_id: "member-personal",
+      period_type: "monthly",
+      period_start: "2026-08-01",
+      period_end: "2026-08-31",
+      default_amount: 100_000,
+      allocated_amount: 100_000,
+    }));
+    assert.equal(personalEnvelope.rule.scope, "personal");
+    assert.equal(personalEnvelope.rule.owner_user_id, member.user_id);
+
+    const personalBudget = await upsertBudget(db, context(member, "budgets.upsert", {
+      period_key: "2026-08",
+      category_id: "shared-expense",
+      envelope_rule_id: personalEnvelope.rule.envelope_rule_id,
+      name: "Belanja Pribadi Member",
+      amount: 125_000,
+      warning_threshold: 80,
+      scope: "personal",
+    }));
+    assert.equal(personalBudget.scope, "personal");
+    assert.equal(personalBudget.owner_user_id, member.user_id);
 
     const goal = await createGoal(db, context(member, "goals.create", {
       name: "Liburan Bersama",
@@ -141,15 +165,6 @@ test("Member dapat mengelola planning Bersama tetapi planning personal tetap fai
         period_start: "2026-08-01",
         period_end: "2026-08-31",
         default_amount: 10_000,
-      })),
-      (error) => error.code === "SHARED_PLANNING_ONLY" && error.status === 403,
-    );
-    await assert.rejects(
-      () => upsertBudget(db, context(member, "budgets.upsert", {
-        period_key: "2026-08",
-        category_id: "shared-expense",
-        amount: 10_000,
-        scope: "personal",
       })),
       (error) => error.code === "SHARED_PLANNING_ONLY" && error.status === 403,
     );

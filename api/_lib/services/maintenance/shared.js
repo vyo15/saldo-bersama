@@ -5,7 +5,7 @@ import { BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConst
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
 const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
@@ -121,9 +121,19 @@ export const ensureBackupAudit = async (db, context, backupId, details, enabled)
   if (!existing) await appendAudit(db, context, { entityType: "backup", entityId: backupId, next: details });
 };
 
+const TRANSIENT_SYSTEM_CONFIG_KEYS = new Set([
+  "maintenance_mode",
+  "database_environment",
+  "scheduler_last_run_at",
+  "scheduler_last_success_at",
+  "scheduler_last_failure_at",
+  "scheduler_last_error_code",
+]);
+
 export const snapshotDatabase = async (db) => db.transaction(async (tx) => {
   const results = await tx.batch(BACKUP_TABLES.map((table) => ({ sql: `SELECT * FROM ${quoted(table)}` })));
   const tables = Object.fromEntries(BACKUP_TABLES.map((table, index) => [table, results[index].rows]));
+  tables.system_config = tables.system_config.filter((row) => !TRANSIENT_SYSTEM_CONFIG_KEYS.has(String(row.key || "")));
   const manifest = {
     format: "saldo-bersama-backup",
     version: DATABASE_SCHEMA_VERSION,

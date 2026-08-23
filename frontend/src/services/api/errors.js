@@ -12,7 +12,7 @@ export class ApiError extends Error {
 const ACTOR_FATAL_ERRORS = Object.freeze({
   ACCOUNT_INACTIVE: { status: 403, message: "Akun ini sedang dinonaktifkan. Hubungi Administrator untuk memulihkan akses." },
   ROLE_MISMATCH: { status: 403, message: "Hak akses akun berubah dan sesi lama tidak dapat digunakan. Silakan login kembali setelah izin diperbarui." },
-  IDENTITY_NOT_PROVISIONED: { status: 403, message: "Akun Google ini belum diprovisikan di database Saldo Bersama. Hubungi Administrator." },
+  IDENTITY_NOT_PROVISIONED: { status: 403, message: "Akun Google ini belum terdaftar di Saldo Bersama. Hubungi Administrator." },
   IDENTITY_CONFLICT: { status: 409, message: "Identitas Google akun ini tidak cocok dengan akun yang tersimpan. Hubungi Administrator sebelum mencoba lagi." },
 });
 

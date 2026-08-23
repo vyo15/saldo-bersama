@@ -1,3 +1,4 @@
+/** Import remains preview-first: validate/normalize references before any apply path mutates canonical data. */
 import { appendAudit } from "../audit.js";
 import { createTransactionInternal } from "../finance.js";
 import { integrityIssues } from "../reporting/index.js";

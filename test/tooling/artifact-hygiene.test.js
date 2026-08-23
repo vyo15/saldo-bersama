@@ -64,6 +64,13 @@ test("cleanup generated reusable hanya menghapus target generated dan mempertaha
   }
 });
 
+test("cleanup CLI default hanya dry-run dan memerlukan --apply untuk menghapus", () => {
+  const result = runNode("scripts/clean-generated-artifacts.mjs");
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Dry-run saja/);
+  assert.match(result.stdout, /npm run clean -- --apply/);
+});
+
 test("cleanup dependency fail closed tanpa flag force", () => {
   const result = runNode("scripts/clean-development-dependencies.mjs");
   assert.equal(result.status, 2);
@@ -100,6 +107,7 @@ test("policy archive clean hanya menerima nama canonical dan menolak patch atau 
     "backup-saldo-bersama-clean.zip",
     "saldo-bersama-clean-final.zip",
     "laporan.zip",
+    "saldo-bersama-UNVERIFIED.zip",
   ]) assert.equal(isCleanSourceArchiveFilename(name), false, name);
 });
 

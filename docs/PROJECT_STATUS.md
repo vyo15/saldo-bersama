@@ -7,11 +7,11 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - **Frontend:** React 19 + Vite 7 PWA.
 - **Backend:** Vercel Functions.
 - **Database/source of truth:** Turso/SQLite HTTP pipeline.
-- **Auth desktop dan mobile:** tombol Google branded Saldo Bersama memakai transport yang sama. Pada production canonical `saldo-bersama.vercel.app`, browser memulai Google OAuth Authorization Code flow ke `/api/auth/google/start`; callback server memverifikasi signed `state`/`nonce`, menukar code menjadi Google ID token, menukarnya lagi melalui Firebase Identity Toolkit menjadi Firebase ID token, lalu memakai verifier Firebase + allowlist/role existing sebelum membuat signed HttpOnly server session. Localhost/device emulation mempertahankan Firebase popup sebagai fallback development. Tidak ada Firebase browser redirect state pada production.
-- **Session/authorization authority:** signed HttpOnly server session + backend allowlist/role.
+- **Auth desktop dan mobile:** tombol Google branded Saldo Bersama memakai transport yang sama. Pada production canonical `saldo-bersama.vercel.app`, browser memulai Google OAuth Authorization Code flow ke `/api/auth/google/start`; callback server memverifikasi signed `state`/`nonce` + PKCE S256, menukar code menjadi Google ID token, menukarnya lagi melalui Firebase Identity Toolkit menjadi Firebase ID token, lalu memakai verifier Firebase + registry `users` canonical sebelum membuat registered HttpOnly server session. Localhost/device emulation mempertahankan Firebase popup sebagai fallback development. Tidak ada Firebase browser redirect state pada production.
+- **Session/authorization authority:** signed HttpOnly session v2 membawa credential opaque; `user_sessions` + status/role/binding Firebase UID pada `users` adalah authority runtime. `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama. User dapat melihat/revoke session perangkat miliknya; role change/deactivation mencabut session aktif.
 - **Google integration:** Apps Script bridge; Sheets mirror satu arah, Calendar reminder bersama, Drive backup teknis.
-- **Active schema contract:** v11.
-- Runtime lokal dan Vercel Production **masih** memakai database Turso bersama sampai exit criteria ADR-0007 dibuktikan. Target hardening yang disetujui adalah database/token/session secret Development dan Production yang terpisah; source tidak boleh mengklaim cutover selesai tanpa evidence environment.
+- **Active schema contract:** v12.
+- Source v12 mempunyai guard `DATABASE_ENVIRONMENT` dan binding database fail-closed. **Live separation Development/Production belum boleh dianggap selesai tanpa evidence Vercel/Turso**; bila satu database lama masih dipakai, binding hanya dapat cocok untuk satu environment dan environment lain akan gagal sampai database/token dipisahkan. exit criteria ADR-0007 tetap memerlukan bukti operasional.
 
 ## Workflow saat ini
 
@@ -19,11 +19,13 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Tidak ada task card/Task ID/branch automation sebagai workflow wajib.
 - Quality gate lokal canonical: `npm run verify`; `npm run zip` menjalankannya otomatis sebelum packaging dan pre-push guard menjalankannya lagi sebelum push. Handoff patch hanya berstatus final setelah gate tree final PASS pada Node 24.18.1; environment non-canonical wajib menyebut artifact candidate/unverified. Setelah setiap verification PASS maupun gagal, generated build/test artifact dan cache Vite generated dibersihkan tanpa menghapus dependency, `.env.local`, `.vercel`, atau Git metadata.
 - Setelah PASS: commit pada branch, push branch, buka Pull Request, tunggu workflow **Quality** lulus, lalu merge ke `main`. Ruleset GitHub tetap memerlukan verifikasi operasional.
-- `npm run zip` membuat clean source canonical fail-closed.
+- `npm run zip` tetap menjalankan full verification. Jika PASS, ia membuat `saldo-bersama-clean.zip`. Jika verification gagal tetapi source masih canonical, ia tetap exit non-zero dan membuat `saldo-bersama-UNVERIFIED.zip` khusus diagnosis dengan `docs/UNVERIFIED_BUILD_REPORT.md` staging-only; archive UNVERIFIED bukan release/deployment artifact dan tidak menggantikan clean ZIP verified terakhir.
 - Guarded/high-risk tetap membutuhkan approval eksplisit sebelum coding/operation.
 
 ## UI foundation / maintainability saat ini
 
+- Contract maintainability canonical sekarang berada di `docs/CODE_MAINTAINABILITY.md`: code menjelaskan WHAT, comment menjelaskan WHY/invariant, extraction mengikuti responsibility bukan line count, dan public facade service tetap stabil. Backend notifications, master data, reporting dashboard, recurring, goals, envelopes, serta pure read-model reset/full-reset sudah dipisah ke child module satu arah; governance menolak child yang mengimpor facade induk dan menolak circular dependency relatif backend.
+- Guarded authority tetap terkonsentrasi: finance/saldo, auth/session, idempotency, destructive maintenance, dan hard DELETE allowlisted tidak dipindahkan menjadi presentation/helper authority. Frontend form/page besar memisahkan presentation sementara submit/idempotency/recovery/auth orchestration tetap pada parent canonical.
 - Shared primitive canonical memakai CSS Modules. Global compatibility class tetap tersedia untuk direct `button`/`Link` legacy, tetapi state disabled dan control height sekarang mengikuti token/semantics yang sama dengan `Button.module.css`; duplicate override `min-height` sudah dihapus.
 - Empat stylesheet feature masih transitional sesuai ADR-0009 dan dilacak eksplisit di `UI_DESIGN_SYSTEM.md`: Dashboard, Login, Transactions, dan FinancialAlertList. Migrasinya dilakukan serial, bukan mass-refactor.
 - Token `--account-*` tetap global karena perlu theme-level contract, tetapi diberi ownership Accounts-only. `components/finance/` tetap target opsional dan belum dibuat sampai ada reusable consumer lintas feature nyata.
@@ -45,7 +47,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 
 - Beranda mobile memakai data canonical `dashboard.overview` untuk saldo, batas aman harian, rekening aktif, arus kas, alert, lima transaksi terbaru, serta ringkasan Alokasi agregat. Shortcut utama tetap fokus pada aksi harian `Pemasukan`, `Pengeluaran`, dan `Transfer`; saat alert tersedia, `Perlu perhatian` diprioritaskan sebelum daftar rekening. Filter/search lengkap sengaja tetap berada di `/transaksi`; recent slice Dashboard tidak dipresentasikan seolah-olah mewakili seluruh ledger. Transfer baru pada viewport mobile memakai presentasi `mobile-transfer` dari `TransactionForm` canonical, bukan form terpisah.
 - Ringkasan Alokasi Dana menjumlahkan nominal `used_amount + reserved_amount` sebagai **terpakai + dipesan** dan tidak lagi memilih alokasi pertama berdasarkan urutan nama. Perhitungan saldo/ledger tidak berubah.
-- Mutation biasa yang berakhir `OUTCOME_UNKNOWN` mempertahankan idempotency intent di private-memory. Payload berbeda untuk action yang sama diblok sampai intent lama mendapat hasil definitif; form transaksi mengunci field dan menyediakan retry data yang sama. Reset/full reset tetap memakai recovery/status workflow khusus.
+- Mutation biasa yang berakhir `OUTCOME_UNKNOWN` mempertahankan metadata idempotency intent aman lintas reload (action, fingerprint hash, key, timestamp; tanpa payload finansial) di storage browser yang di-namespace per session/user. Payload berbeda untuk action yang sama diblok sampai intent lama mendapat hasil definitif; form transaksi mengunci field dan menyediakan retry data yang sama. Reset/full reset tetap memakai recovery/status workflow khusus.
 - Close/reopen periode serta perubahan anggota menginvalidasi projection yang bergantung, termasuk transaksi/dashboard, agar capability dan label tidak tertahan cache lama.
 - Service Worker v10 tetap network-only untuk `/api/*`; stable image memakai stale-while-revalidate sehingga asset publik dapat diperbarui setelah deployment tanpa menunggu cache lama habis.
 
@@ -57,7 +59,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Jadwal Rutin tidak lagi mengekspos penanda Auto-debit. Occurrence yang jatuh tempo menunggu konfirmasi transaksi aktual; ledger/saldo tidak berubah sebelum transaksi aktual berhasil disimpan. Bila kategori Kebutuhan memiliki relasi Alokasi Dana yang tidak ambigu, Jadwal dapat menyarankan rekening sumber dan konfirmasi aktual menyarankan Alokasi Dana terkait tanpa mempercayai data client untuk authorization.
 - Target, Alokasi Dana, Jadwal Rutin, dan Anggota tetap memakai artwork existing secara dekoratif. Nominal, status, capability, authorization, saldo, serta ledger tetap berasal dari read model/service canonical.
 - Alokasi Dana tetap account-bound: item baru wajib satu rekening sumber, read model rekening menyediakan saldo fisik, dana dialokasikan, dan dana tersedia; transaksi beralokasi wajib memakai rekening yang sama, transaksi bebas/Transfer tidak boleh mengambil dana yang sudah dialokasikan, dan realokasi baru lintas rekening ditolak.
-- Dana tersedia kini dapat ditambahkan ke Alokasi Dana existing atau dilepas kembali melalui `envelopes.adjustAllocation` tanpa membuat ledger transaction. Member dapat mengelola planning shared sesuai RFC-0016, sedangkan lifecycle destruktif/recovery tetap Administrator-only.
+- Dana tersedia kini dapat ditambahkan ke Alokasi Dana existing atau dilepas kembali melalui `envelopes.adjustAllocation` tanpa membuat ledger transaction. Member dapat mengelola planning shared sesuai RFC-0016; khusus Kebutuhan, Member juga dapat membuat/mengubah Kebutuhan personal miliknya sendiri. Lifecycle destruktif/recovery tetap Administrator-only.
 - Dashboard memisahkan dana tersedia yang belum dibagi dari pengeluaran tanpa Alokasi Dana dan menyediakan CTA berbeda. First-run checklist mengarahkan Rekening → Kategori → Alokasi Dana → Target berdasarkan capability actor. Target memberi warning bila belum ada rekening sumber lain yang kompatibel untuk setoran.
 - Dashboard, Transaksi, Laporan, Rekening, Kategori, dan Pengaturan sengaja tidak diberi artwork hero tambahan karena masing-masing sudah memiliki chart, kartu domain, icon taxonomy, atau utility hierarchy sebagai fokus utama.
 - Empat ilustrasi reuse path login existing (`piggy-bank`, `wallet`, `finance-checklist`, `house`) dengan semantic dekoratif kosong agar login yang sudah stabil tidak memerlukan perpindahan asset.
@@ -97,10 +99,10 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 ## Open operational risks
 
 1. GitHub `main` harus diverifikasi benar-benar memblok direct push dan mewajibkan `Quality`; source/hook lokal saja bukan enforcement server-side.
-2. Development/Production Turso masih berbagi database sampai cutover ADR-0007 selesai; jangan mulai data nyata sebelum isolation atau risk acceptance baru.
+2. Source sudah memblokir cross-environment database; live Development/Production separation tetap memerlukan evidence dua database/token berbeda sebelum ADR-0007 dapat ditutup.
 3. Production schema/runtime parity dan resource Google nyata harus diverifikasi melalui runbook.
 4. Real-device Web Push dan restore drill memerlukan evidence operasional bila belum dilakukan.
 5. Secret rotation/revocation mengikuti runbook; source tidak dapat membuktikan credential lama sudah dicabut.
 6. External operational alerting belum tersedia; health/backup/dead-letter masih memerlukan monitoring operator.
-7. Session aplikasi berumur terbatas dan signed, tetapi belum memiliki daftar/revoke session per perangkat; kehilangan perangkat masih ditangani melalui expiry, user deactivation, atau secret rotation sesuai incident severity.
+7. Session v2/device revoke sudah tersedia di source; real-device smoke, forced legacy re-login, dan operational revoke drill tetap memerlukan evidence deployment.
 8. Retention `notification_queue`, `notification_deliveries`, `integration_outbox`, `backup_runs`, dan `integrity_runs` belum memiliki jadwal purge otomatis; audit/ledger tetap tidak boleh dipurge oleh housekeeping biasa.

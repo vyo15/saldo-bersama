@@ -1,3 +1,4 @@
+/* Login presentation: desktop/mobile sections stay ordered to preserve responsive cascade. */
 /* Login */
 .login-page {
   position: relative;

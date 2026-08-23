@@ -33,13 +33,14 @@ Pemisahan Development dan Production telah disetujui sebagai target hardening, t
 Urutan cutover:
 
 1. Buat database Turso Development baru tanpa menyalin credential Production ke source/chat/log.
-2. Terapkan seluruh migration canonical sampai schema v11 pada database Development.
-3. Verifikasi `timezone=Asia/Jakarta`, `currency=IDR`, foreign key, dan business integrity.
-4. Isi Vercel Development `TURSO_DATABASE_URL` dan `TURSO_AUTH_TOKEN` dengan database/token Development. Production tetap memakai database/token Production.
-5. Pastikan `.env.local` yang ditarik oleh `npm run dev` sekarang menunjuk Development.
-6. Jalankan test/smoke development dengan data dummy hanya pada database Development.
-7. Verifikasi Production tetap membaca database lama yang benar sebelum dan sesudah perubahan.
-8. Setelah isolation terbukti, rotasi token Turso dan `SESSION_SECRET` per environment agar credential Development dan Production tidak identik.
-9. Simpan evidence berupa nama/scope resource dan hasil health/integrity tanpa nilai secret.
+2. Terapkan seluruh migration canonical sampai schema v12 pada database Development.
+3. Bind database tersebut secara eksplisit dengan `npm run db:bind-environment -- development`; rebind silang wajib ditolak.
+4. Verifikasi `timezone=Asia/Jakarta`, `currency=IDR`, foreign key, dan business integrity.
+5. Isi Vercel Development `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, dan `DATABASE_ENVIRONMENT=development` dengan scope Development. Production tetap memakai credential Production dan `DATABASE_ENVIRONMENT=production`.
+6. Pastikan `.env.local` yang ditarik oleh `npm run dev` sekarang menunjuk Development.
+7. Jalankan test/smoke development dengan data dummy hanya pada database Development.
+8. Verifikasi Production tetap membaca database Production yang benar sebelum dan sesudah perubahan.
+9. Setelah isolation terbukti, rotasi token Turso dan `SESSION_SECRET` per environment agar credential Development dan Production tidak identik.
+10. Simpan evidence berupa nama/scope resource dan hasil health/integrity tanpa nilai secret.
 
 Exit criteria ADR single-database terpenuhi hanya bila Development dan Production terbukti memakai database berbeda, smoke kedua runtime lulus, dan rollback path telah diverifikasi. Setelah itu ADR baru/superseding decision harus mencatat kondisi final; jangan mengubah status ADR ini menjadi superseded sebelum cutover nyata selesai.

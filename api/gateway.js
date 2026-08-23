@@ -1,26 +1,30 @@
 import crypto from "node:crypto";
 import { dispatchAction } from "./_lib/actionDispatcher.js";
+import { getDatabase } from "./_lib/db/httpClient.js";
+import { assertDatabaseReady } from "./_lib/db/schema.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
-import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, enforceBestEffortRateLimit, identityRateLimitKey, readSession, requiresIdempotencyKey } from "./_lib/security.js";
+import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, enforceBestEffortRateLimit, identityRateLimitKey, requiresIdempotencyKey } from "./_lib/security.js";
+import { resolveRegisteredSession } from "./_lib/sessionRegistry.js";
 import { stableValue } from "./_lib/serialization.js";
 
 const COALESCED_READ_ACTIONS = new Set([
   "app.initialState", "system.health", "users.list", "audit.list", "dashboard.overview", "accounts.list",
-  "categories.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list",
+  "categories.list", "transactions.list", "sessions.listOwn", "envelopes.list", "recurring.list", "budgets.list", "goals.list",
   "reports.monthly", "reconciliations.list", "periods.list", "integrations.status", "notifications.status",
 ]);
 const inFlightReads = new Map();
 const coalescedReadKey = (session, action, payload) => crypto.createHash("sha256").update(JSON.stringify([session.uid, session.role, action, stableValue(payload || {})])).digest("hex");
 
-const dispatch = (session, action, payload, options, requestId) => {
+const dispatch = (db, session, action, payload, options, requestId) => {
   const task = () => dispatchAction({
-    signedActor: { uid: session.uid, email: session.email, name: session.name, role: session.role },
+    signedActor: { uid: session.uid, email: session.email, name: session.name, role: session.role, sessionId: session.sessionId },
     action,
     payload,
     requestId,
     idempotencyKey: options.idempotencyKey,
     rowVersion: options.rowVersion,
+    database: db,
   });
   if (!COALESCED_READ_ACTIONS.has(action)) return task();
   const key = coalescedReadKey(session, action, payload);
@@ -42,7 +46,9 @@ const rejectGatewayRequest = (response, session, body, requestId, action) => {
 
 const processGatewayRequest = async (request, response, requestId, requestState) => {
   assertAllowedOrigin(request);
-  const session = readSession(request);
+  const db = getDatabase();
+  await assertDatabaseReady(db);
+  const session = await resolveRegisteredSession(db, request);
   if (!session) return { action: "unknown", response: fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir. Silakan login kembali.", { requestId }) };
   enforceBestEffortRateLimit(identityRateLimitKey("gateway", session.uid));
   const body = await readJsonBody(request, 1_500_000);
@@ -52,7 +58,7 @@ const processGatewayRequest = async (request, response, requestId, requestState)
   const { action } = rejection;
   const payload = body.payload || {};
   assertPayloadAuthorization(session, action, payload);
-  const result = await dispatch(session, action, payload, {
+  const result = await dispatch(db, session, action, payload, {
     idempotencyKey: body.idempotencyKey || null,
     rowVersion: body.rowVersion ?? null,
   }, requestId);

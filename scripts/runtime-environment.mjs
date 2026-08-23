@@ -11,6 +11,7 @@ export const CORE_RUNTIME_ENV_KEYS = Object.freeze([
   "SESSION_SECRET",
   "TURSO_DATABASE_URL",
   "TURSO_AUTH_TOKEN",
+  "DATABASE_ENVIRONMENT",
 ]);
 
 export const OPTIONAL_LOGGING_ENV_KEYS = Object.freeze([
@@ -60,7 +61,7 @@ export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
   ...WEB_PUSH_ENV_KEYS,
 ]);
 
-// Backward-compatible alias for existing imports that mean the nine core keys.
+// Backward-compatible alias for existing imports that mean the canonical core keys.
 export const REQUIRED_RUNTIME_ENV_KEYS = CORE_RUNTIME_ENV_KEYS;
 
 const unquote = (value) => {

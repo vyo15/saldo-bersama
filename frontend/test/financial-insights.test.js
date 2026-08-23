@@ -6,6 +6,12 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = (relative) => readFile(path.join(root, relative), "utf8");
+const sourceMany = (relatives) => Promise.all(relatives.map(source)).then((parts) => parts.join("\n"));
+const goalFeatureSource = () => sourceMany([
+  "src/features/goals/GoalsPage.jsx",
+  "src/features/goals/components/GoalCards.jsx",
+  "src/features/goals/components/GoalDialogs.jsx",
+]);
 
 test("halaman transaksi mengekspos filter rekening, kategori, dan pencatat", async () => {
   const page = await source("src/features/transactions/TransactionsPage.jsx");
@@ -85,7 +91,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
       source("src/features/recurring/useRecurringActions.js"),
       source("src/features/recurring/RecurringDialogs.jsx"),
     ]).then((parts) => parts.join("\n")),
-    source("src/features/goals/GoalsPage.jsx"),
+    goalFeatureSource(),
     Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx"), source("src/features/budgets/components/BudgetInsightCard.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
   ]);
@@ -129,7 +135,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
 });
 
 test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", async () => {
-  const goals = await source("src/features/goals/GoalsPage.jsx");
+  const goals = await goalFeatureSource();
   assert.match(goals, /remaining_amount/);
   assert.match(goals, /required_monthly_amount/);
   assert.match(goals, /pace_status/);
@@ -137,7 +143,7 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", 
 
 test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis", async () => {
   const [goals, allocations, recurring, members, dashboard, transactions, reports] = await Promise.all([
-    source("src/features/goals/GoalsPage.jsx"),
+    goalFeatureSource(),
     Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationOverviewLayer.jsx")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringSchedule.jsx"),
     source("src/features/settings/MembersSettingsPage.jsx"),
@@ -263,7 +269,7 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
     source("src/features/allocations/AllocationsPage.jsx"),
     source("src/features/allocations/AllocationFundingFlow.jsx"),
     source("src/features/allocations/AllocationNoticesLayer.jsx"),
-    source("src/features/goals/GoalsPage.jsx"),
+    goalFeatureSource(),
     source("src/features/recurring/RecurringPage.jsx"),
     source("src/features/reconciliations/ReconciliationsPage.jsx"),
     source("src/features/settings/PeriodControlPage.jsx"),

@@ -26,10 +26,14 @@ import {
 } from "../../scripts/runtime-environment.mjs";
 import { createVapidTestEnvironment, createVapidTestKeyPair } from "../helpers/vapid-test-keys.js";
 
-const coreValues = () => Object.fromEntries([...CORE_RUNTIME_ENV_KEYS, ...OPTIONAL_LOGGING_ENV_KEYS].map((key) => [key, `${key.toLowerCase()}-value`]));
+const coreValues = (databaseEnvironment = "production") => {
+  const values = Object.fromEntries([...CORE_RUNTIME_ENV_KEYS, ...OPTIONAL_LOGGING_ENV_KEYS].map((key) => [key, `${key.toLowerCase()}-value`]));
+  values.DATABASE_ENVIRONMENT = databaseEnvironment;
+  return values;
+};
 const validWebPushValues = () => createVapidTestEnvironment();
-const canonicalValues = () => ({
-  ...coreValues(),
+const canonicalValues = (databaseEnvironment = "production") => ({
+  ...coreValues(databaseEnvironment),
   GOOGLE_OAUTH_CLIENT_SECRET: "oauth-client-secret-at-least-32-characters",
   GOOGLE_BRIDGE_WEB_APP_URL: "https://script.google.com/macros/s/test/exec",
   GOOGLE_BRIDGE_SHARED_SECRET: "g".repeat(40),
@@ -55,11 +59,11 @@ test("fixture VAPID selalu menghasilkan private scalar 32 byte", () => {
 });
 
 test("sinkronisasi Vercel mencakup core, logging, dan grup integrasi Production", () => {
-  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 9);
+  assert.equal(CORE_RUNTIME_ENV_KEYS.length, 10);
   assert.deepEqual(OPTIONAL_LOGGING_ENV_KEYS, ["LOG_LEVEL"]);
   assert.deepEqual(PRODUCTION_ENV_KEYS, PRODUCTION_SYNC_ENV_KEYS);
   assert.deepEqual(PRODUCTION_AUTH_ENV_KEYS, ["GOOGLE_OAUTH_CLIENT_SECRET"]);
-  assert.equal(PRODUCTION_ENV_KEYS.length, 17);
+  assert.equal(PRODUCTION_ENV_KEYS.length, 18);
   assert.deepEqual(new Set([...PUBLIC_PRODUCTION_KEYS, ...SENSITIVE_PRODUCTION_KEYS]), new Set(PRODUCTION_ENV_KEYS));
   assert.equal(validateProductionEnvironment(canonicalValues()).valid, true);
 });
@@ -74,6 +78,18 @@ test("sinkronisasi menolak key legacy dan environment core yang tidak lengkap", 
   assert.deepEqual(status.forbidden, ["APPS_SCRIPT_WEB_APP_URL"]);
 });
 
+
+
+test("sinkronisasi menolak DATABASE_ENVIRONMENT silang sebelum menyentuh Vercel", () => {
+  const production = canonicalValues("development");
+  assert.equal(validateProductionEnvironment(production).valid, false);
+  assert.equal(validateProductionEnvironment(production).environmentMismatch, true);
+
+  const development = canonicalValues("production");
+  assert.equal(validateDevelopmentEnvironment(development).valid, false);
+  assert.equal(validateDevelopmentEnvironment(development).environmentMismatch, true);
+});
+
 test("Production mewajibkan OAuth client secret sedangkan Development tidak pernah menyinkronkannya", () => {
   const production = canonicalValues();
   delete production.GOOGLE_OAUTH_CLIENT_SECRET;
@@ -85,7 +101,7 @@ test("Production mewajibkan OAuth client secret sedangkan Development tidak pern
 });
 
 
-test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi sembilan core", async () => withTempProject(async (root) => {
+test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi core canonical", async () => withTempProject(async (root) => {
   const values = canonicalValues();
   delete values.LOG_LEVEL;
   assert.equal(validateProductionEnvironment(values).valid, true);
@@ -96,7 +112,7 @@ test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi sembilan co
     projectRunner: async () => {},
     runner: async (request) => calls.push(request),
   });
-  assert.equal(result.synced.length, 16);
+  assert.equal(result.synced.length, 17);
   assert.equal(calls.some(({ key }) => key === "LOG_LEVEL"), false);
 }));
 
@@ -180,7 +196,7 @@ test("runner Vercel memakai npx langsung pada platform non-Windows", () => {
 
 
 test("Development canonical menolak Web Push yang belum tersedia", () => {
-  const status = validateDevelopmentEnvironment(coreValues());
+  const status = validateDevelopmentEnvironment(coreValues("development"));
   assert.equal(status.valid, false);
   assert.deepEqual(status.missingWebPush, ["VITE_VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"]);
 });
@@ -222,7 +238,7 @@ test("sinkronisasi settings Development mewajibkan Web Push tetapi Google bridge
 }));
 
 test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap", async () => withTempProject(async (root) => {
-  const values = canonicalValues();
+  const values = canonicalValues("development");
   assert.equal(validateDevelopmentEnvironment(values).valid, true);
   await writeFile(path.join(root, ".env.local"), serialize(values));
   const calls = [];
@@ -238,7 +254,7 @@ test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap
 }));
 
 test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idempotent", async () => withTempProject(async (root) => {
-  const values = canonicalValues();
+  const values = canonicalValues("development");
   const envPath = path.join(root, ".env.local");
   await writeFile(envPath, serialize(values));
   let projectRuns = 0;
@@ -258,7 +274,7 @@ test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idem
 }));
 
 test("sinkronisasi Development membersihkan OIDC ketika pemeriksaan project gagal", async () => withTempProject(async (root) => {
-  const values = canonicalValues();
+  const values = canonicalValues("development");
   const envPath = path.join(root, ".env.local");
   await writeFile(envPath, serialize(values));
 
@@ -278,7 +294,7 @@ test("sinkronisasi Development membersihkan OIDC ketika pemeriksaan project gaga
 }));
 
 test("sinkronisasi Development menolak grup opsional parsial dan key OIDC", () => {
-  const values = coreValues();
+  const values = coreValues("development");
   values.GOOGLE_BRIDGE_WEB_APP_URL = "https://example.test/exec";
   values.VERCEL_OIDC_TOKEN = "temporary";
   const status = validateDevelopmentEnvironment(values);

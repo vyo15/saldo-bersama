@@ -1,5 +1,14 @@
 # Test Plan
 
+## Hardening v12
+
+- Schema Production harus versi 12 dan `database_environment` harus cocok dengan `DATABASE_ENVIRONMENT` serta `VERCEL_ENV`; cross-binding dan Preview bercredential harus fail-closed.
+- OAuth production memverifikasi state, nonce, dan PKCE S256; session v2 hanya valid bila registry verifier hash, user aktif, Firebase UID binding, dan role canonical cocok; `ALLOWED_USERS_JSON` hanya bootstrap owner. Uji list/revoke own session, IDOR antar-user, revoke-all, role change/deactivation revoke, dan forced legacy re-login.
+- `OUTCOME_UNKNOWN` harus memakai idempotency key yang sama setelah reload tanpa menyimpan payload finansial di browser storage.
+- Scheduler configured tanpa heartbeat sukses atau heartbeat stale harus membuat health degraded; public `/api/health` tetap hanya status/timestamp/requestId.
+- Backup v12 tidak membawa session/binding/heartbeat; restore v3-v11 tetap kompatibel dan restore sukses mencabut semua session lama.
+
+
 ## Kontrak test
 
 Gunakan dua lapis bukti otomatis:
@@ -14,18 +23,14 @@ Setiap bug/regression harus memiliki regression test yang gagal terhadap behavio
 ## Otomatis
 
 ```bash
-npm run validate:source
 npm run lint
-npm run lint:backend
 npm run test
-npm run test:guard
 npm run build
-npm run build:budget
-npm run check
+npm run verify
 npm run zip
 ```
 
-`npm run zip` adalah local release guard: perintah ini memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full `npm run verify` sebelum packaging. Jika salah satu lint/test/build/guard gagal, ZIP tidak dibuat. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` akan dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung karena check/guard sudah dijalankan pada step sebelumnya, sehingga full verification tidak diduplikasi.
+`npm run verify` adalah full gate tunggal: source validation, lint/syntax, frontend regression, production build, build budget, dan seluruh backend regression dengan coverage. Backend suite tidak dijalankan dua kali, dan guard security/governance tetap tercakup oleh suite canonical. `npm run zip` memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full verification sebelum packaging. PASS menghasilkan `saldo-bersama-clean.zip`; failure tetap menghasilkan exit non-zero, tetapi bila source canonical masih valid dibuat `saldo-bersama-UNVERIFIED.zip` diagnostik dengan laporan tersanitasi staging-only. Archive UNVERIFIED tidak boleh dipakai untuk release/deploy. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` tetap dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung setelah `npm run verify`, sehingga full verification tidak diduplikasi.
 
 
 
@@ -64,7 +69,7 @@ Manual QA untuk perubahan ini: 360×800, 390×844, 768×1024, 1366×768, light/d
 
 ### Backend coverage gate
 
-`npm run check` juga menjalankan `npm run test:coverage:backend` dengan Node built-in test coverage. Minimum canonical saat ini: **80% lines, 55% branches, 78% functions**. Coverage adalah blocking quality gate; jscpd tetap report-only/non-blocking dan tidak menggantikan behavioral test.
+`npm run verify` menjalankan seluruh backend test sekali dengan Node built-in test coverage. Minimum canonical saat ini: **80% lines, 55% branches, 78% functions**. Coverage adalah blocking quality gate; jscpd tetap report-only/non-blocking dan tidak menggantikan behavioral test.
 
 Cakupan wajib:
 
@@ -75,7 +80,7 @@ Cakupan wajib:
 - income/expense/transfer/refund/adjustment;
 - saldo historis per urutan transaksi, termasuk saldo minus sementara pada hari yang sama dan edit yang mempertahankan `created_at`;
 - row-version conflict dan idempotency replay;
-- guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, private-memory intent tanpa `localStorage`/`sessionStorage` untuk mutation biasa, payload berbeda pada action yang sama diblok selama outcome lama belum definitif, dengan satu pengecualian reset berupa opaque recovery idempotency key pada `sessionStorage` tab, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
+- guarded mutation: double-submit/coalescing, same-intent retry dengan idempotency key yang sama, `OUTCOME_UNKNOWN`, malformed successful response, persistent safe intent metadata tanpa payload finansial untuk mutation biasa, same-key retry setelah reload, payload berbeda pada action yang sama diblok selama outcome lama belum definitif, serta recovery/status opaque untuk reset, synchronous confirmation/browser-side lock, serta concurrent external reservation sebelum side effect;
 - human-error guard memastikan double-submit/coalescing tidak menghasilkan mutation intent ganda;
 - linked worktree release check: `.git` berbentuk file tidak gagal source validator dan clean archive tetap tidak bergantung pada `.env.local`;
 - personal/shared authorization dan IDOR;
@@ -83,12 +88,12 @@ Cakupan wajib:
 - account-bound allocation: Alokasi Dana baru wajib satu `source_account_id`; `balance` fisik tidak berubah saat alokasi dibuat; `allocated_remaining` dan `available_balance` harus membentuk pembagian saldo tanpa double counting; expense dengan Alokasi Dana mengurangi saldo + sisa Alokasi Dana tetapi menjaga dana bebas untuk bagian yang ter-cover; expense tanpa Alokasi Dana/Transfer mengurangi dana bebas dan ditolak jika mengambil dana Alokasi Dana; expense Alokasi Dana beda rekening ditolak; realokasi baru lintas rekening ditolak dan reversal movement legacy tetap dapat dipakai untuk recovery;
 - lifecycle allocation integrity: future-dated expense Alokasi Dana tidak membebaskan dana sebelum cutoff fisik, restore rule memeriksa dana tersedia terbaru, rule legacy tanpa sumber fail-closed, update/cancel/restore transaksi tidak boleh membuat `balance < allocated_remaining`, serta integrity mendeteksi source invalid, transaction source mismatch, active cross-account reallocation, dan `ALLOCATED_FUNDS_EXCEED_BALANCE`;
 - recurring occurrence skip/restore: hanya owner, reason + row_version + idempotency, tidak mengubah ledger/saldo, status cancelled persisted, pay ditolak sampai dipulihkan, archive/restore rule tidak menghapus skip;
-- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v11;
-- Manual reminder: create/get/update/cancel pada Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target; waktu Asia/Jakarta future maksimal 366 hari; satu reminder `scheduled` per actor+entity; stale `row_version` dan create concurrent ditolak; actor tidak boleh membuat reminder untuk personal/assignee milik user lain; scheduler queue sekali dengan dedupe stabil; `reminders.get` mengembalikan `lastDispatch`; dispatch `pending/processing/failed/missing` menolak reminder baru dengan `REMINDER_DELIVERY_PENDING` sedangkan `sent/dead_letter` terminal; archive/delete/complete/close/cancel membatalkan reminder `scheduled` secara atomik; integrity mendeteksi user/entity/queue reminder yang drift; reset/backup/restore schema v11 mencakup tabel reminder dan tetap menerima snapshot lama secara additive.
+- notification preferences: tujuh tipe default aktif, actor-only, stale version conflict, mute per user, scheduled queue filter, backup/restore schema v12;
+- Manual reminder: create/get/update/cancel pada Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target; waktu Asia/Jakarta future maksimal 366 hari; satu reminder `scheduled` per actor+entity; stale `row_version` dan create concurrent ditolak; actor tidak boleh membuat reminder untuk personal/assignee milik user lain; scheduler queue sekali dengan dedupe stabil; `reminders.get` mengembalikan `lastDispatch`; dispatch `pending/processing/failed/missing` menolak reminder baru dengan `REMINDER_DELIVERY_PENDING` sedangkan `sent/dead_letter` terminal; archive/delete/complete/close/cancel membatalkan reminder `scheduled` secara atomik; integrity mendeteksi user/entity/queue reminder yang drift; reset/backup/restore schema v12 mencakup tabel reminder dan tetap menerima snapshot lama secara additive.
 - feedback global: `aria-live`, dedupe, mobile safe-area, reduced motion, tanpa generic hard rollback/undo;
 - read snapshot consistency, maintenance recheck, outbox coalescing, stale worker lock ownership, scheduler replay guard, Calendar ScriptLock, dan duplicate managed-event self-healing;
 - formula injection dan valid XLSX;
-- backup checksum, preview expiry, safety backup, rollback restore, identity conflict, current allowlist precedence, push credential exclusion, reason + acknowledgement + exact restore phrase, serta preservation reservation `restore.apply` agar retry key yang sama mereplay hasil dan tidak menjalankan restore kedua;
+- backup checksum, preview expiry, safety backup, rollback restore, identity conflict, canonical `users` authorization precedence, push credential exclusion, reason + acknowledgement + exact restore phrase, serta preservation reservation `restore.apply` agar retry key yang sama mereplay hasil dan tidak menjalankan restore kedua;
 - import all-or-nothing: mixed valid/invalid wajib ditolak tanpa partial apply, `confirm_duplicate` dari file diabaikan, duplicate antarbaris serta saldo/Alokasi Dana diuji kumulatif saat preview, apply stale wajib rollback seluruh record, dan success wajib safety backup + integrity verification + audit;
 - service worker tanpa API cache, hanya menyimpan response navigation HTML sebagai app shell, tanpa offline write queue, dan memakai stale-while-revalidate untuk image URL stabil agar asset publik tidak tertahan versi lama setelah deploy; production OAuth desktop/mobile berjalan melalui `/api/auth/google/*` sehingga otomatis mengikuti network-only `/api/*`;
 - Web Push: secure context, localhost development, iOS Home Screen requirement, permission denied, VAPID invalid/partial/key-pair mismatch/localhost subject, endpoint SSRF guard pada hostname, port, IPv4-mapped IPv6, NAT64/transition range, dan hasil DNS, terminal disable untuk resolusi private, transfer akun hanya dengan key subscription cocok, status backend, immediate test rate limit, queue detail server-generated tetapi transport lock-screen hanya `notificationType`/`targetPath`/`notificationId`, recurring shortage H-2 + completion notification dengan copy generic privacy-safe, 404/410 expiry, custom DNS lookup all/single callback, request timeout, stale lock, dan delivery per perangkat tanpa duplicate retry, serta integrity guard ownership/status queue;
@@ -102,7 +107,7 @@ Cakupan wajib:
 - menu `Lainnya` tidak boleh menduplikasi `Tambah transaksi`; route `/rekonsiliasi` harus tersedia di kelompok Kontrol saldo dan form hanya muncul berdasarkan capability backend;
 - default metode pembayaran transaksi harus kosong, bukan nilai `transfer` tersembunyi; selector rekening utama harus memakai formatter provider/nama/pemilik yang konsisten;
 - manual device QA composer transaksi mobile pada 320/360/390/430px wajib memeriksa empat pilihan jenis transaksi tanpa wrapper ikon ganda, field nominal menyatu dan tidak overflow, selector rekening sumber langsung tampil tanpa Search/Lihat semua, rekening sumber Rp0 tersaring sesuai jenis transaksi, dan opsi Auto-debit tidak tersedia untuk transaksi manual baru;
-- login desktop wajib memilih artwork approved light/dark berdasarkan theme dan mempertahankan rasio 1672×941; panel auth desktop mengikuti visual login mobile dengan logo Saldo Bersama, copy ringkas, security hints, serta tombol HTML branded Google yang sama. Login mobile ≤820px wajib memiliki tepat empat halaman (tiga onboarding + login khusus), tiga onboarding memakai hero card clean dengan aset transparan terpisah, tanpa pill fitur di bawah deskripsi, tidak meniban area copy, serta muat satu layar tanpa scroll vertikal internal pada viewport mobile yang didukung. Desktop dan halaman login mobile tidak merender tombol/iframe Google Identity Services. Module auth Google wajib dipreload sebelum tombol aktif; production canonical menavigasi ke server Google OAuth `/api/auth/google/start` dan localhost/device emulation memakai Firebase popup fallback tanpa mengubah kontrak session/allowlist. Manual device QA memeriksa tombol branded tunggal, target sentuh minimum 44px, desktop alignment, satu-layar pada viewport mobile relevan, swipe/keyboard, creator link, theme toggle, reduced motion, dan round-trip auth pada perangkat nyata;
+- login desktop wajib memilih artwork approved light/dark berdasarkan theme dan mempertahankan rasio 1672×941; panel auth desktop mengikuti visual login mobile dengan logo Saldo Bersama, copy ringkas, security hints, serta tombol HTML branded Google yang sama. Login mobile ≤820px wajib memiliki tepat empat halaman (tiga onboarding + login khusus), tiga onboarding memakai hero card clean dengan aset transparan terpisah, tanpa pill fitur di bawah deskripsi, tidak meniban area copy, serta muat satu layar tanpa scroll vertikal internal pada viewport mobile yang didukung. Desktop dan halaman login mobile tidak merender tombol/iframe Google Identity Services. Module auth Google wajib dipreload sebelum tombol aktif; production canonical menavigasi ke server Google OAuth `/api/auth/google/start` dan localhost/device emulation memakai Firebase popup fallback tanpa mengubah kontrak session/registry `users`. Manual device QA memeriksa tombol branded tunggal, target sentuh minimum 44px, desktop alignment, satu-layar pada viewport mobile relevan, swipe/keyboard, creator link, theme toggle, reduced motion, dan round-trip auth pada perangkat nyata;
 - resource enabled pada initial `idle` wajib dipresentasikan sebagai loading agar page tidak berkedip dari konten kosong ke loading screen;
 - gzip bundle dan source archive tetap di bawah budget.
 
@@ -226,7 +231,7 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
 - Saat Modal mutation kritis memakai `dismissible=false`, tombol X harus disabled, Escape/backdrop/swipe tidak menutup dialog, tetapi Tab/Shift+Tab dan focus trap tetap berfungsi.
 - Loading di dalam shell tidak boleh merender nested `main`; loading panel/inline tidak boleh mengambil tinggi satu viewport. Empty/error inline harus tetap compact pada mobile.
-- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive, migration v10 menambah `manual_reminders`, dan migration v11 menambah `transactions.cost_share_mode` + `cost_share_json`; restore runtime v11 tetap menerima backup schema v3-v10; field provider/template yang belum ada dinormalisasi secara aman dan preference default aktif dipertahankan untuk backup lama.
+- Migration v5 menerima enum template bank valid, migration v6 menambah delivery Web Push per subscription, migration v7 menambah notification preference actor-scoped, dan migration v8 menambah `ewallet_template` additive. Migration v9 menambah `envelope_rules.assignee_user_id` additive, migration v10 menambah `manual_reminders`, dan migration v11 menambah `transactions.cost_share_mode` + `cost_share_json`; restore runtime v12 tetap menerima backup schema v3-v11; field additive yang belum ada dinormalisasi secara aman, session registry tidak dipulihkan, dan preference default aktif dipertahankan untuk backup lama.
 - Alokasi assigned harus memisahkan `assignee_user_id` dari ownership ledger: Member hanya dapat memakai/memindahkan Jatah Bersama atau jatah sendiri, rekening personal mengunci penerima ke pemilik rekening, notifikasi assigned hanya menuju penerima, dan penonaktifan user diblok bila masih ada jatah aktif.
 - Budget personal harus dihitung hanya dari transaksi personal user terkait, tidak boleh dipakai sebagai substitusi jatah per orang dari rekening Bersama, dan user dengan Budget personal aktif tidak dapat dinonaktifkan.
 - Sidebar melengkung harus tetap terlihat, target sentuh minimal 44px, submenu minimal dapat ditutup, dan menu mobile tidak menduplikasi theme toggle.
@@ -240,7 +245,7 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Penutupan Alokasi Dana wajib menguji `unallocated` dengan sisa dan tanpa sisa, `carry` dengan sisa dan Rp0, serta memastikan rule aktif selalu memiliki periode aktif berikutnya. Periode `unallocated` berikutnya harus mulai Rp0; `carry` hanya boleh membawa sisa aktual dan tidak boleh menciptakan uang baru.
 - `reuse_needs=true` wajib menguji copy Kebutuhan aktif ke bulan berikutnya, skip saat identitas target sudah ada, tidak memulihkan atau menimpa target secara diam-diam, dan tidak menyalin transaksi, saldo, pemakaian, atau dana Alokasi. `reuse_needs=false` tidak boleh membuat Kebutuhan baru.
 - Status Kebutuhan pada detail Alokasi Dana dan overview Anggaran wajib memakai presentation contract yang sama untuk `Aman`, `Pemakaian cepat`, `Hampir habis`, `Anggaran habis`, dan `Melebihi anggaran`.
-- Shared planning Member harus diuji positif untuk Alokasi Dana/adjustment/Kebutuhan/Target/Jadwal Rutin shared dan negatif untuk scope personal serta lifecycle destruktif.
+- Shared planning Member harus diuji positif untuk Alokasi Dana/adjustment/Kebutuhan/Target/Jadwal Rutin shared. Kebutuhan juga wajib diuji positif pada scope personal milik Member sendiri dan negatif untuk personal pengguna lain; Alokasi Dana/Target/Jadwal Rutin personal serta lifecycle destruktif tetap negatif.
 - Cost sharing schema v11 harus menguji `unspecified`, `equal`, `percentage`, total 100%, rounding integer deterministik, edit nominal, report aggregation, audit, integrity, backup/restore, dan bahwa split tidak mengubah saldo di luar expense canonical. Regression juga wajib membuktikan participant/basis snapshot transaksi lama tetap stabil ketika roster user berubah dan pembayaran occurrence Jadwal Rutin shared memakai kontrak split yang sama.
 - Dashboard wajib membedakan `unallocatedFunds` dari `unallocatedExpenseAmount`/`unallocatedCount`; free funds harus tetap tampil walau jumlah expense tanpa Alokasi Dana nol.
 - Label pemilik wajib konsisten pada filter transaksi, account breakdown, reconciliation history, dan reconciliation alert.
@@ -265,7 +270,7 @@ Regression wajib membuktikan:
 - audit delete-unused tetap ada dan nomor rekening penuh tidak dicatat;
 - rekening/kategori arsip dapat dipulihkan bila duplicate/ownership/version guard lulus;
 - transaksi cancelled hanya dapat dipulihkan owner pada periode terbuka, unlinked, dan dengan proyeksi saldo valid;
-- user inactive hanya dapat aktif melalui `users.reactivate` dan allowlist terbaru;
+- user inactive hanya dapat aktif melalui `users.reactivate` dengan row version, alasan, audit, dan registry `users` canonical;
 - tutup periode membutuhkan preview dan exact confirmation, lalu memvalidasi ulang integrity/unallocated transaction;
 - ConfirmationModal memerlukan alasan/typed phrase/acknowledgement/countdown sesuai tingkat risiko dan mencegah submit Enter tidak sengaja;
 - destructive UI tidak menghilangkan data sebelum server sukses dan menampilkan conflict secara jelas;
@@ -287,7 +292,7 @@ Regression wajib membuktikan:
 - `npm-audit-YYYYMMDD.json` adalah diagnostic lokal: boleh berada sementara di working directory, wajib di-ignore Git/source validator, dan **tidak boleh** masuk clean ZIP. Validator dan packager memakai policy local-only yang sama.
 - `cache.js` dan `client.js` wajib memakai serializer canonical yang sama agar query key dan mutation fingerprint tidak drift ketika urutan property payload berubah.
 - Helper versioning mengekstrak stamp update (`row_version`/`updated_at`/`updated_by`) dan create (`row_version`/`created_*`/`updated_*`) yang benar-benar identik; ownership (`scope`, `owner_user_id`, `owner_scope`), optimistic `WHERE row_version=?`, reversal metadata, dan business transition tetap eksplisit di service domain.
-- `npm run check:duplicates` memakai jscpd pinned dan **report-only/non-blocking**. Prioritas refactor adalah clone JavaScript/JSX yang berisiko drift; migration SQL dan CSS module deklaratif tidak dikejar hanya demi persentase.
+- GitHub Quality menjalankan jscpd pinned `4.2.5` secara langsung dan **report-only/non-blocking**. Prioritas refactor adalah clone JavaScript/JSX yang berisiko drift; migration SQL dan CSS module deklaratif tidak dikejar hanya demi persentase.
 - Feedback transient success/info/warning memakai `FeedbackProvider`; error mutation, conflict, maintenance/read-only, backup/restore/import, dan status integrasi yang perlu tetap terlihat memakai notice persisten. Generic hard undo/rollback tidak tersedia; reversal finansial tetap action domain audited.
 - Recurring occurrence mutation wajib enqueue Calendar dengan `recurring_occurrence:<occurrence_id>` dan mirror recurring melalui `<recurring_rule_id>`; pay/reverse/skip/restore harus memakai identitas sinkronisasi yang sama.
 
@@ -305,11 +310,11 @@ Regression wajib membuktikan:
 ## Web Push desktop dan mobile
 
 - `system.health` pada Pengaturan wajib memakai `status`, `schemaVersion`, dan `maintenanceMode`; test menolak akses `database` serta `schema.ready` pada response action tersebut.
-- Schema Production harus versi 11 dan `npm run db:integrity` harus lulus sebelum register subscription.
+- Schema Production harus versi 12 dan `npm run db:integrity` harus lulus sebelum register subscription.
 - `npm run env:check` wajib memvalidasi pasangan `VITE_VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` serta format `VAPID_SUBJECT`.
 - Bootstrap Development interaktif wajib menarik ulang Vercel Development walaupun `.env.local` lama terlihat lengkap; hasil pull mengganti file hanya setelah sembilan core + Web Push lolos validasi.
 - Mode non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
-- `env:push:development:settings` wajib menyinkronkan Web Push dan Google bridge yang aktif tanpa menyentuh core environment.
+- `npm run env:push:development -- --settings-only` wajib menyinkronkan Web Push dan Google bridge yang aktif tanpa menyentuh core environment.
 - Setelah `npm run env:push:production`, deployment Production baru wajib dibuat. Bundle lama tidak boleh dianggap menggunakan key baru.
 - Desktop Chrome/Edge dan Android Chrome: Aktifkan, izin granted, register server, verifikasi otomatis, click membuka `/pengaturan/notifikasi`, Nonaktifkan, dan register ulang.
 - iPhone/iPad: tab Safari harus menampilkan instruksi Home Screen; aplikasi standalone iOS/iPadOS yang mendukung harus dapat meminta izin melalui ketukan tile dan menerima verifikasi otomatis.
@@ -323,8 +328,8 @@ Full reset harus diuji pada database terisolasi: preview mencakup accounts/categ
 
 ## Login Google mobile
 
-- Desktop dan mobile memakai satu tombol HTML branded Google milik Saldo Bersama dan tidak memakai `google.accounts.id.renderButton()`. Pada production canonical, tombol menavigasi ke `/api/auth/google/start`; server membuat signed OAuth transaction state/nonce berumur singkat, Google kembali ke `/api/auth/google/callback`, server menukar authorization code ke Google ID token lalu ke Firebase ID token melalui Identity Toolkit, dan verifier Firebase + allowlist/role existing membuat server session. Localhost/device emulation memakai `signInWithPopup` + in-memory persistence sebagai fallback development. Backend session tetap menjadi authority.
-- Tombol disabled selama auth/session diproses, mencegah double-submit, dan menampilkan error ramah tanpa raw provider error. Production tidak memakai Firebase browser redirect state. Server callback wajib memverifikasi signed `state`, `nonce`, audience/issuer/expiry binding, tidak menyimpan Google access/refresh token, menolak open redirect, dan hanya membuat session setelah Firebase ID token diverifikasi serta allowlist/role backend lolos. `VITE_FIREBASE_AUTH_DOMAIN=saldo-bersama.firebaseapp.com` tetap public config untuk popup development/compatibility; OAuth redirect URI production wajib `https://saldo-bersama.vercel.app/api/auth/google/callback` dan `GOOGLE_OAUTH_CLIENT_SECRET` wajib Production Sensitive.
+- Desktop dan mobile memakai satu tombol HTML branded Google milik Saldo Bersama dan tidak memakai `google.accounts.id.renderButton()`. Pada production canonical, tombol menavigasi ke `/api/auth/google/start`; server membuat signed OAuth transaction state/nonce berumur singkat beserta PKCE S256 challenge, Google kembali ke `/api/auth/google/callback`, server menukar authorization code + `code_verifier` ke Google ID token lalu ke Firebase ID token melalui Identity Toolkit, dan verifier Firebase + registry `users` canonical membuat registered server session. Localhost/device emulation memakai `signInWithPopup` + in-memory persistence sebagai fallback development. Backend session tetap menjadi authority.
+- Tombol disabled selama auth/session diproses, mencegah double-submit, dan menampilkan error ramah tanpa raw provider error. Production tidak memakai Firebase browser redirect state. Server callback wajib memverifikasi signed `state`, `nonce`, PKCE, audience/issuer/expiry binding, tidak menyimpan Google access/refresh token, menolak open redirect, dan hanya membuat session setelah Firebase ID token diverifikasi serta status/role/binding registry `users` backend lolos. `VITE_FIREBASE_AUTH_DOMAIN=saldo-bersama.firebaseapp.com` tetap public config untuk popup development/compatibility; OAuth redirect URI production wajib `https://saldo-bersama.vercel.app/api/auth/google/callback` dan `GOOGLE_OAUTH_CLIENT_SECRET` wajib Production Sensitive.
 - Network, unauthorized-domain, web-storage, provider error, dan redirect-result-missing tetap kembali ke halaman login dengan copy aman dan dapat dicoba ulang. Progress bar, counter langkah, serta tombol back visual tidak tampil pada seluruh flow mobile.
-- Desktop dan mobile memakai tombol HTML branded yang sama. Production memakai server OAuth callback, localhost/device emulation memakai Firebase popup. Backend allowlist, role, dan verifikasi Firebase ID token tetap source of truth.
+- Desktop dan mobile memakai tombol HTML branded yang sama. Production memakai server OAuth callback, localhost/device emulation memakai Firebase popup. Backend registry `users`, role/status, binding UID, dan verifikasi Firebase ID token tetap source of truth.
 - Production manual QA wajib memastikan `saldo-bersama.vercel.app` ada di Firebase Authorized Domains, Google provider aktif, OAuth Web Client memuat `https://saldo-bersama.vercel.app/api/auth/google/callback`, dan `GOOGLE_OAUTH_CLIENT_SECRET` tersedia pada Vercel Production Sensitive, lalu menguji round-trip pada Android Chrome dan iPhone Safari/Home Screen bila tersedia. Responsive emulation desktop tidak dianggap bukti real-device karena localhost tetap menggunakan popup fallback. Evidence Vercel yang diharapkan: `session.oauth.start` → callback `session.login` dengan `flow=google-oauth-server` status 200 → `GET /api/session` 200; production desktop/mobile tidak lagi mengandalkan client `POST /api/session`.

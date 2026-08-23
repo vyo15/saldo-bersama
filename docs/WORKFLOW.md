@@ -64,11 +64,11 @@ Default full local gate setelah setiap patch:
 npm run verify
 ```
 
-`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan `npm run check` dan `npm run test:guard`. Ia tidak menjalankan `npm ci` atau menghapus dependency. Browser automation telah dipensiunkan dari quality gate; UI/responsive diperiksa dengan regression frontend dan manual device QA sesuai scope.
+`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, serta seluruh backend regression satu kali dengan coverage. Guard security/governance sudah berada di suite frontend/backend sehingga tidak ada re-run `test:guard` terpisah. Ia tidak menjalankan `npm ci` atau menghapus dependency. Browser automation telah dipensiunkan dari quality gate; UI/responsive diperiksa dengan regression frontend dan manual device QA sesuai scope.
 
-`npm run check` tetap menjadi gate inti yang mencakup source validation, lint, frontend/backend tests, production build, build budget, dan backend coverage. Build + budget dijalankan sebelum coverage backend agar kegagalan bundle/source frontend muncul lebih cepat dan tidak membuang waktu pada coverage yang mahal. Gunakan command penyusun secara terarah hanya untuk diagnosis kegagalan atau bila scope membutuhkan test tambahan.
+Command `lint`, `test`, dan `build` tetap tersedia untuk diagnosis terarah. Full gate hanya memiliki satu entry point publik, `npm run verify`, supaya contributor tidak perlu memilih antara beberapa alias yang fungsinya bertumpuk. Build + budget dijalankan sebelum backend coverage agar kegagalan bundle/source frontend muncul lebih cepat dan tidak membuang waktu pada coverage yang mahal.
 
-Build-budget checker juga memberi warning saat main JS, global CSS, atau route chunk mencapai 90% batas. Warning bukan kegagalan gate, tetapi wajib dianggap sinyal headroom rendah dan dipertimbangkan untuk lazy boundary/ekstraksi sebelum feature berikutnya. Jika build budget gagal, jangan ubah threshold sebagai shortcut. Audit route chunk, static dependency import, CSS global, dan asset tidak terpakai. Auth Google tetap lazy: production canonical desktop/mobile memakai Google OAuth Authorization Code flow server-side melalui `/api/auth/google/start` dan `/api/auth/google/callback`, sedangkan localhost/device emulation memakai Firebase popup fallback. Perubahan auth wajib ikut security/deployment regression, menguji state/nonce, redirect internal, Google→Firebase token exchange, backend allowlist/session, dan tidak boleh memindahkan authorization dari backend. Verification wrapper selalu membersihkan generated build/test output sesudah PASS maupun gagal, sehingga retry dimulai dari artefak bersih tanpa menghapus dependency atau env lokal.
+Build-budget checker juga memberi warning saat main JS, global CSS, atau route chunk mencapai 90% batas. Warning bukan kegagalan gate, tetapi wajib dianggap sinyal headroom rendah dan dipertimbangkan untuk lazy boundary/ekstraksi sebelum feature berikutnya. Jika build budget gagal, jangan ubah threshold sebagai shortcut. Audit route chunk, static dependency import, CSS global, dan asset tidak terpakai. Auth Google tetap lazy: production canonical desktop/mobile memakai Google OAuth Authorization Code flow server-side melalui `/api/auth/google/start` dan `/api/auth/google/callback`, sedangkan localhost/device emulation memakai Firebase popup fallback. Perubahan auth wajib ikut security/deployment regression, menguji state/nonce, PKCE S256 (`code_challenge`/`code_verifier`), redirect internal, Google→Firebase token exchange, registry `users`/`user_sessions` backend, dan tidak boleh memindahkan authorization dari backend. Verification wrapper selalu membersihkan generated build/test output sesudah PASS maupun gagal, sehingga retry dimulai dari artefak bersih tanpa menghapus dependency atau env lokal.
 
 ```bash
 npm run db:integrity   # hanya bila operasi DB memang disetujui
@@ -96,8 +96,26 @@ Jika user meminta patch ZIP, isi hanya file berubah dengan path asli. Jangan ser
 
 ### 8. Clean source ZIP
 
-`npm run zip` menghasilkan archive source canonical yang fail-closed. Root/path arbitrary, patch/diff, export CSV/XLSX, database dump, env lokal, secret, dependency, dan build output tidak boleh masuk.
+`npm run zip` selalu menjalankan full verification terlebih dahulu. Jika PASS, archive verified `saldo-bersama-clean.zip` dibuat. Jika verification gagal tetapi source masih canonical, command tetap exit non-zero namun membuat `saldo-bersama-UNVERIFIED.zip` khusus diagnosis dan menambahkan `docs/UNVERIFIED_BUILD_REPORT.md` hanya ke staging archive. Archive UNVERIFIED tidak boleh dipakai untuk release/deploy dan tidak menghapus clean ZIP verified terakhir. Root/path arbitrary, patch/diff, export CSV/XLSX, database dump, env lokal, secret, dependency, dan build output tetap tidak boleh masuk.
 
 ## Keputusan
 
 Prioritas selalu: security/privacy -> data integrity/saldo -> correctness -> accessibility/UX -> maintainability -> cosmetic cleanup. Warning complexity bukan alasan untuk refactor massal tanpa manfaat dan coverage yang memadai.
+## Refactor maintainability
+
+Urutan untuk refactor struktur/maintainability:
+
+```text
+source aktual
+→ identifikasi invariant dan public contract
+→ temukan test characterization/regression
+→ tambah test bila contract kritis belum terkunci
+→ extract satu responsibility pada satu waktu
+→ jalankan targeted regression
+→ cek dependency/circular import
+→ sinkronkan docs
+→ full quality gate
+```
+
+Refactor tidak boleh memakai perubahan behavior sebagai jalan pintas. Stable facade dipertahankan bila consumer sudah bergantung pada service/action public. Comment/JSDoc mengikuti `docs/CODE_MAINTAINABILITY.md`; targetnya rationale yang tahan lama, bukan comment pada setiap function.
+

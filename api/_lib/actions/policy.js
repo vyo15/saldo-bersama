@@ -1,3 +1,11 @@
+/**
+ * Action policy is security/integrity metadata, not presentation metadata.
+ * - mode: read | write | external side effect
+ * - maintenanceAllowed: action may run while maintenance mode is active
+ * - idempotencyRequired: caller intent must carry a stable idempotency key
+ * - retryUnknownSafe: an external operation may resume after an unknown outcome
+ * - snapshot: read must observe one consistent database snapshot
+ */
 const definePolicy = (mode, { maintenanceAllowed = false, idempotencyRequired = false, retryUnknownSafe = false, snapshot = false } = {}) => Object.freeze({
   mode,
   maintenanceAllowed,
@@ -19,6 +27,9 @@ export const ACTION_POLICIES = Object.freeze({
   "users.upsert": write(),
   "users.deactivate": write(),
   "users.reactivate": write(),
+  "sessions.listOwn": read(),
+  "sessions.revokeOwn": write(),
+  "sessions.revokeAllOwn": write(),
   "audit.list": read({ maintenanceAllowed: true }),
   "archive.list": snapshotRead(),
   "dashboard.overview": snapshotRead(),

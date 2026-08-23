@@ -17,7 +17,7 @@ Web Push memperjelas masalah tersebut. Production sudah memiliki pasangan VAPID,
 - Pull selalu menuju file sementara, disanitasi, divalidasi, lalu ditulis atomik ke `.env.local`.
 - Development canonical memerlukan delapan core key dan satu grup Web Push lengkap/valid. Google bridge tetap opsional, tetapi bila aktif harus lengkap.
 - Pasangan VAPID Development harus sama dengan Production **hanya selama** kedua runtime masih memakai database subscription Turso yang sama. Setelah database Development terisolasi, VAPID dapat dipisahkan/dirotasi per environment melalui workflow reviewed.
-- `npm run env:push:development:settings` tersedia untuk menyinkronkan hanya Web Push dan Google bridge yang aktif, tanpa menyentuh Turso, allowlist, Firebase, atau session.
+- `npm run env:push:development -- --settings-only` tersedia untuk menyinkronkan hanya Web Push dan Google bridge yang aktif, tanpa menyentuh Turso, allowlist, Firebase, atau session.
 - `VERCEL_OIDC_TOKEN`, key legacy, duplikat, dan grup opsional parsial tidak boleh bertahan.
 - File lokal lama dipertahankan ketika refresh gagal, tetapi interactive `npm run dev` tetap fail closed dan server tidak dijalankan dengan konfigurasi yang belum terverifikasi terhadap Development terbaru.
 - Non-interactive execution tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.

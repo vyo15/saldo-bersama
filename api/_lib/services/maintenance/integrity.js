@@ -1,3 +1,4 @@
+/** Integrity checks validate canonical financial/storage invariants and must not repair data silently. */
 import { appendAudit } from "../audit.js";
 import { runIntegrity } from "../reporting/index.js";
 import { assertOwner, nowIso } from "../core.js";

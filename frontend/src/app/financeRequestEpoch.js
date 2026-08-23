@@ -1,3 +1,7 @@
+/**
+ * Per-session request epochs prevent slower responses from an older refresh/session from
+ * overwriting newer finance state after navigation, refresh, logout, or login.
+ */
 const FINANCE_RESOURCES = Object.freeze(["bootstrap", "overview"]);
 
 export const createFinanceRequestEpoch = () => ({

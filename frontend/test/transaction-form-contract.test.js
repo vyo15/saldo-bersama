@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const source = () => readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8");
+const source = () => Promise.all([
+  "../src/features/transactions/TransactionForm.jsx",
+  "../src/features/transactions/components/TransactionFields.jsx",
+  "../src/features/transactions/components/TransactionImpactPreview.jsx",
+  "../src/features/transactions/components/TransactionPostSaveModal.jsx",
+].map((relative) => readFile(new URL(relative, import.meta.url), "utf8"))).then((parts) => parts.join("\n"));
 
 test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori wajib sesuai validator", async () => {
   const text = await source();

@@ -25,7 +25,7 @@ Kebijakan ini mencegah kehilangan histori, saldo tidak konsisten, dan kesalahan 
 | Tagihan rutin/recurring rule | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `recurring.deleteUnusedRule` bila semua child hanyalah future generated projections yang belum pernah materialized/paid/skipped/cancelled |
 | Target tabungan | Arsipkan bila pernah dipakai | Administrator dapat memulihkan goal | Hanya `goals.deleteUnused` bila saldo progres = 0 dan tidak ada movement/transaksi semua status |
 | Anggaran | Arsipkan bila pernah menjadi histori planning | Administrator dapat memulihkan budget | Hanya `budgets.deleteUnused` bila tidak ada transaksi terkait dan tidak ada histori period closure |
-| Member | Nonaktifkan | Reaktivasi eksplisit setelah allowlist diverifikasi | Dilarang dari UI harian |
+| Member | Nonaktifkan | Reaktivasi eksplisit oleh Administrator dengan row version + alasan + audit | Dilarang dari UI harian |
 | Periode | Tutup | Buka kembali berurutan dengan alasan | Dilarang |
 | Audit dan rekonsiliasi | Tambah record koreksi baru | Tidak berlaku | Dilarang |
 
@@ -111,7 +111,7 @@ Administrator hanya dapat memulihkan transaksi bila periode masih terbuka, reken
 
 ### Member nonaktif
 
-Reaktivasi harus memakai action eksplisit. Email dan role wajib masih cocok dengan `ALLOWED_USERS_JSON`; `users.upsert` tidak boleh secara diam-diam mengaktifkan pengguna lama.
+Reaktivasi harus memakai action eksplisit. Email, role, status, dan row version diverifikasi terhadap tabel `users`; `users.upsert` tidak boleh secara diam-diam mengaktifkan pengguna lama. Reaktivasi tidak memerlukan perubahan `ALLOWED_USERS_JSON`. Restore finansial tidak boleh mengubah authorization dari snapshot: user yang sudah ada mempertahankan role/status/UID canonical saat ini, user yang hanya ada di backup dipulihkan sebagai inactive tanpa UID, dan user canonical yang tidak ada di backup tetap dipertahankan.
 
 ## Tingkat konfirmasi UI
 

@@ -22,6 +22,7 @@ export const PUBLIC_PRODUCTION_KEYS = Object.freeze([
   "VITE_FIREBASE_API_KEY",
   "VITE_FIREBASE_AUTH_DOMAIN",
   "ALLOWED_ORIGINS",
+  "DATABASE_ENVIRONMENT",
   "GOOGLE_BRIDGE_WEB_APP_URL",
   "VITE_VAPID_PUBLIC_KEY",
   "VAPID_SUBJECT",
@@ -48,13 +49,15 @@ export const validateProductionEnvironment = (values = {}) => {
   const forbidden = forbiddenKeys.filter((key) => Object.hasOwn(values, key));
   const googleBridge = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);
   const webPush = validateWebPushEnvironment(values);
+  const environmentMismatch = String(values.DATABASE_ENVIRONMENT || "").trim().toLowerCase() !== "production";
   const incompleteGoogleBridge = googleBridge.enabled && !googleBridge.complete ? googleBridge.missing : [];
   const incompleteWebPush = webPush.enabled && !webPush.complete ? webPush.missing : [];
   const invalidWebPush = webPush.complete ? webPush.invalid : [];
   return {
-    valid: !missing.length && !forbidden.length && !incompleteGoogleBridge.length && !incompleteWebPush.length && !invalidWebPush.length,
+    valid: !missing.length && !forbidden.length && !environmentMismatch && !incompleteGoogleBridge.length && !incompleteWebPush.length && !invalidWebPush.length,
     missing,
     forbidden,
+    environmentMismatch,
     incompleteGoogleBridge,
     incompleteWebPush,
     invalidWebPush,
@@ -137,6 +140,7 @@ export const pushProductionEnvironment = async ({
     const messages = [];
     if (status.missing.length) messages.push(`key wajib belum lengkap: ${status.missing.join(", ")}`);
     if (status.forbidden.length) messages.push(`key legacy terdeteksi: ${status.forbidden.join(", ")}`);
+    if (status.environmentMismatch) messages.push("DATABASE_ENVIRONMENT untuk Production wajib bernilai production");
     if (status.incompleteGoogleBridge.length) messages.push(`Google bridge belum lengkap: ${status.incompleteGoogleBridge.join(", ")}`);
     if (status.incompleteWebPush.length) messages.push(`Web Push belum lengkap: ${status.incompleteWebPush.join(", ")}`);
     if (status.invalidWebPush.length) messages.push(`Web Push tidak valid: ${status.invalidWebPush.join(", ")}`);

@@ -38,16 +38,14 @@ jobs:
             git diff --check
           fi
       - run: npm ci
-      - name: Run project checks
+      - name: Run canonical verification
         env:
           VITE_GOOGLE_CLIENT_ID: ci-quality.apps.googleusercontent.com
           VITE_FIREBASE_API_KEY: ci-quality-public-key
           VITE_FIREBASE_AUTH_DOMAIN: saldo-bersama.firebaseapp.com
-        run: npm run check
-      - name: Guarded mutation regression
-        run: npm run test:guard
+        run: npm run verify
       - name: Duplication report (non-blocking)
         continue-on-error: true
-        run: npm run check:duplicates
+        run: npx --yes jscpd@4.2.5 --config .jscpd.json api frontend/src scripts test
       - name: Verify clean source archive
         run: node scripts/create-clean-archive.mjs "$RUNNER_TEMP/saldo-bersama-clean.zip"

@@ -31,9 +31,15 @@ export const assertOwnedAccess = (actor, row) => {
   if (actor.role !== "owner" && row.scope === "personal" && row.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_PERSONAL_DATA","Data pribadi ini bukan milik pengguna aktif.",403);
 };
 
-export const assertPlanningManageScope = (actor, row) => {
+export const assertPlanningManageScope = (actor, row, { allowOwnedPersonal = false } = {}) => {
   if (actor.role === "owner") return;
-  if (row?.scope !== "shared" || row?.owner_user_id) {
-    throw appError("SHARED_PLANNING_ONLY", "Member hanya dapat mengelola perencanaan Bersama.", 403);
-  }
+  if (row?.scope === "shared" && !row?.owner_user_id) return;
+  if (allowOwnedPersonal && row?.scope === "personal" && row?.owner_user_id === actor?.user_id) return;
+  throw appError(
+    "SHARED_PLANNING_ONLY",
+    allowOwnedPersonal
+      ? "Member hanya dapat mengelola Kebutuhan Bersama atau personal miliknya sendiri."
+      : "Member hanya dapat mengelola perencanaan Bersama.",
+    403,
+  );
 };

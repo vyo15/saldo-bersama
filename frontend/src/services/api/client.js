@@ -1,3 +1,7 @@
+/**
+ * Canonical browser API client. Mutations are guarded by one intent fingerprint and
+ * idempotency path; feature components must not implement a second write/retry stack.
+ */
 import {
   clearReadState, invalidateActions, isReadAction, readRequest, seedRead, setReadSessionScope,
 } from "./cache.js";
@@ -14,6 +18,10 @@ let sessionCache = { expiresAt: 0, value: null, promise: null };
 const inFlightMutations = new Map();
 const memoryMutationIntents = new Map();
 const unresolvedMutationIntents = new Map();
+const MUTATION_INTENT_STORAGE_PREFIX = "saldo-bersama:mutation-intents:v1:";
+const MUTATION_INTENT_MAX_AGE_MS = 30 * 24 * 60 * 60_000;
+const MUTATION_INTENT_MAX_ENTRIES = 50;
+let mutationSessionScope = "anonymous";
 const mutationActivityListeners = new Set();
 const activeMutationActions = new Map();
 let activeMutationCount = 0;
@@ -76,20 +84,82 @@ const fnv1a64 = (value) => {
   return hash.toString(16).padStart(16, "0");
 };
 
+// Fingerprints identify user intent, while the random idempotency key identifies one
+// execution attempt family. A retry of the same intent must reuse its guarded key.
 export const mutationIntentFingerprint = (action, payload = {}, rowVersion = null) => fnv1a64(JSON.stringify([
   String(action || ""),
   stableValue(payload || {}),
   rowVersion ?? null,
 ]));
 
+const mutationStorage = () => {
+  try { return typeof globalThis.localStorage?.getItem === "function" ? globalThis.localStorage : null; }
+  catch { return null; }
+};
+
+const mutationStorageKey = () => `${MUTATION_INTENT_STORAGE_PREFIX}${fnv1a64(mutationSessionScope)}`;
+
+const normalizedStoredIntents = (value) => {
+  const now = Date.now();
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => item
+    && typeof item.action === "string"
+    && /^[0-9a-f]{16}$/.test(String(item.fingerprint || ""))
+    && typeof item.idempotencyKey === "string"
+    && item.idempotencyKey.length >= 8
+    && Number.isFinite(Number(item.createdAt))
+    && now - Number(item.createdAt) <= MUTATION_INTENT_MAX_AGE_MS)
+    .sort((left, right) => Number(right.createdAt) - Number(left.createdAt))
+    .slice(0, MUTATION_INTENT_MAX_ENTRIES);
+};
+
+const readStoredIntents = () => {
+  const storage = mutationStorage();
+  if (!storage || mutationSessionScope === "anonymous") return [];
+  try { return normalizedStoredIntents(JSON.parse(storage.getItem(mutationStorageKey()) || "[]")); }
+  catch { return []; }
+};
+
+const writeStoredIntents = (items) => {
+  const storage = mutationStorage();
+  if (!storage || mutationSessionScope === "anonymous") return;
+  try {
+    const normalized = normalizedStoredIntents(items);
+    if (normalized.length) storage.setItem(mutationStorageKey(), JSON.stringify(normalized));
+    else storage.removeItem(mutationStorageKey());
+  } catch { /* storage availability/quota must never break financial request handling */ }
+};
+
+const hydrateMutationIntents = () => {
+  memoryMutationIntents.clear();
+  unresolvedMutationIntents.clear();
+  for (const item of readStoredIntents()) {
+    memoryMutationIntents.set(item.fingerprint, { idempotencyKey: item.idempotencyKey, action: item.action, createdAt: Number(item.createdAt) });
+    if (!unresolvedMutationIntents.has(item.action)) {
+      unresolvedMutationIntents.set(item.action, { fingerprint: item.fingerprint, idempotencyKey: item.idempotencyKey });
+    }
+  }
+};
+
 const readPersistedIntent = (fingerprint) => memoryMutationIntents.get(fingerprint) || null;
 
-const persistIntent = (fingerprint, idempotencyKey) => {
-  memoryMutationIntents.set(fingerprint, { idempotencyKey });
+const persistIntent = (action, fingerprint, idempotencyKey) => {
+  const createdAt = Date.now();
+  memoryMutationIntents.set(fingerprint, { action, idempotencyKey, createdAt });
+  const remaining = readStoredIntents().filter((item) => item.fingerprint !== fingerprint);
+  writeStoredIntents([{ action, fingerprint, idempotencyKey, createdAt }, ...remaining]);
 };
 
 const clearIntent = (fingerprint) => {
   memoryMutationIntents.delete(fingerprint);
+  writeStoredIntents(readStoredIntents().filter((item) => item.fingerprint !== fingerprint));
+};
+
+const clearPersistedAction = (action) => {
+  for (const [fingerprint, item] of memoryMutationIntents.entries()) {
+    if (item.action === action) memoryMutationIntents.delete(fingerprint);
+  }
+  writeStoredIntents(readStoredIntents().filter((item) => item.action !== action));
 };
 
 const clearUnresolvedIntent = (action, fingerprint = null) => {
@@ -107,10 +177,11 @@ const assertCompatibleUnknownIntent = (action, fingerprint, options) => {
   );
 };
 
-const clearMutationState = () => {
+const clearMutationState = ({ hydrate = true } = {}) => {
   inFlightMutations.clear();
   memoryMutationIntents.clear();
   unresolvedMutationIntents.clear();
+  if (hydrate) hydrateMutationIntents();
   resetMutationActivity();
 };
 
@@ -120,6 +191,8 @@ const clearClientState = () => {
   sessionCache = { expiresAt: 0, value: null, promise: null };
 };
 
+// Unknown outcomes remain unresolved until the exact same intent is retried or refreshed;
+// silently issuing a fresh key could duplicate a server-side financial mutation.
 const guardedMutationRequest = (action, payload, options = {}) => {
   const fingerprint = mutationIntentFingerprint(action, payload, options.rowVersion ?? null);
   assertCompatibleUnknownIntent(action, fingerprint, options);
@@ -128,7 +201,7 @@ const guardedMutationRequest = (action, payload, options = {}) => {
     if (existingFlight) return existingFlight;
   } else {
     clearUnresolvedIntent(action);
-    clearIntent(fingerprint);
+    clearPersistedAction(action);
   }
   const persisted = readPersistedIntent(fingerprint);
   const idempotencyKey = persisted?.idempotencyKey || options.idempotencyKey || createSecureRandomId();
@@ -143,7 +216,7 @@ const guardedMutationRequest = (action, payload, options = {}) => {
     })
     .catch((error) => {
       if (isOutcomeUnknownError(error)) {
-        persistIntent(fingerprint, idempotencyKey);
+        persistIntent(action, fingerprint, idempotencyKey);
         unresolvedMutationIntents.set(action, { fingerprint, idempotencyKey });
       } else {
         clearIntent(fingerprint);
@@ -190,10 +263,13 @@ export const apiClient = {
   },
 
   setSessionScope(nextScope) {
-    if (setReadSessionScope(nextScope)) {
+    const normalized = String(nextScope || "anonymous");
+    const changed = setReadSessionScope(normalized);
+    if (normalized !== mutationSessionScope) {
+      mutationSessionScope = normalized;
       clearMutationState();
-      sessionCache = { expiresAt: 0, value: null, promise: null };
-    }
+    } else if (changed) clearMutationState();
+    if (changed) sessionCache = { expiresAt: 0, value: null, promise: null };
   },
 
   invalidate(actions) {
@@ -210,6 +286,7 @@ export const apiClient = {
 
   startNewMutationIntent(action, payload = {}, rowVersion = null) {
     clearUnresolvedIntent(action);
+    clearPersistedAction(action);
     clearIntent(mutationIntentFingerprint(action, payload, rowVersion));
   },
 

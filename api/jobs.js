@@ -15,6 +15,7 @@ import {
 } from "./_lib/services/notifications.js";
 import { queueDueManualReminders } from "./_lib/services/reminders.js";
 import { nowIso, safeSpreadsheetText, sanitizeText, todayJakarta, uuid } from "./_lib/services/core.js";
+import { recordSchedulerHeartbeat } from "./_lib/services/operationalHealth.js";
 
 const monthBoundary = (monthOffset, endOfMonth = false) => {
   const [year, month] = todayJakarta().split("-").map(Number);
@@ -326,13 +327,14 @@ const runOptionalStage = async (name, requestId, task, fallback) => {
 export default async function handler(request, response) {
   const startedAt = Date.now(); const requestId = requestIdFrom(request); attachRequestId(response, requestId);
   if (request.method !== "POST") return methodNotAllowed(response, ["POST"]);
+  let db = null;
   try {
     const body = await readJsonBody(request, 100_000);
     const message = verifyScheduledJobSignature(body);
     if (!message) return fail(response, 401, "INVALID_SIGNATURE", "Signature scheduler tidak valid.", { requestId });
-    const db = getDatabase(); await assertDatabaseReady(db);
+    db = getDatabase(); await assertDatabaseReady(db);
     await consumeScheduledNonce(db, String(message.nonce));
-    const housekeeping = await runOptionalStage("housekeeping", requestId, () => cleanupExpiredEphemeralState(db), { idempotencyKeys: 0, importPreviews: 0, restorePreviews: 0 });
+    const housekeeping = await runOptionalStage("housekeeping", requestId, () => cleanupExpiredEphemeralState(db), { idempotencyKeys: 0, importPreviews: 0, restorePreviews: 0, userSessions: 0 });
     const integration = await runOptionalStage("integrations", requestId, () => processIntegrations(db), { claimed: 0, completed: 0, failed: 0 });
     const notificationQueue = await runOptionalStage("notification_queue", requestId, async () => {
       const automatic = await queueDueNotifications(db);
@@ -341,10 +343,13 @@ export default async function handler(request, response) {
     }, { queued: 0, automatic: 0, manual: 0 });
     const push = await runOptionalStage("push", requestId, () => processPush(db), { claimed: 0, sent: 0, failed: 0, skipped: true });
     const backup = message.includeBackup === false ? { skipped: true } : await maybeDailyBackup(db);
-    logEvent("info", "jobs.request.completed", { requestId, status: 200, durationMs: Date.now() - startedAt, housekeeping, integration, notificationQueue, push });
+    const stageFailed = [housekeeping, integration, notificationQueue, push].some((stage) => stage?.failed);
+    await recordSchedulerHeartbeat(db, { success: !stageFailed, errorCode: stageFailed ? "STAGE_FAILED" : "" });
+    logEvent(stageFailed ? "warn" : "info", "jobs.request.completed", { requestId, status: 200, durationMs: Date.now() - startedAt, housekeeping, integration, notificationQueue, push, schedulerDegraded: stageFailed });
     return ok(response, { housekeeping, integration, notificationsQueued: Number(notificationQueue.queued || 0), notificationQueue, push, backup, timestamp: nowIso() });
   } catch (error) {
     const status = error.status || 500; const code = error.code || "JOBS_ERROR";
+    if (db) await recordSchedulerHeartbeat(db, { success: false, errorCode: code }).catch(() => undefined);
     logEvent("error", "jobs.request.failed", { requestId, status, code, durationMs: Date.now() - startedAt, error: sanitizeError(error) });
     return fail(response, status, code, status < 500 ? error.message : "Scheduled job gagal.", { requestId });
   }

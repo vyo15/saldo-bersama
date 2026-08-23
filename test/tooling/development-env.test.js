@@ -248,7 +248,8 @@ test("bootstrap menolak hasil pull Development yang tidak memiliki Web Push tanp
   await assert.rejects(
     ensureDevelopmentEnvironment({ projectRoot: root, interactive: true, runner }),
     (error) => error.code === "VERCEL_DEVELOPMENT_ENV_INCOMPLETE"
-      && error.missing.includes("VITE_VAPID_PUBLIC_KEY"),
+      && error.missing.includes("VITE_VAPID_PUBLIC_KEY")
+      && error.message.includes("npm run env:push:development -- --settings-only"),
   );
   assert.equal(await readFile(envPath, "utf8"), original);
 }));
@@ -270,7 +271,7 @@ test("bootstrap menolak hasil pull Development yang core-nya tidak lengkap tanpa
     (error) => error.code === "VERCEL_DEVELOPMENT_ENV_INCOMPLETE"
       && error.missing.includes("TURSO_DATABASE_URL")
       && error.message.includes("npm run env:push:development")
-      && !error.message.includes("menggunakan npm run env:push:development:settings"),
+      && !error.message.includes("-- --settings-only"),
   );
   await assert.rejects(readFile(path.join(root, ".env.local"), "utf8"), { code: "ENOENT" });
 }));

@@ -8,7 +8,7 @@
 
 ## Problem
 
-Runtime v11 saat ini sengaja memakai transparansi dua pengguna untuk read. `readableLedgerSql()` dan `readableAccountSql()` mengembalikan `1=1`, sedangkan write capability tetap dibatasi ownership/backend guard.
+Baseline ledger/privacy yang diperkenalkan sebelum schema v12 sengaja memakai transparansi dua pengguna untuk read; migration v12 tidak mengubah policy tersebut. `readableLedgerSql()` dan `readableAccountSql()` mengembalikan `1=1`, sedangkan write capability tetap dibatasi ownership/backend guard.
 
 Kebutuhan produk meminta opsi privacy personal seperti full detail, balance-only, contribution-only, atau private. Menyembunyikan card di frontend tidak cukup karena detail dapat bocor lewat API response, report, aggregate, reconciliation, notification, export, atau endpoint lain.
 
@@ -32,7 +32,7 @@ Ini **bukan broken access control terhadap baseline saat ini**. Baseline full-tr
 
 ## Baseline existing
 
-Saat ini dua user terotorisasi dapat membaca shared maupun personal account/ledger dengan owner label. Hak create/update/cancel/reconcile tetap dibatasi backend capability/ownership. Sheets mirror tetap shared-only.
+Pada runtime v12, dua user terotorisasi tetap dapat membaca shared maupun personal account/ledger dengan owner label. Hak create/update/cancel/reconcile tetap dibatasi backend capability/ownership. Sheets mirror tetap shared-only.
 
 Baseline ini tetap berlaku sampai granular privacy migration dan projection framework benar-benar diterapkan end-to-end.
 

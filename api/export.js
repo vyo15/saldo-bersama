@@ -3,7 +3,8 @@ import { assertDatabaseReady, DATABASE_SCHEMA_VERSION } from "./_lib/db/schema.j
 import { createXlsx } from "./_lib/export/xlsx.js";
 import { methodNotAllowed, fail } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
-import { assertAllowedOrigin, enforceBestEffortRateLimit, identityRateLimitKey, readSession } from "./_lib/security.js";
+import { assertAllowedOrigin, enforceBestEffortRateLimit, identityRateLimitKey } from "./_lib/security.js";
+import { resolveRegisteredSession } from "./_lib/sessionRegistry.js";
 import { resolveActor } from "./_lib/services/users.js";
 import { nowIso, todayJakarta } from "./_lib/services/core.js";
 
@@ -32,11 +33,13 @@ export default async function handler(request, response) {
   if (request.method !== "POST") return methodNotAllowed(response, ["POST"]);
   try {
     assertAllowedOrigin(request);
-    const session = readSession(request);
+    const db = getDatabase();
+    await assertDatabaseReady(db);
+    const session = await resolveRegisteredSession(db, request);
     if (!session) return fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir.", { requestId });
     if (session.role !== "owner") return fail(response, 403, "OWNER_ONLY", "Export lengkap hanya dapat dilakukan Administrator.", { requestId });
     enforceBestEffortRateLimit(identityRateLimitKey("export", session.uid), { limit: 5, windowMs: 60_000 });
-    const db = getDatabase(); await assertDatabaseReady(db); await resolveActor(db, session);
+    await resolveActor(db, session);
     const data = typeof db.readTransaction === "function" ? await db.readTransaction(exportData) : await exportData(db);
     const workbook = createXlsx(data);
     const fileName = `saldo-bersama-${todayJakarta()}-${new Date().toISOString().slice(11,19).replace(/:/g, "")}.xlsx`;

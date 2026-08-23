@@ -3,6 +3,20 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
+const readMany = (paths) => Promise.all(paths.map(read)).then((parts) => parts.join("\n"));
+const goalsSource = () => readMany([
+  "src/features/goals/GoalsPage.jsx",
+  "src/features/goals/components/GoalCards.jsx",
+  "src/features/goals/components/GoalDialogs.jsx",
+]);
+const resetSource = () => readMany([
+  "src/features/settings/ResetDataPage.jsx",
+  "src/features/settings/components/TrialResetPanels.jsx",
+]);
+const fullResetSource = () => readMany([
+  "src/features/settings/FullResetPage.jsx",
+  "src/features/settings/components/FullResetPanels.jsx",
+]);
 
 test("confirmation modal mendukung alasan, exact phrase, acknowledgement, countdown, dan guard Enter", async () => {
   const modal = await read("src/components/common/ConfirmationModal.jsx");
@@ -76,7 +90,7 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
     read("src/features/allocations/allocations.api.js"),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/recurring.api.js"),
-    read("src/features/goals/GoalsPage.jsx"),
+    goalsSource(),
     read("src/features/goals/goals.api.js"),
     Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
@@ -120,8 +134,8 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
     read("src/features/settings/RecoveryPage.jsx"),
     read("src/features/settings/PeriodControlPage.jsx"),
     read("src/features/settings/AuditPage.jsx"),
-    read("src/features/settings/ResetDataPage.jsx"),
-    read("src/features/settings/FullResetPage.jsx"),
+    resetSource(),
+    fullResetSource(),
     read("src/features/settings/GoogleIntegrationsPage.jsx"),
     read("src/components/common/ConfirmationModal.jsx"),
     read("src/components/feedback/FeedbackProvider.module.css"),
@@ -183,6 +197,10 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.doesNotMatch(members, /Tambah atau ubah akses/);
   assert.match(members, /users\.upsert/);
   assert.match(members, /reactivateUser/);
+  assert.match(members, /Menunggu login/);
+  assert.match(members, /langsung diizinkan untuk login Google/);
+  assert.match(members, /disabled=\{Boolean\(editingMember\?\.is_current\)\}/);
+  assert.match(members, /Role akun sendiri tidak dapat diubah/);
   assert.match(recovery, /useApiResource\("archive\.list"/);
   assert.match(recovery, /Item diarsipkan/);
   assert.match(recovery, /restore\.preview/);
@@ -205,7 +223,7 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
 
 
 test("reset data testing selalu mendefinisikan helper presentasi recovery dan step yang dirender", async () => {
-  const reset = await read("src/features/settings/ResetDataPage.jsx");
+  const reset = await resetSource();
   assert.match(reset, /const ResetStepHeader =/);
   assert.match(reset, /const intentStateLabel =/);
   assert.match(reset, /const backupStateLabel =/);
@@ -223,7 +241,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
     read("src/features/transactions/TransactionForm.jsx"),
     Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
-    read("src/features/goals/GoalsPage.jsx"),
+    goalsSource(),
     read("src/features/recurring/RecurringDialogs.jsx"),
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/accounts/components/AccountEditorDialogs.jsx"),
@@ -255,7 +273,7 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
     read("src/services/api/client.js"),
     read("src/hooks/useGuardedMutation.js"),
     read("src/components/common/ConfirmationModal.jsx"),
-    read("src/features/goals/GoalsPage.jsx"),
+    goalsSource(),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/transactions/TransactionForm.jsx"),
@@ -263,9 +281,11 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
   ]);
   assert.match(client, /memoryMutationIntents/);
   assert.match(client, /readPersistedIntent/);
-  assert.doesNotMatch(client, /localStorage|sessionStorage|MUTATION_INTENT_STORAGE_PREFIX/, "mutation intent tidak boleh persisten di browser storage; state finansial/cache tetap private-memory");
+  assert.match(client, /MUTATION_INTENT_STORAGE_PREFIX/, "metadata idempotency outcome-unknown harus dapat bertahan lintas reload");
+  assert.match(client, /writeStoredIntents\(\[\{ action, fingerprint, idempotencyKey, createdAt \}/, "storage hanya boleh menyimpan metadata intent opaque");
+  assert.doesNotMatch(client, /writeStoredIntents\([^\n]*payload/, "payload finansial tidak boleh ditulis ke browser storage");
   assert.match(client, /if \(isOutcomeUnknownError\(error\)\) \{/);
-  assert.match(client, /persistIntent\(fingerprint, idempotencyKey\)/);
+  assert.match(client, /persistIntent\(action, fingerprint, idempotencyKey\)/);
   assert.match(client, /unresolvedMutationIntents\.set\(action/);
   assert.match(client, /const existingFlight = inFlightMutations\.get\(fingerprint\)/);
   assert.match(hook, /if \(inFlightRef\.current && promiseRef\.current\) return promiseRef\.current/);
@@ -445,12 +465,18 @@ test("error actor canonical membatalkan sesi lokal tanpa menganggap semua 403 se
 });
 
 test("login branded desktop dan mobile berbagi satu transport auth tanpa GIS runtime desktop", async () => {
-  const page = await read("src/features/auth/LoginPage.jsx");
+  const page = await readMany([
+    "src/features/auth/LoginPage.jsx",
+    "src/features/auth/components/LoginDesktopLayout.jsx",
+    "src/features/auth/components/LoginMobileLayout.jsx",
+    "src/features/auth/components/LoginFeedback.jsx",
+  ]);
   assert.match(page, /preloadMobileGoogleAuth/);
   assert.match(page, /const useGoogleProvider/);
   assert.match(page, /signInWithGoogleMobile/);
   assert.match(page, /returnTo: requestedPath/);
-  assert.match(page, /<MobileGoogleLogin \{\.\.\.authProps\}/);
+  assert.match(page, /<GoogleLoginPanel \{\.\.\.authProps\}/);
+  assert.match(page, /<GoogleLoginPanel \{\.\.\.mobileAuthProps\}/);
   assert.match(page, /mobileAuthProps=\{googleAuthProps\}/);
   assert.doesNotMatch(page, /renderGoogleLoginButton|google-login-button/);
 });
@@ -574,4 +600,15 @@ test("form transaksi mengunci field setelah outcome unknown dan hanya menawarkan
   assert.match(transfer, /intentLocked=\{outcomeUnknown\}/);
   assert.match(transfer, /Data transfer dikunci sementara/);
   assert.match(money, /disabled=\{disabled\}/);
+});
+
+test("halaman sesi aktif mempertahankan revoke milik sendiri, revoke-all, dan logout sesi saat ini", async () => {
+  const sessions = await read("src/features/settings/ActiveSessionsPage.jsx");
+  assert.match(sessions, /useApiResource\("sessions\.listOwn"\)/);
+  assert.match(sessions, /runSettingsAction\("sessions\.revokeOwn"/);
+  assert.match(sessions, /runSettingsAction\("sessions\.revokeAllOwn"/);
+  assert.match(sessions, /session_id:\s*target\?\.session\?\.session_id/);
+  assert.match(sessions, /if \(result\?\.revokedCurrent\) \{[\s\S]*await logout\(\)/);
+  assert.match(sessions, /<ConfirmationModal/);
+  assert.match(sessions, /Mencabut sesi tidak menghapus transaksi, saldo, atau data keuangan/);
 });

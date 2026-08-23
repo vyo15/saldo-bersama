@@ -1,3 +1,4 @@
+// Backup files are uniquely named and never overwritten with different content; checksum/backup id enable safe reuse.
 function backupFolder_() {
   var id = PropertiesService.getScriptProperties().getProperty("BACKUP_FOLDER_ID");
   if (!id) throw sbError_("BACKUP_FOLDER_NOT_CONFIGURED", "BACKUP_FOLDER_ID belum diatur.", 503);

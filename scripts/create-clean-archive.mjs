@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { access, cp, lstat, mkdir, mkdtemp, readdir, rename, rm, stat } from "node:fs/promises";
+import { access, cp, lstat, mkdir, mkdtemp, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,6 +51,22 @@ const shouldCopy = (source, excludedOutputs) => {
   if (forbiddenFilePatterns.some((pattern) => pattern.test(name))) return false;
 
   return !excludedOutputs.has(path.resolve(source));
+};
+
+
+const addStagingFiles = async (project, extraFiles = {}) => {
+  for (const [relative, content] of Object.entries(extraFiles || {})) {
+    const normalized = String(relative || "").replaceAll("\\", "/").replace(/^\.\//, "");
+    if (!normalized || normalized.startsWith("../") || path.posix.isAbsolute(normalized) || !isCanonicalSourceFile(normalized)) {
+      throw new Error(`File tambahan packaging tidak canonical: ${relative}`);
+    }
+    const target = path.resolve(project, ...normalized.split("/"));
+    if (!target.startsWith(`${path.resolve(project)}${path.sep}`)) {
+      throw new Error(`File tambahan packaging keluar dari staging project: ${relative}`);
+    }
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, String(content ?? ""), "utf8");
+  }
 };
 
 const auditStaging = async (directory, relative = "") => {
@@ -124,7 +140,7 @@ export const cleanupLegacyCleanArchives = async (directory, keepOutput) => {
   return removed;
 };
 
-export const createCleanArchive = async (args = []) => {
+export const createCleanArchive = async (args = [], { extraFiles = {} } = {}) => {
   const customOutput = Boolean(args[0]);
   const output = path.resolve(root, args[0] || defaultOutput);
   const outputDirectory = path.dirname(output);
@@ -143,6 +159,7 @@ export const createCleanArchive = async (args = []) => {
       recursive: true,
       filter: (source) => shouldCopy(source, excludedOutputs),
     });
+    await addStagingFiles(project, extraFiles);
     const stagedFiles = await auditStaging(project);
     stagedFileCount = stagedFiles.length;
     if (!stagedFiles.includes(".env.example")) {

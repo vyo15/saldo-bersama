@@ -49,3 +49,9 @@ Alokasi Dana mempertahankan guard `assignee_user_id`: Member hanya dapat memakai
 ## Risks
 
 Broken access control menjadi risiko utama. Setiap perluasan action baru harus mengulang negative authorization test dan tidak boleh mengandalkan `scope` yang dikirim browser tanpa validasi terhadap rekening/entity server.
+## Amendment 2026-08-22 — Kebutuhan personal milik Member
+
+Berdasarkan keputusan produk terbaru, pengecualian sempit ditambahkan untuk `budgets.upsert`: Member boleh membuat dan mengubah **Kebutuhan personal miliknya sendiri** selain Kebutuhan shared. Kebutuhan personal pengguna lain tetap ditolak backend.
+
+Pengecualian ini tidak mengubah batas untuk Alokasi Dana, Target, atau Jadwal Rutin: ketiganya tetap hanya dapat dikelola Member pada scope shared. Lifecycle destruktif planning tetap Administrator-only. Frontend hanya menampilkan capability; backend tetap memvalidasi `scope` dan `owner_user_id` terhadap actor.
+

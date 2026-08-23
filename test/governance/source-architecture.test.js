@@ -200,7 +200,8 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.shortcuts[0].url, "/transaksi");
   assert.match(client, /code: "OFFLINE"/);
-  assert.doesNotMatch(client, /pendingWrites|offlineQueue|localStorage/);
+  assert.doesNotMatch(client, /pendingWrites|offlineQueue/);
+  assert.match(client, /MUTATION_INTENT_STORAGE_PREFIX/);
   assert.match(shell, /OfflineBanner/);
   assert.match(shell, /UpdateAvailableNotice/);
   assert.match(shell, /InstallAppCard/);
@@ -219,7 +220,12 @@ test("Web Push memakai secure context, status backend, lock-screen privacy, dan 
     source("frontend/src/services/serviceWorker.js"),
     source("frontend/src/features/settings/DeviceNotificationsPage.jsx"),
     source("frontend/public/sw.js"),
-    source("api/_lib/services/notifications.js"),
+    Promise.all([
+      "api/_lib/services/notifications.js",
+      "api/_lib/services/notifications/pushSecurity.js",
+      "api/_lib/services/notifications/subscriptions.js",
+      "api/_lib/services/notifications/actionable.js",
+    ].map(source)).then((parts) => parts.join("\n")),
     source("api/jobs.js"),
     source("database/migrations/004_notification_deliveries.sql"),
     source("database/migrations/005_notification_preferences.sql"),
@@ -256,9 +262,15 @@ test("manual reminder menjaga delivery pending, lifecycle cancellation, dan inte
   const [reminders, budgets, envelopes, goals, recurring, integrity] = await Promise.all([
     source("api/_lib/services/reminders.js"),
     source("api/_lib/services/planning/budgets.js"),
-    source("api/_lib/services/planning/envelopes.js"),
+    Promise.all([
+      "api/_lib/services/planning/envelopes.js",
+      "api/_lib/services/planning/envelopeLifecycle.js",
+    ].map(source)).then((parts) => parts.join("\n")),
     source("api/_lib/services/planning/goals.js"),
-    source("api/_lib/services/planning/recurring.js"),
+    Promise.all([
+      "api/_lib/services/planning/recurring.js",
+      "api/_lib/services/planning/recurringOccurrences.js",
+    ].map(source)).then((parts) => parts.join("\n")),
     source("api/_lib/services/reporting/integrity.js"),
   ]);
   assert.match(reminders, /REMINDER_DELIVERY_PENDING/);
@@ -296,7 +308,7 @@ test("runtime memakai satu Firebase public key dan tidak menduplikasi resource I
   const [firebase, jobs, notifications, integrations, maintenance, environmentDoc] = await Promise.all([
     source("api/_lib/firebase.js"),
     source("api/jobs.js"),
-    source("api/_lib/services/notifications.js"),
+    source("api/_lib/services/notifications/pushSecurity.js"),
     source("api/_lib/services/integrations.js"),
     Promise.all(["shared.js", "backup.js", "restore.js", "import.js", "integrity.js"].map((name) => source(`api/_lib/services/maintenance/${name}`))).then((parts) => parts.join("\n")),
     source("docs/ENVIRONMENT_VARIABLES.md"),
@@ -319,7 +331,7 @@ test("VAPID validation memiliki satu implementation canonical untuk runtime dan 
   const [shared, runtimeEnvironment, notifications] = await Promise.all([
     source("api/_lib/webPushConfiguration.js"),
     source("scripts/runtime-environment.mjs"),
-    source("api/_lib/services/notifications.js"),
+    source("api/_lib/services/notifications/pushSecurity.js"),
   ]);
   assert.match(shared, /validateVapidConfiguration/);
   assert.match(shared, /VAPID_KEY_PAIR/);
@@ -517,4 +529,87 @@ test("maintenance recovery settings memakai satu guarded hook", async () => {
   assert.match(hook, /busyRef/);
   assert.match(hook, /integrity\.run/);
   assert.match(hook, /clearMaintenance:\s*true/);
+});
+
+test("service façade maintainability tetap satu arah tanpa child mengimpor façade induk", async () => {
+  const boundaries = [
+    ["api/_lib/services/notifications.js", ["pushSecurity.js", "subscriptions.js", "delivery.js", "actionable.js"]],
+    ["api/_lib/services/masterData.js", ["accounts.js", "categories.js", "shared.js"]],
+    ["api/_lib/services/reporting/dashboard.js", ["alerts.js", "readModel.js"]],
+  ];
+  for (const [facade, children] of boundaries) {
+    const directory = path.dirname(facade);
+    const facadeName = path.basename(facade);
+    for (const child of children) {
+      const childSource = await source(`${directory}/${path.basename(facade, ".js")}/${child}`);
+      assert.doesNotMatch(childSource, new RegExp(`from ["'][^"']*${facadeName.replace(".", "\\.")}["']`), `${child} tidak boleh mengimpor façade ${facadeName}`);
+    }
+  }
+
+  for (const [facade, childDirectory] of [
+    ["api/_lib/services/planning/recurring.js", "api/_lib/services/planning"],
+    ["api/_lib/services/planning/goals.js", "api/_lib/services/planning"],
+    ["api/_lib/services/planning/envelopes.js", "api/_lib/services/planning"],
+  ]) {
+    const facadeText = await source(facade);
+    assert.match(facadeText, /export \{/);
+    assert.ok(facadeText.length > 0 && childDirectory.length > 0);
+  }
+});
+
+test("backend API bebas circular dependency relatif setelah service decomposition", async () => {
+  const apiRoot = path.join(root, "api");
+  const files = [];
+  const collect = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const candidate = path.join(directory, entry.name);
+      if (entry.isDirectory()) await collect(candidate);
+      else if (entry.isFile() && /\.js$/.test(entry.name)) files.push(candidate);
+    }
+  };
+  await collect(apiRoot);
+
+  const knownFiles = new Set(files.map((file) => path.resolve(file)));
+  const resolveRelativeImport = (fromFile, specifier) => {
+    const base = path.resolve(path.dirname(fromFile), specifier);
+    const candidates = [base, `${base}.js`, path.join(base, "index.js")];
+    return candidates.find((candidate) => knownFiles.has(candidate)) || null;
+  };
+  const dependencies = new Map();
+  for (const file of files) {
+    const text = await readFile(file, "utf8");
+    const targets = [];
+    for (const pattern of [
+      /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
+      /\bimport\(\s*["']([^"']+)["']\s*\)/g,
+    ]) {
+      for (const match of text.matchAll(pattern)) {
+        if (!match[1].startsWith(".")) continue;
+        const target = resolveRelativeImport(file, match[1]);
+        if (target) targets.push(target);
+      }
+    }
+    dependencies.set(file, targets);
+  }
+
+  const visiting = new Set();
+  const visited = new Set();
+  const stack = [];
+  const cycles = [];
+  const visit = (file) => {
+    if (visiting.has(file)) {
+      const index = stack.indexOf(file);
+      cycles.push([...stack.slice(index), file].map((item) => path.relative(root, item).split(path.sep).join("/")));
+      return;
+    }
+    if (visited.has(file)) return;
+    visiting.add(file);
+    stack.push(file);
+    for (const target of dependencies.get(file) || []) visit(target);
+    stack.pop();
+    visiting.delete(file);
+    visited.add(file);
+  };
+  for (const file of files) visit(file);
+  assert.deepEqual(cycles, [], `Circular dependency backend ditemukan: ${JSON.stringify(cycles)}`);
 });

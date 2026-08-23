@@ -1,3 +1,4 @@
+/* Report presentation only; calculations remain server/read-model authoritative. */
 .mobilePage {
   display: none;
 }

@@ -37,4 +37,8 @@ export const cleanGeneratedArtifacts = async ({
 };
 
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isDirectRun) await cleanGeneratedArtifacts({ dryRun: process.argv.includes("--dry-run") });
+if (isDirectRun) {
+  const apply = process.argv.includes("--apply");
+  await cleanGeneratedArtifacts({ dryRun: !apply });
+  if (!apply) console.log("Dry-run saja. Jalankan `npm run clean -- --apply` untuk benar-benar menghapus artefak generated.");
+}

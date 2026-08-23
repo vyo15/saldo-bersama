@@ -12,6 +12,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Pengingat manual one-shot actor-scoped untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target melalui scheduler/Web Push existing (RFC-0017).
 - Partner planning shared untuk Member dengan guard backend RFC-0016; destructive lifecycle tetap Administrator-only.
 - Pembagian beban biaya expense shared `equal`/`percentage` melalui schema v11 sebagai MVP RFC-0013; payer/beneficiary/kontribusi aktual tetap deferred.
+- Registry session per perangkat, revoke own/all, PKCE S256, dan session lifecycle server-side (RFC-0018, schema v12).
 - Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
 
 ## Now — verification dan operasi
@@ -29,7 +30,6 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - RFC-0012: utang/piutang sebagai obligation + settlement ledger.
 - RFC-0014: kategori bertingkat dan tahapan target.
 - RFC-0015: privasi rekening granular dengan backend projection.
-- RFC-0018: registry session per perangkat dan revoke/logout-all server-side tanpa raw token storage.
 - Follow-up RFC-0013: payer/beneficiary/actual contribution serta relasi refund ke expense asli sebelum refund boleh mengembalikan Alokasi Dana/Kebutuhan/cost split.
 
 ## Later — maturity

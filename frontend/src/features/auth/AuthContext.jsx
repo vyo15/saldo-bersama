@@ -1,3 +1,7 @@
+/**
+ * Frontend auth state mirrors the backend session; it is never an authorization boundary.
+ * Role/allowlist enforcement remains server-side for every protected action.
+ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getPublicConfigErrors } from "../../config/env.js";
 import { apiClient } from "../../services/api/client.js";
@@ -47,6 +51,8 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener("saldo-bersama:unauthorized", handleUnauthorized);
   }, []);
 
+  // Firebase proves identity to the backend; only the returned server session becomes
+  // application auth state after backend allowlist/role validation.
   const loginWithFirebaseToken = useCallback(async (firebaseIdToken) => {
     setStatus("loading");
     try {

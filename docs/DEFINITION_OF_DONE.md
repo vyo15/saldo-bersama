@@ -13,3 +13,7 @@ Perubahan dianggap selesai bila:
 - clean/changed-files ZIP dibuat bila diperlukan.
 
 Untuk guarded/high-risk, Done juga mensyaratkan approval eksplisit dan evidence test domain yang sesuai. Tidak ada task-card/archive requirement.
+- Critical rationale/non-obvious invariant pada financial, security, idempotency/concurrency, dan destructive workflow terdokumentasi dekat code terkait sesuai `docs/CODE_MAINTAINABILITY.md`.
+- Structural refactor menjaga public facade/API dan tidak menambah business-rule implementation kedua. Circular dependency tetap nol.
+- File besar direview berdasarkan responsibility/cognitive load; line count sendiri bukan alasan refactor.
+

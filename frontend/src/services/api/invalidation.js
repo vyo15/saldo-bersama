@@ -1,3 +1,4 @@
+/** Canonical cross-resource invalidation groups for mutations that affect multiple reads. */
 const INVALIDATION_GROUPS = Object.freeze({
   period: Object.freeze([
     "periods.list",

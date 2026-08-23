@@ -280,12 +280,7 @@ test("rekening, kategori, dan transaksi cancelled dapat dipulihkan satu per satu
 
 test("reaktivasi anggota dan tutup periode memakai tindakan eksplisit serta konfirmasi server", async () => {
   const db = await createSqliteTestDatabase();
-  const originalAllowlist = process.env.ALLOWED_USERS_JSON;
   const memberEmail = "member-policy@example.com";
-  process.env.ALLOWED_USERS_JSON = JSON.stringify([
-    { email: OWNER_EMAIL, role: "owner" },
-    { email: memberEmail, role: "member" },
-  ]);
   try {
     await seedOwner(db);
     const now = new Date().toISOString();
@@ -315,7 +310,5 @@ test("reaktivasi anggota dan tutup periode memakai tindakan eksplisit serta konf
     assert.equal(closed.status, "closed");
   } finally {
     db.close();
-    if (originalAllowlist === undefined) delete process.env.ALLOWED_USERS_JSON;
-    else process.env.ALLOWED_USERS_JSON = originalAllowlist;
   }
 });

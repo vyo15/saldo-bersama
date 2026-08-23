@@ -1,11 +1,19 @@
 import crypto from "node:crypto";
 import { appError, canonicalJson, nowIso } from "./services/core.js";
 
+/**
+ * Idempotency state model:
+ * processing -> reservation exists and concurrent replay must stop
+ * completed  -> stored response is safe to replay
+ * unknown    -> external side effect may have happened; fail closed unless explicitly
+ *               marked safe to resume by the action policy
+ */
 const PROCESSING_STATE = "processing";
 const UNKNOWN_STATE = "unknown";
 const STATE_FIELD = "__idempotency_state";
 const expiresAt = () => new Date(Date.now() + 30 * 24 * 60 * 60_000).toISOString();
 
+// The same key may only replay the same action, payload, and optimistic row version.
 export const requestFingerprint = (context) => crypto.createHash("sha256")
   .update(canonicalJson([context.action, context.payload || {}, context.rowVersion ?? null]))
   .digest("hex");
@@ -57,6 +65,8 @@ export const persistIdempotency = async (db, context, fingerprint, result) => {
   );
 };
 
+// Reserve before calling an external integration because its side effect cannot share
+// the local database transaction. This prevents concurrent duplicate deliveries.
 export const reserveExternalIdempotency = async (db, context, fingerprint, { allowUnknownRetry = false } = {}) => db.transaction(async (tx) => {
   const row = await idempotencyRow(tx, context);
   if (row) {
@@ -108,6 +118,8 @@ export const completeExternalIdempotency = async (db, context, fingerprint, resu
   if (update.rowsAffected !== 1) throw appError("IDEMPOTENCY_PERSIST_FAILED", "Hasil operasi eksternal tidak dapat dikunci secara idempotent.", 503);
 };
 
+// Preserve ambiguity after server/network failure. Deleting the reservation here could
+// turn an already-executed external operation into a duplicate on retry.
 export const markExternalOutcomeUnknown = async (db, context, fingerprint) => {
   await db.execute(
     "UPDATE idempotency_keys SET response_json=?,expires_at=? WHERE actor_id=? AND idempotency_key=? AND action=? AND request_fingerprint=?",

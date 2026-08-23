@@ -1,3 +1,8 @@
+/**
+ * Stable action registry: maps canonical public action names to handlers only.
+ * Authorization, idempotency, maintenance policy, and business rules belong in their
+ * dedicated boundaries and must not be reimplemented here.
+ */
 import { listAudit } from "../services/audit.js";
 import { ACTION_POLICIES, actionNames, getActionPolicy, isExternalAction, isMaintenanceAllowedAction, isReadAction } from "./policy.js";
 import { nowIso, todayJakarta } from "../services/core.js";
@@ -25,9 +30,11 @@ import {
   listReconciliations, monthlyReport, previewClosePeriod, reopenPeriod,
 } from "../services/reporting/index.js";
 import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../services/users.js";
+import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
+import { presentSchedulerHealth } from "../services/operationalHealth.js";
 
 const systemHealth = async (db) => {
-  const configStatement = { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','maintenance_mode','timezone','currency')", args: [] };
+  const configStatement = { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','maintenance_mode','timezone','currency','database_environment','scheduler_last_run_at','scheduler_last_success_at','scheduler_last_failure_at','scheduler_last_error_code')", args: [] };
   const integrationStatement = integrationStatusStatement();
   const backupStatement = backupActivityStatement();
   const statements = [configStatement, integrationStatement, backupStatement];
@@ -36,13 +43,16 @@ const systemHealth = async (db) => {
     : await Promise.all(statements.map((statement) => db.all(statement.sql, statement.args)));
   const config = Object.fromEntries((resultRows[0] || []).map((row) => [row.key, row.value]));
   const status = await presentIntegrationStatus(resultRows[1] || [], null, resultRows[2] || []);
+  const scheduler = presentSchedulerHealth(config);
   return {
-    status: config.maintenance_mode === "true" ? "maintenance" : "ok",
+    status: config.maintenance_mode === "true" ? "maintenance" : scheduler.status === "degraded" ? "degraded" : "ok",
     schemaVersion: Number(config.schema_version || 0),
     maintenanceMode: config.maintenance_mode === "true",
     recoveryRequired: config.maintenance_mode === "true",
     timezone: config.timezone || "Asia/Jakarta",
     currency: config.currency || "IDR",
+    databaseEnvironment: config.database_environment || "unbound",
+    scheduler,
     integrations: status,
     timestamp: nowIso(),
   };
@@ -72,6 +82,9 @@ const ACTION_HANDLERS = Object.freeze({
   "users.upsert": upsertUser,
   "users.deactivate": deactivateUser,
   "users.reactivate": reactivateUser,
+  "sessions.listOwn": listOwnSessions,
+  "sessions.revokeOwn": revokeOwnSession,
+  "sessions.revokeAllOwn": revokeAllOwnSessions,
   "audit.list": listAudit,
   "archive.list": listArchivedData,
   "dashboard.overview": dashboardOverview,

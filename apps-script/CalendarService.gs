@@ -1,3 +1,4 @@
+// Calendar rebuild is lock-guarded and manages only events tagged as Saldo Bersama-owned.
 function getManagedCalendar_() {
   var id = PropertiesService.getScriptProperties().getProperty("GOOGLE_CALENDAR_ID");
   if (!id) throw sbError_("CALENDAR_NOT_CONFIGURED", "GOOGLE_CALENDAR_ID belum diatur.", 503);

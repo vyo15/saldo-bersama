@@ -1,19 +1,37 @@
 import { appendAudit } from "./audit.js";
-import { isValidEmail } from "../security.js";
+import { findBootstrapUser, isValidEmail } from "../security.js";
 import { appError, assertOwner, assertVersion, nowIso, publicRow, sanitizeText, uuid } from "./core.js";
+import { revokeUserSessions } from "../sessionRegistry.js";
+
+const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
+
+const userPublicProjection = (user, { identityStatus = null } = {}) => {
+  if (!user) return null;
+  const { firebase_uid: _privateFirebaseUid, ...safeUser } = user;
+  return publicRow(identityStatus ? { ...safeUser, identity_status: identityStatus } : safeUser);
+};
+
+const identityAuditProjection = (user, identityStatus) => ({
+  user_id: user.user_id,
+  email: user.email,
+  role: user.role,
+  status: user.status,
+  identity_status: identityStatus,
+  row_version: Number(user.row_version || 0),
+});
 
 const assertCanonicalActor = (user, signedActor) => {
-  if (!user) throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
+  if (!user) throw appError("IDENTITY_NOT_PROVISIONED", "Akun Google ini belum terdaftar di Saldo Bersama. Hubungi Administrator.", 403);
   if (user.status !== "active") throw appError("ACCOUNT_INACTIVE", "Akun dinonaktifkan.", 403);
-  if (user.role !== signedActor.role) throw appError("ROLE_MISMATCH", "Role database tidak sesuai dengan allowlist Vercel.", 403);
+  if (user.role !== signedActor.role) throw appError("ROLE_MISMATCH", "Role session tidak sesuai dengan role pengguna aktif. Silakan login kembali.", 403);
   if (user.firebase_uid && user.firebase_uid !== signedActor.uid) throw appError("IDENTITY_CONFLICT", "Email sudah terikat ke identitas Firebase lain.", 409);
 };
 
-const bootstrapOwner = async (db, signedActor, email) => db.transaction(async (tx) => {
+const bootstrapOwnerInTransaction = async (tx, signedActor, email) => {
   const existing = await tx.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
   if (existing) return existing;
   if (signedActor.role !== "owner") {
-    throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
+    throw appError("IDENTITY_NOT_PROVISIONED", "Akun Google ini belum terdaftar di Saldo Bersama. Hubungi Administrator.", 403);
   }
 
   const timestamp = nowIso();
@@ -34,71 +52,145 @@ const bootstrapOwner = async (db, signedActor, email) => db.transaction(async (t
       actor: candidate,
       action: "bootstrap.owner",
       requestId: signedActor.requestId || `bootstrap:${candidate.user_id}`,
-    }, { entityType: "user", entityId: candidate.user_id, next: publicRow(candidate) });
+    }, { entityType: "user", entityId: candidate.user_id, next: userPublicProjection(candidate, { identityStatus: "linked" }) });
     return candidate;
   }
 
   const canonical = await tx.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
   if (canonical) return canonical;
-  throw appError("IDENTITY_NOT_PROVISIONED", "Akun sudah diizinkan pada Vercel tetapi belum ditambahkan ke database oleh Administrator.", 403);
-});
+  throw appError("IDENTITY_NOT_PROVISIONED", "Bootstrap Administrator hanya tersedia pada database kosong untuk akun bootstrap yang diizinkan.", 403);
+};
 
-const bindFirebaseIdentity = async (db, user, signedActor) => {
-  const result = await db.execute(
+const bootstrapOwner = async (db, signedActor, email) => db.transaction((tx) => bootstrapOwnerInTransaction(tx, signedActor, email));
+
+const bindFirebaseIdentityInTransaction = async (tx, user, signedActor) => {
+  const previous = identityAuditProjection(user, "pending");
+  const result = await tx.execute(
     `UPDATE users SET firebase_uid = ?, row_version = row_version + 1, updated_at = ?
       WHERE user_id = ? AND firebase_uid IS NULL AND status = 'active' AND role = ?
         AND NOT EXISTS (SELECT 1 FROM users AS bound_identity WHERE bound_identity.firebase_uid = ? AND bound_identity.user_id <> ?)`,
     [signedActor.uid, nowIso(), user.user_id, signedActor.role, signedActor.uid, user.user_id],
   );
-  const canonical = await db.one("SELECT * FROM users WHERE user_id = ?", [user.user_id]);
+  const canonical = await tx.one("SELECT * FROM users WHERE user_id = ?", [user.user_id]);
   assertCanonicalActor(canonical, signedActor);
   if (result.rowsAffected !== 1 && !canonical?.firebase_uid) {
-    const boundElsewhere = await db.one("SELECT user_id FROM users WHERE firebase_uid = ? AND user_id <> ?", [signedActor.uid, user.user_id]);
+    const boundElsewhere = await tx.one("SELECT user_id FROM users WHERE firebase_uid = ? AND user_id <> ?", [signedActor.uid, user.user_id]);
     if (boundElsewhere) throw appError("IDENTITY_CONFLICT", "Identitas Firebase sudah terikat ke pengguna lain.", 409);
     throw appError("IDENTITY_CONFLICT", "Identitas pengguna berubah saat proses login.", 409);
+  }
+  if (result.rowsAffected === 1) {
+    await appendAudit(tx, {
+      actor: canonical,
+      action: "identity.firebase.bind",
+      requestId: signedActor.requestId || `identity-bind:${canonical.user_id}:${canonical.row_version}`,
+    }, {
+      entityType: "user",
+      entityId: canonical.user_id,
+      previous,
+      next: identityAuditProjection(canonical, "linked"),
+    });
   }
   return canonical;
 };
 
-export const resolveActor = async (db, signedActor) => {
-  const email = String(signedActor.email || "").trim().toLowerCase();
+const bindFirebaseIdentity = async (db, user, signedActor) => db.transaction(async (tx) => {
+  const canonical = await tx.one("SELECT * FROM users WHERE user_id = ?", [user.user_id]);
+  assertCanonicalActor(canonical, signedActor);
+  if (canonical.firebase_uid) return canonical;
+  return bindFirebaseIdentityInTransaction(tx, canonical, signedActor);
+});
+
+const bootstrapOwnerAllowed = (email) => findBootstrapUser(email)?.role === "owner";
+
+export const resolveLoginIdentity = async (db, verifiedIdentity, { requestId = "" } = {}) => {
+  const email = normalizeEmail(verifiedIdentity?.email);
+  if (!isValidEmail(email)) throw appError("ACCOUNT_NOT_ALLOWED", "Akun Google ini tidak memiliki email terverifikasi yang dapat digunakan.", 403);
+
   let user = await db.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
-  if (!user) user = await bootstrapOwner(db, signedActor, email);
+  if (!user) {
+    if (!bootstrapOwnerAllowed(email)) {
+      throw appError("ACCOUNT_NOT_ALLOWED", "Akun Google ini belum mendapat akses ke Saldo Bersama.", 403);
+    }
+    user = await bootstrapOwner(db, { ...verifiedIdentity, email, role: "owner", requestId }, email);
+  }
+
+  const signedActor = { ...verifiedIdentity, email, role: user.role, requestId };
   assertCanonicalActor(user, signedActor);
   if (!user.firebase_uid) user = await bindFirebaseIdentity(db, user, signedActor);
-  return publicRow(user);
+  return userPublicProjection(user);
+};
+
+export const resolveActor = async (db, signedActor) => {
+  const email = normalizeEmail(signedActor.email);
+  let user = await db.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
+  if (!user) {
+    if (signedActor.role !== "owner" || !bootstrapOwnerAllowed(email)) {
+      throw appError("IDENTITY_NOT_PROVISIONED", "Akun Google ini belum terdaftar di Saldo Bersama. Hubungi Administrator.", 403);
+    }
+    user = await bootstrapOwner(db, signedActor, email);
+  }
+  assertCanonicalActor(user, signedActor);
+  if (!user.firebase_uid) user = await bindFirebaseIdentity(db, user, signedActor);
+  return userPublicProjection(user);
 };
 
 export const listUsers = async (db, context) => {
   assertOwner(context.actor);
-  const rows = await db.all("SELECT user_id,email,name,role,status,row_version,created_at,updated_at FROM users ORDER BY role DESC, email");
+  const rows = await db.all(`SELECT user_id,email,name,role,status,row_version,created_at,updated_at,
+    CASE WHEN firebase_uid IS NULL THEN 'pending' ELSE 'linked' END AS identity_status
+    FROM users ORDER BY role DESC, email`);
   return { items: rows.map((row) => ({ ...publicRow(row), is_current: row.user_id === context.actor.user_id })) };
+};
+
+const assertRoleChangeSafe = async (db, context, current, nextRole) => {
+  if (current.role === nextRole) return;
+  if (current.user_id === context.actor.user_id) {
+    throw appError("SELF_ROLE_CHANGE_DENIED", "Administrator tidak dapat mengubah role akunnya sendiri. Gunakan Administrator lain untuk perubahan role.", 409);
+  }
+  if (current.role === "owner" && nextRole === "member") {
+    const owners = await db.one("SELECT COUNT(*) AS count FROM users WHERE role='owner' AND status='active'");
+    if (Number(owners?.count || 0) <= 1) throw appError("LAST_OWNER", "Minimal satu Administrator aktif harus tersedia.", 409);
+  }
 };
 
 export const upsertUser = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};
-  const email = String(payload.email || "").trim().toLowerCase();
+  const email = normalizeEmail(payload.email);
   const role = String(payload.role || "member");
   if (!isValidEmail(email)) throw appError("INVALID_EMAIL", "Email pengguna tidak valid.", 400);
   if (!["owner", "member"].includes(role)) throw appError("INVALID_ROLE", "Role pengguna tidak valid.", 400);
-  const allowed = context.allowedUsers?.find((item) => item.email === email);
-  if (!allowed || allowed.role !== role) throw appError("ALLOWLIST_MISMATCH", "Email dan role harus sama dengan ALLOWED_USERS_JSON di Vercel.", 409);
   const current = await db.one("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [email]);
   const timestamp = nowIso();
   if (current) {
     if (current.status === "inactive") throw appError("USER_REACTIVATION_REQUIRED", "Pengguna nonaktif harus dipulihkan melalui tindakan reaktivasi eksplisit.", 409, { userId: current.user_id });
     assertVersion(current, context.rowVersion ?? payload.row_version);
+    await assertRoleChangeSafe(db, context, current, role);
     const next = { ...current, name: sanitizeText(payload.name || current.name || email, 120), role, row_version: Number(current.row_version) + 1, updated_at: timestamp };
     const result = await db.execute("UPDATE users SET name=?,role=?,row_version=?,updated_at=? WHERE user_id=? AND row_version=? AND status='active'", [next.name, role, next.row_version, timestamp, current.user_id, current.row_version]);
     if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data pengguna berubah. Muat ulang.", 409);
-    await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: publicRow(next) });
-    return publicRow(next);
+    if (current.role !== role) {
+      const revokedCount = await revokeUserSessions(db, current.user_id, "role_change");
+      await appendAudit(db, context, {
+        action: "session.revoke.role_change",
+        entityType: "user",
+        entityId: current.user_id,
+        next: { revokedCount, previousRole: current.role, nextRole: role },
+      });
+    }
+    await appendAudit(db, context, {
+      entityType: "user",
+      entityId: current.user_id,
+      previous: userPublicProjection(current, { identityStatus: current.firebase_uid ? "linked" : "pending" }),
+      next: userPublicProjection(next, { identityStatus: next.firebase_uid ? "linked" : "pending" }),
+    });
+    return userPublicProjection(next, { identityStatus: next.firebase_uid ? "linked" : "pending" });
   }
   const next = { user_id: uuid(), firebase_uid: null, email, name: sanitizeText(payload.name || email, 120), role, status: "active", row_version: 1, created_at: timestamp, updated_at: timestamp };
   await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", Object.values(next));
-  await appendAudit(db, context, { entityType: "user", entityId: next.user_id, next: publicRow(next) });
-  return publicRow(next);
+  const publicNext = userPublicProjection(next, { identityStatus: "pending" });
+  await appendAudit(db, context, { entityType: "user", entityId: next.user_id, next: publicNext });
+  return publicNext;
 };
 
 export const deactivateUser = async (db, context) => {
@@ -128,8 +220,20 @@ export const deactivateUser = async (db, context) => {
   await db.execute("UPDATE notification_queue SET status='dead_letter',last_attempt_at=?,locked_by=NULL WHERE user_id=? AND status IN ('pending','processing','failed')", [next.updated_at, current.user_id]);
   const result = await db.execute("UPDATE users SET status='inactive',row_version=?,updated_at=? WHERE user_id=? AND row_version=?", [next.row_version, next.updated_at, current.user_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data pengguna berubah. Muat ulang.", 409);
-  await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: { ...publicRow(next), deactivation_reason: reason } });
-  return publicRow(next);
+  const revokedCount = await revokeUserSessions(db, current.user_id, "user_deactivated");
+  await appendAudit(db, context, {
+    action: "session.revoke.deactivation",
+    entityType: "user",
+    entityId: current.user_id,
+    next: { revokedCount, reason },
+  });
+  await appendAudit(db, context, {
+    entityType: "user",
+    entityId: current.user_id,
+    previous: userPublicProjection(current, { identityStatus: current.firebase_uid ? "linked" : "pending" }),
+    next: { ...userPublicProjection(next, { identityStatus: next.firebase_uid ? "linked" : "pending" }), deactivation_reason: reason },
+  });
+  return userPublicProjection(next, { identityStatus: next.firebase_uid ? "linked" : "pending" });
 };
 
 export const reactivateUser = async (db, context) => {
@@ -140,11 +244,14 @@ export const reactivateUser = async (db, context) => {
   const current = await db.one("SELECT * FROM users WHERE user_id = ?", [payload.user_id]);
   if (!current || current.status !== "inactive") throw appError("NOT_FOUND", "Pengguna nonaktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? payload.row_version);
-  const allowed = context.allowedUsers?.find((item) => item.email === String(current.email || "").toLowerCase());
-  if (!allowed || allowed.role !== current.role) throw appError("ALLOWLIST_MISMATCH", "Email dan role pengguna harus aktif dan sama dengan ALLOWED_USERS_JSON di Vercel sebelum reaktivasi.", 409);
   const next = { ...current, status: "active", row_version: Number(current.row_version) + 1, updated_at: nowIso() };
   const result = await db.execute("UPDATE users SET status='active',row_version=?,updated_at=? WHERE user_id=? AND row_version=? AND status='inactive'", [next.row_version, next.updated_at, current.user_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Data pengguna berubah. Muat ulang.", 409);
-  await appendAudit(db, context, { entityType: "user", entityId: current.user_id, previous: publicRow(current), next: { ...publicRow(next), reactivation_reason: reason } });
-  return publicRow(next);
+  await appendAudit(db, context, {
+    entityType: "user",
+    entityId: current.user_id,
+    previous: userPublicProjection(current, { identityStatus: current.firebase_uid ? "linked" : "pending" }),
+    next: { ...userPublicProjection(next, { identityStatus: next.firebase_uid ? "linked" : "pending" }), reactivation_reason: reason },
+  });
+  return userPublicProjection(next, { identityStatus: next.firebase_uid ? "linked" : "pending" });
 };

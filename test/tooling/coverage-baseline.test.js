@@ -80,28 +80,84 @@ test("encoding dan serializer canonical menangani validasi serta urutan property
   );
 });
 
-test("schema helpers memverifikasi version 11, mismatch, cache invalidation, dan checksum", async () => {
-  invalidateSchemaCache();
-  const readyDb = { one: async () => ({ value: "11" }) };
-  const ready = await readSchemaStatus(readyDb, { force: true });
-  assert.deepEqual(ready, { ready: true, version: 11, expectedVersion: 11 });
-  assert.equal((await assertDatabaseReady(readyDb)).ready, true);
+test("schema helpers memverifikasi version 12, environment binding, cache invalidation, dan checksum", async () => {
+  const originalDatabaseEnvironment = process.env.DATABASE_ENVIRONMENT;
+  const originalVercelEnvironment = process.env.VERCEL_ENV;
+  const restoreEnvironment = () => {
+    if (originalDatabaseEnvironment === undefined) delete process.env.DATABASE_ENVIRONMENT;
+    else process.env.DATABASE_ENVIRONMENT = originalDatabaseEnvironment;
+    if (originalVercelEnvironment === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = originalVercelEnvironment;
+    invalidateSchemaCache();
+  };
 
-  invalidateSchemaCache();
-  const staleDb = { one: async () => ({ value: "10" }) };
-  await assert.rejects(
-    () => assertDatabaseReady(staleDb),
-    (error) => error?.code === "DATABASE_SCHEMA_MISMATCH" && error?.status === 503,
-  );
-
-  invalidateSchemaCache();
-  const missingDb = { one: async () => { throw new Error("missing"); } };
-  assert.deepEqual(await readSchemaStatus(missingDb, { force: true }), {
-    ready: false,
-    version: 0,
-    expectedVersion: 11,
+  const dbWith = (schemaVersion, databaseEnvironment = "production") => ({
+    all: async () => [
+      { key: "schema_version", value: String(schemaVersion) },
+      { key: "database_environment", value: databaseEnvironment },
+    ],
   });
-  assert.match(checksumText("saldo-bersama"), /^[a-f0-9]{64}$/);
+
+  try {
+    process.env.DATABASE_ENVIRONMENT = "production";
+    process.env.VERCEL_ENV = "production";
+    invalidateSchemaCache();
+    const readyDb = dbWith(12, "production");
+    const ready = await readSchemaStatus(readyDb, { force: true });
+    assert.deepEqual(ready, {
+      ready: true,
+      version: 12,
+      expectedVersion: 12,
+      databaseEnvironment: "production",
+      expectedEnvironment: "production",
+      runtimeEnvironment: "production",
+      environmentReady: true,
+    });
+    assert.equal((await assertDatabaseReady(readyDb)).ready, true);
+
+    invalidateSchemaCache();
+    const staleDb = dbWith(11, "production");
+    await assert.rejects(
+      () => assertDatabaseReady(staleDb),
+      (error) => error?.code === "DATABASE_SCHEMA_MISMATCH" && error?.status === 503,
+    );
+
+    process.env.DATABASE_ENVIRONMENT = "development";
+    process.env.VERCEL_ENV = "production";
+    invalidateSchemaCache();
+    const crossed = await readSchemaStatus(dbWith(12, "development"), { force: true });
+    assert.equal(crossed.ready, false);
+    assert.equal(crossed.environmentReady, false);
+    await assert.rejects(
+      () => assertDatabaseReady(dbWith(12, "development")),
+      (error) => error?.code === "DATABASE_ENVIRONMENT_MISMATCH" && error?.status === 503,
+    );
+
+    delete process.env.DATABASE_ENVIRONMENT;
+    process.env.VERCEL_ENV = "preview";
+    invalidateSchemaCache();
+    const preview = await readSchemaStatus(dbWith(12, "production"), { force: true });
+    assert.equal(preview.ready, false);
+    assert.equal(preview.runtimeEnvironment, "preview");
+    assert.equal(preview.environmentReady, false);
+
+    delete process.env.DATABASE_ENVIRONMENT;
+    delete process.env.VERCEL_ENV;
+    invalidateSchemaCache();
+    const local = await readSchemaStatus(dbWith(12, "unbound"), { force: true });
+    assert.equal(local.ready, true);
+    assert.equal(local.environmentReady, true);
+
+    invalidateSchemaCache();
+    const missingDb = { all: async () => { throw new Error("missing"); } };
+    const missing = await readSchemaStatus(missingDb, { force: true });
+    assert.equal(missing.ready, false);
+    assert.equal(missing.version, 0);
+    assert.equal(missing.expectedVersion, 12);
+    assert.match(checksumText("saldo-bersama"), /^[a-f0-9]{64}$/);
+  } finally {
+    restoreEnvironment();
+  }
 });
 
 test("security dan API error helpers mempertahankan formula guard, secure id, dan klasifikasi error", () => {

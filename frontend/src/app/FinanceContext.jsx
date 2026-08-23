@@ -1,3 +1,7 @@
+/**
+ * Shared read-state orchestrator. Server responses remain financial authority; this store
+ * only coordinates snapshots, refreshes, cache seeding, and stale-request protection.
+ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "../services/api/client.js";
 import { useAuth } from "../features/auth/AuthContext.jsx";

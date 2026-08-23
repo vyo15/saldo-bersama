@@ -4,6 +4,7 @@
 
 - `../AGENTS.md` — instruksi AI/coding agent.
 - `WORKFLOW.md` — workflow review, patch, validation, dan delivery canonical.
+- [`CODE_MAINTAINABILITY.md`](CODE_MAINTAINABILITY.md) — aturan comment/JSDoc, decomposition, facade, dan characterization test.
 - `GIT_WORKFLOW.md` — branch/PR workflow dengan Quality gate.
 - `PROJECT_STATUS.md` — snapshot kondisi project sekarang.
 - `DOCUMENT_LIFECYCLE.md` — lifecycle dokumen.
@@ -21,12 +22,12 @@ Gunakan tabel ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 | Area perubahan | Wajib dibaca | Test/validation utama |
 |---|---|---|
 | UI/layout/responsive | `UI_DESIGN_SYSTEM.md`, `TEST_PLAN.md` | frontend regression + `npm run lint` + `npm run build` + manual device QA |
-| Rekening/transaksi/saldo/laporan | `API_CONTRACT.md`, `DATA_DICTIONARY.md`, `TEST_PLAN.md` | test business/domain terkait + `npm run test:guard` |
+| Rekening/transaksi/saldo/laporan | `API_CONTRACT.md`, `DATA_DICTIONARY.md`, `TEST_PLAN.md` | test business/domain terkait + full `npm run verify` |
 | Auth/session/role | `SECURITY_MODEL.md`, `AUTHORIZATION_MATRIX.md`, `ENVIRONMENT_VARIABLES.md` | auth/security regression + manual login journey pada device relevan |
 | Schema/database/migration | `TURSO_SCHEMA.md`, `DATA_DICTIONARY.md`, `DATABASE_MIGRATION_POLICY.md` | migration/schema/integrity tests |
 | Backup/restore/import/reset | `DATA_DELETION_AND_RECOVERY_POLICY.md`, `RECOVERY_RUNBOOK.md`, `TEST_PLAN.md` | maintenance/data-lifecycle guards |
 | Env/deployment/CI/tooling | `ENVIRONMENT_VARIABLES.md`, `DEPLOYMENT.md`, `GIT_WORKFLOW.md`, `TEST_PLAN.md` | tooling/governance tests + `npm run verify` |
-| Build/performance/bundle | `TEST_PLAN.md`, `UI_DESIGN_SYSTEM.md`, `WORKFLOW.md` | production build + `npm run build:budget`; audit static import, CSS global, lazy chunk, dan asset legacy |
+| Build/performance/bundle | `TEST_PLAN.md`, `UI_DESIGN_SYSTEM.md`, `WORKFLOW.md` | production build + build-budget internal pada `npm run verify`; audit static import, CSS global, lazy chunk, dan asset legacy |
 | Dokumentasi/governance | `DOCUMENT_LIFECYCLE.md`, `WORKFLOW.md`, `DEFINITION_OF_DONE.md` | governance/tooling tests |
 
 Jika perubahan menyentuh lebih dari satu area, gabungkan contract dan test dari semua baris yang relevan. Source tetap sumber kebenaran bila snapshot docs tertinggal; drift docs harus diperbaiki pada patch yang sama.

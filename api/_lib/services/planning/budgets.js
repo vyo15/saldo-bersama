@@ -113,7 +113,7 @@ export const upsertBudget = async (db, context) => {
   const category = await db.one("SELECT * FROM categories WHERE category_id=? AND status='active' AND transaction_type='expense'", [p.category_id]);
   if (!category) throw appError("INVALID_CATEGORY", "Kategori pengeluaran tidak valid.", 400);
   const owned = await normalizeOwnedScope(db, context.actor, p);
-  assertPlanningManageScope(context.actor, owned);
+  assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const envelopeRuleId = sanitizeText(p.envelope_rule_id, 100) || null;
   await resolveBudgetEnvelope(db, envelopeRuleId, owned);
   const identityArgs = budgetIdentityArgs({ period_key: period, category_id: category.category_id, scope: owned.scope, owner_user_id: owned.owner_user_id, envelope_rule_id: envelopeRuleId });

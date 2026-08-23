@@ -11,7 +11,7 @@
 ## Login gagal
 
 - Verifikasi Firebase provider/domain.
-- Verifikasi `VITE_FIREBASE_API_KEY`, client ID, allowlist, role, dan binding `users`.
+- Verifikasi `VITE_FIREBASE_API_KEY`, client ID, bootstrap Administrator bila diperlukan, serta role/status/binding canonical di `users`.
 - Jangan menurunkan backend guard untuk memaksa login.
 
 ## Turso/schema gagal

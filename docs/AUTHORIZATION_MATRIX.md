@@ -4,11 +4,21 @@
 
 - Default deny.
 - Firebase identity diverifikasi backend.
-- `ALLOWED_USERS_JSON` adalah outer allowlist; tabel `users` adalah binding internal.
+- Tabel `users` di Turso adalah registry authorization canonical. `ALLOWED_USERS_JSON` hanya mengizinkan bootstrap/recovery Administrator pertama ketika database masih kosong.
 - Role dan actor tidak dipercaya dari client.
 - Permission action diperiksa di `api/_lib/security.js`.
 - Ownership/scope diperiksa lagi di service dan query.
 - Frontend guard hanya UX; backend guard adalah keputusan keamanan.
+- Session cookie v2 hanya credential opaque; backend wajib resolve registry `user_sessions`, user aktif dengan Firebase UID terikat, dan role terbaru dari tabel `users` sebelum action. `ALLOWED_USERS_JSON` tidak ikut menentukan validitas session runtime; ia hanya bootstrap/recovery Administrator pertama. User hanya dapat list/revoke session miliknya; IDOR antar-user ditolak.
+
+## Provisioning anggota
+
+1. Administrator menjalankan `users.upsert` dengan email, nama, dan role. Backend membuat row `users` aktif dengan `firebase_uid = NULL`; UI menampilkannya sebagai **Menunggu login**.
+2. Pada login pertama, Firebase ID token diverifikasi server-side. Email terverifikasi harus cocok dengan row `users` aktif; role diambil dari database, bukan dari client atau environment.
+3. Backend mengikat Firebase UID satu kali di dalam transaction, menaikkan `row_version`, dan menulis audit `identity.firebase.bind` tanpa menyimpan UID pada payload audit/API.
+4. Login berikutnya wajib cocok dengan UID yang sudah terikat. UID berbeda ditolak `IDENTITY_CONFLICT`; akun inactive ditolak `ACCOUNT_INACTIVE`.
+5. `users.reactivate` adalah satu-satunya jalur aktivasi ulang akun inactive dan tidak memerlukan perubahan environment. Administrator tidak dapat mengubah role atau menonaktifkan akunnya sendiri melalui action normal.
+6. `ALLOWED_USERS_JSON` tidak menjadi registry anggota. Ia hanya gate bootstrap/recovery Administrator pertama ketika tabel `users` dan data bisnis masih kosong.
 
 ## Action permission
 
@@ -21,6 +31,9 @@
 | `users.upsert` | Ya | Tidak |
 | `users.deactivate` | Ya | Tidak |
 | `users.reactivate` | Ya | Tidak |
+| `sessions.listOwn` | Ya | Ya |
+| `sessions.revokeOwn` | Ya | Ya |
+| `sessions.revokeAllOwn` | Ya | Ya |
 | `archive.list` | Ya | Tidak |
 | `audit.list` | Ya | Tidak |
 | `dashboard.overview` | Ya | Ya |
@@ -128,20 +141,20 @@
 
 ## Ownership penting
 
-- Kedua pengguna aktif yang lolos Firebase session, outer allowlist, dan binding tabel `users` dapat **membaca seluruh rekening serta ledger**: shared, personal milik sendiri, dan personal milik pasangan. Transparansi baca ini mencakup saldo, nomor rekening, transaksi pembentuk saldo, laporan, dashboard, dan riwayat rekonsiliasi.
+- Kedua pengguna aktif yang lolos verifikasi Firebase, signed session, status/role canonical tabel `users`, dan binding identitas dapat **membaca seluruh rekening serta ledger**: shared, personal milik sendiri, dan personal milik pasangan. Transparansi baca ini mencakup saldo, nomor rekening, transaksi pembentuk saldo, laporan, dashboard, dan riwayat rekonsiliasi.
 - Rekening personal selalu membawa `owner_name` dari join backend serta capability server-side. Frontend tidak boleh menentukan pemilik atau hak akses dari nama rekening, email client, atau role yang dikirim browser.
 - Hak operasi tetap lebih sempit: member hanya dapat bertransaksi dan merekonsiliasi rekening shared atau rekening personal miliknya. Rekening personal pasangan memiliki `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
 - Alokasi Dana memiliki dimensi `assignee_user_id` terpisah dari ownership ledger. `NULL` berarti Jatah Bersama. Setiap Alokasi Dana canonical juga terikat pada tepat satu `source_account_id`; transaksi yang memakai Alokasi Dana wajib memakai rekening sumber yang sama dan realokasi baru hanya boleh antar Alokasi Dana dari rekening sumber yang sama. Member hanya boleh memakai atau memindahkan Jatah Bersama dan jatah miliknya sendiri; jatah pengguna lain ditolak backend. Rekening personal hanya boleh menjadi sumber jatah untuk pemilik rekening tersebut.
 - `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
-- User management, rekening/kategori master, lifecycle destruktif planning, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix. Member dapat create/update planning hanya pada scope `shared`: Alokasi Dana, Kebutuhan, Target, dan Jadwal Rutin. Backend memaksa scope ini; disabled button frontend bukan boundary keamanan.
+- User management, rekening/kategori master, lifecycle destruktif planning, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix. Member dapat create/update Alokasi Dana, Target, dan Jadwal Rutin hanya pada scope `shared`. Untuk Kebutuhan (`budgets.upsert`), Member juga dapat membuat/mengubah scope `personal` miliknya sendiri; Kebutuhan personal pengguna lain tetap ditolak backend. Disabled button frontend bukan boundary keamanan.
 - Export lengkap Administrator-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.
 - `totalBalance` adalah metrik readable/transparan. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` adalah metrik actionable sehingga hanya boleh memakai rekening/scope operable actor.
 
 ## Keputusan role pasangan
 
-UI menggunakan role **Administrator** dan **Member**. Untuk kompatibilitas data/session existing, key internal database/permission untuk Administrator tetap `owner`; konfigurasi `ALLOWED_USERS_JSON` menerima `administrator` dan menormalisasinya ke key internal tersebut. RFC-0016 memilih Option 2: Member boleh mengelola planning **hanya** untuk scope `shared`. Rekening, kategori, user management, archive/delete/restore planning, recovery, import/restore, schema, dan maintenance tetap Administrator-only. Backend memvalidasi scope/ownership pada setiap write dan default authorization tetap deny.
+UI menggunakan role **Administrator** dan **Member**. Untuk kompatibilitas data/session existing, key internal database/permission untuk Administrator tetap `owner`. `ALLOWED_USERS_JSON` menerima `administrator` dan menormalisasinya ke key internal tersebut hanya untuk bootstrap/recovery Administrator; role anggota aktif berasal dari tabel `users`. RFC-0016 tetap membatasi Alokasi Dana, Target, dan Jadwal Rutin Member ke scope `shared`, dengan amandemen 2026-08-22 bahwa Kebutuhan dapat dikelola pada scope `shared` atau `personal` milik Member sendiri. Rekening, kategori, user management, archive/delete/restore planning, recovery, import/restore, schema, dan maintenance tetap Administrator-only. Backend memvalidasi scope/ownership pada setiap write dan default authorization tetap deny.
 
 ## Privasi data turunan
 

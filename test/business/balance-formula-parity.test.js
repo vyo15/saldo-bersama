@@ -4,10 +4,10 @@ import test from "node:test";
 
 const BALANCE_SOURCES = Object.freeze([
   "../../api/_lib/services/readModels.js",
-  "../../api/_lib/services/masterData.js",
-  "../../api/_lib/services/notifications.js",
-  "../../api/_lib/services/maintenance/reset.js",
-  "../../api/_lib/services/reporting/dashboard.js",
+  "../../api/_lib/services/masterData/accounts.js",
+  "../../api/_lib/services/notifications/actionable.js",
+  "../../api/_lib/services/maintenance/resetModel.js",
+  "../../api/_lib/services/reporting/dashboard/readModel.js",
   "../../api/_lib/services/reporting/integrity.js",
 ]);
 

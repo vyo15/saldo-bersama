@@ -13,6 +13,7 @@ const ewalletTemplateMigrationUrl = new URL("006_account_ewallet_template.sql", 
 const envelopeAssigneeMigrationUrl = new URL("007_envelope_assignee.sql", migrationDirectory);
 const manualRemindersMigrationUrl = new URL("008_manual_reminders.sql", migrationDirectory);
 const transactionCostSharingMigrationUrl = new URL("009_transaction_cost_sharing.sql", migrationDirectory);
+const environmentSessionsMigrationUrl = new URL("010_environment_sessions.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -102,10 +103,10 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v11 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v12 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "11");
-  assert.ok(result.table_count >= 26);
+  assert.equal(result.schema_version, "12");
+  assert.ok(result.table_count >= 27);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
 });
@@ -303,5 +304,23 @@ test("migration v11 menambah snapshot pembagian beban tanpa mengubah transaksi l
     assert.equal(row.cost_share_mode, "unspecified");
     assert.equal(row.cost_share_json, "[]");
     assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "11");
+  } finally { db.close(); }
+});
+
+
+test("migration v12 menambah registry sesi, binding environment, dan heartbeat tanpa menyentuh ledger", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("009_transaction_cost_sharing.sql"));
+    const now = "2026-08-23T00:00:00.000Z";
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").run("u-session", "uid-session", "session@example.com", "Session", "owner", "active", 1, now, now);
+    db.exec((await readFile(environmentSessionsMigrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "12");
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='database_environment'").get().value, "unbound");
+    const insert = "INSERT INTO user_sessions(session_id,user_id,verifier_hash,issued_at,expires_at,last_seen_at,revoked_at,revoked_reason,device_label,client_family,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    db.prepare(insert).run("session-1234567890123456789012", "u-session", "a".repeat(64), now, "2026-08-24T00:00:00.000Z", now, null, null, "Chrome · Windows", "Chrome", 1, now, now);
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM user_sessions").get().count, 1);
+    assert.throws(() => db.prepare(insert).run("session-invalid-verifier-000001", "u-session", "raw-secret", now, "2026-08-24T00:00:00.000Z", now, null, null, "Chrome", "Chrome", 1, now, now));
   } finally { db.close(); }
 });

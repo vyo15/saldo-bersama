@@ -3,6 +3,11 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 import {
+  buildVerificationFailureReport,
+  sanitizeVerificationOutput,
+} from "../../scripts/verified-clean-archive.mjs";
+
+import {
   REQUIRED_NODE_MAJOR,
   REQUIRED_NODE_VERSION,
   VERIFY_STEPS,
@@ -23,8 +28,15 @@ test("verify memakai Node 24 canonical", () => {
   );
 });
 
-test("verify menjalankan full local gate tanpa npm ci", () => {
-  assert.deepEqual(VERIFY_STEPS.map((step) => step.script), ["check", "test:guard"]);
+test("verify menjalankan full gate sekali tanpa alias internal atau backend test ganda", () => {
+  assert.deepEqual(VERIFY_STEPS.map((step) => step.id), [
+    "source", "lint", "frontend-test", "build", "build-budget", "backend-coverage",
+  ]);
+  assert.equal(VERIFY_STEPS.some((step) => step.args.includes("check")), false);
+  assert.equal(VERIFY_STEPS.some((step) => step.args.includes("test:guard")), false);
+  assert.equal(VERIFY_STEPS.filter((step) => step.args.some((arg) => arg.endsWith("run-backend-tests.mjs"))).length, 1);
+  assert.equal(VERIFY_STEPS.find((step) => step.id === "backend-coverage")?.args.includes("--coverage"), true);
+
   const executed = [];
   let dependencyChecks = 0;
   const logs = [];
@@ -32,13 +44,12 @@ test("verify menjalankan full local gate tanpa npm ci", () => {
   assert.equal(runVerification({
     nodeVersion: "v24.18.1",
     dependencyCheck: () => { dependencyChecks += 1; },
-    runScript: (script) => { executed.push(script); return { status: 0 }; },
+    runStep: (step) => { executed.push(step.id); return { status: 0 }; },
     logger: { log: (message) => logs.push(message) },
   }), true);
 
   assert.equal(dependencyChecks, 1);
-  assert.deepEqual(executed, ["check", "test:guard"]);
-  assert.equal(executed.includes("ci"), false);
+  assert.deepEqual(executed, VERIFY_STEPS.map((step) => step.id));
   assert.match(logs.at(-1), /PASS/);
 });
 
@@ -48,17 +59,17 @@ test("verify berhenti pada step pertama yang gagal", () => {
     () => runVerification({
       nodeVersion: "24.18.1",
       dependencyCheck: () => {},
-      runScript: (script) => {
-        executed.push(script);
-        return { status: script === "test:guard" ? 7 : 0 };
+      runStep: (step) => {
+        executed.push(step.id);
+        return { status: step.id === "build-budget" ? 7 : 0 };
       },
       logger: { log: () => {} },
     }),
     (error) => error.code === "VERIFY_STEP_FAILED"
-      && error.step === "test:guard"
+      && error.step === "build-budget"
       && error.exitCode === 7,
   );
-  assert.deepEqual(executed, ["check", "test:guard"]);
+  assert.deepEqual(executed, ["source", "lint", "frontend-test", "build", "build-budget"]);
 });
 
 test("dependency preflight fail closed dengan recovery Windows yang eksplisit", () => {
@@ -74,13 +85,12 @@ test("dependency preflight fail closed dengan recovery Windows yang eksplisit", 
   assert.match(dependencyRecoveryMessage(), /bootstrap\/reinstall dependency/);
 });
 
-
 test("verification wrapper selalu membersihkan generated artifact setelah PASS maupun gagal", async () => {
   const cleanupLogs = [];
   assert.equal(await runVerificationWithCleanup({
     nodeVersion: "v24.18.1",
     dependencyCheck: () => {},
-    runScript: () => ({ status: 0 }),
+    runStep: () => ({ status: 0 }),
     logger: { log: () => {} },
     cleanupLogger: { log: (message) => cleanupLogs.push(message) },
   }), true);
@@ -89,10 +99,10 @@ test("verification wrapper selalu membersihkan generated artifact setelah PASS m
   await assert.rejects(() => runVerificationWithCleanup({
     nodeVersion: "v24.18.1",
     dependencyCheck: () => {},
-    runScript: (script) => ({ status: script === "check" ? 3 : 0 }),
+    runStep: (step) => ({ status: step.id === "source" ? 3 : 0 }),
     logger: { log: () => {} },
     cleanupLogger: { log: (message) => cleanupLogs.push(message) },
-  }), (error) => error.code === "VERIFY_STEP_FAILED" && error.step === "check");
+  }), (error) => error.code === "VERIFY_STEP_FAILED" && error.step === "source");
 });
 
 test("zip lokal dan pre-push memakai full verification canonical", async () => {
@@ -107,12 +117,37 @@ test("zip lokal dan pre-push memakai full verification canonical", async () => {
   assert.equal(packageJson.scripts.zip, "node scripts/verified-clean-archive.mjs");
   assert.equal(packageJson.scripts.postinstall, "node scripts/install-git-hooks.mjs");
   assert.match(zipWrapper, /installGitHooks\(\)/);
-  assert.match(zipWrapper, /runVerificationWithCleanup\(\)/);
+  assert.match(zipWrapper, /runVerificationWithCleanup\(/);
   assert.match(zipWrapper, /createCleanArchive\(args\)/);
+  assert.match(zipWrapper, /saldo-bersama-UNVERIFIED\.zip/);
+  assert.match(zipWrapper, /UNVERIFIED_BUILD_REPORT\.md/);
+  assert.match(zipWrapper, /verified:\s*false/);
+  assert.match(zipWrapper, /process\.exitCode/);
   assert.match(prePush, /runVerificationWithCleanup\(\)/);
   assert.match(hookInstaller, /pre-push/);
   assert.match(hookInstaller, /saldo-bersama-managed-pre-push/);
   assert.match(devStart, /installGitHooks\(\{ projectRoot \}\)/);
+});
+
+test("ZIP unverified menandai failure dan menyamarkan credential pada laporan staging", () => {
+  process.env.TEST_SESSION_SECRET = "super-secret-session-value";
+  try {
+    const sanitized = sanitizeVerificationOutput("Bearer abc.def token=visible super-secret-session-value");
+    assert.doesNotMatch(sanitized, /abc\.def|visible|super-secret-session-value/);
+    assert.match(sanitized, /\[REDACTED\]|\[REDACTED_ENV\]/);
+
+    const report = buildVerificationFailureReport({
+      error: Object.assign(new Error("lint gagal"), { code: "VERIFY_STEP_FAILED", step: "lint", exitCode: 1 }),
+      transcript: "eslint: CompactNotice is not defined",
+      archiveName: "saldo-bersama-UNVERIFIED.zip",
+    });
+    assert.match(report, /STATUS: FAILED \/ UNVERIFIED/);
+    assert.match(report, /Verification step: `lint`/);
+    assert.match(report, /CompactNotice is not defined/);
+    assert.match(report, /bukan release\/deployment artifact/);
+  } finally {
+    delete process.env.TEST_SESSION_SECRET;
+  }
 });
 
 test("build budget memberi warning headroom sebelum route benar-benar melewati batas", async () => {

@@ -1,3 +1,4 @@
+// Apps Script is an authenticated integration bridge; Turso remains the canonical financial source.
 function doGet() {
   return jsonOutput_({ ok: true, service: "saldo-bersama-google-bridge", version: 3, timestamp: new Date().toISOString() }, 200);
 }

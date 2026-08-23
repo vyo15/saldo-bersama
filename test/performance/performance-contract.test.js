@@ -14,7 +14,9 @@ test("initial state dan read identik dikoaleskan serta cache frontend tetap priv
   assert.match(cache, /const readCache = new Map\(\)/);
   assert.match(cache, /const inFlightReads = new Map\(\)/);
   assert.match(client, /clearReadState\(\)/);
-  assert.doesNotMatch(`${client}\n${cache}`, /localStorage|sessionStorage|caches\.open/);
+  assert.doesNotMatch(cache, /localStorage|sessionStorage|caches\.open/);
+  assert.match(client, /MUTATION_INTENT_STORAGE_PREFIX/);
+  assert.match(client, /localStorage/);
   assert.match(finance, /apiClient\.request\("app\.initialState"/);
   assert.doesNotMatch(finance, /system\.initialize|IDENTITY_BIND_REQUIRED|callAppsScript/);
   assert.match(gateway, /const inFlightReads = new Map\(\)/);
@@ -126,7 +128,10 @@ test("list transaksi menggabungkan filter, rows, dan period lock dalam satu batc
 });
 
 test("dashboard memakai opening balance bulk, envelope ringan, dan laporan trend tidak N+1 rekening", async () => {
-  const dashboard = await source("api/_lib/services/reporting/dashboard.js");
+  const dashboard = [
+    await source("api/_lib/services/reporting/dashboard.js"),
+    await source("api/_lib/services/reporting/dashboard/readModel.js"),
+  ].join("\n");
   assert.match(dashboard, /openingAccounts/);
   assert.match(dashboard, /openingAccounts\.reduce/);
   assert.doesNotMatch(dashboard, /for \(const account of accounts\) openingBalance/);

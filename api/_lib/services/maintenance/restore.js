@@ -1,3 +1,4 @@
+/** Restore is fail-closed: preview/validation, safety backup, maintenance lock, apply, integrity verification, then audit. */
 import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { callGoogleBridge, enqueueIntegration } from "../integrations.js";
@@ -63,12 +64,11 @@ const loadRestorePreview = async (db, context, payload) => {
   return { preview, appliedResult: null, reason };
 };
 
-const loadRestoreIdentityState = async (db, context) => {
+const loadRestoreIdentityState = async (db) => {
   const currentUsers = await db.all("SELECT user_id,email,firebase_uid,role,status,row_version FROM users");
   return {
     currentUsers,
     currentByEmail: new Map(currentUsers.map((user) => [String(user.email || "").toLowerCase(), user])),
-    allowedRoleByEmail: new Map((context.allowedUsers || []).map((user) => [String(user.email || "").toLowerCase(), user.role])),
   };
 };
 
@@ -83,43 +83,30 @@ const assertRestoreIdentityCompatibility = (snapshot, currentByEmail) => {
   }
 };
 
-const restoredUserValues = (context, user, current, allowedRole) => {
+const restoredUserValues = (context, user, current) => {
   const email = String(user.email || "").trim().toLowerCase();
   const isActor = email === String(context.actor.email || "").toLowerCase();
   const firebaseUid = isActor ? context.signedActor.uid : (current?.firebase_uid || null);
-  const role = isActor ? context.actor.role : (allowedRole || current?.role || user.role);
-  const status = isActor ? "active" : (allowedRole ? (current?.status || user.status) : "inactive");
+  const role = isActor ? context.actor.role : (current?.role || user.role);
+  // Restore data finansial tidak boleh menghidupkan kembali akses historis. Registry user yang aktif sebelum restore tetap canonical.
+  const status = isActor ? "active" : (current?.status || "inactive");
   const rowVersion = Math.max(Number(user.row_version || 1), Number(current?.row_version || 0)) + 1;
   return { email, firebaseUid, role, status, rowVersion };
 };
 
-const upsertRestoredUsers = async (tx, context, users, currentByEmail, allowedRoleByEmail) => {
+const upsertRestoredUsers = async (tx, context, users, currentByEmail) => {
   for (const user of users) {
     const email = String(user.email || "").trim().toLowerCase();
     const current = currentByEmail.get(email);
-    const allowedRole = allowedRoleByEmail.get(email);
-    const values = restoredUserValues(context, user, current, allowedRole);
+    const values = restoredUserValues(context, user, current);
     await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
       VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,name=excluded.name,role=excluded.role,status=excluded.status,row_version=excluded.row_version,updated_at=excluded.updated_at`, [user.user_id, values.firebaseUid, values.email, user.name, values.role, values.status, values.rowVersion, user.created_at, nowIso()]);
   }
 };
 
-const reconcileCurrentUsers = async (tx, context, currentUsers, restoredUserIds, allowedRoleByEmail) => {
-  for (const current of currentUsers) {
-    if (restoredUserIds.has(current.user_id) || current.user_id === context.actor.user_id) continue;
-    const allowedRole = allowedRoleByEmail.get(String(current.email || "").toLowerCase());
-    const nextStatus = allowedRole ? current.status : "inactive";
-    const nextRole = allowedRole || current.role;
-    await tx.execute("UPDATE users SET role=?,status=?,row_version=row_version+1,updated_at=? WHERE user_id=?", [nextRole, nextStatus, nowIso(), current.user_id]);
-  }
-};
-
 const restoreUsers = async (tx, context, snapshot, identityState) => {
-  const { currentUsers, currentByEmail, allowedRoleByEmail } = identityState;
-  const backupUsers = snapshot.tables.users;
-  await upsertRestoredUsers(tx, context, backupUsers, currentByEmail, allowedRoleByEmail);
-  const restoredUserIds = new Set(backupUsers.map((user) => user.user_id));
-  await reconcileCurrentUsers(tx, context, currentUsers, restoredUserIds, allowedRoleByEmail);
+  await upsertRestoredUsers(tx, context, snapshot.tables.users, identityState.currentByEmail);
+  // User canonical yang tidak ada di backup sengaja dibiarkan apa adanya; perubahan akses tetap melalui user-management yang diaudit.
 };
 
 const restoreSnapshotTables = async (tx, snapshot) => {
@@ -148,7 +135,7 @@ const restoreIdempotencyReservation = async (tx, reservation) => {
 
 const restoreSystemConfig = async (tx, snapshot) => {
   for (const row of snapshot.tables.system_config) {
-    if (row.key === "maintenance_mode" || row.key === "schema_version") continue;
+    if (["maintenance_mode", "schema_version", "database_environment", "scheduler_last_run_at", "scheduler_last_success_at", "scheduler_last_failure_at", "scheduler_last_error_code"].includes(row.key)) continue;
     await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [row.key, row.value, row.updated_at]);
   }
   await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES('schema_version',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [String(DATABASE_SCHEMA_VERSION), nowIso()]);
@@ -185,7 +172,7 @@ export const applyRestore = async (db, context) => {
   }
 
   const safety = await createTechnicalBackup(db, { ...context, action: "backup.safety" }, { type: "pre-restore", audit: true });
-  const identityState = await loadRestoreIdentityState(db, context);
+  const identityState = await loadRestoreIdentityState(db);
   assertRestoreIdentityCompatibility(snapshot, identityState.currentByEmail);
 
   const maintenanceLock = await db.execute("UPDATE system_config SET value='true',updated_at=? WHERE key='maintenance_mode' AND value='false'", [nowIso()]);
@@ -198,6 +185,7 @@ export const applyRestore = async (db, context) => {
     await db.transaction(async (tx) => {
       const claim = await tx.execute("UPDATE restore_previews SET status='applying' WHERE preview_id=? AND status='pending'", [preview.preview_id]);
       if (claim.rowsAffected !== 1) throw appError("RESTORE_IN_PROGRESS", "Preview restore sudah diproses oleh request lain.", 409);
+      await tx.execute("DELETE FROM user_sessions");
       await tx.batch(RESTORE_DELETE_ORDER.map((table) => ({ sql: `DELETE FROM ${quoted(table)}` })));
       await restoreUsers(tx, context, snapshot, identityState);
       await restoreSnapshotTables(tx, snapshot);

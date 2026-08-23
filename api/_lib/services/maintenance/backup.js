@@ -1,3 +1,4 @@
+/** Backup creation is a guarded recovery asset: names/checksums are unique and success requires persisted metadata. */
 import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { callGoogleBridge } from "../integrations.js";
 import { appError, assertOwner, nowIso, sanitizeText, uuid } from "../core.js";

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, clientRateLimitKey, createSessionCookie, enforceBestEffortRateLimit, identityRateLimitKey, isValidEmail, parseAllowedUsers, readSession } from "../../api/_lib/security.js";
+import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, clientRateLimitKey, createSessionCookie, enforceBestEffortRateLimit, identityRateLimitKey, isValidEmail, parseAllowedUsers, readSessionCredential } from "../../api/_lib/security.js";
 import { normalizeTransaction } from "../../api/_lib/services/finance.js";
 import { RESERVED_TRANSACTION_FIELDS } from "../../api/_lib/transactionContract.js";
 
@@ -17,7 +17,7 @@ test("validator email server dipakai sebagai predicate canonical", () => {
   assert.equal(isValidEmail(""), false);
 });
 
-test("allowlist menerima Administrator dan menormalisasinya ke compatibility role internal", () => withEnv({ ALLOWED_USERS_JSON: '[{"email":"Admin@Gmail.com","role":"administrator"}]' }, () => {
+test("bootstrap owner config menerima Administrator dan menormalisasinya ke compatibility role internal", () => withEnv({ ALLOWED_USERS_JSON: '[{"email":"Admin@Gmail.com","role":"administrator"}]' }, () => {
   assert.deepEqual(parseAllowedUsers(), [{ email: "admin@gmail.com", role: "owner" }]);
   assert.equal(authorizeAction({ role: "member" }, "backup.create"), false);
   assert.equal(authorizeAction({ role: "owner" }, "backup.create"), true);
@@ -36,7 +36,7 @@ test("allowlist menerima Administrator dan menormalisasinya ke compatibility rol
 }));
 
 
-test("allowlist menolak role, email, dan konflik duplikat yang invalid", () => {
+test("bootstrap owner config menolak role, email, dan konflik duplikat yang invalid", () => {
   assert.deepEqual(parseAllowedUsers('[{"email":"legacy@gmail.com","role":"owner"}]'), [{ email: "legacy@gmail.com", role: "owner" }]);
   assert.throws(() => parseAllowedUsers('[{"email":"user@gmail.com","role":"admin"}]'), /role tidak valid/);
   assert.throws(() => parseAllowedUsers('[{"email":"bukan-email","role":"member"}]'), /email tidak valid/);
@@ -44,28 +44,28 @@ test("allowlist menolak role, email, dan konflik duplikat yang invalid", () => {
   assert.deepEqual(parseAllowedUsers('[{"email":"user@gmail.com","role":"member"},{"email":"USER@gmail.com","role":"member"}]'), [{ email: "user@gmail.com", role: "member" }]);
 });
 
-test("session cookie ditandatangani, mempertahankan foto Google tepercaya, dan dapat diverifikasi", () => withEnv({
-  ALLOWED_USERS_JSON: '[{"email":"owner@gmail.com","role":"administrator"}]',
+test("session cookie v2 hanya membawa credential opaque bertanda tangan, foto Google tepercaya, dan tidak bergantung pada bootstrap env", () => withEnv({
+  ALLOWED_USERS_JSON: "not-json-on-purpose",
   SESSION_SECRET: "12345678901234567890123456789012",
   VERCEL_ENV: "development",
 }, () => {
   const photoURL = "https://lh3.googleusercontent.com/a/example-profile=s96-c";
-  const cookie = createSessionCookie({ uid: "u1", email: "owner@gmail.com", role: "owner", name: "Owner", photoURL });
+  const cookie = createSessionCookie({ sessionId: "session-opaque-123", sessionSecret: "verifier-opaque-456", expiresAt: new Date(Date.now() + 60_000).toISOString(), photoURL });
   const token = cookie.split(";")[0];
-  const session = readSession({ headers: { cookie: token } });
-  assert.equal(session.uid, "u1");
-  assert.equal(session.role, "owner");
-  assert.equal(session.photoURL, photoURL);
+  const credential = readSessionCredential({ headers: { cookie: token } });
+  assert.equal(credential.sessionId, "session-opaque-123");
+  assert.equal(credential.sessionSecret, "verifier-opaque-456");
+  assert.equal(credential.photoURL, photoURL);
+  assert.doesNotMatch(token, /owner@gmail\.com|\"role\"|\"uid\"/);
 }));
 
 test("session cookie tidak mempersist URL foto profil di luar host Google yang diizinkan CSP", () => withEnv({
-  ALLOWED_USERS_JSON: '[{"email":"owner@gmail.com","role":"administrator"}]',
   SESSION_SECRET: "12345678901234567890123456789012",
   VERCEL_ENV: "development",
 }, () => {
-  const cookie = createSessionCookie({ uid: "u1", email: "owner@gmail.com", role: "owner", name: "Owner", photoURL: "https://example.com/avatar.jpg" });
-  const session = readSession({ headers: { cookie: cookie.split(";")[0] } });
-  assert.equal(session.photoURL, "");
+  const cookie = createSessionCookie({ sessionId: "session-opaque-123", sessionSecret: "verifier-opaque-456", expiresAt: new Date(Date.now() + 60_000).toISOString(), photoURL: "https://example.com/avatar.jpg" });
+  const credential = readSessionCredential({ headers: { cookie: cookie.split(";")[0] } });
+  assert.equal(credential.photoURL, "");
 }));
 
 

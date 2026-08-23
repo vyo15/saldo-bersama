@@ -151,7 +151,11 @@ test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta g
     })),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
     read("src/features/categories/CategoriesPage.jsx"),
-    read("src/features/reconciliations/ReconciliationsPage.jsx"),
+    Promise.all([
+      read("src/features/reconciliations/ReconciliationsPage.jsx"),
+      read("src/features/reconciliations/components/ReconciliationForm.jsx"),
+      read("src/features/reconciliations/components/ReconciliationHistory.jsx"),
+    ]).then((parts) => parts.join("\n")),
     read("src/shared/presentation/transaction.js"),
   ]);
   const [mobileTransferFields, transactionForm] = await Promise.all([
@@ -514,7 +518,11 @@ test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () =
 
 test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celebration tetap aksesibel", async () => {
   const [page, pageStyles, feedback, result, resultStyles, successOverlay, successStyles, alertList, alertStyles] = await Promise.all([
-    read("src/features/reconciliations/ReconciliationsPage.jsx"),
+    Promise.all([
+      read("src/features/reconciliations/ReconciliationsPage.jsx"),
+      read("src/features/reconciliations/components/ReconciliationForm.jsx"),
+      read("src/features/reconciliations/components/ReconciliationHistory.jsx"),
+    ]).then((parts) => parts.join("\n")),
     read("src/features/reconciliations/ReconciliationsPage.module.css"),
     read("src/components/feedback/FeedbackProvider.jsx"),
     read("src/features/reconciliations/components/ReconciliationFeedback.jsx"),
