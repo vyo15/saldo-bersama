@@ -1,3 +1,21 @@
+## 23 Agustus 2026 - Fix CLI database environment binding
+
+## 23 Agustus 2026 - GitHub repository hygiene
+
+- Workflow Quality sekarang membatalkan run superseded pada ref yang sama dan checkout read-only tidak mempertahankan credential GitHub.
+- Dependency Audit juga memakai checkout tanpa persisted credential, sementara Dependabot kini memantau npm dan GitHub Actions.
+- Governance GitHub mendokumentasikan source-side controls tanpa menganggapnya pengganti ruleset `main`.
+- Path historical task pada `docs/INDEX.md` diselaraskan dengan tree aktual `docs/tasks/archive/`.
+- Tidak ada perubahan API, database, auth, saldo, deployment Production, atau data finansial.
+
+- Memperbaiki drift kontrak `npm run db:bind-environment -- development|production`: script binding sekarang benar-benar membaca target positional yang sudah didokumentasikan, tetap menerima fallback `DATABASE_ENVIRONMENT` untuk penggunaan programmatic, dan fail-closed bila target CLI bertentangan dengan marker environment lokal.
+- Menambah regression test untuk positional target, fallback marker, conflict detection, dan argumen ganda agar workflow `migrate → bind → integrity → env push` tidak kembali rusak.
+
+## 23 Agustus 2026 - Recovery Development database isolation
+
+- Memperjelas failure `npm run dev` ketika Vercel Development belum memiliki `DATABASE_ENVIRONMENT`: tooling sekarang menjelaskan bahwa satu Turso database tidak boleh diberi marker Development bila masih dipakai Production, dan mengarahkan cutover aman melalui database Development terpisah, migration, binding, integrity check, lalu sinkronisasi Vercel Development. Guard fail-closed tidak dilemahkan.
+- Menyelaraskan `SETUP.md` dan `ARCHITECTURE.md` dengan runtime v12: infrastruktur legacy masih boleh tercatat belum terpisah selama cutover ADR-0007, tetapi Development dan Production tidak lagi boleh memakai database/token yang sama sebagai runtime normal.
+
 ## 23 Agustus 2026 - Merge patch terpadu dan ZIP diagnostik fail-visible
 
 - Menggabungkan maintainability refactor, hardening session v12, command cleanup, dan provisioning anggota otomatis pada source canonical yang sama. Runtime membership kini berasal dari tabel `users`; `ALLOWED_USERS_JSON` hanya bootstrap/recovery Administrator pertama, sementara session tetap memakai registry `user_sessions`, verifier hashed, PKCE S256, role terbaru, serta revocation saat role/deaktivasi berubah.

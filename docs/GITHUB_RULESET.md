@@ -16,6 +16,17 @@ Aktifkan ruleset/branch protection dengan minimum berikut:
 
 Dependency Audit adalah scheduled/manual control dan tidak dijadikan required merge check karena bukan per-commit workflow.
 
+## Source-side GitHub controls
+
+Repository juga menjaga beberapa kontrol yang tidak bergantung pada ruleset:
+
+- workflow read-only tidak mempertahankan credential checkout setelah source tersedia (`persist-credentials: false`);
+- workflow **Quality** membatalkan run lama pada ref yang sama agar PR/main tidak menumpuk validation yang sudah superseded;
+- Dependabot memantau dependency npm dan GitHub Actions secara terpisah; update tetap masuk melalui Pull Request dan harus melewati **Quality**;
+- workflow memakai permission minimum `contents: read` kecuali ada kebutuhan reviewed yang lebih tinggi.
+
+Kontrol source di atas tidak menggantikan branch protection/ruleset. Ruleset `main` tetap harus diverifikasi langsung di GitHub Settings.
+
 ## Workflow canonical
 
 ```text

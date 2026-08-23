@@ -15,6 +15,9 @@ test("quality workflow menjalankan verify canonical dan verifikasi clean archive
   const workflow = await source(".github/workflows/quality.yml");
   assert.match(workflow, /actions\/checkout@v5/);
   assert.match(workflow, /fetch-depth:\s*0/);
+  assert.match(workflow, /persist-credentials:\s*false/);
+  assert.match(workflow, /concurrency:[\s\S]*group:\s*quality-/);
+  assert.match(workflow, /cancel-in-progress:\s*true/);
   assert.match(workflow, /actions\/setup-node@v5/);
   assert.match(workflow, /node-version-file:\s*["']?\.node-version["']?/);
   assert.match(workflow, /Check changed whitespace/);
@@ -52,11 +55,15 @@ test("tooling kualitas canonical mengekspos command manusia yang ringkas", async
   for (const retired of ["scripts/finish-task.mjs", "scripts/validate-task.mjs", "scripts/list-tasks.mjs"]) assert.equal(await exists(retired), false);
 });
 
-test("dependency audit tetap berjalan langsung di CI tanpa menambah npm alias", async () => {
+test("dependency audit dan Dependabot menjaga dependency source serta GitHub Actions", async () => {
   const workflow = await source(".github/workflows/dependency-audit.yml");
+  const dependabot = await source(".github/dependabot.yml");
+  assert.match(workflow, /persist-credentials:\s*false/);
   assert.match(workflow, /npm audit --omit=dev --audit-level=high/);
   assert.match(workflow, /npm audit --audit-level=high/);
   assert.doesNotMatch(workflow, /npm run audit:/);
+  assert.match(dependabot, /package-ecosystem:\s*npm/);
+  assert.match(dependabot, /package-ecosystem:\s*github-actions/);
 });
 
 test("test backend terkelompok berdasarkan tanggung jawab dan namespace runtime tetap bersih", async () => {

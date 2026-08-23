@@ -8,7 +8,7 @@ import {
   DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS,
   ensureDevelopmentDependencies,
 } from "../../scripts/bootstrap-development-dependencies.mjs";
-import { ensureDevelopmentEnvironment, mergeDevelopmentEnvironment, normalizeVercelGitignore } from "../../scripts/bootstrap-development-env.mjs";
+import { developmentEnvironmentRemediation, ensureDevelopmentEnvironment, mergeDevelopmentEnvironment, normalizeVercelGitignore } from "../../scripts/bootstrap-development-env.mjs";
 import { CORE_RUNTIME_ENV_KEYS, LEGACY_ENV_KEYS, PRODUCTION_AUTH_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
 import { cleanEnvironmentText } from "../../scripts/clean-local-environment.mjs";
 import { validateDevelopmentEnvironment } from "../../scripts/push-vercel-development-env.mjs";
@@ -253,6 +253,22 @@ test("bootstrap menolak hasil pull Development yang tidak memiliki Web Push tanp
   );
   assert.equal(await readFile(envPath, "utf8"), original);
 }));
+
+test("bootstrap menjelaskan cutover aman ketika hanya DATABASE_ENVIRONMENT yang belum tersedia", () => {
+  const remediation = developmentEnvironmentRemediation({
+    core: { missing: ["DATABASE_ENVIRONMENT"] },
+    missing: ["DATABASE_ENVIRONMENT"],
+    invalid: [],
+  });
+
+  assert.match(remediation, /satu Turso database/i);
+  assert.match(remediation, /Jangan menambahkan DATABASE_ENVIRONMENT=development/i);
+  assert.match(remediation, /database Turso Development terpisah/i);
+  assert.match(remediation, /npm run db:migrate/);
+  assert.match(remediation, /npm run db:bind-environment -- development/);
+  assert.match(remediation, /npm run db:integrity/);
+  assert.match(remediation, /npm run env:push:development/);
+});
 
 test("bootstrap menolak hasil pull Development yang core-nya tidak lengkap tanpa membuat .env.local", async () => withTempRoot(async (root) => {
   const runner = async ({ args }) => {

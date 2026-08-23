@@ -110,6 +110,28 @@ const developmentProblemMessage = (state) => {
   return details.join("; ");
 };
 
+export const developmentEnvironmentRemediation = (status = {}) => {
+  const coreMissing = status.core?.missing || [];
+  const databaseMarkerMissing = coreMissing.includes("DATABASE_ENVIRONMENT");
+  const otherCoreMissing = coreMissing.filter((key) => key !== "DATABASE_ENVIRONMENT");
+
+  if (databaseMarkerMissing && otherCoreMissing.length === 0) {
+    return [
+      "Vercel Development belum memiliki DATABASE_ENVIRONMENT.",
+      "Source v12 sengaja menolak satu Turso database dipakai bersamaan oleh Development dan Production.",
+      "Jangan menambahkan DATABASE_ENVIRONMENT=development bila TURSO_DATABASE_URL/TURSO_AUTH_TOKEN masih menunjuk database Production.",
+      "Buat database Turso Development terpisah, arahkan .env.local ke URL/token Development, set DATABASE_ENVIRONMENT=development,",
+      "lalu jalankan npm run db:migrate, npm run db:bind-environment -- development, npm run db:integrity, dan npm run env:push:development.",
+    ].join(" ");
+  }
+
+  if (coreMissing.length) {
+    return "Lengkapi core environment pada .env.local di komputer tepercaya, lalu sinkronkan dengan npm run env:push:development. Untuk VITE_FIREBASE_AUTH_DOMAIN project ini gunakan saldo-bersama.firebaseapp.com.";
+  }
+
+  return "Seed konfigurasi settings dari komputer tepercaya menggunakan npm run env:push:development -- --settings-only.";
+};
+
 const environmentAssignmentKey = (line) => {
   const match = String(line).match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/);
   return match?.[1] || null;
@@ -195,9 +217,7 @@ export const ensureDevelopmentEnvironment = async ({
     const status = developmentEnvironmentStatus(values);
     if (!status.complete) {
       const problem = developmentProblemMessage(status);
-      const remediation = status.core?.missing?.length
-        ? "Lengkapi core environment pada .env.local di komputer tepercaya, lalu sinkronkan dengan npm run env:push:development. Untuk VITE_FIREBASE_AUTH_DOMAIN project ini gunakan saldo-bersama.firebaseapp.com."
-        : "Seed konfigurasi settings dari komputer tepercaya menggunakan npm run env:push:development -- --settings-only.";
+      const remediation = developmentEnvironmentRemediation(status);
       throw Object.assign(
         new Error(`Vercel Development belum siap untuk runtime lokal: ${problem}. ${remediation}`),
         { code: "VERCEL_DEVELOPMENT_ENV_INCOMPLETE", missing: status.missing, invalid: status.invalid },

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bindDatabaseEnvironment } from "../../scripts/db-bind-environment.mjs";
+import { bindDatabaseEnvironment, resolveDatabaseEnvironmentTarget } from "../../scripts/db-bind-environment.mjs";
 import { assertDatabaseReady, invalidateSchemaCache, readSchemaStatus } from "../../api/_lib/db/schema.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
@@ -21,6 +21,28 @@ const withEnvironment = async (values, callback) => {
     invalidateSchemaCache();
   }
 };
+
+
+test("CLI binding memakai target positional dan fail closed bila bertentangan dengan marker lokal", () => {
+  assert.equal(
+    resolveDatabaseEnvironmentTarget({ argv: ["development"], environment: undefined }),
+    "development",
+  );
+  assert.equal(
+    resolveDatabaseEnvironmentTarget({ argv: [], environment: "production" }),
+    "production",
+  );
+  assert.throws(
+    () => resolveDatabaseEnvironmentTarget({ argv: ["development"], environment: "production" }),
+    (error) => error?.code === "DATABASE_ENVIRONMENT_CONFLICT"
+      && error.positional === "development"
+      && error.configured === "production",
+  );
+  assert.throws(
+    () => resolveDatabaseEnvironmentTarget({ argv: ["development", "production"], environment: undefined }),
+    (error) => error?.code === "DATABASE_ENVIRONMENT_ARGUMENT_INVALID",
+  );
+});
 
 test("database environment binding bersifat idempotent dan menolak cross-environment rebind", async () => {
   const db = await createSqliteTestDatabase();

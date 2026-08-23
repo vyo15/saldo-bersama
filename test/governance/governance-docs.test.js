@@ -121,6 +121,8 @@ test("PR template mewajibkan Quality dan tidak mengizinkan direct push rutin ke 
 
 test("documentation index exposes product boundaries and guarded delivery workflow", () => {
   const index = read("docs/INDEX.md");
+  assert.match(index, /docs\/tasks\/archive\//);
+  assert.doesNotMatch(index, /`tasks\/archive\/`/);
   for (const reference of ["product/OUT_OF_SCOPE.md", "product/ROADMAP.md", "WORKFLOW.md", "GIT_WORKFLOW.md", "GITHUB_RULESET.md", "SECRET_ROTATION_RUNBOOK.md", "UI_DESIGN_SYSTEM.md", "../database/README.md", "../apps-script/README.md"]) {
     assert.match(index, new RegExp(escapeRegExp(reference)));
   }
@@ -320,6 +322,9 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.doesNotMatch(packageJson, /env:push:development:settings/);
   assert.match(environmentDocs, /npm run env:push:development -- --settings-only/);
   assert.match(bootstrap, /Memperbarui environment canonical dari Vercel Development/);
+  assert.match(bootstrap, /satu Turso database dipakai bersamaan oleh Development dan Production/);
+  assert.match(setup, /npm run db:bind-environment -- development/);
+  assert.match(setup, /jangan melakukan rebind silang/i);
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 

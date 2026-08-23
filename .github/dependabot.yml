@@ -15,3 +15,14 @@ updates:
           - patch
     commit-message:
       prefix: "chore(deps)"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "02:15"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(actions)"

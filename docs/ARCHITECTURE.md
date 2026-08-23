@@ -27,7 +27,7 @@ PWA React/Vite
 
 ## Kebijakan environment
 
-Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari Vercel Development. Vercel Production adalah runtime deployment, sedangkan Preview tetap kosong. Lokal dan Production saat ini memakai satu database Turso sesuai keputusan pemilik. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
+Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari Vercel Development. Vercel Production adalah runtime deployment, sedangkan Preview tetap kosong. Infrastruktur live legacy masih dapat memiliki satu Turso database sampai cutover ADR-0007 selesai, tetapi source v12 **tidak lagi mengizinkan sharing tersebut sebagai runtime normal**: Development dan Production harus memakai database/token terpisah dan binding `database_environment` yang sesuai. Selama hanya satu database tersedia, salah satu environment akan fail-closed. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
 
 ## Trust boundaries
 

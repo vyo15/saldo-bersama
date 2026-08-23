@@ -81,6 +81,17 @@ Alur `npm run dev` pada terminal interaktif:
 
 Refresh Development setiap start disengaja agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Bila login, link, pull, atau validasi gagal, `.env.local` lama dipertahankan tetapi server tidak dijalankan. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
+Jika `npm run dev` berhenti karena **hanya `DATABASE_ENVIRONMENT` yang belum tersedia**, jangan menambahkan `DATABASE_ENVIRONMENT=development` ke konfigurasi yang masih memakai database/token Production. Itu biasanya berarti cutover satu-database ADR-0007 belum selesai. Buat database Turso Development terpisah, arahkan `.env.local` ke URL/token Development, set `DATABASE_ENVIRONMENT=development`, lalu jalankan secara berurutan:
+
+```bash
+npm run db:migrate
+npm run db:bind-environment -- development
+npm run db:integrity
+npm run env:push:development
+```
+
+Setelah itu `npm run dev` akan menarik Vercel Development yang sudah terisolasi. Production harus tetap memakai database/token Production dan `DATABASE_ENVIRONMENT=production`; jangan melakukan rebind silang pada database lama.
+
 ## 4. Seed Vercel Development satu kali
 
 Dari komputer tepercaya yang sudah memiliki `.env.local` canonical lengkap:
@@ -118,7 +129,7 @@ npm run db:migrate
 npm run db:integrity
 ```
 
-Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Karena runtime lokal dan Vercel Production memakai database yang sama, jangan membuat data dummy atau menjalankan destructive operation.
+Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Selama cutover ADR-0007 belum selesai dan hanya satu database legacy tersedia, jangan membuat data dummy atau menjalankan destructive operation terhadap database tersebut dari Development. Source v12 akan fail-closed sampai Development memiliki database/token terpisah.
 
 ## 6. Integrasi Google
 

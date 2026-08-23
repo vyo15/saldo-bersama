@@ -55,7 +55,7 @@ Jika perubahan menyentuh lebih dari satu area, gabungkan contract dan test dari 
 - `RELEASE_CHECKLIST.md`
 - `ROLLBACK_RUNBOOK.md`
 
-Historical task records dari workflow lama tetap berada di `tasks/archive/`, tetapi bukan workflow aktif.
+Historical task records dari workflow lama tetap berada di `docs/tasks/archive/`, tetapi bukan workflow aktif.
 
 ## Security dan operasi
 

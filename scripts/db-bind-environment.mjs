@@ -8,6 +8,28 @@ import { nowIso } from "../api/_lib/services/core.js";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 try { process.loadEnvFile(path.join(root, ".env.local")); } catch (error) { if (error.code !== "ENOENT") throw error; }
 
+export const resolveDatabaseEnvironmentTarget = ({
+  argv = process.argv.slice(2),
+  environment = process.env.DATABASE_ENVIRONMENT,
+} = {}) => {
+  const positional = String(argv?.[0] || "").trim().toLowerCase();
+  const configured = String(environment || "").trim().toLowerCase();
+  if (argv?.length > 1) {
+    throw Object.assign(new Error("Gunakan satu target saja: development atau production."), { code: "DATABASE_ENVIRONMENT_ARGUMENT_INVALID" });
+  }
+  if (positional && configured && positional !== configured) {
+    throw Object.assign(
+      new Error(`Target CLI ${positional} bertentangan dengan DATABASE_ENVIRONMENT=${configured}. Periksa .env.local sebelum binding.`),
+      { code: "DATABASE_ENVIRONMENT_CONFLICT", positional, configured },
+    );
+  }
+  const target = positional || configured;
+  if (!DATABASE_ENVIRONMENTS.includes(target)) {
+    throw Object.assign(new Error("DATABASE_ENVIRONMENT harus bernilai development atau production."), { code: "DATABASE_ENVIRONMENT_INVALID" });
+  }
+  return target;
+};
+
 export const bindDatabaseEnvironment = async ({ database = null, environment = process.env.DATABASE_ENVIRONMENT } = {}) => {
   const target = String(environment || "").trim().toLowerCase();
   if (!DATABASE_ENVIRONMENTS.includes(target)) {
@@ -31,10 +53,14 @@ export const bindDatabaseEnvironment = async ({ database = null, environment = p
 };
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  bindDatabaseEnvironment().then(({ environment, changed }) => {
-    console.log(`Database ${changed ? "diikat" : "sudah terikat"} ke environment: ${environment}.`);
-  }).catch((error) => {
-    console.error(error?.message || "Binding environment database gagal.");
-    process.exitCode = 1;
-  });
+  Promise.resolve()
+    .then(() => resolveDatabaseEnvironmentTarget())
+    .then((environment) => bindDatabaseEnvironment({ environment }))
+    .then(({ environment, changed }) => {
+      console.log(`Database ${changed ? "diikat" : "sudah terikat"} ke environment: ${environment}.`);
+    })
+    .catch((error) => {
+      console.error(error?.message || "Binding environment database gagal.");
+      process.exitCode = 1;
+    });
 }
