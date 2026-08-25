@@ -99,7 +99,7 @@
 }
 
 .segment {
-  min-height: 38px;
+  min-height: var(--control-height-md);
   border: 0;
   border-radius: 11px;
   background: transparent;
@@ -278,7 +278,7 @@
 }
 
 .sortButton {
-  min-height: 34px;
+  min-height: var(--control-height-md);
   padding: 0 10px;
   border: 0;
   border-radius: 10px;
@@ -540,7 +540,7 @@
 }
 
 .detailButton {
-  min-height: 34px;
+  min-height: var(--control-height-md);
   border: 0;
   background: transparent;
   color: var(--primary);

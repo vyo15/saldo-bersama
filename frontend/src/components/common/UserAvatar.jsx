@@ -18,7 +18,7 @@ const UserAvatar = ({ user, className = "", size = "md" }) => {
   return (
     <span className={`user-avatar user-avatar--${size}${className ? ` ${className}` : ""}`} aria-label={label} title={label}>
       {photoUrl && !imageFailed ? (
-        <img src={photoUrl} alt={`Foto profil ${label}`} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} />
+        <img src={photoUrl} width="44" height="44" alt={`Foto profil ${label}`} referrerPolicy="no-referrer" decoding="async" onError={() => setImageFailed(true)} />
       ) : (
         <span aria-hidden="true">{initials}</span>
       )}

@@ -5,7 +5,7 @@
 | Broken access control/IDOR | Action permission + service ownership query | Contract test harus mengikuti setiap action/read model baru. |
 | Token/session theft | HttpOnly, SameSite Strict, Secure production, expiry, server-side `user_sessions`, own-device revoke, role/deactivation revoke | Real-device revoke/logout-all drill dan external alerting tetap perlu evidence. |
 | CSRF/origin abuse | SameSite + strict origin allowlist | Semua state-changing endpoint baru wajib memakai guard sama. |
-| Replay/duplicate write | Idempotency, nonce, timestamp, scoped hashed best-effort rate-limit key | Bucket rate limit saat ini process-local; distributed/global throttling lintas instance masih perlu evaluasi. |
+| Replay/duplicate write | Idempotency, nonce, timestamp, scoped hashed local limiter + durable Turso v13 rate-limit bucket lintas instance | Platform/WAF throttling tetap opsional defense-in-depth; tidak boleh menggantikan idempotency atau authorization. |
 | Concurrent overwrite | `row_version` conditional update | UI wajib menampilkan conflict, bukan retry overwrite. |
 | SQL injection | Parameterized Turso statements | Jangan membuat dynamic SQL dari input tanpa allowlist. |
 | Formula injection | Neutralisasi export/import | Test setiap format baru. |

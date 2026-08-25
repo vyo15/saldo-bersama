@@ -46,8 +46,16 @@ Import harus dipreview dan diuji pada salinan terisolasi sementara terlebih dahu
 1. Aktifkan maintenance pada source lama.
 2. Buat final safety backup.
 3. Ambil snapshot final dan checksum.
-4. Import ke Turso production.
-5. Jalankan schema, FK, dan business integrity check.
+4. Pastikan `.env.production.local` menunjuk Turso Production, `DATABASE_ENVIRONMENT=production`, dan `npm run env:check:production` lulus.
+5. Migrasikan/bind Production secara eksplisit, preview snapshot yang sama, lalu apply hanya setelah fingerprint diperiksa:
+   ```bash
+   npm run db:migrate -- production
+   npm run db:bind-environment -- production
+   npm run db:import-legacy -- path/to/final-export.json --environment=production
+   npm run db:import-legacy -- path/to/final-export.json --environment=production --apply --confirm=MIGRATE_LEGACY_TO_TURSO
+   npm run db:integrity -- production
+   ```
+6. Jalankan parity schema, FK, business integrity, row count, dan saldo sebelum cutover traffic.
 6. Bandingkan seluruh saldo dan laporan.
 7. Smoke test Administrator dan Member.
 8. Deploy API dengan Turso sebagai backend.

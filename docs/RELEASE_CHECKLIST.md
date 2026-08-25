@@ -7,7 +7,7 @@
 - [ ] `npm run verify` lulus pada Node 24 canonical.
 - [ ] Untuk perubahan frontend/UI, `npm run verify` lulus dan pemeriksaan manual device/viewport relevan sudah dilakukan; tidak ada automated browser gate.
 - [ ] Migration/schema impact direview bila relevan.
-- [ ] Untuk schema v12, backup teknis pra-migration terverifikasi tersedia; `010_environment_sessions.sql` diterapkan eksplisit, database di-bind ke environment yang benar, dan `npm run db:integrity` lulus sebelum traffic normal.
+- [ ] Untuk schema v13, backup teknis pra-migration terverifikasi tersedia; `010_environment_sessions.sql` + `011_distributed_rate_limits.sql` diterapkan eksplisit sesuai urutan migration, database di-bind ke environment yang benar, dan integrity lulus (`npm run db:integrity` untuk Development atau `npm run db:integrity -- production` untuk Production) sebelum traffic normal.
 - [ ] Shared planning diuji dengan Administrator dan Member: Member hanya dapat mengelola scope Bersama; personal, lifecycle destruktif, dan recovery tetap ditolak.
 - [ ] Alokasi existing diuji add/release tanpa perubahan saldo ledger; dashboard memisahkan dana tersedia dari pengeluaran tanpa Alokasi Dana.
 - [ ] Cost sharing expense shared diuji `unspecified`/50:50/persentase dan report menyebut pembagian beban, bukan kontribusi aktual.
@@ -20,6 +20,7 @@
 
 - [ ] Production env scope benar.
 - [ ] `DATABASE_ENVIRONMENT=production`, binding database Production cocok, database Development berbeda, dan Preview tidak membawa credential database aktif.
+- [ ] `npm run env:check:production` memastikan public app/Google/Firebase/origin selaras dengan Development, sementara host/token Turso, `SESSION_SECRET`, dan pasangan VAPID berbeda lintas environment.
 - [ ] Migration hanya dijalankan bila disetujui.
 - [ ] Smoke test Administrator/Member sesuai scope.
 - [ ] Setelah cutover session v2, perangkat legacy diarahkan login ulang; halaman Perangkat dapat list/revoke own session dan revoke-all tanpa IDOR.

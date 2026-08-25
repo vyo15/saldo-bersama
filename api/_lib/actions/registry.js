@@ -31,21 +31,23 @@ import {
 } from "../services/reporting/index.js";
 import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../services/users.js";
 import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
-import { presentSchedulerHealth } from "../services/operationalHealth.js";
+import { operationalHealthStatement, presentOperationalHealth, presentSchedulerHealth } from "../services/operationalHealth.js";
 
 const systemHealth = async (db) => {
   const configStatement = { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','maintenance_mode','timezone','currency','database_environment','scheduler_last_run_at','scheduler_last_success_at','scheduler_last_failure_at','scheduler_last_error_code')", args: [] };
   const integrationStatement = integrationStatusStatement();
   const backupStatement = backupActivityStatement();
-  const statements = [configStatement, integrationStatement, backupStatement];
+  const operationsStatement = operationalHealthStatement();
+  const statements = [configStatement, integrationStatement, backupStatement, operationsStatement];
   const resultRows = typeof db.batch === "function"
     ? (await db.batch(statements)).map((result) => result.rows || [])
     : await Promise.all(statements.map((statement) => db.all(statement.sql, statement.args)));
   const config = Object.fromEntries((resultRows[0] || []).map((row) => [row.key, row.value]));
   const status = await presentIntegrationStatus(resultRows[1] || [], null, resultRows[2] || []);
   const scheduler = presentSchedulerHealth(config);
+  const operations = presentOperationalHealth(resultRows[3]?.[0] || {}, resultRows[1] || []);
   return {
-    status: config.maintenance_mode === "true" ? "maintenance" : scheduler.status === "degraded" ? "degraded" : "ok",
+    status: config.maintenance_mode === "true" ? "maintenance" : scheduler.status === "degraded" || operations.status === "degraded" ? "degraded" : "ok",
     schemaVersion: Number(config.schema_version || 0),
     maintenanceMode: config.maintenance_mode === "true",
     recoveryRequired: config.maintenance_mode === "true",
@@ -53,6 +55,7 @@ const systemHealth = async (db) => {
     currency: config.currency || "IDR",
     databaseEnvironment: config.database_environment || "unbound",
     scheduler,
+    operations,
     integrations: status,
     timestamp: nowIso(),
   };

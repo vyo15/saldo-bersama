@@ -33,7 +33,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-14` | Rekonsiliasi | Implemented | reconciliation service + alerts + signed actual balance untuk rekening `allow_negative` + mismatch CTA ke transaksi rekening tanpa auto-adjustment | Cadence configurable belum ada |
 | `REQ-PROD-15` | Privasi | Partial | rekening/ledger transparan untuk dua user + owner label + operable write guard; mirror shared-only | projection granular pending RFC-0015 |
 | `REQ-PROD-16` | Notifikasi | Partial | tujuh tipe alert otomatis + preference per user + manual reminder one-shot pada Jadwal Rutin/Kebutuhan/Alokasi Dana/Target + last-dispatch/pending guard + lifecycle auto-cancel + reminder integrity parity + privacy-safe lock-screen payload + branded icon/badge + per-device delivery/retry | Real Android/iOS masih pending; transaksi besar/saldo rendah/cadence tambahan belum ada |
-| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + reload-persistent guarded mutation metadata + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + canonical timezone/currency integrity + confirmation/browser-side single-flight | GitHub ruleset, live Dev/Prod DB separation evidence, platform rate limit, external alerting, dan operational drills tetap perlu evidence/decision |
+| `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + reload-persistent guarded mutation metadata + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + canonical timezone/currency integrity + confirmation/browser-side single-flight | GitHub ruleset, live Dev/Prod DB separation evidence, opsional platform/WAF defense, external alert delivery, dan operational drills tetap perlu evidence/decision |
 
 | `REQ-PROD-18` | Reminder konsistensi pencatatan | Planned | belum ada inactivity/completeness alert type | cadence opt-in/configurable, dedupe, timezone, privacy copy, dan notification contract perlu approval |
 
@@ -42,14 +42,14 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Desktop/mobile branded login + local Firebase popup; production server OAuth memerlukan callback URI + `GOOGLE_OAUTH_CLIENT_SECRET` Production Sensitive dan real-device smoke |
-| Turso schema v12 | Implemented | Migration additive session registry + environment binding + scheduler heartbeat di atas cost-sharing/manual reminder; runtime v12 menerima backup v3-v11; production migration/parity evidence pending |
+| Turso schema v13 | Implemented | v12 session/environment guard dipertahankan; v13 menambah durable cross-instance rate-limit buckets tanpa mengubah ledger; runtime v13 menerima backup v3-v12; production migration/parity evidence pending |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |
 | Backup/restore | Implemented | Real-resource restore drill required |
 | PWA/Web Push | Partial | Source contract + centralized VAPID + privacy-safe automatic/manual lock-screen copy + branded icon/badge; desktop Production operator smoke reported, real Android/iOS tetap required |
 | Build budget | Implemented | Enforced pada local/CI quality gate; browser/device QA dilakukan manual sesuai perubahan UI |
-| External alerting | Not implemented | RFC/approved provider pending |
+| External alerting | Partial | Health/log sudah monitor-ready untuk scheduler, unresolved dead-letter integrasi, notification queue/per-device Push dead-letter yang actionable, partial Push delivery, backup gagal, dan integrity gagal; provider/delivery independen masih pending approval |
 
 ## Maintenance destructive
 

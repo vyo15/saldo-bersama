@@ -1,4 +1,5 @@
 import { cleanupExpiredSessions } from "../../sessionRegistry.js";
+import { cleanupExpiredRateLimitBuckets } from "../../rateLimit.js";
 import { nowIso } from "../core.js";
 
 export const cleanupExpiredEphemeralState = async (db, timestamp = nowIso()) => db.transaction(async (tx) => {
@@ -6,10 +7,12 @@ export const cleanupExpiredEphemeralState = async (db, timestamp = nowIso()) => 
   const importPreviews = await tx.execute("DELETE FROM import_previews WHERE expires_at<? AND status<>'applying'", [timestamp]);
   const restorePreviews = await tx.execute("DELETE FROM restore_previews WHERE expires_at<? AND status<>'applying'", [timestamp]);
   const userSessions = await cleanupExpiredSessions(tx, timestamp);
+  const rateLimitBuckets = await cleanupExpiredRateLimitBuckets(tx, Date.parse(timestamp));
   return {
     idempotencyKeys: Number(idempotency.rowsAffected || 0),
     importPreviews: Number(importPreviews.rowsAffected || 0),
     restorePreviews: Number(restorePreviews.rowsAffected || 0),
     userSessions,
+    rateLimitBuckets,
   };
 });

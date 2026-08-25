@@ -14,6 +14,7 @@ const envelopeAssigneeMigrationUrl = new URL("007_envelope_assignee.sql", migrat
 const manualRemindersMigrationUrl = new URL("008_manual_reminders.sql", migrationDirectory);
 const transactionCostSharingMigrationUrl = new URL("009_transaction_cost_sharing.sql", migrationDirectory);
 const environmentSessionsMigrationUrl = new URL("010_environment_sessions.sql", migrationDirectory);
+const distributedRateLimitsMigrationUrl = new URL("011_distributed_rate_limits.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -103,10 +104,10 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v12 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v13 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "12");
-  assert.ok(result.table_count >= 27);
+  assert.equal(result.schema_version, "13");
+  assert.ok(result.table_count >= 28);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
 });
@@ -322,5 +323,24 @@ test("migration v12 menambah registry sesi, binding environment, dan heartbeat t
     db.prepare(insert).run("session-1234567890123456789012", "u-session", "a".repeat(64), now, "2026-08-24T00:00:00.000Z", now, null, null, "Chrome · Windows", "Chrome", 1, now, now);
     assert.equal(db.prepare("SELECT COUNT(*) AS count FROM user_sessions").get().count, 1);
     assert.throws(() => db.prepare(insert).run("session-invalid-verifier-000001", "u-session", "raw-secret", now, "2026-08-24T00:00:00.000Z", now, null, null, "Chrome", "Chrome", 1, now, now));
+  } finally { db.close(); }
+});
+
+test("migration v13 menambah bucket rate limit durable tanpa mengubah ledger atau binding environment", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("010_environment_sessions.sql"));
+    const beforeTransactions = db.prepare("SELECT COUNT(*) AS count FROM transactions").get().count;
+    const beforeEnvironment = db.prepare("SELECT value FROM system_config WHERE key='database_environment'").get().value;
+    db.exec((await readFile(distributedRateLimitsMigrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "13");
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='database_environment'").get().value, beforeEnvironment);
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM transactions").get().count, beforeTransactions);
+    const insert = "INSERT INTO rate_limit_buckets(bucket_key,window_started_at_ms,reset_at_ms,request_count,updated_at) VALUES(?,?,?,?,?)";
+    assert.throws(() => db.prepare(insert).run("short", 1, 2, 1, "2026-08-24T00:00:00.000Z"));
+    assert.throws(() => db.prepare(insert).run("scope:abcdefghijklmnop", 10, 10, 1, "2026-08-24T00:00:00.000Z"));
+    db.prepare(insert).run("scope:abcdefghijklmnop", 10, 20, 1, "2026-08-24T00:00:00.000Z");
+    assert.equal(db.prepare("SELECT request_count FROM rate_limit_buckets WHERE bucket_key=?").get("scope:abcdefghijklmnop").request_count, 1);
   } finally { db.close(); }
 });

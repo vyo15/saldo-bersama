@@ -124,7 +124,7 @@ export const AccountVisual = ({ account, templateOverride, detail = false, carou
       data-visual-kind={model.visualKind}
       data-has-image={model.image ? "true" : "false"}
     >
-      {model.image ? <img className={styles.cardImage} src={model.image} alt="" aria-hidden="true" loading={eager ? "eager" : "lazy"} /> : <div className={styles.genericCard} aria-hidden="true"><model.Icon /></div>}
+      {model.image ? <img className={styles.cardImage} src={model.image} width="1024" height="645" alt="" aria-hidden="true" loading={eager ? "eager" : "lazy"} decoding="async" /> : <div className={styles.genericCard} aria-hidden="true"><model.Icon /></div>}
       <div className={styles.cardFace}>
         {carousel && !model.hasEwalletImage ? <span className={styles.cardOwnership}>{model.ownershipLabel}</span> : null}
         {model.hasEwalletImage ? <span className={styles.ewalletOwnership}>{model.ownershipLabel}</span> : null}

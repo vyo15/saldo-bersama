@@ -118,7 +118,7 @@ export const developmentEnvironmentRemediation = (status = {}) => {
   if (databaseMarkerMissing && otherCoreMissing.length === 0) {
     return [
       "Vercel Development belum memiliki DATABASE_ENVIRONMENT.",
-      "Source v12 sengaja menolak satu Turso database dipakai bersamaan oleh Development dan Production.",
+      "Source v13 tetap menolak satu Turso database dipakai bersamaan oleh Development dan Production.",
       "Jangan menambahkan DATABASE_ENVIRONMENT=development bila TURSO_DATABASE_URL/TURSO_AUTH_TOKEN masih menunjuk database Production.",
       "Buat database Turso Development terpisah, arahkan .env.local ke URL/token Development, set DATABASE_ENVIRONMENT=development,",
       "lalu jalankan npm run db:migrate, npm run db:bind-environment -- development, npm run db:integrity, dan npm run env:push:development.",
@@ -146,26 +146,12 @@ const withoutEnvironmentKeys = (source, keys) => {
     .replace(/\n*$/, "")}\n`;
 };
 
-const lastEnvironmentAssignments = (source, keys) => {
-  const allowed = new Set(keys);
-  const assignments = new Map();
-  String(source || "").split(/\r?\n/).forEach((line) => {
-    const key = environmentAssignmentKey(line);
-    if (allowed.has(key)) assignments.set(key, line);
-  });
-  return assignments;
-};
 
-export const mergeDevelopmentEnvironment = ({ pulledSource = "", existingLocalSource = "" } = {}) => {
+export const mergeDevelopmentEnvironment = ({ pulledSource = "" } = {}) => {
   const cleanedPulled = cleanEnvironmentText(pulledSource);
   const developmentOnly = withoutEnvironmentKeys(cleanedPulled.text, PRODUCTION_AUTH_ENV_KEYS);
-  const preserved = lastEnvironmentAssignments(existingLocalSource, PRODUCTION_AUTH_ENV_KEYS);
-  const preservedLines = PRODUCTION_AUTH_ENV_KEYS.map((key) => preserved.get(key)).filter(Boolean);
-  const text = preservedLines.length
-    ? `${developmentOnly.replace(/\n*$/, "")}\n${preservedLines.join("\n")}\n`
-    : developmentOnly;
   return {
-    text,
+    text: developmentOnly,
     removed: [...new Set([
       ...cleanedPulled.removed,
       ...PRODUCTION_AUTH_ENV_KEYS.filter((key) => Object.hasOwn(parseEnvironmentText(cleanedPulled.text), key)),
@@ -212,7 +198,7 @@ export const ensureDevelopmentEnvironment = async ({
     await pullDevelopmentEnvironment({ cwd: projectRoot, target: temporaryPath, runner });
 
     const pulledSource = await readFile(temporaryPath, "utf8");
-    const merged = mergeDevelopmentEnvironment({ pulledSource, existingLocalSource: local.source });
+    const merged = mergeDevelopmentEnvironment({ pulledSource });
     const values = parseEnvironmentText(withoutEnvironmentKeys(merged.text, PRODUCTION_AUTH_ENV_KEYS));
     const status = developmentEnvironmentStatus(values);
     if (!status.complete) {

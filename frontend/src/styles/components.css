@@ -34,7 +34,7 @@
 .button--danger { background: var(--negative); border-color: var(--negative); color: var(--on-negative); }
 .button--danger:hover:not(:disabled) { filter: brightness(.92); border-color: var(--negative); }
 .button--wide { width: 100%; }
-.icon-button { width: 42px; height: 42px; padding: 0; display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.icon-button { width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; }
 .icon-button:hover { border-color: var(--primary); color: var(--primary); }
 .icon-button--danger:hover { border-color: var(--negative); color: var(--negative); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
@@ -114,7 +114,7 @@ input[type="file"] {
 .segmented-control { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border: 0; padding: 0; margin: 0; }
 .segmented-control legend { grid-column: 1 / -1; margin-bottom: 4px; font-size: 13px; font-weight: var(--font-weight-bold); }
 .segmented-control input { position: absolute; opacity: 0; }
-.segmented-control span { min-height: 42px; display: grid; place-items: center; padding: 8px; border: 1px solid var(--border); border-radius: 11px; cursor: pointer; font-size: 13px; font-weight: var(--font-weight-semibold); }
+.segmented-control span { min-height: 44px; display: grid; place-items: center; padding: 8px; border: 1px solid var(--border); border-radius: 11px; cursor: pointer; font-size: 13px; font-weight: var(--font-weight-semibold); }
 .segmented-control input:checked + span { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
 .notice { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 13px; background: var(--info-soft); color: var(--info); line-height: 1.55; }
 .notice > div { display: grid; gap: 3px; }
@@ -211,13 +211,13 @@ input[type="file"] {
 
 .money-entry { display: grid; gap: 8px; align-content: start; }
 .quick-amounts { display: flex; flex-wrap: wrap; gap: 6px; }
-.quick-amounts button { min-height: 32px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.quick-amounts button { min-height: 44px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .quick-amounts button:hover, .quick-amounts button:focus-visible { border-color: var(--primary); color: var(--primary-strong); background: var(--primary-soft); }
 
 .pagination-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .pagination-bar > span { color: var(--text-muted); font-size: var(--font-size-sm); }
 
-.theme-toggle { width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); cursor: pointer; transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease; }
+.theme-toggle { width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); cursor: pointer; transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease; }
 .theme-toggle:hover { border-color: var(--primary); color: var(--primary); }
 .theme-toggle:active { transform: scale(.96); }
 .theme-toggle svg { width: 19px; height: 19px; }
@@ -267,7 +267,7 @@ input[type="file"] {
 .field small { font-size: 12px; line-height: 1.45; }
 .segmented-control span { min-height: 44px; font-size: 13px; }
 .quick-amounts { gap: 8px; }
-.quick-amounts button { min-height: 36px; padding: 7px 12px; font-size: 12px; background: var(--input); }
+.quick-amounts button { min-height: 44px; padding: 7px 12px; font-size: 12px; background: var(--input); }
 
 .transaction-form { align-items: start; }
 .transaction-scope-note { margin-top: 2px; }

@@ -39,19 +39,22 @@ const CreatorLink = ({ mobile = false, tabIndex = 0 }) => (
   </a>
 );
 
-const MobileAsset = ({ asset, slideIndex }) => (
+const MobileAsset = ({ asset }) => (
   <img
     className={`login-mobile-asset ${asset.className} login-mobile-asset--parallax-${asset.parallax}`}
     src={asset.src}
+    width={asset.width}
+    height={asset.height}
     alt=""
     aria-hidden="true"
     draggable="false"
-    loading={slideIndex === 0 || asset.priority ? "eager" : "lazy"}
+    loading={asset.priority ? "eager" : "lazy"}
     fetchPriority={asset.priority ? "high" : "auto"}
+    decoding="async"
   />
 );
 
-const MobileOnboardingSlide = ({ slide, index, active }) => (
+const MobileOnboardingSlide = ({ slide, active }) => (
   <article className={`login-mobile-slide login-mobile-onboarding-slide${active ? " is-active" : ""}`} aria-hidden={!active}>
     <div className={`login-mobile-hero login-mobile-hero--${slide.id}`} aria-hidden="true">
       <div className="login-mobile-hero__top">
@@ -67,7 +70,7 @@ const MobileOnboardingSlide = ({ slide, index, active }) => (
           {slide.hero.badges.map((badge) => <span key={badge}>{badge}</span>)}
         </div>
       </div>
-      {slide.assets.map((asset) => <MobileAsset key={asset.src} asset={asset} slideIndex={index} />)}
+      {active ? slide.assets.map((asset) => <MobileAsset key={asset.src} asset={asset} />) : null}
     </div>
     <section className="login-mobile-copy">
       <p className="login-mobile-eyebrow">{slide.eyebrow}</p>
@@ -83,12 +86,12 @@ const MobileLoginSlide = ({ active, mobileAuthProps }) => (
     {active ? <MoneyRain compact notes={MOBILE_MONEY_NOTES} /> : null}
     <section className="login-mobile-login-content" aria-label="Masuk ke Saldo Bersama">
       <div className="login-mobile-login-logo">
-        <img src="/brand/saldo-bersama-mark.png" alt="" aria-hidden="true" draggable="false" />
+        <img src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" aria-hidden="true" draggable="false" decoding="async" />
       </div>
       <p className="login-mobile-welcome">Selamat datang</p>
       <h2>Saldo <strong>Bersama</strong></h2>
       <p>Kelola keuangan pribadi dan bersama dengan akun Google yang sudah diizinkan.</p>
-      <GoogleLoginPanel {...mobileAuthProps} />
+      {active ? <GoogleLoginPanel {...mobileAuthProps} /> : null}
       <div className="login-mobile-security" aria-label="Keamanan login">
         <span><i />Akun terverifikasi</span>
         <span><i />Data privat</span>
@@ -130,7 +133,7 @@ const MobileLoginLayout = ({
       <section className={`login-mobile-stage${loginActive ? " is-login-active" : ""}`} aria-roledescription="carousel" aria-label="Pengenalan dan login Saldo Bersama">
         <header className="login-mobile-header">
           <div className="login-mobile-brand" aria-label="Saldo Bersama">
-            <img src="/brand/saldo-bersama-mark.png" alt="" aria-hidden="true" draggable="false" />
+            <img src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" aria-hidden="true" draggable="false" decoding="async" />
             <strong>Saldo Bersama</strong>
           </div>
           <div className="login-mobile-header-actions">
@@ -157,7 +160,7 @@ const MobileLoginLayout = ({
         >
           <div ref={trackRef} className={`login-mobile-track is-slide-${mobileSlide}`}>
             {MOBILE_ONBOARDING.map((slide, index) => (
-              <MobileOnboardingSlide key={slide.id} slide={slide} index={index} active={index === mobileSlide} />
+              <MobileOnboardingSlide key={slide.id} slide={slide} active={index === mobileSlide} />
             ))}
             <MobileLoginSlide active={loginActive} mobileAuthProps={mobileAuthProps} />
           </div>
@@ -167,7 +170,9 @@ const MobileLoginLayout = ({
           <div className="login-mobile-navigation__row">
             <span className="login-mobile-navigation__spacer" aria-hidden="true" />
             <MobilePagination mobileSlide={mobileSlide} moveMobileSlide={moveMobileSlide} />
-            <span className="login-mobile-navigation__hint">{loginActive ? "Login" : "Geser"}</span>
+            {loginActive ? (
+              <button type="button" className="login-mobile-navigation__replay" onClick={() => moveMobileSlide(0)} aria-label="Lihat pengenalan lagi">Ulang</button>
+            ) : <span className="login-mobile-navigation__hint">Geser</span>}
           </div>
         </footer>
         <p className="sr-only" aria-live="polite">Halaman {mobileSlide + 1} dari {MOBILE_SLIDE_COUNT}: {MOBILE_PAGE_LABELS[mobileSlide]}.</p>

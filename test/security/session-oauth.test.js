@@ -128,6 +128,7 @@ test("server-side Google OAuth membuat Firebase-backed session dari registry use
     const startResponse = createResponse();
     await sessionHandler({
       method: "GET",
+      database: db,
       headers: requestHeaders({ "x-forwarded-for": "203.0.113.21" }),
       query: { flow: "google-start", returnTo: "/transaksi" },
       url: "/api/session?flow=google-start&returnTo=%2Ftransaksi",
@@ -423,6 +424,7 @@ test("callback OAuth fail closed saat state tidak cocok dan tidak menukar code",
 test("callback OAuth menolak nonce Google yang tidak cocok sebelum Firebase exchange", async () => {
   setTestEnv();
   const originalFetch = globalThis.fetch;
+  const db = await createProductionDatabase();
   try {
     const transaction = createGoogleOAuthTransaction({ returnTo: "/" });
     const googleIdToken = fakeJwt({
@@ -439,6 +441,7 @@ test("callback OAuth menolak nonce Google yang tidak cocok sebelum Firebase exch
     const response = createResponse();
     await sessionHandler({
       method: "GET",
+      database: db,
       headers: requestHeaders({ cookie: cookiePair(transaction.cookie), "x-forwarded-for": "203.0.113.25" }),
       query: { flow: "google-callback", state: transaction.state, code: "authorization-code" },
       url: `/api/session?flow=google-callback&state=${encodeURIComponent(transaction.state)}&code=authorization-code`,
@@ -449,6 +452,7 @@ test("callback OAuth menolak nonce Google yang tidak cocok sebelum Firebase exch
     assert.equal((Array.isArray(response.header("set-cookie")) ? response.header("set-cookie") : [response.header("set-cookie")])
       .some((value) => String(value).startsWith("sb_session=")), false);
   } finally {
+    db.close();
     globalThis.fetch = originalFetch;
   }
 });

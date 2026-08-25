@@ -8,5 +8,5 @@
 6. Sebelum migration berisiko: maintenance bila perlu, safety backup, integrity baseline.
 7. Sesudah apply: schema version, FK, integrity, financial fingerprint, saldo, dan laporan diverifikasi.
 8. Bila rollback tidak aman setelah write baru, gunakan forward-fix terkontrol.
-9. Runtime lokal dan Vercel Production memakai database yang sama; karena itu migration eksperimen dilarang. Perubahan kebijakan ini memerlukan RFC.
+9. Runtime Development dan Vercel Production memakai profile/database terpisah dan binding `database_environment` yang berbeda. Migration eksperimen tetap dilarang pada Production; target Production harus eksplisit dan didahului backup/integrity sesuai runbook.
 10. Update `TURSO_SCHEMA.md`, `DATA_DICTIONARY.md`, `PROJECT_STATUS.md`, test schema, changelog, dan release checklist.

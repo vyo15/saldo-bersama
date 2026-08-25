@@ -26,13 +26,32 @@ const viteEntry = requireFromFrontend.resolve("vite");
 const { createServer: createViteServer, loadEnv } = await import(pathToFileURL(viteEntry).href);
 
 const localEnvironment = loadEnv("development", projectRoot, "");
-for (const [key, value] of Object.entries(localEnvironment)) {
-  if (process.env[key] === undefined) process.env[key] = value;
-}
-process.env.NODE_ENV ||= "development";
-process.env.VERCEL_ENV ||= "development";
+for (const [key, value] of Object.entries(localEnvironment)) process.env[key] = value;
+process.env.NODE_ENV = "development";
+process.env.VERCEL_ENV = "development";
 
-const { logEvent, runtimeBuildInfo } = await import(new URL("../api/_lib/observability.js", import.meta.url));
+const [{ TursoHttpClient }, { readSchemaStatus }, { logEvent, runtimeBuildInfo }] = await Promise.all([
+  import(new URL("../api/_lib/db/httpClient.js", import.meta.url)),
+  import(new URL("../api/_lib/db/schema.js", import.meta.url)),
+  import(new URL("../api/_lib/observability.js", import.meta.url)),
+]);
+
+const database = new TursoHttpClient();
+const databaseReachable = await database.health();
+if (!databaseReachable) {
+  console.error("Turso Development tidak dapat dihubungi. Server lokal tidak dijalankan.");
+  console.error("Jalankan npm run diagnose dan periksa TURSO_DATABASE_URL/TURSO_AUTH_TOKEN pada Vercel Development.");
+  process.exit(1);
+}
+const schemaStatus = await readSchemaStatus(database, { force: true });
+if (!schemaStatus.ready) {
+  console.error("Database Development belum siap. Server lokal tidak dijalankan.");
+  console.error(`Schema v${schemaStatus.version}/${schemaStatus.expectedVersion}; binding=${schemaStatus.databaseEnvironment}; expected=${schemaStatus.expectedEnvironment}; runtime=${schemaStatus.runtimeEnvironment}.`);
+  console.error(schemaStatus.version === schemaStatus.expectedVersion
+    ? "Periksa binding Development dengan npm run db:bind-environment -- development."
+    : "Jalankan migration Development sesuai runbook sebelum memulai server.");
+  process.exit(1);
+}
 
 const routeModules = Object.freeze({
   "/api/session": "../api/session.js",

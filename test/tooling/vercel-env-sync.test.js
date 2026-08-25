@@ -41,6 +41,11 @@ const canonicalValues = (databaseEnvironment = "production") => ({
   ...validWebPushValues(),
 });
 const serialize = (values) => `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n")}\n`;
+const developmentValues = () => {
+  const values = canonicalValues("development");
+  delete values.GOOGLE_OAUTH_CLIENT_SECRET;
+  return values;
+};
 
 const withTempProject = async (callback) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "saldo-vercel-env-"));
@@ -100,12 +105,20 @@ test("Production mewajibkan OAuth client secret sedangkan Development tidak pern
   assert.equal(DEVELOPMENT_SETTINGS_ENV_KEYS.includes("GOOGLE_OAUTH_CLIENT_SECRET"), false);
 });
 
+test("Development menolak GOOGLE_OAUTH_CLIENT_SECRET agar profile Production tidak bercampur", () => {
+  const development = developmentValues();
+  development.GOOGLE_OAUTH_CLIENT_SECRET = "must-stay-in-production-profile";
+  const status = validateDevelopmentEnvironment(development);
+  assert.equal(status.valid, false);
+  assert.ok(status.forbidden.includes("GOOGLE_OAUTH_CLIENT_SECRET"));
+});
+
 
 test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi core canonical", async () => withTempProject(async (root) => {
   const values = canonicalValues();
   delete values.LOG_LEVEL;
   assert.equal(validateProductionEnvironment(values).valid, true);
-  await writeFile(path.join(root, ".env.local"), serialize(values));
+  await writeFile(path.join(root, ".env.production.local"), serialize(values));
   const calls = [];
   const result = await pushProductionEnvironment({
     cwd: root,
@@ -118,7 +131,7 @@ test("LOG_LEVEL bersifat opsional dan tidak menghalangi sinkronisasi core canoni
 
 test("sinkronisasi mengirim nilai via runner tanpa mengekspos secret ke argumen lain", async () => withTempProject(async (root) => {
   const values = canonicalValues();
-  await writeFile(path.join(root, ".env.local"), serialize(values));
+  await writeFile(path.join(root, ".env.production.local"), serialize(values));
   const calls = [];
   let projectChecks = 0;
   const result = await pushProductionEnvironment({
@@ -140,7 +153,7 @@ test("sinkronisasi mengirim nilai via runner tanpa mengekspos secret ke argumen 
 
 test("sinkronisasi tidak bergantung pada .vercel/project.json dan menerima project yang tersambung lewat Git", async () => withTempProject(async (root) => {
   const values = canonicalValues();
-  await writeFile(path.join(root, ".env.local"), serialize(values));
+  await writeFile(path.join(root, ".env.production.local"), serialize(values));
   let checked = false;
   await pushProductionEnvironment({
     cwd: root,
@@ -238,7 +251,7 @@ test("sinkronisasi settings Development mewajibkan Web Push tetapi Google bridge
 }));
 
 test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap", async () => withTempProject(async (root) => {
-  const values = canonicalValues("development");
+  const values = developmentValues();
   assert.equal(validateDevelopmentEnvironment(values).valid, true);
   await writeFile(path.join(root, ".env.local"), serialize(values));
   const calls = [];
@@ -254,7 +267,7 @@ test("sinkronisasi Development mencakup core, logging, dan grup opsional lengkap
 }));
 
 test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idempotent", async () => withTempProject(async (root) => {
-  const values = canonicalValues("development");
+  const values = developmentValues();
   const envPath = path.join(root, ".env.local");
   await writeFile(envPath, serialize(values));
   let projectRuns = 0;
@@ -274,7 +287,7 @@ test("sinkronisasi Development membersihkan OIDC dari vercel link dan tetap idem
 }));
 
 test("sinkronisasi Development membersihkan OIDC ketika pemeriksaan project gagal", async () => withTempProject(async (root) => {
-  const values = canonicalValues("development");
+  const values = developmentValues();
   const envPath = path.join(root, ".env.local");
   await writeFile(envPath, serialize(values));
 

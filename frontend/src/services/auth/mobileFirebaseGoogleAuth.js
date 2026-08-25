@@ -15,8 +15,6 @@ import {
 import { env } from "../../config/env.js";
 
 const MOBILE_FIREBASE_APP_NAME = "saldo-bersama-mobile-auth";
-const CANONICAL_PRODUCTION_HOST = "saldo-bersama.vercel.app";
-const SERVER_OAUTH_START_PATH = "/api/auth/google/start";
 let mobileFirebaseAuth = null;
 
 const friendlyMobileGoogleError = (error) => {
@@ -38,10 +36,6 @@ const friendlyMobileGoogleError = (error) => {
 const normalizeMobileGoogleError = (error) => String(error?.code || "").startsWith("auth/")
   ? friendlyMobileGoogleError(error)
   : error;
-
-const isCanonicalProduction = () => typeof window !== "undefined"
-  && window.location.protocol === "https:"
-  && window.location.hostname === CANONICAL_PRODUCTION_HOST;
 
 const getLocalFirebaseAuth = () => {
   if (mobileFirebaseAuth) return mobileFirebaseAuth;
@@ -88,20 +82,4 @@ const completeLocalPopup = async ({ onFirebaseToken }) => {
   }
 };
 
-const normalizeReturnTo = (value) => {
-  const candidate = String(value || "/");
-  if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.includes("\\") || candidate.length > 1_024) return "/";
-  return candidate;
-};
-
-const startProductionServerOAuth = ({ returnTo = "/" } = {}) => {
-  if (typeof window === "undefined") return { handled: false };
-  const target = new URL(SERVER_OAUTH_START_PATH, window.location.origin);
-  target.searchParams.set("returnTo", normalizeReturnTo(returnTo));
-  window.location.assign(target.toString());
-  return { handled: true };
-};
-
-export const signInWithGoogleMobile = ({ onFirebaseToken, returnTo = "/" }) => isCanonicalProduction()
-  ? startProductionServerOAuth({ returnTo })
-  : completeLocalPopup({ onFirebaseToken });
+export const signInWithGoogleMobile = ({ onFirebaseToken }) => completeLocalPopup({ onFirebaseToken });

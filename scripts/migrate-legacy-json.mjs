@@ -2,16 +2,20 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { loadDatabaseProfile, resolveDatabaseProfileTarget } from "./database-profile.mjs";
 import { getDatabase } from "../api/_lib/db/httpClient.js";
 import { DATABASE_SCHEMA_VERSION, assertDatabaseReady } from "../api/_lib/db/schema.js";
 import { migrationFingerprint, transformLegacyPayload } from "./legacy-migration.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-try { process.loadEnvFile(path.join(root, ".env.local")); } catch (error) { if (error.code !== "ENOENT") throw error; }
-const input = process.argv[2];
-const apply = process.argv.includes("--apply");
-const confirmed = process.argv.includes("--confirm=MIGRATE_LEGACY_TO_TURSO");
-if (!input) throw new Error("Gunakan: npm run db:import-legacy -- path/export.json [--apply --confirm=MIGRATE_LEGACY_TO_TURSO]");
+const args = process.argv.slice(2);
+const input = args[0];
+const environmentOption = args.find((value) => String(value).startsWith("--environment="));
+const databaseEnvironment = resolveDatabaseProfileTarget({ argv: [String(environmentOption || "--environment=development").split("=")[1]] });
+await loadDatabaseProfile({ root, environment: databaseEnvironment });
+const apply = args.includes("--apply");
+const confirmed = args.includes("--confirm=MIGRATE_LEGACY_TO_TURSO");
+if (!input || input.startsWith("--")) throw new Error("Gunakan: npm run db:import-legacy -- path/export.json [--environment=development|production] [--apply --confirm=MIGRATE_LEGACY_TO_TURSO]");
 const inputPath = path.resolve(input);
 const file = await stat(inputPath);
 if (!file.isFile() || file.size > 50 * 1024 * 1024) throw new Error("File migrasi harus JSON maksimal 50 MB.");
@@ -57,4 +61,4 @@ await db.transaction(async (tx) => {
   }
   await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES('legacy_migration_fingerprint',?,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [fingerprint]);
 });
-console.log("Import legacy selesai. Wajib jalankan npm run db:integrity dan parity saldo sebelum cutover.");
+console.log(`Import legacy ${databaseEnvironment} selesai. Wajib jalankan npm run db:integrity${databaseEnvironment === "production" ? " -- production" : ""} dan parity saldo sebelum cutover.`);

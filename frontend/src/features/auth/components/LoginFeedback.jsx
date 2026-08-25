@@ -46,7 +46,7 @@ export const GoogleLoginPanel = ({ configErrors, error, buttonError, status, ref
         aria-busy={pending || undefined}
       >
         <span className="login-mobile-google-button__icon" aria-hidden="true">
-          <img src="/login/google-g-logo.png" alt="" draggable="false" />
+          <img src="/login/google-g-logo.png" width="48" height="49" alt="" draggable="false" decoding="async" />
         </span>
         <span>{pending ? "Menghubungkan ke Google…" : ready ? "Masuk dengan Google" : "Menyiapkan login…"}</span>
         {pending ? <span className="login-mobile-google-button__spinner" aria-hidden="true" /> : null}

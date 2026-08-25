@@ -21,10 +21,15 @@ const completeEnvironment = () => {
     ...Object.fromEntries(CORE_RUNTIME_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`])),
     ...validWebPushEnvironment(),
   };
+  values.DATABASE_ENVIRONMENT = "development";
   return `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n")}\n`;
 };
 
-const coreOnlyEnvironment = () => `${CORE_RUNTIME_ENV_KEYS.map((key) => `${key}=${key.toLowerCase()}-value`).join("\n")}\n`;
+const coreOnlyEnvironment = () => {
+  const values = Object.fromEntries(CORE_RUNTIME_ENV_KEYS.map((key) => [key, `${key.toLowerCase()}-value`]));
+  values.DATABASE_ENVIRONMENT = "development";
+  return `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n")}\n`;
+};
 
 const withTempRoot = async (callback) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "saldo-local-env-"));
@@ -117,7 +122,7 @@ test("bootstrap interaktif selalu refresh Vercel Development walau .env.local le
   assert.equal(await readFile(envPath, "utf8"), remote);
 }));
 
-test("bootstrap mempertahankan secret OAuth production lokal tanpa menariknya dari Vercel Development", async () => withTempRoot(async (root) => {
+test("bootstrap memisahkan secret OAuth Production dari profile Development lokal", async () => withTempRoot(async (root) => {
   const envPath = path.join(root, ".env.local");
   const secretLine = "GOOGLE_OAUTH_CLIENT_SECRET=local-production-secret";
   await writeFile(envPath, `${completeEnvironment()}${secretLine}\n`);
@@ -128,8 +133,7 @@ test("bootstrap mempertahankan secret OAuth production lokal tanpa menariknya da
   });
   const refreshed = await readFile(envPath, "utf8");
   assert.equal(result.source, "vercel-development");
-  assert.match(refreshed, new RegExp(`^${secretLine}$`, "m"));
-  assert.equal((refreshed.match(/^GOOGLE_OAUTH_CLIENT_SECRET=/gm) || []).length, 1);
+  assert.doesNotMatch(refreshed, /^GOOGLE_OAUTH_CLIENT_SECRET=/m);
 }));
 
 test("bootstrap membuang secret OAuth yang salah ditempatkan di Vercel Development", () => {

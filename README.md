@@ -47,7 +47,13 @@ cd saldo-bersama
 npm run dev
 ```
 
-`npm run dev` menyiapkan dependency bila perlu, menarik Vercel Development Environment pada terminal interaktif, membersihkan key legacy/OIDC, memvalidasi konfigurasi canonical, lalu menjalankan frontend dan lima endpoint API lokal. Jangan commit `.env.local`, `.vercel`, token, private key, atau secret.
+`npm run dev` adalah mode **Development lokal**: dependency disiapkan bila perlu, Vercel Development ditarik ke `.env.local`, profile wajib `DATABASE_ENVIRONMENT=development`, Turso Development harus reachable + schema/binding siap, lalu frontend dan lima endpoint API lokal dijalankan. Server tidak lagi dibuka bila database Development salah/unreachable.
+
+Untuk troubleshooting/setup komputer baru tanpa menyalakan server, gunakan `npm run env:pull:development`, lalu `npm run env:status`. Status hanya menampilkan marker, host database, kelengkapan, dan fingerprint publik Web Push—bukan token/private key. Setelah seed Development pusat selesai, komputer tepercaya lain tidak perlu membuat `.env.local` atau VAPID baru secara manual.
+
+Untuk mode **Production**, gunakan `npm run prod`. Command ini memeriksa `/api/health` dan frontend shell pada deployment canonical `https://saldo-bersama.vercel.app`, lalu membuka Production aktual pada terminal interaktif. Production sengaja tidak diemulasi dengan database Production di `localhost` karena auth production memakai HTTPS + Secure HttpOnly cookie/server OAuth dan secret Vercel Sensitive tidak dapat dipull kembali.
+
+Jangan commit `.env.local`, `.env.production.local`, `.vercel`, token, private key, atau secret.
 
 ## Quality gate
 
@@ -62,8 +68,12 @@ npm run verify
 Command harian sengaja dibuat ringkas:
 
 ```bash
-npm run dev       # development lokal lengkap
-npm run diagnose  # diagnosis runtime/integrasi
+npm run dev                 # Development lokal → Vercel Development + Turso Development
+npm run prod                # cek + buka Vercel Production aktual
+npm run prod:check          # health Production tanpa membuka browser
+npm run env:pull:development # tarik/validasi Vercel Development tanpa membuka server
+npm run env:status          # status Dev/Prod lokal aman tanpa mencetak secret
+npm run diagnose            # diagnosis Development lokal/integrasi; fail bila DB/schema belum siap
 npm run lint      # lint + syntax terarah
 npm run test      # frontend + backend test tanpa coverage gate
 npm run build     # production build frontend
@@ -91,14 +101,24 @@ Buat Pull Request ke `main`, tunggu **Quality** PASS, lalu merge sesuai `docs/GI
 
 ## Database
 
+Development memakai `.env.local` secara default:
+
 ```bash
 npm run db:migrate
+npm run db:bind-environment -- development
 npm run db:integrity
 npm run db:import-legacy -- path/to/legacy-export.json
-npm run db:import-legacy -- path/to/legacy-export.json --apply --confirm=MIGRATE_LEGACY_TO_TURSO
 ```
 
-Migration/import/restore tetap guarded dan hanya dijalankan setelah approval eksplisit, preview/backup, serta integrity check sesuai runbook.
+Production wajib eksplisit dan memakai `.env.production.local`:
+
+```bash
+npm run db:migrate -- production
+npm run db:bind-environment -- production
+npm run db:integrity -- production
+```
+
+Import Production, bila benar-benar bagian cutover yang disetujui, memakai `--environment=production` selain preview/backup/confirmation canonical. Migration/import/restore tetap guarded dan hanya dijalankan setelah approval eksplisit, preview/backup, serta integrity check sesuai runbook.
 
 ## Endpoint
 

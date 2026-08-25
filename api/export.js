@@ -4,6 +4,7 @@ import { createXlsx } from "./_lib/export/xlsx.js";
 import { methodNotAllowed, fail } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
 import { assertAllowedOrigin, enforceBestEffortRateLimit, identityRateLimitKey } from "./_lib/security.js";
+import { enforceDistributedRateLimit } from "./_lib/rateLimit.js";
 import { resolveRegisteredSession } from "./_lib/sessionRegistry.js";
 import { resolveActor } from "./_lib/services/users.js";
 import { nowIso, todayJakarta } from "./_lib/services/core.js";
@@ -38,7 +39,9 @@ export default async function handler(request, response) {
     const session = await resolveRegisteredSession(db, request);
     if (!session) return fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir.", { requestId });
     if (session.role !== "owner") return fail(response, 403, "OWNER_ONLY", "Export lengkap hanya dapat dilakukan Administrator.", { requestId });
-    enforceBestEffortRateLimit(identityRateLimitKey("export", session.uid), { limit: 5, windowMs: 60_000 });
+    const rateLimitKey = identityRateLimitKey("export", session.uid);
+    enforceBestEffortRateLimit(rateLimitKey, { limit: 5, windowMs: 60_000 });
+    await enforceDistributedRateLimit(db, rateLimitKey, { limit: 5, windowMs: 60_000 });
     await resolveActor(db, session);
     const data = typeof db.readTransaction === "function" ? await db.readTransaction(exportData) : await exportData(db);
     const workbook = createXlsx(data);
@@ -51,7 +54,9 @@ export default async function handler(request, response) {
     logEvent("info", "export.request.completed", { requestId, status: 200, bytes: workbook.length, durationMs: Date.now() - startedAt });
     return response.end(workbook);
   } catch (error) {
-    const status = error.status || 500; logEvent("error", "export.request.failed", { requestId, status, code: error.code || "EXPORT_ERROR", durationMs: Date.now() - startedAt, error: sanitizeError(error) });
-    return fail(response, status, error.code || "EXPORT_ERROR", status < 500 ? error.message : "Export Excel gagal.", { requestId });
+    const status = error.status || 500;
+    const headers = status === 429 && error.retryAfterSeconds ? { "Retry-After": String(error.retryAfterSeconds) } : {};
+    logEvent(status >= 500 ? "error" : "warn", "export.request.failed", { requestId, status, code: error.code || "EXPORT_ERROR", durationMs: Date.now() - startedAt, error: sanitizeError(error) });
+    return fail(response, status, error.code || "EXPORT_ERROR", status < 500 ? error.message : "Export Excel gagal.", { requestId }, headers);
   }
 }

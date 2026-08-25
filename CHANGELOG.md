@@ -1,3 +1,28 @@
+## 25 Agustus 2026 - Pemisahan profile Development/Production dan runtime preflight
+
+- Menambahkan `npm run env:pull:development` dan `npm run env:status` untuk bootstrap/troubleshooting lintas-PC tanpa membuka server atau mencetak secret; status menampilkan host/marker/fingerprint public Web Push saja.
+- Menutup drift environment: public app/Google/Firebase/origin wajib selaras antara Dev/Prod, sedangkan Turso host/token, `SESSION_SECRET`, dan VAPID pair wajib terisolasi. Web Push sekarang memakai satu pair stabil per environment, bukan satu pair lintas Dev/Prod dan bukan pair per komputer.
+- Memperbaiki Operations/Deployment docs yang masih menyebut satu database atau menaruh VAPID Production ke `.env.local`; Production admin tetap memakai `.env.production.local`, Development tetap dipull dari Vercel Development.
+- Menjadikan `.env.local` Development-only dan memindahkan sumber lokal sinkronisasi Production ke `.env.production.local`, sehingga `npm run dev` tidak lagi membawa `GOOGLE_OAUTH_CLIENT_SECRET` atau credential Production secara campuran.
+- Memperketat bootstrap Development: `DATABASE_ENVIRONMENT` wajib benar-benar `development`, nilai environment file mengalahkan stale shell env, dan server lokal baru dibuka setelah Turso reachable serta schema/binding Development siap. `npm run diagnose` sekarang exit nonzero bila database/schema tidak siap.
+- Menambahkan `npm run prod`/`npm run prod:check` untuk memverifikasi `/api/health` + frontend shell pada Vercel Production aktual sebelum akses Production; tidak dibuat localhost yang menulis ke database Production karena tidak setara dengan HTTPS/Secure-cookie/server-OAuth production.
+- Menambahkan `npm run env:check:production` serta guard isolasi yang menolak host/token Turso atau `SESSION_SECRET` yang sama antara profile Development dan Production lokal. `env:push:production` sekarang membaca `.env.production.local`.
+
+## 24 Agustus 2026 - Durable rate limit v13 dan operational health hardening
+
+- Menaikkan schema secara additive ke v13 dengan `rate_limit_buckets` STRICT sebagai counter throttle lintas Vercel Function instance. Process-local limiter tetap dipertahankan sebagai lapisan murah; gateway, export, login Firebase, serta Google OAuth valid memakai durable bucket dengan key hash+scope tanpa menyimpan raw IP/UID/email.
+- Menambahkan cleanup bucket expired pada housekeeping, mengecualikannya dari logical backup, dan mengosongkannya pada controlled restore. Compatibility logical backup v3-v12 tetap dipertahankan; ledger, saldo, transfer, cost-sharing, session authority, serta environment binding tidak diubah oleh migration v13.
+- Memperluas operational health dengan aggregate privacy-safe untuk unresolved integration dead-letter, notification queue dead-letter yang masih actionable, per-device Push dead-letter yang belum pulih, backup terbaru gagal, dan integrity run terbaru gagal. Dead-letter notifikasi historis tidak membuat health degraded selamanya setelah jalur yang sama terbukti pulih; scheduler juga menandai run degraded ketika integration worker, Push queue, atau sebagian delivery Push menghasilkan failure, sementara public `/api/health` tetap hanya mengembalikan status/timestamp/requestId. External alert delivery/provider tetap belum diimplementasikan.
+- Menyelaraskan schema/test/docs ke v13 dan memperbaiki drift Operations Runbook: source tetap fail-closed terhadap sharing Development/Production, tetapi **live Dev/Prod Turso separation sengaja belum dilakukan pada patch ini** sesuai keputusan owner dan tetap membutuhkan evidence deployment terpisah.
+
+## 24 Agustus 2026 - UX performance, returning login, dan accessibility hardening
+
+- Memisahkan transport login Google production dari Firebase browser Auth: host production canonical menyiapkan server OAuth ringan menuju `/api/auth/google/start`, sedangkan Firebase popup tetap lazy khusus localhost/device emulation. Normalisasi `returnTo` frontend tetap internal-only dan backend OAuth/session tetap authority.
+- Menambahkan preferensi onboarding mobile presentasional non-sensitif agar returning device langsung ke login, tetap menyediakan aksi `Ulang`, serta memastikan slide login/artwork yang tidak aktif tidak meninggalkan kontrol focusable atau network load yang tidak perlu.
+- Menata ulang Beranda mobile menjadi status → perhatian → tindakan → aktivitas → detail tanpa membuat read model/business rule baru; sekaligus menutup touch target kecil dan microcopy operasional di bawah 12px pada area Dashboard, Rekening, Anggaran, Transaksi, feedback, dan shell.
+- Menambahkan dimensi intrinsik + async decoding pada image UI lokal, mengecilkan brand/login raster, dan mengoptimalkan seluruh asset kartu rekening menjadi WebP `1024x645` maksimal 100 KB sambil mempertahankan alpha bank serta rasio visual canonical.
+- Menambah regression source untuk auth routing/onboarding, image layout stability, target 44px, microtext exception, dashboard hierarchy, serta menyelaraskan `UI_DESIGN_SYSTEM`, `TEST_PLAN`, dan `PROJECT_STATUS`. Tidak ada perubahan API, database/schema, ledger/saldo, authorization backend, Apps Script, idempotency, row version, atau audit financial.
+
 ## 23 Agustus 2026 - Canonical gap registry dan RFC truth cleanup
 
 - Menyelaraskan RFC-0018 dengan runtime schema v12: session registry per perangkat, revoke own/all, PKCE S256, dan authoritative resolver sudah Accepted/implemented; pekerjaan tersisa hanya evidence operasional dan tidak lagi ditulis sebagai RFC Proposed.

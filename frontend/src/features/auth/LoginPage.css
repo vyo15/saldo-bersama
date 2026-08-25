@@ -114,7 +114,7 @@
 .login-desktop-brand small {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: .7rem;
+  font-size: var(--font-size-xs);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -817,6 +817,9 @@
 .login-mobile-dot.is-active::before { width: 28px; background: var(--primary); }
 .login-mobile-dot:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -5px; }
 .login-mobile-navigation__hint { width: 44px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-align: right; }
+.login-mobile-navigation__replay { width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--primary); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); cursor: pointer; touch-action: manipulation; }
+.login-mobile-navigation__replay:hover { background: var(--primary-soft); }
+.login-mobile-navigation__replay:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
 
 @media (min-width: 821px) {
   .login-page--desktop-artwork,

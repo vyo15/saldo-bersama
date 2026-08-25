@@ -4,7 +4,7 @@ Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_OAUTH_CLI
 
 ## Boundary saat ini
 
-Source v12 mewajibkan binding environment fail-closed dan tidak mendukung sharing Development/Production sebagai konfigurasi normal. Runbook tetap tidak boleh menganggap live isolation selesai sebelum evidence membuktikan dua database/token berbeda.
+Source v13 mewajibkan binding environment fail-closed dan tidak mendukung sharing Development/Production sebagai konfigurasi normal. Runbook tetap tidak boleh menganggap live isolation selesai sebelum evidence membuktikan dua database/token berbeda.
 
 Konsekuensinya:
 
@@ -38,9 +38,9 @@ Jangan revoke token lama sebelum runtime yang diperlukan terbukti memakai token 
 ## Urutan rotasi `GOOGLE_OAUTH_CLIENT_SECRET`
 
 1. Buka Google Auth Platform pada project yang sama dengan Firebase dan OAuth Web Client yang ID-nya sama dengan `VITE_GOOGLE_CLIENT_ID`.
-2. Buat client secret baru. Salin nilainya satu kali langsung ke secret store/`.env.local` komputer tepercaya; jangan taruh di chat, screenshot, Git, atau ZIP.
+2. Buat client secret baru. Salin nilainya satu kali langsung ke secret store/`.env.production.local` komputer tepercaya; jangan taruh di chat, screenshot, Git, atau ZIP.
 3. Pastikan authorized redirect URI production tetap `https://saldo-bersama.vercel.app/api/auth/google/callback`.
-4. Jalankan `npm run env:push:production`; tooling harus mengirim `GOOGLE_OAUTH_CLIENT_SECRET` sebagai Sensitive dan tidak mengirimkannya ke Vercel Development.
+4. Jalankan `npm run env:check:production` lalu `npm run env:push:production`; tooling harus mengirim `GOOGLE_OAUTH_CLIENT_SECRET` sebagai Sensitive dan tidak mengirimkannya ke Vercel Development.
 5. Deploy Production baru lalu uji login mobile real-device sampai Vercel Logs menunjukkan `session.oauth.start`, `session.login` dengan `flow=google-oauth-server` status 200, dan `GET /api/session` 200.
 6. Setelah secret baru terbukti aktif, hapus/revoke client secret lama di Google Auth Platform.
 7. Verifikasi ulang login branded desktop dan mobile production tanpa mencatat nilai credential pada evidence.

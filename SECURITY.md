@@ -26,6 +26,6 @@ Jangan menguji pada data production dengan cara destruktif.
 
 Temuan divalidasi, ditriage, dipatch secara terisolasi, diuji, direview sesuai risiko dan aturan repository, lalu dirilis melalui release checklist. Perubahan source masuk melalui branch/Pull Request dan required **Quality** check. Rotasi secret mengikuti `docs/SECRET_ROTATION_RUNBOOK.md`; verifikasi data wajib dilakukan bila credential atau integritas mungkin terdampak.
 
-Rate limiter aplikasi saat ini bersifat best-effort per runtime instance. Ia tetap defense-in-depth, bukan pengganti distributed/platform rate limiting untuk endpoint publik. Aktivasi rate limit platform harus diverifikasi pada Vercel tanpa menambah storage, dependency, atau schema baru secara diam-diam.
+Rate limiter aplikasi memakai dua lapisan: limiter process-local sebagai fast defense-in-depth dan bucket Turso v13 sebagai counter durable lintas Vercel Function instance untuk gateway, export, login Firebase, serta callback/start OAuth valid. Bucket memakai key hash+scope dan tidak menyimpan raw IP/UID/email. Platform/WAF rate limiting tetap dapat ditambahkan sebagai lapisan tambahan untuk traffic publik dan tidak menggantikan authorization, idempotency, atau validasi backend.
 
 Lihat `docs/SECURITY_MODEL.md`, `docs/THREAT_MODEL.md`, dan `docs/INCIDENT_RESPONSE.md`.

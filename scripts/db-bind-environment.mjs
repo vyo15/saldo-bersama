@@ -1,12 +1,12 @@
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { loadDatabaseProfile, resolveDatabaseProfileTarget } from "./database-profile.mjs";
 import { getDatabase } from "../api/_lib/db/httpClient.js";
 import { DATABASE_ENVIRONMENTS, DATABASE_SCHEMA_VERSION, invalidateSchemaCache } from "../api/_lib/db/schema.js";
 import { nowIso } from "../api/_lib/services/core.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-try { process.loadEnvFile(path.join(root, ".env.local")); } catch (error) { if (error.code !== "ENOENT") throw error; }
 
 export const resolveDatabaseEnvironmentTarget = ({
   argv = process.argv.slice(2),
@@ -19,7 +19,7 @@ export const resolveDatabaseEnvironmentTarget = ({
   }
   if (positional && configured && positional !== configured) {
     throw Object.assign(
-      new Error(`Target CLI ${positional} bertentangan dengan DATABASE_ENVIRONMENT=${configured}. Periksa .env.local sebelum binding.`),
+      new Error(`Target CLI ${positional} bertentangan dengan DATABASE_ENVIRONMENT=${configured}. Periksa profile environment sebelum binding.`),
       { code: "DATABASE_ENVIRONMENT_CONFLICT", positional, configured },
     );
   }
@@ -54,7 +54,11 @@ export const bindDatabaseEnvironment = async ({ database = null, environment = p
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   Promise.resolve()
-    .then(() => resolveDatabaseEnvironmentTarget())
+    .then(async () => {
+      const environment = resolveDatabaseProfileTarget();
+      await loadDatabaseProfile({ root, environment });
+      return resolveDatabaseEnvironmentTarget({ argv: [environment], environment: process.env.DATABASE_ENVIRONMENT });
+    })
     .then((environment) => bindDatabaseEnvironment({ environment }))
     .then(({ environment, changed }) => {
       console.log(`Database ${changed ? "diikat" : "sudah terikat"} ke environment: ${environment}.`);

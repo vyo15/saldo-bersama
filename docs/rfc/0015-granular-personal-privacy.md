@@ -4,7 +4,7 @@
 **Owner:** Security/privacy owner
 **Reviewers:** Backend, frontend, product, QA
 **Date:** 2026-08-02
-**Last reviewed:** 2026-08-21 against schema v11
+**Last reviewed:** 2026-08-24 against schema v13
 
 ## Problem
 
@@ -32,7 +32,7 @@ Ini **bukan broken access control terhadap baseline saat ini**. Baseline full-tr
 
 ## Baseline existing
 
-Pada runtime v12, dua user terotorisasi tetap dapat membaca shared maupun personal account/ledger dengan owner label. Hak create/update/cancel/reconcile tetap dibatasi backend capability/ownership. Sheets mirror tetap shared-only.
+Pada runtime v13, policy read yang diwarisi dari v12 tetap membuat dua user terotorisasi dapat membaca shared maupun personal account/ledger dengan owner label. Hak create/update/cancel/reconcile tetap dibatasi backend capability/ownership. Sheets mirror tetap shared-only.
 
 Baseline ini tetap berlaku sampai granular privacy migration dan projection framework benar-benar diterapkan end-to-end.
 

@@ -110,7 +110,7 @@ const SideNavigation = () => {
 
   return (
     <aside ref={dockRef} className="desktop-module-dock" aria-label="Navigasi utama Saldo Bersama">
-      <img className="desktop-module-dock__shape" src={theme === "dark" ? sidebarRailMaskDark : sidebarRailMask} alt="" aria-hidden="true" />
+      <img className="desktop-module-dock__shape" src={theme === "dark" ? sidebarRailMaskDark : sidebarRailMask} width="92" height="480" alt="" aria-hidden="true" decoding="async" />
       <nav className="desktop-module-dock__navigation" aria-label="Menu utama">
         {visibleNavigation.map((item) => (
           <NavigationItem

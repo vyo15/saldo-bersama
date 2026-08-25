@@ -7,6 +7,7 @@ import {
   GOOGLE_BRIDGE_ENV_KEYS,
   LEGACY_ENV_KEYS,
   OPTIONAL_LOGGING_ENV_KEYS,
+  PRODUCTION_AUTH_ENV_KEYS,
   SETTINGS_ENV_KEYS,
   WEB_PUSH_ENV_KEYS,
   optionalGroupStatus,
@@ -33,7 +34,7 @@ export const DEVELOPMENT_ENV_KEYS = Object.freeze([
 
 export const DEVELOPMENT_SETTINGS_ENV_KEYS = SETTINGS_ENV_KEYS;
 
-const FORBIDDEN_DEVELOPMENT_KEYS = LEGACY_ENV_KEYS;
+const FORBIDDEN_DEVELOPMENT_KEYS = Object.freeze([...LEGACY_ENV_KEYS, ...PRODUCTION_AUTH_ENV_KEYS]);
 
 const groupValidation = (values = {}) => {
   const googleBridge = optionalGroupStatus(values, GOOGLE_BRIDGE_ENV_KEYS);

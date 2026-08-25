@@ -109,12 +109,25 @@ export const developmentEnvironmentStatus = (values = {}) => {
   const core = environmentStatus(values);
   const webPush = validateWebPushEnvironment(values);
   const missingWebPush = webPush.enabled ? webPush.missing : [...WEB_PUSH_ENV_KEYS];
-  const invalid = webPush.complete ? [...webPush.invalid] : [];
+  const environmentMismatch = String(values.DATABASE_ENVIRONMENT || "").trim().toLowerCase() !== "development";
+  const productionOnlyPresent = PRODUCTION_AUTH_ENV_KEYS.filter((key) => present(values, key));
+  const invalid = [
+    ...(webPush.complete ? webPush.invalid : []),
+    ...(environmentMismatch && !core.missing.includes("DATABASE_ENVIRONMENT") ? ["DATABASE_ENVIRONMENT"] : []),
+    ...productionOnlyPresent,
+  ];
   const missing = [...core.missing, ...missingWebPush];
   return {
-    complete: core.complete && webPush.enabled && webPush.complete && webPush.valid,
+    complete: core.complete
+      && !environmentMismatch
+      && productionOnlyPresent.length === 0
+      && webPush.enabled
+      && webPush.complete
+      && webPush.valid,
     missing,
     invalid,
+    environmentMismatch,
+    productionOnlyPresent,
     core,
     webPush,
   };

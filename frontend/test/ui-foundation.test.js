@@ -52,6 +52,22 @@ test("semantic primitives keep accessibility and avoid dynamic inline layout sty
   assert.doesNotMatch(progress, /style=\{\{/);
 });
 
+test("local images declare intrinsic dimensions and async decoding to avoid avoidable layout shift", async () => {
+  const sourceDirectory = new URL("../src/", import.meta.url);
+  const names = await readdir(sourceDirectory, { recursive: true });
+  const missing = [];
+  for (const relative of names.filter((name) => name.endsWith(".jsx"))) {
+    const source = await read(`src/${relative}`);
+    for (const match of source.matchAll(/<img\b[^>]*>/gs)) {
+      const tag = match[0];
+      if (!/\bwidth\s*=/.test(tag) || !/\bheight\s*=/.test(tag) || !/\bdecoding="async"/.test(tag)) {
+        missing.push(relative);
+      }
+    }
+  }
+  assert.deepEqual([...new Set(missing)], []);
+});
+
 test("compact notice owns lightweight guidance without dashboard stylesheet coupling", async () => {
   const [component, css, dashboardCss, transactions, budgets, allocations, recurring, goals, reconciliations] = await Promise.all([
     read("src/components/common/CompactNotice.jsx"),
@@ -213,7 +229,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     "house.webp",
     "phone-analytics.webp",
   ];
-  const [login, loginStyles, app, main, pages, mobileAuth, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
+  const [login, loginStyles, app, main, pages, mobileAuth, authRouting, onboardingPreference, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
     Promise.all([
       read("src/features/auth/LoginPage.jsx"),
       read("src/features/auth/loginPresentation.js"),
@@ -226,6 +242,8 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     read("src/main.jsx"),
     read("src/styles/pages.css"),
     read("src/services/auth/mobileFirebaseGoogleAuth.js"),
+    read("src/services/auth/googleAuthRouting.js"),
+    read("src/features/auth/loginOnboardingPreference.js"),
     readFile(new URL("../public/login/desktop-light.webp", import.meta.url)),
     readFile(new URL("../public/login/desktop-dark.webp", import.meta.url)),
     readFile(new URL("../public/brand/saldo-bersama-mark.png", import.meta.url)),
@@ -254,8 +272,12 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   // Desktop dan mobile memakai tombol HTML branded yang sama. Production memakai server OAuth; localhost tetap popup Firebase untuk development.
   assert.doesNotMatch(login, /renderGoogleLoginButton|google-login-button/);
   assert.match(login, /import\("\.\.\/\.\.\/services\/auth\/mobileFirebaseGoogleAuth\.js"\)/);
-  assert.match(login, /preloadMobileGoogleAuth/);
+  assert.match(login, /preloadLocalGoogleAuth/);
   assert.match(login, /useGoogleProvider/);
+  assert.match(login, /isCanonicalProductionGoogleOAuth\(\)/);
+  assert.match(login, /productionGoogleAuthTransport/);
+  assert.match(login, /hasSeenMobileOnboarding/);
+  assert.match(login, /markMobileOnboardingSeen/);
   assert.doesNotMatch(login, /prepareLoginServiceWorker/);
   assert.match(login, /googleAuthReady/);
   assert.match(login, /signInWithGoogleMobile/);
@@ -263,23 +285,30 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(login, /mobileOAuthErrorFromSearch/);
   assert.match(login, /googleAuthRef/);
   assert.match(login, /className="login-mobile-google-button"/);
-  assert.match(login, /<GoogleLoginPanel \{\.\.\.mobileAuthProps\}/);
+  assert.match(login, /active \? <GoogleLoginPanel \{\.\.\.mobileAuthProps\} \/> : null/);
   assert.match(login, /mobileAuthProps=\{googleAuthProps\}/);
   assert.match(login, /\/login\/google-g-logo\.png/);
   assert.match(login, /Menghubungkan ke Google…/);
   assert.match(login, /pending: googleLoginPending/);
   assert.doesNotMatch(login, /login-mobile-provider/);
   assert.match(mobileAuth, /GoogleAuthProvider/);
-  assert.match(mobileAuth, /CANONICAL_PRODUCTION_HOST = "saldo-bersama\.vercel\.app"/);
-  assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
-  assert.match(mobileAuth, /window\.location\.assign/);
   assert.match(mobileAuth, /signInWithPopup/);
   assert.match(mobileAuth, /inMemoryPersistence/);
+  assert.doesNotMatch(mobileAuth, /saldo-bersama\.vercel\.app|window\.location\.assign|SERVER_OAUTH_START_PATH/);
+  assert.match(authRouting, /CANONICAL_PRODUCTION_HOST = "saldo-bersama\.vercel\.app"/);
+  assert.match(authRouting, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
+  assert.match(authRouting, /window\.location\.assign/);
+  assert.doesNotMatch(authRouting, /@firebase\/|initializeAuth|signInWithPopup/);
+  assert.match(onboardingPreference, /MOBILE_ONBOARDING_STORAGE_KEY = "saldo-bersama:login-onboarding-seen:v1"/);
+  assert.match(onboardingPreference, /window\.localStorage/);
+  assert.doesNotMatch(onboardingPreference, /token|email|uid|role|session/i);
   assert.doesNotMatch(mobileAuth, /signInWithRedirect|getRedirectResult|browserLocalPersistence|REDIRECT_INTENT_KEY|authStateReady/);
   assert.match(mobileAuth, /inMemoryPersistence/);
   assert.match(mobileAuth, /auth\/popup-blocked/);
   assert.match(mobileAuth, /auth\/web-storage-unsupported/);
-  assert.doesNotMatch(login, /await preloadMobileGoogleAuth\(\)/);
+  assert.doesNotMatch(login, /await preloadLocalGoogleAuth\(\)/);
+  assert.match(login, /active \? slide\.assets\.map/);
+  assert.match(login, /aria-label="Lihat pengenalan lagi"/);
   assert.match(mobileAuth, /initializeAuth/);
   assert.doesNotMatch(mobileAuth, /await setPersistence/);
   assert.match(mobileAuth, /await onFirebaseToken\(firebaseIdToken\)/);
@@ -300,6 +329,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(loginStyles, /\.login-mobile-track \{[\s\S]*width:\s*400%;/);
   assert.match(loginStyles, /\.login-mobile-slide \{[\s\S]*overflow:\s*hidden;/);
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
+  assert.match(loginStyles, /\.login-mobile-navigation__replay \{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
   assert.match(loginStyles, /\.login-provider-slot--desktop \.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border-radius:\s*16px;/);
   assert.match(loginStyles, /\.login-mobile-google-button:disabled \{[^}]*cursor:\s*wait;/);
   assert.match(loginStyles, /@keyframes login-google-spin/);
@@ -318,6 +348,10 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     "money-stack.webp",
   ]) assert.doesNotMatch(login, new RegExp(staleAsset.replace(".", "\\.")));
   for (const asset of [desktopLight, desktopDark, logo, googleLogo, ...mobileAssets]) assert.ok(asset.length > 1_000);
+  assert.deepEqual({ width: logo.readUInt32BE(16), height: logo.readUInt32BE(20) }, { width: 320, height: 320 });
+  assert.ok(logo.length <= 80_000, `Logo project terlalu besar untuk auth shell (${logo.length} byte)`);
+  assert.deepEqual({ width: googleLogo.readUInt32BE(16), height: googleLogo.readUInt32BE(20) }, { width: 48, height: 49 });
+  assert.ok(googleLogo.length <= 5_000, `Logo Google terlalu besar untuk tombol auth (${googleLogo.length} byte)`);
 });
 
 test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas, dan privacy menyeluruh", async () => {
@@ -344,7 +378,9 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.match(mobile, /ThemeToggle tone="hero"/);
-  assert.ok(mobile.indexOf("<MobileAlerts") < mobile.indexOf("<MobileAccounts"), "Perlu perhatian harus muncul sebelum daftar rekening pada dashboard mobile.");
+  const order = ["<MobileAlerts", "<MobileQuickActions", "<MobileTransactions", "<MobileAllocation", "<MobileCashFlow", "<MobileAccounts", "<MobileInsights"].map((marker) => mobile.indexOf(marker));
+  assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile harus tetap ada.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan status → perhatian → tindakan → aktivitas → detail.");
 });
 
 test("stylesheet global tidak menghidupkan kembali selector legacy tanpa pemilik runtime", async () => {

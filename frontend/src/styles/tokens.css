@@ -92,7 +92,7 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
-  --font-size-sm: 12px;
+  --font-size-sm: 12.5px;
   --font-size-heading-sm: clamp(1.125rem, 1rem + 0.35vw, 1.375rem);
   --font-weight-regular: 400;
   --font-weight-medium: 500;
@@ -113,7 +113,7 @@
   --sidebar-width: 252px;
   --topbar-height: 72px;
   --content-max: 1480px;
-  --font-size-xs: 11px;
+  --font-size-xs: 12px;
   --font-size-body-sm: 13px;
   --font-size-body: 16px;
   --mobile-page-gutter: 16px;

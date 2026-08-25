@@ -372,11 +372,12 @@ test("status sistem dan notifikasi tidak memecah read independen ke beberapa pip
     const healthDb = {
       async batch(statements) {
         healthNetwork += 1;
-        assert.equal(statements.length, 3);
+        assert.equal(statements.length, 4);
         return [
-          { rows: [{ key: "schema_version", value: "10" }, { key: "maintenance_mode", value: "false" }, { key: "timezone", value: "Asia/Jakarta" }, { key: "currency", value: "IDR" }] },
+          { rows: [{ key: "schema_version", value: "13" }, { key: "maintenance_mode", value: "false" }, { key: "timezone", value: "Asia/Jakarta" }, { key: "currency", value: "IDR" }] },
           { rows: [] },
           { rows: [] },
+          { rows: [{ latest_backup_status: "", latest_integrity_status: "", notification_dead_letter_count: 0 }] },
         ];
       },
     };

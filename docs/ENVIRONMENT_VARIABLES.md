@@ -1,21 +1,21 @@
 # Environment Variables
 
-Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development serta `.env.local`. Jangan menambahkan nama lain tanpa perubahan source dan review.
+Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development serta profile lokal `.env.local` (Development) dan `.env.production.local` (Production admin). Jangan menambahkan nama lain tanpa perubahan source dan review.
 
 ## Kebijakan environment
 
 Runtime Development canonical terdiri dari **sepuluh key core wajib dan satu key logging opsional**; grup Google bridge dan Web Push mengikuti aturan kelengkapan masing-masing. Production menambahkan **satu secret auth wajib** untuk Google OAuth server-side.
 
 - Source sekarang mewajibkan isolasi fail-closed: Development memakai `DATABASE_ENVIRONMENT=development`, Production memakai `DATABASE_ENVIRONMENT=production`, dan database harus di-bind ke nilai yang sama. Jika infrastruktur live masih memakai satu Turso database, hanya satu environment yang dapat berhasil di-bind; environment lain akan ditolak sampai database/token benar-benar dipisahkan. ADR-0007 baru dapat ditutup setelah evidence live separation tersedia.
-- Vercel **Development** menjadi source of truth bootstrap `.env.local` untuk komputer tepercaya. `npm run dev` pada terminal interaktif selalu menarik ulang Development sebelum server dimulai agar konfigurasi antar-PC tidak drift.
-- Vercel **Production** menjadi runtime deployment production.
+- Vercel **Development** menjadi source of truth bootstrap `.env.local` untuk komputer tepercaya. `.env.local` sekarang **Development-only**; `npm run dev` pada terminal interaktif selalu menarik ulang Development sebelum server dimulai agar konfigurasi antar-PC tidak drift.
+- Vercel **Production** menjadi runtime deployment production. Secret Production yang diberi atribut **Sensitive** bersifat write-only dan tidak dapat dipull kembali; source lokal untuk operasi sinkronisasi Production adalah `.env.production.local` pada komputer tepercaya.
 - Vercel **Preview** dibiarkan kosong agar preview tidak pernah menulis ke database aktif secara tidak sengaja.
 - Nama key dapat terlihat dua kali di dashboard karena scope Development dan Production memang terpisah; itu bukan duplikat konflik.
 - `.env.local` hanya cache lokal terjaga. File ini tidak pernah di-commit, dimasukkan ZIP, log, issue, atau chat.
 - Variable `VITE_*` bersifat publik dan masuk ke bundle browser.
 - Setelah variable Production berubah, buat deployment Production baru.
 - Hanya collaborator Vercel yang dipercaya boleh memiliki akses project. Vercel Development dapat ditarik ke komputer lokal dan tidak mendukung mode Sensitive seperti Production/Preview. Karena itu `GOOGLE_OAUTH_CLIENT_SECRET` **tidak boleh disimpan pada scope Development**.
-- Pasangan VAPID boleh dipisahkan/dirotasi per environment setelah database Development dan Production benar-benar terisolasi melalui perubahan reviewed; jangan membuat pasangan VAPID per perangkat.
+- Karena Development dan Production sekarang memakai database Turso terpisah, pasangan VAPID juga **wajib berbeda per environment**. Jangan membuat pasangan VAPID per komputer/perangkat; satu pair Development disimpan di Vercel Development dan satu pair Production disimpan di secret store/Vercel Production.
 
 ## Scope Development canonical
 
@@ -50,7 +50,7 @@ Development menyimpan sepuluh key core wajib dan satu key logging opsional. Web 
 | `VAPID_PRIVATE_KEY` | Base64url private key, 32 byte |
 | `VAPID_SUBJECT` | URI `mailto:` valid atau URL HTTPS publik. `https://localhost`, IP literal, dan hostname internal tidak diterima. |
 
-Public dan private key harus berasal dari pasangan VAPID yang sama. `npm run env:check`, bootstrap Development, dan script sinkronisasi menolak pasangan yang tidak cocok. Rotasi key membuat subscription lama perlu didaftarkan ulang.
+Public dan private key harus berasal dari pasangan VAPID yang sama. `npm run env:check`, bootstrap Development, dan script sinkronisasi menolak pasangan yang tidak cocok. Development dan Production tidak boleh memakai pasangan yang sama. Rotasi key membuat subscription lama pada environment terkait perlu didaftarkan ulang.
 
 ### Google bridge — opsional sebagai satu grup
 
@@ -72,13 +72,17 @@ Production memakai sepuluh key core dan satu key logging opsional yang sama nama
 |---|---:|---|
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Ya | Client secret untuk OAuth Web Client yang ID-nya sama dengan `VITE_GOOGLE_CLIENT_ID`; hanya dipakai server callback Google OAuth production dan tidak pernah masuk browser bundle |
 
-`GOOGLE_OAUTH_CLIENT_SECRET` tidak boleh dibuat sebagai `VITE_*`, tidak boleh disimpan pada Vercel Development, dan tidak boleh dipull dari Development. Jika secret sudah ada pada `.env.local` komputer tepercaya, bootstrap Development mempertahankan assignment lokal tersebut saat core/settings lain direfresh dari Vercel Development. Jika key yang sama tidak sengaja muncul pada hasil pull Development, bootstrap membuang nilai Development tersebut dan tidak mengimpornya ke `.env.local`.
+`GOOGLE_OAUTH_CLIENT_SECRET` tidak boleh dibuat sebagai `VITE_*`, tidak boleh disimpan pada Vercel Development, dan tidak boleh berada di `.env.local`. Bootstrap Development membuang key Production-only bila salah ditempatkan pada Vercel Development maupun cache lokal. Simpan sumber lokalnya hanya pada `.env.production.local` di komputer tepercaya.
 
-Secret/token Production harus diperlakukan sebagai secret deployment. `npm run env:push:production` mewajibkan `GOOGLE_OAUTH_CLIENT_SECRET` dan menyinkronkannya sebagai **Sensitive**, bersama core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap. Grup parsial atau key VAPID invalid membuat command berhenti sebelum mengubah Vercel.
+Secret/token Production harus diperlakukan sebagai secret deployment. `npm run env:push:production` membaca `.env.production.local`, mewajibkan `GOOGLE_OAUTH_CLIENT_SECRET`, dan menyinkronkan secret sebagai **Sensitive**, bersama core, `LOG_LEVEL`, serta grup Google bridge dan Web Push yang lengkap. Grup parsial, key VAPID invalid, atau profile Production yang belum valid membuat command berhenti sebelum mengubah Vercel.
 
-## `.env.local` canonical
+## Profile environment lokal canonical
 
-`.env.local` memakai key canonical Development dan boleh menyimpan `GOOGLE_OAUTH_CLIENT_SECRET` sebagai **production-only local credential** pada komputer tepercaya. `.env.local` yang ditarik dari Vercel Development wajib memakai database/token/session secret Development dan `DATABASE_ENVIRONMENT=development`; jangan diarahkan ke Production. Jangan membuat fallback, token dummy, atau pasangan VAPID baru per komputer.
+`.env.local` adalah cache **Development-only**. File ini wajib memakai database/token/session secret Development dan `DATABASE_ENVIRONMENT=development`; jangan pernah diarahkan ke Production dan jangan simpan `GOOGLE_OAUTH_CLIENT_SECRET` di sini. `npm run dev` menolak marker Development yang salah, database unreachable, schema yang belum siap, atau binding database yang tidak cocok sebelum server dibuka.
+
+`.env.production.local` adalah profile **Production-only** untuk operasi administrator tepercaya seperti `npm run env:push:production`. File ini tidak dipull otomatis dari Vercel karena secret Production Sensitive bersifat write-only. Setiap komputer tepercaya yang perlu mengelola Production harus di-seed satu kali dari secret store/password manager yang sah. Tooling memeriksa `DATABASE_ENVIRONMENT=production`, shared public config, dan menolak bila database host, token Turso, `SESSION_SECRET`, atau pasangan VAPID sama dengan Development yang tersedia lokal.
+
+Jangan membuat fallback, token dummy, atau pasangan VAPID baru per komputer. Gunakan `npm run env:pull:development` untuk mengambil cache Development pusat dan `npm run env:status` untuk melihat fingerprint publik/isolasi tanpa membocorkan secret. Kedua file tetap gitignored dan tidak boleh masuk ZIP/log/chat.
 
 `npm run dev` berperilaku sebagai berikut:
 
@@ -89,10 +93,10 @@ terminal interaktif
   → cek/link project saldo-bersama
   → vercel env pull <temporary-file> dari scope Development
   → hapus VERCEL_OIDC_TOKEN/key legacy dan grup parsial
-  → buang GOOGLE_OAUTH_CLIENT_SECRET bila salah ditempatkan di Development
-  → pertahankan GOOGLE_OAUTH_CLIENT_SECRET lama hanya dari .env.local tepercaya
-  → validasi sepuluh core + Web Push wajib
+  → buang GOOGLE_OAUTH_CLIENT_SECRET bila salah ditempatkan di Development/cache lokal
+  → validasi sepuluh core + DATABASE_ENVIRONMENT=development + Web Push wajib
   → atomic replace .env.local
+  → preflight Turso reachable + schema/binding Development siap
   → start server
 
 pull/login/link/validasi gagal
@@ -105,6 +109,40 @@ terminal non-interaktif
 ```
 
 Refresh setiap start interaktif disengaja. Tujuannya agar perubahan bootstrap Administrator, session, VAPID, atau konfigurasi settings pusat tidak tertinggal pada laptop/PC lain.
+
+
+## Matriks nilai yang sama vs berbeda
+
+| Grup | Development vs Production | Aturan |
+|---|---|---|
+| `VITE_APP_NAME` | Sama | Identitas aplikasi |
+| `VITE_GOOGLE_CLIENT_ID` | Sama | OAuth Web Client canonical yang sama |
+| `VITE_FIREBASE_API_KEY` | Sama | Public Firebase config yang sama |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Sama | Public Firebase auth domain yang sama |
+| `ALLOWED_ORIGINS` | Sama secara set | Memuat localhost canonical dan domain Production |
+| `TURSO_DATABASE_URL` | **Berbeda** | Development → `saldo-bersama-dev`; Production → `saldo-bersama` |
+| `TURSO_AUTH_TOKEN` | **Berbeda** | Token scope database masing-masing |
+| `SESSION_SECRET` | **Berbeda** | Session Development dan Production tidak boleh saling valid |
+| `DATABASE_ENVIRONMENT` | **Berbeda** | `development` vs `production` |
+| VAPID public/private pair | **Berbeda** | Satu pair stabil per environment, bukan per komputer |
+| `VAPID_SUBJECT` | Boleh sama | Contact URI, bukan secret |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Production saja | Tidak pernah ada di Development |
+| Google bridge group | Boleh sama bila memakai deployment bridge yang sama | Jika URL bridge sama, secret bridge/jobs harus tetap pasangan canonical deployment tersebut |
+| `ALLOWED_USERS_JSON` | Tidak diwajibkan sama | Hanya bootstrap/recovery; registry `users` di tiap DB adalah authority operasional |
+| `LOG_LEVEL` | Tidak diwajibkan sama | Operasional saja |
+
+`npm run env:status` menampilkan status aman dan `npm run env:check:production` memblok shared public drift serta credential/session/VAPID yang seharusnya terisolasi.
+
+## Mode runtime harian
+
+```bash
+npm run dev
+npm run prod
+```
+
+- `npm run dev` menjalankan aplikasi lokal dengan Vercel Development + database Development. Ini satu-satunya mode lokal yang melakukan mutation harian.
+- `npm run prod` memeriksa health API/database/schema/operations dan frontend shell pada **deployment Vercel Production aktual**, lalu membuka URL canonical pada terminal interaktif. Ini sengaja bukan server `localhost` dengan credential Production: production auth bergantung pada HTTPS, Secure HttpOnly cookie, callback OAuth canonical, dan secret Sensitive yang tidak bisa dipull kembali.
+- `npm run prod:check` hanya melakukan pemeriksaan Production tanpa membuka browser. Dengan demikian kondisi “local DEV hidup tetapi Vercel Production rusak” dapat dicek eksplisit tanpa mencampur database.
 
 ## Seed/sinkronisasi Development
 
@@ -139,14 +177,14 @@ GOOGLE_BRIDGE_SHARED_SECRET     # bila grup Google bridge aktif
 JOBS_SHARED_SECRET              # bila grup Google bridge aktif
 ```
 
-Gunakan command settings dari komputer yang sudah memiliki pasangan VAPID canonical, misalnya PC yang notifikasinya sudah berfungsi. Jangan generate pasangan baru hanya untuk mengisi Development. Setelah seed selesai, komputer lain cukup menjalankan `npm run dev`.
+Gunakan command settings dari komputer yang sudah memiliki pasangan VAPID **Development** canonical. Jangan generate pasangan baru hanya karena pindah laptop/PC; setelah seed selesai, komputer lain cukup menjalankan `npm run env:pull:development` atau `npm run dev`. Generate hanya untuk initial provisioning atau rotasi Development yang disengaja, lalu daftarkan ulang subscription Development bila key berubah.
 
 `vercel link` dapat menambahkan `VERCEL_OIDC_TOKEN`; script membersihkannya pada jalur sukses maupun gagal. Development variable dapat dibaca collaborator project yang berwenang, sehingga akses Vercel harus dibatasi ketat.
 
 ## Sinkronisasi Production
 
 ```bash
-npm run env:check
+npm run env:check:production
 npm run env:push:production
 ```
 
@@ -161,17 +199,24 @@ Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sen
 Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan hanya dari komputer tepercaya setelah backup/integrity evidence tersedia.
 
 1. Buat database Turso **Development** baru.
-2. Terapkan migration canonical sampai schema v12, lalu bind database ke Development dan jalankan integrity check:
+2. Terapkan migration canonical sampai schema v13 pada Development, lalu bind dan jalankan integrity check. Command tanpa target membaca `.env.local`:
    ```bash
    npm run db:migrate
    npm run db:bind-environment -- development
    npm run db:integrity
    ```
-   Command di atas harus dijalankan dengan environment yang secara eksplisit menunjuk database Development. Rebind silang wajib ditolak.
+   Rebind silang wajib ditolak dan migration memeriksa binding existing sebelum mutation.
 3. Pastikan `system_config.timezone=Asia/Jakarta`, `currency=IDR`, `database_environment=development`, dan business integrity lulus.
 4. Siapkan token Development baru. Jangan reuse token Production setelah isolation.
 5. Ubah Vercel **Development** `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, dan `DATABASE_ENVIRONMENT=development` ke nilai Development. Jangan mengubah Production pada langkah ini.
-6. Pastikan Vercel **Production** tetap memakai database/token Production dan `DATABASE_ENVIRONMENT=production`; database Production juga harus dimigrasi ke v12 lalu di-bind `production` sebelum runtime v12 menerima traffic.
+6. Pastikan Vercel **Production** tetap memakai database/token Production dan `DATABASE_ENVIRONMENT=production`. Dari komputer tepercaya, siapkan `.env.production.local`, ambil backup Production terverifikasi, lalu jalankan secara eksplisit:
+   ```bash
+   npm run env:check:production
+   npm run db:migrate -- production
+   npm run db:bind-environment -- production
+   npm run db:integrity -- production
+   ```
+   Profile Production tidak pernah diambil dari `.env.local`; runtime v13 baru boleh menerima traffic setelah langkah ini lulus.
 7. Jalankan `npm run dev`, lalu `npm run env:check` dan smoke read/write menggunakan data dummy pada Development.
 8. Verifikasi aplikasi Production tetap sehat dan tidak pernah mengakses database Development.
 9. Setelah kedua scope terbukti terpisah, rotasi credential lama sesuai `SECRET_ROTATION_RUNBOOK.md` dan revoke token yang tidak lagi dipakai.

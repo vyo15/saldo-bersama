@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-02
-**Updated:** 2026-08-17
+**Updated:** 2026-08-25
 
 ## Context
 
@@ -16,7 +16,7 @@ Web Push memperjelas masalah tersebut. Production sudah memiliki pasangan VAPID,
 - `npm run dev` pada terminal interaktif selalu melakukan refresh dari Vercel Development sebelum server dimulai, termasuk ketika `.env.local` sudah ada.
 - Pull selalu menuju file sementara, disanitasi, divalidasi, lalu ditulis atomik ke `.env.local`.
 - Development canonical memerlukan delapan core key dan satu grup Web Push lengkap/valid. Google bridge tetap opsional, tetapi bila aktif harus lengkap.
-- Pasangan VAPID Development harus sama dengan Production **hanya selama** kedua runtime masih memakai database subscription Turso yang sama. Setelah database Development terisolasi, VAPID dapat dipisahkan/dirotasi per environment melalui workflow reviewed.
+- Database Development/Production sekarang dipisahkan secara fail-closed, sehingga VAPID juga memakai **satu pasangan stabil per environment** dan tidak boleh dibagi lintas Development/Production. Pair tidak pernah dibuat per komputer/perangkat.
 - `npm run env:push:development -- --settings-only` tersedia untuk menyinkronkan hanya Web Push dan Google bridge yang aktif, tanpa menyentuh Turso, allowlist, Firebase, atau session.
 - `VERCEL_OIDC_TOKEN`, key legacy, duplikat, dan grup opsional parsial tidak boleh bertahan.
 - File lokal lama dipertahankan ketika refresh gagal, tetapi interactive `npm run dev` tetap fail closed dan server tidak dijalankan dengan konfigurasi yang belum terverifikasi terhadap Development terbaru.
@@ -28,7 +28,7 @@ Web Push memperjelas masalah tersebut. Production sudah memiliki pasangan VAPID,
 
 - Komputer baru dapat menjalankan clone lalu `npm run dev` setelah login Vercel satu kali tanpa copy/edit `.env.local` manual.
 - Perubahan konfigurasi pusat ikut tersinkron pada start berikutnya, sehingga drift antar-PC berkurang.
-- Development harus memiliki Web Push sebelum local runtime dianggap siap. Seed awal dilakukan dari komputer tepercaya yang masih memiliki pasangan VAPID canonical.
+- Development harus memiliki Web Push sebelum local runtime dianggap siap. Seed awal/rotasi dilakukan sekali dari komputer tepercaya; komputer lain menarik pair Development yang sama dari Vercel Development.
 - Google bridge tetap dapat dinonaktifkan. Bila diaktifkan, konfigurasi pusat yang sama melayani Integrasi Google, backup, restore Drive, dan scheduler pada komputer tepercaya.
 - Izin notifikasi browser tetap per perangkat dan tidak dapat diberikan otomatis oleh environment bootstrap.
 - Nama key muncul pada scope Development dan Production; ini disengaja.

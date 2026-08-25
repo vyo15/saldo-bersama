@@ -121,7 +121,7 @@
   min-width: 0;
   color: var(--on-hero);
   font-family: var(--font-mono);
-  font-size: clamp(.62rem, 1.15vw, .9rem);
+  font-size: clamp(.75rem, 1.15vw, .9rem);
   font-weight: var(--font-weight-semibold);
   letter-spacing: .07em;
   line-height: 1;
@@ -146,7 +146,7 @@
   overflow: hidden;
   color: var(--on-hero);
   font-family: var(--font-mono);
-  font-size: clamp(.47rem, .82vw, .68rem);
+  font-size: clamp(.75rem, .82vw, .8rem);
   font-weight: var(--font-weight-semibold);
   letter-spacing: .07em;
   line-height: 1;
@@ -173,7 +173,7 @@
   background: color-mix(in srgb, var(--account-mobile-deep-surface) 38%, transparent);
   color: var(--on-hero);
   font-family: var(--font-sans);
-  font-size: clamp(.46rem, 2.1vw, .7rem);
+  font-size: clamp(.75rem, 2.1vw, .8rem);
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   text-overflow: ellipsis;
@@ -429,7 +429,7 @@
   overflow: hidden;
   color: var(--on-hero);
   font-family: var(--font-sans);
-  font-size: clamp(.62rem, 2.8vw, .78rem);
+  font-size: clamp(.75rem, 2.8vw, .82rem);
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   text-overflow: ellipsis;
@@ -496,14 +496,14 @@
 
 .carouselVisual .accountNumber {
   bottom: 22%;
-  font-size: clamp(.78rem, 3.55vw, 1.08rem);
+  font-size: clamp(.8rem, 3.55vw, 1.08rem);
   letter-spacing: .055em;
 }
 
 .carouselVisual .holderName {
   right: 42%;
   bottom: 8.5%;
-  font-size: clamp(.58rem, 2.8vw, .78rem);
+  font-size: clamp(.75rem, 2.8vw, .8rem);
 }
 
 .stackVisual {
@@ -517,14 +517,14 @@
 
 .stackVisual .accountNumber {
   bottom: 21.5%;
-  font-size: clamp(.76rem, 3.45vw, 1.04rem);
+  font-size: clamp(.8rem, 3.45vw, 1.04rem);
   letter-spacing: .055em;
 }
 
 .stackVisual .holderName {
   right: 42%;
   bottom: 8.5%;
-  font-size: clamp(.56rem, 2.75vw, .76rem);
+  font-size: clamp(.75rem, 2.75vw, .78rem);
 }
 
 .mobileDetail {

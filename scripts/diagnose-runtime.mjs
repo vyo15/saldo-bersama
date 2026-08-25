@@ -25,6 +25,7 @@ if (!missing.includes("TURSO_DATABASE_URL") && !missing.includes("TURSO_AUTH_TOK
     const schema = healthy ? await readSchemaStatus(db, { force: true }) : null;
     console.log(`Turso: ${healthy ? "reachable" : "UNREACHABLE"}`);
     console.log(`Schema: ${schema?.ready ? `ready v${schema.version}` : JSON.stringify(schema || {})}`);
+    if (!healthy || !schema?.ready) process.exitCode = 1;
     if (healthy) {
       const latestPushTest = await db.one(`SELECT timestamp,result,new_value FROM audit_log
         WHERE action='notifications.test' ORDER BY timestamp DESC LIMIT 1`);
@@ -35,7 +36,10 @@ if (!missing.includes("TURSO_DATABASE_URL") && !missing.includes("TURSO_AUTH_TOK
         console.log(`Web Push latest verification: ${latestPushTest.result}${safeCode ? ` (${safeCode})` : ""} at ${latestPushTest.timestamp}`);
       } else console.log("Web Push latest verification: not available");
     }
-  } catch (error) { console.error(`Turso: FAILED (${error.code || error.message})`); }
+  } catch (error) {
+    console.error(`Turso: FAILED (${error.code || error.message})`);
+    process.exitCode = 1;
+  }
 }
 
 const bridge = String(process.env.GOOGLE_BRIDGE_WEB_APP_URL || "").trim();

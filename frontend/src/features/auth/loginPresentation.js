@@ -17,8 +17,8 @@ export const MOBILE_ONBOARDING = Object.freeze([
     description: "Pantau pemasukan dan pengeluaran sehari-hari dengan tampilan yang ringan dan mudah dipahami.",
     hero: { label: "Catat harian", meta: "Rapi • Cepat", badges: ["Pemasukan", "Pengeluaran"] },
     assets: [
-      { src: `${MOBILE_ASSET_BASE}/phone-analytics.webp`, className: "login-mobile-asset--saving-main", priority: true, parallax: "soft" },
-      { src: `${MOBILE_ASSET_BASE}/piggy-bank.webp`, className: "login-mobile-asset--saving-support", parallax: "medium" },
+      { src: `${MOBILE_ASSET_BASE}/phone-analytics.webp`, width: 559, height: 900, className: "login-mobile-asset--saving-main", priority: true, parallax: "soft" },
+      { src: `${MOBILE_ASSET_BASE}/piggy-bank.webp`, width: 900, height: 873, className: "login-mobile-asset--saving-support", parallax: "medium" },
     ],
   },
   {
@@ -29,8 +29,8 @@ export const MOBILE_ONBOARDING = Object.freeze([
     description: "Pisahkan kebutuhan dan target agar batas belanja selalu terlihat sebelum uang digunakan.",
     hero: { label: "Atur anggaran", meta: "Bulanan • Terkontrol", badges: ["Budget", "Target"] },
     assets: [
-      { src: `${MOBILE_ASSET_BASE}/wallet.webp`, className: "login-mobile-asset--budget-main", parallax: "soft" },
-      { src: `${MOBILE_ASSET_BASE}/growth-board.webp`, className: "login-mobile-asset--budget-support", parallax: "medium" },
+      { src: `${MOBILE_ASSET_BASE}/wallet.webp`, width: 797, height: 900, className: "login-mobile-asset--budget-main", parallax: "soft" },
+      { src: `${MOBILE_ASSET_BASE}/growth-board.webp`, width: 900, height: 687, className: "login-mobile-asset--budget-support", parallax: "medium" },
     ],
   },
   {
@@ -41,9 +41,9 @@ export const MOBILE_ONBOARDING = Object.freeze([
     description: "Kelola catatan pribadi dan bersama dari perangkat berbeda tanpa kehilangan gambaran keuangan kalian.",
     hero: { label: "Untuk berdua", meta: "Sinkron • Transparan", badges: ["Bersama", "Perangkat"] },
     assets: [
-      { src: `${MOBILE_ASSET_BASE}/hand-phone-dashboard.webp`, className: "login-mobile-asset--shared-main", parallax: "soft" },
-      { src: `${MOBILE_ASSET_BASE}/house.webp`, className: "login-mobile-asset--shared-house", parallax: "medium" },
-      { src: `${MOBILE_ASSET_BASE}/finance-checklist.webp`, className: "login-mobile-asset--shared-checklist", parallax: "soft" },
+      { src: `${MOBILE_ASSET_BASE}/hand-phone-dashboard.webp`, width: 677, height: 900, className: "login-mobile-asset--shared-main", parallax: "soft" },
+      { src: `${MOBILE_ASSET_BASE}/house.webp`, width: 900, height: 778, className: "login-mobile-asset--shared-house", parallax: "medium" },
+      { src: `${MOBILE_ASSET_BASE}/finance-checklist.webp`, width: 900, height: 840, className: "login-mobile-asset--shared-checklist", parallax: "soft" },
     ],
   },
 ]);

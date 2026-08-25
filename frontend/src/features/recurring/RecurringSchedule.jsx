@@ -265,7 +265,7 @@ export const ScheduleSummary = ({ items, onAttention }) => {
           <div className={`${styles.heroMetric} ${summary.attention ? styles.heroMetricAttention : ""}`}><span>Perhatian</span><strong>{summary.attention} jadwal</strong></div>
         </div>
       </div>
-      <img className={styles.heroArt} src="/login/assets/mobile/finance-checklist.webp" alt="" aria-hidden="true" draggable="false" />
+      <img className={styles.heroArt} src="/login/assets/mobile/finance-checklist.webp" width="900" height="840" alt="" aria-hidden="true" draggable="false" decoding="async" />
     </section>
   );
 };

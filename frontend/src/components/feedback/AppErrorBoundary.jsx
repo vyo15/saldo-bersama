@@ -69,7 +69,7 @@ const FatalErrorIllustration = () => (
       <path className="fatal-error__spark" d="M103 105l4 9 9 4-9 4-4 9-4-9-9-4 9-4 4-9Z" />
       <path className="fatal-error__spark fatal-error__spark--small" d="M330 89l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" />
     </svg>
-    <img className="fatal-error__wallet-logo" src="/brand/saldo-bersama-mark.png" alt="" />
+    <img className="fatal-error__wallet-logo" src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" aria-hidden="true" decoding="async" />
   </div>
 );
 

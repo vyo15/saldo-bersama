@@ -95,7 +95,8 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
     readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(tokens, /--font-size-xs:\s*11px;/);
+  assert.match(tokens, /--font-size-xs:\s*12px;/);
+  assert.match(tokens, /--font-size-sm:\s*12\.5px;/);
   assert.match(tokens, /--mobile-page-gutter:\s*16px;/);
   assert.match(tokens, /--mobile-section-gap:\s*16px;/);
   assert.match(tokens, /--mobile-card-padding:\s*16px;/);
@@ -129,6 +130,73 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(loginStyles, /\.login-mobile-eyebrow \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(loginStyles, /\.login-mobile-hero__kicker \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(loginStyles, /\.login-mobile-description \{[^}]*font-size:\s*var\(--font-size-body-sm\);/s);
+});
+
+test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak turun di bawah 12px", async () => {
+  const [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts, loginStyles] = await Promise.all([
+    readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/budgets/BudgetsPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionsPage.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/feedback/FeedbackProvider.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/accounts/components/DesktopAccountsWorkspace.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(app, /\.desktop-settings-button \{ width:\s*44px; height:\s*44px;/);
+  assert.match(app, /\.user-avatar--md \{ width:\s*44px; height:\s*44px;/);
+  assert.match(components, /\.icon-button \{ width:\s*44px; height:\s*44px;/);
+  assert.match(components, /\.quick-amounts button \{ min-height:\s*44px;/);
+  assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
+  assert.match(pages, /\.allocation-filters button \{ min-height:\s*44px;/);
+  assert.match(pages, /\.allocation-card__menu \{ width:\s*44px; min-width:\s*44px; height:\s*44px;/);
+  assert.match(pages, /\.allocation-detail-back \{ width:\s*max-content; min-height:\s*44px;/);
+  assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
+  assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*7px;[^}]*height:\s*7px;/);
+  assert.match(budgets, /\.segment \{\s*min-height:\s*var\(--control-height-md\);/);
+  assert.match(budgets, /\.sortButton \{\s*min-height:\s*var\(--control-height-md\);/);
+  assert.match(transactionForm, /\.quickAmounts button \{\s*min-height:\s*var\(--control-height-md\);/);
+  assert.match(transactionForm, /\.impactDetails summary \{[^}]*min-height:\s*var\(--control-height-md\);/s);
+  assert.match(transactions, /\.transaction-filter-chip \{ min-height:\s*var\(--control-height-md\);/);
+  assert.match(desktopAccounts, /\.ownershipFilter \{[^}]*min-height:\s*2\.75rem;/s);
+  assert.match(desktopAccounts, /\.carouselArrow \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
+  assert.match(desktopAccounts, /\.carouselDot \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
+  assert.match(desktopAccounts, /\.textAction \{[^}]*min-height:\s*2\.75rem;/s);
+  assert.match(loginStyles, /\.login-desktop-brand small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+
+  const operationalCss = [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts].join("\n");
+  const tooSmall = [...operationalCss.matchAll(/font-size:\s*([0-9.]+)px/g)]
+    .map((match) => Number(match[1]))
+    .filter((value) => value < 12);
+  assert.deepEqual(tooSmall, []);
+});
+
+test("microtext di bawah 12px hanya tersisa pada facsimile atau dekorasi yang disetujui", async () => {
+  const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
+  const exceptions = [];
+  for (const file of cssFiles) {
+    for (const match of file.source.matchAll(/font-size:\s*([^;]+);/g)) {
+      const values = [...match[1].matchAll(/([0-9]*\.?[0-9]+)\s*(px|rem)/g)]
+        .map((value) => Number(value[1]) * (value[2] === "rem" ? 16 : 1));
+      if (!values.length || Math.min(...values) >= 12) continue;
+      const relative = file.path.split("/frontend/src/")[1];
+      exceptions.push(`${relative}:${match[1].trim()}`);
+    }
+  }
+
+  assert.deepEqual(exceptions.sort(), [
+    "components/feedback/FinancialSuccessOverlay.module.css:.3rem",
+    "components/feedback/FinancialSuccessOverlay.module.css:.4rem",
+    "components/feedback/FinancialSuccessOverlay.module.css:.58rem",
+    "features/accounts/components/AccountFinancialCard.module.css:.38rem",
+    "features/accounts/components/AccountFinancialCard.module.css:.48rem",
+    "features/auth/LoginPage.css:.43rem",
+    "features/auth/LoginPage.css:.55rem",
+    "features/auth/LoginPage.css:clamp(.74rem, 1.15vw, .98rem)",
+  ].sort());
 });
 
 test("tipografi memakai Manrope canonical, fallback system, dan bobot standar tanpa synthetic weight ekstrem", async () => {

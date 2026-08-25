@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, `database/migrations/009_transaction_cost_sharing.sql`, dan `database/migrations/010_environment_sessions.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, `database/migrations/009_transaction_cost_sharing.sql`, `database/migrations/010_environment_sessions.sql`, dan `database/migrations/011_distributed_rate_limits.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -31,6 +31,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `idempotency_keys`
 - `request_nonces` — nonce persisten untuk mencegah replay request scheduler/bridge bertanda tangan.
 - `user_sessions` — registry session perangkat server-side; hanya menyimpan hash verifier, metadata perangkat coarse, expiry/revoke state, dan FK user. Raw session secret/cookie tidak disimpan.
+- `rate_limit_buckets` — bucket ephemeral shared lintas instance untuk throttle backend; key sudah berupa hash+scope dan tabel tidak masuk logical backup. Bucket expired dibersihkan housekeeping dan restore terkontrol mengosongkannya.
 - `integration_outbox`
 - `integration_links`
 - `notification_queue`
@@ -87,25 +88,33 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `12`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `13`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+
+### Migration v13 dan rollback
+
+- `011_distributed_rate_limits.sql` bersifat additive: menambah `rate_limit_buckets` STRICT + expiry index lalu menaikkan `schema_version` ke 13. Ledger, saldo, transaksi, session registry, dan binding environment tidak diubah.
+- Gateway, export, login Firebase, serta Google OAuth valid memakai process-local limiter sebagai lapisan murah dan bucket Turso sebagai counter lintas instance. Invalid OAuth callback tetap ditolak dari signed state sebelum external token exchange.
+- `rate_limit_buckets` adalah state ephemeral security, tidak masuk `BACKUP_TABLES`, dibersihkan ketika expired, dan dihapus pada controlled restore. Runtime v13 tetap menerima logical backup v3-v12.
+- Migration Production tetap memerlukan backup terverifikasi, `npm run db:migrate -- production`, `npm run db:integrity -- production`, dan parity evidence. Pemisahan live Development/Production tetap mengikuti ADR-0007 dan **belum dianggap selesai hanya karena schema v13**.
+- Rollback schema tidak dilakukan dengan `DROP TABLE`; prioritaskan forward-fix. Jika rollback data diperlukan, restore backup pra-migration ke database terisolasi lalu repoint setelah integrity verification dan approval.
 
 ### Migration v12 dan rollback
 
 - `010_environment_sessions.sql` bersifat additive: menambah `user_sessions`, `database_environment`, dan scheduler heartbeat di `system_config`, lalu menaikkan `schema_version` ke 12. Ledger, transaksi, saldo, kategori, rekening, dan cost-sharing tidak diubah.
 - `database_environment` dimulai `unbound` dan harus di-bind eksplisit dengan `npm run db:bind-environment -- development|production`. Runtime fail-closed bila `VERCEL_ENV`, `DATABASE_ENVIRONMENT`, dan binding database tidak konsisten; Preview tidak boleh memakai database aktif.
 - Session v2 memakai `session_id` + secret acak pada cookie signed/HttpOnly dan hanya SHA-256 verifier hash di `user_sessions`. Legacy cookie v1 tidak diterima sehingga cutover memerlukan login ulang.
-- Backup logical v12 tidak membawa `user_sessions`, `database_environment`, maintenance flag, atau scheduler heartbeat. Restore backup v3-v11 tetap didukung; restore sukses menghapus session registry agar credential lama tidak hidup kembali.
+- Backup logical v12 tidak membawa `user_sessions`, `database_environment`, maintenance flag, atau scheduler heartbeat. Runtime v13 tetap menerima backup v12; restore sukses menghapus session registry agar credential lama tidak hidup kembali.
 - Sebelum migration Production wajib ada backup teknis terverifikasi. Setelah migration jalankan binding environment dan integrity check. Rollback ke runtime yang menerima legacy cookie dilarang; gunakan forward-fix atau restore pra-migration ke database terpisah lalu repoint setelah approval.
 
 ### Migration v11 dan rollback
 
 - `009_transaction_cost_sharing.sql` bersifat additive. Migration menambah `transactions.cost_share_mode` dengan default `unspecified`, menambah `transactions.cost_share_json` dengan default `[]`, lalu menaikkan `schema_version` ke 11. Tidak ada backfill 50:50 dan tidak ada perubahan nilai saldo/ledger historis.
-- Runtime v12 tetap menerima backup schema v3-v11 melalui normalisasi additive. Backup v10 dan lebih lama mendapat `cost_share_mode=unspecified` dan `cost_share_json=[]` saat restore; backup v11 menyimpan snapshot split canonical. Field v12 yang bersifat runtime/security tidak diambil dari backup lama.
-- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila perilaku cost-sharing dari migration v11 bermasalah pada runtime v12, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
+- Runtime v13 tetap menerima backup schema v3-v12 melalui normalisasi additive. Backup v10 dan lebih lama mendapat `cost_share_mode=unspecified` dan `cost_share_json=[]` saat restore; backup v11 menyimpan snapshot split canonical. Field v12/v13 yang bersifat runtime/security tidak diambil dari backup lama.
+- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila perilaku cost-sharing dari migration v11 bermasalah pada runtime v13, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
 
 ### Migration v10 dan rollback
 
-- Sebelum `npm run db:migrate`, buat backup teknis terverifikasi dan catat database target.
+- Sebelum migration, buat backup teknis terverifikasi dan catat database target. Development memakai `npm run db:migrate`; Production wajib eksplisit dengan `npm run db:migrate -- production`.
 - `008_manual_reminders.sql` bersifat additive. Migration hanya menambah tabel `manual_reminders`, unique partial index untuk satu pengingat aktif per user+objek, due index untuk scheduler, lalu menaikkan `schema_version` ke 10.
 - Pengingat manual hanya mendukung `recurring_occurrence`, `budget`, `envelope_period`, dan `goal`. Transaksi, laporan, kategori, serta rekening tidak mendapat reminder manual generik karena tidak sesuai lifecycle domain.
 - Waktu pengingat dipilih user dalam Asia/Jakarta, dikonversi server ke UTC, wajib future, dan maksimal 366 hari. Queue internal dapat membentuk title/body dari data objek terbaru, tetapi transport Web Push tidak membawa detail tersebut. Client tidak boleh mengirim actor, title, body, nominal, atau audit field sebagai sumber kebenaran.

@@ -425,12 +425,15 @@ test("housekeeping scheduler hanya menghapus state ephemeral yang expired dan ti
     await db.execute("INSERT INTO backup_runs(backup_id,backup_type,external_file_id,file_name,schema_version,status,checksum,created_by,created_at,verified_at,error_code) VALUES(?,?,?,?,?,?,?,?,?,?,?)", ["backup-preview", "manual", "drive-id", "backup.json.gz", 8, "verified", "checksum", owner.user_id, expired, expired, null]);
     await db.execute("INSERT INTO restore_previews(preview_id,backup_id,actor_id,checksum,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["expired-restore", "backup-preview", owner.user_id, "checksum", "{}", "pending", null, null, expired, expired]);
     await db.execute("INSERT INTO restore_previews(preview_id,backup_id,actor_id,checksum,summary_json,status,result_json,applied_at,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", ["applying-restore", "backup-preview", owner.user_id, "checksum", "{}", "applying", null, null, expired, expired]);
+    await db.execute("INSERT INTO rate_limit_buckets(bucket_key,window_started_at_ms,reset_at_ms,request_count,updated_at) VALUES(?,?,?,?,?)", ["housekeeping:expired:abcdefghijklmnop", 1, Date.parse(expired), 2, expired]);
+    await db.execute("INSERT INTO rate_limit_buckets(bucket_key,window_started_at_ms,reset_at_ms,request_count,updated_at) VALUES(?,?,?,?,?)", ["housekeeping:active:abcdefghijklmnop", Date.parse(expired), Date.parse(future), 1, expired]);
 
     const result = await cleanupExpiredEphemeralState(db, "2026-08-12T00:00:00.000Z");
-    assert.deepEqual(result, { idempotencyKeys: 1, importPreviews: 1, restorePreviews: 1, userSessions: 0 });
+    assert.deepEqual(result, { idempotencyKeys: 1, importPreviews: 1, restorePreviews: 1, userSessions: 0, rateLimitBuckets: 1 });
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM idempotency_keys")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM import_previews")).count, 1);
     assert.equal((await db.one("SELECT COUNT(*) AS count FROM restore_previews")).count, 1);
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM rate_limit_buckets")).count, 1);
   } finally {
     db.close();
   }

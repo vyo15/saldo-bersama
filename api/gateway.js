@@ -5,6 +5,7 @@ import { assertDatabaseReady } from "./_lib/db/schema.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
 import { assertAllowedOrigin, assertPayloadAuthorization, authorizeAction, enforceBestEffortRateLimit, identityRateLimitKey, requiresIdempotencyKey } from "./_lib/security.js";
+import { enforceDistributedRateLimit } from "./_lib/rateLimit.js";
 import { resolveRegisteredSession } from "./_lib/sessionRegistry.js";
 import { stableValue } from "./_lib/serialization.js";
 
@@ -50,7 +51,9 @@ const processGatewayRequest = async (request, response, requestId, requestState)
   await assertDatabaseReady(db);
   const session = await resolveRegisteredSession(db, request);
   if (!session) return { action: "unknown", response: fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir. Silakan login kembali.", { requestId }) };
-  enforceBestEffortRateLimit(identityRateLimitKey("gateway", session.uid));
+  const rateLimitKey = identityRateLimitKey("gateway", session.uid);
+  enforceBestEffortRateLimit(rateLimitKey);
+  await enforceDistributedRateLimit(db, rateLimitKey);
   const body = await readJsonBody(request, 1_500_000);
   requestState.action = String(body.action || "").slice(0, 120);
   const rejection = rejectGatewayRequest(response, session, body, requestId, requestState.action);

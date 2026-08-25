@@ -3,16 +3,19 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { assertDatabaseProfileBinding, loadDatabaseProfile, resolveDatabaseProfileTarget } from "./database-profile.mjs";
 import { getDatabase } from "../api/_lib/db/httpClient.js";
 import { invalidateSchemaCache } from "../api/_lib/db/schema.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-try { process.loadEnvFile(path.join(root, ".env.local")); } catch (error) { if (error.code !== "ENOENT") throw error; }
+const databaseEnvironment = resolveDatabaseProfileTarget();
+await loadDatabaseProfile({ root, environment: databaseEnvironment });
 
 const migrationRoot = path.join(root, "database", "migrations");
 const files = (await readdir(migrationRoot)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
 if (!files.length) throw new Error("Migration SQL tidak ditemukan.");
 const db = getDatabase();
+await assertDatabaseProfileBinding({ database: db, environment: databaseEnvironment });
 
 for (const file of files) {
   const version = Number(file.match(/^(\d+)/)?.[1]);
@@ -39,4 +42,4 @@ for (const file of files) {
 
 invalidateSchemaCache();
 const schema = await db.one("SELECT value FROM system_config WHERE key='schema_version'");
-console.log(`Migration selesai. Schema aktif: ${schema?.value || "unknown"}.`);
+console.log(`Migration ${databaseEnvironment} selesai. Schema aktif: ${schema?.value || "unknown"}.`);

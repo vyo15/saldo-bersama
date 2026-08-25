@@ -16,7 +16,7 @@
 .ownershipFilters::-webkit-scrollbar { display: none; }
 
 .ownershipFilter {
-  min-height: 2.35rem;
+  min-height: 2.75rem;
   padding: 0 .9rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
@@ -128,14 +128,14 @@
 .carouselStage {
   min-width: 0;
   display: grid;
-  grid-template-columns: 2.7rem minmax(0, 1fr) 2.7rem;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
   align-items: center;
   gap: var(--space-3);
 }
 
 .carouselArrow {
-  width: 2.7rem;
-  height: 2.7rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   display: grid;
   place-items: center;
@@ -167,7 +167,7 @@
 .heroVisual > div { width: min(100%, 32rem); }
 
 .carouselDots {
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -176,8 +176,8 @@
 }
 
 .carouselDot {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   display: grid;
   place-items: center;
@@ -218,7 +218,7 @@
 .textAction:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 3px; }
 
 .textAction {
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   padding: 0 .75rem;
   display: inline-flex;
   align-items: center;
@@ -274,7 +274,7 @@
 .distributionMeta strong,
 .distributionMeta small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .distributionMeta strong { font-size: var(--font-size-body-sm); }
-.distributionMeta small { color: var(--text-muted); font-size: .72rem; }
+.distributionMeta small { color: var(--text-muted); font-size: var(--font-size-xs); }
 .distributionMeta :global(.money) { flex: 0 0 auto; font-size: var(--font-size-sm); }
 .distributionProgress {
   width: 100%;
@@ -289,7 +289,7 @@
 .distributionProgress::-webkit-progress-bar { border-radius: inherit; background: var(--surface-strong); }
 .distributionProgress::-webkit-progress-value { border-radius: inherit; background: var(--primary); }
 .distributionProgress::-moz-progress-bar { border-radius: inherit; background: var(--primary); }
-.distributionNote { margin: var(--space-3) .6rem 0; color: var(--text-muted); font-size: .72rem; line-height: 1.5; }
+.distributionNote { margin: var(--space-3) .6rem 0; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.5; }
 
 @media (max-width: 1180px) {
   .desktopWorkspace { grid-template-columns: minmax(0, 1fr); }

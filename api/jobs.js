@@ -334,7 +334,7 @@ export default async function handler(request, response) {
     if (!message) return fail(response, 401, "INVALID_SIGNATURE", "Signature scheduler tidak valid.", { requestId });
     db = getDatabase(); await assertDatabaseReady(db);
     await consumeScheduledNonce(db, String(message.nonce));
-    const housekeeping = await runOptionalStage("housekeeping", requestId, () => cleanupExpiredEphemeralState(db), { idempotencyKeys: 0, importPreviews: 0, restorePreviews: 0, userSessions: 0 });
+    const housekeeping = await runOptionalStage("housekeeping", requestId, () => cleanupExpiredEphemeralState(db), { idempotencyKeys: 0, importPreviews: 0, restorePreviews: 0, userSessions: 0, rateLimitBuckets: 0 });
     const integration = await runOptionalStage("integrations", requestId, () => processIntegrations(db), { claimed: 0, completed: 0, failed: 0 });
     const notificationQueue = await runOptionalStage("notification_queue", requestId, async () => {
       const automatic = await queueDueNotifications(db);
@@ -343,7 +343,10 @@ export default async function handler(request, response) {
     }, { queued: 0, automatic: 0, manual: 0 });
     const push = await runOptionalStage("push", requestId, () => processPush(db), { claimed: 0, sent: 0, failed: 0, skipped: true });
     const backup = message.includeBackup === false ? { skipped: true } : await maybeDailyBackup(db);
-    const stageFailed = [housekeeping, integration, notificationQueue, push].some((stage) => stage?.failed);
+    const stageFailed = [housekeeping, integration, notificationQueue, push].some((stage) => stage?.failed)
+      || Number(integration.failed || 0) > 0
+      || Number(push.failed || 0) > 0
+      || Number(push.partial || 0) > 0;
     await recordSchedulerHeartbeat(db, { success: !stageFailed, errorCode: stageFailed ? "STAGE_FAILED" : "" });
     logEvent(stageFailed ? "warn" : "info", "jobs.request.completed", { requestId, status: 200, durationMs: Date.now() - startedAt, housekeeping, integration, notificationQueue, push, schedulerDegraded: stageFailed });
     return ok(response, { housekeeping, integration, notificationsQueued: Number(notificationQueue.queued || 0), notificationQueue, push, backup, timestamp: nowIso() });

@@ -464,21 +464,31 @@ test("error actor canonical membatalkan sesi lokal tanpa menganggap semua 403 se
   assert.match(authContext, /apiClient\.setSessionScope\("anonymous"\)/);
 });
 
-test("login branded desktop dan mobile berbagi satu transport auth tanpa GIS runtime desktop", async () => {
+test("login branded desktop dan mobile membedakan server OAuth production dari popup Firebase lokal tanpa GIS runtime", async () => {
   const page = await readMany([
     "src/features/auth/LoginPage.jsx",
     "src/features/auth/components/LoginDesktopLayout.jsx",
     "src/features/auth/components/LoginMobileLayout.jsx",
     "src/features/auth/components/LoginFeedback.jsx",
   ]);
-  assert.match(page, /preloadMobileGoogleAuth/);
+  const [routing, localAuth] = await Promise.all([
+    read("src/services/auth/googleAuthRouting.js"),
+    read("src/services/auth/mobileFirebaseGoogleAuth.js"),
+  ]);
+  assert.match(page, /preloadLocalGoogleAuth/);
   assert.match(page, /const useGoogleProvider/);
+  assert.match(page, /isCanonicalProductionGoogleOAuth\(\)/);
+  assert.match(page, /productionGoogleAuthTransport/);
   assert.match(page, /signInWithGoogleMobile/);
   assert.match(page, /returnTo: requestedPath/);
   assert.match(page, /<GoogleLoginPanel \{\.\.\.authProps\}/);
-  assert.match(page, /<GoogleLoginPanel \{\.\.\.mobileAuthProps\}/);
+  assert.match(page, /active \? <GoogleLoginPanel \{\.\.\.mobileAuthProps\} \/> : null/);
   assert.match(page, /mobileAuthProps=\{googleAuthProps\}/);
   assert.doesNotMatch(page, /renderGoogleLoginButton|google-login-button/);
+  assert.doesNotMatch(routing, /@firebase\//);
+  assert.match(routing, /window\.location\.assign/);
+  assert.match(localAuth, /@firebase\/auth/);
+  assert.doesNotMatch(localAuth, /window\.location\.assign|saldo-bersama\.vercel\.app/);
 });
 
 

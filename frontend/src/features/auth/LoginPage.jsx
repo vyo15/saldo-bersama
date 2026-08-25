@@ -4,16 +4,22 @@ import { useTheme } from "../../app/ThemeContext.jsx";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import DesktopLoginLayout from "./components/LoginDesktopLayout.jsx";
 import MobileLoginLayout from "./components/LoginMobileLayout.jsx";
+import {
+  isCanonicalProductionGoogleOAuth,
+  normalizeAuthReturnTo,
+  productionGoogleAuthTransport,
+} from "../../services/auth/googleAuthRouting.js";
 import { MOBILE_LOGIN_QUERY, MOBILE_LOGIN_SLIDE, mobileOAuthErrorFromSearch } from "./loginPresentation.js";
+import { hasSeenMobileOnboarding, markMobileOnboardingSeen } from "./loginOnboardingPreference.js";
 import { useAuth } from "./AuthContext.jsx";
 import "./LoginPage.css";
 
-let mobileGoogleAuthModulePromise = null;
-const preloadMobileGoogleAuth = () => {
-  if (!mobileGoogleAuthModulePromise) {
-    mobileGoogleAuthModulePromise = import("../../services/auth/mobileFirebaseGoogleAuth.js");
+let localGoogleAuthModulePromise = null;
+const preloadLocalGoogleAuth = () => {
+  if (!localGoogleAuthModulePromise) {
+    localGoogleAuthModulePromise = import("../../services/auth/mobileFirebaseGoogleAuth.js");
   }
-  return mobileGoogleAuthModulePromise;
+  return localGoogleAuthModulePromise;
 };
 
 
@@ -24,10 +30,10 @@ const useMobileLoginInteraction = () => {
   const swipeDeltaXRef = useRef(0);
   const swipeHorizontalRef = useRef(null);
   const mobileLayout = useMediaQuery(MOBILE_LOGIN_QUERY);
-  const [mobileSlide, setMobileSlide] = useState(0);
+  const [mobileSlide, setMobileSlide] = useState(() => hasSeenMobileOnboarding() ? MOBILE_LOGIN_SLIDE : 0);
 
   useEffect(() => {
-    if (mobileLayout) setMobileSlide(0);
+    if (mobileLayout) setMobileSlide(hasSeenMobileOnboarding() ? MOBILE_LOGIN_SLIDE : 0);
   }, [mobileLayout]);
 
   const resetTrackMotion = () => {
@@ -42,7 +48,9 @@ const useMobileLoginInteraction = () => {
 
   const moveMobileSlide = (nextSlide) => {
     resetTrackMotion();
-    setMobileSlide(Math.max(0, Math.min(MOBILE_LOGIN_SLIDE, nextSlide)));
+    const boundedSlide = Math.max(0, Math.min(MOBILE_LOGIN_SLIDE, nextSlide));
+    if (boundedSlide === MOBILE_LOGIN_SLIDE) markMobileOnboardingSeen();
+    setMobileSlide(boundedSlide);
   };
 
   const beginSwipe = (event) => {
@@ -110,15 +118,20 @@ const useGoogleProvider = ({
     }
     let active = true;
     setGoogleAuthReady(false);
-    preloadMobileGoogleAuth().then((googleAuth) => {
-      if (!active) return;
-      googleAuthRef.current = googleAuth;
+    if (isCanonicalProductionGoogleOAuth()) {
+      googleAuthRef.current = productionGoogleAuthTransport;
       setGoogleAuthReady(true);
-    }).catch((providerError) => {
-      if (!active) return;
-      setButtonError(providerError?.message ? providerError : new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
-      setGoogleAuthReady(true);
-    });
+    } else {
+      preloadLocalGoogleAuth().then((googleAuth) => {
+        if (!active) return;
+        googleAuthRef.current = googleAuth;
+        setGoogleAuthReady(true);
+      }).catch((providerError) => {
+        if (!active) return;
+        setButtonError(providerError?.message ? providerError : new Error("Login Google belum siap. Muat ulang halaman lalu coba lagi."));
+        setGoogleAuthReady(true);
+      });
+    }
     return () => {
       active = false;
       googleAuthRef.current = null;
@@ -151,9 +164,7 @@ const LoginPage = () => {
     status,
   });
 
-  const requestedPath = typeof location.state?.from === "string" && location.state.from.startsWith("/") && !location.state.from.startsWith("//")
-    ? location.state.from
-    : "/";
+  const requestedPath = normalizeAuthReturnTo(location.state?.from);
 
   const handleGoogleLogin = async () => {
     if (googleLoginPending || !googleAuthReady || status !== "anonymous" || configErrors.length) return;

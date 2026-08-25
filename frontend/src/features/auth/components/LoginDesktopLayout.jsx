@@ -26,7 +26,7 @@ const DesktopLoginLayout = ({ theme, authProps }) => (
           <MoneyRain />
           <header className="login-desktop-brand-row">
             <div className="login-desktop-brand">
-              <img src="/brand/saldo-bersama-mark.png" alt="" aria-hidden="true" draggable="false" />
+              <img src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" aria-hidden="true" draggable="false" decoding="async" />
               <span>
                 <strong>Saldo Bersama</strong>
                 <small>Catatan keuangan pribadi dan bersama</small>
@@ -43,9 +43,9 @@ const DesktopLoginLayout = ({ theme, authProps }) => (
           <div className="login-desktop-visual" aria-hidden="true">
             <span className="login-desktop-visual-glow login-desktop-visual-glow--one" />
             <span className="login-desktop-visual-glow login-desktop-visual-glow--two" />
-            <img className="login-desktop-visual-main" src={`${MOBILE_ASSET_BASE}/hand-phone-dashboard.webp`} alt="" draggable="false" />
-            <img className="login-desktop-visual-piggy" src={`${MOBILE_ASSET_BASE}/piggy-bank.webp`} alt="" draggable="false" />
-            <img className="login-desktop-visual-wallet" src={`${MOBILE_ASSET_BASE}/wallet.webp`} alt="" draggable="false" />
+            <img className="login-desktop-visual-main" src={`${MOBILE_ASSET_BASE}/hand-phone-dashboard.webp`} width="677" height="900" alt="" draggable="false" decoding="async" />
+            <img className="login-desktop-visual-piggy" src={`${MOBILE_ASSET_BASE}/piggy-bank.webp`} width="900" height="873" alt="" draggable="false" decoding="async" />
+            <img className="login-desktop-visual-wallet" src={`${MOBILE_ASSET_BASE}/wallet.webp`} width="797" height="900" alt="" draggable="false" decoding="async" />
             <span className="login-desktop-visual-shadow" />
           </div>
         </section>
@@ -53,7 +53,7 @@ const DesktopLoginLayout = ({ theme, authProps }) => (
         <aside className="login-desktop-auth" aria-label="Masuk ke Saldo Bersama">
           <section className="login-desktop-auth-content">
             <div className="login-desktop-auth-logo" aria-hidden="true">
-              <img src="/brand/saldo-bersama-mark.png" alt="" draggable="false" />
+              <img src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" draggable="false" decoding="async" />
             </div>
             <p className="login-desktop-auth-welcome">Selamat datang</p>
             <h2>Saldo <strong>Bersama</strong></h2>

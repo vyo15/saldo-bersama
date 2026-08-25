@@ -1,6 +1,6 @@
 # Data Dictionary
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `010_environment_sessions.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `011_distributed_rate_limits.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -38,6 +38,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `audit_log` | Audit append-only untuk perubahan penting. | Tinggi | Append-only |
 | `idempotency_keys` | Hasil write yang dapat diputar ulang secara aman dengan key sama. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `request_nonces` | Nonce anti-replay untuk request bertanda tangan. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `rate_limit_buckets` | Counter throttle ephemeral lintas instance; hanya key hash+scope, window/count, dan timestamp. | Sedang | Backend-only; tidak masuk logical backup; expired cleanup di-housekeeping; controlled restore mengosongkannya |
 | `integration_outbox` | Antrean atomik menuju Sheets, Calendar, Drive, atau worker lain. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `integration_links` | Pemetaan entity internal dengan resource integrasi eksternal. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `notification_queue` | Antrean notifikasi per pengguna yang diproses worker. | Sedang | Service/API; data operasional, dibersihkan hanya melalui workflow maintenance |
@@ -80,7 +81,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v12
+## Model planned — belum ada di schema v13
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
@@ -94,6 +95,6 @@ Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v12
+## Schema v13
 
-Migration canonical terbaru: `010_environment_sessions.sql` pada `database/migrations/`. Migration v12 menambah registry session perangkat, binding environment, dan heartbeat scheduler tanpa mengubah ledger/saldo. Migration v11 `009_transaction_cost_sharing.sql` tetap menjadi dasar field pembagian beban biaya; histori dan backup lama dinormalisasi secara additive.
+Migration canonical terbaru: `011_distributed_rate_limits.sql` pada `database/migrations/`. Migration v13 menambah bucket rate limit durable lintas instance tanpa mengubah ledger/saldo; migration v12 tetap menjadi dasar registry session perangkat, binding environment, dan heartbeat scheduler. Migration v11 `009_transaction_cost_sharing.sql` tetap menjadi dasar field pembagian beban biaya; histori dan backup lama dinormalisasi secara additive.

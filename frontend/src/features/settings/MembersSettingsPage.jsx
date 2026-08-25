@@ -43,7 +43,7 @@ const MembersSummaryHero = ({ members }) => {
           <span>Nonaktif <strong>{inactiveMembers}</strong></span>
         </div>
       </div>
-      <img className={styles.membersSummaryArt} src={MEMBERS_HERO_ART} alt="" aria-hidden="true" draggable="false" />
+      <img className={styles.membersSummaryArt} src={MEMBERS_HERO_ART} width="900" height="778" alt="" aria-hidden="true" draggable="false" decoding="async" />
     </section>
   );
 };

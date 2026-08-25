@@ -319,8 +319,12 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.match(bootstrap, /cleanEnvironmentText/);
   assert.match(bootstrap, /VERCEL_DEVELOPMENT_ENV_INCOMPLETE/);
   assert.match(packageJson, /env:push:development/);
+  assert.match(packageJson, /env:pull:development/);
+  assert.match(packageJson, /env:status/);
   assert.doesNotMatch(packageJson, /env:push:development:settings/);
   assert.match(environmentDocs, /npm run env:push:development -- --settings-only/);
+  assert.match(environmentDocs, /Matriks nilai yang sama vs berbeda/);
+  assert.match(environmentDocs, /VAPID[\s\S]*berbeda per environment/i);
   assert.match(bootstrap, /Memperbarui environment canonical dari Vercel Development/);
   assert.match(bootstrap, /satu Turso database dipakai bersamaan oleh Development dan Production/);
   assert.match(setup, /npm run db:bind-environment -- development/);
@@ -328,19 +332,19 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
   assert.doesNotMatch(bootstrap, /args:\s*\[[^\]]*"env"[^\]]*"pull"[^\]]*"production"/is);
 });
 
-test("project status is a current-state snapshot with schema v12 and environment isolation guard", () => {
+test("project status is a current-state snapshot with schema v13 and environment isolation guard", () => {
   const status = read("docs/PROJECT_STATUS.md");
   const packageJson = JSON.parse(read("package.json"));
   const productionSync = read("scripts/push-vercel-production-env.mjs");
   const developmentSync = read("scripts/push-vercel-development-env.mjs");
   const singleDbAdr = read("docs/adr/0007-single-turso-database-current-constraint.md");
 
-  assert.match(status, /Active schema contract:\*\* v12/);
+  assert.match(status, /Active schema contract:\*\* v13/);
   assert.match(status, /DATABASE_ENVIRONMENT/);
   assert.match(status, /exit criteria ADR-0007/);
   assert.match(status, /bukan jurnal perubahan/i);
   assert.match(singleDbAdr, /database Turso yang sama/);
-  assert.match(productionSync, /envPath = path\.join\(cwd, "\.env\.local"\)/);
+  assert.match(productionSync, /envPath = path\.join\(cwd, "\.env\.production\.local"\)/);
   assert.match(developmentSync, /envPath = path\.join\(cwd, "\.env\.local"\)/);
   assert.equal(packageJson.scripts["db:bind-environment"], "node scripts/db-bind-environment.mjs");
   assert.equal(exists("scripts/db-bind-environment.mjs"), true);
@@ -348,7 +352,7 @@ test("project status is a current-state snapshot with schema v12 and environment
 });
 
 
-test("current docs track branded desktop/mobile server OAuth production, schema v12, dan manual accessibility QA", () => {
+test("current docs track branded desktop/mobile server OAuth production, schema v13, dan manual accessibility QA", () => {
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
   const deployment = read("docs/DEPLOYMENT.md");
   const status = read("docs/PROJECT_STATUS.md");
@@ -359,7 +363,7 @@ test("current docs track branded desktop/mobile server OAuth production, schema 
   assert.match(matrix, /semantic\/static regression/);
   assert.match(matrix, /real-device coverage pending/);
   assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
-  assert.match(deployment, /runtime v12 menerima traffic/);
+  assert.match(deployment, /runtime v13 menerima traffic/);
   assert.match(status, /Auth desktop dan mobile:.*tombol Google branded Saldo Bersama/);
   assert.match(status, /Authorization Code flow.*Firebase Identity Toolkit/);
   assert.match(testPlan, /production canonical.*`\/api\/auth\/google\/start`/);

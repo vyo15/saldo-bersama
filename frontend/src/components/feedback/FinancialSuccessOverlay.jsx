@@ -69,7 +69,7 @@ const MoneyRainCelebration = () => (
 const BrandSuccessMark = () => (
   <div className={styles.brandSuccess} aria-hidden="true">
     <div className={styles.brandLogoWrap}>
-      <img src="/brand/saldo-bersama-mark.png" alt="" className={styles.brandLogo} draggable="false" />
+      <img src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" className={styles.brandLogo} draggable="false" decoding="async" />
       <span className={styles.brandCheckBadge}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round">
           <path className={styles.brandCheckPath} d="m6.75 12.4 3.3 3.35 7.2-7.45" />

@@ -4,7 +4,7 @@ import styles from "../BudgetsPage.module.css";
 
 const BudgetHeroArtwork = () => (
   <div className={styles.heroArtwork} aria-hidden="true">
-    <img className={styles.heroIllustration} src={budgetWalletHero} alt="" decoding="async" />
+    <img className={styles.heroIllustration} src={budgetWalletHero} width="760" height="517" alt="" aria-hidden="true" decoding="async" />
   </div>
 );
 

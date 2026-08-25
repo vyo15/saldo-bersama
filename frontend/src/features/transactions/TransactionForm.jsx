@@ -280,7 +280,7 @@ const resolveTransactionPresentation = ({
   const resolvedTitle = title || (transaction ? "Edit transaksi" : "Tambah transaksi");
   const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
   const progressLabel = submitting ? submittingLabel || "Menyimpan..." : outcomeUnknown ? "Coba lagi data yang sama" : idleSubmitLabel;
-  const modalTitle = <span className={styles.modalTitle}><span className={styles.walletBubble} aria-hidden="true"><img src="/login/assets/mobile/wallet.webp" alt="" draggable="false" /></span><span className={styles.modalTitleCopy}><span className={styles.modalTitleText}>{resolvedTitle}</span>{description ? <small>{description}</small> : null}</span></span>;
+  const modalTitle = <span className={styles.modalTitle}><span className={styles.walletBubble} aria-hidden="true"><img src="/login/assets/mobile/wallet.webp" width="797" height="900" alt="" draggable="false" decoding="async" /></span><span className={styles.modalTitleCopy}><span className={styles.modalTitleText}>{resolvedTitle}</span>{description ? <small>{description}</small> : null}</span></span>;
   const modalFooter = <><Button type="button" onClick={onClose} disabled={submitting || outcomeUnknown}>Batal</Button><Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{progressLabel}</Button></>;
   return {
     modalTitle,

@@ -73,11 +73,11 @@ Alur `npm run dev` pada terminal interaktif:
 4. Meminta login Vercel hanya bila sesi belum ada.
 5. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
 6. Menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
-7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key production-only itu salah ditempatkan pada Vercel Development.
-8. Mempertahankan `GOOGLE_OAUTH_CLIENT_SECRET` yang sudah ada hanya dari `.env.local` komputer tepercaya; nilainya tidak ditarik dari atau didorong ke Development.
-9. Memvalidasi sepuluh key core dan satu grup Web Push lengkap/valid.
-10. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
-11. Menjalankan server lokal setelah dependency dan environment valid.
+7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key Production-only salah ditempatkan pada Development/cache lokal.
+8. Memvalidasi sepuluh key core, `DATABASE_ENVIRONMENT=development`, dan satu grup Web Push lengkap/valid.
+9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
+10. Memeriksa Turso Development benar-benar reachable serta schema/binding siap.
+11. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
 
 Refresh Development setiap start disengaja agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Bila login, link, pull, atau validasi gagal, `.env.local` lama dipertahankan tetapi server tidak dijalankan. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
@@ -108,28 +108,50 @@ Untuk kebutuhan settings saja, gunakan command scoped berikut agar Turso, allowl
 npm run env:push:development -- --settings-only
 ```
 
-Command settings selalu menyinkronkan pasangan Web Push yang valid dan ikut menyinkronkan Google bridge bila grup tersebut sudah aktif di `.env.local`. Gunakan komputer yang sudah memakai pasangan VAPID canonical. Jangan generate VAPID baru per laptop atau browser.
+Command settings selalu menyinkronkan pasangan Web Push yang valid dan ikut menyinkronkan Google bridge bila grup tersebut sudah aktif di `.env.local`. Gunakan pasangan VAPID **Development** canonical; jangan generate VAPID baru per laptop/browser. Karena database Development/Production sudah dipisahkan, VAPID Development juga harus berbeda dari Production.
 
-Setelah Development terisi, komputer lain cukup menjalankan `npm run dev`. Tidak perlu copy/edit `.env.local` per perangkat. Izin notifikasi browser tetap harus diberikan satu kali oleh pengguna pada setiap browser/perangkat.
-
-Production tetap terpisah:
+Untuk mengecek Web Push yang sudah ada, jangan generate key. Jalankan:
 
 ```bash
+npm run env:pull:development
+npm run env:status
+npm run diagnose
+```
+
+`env:status` hanya menampilkan fingerprint public key, bukan private key/token. `diagnose` memvalidasi pasangan key dan menampilkan `Web Push: ready` serta hasil verifikasi Push terakhir bila audit tersedia. Setelah Development terisi, komputer lain cukup menjalankan `npm run dev`. Tidak perlu copy/edit `.env.local` per perangkat. Izin notifikasi browser tetap harus diberikan satu kali oleh pengguna pada setiap browser/perangkat.
+
+Production tetap terpisah. Siapkan `.env.production.local` satu kali pada komputer tepercaya dari secret store yang sah, lalu:
+
+```bash
+npm run env:check:production
 npm run env:push:production
 ```
 
-Setelah Production berubah, buat deployment Production baru. Command Production mewajibkan `GOOGLE_OAUTH_CLIENT_SECRET`, menyinkronkannya sebagai Sensitive, dan juga menyinkronkan grup Google bridge dan Web Push bila grup tersebut lengkap dan valid. Preview dibiarkan kosong. Secret OAuth tidak boleh dipindahkan ke Vercel Development karena scope tersebut dapat dipull oleh collaborator yang berwenang.
+Command Production tidak lagi membaca `.env.local`. Tooling memeriksa marker Production, shared public config, serta isolasi host/token Turso, `SESSION_SECRET`, dan pasangan VAPID dari Development sebelum sinkronisasi. Setelah Production berubah, buat deployment Production baru. `GOOGLE_OAUTH_CLIENT_SECRET` dan secret Production lain tetap disinkronkan sebagai Sensitive; Preview dibiarkan kosong.
 
-Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local` atau `.vercel`.
+Untuk penggunaan harian, `npm run dev` menjalankan Development lokal sedangkan `npm run prod` memeriksa lalu membuka **Vercel Production aktual**. Kita sengaja tidak membuat localhost menggunakan database Production karena itu tidak mereplikasi Secure cookie/server OAuth dan meningkatkan risiko mutation Production dari mesin lokal.
+
+Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local`, `.env.production.local`, atau `.vercel`.
 
 ## 5. Database
 
+Operasi database tanpa target memakai profile Development `.env.local`:
+
 ```bash
 npm run db:migrate
+npm run db:bind-environment -- development
 npm run db:integrity
 ```
 
-Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Selama cutover ADR-0007 belum selesai dan hanya satu database legacy tersedia, jangan membuat data dummy atau menjalankan destructive operation terhadap database tersebut dari Development. Source v12 akan fail-closed sampai Development memiliki database/token terpisah.
+Production tidak pernah memakai `.env.local`. Setelah backup Production terverifikasi dan `.env.production.local` lolos `npm run env:check:production`, target harus disebut eksplisit:
+
+```bash
+npm run db:migrate -- production
+npm run db:bind-environment -- production
+npm run db:integrity -- production
+```
+
+Tooling mutation migration membaca binding existing sebelum menulis dan menolak profile Production yang ternyata menunjuk database yang sudah terikat ke Development, atau sebaliknya. Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Selama cutover ADR-0007 belum selesai dan hanya satu database legacy tersedia, jangan membuat data dummy atau menjalankan destructive operation terhadap database tersebut dari Development. Source v13 akan fail-closed sampai Development memiliki database/token terpisah.
 
 ## 6. Integrasi Google
 
@@ -141,7 +163,7 @@ Jika Integrasi Google menampilkan `Gangguan`, jalankan `npm run diagnose` pada k
 
 ### OAuth login mobile Production
 
-OAuth Web Client yang dipakai `VITE_GOOGLE_CLIENT_ID` harus mempunyai authorized redirect URI `https://saldo-bersama.vercel.app/api/auth/google/callback`. Simpan client secret Web Client tersebut hanya sebagai `GOOGLE_OAUTH_CLIENT_SECRET` pada `.env.local` komputer tepercaya, lalu sinkronkan ke Vercel Production dengan `npm run env:push:production`. Production desktop/mobile memakai server-side authorization-code callback; localhost/device emulation tetap memakai Firebase popup. Nilai secret tidak boleh ditempel ke chat, screenshot, Git, atau ZIP.
+OAuth Web Client yang dipakai `VITE_GOOGLE_CLIENT_ID` harus mempunyai authorized redirect URI `https://saldo-bersama.vercel.app/api/auth/google/callback`. Simpan client secret Web Client tersebut hanya sebagai `GOOGLE_OAUTH_CLIENT_SECRET` pada `.env.production.local` komputer tepercaya, lalu sinkronkan ke Vercel Production dengan `npm run env:push:production`. Production desktop/mobile memakai server-side authorization-code callback; localhost/device emulation tetap memakai Firebase popup. Nilai secret tidak boleh ditempel ke chat, screenshot, Git, atau ZIP.
 
 ## 7. PWA dan Web Push
 

@@ -516,8 +516,8 @@ test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () =
     const file = await access(url).then(() => url);
     const [info, dimensions] = await Promise.all([stat(file), webpSize(file)]);
     assert.ok(file, `${name}.webp harus tersedia`);
-    assert.ok(info.size <= 160_000, `${name}.webp terlalu besar untuk kartu responsif (${info.size} byte)`);
-    assert.deepEqual(dimensions, { width: 1536, height: 968 }, `${name}.webp harus memakai kanvas 1536x968`);
+    assert.ok(info.size <= 100_000, `${name}.webp terlalu besar untuk kartu responsif (${info.size} byte)`);
+    assert.deepEqual(dimensions, { width: 1024, height: 645 }, `${name}.webp harus memakai kanvas 1024x645`);
     if (directory === "bank-cards") assert.equal(await webpHasAlpha(file), true, `${name}.webp harus mempertahankan alpha di luar siluet kartu`);
   }
 });

@@ -22,6 +22,7 @@ const walk = async (relative, extension) => {
 
 const APPROVED_SQL_DELETES = new Map([
   ["api/jobs.js", new Set(["request_nonces"])],
+  ["api/_lib/rateLimit.js", new Set(["rate_limit_buckets"])],
   ["api/_lib/services/maintenance/housekeeping.js", new Set(["idempotency_keys", "import_previews", "restore_previews"])],
   ["api/_lib/idempotency.js", new Set(["idempotency_keys"])],
   ["api/_lib/sessionRegistry.js", new Set(["user_sessions"])],
@@ -158,6 +159,7 @@ test("controlled restore reset memakai daftar tabel statis dan tidak menghapus a
   assert.match(restore, /RESTORE_DELETE_ORDER\.map\(\(table\) => \(\{ sql: `DELETE FROM \$\{quoted\(table\)\}` \}\)\)/);
   const order = shared.match(/RESTORE_DELETE_ORDER\s*=\s*\[([\s\S]*?)\];/)?.[1] || "";
   assert.match(order, /"transactions"/);
+  assert.match(order, /"rate_limit_buckets"/);
   assert.doesNotMatch(order, /"audit_log"/);
 });
 

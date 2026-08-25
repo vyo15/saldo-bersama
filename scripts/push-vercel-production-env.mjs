@@ -126,12 +126,12 @@ const runVercelEnvAdd = ({ cwd, key, value, sensitive }) => new Promise((resolve
 
 export const pushProductionEnvironment = async ({
   cwd = projectRoot,
-  envPath = path.join(cwd, ".env.local"),
+  envPath = path.join(cwd, ".env.production.local"),
   projectRunner = runVercelProjectCheck,
   runner = runVercelEnvAdd,
 } = {}) => {
   const source = await readFile(envPath, "utf8").catch((error) => {
-    if (error?.code === "ENOENT") throw Object.assign(new Error(`Environment lokal tidak ditemukan: ${envPath}`), { code: "LOCAL_ENV_NOT_FOUND" });
+    if (error?.code === "ENOENT") throw Object.assign(new Error(`Profile Production lokal tidak ditemukan: ${envPath}`), { code: "LOCAL_ENV_NOT_FOUND" });
     throw error;
   });
   const values = parseEnvironmentText(source);

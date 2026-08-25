@@ -37,7 +37,7 @@ const GoalSummary = ({ items }) => {
           <span>{summary.activeCount} target aktif{summary.attention ? <> · <strong>{summary.attention} perlu perhatian</strong></> : ""}</span>
         </div>
       </div>
-      <img className="goal-summary__art" src={GOAL_HERO_ART} alt="" aria-hidden="true" draggable="false" />
+      <img className="goal-summary__art" src={GOAL_HERO_ART} width="900" height="873" alt="" aria-hidden="true" draggable="false" decoding="async" />
     </Card>
   );
 };

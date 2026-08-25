@@ -80,7 +80,7 @@ test("encoding dan serializer canonical menangani validasi serta urutan property
   );
 });
 
-test("schema helpers memverifikasi version 12, environment binding, cache invalidation, dan checksum", async () => {
+test("schema helpers memverifikasi version 13, environment binding, cache invalidation, dan checksum", async () => {
   const originalDatabaseEnvironment = process.env.DATABASE_ENVIRONMENT;
   const originalVercelEnvironment = process.env.VERCEL_ENV;
   const restoreEnvironment = () => {
@@ -102,12 +102,12 @@ test("schema helpers memverifikasi version 12, environment binding, cache invali
     process.env.DATABASE_ENVIRONMENT = "production";
     process.env.VERCEL_ENV = "production";
     invalidateSchemaCache();
-    const readyDb = dbWith(12, "production");
+    const readyDb = dbWith(13, "production");
     const ready = await readSchemaStatus(readyDb, { force: true });
     assert.deepEqual(ready, {
       ready: true,
-      version: 12,
-      expectedVersion: 12,
+      version: 13,
+      expectedVersion: 13,
       databaseEnvironment: "production",
       expectedEnvironment: "production",
       runtimeEnvironment: "production",
@@ -125,18 +125,18 @@ test("schema helpers memverifikasi version 12, environment binding, cache invali
     process.env.DATABASE_ENVIRONMENT = "development";
     process.env.VERCEL_ENV = "production";
     invalidateSchemaCache();
-    const crossed = await readSchemaStatus(dbWith(12, "development"), { force: true });
+    const crossed = await readSchemaStatus(dbWith(13, "development"), { force: true });
     assert.equal(crossed.ready, false);
     assert.equal(crossed.environmentReady, false);
     await assert.rejects(
-      () => assertDatabaseReady(dbWith(12, "development")),
+      () => assertDatabaseReady(dbWith(13, "development")),
       (error) => error?.code === "DATABASE_ENVIRONMENT_MISMATCH" && error?.status === 503,
     );
 
     delete process.env.DATABASE_ENVIRONMENT;
     process.env.VERCEL_ENV = "preview";
     invalidateSchemaCache();
-    const preview = await readSchemaStatus(dbWith(12, "production"), { force: true });
+    const preview = await readSchemaStatus(dbWith(13, "production"), { force: true });
     assert.equal(preview.ready, false);
     assert.equal(preview.runtimeEnvironment, "preview");
     assert.equal(preview.environmentReady, false);
@@ -144,7 +144,7 @@ test("schema helpers memverifikasi version 12, environment binding, cache invali
     delete process.env.DATABASE_ENVIRONMENT;
     delete process.env.VERCEL_ENV;
     invalidateSchemaCache();
-    const local = await readSchemaStatus(dbWith(12, "unbound"), { force: true });
+    const local = await readSchemaStatus(dbWith(13, "unbound"), { force: true });
     assert.equal(local.ready, true);
     assert.equal(local.environmentReady, true);
 
@@ -153,7 +153,7 @@ test("schema helpers memverifikasi version 12, environment binding, cache invali
     const missing = await readSchemaStatus(missingDb, { force: true });
     assert.equal(missing.ready, false);
     assert.equal(missing.version, 0);
-    assert.equal(missing.expectedVersion, 12);
+    assert.equal(missing.expectedVersion, 13);
     assert.match(checksumText("saldo-bersama"), /^[a-f0-9]{64}$/);
   } finally {
     restoreEnvironment();

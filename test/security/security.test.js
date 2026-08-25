@@ -105,13 +105,18 @@ test("identity rate-limit key memakai scope dan hash tanpa membocorkan UID", () 
   assert.notEqual(gatewayKey, exportKey);
 });
 
-test("gateway dan export memakai canonical identity rate-limit key", async () => {
+test("gateway dan export memakai canonical identity key untuk local dan durable rate limit", async () => {
   const [gateway, exportSource] = await Promise.all([
     readFile(new URL("../../api/gateway.js", import.meta.url), "utf8"),
     readFile(new URL("../../api/export.js", import.meta.url), "utf8"),
   ]);
-  assert.match(gateway, /enforceBestEffortRateLimit\(identityRateLimitKey\("gateway", session\.uid\)\)/);
-  assert.match(exportSource, /enforceBestEffortRateLimit\(identityRateLimitKey\("export", session\.uid\), \{ limit: 5, windowMs: 60_000 \}\)/);
+  assert.match(gateway, /const rateLimitKey = identityRateLimitKey\("gateway", session\.uid\)/);
+  assert.match(gateway, /enforceBestEffortRateLimit\(rateLimitKey\)/);
+  assert.match(gateway, /await enforceDistributedRateLimit\(db, rateLimitKey\)/);
+  assert.match(exportSource, /const rateLimitKey = identityRateLimitKey\("export", session\.uid\)/);
+  assert.match(exportSource, /enforceBestEffortRateLimit\(rateLimitKey, \{ limit: 5, windowMs: 60_000 \}\)/);
+  assert.match(exportSource, /await enforceDistributedRateLimit\(db, rateLimitKey, \{ limit: 5, windowMs: 60_000 \}\)/);
+  assert.match(exportSource, /"Retry-After"/);
 });
 
 test("gateway menolak adjustment member dan field transaksi internal", () => {
@@ -145,9 +150,10 @@ test("reserved transaction field contract dijaga konsisten di gateway dan financ
 });
 
 test("CSP dan route OAuth server menjaga login mobile production tanpa Firebase browser redirect", async () => {
-  const [vercelSource, envExample, mobileAuth, sessionSource] = await Promise.all([
+  const [vercelSource, envExample, productionAuth, mobileAuth, sessionSource] = await Promise.all([
     readFile(new URL("../../vercel.json", import.meta.url), "utf8"),
     readFile(new URL("../../.env.example", import.meta.url), "utf8"),
+    readFile(new URL("../../frontend/src/services/auth/googleAuthRouting.js", import.meta.url), "utf8"),
     readFile(new URL("../../frontend/src/services/auth/mobileFirebaseGoogleAuth.js", import.meta.url), "utf8"),
     readFile(new URL("../../api/session.js", import.meta.url), "utf8"),
   ]);
@@ -169,10 +175,13 @@ test("CSP dan route OAuth server menjaga login mobile production tanpa Firebase 
   assert.doesNotMatch(csp, /unsafe-eval/);
   assert.doesNotMatch(csp, /accounts\.google\.com\/gsi\//, "CSP tidak boleh mempertahankan allowance Google GSI yang sudah dipensiunkan");
 
-  assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
-  assert.match(mobileAuth, /window\.location\.assign/);
+  assert.match(productionAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
+  assert.match(productionAuth, /window\.location\.assign/);
+  assert.doesNotMatch(productionAuth, /@firebase\//);
+  assert.doesNotMatch(productionAuth, /GOOGLE_OAUTH_CLIENT_SECRET/);
+  assert.match(mobileAuth, /signInWithPopup/);
+  assert.doesNotMatch(mobileAuth, /SERVER_OAUTH_START_PATH|window\.location\.assign|signInWithRedirect|getRedirectResult|browserLocalPersistence/);
   assert.doesNotMatch(mobileAuth, /GOOGLE_OAUTH_CLIENT_SECRET/);
-  assert.doesNotMatch(mobileAuth, /signInWithRedirect|getRedirectResult|browserLocalPersistence/);
   assert.match(sessionSource, /GOOGLE_OAUTH_CLIENT_SECRET/);
   assert.match(sessionSource, /scope: "openid email profile"/);
   assert.match(sessionSource, /nonce: transaction\.nonce/);

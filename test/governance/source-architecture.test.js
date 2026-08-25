@@ -483,9 +483,10 @@ test("frontend menjaga dependency direction, bebas cycle relatif, dan helper sta
 
 
 test("frontend auth canonical tidak memuat Google GSI legacy", async () => {
-  const [indexHtml, loginPage, mobileAuth, vercelConfig] = await Promise.all([
+  const [indexHtml, loginPage, productionAuth, mobileAuth, vercelConfig] = await Promise.all([
     source("frontend/index.html"),
     source("frontend/src/features/auth/LoginPage.jsx"),
+    source("frontend/src/services/auth/googleAuthRouting.js"),
     source("frontend/src/services/auth/mobileFirebaseGoogleAuth.js"),
     source("vercel.json"),
   ]);
@@ -493,7 +494,10 @@ test("frontend auth canonical tidak memuat Google GSI legacy", async () => {
   assert.equal(await exists("frontend/src/services/auth/googleFirebaseAuth.js"), false);
   assert.doesNotMatch(loginPage, /google\.accounts\.id/);
   assert.doesNotMatch(vercelConfig, /accounts\.google\.com\/gsi\//);
-  assert.match(mobileAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
+  assert.match(productionAuth, /SERVER_OAUTH_START_PATH = "\/api\/auth\/google\/start"/);
+  assert.doesNotMatch(productionAuth, /@firebase\//);
+  assert.match(mobileAuth, /signInWithPopup/);
+  assert.doesNotMatch(mobileAuth, /SERVER_OAUTH_START_PATH|window\.location\.assign/);
 });
 
 test("responsive page memakai useMediaQuery canonical tanpa listener matchMedia duplikat", async () => {
