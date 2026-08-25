@@ -57,10 +57,32 @@ const useReconciliationData = () => {
   return { accountsResource, historyResource, historyAccountId, setHistoryAccountId, accounts, reconcilableAccounts, accountLookup, historyItems };
 };
 
+const useSystemBalancePrefill = ({ selectedAccountId, actualBalanceEdited, selectedSystemBalance, setForm }) => {
+  useEffect(() => {
+    if (!selectedAccountId || actualBalanceEdited || selectedSystemBalance === null) return;
+    setForm((current) => current.account_id === selectedAccountId && current.actual_balance !== selectedSystemBalance
+      ? { ...current, actual_balance: selectedSystemBalance }
+      : current);
+  }, [actualBalanceEdited, selectedAccountId, selectedSystemBalance, setForm]);
+};
+
+const useDashboardAttentionPrefill = ({ attentionAccountId, resourceStatus, reconcilableAccounts, formAccountId, consumeAttention, setActualBalanceEdited, setForm }) => {
+  const attentionHandled = useRef(false);
+  useEffect(() => {
+    if (attentionHandled.current || !attentionAccountId || resourceStatus !== "ready") return;
+    attentionHandled.current = true;
+    const attentionAccount = reconcilableAccounts.find((account) => account.account_id === attentionAccountId) || null;
+    if (!formAccountId && attentionAccount) {
+      setActualBalanceEdited(false);
+      setForm((current) => ({ ...current, account_id: attentionAccountId, actual_balance: accountSystemBalance(attentionAccount) }));
+    }
+    consumeAttention();
+  }, [attentionAccountId, consumeAttention, formAccountId, reconcilableAccounts, resourceStatus, setActualBalanceEdited, setForm]);
+};
+
 const ReconciliationsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const navigate = useNavigate();
-  const attentionHandled = useRef(false);
   const { refreshAll, invalidate } = useFinance();
   const data = useReconciliationData();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -74,27 +96,20 @@ const ReconciliationsPage = () => {
   const preview = useMemo(() => getDifferencePreview(selectedAccount, form.actual_balance), [selectedAccount, form.actual_balance]);
   const attentionAccountId = String(attention?.accountId || "");
 
-  useEffect(() => {
-    if (!selectedAccountId || actualBalanceEdited || selectedSystemBalance === null) return;
-    setForm((current) => current.account_id === selectedAccountId && current.actual_balance !== selectedSystemBalance
-      ? { ...current, actual_balance: selectedSystemBalance }
-      : current);
-  }, [actualBalanceEdited, selectedAccountId, selectedSystemBalance]);
-
-  useEffect(() => {
-    if (attentionHandled.current || !attentionAccountId || data.accountsResource.status !== "ready") return;
-    attentionHandled.current = true;
-    const attentionAccount = data.reconcilableAccounts.find((account) => account.account_id === attentionAccountId) || null;
-    if (!form.account_id && attentionAccount) {
-      setActualBalanceEdited(false);
-      setForm((current) => ({ ...current, account_id: attentionAccountId, actual_balance: accountSystemBalance(attentionAccount) }));
-    }
-    consumeAttention();
-  }, [attentionAccountId, consumeAttention, data.accountsResource.status, data.reconcilableAccounts, form.account_id]);
+  useSystemBalancePrefill({ selectedAccountId, actualBalanceEdited, selectedSystemBalance, setForm });
+  useDashboardAttentionPrefill({
+    attentionAccountId,
+    resourceStatus: data.accountsResource.status,
+    reconcilableAccounts: data.reconcilableAccounts,
+    formAccountId: form.account_id,
+    consumeAttention,
+    setActualBalanceEdited,
+    setForm,
+  });
 
   const submitReconciliation = async (event) => {
     event.preventDefault();
-    if (["submitting", "syncing"].includes(submitState.status)) return;
+    if (["submitting", "syncing", "completed"].includes(submitState.status)) return;
     setMessage(null);
     if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat direkonsiliasi.") }); return; }
     let actualBalance;
@@ -117,13 +132,14 @@ const ReconciliationsPage = () => {
       const refreshIncomplete = refreshOutcomes.some((outcome) => outcome.status === "rejected");
       setResultOverlay({
         matched,
+        accountId: selectedAccount.account_id,
         accountLabel,
         actualBalance: Number(result.actual_balance ?? actualBalance),
         systemBalance: Number(result.system_balance ?? selectedAccount.balance ?? 0),
         difference,
         refreshIncomplete,
       });
-      setSubmitState({ status: "idle", error: null });
+      setSubmitState({ status: "completed", error: null });
     } catch (error) {
       setSubmitState({ status: "error", error });
     }
@@ -133,6 +149,11 @@ const ReconciliationsPage = () => {
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
   if (data.historyResource.status === "error") return <ErrorState error={data.historyResource.error} onRetry={data.historyResource.reload} />;
   const attentionFromDashboard = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
+  const finishReconciliation = () => navigate("/");
+  const reviewReconciliationTransactions = () => {
+    if (!resultOverlay?.accountId) return finishReconciliation();
+    navigate("/transaksi", { state: { accountId: resultOverlay.accountId, period: currentMonthInJakarta() } });
+  };
   return (
     <div className={`page-stack ${styles.page}`}>
       <RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} />
@@ -157,7 +178,7 @@ const ReconciliationsPage = () => {
         accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submitState.status)}
       />
       <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
-      <ReconciliationResultOverlay result={resultOverlay} onClose={() => setResultOverlay(null)} />
+      <ReconciliationResultOverlay result={resultOverlay} onClose={finishReconciliation} onReviewTransactions={reviewReconciliationTransactions} />
     </div>
   );
 };

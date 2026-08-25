@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canUseAssignedItem, filterByAssigneeAccess, filterByOwnership, hasSameAssignee, hasSameOwnership, ownershipKey, ownershipLabel } from "../src/domain/ownership.js";
+import { canRepresentAccountTransfer, canUseAssignedItem, filterByAssigneeAccess, filterByOwnership, hasSameAssignee, hasSameOwnership, ownershipKey, ownershipLabel } from "../src/domain/ownership.js";
 
 test("ownership helper memisahkan ruang bersama dan personal", () => {
   const shared = { account_id: "shared", owner_scope: "shared" };
@@ -15,6 +15,18 @@ test("ownership helper memisahkan ruang bersama dan personal", () => {
   assert.deepEqual(filterByOwnership([shared, ownerPersonal, memberPersonal], ownerEnvelope), [ownerPersonal]);
 });
 
+
+test("transfer account helper mengizinkan shared/personal tetapi menolak dua owner personal berbeda", () => {
+  const shared = { owner_scope: "shared", owner_user_id: null };
+  const personalA = { owner_scope: "personal", owner_user_id: "u1" };
+  const personalASame = { owner_scope: "personal", owner_user_id: "u1" };
+  const personalB = { owner_scope: "personal", owner_user_id: "u2" };
+  assert.equal(canRepresentAccountTransfer(shared, personalA), true);
+  assert.equal(canRepresentAccountTransfer(personalA, shared), true);
+  assert.equal(canRepresentAccountTransfer(personalA, personalASame), true);
+  assert.equal(canRepresentAccountTransfer(personalA, personalB), false);
+  assert.equal(canRepresentAccountTransfer(null, shared), false);
+});
 
 test("penerima jatah terpisah dari ownership ledger dan member hanya dapat memakai Bersama atau jatahnya", () => {
   const together = { envelope_period_id: "e-shared", scope: "shared", assignee_user_id: null };

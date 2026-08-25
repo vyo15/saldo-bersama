@@ -22,6 +22,8 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 
 - [ ] Nominal tetap integer Rupiah dan timezone/date contract tidak berubah diam-diam.
 - [ ] Transfer tetap netral terhadap total income/expense dan hanya antar rekening valid berbeda.
+- [ ] Transfer shared ↔ personal hanya berhasil bila actor dapat mengoperasikan kedua rekening; personal milik dua user berbeda tetap ditolak dan transaksi lintas boundary mengikuti satu owner personal yang representable.
+- [ ] Target shared dapat menerima sumber shared/personal actor yang representable tanpa memberi Member akses ke rekening personal pasangan.
 - [ ] Mutation tetap memakai validation, idempotency, row-version/concurrency, server confirmation, dan audit canonical sesuai scope.
 - [ ] Simulasikan `OUTCOME_UNKNOWN`: retry payload yang sama memakai intent/key yang sama, payload berbeda pada action yang sama diblok, dan form transaksi tidak dapat diedit/didismiss sebelum hasil definitif.
 - [ ] Authorization tetap deny-by-default; actor/role/email/audit field dari client tidak dipercaya.
@@ -32,6 +34,8 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 
 - [ ] Loading, empty, error, offline/unauthorized/conflict state relevan tersedia.
 - [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa.
+- [ ] Error field form transaksi hilang saat input/dependency sudah diperbaiki tanpa menghapus error lain; perubahan sumber tidak mempertahankan destination transfer yang sudah tidak representable.
+- [ ] Pencocokan definitif berakhir pada state completed; Selesai/X/Escape keluar dari create flow dan mismatch menyediakan jalur review transaksi tanpa membuat intent kedua otomatis.
 - [ ] Pada mobile: native form control efektif 16px, target interaktif ≥44×44px, safe-area top/bottom, metadata finansial penting ~12px+, keyboard virtual, dan horizontal overflow diperiksa pada viewport relevan.
 - [ ] Primary-tab scroll restoration, Back/Forward history restoration, dan true-empty vs filtered/subsection-empty diperiksa bila shell/navigation/collection presentation berubah.
 - [ ] Mobile dan desktop tidak drift pada business rule yang sama.
@@ -53,6 +57,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] `npm run test` PASS.
 - [ ] `npm run build` PASS dan build-budget internal pada `npm run verify` PASS.
 - [ ] Guarded/data/security regression tercakup oleh frontend/backend suite pada `npm run verify`; targeted domain test tambahan dijalankan bila scope memerlukannya.
+- [ ] Trial Reset preview/apply ditolak pada database `production`/`unbound` sebelum side effect; `reset.status` tetap readable untuk recovery.
 - [ ] Untuk frontend/user-flow change, manual device QA dicatat bila diperlukan; tidak ada automated browser gate.
 - [ ] Final `npm run verify` PASS pada tree yang sama dengan patch yang akan dikirim.
 

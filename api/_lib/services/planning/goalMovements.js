@@ -54,10 +54,7 @@ export const goalProjection = (row, currentAmount) => {
 const normalizeGoalMovementType = (value) => ({ contribution: "deposit", withdraw: "withdrawal" }[value] || value);
 
 const assertGoalMovementAccounts = (goal, type, source, destination) => {
-  const owned = scopeFromAccountPair(source, destination);
-  if (owned.scope !== goal.scope || String(owned.owner_user_id || "") !== String(goal.owner_user_id || "")) {
-    throw appError("GOAL_SCOPE_MISMATCH", "Rekening mutasi harus satu kepemilikan dengan target.", 409);
-  }
+  scopeFromAccountPair(source, destination);
   if (type === "deposit" && destination.account_id !== goal.account_id) {
     throw appError("GOAL_ACCOUNT_MISMATCH", "Setoran target harus masuk ke rekening target.", 409);
   }

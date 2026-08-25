@@ -122,15 +122,18 @@ export const normalizeOwnedScope = async (db, actor, payload = {}, fallback = { 
 };
 
 export const scopeFromAccountPair = (source, destination) => {
-  const scoped = [source, destination].filter(Boolean).map((account) => account.owner_scope === "personal"
-    ? { scope: "personal", owner_user_id: account.owner_user_id }
-    : { scope: "shared", owner_user_id: null });
-  if (!scoped.length) return { scope: "shared", owner_user_id: null };
-  const first = scoped[0];
-  if (scoped.some((item) => item.scope !== first.scope || String(item.owner_user_id || "") !== String(first.owner_user_id || ""))) {
-    throw appError("CROSS_OWNERSHIP_TRANSFER", "Rekening sumber dan tujuan harus berada pada kepemilikan yang sama.", 409);
+  const accounts = [source, destination].filter(Boolean);
+  if (!accounts.length) return { scope: "shared", owner_user_id: null };
+  const personalOwnerIds = [...new Set(accounts
+    .filter((account) => account.owner_scope === "personal")
+    .map((account) => String(account.owner_user_id || ""))
+    .filter(Boolean))];
+  if (personalOwnerIds.length > 1) {
+    throw appError("CROSS_OWNERSHIP_TRANSFER", "Transfer antar rekening pribadi dengan pemilik berbeda belum dapat direpresentasikan oleh satu ledger transaksi.", 409);
   }
-  return first;
+  return personalOwnerIds.length
+    ? { scope: "personal", owner_user_id: personalOwnerIds[0] }
+    : { scope: "shared", owner_user_id: null };
 };
 
 export const assertVersion = (row, expected) => {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
+import { createTransaction } from "../../api/_lib/services/finance.js";
 import { createEnvelopePeriod, createEnvelopeRule } from "../../api/_lib/services/planning/envelopes.js";
 import { createGoal, goalProjection, listGoals, moveGoal, reverseGoalMovement, updateGoal } from "../../api/_lib/services/planning/goals.js";
 import { createRecurringRule, updateRecurringRule } from "../../api/_lib/services/planning/recurring.js";
@@ -209,6 +210,103 @@ test("bootstrap owner idempotent saat dua request pertama datang paralel", async
     db.close();
     if (originalAllowlist === undefined) delete process.env.ALLOWED_USERS_JSON;
     else process.env.ALLOWED_USERS_JSON = originalAllowlist;
+  }
+});
+
+test("transfer dan Target shared/personal fleksibel tanpa memberi Member akses ke rekening personal pasangan", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner);
+    await seedUser(db, member);
+    await seedAccount(db, { id: "boundary-shared", balance: 1_000_000 });
+    await seedAccount(db, { id: "boundary-owner-personal", ownerScope: "personal", ownerUserId: owner.user_id, balance: 500_000 });
+    await seedAccount(db, { id: "boundary-member-personal", ownerScope: "personal", ownerUserId: member.user_id, balance: 400_000 });
+
+    const ownerTransfer = await createTransaction(db, context(owner, "transactions.create", {
+      transaction_type: "transfer",
+      transaction_date: todayJakarta(),
+      source_account_id: "boundary-shared",
+      destination_account_id: "boundary-owner-personal",
+      amount: 25_000,
+      description: "Pindah dana shared ke personal owner",
+    }));
+    assert.equal(ownerTransfer.scope, "personal");
+    assert.equal(ownerTransfer.owner_user_id, owner.user_id);
+
+    const memberTransferContext = context(member, "transactions.create", {
+      transaction_type: "transfer",
+      transaction_date: todayJakarta(),
+      source_account_id: "boundary-member-personal",
+      destination_account_id: "boundary-shared",
+      amount: 20_000,
+      description: "Pindah dana personal member ke shared",
+    });
+    memberTransferContext.requestId = "character:boundary:member-transfer";
+    memberTransferContext.idempotencyKey = "character:boundary:member-transfer";
+    const memberTransfer = await createTransaction(db, memberTransferContext);
+    assert.equal(memberTransfer.scope, "personal");
+    assert.equal(memberTransfer.owner_user_id, member.user_id);
+
+    await assert.rejects(
+      () => createTransaction(db, context(member, "transactions.create", {
+        transaction_type: "transfer",
+        transaction_date: todayJakarta(),
+        source_account_id: "boundary-owner-personal",
+        destination_account_id: "boundary-shared",
+        amount: 10_000,
+      })),
+      (error) => error.code === "FORBIDDEN_ACCOUNT",
+    );
+    await assert.rejects(
+      () => createTransaction(db, context(owner, "transactions.create", {
+        transaction_type: "transfer",
+        transaction_date: todayJakarta(),
+        source_account_id: "boundary-owner-personal",
+        destination_account_id: "boundary-member-personal",
+        amount: 10_000,
+      })),
+      (error) => error.code === "CROSS_OWNERSHIP_TRANSFER",
+    );
+
+    const goal = await createGoal(db, context(owner, "goals.create", {
+      name: "Target Bersama Boundary",
+      goal_type: "savings",
+      account_id: "boundary-shared",
+      target_amount: 200_000,
+      priority: "normal",
+    }));
+    const memberGoalView = (await listGoals(db, { actor: member, payload: {} })).items.find((item) => item.goal_id === goal.goal_id);
+    assert.equal(memberGoalView.can_deposit, true, "Member boleh mendanai Target shared dari rekening shared atau personal miliknya yang operable.");
+
+    const goalMoveContext = context(member, "goals.move", {
+      goal_id: goal.goal_id,
+      movement_type: "deposit",
+      amount: 15_000,
+      source_account_id: "boundary-member-personal",
+      destination_account_id: "boundary-shared",
+      transaction_date: todayJakarta(),
+      reason: "Kontribusi personal ke target bersama",
+    });
+    goalMoveContext.requestId = "character:boundary:goal-move";
+    goalMoveContext.idempotencyKey = "character:boundary:goal-move";
+    const moved = await moveGoal(db, goalMoveContext);
+    assert.equal(moved.transaction.scope, "personal");
+    assert.equal(moved.transaction.owner_user_id, member.user_id);
+
+    await assert.rejects(
+      () => moveGoal(db, context(member, "goals.move", {
+        goal_id: goal.goal_id,
+        movement_type: "deposit",
+        amount: 5_000,
+        source_account_id: "boundary-owner-personal",
+        destination_account_id: "boundary-shared",
+        transaction_date: todayJakarta(),
+        reason: "Tidak boleh memakai rekening pasangan",
+      })),
+      (error) => error.code === "FORBIDDEN_ACCOUNT",
+    );
+  } finally {
+    db.close();
   }
 });
 

@@ -1,3 +1,10 @@
+## 25 Agustus 2026 - Data-integrity, financial boundary, dan UX hardening
+
+- Menjadikan Trial Reset fail-closed di backend: `reset.preview`/`reset.apply` hanya boleh pada database yang terikat `development`, sedangkan `reset.status` tetap tersedia untuk reconciliation/recovery; route reset non-Development juga ditutup.
+- Memperluas transfer dan mutasi Target secara representable dari shared ↔ personal bila actor dapat mengoperasikan rekening terkait. Satu transaksi lintas boundary mengikuti owner personal tunggal; dua rekening personal milik user berbeda tetap ditolak, Member tetap tidak dapat memakai rekening personal pasangan, dan transfer/Target movement tetap netral terhadap income/expense serta tidak bocor ke mirror Sheets shared-only.
+- Memperbaiki lifecycle error form transaksi (termasuk dependency rekening/Alokasi/cost sharing dan stale destination), membuat completion rekonsiliasi one-way agar hasil definitif tidak kembali ke form siap-submit, serta memperkuat `--border-strong` untuk non-text control boundary yang memerlukan ≥3:1.
+- Menyelaraskan runbook/policy untuk rotasi pasangan VAPID dan re-subscription, retention `user_sessions` 30 hari existing, kontrak destructive reset, authorization/financial boundary, serta regression plan. Tidak ada schema/migration baru dan distributed rate limit v13 existing tidak diduplikasi.
+
 ## 25 Agustus 2026 - Pemisahan profile Development/Production dan runtime preflight
 
 - Menambahkan `npm run env:pull:development` dan `npm run env:status` untuk bootstrap/troubleshooting lintas-PC tanpa membuka server atau mencetak secret; status menampilkan host/marker/fingerprint public Web Push saja.

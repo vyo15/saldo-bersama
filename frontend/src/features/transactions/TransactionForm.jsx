@@ -12,7 +12,7 @@ import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
-import { filterByAssigneeAccess, filterByOwnership, hasSameOwnership } from "../../domain/ownership.js";
+import { canRepresentAccountTransfer, filterByAssigneeAccess } from "../../domain/ownership.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import styles from "./TransactionForm.module.css";
 import MobileTransferFields from "./MobileTransferFields.jsx";
@@ -20,6 +20,7 @@ import TransactionFields from "./components/TransactionFields.jsx";
 import TransactionPostSaveModal from "./components/TransactionPostSaveModal.jsx";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
 import { earlyFundsWarning, smartAllocationCandidates } from "./transactionFormSmartDefaults.js";
+import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 
 const emptyForm = () => ({ transaction_type: TRANSACTION_TYPES.EXPENSE, transaction_date: todayInJakarta(), amount: "", source_account_id: "", destination_account_id: "", category_id: "", envelope_period_id: "", payment_method: "", merchant: "", description: "", overspend_reason: "", cost_share_mode: "unspecified", cost_share_percentages: [] });
 const MOBILE_TRANSACTION_QUERY = "(max-width: 820px)";
@@ -77,7 +78,9 @@ const useTransactionData = (bootstrap, overview, form) => {
 };
 
 const transactionMode = (form) => ({ isIncome: form.transaction_type === TRANSACTION_TYPES.INCOME || form.transaction_type === TRANSACTION_TYPES.REFUND, isTransfer: form.transaction_type === TRANSACTION_TYPES.TRANSFER });
-const destinationAccounts = (accounts, sourceAccount, isTransfer) => isTransfer && sourceAccount ? filterByOwnership(accounts, sourceAccount).filter((account) => account.account_id !== sourceAccount.account_id) : accounts;
+const destinationAccounts = (accounts, sourceAccount, isTransfer) => isTransfer && sourceAccount
+  ? accounts.filter((account) => account.account_id !== sourceAccount.account_id && canRepresentAccountTransfer(sourceAccount, account))
+  : accounts;
 
 const transactionImpactDeltas = ({ transactionType, amount, envelopeRemaining, hasEnvelope }) => {
   if (transactionType === TRANSACTION_TYPES.ADJUSTMENT) return { sourceDelta: amount, availableDelta: amount };
@@ -198,7 +201,28 @@ const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, envel
   } catch (error) { handleTransactionError(error, setters); }
 };
 
-const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, setForm, setConfirmation, setSubmitState }) => { const nextAccount = accounts.find((item) => item.account_id === nextId) || null; setConfirmation(null); setSubmitState({ status: "idle", error: null }); setForm((current) => { const destination = accounts.find((item) => item.account_id === current.destination_account_id) || null; const envelope = envelopes.find((item) => item.envelope_period_id === current.envelope_period_id) || null; const sharedExpense = current.transaction_type === TRANSACTION_TYPES.EXPENSE && nextAccount?.owner_scope === "shared"; return { ...current, source_account_id: nextId, destination_account_id: isTransfer && destination && (destination.account_id === nextId || !hasSameOwnership(destination, nextAccount)) ? "" : current.destination_account_id, envelope_period_id: envelope && envelope.source_account_id !== nextId ? "" : current.envelope_period_id, cost_share_mode: sharedExpense ? current.cost_share_mode : "unspecified", cost_share_percentages: sharedExpense ? current.cost_share_percentages : [] }; }); };
+const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, setForm, setErrors, setConfirmation, setSubmitState }) => {
+  const nextAccount = accounts.find((item) => item.account_id === nextId) || null;
+  setConfirmation(null);
+  setSubmitState({ status: "idle", error: null });
+  setErrors((current) => clearTransactionFieldErrors(current, "source_account_id"));
+  setForm((current) => {
+    const destination = accounts.find((item) => item.account_id === current.destination_account_id) || null;
+    const envelope = envelopes.find((item) => item.envelope_period_id === current.envelope_period_id) || null;
+    const sharedExpense = current.transaction_type === TRANSACTION_TYPES.EXPENSE && nextAccount?.owner_scope === "shared";
+    const invalidDestination = isTransfer && destination && (
+      destination.account_id === nextId || !canRepresentAccountTransfer(nextAccount, destination)
+    );
+    return {
+      ...current,
+      source_account_id: nextId,
+      destination_account_id: invalidDestination ? "" : current.destination_account_id,
+      envelope_period_id: envelope && envelope.source_account_id !== nextId ? "" : current.envelope_period_id,
+      cost_share_mode: sharedExpense ? current.cost_share_mode : "unspecified",
+      cost_share_percentages: sharedExpense ? current.cost_share_percentages : [],
+    };
+  });
+};
 
 const isMobileTransferPresentation = ({ presentation, isTransfer, transaction, mobileLayout }) => !transaction && isTransfer && (presentation === "mobile-transfer" || mobileLayout);
 
@@ -212,23 +236,25 @@ const transactionDerivedData = ({ data, form, isTransfer, bootstrap, user }) => 
   return { compatibleDestinationAccounts, compatibleEnvelopes };
 };
 
-const useMobileTransferDestination = ({ open, enabled, destinationAccountId, compatibleDestinationAccounts, setForm }) => {
+const useMobileTransferDestination = ({ open, enabled, destinationAccountId, compatibleDestinationAccounts, setForm, setErrors }) => {
   useEffect(() => {
     if (!open || !enabled || destinationAccountId || compatibleDestinationAccounts.length === 0) return;
     const firstDestinationId = compatibleDestinationAccounts[0].account_id;
+    setErrors((current) => clearTransactionFieldErrors(current, "destination_account_id"));
     setForm((current) => {
       if (current.destination_account_id) return current;
       return { ...current, destination_account_id: firstDestinationId };
     });
-  }, [compatibleDestinationAccounts, destinationAccountId, enabled, open, setForm]);
+  }, [compatibleDestinationAccounts, destinationAccountId, enabled, open, setErrors, setForm]);
 };
 
-const useSmartAllocationSelection = ({ open, transaction, allocationMode, candidates, form, setForm }) => {
+const useSmartAllocationSelection = ({ open, transaction, allocationMode, candidates, form, setForm, setErrors }) => {
   useEffect(() => {
     if (!open || transaction || allocationMode !== "auto" || form.transaction_type !== TRANSACTION_TYPES.EXPENSE) return;
     const nextEnvelopeId = candidates.length === 1 ? candidates[0].envelope.envelope_period_id : "";
+    setErrors((current) => clearTransactionFieldErrors(current, "envelope_period_id"));
     setForm((current) => current.envelope_period_id === nextEnvelopeId ? current : { ...current, envelope_period_id: nextEnvelopeId });
-  }, [allocationMode, candidates, form.transaction_type, open, setForm, transaction]);
+  }, [allocationMode, candidates, form.transaction_type, open, setErrors, setForm, transaction]);
 };
 
 const canReuseSourceAccount = (account, transactionType) => {
@@ -349,6 +375,7 @@ const TransactionForm = ({
     if (outcomeUnknown) return;
     setConfirmation(null);
     setSubmitState({ status: "idle", error: null });
+    setErrors((current) => clearTransactionFieldErrors(current, field));
     if (["transaction_type", "amount", "envelope_period_id"].includes(field)) setForceOverspendNote(false);
     if (!transaction && ["transaction_type", "category_id", "transaction_date"].includes(field)) setAllocationMode("auto");
     setForm((current) => {
@@ -365,7 +392,7 @@ const TransactionForm = ({
     if (outcomeUnknown) return;
     setForceOverspendNote(false);
     if (!transaction) setAllocationMode("auto");
-    applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm, setConfirmation, setSubmitState });
+    applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm, setErrors, setConfirmation, setSubmitState });
   };
   const onEnvelopeChange = (nextId) => {
     if (outcomeUnknown) return;
@@ -373,16 +400,19 @@ const TransactionForm = ({
     setForceOverspendNote(false);
     setConfirmation(null);
     setSubmitState({ status: "idle", error: null });
+    setErrors((current) => clearTransactionFieldErrors(current, "envelope_period_id"));
     setForm((current) => ({ ...current, envelope_period_id: nextId }));
   };
   const setters = { setErrors, setConfirmation, setSubmitState, setForceOverspendNote };
   const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, envelopes: data.envelopes, forceOverspendNote, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef });
   const submitting = submitState.status === "submitting";
 
-  useSmartAllocationSelection({ open, transaction, allocationMode, candidates: allocationCandidates, form, setForm });
-  useMobileTransferDestination({ open, enabled: mobileTransferMode, destinationAccountId: form.destination_account_id, compatibleDestinationAccounts, setForm });
+  useSmartAllocationSelection({ open, transaction, allocationMode, candidates: allocationCandidates, form, setForm, setErrors });
+  useMobileTransferDestination({ open, enabled: mobileTransferMode, destinationAccountId: form.destination_account_id, compatibleDestinationAccounts, setForm, setErrors });
 
-  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, recentTransactions: data.recentTransactions, visibleCategories: data.visibleCategories, members: data.members, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, allocationCandidates, onEnvelopeChange, setConfirmation, setSubmitState, impact, fundsWarning, confirmation, submitState, lockType, onSourceAccountChange, submitting, outcomeUnknown };
+  const onCostShareChange = () => setErrors((current) => clearTransactionFieldErrors(current, "cost_share_mode"));
+
+  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, recentTransactions: data.recentTransactions, visibleCategories: data.visibleCategories, members: data.members, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, allocationCandidates, onEnvelopeChange, setConfirmation, setSubmitState, impact, fundsWarning, confirmation, submitState, lockType, onSourceAccountChange, onCostShareChange, submitting, outcomeUnknown };
   const modal = resolveTransactionPresentation({ mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown, confirmation, onClose, amountRef, mobileLayout });
 
   const addAnother = () => {

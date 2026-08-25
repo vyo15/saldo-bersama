@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import FinancialSuccessOverlay from "../../../components/feedback/FinancialSuccessOverlay.jsx";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
-import { filterByOwnership } from "../../../domain/ownership.js";
+import { canRepresentAccountTransfer } from "../../../domain/ownership.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import styles from "./MobileAccountTransferAction.module.css";
 
@@ -55,8 +55,8 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
   const compatibleDestinations = useMemo(() => {
     if (!selectedAccount) return [];
     const accounts = activeTransactableAccounts(bootstrap);
-    return filterByOwnership(accounts, selectedAccount)
-      .filter((account) => account.account_id !== selectedAccount.account_id);
+    return accounts.filter((account) => account.account_id !== selectedAccount.account_id
+      && canRepresentAccountTransfer(selectedAccount, account));
   }, [bootstrap, selectedAccount]);
   const canTransfer = selectedAccount?.status === "active"
     && selectedAccount.can_transact !== false
@@ -85,7 +85,7 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
       >
         <TransferArrowsIcon /><span>Transfer</span>
       </button>
-      {!canTransfer ? <span id="mobile-transfer-unavailable" className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif dengan ruang kepemilikan yang sama.</span> : null}
+      {!canTransfer ? <span id="mobile-transfer-unavailable" className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif yang kompatibel dengan ledger.</span> : null}
 
       {transferOpen ? <Suspense fallback={null}><TransactionForm
         open

@@ -30,6 +30,7 @@ const context = (actor, action, payload = {}) => ({
 
 const seed = async (db) => {
   const now = nowIso();
+  await db.execute("UPDATE system_config SET value='development' WHERE key='database_environment'");
   for (const user of [owner, member]) {
     await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", [user.user_id, user.firebase_uid, user.email, user.name, user.role, user.status, 1, now, now]);
   }
@@ -63,6 +64,39 @@ const withBridgeStub = async (fn) => {
     globalThis.fetch = previous.fetch;
   }
 };
+
+test("reset preview/apply fail closed di luar database Development sementara status tetap dapat dibaca", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await db.execute("UPDATE system_config SET value='production' WHERE key='database_environment'");
+    await assert.rejects(
+      () => previewTrialDataReset(db, context(owner, "reset.preview")),
+      (error) => error.code === "TRIAL_RESET_DEVELOPMENT_ONLY",
+    );
+    await assert.rejects(
+      () => applyTrialDataReset(db, context(owner, "reset.apply", {
+        previewFingerprint: "must-not-be-read",
+        confirmation: TRIAL_RESET_CONFIRMATION,
+        acknowledged: true,
+        reason: "Tidak boleh menyentuh production",
+      })),
+      (error) => error.code === "TRIAL_RESET_DEVELOPMENT_ONLY",
+    );
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM backup_runs")).count, 0, "Guard environment harus berjalan sebelum safety backup.");
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 1, "Guard environment tidak boleh mengubah data bisnis.");
+    const status = await readTrialDataResetStatus(db, context(owner, "reset.status"));
+    assert.equal(status.currentSummary.transactions, 1, "Status tetap tersedia untuk recovery/outcome reconciliation.");
+
+    await db.execute("UPDATE system_config SET value='unbound' WHERE key='database_environment'");
+    await assert.rejects(
+      () => previewTrialDataReset(db, context(owner, "reset.preview")),
+      (error) => error.code === "TRIAL_RESET_DEVELOPMENT_ONLY",
+    );
+  } finally {
+    db.close();
+  }
+});
 
 test("bersihkan data testing owner-only, preview-aware, membuat safety backup, purge terarah, dan mempertahankan master/audit", async () => {
   const db = await createSqliteTestDatabase();

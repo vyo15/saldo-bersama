@@ -127,6 +127,8 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(form, /createIdempotencyKey\(\)/);
   assert.match(form, /const saveTransaction = transaction \? updateTransaction : createTransaction/);
   assert.match(form, /destination\.account_id === nextId/);
+  assert.match(form, /canRepresentAccountTransfer\(nextAccount, destination\)/);
+  assert.match(form, /clearTransactionFieldErrors/);
   assert.match(form, /compatibleDestinationAccounts\[0\]\.account_id/);
   assert.match(form, /<MobileTransferFields \{\.\.\.fields\} \/>/);
   assert.doesNotMatch(mobileFields, /createTransaction|updateTransaction|createIdempotencyKey|transactions\.api|apiClient/);

@@ -12,14 +12,18 @@ import { goalProjection } from "./goalMovements.js";
 // and ledger-linked movements are isolated behind compatible exports.
 export const goalListStatements = (context) => {
   const access = visibleScopeSql(context.actor, "g");
+  const sourceAccess = context.actor.role === "owner"
+    ? { sql: "1=1", args: [] }
+    : { sql: "(src.owner_scope='shared' OR (src.owner_scope='personal' AND src.owner_user_id=?))", args: [context.actor.user_id] };
   const today = todayJakarta();
   return [
     {
       sql: `SELECT g.*,a.name AS account_name,a.status AS account_status,EXISTS(
         SELECT 1 FROM accounts src WHERE src.status='active' AND src.account_id<>g.account_id
-          AND ((g.scope='shared' AND src.owner_scope='shared') OR (g.scope='personal' AND src.owner_scope='personal' AND src.owner_user_id=g.owner_user_id))
+          AND ${sourceAccess.sql}
+          AND (g.scope='shared' OR src.owner_scope='shared' OR (src.owner_scope='personal' AND src.owner_user_id=g.owner_user_id))
       ) AS has_deposit_source FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`,
-      args: access.args,
+      args: [...sourceAccess.args, ...access.args],
     },
     {
       sql: `SELECT m.goal_id,COALESCE(SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END),0) AS current_amount
@@ -62,7 +66,7 @@ const goalMovementState = (row, current, last) => {
     can_move: canDeposit || canWithdraw,
     can_deposit: canDeposit,
     deposit_blocked_reason: [activeMovement, !reached, !hasDepositSource].every(Boolean)
-      ? "Setoran membutuhkan rekening sumber lain dengan kepemilikan yang sama."
+      ? "Setoran membutuhkan rekening sumber lain yang dapat Anda operasikan dan kompatibel dengan ledger target."
       : "",
     can_withdraw: canWithdraw,
     can_reverse: [row.status === "active", Boolean(last), !Boolean(lastRow.movement_locked)].every(Boolean),

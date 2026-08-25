@@ -1,6 +1,6 @@
 # Secret Rotation Runbook
 
-Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_BRIDGE_SHARED_SECRET`, `JOBS_SHARED_SECRET`, atau credential privat lain pernah keluar dari secret store tepercaya, termasuk pernah masuk ZIP manual. Jangan menyalin nilai secret ke Git, issue, chat, screenshot, atau log.
+Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_BRIDGE_SHARED_SECRET`, `JOBS_SHARED_SECRET`, atau credential privat lain pernah keluar dari secret store tepercaya, termasuk pernah masuk ZIP manual. Jangan menyalin nilai secret ke Git, issue, chat, screenshot, atau log.
 
 ## Boundary saat ini
 
@@ -34,6 +34,18 @@ Jangan revoke token lama sebelum runtime yang diperlukan terbukti memakai token 
 3. Deploy ulang bila diperlukan.
 4. Verifikasi login baru berhasil. Session lama boleh menjadi invalid setelah rotasi dan user harus login ulang.
 5. Pastikan tidak ada nilai secret di log, source, ZIP, atau screenshot evidence.
+
+## Urutan rotasi VAPID Web Push
+
+`VAPID_PRIVATE_KEY` dan `VITE_VAPID_PUBLIC_KEY` adalah satu pasangan kriptografis. Rotasi private key **wajib** diikuti public key pasangannya; jangan mencampur private key baru dengan public key lama. Pair Development dan Production harus tetap terpisah dan stabil per environment, bukan dibuat ulang per perangkat.
+
+1. Generate satu VAPID key pair baru pada mesin/secret manager tepercaya untuk environment yang sedang dirotasi. Jangan menaruh private key di chat, Git, ZIP, screenshot, atau `VITE_*`.
+2. Simpan private key baru sebagai `VAPID_PRIVATE_KEY` pada secret store environment tersebut dan public pair-nya sebagai `VITE_VAPID_PUBLIC_KEY`.
+3. Jalankan environment check canonical untuk memastikan pair lengkap dan environment tidak memakai pair environment lain.
+4. Deploy/sinkronkan runtime dan frontend yang memakai pair baru.
+5. Karena subscription Web Push terikat application server key, anggap subscription lama perlu didaftarkan ulang. Uji unregister/register atau re-subscribe pada perangkat yang relevan; jangan menyalin subscription antar user/perangkat.
+6. Jalankan `notifications.status`/test notification dan real-device smoke minimal pada browser/perangkat yang memang dipakai. Pastikan payload lock-screen tetap privacy-safe.
+7. Setelah runtime dan perangkat yang diperlukan terbukti memakai pair baru, hapus private key lama dari secret store/credential history yang dapat direvoke. Simpan evidence tanpa nilai key.
 
 ## Urutan rotasi `GOOGLE_OAUTH_CLIENT_SECRET`
 

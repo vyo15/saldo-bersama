@@ -37,6 +37,20 @@ import {
 
 export { TRIAL_RESET_CONFIRMATION, TRIAL_RESET_SCOPE_ACTIVITY, TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES } from "./resetModel.js";
 
+const TRIAL_RESET_ENVIRONMENT_STATEMENT = { sql: "SELECT value FROM system_config WHERE key='database_environment'" };
+
+const assertTrialResetDevelopmentValue = (row) => {
+  const environment = String(row?.value || "unbound").trim().toLowerCase();
+  if (environment !== "development") {
+    throw appError("TRIAL_RESET_DEVELOPMENT_ONLY", "Reset data testing hanya tersedia pada database Development yang sudah terikat.", 403);
+  }
+};
+
+const assertTrialResetDevelopmentDatabase = async (db) => {
+  const row = await db.one(TRIAL_RESET_ENVIRONMENT_STATEMENT.sql);
+  assertTrialResetDevelopmentValue(row);
+};
+
 // Canonical confirmation phrase: "BERSIHKAN DATA TESTING" (defined in resetModel.js).
 // Destructive sequence stays intentionally local: preview re-check -> safety backup ->
 // maintenance claim -> transactional purge -> integrity check -> audit -> release.
@@ -50,7 +64,8 @@ export const previewTrialDataReset = async (db, context) => {
     ...PRESERVED_COUNT_STATEMENTS,
     ...(withBalances ? [accountBalanceResetStatement(context.today)] : []),
   ];
-  const resultRows = await readBatchRows(db, statements);
+  const [environmentRows, ...resultRows] = await readBatchRows(db, [TRIAL_RESET_ENVIRONMENT_STATEMENT, ...statements]);
+  assertTrialResetDevelopmentValue(environmentRows?.[0]);
   const stateRows = resultRows.slice(0, RESET_STATE_STATEMENTS.length);
   const preservedStart = RESET_STATE_STATEMENTS.length;
   const preservedEnd = preservedStart + PRESERVED_COUNT_STATEMENTS.length;
@@ -201,6 +216,7 @@ export const readTrialDataResetStatus = async (db, context) => {
 
 export const applyTrialDataReset = async (db, context) => {
   assertOwner(context.actor);
+  await assertTrialResetDevelopmentDatabase(db);
   const { reason, previewFingerprint, resetScope } = assertResetRequest(context);
   const preBackupState = await assertPreviewUnchanged(db, previewFingerprint, resetScope, context.today);
   const summary = resetSummary(preBackupState.counts);

@@ -37,7 +37,7 @@ const ResultSummary = ({ result }) => (
   </dl>
 );
 
-const ReconciliationDifferenceOverlay = ({ result, onClose }) => {
+const ReconciliationDifferenceOverlay = ({ result, onClose, onReviewTransactions }) => {
   const containerRef = useRef(null);
   const doneRef = useRef(null);
   const titleId = useId();
@@ -63,6 +63,7 @@ const ReconciliationDifferenceOverlay = ({ result, onClose }) => {
           <p id={descriptionId} className={styles.resultDescription}>{description}</p>
           <ResultSummary result={result} />
           <div className={styles.resultFooter}>
+            <button type="button" className={styles.resultReview} onClick={onReviewTransactions}>Lihat transaksi rekening</button>
             <button ref={doneRef} type="button" className={styles.resultDone} onClick={onClose}>Selesai</button>
             <small>{refreshNote}</small>
           </div>
@@ -73,9 +74,9 @@ const ReconciliationDifferenceOverlay = ({ result, onClose }) => {
   );
 };
 
-export const ReconciliationResultOverlay = ({ result, onClose }) => {
+export const ReconciliationResultOverlay = ({ result, onClose, onReviewTransactions }) => {
   if (!result) return null;
-  if (!result.matched) return <ReconciliationDifferenceOverlay result={result} onClose={onClose} />;
+  if (!result.matched) return <ReconciliationDifferenceOverlay result={result} onClose={onClose} onReviewTransactions={onReviewTransactions} />;
   const footerNote = result.refreshIncomplete
     ? "Pencocokan tersimpan, tetapi sebagian ringkasan belum berhasil dimuat ulang. Muat ulang halaman bila angka belum berubah."
     : "Riwayat pencocokan sudah diperbarui.";

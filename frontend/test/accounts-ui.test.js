@@ -324,6 +324,8 @@ ${accountEditors}`;
   assert.match(mobileTransfer, /TransactionForm/);
   assert.match(mobileTransfer, /initialType=\{TRANSACTION_TYPES\.TRANSFER\}/);
   assert.match(mobileTransfer, /initialSourceAccountId=\{selectedAccount\?\.account_id \|\| ""\}/);
+  assert.match(mobileTransfer, /canRepresentAccountTransfer/);
+  assert.doesNotMatch(mobileTransfer, /filterByOwnership/);
   assert.match(mobileTransfer, /lockType/);
   assert.match(mobileTransfer, /notifyOnSuccess=\{false\}/);
   assert.match(mobileTransfer, /presentation="mobile-transfer"/);
@@ -543,6 +545,10 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(page, /ReconciliationSubmitProgress/);
   assert.match(page, /ReconciliationResultOverlay/);
   assert.match(page, /status: "syncing"/);
+  assert.match(page, /status: "completed"/);
+  assert.match(page, /finishReconciliation = \(\) => navigate\("\/"\)/);
+  assert.match(page, /reviewReconciliationTransactions/);
+  assert.match(page, /onReviewTransactions/);
   assert.match(page, /refreshOutcomes = await Promise\.allSettled/);
   assert.match(page, /actual_balance: "", notes: ""/);
   assert.match(page, /actual_balance: nextAccount \? accountSystemBalance\(nextAccount\) : ""/);
@@ -569,6 +575,8 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(feedback, /LOCAL_PROCESS_ACTIONS\.has\(visible\.action\)/);
   assert.match(result, /FinancialSuccessOverlay/);
   assert.match(result, /ReconciliationDifferenceOverlay/);
+  assert.match(result, /Lihat transaksi rekening/);
+  assert.match(result, /onReviewTransactions/);
   assert.match(result, /refreshIncomplete/);
   assert.match(successOverlay, /MONEY_COUNT = 38/);
   assert.match(successOverlay, /MoneyRainCelebration/);

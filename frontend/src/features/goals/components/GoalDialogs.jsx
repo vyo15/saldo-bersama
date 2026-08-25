@@ -8,14 +8,14 @@ import Modal from "../../../components/common/Modal.jsx";
 import Money from "../../../components/common/Money.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { formatRupiah } from "../../../domain/money.js";
-import { filterByOwnership } from "../../../domain/ownership.js";
+import { canRepresentAccountTransfer } from "../../../domain/ownership.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 
 const accountFundsLabel = (account) => `${accountDisplayLabel(account)} · tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`;
 
 const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, createMutation, message }) => {
   const targetAccount = accounts.find((item) => item.account_id === form.account_id) || null;
-  const compatibleSource = targetAccount ? filterByOwnership(accounts, targetAccount).some((item) => item.account_id !== targetAccount.account_id) : true;
+  const compatibleSource = targetAccount ? accounts.some((item) => item.account_id !== targetAccount.account_id && canRepresentAccountTransfer(item, targetAccount)) : true;
   return <Modal
     open={open}
     onClose={close}
@@ -29,7 +29,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
       <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
       <label className="field"><span>Tanggal target</span><input required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
       <label className="field"><span>Rekening tujuan</span><select required value={form.account_id} onChange={(event) => setForm((current) => ({ ...current, account_id: event.target.value }))}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountFundsLabel(account)}</option>)}</select></label>
-      {targetAccount && !compatibleSource ? <CompactNotice className="form-grid__full" tone="info" title="Target dapat dibuat, tetapi belum dapat disetor">Tambahkan rekening sumber lain dengan kepemilikan yang sama. Setoran target selalu berupa transfer antar rekening yang berbeda.</CompactNotice> : null}
+      {targetAccount && !compatibleSource ? <CompactNotice className="form-grid__full" tone="info" title="Target dapat dibuat, tetapi belum dapat disetor">Tambahkan rekening sumber lain yang dapat dioperasikan. Setoran target selalu berupa transfer antar rekening yang berbeda.</CompactNotice> : null}
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
   </Modal>;

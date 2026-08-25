@@ -66,7 +66,7 @@ const DestinationAccounts = ({ accounts, accountBalances, form, update, errors, 
           </label>
         ))}
       </div>
-    ) : <div className={styles.emptyDestination}>Tidak ada rekening tujuan aktif dengan ruang kepemilikan yang sama.</div>}
+    ) : <div className={styles.emptyDestination}>Tidak ada rekening tujuan aktif yang kompatibel untuk transfer ini.</div>}
     {errors.destination_account_id ? <small className={styles.error}>{errors.destination_account_id}</small> : null}
   </fieldset>
 );

@@ -132,8 +132,9 @@ const ReconciliationSummary = ({ selectedAccount, preview }) => {
 };
 
 const ReconciliationForm = ({ accounts, selectedAccount, form, setForm, submitState, setSubmitState, setActualBalanceEdited, onSubmit, preview, accountSystemBalance, getDifferencePreview, parseActualBalance }) => {
-  const busy = submitState.status === "submitting" || submitState.status === "syncing";
-  const buttonLabel = submitState.status === "syncing" ? "Memperbarui..." : submitState.status === "submitting" ? "Menyimpan..." : "Simpan Pencocokan";
+  const progressing = submitState.status === "submitting" || submitState.status === "syncing";
+  const busy = progressing || submitState.status === "completed";
+  const buttonLabel = submitState.status === "completed" ? "Pencocokan tersimpan" : submitState.status === "syncing" ? "Memperbarui..." : submitState.status === "submitting" ? "Menyimpan..." : "Simpan Pencocokan";
   return (
     <form className={`form-grid ${styles.form}`} onSubmit={onSubmit} noValidate>
       <label className={`field form-grid__full ${styles.accountField}`} htmlFor="reconciliation-account">
@@ -194,13 +195,13 @@ const ReconciliationForm = ({ accounts, selectedAccount, form, setForm, submitSt
           variant="primary"
           icon={FiCheckCircle}
           type="submit"
-          loading={busy}
+          loading={progressing}
           disabled={busy || !selectedAccount || form.actual_balance === ""}
         >
           {buttonLabel}
         </Button>
       </div>
-      {busy ? <div className={`form-grid__full ${styles.progressFull}`}><ReconciliationSubmitProgress phase={submitState.status} /></div> : null}
+      {progressing ? <div className={`form-grid__full ${styles.progressFull}`}><ReconciliationSubmitProgress phase={submitState.status} /></div> : null}
     </form>
   );
 };

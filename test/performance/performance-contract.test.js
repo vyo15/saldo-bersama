@@ -252,13 +252,13 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
     async batch(statements) {
       resetMetrics.network += 1;
       resetMetrics.statements += statements.length;
-      return statements.map((statement) => ({ rows: statement.sql.includes("COUNT(*) AS count") ? [{ count: 0 }] : [] }));
+      return statements.map((statement) => ({ rows: statement.sql.includes("database_environment") ? [{ value: "development" }] : statement.sql.includes("COUNT(*) AS count") ? [{ count: 0 }] : [] }));
     },
   };
   const preview = await previewTrialDataReset(resetDb, { actor, payload: {} });
   assert.equal(preview.summary.totalRows, 0);
   assert.equal(resetMetrics.network, 1, "reset.preview harus membaca state dan preserved count dalam satu batch");
-  assert.equal(resetMetrics.statements, 24);
+  assert.equal(resetMetrics.statements, 25);
 
   const fullResetMetrics = { network: 0, statements: 0 };
   const fullResetDb = {

@@ -76,6 +76,17 @@ test("token light dan dark memenuhi kontras teks serta tombol utama", () => {
   }
 });
 
+test("border kuat untuk control dan state memenuhi kontras non-text 3:1", () => {
+  const light = blockFor(":root,");
+  const dark = blockFor(':root[data-theme="dark"]');
+  for (const [name, theme] of [["light", light], ["dark", dark]]) {
+    for (const surface of ["--surface", "--surface-elevated"]) {
+      assert.ok(contrast(token(theme, "--border-strong"), token(theme, surface)) >= 3, `Kontras border-strong ${name} gagal pada ${surface}`);
+    }
+  }
+  assert.match(componentSource, /\.confirmation-checklist__marker[^}]*border:\s*1px solid var\(--border-strong\)/s);
+});
+
 test("komponen memakai semantic foreground dan reduced motion", () => {
   assert.match(componentSource, /\.button--primary[^}]*color:\s*var\(--on-primary\)/);
   assert.match(componentSource, /\.button--danger[^}]*color:\s*var\(--on-negative\)/);

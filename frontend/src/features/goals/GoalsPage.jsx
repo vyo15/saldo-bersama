@@ -23,7 +23,7 @@ import {
 } from "./goals.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
-import { filterByOwnership } from "../../domain/ownership.js";
+import { canRepresentAccountTransfer } from "../../domain/ownership.js";
 import ManualReminderModal from "../reminders/ManualReminderModal.jsx";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
 import { GoalConfirmations, GoalCreateModal, GoalEditModal, GoalMovementModal } from "./components/GoalDialogs.jsx";
@@ -69,7 +69,7 @@ const goalMovementDraft = ({ goal, movementType, accounts, prefill }) => {
   const withdrawal = movementType === "withdrawal";
   if (withdrawal) return { goal, movement_type: movementType, amount: "", source_account_id: goal.account_id || "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "Penggunaan dana target" };
   const goalAccount = accounts.find((account) => account.account_id === goal.account_id) || null;
-  const compatible = filterByOwnership(accounts, goalAccount).filter((account) => account.account_id !== goal.account_id);
+  const compatible = accounts.filter((account) => account.account_id !== goal.account_id && canRepresentAccountTransfer(account, goalAccount));
   const preferredSource = prefill?.sourceAccountId ? compatible.find((account) => account.account_id === prefill.sourceAccountId) || null : null;
   const suggested = Math.max(0, Number(prefill?.suggestedAmount || 0));
   const remaining = Math.max(0, Number(goal.remaining_amount || 0));
@@ -83,7 +83,9 @@ const useGoalMovement = ({ accounts, resource, refreshOverview, invalidate, noti
   const [movement, setMovement] = useState(emptyMovement);
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
   const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
-  const compatibleMovementAccounts = filterByOwnership(accounts, goalAccount);
+  const compatibleMovementAccounts = goalAccount
+    ? accounts.filter((account) => canRepresentAccountTransfer(account, goalAccount))
+    : accounts;
   const openMovement = useCallback((goal, movement_type, prefill = null) => {
     setMovement(goalMovementDraft({ goal, movementType: movement_type, accounts, prefill }));
     setMovementState({ status: "idle", error: null });

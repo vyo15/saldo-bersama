@@ -96,7 +96,7 @@ const AccountCategoryFields = (p) => {
     {p.isIncome || p.isTransfer ? <DestinationAccountField form={p.form} accounts={p.compatibleDestinationAccounts} update={p.update} errors={p.errors} /> : null}
     {!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} recentTransactions={p.recentTransactions} update={p.update} errors={p.errors} /> : null}
     {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField form={p.form} envelopes={p.compatibleEnvelopes} candidates={p.allocationCandidates} onEnvelopeChange={p.onEnvelopeChange} /> : null}
-    <CostShareField visible={showCostShare} form={p.form} members={p.members} setForm={p.setForm} errors={p.errors} />
+    <CostShareField visible={showCostShare} form={p.form} members={p.members} setForm={p.setForm} onChange={p.onCostShareChange} errors={p.errors} />
   </>;
 };
 

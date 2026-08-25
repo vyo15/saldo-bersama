@@ -179,10 +179,11 @@ test("nominal, boolean, tanggal, dan formula injection divalidasi ketat", () => 
   assert.equal(safeSpreadsheetText("=SUM(A1:A2)"), "'=SUM(A1:A2)");
 });
 
-test("transfer tidak boleh melintasi kepemilikan shared/personal atau pemilik berbeda", () => {
+test("transfer shared/personal mengikuti owner personal tunggal dan menolak dua pemilik personal berbeda", () => {
   assert.deepEqual(scopeFromAccountPair({ owner_scope: "shared", owner_user_id: null }, { owner_scope: "shared", owner_user_id: null }), { scope: "shared", owner_user_id: null });
   assert.deepEqual(scopeFromAccountPair({ owner_scope: "personal", owner_user_id: "u1" }, { owner_scope: "personal", owner_user_id: "u1" }), { scope: "personal", owner_user_id: "u1" });
-  assert.throws(() => scopeFromAccountPair({ owner_scope: "shared" }, { owner_scope: "personal", owner_user_id: "u1" }), (error) => error.code === "CROSS_OWNERSHIP_TRANSFER");
+  assert.deepEqual(scopeFromAccountPair({ owner_scope: "shared" }, { owner_scope: "personal", owner_user_id: "u1" }), { scope: "personal", owner_user_id: "u1" });
+  assert.deepEqual(scopeFromAccountPair({ owner_scope: "personal", owner_user_id: "u1" }, { owner_scope: "shared" }), { scope: "personal", owner_user_id: "u1" });
   assert.throws(() => scopeFromAccountPair({ owner_scope: "personal", owner_user_id: "u1" }, { owner_scope: "personal", owner_user_id: "u2" }), (error) => error.code === "CROSS_OWNERSHIP_TRANSFER");
 });
 
