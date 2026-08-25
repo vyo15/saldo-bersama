@@ -18,4 +18,3 @@ export const ownershipLabel = (entity) => {
 };
 
 export const hasSameAssignee = (left, right) => String(left?.assignee_user_id || "") === String(right?.assignee_user_id || "");
-
