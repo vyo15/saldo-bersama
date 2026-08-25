@@ -8,7 +8,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 
 try {
   await ensureDevelopmentEnvironment({ projectRoot, interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY) });
-  await printEnvironmentProfiles({ cwd: projectRoot });
+  await printEnvironmentProfiles({ cwd: projectRoot, requireProduction: false });
 } catch (error) {
   console.error(error?.message || "Pull Vercel Development gagal.");
   process.exitCode = 1;

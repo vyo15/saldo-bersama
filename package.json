@@ -14,6 +14,7 @@
     "diagnose": "node scripts/diagnose-runtime.mjs",
     "env:status": "node scripts/environment-status.mjs",
     "env:pull:development": "node scripts/pull-development-environment.mjs",
+    "env:prepare:production": "node scripts/prepare-production-environment.mjs",
     "env:check:development": "node scripts/check-environment.mjs .env.local",
     "env:check:production": "node scripts/check-production-environment.mjs",
     "build": "npm run build --workspace saldo-bersama-frontend",

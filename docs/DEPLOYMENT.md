@@ -29,7 +29,7 @@ npm run db:bind-environment -- development
 npm run db:integrity
 ```
 
-Production (`.env.production.local`, hanya setelah backup terverifikasi):
+Production (`.env.production.local` pada workstation tepercaya; operasi mutation hanya setelah backup terverifikasi):
 
 ```bash
 npm run env:check:production

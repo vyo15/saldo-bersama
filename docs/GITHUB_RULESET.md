@@ -1,77 +1,43 @@
 # GitHub Ruleset Baseline
 
-Dokumen ini mendefinisikan setting repository yang harus diaktifkan di GitHub untuk branch `main`. File source tidak dapat mengaktifkan ruleset GitHub dengan sendirinya; verifikasi pada repository settings tetap diperlukan.
+Repository Saldo Bersama private memakai direct `main` workflow yang dijaga oleh pre-push Auto Quality Guard. File source tidak dapat mengaktifkan ruleset GitHub dengan sendirinya; setting GitHub tetap harus diverifikasi langsung.
 
 ## Target `main`
 
-Aktifkan ruleset/branch protection dengan minimum berikut:
+Baseline minimum:
 
-1. Require a pull request before merging.
-2. Require status checks to pass before merging.
-3. Required check: workflow **Quality**, job `check`.
-4. Require branch to be up to date before merging bila opsi repository mendukungnya tanpa menghambat workflow.
-5. Block force pushes.
-6. Block branch deletion.
-7. Jangan izinkan bypass untuk perubahan rutin. Emergency bypass hanya untuk pemilik repository dan harus terdokumentasi.
+1. Block force pushes.
+2. Block branch deletion.
+3. Batasi write/bypass hanya ke pemilik repository yang dipercaya.
+4. Workflow **Quality** tetap berjalan pada push ke `main` sebagai verification server-side sekunder.
+5. Pull Request tidak diwajibkan untuk workflow rutin project ini.
 
-Dependency Audit adalah scheduled/manual control dan tidak dijadikan required merge check karena bukan per-commit workflow.
+Jangan mengaktifkan rule yang memaksa PR bila tujuan repository adalah mempertahankan workflow `git push origin main` sederhana. Jika suatu hari repository menjadi multi-contributor/public, baseline ini harus dievaluasi ulang.
 
-## Source-side GitHub controls
+## Gate source-side
 
-Repository juga menjaga beberapa kontrol yang tidak bergantung pada ruleset:
-
-- workflow read-only tidak mempertahankan credential checkout setelah source tersedia (`persist-credentials: false`);
-- workflow **Quality** membatalkan run lama pada ref yang sama agar PR/main tidak menumpuk validation yang sudah superseded;
-- Dependabot memantau dependency npm dan GitHub Actions secara terpisah; update tetap masuk melalui Pull Request dan harus melewati **Quality**;
-- workflow memakai permission minimum `contents: read` kecuali ada kebutuhan reviewed yang lebih tinggi.
-
-Kontrol source di atas tidak menggantikan branch protection/ruleset. Ruleset `main` tetap harus diverifikasi langsung di GitHub Settings.
-
-## Workflow canonical
+Safety gate sebelum update `main` berada pada managed pre-push hook:
 
 ```text
-branch fix/feat/chore
+git push origin main
+  -> baca ref + SHA aktual dari stdin Git
+  -> pastikan branch aktif main
+  -> pastikan working tree clean
+  -> tolak non-fast-forward/force
   -> npm run verify
-  -> commit
-  -> push branch
-  -> Pull Request ke main
-  -> Quality PASS
-  -> review sesuai CODEOWNERS/risk
-  -> merge
-  -> main
+  -> PASS baru Git mengirim ref main
 ```
 
-Setelah merge:
+Hook ini sengaja memverifikasi **ref yang benar-benar dipush**, bukan sekadar working tree aktif. Jangan memakai `git push --no-verify`.
 
-```bash
-git switch main
-git pull origin main
-```
+GitHub workflow **Quality** tetap penting untuk mendeteksi perbedaan environment lokal/CI setelah push, tetapi bukan alasan membuat branch/PR rutin pada repository private satu-pengelola ini.
 
 ## Verification evidence
 
-Simpan bukti tanpa secret:
+Bukti operasional yang disimpan tanpa secret:
 
-- ruleset aktif untuk `main`;
-- PR required;
-- `Quality / check` required;
-- force push dan delete diblokir;
-- satu PR uji yang gagal Quality tidak dapat di-merge;
-- satu PR sehat yang lulus Quality dapat di-merge.
-
-Repository source hanya dapat menyediakan workflow dan policy. Enforcement dianggap selesai hanya setelah setting GitHub diverifikasi.
-
-## Fail-closed verification
-
-Local `pre-push` hanya quality guard dan **bukan** branch protection. Repository belum boleh diberi status "ruleset selesai" hanya karena `npm run verify` atau pre-push PASS.
-
-Verifikasi di GitHub Settings bahwa direct push ke `main` ditolak. Bukti yang valid:
-
-- ruleset menargetkan branch `main`;
-- Pull Request required;
-- required status check adalah `Quality / check`;
-- force push dan branch deletion diblokir;
-- bypass rutin tidak tersedia;
-- percobaan perubahan dari branch hanya dapat masuk melalui PR setelah Quality PASS.
-
-Jika `git push origin main` masih diterima untuk perubahan rutin, enforcement belum sesuai dokumen ini walaupun source dan hook lokal sehat. Jangan mencoba force-push untuk menguji protection.
+- force push dan deletion `main` diblokir;
+- workflow Quality berjalan pada push `main`;
+- managed pre-push hook terpasang setelah `npm ci`/`npm run dev`;
+- percobaan push saat lint/test gagal dibatalkan sebelum ref dikirim;
+- percobaan mem-push ref `main` dari branch aktif lain ditolak karena SHA/ref mismatch.

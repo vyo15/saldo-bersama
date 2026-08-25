@@ -68,4 +68,4 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Clean/UNVERIFIED ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, build/dist, coverage, cache, export/data privat, patch/diff, atau secret. `docs/UNVERIFIED_BUILD_REPORT.md` hanya boleh ada pada staging archive UNVERIFIED.
 - [ ] Setelah `npm run verify`, `npm run zip`, atau pre-push selesai baik PASS maupun gagal, generated build/test artifact dibersihkan otomatis; dependency, `.env.local`, `.vercel`, dan repository Git tetap dipertahankan. Cache Vite di `frontend/node_modules/.vite*` boleh dibersihkan karena generated dan akan dibuat ulang.
 - [ ] `git status --short` ditinjau sebelum commit.
-- [ ] Pull Request menuliskan test aktual dan docs impact; merge hanya setelah **Quality / check** PASS.
+- [ ] Delivery Git memakai `git push origin main` tanpa `--no-verify`; pre-push memverifikasi ref/SHA aktual + full gate, dan **Quality / check** server-side dipantau setelah push.

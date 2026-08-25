@@ -28,4 +28,4 @@ test domain tambahan:
 - [ ] Docs impact sudah diperiksa mengikuti docs/INDEX.md
 - [ ] Rollback/forward-fix jelas untuk perubahan berisiko
 
-PR adalah jalur canonical menuju `main`. Jangan merge sebelum workflow **Quality / check** PASS dan review/approval guarded tersedia sesuai risiko. Direct push rutin ke `main` dilarang; emergency bypass hanya mengikuti ruleset dan harus terdokumentasi.
+PR bersifat opsional untuk review kolaboratif. Workflow rutin repository private adalah `git push origin main` dengan managed pre-push fail-closed; bila PR dipakai, tetap tunggu **Quality / check** PASS dan review/approval guarded sesuai risiko.

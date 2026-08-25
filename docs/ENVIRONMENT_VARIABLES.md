@@ -1,6 +1,6 @@
 # Environment Variables
 
-Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development serta profile lokal `.env.local` (Development) dan `.env.production.local` (Production admin). Jangan menambahkan nama lain tanpa perubahan source dan review.
+Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development serta dua profile lokal pada setiap workstation tepercaya: `.env.local` (Development) dan `.env.production.local` (Production). Jangan menambahkan nama lain tanpa perubahan source dan review.
 
 ## Kebijakan environment
 
@@ -8,7 +8,7 @@ Runtime Development canonical terdiri dari **sepuluh key core wajib dan satu key
 
 - Source sekarang mewajibkan isolasi fail-closed: Development memakai `DATABASE_ENVIRONMENT=development`, Production memakai `DATABASE_ENVIRONMENT=production`, dan database harus di-bind ke nilai yang sama. Jika infrastruktur live masih memakai satu Turso database, hanya satu environment yang dapat berhasil di-bind; environment lain akan ditolak sampai database/token benar-benar dipisahkan. ADR-0007 baru dapat ditutup setelah evidence live separation tersedia.
 - Vercel **Development** menjadi source of truth bootstrap `.env.local` untuk komputer tepercaya. `.env.local` sekarang **Development-only**; `npm run dev` pada terminal interaktif selalu menarik ulang Development sebelum server dimulai agar konfigurasi antar-PC tidak drift.
-- Vercel **Production** menjadi runtime deployment production. Secret Production yang diberi atribut **Sensitive** bersifat write-only dan tidak dapat dipull kembali; source lokal untuk operasi sinkronisasi Production adalah `.env.production.local` pada komputer tepercaya.
+- Vercel **Production** menjadi runtime deployment production. Secret Production yang diberi atribut **Sensitive** bersifat write-only dan tidak dapat dipull kembali; setiap workstation tepercaya tetap mempunyai `.env.production.local` yang di-seed satu kali dari secret store canonical yang sama.
 - Vercel **Preview** dibiarkan kosong agar preview tidak pernah menulis ke database aktif secara tidak sengaja.
 - Nama key dapat terlihat dua kali di dashboard karena scope Development dan Production memang terpisah; itu bukan duplikat konflik.
 - `.env.local` hanya cache lokal terjaga. File ini tidak pernah di-commit, dimasukkan ZIP, log, issue, atau chat.
@@ -80,7 +80,7 @@ Secret/token Production harus diperlakukan sebagai secret deployment. `npm run e
 
 `.env.local` adalah cache **Development-only**. File ini wajib memakai database/token/session secret Development dan `DATABASE_ENVIRONMENT=development`; jangan pernah diarahkan ke Production dan jangan simpan `GOOGLE_OAUTH_CLIENT_SECRET` di sini. `npm run dev` menolak marker Development yang salah, database unreachable, schema yang belum siap, atau binding database yang tidak cocok sebelum server dibuka.
 
-`.env.production.local` adalah profile **Production-only** untuk operasi administrator tepercaya seperti `npm run env:push:production`. File ini tidak dipull otomatis dari Vercel karena secret Production Sensitive bersifat write-only. Setiap komputer tepercaya yang perlu mengelola Production harus di-seed satu kali dari secret store/password manager yang sah. Tooling memeriksa `DATABASE_ENVIRONMENT=production`, shared public config, dan menolak bila database host, token Turso, `SESSION_SECRET`, atau pasangan VAPID sama dengan Development yang tersedia lokal.
+`.env.production.local` adalah profile **Production-only** yang wajib ada pada PC/laptop tepercaya. `npm run dev` membuat template aman sekali bila file belum ada dan tidak pernah menimpa file existing. File ini tidak dapat dipull lengkap dari Vercel karena secret Production Sensitive bersifat write-only; isi credential Production satu kali dari secret store/password manager canonical yang sama. `npm run prod` memvalidasi `DATABASE_ENVIRONMENT=production`, shared public config, isolasi database/token/session/VAPID, Turso Production read-only, lalu Vercel Production.
 
 Jangan membuat fallback, token dummy, atau pasangan VAPID baru per komputer. Gunakan `npm run env:pull:development` untuk mengambil cache Development pusat dan `npm run env:status` untuk melihat fingerprint publik/isolasi tanpa membocorkan secret. Kedua file tetap gitignored dan tidak boleh masuk ZIP/log/chat.
 
@@ -140,9 +140,12 @@ npm run dev
 npm run prod
 ```
 
-- `npm run dev` menjalankan aplikasi lokal dengan Vercel Development + database Development. Ini satu-satunya mode lokal yang melakukan mutation harian.
-- `npm run prod` memeriksa health API/database/schema/operations dan frontend shell pada **deployment Vercel Production aktual**, lalu membuka URL canonical pada terminal interaktif. Ini sengaja bukan server `localhost` dengan credential Production: production auth bergantung pada HTTPS, Secure HttpOnly cookie, callback OAuth canonical, dan secret Sensitive yang tidak bisa dipull kembali.
-- `npm run prod:check` hanya melakukan pemeriksaan Production tanpa membuka browser. Dengan demikian kondisi “local DEV hidup tetapi Vercel Production rusak” dapat dicek eksplisit tanpa mencampur database.
+Hanya dua command ini yang perlu diingat untuk penggunaan rutin:
+
+- `npm run dev` refresh Vercel Development, menulis `.env.local` atomik, memastikan `.env.production.local` minimal sudah ada sebagai template aman pada workstation tepercaya, memeriksa Turso Development + schema/binding, lalu menjalankan localhost.
+- `npm run prod` refresh/validasi Development sebagai pembanding, mewajibkan `.env.production.local` Production yang lengkap, memeriksa isolasi DEV/PROD, menguji Turso Production secara read-only, memeriksa health Vercel Production + frontend shell, lalu membuka URL Production.
+
+`npm run prod` tetap **bukan** localhost dengan credential Production. Production auth canonical bergantung pada HTTPS, Secure HttpOnly cookie, callback OAuth server, dan Vercel Production. Command maintenance lain tetap tersedia untuk operasi khusus tetapi bukan bagian workflow harian.
 
 ## Seed/sinkronisasi Development
 

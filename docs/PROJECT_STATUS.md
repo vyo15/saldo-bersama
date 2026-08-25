@@ -19,7 +19,7 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Source terbaru + test aktual adalah sumber kebenaran.
 - Tidak ada task card/Task ID/branch automation sebagai workflow wajib.
 - Quality gate lokal canonical: `npm run verify`; `npm run zip` menjalankannya otomatis sebelum packaging dan pre-push guard menjalankannya lagi sebelum push. Handoff patch hanya berstatus final setelah gate tree final PASS pada Node 24.18.1; environment non-canonical wajib menyebut artifact candidate/unverified. Setelah setiap verification PASS maupun gagal, generated build/test artifact dan cache Vite generated dibersihkan tanpa menghapus dependency, `.env.local`, `.vercel`, atau Git metadata.
-- Setelah PASS: commit pada branch, push branch, buka Pull Request, tunggu workflow **Quality** lulus, lalu merge ke `main`. Ruleset GitHub tetap memerlukan verifikasi operasional.
+- Delivery rutin: commit pada `main` lalu `git push origin main`; pre-push memverifikasi ref/SHA aktual, clean working tree, fast-forward, dan full `npm run verify` sebelum ref dikirim. Quality GitHub tetap berjalan server-side.
 - `npm run zip` tetap menjalankan full verification. Jika PASS, ia membuat `saldo-bersama-clean.zip`. Jika verification gagal tetapi source masih canonical, ia tetap exit non-zero dan membuat `saldo-bersama-UNVERIFIED.zip` khusus diagnosis dengan `docs/UNVERIFIED_BUILD_REPORT.md` staging-only; archive UNVERIFIED bukan release/deployment artifact dan tidak menggantikan clean ZIP verified terakhir.
 - Guarded/high-risk tetap membutuhkan approval eksplisit sebelum coding/operation.
 
@@ -100,12 +100,12 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 - Reminder manual menampilkan `lastDispatch` dari queue, menolak jadwal baru selama dispatch lama masih nonterminal, dan dibatalkan atomik saat entity selesai/ditutup/diarsipkan/dihapus; integrity check memeriksa drift user/entity/queue. UI memberi warning bila Web Push perangkat belum siap tanpa menganggap penyimpanan reminder gagal.
 - Real-device Android/iOS/desktop tetap memerlukan QA operasional karena browser/OS menentukan bentuk final notification card dan lock-screen privacy.
 
-- Tooling environment sekarang memisahkan profile lokal: `.env.local` Development-only dan `.env.production.local` Production-only. `npm run dev` melakukan preflight Turso/schema/binding sebelum membuka localhost; `npm run prod` memeriksa dan membuka deployment Vercel Production aktual agar keberhasilan Development tidak dianggap bukti Production.
+- Tooling environment memisahkan dua profile yang wajib ada pada setiap workstation tepercaya: `.env.local` Development-only dan `.env.production.local` Production-only. `npm run dev` auto-refresh Development + membuat template Production sekali bila belum ada; `npm run prod` memvalidasi isolasi profile, Turso Production read-only, lalu Vercel Production aktual agar keberhasilan Development tidak dianggap bukti Production.
 - Tooling environment juga menyediakan `npm run env:pull:development` dan `npm run env:status` untuk bootstrap/troubleshooting lintas-PC tanpa menyalin secret manual. Checker Production menjaga public Firebase/Google config tetap selaras dan menolak database/token/session/VAPID yang dibagi lintas Dev/Prod; fingerprint Web Push yang ditampilkan bersifat public-only.
 
 ## Open operational risks
 
-1. GitHub `main` harus diverifikasi benar-benar memblok direct push dan mewajibkan `Quality`; source/hook lokal saja bukan enforcement server-side.
+1. GitHub `main` harus memblok force push/delete dan menjalankan workflow `Quality` pada push. Direct push normal dipertahankan untuk workflow private sederhana; jangan gunakan `--no-verify`.
 2. Source sudah memblokir cross-environment database; live Development/Production separation tetap memerlukan evidence dua database/token berbeda sebelum ADR-0007 dapat ditutup.
 3. Production schema/runtime parity dan resource Google nyata harus diverifikasi melalui runbook.
 4. Real-device Web Push dan restore drill memerlukan evidence operasional bila belum dilakukan.

@@ -3,7 +3,7 @@
 ## Pre-release
 
 - [ ] Semua perubahan yang termasuk release sudah disetujui dan validation relevan sudah selesai.
-- [ ] Perubahan masuk melalui branch + Pull Request; **Quality / check** wajib PASS sebelum merge ke `main`.
+- [ ] Commit release berada di `main`; `git push origin main` hanya dilanjutkan setelah managed pre-push memverifikasi ref/SHA aktual dan full `npm run verify` PASS. **Quality / check** server-side dipantau setelah push.
 - [ ] `npm run verify` lulus pada Node 24 canonical.
 - [ ] Untuk perubahan frontend/UI, `npm run verify` lulus dan pemeriksaan manual device/viewport relevan sudah dilakukan; tidak ada automated browser gate.
 - [ ] Migration/schema impact direview bila relevan.

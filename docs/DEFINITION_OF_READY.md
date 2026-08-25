@@ -11,6 +11,6 @@ Perubahan siap dikerjakan bila:
 - perubahan guarded sudah melalui source review;
 - plan sudah disetujui user bila approval diperlukan.
 
-Branch dan Pull Request bukan prasyarat **Definition of Ready**, tetapi perubahan yang akan masuk `main` tetap mengikuti delivery workflow canonical repository: branch, Pull Request, dan Quality gate. Task card lintas-agent sudah dipensiunkan dan bukan requirement aktif.
+Branch dan Pull Request bukan prasyarat **Definition of Ready**. Delivery canonical repository private ini tetap `git push origin main` dengan managed pre-push fail-closed dan workflow Quality server-side; task card lintas-agent sudah dipensiunkan dan bukan requirement aktif.
 
 Perubahan guarded tetap membutuhkan approval eksplisit setelah source review.

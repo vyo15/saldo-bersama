@@ -26,4 +26,4 @@
 6. `docs/INDEX.md` wajib menunjuk dokumen canonical dan lifecycle ini.
 7. `TEST_PLAN.md` menyimpan contract test/domain scenario; `QA_CHECKLIST.md` hanya checklist evergreen. Keduanya tidak boleh menjadi jurnal patch, baseline tanggal lama, atau daftar `[x]` dari pekerjaan sebelumnya.
 8. Feature history berada di Git/`CHANGELOG.md`; detail regression yang masih aktif berada di `TEST_PLAN.md`, bukan diduplikasi di banyak dokumen.
-9. Governance test memastikan reference Markdown penting, routing perubahan, lifecycle QA docs, dan workflow branch/Pull Request + Quality tidak drift.
+9. Governance test memastikan reference Markdown penting, routing perubahan, lifecycle QA docs, dan workflow direct-main pre-push + Quality tidak drift.

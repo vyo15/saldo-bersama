@@ -30,6 +30,8 @@ npm run verify
 npm run zip
 ```
 
+Untuk workflow harian, pengguna tidak perlu menjalankan gate manual sebelum setiap delivery: `git push origin main` memanggil managed pre-push yang membaca ref/SHA aktual, menolak dirty/non-fast-forward/mismatch, lalu menjalankan full verification sebelum ref dikirim.
+
 `npm run verify` adalah full gate tunggal: source validation, lint/syntax, frontend regression, production build, build budget, dan seluruh backend regression dengan coverage. Backend suite tidak dijalankan dua kali, dan guard security/governance tetap tercakup oleh suite canonical. `npm run zip` memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full verification sebelum packaging. PASS menghasilkan `saldo-bersama-clean.zip`; failure tetap menghasilkan exit non-zero, tetapi bila source canonical masih valid dibuat `saldo-bersama-UNVERIFIED.zip` diagnostik dengan laporan tersanitasi staging-only. Archive UNVERIFIED tidak boleh dipakai untuk release/deploy. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` tetap dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung setelah `npm run verify`, sehingga full verification tidak diduplikasi.
 
 
@@ -331,7 +333,7 @@ Regression wajib membuktikan:
 - `npm run env:push:development -- --settings-only` wajib menyinkronkan Web Push dan Google bridge yang aktif tanpa menyentuh core environment.
 - Setelah `npm run env:push:production`, deployment Production baru wajib dibuat. Bundle lama tidak boleh dianggap menggunakan key baru.
 - `npm run dev` wajib fail-closed sebelum membuka localhost bila Vercel Development memiliki `DATABASE_ENVIRONMENT` selain `development`, Turso Development tidak reachable, schema bukan v13, atau binding database bukan Development.
-- `.env.local` tidak boleh memuat `GOOGLE_OAUTH_CLIENT_SECRET`; operasi `env:push:production` wajib membaca `.env.production.local` dan menolak database host/token Turso atau `SESSION_SECRET` yang sama dengan profile Development lokal.
+- `.env.local` tidak boleh memuat `GOOGLE_OAUTH_CLIENT_SECRET`; setiap workstation tepercaya mempunyai `.env.production.local`. `npm run dev` hanya boleh membuat template Production tanpa menyalin secret DEV, sedangkan `npm run prod` wajib menolak database host/token Turso, `SESSION_SECRET`, atau VAPID yang sama dengan Development dan melakukan check Production read-only sebelum membuka Vercel.
 - Operasi database harus profile-aware: `db:migrate`, `db:bind-environment`, dan `db:integrity` default ke `.env.local` Development; target `production` wajib membaca `.env.production.local`, dan migration harus menolak binding existing lintas-environment sebelum mutation.
 - `npm run prod:check` wajib memverifikasi `/api/health` Production berstatus `ok` dan frontend shell canonical reachable. `npm run prod` menjalankan check yang sama sebelum membuka deployment Production aktual; localhost tidak diperlakukan sebagai bukti OAuth/session Production.
 - Desktop Chrome/Edge dan Android Chrome: Aktifkan, izin granted, register server, verifikasi otomatis, click membuka `/pengaturan/notifikasi`, Nonaktifkan, dan register ulang.

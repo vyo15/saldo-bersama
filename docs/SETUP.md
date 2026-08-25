@@ -76,8 +76,9 @@ Alur `npm run dev` pada terminal interaktif:
 7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key Production-only salah ditempatkan pada Development/cache lokal.
 8. Memvalidasi sepuluh key core, `DATABASE_ENVIRONMENT=development`, dan satu grup Web Push lengkap/valid.
 9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
-10. Memeriksa Turso Development benar-benar reachable serta schema/binding siap.
-11. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
+10. Memastikan `.env.production.local` sudah ada; jika belum, membuat template Production aman sekali tanpa menyalin credential DEV.
+11. Memeriksa Turso Development benar-benar reachable serta schema/binding siap.
+12. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
 
 Refresh Development setiap start disengaja agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Bila login, link, pull, atau validasi gagal, `.env.local` lama dipertahankan tetapi server tidak dijalankan. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
@@ -120,16 +121,16 @@ npm run diagnose
 
 `env:status` hanya menampilkan fingerprint public key, bukan private key/token. `diagnose` memvalidasi pasangan key dan menampilkan `Web Push: ready` serta hasil verifikasi Push terakhir bila audit tersedia. Setelah Development terisi, komputer lain cukup menjalankan `npm run dev`. Tidak perlu copy/edit `.env.local` per perangkat. Izin notifikasi browser tetap harus diberikan satu kali oleh pengguna pada setiap browser/perangkat.
 
-Production tetap terpisah. Siapkan `.env.production.local` satu kali pada komputer tepercaya dari secret store yang sah, lalu:
+Production tetap terpisah. Pada setiap PC/laptop tepercaya, `npm run dev` membuat `.env.production.local` template aman satu kali bila belum ada. Isi credential Production canonical yang sama dari secret store yang sah; file existing tidak pernah ditimpa otomatis.
+
+Untuk penggunaan harian cukup:
 
 ```bash
-npm run env:check:production
-npm run env:push:production
+npm run dev
+npm run prod
 ```
 
-Command Production tidak lagi membaca `.env.local`. Tooling memeriksa marker Production, shared public config, serta isolasi host/token Turso, `SESSION_SECRET`, dan pasangan VAPID dari Development sebelum sinkronisasi. Setelah Production berubah, buat deployment Production baru. `GOOGLE_OAUTH_CLIENT_SECRET` dan secret Production lain tetap disinkronkan sebagai Sensitive; Preview dibiarkan kosong.
-
-Untuk penggunaan harian, `npm run dev` menjalankan Development lokal sedangkan `npm run prod` memeriksa lalu membuka **Vercel Production aktual**. Kita sengaja tidak membuat localhost menggunakan database Production karena itu tidak mereplikasi Secure cookie/server OAuth dan meningkatkan risiko mutation Production dari mesin lokal.
+`npm run prod` otomatis memeriksa profile DEV/PROD, isolasi host/token Turso, `SESSION_SECRET`, pasangan VAPID, Turso Production read-only, dan Vercel Production aktual. Command sinkronisasi `env:push:*`, migration, backup/restore, dan diagnosis tetap hanya untuk maintenance/runbook khusus. Kita sengaja tidak membuat localhost memakai database Production karena itu tidak mereplikasi Secure cookie/server OAuth dan meningkatkan risiko mutation Production dari mesin lokal.
 
 Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local`, `.env.production.local`, atau `.vercel`.
 

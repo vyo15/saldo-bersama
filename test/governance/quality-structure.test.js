@@ -98,8 +98,8 @@ test("document lifecycle labels retired task archive as historical and branch/PR
   const lifecycle = await source("docs/DOCUMENT_LIFECYCLE.md");
   for (const label of ["Canonical", "Snapshot", "Runbook", "Historical", "Template"]) assert.match(lifecycle, new RegExp(label, "i"));
   assert.match(lifecycle, /docs\/tasks\/archive\//);
-  assert.match(await source("docs/GIT_WORKFLOW.md"), /git push -u origin HEAD/);
-  assert.match(await source("docs/GITHUB_RULESET.md"), /Require a pull request before merging/);
+  assert.match(await source("docs/GIT_WORKFLOW.md"), /git push origin main/);
+  assert.match(await source("docs/GITHUB_RULESET.md"), /Block force pushes/);
 });
 
 test("quality docs memakai routing perubahan, regression behavior, dan checklist evergreen", async () => {

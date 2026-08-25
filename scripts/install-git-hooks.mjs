@@ -13,7 +13,7 @@ const gitOutput = (args, cwd) => execFileSync("git", args, {
   stdio: ["ignore", "pipe", "ignore"],
 }).trim();
 
-const managedHookContent = () => `#!/bin/sh\n# ${MANAGED_PRE_PUSH_MARKER}\nset -eu\nrepo_root="$(git rev-parse --show-toplevel)"\ncd "$repo_root"\nexec node scripts/pre-push-verify.mjs\n`;
+const managedHookContent = () => `#!/bin/sh\n# ${MANAGED_PRE_PUSH_MARKER}\nset -eu\nrepo_root="$(git rev-parse --show-toplevel)"\ncd "$repo_root"\nexec node scripts/pre-push-verify.mjs "$@"\n`;
 
 export const installGitHooks = async ({ projectRoot = defaultRoot, logger = console } = {}) => {
   let hooksDirectory;

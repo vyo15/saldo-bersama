@@ -21,10 +21,10 @@ request
   -> patch kecil
   -> validation
   -> review diff
-  -> commit pada branch
-  -> push branch + Pull Request
-  -> Quality PASS + review
-  -> merge ke main
+  -> commit pada main
+  -> git push origin main
+  -> pre-push verify PASS
+  -> Quality server-side berjalan
   -> clean ZIP bila diperlukan
 ```
 
@@ -42,11 +42,11 @@ Untuk bug/regression, test harus membuktikan behavior yang rusak. Jangan memakai
 
 Beberapa chat/tab boleh melakukan audit atau menyiapkan patch paralel bila scope tidak overlap. Karena user bekerja dari satu folder fisik, **penerapan patch dilakukan serial**: patch A -> validate/commit/push -> patch B.
 
-Tidak ada task registry atau branch automation. Branch dibuat manual per perubahan dan koordinasi scope dilakukan melalui plan serta diff source aktual.
+Tidak ada task registry atau branch automation. Workflow rutin tetap di `main`; koordinasi scope dilakukan melalui plan serta diff source aktual.
 
 ### 4. Guarded changes
 
-Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contract, saldo/transfer/audit/idempotency, backup/restore/import/purge, env/secret/deployment, serta trust-boundary/security tooling. Guarded change tetap memakai branch/PR setelah approval; pengaman utama adalah review + test + required Quality + fail-closed runtime contract.
+Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contract, saldo/transfer/audit/idempotency, backup/restore/import/purge, env/secret/deployment, serta trust-boundary/security tooling. Guarded change tetap membutuhkan approval + review + test. Delivery rutin tetap `git push origin main`, tetapi operasi live destructive/migration tidak pernah diotomatisasi oleh push.
 
 ### 5. Validation
 
@@ -78,17 +78,15 @@ npm run db:integrity   # hanya bila operasi DB memang disetujui
 
 ### 6. Git delivery
 
-Setelah validation PASS:
+Setelah validation PASS atau saat pre-push akan menjalankan validation canonical:
 
 ```bash
-git status --short
-git switch -c fix/deskripsi-singkat
-git add -A
+git add .
 git commit -m "type: deskripsi perubahan"
-git push -u origin HEAD
+git push origin main
 ```
 
-Buat Pull Request ke `main`. Workflow **Quality** wajib lulus dan ruleset mengikuti `GITHUB_RULESET.md` sebelum merge.
+Pre-push membaca ref/SHA aktual dari Git, menolak branch/ref mismatch, dirty working tree, non-fast-forward/force, lalu menjalankan full `npm run verify`. GitHub **Quality** tetap berjalan pada `main` sebagai verification server-side sekunder.
 
 ### 7. Changed-files ZIP
 

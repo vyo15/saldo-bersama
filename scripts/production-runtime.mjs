@@ -1,11 +1,18 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { ensureDevelopmentEnvironment } from "./bootstrap-development-env.mjs";
+import { checkProductionEnvironment } from "./check-production-environment.mjs";
+import { loadDatabaseProfile } from "./database-profile.mjs";
+import { ensureProductionLocalProfile } from "./production-local-profile.mjs";
+import { getDatabase } from "../api/_lib/db/httpClient.js";
+import { readSchemaStatus } from "../api/_lib/db/schema.js";
 
 export const PRODUCTION_ORIGIN = "https://saldo-bersama.vercel.app";
 const HEALTH_URL = `${PRODUCTION_ORIGIN}/api/health`;
 const REQUEST_TIMEOUT_MS = 12_000;
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const fetchWithTimeout = async (fetchImpl, url, options = {}) => {
   const controller = new AbortController();
@@ -44,6 +51,48 @@ export const checkProductionRuntime = async ({ fetchImpl = fetch } = {}) => {
   return { origin: PRODUCTION_ORIGIN, serviceStatus };
 };
 
+export const checkProductionDatabaseProfile = async ({
+  root = projectRoot,
+  databaseFactory = getDatabase,
+  schemaReader = readSchemaStatus,
+} = {}) => {
+  await loadDatabaseProfile({ root, environment: "production" });
+  const database = databaseFactory();
+  if (!await database.health()) {
+    throw Object.assign(new Error("Turso Production dari .env.production.local tidak dapat dihubungi."), { code: "PRODUCTION_DATABASE_UNREACHABLE" });
+  }
+  const schema = await schemaReader(database, { force: true });
+  if (!schema.ready) {
+    throw Object.assign(new Error(`Turso Production belum siap: schema v${schema.version}/${schema.expectedVersion}; binding=${schema.databaseEnvironment}; expected=${schema.expectedEnvironment}.`), {
+      code: "PRODUCTION_DATABASE_NOT_READY",
+      schema,
+    });
+  }
+  console.log(`Turso Production local profile: reachable; schema v${schema.version}; binding=${schema.databaseEnvironment}`);
+  return schema;
+};
+
+export const prepareTrustedProductionRuntime = async ({
+  root = projectRoot,
+  interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY),
+  environmentEnsurer = ensureDevelopmentEnvironment,
+  productionProfileEnsurer = ensureProductionLocalProfile,
+  productionEnvironmentChecker = checkProductionEnvironment,
+  productionDatabaseChecker = checkProductionDatabaseProfile,
+} = {}) => {
+  await environmentEnsurer({ projectRoot: root, interactive });
+  const productionProfile = await productionProfileEnsurer({ projectRoot: root });
+  if (productionProfile.created) {
+    throw Object.assign(new Error(".env.production.local sudah dibuat. Isi credential Production canonical yang sama seperti workstation tepercaya lain, lalu jalankan kembali `npm run prod`."), {
+      code: "PRODUCTION_PROFILE_SETUP_REQUIRED",
+      productionPath: productionProfile.productionPath,
+    });
+  }
+  await productionEnvironmentChecker({ cwd: root });
+  await productionDatabaseChecker({ root });
+  return productionProfile;
+};
+
 export const openProductionInBrowser = ({ platform = process.platform, spawnImpl = spawn } = {}) => {
   if (!process.stdout.isTTY) return false;
   let command;
@@ -63,15 +112,24 @@ export const openProductionInBrowser = ({ platform = process.platform, spawnImpl
   return true;
 };
 
+export const runProductionRuntime = async ({
+  root = projectRoot,
+  open = false,
+  prepare = prepareTrustedProductionRuntime,
+  runtimeCheck = checkProductionRuntime,
+} = {}) => {
+  await prepare({ root });
+  const status = await runtimeCheck();
+  if (open) {
+    const opened = openProductionInBrowser();
+    if (!opened) console.log("Buka URL Production di browser dari terminal interaktif.");
+  }
+  return status;
+};
+
 const isCli = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isCli) {
-  checkProductionRuntime()
-    .then(() => {
-      if (process.argv.includes("--open")) {
-        const opened = openProductionInBrowser();
-        if (!opened) console.log("Buka URL Production di browser dari terminal interaktif.");
-      }
-    })
+  runProductionRuntime({ open: process.argv.includes("--open") })
     .catch((error) => {
       console.error(error?.message || "Production check gagal.");
       process.exitCode = 1;

@@ -23,7 +23,7 @@ BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, A
 9. Jangan mass-format/refactor di luar scope.
 10. Jalankan targeted regression lebih dulu, lalu validation penuh dari tree **setelah patch final**; jangan mengklaim PASS dari tree versi sebelumnya.
 11. Artifact patch tidak boleh disebut **final/ready/PASS** sebelum `npm run verify` atau `npm run zip` benar-benar PASS pada Node canonical `24.18.1`. Bila environment agent tidak dapat menjalankan Node canonical/build native, artifact hanya boleh disebut **candidate/unverified**, dan limitation wajib ditulis jelas.
-12. Setelah validation PASS, gunakan branch + Pull Request: `git add -A`, `git commit`, `git push -u origin HEAD`, tunggu workflow **Quality** PASS, lalu merge ke `main` sesuai ruleset.
+12. Setelah validation PASS, delivery canonical repository private ini adalah commit pada `main` lalu `git push origin main`; managed pre-push wajib memverifikasi ref/SHA aktual + working tree clean + fast-forward dan menjalankan `npm run verify` sebelum ref dikirim. Jangan memakai `--no-verify`/force push.
 13. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
 
 Tidak ada lagi task card, Task ID, branch otomatis, atau `task:finish`. Beberapa ChatGPT tab boleh melakukan review/menyiapkan patch paralel, tetapi satu working folder user harus menerima patch secara **serial** agar perubahan tidak saling menimpa.

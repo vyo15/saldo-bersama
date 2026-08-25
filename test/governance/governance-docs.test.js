@@ -95,16 +95,15 @@ test("README, AGENTS, and documentation index contain no broken local Markdown r
   }
 });
 
-test("branch + Pull Request workflow is canonical and retired task automation stays absent", () => {
+test("direct main workflow memakai pre-push fail-closed dan retired task automation tetap absent", () => {
   const packageJson = JSON.parse(read("package.json"));
   const combined = [read("README.md"), read("AGENTS.md"), read("docs/WORKFLOW.md"), read("docs/GIT_WORKFLOW.md"), read("docs/GITHUB_RULESET.md"), read("docs/DEFINITION_OF_DONE.md")].join("\n");
-  assert.match(combined, /git add -A/);
-  assert.match(combined, /git push -u origin HEAD/);
-  assert.match(combined, /Pull Request/);
+  assert.match(combined, /git add \.?/);
+  assert.match(combined, /git push origin main/);
+  assert.match(combined, /pre-push/i);
   assert.match(combined, /Quality/);
-  assert.doesNotMatch(read("docs/GIT_WORKFLOW.md"), /git push origin main/);
-  assert.doesNotMatch(read("docs/DEFINITION_OF_DONE.md"), /dipush ke `main`/i);
-  assert.match(read("docs/DEFINITION_OF_DONE.md"), /Pull Request.*Quality.*merge/is);
+  assert.doesNotMatch(read("docs/GIT_WORKFLOW.md"), /git push -u origin HEAD/);
+  assert.doesNotMatch(read("docs/GIT_WORKFLOW.md"), /Pull Request.*canonical/is);
   assert.equal(packageJson.scripts["task:check"], undefined);
   assert.equal(packageJson.scripts["task:list"], undefined);
   assert.equal(packageJson.scripts["task:finish"], undefined);
@@ -112,11 +111,11 @@ test("branch + Pull Request workflow is canonical and retired task automation st
   retiredTaskFiles.forEach((relative) => assert.equal(exists(relative), false, `Retired task file returned: ${relative}`));
 });
 
-test("PR template mewajibkan Quality dan tidak mengizinkan direct push rutin ke main", () => {
+test("PR template tetap tersedia untuk review opsional tanpa mengganti direct main workflow", () => {
   const template = read(".github/PULL_REQUEST_TEMPLATE.md");
   assert.match(template, /Quality \/ check/);
-  assert.match(template, /Direct push rutin ke `main` dilarang/);
-  assert.doesNotMatch(template, /PR bersifat opsional/);
+  assert.match(template, /PR bersifat opsional/);
+  assert.match(template, /git push origin main/);
 });
 
 test("documentation index exposes product boundaries and guarded delivery workflow", () => {

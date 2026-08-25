@@ -19,28 +19,28 @@ Konvensi nama mengikuti peran: komponen React `PascalCase.jsx`, hook `useCamelCa
 
 Ikuti `docs/CODE_MAINTAINABILITY.md`. Reviewer harus memastikan extraction benar-benar mengurangi responsibility/coupling, bukan hanya memindahkan baris. Comment dipakai untuk rationale/invariant non-obvious; business rule kritis tidak boleh diduplikasi demi membuat component atau service tampak lebih sederhana. Guarded refactor wajib menjaga public facade/API, authorization, saldo, idempotency, lifecycle, dan recovery semantics.
 
-## Validation
+## Validation dan delivery
 
-Setelah setiap patch, jalankan full local gate:
+Quality gate canonical tetap:
 
 ```bash
 npm run verify
 ```
 
-`npm run verify` tidak reinstall dependency. Ia melakukan preflight Node/dependency lalu menjalankan quality gate inti dan guard regression. Patch/handoff tidak dianggap final sebelum gate ini PASS pada Node `24.18.1`; hasil dari environment lain harus diberi label candidate/unverified. Jalankan test domain tambahan bila perubahan menyentuh auth, saldo, transfer, idempotency, import, backup/restore, notifikasi, atau security. UI/responsive tetap diverifikasi manual pada perangkat yang relevan; browser automation tidak memblokir quality gate.
-
-Gunakan `npm ci` hanya untuk bootstrap/reinstall dependency atau clean CI, bukan sebelum setiap validation.
-
-## Commit dan delivery
-
-Setelah validation PASS:
+Namun untuk workflow rutin pengguna tidak perlu menjalankannya manual sebelum setiap push karena managed pre-push hook menjalankannya otomatis pada:
 
 ```bash
-git status --short
-git switch -c fix/deskripsi-singkat
-git add -A
-git commit -m "type: deskripsi perubahan"
-git push -u origin HEAD
+git push origin main
 ```
 
-Buat Pull Request ke `main`. Workflow **Quality** wajib lulus sebelum merge sesuai `docs/GITHUB_RULESET.md`. Panduan lengkap ada di `docs/GIT_WORKFLOW.md`.
+Urutan rutin:
+
+```bash
+git add .
+git commit -m "type: deskripsi perubahan"
+git push origin main
+```
+
+Push hanya dilanjutkan bila ref `main` yang akan dikirim sama dengan `HEAD`, working tree bersih, push fast-forward, dan full verification PASS pada Node `24.18.1`. Jangan memakai `--no-verify` atau force push.
+
+`npm ci` hanya untuk bootstrap/reinstall dependency atau clean CI, bukan sebelum setiap validation. Test domain tambahan tetap wajib bila perubahan menyentuh auth, saldo, transfer, idempotency, import, backup/restore, notifikasi, atau security. UI/responsive tetap diverifikasi manual pada perangkat yang relevan.

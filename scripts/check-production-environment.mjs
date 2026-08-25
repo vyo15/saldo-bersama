@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { parseEnvironmentText } from "./runtime-environment.mjs";
+import { developmentEnvironmentStatus, parseEnvironmentText } from "./runtime-environment.mjs";
 import { validateProductionEnvironment } from "./push-vercel-production-env.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -101,9 +101,21 @@ export const checkProductionEnvironment = async ({
     throw Object.assign(new Error(`Profile Production lokal tidak valid — ${validationMessages(productionStatus).join("; ")}.`), { code: "PRODUCTION_LOCAL_ENV_INVALID", ...productionStatus });
   }
 
-  let development = {};
-  try { development = parseEnvironmentText(await readFile(developmentPath, "utf8")); }
-  catch (error) { if (error?.code !== "ENOENT") throw error; }
+  const developmentSource = await readFile(developmentPath, "utf8").catch((error) => {
+    if (error?.code === "ENOENT") {
+      throw Object.assign(new Error(".env.local belum tersedia. Workstation tepercaya wajib mempunyai profile Development dan Production."), { code: "DEVELOPMENT_LOCAL_ENV_NOT_FOUND" });
+    }
+    throw error;
+  });
+  const development = parseEnvironmentText(developmentSource);
+  const developmentStatus = developmentEnvironmentStatus(development);
+  if (!developmentStatus.complete) {
+    throw Object.assign(new Error(".env.local bukan profile Development canonical yang lengkap."), {
+      code: "DEVELOPMENT_LOCAL_ENV_INVALID",
+      missing: developmentStatus.missing,
+      invalid: developmentStatus.invalid,
+    });
+  }
   const isolation = environmentIsolationStatus({ development, production });
   if (!isolation.valid) {
     throw Object.assign(new Error(`Isolasi Development/Production tidak valid — ${isolationMessages(isolation.issues).join("; ")}.`), { code: "ENVIRONMENT_ISOLATION_INVALID", issues: isolation.issues });
@@ -117,7 +129,7 @@ export const checkProductionEnvironment = async ({
   console.log("Database/session/Web Push isolation: Development/Production terpisah");
   console.log("Shared public config: aligned");
   console.log("Production secret source: local trusted profile; tidak dipull dari Vercel Sensitive");
-  return { productionStatus, isolation, shared };
+  return { developmentStatus, productionStatus, isolation, shared };
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

@@ -128,9 +128,9 @@ export const printEnvironmentProfiles = async ({ cwd = projectRoot } = {}) => {
   }
 
   if (!result.production.exists) {
-    console.log("Production admin profile: .env.production.local tidak ada (normal pada komputer non-admin). npm run prod tetap dapat mengecek Production live tanpa secret lokal.");
+    console.log("Production: .env.production.local belum ada (SETUP REQUIRED pada workstation tepercaya). Jalankan npm run dev atau npm run prod untuk membuat template aman.");
   } else {
-    printProfile("Production admin (.env.production.local)", result.productionSummary);
+    printProfile("Production (.env.production.local)", result.productionSummary);
   }
 
   if (result.isolation) {
@@ -140,7 +140,9 @@ export const printEnvironmentProfiles = async ({ cwd = projectRoot } = {}) => {
     console.log(`Shared public config: ${result.shared.valid ? "aligned" : `DRIFT (${result.shared.mismatched.join(", ")})`}`);
   }
 
-  const invalid = (result.development.exists && !result.developmentSummary.valid)
+  const invalid = !result.development.exists
+    || !result.production.exists
+    || (result.development.exists && !result.developmentSummary.valid)
     || (result.production.exists && !result.productionSummary.valid)
     || (result.isolation && !result.isolation.valid)
     || (result.shared && !result.shared.valid);

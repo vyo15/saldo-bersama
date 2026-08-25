@@ -68,36 +68,25 @@ npm run verify
 Command harian sengaja dibuat ringkas:
 
 ```bash
-npm run dev                 # Development lokal → Vercel Development + Turso Development
-npm run prod                # cek + buka Vercel Production aktual
-npm run prod:check          # health Production tanpa membuka browser
-npm run env:pull:development # tarik/validasi Vercel Development tanpa membuka server
-npm run env:status          # status Dev/Prod lokal aman tanpa mencetak secret
-npm run diagnose            # diagnosis Development lokal/integrasi; fail bila DB/schema belum siap
-npm run lint      # lint + syntax terarah
-npm run test      # frontend + backend test tanpa coverage gate
-npm run build     # production build frontend
-npm run verify    # full quality gate canonical
-npm run zip       # verify + clean ZIP; gagal -> ZIP diagnostik UNVERIFIED
+npm run dev   # Development lokal → auto-pull Vercel Development + Turso Development
+npm run prod  # validasi profile Production lokal + Turso Production + Vercel Production, lalu buka browser
 ```
+
+Untuk pemakaian harian cukup dua command di atas. Command `verify`, `zip`, database, environment sync, dan diagnosis tetap tersedia untuk quality gate/maintenance, tetapi tidak perlu dihafal untuk penggunaan rutin.
 
 `npm ci` hanya dipakai untuk clone/bootstrap baru, perubahan package/lockfile, dependency hilang/rusak, atau clean runner CI. Jangan menjalankan `npm ci` sebagai kebiasaan setelah setiap patch.
 
 ## Git harian
 
-Workflow canonical memakai branch + Pull Request agar workflow **Quality** menjadi gate sebelum `main` berubah:
+Workflow canonical repository private ini memakai `main` langsung dengan pre-push fail-closed:
 
 ```bash
-git status --short
-npm run verify
-
-git switch -c fix/deskripsi-singkat
-git add -A
+git add .
 git commit -m "fix: deskripsi perubahan"
-git push -u origin HEAD
+git push origin main
 ```
 
-Buat Pull Request ke `main`, tunggu **Quality** PASS, lalu merge sesuai `docs/GITHUB_RULESET.md`. Setelah merge jalankan `git switch main && git pull origin main`. Tidak ada lagi task card, Task ID, branch otomatis, `task:finish`, `task:check`, atau `task:list`.
+Managed pre-push hook memverifikasi bahwa branch aktif/ref/SHA yang benar-benar dikirim semuanya `main`, working tree bersih, push fast-forward, lalu menjalankan full `npm run verify`. Jika satu gate gagal, push dibatalkan sebelum ref dikirim. GitHub **Quality** tetap berjalan setelah push sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify` atau force push.
 
 ## Database
 
