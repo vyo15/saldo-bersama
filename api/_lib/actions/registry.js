@@ -10,7 +10,7 @@ import { createTransaction, updateTransaction, cancelTransaction, restoreTransac
 import { backupActivityStatement, enqueueIntegration, integrationStatus, integrationStatusStatement, presentIntegrationStatus } from "../services/integrations.js";
 import {
   archiveAccount, archiveCategory, createAccount, createCategory, deleteUnusedAccount, deleteUnusedCategory, listAccounts, listArchivedData,
-  listCategories, previewAccountLifecycle, previewCategoryArchive, restoreAccount, restoreCategory, updateAccount,
+  listCategories, listMasterDataRequests, previewAccountLifecycle, previewCategoryArchive, requestAccountCreation, requestCategoryCreation, restoreAccount, restoreCategory, reviewMasterDataRequest, updateAccount,
   updateCategory,
 } from "../services/masterData.js";
 import {
@@ -30,6 +30,7 @@ import {
   listReconciliations, monthlyReport, previewClosePeriod, reopenPeriod,
 } from "../services/reporting/index.js";
 import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../services/users.js";
+import { listTransferRequests, requestSharedToPersonalTransfer, reviewTransferRequest } from "../services/transferRequests.js";
 import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
 import { operationalHealthStatement, presentOperationalHealth, presentSchedulerHealth } from "../services/operationalHealth.js";
 
@@ -92,6 +93,7 @@ const ACTION_HANDLERS = Object.freeze({
   "archive.list": listArchivedData,
   "dashboard.overview": dashboardOverview,
   "accounts.list": listAccounts,
+  "accounts.requestCreate": requestAccountCreation,
   "accounts.create": createAccount,
   "accounts.update": updateAccount,
   "accounts.previewLifecycle": previewAccountLifecycle,
@@ -99,12 +101,18 @@ const ACTION_HANDLERS = Object.freeze({
   "accounts.restore": restoreAccount,
   "accounts.deleteUnused": deleteUnusedAccount,
   "categories.list": listCategories,
+  "categories.requestCreate": requestCategoryCreation,
   "categories.create": createCategory,
   "categories.update": updateCategory,
   "categories.previewArchive": previewCategoryArchive,
   "categories.archive": archiveCategory,
   "categories.restore": restoreCategory,
   "categories.deleteUnused": deleteUnusedCategory,
+  "masterDataRequests.list": listMasterDataRequests,
+  "masterDataRequests.review": reviewMasterDataRequest,
+  "transferRequests.list": listTransferRequests,
+  "transferRequests.request": requestSharedToPersonalTransfer,
+  "transferRequests.review": reviewTransferRequest,
   "transactions.list": listTransactions,
   "transactions.create": createTransaction,
   "transactions.update": updateTransaction,

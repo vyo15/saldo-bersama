@@ -100,8 +100,8 @@ const DashboardSurfaces = ({ mobileLayout, displayOverview, bootstrap, dashboard
   return (
     <Suspense fallback={<LoadingScreen variant="content" label="Menyiapkan ringkasan..." />}>
       {mobileLayout
-        ? <MobileFinanceDashboard overview={displayOverview} viewModel={dashboardViewModel} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} isRefreshing={isRefreshing} onOpenTransactionDetail={openMobileTransactionDetail} />
-        : <DesktopFinanceDashboard overview={displayOverview} bootstrap={bootstrap} viewModel={dashboardViewModel} displayName={displayName} selectedAccountId={desktopAccountId} onSelectAccount={(accountId) => { setDesktopAccountId(accountId); setters.setSelectedTransactionId(""); }} categoryFilter={filters.categoryFilter} setCategoryFilter={setters.setCategoryFilter} typeFilter={filters.typeFilter} setTypeFilter={setters.setTypeFilter} searchTerm={filters.searchTerm} setSearchTerm={setters.setSearchTerm} selectedTransactionId={filters.selectedTransactionId} setSelectedTransactionId={setters.setSelectedTransactionId} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} onOpenTransaction={() => openTransactionComposer()} />}
+        ? <MobileFinanceDashboard overview={displayOverview} viewModel={dashboardViewModel} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} isRefreshing={isRefreshing} onOpenTransactionDetail={openMobileTransactionDetail} setupContent={<Suspense fallback={null}><FinancialSetupChecklist bootstrap={bootstrap} overview={displayOverview} user={user} /></Suspense>} />
+        : <DesktopFinanceDashboard overview={displayOverview} bootstrap={bootstrap} viewModel={dashboardViewModel} displayName={displayName} selectedAccountId={desktopAccountId} onSelectAccount={(accountId) => { setDesktopAccountId(accountId); setters.setSelectedTransactionId(""); }} categoryFilter={filters.categoryFilter} setCategoryFilter={setters.setCategoryFilter} typeFilter={filters.typeFilter} setTypeFilter={setters.setTypeFilter} searchTerm={filters.searchTerm} setSearchTerm={setters.setSearchTerm} selectedTransactionId={filters.selectedTransactionId} setSelectedTransactionId={setters.setSelectedTransactionId} balanceVisible={balanceVisible} onToggleBalance={() => setBalanceVisible((current) => !current)} onRefresh={refreshOverview} onOpenTransaction={() => openTransactionComposer()} setupContent={<Suspense fallback={null}><FinancialSetupChecklist bootstrap={bootstrap} overview={displayOverview} user={user} /></Suspense>} />}
     </Suspense>
   );
 };
@@ -116,7 +116,7 @@ const DashboardPage = () => {
   const openMobileTransactionDetail = (transactionId) => { setSelectedTransactionId(transactionId); setMobileTransactionDetailOpen(true); };
   const surfaces = { mobileLayout, displayOverview, bootstrap, dashboardViewModel, user, displayName, balanceVisible, setBalanceVisible, refreshOverview, isRefreshing, openTransactionComposer, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };
   const overlays = { mobileTransactionDetailOpen, setMobileTransactionDetailOpen, dashboardViewModel, balanceVisible, openTransactionComposer };
-  return <div className="dashboard-page"><Suspense fallback={null}><FinancialSetupChecklist bootstrap={bootstrap} overview={displayOverview} user={user} /></Suspense><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
+  return <div className="dashboard-page"><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
 };
 
 export default DashboardPage;

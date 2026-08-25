@@ -173,28 +173,42 @@ const assertAccountUpdateValid = async (db, current, next) => {
   if (negative) throw appError("ACCOUNT_HAS_NEGATIVE_HISTORY", "Izin saldo minus tidak dapat dimatikan karena histori rekening pernah negatif.", 409, negative);
 };
 
-export const createAccount = async (db, context) => {
-  assertOwner(context.actor);
-  const payload = context.payload || {};
+export const prepareAccountCreatePayload = async (db, actor, payload = {}, { today = nowIso().slice(0, 10) } = {}) => {
   const name = sanitizeText(payload.name, 120);
   const type = String(payload.account_type || "bank");
   if (!name) throw appError("NAME_REQUIRED", "Nama rekening wajib diisi.", 400);
   if (!ACCOUNT_TYPES.has(type)) throw appError("INVALID_ACCOUNT_TYPE", "Jenis rekening tidak valid.", 400);
-  const owned = await normalizeOwnedScope(db, context.actor, { scope: payload.owner_scope || payload.scope, owner_user_id: payload.owner_user_id });
+  const owned = await normalizeOwnedScope(db, actor, { scope: payload.owner_scope || payload.scope, owner_user_id: payload.owner_user_id });
   const initialBalance = Number(payload.initial_balance || 0);
   if (!Number.isSafeInteger(initialBalance)) throw appError("INVALID_AMOUNT", "Saldo awal harus integer Rupiah.", 400);
   const allowNegative = strictBoolean(payload.allow_negative, false);
   if (initialBalance < 0 && !allowNegative) throw appError("NEGATIVE_INITIAL_BALANCE_NOT_ALLOWED", "Saldo awal negatif hanya boleh digunakan jika rekening mengizinkan saldo minus.", 409);
-  const initialDate = dateValue(payload.initial_balance_date || context.today, "Tanggal saldo awal");
+  const initialDate = dateValue(payload.initial_balance_date || today, "Tanggal saldo awal");
   const accountNumber = normalizeAccountNumber(payload.account_number, type, { required: type === "bank" });
   const bankTemplate = normalizeBankTemplate(payload.bank_template, type);
   const ewalletTemplate = normalizeEwalletTemplate(payload.ewallet_template, type);
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [name, owned.scope, owned.owner_user_id]);
   if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);
+  return {
+    name,
+    account_type: type,
+    account_number: accountNumber,
+    bank_template: bankTemplate,
+    ewallet_template: ewalletTemplate,
+    owner_scope: owned.scope,
+    owner_user_id: owned.owner_user_id,
+    initial_balance: initialBalance,
+    initial_balance_date: initialDate,
+    allow_negative: allowNegative,
+  };
+};
+
+export const createAccount = async (db, context) => {
+  assertOwner(context.actor);
+  const prepared = await prepareAccountCreatePayload(db, context.actor, context.payload || {}, { today: context.today });
   const timestamp = nowIso();
   const record = {
-    account_id: uuid(), name, account_type: type, account_number: accountNumber, bank_template: bankTemplate, ewallet_template: ewalletTemplate, owner_scope: owned.scope, owner_user_id: owned.owner_user_id,
-    initial_balance: initialBalance, initial_balance_date: initialDate, allow_negative: allowNegative ? 1 : 0,
+    account_id: uuid(), ...prepared, allow_negative: prepared.allow_negative ? 1 : 0,
     status: "active", ...newVersionStamp(context.actor.user_id, timestamp),
   };
   await db.execute(`INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at)

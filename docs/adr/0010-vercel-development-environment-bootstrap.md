@@ -33,7 +33,7 @@ Web Push memperjelas masalah tersebut. Production sudah memiliki pasangan VAPID,
 - Izin notifikasi browser tetap per perangkat dan tidak dapat diberikan otomatis oleh environment bootstrap.
 - Nama key muncul pada scope Development dan Production; ini disengaja.
 - Member yang memperoleh akses project Vercel dapat menarik Development secrets. Vercel tidak menyediakan mode Sensitive untuk Development, sehingga akses project wajib dibatasi.
-- Selama exit criteria ADR-0007 belum terbukti, aktivitas lokal masih menyentuh data aktif dan tidak boleh memakai data dummy/destructive operation. Setelah Development memakai database terpisah dan evidence cutover disimpan, data dummy hanya boleh berada di database Development.
+- ADR-0007 sekarang historical/superseded. Runtime source mewajibkan Development dan Production terisolasi; data dummy/destructive testing hanya boleh berada pada database Development yang binding-nya `development`.
 
 ## Alternatives
 

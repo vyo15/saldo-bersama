@@ -212,7 +212,7 @@ test("reset.status memakai count batch dan tidak membaca seluruh row operasional
     const status = await readTrialDataResetStatus(db, context(owner, "reset.status"));
     assert.equal(status.currentSummary.transactions, 1);
     assert.ok(batches.length >= 1);
-    const statusSql = batches[0].slice(0, 16).join("\n");
+    const statusSql = batches.flat().join("\n");
     assert.doesNotMatch(statusSql, /SELECT \* FROM/i, "Status ringan tidak boleh membaca isi penuh tabel hanya untuk ringkasan.");
     assert.match(statusSql, /SELECT COUNT\(\*\) AS count FROM ["`]transactions["`]/i);
     assert.match(statusSql, /SELECT COUNT\(\*\) AS count FROM integration_outbox/i);

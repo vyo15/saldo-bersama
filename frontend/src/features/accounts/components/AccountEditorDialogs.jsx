@@ -116,8 +116,8 @@ const CreateAccountForm = (props) => (
   </form>
 );
 
-const CreateAccountModal = ({ open, onClose, submitting, formProps }) => (
-  <Modal open={open} onClose={onClose} dismissible={!submitting} title="Tambah rekening" description="Pilih jenis rekening." size="md" footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting}>Simpan rekening</Button></>}>
+const CreateAccountModal = ({ open, onClose, submitting, formProps, requestMode }) => (
+  <Modal open={open} onClose={onClose} dismissible={!submitting} title={requestMode ? "Ajukan rekening" : "Tambah rekening"} description={requestMode ? "Rekening menjadi aktif setelah Administrator menyetujui pengajuan." : "Pilih jenis rekening."} size="md" footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting}>{requestMode ? "Kirim pengajuan" : "Simpan rekening"}</Button></>}>
     <div className={styles.createAccountLayout}>
       <CreateAccountForm {...formProps} />
     </div>
@@ -156,13 +156,13 @@ const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitti
   </Modal>
 );
 
-const AccountEditorDialogs = ({ createDialogOpen, onCloseCreate, accountForm, setAccountForm, onCreateAccount, editAccount, setEditAccount, onSaveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel }) => {
+const AccountEditorDialogs = ({ createDialogOpen, onCloseCreate, accountForm, setAccountForm, onCreateAccount, editAccount, setEditAccount, onSaveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, requestMode = false }) => {
   const submitting = dialogState.status === "submitting";
   const defaultOwnerUserId = currentDatabaseUser?.user_id || "";
   const updateAccountForm = (updates) => setAccountForm((current) => ({ ...current, ...updates }));
   const updateEditAccount = (updates) => setEditAccount((current) => current ? ({ ...current, ...updates }) : current);
   const shared = { activeUsers, defaultOwnerUserId, currentOwnerLabel };
-  return <><CreateAccountModal open={createDialogOpen} onClose={onCloseCreate} submitting={submitting} formProps={{ accountForm, setAccountForm, updateAccountForm, onCreateAccount, dialogState, ...shared }} /><EditAccountModal editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={onSaveAccount} submitting={submitting} dialogState={dialogState} fieldProps={{ editAccount, setEditAccount, updateEditAccount, ...shared }} /></>;
+  return <><CreateAccountModal open={createDialogOpen} onClose={onCloseCreate} submitting={submitting} requestMode={requestMode} formProps={{ accountForm, setAccountForm, updateAccountForm, onCreateAccount, dialogState, ...shared }} /><EditAccountModal editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={onSaveAccount} submitting={submitting} dialogState={dialogState} fieldProps={{ editAccount, setEditAccount, updateEditAccount, ...shared }} /></>;
 };
 
 export default AccountEditorDialogs;

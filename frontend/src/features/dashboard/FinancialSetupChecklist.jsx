@@ -1,4 +1,4 @@
-import { FiAlertCircle, FiCheck, FiCircle, FiLock } from "react-icons/fi";
+import { FiAlertCircle, FiCheck, FiCircle } from "react-icons/fi";
 import { Link } from "react-router";
 import Card from "../../components/common/Card.jsx";
 import styles from "./FinancialSetupChecklist.module.css";
@@ -6,13 +6,13 @@ import styles from "./FinancialSetupChecklist.module.css";
 const activeAccountIds = (accounts) => new Set(accounts.map((item) => item.account_id));
 const stepStatus = (ready, blocked = false) => ready ? "ready" : blocked ? "blocked" : "attention";
 
-const accountStep = ({ accounts, sharedAccounts, owner }) => {
-  if (!owner) {
-    const ready = sharedAccounts.length > 0;
-    return { key: "accounts", label: "Rekening", status: ready ? "ready" : "blocked", detail: ready ? "Siap" : "Administrator menyiapkan rekening Bersama", to: null };
-  }
-  if (!accounts.length) return { key: "accounts", label: "Rekening", status: "attention", detail: "Belum disiapkan", to: "/rekening" };
-  return { key: "accounts", label: "Rekening", status: sharedAccounts.length ? "ready" : "attention", detail: sharedAccounts.length ? "Siap" : "Rekening pribadi siap. Rekening Bersama belum dibuat.", to: "/rekening" };
+const accountStep = ({ operableAccounts, owner }) => {
+  const ready = operableAccounts.length > 0;
+  return {
+    key: "accounts", label: "Rekening", status: ready ? "ready" : "attention",
+    detail: ready ? "Siap" : owner ? "Belum ada rekening aktif" : "Ajukan rekening untuk dipakai setelah disetujui",
+    to: ready ? null : "/rekening",
+  };
 };
 
 const categoryStep = ({ categories, owner }) => {
@@ -20,33 +20,32 @@ const categoryStep = ({ categories, owner }) => {
   const hasExpense = categories.some((item) => item.transaction_type === "expense");
   const ready = hasIncome && hasExpense;
   let detail = "Pemasukan dan pengeluaran siap";
-  if (!ready && !owner) detail = "Administrator menyiapkan kategori yang belum tersedia";
-  else if (!hasIncome && !hasExpense) detail = "Kategori pemasukan dan pengeluaran belum siap";
+  if (!hasIncome && !hasExpense) detail = owner ? "Kategori pemasukan dan pengeluaran belum siap" : "Ajukan kategori yang masih dibutuhkan";
   else if (!hasIncome) detail = "Kategori pemasukan belum siap";
   else if (!hasExpense) detail = "Kategori pengeluaran belum siap";
-  return { key: "categories", label: "Kategori", status: stepStatus(ready, !owner), detail, to: owner ? "/kategori" : null };
+  return { key: "categories", label: "Kategori", status: stepStatus(ready), detail, to: ready ? null : "/kategori" };
 };
 
-const planningStep = ({ key, label, items, owner, memberHasSharedAccount, readyDetail, attentionDetail }) => {
-  const ready = items.some((item) => owner || item.scope === "shared");
-  const blocked = !owner && !memberHasSharedAccount;
-  return { key, label, status: stepStatus(ready, blocked), detail: ready ? readyDetail : blocked ? "Butuh rekening Bersama aktif" : attentionDetail, to: owner || memberHasSharedAccount ? (key === "envelopes" ? "/perencanaan/kantong" : "/target") : null };
-};
+const planningStep = ({ key, label, ready, blocked, readyDetail, attentionDetail, blockedDetail, to }) => ({
+  key, label, status: stepStatus(ready, blocked), detail: ready ? readyDetail : blocked ? blockedDetail : attentionDetail, to: ready ? null : to,
+});
 
 const setupState = ({ bootstrap, overview, user }) => {
+  const actor = bootstrap?.user || user || {};
   const accounts = (bootstrap?.accounts || []).filter((item) => item.status === "active");
   const accountIds = activeAccountIds(accounts);
-  const sharedAccounts = accounts.filter((item) => item.owner_scope === "shared");
+  const operableAccounts = accounts.filter((item) => item.can_transact !== false);
+  const sharedAccounts = operableAccounts.filter((item) => item.owner_scope === "shared");
   const categories = (bootstrap?.categories || []).filter((item) => item.status === "active");
   const envelopes = (overview?.envelopes || []).filter((item) => item.status === "active" && item.source_account_id && accountIds.has(item.source_account_id));
-  const goals = (overview?.goals || []).filter((item) => item.status === "active" && item.account_id && accountIds.has(item.account_id));
-  const owner = user?.role === "owner";
-  const memberHasSharedAccount = sharedAccounts.length > 0;
+  const usableEnvelopes = envelopes.filter((item) => actor.role === "owner" || item.scope === "shared" || item.owner_user_id === actor.user_id);
+  const goals = (overview?.goals || []).filter((item) => item.status === "active" && item.account_id && accountIds.has(item.account_id) && item.scope === "shared");
+  const owner = actor.role === "owner";
   return [
-    accountStep({ accounts, sharedAccounts, owner }),
+    accountStep({ operableAccounts, owner }),
     categoryStep({ categories, owner }),
-    planningStep({ key: "envelopes", label: "Alokasi Dana", items: envelopes, owner, memberHasSharedAccount, readyDetail: "Siap", attentionDetail: "Belum ada Alokasi Dana dengan rekening sumber aktif" }),
-    planningStep({ key: "goals", label: "Target", items: goals, owner, memberHasSharedAccount, readyDetail: "Siap menerima setoran", attentionDetail: "Belum ada Target dengan rekening aktif" }),
+    planningStep({ key: "envelopes", label: "Alokasi Dana", ready: usableEnvelopes.length > 0, blocked: operableAccounts.length === 0, readyDetail: "Siap", attentionDetail: "Belum ada Alokasi Dana", blockedDetail: "Butuh rekening yang dapat digunakan", to: "/perencanaan/kantong" }),
+    planningStep({ key: "goals", label: "Target", ready: goals.length > 0, blocked: sharedAccounts.length === 0, readyDetail: "Siap menerima setoran", attentionDetail: "Belum ada Target Bersama", blockedDetail: "Butuh rekening Bersama aktif", to: sharedAccounts.length ? "/target" : "/rekening" }),
   ];
 };
 
@@ -54,7 +53,7 @@ const SetupStep = ({ step, index }) => {
   const ready = step.status === "ready";
   const blocked = step.status === "blocked";
   const attention = step.status === "attention";
-  const Icon = ready ? FiCheck : blocked ? FiLock : attention ? FiAlertCircle : FiCircle;
+  const Icon = ready ? FiCheck : attention || blocked ? FiAlertCircle : FiCircle;
   const content = <><span className={styles.icon}><Icon aria-hidden="true" /></span><span><strong>{index + 1}. {step.label}</strong><small>{step.detail}</small></span></>;
   const className = [styles.step, ready ? styles.ready : "", attention ? styles.attention : "", blocked ? styles.blocked : ""].filter(Boolean).join(" ");
   return step.to && !ready ? <Link className={className} to={step.to} state={{ setupFlow: true }}>{content}</Link> : <div className={className}>{content}</div>;
@@ -65,8 +64,10 @@ const FinancialSetupChecklist = ({ bootstrap, overview, user }) => {
   if (steps.every((step) => step.status === "ready")) return null;
   const completed = steps.filter((step) => step.status === "ready").length;
   return <Card className={styles.card} aria-labelledby="financial-setup-title">
-    <div className={styles.heading}><div><span>Penyiapan awal</span><h2 id="financial-setup-title">Siapkan alur keuangan</h2><p>Selesaikan urutan ini agar transaksi, Alokasi Dana, dan Target saling terhubung.</p></div><strong>{completed}/{steps.length}</strong></div>
-    <div className={styles.steps}>{steps.map((step, index) => <SetupStep key={step.key} step={step} index={index} />)}</div>
+    <details className={styles.details}>
+      <summary className={styles.summary}><span><strong id="financial-setup-title">Penyiapan awal · {completed}/{steps.length} selesai</strong><small>Lanjutkan penyiapan keuangan</small></span><span aria-hidden="true">›</span></summary>
+      <div className={styles.expanded}><p>Lengkapi fondasi yang belum siap. Pengajuan rekening/kategori Member baru aktif setelah disetujui Administrator.</p><div className={styles.steps}>{steps.map((step, index) => <SetupStep key={step.key} step={step} index={index} />)}</div></div>
+    </details>
   </Card>;
 };
 

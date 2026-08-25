@@ -378,8 +378,8 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.match(mobile, /ThemeToggle tone="hero"/);
-  const order = ["<MobileAlerts", "<MobileQuickActions", "<MobileTransactions", "<MobileAllocation", "<MobileCashFlow", "<MobileAccounts", "<MobileInsights"].map((marker) => mobile.indexOf(marker));
-  assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile harus tetap ada.");
+  const order = ["<MobileAlerts", "<MobileQuickActions", "<MobileSharedPlan", "<MobileTransactions", "<MobileAllocation", "<MobileCashFlow", "<MobileAccounts"].map((marker) => mobile.indexOf(marker));
+  assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile canonical harus tetap ada.");
   assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan status → perhatian → tindakan → aktivitas → detail.");
 });
 

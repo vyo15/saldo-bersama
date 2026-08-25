@@ -1,6 +1,7 @@
 /** Restore is fail-closed: preview/validation, safety backup, maintenance lock, apply, integrity verification, then audit. */
 import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
+import { trustedProfilePhotoUrl } from "../../security.js";
 import { callGoogleBridge, enqueueIntegration } from "../integrations.js";
 import { integrityIssues } from "../reporting/index.js";
 import { appError, assertOwner, canonicalJson, nowIso, sanitizeText, uuid } from "../core.js";
@@ -47,7 +48,7 @@ export const previewRestore = async (db, context) => {
   };
 };
 const restoredDataTables = Object.freeze([
-  "notification_preferences", "accounts", "categories", "envelope_rules", "envelope_periods",
+  "notification_preferences", "accounts", "categories", "master_data_requests", "transfer_requests", "envelope_rules", "envelope_periods",
   "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements",
   "budgets", "goal_movements", "reconciliations", "period_closures", "manual_reminders", "idempotency_keys",
 ]);
@@ -65,7 +66,7 @@ const loadRestorePreview = async (db, context, payload) => {
 };
 
 const loadRestoreIdentityState = async (db) => {
-  const currentUsers = await db.all("SELECT user_id,email,firebase_uid,role,status,row_version FROM users");
+  const currentUsers = await db.all("SELECT user_id,email,firebase_uid,photo_url,role,status,row_version FROM users");
   return {
     currentUsers,
     currentByEmail: new Map(currentUsers.map((user) => [String(user.email || "").toLowerCase(), user])),
@@ -91,7 +92,8 @@ const restoredUserValues = (context, user, current) => {
   // Restore data finansial tidak boleh menghidupkan kembali akses historis. Registry user yang aktif sebelum restore tetap canonical.
   const status = isActor ? "active" : (current?.status || "inactive");
   const rowVersion = Math.max(Number(user.row_version || 1), Number(current?.row_version || 0)) + 1;
-  return { email, firebaseUid, role, status, rowVersion };
+  const photoURL = trustedProfilePhotoUrl(current?.photo_url || user.photo_url || "");
+  return { email, firebaseUid, photoURL, role, status, rowVersion };
 };
 
 const upsertRestoredUsers = async (tx, context, users, currentByEmail) => {
@@ -99,8 +101,8 @@ const upsertRestoredUsers = async (tx, context, users, currentByEmail) => {
     const email = String(user.email || "").trim().toLowerCase();
     const current = currentByEmail.get(email);
     const values = restoredUserValues(context, user, current);
-    await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,name=excluded.name,role=excluded.role,status=excluded.status,row_version=excluded.row_version,updated_at=excluded.updated_at`, [user.user_id, values.firebaseUid, values.email, user.name, values.role, values.status, values.rowVersion, user.created_at, nowIso()]);
+    await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,photo_url,role,status,row_version,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET firebase_uid=excluded.firebase_uid,email=excluded.email,name=excluded.name,photo_url=excluded.photo_url,role=excluded.role,status=excluded.status,row_version=excluded.row_version,updated_at=excluded.updated_at`, [user.user_id, values.firebaseUid, values.email, user.name, values.photoURL, values.role, values.status, values.rowVersion, user.created_at, nowIso()]);
   }
 };
 

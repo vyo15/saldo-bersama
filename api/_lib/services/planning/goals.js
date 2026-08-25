@@ -173,6 +173,7 @@ export const createGoal = async (db, context) => {
   const account = await accountWithAccess(db, context.actor, p.account_id);
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned);
+  if (owned.scope !== "shared") throw appError("GOAL_SHARED_ACCOUNT_REQUIRED", "Target baru adalah rencana Bersama dan harus memakai rekening Bersama.", 409);
   const now = nowIso();
   const priority = String(p.priority || "normal");
   const goalType = String(p.goal_type || "savings");
@@ -209,6 +210,9 @@ export const updateGoal = async (db, context) => {
   const account = await accountWithAccess(db, context.actor, goalPayloadValue(p, current, "account_id"));
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned);
+  if (current.scope === "shared" && owned.scope !== "shared") {
+    throw appError("GOAL_SHARED_ACCOUNT_REQUIRED", "Target Bersama tidak dapat dipindahkan ke rekening personal.", 409);
+  }
   const next = buildUpdatedGoal(current, p, account, owned, context.actor.user_id);
   assertGoalEnums({ status: next.status, goalType: next.goal_type, priority: next.priority });
   await assertGoalTargetAmountAllowed(db, current, p, next.target_amount);

@@ -142,6 +142,13 @@ test("health endpoint menolak method selain GET sebelum akses database", async (
   assert.equal(JSON.parse(response.body).error.code, "METHOD_NOT_ALLOWED");
 });
 
+test("public health memblokir core database/schema/maintenance/integrity tetapi scheduler dan warning operasional tidak mematikan aplikasi", async () => {
+  const health = await source("api/health.js");
+  assert.match(health, /operationalCoreBlockers/);
+  assert.doesNotMatch(health, /readSchedulerHealth/);
+  assert.match(health, /databaseStatus === "ok" && schema\.ready && !maintenanceMode && coreOperationsHealthy/);
+});
+
 test("action internal kantong tidak diekspos dan health publik hanya mengembalikan status minimum", async () => {
   const [dispatcher, security, health] = await Promise.all([
     source("api/_lib/actionDispatcher.js"), source("api/_lib/security.js"), source("api/health.js"),

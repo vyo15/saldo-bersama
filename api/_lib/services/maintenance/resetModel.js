@@ -25,6 +25,8 @@ export const RESET_BUSINESS_TABLES = Object.freeze([
 ]);
 
 export const RESET_OPERATIONAL_TABLES = Object.freeze([
+  { table: "transfer_requests", key: "request_id" },
+  { table: "master_data_requests", key: "request_id" },
   { table: "notification_deliveries", key: "delivery_id" },
   { table: "manual_reminders", key: "reminder_id" },
   { table: "notification_queue", key: "notification_id" },
@@ -198,6 +200,8 @@ export const resetSummary = (counts) => {
     integrationLinks: Number(counts.integration_links || 0),
     integrationOutbox: Number(counts.integration_outbox || 0),
     importPreviews: Number(counts.import_previews || 0),
+    masterDataRequests: Number(counts.master_data_requests || 0),
+    transferRequests: Number(counts.transfer_requests || 0),
     businessRows,
     operationalRows,
     totalRows: businessRows + operationalRows,

@@ -112,9 +112,7 @@ const assertCategoryTypeChangeAllowed = async (db, current, next) => {
 
 export const listCategories = async (db) => ({ items: (await db.all("SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE")).map((row) => publicRow(row)) });
 
-export const createCategory = async (db, context) => {
-  assertOwner(context.actor);
-  const payload = context.payload || {};
+export const prepareCategoryCreatePayload = async (db, payload = {}) => {
   const name = sanitizeText(payload.name, 100);
   const type = String(payload.transaction_type || "expense");
   const explicitNature = payload.nature !== undefined;
@@ -128,8 +126,14 @@ export const createCategory = async (db, context) => {
   const duplicate = await db.one("SELECT category_id,status FROM categories WHERE lower(name)=lower(?) AND transaction_type=?", [name,type]);
   if (duplicate?.status === "archived") throw appError("CATEGORY_RESTORE_REQUIRED", "Kategori dengan nama dan jenis yang sama berada di arsip. Pulihkan kategori tersebut agar histori tetap konsisten.", 409, { categoryId: duplicate.category_id });
   if (duplicate) throw appError("DUPLICATE_CATEGORY", "Kategori aktif dengan nama yang sama sudah ada.", 409);
+  return { name, transaction_type: type, nature, icon: categoryIconValue(payload.icon, type) };
+};
+
+export const createCategory = async (db, context) => {
+  assertOwner(context.actor);
+  const prepared = await prepareCategoryCreatePayload(db, context.payload || {});
   const timestamp = nowIso();
-  const record = { category_id: uuid(), name, transaction_type: type, nature, icon: categoryIconValue(payload.icon, type), status: "active", ...newVersionStamp(context.actor.user_id, timestamp) };
+  const record = { category_id: uuid(), ...prepared, status: "active", ...newVersionStamp(context.actor.user_id, timestamp) };
   await db.execute("INSERT INTO categories(category_id,name,transaction_type,nature,icon,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", Object.values(record));
   await appendAudit(db, context, { entityType: "category", entityId: record.category_id, next: publicRow(record) });
   await context.enqueueMirror?.(db, "category", record.category_id);

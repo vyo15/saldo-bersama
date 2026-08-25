@@ -15,6 +15,7 @@ const manualRemindersMigrationUrl = new URL("008_manual_reminders.sql", migratio
 const transactionCostSharingMigrationUrl = new URL("009_transaction_cost_sharing.sql", migrationDirectory);
 const environmentSessionsMigrationUrl = new URL("010_environment_sessions.sql", migrationDirectory);
 const distributedRateLimitsMigrationUrl = new URL("011_distributed_rate_limits.sql", migrationDirectory);
+const memberCollaborationMigrationUrl = new URL("012_member_collaboration.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -36,7 +37,7 @@ const validateWithSqlite = async () => {
     db.exec("PRAGMA foreign_keys=ON");
     db.exec(await migrationSql());
     const now = "2026-08-01T15:00:00.000Z";
-    db.prepare("INSERT INTO users VALUES(?,?,?,?,?,?,?,?,?)").run("u1", "firebase-1", "owner@example.com", "Owner", "owner", "active", 1, now, now);
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").run("u1", "firebase-1", "owner@example.com", "Owner", "owner", "active", 1, now, now);
     const accountInsert = "INSERT INTO accounts(account_id,name,account_type,account_number,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     db.prepare(accountInsert).run("a1", "Kas", "cash", "", "shared", null, 100000, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
     db.prepare(accountInsert).run("a2", "Bank", "bank", "1234567890", "shared", null, 0, "2026-01-01", 0, "active", 1, "u1", now, "u1", now);
@@ -104,10 +105,10 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v13 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v14 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "13");
-  assert.ok(result.table_count >= 28);
+  assert.equal(result.schema_version, "14");
+  assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
 });
@@ -186,7 +187,7 @@ test("migration v8 meng-upgrade database v7 tanpa mengubah nama/saldo dan tanpa 
     db.exec("PRAGMA foreign_keys=ON");
     db.exec(await migrationSqlThrough("005_notification_preferences.sql"));
     const now = "2026-08-01T15:00:00.000Z";
-    db.prepare("INSERT INTO users VALUES(?,?,?,?,?,?,?,?,?)").run("u1", "firebase-1", "owner@example.com", "Owner", "owner", "active", 1, now, now);
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").run("u1", "firebase-1", "owner@example.com", "Owner", "owner", "active", 1, now, now);
     const insert = "INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     const rows = [
       ["w-dana", "DANA Belanja", "ewallet", 125000],
@@ -342,5 +343,31 @@ test("migration v13 menambah bucket rate limit durable tanpa mengubah ledger ata
     assert.throws(() => db.prepare(insert).run("scope:abcdefghijklmnop", 10, 10, 1, "2026-08-24T00:00:00.000Z"));
     db.prepare(insert).run("scope:abcdefghijklmnop", 10, 20, 1, "2026-08-24T00:00:00.000Z");
     assert.equal(db.prepare("SELECT request_count FROM rate_limit_buckets WHERE bucket_key=?").get("scope:abcdefghijklmnop").request_count, 1);
+  } finally { db.close(); }
+});
+
+
+test("migration v14 menambah kolaborasi Member secara additive tanpa mengubah ledger", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("011_distributed_rate_limits.sql"));
+    const now = "2026-08-25T08:00:00.000Z";
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+      .run("u-v14", "uid-v14", "v14@example.com", "V14", "member", "active", 1, now, now);
+    const beforeTransactions = db.prepare("SELECT COUNT(*) AS count FROM transactions").get().count;
+
+    db.exec((await readFile(memberCollaborationMigrationUrl, "utf8")).replaceAll("-- migrate:split", ""));
+
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "14");
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM transactions").get().count, beforeTransactions);
+    const photo = db.prepare("SELECT photo_url FROM users WHERE user_id='u-v14'").get();
+    assert.equal(photo.photo_url, "");
+    assert.throws(() => db.prepare("UPDATE users SET photo_url=? WHERE user_id='u-v14'").run("https://evil.example/avatar.png"));
+    db.prepare("UPDATE users SET photo_url=? WHERE user_id='u-v14'").run("https://lh3.googleusercontent.com/a/example");
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='master_data_requests'").get());
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='transfer_requests'").get());
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_master_data_requests_pending_unique'").get());
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_transfer_requests_pending_unique'").get());
   } finally { db.close(); }
 });

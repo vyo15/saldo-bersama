@@ -4,7 +4,7 @@
 **Owner:** Product owner + security owner
 **Reviewers:** Backend, frontend, QA
 **Date:** 2026-08-17
-**Last reviewed:** 2026-08-24 against schema v13/session-v2 runtime
+**Last reviewed:** 2026-08-25 against schema v14/session-v2 runtime
 
 ## Problem
 
@@ -250,7 +250,7 @@ Destructive DROP registry tidak dilakukan pada Production.
 
 Design baseline memilih **session_id + secret verifier hash**, **async authoritative resolver**, **one-time forced re-login saat cutover**, **revoke-all termasuk current session**, **30-day registry retention**, dan **logical restore tidak menghidupkan session**.
 
-RFC **Accepted and implemented** sejak schema v12/session-v2 dan tetap menjadi contract session pada runtime v13. Migration, action contract, resolver authoritative, revoke own/all, PKCE S256, audit, backup/restore exclusion, dan UI session management sudah memiliki source/test canonical.
+RFC **Accepted and implemented** sejak schema v12/session-v2 dan tetap menjadi contract session pada runtime v14. Migration, action contract, resolver authoritative, revoke own/all, PKCE S256, audit, backup/restore exclusion, dan UI session management sudah memiliki source/test canonical.
 
 Pekerjaan tersisa bersifat operasional: real-device smoke, evidence live Dev/Prod environment separation, dan retention/cleanup verification. Perubahan semantics session baru tetap memerlukan RFC/approval guarded terpisah; status implemented ini tidak memberi izin untuk melemahkan resolver, cookie, CSRF/origin, atau revocation guard.
 

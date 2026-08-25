@@ -15,7 +15,7 @@ import {
 } from "./_lib/services/notifications.js";
 import { queueDueManualReminders } from "./_lib/services/reminders.js";
 import { nowIso, safeSpreadsheetText, sanitizeText, todayJakarta, uuid } from "./_lib/services/core.js";
-import { recordSchedulerHeartbeat } from "./_lib/services/operationalHealth.js";
+import { recordSchedulerHeartbeat, schedulerStageFailureCode } from "./_lib/services/operationalHealth.js";
 
 const monthBoundary = (monthOffset, endOfMonth = false) => {
   const [year, month] = todayJakarta().split("-").map(Number);
@@ -104,7 +104,7 @@ const consumeScheduledNonce = async (db, nonce) => db.transaction(async (tx) => 
 const processIntegrations = async (db) => {
   const workerId = `job:${uuid()}`;
   const rows = await claimOutbox(db, workerId);
-  const summary = { claimed: rows.length, completed: 0, failed: 0 };
+  const summary = { claimed: rows.length, completed: 0, failed: 0, errorCode: "" };
   for (const provider of ["sheets", "calendar"]) {
     const group = rows.filter((row) => row.provider === provider);
     if (!group.length) continue;
@@ -118,10 +118,12 @@ const processIntegrations = async (db) => {
       }
       for (const row of group) if (await markIntegrationResult(db, row)) summary.completed += 1;
     } catch (error) {
+      if (!summary.errorCode) summary.errorCode = sanitizeText(error?.code || "INTEGRATION_FAILED", 60);
       for (const row of group) if (await markIntegrationResult(db, row, error)) summary.failed += 1;
     }
   }
   for (const row of rows.filter((item) => !["sheets", "calendar"].includes(item.provider))) {
+    if (!summary.errorCode) summary.errorCode = "PROVIDER_UNSUPPORTED";
     if (await markIntegrationResult(db, row, Object.assign(new Error("Provider job tidak didukung."), { code: "PROVIDER_UNSUPPORTED" }))) summary.failed += 1;
   }
   return summary;
@@ -343,11 +345,9 @@ export default async function handler(request, response) {
     }, { queued: 0, automatic: 0, manual: 0 });
     const push = await runOptionalStage("push", requestId, () => processPush(db), { claimed: 0, sent: 0, failed: 0, skipped: true });
     const backup = message.includeBackup === false ? { skipped: true } : await maybeDailyBackup(db);
-    const stageFailed = [housekeeping, integration, notificationQueue, push].some((stage) => stage?.failed)
-      || Number(integration.failed || 0) > 0
-      || Number(push.failed || 0) > 0
-      || Number(push.partial || 0) > 0;
-    await recordSchedulerHeartbeat(db, { success: !stageFailed, errorCode: stageFailed ? "STAGE_FAILED" : "" });
+    const schedulerErrorCode = schedulerStageFailureCode({ housekeeping, integration, notificationQueue, push });
+    const stageFailed = Boolean(schedulerErrorCode);
+    await recordSchedulerHeartbeat(db, { success: !stageFailed, errorCode: schedulerErrorCode });
     logEvent(stageFailed ? "warn" : "info", "jobs.request.completed", { requestId, status: 200, durationMs: Date.now() - startedAt, housekeeping, integration, notificationQueue, push, schedulerDegraded: stageFailed });
     return ok(response, { housekeeping, integration, notificationsQueued: Number(notificationQueue.queued || 0), notificationQueue, push, backup, timestamp: nowIso() });
   } catch (error) {

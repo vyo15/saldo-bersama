@@ -29,7 +29,9 @@ export const assertTransactionDateUnlocked = async (db, date) => {
 const activeAccount = async (db, actor, accountId) => {
   const account = await db.one("SELECT * FROM accounts WHERE account_id=? AND status='active'", [accountId]);
   if (!account) throw appError("INVALID_ACCOUNT", "Rekening tidak ditemukan atau tidak aktif.", 400);
-  if (actor.role !== "owner" && account.owner_scope === "personal" && account.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi ini bukan milik pengguna aktif.", 403);
+  if (actor.role !== "owner" && account.owner_scope === "personal" && account.owner_user_id !== actor.user_id) {
+    throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi ini bukan milik pengguna aktif.", 403);
+  }
   return account;
 };
 
@@ -196,11 +198,14 @@ const validateTransactionTypePolicy = (context, payload, current, type) => {
   }
 };
 
-const resolveTransactionAccounts = async (db, context, { type, sourceId, destinationId, transactionDate }) => {
+const resolveTransactionAccounts = async (db, context, { type, sourceId, destinationId, transactionDate }, { allowSharedToPersonalRequest = false } = {}) => {
   const source = ["income", "refund"].includes(type) ? null : await activeAccount(db, context.actor, sourceId);
   const destination = ["income", "refund", "transfer"].includes(type) ? await activeAccount(db, context.actor, destinationId) : null;
   if (type === "transfer" && source.account_id === destination.account_id) {
     throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
+  }
+  if (type === "transfer" && context.actor.role !== "owner" && source.owner_scope === "shared" && destination.owner_scope === "personal" && !allowSharedToPersonalRequest) {
+    throw appError("TRANSFER_APPROVAL_REQUIRED", "Transfer dari rekening Bersama ke rekening pribadi memerlukan persetujuan Administrator.", 409, { sourceAccountId: source.account_id, destinationAccountId: destination.account_id });
   }
   if (source) assertAccountDate(source, transactionDate);
   if (destination) assertAccountDate(destination, transactionDate);
@@ -292,12 +297,12 @@ const assertNoUnconfirmedDuplicate = async (db, payload, record, excludeTransact
 
 // Canonical transaction normalization composes all server-side references and financial
 // invariants before a row is written. Keep this as the single mutation preparation path.
-export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false } = {}) => {
+export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false, allowSharedToPersonalRequest = false } = {}) => {
   assertNoReservedFields(payload, allowInternalLinks);
   const input = resolveTransactionInput(context, payload, current);
   validateTransactionTypePolicy(context, payload, current, input.type);
   await assertTransactionDatesUnlocked(db, input.transactionDate, current);
-  const accounts = await resolveTransactionAccounts(db, context, input);
+  const accounts = await resolveTransactionAccounts(db, context, input, { allowSharedToPersonalRequest });
   const categoryId = await resolveTransactionCategory(db, payload, current, input.type);
   const baseRecord = buildNormalizedTransactionRecord({
     payload,

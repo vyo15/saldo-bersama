@@ -230,13 +230,15 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(page, /MobileTransactionDetail/);
   assert.match(page, /FinancialSetupChecklist/);
   for (const label of ["Rekening", "Kategori", "Alokasi Dana", "Target"]) assert.match(setupChecklist, new RegExp(label));
-  assert.match(setupChecklist, /Administrator menyiapkan rekening Bersama/);
-  assert.match(setupChecklist, /Administrator menyiapkan kategori/);
+  assert.match(setupChecklist, /owner \? "Belum ada rekening aktif" : "Ajukan rekening untuk dipakai setelah disetujui"/);
+  assert.match(setupChecklist, /owner \? "Kategori pemasukan dan pengeluaran belum siap" : "Ajukan kategori yang masih dibutuhkan"/);
+  assert.match(setupChecklist, /Pengajuan rekening\/kategori Member baru aktif setelah disetujui Administrator/);
   assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);
   assert.match(mobile, /Dana tersedia belum dibagi/);
   assert.match(mobile, /Pengeluaran tanpa Alokasi Dana/);
   assert.match(mobile, /unallocatedExpenseAmount/);
-  assert.match(mobile, /Setor ke Target/);
+  assert.match(mobile, /Rencana Bersama/);
+  assert.match(mobile, /Lihat Target/);
   assert.match(desktop, /SensitiveMoney/);
   assert.match(desktop, /Transaksi rekening/);
   assert.match(desktop, /data-dashboard-account/);
@@ -254,7 +256,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /Batas aman per hari/);
   assert.match(mobile, /Dana tersedia belum dibagi/);
   assert.match(mobile, /Pengeluaran tanpa Alokasi Dana/);
-  assert.match(mobile, /Rincian rekening dan kategori/);
+  assert.match(mobile, /id="mobile-accounts-title">Rekening/);
   assert.doesNotMatch(mobile, /onOpenFilters|mobile-dashboard-filter-button|FiSliders/);
   assert.match(mobile, /recentTransactions\.slice\(0, 5\)/);
   assert.match(mobile, /terpakai \+ dipesan/);

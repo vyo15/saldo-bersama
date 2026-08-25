@@ -23,7 +23,7 @@ request
   -> review diff
   -> commit pada main
   -> git push origin main
-  -> pre-push verify PASS
+  -> pre-push verify + Production schema/binding read-only PASS
   -> Quality server-side berjalan
   -> clean ZIP bila diperlukan
 ```
@@ -46,7 +46,7 @@ Tidak ada task registry atau branch automation. Workflow rutin tetap di `main`; 
 
 ### 4. Guarded changes
 
-Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contract, saldo/transfer/audit/idempotency, backup/restore/import/purge, env/secret/deployment, serta trust-boundary/security tooling. Guarded change tetap membutuhkan approval + review + test. Delivery rutin tetap `git push origin main`, tetapi operasi live destructive/migration tidak pernah diotomatisasi oleh push.
+Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contract, saldo/transfer/audit/idempotency, backup/restore/import/purge, env/secret/deployment, serta trust-boundary/security tooling. Guarded change tetap membutuhkan approval + review + test. Delivery rutin tetap `git push origin main`; pre-push boleh melakukan check Production **read-only**, tetapi operasi live destructive/migration tidak pernah diotomatisasi oleh push.
 
 ### 5. Validation
 

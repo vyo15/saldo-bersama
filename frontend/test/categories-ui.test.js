@@ -4,8 +4,8 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("kategori memiliki route, API facade, state, icon picker, dan aksi owner yang terpisah dari rekening", async () => {
-  const [app, navigation, page, styles, presentation, api, accountPage, categoryPresentation] = await Promise.all([
+test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain rekening", async () => {
+  const [app, navigation, page, styles, presentation, api, accountPage, categoryPresentation, reviewHook, reviewService] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/config/navigation.js"),
     read("src/features/categories/CategoriesPage.jsx"),
@@ -14,12 +14,19 @@ test("kategori memiliki route, API facade, state, icon picker, dan aksi owner ya
     read("src/features/categories/categories.api.js"),
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/shared/presentation/category.js"),
+    read("src/hooks/useMasterDataRequestReview.js"),
+    read("src/services/masterDataRequests.js"),
   ]);
 
   assert.match(app, /path="kategori"/);
   assert.match(navigation, /to: "\/kategori", label: "Kategori"[\s\S]*icon: FiTag/);
   assert.match(page, /title="Kategori"/);
-  assert.match(page, /aria-label="Tambah kategori"/);
+  assert.match(page, /aria-label=\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}/);
+  assert.match(page, /useApiResource\("masterDataRequests\.list", \{ request_type: "category" \}\)/);
+  assert.match(page, /requestCategoryCreation/);
+  assert.match(page, /useMasterDataRequestReview/);
+  assert.match(reviewHook, /reviewMasterDataRequest/);
+  assert.match(reviewService, /masterDataRequests\.review/);
   assert.match(page, /useApiResource\("categories\.list"\)/);
   assert.match(page, /create-category-form/);
   assert.match(page, /edit-category-form/);

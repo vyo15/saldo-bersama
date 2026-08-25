@@ -7,6 +7,7 @@ import {
   GOOGLE_BRIDGE_ENV_KEYS,
   PRODUCTION_SYNC_ENV_KEYS,
   developmentEnvironmentStatus,
+  optionalGroupStatus,
   parseEnvironmentText,
 } from "./runtime-environment.mjs";
 
@@ -31,12 +32,14 @@ export const buildProductionSeed = (development = {}) => {
     "",
   ];
 
+  const centralBridgeReady = optionalGroupStatus(development, GOOGLE_BRIDGE_ENV_KEYS).complete;
   for (const key of PRODUCTION_SYNC_ENV_KEYS) {
     let value = "";
     if (key === "DATABASE_ENVIRONMENT") value = "production";
     else if (COPY_FROM_DEVELOPMENT.includes(key)) value = development[key] ?? "";
-    // Google bridge tidak dicopy otomatis walaupun deployment boleh sama: secret harus dipilih eksplisit.
-    if (GOOGLE_BRIDGE_ENV_KEYS.includes(key)) value = "";
+    else if (centralBridgeReady && GOOGLE_BRIDGE_ENV_KEYS.includes(key)) value = development[key] ?? "";
+    // Google bridge adalah konfigurasi pusat Apps Script; bila grup Development lengkap,
+    // profile Production lokal memakai grup yang sama tanpa mencetak nilai secret.
     // VAPID pair wajib berbeda; hanya subject yang boleh diwariskan.
     if (key === "VITE_VAPID_PUBLIC_KEY" || key === "VAPID_PRIVATE_KEY") value = "";
     lines.push(`${key}=${serializeValue(value)}`);
@@ -75,8 +78,8 @@ export const prepareProductionEnvironment = async ({ cwd = projectRoot } = {}) =
   }
 
   await writeFile(productionPath, buildProductionSeed(development), { encoding: "utf8", mode: 0o600, flag: "wx" });
-  console.log(`${PRODUCTION_FILE} dibuat tanpa secret Production.`);
-  console.log("Public config yang memang harus sama sudah disalin dari Development; DATABASE_ENVIRONMENT di-set ke production.");
+  console.log(`${PRODUCTION_FILE} dibuat tanpa credential Production yang environment-specific.`);
+  console.log("Public config dan Google bridge pusat (bila lengkap) disalin dari Development; DATABASE_ENVIRONMENT di-set ke production.");
   console.log("Isi credential Production canonical dari secret store yang sama pada setiap workstation tepercaya, lalu jalankan npm run env:check:production.");
   console.log("Jangan generate SESSION_SECRET, token Turso, OAuth secret, atau VAPID baru per komputer.");
   return { path: productionPath };

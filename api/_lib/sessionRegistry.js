@@ -64,7 +64,7 @@ export const createRegisteredSession = async (db, { actor, signedActor, request,
   };
 };
 
-const sessionRow = (db, sessionId) => db.one(`SELECT s.*,u.firebase_uid,u.email,u.name,u.role,u.status AS user_status
+const sessionRow = (db, sessionId) => db.one(`SELECT s.*,u.firebase_uid,u.email,u.name,u.photo_url,u.role,u.status AS user_status
   FROM user_sessions s JOIN users u ON u.user_id=s.user_id WHERE s.session_id=?`, [sessionId]);
 
 export const resolveRegisteredSession = async (db, request) => {
@@ -88,7 +88,7 @@ export const resolveRegisteredSession = async (db, request) => {
     uid: row.firebase_uid,
     email: row.email,
     name: row.name || row.email,
-    photoURL: credential.photoURL || "",
+    photoURL: row.photo_url || credential.photoURL || "",
     role: row.role,
     sessionId: row.session_id,
     userId: row.user_id,

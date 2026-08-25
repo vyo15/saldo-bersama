@@ -227,11 +227,13 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
 
 
 test("read snapshot tambahan tidak memecah query independen menjadi pipeline serial", async () => {
-  const [{ listArchivedData }, { previewTrialDataReset }, { previewFullDataReset }, { integrityIssues }] = await Promise.all([
+  const [{ listArchivedData }, { previewTrialDataReset }, { previewFullDataReset }, { integrityIssues }, resetModel, fullResetModel] = await Promise.all([
     import("../../api/_lib/services/masterData.js"),
     import("../../api/_lib/services/maintenance/reset.js"),
     import("../../api/_lib/services/maintenance/fullReset.js"),
     import("../../api/_lib/services/reporting/integrity.js"),
+    import("../../api/_lib/services/maintenance/resetModel.js"),
+    import("../../api/_lib/services/maintenance/fullResetModel.js"),
   ]);
   const actor = { user_id: "u1", email: "owner@example.test", role: "owner", status: "active" };
 
@@ -258,7 +260,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   const preview = await previewTrialDataReset(resetDb, { actor, payload: {} });
   assert.equal(preview.summary.totalRows, 0);
   assert.equal(resetMetrics.network, 1, "reset.preview harus membaca state dan preserved count dalam satu batch");
-  assert.equal(resetMetrics.statements, 25);
+  assert.equal(resetMetrics.statements, 1 + resetModel.RESET_STATE_STATEMENTS.length + resetModel.PRESERVED_COUNT_STATEMENTS.length);
 
   const fullResetMetrics = { network: 0, statements: 0 };
   const fullResetDb = {
@@ -271,7 +273,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   const fullResetPreview = await previewFullDataReset(fullResetDb, { actor, payload: {} });
   assert.equal(fullResetPreview.summary.totalRows, 0);
   assert.equal(fullResetMetrics.network, 1, "fullReset.preview harus membaca seluruh scope dan preserved count dalam satu batch");
-  assert.equal(fullResetMetrics.statements, 30);
+  assert.equal(fullResetMetrics.statements, fullResetModel.FULL_RESET_STATE_STATEMENTS.length + fullResetModel.FULL_RESET_PRESERVED_STATEMENTS.length);
 
   const integrityMetrics = { network: 0, statements: [] };
   const integrityDb = {

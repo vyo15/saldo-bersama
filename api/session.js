@@ -162,7 +162,7 @@ const issueSession = async (request, verifiedIdentity, requestId, database = nul
   await assertDatabaseReady(db);
   const actor = await resolveLoginIdentity(db, verifiedIdentity, { requestId });
   const signedActor = { ...verifiedIdentity, role: actor.role };
-  const create = (tx) => createRegisteredSession(tx, { actor, signedActor, request, requestId, photoURL: verifiedIdentity.photoURL || "" });
+  const create = (tx) => createRegisteredSession(tx, { actor, signedActor, request, requestId, photoURL: actor.photo_url || "" });
   return typeof db.transaction === "function" ? db.transaction(create) : create(db);
 };
 

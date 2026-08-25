@@ -9,7 +9,7 @@ Perubahan dianggap selesai bila:
 - security, privacy, data integrity, accessibility, compatibility, dan performance diperiksa sesuai scope;
 - docs/contract/runbook terdampak diperbarui sesuai `docs/INDEX.md` dan tidak meninggalkan snapshot/checklist historis yang menyamar sebagai aturan aktif;
 - tidak ada secret, data finansial nyata, raw stack trace, dependency, build/generated artifact, atau file lokal dalam commit/ZIP;
-- bila user meminta delivery Git, perubahan sudah di-commit pada `main` dan `git push origin main` hanya berhasil setelah managed pre-push memverifikasi ref/SHA aktual + full `npm run verify`; workflow **Quality** server-side tetap dipantau;
+- bila user meminta delivery Git, perubahan sudah di-commit pada `main` dan `git push origin main` hanya berhasil setelah managed pre-push memverifikasi ref/SHA aktual + full `npm run verify` + Production schema/binding preflight read-only; workflow **Quality** server-side tetap dipantau;
 - clean/changed-files ZIP dibuat bila diperlukan.
 
 Untuk guarded/high-risk, Done juga mensyaratkan approval eksplisit dan evidence test domain yang sesuai. Tidak ada task-card/archive requirement.

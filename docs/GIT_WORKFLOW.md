@@ -28,9 +28,11 @@ git push origin main
 - SHA yang akan dikirim berbeda dari `HEAD` yang diverifikasi;
 - working tree masih mempunyai perubahan yang belum di-commit;
 - push non-fast-forward/force;
-- full `npm run verify` gagal.
+- full `npm run verify` gagal;
+- profile Production lokal tidak valid;
+- Turso Production tidak reachable, schema source/Production berbeda, atau binding Production tidak siap.
 
-Dengan demikian kasus lama ketika working tree branch A diverifikasi tetapi ref `main` lain yang terkirim tidak boleh terulang.
+Pre-push Production check bersifat **read-only** dan dijalankan setelah `npm run verify`. Push tidak pernah memigrasikan database otomatis. Dengan demikian dua kegagalan lama ditutup sekaligus: working tree branch A tidak dapat memvalidasi ref `main` lain, dan runtime schema baru tidak dapat terdeploy saat database Production masih tertinggal.
 
 Setelah pre-push PASS, GitHub workflow **Quality** tetap berjalan pada `main` sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify`, `--force`, atau bypass routine.
 
@@ -43,9 +45,9 @@ Setiap PC/laptop tepercaya mempunyai dua profile lokal:
 .env.production.local   -> Production  -> saldo-bersama
 ```
 
-`npm run dev` otomatis refresh Vercel Development, memastikan `.env.production.local` minimal sudah tersedia sebagai template aman bila belum pernah dibuat, memeriksa Turso Development + schema/binding, lalu menjalankan localhost.
+`npm run dev` hanya mengurus Development: otomatis refresh Vercel Development, memeriksa Turso Development + schema/binding, lalu menjalankan localhost. Command ini tidak membuat atau mengubah `.env.production.local`.
 
-`npm run prod` otomatis memastikan Development profile tersedia, mewajibkan `.env.production.local` Production yang lengkap, memeriksa isolasi DEV/PROD, menguji Turso Production secara read-only, memeriksa Vercel Production + frontend shell, lalu membuka Production pada terminal interaktif.
+`npm run prod` tidak menarik atau menulis Development. Command ini memastikan `.env.production.local` tersedia/lengkap, membaca `.env.local` hanya untuk membuktikan isolasi DEV/PROD, boleh menyejajarkan hanya grup Google bridge pusat bila Production lokal kosong, menguji Turso Production secara read-only, memeriksa Vercel Production + frontend shell, lalu membuka Production pada terminal interaktif. Database/schema/binding, maintenance, dan integrity failure tetap blocker; scheduler/integrasi/backup/notifikasi degraded menjadi operational warning dan tidak mematikan login/ledger yang core-nya sehat.
 
 Credential Production Sensitive tidak dapat dipull kembali dari Vercel. Karena itu pada workstation baru, `.env.production.local` hanya perlu diisi **satu kali** dari secret store/profile Production canonical yang sama. File existing tidak pernah ditimpa otomatis.
 
@@ -59,7 +61,7 @@ Direct push tidak menghapus review discipline. Untuk schema/auth/API/saldo/trans
 4. patch terarah;
 5. targeted regression;
 6. commit;
-7. `git push origin main` menjalankan full verification sebelum ref dikirim.
+7. `git push origin main` menjalankan full verification lalu Production schema/binding preflight read-only sebelum ref dikirim.
 
 Operasi live yang destructive atau mutation database Production tetap **tidak boleh** diotomatisasi oleh push. Migration/backup/restore tetap mengikuti runbook dan approval canonical.
 

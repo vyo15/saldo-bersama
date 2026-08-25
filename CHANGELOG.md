@@ -1,3 +1,10 @@
+## 25 Agustus 2026 - Production release safety dan diagnosis fail-closed
+
+- Menutup gap deploy schema: managed `git push origin main` sekarang menjalankan Production profile + Turso schema/binding preflight **read-only** setelah full `npm run verify`; runtime source baru tidak dapat terkirim saat Production DB masih tertinggal, dan push tidak pernah auto-migrate.
+- Memperketat `db:migrate -- production`: database Production existing dengan migration pending wajib memiliki backup teknis `verified` pada schema saat ini sebelum statement migration dijalankan.
+- Membuat `npm run prod` menjelaskan health `degraded` menggunakan metadata aman dari Production DB (schema/binding, maintenance, scheduler heartbeat/error code tersanitasi, operational codes) sehingga operator tidak mengulang migration ketika schema sudah siap.
+- Menghapus remediation target-ambigu pada error schema runtime/integrity Production; command Production selalu menyebut target eksplisit dan backup terverifikasi.
+
 ## 25 Agustus 2026 - Data-integrity, financial boundary, dan UX hardening
 
 - Menjadikan Trial Reset fail-closed di backend: `reset.preview`/`reset.apply` hanya boleh pada database yang terikat `development`, sedangkan `reset.status` tetap tersedia untuk reconciliation/recovery; route reset non-Development juga ditutup.

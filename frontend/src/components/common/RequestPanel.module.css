@@ -1,0 +1,13 @@
+.panel { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--border-subtle, rgba(127,127,127,.22)); border-radius: 1rem; background: var(--surface, rgba(255,255,255,.02)); }
+.heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.heading h2 { margin: 0; font-size: 1rem; }
+.heading p { margin: .2rem 0 0; color: var(--text-muted, #667085); font-size: .875rem; }
+.list { display: grid; gap: .65rem; }
+.item { display: grid; gap: .55rem; padding: .8rem; border: 1px solid var(--border-subtle, rgba(127,127,127,.18)); border-radius: .85rem; }
+.top { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
+.top strong { display: block; }
+.top small, .meta { color: var(--text-muted, #667085); }
+.status { font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.empty { margin: 0; color: var(--text-muted, #667085); font-size: .875rem; }
+@media (max-width: 640px) { .heading, .top { align-items: stretch; } .top { flex-direction: column; } .actions > * { flex: 1 1 8rem; } }

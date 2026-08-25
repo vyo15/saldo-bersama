@@ -505,3 +505,12 @@
   .mobile-hero-button.is-refreshing svg { animation: none; }
   .mobile-quick-action > span { transition: none; }
 }
+
+.mobile-shared-plan__grid { display: grid; gap: 10px; }
+.mobile-plan-card { display: flex; align-items: flex-start; gap: 11px; padding: 13px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-decoration: none; }
+.mobile-plan-card:hover { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
+.mobile-plan-card:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.mobile-plan-card__icon { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border-radius: 12px; background: var(--surface-soft); color: var(--primary); }
+.mobile-plan-card__copy { min-width: 0; flex: 1; display: grid; gap: 5px; }
+.mobile-plan-card__copy strong { font-size: 14px; }
+.mobile-plan-card__copy small { color: var(--text-muted); font-size: 12px; }

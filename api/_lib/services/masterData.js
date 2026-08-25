@@ -23,6 +23,12 @@ export {
   restoreCategory,
   updateCategory,
 } from "./masterData/categories.js";
+export {
+  listMasterDataRequests,
+  requestAccountCreation,
+  requestCategoryCreation,
+  reviewMasterDataRequest,
+} from "./masterData/requests.js";
 
 export const deleteUnusedAccount = async (db, context) => {
   assertOwner(context.actor);

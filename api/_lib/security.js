@@ -13,7 +13,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const isValidEmail = (value) => EMAIL_PATTERN.test(String(value || "").trim().toLowerCase());
 const GOOGLE_PROFILE_PHOTO_PREFIX = "https://lh3.googleusercontent.com/";
 
-const trustedProfilePhotoUrl = (value) => {
+export const trustedProfilePhotoUrl = (value) => {
   const photoUrl = String(value || "").trim();
   if (!photoUrl || photoUrl.length > 1_024) return "";
   return photoUrl.startsWith(GOOGLE_PROFILE_PHOTO_PREFIX) ? photoUrl : "";
@@ -191,6 +191,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "users.reactivate", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "audit.list", "archive.list", "dashboard.overview",
     "accounts.list", "accounts.create", "accounts.update", "accounts.previewLifecycle", "accounts.archive", "accounts.restore", "accounts.deleteUnused",
     "categories.list", "categories.create", "categories.update", "categories.previewArchive", "categories.archive", "categories.restore", "categories.deleteUnused",
+    "masterDataRequests.list", "masterDataRequests.review", "transferRequests.list", "transferRequests.review",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
     "envelopes.list", "envelopes.create", "envelopes.adjustAllocation", "envelopes.move", "envelopes.close", "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
     "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.previewRuleLifecycle", "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.reversePayment", "recurring.restoreRule",
@@ -200,7 +201,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "reminders.get", "reminders.upsert", "reminders.cancel", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "reset.preview", "reset.status", "reset.apply", "fullReset.preview", "fullReset.status", "fullReset.apply", "integrity.run",
   ]),
   member: new Set([
-    "system.health", "app.initialState", "bootstrap.get", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "dashboard.overview", "accounts.list", "categories.list",
+    "system.health", "app.initialState", "bootstrap.get", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "dashboard.overview", "accounts.list", "accounts.requestCreate", "categories.list", "categories.requestCreate", "masterDataRequests.list", "transferRequests.list", "transferRequests.request",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.create", "envelopes.adjustAllocation", "envelopes.move", "envelopes.reverseMovement", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",

@@ -18,6 +18,8 @@ import { cancelTransaction as requestCancelTransaction, restoreTransaction as re
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
+import TransferRequestsPanel from "./TransferRequestsPanel.jsx";
+import { useTransferRequestReview } from "./useTransferRequestReview.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
@@ -224,6 +226,7 @@ const TransactionsPage = () => {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [detailTransaction, setDetailTransaction] = useState(null);
   const resource = useApiResource("transactions.list", transactionQuery(filters));
+  const transferRequests = useApiResource("transferRequests.list", {}, { enabled: Boolean(bootstrap?.user?.role) });
   const reportResource = useApiResource("reports.monthly", { period: filters.period, trend_months: 6 }, { enabled: mobileLayout });
   const lifecycle = useTransactionLifecycle({ resource, refreshOverview, invalidate });
   const { accountLookup, categoryLookup, creatorLookup, items, filterOptions } = transactionPageData(bootstrap, resource);
@@ -258,6 +261,10 @@ const TransactionsPage = () => {
   const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, resource, filters, setFilters };
   const modalProps = { ...lifecycle, accountLabel, categoryLabel };
 
+  const transferReview = useTransferRequestReview({
+    transferRequests, invalidate, refreshKeys, transactionResource: resource, refreshOverview,
+  });
+
   const reviewQueue = useTransactionReviewQueue({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, mobileLayout, reportResource, setEditingTransaction });
   const reviewQueueState = reviewQueue.state;
   const handleEditSaved = reviewQueue.handleSaved;
@@ -265,6 +272,7 @@ const TransactionsPage = () => {
   return <div className="page-stack transactions-page">
     <RefreshWarning error={resource.refreshError || reportResource.refreshError} onRetry={() => Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])])} />
     <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} help="Catat pemasukan, pengeluaran, dan transfer di sini. Perubahan saldo baru dianggap selesai setelah server mengonfirmasi transaksi." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button> : null} />
+    <TransferRequestsPanel items={transferRequests.data?.items || []} accounts={bootstrap?.accounts || []} ownerMode={bootstrap?.user?.role === "owner"} busyId={transferReview.busyId} onApprove={(request, reason) => transferReview.reviewTransferRequest(request, "approve", reason)} onReject={(request, reason) => transferReview.reviewTransferRequest(request, "reject", reason)} />
     {mobileLayout ? (
       <Suspense fallback={null}>
         <MobileTransactionHistory

@@ -3,12 +3,15 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  operationalCoreBlockers,
   operationalHealthStatement,
+  operationalWarningCodes,
   presentOperationalHealth,
   presentSchedulerHealth,
   readOperationalHealth,
   readSchedulerHealth,
   recordSchedulerHeartbeat,
+  schedulerStageFailureCode,
   SCHEDULER_STALE_MS,
 } from "../../api/_lib/services/operationalHealth.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
@@ -69,6 +72,13 @@ test("heartbeat sukses membuat scheduler sehat dan failure terbaru membuatnya de
   assert.equal(degraded.errorCode, "UPSTREAM_TEMPORARY_FAILURE");
 });
 
+test("scheduler menyimpan kode stage spesifik agar STAGE_FAILED generik tidak kembali", () => {
+  assert.equal(schedulerStageFailureCode({ integration: { failed: true, code: "GOOGLE_BRIDGE_NOT_CONFIGURED" } }), "INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED");
+  assert.equal(schedulerStageFailureCode({ integration: { failed: 2, errorCode: "upstream timeout" } }), "INTEGRATIONS:UPSTREAM_TIMEOUT");
+  assert.equal(schedulerStageFailureCode({ push: { partial: 1 } }), "PUSH:PARTIAL_DELIVERY");
+  assert.equal(schedulerStageFailureCode({ housekeeping: { failed: false }, integration: { failed: 0 }, push: { failed: 0, partial: 0 } }), "");
+});
+
 test("error code heartbeat disanitasi sebelum disimpan", async () => {
   const db = memoryDb();
   await recordSchedulerHeartbeat(db, { success: false, errorCode: "X".repeat(120) });
@@ -100,6 +110,21 @@ test("operational health degraded untuk dead-letter integration/notifikasi aktif
     integrityStatus: "failed",
   });
   assert.equal(presentOperationalHealth({ latest_backup_status: "verified", latest_integrity_status: "passed" }).status, "ok");
+});
+
+
+test("public/core readiness hanya diblok integrity failure; scheduler/integration/backup/notifikasi tetap warning operasional", () => {
+  const warningOnly = presentOperationalHealth({
+    notification_dead_letter_count: 1,
+    latest_backup_status: "failed",
+    latest_integrity_status: "passed",
+  }, [{ provider: "sheets", status: "dead_letter", count: 2 }]);
+  assert.deepEqual(operationalCoreBlockers(warningOnly), []);
+  assert.deepEqual(operationalWarningCodes(warningOnly), ["INTEGRATION_DEAD_LETTER", "NOTIFICATION_DEAD_LETTER", "BACKUP_FAILED"]);
+
+  const integrityFailed = presentOperationalHealth({ latest_integrity_status: "failed" });
+  assert.deepEqual(operationalCoreBlockers(integrityFailed), ["INTEGRITY_FAILED"]);
+  assert.deepEqual(operationalWarningCodes(integrityFailed), []);
 });
 
 test("operational health memakai integration status canonical dan query payload-free untuk signal lain", () => {
@@ -153,5 +178,6 @@ test("operational health membaca status database tanpa membocorkan payload dan p
 
 test("scheduler menganggap partial Push delivery sebagai run degraded", async () => {
   const jobs = await readFile(new URL("../../api/jobs.js", import.meta.url), "utf8");
-  assert.match(jobs, /Number\(push\.partial \|\| 0\) > 0/);
+  assert.match(jobs, /schedulerStageFailureCode\(\{ housekeeping, integration, notificationQueue, push \}\)/);
+  assert.equal(schedulerStageFailureCode({ push: { partial: 1 } }), "PUSH:PARTIAL_DELIVERY");
 });

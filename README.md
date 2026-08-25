@@ -51,7 +51,7 @@ npm run dev
 
 Untuk troubleshooting/setup komputer baru tanpa menyalakan server, gunakan `npm run env:pull:development`, lalu `npm run env:status`. Status hanya menampilkan marker, host database, kelengkapan, dan fingerprint publik Web Push—bukan token/private key. Setelah seed Development pusat selesai, komputer tepercaya lain tidak perlu membuat `.env.local` atau VAPID baru secara manual.
 
-Untuk mode **Production**, gunakan `npm run prod`. Command ini memeriksa `/api/health` dan frontend shell pada deployment canonical `https://saldo-bersama.vercel.app`, lalu membuka Production aktual pada terminal interaktif. Production sengaja tidak diemulasi dengan database Production di `localhost` karena auth production memakai HTTPS + Secure HttpOnly cookie/server OAuth dan secret Vercel Sensitive tidak dapat dipull kembali.
+Untuk mode **Production**, gunakan `npm run prod`. Command ini tidak menarik atau menulis `.env.local`; Development hanya dibaca untuk membuktikan isolasi. Production profile, Turso Production, core `/api/health`, dan frontend shell deployment canonical `https://saldo-bersama.vercel.app` diperiksa sebelum URL dibuka. Scheduler, Google integration, backup, atau notification degradation ditampilkan sebagai operational warning tetapi tidak mematikan login/ledger bila database/schema/binding, maintenance, integrity, dan frontend core sehat. Production sengaja tidak diemulasi dengan database Production di `localhost` karena auth production memakai HTTPS + Secure HttpOnly cookie/server OAuth dan secret Vercel Sensitive tidak dapat dipull kembali.
 
 Jangan commit `.env.local`, `.env.production.local`, `.vercel`, token, private key, atau secret.
 
@@ -68,8 +68,8 @@ npm run verify
 Command harian sengaja dibuat ringkas:
 
 ```bash
-npm run dev   # Development lokal → auto-pull Vercel Development + Turso Development
-npm run prod  # validasi profile Production lokal + Turso Production + Vercel Production, lalu buka browser
+npm run dev   # hanya Development lokal → auto-pull Vercel Development + Turso Development
+npm run prod  # hanya jalur Production → profile lokal + Turso Production + Vercel, tanpa menulis DEV
 ```
 
 Untuk pemakaian harian cukup dua command di atas. Command `verify`, `zip`, database, environment sync, dan diagnosis tetap tersedia untuk quality gate/maintenance, tetapi tidak perlu dihafal untuk penggunaan rutin.
@@ -86,7 +86,7 @@ git commit -m "fix: deskripsi perubahan"
 git push origin main
 ```
 
-Managed pre-push hook memverifikasi bahwa branch aktif/ref/SHA yang benar-benar dikirim semuanya `main`, working tree bersih, push fast-forward, lalu menjalankan full `npm run verify`. Jika satu gate gagal, push dibatalkan sebelum ref dikirim. GitHub **Quality** tetap berjalan setelah push sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify` atau force push.
+Managed pre-push hook memverifikasi bahwa branch aktif/ref/SHA yang benar-benar dikirim semuanya `main`, working tree bersih, push fast-forward, menjalankan full `npm run verify`, lalu memastikan Turso Production **secara read-only** sudah memakai schema/binding yang kompatibel dengan source. Jika satu gate gagal, push dibatalkan sebelum ref dikirim; push tidak pernah auto-migrate. GitHub **Quality** tetap berjalan setelah push sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify` atau force push.
 
 ## Database
 

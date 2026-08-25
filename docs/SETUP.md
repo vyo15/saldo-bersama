@@ -76,9 +76,10 @@ Alur `npm run dev` pada terminal interaktif:
 7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key Production-only salah ditempatkan pada Development/cache lokal.
 8. Memvalidasi sepuluh key core, `DATABASE_ENVIRONMENT=development`, dan satu grup Web Push lengkap/valid.
 9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
-10. Memastikan `.env.production.local` sudah ada; jika belum, membuat template Production aman sekali tanpa menyalin credential DEV.
-11. Memeriksa Turso Development benar-benar reachable serta schema/binding siap.
-12. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
+10. Memeriksa Turso Development benar-benar reachable serta schema/binding siap.
+11. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
+
+`npm run dev` tidak membuat atau mengubah `.env.production.local`; provisioning Production dipicu hanya saat `npm run prod` membutuhkan profile tersebut.
 
 Refresh Development setiap start disengaja agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Bila login, link, pull, atau validasi gagal, `.env.local` lama dipertahankan tetapi server tidak dijalankan. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
@@ -121,7 +122,7 @@ npm run diagnose
 
 `env:status` hanya menampilkan fingerprint public key, bukan private key/token. `diagnose` memvalidasi pasangan key dan menampilkan `Web Push: ready` serta hasil verifikasi Push terakhir bila audit tersedia. Setelah Development terisi, komputer lain cukup menjalankan `npm run dev`. Tidak perlu copy/edit `.env.local` per perangkat. Izin notifikasi browser tetap harus diberikan satu kali oleh pengguna pada setiap browser/perangkat.
 
-Production tetap terpisah. Pada setiap PC/laptop tepercaya, `npm run dev` membuat `.env.production.local` template aman satu kali bila belum ada. Isi credential Production canonical yang sama dari secret store yang sah; file existing tidak pernah ditimpa otomatis.
+Production tetap terpisah. Pada setiap PC/laptop tepercaya, `npm run prod` membuat `.env.production.local` skeleton aman satu kali bila belum ada lalu berhenti. Isi credential Production canonical yang sama dari secret store yang sah; `npm run dev` tidak menyentuh profile Production dan file existing tidak pernah ditimpa otomatis.
 
 Untuk penggunaan harian cukup:
 
@@ -130,7 +131,7 @@ npm run dev
 npm run prod
 ```
 
-`npm run prod` otomatis memeriksa profile DEV/PROD, isolasi host/token Turso, `SESSION_SECRET`, pasangan VAPID, Turso Production read-only, dan Vercel Production aktual. Command sinkronisasi `env:push:*`, migration, backup/restore, dan diagnosis tetap hanya untuk maintenance/runbook khusus. Kita sengaja tidak membuat localhost memakai database Production karena itu tidak mereplikasi Secure cookie/server OAuth dan meningkatkan risiko mutation Production dari mesin lokal.
+`npm run prod` tidak pull/menimpa Development; ia membaca profile DEV hanya untuk membuktikan isolasi host/token Turso, `SESSION_SECRET`, dan pasangan VAPID, lalu memeriksa Turso Production read-only serta Vercel Production aktual. Grup Google bridge pusat boleh di-seed ke Production lokal hanya bila grup DEV lengkap dan grup PROD kosong; drift lengkap ditolak. Command sinkronisasi `env:push:*`, migration, backup/restore, dan diagnosis tetap hanya untuk maintenance/runbook khusus. Kita sengaja tidak membuat localhost memakai database Production karena itu tidak mereplikasi Secure cookie/server OAuth dan meningkatkan risiko mutation Production dari mesin lokal.
 
 Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local`, `.env.production.local`, atau `.vercel`.
 
@@ -152,7 +153,7 @@ npm run db:bind-environment -- production
 npm run db:integrity -- production
 ```
 
-Tooling mutation migration membaca binding existing sebelum menulis dan menolak profile Production yang ternyata menunjuk database yang sudah terikat ke Development, atau sebaliknya. Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Selama cutover ADR-0007 belum selesai dan hanya satu database legacy tersedia, jangan membuat data dummy atau menjalankan destructive operation terhadap database tersebut dari Development. Source v13 akan fail-closed sampai Development memiliki database/token terpisah.
+Tooling mutation migration membaca binding existing sebelum menulis dan menolak profile Production yang ternyata menunjuk database yang sudah terikat ke Development, atau sebaliknya. Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Selama cutover ADR-0007 belum selesai dan hanya satu database legacy tersedia, jangan membuat data dummy atau menjalankan destructive operation terhadap database tersebut dari Development. Source v14 akan fail-closed sampai Development memiliki database/token terpisah.
 
 ## 6. Integrasi Google
 

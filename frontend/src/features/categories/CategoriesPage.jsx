@@ -10,6 +10,7 @@ import Modal from "../../components/common/Modal.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { MoneyInIcon, MoneyOutIcon, RefundIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
@@ -17,6 +18,7 @@ import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useMasterDataRequestReview } from "../../hooks/useMasterDataRequestReview.js";
 import {
   CATEGORY_ICON_GROUPS,
   CATEGORY_ICON_OPTIONS,
@@ -25,7 +27,7 @@ import {
   categoryIconKey,
   categoryIconOption,
 } from "../../shared/presentation/transaction.js";
-import { archiveCategory, createCategory as requestCreateCategory, deleteUnusedCategory, previewCategoryArchive, updateCategory as requestUpdateCategory } from "./categories.api.js";
+import { archiveCategory, createCategory as requestCreateCategory, deleteUnusedCategory, previewCategoryArchive, requestCategoryCreation, updateCategory as requestUpdateCategory } from "./categories.api.js";
 import {
   CATEGORY_TYPE_OPTIONS,
   categoryNatureForType,
@@ -190,7 +192,7 @@ const CategoryList = ({ items, totalItems, grouped, filtersActive, clearFilters,
   const emptyState = collectionEmptyState({ visibleCount: items.length, totalCount: totalItems, filtersActive });
   if (items.length) return <Card className={styles.categoryPanel}><div className={styles.categoryGroups}>{orderedCategoryGroups(grouped).map(([type, categories]) => { const meta = CATEGORY_SECTION_META[type] || { label: categoryTypeLabel(type), icon: null, className: "" }; const TypeIcon = meta.icon; return <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}><div className={styles.categoryGroupHeading}><div className={`${styles.categoryGroupTitle} ${meta.className}`}><h2 id={`category-${type}`}>{meta.label}</h2>{TypeIcon ? <TypeIcon aria-hidden="true" /> : null}</div><span>{categories.length}</span></div><div className={styles.categoryList}>{categories.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} menuProps={menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div></section>; })}</div></Card>;
   const initialEmpty = emptyState === EMPTY_COLLECTION_STATE.INITIAL;
-  return <EmptyState className={`${styles.emptyPanel}${initialEmpty ? ` ${styles.emptyPanelInitial}` : ""}`} title={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Kategori tidak ditemukan" : "Belum ada kategori aktif" : "Belum ada kategori"} description={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Ubah pencarian atau filter untuk menampilkan kategori lain." : "Tidak ada kategori aktif pada status yang dipilih." : "Kategori membantu mengelompokkan pemasukan dan pengeluaran."} action={emptyState === EMPTY_COLLECTION_STATE.FILTERED && filtersActive ? <Button onClick={clearFilters}>Reset pencarian</Button> : initialEmpty && ownerMode ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />;
+  return <EmptyState className={`${styles.emptyPanel}${initialEmpty ? ` ${styles.emptyPanelInitial}` : ""}`} title={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Kategori tidak ditemukan" : "Belum ada kategori aktif" : "Belum ada kategori"} description={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Ubah pencarian atau filter untuk menampilkan kategori lain." : "Tidak ada kategori aktif pada status yang dipilih." : "Kategori membantu mengelompokkan pemasukan dan pengeluaran."} action={emptyState === EMPTY_COLLECTION_STATE.FILTERED && filtersActive ? <Button onClick={clearFilters}>Reset pencarian</Button> : initialEmpty ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label={ownerMode ? "Tambah kategori" : "Ajukan kategori"}>{ownerMode ? "Tambah kategori" : "Ajukan kategori"}</Button> : null} />;
 };
 
 const useCategoryMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId }) => {
@@ -257,7 +259,7 @@ const ExpenseNatureField = ({ value, onChange, legacy = false }) => {
   return <label className="field"><span>Sifat pengeluaran</span><select value={value} onChange={(event) => onChange(event.target.value)}>{options.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select>{legacy ? <small>Kategori lama tetap kompatibel sampai klasifikasinya diperbarui.</small> : selected?.example ? <small>{selected.example}</small> : null}</label>;
 };
 
-const CreateCategoryModal = ({ open, close, form, setForm, createCategory, dialogState }) => <Modal open={open} onClose={close} dismissible={dialogState.status !== "submitting"} title="Tambah kategori" size="lg" footer={<><Button onClick={close} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-category-form" loading={dialogState.status === "submitting"}>Simpan kategori</Button></>}><form id="create-category-form" className="form-grid" onSubmit={createCategory}><label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" placeholder="Contoh: Cicilan rumah" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label><CategoryTypeField form={form} setForm={setForm} />{form.transaction_type === "expense" ? <ExpenseNatureField value={form.nature} onChange={(nature) => setForm((current) => ({ ...current, nature }))} /> : null}<CategoryIconPicker value={form.icon} onChange={(icon) => setForm((current) => ({ ...current, icon }))} transactionType={form.transaction_type} nature={form.nature} name={form.name} />{dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}</form></Modal>;
+const CreateCategoryModal = ({ open, close, form, setForm, createCategory, dialogState, requestMode }) => <Modal open={open} onClose={close} dismissible={dialogState.status !== "submitting"} title={requestMode ? "Ajukan kategori" : "Tambah kategori"} description={requestMode ? "Kategori baru dapat dipakai setelah Administrator menyetujui pengajuan." : undefined} size="lg" footer={<><Button onClick={close} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="create-category-form" loading={dialogState.status === "submitting"}>{requestMode ? "Kirim pengajuan" : "Simpan kategori"}</Button></>}><form id="create-category-form" className="form-grid" onSubmit={createCategory}><label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" placeholder="Contoh: Cicilan rumah" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label><CategoryTypeField form={form} setForm={setForm} />{form.transaction_type === "expense" ? <ExpenseNatureField value={form.nature} onChange={(nature) => setForm((current) => ({ ...current, nature }))} /> : null}<CategoryIconPicker value={form.icon} onChange={(icon) => setForm((current) => ({ ...current, icon }))} transactionType={form.transaction_type} nature={form.nature} name={form.name} />{dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}</form></Modal>;
 
 const EditCategoryModal = ({ editCategory, setEditCategory, saveCategory, dialogState }) => <Modal open={Boolean(editCategory)} onClose={() => setEditCategory(null)} dismissible={dialogState.status !== "submitting"} title="Edit kategori" size="lg" footer={<><Button onClick={() => setEditCategory(null)} disabled={dialogState.status === "submitting"}>Batal</Button><Button variant="primary" type="submit" form="edit-category-form" loading={dialogState.status === "submitting"}>Simpan perubahan</Button></>}><form id="edit-category-form" className="form-grid" onSubmit={saveCategory}><label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" value={editCategory?.name || ""} onChange={(event) => setEditCategory((current) => ({ ...current, name: event.target.value }))} /></label>{editCategory?.transaction_type === "expense" ? <ExpenseNatureField value={editCategory?.nature || "variable"} legacy={editCategory?.nature === "savings"} onChange={(nature) => setEditCategory((current) => ({ ...current, nature }))} /> : null}{editCategory ? <CategoryIconPicker value={editCategory.icon} onChange={(icon) => setEditCategory((current) => ({ ...current, icon }))} transactionType={editCategory.transaction_type} nature={editCategory.nature} name={editCategory.name} /> : null}{dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}</form></Modal>;
 
@@ -271,7 +273,7 @@ const groupCategories = (items) => items.reduce((groups, category) => {
 }, {});
 
 
-const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenMenuId, onCreated }) => {
+const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenMenuId, requestsResource, ownerMode, onCreated }) => {
   const [form, setForm] = useState(emptyCategoryForm);
   const [createOpen, setCreateOpen] = useState(false);
   const [editCategory, setEditCategory] = useState(null);
@@ -292,8 +294,12 @@ const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenM
     event.preventDefault(); setDialogState({ status: "submitting", error: null });
     try {
       const createdType = form.transaction_type;
-      await requestCreateCategory(form, {}); setForm(emptyCategoryForm()); setCreateOpen(false); setDialogState({ status: "idle", error: null });
-      notify({ message: "Kategori berhasil dibuat.", tone: "success", dedupeKey: "categories:create" }); await reloadCategories(); onCreated?.(createdType);
+      if (ownerMode) await requestCreateCategory(form, {});
+      else await requestCategoryCreation(form, {});
+      setForm(emptyCategoryForm()); setCreateOpen(false); setDialogState({ status: "idle", error: null });
+      notify({ message: ownerMode ? "Kategori berhasil dibuat." : "Pengajuan kategori dikirim ke Administrator.", tone: "success", dedupeKey: ownerMode ? "categories:create" : "categories:request-create" });
+      if (ownerMode) { await reloadCategories(); onCreated?.(createdType); }
+      else await requestsResource?.reload?.();
     } catch (error) { setDialogState({ status: "error", error }); }
   };
   const saveCategory = async (event) => {
@@ -322,6 +328,28 @@ const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenM
   return { form, setForm, createOpen, editCategory, setEditCategory, archiveTarget, setArchiveTarget, message, dialogState, reloadCategories, openCreate, openEdit, closeCreate, createCategory, saveCategory, openArchivePreview, applyCategoryLifecycle };
 };
 
+
+const CategoriesPageContent = ({ page }) => {
+  const {
+    resource, actions, archiveEnabled, archiveResource, ownerMode, items, requestsResource, requestReview, setupCreated, setSetupCreated, navigate,
+    searchQuery, setSearchQuery, statusFilter, setStatusFilter, archivePending, filteredItems, grouped, filtersActive, clearFilters, menuProps,
+  } = page;
+  return <div className={`page-stack ${styles.categoryPage}`}>
+    <RefreshWarning error={resource.refreshError} onRetry={actions.reloadCategories} />
+    {archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}
+    {archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}
+    <PageHeader title="Kategori" help="Kategori mengelompokkan transaksi. Sifat pengeluaran hanya dipakai untuk kategori uang keluar dan tidak mengubah saldo." actions={items.length ? <Button variant="primary" icon={FiPlus} onClick={actions.openCreate} aria-label={ownerMode ? "Tambah kategori" : "Ajukan kategori"}>{ownerMode ? "Tambah kategori" : "Ajukan kategori"}</Button> : null} />
+    {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : <MasterDataRequestsPanel items={requestsResource.data?.items || []} ownerMode={ownerMode} title={ownerMode ? "Pengajuan kategori" : "Pengajuan kategori saya"} busyId={requestReview.busyId} onApprove={(request) => requestReview.reviewRequest(request, "approve")} onReject={(request, reason) => requestReview.reviewRequest(request, "reject", reason)} />}
+    {setupCreated ? <div><CompactNotice tone="success" title="Kategori dasar sudah siap." role="status">Kategori pemasukan dan pengeluaran tersedia.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/perencanaan/kantong", { state: { setupFlow: true } })}>Lanjut buat Alokasi Dana</Button></div></div> : null}
+    {actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}
+    <CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />
+    {archivePending ? <LoadingScreen variant="panel" label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}
+    <CreateCategoryModal open={actions.createOpen} close={actions.closeCreate} form={actions.form} setForm={actions.setForm} createCategory={actions.createCategory} dialogState={actions.dialogState} requestMode={!ownerMode} />
+    <EditCategoryModal editCategory={actions.editCategory} setEditCategory={actions.setEditCategory} saveCategory={actions.saveCategory} dialogState={actions.dialogState} />
+    <ArchiveCategoryModal archiveTarget={actions.archiveTarget} dialogState={actions.dialogState} setArchiveTarget={actions.setArchiveTarget} applyCategoryLifecycle={actions.applyCategoryLifecycle} />
+  </div>;
+};
+
 const CategoriesPage = () => {
   const { notify } = useFeedback();
   const location = useLocation();
@@ -330,6 +358,7 @@ const CategoriesPage = () => {
   const { invalidate, refreshAll } = useFinance();
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
+  const requestsResource = useApiResource("masterDataRequests.list", { request_type: "category" });
   const [statusFilter, setStatusFilter] = useState("active");
   const archiveEnabled = ownerMode && statusFilter !== "active";
   const archiveResource = useApiResource("archive.list", {}, { enabled: archiveEnabled });
@@ -338,7 +367,7 @@ const CategoriesPage = () => {
   const [openMenuId, setOpenMenuId] = useState("");
   const activeMenuRef = useRef(null);
   const menuTriggerRefs = useRef(new Map());
-  const actions = useCategoryActions({ resource, notify, invalidate, refreshAll, setOpenMenuId, onCreated: (createdType) => { const types = new Set([...items.map((item) => item.transaction_type), createdType]); if (location.state?.setupFlow && types.has("income") && types.has("expense")) setSetupCreated(true); } });
+  const actions = useCategoryActions({ resource, notify, invalidate, refreshAll, setOpenMenuId, requestsResource, ownerMode, onCreated: (createdType) => { const types = new Set([...items.map((item) => item.transaction_type), createdType]); if (location.state?.setupFlow && types.has("income") && types.has("expense")) setSetupCreated(true); } });
   const items = useMemo(() => {
     const merged = new Map();
     for (const category of archiveResource.data?.categories || []) merged.set(category.category_id, category);
@@ -356,6 +385,9 @@ const CategoriesPage = () => {
   }, [items, searchQuery, statusFilter]);
   const grouped = useMemo(() => groupCategories(filteredItems), [filteredItems]);
   useCategoryMenuDismiss({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId });
+  const requestReview = useMasterDataRequestReview({
+    requestsResource, reloadApproved: actions.reloadCategories, notify, entityLabel: "kategori", dedupePrefix: "categories:request",
+  });
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat kategori transaksi..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
@@ -364,7 +396,10 @@ const CategoriesPage = () => {
   const clearFilters = () => { setSearchQuery(""); setStatusFilter("active"); setOpenMenuId(""); };
   const menuProps = { openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId };
   const archivePending = archiveEnabled && statusFilter === "archived" && archiveResource.status === "loading" && !archiveResource.data;
-  return <div className={`page-stack ${styles.categoryPage}`}><RefreshWarning error={resource.refreshError} onRetry={actions.reloadCategories} />{archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}{archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}<PageHeader title="Kategori" help="Kategori mengelompokkan transaksi. Sifat pengeluaran hanya dipakai untuk kategori uang keluar dan tidak mengubah saldo." actions={ownerMode && items.length ? <Button variant="primary" icon={FiPlus} onClick={actions.openCreate} aria-label="Tambah kategori">Tambah kategori</Button> : null} />{setupCreated ? <div><CompactNotice tone="success" title="Kategori dasar sudah siap." role="status">Kategori pemasukan dan pengeluaran tersedia.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/perencanaan/kantong", { state: { setupFlow: true } })}>Lanjut buat Alokasi Dana</Button></div></div> : null}{actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}<CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />{archivePending ? <LoadingScreen variant="panel" label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}<CreateCategoryModal open={actions.createOpen} close={actions.closeCreate} form={actions.form} setForm={actions.setForm} createCategory={actions.createCategory} dialogState={actions.dialogState} /><EditCategoryModal editCategory={actions.editCategory} setEditCategory={actions.setEditCategory} saveCategory={actions.saveCategory} dialogState={actions.dialogState} /><ArchiveCategoryModal archiveTarget={actions.archiveTarget} dialogState={actions.dialogState} setArchiveTarget={actions.setArchiveTarget} applyCategoryLifecycle={actions.applyCategoryLifecycle} /></div>;
+  return <CategoriesPageContent page={{
+    resource, actions, archiveEnabled, archiveResource, ownerMode, items, requestsResource, requestReview, setupCreated, setSetupCreated, navigate,
+    searchQuery, setSearchQuery, statusFilter, setStatusFilter, archivePending, filteredItems, grouped, filtersActive, clearFilters, menuProps,
+  }} />;
 };
 
 export default CategoriesPage;

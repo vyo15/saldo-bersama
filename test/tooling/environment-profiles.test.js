@@ -4,10 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { checkProductionEnvironment, environmentIsolationStatus, environmentSharedConfigStatus } from "../../scripts/check-production-environment.mjs";
-import { checkProductionRuntime, prepareTrustedProductionRuntime, PRODUCTION_ORIGIN } from "../../scripts/production-runtime.mjs";
+import { checkProductionRuntime, prepareTrustedProductionRuntime, productionCoreReadiness, PRODUCTION_ORIGIN, runProductionRuntime } from "../../scripts/production-runtime.mjs";
 import { assertDatabaseProfileBinding, loadDatabaseProfile, resolveDatabaseProfileTarget } from "../../scripts/database-profile.mjs";
 import { environmentProfileSummary, inspectEnvironmentProfiles, safeFingerprint } from "../../scripts/environment-status.mjs";
-import { buildProductionProfileTemplate, ensureProductionLocalProfile } from "../../scripts/production-local-profile.mjs";
+import { buildProductionProfileTemplate, ensureProductionLocalProfile, synchronizeCentralGoogleBridgeProfile } from "../../scripts/production-local-profile.mjs";
 import { createVapidTestEnvironment } from "../helpers/vapid-test-keys.js";
 
 const response = ({ status = 200, body = null, contentType = "application/json" } = {}) => ({
@@ -144,7 +144,7 @@ test("environment status menghasilkan fingerprint aman dan workstation menandai 
 
 
 
-test("npm run dev dapat membuat skeleton Production sekali tanpa menyalin credential Development", async () => {
+test("helper profile Production membuat skeleton sekali tanpa menyalin credential environment-specific Development", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "saldo-prod-profile-"));
   try {
     await writeFile(path.join(root, ".env.local"), [
@@ -204,17 +204,16 @@ test("Production template hanya menyamakan config aman dan membiarkan secret per
   assert.doesNotMatch(source, /dev-session|dev\.example|dev-token|dev-public|dev-private/);
 });
 
-test("npm run prod mengorkestrasi Development, Production local, isolation, dan database check sebelum Vercel", async () => {
+test("npm run prod tidak menarik/menimpa Development dan hanya memeriksa Production + isolasi", async () => {
   const calls = [];
   await prepareTrustedProductionRuntime({
     root: "/tmp/project",
-    interactive: true,
-    environmentEnsurer: async () => { calls.push("development"); },
     productionProfileEnsurer: async () => { calls.push("profile"); return { created: false, productionPath: "/tmp/project/.env.production.local" }; },
+    centralBridgeSynchronizer: async () => { calls.push("bridge"); },
     productionEnvironmentChecker: async () => { calls.push("isolation"); },
     productionDatabaseChecker: async () => { calls.push("database"); },
   });
-  assert.deepEqual(calls, ["development", "profile", "isolation", "database"]);
+  assert.deepEqual(calls, ["profile", "bridge", "isolation", "database"]);
 });
 
 test("npm run prod meminta setup satu kali bila Production profile baru dibuat", async () => {
@@ -222,7 +221,6 @@ test("npm run prod meminta setup satu kali bila Production profile baru dibuat",
     prepareTrustedProductionRuntime({
       root: "/tmp/project",
       interactive: true,
-      environmentEnsurer: async () => {},
       productionProfileEnsurer: async () => ({ created: true, productionPath: "/tmp/project/.env.production.local" }),
       productionEnvironmentChecker: async () => { throw new Error("should not run"); },
       productionDatabaseChecker: async () => { throw new Error("should not run"); },
@@ -253,6 +251,126 @@ test("production runtime check fail closed bila Vercel Production degraded", asy
 
 
 
+
+
+test("Google bridge pusat dapat diselaraskan DEV ke PROD lokal tanpa menyalin secret environment-specific", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "saldo-bridge-profile-"));
+  try {
+    await writeFile(path.join(root, ".env.local"), [
+      "GOOGLE_BRIDGE_WEB_APP_URL=https://script.google.com/macros/s/central/exec",
+      "GOOGLE_BRIDGE_SHARED_SECRET=central-bridge-secret",
+      "JOBS_SHARED_SECRET=central-jobs-secret",
+      "SESSION_SECRET=dev-session",
+      "TURSO_DATABASE_URL=libsql://dev.example.turso.io",
+      "TURSO_AUTH_TOKEN=dev-token",
+      "VITE_VAPID_PUBLIC_KEY=dev-public",
+      "VAPID_PRIVATE_KEY=dev-private",
+      "",
+    ].join("\n"));
+    await writeFile(path.join(root, ".env.production.local"), [
+      "DATABASE_ENVIRONMENT=production",
+      "SESSION_SECRET=prod-session",
+      "TURSO_DATABASE_URL=libsql://prod.example.turso.io",
+      "TURSO_AUTH_TOKEN=prod-token",
+      "GOOGLE_BRIDGE_WEB_APP_URL=",
+      "GOOGLE_BRIDGE_SHARED_SECRET=",
+      "JOBS_SHARED_SECRET=",
+      "VITE_VAPID_PUBLIC_KEY=prod-public",
+      "VAPID_PRIVATE_KEY=prod-private",
+      "",
+    ].join("\n"));
+
+    const result = await synchronizeCentralGoogleBridgeProfile({ projectRoot: root, logger: { log: () => {} } });
+    assert.equal(result.changed, true);
+    const source = await readFile(path.join(root, ".env.production.local"), "utf8");
+    assert.match(source, /GOOGLE_BRIDGE_WEB_APP_URL=https:\/\/script\.google\.com\/macros\/s\/central\/exec/);
+    assert.match(source, /GOOGLE_BRIDGE_SHARED_SECRET=central-bridge-secret/);
+    assert.match(source, /JOBS_SHARED_SECRET=central-jobs-secret/);
+    assert.match(source, /SESSION_SECRET=prod-session/);
+    assert.match(source, /TURSO_DATABASE_URL=libsql:\/\/prod\.example\.turso\.io/);
+    assert.match(source, /VAPID_PRIVATE_KEY=prod-private/);
+    assert.doesNotMatch(source, /dev-session|dev\.example|dev-token|dev-private/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Google bridge pusat fail closed bila DEV/PROD lengkap tetapi drift", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "saldo-bridge-drift-"));
+  try {
+    await writeFile(path.join(root, ".env.local"), [
+      "GOOGLE_BRIDGE_WEB_APP_URL=https://script.google.com/macros/s/central/exec",
+      "GOOGLE_BRIDGE_SHARED_SECRET=central-secret",
+      "JOBS_SHARED_SECRET=central-jobs",
+      "",
+    ].join("\n"));
+    await writeFile(path.join(root, ".env.production.local"), [
+      "GOOGLE_BRIDGE_WEB_APP_URL=https://script.google.com/macros/s/other/exec",
+      "GOOGLE_BRIDGE_SHARED_SECRET=other-secret",
+      "JOBS_SHARED_SECRET=other-jobs",
+      "",
+    ].join("\n"));
+    await assert.rejects(
+      synchronizeCentralGoogleBridgeProfile({ projectRoot: root, logger: { log: () => {} } }),
+      (error) => error?.code === "CENTRAL_GOOGLE_BRIDGE_DRIFT" && error.mismatched.length === 3,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Production core tetap usable saat hanya scheduler/integrasi optional degraded", async () => {
+  const readiness = productionCoreReadiness({
+    databaseStatus: "ok",
+    schema: { ready: true },
+    maintenanceMode: false,
+    scheduler: { status: "degraded", errorCode: "INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED" },
+    operations: { status: "degraded", codes: ["INTEGRATION_DEAD_LETTER"] },
+  });
+  assert.equal(readiness.ready, true);
+  assert.deepEqual(readiness.blockers, []);
+  assert.deepEqual(readiness.warnings, ["INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED", "INTEGRATION_DEAD_LETTER"]);
+
+  const blocked = productionCoreReadiness({
+    databaseStatus: "ok",
+    schema: { ready: true },
+    maintenanceMode: false,
+    scheduler: { status: "ok" },
+    operations: { status: "degraded", codes: ["INTEGRITY_FAILED"] },
+  });
+  assert.equal(blocked.ready, false);
+  assert.deepEqual(blocked.blockers, ["INTEGRITY_FAILED"]);
+});
+
+test("npm run prod membuka core Production sehat walau aggregate health scheduler masih degraded", async () => {
+  let frontendChecked = 0;
+  const before = console.warn;
+  const beforeLog = console.log;
+  console.warn = () => {};
+  console.log = () => {};
+  try {
+    const result = await runProductionRuntime({
+      root: "/tmp/project",
+      open: false,
+      prepare: async () => {},
+      runtimeCheck: async () => { throw Object.assign(new Error("degraded"), { code: "PRODUCTION_DEGRADED" }); },
+      degradationReporter: async () => ({
+        databaseStatus: "ok",
+        schema: { ready: true, version: 14 },
+        maintenanceMode: false,
+        scheduler: { status: "degraded", errorCode: "INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED" },
+        operations: { status: "ok", codes: [] },
+      }),
+      frontendCheck: async () => { frontendChecked += 1; },
+    });
+    assert.equal(result.coreReady, true);
+    assert.equal(result.serviceStatus, "degraded");
+    assert.equal(frontendChecked, 1);
+  } finally {
+    console.warn = before;
+    console.log = beforeLog;
+  }
+});
 
 test("Production checker mewajibkan profile Development dan Production pada workstation yang sama", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "saldo-prod-check-"));

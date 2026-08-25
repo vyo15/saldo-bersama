@@ -57,9 +57,9 @@ const MemberStatusBadges = ({ member }) => <div className={styles.memberMeta}><s
 const CurrentMemberPhotoFact = ({ googlePhoto = false }) => <dl className={styles.memberFacts}><div><dt>Foto profil</dt><dd>{googlePhoto ? "Google" : "Inisial"}</dd></div></dl>;
 
 const CurrentMemberCard = ({ member, user, menuProps, setActivityMember }) => {
-  const avatarUser = { ...member, photoURL: user?.photoURL || user?.picture || "" };
+  const avatarUser = { ...member, photoURL: user?.photoURL || user?.picture || member.photoURL || "" };
   const menuOpen = menuProps.openMenuId === member.user_id;
-  const hasGooglePhoto = Boolean(user?.photoURL || user?.picture);
+  const hasGooglePhoto = Boolean(avatarUser.photoURL);
   return <Card className={`${styles.memberCard} ${styles.currentMemberCard}`}><div className={styles.currentMemberCover} aria-hidden="true"><span className={styles.currentMemberCoverMark}><FiShield /></span></div><div className={styles.currentMemberBody}><div className={styles.currentMemberAvatarRow}><UserAvatar user={avatarUser} className={`${styles.memberAvatar} ${styles.currentMemberAvatar}`} /><span className={styles.googleIdentityBadge}>G&nbsp; Akun Google</span></div><div className={styles.currentMemberIdentity}><div><strong>{member.name || member.email}</strong><small>{member.email}</small></div><MemberMenu member={member} menuOpen={menuOpen} {...menuProps} /></div><div className={styles.currentMemberRoleLine}><span className={styles.memberRole}>{roleLabel(member.role)}</span><MemberStatusBadges member={member} /></div><p className={styles.currentMemberExplanation}>Profil ini berasal dari akun Google yang dipakai untuk login. Foto hanya membantu identifikasi visual dan tidak mengubah hak akses.</p><CurrentMemberPhotoFact googlePhoto={hasGooglePhoto} /><Button className={styles.memberActivityButton} variant="primary" type="button" onClick={() => setActivityMember(member)}>Lihat aktivitas transaksi</Button></div></Card>;
 };
 

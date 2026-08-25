@@ -19,7 +19,9 @@ if (!schema.ready) {
     engine: "not_checked",
     foreignKeyIssues: [],
     businessIssues: [],
-    message: "Schema database belum siap. Jalankan npm run db:migrate terlebih dahulu.",
+    message: databaseEnvironment === "production"
+      ? "Schema database Production belum siap. Setelah backup terverifikasi jalankan npm run db:migrate -- production, lalu ulangi integrity."
+      : "Schema database Development belum siap. Jalankan npm run db:migrate, lalu ulangi integrity.",
   }, null, 2));
   process.exitCode = 1;
 } else {

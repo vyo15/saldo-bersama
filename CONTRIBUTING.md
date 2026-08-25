@@ -27,7 +27,7 @@ Quality gate canonical tetap:
 npm run verify
 ```
 
-Namun untuk workflow rutin pengguna tidak perlu menjalankannya manual sebelum setiap push karena managed pre-push hook menjalankannya otomatis pada:
+Namun untuk workflow rutin pengguna tidak perlu menjalankannya manual sebelum setiap push karena managed pre-push hook menjalankan full verification lalu Production schema/binding preflight read-only secara otomatis pada:
 
 ```bash
 git push origin main

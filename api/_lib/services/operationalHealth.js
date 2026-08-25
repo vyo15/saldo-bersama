@@ -4,6 +4,27 @@ import { integrationStatusStatement } from "./integrations.js";
 
 export const SCHEDULER_STALE_MS = 35 * 60_000;
 
+const schedulerCodePart = (value, fallback = "FAILED") => {
+  const normalized = sanitizeText(value || fallback, 60).toUpperCase().replace(/[^A-Z0-9_:-]+/g, "_").replace(/^_+|_+$/g, "");
+  return normalized || fallback;
+};
+
+export const schedulerStageFailureCode = ({ housekeeping, integration, notificationQueue, push } = {}) => {
+  const directStages = [
+    ["HOUSEKEEPING", housekeeping],
+    ["INTEGRATIONS", integration],
+    ["NOTIFICATION_QUEUE", notificationQueue],
+    ["PUSH", push],
+  ];
+  for (const [name, stage] of directStages) {
+    if (stage?.failed === true) return `${name}:${schedulerCodePart(stage.code)}`.slice(0, 80);
+  }
+  if (Number(integration?.failed || 0) > 0) return `INTEGRATIONS:${schedulerCodePart(integration?.errorCode)}`.slice(0, 80);
+  if (Number(push?.failed || 0) > 0) return `PUSH:${schedulerCodePart(push?.errorCode)}`.slice(0, 80);
+  if (Number(push?.partial || 0) > 0) return "PUSH:PARTIAL_DELIVERY";
+  return "";
+};
+
 const upsertConfig = (db, key, value, timestamp) => db.execute(
   "INSERT INTO system_config(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
   [key, value, timestamp],
@@ -113,6 +134,19 @@ export const presentOperationalHealth = (row = {}, integrationRows = []) => {
     backupStatus,
     integrityStatus,
   };
+};
+
+const CORE_BLOCKING_OPERATION_CODES = Object.freeze(["INTEGRITY_FAILED"]);
+
+export const operationalCoreBlockers = (operations = {}) => {
+  const codes = Array.isArray(operations?.codes) ? operations.codes : [];
+  return codes.filter((code) => CORE_BLOCKING_OPERATION_CODES.includes(String(code)));
+};
+
+export const operationalWarningCodes = (operations = {}) => {
+  const blockers = new Set(operationalCoreBlockers(operations));
+  const codes = Array.isArray(operations?.codes) ? operations.codes : [];
+  return codes.filter((code) => !blockers.has(code));
 };
 
 export const readOperationalHealth = async (db) => {

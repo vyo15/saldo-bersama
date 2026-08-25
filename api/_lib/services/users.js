@@ -1,5 +1,5 @@
 import { appendAudit } from "./audit.js";
-import { findBootstrapUser, isValidEmail } from "../security.js";
+import { findBootstrapUser, isValidEmail, trustedProfilePhotoUrl } from "../security.js";
 import { appError, assertOwner, assertVersion, nowIso, publicRow, sanitizeText, uuid } from "./core.js";
 import { revokeUserSessions } from "../sessionRegistry.js";
 
@@ -37,10 +37,10 @@ const bootstrapOwnerInTransaction = async (tx, signedActor, email) => {
   const timestamp = nowIso();
   const candidate = {
     user_id: uuid(), firebase_uid: signedActor.uid, email, name: sanitizeText(signedActor.name || email, 120),
-    role: "owner", status: "active", row_version: 1, created_at: timestamp, updated_at: timestamp,
+    photo_url: trustedProfilePhotoUrl(signedActor.photoURL), role: "owner", status: "active", row_version: 1, created_at: timestamp, updated_at: timestamp,
   };
-  const result = await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at)
-    SELECT ?,?,?,?,?,?,?,?,?
+  const result = await tx.execute(`INSERT INTO users(user_id,firebase_uid,email,name,photo_url,role,status,row_version,created_at,updated_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?
     WHERE NOT EXISTS (SELECT 1 FROM users)
       AND NOT EXISTS (SELECT 1 FROM accounts)
       AND NOT EXISTS (SELECT 1 FROM transactions)
@@ -102,6 +102,18 @@ const bindFirebaseIdentity = async (db, user, signedActor) => db.transaction(asy
 
 const bootstrapOwnerAllowed = (email) => findBootstrapUser(email)?.role === "owner";
 
+const syncTrustedProfilePhoto = async (db, user, verifiedIdentity) => {
+  const photoUrl = trustedProfilePhotoUrl(verifiedIdentity?.photoURL);
+  if (String(user?.photo_url || "") === photoUrl) return user;
+  const timestamp = nowIso();
+  const result = await db.execute(
+    "UPDATE users SET photo_url=?,row_version=row_version+1,updated_at=? WHERE user_id=? AND status='active'",
+    [photoUrl, timestamp, user.user_id],
+  );
+  if (result.rowsAffected !== 1) throw appError("IDENTITY_CONFLICT", "Profil pengguna berubah saat proses login.", 409);
+  return db.one("SELECT * FROM users WHERE user_id=?", [user.user_id]);
+};
+
 export const resolveLoginIdentity = async (db, verifiedIdentity, { requestId = "" } = {}) => {
   const email = normalizeEmail(verifiedIdentity?.email);
   if (!isValidEmail(email)) throw appError("ACCOUNT_NOT_ALLOWED", "Akun Google ini tidak memiliki email terverifikasi yang dapat digunakan.", 403);
@@ -117,6 +129,7 @@ export const resolveLoginIdentity = async (db, verifiedIdentity, { requestId = "
   const signedActor = { ...verifiedIdentity, email, role: user.role, requestId };
   assertCanonicalActor(user, signedActor);
   if (!user.firebase_uid) user = await bindFirebaseIdentity(db, user, signedActor);
+  user = await syncTrustedProfilePhoto(db, user, verifiedIdentity);
   return userPublicProjection(user);
 };
 
@@ -136,10 +149,10 @@ export const resolveActor = async (db, signedActor) => {
 
 export const listUsers = async (db, context) => {
   assertOwner(context.actor);
-  const rows = await db.all(`SELECT user_id,email,name,role,status,row_version,created_at,updated_at,
+  const rows = await db.all(`SELECT user_id,email,name,photo_url,role,status,row_version,created_at,updated_at,
     CASE WHEN firebase_uid IS NULL THEN 'pending' ELSE 'linked' END AS identity_status
     FROM users ORDER BY role DESC, email`);
-  return { items: rows.map((row) => ({ ...publicRow(row), is_current: row.user_id === context.actor.user_id })) };
+  return { items: rows.map((row) => ({ ...publicRow(row), photoURL: row.photo_url || "", is_current: row.user_id === context.actor.user_id })) };
 };
 
 const assertRoleChangeSafe = async (db, context, current, nextRole) => {
@@ -186,8 +199,8 @@ export const upsertUser = async (db, context) => {
     });
     return userPublicProjection(next, { identityStatus: next.firebase_uid ? "linked" : "pending" });
   }
-  const next = { user_id: uuid(), firebase_uid: null, email, name: sanitizeText(payload.name || email, 120), role, status: "active", row_version: 1, created_at: timestamp, updated_at: timestamp };
-  await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", Object.values(next));
+  const next = { user_id: uuid(), firebase_uid: null, email, name: sanitizeText(payload.name || email, 120), photo_url: "", role, status: "active", row_version: 1, created_at: timestamp, updated_at: timestamp };
+  await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,photo_url,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)", Object.values(next));
   const publicNext = userPublicProjection(next, { identityStatus: "pending" });
   await appendAudit(db, context, { entityType: "user", entityId: next.user_id, next: publicNext });
   return publicNext;

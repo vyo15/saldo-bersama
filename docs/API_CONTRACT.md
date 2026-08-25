@@ -85,6 +85,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `dashboard.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `accounts.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `accounts.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `accounts.requestCreate` | Tidak | Ya | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
 | `accounts.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.previewLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `accounts.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
@@ -92,11 +93,17 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `accounts.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `categories.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `categories.requestCreate` | Tidak | Ya | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
 | `categories.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.previewArchive` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `categories.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `masterDataRequests.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData/requests.js` |
+| `masterDataRequests.review` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
+| `transferRequests.list` | Ya | Ya | Read | Tidak | `api/_lib/services/transferRequests.js` |
+| `transferRequests.request` | Tidak | Ya | Write/operation | Wajib | `api/_lib/services/transferRequests.js` |
+| `transferRequests.review` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/transferRequests.js` |
 | `transactions.list` | Ya | Ya | Read | Tidak | `api/_lib/services/finance.js` |
 | `transactions.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `transactions.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
@@ -252,8 +259,9 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 
 ### Transfer lintas shared/personal dan mutasi Target
 
-- `transactions.create/update` untuk `transfer` tetap memvalidasi kedua rekening aktif serta operable oleh actor di backend. Sumber dan tujuan tidak boleh sama.
-- Transfer **shared ↔ personal** diperbolehkan bila rekening personal tersebut memang dapat dioperasikan actor. Ledger transaksi mengikuti owner personal tunggal: `scope=personal` dan `owner_user_id` pemilik rekening personal. Karena Sheets hanya mirror `scope=shared`, transfer lintas boundary ini tidak mengekspor detail rekening personal ke mirror; Turso tetap source of truth saldo.
+- `transactions.create/update` untuk `transfer` tetap memvalidasi kedua rekening aktif serta operable oleh actor di backend. Sumber dan tujuan tidak boleh sama. Dua rekening personal dengan pemilik berbeda tetap ditolak `CROSS_OWNERSHIP_TRANSFER` karena satu ledger transaksi tidak boleh memiliki dua owner personal.
+- Administrator dapat melakukan transfer shared ↔ personal secara langsung bila rekening valid. Member yang memindahkan dana **personal miliknya → shared** tetap dapat melakukan transfer langsung, tetapi **shared → personal miliknya** wajib membuat `transferRequests.request`; direct `transactions.create` ditolak `TRANSFER_APPROVAL_REQUIRED`. `transferRequests.review` hanya Administrator, memakai `row_version` + idempotency, membaca ulang requester/rekening, dan membuat satu transaksi canonical secara atomik ketika approve.
+- `accounts.requestCreate` dan `categories.requestCreate` hanya untuk Member. Payload dinormalisasi backend sebelum disimpan sebagai request; Administrator mereview melalui `masterDataRequests.review`. Approval membuat entity canonical dalam transaksi yang sama, sedangkan reject tidak membuat master data. Pending duplicate intent dikoaleskan oleh request key server-side.
 - Transfer **personal A ↔ personal B** dengan dua `owner_user_id` berbeda ditolak `CROSS_OWNERSHIP_TRANSFER`. Schema transaksi saat ini hanya memiliki satu `owner_user_id`, sehingga backend tidak boleh mengarang representasi dua pemilik privat dalam satu row.
 - Member tetap tidak memperoleh akses rekening personal pasangan: lookup backend menolak `FORBIDDEN_ACCOUNT` walaupun ID rekening dikirim manual. Owner/role dari client tidak menjadi authority.
 - `goals.move` memakai aturan representability yang sama. Untuk Target shared, sumber setoran boleh rekening shared atau rekening personal actor yang operable; rekening Target tetap harus menjadi destination pada deposit dan source pada withdrawal. Target personal hanya dapat dipasangkan dengan shared atau rekening personal pemilik Target yang sama.

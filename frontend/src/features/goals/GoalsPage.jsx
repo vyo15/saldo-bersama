@@ -225,11 +225,12 @@ const GoalsPage = () => {
   const [workflowPrefill, setWorkflowPrefill] = useState(null);
   const [setupCreated, setSetupCreated] = useState(false);
   const accounts = goalPageAccounts(bootstrap, overview);
-  const creationAccounts = ownerMode ? accounts : accounts.filter((item) => item.owner_scope === "shared");
+  const operableAccounts = accounts.filter((item) => item.can_transact !== false);
+  const creationAccounts = operableAccounts.filter((item) => item.owner_scope === "shared");
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const shared = { resource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation({ ...shared, onCreated: () => { if (location.state?.setupFlow) setSetupCreated(true); } });
-  const movement = useGoalMovement({ ...shared, accounts });
+  const movement = useGoalMovement({ ...shared, accounts: operableAccounts });
   const { openMovement } = movement;
   const lifecycle = useGoalLifecycle(shared);
   const attentionGoalId = String(attention?.attentionGoalId || "");

@@ -58,7 +58,7 @@ const MemberActivityPanel = ({ open, member, currentUser, onClose }) => {
   const accountLookup = useMemo(() => Object.fromEntries((bootstrap?.accounts || []).map((item) => [item.account_id, item])), [bootstrap?.accounts]);
   const categoryLookup = useMemo(() => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])), [bootstrap?.categories]);
   if (!enabled || !member) return null;
-  const profile = member.is_current ? { ...member, photoURL: currentUser?.photoURL || currentUser?.picture || "" } : member;
+  const profile = member.is_current ? { ...member, photoURL: currentUser?.photoURL || currentUser?.picture || member.photoURL || "" } : member;
   const expenseSummary = (report.data?.creatorExpenses || []).find((item) => item.user_id === member.user_id);
   const items = transactions.data?.items || [];
   const openAllTransactions = () => { onClose(); navigate("/transaksi", { state: { creatorId: member.user_id, period } }); };

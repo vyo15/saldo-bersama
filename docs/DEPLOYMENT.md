@@ -1,12 +1,13 @@
 # Deployment
 
-## Cutover schema v13 + environment/session
+## Cutover schema v14 + environment/session
 
 1. Buat/konfirmasi database Turso Development dan Production yang berbeda sebelum memindahkan data nyata.
 2. Ambil backup teknis terverifikasi masing-masing database. Development memakai `npm run db:migrate` + `npm run db:bind-environment -- development`; Production memakai `.env.production.local` dan target eksplisit `npm run db:migrate -- production` + `npm run db:bind-environment -- production`. Rebind silang ditolak; jangan mengubah binding database Production menjadi Development atau sebaliknya.
-3. Set `DATABASE_ENVIRONMENT` pada Vercel Development/Production sesuai scope. Preview tidak diberi credential database aktif.
-4. Deploy runtime v13. Session v1 tidak kompatibel dengan registry v2 sehingga semua perangkat login ulang satu kali.
-5. Jalankan integrity check, health, login Administrator/Member, session list/revoke, mutation retry outcome-unknown, scheduler heartbeat, backup/restore drill, lalu baru buka traffic normal.
+3. Jalankan integrity Production sampai schema/binding cocok dengan runtime source **sebelum** `git push origin main`. Managed pre-push kini mengecek kondisi ini secara read-only dan menolak deploy bila Production tertinggal.
+4. Set `DATABASE_ENVIRONMENT` pada Vercel Development/Production sesuai scope. Preview tidak diberi credential database aktif.
+5. Deploy runtime melalui `git push origin main`. Session v1 tidak kompatibel dengan registry v2 sehingga semua perangkat login ulang satu kali.
+6. Jalankan health, login Administrator/Member, session list/revoke, mutation retry outcome-unknown, scheduler heartbeat, backup/restore drill, lalu baru buka traffic normal.
 
 
 ## 1. Environment canonical
@@ -19,7 +20,7 @@ Mode operator dibedakan tegas: `npm run dev` = localhost + Vercel Development + 
 
 ## 2. Database Turso: isolation fail-closed
 
-Source v13 tetap tidak mengizinkan Development/Production memakai database yang sama secara normal. `DATABASE_ENVIRONMENT` harus cocok dengan `VERCEL_ENV` dan binding `system_config.database_environment`. Database baru dimulai `unbound` dan harus di-bind eksplisit. Rebind silang ditolak. Live cutover baru dianggap selesai setelah Vercel/Turso membuktikan database/token Development dan Production berbeda.
+Source v14 tetap tidak mengizinkan Development/Production memakai database yang sama secara normal. `DATABASE_ENVIRONMENT` harus cocok dengan `VERCEL_ENV` dan binding `system_config.database_environment`. Database baru dimulai `unbound` dan harus di-bind eksplisit. Rebind silang ditolak. Live cutover baru dianggap selesai setelah Vercel/Turso membuktikan database/token Development dan Production berbeda.
 
 Development (`.env.local`):
 
@@ -38,7 +39,7 @@ npm run db:bind-environment -- production
 npm run db:integrity -- production
 ```
 
-Migration melakukan preflight binding existing sebelum mutation sehingga target silang fail-closed. Jangan menjalankan `npm run env:push:development` dari `.env.local` yang menunjuk Production. Preview tidak boleh diberi credential database aktif. Jika database legacy yang sama masih dipakai dua scope, bind hanya salah satu scope lalu pisahkan database lainnya; jangan mencoba rebind silang untuk mempertahankan sharing.
+Migration melakukan preflight binding existing sebelum mutation sehingga target silang fail-closed. Untuk database Production existing yang memiliki migration pending, script juga mewajibkan adanya backup teknis `verified` pada schema saat ini sebelum statement migration dijalankan; backup tidak pernah dibuat atau dilewati otomatis oleh migration. Jangan menjalankan `npm run env:push:development` dari `.env.local` yang menunjuk Production. Preview tidak boleh diberi credential database aktif. Jika database legacy yang sama masih dipakai dua scope, bind hanya salah satu scope lalu pisahkan database lainnya; jangan mencoba rebind silang untuk mempertahankan sharing.
 
 ## 3. Google OAuth + Firebase Authentication
 
@@ -91,7 +92,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    npm run env:status
    ```
 
-5. Pastikan database Production sudah memakai schema v13, binding `production`, dan integrity check lulus. Migration hanya dijalankan bila memang ada migration pending dan backup telah terverifikasi:
+5. Pastikan database Production sudah memakai schema v14, binding `production`, dan integrity check lulus. Migration hanya dijalankan bila memang ada migration pending dan backup telah terverifikasi:
 
    ```bash
    npm run db:migrate -- production
@@ -109,15 +110,15 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    Setelah itu commit/push source yang sudah lolos quality gate dan tunggu deployment Git-connected Vercel untuk commit tersebut berstatus `Ready`. Jangan menjalankan `npx vercel --prod` dari working tree yang masih memiliki perubahan lokal karena file yang belum dikomit dapat ikut terdeploy. Environment baru juga tidak berlaku pada deployment lama sebelum redeploy.
 7. Seed Web Push **Development** secara terpisah. Jika Vercel Development sudah memiliki VAPID yang valid, jangan generate ulang; jalankan `npm run env:pull:development`, `npm run env:status`, dan `npm run diagnose`. Jika initial provisioning/rotasi Development memang diperlukan, buat pair Development terpisah lalu sinkronkan dengan `npm run env:push:development -- --settings-only`. Laptop/PC lain kemudian cukup menjalankan `npm run dev`; bootstrap menarik Development terbaru secara otomatis.
 8. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
-9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v13. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
+9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v14. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
 10. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 11. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
-## 6. Migration schema v13
+## 6. Migration schema v14
 
-Migration terbaru adalah `database/migrations/011_distributed_rate_limits.sql`. Migration v13 bersifat additive: menambah `rate_limit_buckets` durable untuk throttle lintas instance lalu menaikkan schema ke v13. Migration v12 `010_environment_sessions.sql` tetap menjadi dasar `user_sessions`, binding `database_environment`, dan scheduler heartbeat. Ledger/saldo dan field cost-sharing v11 tidak diubah.
+Migration terbaru adalah `database/migrations/012_member_collaboration.sql`. Migration v14 bersifat additive: menambah `users.photo_url` tepercaya, `master_data_requests`, dan `transfer_requests`, lalu menaikkan schema ke v14. Migration v13 `011_distributed_rate_limits.sql` tetap menjadi dasar durable cross-instance rate limit dan migration v12 `010_environment_sessions.sql` tetap menjadi dasar session registry, binding `database_environment`, serta scheduler heartbeat. Migration v14 tidak menulis ulang ledger, saldo, atau transaksi existing.
 
-Sebelum migration Production, buat backup teknis terverifikasi dan pastikan `.env.production.local` lolos pemeriksaan. Jalankan target Production secara eksplisit sebelum runtime v13 menerima traffic:
+Sebelum migration Production, buat backup teknis **verified pada schema v13** dan pastikan `.env.production.local` lolos pemeriksaan. Jalankan target Production secara eksplisit sebelum runtime v14 menerima traffic:
 
 ```bash
 npm run env:check:production
@@ -128,7 +129,7 @@ npm run db:integrity -- production
 
 Migration v11 `009_transaction_cost_sharing.sql` tetap menjadi dasar cost sharing, migration v10 `008_manual_reminders.sql` menjadi dasar pengingat manual, migration v9 `007_envelope_assignee.sql` menjadi dasar penerima jatah, dan migration v8 `006_account_ewallet_template.sql` menjadi dasar provider E-wallet canonical.
 
-Backup schema v13 menyertakan data aplikasi canonical tetapi mengecualikan `user_sessions`, `rate_limit_buckets`, binding environment, maintenance flag, dan scheduler heartbeat. Runtime v13 tetap dapat membaca backup v3-v12 melalui normalisasi additive; backup lama diperlakukan sesuai field additive versi masing-masing. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel/kolom langsung pada database aktif.
+Backup schema v14 menyertakan data aplikasi canonical termasuk `photo_url`, `master_data_requests`, dan `transfer_requests`, tetapi mengecualikan `user_sessions`, `rate_limit_buckets`, binding environment, maintenance flag, dan scheduler heartbeat. Runtime v14 tetap dapat membaca backup v3-v13 melalui normalisasi additive; backup lama diperlakukan sesuai field additive versi masing-masing. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel/kolom langsung pada database aktif.
 
 ## 7. Release gate
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   FiAlertTriangle,
   FiCalendar,
-  FiChevronDown,
   FiChevronRight,
   FiEye,
   FiEyeOff,
@@ -98,8 +97,30 @@ const MobileQuickActions = () => (
   </nav>
 );
 
-const MobileInsightList = ({ title, items, balanceVisible, expense = false, emptyText, target, targetLabel }) => <section aria-labelledby={title.id}><h2 id={title.id}>{title.text}</h2>{items.length ? <ul>{items.map((item, index) => <li key={item.account_id || `${item.name}-${index}`}><span>{item.name}</span><SensitiveMoney visible={balanceVisible} value={expense ? item.amount : item.balance} tone={expense ? "negative" : undefined} /></li>)}</ul> : <p>{emptyText}</p>}<Link to={target}>{targetLabel}</Link></section>;
-const MobileInsights = ({ accountBars, expenseBars, balanceVisible }) => <details className="mobile-finance-insights"><summary><span>Rincian rekening dan kategori</span><FiChevronDown aria-hidden="true" /></summary><div className="mobile-finance-insights__grid"><MobileInsightList title={{ id: "mobile-account-insights-title", text: "Saldo per rekening" }} items={accountBars} balanceVisible={balanceVisible} emptyText="Belum ada rekening aktif." target="/rekening" targetLabel="Kelola rekening" /><MobileInsightList title={{ id: "mobile-category-insights-title", text: "Pengeluaran per kategori" }} items={expenseBars} balanceVisible={balanceVisible} expense emptyText="Belum ada pengeluaran kategori." target="/laporan" targetLabel="Buka laporan" /></div></details>;
+const activeSharedGoals = (overview) => (overview?.goals || []).filter((item) => item.status === "active").slice(0, 2);
+const priorityBudgets = (overview) => (overview?.budgets || []).filter((item) => item.status !== "archived")
+  .sort((left, right) => {
+    const leftRatio = Number(left.amount || 0) > 0 ? Number(left.used_amount || 0) / Number(left.amount) : 0;
+    const rightRatio = Number(right.amount || 0) > 0 ? Number(right.used_amount || 0) / Number(right.amount) : 0;
+    return rightRatio - leftRatio;
+  }).slice(0, 1);
+const upcomingRecurring = (overview) => (overview?.recurring || []).filter((item) => !["paid", "cancelled", "archived"].includes(item.occurrence_status || item.status))
+  .sort((left, right) => String(left.due_date || "9999").localeCompare(String(right.due_date || "9999"))).slice(0, 1);
+
+const MobileSharedPlan = ({ overview, balanceVisible }) => {
+  const goals = activeSharedGoals(overview);
+  const budgets = priorityBudgets(overview);
+  const recurring = upcomingRecurring(overview);
+  if (!goals.length && !budgets.length && !recurring.length) return null;
+  return <section className="mobile-finance-section mobile-shared-plan" aria-labelledby="mobile-shared-plan-title">
+    <div className="mobile-section-heading"><h2 id="mobile-shared-plan-title">Rencana Bersama</h2><Link to="/target">Lihat Target</Link></div>
+    <div className="mobile-shared-plan__grid">
+      {goals.map((goal) => <Link className="mobile-plan-card mobile-plan-card--goal" to="/target" key={goal.goal_id}><span className="mobile-plan-card__icon"><FiTarget aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>{goal.name}</strong><small><SensitiveMoney visible={balanceVisible} value={goal.current_amount || 0} /> dari <SensitiveMoney visible={balanceVisible} value={goal.target_amount || 0} /></small><ProgressBar value={goal.current_amount || 0} max={goal.target_amount || 0} label={`Kemajuan ${goal.name}`} /></span></Link>)}
+      {budgets.map((budget) => <Link className="mobile-plan-card" to="/perencanaan/kebutuhan" key={budget.budget_id}><span className="mobile-plan-card__icon"><FiPieChart aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>{budget.name || "Kebutuhan"}</strong><small>Terpakai <SensitiveMoney visible={balanceVisible} value={budget.used_amount || 0} /> dari <SensitiveMoney visible={balanceVisible} value={budget.amount || 0} /></small><ProgressBar value={budget.used_amount || 0} max={budget.amount || 0} label={`Pemakaian ${budget.name || "kebutuhan"}`} /></span></Link>)}
+      {recurring.map((item) => <Link className="mobile-plan-card" to="/perencanaan/jadwal" key={item.occurrence_id || item.recurring_rule_id}><span className="mobile-plan-card__icon"><FiCalendar aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>{item.name}</strong><small>{item.due_date ? formatTransactionDate(item.due_date) : "Jadwal terdekat"} · <SensitiveMoney visible={balanceVisible} value={item.expected_amount || item.amount || 0} /></small></span></Link>)}
+    </div>
+  </section>;
+};
 
 const MobileAlerts = ({ alerts }) => {
   const [open, setOpen] = useState(false);
@@ -173,7 +194,7 @@ const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAcc
   </section>
 );
 
-const MobileAllocation = ({ allocationSummary, balanceVisible, unallocatedFunds, unallocatedCount, unallocatedExpenseAmount, hasActiveGoal, periodKey }) => {
+const MobileAllocation = ({ allocationSummary, balanceVisible, unallocatedFunds, unallocatedCount, unallocatedExpenseAmount, periodKey }) => {
   const freeFunds = Math.max(0, Number(unallocatedFunds || 0));
   const unassignedExpenses = Math.max(0, Number(unallocatedCount || 0));
   if (!allocationSummary.count && !freeFunds && !unassignedExpenses) return null;
@@ -185,14 +206,13 @@ const MobileAllocation = ({ allocationSummary, balanceVisible, unallocatedFunds,
       {allocationSummary.count ? <div className="mobile-allocation-card" aria-label="Ringkasan Alokasi Dana bulan ini"><div className="mobile-allocation-card__header"><span className="mobile-allocation-card__icon"><FiPieChart aria-hidden="true" /></span><div><h3>{allocationSummary.count} alokasi aktif</h3><p><SensitiveMoney visible={balanceVisible} value={allocationSummary.committed} /> terpakai + dipesan dari <SensitiveMoney visible={balanceVisible} value={allocationSummary.allocated} /></p></div><strong>{allocationSummary.percentage}%</strong></div><ProgressBar value={allocationSummary.committed} max={allocationSummary.allocated} label="Pemakaian dan dana dipesan seluruh Alokasi Dana" /><div className="mobile-allocation-card__footer"><span>Sisa <SensitiveMoney visible={balanceVisible} value={allocationSummary.remaining} /> · {attentionLabel}</span><Link to="/perencanaan/kantong">Kelola Alokasi Dana</Link></div></div> : null}
       {freeFunds ? <Link className="mobile-unallocated-note" to={freeFundsGuidance.to} state={freeFundsGuidance.state} aria-label="Atur dana tersedia ke Alokasi Dana"><span>Dana tersedia belum dibagi</span><strong><SensitiveMoney visible={balanceVisible} value={freeFunds} /></strong><small>Atur Alokasi Dana</small></Link> : null}
       {unassignedExpenses ? <Link className="mobile-unallocated-note" to="/transaksi" aria-label="Lihat pengeluaran yang belum punya Alokasi Dana"><span>Pengeluaran tanpa Alokasi Dana</span><strong><SensitiveMoney visible={balanceVisible} value={unallocatedExpenseAmount || 0} /></strong><small>{unassignedExpenses} transaksi</small></Link> : null}
-      {freeFunds && hasActiveGoal ? <Link className="mobile-unallocated-note" to="/target" aria-label="Setor sebagian dana tersedia ke Target"><span>Ada Target aktif</span><strong>Sisa dana tersedia</strong><small>Setor ke Target</small></Link> : null}
     </section>
   );
 };
 
-const MobileFinanceDashboard = ({ overview, viewModel, user, displayName, balanceVisible, onToggleBalance, onRefresh, isRefreshing, onOpenTransactionDetail }) => {
-  const { accountBars, expenseBars, recentTransactions, categoryLookup, transactionAccountLabel, allocationSummary } = viewModel;
-  return <section className="mobile-finance-dashboard" aria-label="Ringkasan keuangan mobile"><h1 className="sr-only">Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className="mobile-finance-content"><MobileAlerts alerts={overview.alerts} /><MobileQuickActions /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} unallocatedExpenseAmount={overview.unallocatedExpenseAmount} hasActiveGoal={(overview.goals || []).some((item) => item.status === "active")} periodKey={overview.periodKey} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /><MobileInsights accountBars={accountBars} expenseBars={expenseBars} balanceVisible={balanceVisible} /></div></section>;
+const MobileFinanceDashboard = ({ overview, viewModel, user, displayName, balanceVisible, onToggleBalance, onRefresh, isRefreshing, onOpenTransactionDetail, setupContent }) => {
+  const { recentTransactions, categoryLookup, transactionAccountLabel, allocationSummary } = viewModel;
+  return <section className="mobile-finance-dashboard" aria-label="Ringkasan keuangan mobile"><h1 className="sr-only">Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className="mobile-finance-content"><MobileAlerts alerts={overview.alerts} /><MobileQuickActions />{setupContent}<MobileSharedPlan overview={overview} balanceVisible={balanceVisible} /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} unallocatedExpenseAmount={overview.unallocatedExpenseAmount} periodKey={overview.periodKey} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /></div></section>;
 };
 
 export default MobileFinanceDashboard;

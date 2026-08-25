@@ -80,7 +80,7 @@ Secret/token Production harus diperlakukan sebagai secret deployment. `npm run e
 
 `.env.local` adalah cache **Development-only**. File ini wajib memakai database/token/session secret Development dan `DATABASE_ENVIRONMENT=development`; jangan pernah diarahkan ke Production dan jangan simpan `GOOGLE_OAUTH_CLIENT_SECRET` di sini. `npm run dev` menolak marker Development yang salah, database unreachable, schema yang belum siap, atau binding database yang tidak cocok sebelum server dibuka.
 
-`.env.production.local` adalah profile **Production-only** yang wajib ada pada PC/laptop tepercaya. `npm run dev` membuat template aman sekali bila file belum ada dan tidak pernah menimpa file existing. File ini tidak dapat dipull lengkap dari Vercel karena secret Production Sensitive bersifat write-only; isi credential Production satu kali dari secret store/password manager canonical yang sama. `npm run prod` memvalidasi `DATABASE_ENVIRONMENT=production`, shared public config, isolasi database/token/session/VAPID, Turso Production read-only, lalu Vercel Production.
+`.env.production.local` adalah profile **Production-only** yang wajib ada pada PC/laptop tepercaya. `npm run dev` **tidak pernah membuat, membaca untuk mutation, atau menimpa** file ini. Bila file belum ada, `npm run prod` membuat skeleton aman satu kali lalu berhenti agar credential Production environment-specific dapat diisi secara eksplisit. File ini tidak dapat dipull lengkap dari Vercel karena secret Production Sensitive bersifat write-only. Setelah profile ada, `npm run prod` hanya membaca `.env.local` sebagai pembanding isolasi; command ini tidak menarik atau menulis Development. Jika grup Google bridge Development lengkap sementara grup Production lokal seluruhnya kosong, hanya tiga key bridge pusat yang boleh di-seed DEV → PROD lokal. Turso, session, OAuth, dan VAPID tidak pernah disalin lintas environment.
 
 Jangan membuat fallback, token dummy, atau pasangan VAPID baru per komputer. Gunakan `npm run env:pull:development` untuk mengambil cache Development pusat dan `npm run env:status` untuk melihat fingerprint publik/isolasi tanpa membocorkan secret. Kedua file tetap gitignored dan tidak boleh masuk ZIP/log/chat.
 
@@ -142,8 +142,8 @@ npm run prod
 
 Hanya dua command ini yang perlu diingat untuk penggunaan rutin:
 
-- `npm run dev` refresh Vercel Development, menulis `.env.local` atomik, memastikan `.env.production.local` minimal sudah ada sebagai template aman pada workstation tepercaya, memeriksa Turso Development + schema/binding, lalu menjalankan localhost.
-- `npm run prod` refresh/validasi Development sebagai pembanding, mewajibkan `.env.production.local` Production yang lengkap, memeriksa isolasi DEV/PROD, menguji Turso Production secara read-only, memeriksa health Vercel Production + frontend shell, lalu membuka URL Production.
+- `npm run dev` hanya mengurus Development: refresh Vercel Development, menulis `.env.local` atomik, memeriksa Turso Development + schema/binding, lalu menjalankan localhost. Command ini tidak menyentuh `.env.production.local`.
+- `npm run prod` hanya mengurus jalur Production: memastikan `.env.production.local` tersedia/lengkap, membaca `.env.local` tanpa memodifikasinya untuk validasi isolasi, menyelaraskan **hanya** grup Google bridge pusat bila Production lokal kosong, menguji Turso Production secara read-only, memeriksa health Vercel Production + frontend shell, lalu membuka URL Production. Core readiness memblokir database/schema/binding/maintenance/integrity yang tidak aman; scheduler, integrasi Google, backup, dan notifikasi yang degraded tetap dilaporkan sebagai operational warning tanpa mematikan login/ledger yang core-nya sehat.
 
 `npm run prod` tetap **bukan** localhost dengan credential Production. Production auth canonical bergantung pada HTTPS, Secure HttpOnly cookie, callback OAuth server, dan Vercel Production. Command maintenance lain tetap tersedia untuk operasi khusus tetapi bukan bagian workflow harian.
 
@@ -202,7 +202,7 @@ Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sen
 Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan hanya dari komputer tepercaya setelah backup/integrity evidence tersedia.
 
 1. Buat database Turso **Development** baru.
-2. Terapkan migration canonical sampai schema v13 pada Development, lalu bind dan jalankan integrity check. Command tanpa target membaca `.env.local`:
+2. Terapkan migration canonical sampai schema v14 pada Development, lalu bind dan jalankan integrity check. Command tanpa target membaca `.env.local`:
    ```bash
    npm run db:migrate
    npm run db:bind-environment -- development
@@ -219,7 +219,7 @@ Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan ha
    npm run db:bind-environment -- production
    npm run db:integrity -- production
    ```
-   Profile Production tidak pernah diambil dari `.env.local`; runtime v13 baru boleh menerima traffic setelah langkah ini lulus.
+   Profile Production tidak pernah diambil dari `.env.local`; runtime v14 baru boleh menerima traffic setelah langkah ini lulus.
 7. Jalankan `npm run dev`, lalu `npm run env:check` dan smoke read/write menggunakan data dummy pada Development.
 8. Verifikasi aplikasi Production tetap sehat dan tidak pernah mengakses database Development.
 9. Setelah kedua scope terbukti terpisah, rotasi credential lama sesuai `SECRET_ROTATION_RUNBOOK.md` dan revoke token yang tidak lagi dipakai.

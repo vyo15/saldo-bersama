@@ -128,7 +128,7 @@ export const printEnvironmentProfiles = async ({ cwd = projectRoot } = {}) => {
   }
 
   if (!result.production.exists) {
-    console.log("Production: .env.production.local belum ada (SETUP REQUIRED pada workstation tepercaya). Jalankan npm run dev atau npm run prod untuk membuat template aman.");
+    console.log("Production: .env.production.local belum ada (SETUP REQUIRED pada workstation tepercaya). Jalankan npm run prod untuk membuat skeleton aman satu kali.");
   } else {
     printProfile("Production (.env.production.local)", result.productionSummary);
   }

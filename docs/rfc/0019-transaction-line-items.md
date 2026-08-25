@@ -4,11 +4,11 @@
 **Owner:** Product owner + finance-domain owner
 **Reviewers:** Backend, reporting, planning, QA, recovery owner
 **Date:** 2026-08-23
-**Last reviewed:** 2026-08-23 against schema v13
+**Last reviewed:** 2026-08-25 against schema v14
 
 ## Problem
 
-Schema v13 tetap menyimpan satu `transactions.category_id` dan satu `transactions.envelope_period_id`. Akibatnya satu pembayaran nyata seperti struk supermarket yang berisi beberapa kategori atau Kebutuhan hanya dapat dicatat dengan memecahnya menjadi beberapa transaksi cash ledger. Workaround tersebut membuat satu pembayaran bank terlihat sebagai beberapa cash movement dan menyulitkan reconciliation, receipt relation, refund, cost sharing, dan audit.
+Schema v14 tetap menyimpan satu `transactions.category_id` dan satu `transactions.envelope_period_id`. Akibatnya satu pembayaran nyata seperti struk supermarket yang berisi beberapa kategori atau Kebutuhan hanya dapat dicatat dengan memecahnya menjadi beberapa transaksi cash ledger. Workaround tersebut membuat satu pembayaran bank terlihat sebagai beberapa cash movement dan menyulitkan reconciliation, receipt relation, refund, cost sharing, dan audit.
 
 RFC ini mendaftarkan gap tersebut tanpa mengubah ledger runtime sebelum model header/line, migration, report, refund, backup/restore, dan UI contract disetujui.
 
@@ -20,7 +20,7 @@ RFC ini mendaftarkan gap tersebut tanpa mengubah ledger runtime sebelum model he
 - Setiap line mempunyai category yang valid untuk transaction type dan, bila memakai Alokasi Dana, relation period/rule/account yang valid.
 - Report kategori/Kebutuhan menghitung line; cash-flow/account balance tetap menghitung header sehingga tidak double-count.
 - Edit/cancel/refund/reconciliation/backup/restore tetap dapat direkonstruksi secara deterministik.
-- Existing transaksi singular schema v13 tetap valid tanpa rewrite histori heuristik.
+- Existing transaksi singular sampai schema v14 tetap valid tanpa rewrite histori heuristik.
 
 ## Non-goals MVP
 
@@ -55,7 +55,7 @@ Untuk transaksi yang memakai line model:
 
 ### Compatibility policy
 
-Existing schema v13 transaction tanpa child line tetap dibaca sebagai satu implicit line dari `category_id` + `envelope_period_id`. Migration tidak boleh membuat duplicate financial effect. Pilihan antara deterministic backfill child row vs compatibility projection harus diputuskan pada migration plan dan dibuktikan lewat report/balance parity tests.
+Existing transaction sampai schema v14 tanpa child line tetap dibaca sebagai satu implicit line dari `category_id` + `envelope_period_id`. Migration tidak boleh membuat duplicate financial effect. Pilihan antara deterministic backfill child row vs compatibility projection harus diputuskan pada migration plan dan dibuktikan lewat report/balance parity tests.
 
 Setelah runtime line model aktif, write baru tidak boleh memelihara dua source of truth category/allocation yang dapat drift. Legacy columns dapat dipertahankan sementara untuk compatibility hanya dengan invariant yang eksplisit dan forward-fix plan.
 

@@ -104,7 +104,7 @@ test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase s
 
 
 
-test("backup schema v13 menyimpan data finansial canonical tanpa session, binding runtime, atau bucket rate limit", async () => {
+test("backup schema v14 menyimpan data canonical termasuk request kolaborasi tanpa session, binding runtime, atau bucket rate limit", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
@@ -119,7 +119,7 @@ test("backup schema v13 menyimpan data finansial canonical tanpa session, bindin
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["tx-cost-v11", "2026-08-09", "expense", "wallet-v8", null, "category-cost-v11", null, null, null, 100, "Shared split", "", "", "", "shared", null, "equal", costShareJson, "active", 1, "backup-cost-v11", "u-pref", now, "u-pref", now, null, null, ""]);
     await db.execute("INSERT INTO rate_limit_buckets(bucket_key,window_started_at_ms,reset_at_ms,request_count,updated_at) VALUES(?,?,?,?,?)", ["backup:test:abcdefghijklmnop", 1, 60_001, 3, now]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 13);
+    assert.equal(snapshot.manifest.schemaVersion, 14);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
     assert.equal(snapshot.manifest.tables.manual_reminders, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
@@ -127,6 +127,8 @@ test("backup schema v13 menyimpan data finansial canonical tanpa session, bindin
     assert.equal(snapshot.tables.accounts[0].ewallet_template, "gopay");
     assert.equal(snapshot.tables.transactions[0].cost_share_mode, "equal");
     assert.equal(snapshot.tables.transactions[0].cost_share_json, costShareJson);
+    assert.equal(Object.hasOwn(snapshot.tables, "master_data_requests"), true);
+    assert.equal(Object.hasOwn(snapshot.tables, "transfer_requests"), true);
     assert.equal(Object.hasOwn(snapshot.tables, "user_sessions"), false);
     assert.equal(Object.hasOwn(snapshot.tables, "rate_limit_buckets"), false);
     assert.equal(snapshot.tables.system_config.some((row) => [
@@ -136,7 +138,7 @@ test("backup schema v13 menyimpan data finansial canonical tanpa session, bindin
   } finally { db.close(); }
 });
 
-test("backup schema v3-v12 tetap dapat dimuat ke schema v13 dengan field additive canonical", async () => {
+test("backup schema v3-v13 tetap dapat dimuat ke schema v14 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -231,6 +233,17 @@ test("backup schema v3-v12 tetap dapat dimuat ke schema v13 dengan field additiv
     v12.manifest.schemaVersion = 12;
     v12.checksum = digest(canonicalJson({ manifest: v12.manifest, tables: v12.tables }));
     assert.equal(validateSnapshot(v12), v12.checksum);
+
+    const v13 = structuredClone(current);
+    v13.manifest.version = 13;
+    v13.manifest.schemaVersion = 13;
+    v13.tables.users = v13.tables.users.map(({ photo_url: _photoUrl, ...row }) => row);
+    delete v13.tables.master_data_requests;
+    delete v13.tables.transfer_requests;
+    delete v13.manifest.tables.master_data_requests;
+    delete v13.manifest.tables.transfer_requests;
+    v13.checksum = digest(canonicalJson({ manifest: v13.manifest, tables: v13.tables }));
+    assert.equal(validateSnapshot(v13), v13.checksum);
 
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);

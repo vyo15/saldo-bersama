@@ -125,6 +125,8 @@ test("zip lokal dan pre-push memakai full verification canonical", async () => {
   assert.match(zipWrapper, /process\.exitCode/);
   assert.match(prePush, /verify = runVerificationWithCleanup/);
   assert.match(prePush, /await verify\(\)/);
+  assert.match(prePush, /await releasePreflight\(\)/);
+  assert.match(prePush, /checkProductionReleasePreflight/);
   assert.match(prePush, /parsePrePushUpdates/);
   assert.match(hookInstaller, /pre-push/);
   assert.match(hookInstaller, /saldo-bersama-managed-pre-push/);

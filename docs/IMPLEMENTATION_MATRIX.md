@@ -42,7 +42,7 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Desktop/mobile branded login + local Firebase popup; production server OAuth memerlukan callback URI + `GOOGLE_OAUTH_CLIENT_SECRET` Production Sensitive dan real-device smoke |
-| Turso schema v13 | Implemented | v12 session/environment guard dipertahankan; v13 menambah durable cross-instance rate-limit buckets tanpa mengubah ledger; runtime v13 menerima backup v3-v12; production migration/parity evidence pending |
+| Turso schema v14 | Implemented | v12 session/environment guard dan v13 durable rate-limit dipertahankan; v14 menambah trusted user photo + request master data + transfer approval tanpa rewrite ledger; runtime v14 menerima backup v3-v13; Production migration tetap guarded oleh backup/integrity |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

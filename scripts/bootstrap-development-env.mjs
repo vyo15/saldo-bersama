@@ -118,7 +118,7 @@ export const developmentEnvironmentRemediation = (status = {}) => {
   if (databaseMarkerMissing && otherCoreMissing.length === 0) {
     return [
       "Vercel Development belum memiliki DATABASE_ENVIRONMENT.",
-      "Source v13 tetap menolak satu Turso database dipakai bersamaan oleh Development dan Production.",
+      "Source v14 tetap menolak satu Turso database dipakai bersamaan oleh Development dan Production.",
       "Jangan menambahkan DATABASE_ENVIRONMENT=development bila TURSO_DATABASE_URL/TURSO_AUTH_TOKEN masih menunjuk database Production.",
       "Buat database Turso Development terpisah, arahkan .env.local ke URL/token Development, set DATABASE_ENVIRONMENT=development,",
       "lalu jalankan npm run db:migrate, npm run db:bind-environment -- development, npm run db:integrity, dan npm run env:push:development.",

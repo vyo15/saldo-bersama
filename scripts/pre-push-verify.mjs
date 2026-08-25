@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { runVerificationWithCleanup } from "./verify-project.mjs";
+import { checkProductionReleasePreflight } from "./production-release-preflight.mjs";
 
 const ZERO_SHA = /^0+$/;
 
@@ -68,15 +69,22 @@ const readStdin = async () => {
   return source;
 };
 
-export const runPrePushGuard = async ({ stdinSource, verify = runVerificationWithCleanup } = {}) => {
+export const runPrePushGuard = async ({
+  stdinSource,
+  verify = runVerificationWithCleanup,
+  releasePreflight = checkProductionReleasePreflight,
+  gitInspector = inspectGitPush,
+} = {}) => {
   const source = stdinSource ?? await readStdin();
   const updates = parsePrePushUpdates(source);
-  const gitState = inspectGitPush({ updates });
+  const gitState = gitInspector({ updates });
   const update = assertCanonicalMainPush({ updates, ...gitState });
 
   console.log("\nSaldo Bersama pre-push Auto Quality Guard...");
   console.log(`Ref terverifikasi: main @ ${update.localSha.slice(0, 7)}`);
   await verify();
+  console.log("\nMemeriksa kompatibilitas Production DB secara read-only sebelum deploy...");
+  await releasePreflight();
   console.log("\nPre-push PASS. `git push origin main` dilanjutkan.");
   return update;
 };

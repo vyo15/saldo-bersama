@@ -83,8 +83,10 @@ const recurringViewData = ({ resource, filter, bootstrap, overview, rules, payme
 
 const recurringRulePlanningData = ({ accounts, budgets, user }) => {
   const memberMode = user?.role === "member";
-  const ruleAccounts = memberMode ? accounts.filter((item) => item.owner_scope === "shared") : accounts;
-  const ruleBudgets = memberMode ? budgets.filter((item) => item.scope === "shared") : budgets;
+  const ruleAccounts = accounts.filter((item) => item.can_transact !== false);
+  const ruleBudgets = memberMode
+    ? budgets.filter((item) => item.scope === "shared" || item.owner_user_id === user?.user_id)
+    : budgets;
   return {
     memberMode,
     canManagePlanning: ["owner", "member"].includes(user?.role),

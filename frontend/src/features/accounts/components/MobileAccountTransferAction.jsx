@@ -14,8 +14,8 @@ const TransferArrowsIcon = () => (
   </svg>
 );
 
-const activeTransactableAccounts = (bootstrap) => (bootstrap?.accounts || [])
-  .filter((account) => account.status === "active" && account.can_transact !== false);
+const activeReadableAccounts = (bootstrap) => (bootstrap?.accounts || [])
+  .filter((account) => account.status === "active");
 
 const transactionPeriod = (transaction) => {
   const date = String(transaction?.transaction_date || "");
@@ -54,7 +54,7 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
   const pendingSavedRef = useRef(null);
   const compatibleDestinations = useMemo(() => {
     if (!selectedAccount) return [];
-    const accounts = activeTransactableAccounts(bootstrap);
+    const accounts = activeReadableAccounts(bootstrap);
     return accounts.filter((account) => account.account_id !== selectedAccount.account_id
       && canRepresentAccountTransfer(selectedAccount, account));
   }, [bootstrap, selectedAccount]);

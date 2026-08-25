@@ -178,11 +178,11 @@ const allocationDetailData = (item, budgets, recurringItems, user) => {
   };
 };
 const hasAllocationSecondaryContent = (detailItem, view, actionTarget) => !detailItem && Boolean(view.historicalItems.length || view.recentMovements.length || actionTarget);
-const activeAllocationAccounts = (bootstrap, overview, user) => {
+const activeAllocationAccounts = (bootstrap, overview) => {
   const balanceLookup = new Map((overview?.accountBalances || []).map((item) => [item.account_id, item]));
   return (bootstrap?.accounts || []).filter((item) => item.status === "active")
     .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) }))
-    .filter((item) => user?.role === "owner" || item.owner_scope === "shared");
+    .filter((item) => item.can_transact !== false);
 };
 const activeAllocationUsers = (resource, actor, administratorMode) => administratorMode
   ? (resource.data?.items || []).filter((item) => item.status === "active")
@@ -211,7 +211,7 @@ const AllocationDialogs = ({ createOpen, moveOpen, adjustTarget, closeTarget, ar
 };
 
 const useAllocationViewData = ({ resource, budgetResource, recurringResource, bootstrap, overview, usersResource, allocationFilter, move, administratorMode, allocationActor }) => {
-  const accounts = activeAllocationAccounts(bootstrap, overview, allocationActor);
+  const accounts = activeAllocationAccounts(bootstrap, overview);
   const activeUsers = activeAllocationUsers(usersResource, allocationActor, administratorMode);
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const activeItems = useMemo(() => items.filter((item) => item.status === "active"), [items]);

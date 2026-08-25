@@ -2,7 +2,7 @@ import { getDatabase } from "./_lib/db/httpClient.js";
 import { readSchemaStatus } from "./_lib/db/schema.js";
 import { methodNotAllowed, ok } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom } from "./_lib/observability.js";
-import { readOperationalHealth, readSchedulerHealth } from "./_lib/services/operationalHealth.js";
+import { operationalCoreBlockers, readOperationalHealth } from "./_lib/services/operationalHealth.js";
 
 export default async function handler(request, response) {
   const startedAt = Date.now();
@@ -13,8 +13,7 @@ export default async function handler(request, response) {
   let databaseStatus = "unavailable";
   let schema = { ready: false, version: null };
   let maintenanceMode = false;
-  let schedulerHealthy = true;
-  let operationsHealthy = true;
+  let coreOperationsHealthy = true;
   try {
     const db = getDatabase();
     databaseStatus = await db.health() ? "ok" : "unavailable";
@@ -22,12 +21,11 @@ export default async function handler(request, response) {
       schema = await readSchemaStatus(db, { force: true });
       const maintenance = await db.one("SELECT value FROM system_config WHERE key='maintenance_mode'");
       maintenanceMode = maintenance?.value === "true";
-      const [scheduler, operations] = await Promise.all([readSchedulerHealth(db), readOperationalHealth(db)]);
-      schedulerHealthy = scheduler.status !== "degraded";
-      operationsHealthy = operations.status !== "degraded";
+      const operations = await readOperationalHealth(db);
+      coreOperationsHealthy = operationalCoreBlockers(operations).length === 0;
     }
   } catch {}
-  const status = databaseStatus === "ok" && schema.ready && !maintenanceMode && schedulerHealthy && operationsHealthy ? "ok" : "degraded";
+  const status = databaseStatus === "ok" && schema.ready && !maintenanceMode && coreOperationsHealthy ? "ok" : "degraded";
   logEvent(status === "ok" ? "debug" : "warn", "health.request.completed", { requestId, status: 200, serviceStatus: status, databaseStatus, durationMs: Date.now() - startedAt });
   return ok(response, {
     status,

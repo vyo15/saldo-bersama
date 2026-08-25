@@ -39,6 +39,7 @@
 | `dashboard.overview` | Ya | Ya |
 | `accounts.list` | Ya | Ya |
 | `accounts.create` | Ya | Tidak |
+| `accounts.requestCreate` | Tidak | Ya |
 | `accounts.update` | Ya | Tidak |
 | `accounts.previewLifecycle` | Ya | Tidak |
 | `accounts.archive` | Ya | Tidak |
@@ -46,11 +47,17 @@
 | `accounts.deleteUnused` | Ya | Tidak |
 | `categories.list` | Ya | Ya |
 | `categories.create` | Ya | Tidak |
+| `categories.requestCreate` | Tidak | Ya |
 | `categories.update` | Ya | Tidak |
 | `categories.previewArchive` | Ya | Tidak |
 | `categories.archive` | Ya | Tidak |
 | `categories.deleteUnused` | Ya | Tidak |
 | `categories.restore` | Ya | Tidak |
+| `masterDataRequests.list` | Ya | Ya |
+| `masterDataRequests.review` | Ya | Tidak |
+| `transferRequests.list` | Ya | Ya |
+| `transferRequests.request` | Tidak | Ya |
+| `transferRequests.review` | Ya | Tidak |
 | `transactions.list` | Ya | Ya |
 | `transactions.create` | Ya | Ya |
 | `transactions.update` | Ya | Ya |
@@ -144,11 +151,11 @@
 - Kedua pengguna aktif yang lolos verifikasi Firebase, signed session, status/role canonical tabel `users`, dan binding identitas dapat **membaca seluruh rekening serta ledger**: shared, personal milik sendiri, dan personal milik pasangan. Transparansi baca ini mencakup saldo, nomor rekening, transaksi pembentuk saldo, laporan, dashboard, dan riwayat rekonsiliasi.
 - Rekening personal selalu membawa `owner_name` dari join backend serta capability server-side. Frontend tidak boleh menentukan pemilik atau hak akses dari nama rekening, email client, atau role yang dikirim browser.
 - Hak operasi tetap lebih sempit: member hanya dapat bertransaksi dan merekonsiliasi rekening shared atau rekening personal miliknya. Rekening personal pasangan memiliki `read_only=true`, `can_transact=false`, dan `can_reconcile=false`.
-- Transfer shared ↔ personal diperbolehkan hanya jika actor dapat mengoperasikan kedua rekening. Ledger mengikuti owner personal tunggal sehingga transfer lintas boundary tetap personal; dua rekening personal dengan pemilik berbeda tetap ditolak. Aturan ini tidak memperluas hak Member atas rekening personal pasangan.
+- Transfer personal milik Member → shared dapat dilakukan langsung bila kedua rekening operable. Transfer shared → personal milik Member memerlukan `transferRequests.request` dan approval Administrator; direct mutation ditolak `TRANSFER_APPROVAL_REQUIRED`. Dua rekening personal dengan pemilik berbeda tetap ditolak `CROSS_OWNERSHIP_TRANSFER`. Approval membaca ulang requester/rekening, memakai idempotency + `row_version`, dan membuat tepat satu ledger transaksi canonical dalam transaksi database yang sama.
 - Target shared dapat didanai dari rekening shared atau rekening personal actor yang operable. Target personal hanya kompatibel dengan rekening shared atau personal pemilik Target yang sama; backend tetap menentukan capability dan account access.
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
 - Alokasi Dana memiliki dimensi `assignee_user_id` terpisah dari ownership ledger. `NULL` berarti Jatah Bersama. Setiap Alokasi Dana canonical juga terikat pada tepat satu `source_account_id`; transaksi yang memakai Alokasi Dana wajib memakai rekening sumber yang sama dan realokasi baru hanya boleh antar Alokasi Dana dari rekening sumber yang sama. Member hanya boleh memakai atau memindahkan Jatah Bersama dan jatah miliknya sendiri; jatah pengguna lain ditolak backend. Rekening personal hanya boleh menjadi sumber jatah untuk pemilik rekening tersebut.
-- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
+- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `accounts.requestCreate`. `categories.create/update/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `categories.requestCreate`. Review master-data request dan transfer request tetap Administrator-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
 - User management, rekening/kategori master, lifecycle destruktif planning, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix. Member dapat create/update Alokasi Dana, Target, dan Jadwal Rutin hanya pada scope `shared`. Untuk Kebutuhan (`budgets.upsert`), Member juga dapat membuat/mengubah scope `personal` miliknya sendiri; Kebutuhan personal pengguna lain tetap ditolak backend. Disabled button frontend bukan boundary keamanan.
 - Export lengkap Administrator-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.

@@ -1,6 +1,6 @@
 # Data Dictionary
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `011_distributed_rate_limits.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `012_member_collaboration.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -22,6 +22,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `system_config` | Konfigurasi runtime internal seperti schema version, maintenance, timezone, dan currency. | Sedang | Migration-only |
 | `user_sessions` | Registry session perangkat server-side dengan verifier hash, expiry/revoke state, dan metadata perangkat coarse. Raw secret/cookie tidak pernah disimpan. | Tinggi | Backend auth/session lifecycle; tidak masuk logical backup |
 | `users` | Identitas aplikasi yang terikat pada Firebase UID, email, role, dan status. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `master_data_requests` | Pengajuan create rekening/kategori oleh Member. Menyimpan payload canonical, request key, status, reviewer, alasan, entity hasil, dan `row_version`. | Tinggi | Member create request; Administrator review; ikut backup/restore |
+| `transfer_requests` | Pengajuan transfer shared → personal Member. Menyimpan payload transfer canonical, reviewer, transaction hasil, status, dan `row_version`. | Tinggi | Member request; Administrator review; approval atomik dengan ledger; ikut backup/restore |
 | `accounts` | Rekening shared/personal beserta nomor rekening bank, template visual bank/E-wallet, saldo awal, dan kebijakan saldo negatif. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `categories` | Kategori pemasukan/pengeluaran. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `envelope_rules` | Definisi internal Alokasi Dana berkala, ownership ledger, dan penerima jatah (`assignee_user_id`). | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
@@ -53,6 +55,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 
 ## Field finansial utama
 
+- `users.photo_url`: kosong atau URL profil Google tepercaya `https://lh3.googleusercontent.com/...`; bukan field authorization.
 - `transactions.amount`, `accounts.initial_balance`, budget, envelope, goal, occurrence, reconciliation: integer Rupiah.
 - `envelope_rules.assignee_user_id`: nullable; `NULL` berarti Jatah Bersama. Jika terisi, wajib menunjuk pengguna aktif pada create/restore dan tidak mengubah `scope`/`owner_user_id` ledger.
 - `envelope_rules.source_account_id`: kolom schema tetap nullable untuk kompatibilitas backup/data legacy, tetapi runtime mewajibkannya untuk Alokasi Dana baru, pemakaian transaksi, realokasi baru, dan restore rule. Satu Alokasi Dana aktif canonical terikat pada tepat satu rekening sumber.
@@ -81,7 +84,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - tren 3/6/12 bulan dan breakdown laporan;
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
 
-## Model planned — belum ada di schema v13
+## Model planned — belum ada di schema v14
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
@@ -95,6 +98,6 @@ Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v13
+## Schema v14
 
-Migration canonical terbaru: `011_distributed_rate_limits.sql` pada `database/migrations/`. Migration v13 menambah bucket rate limit durable lintas instance tanpa mengubah ledger/saldo; migration v12 tetap menjadi dasar registry session perangkat, binding environment, dan heartbeat scheduler. Migration v11 `009_transaction_cost_sharing.sql` tetap menjadi dasar field pembagian beban biaya; histori dan backup lama dinormalisasi secara additive.
+Migration canonical terbaru: `012_member_collaboration.sql` pada `database/migrations/`. Migration v14 menambah foto profil Google tepercaya dan lifecycle request kolaborasi Member (`master_data_requests`, `transfer_requests`) tanpa mengubah ledger/saldo. Migration v13 tetap menjadi dasar durable rate-limit bucket dan migration v12 tetap menjadi dasar registry session, binding environment, dan heartbeat scheduler. Runtime v14 menerima backup v3-v13 secara additive; request tables dan `photo_url` hanya diwajibkan pada backup v14.

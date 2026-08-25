@@ -19,6 +19,7 @@ import MobileTransferFields from "./MobileTransferFields.jsx";
 import TransactionFields from "./components/TransactionFields.jsx";
 import TransactionPostSaveModal from "./components/TransactionPostSaveModal.jsx";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
+import { requestTransferApproval } from "./transferRequests.api.js";
 import { earlyFundsWarning, smartAllocationCandidates } from "./transactionFormSmartDefaults.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 
@@ -63,18 +64,19 @@ const useTransactionReset = ({ open, transaction, initialType, initialSourceAcco
 
 const useTransactionData = (bootstrap, overview, form) => {
   const accountBalances = useMemo(() => overview?.accountBalances || [], [overview?.accountBalances]);
-  const accounts = useMemo(() => {
+  const readableAccounts = useMemo(() => {
     const balanceLookup = new Map(accountBalances.map((item) => [item.account_id, item]));
-    return bootstrap?.accounts?.filter((item) => item.status === "active" && item.can_transact !== false)
+    return bootstrap?.accounts?.filter((item) => item.status === "active")
       .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) })) || [];
   }, [accountBalances, bootstrap?.accounts]);
+  const accounts = useMemo(() => readableAccounts.filter((item) => item.can_transact !== false), [readableAccounts]);
   const categories = useMemo(() => bootstrap?.categories?.filter((item) => item.status === "active") || [], [bootstrap?.categories]);
   const envelopes = useMemo(() => overview?.envelopes?.filter((item) => item.status === "active") || [], [overview?.envelopes]);
   const budgets = useMemo(() => overview?.budgets?.filter((item) => item.status === "active") || [], [overview?.budgets]);
   const recentTransactions = useMemo(() => overview?.recentTransactions || [], [overview?.recentTransactions]);
   const visibleCategories = useMemo(() => categories.filter((item) => item.transaction_type === form.transaction_type || (form.transaction_type === "refund" && item.transaction_type === "expense")), [categories, form.transaction_type]);
   const members = bootstrap?.members?.filter((item) => item.status === "active") || [];
-  return { accounts, accountBalances, envelopes, budgets, recentTransactions, visibleCategories, members };
+  return { accounts, readableAccounts, accountBalances, envelopes, budgets, recentTransactions, visibleCategories, members };
 };
 
 const transactionMode = (form) => ({ isIncome: form.transaction_type === TRANSACTION_TYPES.INCOME || form.transaction_type === TRANSACTION_TYPES.REFUND, isTransfer: form.transaction_type === TRANSACTION_TYPES.TRANSFER });
@@ -183,7 +185,7 @@ const finalizeTransactionSave = async ({ saved, transaction, form, refreshOvervi
   return false;
 };
 
-const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, envelopes, forceOverspendNote, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
+const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, forceOverspendNote, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault();
   const submission = prepareTransactionSubmission({ form, transaction, isIncome, confirmation, envelopes, forceOverspendNote });
   if (submission.overspendNoteRequired && !submission.preparedInput.overspend_reason) {
@@ -194,6 +196,13 @@ const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, envel
   if (!validation.ok) { setters.setErrors(validation.errors); return; }
   setters.setErrors({}); setters.setSubmitState({ status: "submitting", error: null });
   try {
+    if (!transaction && approvalRequired) {
+      await requestTransferApproval(validation.value, { idempotencyKey: idempotencyKeyRef.current });
+      setters.setSubmitState({ status: "idle", error: null });
+      notify({ message: "Pengajuan transfer dikirim. Saldo belum berubah sampai Administrator menyetujuinya." });
+      onClose();
+      return;
+    }
     const saveTransaction = transaction ? updateTransaction : createTransaction;
     const saved = await saveTransaction(validation.value, { idempotencyKey: idempotencyKeyRef.current, rowVersion: transaction?.row_version });
     const keepOpen = await finalizeTransactionSave({ saved, transaction, form, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters });
@@ -226,9 +235,16 @@ const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, set
 
 const isMobileTransferPresentation = ({ presentation, isTransfer, transaction, mobileLayout }) => !transaction && isTransfer && (presentation === "mobile-transfer" || mobileLayout);
 
+const requiresTransferApproval = ({ transaction, isTransfer, actor, readableAccounts, form }) => {
+  if (transaction || !isTransfer || actor?.role !== "member") return false;
+  const source = readableAccounts.find((item) => item.account_id === form.source_account_id) || null;
+  const destination = readableAccounts.find((item) => item.account_id === form.destination_account_id) || null;
+  return source?.owner_scope === "shared" && destination?.owner_scope === "personal";
+};
+
 const transactionDerivedData = ({ data, form, isTransfer, bootstrap, user }) => {
   const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null;
-  const compatibleDestinationAccounts = destinationAccounts(data.accounts, sourceAccount, isTransfer);
+  const compatibleDestinationAccounts = destinationAccounts(isTransfer ? data.readableAccounts : data.accounts, sourceAccount, isTransfer);
   const accountEnvelopes = sourceAccount
     ? data.envelopes.filter((item) => item.source_account_id === sourceAccount.account_id)
     : [];
@@ -363,6 +379,7 @@ const TransactionForm = ({
   const { isIncome, isTransfer } = transactionMode(form);
   const mobileTransferMode = isMobileTransferPresentation({ presentation, isTransfer, transaction, mobileLayout });
   const { compatibleDestinationAccounts, compatibleEnvelopes } = transactionDerivedData({ data, form, isTransfer, bootstrap, user });
+  const approvalRequired = requiresTransferApproval({ transaction, isTransfer, actor: bootstrap?.user || user, readableAccounts: data.readableAccounts, form });
   const allocationCandidates = useMemo(() => smartAllocationCandidates({ budgets: data.budgets, envelopes: compatibleEnvelopes, form }), [compatibleEnvelopes, data.budgets, form]);
   const impact = useMemo(() => transactionImpact({ accountBalances: data.accountBalances, envelopes: data.envelopes, form }), [data.accountBalances, data.envelopes, form]);
   const selectedSource = data.accountBalances.find((item) => item.account_id === form.source_account_id) || null;
@@ -404,7 +421,7 @@ const TransactionForm = ({
     setForm((current) => ({ ...current, envelope_period_id: nextId }));
   };
   const setters = { setErrors, setConfirmation, setSubmitState, setForceOverspendNote };
-  const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, envelopes: data.envelopes, forceOverspendNote, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef });
+  const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, approvalRequired, envelopes: data.envelopes, forceOverspendNote, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef });
   const submitting = submitState.status === "submitting";
 
   useSmartAllocationSelection({ open, transaction, allocationMode, candidates: allocationCandidates, form, setForm, setErrors });
@@ -412,7 +429,7 @@ const TransactionForm = ({
 
   const onCostShareChange = () => setErrors((current) => clearTransactionFieldErrors(current, "cost_share_mode"));
 
-  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, recentTransactions: data.recentTransactions, visibleCategories: data.visibleCategories, members: data.members, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, allocationCandidates, onEnvelopeChange, setConfirmation, setSubmitState, impact, fundsWarning, confirmation, submitState, lockType, onSourceAccountChange, onCostShareChange, submitting, outcomeUnknown };
+  const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, recentTransactions: data.recentTransactions, visibleCategories: data.visibleCategories, members: data.members, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, allocationCandidates, onEnvelopeChange, setConfirmation, setSubmitState, impact, fundsWarning, confirmation, submitState, lockType, onSourceAccountChange, onCostShareChange, submitting, outcomeUnknown, approvalRequired };
   const modal = resolveTransactionPresentation({ mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown, confirmation, onClose, amountRef, mobileLayout });
 
   const addAnother = () => {
@@ -428,7 +445,7 @@ const TransactionForm = ({
     window.requestAnimationFrame(() => amountRef.current?.focus?.());
   };
 
-  if (postSave) return <TransactionPostSaveModal open={open} postSave={postSave} accounts={data.accounts} onClose={onClose} navigate={navigate} onAddAnother={addAnother} />;
+  if (postSave) return <TransactionPostSaveModal open={open} postSave={postSave} accounts={data.readableAccounts} onClose={onClose} navigate={navigate} onAddAnother={addAnother} />;
 
   return <Modal open={open} onClose={onClose} dismissible={!submitting && !outcomeUnknown} title={modal.modalTitle} description={modal.modalDescription} size="lg" initialFocusRef={modal.initialFocusRef} className={modal.modalClassName} footer={modal.modalFooter} closeIcon={modal.closeIcon} closeLabel={modal.closeLabel} mobileSwipeToClose={modal.mobileSwipeToClose}><form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} noValidate><TransactionFormBody mobileTransferMode={mobileTransferMode} fields={fields} /></form></Modal>;
 };

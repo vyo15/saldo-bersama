@@ -26,6 +26,8 @@ export const FULL_RESET_MASTER_TABLES = Object.freeze([
 ]);
 
 export const FULL_RESET_OPERATIONAL_TABLES = Object.freeze([
+  { table: "transfer_requests", orderBy: "request_id", key: "transferRequests" },
+  { table: "master_data_requests", orderBy: "request_id", key: "masterDataRequests" },
   { table: "notification_deliveries", orderBy: "delivery_id", key: "notificationDeliveries" },
   { table: "manual_reminders", orderBy: "reminder_id", key: "manualReminders" },
   { table: "notification_queue", orderBy: "notification_id", key: "notificationQueue" },
@@ -51,6 +53,8 @@ export const FULL_RESET_GENERATED_OUTBOX_PREDICATE = `(
 )`;
 
 export const FULL_RESET_DELETE_ORDER = Object.freeze([
+  "transfer_requests",
+  "master_data_requests",
   "notification_deliveries",
   "manual_reminders",
   "notification_queue",
@@ -146,6 +150,8 @@ export const fullResetSummary = (counts) => {
     periodClosures: tableCount(counts, "period_closures"),
     accounts: tableCount(counts, "accounts"),
     categories: tableCount(counts, "categories"),
+    masterDataRequests: tableCount(counts, "master_data_requests"),
+    transferRequests: tableCount(counts, "transfer_requests"),
     notificationDeliveries: tableCount(counts, "notification_deliveries"),
     manualReminders: tableCount(counts, "manual_reminders"),
     notificationQueue: tableCount(counts, "notification_queue"),

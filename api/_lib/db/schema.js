@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { getDatabase } from "./httpClient.js";
 
-export const DATABASE_SCHEMA_VERSION = 13;
+export const DATABASE_SCHEMA_VERSION = 14;
 export const DATABASE_ENVIRONMENTS = Object.freeze(["development", "production"]);
 const CACHE_MS = 60_000;
 let cached = null;
@@ -52,7 +52,7 @@ export const assertDatabaseReady = async (database = null) => {
     const environmentMismatch = status.version === DATABASE_SCHEMA_VERSION && !status.environmentReady;
     throw Object.assign(new Error(environmentMismatch
       ? "Environment database tidak cocok. Jalankan binding database untuk environment ini."
-      : "Schema database belum siap. Jalankan npm run db:migrate."), {
+      : "Schema database belum siap untuk runtime ini. Jalankan workflow migration pada environment yang sesuai setelah backup terverifikasi."), {
       code: environmentMismatch ? "DATABASE_ENVIRONMENT_MISMATCH" : "DATABASE_SCHEMA_MISMATCH",
       status: 503,
       details: status,

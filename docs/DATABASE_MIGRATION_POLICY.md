@@ -5,7 +5,7 @@
 3. Setiap migration mempunyai tujuan, compatibility window, backup, parity, rollback/forward-fix, dan test.
 4. API tidak membuat/mengubah schema otomatis saat request.
 5. Migration production hanya eksplisit melalui workflow disetujui.
-6. Sebelum migration berisiko: maintenance bila perlu, safety backup, integrity baseline.
+6. Sebelum migration berisiko: maintenance bila perlu, safety backup, integrity baseline. Untuk database Production existing dengan migration pending, tooling wajib fail-closed bila belum ada backup teknis `verified` pada schema saat ini.
 7. Sesudah apply: schema version, FK, integrity, financial fingerprint, saldo, dan laporan diverifikasi.
 8. Bila rollback tidak aman setelah write baru, gunakan forward-fix terkontrol.
 9. Runtime Development dan Vercel Production memakai profile/database terpisah dan binding `database_environment` yang berbeda. Migration eksperimen tetap dilarang pada Production; target Production harus eksplisit dan didahului backup/integrity sesuai runbook.
