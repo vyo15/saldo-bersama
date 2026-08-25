@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { assertDatabaseProfileBinding, loadDatabaseProfile, resolveDatabaseProfileTarget } from "./database-profile.mjs";
 import { getDatabase } from "../api/_lib/db/httpClient.js";
