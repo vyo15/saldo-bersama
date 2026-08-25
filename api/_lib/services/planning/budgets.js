@@ -2,7 +2,7 @@ import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, monthBounds, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
-import { assertPlanningManageScope } from "./shared.js";
+import { assertEnvelopeAssigneeAccess, assertPlanningManageScope } from "./shared.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
 
 const BUDGET_IDENTITY_SQL = "period_key=? AND category_id=? AND scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'') AND COALESCE(envelope_rule_id,'')=COALESCE(?,'')";
@@ -26,7 +26,8 @@ export const budgetListStatement = (context) => {
           AND (b.envelope_rule_id IS NULL OR ep.envelope_rule_id=b.envelope_rule_id)
       ),0) AS used_amount,
       bu.name AS owner_name,bu.role AS owner_role,
-      er.name AS envelope_name,er.source_account_id AS envelope_source_account_id
+      er.name AS envelope_name,er.source_account_id AS envelope_source_account_id,
+      er.assignee_user_id AS envelope_assignee_user_id
     FROM budgets b
     LEFT JOIN categories c ON c.category_id=b.category_id
     LEFT JOIN users bu ON bu.user_id=b.owner_user_id
@@ -37,13 +38,26 @@ export const budgetListStatement = (context) => {
   };
 };
 
-export const mapBudgetListRows = (rows) => ({
-  items: rows.map((row) => ({ ...publicRow(row), name: row.display_name })),
+const canManageBudget = (actor, row) => {
+  if (!actor || !row) return false;
+  const scopeAllowed = actor.role === "owner"
+    || (row.scope === "shared" && !row.owner_user_id)
+    || (row.scope === "personal" && row.owner_user_id === actor.user_id);
+  if (!scopeAllowed) return false;
+  return actor.role === "owner" || !row.envelope_assignee_user_id || row.envelope_assignee_user_id === actor.user_id;
+};
+
+export const mapBudgetListRows = (rows, context) => ({
+  items: rows.map((row) => ({
+    ...publicRow(row),
+    name: row.display_name,
+    can_manage: canManageBudget(context?.actor, row),
+  })),
 });
 
 export const listBudgets = async (db, context) => {
   const statement = budgetListStatement(context);
-  return mapBudgetListRows(await db.all(statement.sql, statement.args));
+  return mapBudgetListRows(await db.all(statement.sql, statement.args), context);
 };
 
 export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, sourcePeriodKey, targetPeriodKey }) => {
@@ -97,13 +111,14 @@ export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, s
   return { copied, skipped, source_period_key: sourcePeriod, target_period_key: targetPeriod };
 };
 
-const resolveBudgetEnvelope = async (db, envelopeRuleId, owned) => {
+const resolveBudgetEnvelope = async (db, actor, envelopeRuleId, owned) => {
   if (!envelopeRuleId) return null;
   const envelope = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [envelopeRuleId]);
   if (!envelope) throw appError("INVALID_ENVELOPE", "Alokasi Dana untuk kebutuhan tidak valid atau sudah diarsipkan.", 400);
   if (envelope.scope !== owned.scope || String(envelope.owner_user_id || "") !== String(owned.owner_user_id || "")) {
     throw appError("BUDGET_ENVELOPE_SCOPE_MISMATCH", "Alokasi Dana dan kebutuhan harus memiliki kepemilikan yang sama.", 409);
   }
+  assertEnvelopeAssigneeAccess(actor, envelope);
   return envelope;
 };
 
@@ -115,7 +130,7 @@ export const upsertBudget = async (db, context) => {
   const owned = await normalizeOwnedScope(db, context.actor, p);
   assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const envelopeRuleId = sanitizeText(p.envelope_rule_id, 100) || null;
-  await resolveBudgetEnvelope(db, envelopeRuleId, owned);
+  await resolveBudgetEnvelope(db, context.actor, envelopeRuleId, owned);
   const identityArgs = budgetIdentityArgs({ period_key: period, category_id: category.category_id, scope: owned.scope, owner_user_id: owned.owner_user_id, envelope_rule_id: envelopeRuleId });
   let current = await db.one(`SELECT * FROM budgets WHERE ${BUDGET_IDENTITY_SQL}`, identityArgs);
   if (!current && envelopeRuleId) {

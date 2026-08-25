@@ -56,24 +56,24 @@ const ReportAlerts = ({ alerts = [] }) => alerts.length ? <Card className="panel
 
 const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
   <Card className="panel"><div className="panel__header"><h2>Saldo awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>
-  <Card className="panel"><div className="panel__header"><h2>Arus kas {trend.months} bulan</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" />}</Card>
+  <Card className="panel"><div className="panel__header"><h2>Arus kas {trend.months} bulan</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" description="Tren arus kas muncul setelah tersedia transaksi pada lebih dari satu periode." />}</Card>
 </>;
 
 const useMobileReportLayout = () => useMediaQuery(MOBILE_REPORT_QUERY);
 
 const ReportDetails = ({ balanceTrend, categoryExpenses, accountExpenses, natureExpenses, creatorExpenses, costShareExpenses, budgets }) => {
   const compact = useMobileReportLayout();
-  const content = <div className="report-details__content"><Card className="panel"><div className="panel__header"><h2>Tren total saldo</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren total saldo" /> : <EmptyState title="Belum ada tren saldo" />}</Card><BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} natureExpenses={natureExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} /><BudgetPerformance budgets={budgets} /></div>;
+  const content = <div className="report-details__content"><Card className="panel"><div className="panel__header"><h2>Tren total saldo</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren total saldo" /> : <EmptyState title="Belum ada tren saldo" description="Tren saldo muncul setelah tersedia riwayat saldo pada lebih dari satu periode." />}</Card><BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} natureExpenses={natureExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} /><BudgetPerformance budgets={budgets} /></div>;
   if (!compact) return <div className="report-details report-details--desktop">{content}</div>;
   return <details className="report-details"><summary className="report-details__summary"><span><strong>Rincian laporan</strong><small>Tren saldo, kategori, rekening, jenis, pencatat, dan anggaran</small></span><FiChevronDown aria-hidden="true" /></summary>{content}</details>;
 };
 
 const BreakdownPanels = ({ categoryExpenses, accountExpenses, natureExpenses, creatorExpenses, costShareExpenses }) => <>
   <Card className="panel"><div className="panel__header"><h2>Pengeluaran per kategori</h2></div><BarChart data={categoryExpenses} /></Card>
-  <Card className="panel"><div className="panel__header"><h2>Pengeluaran per rekening</h2></div>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState title="Belum ada pengeluaran" />}</Card>
-  <Card className="panel"><div className="panel__header"><h2>Jenis pengeluaran</h2></div>{natureExpenses.length ? <BarChart data={natureExpenses} label="Pengeluaran berdasarkan sifat kategori" /> : <EmptyState title="Belum ada klasifikasi" />}</Card>
-  <Card className="panel"><div className="panel__header"><div><h2>Aktivitas pencatatan</h2><p className="panel__description">Menunjukkan pencatat, bukan penanggung biaya.</p></div></div>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState title="Belum ada aktivitas" />}</Card>
-  <Card className="panel"><div className="panel__header"><div><h2>Pembagian beban biaya</h2><p className="panel__description">Hanya transaksi Bersama yang pembagiannya ditentukan. Ini bukan laporan siapa yang benar-benar membayar.</p></div></div>{costShareExpenses.length ? <BarChart data={costShareExpenses} label="Pembagian beban biaya bersama" /> : <EmptyState title="Belum ada pembagian beban" />}</Card>
+  <Card className="panel"><div className="panel__header"><h2>Pengeluaran per rekening</h2></div>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState title="Belum ada pengeluaran" description="Pengeluaran akan muncul setelah transaksi expense tercatat pada periode ini." />}</Card>
+  <Card className="panel"><div className="panel__header"><h2>Jenis pengeluaran</h2></div>{natureExpenses.length ? <BarChart data={natureExpenses} label="Pengeluaran berdasarkan sifat kategori" /> : <EmptyState title="Belum ada klasifikasi" description="Jenis pengeluaran akan muncul setelah transaksi memiliki kategori yang sesuai." />}</Card>
+  <Card className="panel"><div className="panel__header"><div><h2>Aktivitas pencatatan</h2><p className="panel__description">Menunjukkan pencatat, bukan penanggung biaya.</p></div></div>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState title="Belum ada aktivitas" description="Aktivitas pencatatan akan muncul setelah ada pengeluaran pada periode ini." />}</Card>
+  <Card className="panel"><div className="panel__header"><div><h2>Pembagian beban biaya</h2><p className="panel__description">Hanya transaksi Bersama yang pembagiannya ditentukan. Ini bukan laporan siapa yang benar-benar membayar.</p></div></div>{costShareExpenses.length ? <BarChart data={costShareExpenses} label="Pembagian beban biaya bersama" /> : <EmptyState title="Belum ada pembagian beban" description="Pembagian beban muncul setelah transaksi Bersama memakai pembagian biaya." />}</Card>
 </>;
 
 const BudgetDesktopTable = ({ budgets }) => <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Kebutuhan</th><th className="align-right">Rencana</th><th className="align-right">Aktual</th><th className="align-right">Sisa</th></tr></thead><tbody>{budgets.map((item) => <tr key={item.budget_id}><td>{item.name || item.category_id}</td><td className="align-right"><Money value={item.amount} /></td><td className="align-right"><Money value={item.used_amount} /></td><td className="align-right"><Money value={item.amount - item.used_amount} tone={item.amount - item.used_amount < 0 ? "negative" : "default"} /></td></tr>)}</tbody></table></div>;
@@ -86,7 +86,7 @@ const BudgetMobileList = ({ budgets }) => <div className="mobile-data-list budge
 
 const BudgetPerformance = ({ budgets }) => <Card className="panel panel--wide budget-performance-panel">
   <div className="panel__header"><h2>Kebutuhan vs aktual</h2><Link className="button button--secondary" to="/anggaran">Lihat anggaran</Link></div>
-  {budgets.length ? <><BudgetDesktopTable budgets={budgets} /><BudgetMobileList budgets={budgets} /></> : <EmptyState title="Belum ada kebutuhan" />}
+  {budgets.length ? <><BudgetDesktopTable budgets={budgets} /><BudgetMobileList budgets={budgets} /></> : <EmptyState title="Belum ada kebutuhan" description="Kebutuhan akan muncul setelah dibuat dari detail Alokasi Dana." />}
 </Card>;
 
 const shiftMonth = (period, delta) => {
@@ -168,10 +168,10 @@ const MobileBudgetList = ({ budgets = [] }) => {
 const MobileBreakdownDetails = ({ accountExpenses, natureExpenses, creatorExpenses, costShareExpenses }) => <details className={styles.detailsCard}>
   <summary><span><strong>Rincian lainnya</strong><small>Rekening, jenis pengeluaran, dan aktivitas pencatatan</small></span><FiChevronDown aria-hidden="true" /></summary>
   <div className={styles.detailsContent}>
-    <section><h3>Pengeluaran per rekening</h3>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState variant="inline" title="Belum ada pengeluaran" />}</section>
-    <section><h3>Jenis pengeluaran</h3>{natureExpenses.length ? <BarChart data={natureExpenses} label="Pengeluaran berdasarkan sifat kategori" /> : <EmptyState variant="inline" title="Belum ada klasifikasi" />}</section>
-    <section><h3>Aktivitas pencatatan</h3><p>Menunjukkan pencatat, bukan penanggung biaya.</p>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState variant="inline" title="Belum ada aktivitas" />}</section>
-    <section><h3>Pembagian beban biaya</h3><p>Hanya transaksi Bersama yang pembagiannya ditentukan. Bukan bukti siapa yang membayar.</p>{costShareExpenses.length ? <BarChart data={costShareExpenses} label="Pembagian beban biaya bersama" /> : <EmptyState variant="inline" title="Belum ada pembagian beban" />}</section>
+    <section><h3>Pengeluaran per rekening</h3>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState variant="inline" title="Belum ada pengeluaran" description="Pengeluaran akan muncul setelah transaksi expense tercatat pada periode ini." />}</section>
+    <section><h3>Jenis pengeluaran</h3>{natureExpenses.length ? <BarChart data={natureExpenses} label="Pengeluaran berdasarkan sifat kategori" /> : <EmptyState variant="inline" title="Belum ada klasifikasi" description="Jenis pengeluaran akan muncul setelah transaksi memiliki kategori yang sesuai." />}</section>
+    <section><h3>Aktivitas pencatatan</h3><p>Menunjukkan pencatat, bukan penanggung biaya.</p>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState variant="inline" title="Belum ada aktivitas" description="Aktivitas pencatatan akan muncul setelah ada pengeluaran pada periode ini." />}</section>
+    <section><h3>Pembagian beban biaya</h3><p>Hanya transaksi Bersama yang pembagiannya ditentukan. Bukan bukti siapa yang membayar.</p>{costShareExpenses.length ? <BarChart data={costShareExpenses} label="Pembagian beban biaya bersama" /> : <EmptyState variant="inline" title="Belum ada pembagian beban" description="Pembagian beban muncul setelah transaksi Bersama memakai pembagian biaya." />}</section>
   </div>
 </details>;
 
@@ -255,7 +255,7 @@ const MobileSummaryHero = ({ model, period }) => {
       <div><span>Pengeluaran periode ini</span><Money value={totalExpense} /></div>
       <span className={`${styles.heroChange}${improvementClass}`}>{comparisonLabel}</span>
     </div>
-    {trendItems.length ? <MobileTrendChart items={trendItems} period={period} /> : <EmptyState variant="inline" title="Belum ada tren" />}
+    {trendItems.length ? <MobileTrendChart items={trendItems} period={period} /> : <EmptyState variant="inline" title="Belum ada tren" description="Tren muncul setelah tersedia data pada lebih dari satu periode." />}
   </section>;
 };
 

@@ -1,4 +1,5 @@
 import { FiArrowRight, FiBell, FiMoreHorizontal, FiPieChart, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { Link } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -43,15 +44,15 @@ const AllocationCard = ({ item, onOpenActions, onReminder, onAdjust, canAdjust, 
   </Card>;
 };
 
-const AllocationCards = ({ items, totalItems, onOpenActions, onReminder, onAdjust, actor, attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, canAdjustItem, canRemindItem, linkedBudgetsForItem, relatedRecurringForItem }) => <section className="allocation-grid" aria-label="Daftar Alokasi Dana aktif">{items.length ? items.map((item) => {
+const AllocationCards = ({ items, totalItems, onOpenActions, onReminder, onAdjust, attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, canAdjustItem, canRemindItem, linkedBudgetsForItem, relatedRecurringForItem, openCreate }) => <section className="allocation-grid" aria-label="Daftar Alokasi Dana aktif">{items.length ? items.map((item) => {
   const needs = linkedBudgetsForItem(budgets, item);
   const scheduleCount = relatedRecurringForItem(recurringItems, budgets, item).length;
-  return <AllocationCard key={item.envelope_period_id} item={item} onOpenActions={onOpenActions} onReminder={onReminder} onAdjust={onAdjust} canAdjust={canAdjustItem(item, actor)} canRemind={canRemindItem(item, actor)} attention={item.envelope_period_id === attentionEnvelopeId} onOpenDetail={onOpenDetail} needs={needs} scheduleCount={scheduleCount} />;
-}) : <EmptyState className="allocation-empty" variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : "Belum ada Alokasi Dana aktif"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Buat Alokasi Dana untuk mulai memisahkan dana berdasarkan tujuan." : "Administrator belum menyiapkan Alokasi Dana yang dapat digunakan."} />}</section>;
+  return <AllocationCard key={item.envelope_period_id} item={item} onOpenActions={onOpenActions} onReminder={onReminder} onAdjust={onAdjust} canAdjust={canAdjustItem(item)} canRemind={canRemindItem(item)} attention={item.envelope_period_id === attentionEnvelopeId} onOpenDetail={onOpenDetail} needs={needs} scheduleCount={scheduleCount} />;
+}) : <EmptyState className="allocation-empty" variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Belum ada Alokasi Dana aktif" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Pisahkan dana berdasarkan tujuan agar sisa yang benar-benar tersedia lebih mudah dipantau." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={!totalItems ? canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat Alokasi Dana</Button> : <Link className="button button--primary" to="/rekening">Lihat Rekening</Link> : null} />}</section>;
 
 const AllocationOverviewLayer = ({
   activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder, onAdjust,
-  actor, attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, administratorMode, canMove,
+  attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, administratorMode, canMove,
   openCreate, openMove, reload, canAdjustItem, canRemindItem,
   linkedBudgetsForItem, relatedRecurringForItem,
 }) => <>
@@ -64,7 +65,7 @@ const AllocationOverviewLayer = ({
   <section className="allocation-active" aria-labelledby="allocation-active-title">
     <div className="allocation-section-heading"><h2 id="allocation-active-title">Alokasi aktif</h2>{activeItems.length ? <span>{filteredActiveItems.length} dari {activeItems.length}</span> : null}</div>
     {activeItems.length ? <div className="allocation-filters" role="group" aria-label="Filter Alokasi Dana aktif">{ALLOCATION_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationFilter === filter.value ? "is-active" : ""} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}
-    <AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} onReminder={onReminder} onAdjust={onAdjust} actor={actor} attentionEnvelopeId={attentionEnvelopeId} budgets={budgets} recurringItems={recurringItems} onOpenDetail={onOpenDetail} canCreate={canCreate} canAdjustItem={canAdjustItem} canRemindItem={canRemindItem} linkedBudgetsForItem={linkedBudgetsForItem} relatedRecurringForItem={relatedRecurringForItem} />
+    <AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} onReminder={onReminder} onAdjust={onAdjust} attentionEnvelopeId={attentionEnvelopeId} budgets={budgets} recurringItems={recurringItems} onOpenDetail={onOpenDetail} canCreate={canCreate} canAdjustItem={canAdjustItem} canRemindItem={canRemindItem} linkedBudgetsForItem={linkedBudgetsForItem} relatedRecurringForItem={relatedRecurringForItem} openCreate={openCreate} />
   </section>
 </>;
 

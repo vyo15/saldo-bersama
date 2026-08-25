@@ -14,6 +14,7 @@ const RecurringScheduleView = ({
   accounts,
   categories,
   budgets,
+  canCreate,
 }) => <>
   <ScheduleSummary items={allItems} onAttention={() => {
     const attentionItem = allItems.find((item) => scheduleMatchesFilter(item, "attention"));
@@ -34,6 +35,7 @@ const RecurringScheduleView = ({
     accounts={accounts}
     categories={categories}
     budgets={budgets}
+    canCreate={canCreate}
   />
 </>;
 

@@ -52,6 +52,7 @@ const App = () => (
         <Route path="perencanaan/kantong" element={routeElement(PlanningPage)} />
         <Route path="perencanaan/jadwal" element={routeElement(PlanningPage)} />
         <Route path="anggaran" element={routeElement(BudgetsPage)} />
+        <Route path="perencanaan/kebutuhan" element={<Navigate to="/anggaran" replace />} />
         <Route path="alokasi" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
         <Route path="tagihan" element={<LegacyPlanningRedirect to="/perencanaan/jadwal" />} />
         <Route path="target" element={routeElement(GoalsPage)} />

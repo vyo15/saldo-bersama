@@ -2,7 +2,8 @@ import { appendAudit } from "../audit.js";
 import { appError, assertVersion, nowIso, positiveInteger, publicRow, sanitizeText, uuid } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
 import { accountWithAccess, assertOwnedAccess, assertPlanningManageScope } from "./shared.js";
-import { assertAllocationAvailable, assertEnvelopeAssigneeAccess, hasSameEnvelopeAssignee } from "./envelopeLifecycle.js";
+import { assertAllocationAvailable } from "./envelopeLifecycle.js";
+import { assertEnvelopeAssigneeAccess, hasSameEnvelopeAssignee } from "./shared.js";
 
 // Reallocation changes planning allocation only; it is not a ledger transfer. Cross-account
 // moves are rejected so money movement remains explicit through canonical transactions.

@@ -12,8 +12,7 @@ import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
-import { canRepresentAccountTransfer, filterByAssigneeAccess } from "../../domain/ownership.js";
-import { useAuth } from "../auth/AuthContext.jsx";
+import { canRepresentAccountTransfer } from "../../domain/ownership.js";
 import styles from "./TransactionForm.module.css";
 import MobileTransferFields from "./MobileTransferFields.jsx";
 import TransactionFields from "./components/TransactionFields.jsx";
@@ -76,7 +75,8 @@ const useTransactionData = (bootstrap, overview, form) => {
   const recentTransactions = useMemo(() => overview?.recentTransactions || [], [overview?.recentTransactions]);
   const visibleCategories = useMemo(() => categories.filter((item) => item.transaction_type === form.transaction_type || (form.transaction_type === "refund" && item.transaction_type === "expense")), [categories, form.transaction_type]);
   const members = bootstrap?.members?.filter((item) => item.status === "active") || [];
-  return { accounts, readableAccounts, accountBalances, envelopes, budgets, recentTransactions, visibleCategories, members };
+  const transferRoutes = bootstrap?.transferRoutes || [];
+  return { accounts, readableAccounts, accountBalances, envelopes, budgets, recentTransactions, visibleCategories, members, transferRoutes };
 };
 
 const transactionMode = (form) => ({ isIncome: form.transaction_type === TRANSACTION_TYPES.INCOME || form.transaction_type === TRANSACTION_TYPES.REFUND, isTransfer: form.transaction_type === TRANSACTION_TYPES.TRANSFER });
@@ -235,20 +235,24 @@ const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, set
 
 const isMobileTransferPresentation = ({ presentation, isTransfer, transaction, mobileLayout }) => !transaction && isTransfer && (presentation === "mobile-transfer" || mobileLayout);
 
-const requiresTransferApproval = ({ transaction, isTransfer, actor, readableAccounts, form }) => {
-  if (transaction || !isTransfer || actor?.role !== "member") return false;
-  const source = readableAccounts.find((item) => item.account_id === form.source_account_id) || null;
-  const destination = readableAccounts.find((item) => item.account_id === form.destination_account_id) || null;
-  return source?.owner_scope === "shared" && destination?.owner_scope === "personal";
+const transferRouteFor = (routes, sourceAccountId, destinationAccountId) => (routes || []).find((route) =>
+  route.source_account_id === sourceAccountId && route.destination_account_id === destinationAccountId
+) || null;
+
+const requiresTransferApproval = ({ transaction, isTransfer, transferRoutes, form }) => {
+  if (transaction || !isTransfer) return false;
+  return transferRouteFor(transferRoutes, form.source_account_id, form.destination_account_id)?.mode === "approval_required";
 };
 
-const transactionDerivedData = ({ data, form, isTransfer, bootstrap, user }) => {
+const transactionDerivedData = ({ data, form, isTransfer }) => {
   const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null;
-  const compatibleDestinationAccounts = destinationAccounts(isTransfer ? data.readableAccounts : data.accounts, sourceAccount, isTransfer);
-  const accountEnvelopes = sourceAccount
-    ? data.envelopes.filter((item) => item.source_account_id === sourceAccount.account_id)
+  const routeEligibleDestinations = isTransfer && sourceAccount
+    ? data.readableAccounts.filter((account) => transferRouteFor(data.transferRoutes, sourceAccount.account_id, account.account_id))
+    : data.accounts;
+  const compatibleDestinationAccounts = destinationAccounts(routeEligibleDestinations, sourceAccount, isTransfer);
+  const compatibleEnvelopes = sourceAccount
+    ? data.envelopes.filter((item) => item.source_account_id === sourceAccount.account_id && item.can_record_expense === true)
     : [];
-  const compatibleEnvelopes = filterByAssigneeAccess(accountEnvelopes, bootstrap?.user || user);
   return { compatibleDestinationAccounts, compatibleEnvelopes };
 };
 
@@ -359,7 +363,6 @@ const TransactionForm = ({
   presentation = "default",
 }) => {
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
-  const { user } = useAuth();
   const { notify } = useFeedback();
   const navigate = useNavigate();
   const mobileLayout = useMediaQuery(MOBILE_TRANSACTION_QUERY);
@@ -378,8 +381,8 @@ const TransactionForm = ({
   const data = useTransactionData(bootstrap, overview, form);
   const { isIncome, isTransfer } = transactionMode(form);
   const mobileTransferMode = isMobileTransferPresentation({ presentation, isTransfer, transaction, mobileLayout });
-  const { compatibleDestinationAccounts, compatibleEnvelopes } = transactionDerivedData({ data, form, isTransfer, bootstrap, user });
-  const approvalRequired = requiresTransferApproval({ transaction, isTransfer, actor: bootstrap?.user || user, readableAccounts: data.readableAccounts, form });
+  const { compatibleDestinationAccounts, compatibleEnvelopes } = transactionDerivedData({ data, form, isTransfer });
+  const approvalRequired = requiresTransferApproval({ transaction, isTransfer, transferRoutes: data.transferRoutes, form });
   const allocationCandidates = useMemo(() => smartAllocationCandidates({ budgets: data.budgets, envelopes: compatibleEnvelopes, form }), [compatibleEnvelopes, data.budgets, form]);
   const impact = useMemo(() => transactionImpact({ accountBalances: data.accountBalances, envelopes: data.envelopes, form }), [data.accountBalances, data.envelopes, form]);
   const selectedSource = data.accountBalances.find((item) => item.account_id === form.source_account_id) || null;

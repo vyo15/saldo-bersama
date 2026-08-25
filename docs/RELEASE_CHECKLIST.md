@@ -8,7 +8,7 @@
 - [ ] Untuk perubahan frontend/UI, `npm run verify` lulus dan pemeriksaan manual device/viewport relevan sudah dilakukan; tidak ada automated browser gate.
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Untuk schema v14, backup teknis **verified pada schema v13** tersedia sebelum migration Production; `012_member_collaboration.sql` diterapkan eksplisit setelah migration sebelumnya, database di-bind ke environment yang benar, dan integrity lulus (`npm run db:integrity` untuk Development atau `npm run db:integrity -- production` untuk Production) **sebelum runtime schema baru dipush**. Production migration existing fail-closed bila tidak ada backup `verified` pada schema saat ini.
-- [ ] Shared planning diuji dengan Administrator dan Member: Member hanya dapat mengelola scope Bersama; personal, lifecycle destruktif, dan recovery tetap ditolak.
+- [ ] Planning diuji dengan Administrator dan Member: Member dapat mengelola scope Bersama serta planning personal yang bersumber dari rekening pribadinya sendiri; planning personal anggota lain tetap read-only, assignee Alokasi tetap dihormati, sedangkan lifecycle destruktif dan recovery tetap Administrator-only.
 - [ ] Alokasi existing diuji add/release tanpa perubahan saldo ledger; dashboard memisahkan dana tersedia dari pengeluaran tanpa Alokasi Dana.
 - [ ] Cost sharing expense shared diuji `unspecified`/50:50/persentase dan report menyebut pembagian beban, bukan kontribusi aktual.
 - [ ] Backup/rollback tersedia bila data terdampak.

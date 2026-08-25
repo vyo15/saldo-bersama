@@ -111,12 +111,17 @@ const MobileSharedPlan = ({ overview, balanceVisible }) => {
   const goals = activeSharedGoals(overview);
   const budgets = priorityBudgets(overview);
   const recurring = upcomingRecurring(overview);
-  if (!goals.length && !budgets.length && !recurring.length) return null;
+  const empty = !goals.length && !budgets.length && !recurring.length;
   return <section className="mobile-finance-section mobile-shared-plan" aria-labelledby="mobile-shared-plan-title">
-    <div className="mobile-section-heading"><h2 id="mobile-shared-plan-title">Rencana Bersama</h2><Link to="/target">Lihat Target</Link></div>
+    <div className="mobile-section-heading"><h2 id="mobile-shared-plan-title">Rencana Keuangan</h2><Link to="/anggaran">Lihat anggaran</Link></div>
     <div className="mobile-shared-plan__grid">
+      {empty ? <>
+        <Link className="mobile-plan-card" to="/perencanaan/kantong"><span className="mobile-plan-card__icon"><FiPieChart aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>Mulai Alokasi Dana</strong><small>Pisahkan dana agar kebutuhan lebih mudah dipantau.</small></span></Link>
+        <Link className="mobile-plan-card" to="/perencanaan/jadwal"><span className="mobile-plan-card__icon"><FiCalendar aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>Buat jadwal rutin</strong><small>Ingat pemasukan dan pengeluaran berulang.</small></span></Link>
+        <Link className="mobile-plan-card mobile-plan-card--goal" to="/target"><span className="mobile-plan-card__icon"><FiTarget aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>Buat target</strong><small>Arahkan sisa dana ke tujuan berikutnya.</small></span></Link>
+      </> : null}
       {goals.map((goal) => <Link className="mobile-plan-card mobile-plan-card--goal" to="/target" key={goal.goal_id}><span className="mobile-plan-card__icon"><FiTarget aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>{goal.name}</strong><small><SensitiveMoney visible={balanceVisible} value={goal.current_amount || 0} /> dari <SensitiveMoney visible={balanceVisible} value={goal.target_amount || 0} /></small><ProgressBar value={goal.current_amount || 0} max={goal.target_amount || 0} label={`Kemajuan ${goal.name}`} /></span></Link>)}
-      {budgets.map((budget) => <Link className="mobile-plan-card" to="/perencanaan/kebutuhan" key={budget.budget_id}><span className="mobile-plan-card__icon"><FiPieChart aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>{budget.name || "Kebutuhan"}</strong><small>Terpakai <SensitiveMoney visible={balanceVisible} value={budget.used_amount || 0} /> dari <SensitiveMoney visible={balanceVisible} value={budget.amount || 0} /></small><ProgressBar value={budget.used_amount || 0} max={budget.amount || 0} label={`Pemakaian ${budget.name || "kebutuhan"}`} /></span></Link>)}
+      {budgets.map((budget) => <Link className="mobile-plan-card" to="/anggaran" key={budget.budget_id}><span className="mobile-plan-card__icon"><FiPieChart aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>{budget.name || "Kebutuhan"}</strong><small>Terpakai <SensitiveMoney visible={balanceVisible} value={budget.used_amount || 0} /> dari <SensitiveMoney visible={balanceVisible} value={budget.amount || 0} /></small><ProgressBar value={budget.used_amount || 0} max={budget.amount || 0} label={`Pemakaian ${budget.name || "kebutuhan"}`} /></span></Link>)}
       {recurring.map((item) => <Link className="mobile-plan-card" to="/perencanaan/jadwal" key={item.occurrence_id || item.recurring_rule_id}><span className="mobile-plan-card__icon"><FiCalendar aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong>{item.name}</strong><small>{item.due_date ? formatTransactionDate(item.due_date) : "Jadwal terdekat"} · <SensitiveMoney visible={balanceVisible} value={item.expected_amount || item.amount || 0} /></small></span></Link>)}
     </div>
   </section>;

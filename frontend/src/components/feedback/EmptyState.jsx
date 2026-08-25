@@ -10,11 +10,12 @@ const EmptyState = ({
   variant = "panel",
   headingLevel = 2,
   className = "",
+  announce = false,
 }) => {
   const Heading = HEADING_TAGS[headingLevel] || "h2";
   const classes = ["empty-state", `empty-state--${variant}`, className].filter(Boolean).join(" ");
   return (
-    <div className={classes} role="status">
+    <div className={classes} role={announce ? "status" : undefined}>
       <Icon aria-hidden="true" />
       <Heading>{title}</Heading>
       {description ? <p>{description}</p> : null}

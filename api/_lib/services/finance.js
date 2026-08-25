@@ -4,6 +4,7 @@ import { appendAudit } from "./audit.js";
 import { resolveTransactionCostShare, transactionCostSharePresentation } from "./costSharing.js";
 import { accountAllocatedRemaining, accountBalanceAsOf, firstNegativeBalance } from "./readModels.js";
 import { isReservedTransactionField } from "../transactionContract.js";
+import { actorCanOperateTransaction, transactionCapabilities, transferRouteMode } from "./transactionPolicy.js";
 import {
   appError, assertOwner, assertVersion, boundedInteger, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow,
   readableLedgerSql, sanitizeText, todayJakarta, uuid,
@@ -61,29 +62,11 @@ const assertAccountDate = (account, transactionDate) => {
   if (transactionDate < account.initial_balance_date) throw appError("TRANSACTION_BEFORE_INITIAL_BALANCE", "Tanggal transaksi tidak boleh sebelum tanggal saldo awal rekening.", 409, { accountId: account.account_id, initialBalanceDate: account.initial_balance_date, transactionDate });
 };
 
-const actorCanOperateTransaction = (actor, transaction) => actor.role === "owner"
-  || transaction.scope === "shared"
-  || (transaction.scope === "personal" && transaction.owner_user_id === actor.user_id);
-
 const assertCanModify = (context, transaction) => {
   if (transaction.transaction_type === "adjustment" && context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat diubah Administrator.", 403);
   if (context.actor.role !== "owner" && (!actorCanOperateTransaction(context.actor, transaction) || transaction.created_by !== context.actor.user_id)) throw appError("FORBIDDEN", "Member hanya dapat mengubah transaksi miliknya pada rekening yang dapat dioperasikan.", 403);
   if (transaction.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Koreksi transaksi rutin harus dilakukan melalui menu Tagihan.", 409, { occurrenceId: transaction.recurring_occurrence_id });
   if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi target harus dilakukan melalui menu Target.", 409, { goalId: transaction.goal_id });
-};
-
-const transactionCapabilities = (context, transaction, { periodOpen }) => {
-  const active = transaction.status === "active";
-  const linked = Boolean(transaction.recurring_occurrence_id || transaction.goal_id);
-  const ownerOrCreator = context.actor.role === "owner" || (transaction.created_by === context.actor.user_id && actorCanOperateTransaction(context.actor, transaction));
-  const adjustmentAllowed = transaction.transaction_type !== "adjustment" || context.actor.role === "owner";
-  return {
-    can_edit: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
-    can_cancel: Boolean(active && periodOpen && !linked && ownerOrCreator && adjustmentAllowed),
-    can_restore: Boolean(transaction.status === "cancelled" && periodOpen && !linked && context.actor.role === "owner"),
-    period_closed: Boolean(active && !periodOpen),
-    managed_by: transaction.recurring_occurrence_id ? "recurring" : transaction.goal_id ? "goal" : "",
-  };
 };
 
 const assertEnvelopeCompatibility = (row, context, transaction) => {
@@ -216,11 +199,12 @@ const resolveTransactionAccounts = async (db, context, { type, sourceId, destina
     : type === "transfer"
       ? await activeReadableAccount(db, destinationId)
       : null;
-  if (type === "transfer" && source.account_id === destination.account_id) {
-    throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
-  }
-  if (type === "transfer" && context.actor.role !== "owner" && source.owner_scope === "shared" && destination.owner_scope === "personal" && !allowSharedToPersonalRequest) {
-    throw appError("TRANSFER_APPROVAL_REQUIRED", "Transfer dari rekening Bersama ke rekening pribadi memerlukan persetujuan Administrator.", 409, { sourceAccountId: source.account_id, destinationAccountId: destination.account_id });
+  if (type === "transfer") {
+    const routeMode = transferRouteMode(context.actor, source, destination);
+    if (routeMode === "denied") throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
+    if (routeMode === "approval_required" && !allowSharedToPersonalRequest) {
+      throw appError("TRANSFER_APPROVAL_REQUIRED", "Transfer dari rekening Bersama ke rekening pribadi memerlukan persetujuan Administrator.", 409, { sourceAccountId: source.account_id, destinationAccountId: destination.account_id });
+    }
   }
   if (source) assertAccountDate(source, transactionDate);
   if (destination) assertAccountDate(destination, transactionDate);
@@ -521,7 +505,7 @@ const transactionListResponse = (context, request, resultRows) => {
   const [countRows, rows, filterAccounts, filterCategories, filterCreators, closureRows] = resultRows;
   const periodLocked = Boolean(closureRows[0]);
   const periodOpen = !periodLocked;
-  const items = rows.map((row) => ({ ...publicRow(row), ...transactionCostSharePresentation(row), ...transactionCapabilities(context, row, { periodOpen }) }));
+  const items = rows.map((row) => ({ ...publicRow(row), ...transactionCostSharePresentation(row), ...transactionCapabilities(context.actor, row, { periodOpen }) }));
   const total = Number(countRows[0]?.total || 0);
   return {
     items,

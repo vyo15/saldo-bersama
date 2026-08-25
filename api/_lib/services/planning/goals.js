@@ -15,6 +15,9 @@ export const goalListStatements = (context) => {
   const sourceAccess = context.actor.role === "owner"
     ? { sql: "1=1", args: [] }
     : { sql: "(src.owner_scope='shared' OR (src.owner_scope='personal' AND src.owner_user_id=?))", args: [context.actor.user_id] };
+  const withdrawalDestinationAccess = context.actor.role === "owner"
+    ? { sql: "1=1", args: [] }
+    : { sql: "dest.owner_scope='shared'", args: [] };
   const today = todayJakarta();
   return [
     {
@@ -22,8 +25,11 @@ export const goalListStatements = (context) => {
         SELECT 1 FROM accounts src WHERE src.status='active' AND src.account_id<>g.account_id
           AND ${sourceAccess.sql}
           AND (g.scope='shared' OR src.owner_scope='shared' OR (src.owner_scope='personal' AND src.owner_user_id=g.owner_user_id))
-      ) AS has_deposit_source FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`,
-      args: [...sourceAccess.args, ...access.args],
+      ) AS has_deposit_source,EXISTS(
+        SELECT 1 FROM accounts dest WHERE dest.status='active' AND dest.account_id<>g.account_id
+          AND ${withdrawalDestinationAccess.sql}
+      ) AS has_withdraw_destination FROM savings_goals g JOIN accounts a ON a.account_id=g.account_id WHERE ${access.sql} AND g.status<>'archived' ORDER BY CASE g.priority WHEN 'high' THEN 3 WHEN 'normal' THEN 2 ELSE 1 END DESC,g.status,g.target_date`,
+      args: [...sourceAccess.args, ...withdrawalDestinationAccess.args, ...access.args],
     },
     {
       sql: `SELECT m.goal_id,COALESCE(SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END),0) AS current_amount
@@ -58,7 +64,8 @@ const goalMovementState = (row, current, last) => {
   const activeMovement = [row.status === "active", row.account_status === "active"].every(Boolean);
   const hasDepositSource = Boolean(Number(row.has_deposit_source || 0));
   const canDeposit = [activeMovement, !reached, hasDepositSource].every(Boolean);
-  const canWithdraw = [activeMovement, current > 0].every(Boolean);
+  const hasWithdrawDestination = Boolean(Number(row.has_withdraw_destination || 0));
+  const canWithdraw = [activeMovement, current > 0, hasWithdrawDestination].every(Boolean);
   return {
     reached,
     last_movement_id: lastRow.goal_movement_id || "",
@@ -69,6 +76,9 @@ const goalMovementState = (row, current, last) => {
       ? "Setoran membutuhkan rekening sumber lain yang dapat Anda operasikan dan kompatibel dengan ledger target."
       : "",
     can_withdraw: canWithdraw,
+    withdraw_blocked_reason: [activeMovement, current > 0, !hasWithdrawDestination].every(Boolean)
+      ? "Penarikan membutuhkan rekening tujuan lain yang dapat menerima transfer langsung dari rekening Target."
+      : "",
     can_reverse: [row.status === "active", Boolean(last), !Boolean(lastRow.movement_locked)].every(Boolean),
   };
 };

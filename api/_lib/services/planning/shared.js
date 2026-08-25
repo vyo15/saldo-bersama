@@ -1,4 +1,4 @@
-import { appError } from "../core.js";
+import { appError, publicRow } from "../core.js";
 
 export const dueDayValue = (value) => {
   const parsed = Number(value);
@@ -43,3 +43,42 @@ export const assertPlanningManageScope = (actor, row, { allowOwnedPersonal = fal
     403,
   );
 };
+
+export const resolveEnvelopeAssignee = async (db, value) => {
+  const userId = String(value || "").trim();
+  if (!userId) return null;
+  const user = await db.one("SELECT user_id,email,name,role,status FROM users WHERE user_id=?", [userId]);
+  if (!user || user.status !== "active") throw appError("INVALID_ENVELOPE_ASSIGNEE", "Pengguna alokasi harus merupakan pengguna aktif.", 400);
+  return publicRow(user);
+};
+
+export const assertEnvelopeAssigneeAccess = (actor, envelope) => {
+  if (actor.role === "owner" || !envelope?.assignee_user_id || envelope.assignee_user_id === actor.user_id) return;
+  throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat menggunakan atau memindahkan Alokasi Dana Bersama dan alokasi miliknya sendiri.", 403);
+};
+
+
+export const canUseEnvelope = (actor, item) => {
+  if (!actor || !item || item.status !== "active") return false;
+  const scopeAllowed = actor.role === "owner"
+    || (item.scope === "shared" && !item.owner_user_id)
+    || (item.scope === "personal" && item.owner_user_id === actor.user_id);
+  if (!scopeAllowed) return false;
+  return actor.role === "owner" || !item.assignee_user_id || item.assignee_user_id === actor.user_id;
+};
+
+export const envelopeCapabilities = (actor, item) => {
+  const canUse = canUseEnvelope(actor, item);
+  return {
+    can_manage: canUse,
+    can_adjust: canUse,
+    can_manage_needs: canUse,
+    can_move: canUse,
+    can_set_reminder: canUse,
+    can_record_expense: canUse,
+    can_close: actor?.role === "owner" && item?.status === "active",
+    can_archive_rule: actor?.role === "owner" && item?.status === "active",
+  };
+};
+
+export const hasSameEnvelopeAssignee = (left, right) => String(left?.assignee_user_id || "") === String(right?.assignee_user_id || "");

@@ -38,7 +38,7 @@ const setupState = ({ bootstrap, overview, user }) => {
   const sharedAccounts = operableAccounts.filter((item) => item.owner_scope === "shared");
   const categories = (bootstrap?.categories || []).filter((item) => item.status === "active");
   const envelopes = (overview?.envelopes || []).filter((item) => item.status === "active" && item.source_account_id && accountIds.has(item.source_account_id));
-  const usableEnvelopes = envelopes.filter((item) => actor.role === "owner" || item.scope === "shared" || item.owner_user_id === actor.user_id);
+  const usableEnvelopes = envelopes.filter((item) => item.can_manage_needs === true);
   const goals = (overview?.goals || []).filter((item) => item.status === "active" && item.account_id && accountIds.has(item.account_id) && item.scope === "shared");
   const owner = actor.role === "owner";
   return [

@@ -4,12 +4,13 @@ import { envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
-import { accountWithAccess, assertPlanningManageScope, ruleScopeFromAccount } from "./shared.js";
-import { assertAllocationAvailable, assertEnvelopeAssigneeAccess, envelopeRuleLifecycleImpact, resolveEnvelopeAssignee } from "./envelopeLifecycle.js";
+import { accountWithAccess, assertEnvelopeAssigneeAccess, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
+import { assertAllocationAvailable, envelopeRuleLifecycleImpact } from "./envelopeLifecycle.js";
 
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
 const OVERSPEND_POLICIES = new Set(["block", "confirm", "allow"]);
+
 
 // Stable envelope facade. Creation/list orchestration stays here; lifecycle and
 // allocation movements are isolated without changing action/public imports.
@@ -41,8 +42,7 @@ export const listEnvelopes = async (db, context) => {
   return {
     items: items.map((item) => ({
       ...item,
-      can_close: context.actor.role === "owner" && item.status === "active",
-      can_archive_rule: context.actor.role === "owner" && item.status === "active",
+      ...envelopeCapabilities(context.actor, item),
     })),
     recentMovements: recentMovements.map((movement) => ({
       ...publicRow(movement),

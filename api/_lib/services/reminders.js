@@ -88,12 +88,14 @@ const resolveRecurringOccurrence = async (db, actor, entityId) => {
 };
 
 const resolveBudget = async (db, actor, entityId) => {
-  const row = await db.one(`SELECT b.*,
+  const row = await db.one(`SELECT b.*,er.assignee_user_id,
     COALESCE((SELECT SUM(t.amount) FROM transactions t
       WHERE t.status='active' AND t.transaction_type='expense' AND t.category_id=b.category_id
         AND substr(t.transaction_date,1,7)=b.period_key
         AND ((b.scope='shared' AND t.scope='shared') OR (b.scope='personal' AND t.scope='personal' AND t.owner_user_id=b.owner_user_id))),0) AS used_amount
-    FROM budgets b WHERE b.budget_id=?`, [entityId]);
+    FROM budgets b
+    LEFT JOIN envelope_rules er ON er.envelope_rule_id=b.envelope_rule_id
+    WHERE b.budget_id=?`, [entityId]);
   if (!row) throw appError("REMINDER_ENTITY_NOT_FOUND", "Kebutuhan tidak ditemukan.", 404);
   assertScopedAccess(actor, row);
   if (row.status !== "active") throw appError("REMINDER_ENTITY_INACTIVE", "Kebutuhan ini sudah tidak aktif.", 409);

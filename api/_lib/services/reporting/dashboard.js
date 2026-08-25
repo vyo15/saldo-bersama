@@ -1,5 +1,6 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appError, boundedInteger, monthBounds, nowIso, periodKey, sanitizeText, todayJakarta } from "../core.js";
+import { transactionCapabilities } from "../transactionPolicy.js";
 import { buildFinancialAlerts } from "./dashboard/alerts.js";
 import {
   bootstrapReadStatements,
@@ -55,11 +56,10 @@ const dashboardBalanceMetrics = (accounts, openingAccounts, recurring) => {
   };
 };
 
-const dashboardRecentTransactions = (rows, actor) => rows.map((row) => {
-  const actorCanOperate = actor.role === "owner" || row.scope === "shared" || (row.scope === "personal" && row.owner_user_id === actor.user_id);
-  const actorCanModify = row.status === "active" && (actor.role === "owner" || (actorCanOperate && row.created_by === actor.user_id));
-  return { ...row, can_update: actorCanModify, can_cancel: actorCanModify };
-});
+const dashboardRecentTransactions = (rows, actor, periodOpen) => rows.map((row) => ({
+  ...row,
+  ...transactionCapabilities(actor, row, { periodOpen }),
+}));
 
 const dashboardDaysRemaining = ({ historical, period, currentPeriod, today, bounds }) => {
   if (historical) return 0;
@@ -70,7 +70,7 @@ const dashboardDaysRemaining = ({ historical, period, currentPeriod, today, boun
 
 const dashboardResult = (context, periodContext, readState) => {
   const { period, bounds, today, currentPeriod, historical, cutoffDate } = periodContext;
-  const { accounts, openingAccounts, cashFlowRow, recentTransactionRows, categoryExpenses, recurring, goals, budgets, dashboardEnvelopes, reconciliationRows } = readState;
+  const { accounts, openingAccounts, cashFlowRow, recentTransactionRows, transactionPeriodLocked, categoryExpenses, recurring, goals, budgets, dashboardEnvelopes, reconciliationRows } = readState;
   const balance = dashboardBalanceMetrics(accounts, openingAccounts, recurring);
   const allocation = allocationSummary(balance.operableAccounts, dashboardEnvelopes);
   const safeToSpend = Math.max(0, balance.safeToSpend - allocation.unboundRemaining);
@@ -80,7 +80,7 @@ const dashboardResult = (context, periodContext, readState) => {
   const unallocatedCount = Number(cashFlowRow.unallocated_count || 0);
   const unallocatedExpenseAmount = Number(cashFlowRow.unallocated_amount || 0);
   const daysRemaining = dashboardDaysRemaining({ historical, period, currentPeriod, today, bounds });
-  const recentTransactions = dashboardRecentTransactions(recentTransactionRows, context.actor);
+  const recentTransactions = dashboardRecentTransactions(recentTransactionRows, context.actor, !transactionPeriodLocked);
   const alerts = buildFinancialAlerts({
     period,
     historical,

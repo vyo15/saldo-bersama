@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { FiArchive, FiArrowDown, FiArrowUp, FiBell, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import CompactNotice from "../../../components/common/CompactNotice.jsx";
@@ -75,6 +76,7 @@ const GoalCard = ({ goal, actions }) => (
     </dl>
     {goal.status === "active" && goal.pace_status === "completed" ? <p className="goal-card__completion">Target tercapai. Selesaikan target untuk mengunci mutasi.</p> : null}
     {goal.deposit_blocked_reason ? <CompactNotice tone="info" title="Setoran belum tersedia">{goal.deposit_blocked_reason}</CompactNotice> : null}
+    {goal.withdraw_blocked_reason ? <CompactNotice tone="info" title="Penarikan belum tersedia">{goal.withdraw_blocked_reason}</CompactNotice> : null}
     <GoalActions goal={goal} {...actions} />
   </Card>
 );
@@ -82,7 +84,7 @@ const GoalCard = ({ goal, actions }) => (
 const GoalGrid = ({ items, actions, canCreate, openCreate }) => (
   <section className="goal-grid">
     {items.length ? items.map((goal) => <GoalCard key={goal.goal_id} goal={goal} actions={actions} />) : (
-      <EmptyState className="goal-grid__empty" icon={FiTarget} title="Belum ada target keuangan" description="Buat target untuk memantau progres dana dan kebutuhan bulanan." action={canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : null} />
+      <EmptyState className="goal-grid__empty" icon={FiTarget} title={canCreate ? "Belum ada target keuangan" : "Belum ada rekening Bersama yang dapat digunakan"} description={canCreate ? "Buat target untuk memantau progres dana dan kebutuhan bulanan." : "Buat atau aktifkan rekening Bersama terlebih dahulu sebelum membuat Target."} action={canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : <Link className="button button--primary" to="/rekening">Lihat Rekening</Link>} />
     )}
   </section>
 );

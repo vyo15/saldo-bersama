@@ -486,6 +486,40 @@ test("goal lifecycle mengunci setoran saat target tercapai, tetap mengizinkan pe
   }
 });
 
+
+test("goal withdrawal capability false ketika tidak ada rekening tujuan yang valid", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner);
+    await seedUser(db, member);
+    await seedAccount(db, { id: "goal-only-target", balance: 0 });
+    await seedAccount(db, { id: "goal-member-personal", ownerScope: "personal", ownerUserId: member.user_id, balance: 0 });
+    const goal = await createGoal(db, context(owner, "goals.create", {
+      name: "Dana tanpa tujuan tarik",
+      goal_type: "savings",
+      account_id: "goal-only-target",
+      target_amount: 100_000,
+      target_date: addDays(todayJakarta(), 90),
+      priority: "normal",
+    }));
+    const timestamp = new Date().toISOString();
+    await db.execute(
+      "INSERT INTO goal_movements(goal_movement_id,goal_id,transaction_id,movement_type,amount,reason,status,row_version,created_by,created_at,reversed_by,reversed_at,reversal_reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["goal-no-destination-move", goal.goal_id, null, "deposit", 50_000, "Characterization", "active", 1, owner.user_id, timestamp, null, null, ""],
+    );
+
+    const memberView = (await listGoals(db, { actor: member, payload: {} })).items.find((item) => item.goal_id === goal.goal_id);
+    assert.equal(memberView?.current_amount, 50_000);
+    assert.equal(memberView?.can_withdraw, false);
+    assert.match(memberView?.withdraw_blocked_reason || "", /rekening tujuan lain/);
+
+    const ownerView = (await listGoals(db, { actor: owner, payload: {} })).items.find((item) => item.goal_id === goal.goal_id);
+    assert.equal(ownerView?.can_withdraw, true, "Administrator masih dapat memakai rekening personal Member sebagai tujuan yang valid sesuai authority owner.");
+  } finally {
+    db.close();
+  }
+});
+
 test("envelope creation menolak enum, range, duplicate period, dan alokasi melebihi dana tersedia", async () => {
   const db = await createSqliteTestDatabase();
   try {

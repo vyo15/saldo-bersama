@@ -28,6 +28,38 @@ request
   -> clean ZIP bila diperlukan
 ```
 
+
+### 0. Execution-first dan minim pertanyaan
+
+Workflow ini memakai prinsip **kerjakan dulu selama aman**:
+
+- bila request + approval + source sudah cukup jelas, agent melanjutkan seluruh langkah yang tercakup scope tanpa meminta konfirmasi ulang;
+- ambiguity non-kritis diselesaikan dari source/test/contract canonical dengan pilihan paling kecil, kompatibel, dan aman;
+- jangan menanyakan hal yang jawabannya sudah ada di percakapan atau repository;
+- temuan baru yang masih berada dalam scope approved ikut diperbaiki beserta test/docs-nya;
+- pertanyaan hanya boleh menjadi blocker untuk guarded scope baru, destructive/live operation, secret/credential, keputusan material yang benar-benar tidak ditentukan contract, atau input esensial yang hilang;
+- bila pertanyaan wajib, tanyakan satu blocker paling sempit sekaligus;
+- kegagalan environment pada full gate tidak menghentikan pekerjaan lain yang masih feasible: selesaikan patch, targeted/static validation, review diff, docs, dan artifact, lalu beri status berdasarkan evidence aktual;
+- bila user meminta pekerjaan sampai selesai/ZIP, jangan berhenti di audit atau candidate parsial selama implementasi dan packaging masih dapat dilakukan aman;
+- progress update tidak boleh berubah menjadi checkpoint approval untuk langkah yang sudah termasuk scope.
+
+Aturan ini tidak mengurangi kewajiban approval pada **guarded changes** dan tidak mengizinkan agent menebak keputusan yang dapat memengaruhi data integrity, security, destructive action, atau operasi live.
+
+### 0.1. Protokol remediation artifact `UNVERIFIED`
+
+Artifact bernama `saldo-bersama-UNVERIFIED.zip` adalah **input diagnosis yang harus ditindaklanjuti**, bukan status akhir pekerjaan. Saat artifact ini menjadi source terbaru:
+
+1. validasi root/source canonical seperti biasa dan baca `docs/UNVERIFIED_BUILD_REPORT.md` sebagai **evidence kegagalan gate**, bukan sebagai source of truth yang mengalahkan source/test;
+2. reproduksi failure yang dilaporkan bila environment memungkinkan, lalu cari root cause pada source aktual;
+3. perbaiki root cause beserta drift/bug lain yang masih berada dalam scope approved, termasuk regression test dan docs terkait;
+4. jangan berhenti hanya karena nama artifact mengandung `UNVERIFIED`, jangan meminta user menjalankan ulang pekerjaan yang masih feasible di environment agent, dan jangan sekadar menyalin status laporan lama;
+5. `docs/UNVERIFIED_BUILD_REPORT.md` bersifat staging-only. Setelah source diperbaiki, file tersebut tidak boleh dipertahankan sebagai canonical source/report final. `npm run zip` boleh membuat laporan baru hanya bila verification tree terbaru memang gagal;
+6. jalankan targeted regression dan full `npm run verify` pada tree final. Jika PASS, gunakan workflow clean verified. Jika gate masih terblokir oleh environment non-canonical, selesaikan semua patch/static/targeted validation/packaging yang masih feasible lalu laporkan limitation berdasarkan evidence baru;
+7. artifact yang dikirim harus berasal dari tree terbaru setelah remediation. Jangan mengirim ulang ZIP UNVERIFIED lama atau memberi label `verified` tanpa `npm run verify` PASS pada Node canonical.
+8. bila remediation mencakup penghapusan/rename file, verifikasi path lama benar-benar **absent** pada final tree dan artifact. Overlay changed-files-only tidak dianggap cukup untuk deletion karena file lama dapat tertinggal di folder penerima; gunakan full-source ZIP terbaru atau deletion handoff eksplisit, lalu ulangi regression dari tree setelah deletion diterapkan.
+
+Protokol ini tidak mengurangi fail-closed release gate: artifact UNVERIFIED tetap **bukan** release/deployment artifact.
+
 ### 1. Source validation
 
 ZIP/source terbaru wajib menjadi dasar review. Abaikan `node_modules`, build/dist, cache, `.git`, generated output, temporary file, dan secret. Review resmi menyebut nama source, root, stack relevan, path aktual yang diperiksa, file penting yang tidak ditemukan, dan limitation.

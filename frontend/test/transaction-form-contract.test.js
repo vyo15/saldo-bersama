@@ -33,8 +33,9 @@ test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail ta
   assert.match(text, /accountDisplayLabel/);
   assert.equal((text.match(/accountDisplayLabel\(item\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label kepemilikan yang konsisten.");
   assert.doesNotMatch(text, /includeOwner: false/);
-  assert.match(text, /data\.envelopes\.filter\(\(item\) => item\.source_account_id === sourceAccount\.account_id\)/);
-  assert.match(text, /filterByAssigneeAccess\(accountEnvelopes, bootstrap\?\.user \|\| user\)/);
+  assert.match(text, /item\.source_account_id === sourceAccount\.account_id && item\.can_record_expense === true/);
+  assert.doesNotMatch(text, /filterByAssigneeAccess|canUseAssignedItem/);
+  assert.match(text, /transferRouteFor\(data\.transferRoutes, sourceAccount\.account_id, account\.account_id\)/);
   assert.match(text, /envelope\.source_account_id !== nextId/);
   assert.match(text, /sourceAccountPicker/);
   assert.doesNotMatch(text, /Tampilkan semua|Lihat semua|hiddenAccountLabel/);

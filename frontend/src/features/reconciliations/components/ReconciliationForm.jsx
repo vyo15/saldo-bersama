@@ -10,6 +10,7 @@ import EmptyState from "../../../components/feedback/EmptyState.jsx";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { ReconciliationSubmitProgress } from "./ReconciliationFeedback.jsx";
 import styles from "../ReconciliationsPage.module.css";
+import { Link } from "react-router";
 
 const ReconciliationBalanceEditor = ({ selectedAccount, form, setForm, setSubmitState, setActualBalanceEdited, disabled, getDifferencePreview, parseActualBalance }) => {
   const [editing, setEditing] = useState(false);
@@ -226,7 +227,7 @@ const ReconciliationInputPanel = ({ onRefreshAccounts, accountsRefreshing, ...pr
       </div>
       {props.accounts.length
         ? <ReconciliationForm {...props} />
-        : <EmptyState className={styles.emptyAction} variant="inline" icon={FiCreditCard} title="Tidak ada rekening yang tersedia" description="Tambahkan atau aktifkan rekening yang mendukung pencocokan saldo terlebih dahulu." headingLevel={3} />}
+        : <EmptyState className={styles.emptyAction} variant="inline" icon={FiCreditCard} title="Tidak ada rekening yang tersedia" description="Tambahkan atau aktifkan rekening yang mendukung pencocokan saldo terlebih dahulu." headingLevel={3} action={<Link className="button button--primary" to="/rekening">Lihat Rekening</Link>} />}
     </Card>
   </div>
 );

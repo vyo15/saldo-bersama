@@ -20,9 +20,11 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan Anggaran menjadi overview 
   assert.match(allocationPage, /useApiResource\("budgets\.list", \{ period \}\)/);
   assert.match(allocationPage, /lockedEnvelope=\{item\}/);
   assert.match(allocationPage, /Kebutuhan/);
-  assert.match(allocationPage, /canManage: canManageBudgetScope\(item, user\)/);
+  assert.match(allocationPage, /canManage: Boolean\(item\.can_manage_needs\)/);
   assert.match(allocationPage, /canLifecycle: administratorMode/);
-  assert.match(allocationPage, /sharedOnly: allocationActor\?\.role === "member"/);
+  assert.doesNotMatch(allocationPage, /sharedOnly|canManageBudgetScope/);
+  assert.match(allocationPage, /Boolean\(item\?\.can_adjust\)/);
+  assert.match(allocationPage, /Boolean\(item\?\.can_set_reminder\)/);
   assert.match(allocationPage, /row_version: existingBudget\?\.row_version/);
   assert.doesNotMatch(allocationPage, /createIdempotencyKey|idempotencyKey:/, "Kebutuhan harus memakai mutation intent canonical dari apiClient, bukan membuat key per klik");
   assert.match(allocationPage, /Promise\.allSettled\(\[budgetResource\.reload\(\), resource\.reload\(\), refreshOverview\(\)\]\)/);
@@ -32,11 +34,15 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan Anggaran menjadi overview 
   assert.match(budgetOverview, /<h1>Anggaran<\/h1>/);
   assert.match(budgetOverview, /Halaman ini hanya merangkum anggaran/);
   assert.match(budgetOverview, /Kelola Kebutuhan di Alokasi Dana/);
+  assert.match(budgetOverview, /to="\/perencanaan\/kantong">Kelola Alokasi Dana/);
+  assert.match(budgetOverview, /Lihat semua Kebutuhan/);
   assert.doesNotMatch(budgetOverview, /upsertBudget|archiveBudget|MoneyInput|BudgetDialogLayer/);
   assert.match(reports, /to="\/anggaran"/);
   assert.doesNotMatch(reports, /upsertBudget|archiveBudget|MoneyInput/);
   assert.match(dashboard, /<h2>Kebutuhan<\/h2>/);
   assert.match(dashboard, /to="\/anggaran"/);
+  assert.doesNotMatch(dashboard, /to="\/perencanaan\/kebutuhan"/);
+  assert.match(app, /path="perencanaan\/kebutuhan" element=\{<Navigate to="\/anggaran" replace \/>\}/);
   assert.match(navigation, /to: "\/anggaran", label: "Anggaran"/);
 });
 

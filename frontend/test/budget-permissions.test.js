@@ -1,18 +1,19 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { canManageBudgetScope } from "../src/features/budgets/budgetAccess.js";
 
-const member = { user_id: "member-1", role: "member" };
-const otherMember = { user_id: "member-2", role: "member" };
-const owner = { user_id: "owner-1", role: "owner" };
+const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("Member dapat mengelola Kebutuhan Bersama dan personal miliknya sendiri", () => {
-  assert.equal(canManageBudgetScope({ scope: "shared", owner_user_id: null }, member), true);
-  assert.equal(canManageBudgetScope({ scope: "personal", owner_user_id: member.user_id }, member), true);
-  assert.equal(canManageBudgetScope({ scope: "personal", owner_user_id: otherMember.user_id }, member), false);
-  assert.equal(canManageBudgetScope({ scope: "personal", owner_user_id: otherMember.user_id }, owner), true);
-});
+test("frontend Kebutuhan memakai capability backend dan tidak mempertahankan authorization policy lokal", async () => {
+  const [allocationPage, detail, budgetAccess] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationPlanningDetail.jsx"),
+    read("src/features/budgets/budgetAccess.js").catch(() => ""),
+  ]);
 
-test("scope shared yang membawa owner tidak dianggap capability valid untuk Member", () => {
-  assert.equal(canManageBudgetScope({ scope: "shared", owner_user_id: member.user_id }, member), false);
+  assert.match(allocationPage, /canManage: Boolean\(item\.can_manage_needs\)/);
+  assert.match(allocationPage, /Boolean\(item\?\.can_adjust\)/);
+  assert.match(detail, /budget\.can_manage !== false/);
+  assert.equal(budgetAccess, "", "helper policy role/scope frontend tidak boleh kembali sebagai authority");
+  assert.doesNotMatch(allocationPage, /canManageBudgetScope|sharedOnly/);
 });

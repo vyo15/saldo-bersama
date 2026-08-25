@@ -19,10 +19,3 @@ export const ownershipLabel = (entity) => {
 
 export const hasSameAssignee = (left, right) => String(left?.assignee_user_id || "") === String(right?.assignee_user_id || "");
 
-export const canUseAssignedItem = (item, user) => Boolean(
-  user?.role === "owner"
-  || !item?.assignee_user_id
-  || item.assignee_user_id === user?.user_id
-);
-
-export const filterByAssigneeAccess = (items, user) => items.filter((item) => canUseAssignedItem(item, user));

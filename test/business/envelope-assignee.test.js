@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { archiveEnvelopeRule, createEnvelope, listEnvelopes, moveEnvelope, restoreEnvelopeRule, reverseEnvelopeMovement } from "../../api/_lib/services/planning/envelopes.js";
+import { listBudgets, upsertBudget } from "../../api/_lib/services/planning/budgets.js";
 import { normalizeTransaction } from "../../api/_lib/services/finance.js";
+import { dashboardOverview } from "../../api/_lib/services/reporting/dashboard.js";
 import { deactivateUser } from "../../api/_lib/services/users.js";
 import { normalizeRestoredRows } from "../../api/_lib/services/maintenance/shared.js";
 import { monthBounds, todayJakarta } from "../../api/_lib/services/core.js";
@@ -102,6 +104,58 @@ test("Alokasi menyimpan penerima terpisah dari ownership ledger dan read model m
     assert.equal(item.assignee_role, "member");
     assert.equal(item.source_account_id, "account-shared");
     assert.equal(item.source_account_name, "Bank Bersama");
+  } finally {
+    db.close();
+  }
+});
+
+test("capability Alokasi dan Kebutuhan shared mengikuti assignee backend", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const mine = await createAssignedEnvelope(db, "Jatah Member", member.user_id);
+    const other = await createAssignedEnvelope(db, "Jatah Administrator", administrator.user_id);
+    const period = todayJakarta().slice(0, 7);
+
+    const mineBudget = await upsertBudget(db, adminContext("budgets.upsert", {
+      period_key: period, category_id: "category-food", envelope_rule_id: mine.rule.envelope_rule_id,
+      name: "Makan Member", amount: 200_000, warning_threshold: 80, scope: "shared",
+    }));
+    const otherBudget = await upsertBudget(db, adminContext("budgets.upsert", {
+      period_key: period, category_id: "category-food", envelope_rule_id: other.rule.envelope_rule_id,
+      name: "Makan Administrator", amount: 200_000, warning_threshold: 80, scope: "shared",
+    }));
+
+    const memberContext = { actor: member, payload: { period } };
+    const listed = await listEnvelopes(db, memberContext);
+    const mineItem = listed.items.find((item) => item.envelope_rule_id === mine.rule.envelope_rule_id);
+    const otherItem = listed.items.find((item) => item.envelope_rule_id === other.rule.envelope_rule_id);
+    assert.equal(mineItem?.can_adjust, true);
+    assert.equal(mineItem?.can_manage_needs, true);
+    assert.equal(mineItem?.can_record_expense, true);
+    assert.equal(otherItem?.can_adjust, false);
+    assert.equal(otherItem?.can_manage_needs, false);
+    assert.equal(otherItem?.can_record_expense, false);
+
+    const dashboard = await dashboardOverview(db, memberContext);
+    const dashboardMine = dashboard.envelopes.find((item) => item.envelope_rule_id === mine.rule.envelope_rule_id);
+    const dashboardOther = dashboard.envelopes.find((item) => item.envelope_rule_id === other.rule.envelope_rule_id);
+    assert.equal(dashboardMine?.can_manage_needs, true);
+    assert.equal(dashboardMine?.can_record_expense, true);
+    assert.equal(dashboardOther?.can_manage_needs, false);
+    assert.equal(dashboardOther?.can_record_expense, false);
+
+    const budgets = await listBudgets(db, memberContext);
+    assert.equal(budgets.items.find((item) => item.budget_id === mineBudget.budget_id)?.can_manage, true);
+    assert.equal(budgets.items.find((item) => item.budget_id === otherBudget.budget_id)?.can_manage, false);
+
+    await assert.rejects(
+      () => upsertBudget(db, { ...memberContext, action: "budgets.upsert", rowVersion: otherBudget.row_version, payload: {
+        period_key: period, category_id: "category-food", envelope_rule_id: other.rule.envelope_rule_id,
+        name: "Tidak boleh", amount: 210_000, warning_threshold: 80, scope: "shared", row_version: otherBudget.row_version,
+      } }),
+      (error) => error.code === "ENVELOPE_ASSIGNEE_FORBIDDEN" && error.status === 403,
+    );
   } finally {
     db.close();
   }

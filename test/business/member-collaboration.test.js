@@ -172,3 +172,88 @@ test("Transfer shared ke personal Member wajib approval dan approval menghasilka
     db.close();
   }
 });
+
+
+test("transfer request menolak rekening sumber dan tujuan yang sama sebelum menyimpan request", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner);
+    await seedUser(db, member);
+    const shared = await createAccount(db, { name: "Dana Bersama Same", owner_scope: "shared", initial_balance: 500_000 });
+    await assert.rejects(
+      dispatch(db, member, "transferRequests.request", {
+        transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id,
+        destination_account_id: shared.account_id, amount: 10_000, description: "Tidak valid",
+      }, { idempotencyKey: "same-account-request" }),
+      (error) => error?.code === "SAME_TRANSFER_ACCOUNT" && error?.status === 400,
+    );
+    const count = await db.one("SELECT COUNT(*) AS count FROM transfer_requests");
+    assert.equal(Number(count.count), 0);
+  } finally { db.close(); }
+});
+
+test("approval transfer idempotent dan second approval tidak menggandakan ledger", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner); await seedUser(db, member);
+    const shared = await createAccount(db, { name: "Dana Approval", owner_scope: "shared", initial_balance: 500_000 });
+    const personal = await createAccount(db, { name: "Tujuan Approval", owner_scope: "personal", owner_user_id: member.user_id });
+    const payload = { transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id, destination_account_id: personal.account_id, amount: 50_000, description: "Approval aman" };
+    const request = await dispatch(db, member, "transferRequests.request", payload, { idempotencyKey: "approval-safe-request" });
+    const reviewPayload = { request_id: request.request_id, row_version: request.row_version, decision: "approve", reason: "Setuju" };
+    const first = await dispatch(db, owner, "transferRequests.review", reviewPayload, { rowVersion: request.row_version, idempotencyKey: "approval-safe-review" });
+    const retry = await dispatch(db, owner, "transferRequests.review", reviewPayload, { rowVersion: request.row_version, idempotencyKey: "approval-safe-review" });
+    assert.equal(retry.transaction.transaction_id, first.transaction.transaction_id);
+
+    await assert.rejects(
+      dispatch(db, owner, "transferRequests.review", reviewPayload, { rowVersion: request.row_version, idempotencyKey: "approval-second-intent" }),
+      (error) => error?.code === "REQUEST_NOT_PENDING" && error?.status === 409,
+    );
+    const transactionCount = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE source_account_id=? AND destination_account_id=? AND amount=? AND status='active'", [shared.account_id, personal.account_id, 50_000]);
+    assert.equal(Number(transactionCount.count), 1);
+    const approvalAudits = await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE action='transferRequests.review' AND entity_id=?", [request.request_id]);
+    assert.equal(Number(approvalAudits.count), 1);
+  } finally { db.close(); }
+});
+
+test("approval transfer mengulang validasi saldo, status rekening, dan period closure terbaru", async () => {
+  const scenarios = ["balance", "account", "period"];
+  for (const scenario of scenarios) {
+    const db = await createSqliteTestDatabase();
+    try {
+      await seedUser(db, owner); await seedUser(db, member);
+      const shared = await createAccount(db, { name: `Dana ${scenario}`, owner_scope: "shared", initial_balance: 500_000 });
+      const personal = await createAccount(db, { name: `Tujuan ${scenario}`, owner_scope: "personal", owner_user_id: member.user_id });
+      const amount = scenario === "balance" ? 450_000 : 50_000;
+      const payload = { transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id, destination_account_id: personal.account_id, amount, description: `Stale ${scenario}` };
+      const request = await dispatch(db, member, "transferRequests.request", payload, { idempotencyKey: `stale-${scenario}-request` });
+
+      if (scenario === "balance") {
+        const sink = await createAccount(db, { name: "Saldo berubah", owner_scope: "shared", initial_balance: 0 });
+        await dispatch(db, owner, "transactions.create", {
+          transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id,
+          destination_account_id: sink.account_id, amount: 100_000, description: "Mengubah saldo setelah request",
+        }, { idempotencyKey: "stale-balance-transfer" });
+      } else if (scenario === "account") {
+        await db.execute("UPDATE accounts SET status='archived',row_version=row_version+1 WHERE account_id=?", [personal.account_id]);
+      } else {
+        const now = new Date().toISOString();
+        await db.execute("INSERT INTO period_closures(closure_id,period_key,scope,status,snapshot_json,snapshot_hash,reason,row_version,closed_by,closed_at,reopened_by,reopened_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", [
+          "closure-stale-transfer", todayJakarta().slice(0, 7), "shared", "closed", "{}", "test-hash", "Uji stale approval", 1, owner.user_id, now, null, null,
+        ]);
+      }
+
+      const expectedCode = scenario === "balance" ? "UNALLOCATED_FUNDS_INSUFFICIENT" : scenario === "account" ? "INVALID_ACCOUNT" : "PERIOD_CLOSED";
+      await assert.rejects(
+        dispatch(db, owner, "transferRequests.review", { request_id: request.request_id, row_version: request.row_version, decision: "approve", reason: "Setuju" }, { rowVersion: request.row_version, idempotencyKey: `stale-${scenario}-review` }),
+        (error) => error?.code === expectedCode,
+      );
+      const row = await db.one("SELECT status,row_version,approved_transaction_id FROM transfer_requests WHERE request_id=?", [request.request_id]);
+      assert.equal(row.status, "pending");
+      assert.equal(row.row_version, 1);
+      assert.equal(row.approved_transaction_id, null);
+      const transferCount = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE transaction_type='transfer' AND source_account_id=? AND destination_account_id=?", [shared.account_id, personal.account_id]);
+      assert.equal(Number(transferCount.count), 0);
+    } finally { db.close(); }
+  }
+});

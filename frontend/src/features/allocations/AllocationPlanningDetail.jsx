@@ -14,7 +14,7 @@ import { allocationAssigneeLabel, allocationNeedsFundingSummary, allocationPerio
 
 const BudgetDialogLayer = lazy(() => import("../budgets/BudgetDialogLayer.jsx"));
 
-const BudgetLimitRow = ({ budget, periodMeta, canManage, onRecord, onEdit, onLifecycle, onReminder }) => {
+const BudgetLimitRow = ({ budget, periodMeta, canManage, canLifecycle, onRecord, onEdit, onLifecycle, onReminder }) => {
   const amount = Math.max(0, Number(budget.amount || 0));
   const used = Math.max(0, Number(budget.used_amount || 0));
   const status = budgetVisualState(budget, periodMeta);
@@ -22,7 +22,7 @@ const BudgetLimitRow = ({ budget, periodMeta, canManage, onRecord, onEdit, onLif
   return <div className="allocation-limit-row" data-budget-id={budget.budget_id}>
     <div className="allocation-limit-row__main"><div><strong>{budget.name}</strong><small>Terpakai <Money value={used} /> dari anggaran <Money value={amount} /></small></div><span className={tone}>{status.label}</span></div>
     <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${Math.round(status.usedPercent)}%`} />
-    {onRecord || canManage ? <div className="allocation-limit-row__actions">{onRecord ? <Button variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat</Button> : null}{canManage ? <><Button icon={FiEdit2} onClick={() => onEdit(budget)}>Edit</Button><Button icon={FiBell} onClick={() => onReminder(budget)}>Pengingat</Button><Button icon={FiMoreHorizontal} onClick={() => onLifecycle(budget)}>Kelola</Button></> : null}</div> : null}
+    {onRecord || canManage || canLifecycle ? <div className="allocation-limit-row__actions">{onRecord ? <Button variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat</Button> : null}{canManage ? <><Button icon={FiEdit2} onClick={() => onEdit(budget)}>Edit</Button><Button icon={FiBell} onClick={() => onReminder(budget)}>Pengingat</Button></> : null}{canLifecycle ? <Button icon={FiMoreHorizontal} onClick={() => onLifecycle(budget)}>Kelola</Button> : null}</div> : null}
   </div>;
 };
 
@@ -50,7 +50,6 @@ const AllocationPlanningDetail = ({
   relatedRecurring,
   canManage,
   canLifecycle,
-  sharedOnly,
   period,
   notify,
   refreshBudgetPlanning,
@@ -70,7 +69,7 @@ const AllocationPlanningDetail = ({
   const periodLabel = allocationPeriodLabel(item.period_start, item.period_end);
   const today = todayInJakarta();
   const periodMeta = budgetPeriodMeta(period, today);
-  const canRecordExpense = Boolean(item.source_account_id)
+  const canRecordExpense = Boolean(item.can_record_expense && item.source_account_id)
     && (!item.period_start || today >= item.period_start)
     && (!item.period_end || today <= item.period_end);
   const budgetFormController = useBudgetFormController({ items: budgets, period, notify, refresh: refreshBudgetPlanning });
@@ -105,11 +104,11 @@ const AllocationPlanningDetail = ({
         {usage.reserved > 0 ? <p className="allocation-detail-reserved-note">Dipesan <Money value={usage.reserved} /> untuk transaksi terjadwal. Nilai ini sudah mengurangi dana yang tersisa.</p> : null}
       </Card>
       <div className="allocation-detail-grid">
-        <Card className="allocation-detail-panel"><div className="allocation-detail-panel__header"><div><h3>Kebutuhan</h3><p>Atur kategori dan anggaran yang menggunakan Alokasi Dana ini.</p></div>{canManage ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}</div>{linkedBudgets.length ? <><AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} /><div className="allocation-limit-list">{linkedBudgets.map((budget) => <BudgetLimitRow key={budget.budget_id} budget={budget} periodMeta={periodMeta} canManage={canManage} onRecord={canRecordExpense ? recordExpense : null} onEdit={editBudget} onLifecycle={budgetLifecycleController.openBudgetLifecycle} onReminder={onBudgetReminder} />)}</div></> : <EmptyState variant="inline" title="Belum ada kebutuhan" description="Pilih kategori dan tentukan anggarannya. Kategori yang sama tetap dapat digunakan pada Alokasi Dana lain tanpa membuat master data baru." />}</Card>
+        <Card className="allocation-detail-panel"><div className="allocation-detail-panel__header"><div><h3>Kebutuhan</h3><p>Atur kategori dan anggaran yang menggunakan Alokasi Dana ini.</p></div>{canManage ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}</div>{linkedBudgets.length ? <><AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} /><div className="allocation-limit-list">{linkedBudgets.map((budget) => <BudgetLimitRow key={budget.budget_id} budget={budget} periodMeta={periodMeta} canManage={canManage && budget.can_manage !== false} canLifecycle={canLifecycle} onRecord={canRecordExpense ? recordExpense : null} onEdit={editBudget} onLifecycle={budgetLifecycleController.openBudgetLifecycle} onReminder={onBudgetReminder} />)}</div></> : <EmptyState variant="inline" title="Belum ada kebutuhan" description={canManage ? "Tambahkan kebutuhan pertama agar penggunaan dana pada Alokasi ini mudah dipantau." : "Belum ada Kebutuhan yang dapat Anda kelola pada Alokasi Dana ini."} action={canManage ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null} />}</Card>
         <Card className="allocation-detail-panel"><div className="allocation-detail-panel__header"><div><h3>Jadwal Terkait</h3><p>Jadwal pengeluaran dengan rekening dan kategori yang terhubung ke kebutuhan pada Alokasi Dana ini.</p></div><Button onClick={onOpenRecurring}>Lihat semua jadwal</Button></div>{relatedRecurring.length ? <div className="allocation-related-list">{relatedRecurring.map((entry) => <RecurringRelatedRow key={entry.occurrence_id} item={entry} />)}</div> : <EmptyState variant="inline" title="Belum ada jadwal terkait" description="Jadwal akan muncul saat kategori Kebutuhan dipakai pada Jadwal Rutin dengan rekening sumber yang sama." />}</Card>
       </div>
     </div>
-    {(budgetFormController.formOpen || budgetLifecycleController.archiveTarget) ? <Suspense fallback={null}><BudgetDialogLayer canManage={canManage} canLifecycle={canLifecycle} sharedOnly={sharedOnly} categories={expenseCategories} users={users} usersStatus={usersStatus} formController={budgetFormController} lifecycleController={budgetLifecycleController} lockedEnvelope={item} /></Suspense> : null}
+    {(budgetFormController.formOpen || budgetLifecycleController.archiveTarget) ? <Suspense fallback={null}><BudgetDialogLayer canManage={canManage} canLifecycle={canLifecycle} categories={expenseCategories} users={users} usersStatus={usersStatus} formController={budgetFormController} lifecycleController={budgetLifecycleController} lockedEnvelope={item} /></Suspense> : null}
   </>;
 };
 

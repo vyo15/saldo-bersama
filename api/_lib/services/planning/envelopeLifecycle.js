@@ -9,20 +9,6 @@ import { copyEnvelopeNeedsToPeriod } from "./budgets.js";
 
 // Envelope lifecycle owns period close/rollover and archive/delete/restore safeguards.
 // Historical periods, movements, budgets, and active reservations block destructive deletion.
-export const resolveEnvelopeAssignee = async (db, value) => {
-  const userId = String(value || "").trim();
-  if (!userId) return null;
-  const user = await db.one("SELECT user_id,email,name,role,status FROM users WHERE user_id=?", [userId]);
-  if (!user || user.status !== "active") throw appError("INVALID_ENVELOPE_ASSIGNEE", "Pengguna alokasi harus merupakan pengguna aktif.", 400);
-  return publicRow(user);
-};
-
-export const assertEnvelopeAssigneeAccess = (actor, envelope) => {
-  if (actor.role === "owner" || !envelope?.assignee_user_id || envelope.assignee_user_id === actor.user_id) return;
-  throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat menggunakan atau memindahkan Alokasi Dana Bersama dan alokasi miliknya sendiri.", 403);
-};
-
-export const hasSameEnvelopeAssignee = (left, right) => String(left?.assignee_user_id || "") === String(right?.assignee_user_id || "");
 const nextEnvelopeBounds = period => {
   const type = period.period_type;
   if (type === "daily") return {

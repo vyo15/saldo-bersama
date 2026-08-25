@@ -11,7 +11,6 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
-import { useAuth } from "../auth/AuthContext.jsx";
 import {
   archiveGoal as requestArchiveGoal,
   createGoal as requestCreateGoal,
@@ -23,7 +22,6 @@ import {
 } from "./goals.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
-import { canRepresentAccountTransfer } from "../../domain/ownership.js";
 import ManualReminderModal from "../reminders/ManualReminderModal.jsx";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
 import { GoalConfirmations, GoalCreateModal, GoalEditModal, GoalMovementModal } from "./components/GoalDialogs.jsx";
@@ -65,11 +63,15 @@ const movementError = (movement, amount) => {
 };
 
 
-const goalMovementDraft = ({ goal, movementType, accounts, prefill }) => {
+const transferRouteFor = (routes, sourceAccountId, destinationAccountId) => (routes || []).find((route) =>
+  route.source_account_id === sourceAccountId && route.destination_account_id === destinationAccountId
+) || null;
+
+const goalMovementDraft = ({ goal, movementType, accounts, transferRoutes, prefill }) => {
   const withdrawal = movementType === "withdrawal";
   if (withdrawal) return { goal, movement_type: movementType, amount: "", source_account_id: goal.account_id || "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "Penggunaan dana target" };
-  const goalAccount = accounts.find((account) => account.account_id === goal.account_id) || null;
-  const compatible = accounts.filter((account) => account.account_id !== goal.account_id && canRepresentAccountTransfer(account, goalAccount));
+  const compatible = accounts.filter((account) => account.account_id !== goal.account_id
+    && transferRouteFor(transferRoutes, account.account_id, goal.account_id)?.mode === "direct");
   const preferredSource = prefill?.sourceAccountId ? compatible.find((account) => account.account_id === prefill.sourceAccountId) || null : null;
   const suggested = Math.max(0, Number(prefill?.suggestedAmount || 0));
   const remaining = Math.max(0, Number(goal.remaining_amount || 0));
@@ -78,22 +80,22 @@ const goalMovementDraft = ({ goal, movementType, accounts, prefill }) => {
   return { goal, movement_type: movementType, amount: allowed > 0 ? String(allowed) : "", source_account_id: preferredSource?.account_id || "", destination_account_id: goal.account_id || "", transaction_date: todayInJakarta(), reason: "Kontribusi target" };
 };
 
-const useGoalMovement = ({ accounts, user, resource, refreshOverview, invalidate, notify }) => {
+const useGoalMovement = ({ accounts, transferRoutes, resource, refreshOverview, invalidate, notify }) => {
   const movementMutation = useGuardedMutation();
   const [movement, setMovement] = useState(emptyMovement);
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
-  const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
-  const compatibleMovementAccounts = goalAccount
+  const compatibleMovementAccounts = movement.goal
     ? accounts.filter((account) => {
-      if (!canRepresentAccountTransfer(account, goalAccount)) return false;
-      if (movement.movement_type === "withdrawal" && user?.role === "member") return account.owner_scope === "shared";
-      return true;
+      const sourceId = movement.movement_type === "withdrawal" ? movement.goal.account_id : account.account_id;
+      const destinationId = movement.movement_type === "withdrawal" ? account.account_id : movement.goal.account_id;
+      return account.account_id !== movement.goal.account_id
+        && transferRouteFor(transferRoutes, sourceId, destinationId)?.mode === "direct";
     })
     : accounts;
   const openMovement = useCallback((goal, movement_type, prefill = null) => {
-    setMovement(goalMovementDraft({ goal, movementType: movement_type, accounts, prefill }));
+    setMovement(goalMovementDraft({ goal, movementType: movement_type, accounts, transferRoutes, prefill }));
     setMovementState({ status: "idle", error: null });
-  }, [accounts]);
+  }, [accounts, transferRoutes]);
   const submitMovement = (event) => {
     event.preventDefault();
     if (!movement.goal) return;
@@ -221,20 +223,18 @@ const GoalsPage = () => {
   const attentionHandled = useRef(false);
   const resource = useApiResource("goals.list");
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
-  const { user } = useAuth();
   const { notify } = useFeedback();
-  const ownerMode = user?.role === "owner";
-  const canCreate = Boolean(ownerMode || user?.role === "member");
   const [reminderTarget, setReminderTarget] = useState(null);
   const [workflowPrefill, setWorkflowPrefill] = useState(null);
   const [setupCreated, setSetupCreated] = useState(false);
   const accounts = goalPageAccounts(bootstrap, overview);
   const operableAccounts = accounts.filter((item) => item.can_transact !== false);
   const creationAccounts = operableAccounts.filter((item) => item.owner_scope === "shared");
+  const canCreate = creationAccounts.length > 0;
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const shared = { resource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation({ ...shared, onCreated: () => { if (location.state?.setupFlow) setSetupCreated(true); } });
-  const movement = useGoalMovement({ ...shared, accounts: operableAccounts, user });
+  const movement = useGoalMovement({ ...shared, accounts: operableAccounts, transferRoutes: bootstrap?.transferRoutes || [] });
   const { openMovement } = movement;
   const lifecycle = useGoalLifecycle(shared);
   const attentionGoalId = String(attention?.attentionGoalId || "");

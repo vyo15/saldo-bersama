@@ -159,45 +159,66 @@ export const updateRecurringRule = async (db, context) => {
 export const recurringListStatement = (context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "r");
+  const reverseAccess = context.actor.role === "owner"
+    ? { sql: "1=1", args: [] }
+    : { sql: "t.created_by=?", args: [context.actor.user_id] };
   return {
-    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id
+    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,
+      (SELECT t.transaction_id FROM transactions t
+        WHERE t.recurring_occurrence_id=o.occurrence_id AND t.status='active' AND ${reverseAccess.sql}
+        ORDER BY t.created_at DESC,t.transaction_id DESC LIMIT 1) AS reverse_transaction_id
       FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
       WHERE o.period_key=? AND ${access.sql} ORDER BY o.due_date,r.name`,
-    args: [period, ...access.args],
+    args: [...reverseAccess.args, period, ...access.args],
+  };
+};
+
+const recurringDisplayStatus = (row, today) => {
+  if (String(row.status || "") === "cancelled") return "cancelled";
+  const actual = Number(row.actual_amount || 0);
+  const expected = Number(row.expected_amount || 0);
+  if (actual >= expected) return row.kind === "income" ? "received" : "paid";
+  if (actual > 0) return "partial";
+  return row.due_date < today ? "overdue" : "expected";
+};
+
+const canManageRecurringRule = (actor, row) => Boolean(
+  actor?.role === "owner"
+  || (row?.scope === "shared" && !row?.owner_user_id)
+  || (row?.scope === "personal" && row?.owner_user_id === actor?.user_id)
+);
+
+const recurringCapabilities = (row, context, status, transactionIds) => {
+  const actor = context.actor;
+  const activeRule = row.rule_status === "active";
+  const canManageRule = canManageRecurringRule(actor, row);
+  const unpaid = Number(row.actual_amount || 0) < Number(row.expected_amount || 0);
+  const canSkip = actor.role === "owner" && activeRule && status !== "cancelled"
+    && Number(row.actual_amount || 0) === 0 && transactionIds.length === 0;
+  return {
+    can_pay: activeRule && canManageRule && status !== "cancelled" && unpaid,
+    can_reverse: Boolean(row.reverse_transaction_id),
+    can_cancel_occurrence: canSkip,
+    can_restore_occurrence: actor.role === "owner" && activeRule && status === "cancelled",
+    can_edit_rule: activeRule && canManageRule,
+    can_archive_rule: actor.role === "owner" && activeRule,
+    can_set_reminder: activeRule && canManageRule && !["paid", "received", "cancelled"].includes(status),
   };
 };
 
 export const mapRecurringRows = (rows, context) => {
   const today = todayJakarta();
-  const items = rows.map((row) => {
+  return { items: rows.map((row) => {
     const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
-    const persistedStatus = String(row.status || "");
-    const status = persistedStatus === "cancelled"
-      ? "cancelled"
-      : Number(row.actual_amount) >= Number(row.expected_amount)
-        ? row.kind === "income" ? "received" : "paid"
-        : Number(row.actual_amount) > 0
-          ? "partial"
-          : row.due_date < today ? "overdue" : "expected";
-    const canSkip = context.actor.role === "owner"
-      && row.rule_status === "active"
-      && status !== "cancelled"
-      && Number(row.actual_amount) === 0
-      && transactionIds.length === 0;
+    const status = recurringDisplayStatus(row, today);
     return {
       ...publicRow(row, ["auto_debit"]),
       status,
       transaction_ids: transactionIds.join(","),
-      can_pay: row.rule_status === "active" && status !== "cancelled" && Number(row.actual_amount) < Number(row.expected_amount),
-      can_reverse: transactionIds.length > 0,
-      can_cancel_occurrence: canSkip,
-      can_restore_occurrence: context.actor.role === "owner" && row.rule_status === "active" && status === "cancelled",
-      can_edit_rule: row.rule_status === "active" && (context.actor.role === "owner" || row.scope === "shared"),
-      can_archive_rule: context.actor.role === "owner" && row.rule_status === "active",
+      ...recurringCapabilities(row, context, status, transactionIds),
       transaction_type: row.kind,
     };
-  });
-  return { items };
+  }) };
 };
 
 export const listRecurring = async (db, context) => {

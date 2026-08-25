@@ -25,8 +25,30 @@ BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, A
 11. Artifact patch tidak boleh disebut **final/ready/PASS** sebelum `npm run verify` atau `npm run zip` benar-benar PASS pada Node canonical `24.18.1`. Bila environment agent tidak dapat menjalankan Node canonical/build native, artifact hanya boleh disebut **candidate/unverified**, dan limitation wajib ditulis jelas.
 12. Setelah validation PASS, delivery canonical repository private ini adalah commit pada `main` lalu `git push origin main`; managed pre-push wajib memverifikasi ref/SHA aktual + working tree clean + fast-forward, menjalankan `npm run verify`, lalu memastikan profile + schema/binding Turso Production kompatibel secara read-only sebelum ref dikirim. Push tidak pernah auto-migrate. Jangan memakai `--no-verify`/force push.
 13. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
+14. **Deletion integrity wajib diverifikasi.** Jika patch menghapus/merename file, jangan mengandalkan overlay changed-files-only ZIP karena file lama dapat tertinggal di working tree penerima. Sebelum delivery, verifikasi path lama benar-benar tidak ada pada final tree dan pada artifact hasil. Untuk handoff yang memuat deletion, utamakan full-source ZIP terbaru atau sertakan instruksi deletion eksplisit yang tidak dapat terlewat; jangan mengklaim deletion selesai hanya karena file tidak dicantumkan di ZIP patch.
 
 Tidak ada lagi task card, Task ID, branch otomatis, atau `task:finish`. Beberapa ChatGPT tab boleh melakukan review/menyiapkan patch paralel, tetapi satu working folder user harus menerima patch secara **serial** agar perubahan tidak saling menimpa.
+
+
+## Protokol eksekusi efisien
+
+Tujuan aturan ini adalah mengurangi bolak-balik yang tidak perlu tanpa menurunkan safety, data integrity, atau kualitas review.
+
+1. **Execution-first.** Jika request, source, scope, dan approval sudah cukup jelas, langsung kerjakan sampai batas maksimum yang aman. Jangan bertanya hanya untuk preferensi minor, urutan kerja internal, nama variabel, wording kecil, atau hal yang dapat diputuskan dari source/test/docs canonical.
+2. **Jangan meminta approval ulang.** Approval plan/implementasi yang sudah diberikan tetap berlaku untuk seluruh scope yang sama. Jangan menghentikan pekerjaan hanya untuk menanyakan apakah boleh melanjutkan langkah berikutnya yang sudah tercakup plan.
+3. **Jangan mengulang pertanyaan yang jawabannya sudah tersedia** di percakapan, source terbaru, `AGENTS.md`, contract, test, config, atau docs canonical. Cari dan gunakan evidence tersebut lebih dulu.
+4. **Resolve ambiguity dari source of truth.** Untuk ketidakjelasan non-kritis, pilih interpretasi yang paling konsisten dengan source+test aktual, paling kecil scope-nya, backward-compatible, dan paling aman terhadap data/security. Catat asumsi material di laporan akhir, bukan sebagai checkpoint pertanyaan.
+5. **Temuan baru dalam scope diselesaikan otomatis.** Jika saat impact review ditemukan bug/regression lain yang masih berada dalam scope approved dan tidak memperluas guarded area, perbaiki sekaligus beserta regression test dan docs terkait.
+6. **Pertanyaan hanya untuk blocker nyata.** Bertanya hanya bila sedikitnya satu kondisi berikut terpenuhi:
+   - membutuhkan perubahan guarded baru yang belum tercakup approval;
+   - ada destructive/live operation, secret/credential, migration, atau keputusan irreversible;
+   - dua atau lebih pilihan valid memiliki dampak produk/data/security yang material dan source/contract tidak menentukan pilihan;
+   - artifact/input esensial benar-benar tidak tersedia dan pekerjaan tidak dapat dilanjutkan secara bermakna tanpanya.
+7. Bila pertanyaan benar-benar wajib, **gabungkan menjadi satu pertanyaan paling sempit** yang membuka blocker. Jangan membuat rangkaian checkpoint approval.
+8. **Validation blocker bukan alasan berhenti terlalu dini.** Jika canonical gate tidak dapat dijalankan karena runtime/dependency/environment agent, tetap selesaikan semua source review, patch, targeted regression, syntax/static checks, docs sync, dan packaging yang masih dapat dilakukan. Laporkan limitation dengan jujur; jangan bertanya apakah harus melanjutkan.
+9. Jika user meminta **“perbaiki semuanya”, “lanjut sampai selesai”, atau ZIP hasil akhir**, jangan berhenti setelah audit/candidate awal selama masih ada pekerjaan feasible dalam scope. Selesaikan implementasi, test yang tersedia, review diff, docs, lalu buat artifact yang diminta dalam respons yang sama sejauh environment memungkinkan.
+10. Progress update bersifat informatif, **bukan checkpoint keputusan**. Jangan memakai update seperti “apakah saya lanjut?”, “ingin saya kerjakan?”, atau konfirmasi lain untuk langkah yang sudah jelas.
+11. **Artifact `UNVERIFIED` adalah input remediation, bukan alasan berhenti.** Baca laporan staging-nya, perbaiki root cause dan seluruh temuan in-scope yang masih feasible, buang laporan staging lama dari source canonical, lalu validasi tree terbaru sesuai protokol `docs/WORKFLOW.md`. Jangan mengirim ulang artifact UNVERIFIED lama sebagai hasil perbaikan.
 
 ## Sumber kebenaran
 

@@ -155,6 +155,39 @@ test("active workflow docs do not require retired task-card lifecycle", () => {
   }
 });
 
+
+test("AI workflow execution-first dan pertanyaan hanya untuk blocker nyata", () => {
+  const agents = read("AGENTS.md");
+  const workflow = read("docs/WORKFLOW.md");
+
+  for (const source of [agents, workflow]) {
+    assert.match(source, /Execution-first/i);
+    assert.match(source, /guarded/i);
+    assert.match(source, /approval/i);
+    assert.match(source, /pertanyaan/i);
+  }
+
+  assert.match(agents, /Jangan meminta approval ulang/i);
+  assert.match(agents, /Jangan mengulang pertanyaan/i);
+  assert.match(agents, /Temuan baru dalam scope diselesaikan otomatis/i);
+  assert.match(agents, /Validation blocker bukan alasan berhenti terlalu dini/i);
+  assert.match(agents, /perbaiki semuanya.*lanjut sampai selesai.*ZIP hasil akhir/is);
+
+  assert.match(workflow, /minim pertanyaan/i);
+  assert.match(workflow, /tanpa meminta konfirmasi ulang/i);
+  assert.match(workflow, /temuan baru yang masih berada dalam scope approved ikut diperbaiki/i);
+  assert.match(workflow, /jangan berhenti di audit atau candidate parsial/i);
+  assert.match(agents, /Artifact `UNVERIFIED` adalah input remediation/i);
+  assert.match(workflow, /Protokol remediation artifact `UNVERIFIED`/i);
+  assert.match(workflow, /perbaiki root cause/i);
+  assert.match(workflow, /staging-only/i);
+  assert.match(workflow, /jangan mengirim ulang ZIP UNVERIFIED lama/i);
+  assert.match(agents, /Deletion integrity wajib diverifikasi/i);
+  assert.match(agents, /jangan mengandalkan overlay changed-files-only ZIP/i);
+  assert.match(workflow, /path lama benar-benar \*\*absent\*\*/i);
+  assert.match(workflow, /Overlay changed-files-only tidak dianggap cukup untuk deletion/i);
+});
+
 test("every canonical action is documented in API and authorization contracts", () => {
   const security = read("api/_lib/security.js");
   const permissionsBlock = security.match(/export const ACTION_PERMISSIONS = Object\.freeze\(\{([\s\S]*?)\n\}\);/);

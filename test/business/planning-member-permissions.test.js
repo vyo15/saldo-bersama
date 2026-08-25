@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { upsertBudget } from "../../api/_lib/services/planning/budgets.js";
-import { createEnvelope, adjustEnvelopeAllocation } from "../../api/_lib/services/planning/envelopes.js";
+import { listBudgets, upsertBudget } from "../../api/_lib/services/planning/budgets.js";
+import { createEnvelope, adjustEnvelopeAllocation, listEnvelopes } from "../../api/_lib/services/planning/envelopes.js";
 import { createGoal, updateGoal } from "../../api/_lib/services/planning/goals.js";
-import { createRecurringRule, payOccurrence, updateRecurringRule } from "../../api/_lib/services/planning/recurring.js";
+import { createRecurringRule, listRecurring, payOccurrence, updateRecurringRule } from "../../api/_lib/services/planning/recurring.js";
 import { todayJakarta } from "../../api/_lib/services/core.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
@@ -203,6 +203,27 @@ test("Member dapat mengelola planning Bersama dan Kebutuhan personal miliknya se
       expected_amount: 12_000,
     }, memberPersonalRecurring.row_version));
     assert.equal(memberPersonalRecurringUpdated.expected_amount, 12_000);
+
+    const personalEnvelopeList = await listEnvelopes(db, { actor: member, payload: { period: "2026-09" } });
+    const listedPersonalEnvelope = personalEnvelopeList.items.find((item) => item.envelope_rule_id === memberPersonalEnvelope.rule.envelope_rule_id);
+    assert.equal(listedPersonalEnvelope?.can_manage, true);
+    assert.equal(listedPersonalEnvelope?.can_adjust, true);
+    assert.equal(listedPersonalEnvelope?.can_manage_needs, true);
+    assert.equal(listedPersonalEnvelope?.can_record_expense, true);
+
+    const budgetList = await listBudgets(db, { actor: member, payload: { period: "2026-08" } });
+    const listedPersonalBudget = budgetList.items.find((item) => item.budget_id === personalBudget.budget_id);
+    assert.equal(listedPersonalBudget?.can_manage, true);
+
+    const personalOccurrence = await db.one("SELECT period_key FROM recurring_occurrences WHERE recurring_rule_id=? ORDER BY due_date LIMIT 1", [memberPersonalRecurring.recurring_rule_id]);
+    assert.ok(personalOccurrence?.period_key);
+    const recurringList = await listRecurring(db, { actor: member, payload: { period: personalOccurrence.period_key } });
+    const listedPersonalRecurring = recurringList.items.find((item) => item.recurring_rule_id === memberPersonalRecurring.recurring_rule_id);
+    assert.equal(listedPersonalRecurring?.can_edit_rule, true);
+    assert.equal(listedPersonalRecurring?.can_pay, true);
+    assert.equal(listedPersonalRecurring?.can_set_reminder, true);
+    assert.equal(Object.hasOwn(listedPersonalRecurring || {}, "can_pause_rule"), false);
+    assert.equal(Object.hasOwn(listedPersonalRecurring || {}, "can_delete_rule"), false);
   } finally {
     db.close();
   }

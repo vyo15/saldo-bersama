@@ -7,6 +7,8 @@ import {
   mapRecurringRows,
   recurringListStatement,
 } from "../../planning/index.js";
+import { envelopeCapabilities } from "../../planning/shared.js";
+import { transferRoutesForAccounts } from "../../transactionPolicy.js";
 import {
   categoryExpenseTotalsStatement,
   envelopeItemsStatement,
@@ -67,6 +69,7 @@ export const mapBootstrapRows = ([accountRows = [], categories = [], configRows 
   return {
     user: publicRow(context.actor),
     accounts,
+    transferRoutes: transferRoutesForAccounts(context.actor, accounts),
     categories: categories.map((row) => publicRow(row)),
     members: memberRows.map((row) => ({ ...publicRow(row), is_current: row.user_id === context.actor.user_id })),
     config: {
@@ -235,8 +238,7 @@ const dashboardRecentTransactionsStatement = (actor, startDate, endDate) => {
 
 const dashboardEnvelopeCapabilities = (items, actor) => items.map((item) => ({
   ...item,
-  can_close: actor.role === "owner" && item.status === "active",
-  can_archive_rule: actor.role === "owner" && item.status === "active",
+  ...envelopeCapabilities(actor, item),
 }));
 
 export const dashboardPeriodContext = (context, preloadedAccounts) => {
@@ -271,6 +273,7 @@ export const dashboardReadPlan = (context, periodContext) => {
   add("openingAccounts", visibleAccountsStatement(context.actor, { includeArchived: historical, cutoffDate: openingDate }));
   add("cashFlow", dashboardCashFlowStatement(context.actor, bounds.start, cutoffDate));
   add("recentTransactions", dashboardRecentTransactionsStatement(context.actor, bounds.start, cutoffDate));
+  add("transactionPeriodClosure", { sql: "SELECT closure_id,period_key FROM period_closures WHERE status='closed' AND period_key>=? ORDER BY period_key LIMIT 1", args: [period] });
   add("categoryExpenses", categoryExpenseTotalsStatement(context.actor, bounds.start, cutoffDate));
   add("recurring", recurringListStatement(scopedContext));
   const goalIndexes = goalListStatements(context).map((statement) => {
@@ -295,10 +298,11 @@ export const mapDashboardReadRows = (rows, plan, context, periodContext, preload
     openingAccounts: mapVisibleAccountRows(rows[indexes.openingAccounts] || [], context.actor),
     cashFlowRow: (rows[indexes.cashFlow] || [])[0] || {},
     recentTransactionRows: (rows[indexes.recentTransactions] || []).map((row) => publicRow(row)),
+    transactionPeriodLocked: Boolean((rows[indexes.transactionPeriodClosure] || [])[0]),
     categoryExpenses: mapCategoryExpenseRows(rows[indexes.categoryExpenses] || []),
     recurring: mapRecurringRows(rows[indexes.recurring] || [], scopedContext).items,
     goals: mapGoalListRows(goalIndexes.map((index) => rows[index] || []), context).items,
-    budgets: mapBudgetListRows(rows[indexes.budgets] || []).items,
+    budgets: mapBudgetListRows(rows[indexes.budgets] || [], scopedContext).items,
     dashboardEnvelopes: dashboardEnvelopeCapabilities(mapEnvelopeItemRows(rows[indexes.envelopes] || []), context.actor),
     reconciliationRows: historical ? [] : rows[indexes.reconciliation] || [],
   };

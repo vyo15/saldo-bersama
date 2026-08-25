@@ -125,7 +125,7 @@ const ScheduleAttention = ({ item, guidance, actions }) => {
 
 const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false }) => {
   const hasManagement = item.can_reverse || item.can_cancel_occurrence || item.can_restore_occurrence || item.can_edit_rule || item.can_archive_rule;
-  const canRemind = !completedStatuses.has(item.status) && item.status !== "cancelled";
+  const canRemind = Boolean(item.can_set_reminder);
   return (
     <div className={styles.actions}>
       <div className={styles.actionPrimary}>
@@ -194,7 +194,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories,
   );
 };
 
-const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories, budgets }) => (
+const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate }) => (
   <div className={styles.scheduleList}>
     {items.length ? items.map((item) => (
       <ScheduleItem
@@ -208,7 +208,7 @@ const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, ac
         budgets={budgets}
       />
     )) : (
-      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title="Belum ada jadwal" description={emptyText} headingLevel={3} />
+      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title="Belum ada jadwal" description={emptyText} headingLevel={3} action={canCreate ? <Button variant="primary" icon={FiCalendar} onClick={actions.openCreate}>Buat jadwal rutin</Button> : null} />
     )}
   </div>
 );
@@ -284,7 +284,7 @@ const ScheduleFilters = ({ filter, setFilter, items }) => {
   );
 };
 
-export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, setFilter, actions, expandedId, setExpandedId, accounts, categories, budgets }) => {
+export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, setFilter, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate }) => {
   const visibleItems = items.filter((item) => item.kind === kind);
   const typeLabel = kind === "expense" ? "pengeluaran" : "pemasukan";
   const selectFilter = (next) => {
@@ -316,6 +316,7 @@ export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, 
         accounts={accounts}
         categories={categories}
         budgets={budgets}
+        canCreate={canCreate}
       />
     </section>
   );

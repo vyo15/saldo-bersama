@@ -1,4 +1,22 @@
+## 26 Agustus 2026 - Capability authority final, dead-end UX, dan remediation UNVERIFIED
+
+- Menghapus helper authorization Kebutuhan frontend yang stale dan menjadikan capability Alokasi canonical backend dipakai konsisten oleh `envelopes.list` serta Dashboard, termasuk guard assignee untuk setup checklist dan pemilihan Alokasi transaksi/Jadwal Rutin.
+- Menambahkan `transferRoutes` server-side pada bootstrap agar composer memilih direct transfer vs approval request tanpa menyalin policy role/scope di frontend; mutation tetap membaca ulang state dan mempertahankan idempotency, row version, period/account guard, serta authority rekening sumber.
+- Menutup dead-end create Alokasi/Jadwal Rutin/Target ketika prerequisite rekening tidak tersedia, serta membuat capability penarikan Target destination-aware dan menampilkan alasan aman ketika tidak ada rekening tujuan valid.
+- Merapikan CTA Dashboard desktop `Atur kebutuhan` ke workspace Alokasi Dana, mengganti `Tagihan terdekat` menjadi `Jadwal terdekat`, membuat empty state Anggaran/Member/Rekonsiliasi/Reports lebih actionable, dan membuat live announcement EmptyState opt-in.
+- Menambah regression capability/transfer/Goal dan menyelaraskan TEST_PLAN/API/AUTH/UI docs tanpa schema, migration, dependency, atau perubahan ledger formula.
+- Memperketat handoff deletion: path yang dihapus/rename wajib benar-benar absent pada final tree/artifact; overlay changed-files-only tidak boleh dianggap menerapkan deletion secara otomatis.
+
 ## 25 Agustus 2026 - Production release safety dan diagnosis fail-closed
+
+
+## 2026-08-26 — Capability UI/BE + remediation UNVERIFIED
+
+- Menjadikan capability planning backend sebagai authority rendering untuk Alokasi Dana, Kebutuhan, dan Jadwal Rutin; own-personal Member tetap operable, planning personal anggota lain tetap read-only, dan `assignee_user_id` Alokasi ikut membatasi action shared.
+- Menghapus capability Jadwal Rutin phantom yang tidak memiliki action contract, mengirim `reverse_transaction_id` yang benar-benar dapat dibatalkan actor, dan memecah mapper capability agar lint complexity kembali di bawah batas tanpa menaikkan threshold.
+- Menormalkan Dashboard ke heading `Rencana Keuangan`, CTA Kebutuhan canonical `/anggaran`, serta empty state planning yang tetap actionable/capability-aware.
+- Menambah protokol workflow bahwa archive `UNVERIFIED` adalah input remediation: agent wajib memperbaiki root cause dan temuan in-scope yang feasible, tidak berhenti pada laporan lama, dan tidak membawa staging report lama sebagai source canonical.
+- Menyinkronkan authorization/release/test/API docs dengan model shared + own-personal dan authority transfer berdasarkan rekening sumber.
 
 - Menutup gap deploy schema: managed `git push origin main` sekarang menjalankan Production profile + Turso schema/binding preflight **read-only** setelah full `npm run verify`; runtime source baru tidak dapat terkirim saat Production DB masih tertinggal, dan push tidak pernah auto-migrate.
 - Memperketat `db:migrate -- production`: database Production existing dengan migration pending wajib memiliki backup teknis `verified` pada schema saat ini sebelum statement migration dijalankan.

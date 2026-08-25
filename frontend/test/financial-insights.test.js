@@ -134,11 +134,15 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(allocations, /Periode berikutnya tetap disiapkan/);
 });
 
-test("target menampilkan sisa, kebutuhan setoran bulanan, dan status proyeksi", async () => {
+test("target menampilkan sisa, kebutuhan setoran bulanan, status proyeksi, dan blocker movement dari backend", async () => {
   const goals = await goalFeatureSource();
   assert.match(goals, /remaining_amount/);
   assert.match(goals, /required_monthly_amount/);
   assert.match(goals, /pace_status/);
+  assert.match(goals, /withdraw_blocked_reason/);
+  assert.match(goals, /Penarikan belum tersedia/);
+  assert.match(goals, /const canCreate = creationAccounts\.length > 0/);
+  assert.match(goals, /transferRoutes: bootstrap\?\.transferRoutes \|\| \[\]/);
 });
 
 test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis", async () => {
@@ -186,7 +190,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /Digunakan oleh/);
   assert.match(allocations, /assignee_user_id/);
   assert.match(allocations, /useApiResource\("users\.list"/);
-  assert.match(allocations, /filterByAssigneeAccess/);
+  assert.doesNotMatch(allocations, /filterByAssigneeAccess/);
+  assert.match(allocations, /Boolean\(item\?\.can_adjust\)/);
   assert.match(allocations, /bootstrap\?\.user \|\| user/);
   assert.match(allocations, /hasSameAssignee/);
   assert.match(allocations, /Pilih siapa yang dapat menggunakan alokasi ini/);
@@ -204,7 +209,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(recurring, /paymentEnvelopes\.map/);
   assert.doesNotMatch(recurring, /sekaligus mengurangi sisa alokasi/);
   assert.match(recurring, /"envelopes\.list"/);
-  assert.match(recurring, /bootstrap\?\.user \|\| user/);
+  assert.doesNotMatch(recurring, /filterByAssigneeAccess|canUseAssignedItem/);
+  assert.match(recurring, /item\.can_record_expense === true/);
   assert.match(navigation, /Kelola Alokasi Dana, kebutuhan, dan Jadwal Rutin/);
   assert.match(navigation, /Kumpulkan dana ke rekening tujuan/);
 });
@@ -233,18 +239,24 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(setupChecklist, /owner \? "Belum ada rekening aktif" : "Ajukan rekening untuk dipakai setelah disetujui"/);
   assert.match(setupChecklist, /owner \? "Kategori pemasukan dan pengeluaran belum siap" : "Ajukan kategori yang masih dibutuhkan"/);
   assert.match(setupChecklist, /Pengajuan rekening\/kategori Member baru aktif setelah disetujui Administrator/);
+  assert.match(setupChecklist, /usableEnvelopes = envelopes\.filter\(\(item\) => item\.can_manage_needs === true\)/);
+  assert.doesNotMatch(setupChecklist, /usableEnvelopes[\s\S]{0,180}actor\.role === "owner"/);
   assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);
   assert.match(mobile, /Dana tersedia belum dibagi/);
   assert.match(mobile, /Pengeluaran tanpa Alokasi Dana/);
   assert.match(mobile, /unallocatedExpenseAmount/);
-  assert.match(mobile, /Rencana Bersama/);
-  assert.match(mobile, /Lihat Target/);
+  assert.match(mobile, /Rencana Keuangan/);
+  assert.doesNotMatch(mobile, /Rencana Bersama/);
+  assert.match(mobile, /to="\/target"/);
+  assert.match(mobile, /Buat target/);
   assert.match(desktop, /SensitiveMoney/);
   assert.match(desktop, /Transaksi rekening/);
   assert.match(desktop, /data-dashboard-account/);
   assert.match(desktop, /<h2 id="dashboard-statistics-title">Pengeluaran<\/h2>/);
   assert.match(desktop, /Kebutuhan/);
-  assert.match(desktop, /Tagihan terdekat/);
+  assert.match(desktop, /Jadwal terdekat/);
+  assert.doesNotMatch(desktop, /Tagihan terdekat/);
+  assert.match(desktop, /to="\/perencanaan\/kantong">Atur kebutuhan/);
   assert.match(desktop, /Target tabungan/);
   assert.doesNotMatch(desktop, /Aksi cepat/);
   assert.doesNotMatch(desktop, /shared-quick-actions/);

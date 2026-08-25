@@ -22,7 +22,7 @@ const BudgetTabs = ({ activeFilter, setActiveFilter, totalCount, attentionCount 
   <button type="button" className={`${styles.segment}${activeFilter === "attention" ? ` ${styles.segmentActive}` : ""}`} aria-pressed={activeFilter === "attention"} onClick={() => setActiveFilter("attention")}>Perlu perhatian <span>{attentionCount}</span></button>
 </div>;
 
-const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, periodMeta }) => {
+const BudgetListSection = ({ activeFilter, setActiveFilter, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, periodMeta }) => {
   const title = activeFilter === "attention" ? "Perlu perhatian" : "Kebutuhan aktif";
   const emptyTitle = activeFilter === "attention" ? "Tidak ada kebutuhan yang perlu perhatian" : "Belum ada kebutuhan";
   const emptyDescription = activeFilter === "attention"
@@ -34,7 +34,7 @@ const BudgetListSection = ({ activeFilter, visibleItems, criticalFirst, setCriti
       <h2 id="budget-list-title">{title}</h2>
       {visibleItems.length > 1 ? <button type="button" className={styles.sortButton} onClick={() => setCriticalFirst((current) => !current)} aria-pressed={criticalFirst}><FiSliders aria-hidden="true" />{criticalFirst ? "Paling kritis" : "Urutan awal"}</button> : null}
     </div>
-    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} category={categoryLookup[item.category_id]} periodMeta={periodMeta} />)}</div> : <EmptyState title={emptyTitle} description={emptyDescription} />}
+    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} category={categoryLookup[item.category_id]} periodMeta={periodMeta} />)}</div> : <EmptyState title={emptyTitle} description={emptyDescription} action={activeFilter === "attention" ? <button type="button" className="button button--secondary" onClick={() => setActiveFilter("all")}>Lihat semua Kebutuhan</button> : <Link className="button button--primary" to="/perencanaan/kantong">Kelola Alokasi Dana</Link>} />}
   </section>;
 };
 
@@ -55,7 +55,7 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
   </CompactNotice>
   {unlinkedCount ? <CompactNotice tone="warning" className={styles.readOnlyNote} role="status" title={`${unlinkedCount} kebutuhan lama belum terhubung ke Alokasi Dana.`}>Data tetap dihitung. Hubungkan dari detail Alokasi Dana agar sumber dana dan laporan tetap mudah ditelusuri.</CompactNotice> : null}
   <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
-  <BudgetListSection activeFilter={activeFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} />
+  <BudgetListSection activeFilter={activeFilter} setActiveFilter={setActiveFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} />
   <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme pengeluaran</strong> membandingkan pemakaian setiap kebutuhan dengan posisi hari ini dalam periode.</p><img className={styles.tipArtwork} src={budgetCalendarArtwork} width="620" height="395" alt="" aria-hidden="true" loading="lazy" decoding="async" /></aside>
 </div>;
 
