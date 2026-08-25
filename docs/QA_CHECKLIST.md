@@ -22,7 +22,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 
 - [ ] Nominal tetap integer Rupiah dan timezone/date contract tidak berubah diam-diam.
 - [ ] Transfer tetap netral terhadap total income/expense dan hanya antar rekening valid berbeda.
-- [ ] Transfer shared ↔ personal hanya berhasil bila actor dapat mengoperasikan kedua rekening; personal milik dua user berbeda tetap ditolak dan transaksi lintas boundary mengikuti satu owner personal yang representable.
+- [ ] Transfer memvalidasi source/debit sebagai rekening yang dapat dioperasikan actor dan destination sebagai rekening aktif/readable; personal Member → personal pasangan diizinkan dengan ownership transaksi mengikuti source, sedangkan shared → personal oleh Member wajib approval Administrator.
 - [ ] Target shared dapat menerima sumber shared/personal actor yang representable tanpa memberi Member akses ke rekening personal pasangan.
 - [ ] Mutation tetap memakai validation, idempotency, row-version/concurrency, server confirmation, dan audit canonical sesuai scope.
 - [ ] Simulasikan `OUTCOME_UNKNOWN`: retry payload yang sama memakai intent/key yang sama, payload berbeda pada action yang sama diblok, dan form transaksi tidak dapat diedit/didismiss sebelum hasil definitif.

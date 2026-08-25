@@ -15,7 +15,7 @@ RFC Proposed belum merupakan fitur runtime atau approval schema. Semua RFC pada 
 ## Accepted dan implemented
 
 - `0013-contribution-and-cost-sharing.md` menerapkan MVP pembagian beban biaya `equal`/`percentage` pada expense shared melalui schema v11. Payer/beneficiary/kontribusi aktual tetap deferred.
-- `0016-partner-planning-permissions.md` menerapkan Option 2: Member dapat mengelola planning shared dengan guard backend; destructive lifecycle/recovery tetap Administrator-only.
+- `0016-partner-planning-permissions.md` mengizinkan Member mengelola planning shared serta Alokasi/Kebutuhan/Jadwal Rutin personal miliknya sendiri; Target baru tetap shared dan destructive lifecycle/recovery tetap Administrator-only.
 - `0017-manual-reminders.md` menerapkan reminder manual one-shot actor-scoped pada Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target melalui schema v10 serta scheduler/Web Push existing.
 - `0018-session-device-management.md` menerapkan registry session per perangkat, revoke own/all, PKCE S256, dan forced legacy re-login melalui schema v12.
 

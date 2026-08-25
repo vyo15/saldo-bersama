@@ -157,38 +157,52 @@ test("Member dapat mengelola planning Bersama dan Kebutuhan personal miliknya se
     assert.equal(paid.transaction.cost_share.length, 2);
     assert.equal(paid.transaction.cost_share.reduce((sum, item) => sum + item.share_amount, 0), 275_000);
 
-    await assert.rejects(
-      () => createEnvelope(db, context(member, "envelopes.create", {
-        name: "Personal",
-        source_account_id: "member-personal",
-        period_type: "monthly",
-        period_start: "2026-08-01",
-        period_end: "2026-08-31",
-        default_amount: 10_000,
-      })),
-      (error) => error.code === "SHARED_PLANNING_ONLY" && error.status === 403,
-    );
+    const memberPersonalEnvelope = await createEnvelope(db, context(member, "envelopes.create", {
+      name: "Personal Member",
+      source_account_id: "member-personal",
+      period_type: "monthly",
+      period_start: "2026-09-01",
+      period_end: "2026-09-30",
+      default_amount: 10_000,
+      allocated_amount: 10_000,
+    }));
+    assert.equal(memberPersonalEnvelope.rule.scope, "personal");
+    assert.equal(memberPersonalEnvelope.rule.owner_user_id, member.user_id);
+    const adjustedPersonal = await adjustEnvelopeAllocation(db, context(member, "envelopes.adjustAllocation", {
+      envelope_period_id: memberPersonalEnvelope.period.envelope_period_id,
+      direction: "fund",
+      amount: 5_000,
+      row_version: memberPersonalEnvelope.period.row_version,
+    }, memberPersonalEnvelope.period.row_version));
+    assert.equal(adjustedPersonal.period.allocated_amount, 15_000);
+
     await assert.rejects(
       () => createGoal(db, context(member, "goals.create", {
         name: "Personal",
         account_id: "member-personal",
         target_amount: 10_000,
       })),
-      (error) => error.code === "SHARED_PLANNING_ONLY" && error.status === 403,
+      (error) => error.code === "GOAL_SHARED_ACCOUNT_REQUIRED" && error.status === 409,
     );
-    await assert.rejects(
-      () => createRecurringRule(db, context(member, "recurring.createRule", {
-        name: "Personal",
-        kind: "expense",
-        category_id: "shared-expense",
-        default_account_id: "member-personal",
-        expected_amount: 10_000,
-        frequency: "monthly",
-        due_day: 1,
-        start_date: todayJakarta(),
-      })),
-      (error) => error.code === "SHARED_PLANNING_ONLY" && error.status === 403,
-    );
+
+    const memberPersonalRecurring = await createRecurringRule(db, context(member, "recurring.createRule", {
+      name: "Personal Member",
+      kind: "expense",
+      category_id: "shared-expense",
+      default_account_id: "member-personal",
+      expected_amount: 10_000,
+      frequency: "monthly",
+      due_day: 1,
+      start_date: todayJakarta(),
+    }));
+    assert.equal(memberPersonalRecurring.scope, "personal");
+    assert.equal(memberPersonalRecurring.owner_user_id, member.user_id);
+    const memberPersonalRecurringUpdated = await updateRecurringRule(db, context(member, "recurring.updateRule", {
+      recurring_rule_id: memberPersonalRecurring.recurring_rule_id,
+      row_version: memberPersonalRecurring.row_version,
+      expected_amount: 12_000,
+    }, memberPersonalRecurring.row_version));
+    assert.equal(memberPersonalRecurringUpdated.expected_amount, 12_000);
   } finally {
     db.close();
   }

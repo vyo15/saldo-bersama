@@ -136,10 +136,9 @@ test("Transfer shared ke personal Member wajib approval dan approval menghasilka
     assert.equal(request.status, "pending");
     assert.equal(request.payload.destination_account_id, memberPersonal.account_id);
 
-    await assert.rejects(
-      dispatch(db, member, "transferRequests.request", { ...transferPayload, destination_account_id: otherPersonal.account_id }, { idempotencyKey: "transfer-request-other" }),
-      (error) => error?.code === "FORBIDDEN_ACCOUNT",
-    );
+    const partnerRequest = await dispatch(db, member, "transferRequests.request", { ...transferPayload, destination_account_id: otherPersonal.account_id }, { idempotencyKey: "transfer-request-other" });
+    assert.equal(partnerRequest.status, "pending");
+    assert.equal(partnerRequest.payload.destination_account_id, otherPersonal.account_id);
 
     const approved = await dispatch(db, owner, "transferRequests.review", {
       request_id: request.request_id,
@@ -149,8 +148,8 @@ test("Transfer shared ke personal Member wajib approval dan approval menghasilka
     }, { rowVersion: request.row_version, idempotencyKey: "approve-transfer-request" });
     assert.equal(approved.request.status, "approved");
     assert.ok(approved.transaction?.transaction_id);
-    assert.equal(approved.transaction.scope, "personal");
-    assert.equal(approved.transaction.owner_user_id, member.user_id);
+    assert.equal(approved.transaction.scope, "shared");
+    assert.equal(approved.transaction.owner_user_id, "");
     assert.equal(approved.transaction.amount, 50_000);
 
     const count = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE transaction_id=?", [approved.transaction.transaction_id]);
@@ -160,16 +159,15 @@ test("Transfer shared ke personal Member wajib approval dan approval menghasilka
     assert.equal(requestRow.row_version, 2);
     assert.equal(requestRow.approved_transaction_id, approved.transaction.transaction_id);
 
-    await assert.rejects(
-      dispatch(db, owner, "transactions.create", {
-        transaction_type: "transfer",
-        transaction_date: todayJakarta(),
-        source_account_id: memberPersonal.account_id,
-        destination_account_id: otherPersonal.account_id,
-        amount: 10_000,
-      }, { idempotencyKey: "cross-personal-owner" }),
-      (error) => error?.code === "CROSS_OWNERSHIP_TRANSFER",
-    );
+    const crossPersonal = await dispatch(db, member, "transactions.create", {
+      transaction_type: "transfer",
+      transaction_date: todayJakarta(),
+      source_account_id: memberPersonal.account_id,
+      destination_account_id: otherPersonal.account_id,
+      amount: 10_000,
+    }, { idempotencyKey: "cross-personal-member" });
+    assert.equal(crossPersonal.scope, "personal");
+    assert.equal(crossPersonal.owner_user_id, member.user_id);
   } finally {
     db.close();
   }

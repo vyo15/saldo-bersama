@@ -63,7 +63,7 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
   if (!sourceAccountId) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Rekening sumber wajib dipilih agar dana alokasi memiliki asal yang jelas.", 400);
   const account = await accountWithAccess(db, context.actor, sourceAccountId);
   const owned = ruleScopeFromAccount(account);
-  assertPlanningManageScope(context.actor, owned);
+  assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const legacyAssignee = owned.scope === "personal" ? owned.owner_user_id : null;
   const requestedAssignee = Object.hasOwn(payload, "assignee_user_id") ? payload.assignee_user_id : legacyAssignee;
   const assignee = await resolveEnvelopeAssignee(db, requestedAssignee);
@@ -93,7 +93,7 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
 export const createEnvelopePeriod = async (db, context, payload = context.payload || {}) => {
   const rule = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
   if (!rule) throw appError("INVALID_ENVELOPE_RULE", "Aturan alokasi tidak ditemukan.", 404);
-  assertPlanningManageScope(context.actor, rule);
+  assertPlanningManageScope(context.actor, rule, { allowOwnedPersonal: true });
   assertEnvelopeAssigneeAccess(context.actor, rule);
   const start = dateValue(payload.period_start, "Tanggal mulai alokasi");
   const end = dateValue(payload.period_end, "Tanggal akhir alokasi");

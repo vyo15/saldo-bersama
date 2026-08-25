@@ -172,8 +172,8 @@ export const createGoal = async (db, context) => {
   const p = context.payload || {};
   const account = await accountWithAccess(db, context.actor, p.account_id);
   const owned = ruleScopeFromAccount(account);
-  assertPlanningManageScope(context.actor, owned);
   if (owned.scope !== "shared") throw appError("GOAL_SHARED_ACCOUNT_REQUIRED", "Target baru adalah rencana Bersama dan harus memakai rekening Bersama.", 409);
+  assertPlanningManageScope(context.actor, owned);
   const now = nowIso();
   const priority = String(p.priority || "normal");
   const goalType = String(p.goal_type || "savings");

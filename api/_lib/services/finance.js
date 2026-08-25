@@ -6,7 +6,7 @@ import { accountAllocatedRemaining, accountBalanceAsOf, firstNegativeBalance } f
 import { isReservedTransactionField } from "../transactionContract.js";
 import {
   appError, assertOwner, assertVersion, boundedInteger, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow,
-  readableLedgerSql, sanitizeText, scopeFromAccountPair, todayJakarta, uuid,
+  readableLedgerSql, sanitizeText, todayJakarta, uuid,
 } from "./core.js";
 
 const TRANSACTION_TYPES = new Set(TRANSACTION_TYPE_VALUES);
@@ -26,14 +26,25 @@ export const assertTransactionDateUnlocked = async (db, date) => {
 
 // Account ids from the client are references only. Resolve active status and ownership
 // again on the server before any financial rule uses the account.
-const activeAccount = async (db, actor, accountId) => {
+const activeReadableAccount = async (db, accountId) => {
   const account = await db.one("SELECT * FROM accounts WHERE account_id=? AND status='active'", [accountId]);
   if (!account) throw appError("INVALID_ACCOUNT", "Rekening tidak ditemukan atau tidak aktif.", 400);
+  return account;
+};
+
+const activeAccount = async (db, actor, accountId) => {
+  const account = await activeReadableAccount(db, accountId);
   if (actor.role !== "owner" && account.owner_scope === "personal" && account.owner_user_id !== actor.user_id) {
     throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi ini bukan milik pengguna aktif.", 403);
   }
   return account;
 };
+
+// Transfer authority belongs to the debited/source account. The destination is only a
+// recipient reference and may belong to the other authorized household member.
+const ledgerOwnershipFromAccount = (account) => account?.owner_scope === "personal"
+  ? { scope: "personal", owner_user_id: account.owner_user_id }
+  : { scope: "shared", owner_user_id: null };
 
 // Category existence, active status, and transaction-type compatibility are all
 // server-authoritative; a frontend select option is not sufficient validation.
@@ -200,7 +211,11 @@ const validateTransactionTypePolicy = (context, payload, current, type) => {
 
 const resolveTransactionAccounts = async (db, context, { type, sourceId, destinationId, transactionDate }, { allowSharedToPersonalRequest = false } = {}) => {
   const source = ["income", "refund"].includes(type) ? null : await activeAccount(db, context.actor, sourceId);
-  const destination = ["income", "refund", "transfer"].includes(type) ? await activeAccount(db, context.actor, destinationId) : null;
+  const destination = ["income", "refund"].includes(type)
+    ? await activeAccount(db, context.actor, destinationId)
+    : type === "transfer"
+      ? await activeReadableAccount(db, destinationId)
+      : null;
   if (type === "transfer" && source.account_id === destination.account_id) {
     throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
   }
@@ -209,7 +224,7 @@ const resolveTransactionAccounts = async (db, context, { type, sourceId, destina
   }
   if (source) assertAccountDate(source, transactionDate);
   if (destination) assertAccountDate(destination, transactionDate);
-  return { source, destination, ownership: scopeFromAccountPair(source, destination) };
+  return { source, destination, ownership: ledgerOwnershipFromAccount(source || destination) };
 };
 
 const resolveTransactionCategory = async (db, payload, current, type) => {

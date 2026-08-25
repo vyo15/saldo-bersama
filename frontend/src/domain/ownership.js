@@ -9,13 +9,7 @@ export const filterByOwnership = (items, reference) => (
   reference ? items.filter((item) => hasSameOwnership(item, reference)) : items
 );
 
-export const canRepresentAccountTransfer = (left, right) => {
-  if (!left || !right) return false;
-  const leftKey = ownershipKey(left);
-  const rightKey = ownershipKey(right);
-  if (!leftKey.startsWith("personal:") || !rightKey.startsWith("personal:")) return true;
-  return leftKey === rightKey;
-};
+export const canRepresentAccountTransfer = (left, right) => Boolean(left && right);
 
 export const ownershipLabel = (entity) => {
   if (!ownershipKey(entity).startsWith("personal:")) return "bersama";

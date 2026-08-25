@@ -179,7 +179,7 @@ test("nominal, boolean, tanggal, dan formula injection divalidasi ketat", () => 
   assert.equal(safeSpreadsheetText("=SUM(A1:A2)"), "'=SUM(A1:A2)");
 });
 
-test("transfer shared/personal mengikuti owner personal tunggal dan menolak dua pemilik personal berbeda", () => {
+test("helper scope pair legacy menjaga satu owner personal untuk domain yang masih membutuhkannya", () => {
   assert.deepEqual(scopeFromAccountPair({ owner_scope: "shared", owner_user_id: null }, { owner_scope: "shared", owner_user_id: null }), { scope: "shared", owner_user_id: null });
   assert.deepEqual(scopeFromAccountPair({ owner_scope: "personal", owner_user_id: "u1" }, { owner_scope: "personal", owner_user_id: "u1" }), { scope: "personal", owner_user_id: "u1" });
   assert.deepEqual(scopeFromAccountPair({ owner_scope: "shared" }, { owner_scope: "personal", owner_user_id: "u1" }), { scope: "personal", owner_user_id: "u1" });

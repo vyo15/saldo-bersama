@@ -78,13 +78,17 @@ const goalMovementDraft = ({ goal, movementType, accounts, prefill }) => {
   return { goal, movement_type: movementType, amount: allowed > 0 ? String(allowed) : "", source_account_id: preferredSource?.account_id || "", destination_account_id: goal.account_id || "", transaction_date: todayInJakarta(), reason: "Kontribusi target" };
 };
 
-const useGoalMovement = ({ accounts, resource, refreshOverview, invalidate, notify }) => {
+const useGoalMovement = ({ accounts, user, resource, refreshOverview, invalidate, notify }) => {
   const movementMutation = useGuardedMutation();
   const [movement, setMovement] = useState(emptyMovement);
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
   const goalAccount = movement.goal ? accounts.find((account) => account.account_id === movement.goal.account_id) || null : null;
   const compatibleMovementAccounts = goalAccount
-    ? accounts.filter((account) => canRepresentAccountTransfer(account, goalAccount))
+    ? accounts.filter((account) => {
+      if (!canRepresentAccountTransfer(account, goalAccount)) return false;
+      if (movement.movement_type === "withdrawal" && user?.role === "member") return account.owner_scope === "shared";
+      return true;
+    })
     : accounts;
   const openMovement = useCallback((goal, movement_type, prefill = null) => {
     setMovement(goalMovementDraft({ goal, movementType: movement_type, accounts, prefill }));
@@ -230,7 +234,7 @@ const GoalsPage = () => {
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const shared = { resource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation({ ...shared, onCreated: () => { if (location.state?.setupFlow) setSetupCreated(true); } });
-  const movement = useGoalMovement({ ...shared, accounts: operableAccounts });
+  const movement = useGoalMovement({ ...shared, accounts: operableAccounts, user });
   const { openMovement } = movement;
   const lifecycle = useGoalLifecycle(shared);
   const attentionGoalId = String(attention?.attentionGoalId || "");

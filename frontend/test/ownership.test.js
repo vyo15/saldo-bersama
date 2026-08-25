@@ -16,7 +16,7 @@ test("ownership helper memisahkan ruang bersama dan personal", () => {
 });
 
 
-test("transfer account helper mengizinkan shared/personal tetapi menolak dua owner personal berbeda", () => {
+test("transfer account helper merepresentasikan transfer lintas ownership; rekening identik dijaga caller/backend", () => {
   const shared = { owner_scope: "shared", owner_user_id: null };
   const personalA = { owner_scope: "personal", owner_user_id: "u1" };
   const personalASame = { owner_scope: "personal", owner_user_id: "u1" };
@@ -24,7 +24,7 @@ test("transfer account helper mengizinkan shared/personal tetapi menolak dua own
   assert.equal(canRepresentAccountTransfer(shared, personalA), true);
   assert.equal(canRepresentAccountTransfer(personalA, shared), true);
   assert.equal(canRepresentAccountTransfer(personalA, personalASame), true);
-  assert.equal(canRepresentAccountTransfer(personalA, personalB), false);
+  assert.equal(canRepresentAccountTransfer(personalA, personalB), true);
   assert.equal(canRepresentAccountTransfer(null, shared), false);
 });
 

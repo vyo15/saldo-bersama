@@ -72,7 +72,7 @@ export const adjustEnvelopeAllocation = async (db, context) => {
   const current = await envelopePeriodForAdjustment(db, periodId);
   if (!current) throw appError("INVALID_ENVELOPE", "Alokasi Dana aktif tidak ditemukan.", 404);
   assertOwnedAccess(context.actor, current);
-  assertPlanningManageScope(context.actor, current);
+  assertPlanningManageScope(context.actor, current, { allowOwnedPersonal: true });
   assertEnvelopeAssigneeAccess(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const source = await accountWithAccess(db, context.actor, current.source_account_id);

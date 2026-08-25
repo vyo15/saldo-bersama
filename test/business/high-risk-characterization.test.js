@@ -230,8 +230,8 @@ test("transfer dan Target shared/personal fleksibel tanpa memberi Member akses k
       amount: 25_000,
       description: "Pindah dana shared ke personal owner",
     }));
-    assert.equal(ownerTransfer.scope, "personal");
-    assert.equal(ownerTransfer.owner_user_id, owner.user_id);
+    assert.equal(ownerTransfer.scope, "shared");
+    assert.equal(ownerTransfer.owner_user_id, "");
 
     const memberTransferContext = context(member, "transactions.create", {
       transaction_type: "transfer",
@@ -257,16 +257,18 @@ test("transfer dan Target shared/personal fleksibel tanpa memberi Member akses k
       })),
       (error) => error.code === "FORBIDDEN_ACCOUNT",
     );
-    await assert.rejects(
-      () => createTransaction(db, context(owner, "transactions.create", {
-        transaction_type: "transfer",
-        transaction_date: todayJakarta(),
-        source_account_id: "boundary-owner-personal",
-        destination_account_id: "boundary-member-personal",
-        amount: 10_000,
-      })),
-      (error) => error.code === "CROSS_OWNERSHIP_TRANSFER",
-    );
+    const ownerToMemberContext = context(owner, "transactions.create", {
+      transaction_type: "transfer",
+      transaction_date: todayJakarta(),
+      source_account_id: "boundary-owner-personal",
+      destination_account_id: "boundary-member-personal",
+      amount: 10_000,
+    });
+    ownerToMemberContext.requestId = "character:boundary:owner-to-member";
+    ownerToMemberContext.idempotencyKey = "character:boundary:owner-to-member";
+    const ownerToMember = await createTransaction(db, ownerToMemberContext);
+    assert.equal(ownerToMember.scope, "personal");
+    assert.equal(ownerToMember.owner_user_id, owner.user_id);
 
     const goal = await createGoal(db, context(owner, "goals.create", {
       name: "Target Bersama Boundary",

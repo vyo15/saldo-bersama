@@ -98,7 +98,7 @@ Versi aktif: `14`. API menolak operasi ketika schema belum dimigrasikan atau ver
 
 - `012_member_collaboration.sql` bersifat additive: menambah `users.photo_url`, `master_data_requests`, `transfer_requests`, index pending/status, lalu menaikkan `schema_version` ke 14. Migration tidak mengubah nominal, transaksi, saldo, account balance formula, atau audit append-only.
 - Member dapat mengajukan rekening/kategori baru tanpa mendapat capability create master langsung. Approval Administrator menjalankan create canonical di transaction yang sama; reject hanya mengubah lifecycle request.
-- Transfer shared → personal milik Member memakai `transfer_requests`; approval Administrator revalidates requester/rekening dan membuat satu transaksi canonical atomik. Transfer antar dua rekening personal dengan owner berbeda tetap tidak direpresentasikan dan ditolak.
+- Transfer shared → personal memakai `transfer_requests`; approval Administrator revalidates requester/rekening dan membuat satu transaksi canonical atomik. Transfer personal lintas pemilik direpresentasikan sebagai satu transaksi dengan `scope`/`owner_user_id` mengikuti rekening sumber/debit.
 - Logical backup v14 mencakup kedua tabel request dan `photo_url`; runtime v14 tetap menerima backup v3-v13 secara additive. Production migration tetap memerlukan backup verified schema v13, lalu `npm run db:migrate -- production` dan `npm run db:integrity -- production`.
 - Rollback cepat dengan DROP/DELETE tidak diizinkan. Gunakan forward-fix atau restore backup pra-migration ke database terisolasi, integrity check, lalu repoint setelah approval.
 

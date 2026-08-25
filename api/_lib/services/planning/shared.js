@@ -38,7 +38,7 @@ export const assertPlanningManageScope = (actor, row, { allowOwnedPersonal = fal
   throw appError(
     "SHARED_PLANNING_ONLY",
     allowOwnedPersonal
-      ? "Member hanya dapat mengelola Kebutuhan Bersama atau personal miliknya sendiri."
+      ? "Member hanya dapat mengelola perencanaan Bersama atau personal miliknya sendiri."
       : "Member hanya dapat mengelola perencanaan Bersama.",
     403,
   );

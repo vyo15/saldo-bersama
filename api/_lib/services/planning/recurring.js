@@ -93,7 +93,7 @@ export const createRecurringRule = async (db, context) => {
   if (!category || category.transaction_type !== kind) throw appError("INVALID_CATEGORY", "Kategori jadwal tidak valid.", 400);
   const account = await accountWithAccess(db, context.actor, p.default_account_id);
   const owned = ruleScopeFromAccount(account);
-  assertPlanningManageScope(context.actor, owned);
+  assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const start = dateValue(p.start_date || todayJakarta(), "Tanggal mulai");
   const end = p.end_date ? dateValue(p.end_date, "Tanggal akhir") : null;
   if (end && end < start) throw appError("INVALID_DATE_RANGE", "Tanggal akhir sebelum tanggal mulai.", 400);
@@ -131,7 +131,7 @@ export const updateRecurringRule = async (db, context) => {
   const p = context.payload || {};
   const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=?", [p.recurring_rule_id]);
   if (!current) throw appError("NOT_FOUND", "Aturan rutin tidak ditemukan.", 404);
-  assertPlanningManageScope(context.actor, current);
+  assertPlanningManageScope(context.actor, current, { allowOwnedPersonal: true });
   assertVersion(current, context.rowVersion ?? p.row_version);
   if (p.status !== undefined && String(p.status) !== "active") {
     throw appError("INVALID_STATUS", "Status aturan hanya dapat diubah melalui aksi arsip/pulihkan.", 400);
@@ -143,7 +143,7 @@ export const updateRecurringRule = async (db, context) => {
     db.one("SELECT * FROM categories WHERE category_id=? AND status='active'", [categoryId]),
   ]);
   const owned = ruleScopeFromAccount(account);
-  assertPlanningManageScope(context.actor, owned);
+  assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const next = buildUpdatedRecurringRule(current, p, account, owned, category, context.actor.user_id);
   assertRecurringUpdateShape(next);
   await assertRecurringIdentityChangeAllowed(db, current, next);
