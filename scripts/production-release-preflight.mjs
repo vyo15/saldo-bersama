@@ -1,17 +1,17 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkProductionEnvironment } from "./check-production-environment.mjs";
+import { checkProductionOperatorEnvironment } from "./production-runtime.mjs";
 import { checkProductionDatabaseProfile } from "./production-database-preflight.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const checkProductionReleasePreflight = async ({
   root = projectRoot,
-  environmentChecker = checkProductionEnvironment,
+  environmentChecker = checkProductionOperatorEnvironment,
   databaseChecker = checkProductionDatabaseProfile,
   logger = console,
 } = {}) => {
-  await environmentChecker({ cwd: root });
+  await environmentChecker({ cwd: root, logger });
   try {
     const schema = await databaseChecker({ root, logger: { log: () => {} } });
     logger.log?.(`Production release preflight: schema v${schema.version}; binding=${schema.databaseEnvironment}; read-only PASS`);
