@@ -9,6 +9,9 @@
 - Schema Production harus versi 14 dan `database_environment` harus cocok dengan `DATABASE_ENVIRONMENT` serta `VERCEL_ENV`; cross-binding dan Preview bercredential harus fail-closed.
 - OAuth production memverifikasi state, nonce, dan PKCE S256; session v2 hanya valid bila registry verifier hash, user aktif, Firebase UID binding, dan role canonical cocok; `ALLOWED_USERS_JSON` hanya bootstrap owner. Uji list/revoke own session, IDOR antar-user, revoke-all, role change/deactivation revoke, dan forced legacy re-login.
 - `OUTCOME_UNKNOWN` harus memakai idempotency key yang sama setelah reload tanpa menyimpan payload finansial di browser storage.
+- External idempotency wajib membedakan processing lease aktif dari reservation stale: aktif → `IDEMPOTENCY_IN_PROGRESS`; stale non-recovery-safe → durable `IDEMPOTENCY_OUTCOME_UNKNOWN`; stale recovery-safe hanya boleh resume dengan same key/fingerprint; reservation legacy tanpa timestamp state memakai `created_at` sebagai fallback lease tanpa migration.
+- Mode `allowInternalLinks` transaksi hanya boleh membuka `recurring_occurrence_id` dan `goal_id`; metadata server-authoritative lain tetap menghasilkan `RESERVED_TRANSACTION_FIELD`.
+- Apps Script bridge harus tetap menolak nonce yang sama walaupun CacheService di-evict; durable Script Properties + ScriptLock menjadi authority anti-replay, retention nonce wajib menutupi seluruh signature-skew window, state rusak harus fail-closed, dan gangguan CacheService tidak boleh menggantikan atau menggagalkan authority durable.
 - Scheduler configured tanpa heartbeat sukses atau heartbeat stale harus membuat health degraded; public `/api/health` tetap hanya status/timestamp/requestId.
 - Backup v14 tidak membawa session/binding/heartbeat maupun `rate_limit_buckets`; restore v3-v13 tetap kompatibel dan restore sukses mencabut semua session lama serta mengosongkan bucket throttle ephemeral.
 
@@ -22,7 +25,7 @@ Gunakan dua lapis bukti otomatis:
 
 UI/responsive/focus/navigation yang membutuhkan rendering browser diverifikasi melalui **manual device QA** sesuai scope. Automated `test:browser` telah dipensiunkan dari quality gate dan tidak boleh ditambahkan kembali tanpa approval perubahan tooling.
 
-Setiap bug/regression harus memiliki regression test yang gagal terhadap behavior lama bila praktis dan PASS setelah fix. Setelah test/source/docs final, `npm run verify` wajib dijalankan lagi dari tree yang sama. PASS dari tree sebelum edit terakhir tidak berlaku.
+Setiap bug/regression harus memiliki regression test yang gagal terhadap behavior lama bila praktis dan PASS setelah fix. Fixture periode berjalan tidak boleh memakai tanggal masa depan relatif terhadap hari pertama bulan; current-vs-historical performance contract harus diturunkan dari periode Jakarta aktual atau test clock terkontrol. Setelah test/source/docs final, `npm run verify` wajib dijalankan lagi dari tree yang sama. PASS dari tree sebelum edit terakhir tidak berlaku.
 
 ## Otomatis
 
@@ -36,7 +39,7 @@ npm run zip
 
 Untuk workflow harian, pengguna tidak perlu menjalankan gate manual sebelum setiap delivery: `git push origin main` memanggil managed pre-push yang membaca ref/SHA aktual, menolak dirty/non-fast-forward/mismatch, menjalankan full verification, lalu memeriksa profile + schema/binding Production secara **read-only** sebelum ref dikirim. Schema source yang lebih baru dari Production harus membatalkan push; push tidak boleh auto-migrate.
 
-`npm run verify` adalah full gate tunggal: source validation, lint/syntax, frontend regression, production build, build budget, dan seluruh backend regression dengan coverage. Backend suite tidak dijalankan dua kali, dan guard security/governance tetap tercakup oleh suite canonical. `npm run zip` memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full verification sebelum packaging. PASS menghasilkan `saldo-bersama-clean.zip`; failure tetap menghasilkan exit non-zero, tetapi bila source canonical masih valid dibuat `saldo-bersama-UNVERIFIED.zip` diagnostik dengan laporan tersanitasi staging-only. Archive UNVERIFIED tidak boleh dipakai untuk release/deploy. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` tetap dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung setelah `npm run verify`, sehingga full verification tidak diduplikasi.
+`npm run verify` adalah full gate tunggal: source validation, lint/syntax, frontend regression, production build, build budget, dan seluruh backend regression dengan coverage. Backend suite tidak dijalankan dua kali, dan guard security/governance tetap tercakup oleh suite canonical. `npm run zip` memastikan pre-push Auto Quality Guard tersedia lalu menjalankan full verification sebelum packaging. PASS menghasilkan `saldo-bersama-clean.zip`; verification failure exit non-zero dan tidak membuat archive baru. Clean ZIP verified yang sudah ada tidak boleh ditimpa oleh tree yang gagal, dan artifact `saldo-bersama-UNVERIFIED.zip` hanya merupakan input remediation historis dari workflow lama, bukan output workflow saat ini. `npm ci` dan `npm run dev` juga memastikan pre-push Auto Quality Guard lokal tersedia; `git push` tetap dibatalkan bila full verification gagal. Di CI, langkah archive memanggil packager langsung setelah `npm run verify`, sehingga full verification tidak diduplikasi.
 
 
 

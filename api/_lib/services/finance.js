@@ -3,7 +3,7 @@ import { TRANSACTION_TYPE_VALUES } from "../domainConstants.js";
 import { appendAudit } from "./audit.js";
 import { resolveTransactionCostShare, transactionCostSharePresentation } from "./costSharing.js";
 import { accountAllocatedRemaining, accountBalanceAsOf, firstNegativeBalance } from "./readModels.js";
-import { isReservedTransactionField } from "../transactionContract.js";
+import { firstForbiddenTransactionField } from "../transactionContract.js";
 import { actorCanOperateTransaction, transactionCapabilities, transferRouteMode } from "./transactionPolicy.js";
 import {
   appError, assertOwner, assertVersion, boundedInteger, dateValue, monthBounds, nowIso, periodKey, positiveInteger, publicRow,
@@ -13,8 +13,7 @@ import {
 const TRANSACTION_TYPES = new Set(TRANSACTION_TYPE_VALUES);
 
 const assertNoReservedFields = (payload, allowInternalLinks = false) => {
-  if (allowInternalLinks) return;
-  const field = Object.keys(payload || {}).find(isReservedTransactionField);
+  const field = firstForbiddenTransactionField(payload, { allowInternalLinks });
   if (field) throw appError("RESERVED_TRANSACTION_FIELD", `Field internal transaksi tidak boleh dikirim: ${field}.`, 400, { field });
 };
 

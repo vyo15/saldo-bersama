@@ -64,8 +64,8 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 ## 7. Artifact hygiene dan delivery
 
 - [ ] `npm run clean` (default dry-run) tidak menunjukkan protected path seperti `.git`, `.vercel`, `.env.local`, atau `node_modules`; penghapusan nyata hanya dengan `npm run clean -- --apply`.
-- [ ] Clean source dibuat dengan `npm run zip`, bukan ZIP manual seluruh workspace. PASS menghasilkan `saldo-bersama-clean.zip`; failure boleh menghasilkan `saldo-bersama-UNVERIFIED.zip` hanya untuk diagnosis dan command harus tetap non-zero.
-- [ ] Clean/UNVERIFIED ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, build/dist, coverage, cache, export/data privat, patch/diff, atau secret. `docs/UNVERIFIED_BUILD_REPORT.md` hanya boleh ada pada staging archive UNVERIFIED.
+- [ ] Clean source dibuat dengan `npm run zip`, bukan ZIP manual seluruh workspace. PASS menghasilkan `saldo-bersama-clean.zip` secara atomic; failure harus exit non-zero dan tidak membuat archive baru.
+- [ ] Clean ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, build/dist, coverage, cache, export/data privat, patch/diff, atau secret. Artifact/`docs/UNVERIFIED_BUILD_REPORT.md` dari workflow lama hanya boleh dipakai sebagai input diagnosis dan tidak dipertahankan pada source canonical hasil remediation.
 - [ ] Setelah `npm run verify`, `npm run zip`, atau pre-push selesai baik PASS maupun gagal, generated build/test artifact dibersihkan otomatis; dependency, `.env.local`, `.vercel`, dan repository Git tetap dipertahankan. Cache Vite di `frontend/node_modules/.vite*` boleh dibersihkan karena generated dan akan dibuat ulang.
 - [ ] `git status --short` ditinjau sebelum commit.
 - [ ] Delivery Git memakai `git push origin main` tanpa `--no-verify`; pre-push memverifikasi ref/SHA aktual + full gate, dan **Quality / check** server-side dipantau setelah push.

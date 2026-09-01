@@ -89,7 +89,7 @@ test("filter transaksi mendukung rekening, kategori, dan pencatat tanpa melewati
   try {
     await seed(db);
     const period = todayJakarta().slice(0, 7);
-    const date = `${period}-02`;
+    const date = `${period}-01`;
     await insertTransaction(db, { id: "expense-owner", date, type: "expense", amount: 50_000, source: "account-bank", category: "category-food" });
     await insertTransaction(db, { id: "expense-member", date, type: "expense", amount: 25_000, source: "account-cash", category: "category-food", creator: member.user_id });
 
@@ -118,7 +118,7 @@ test("anggaran Bersama dan personal menghitung transaksi sesuai ownership ledger
   try {
     const now = await seed(db);
     const period = todayJakarta().slice(0, 7);
-    const date = `${period}-02`;
+    const date = `${period}-01`;
     await db.execute(
       "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       ["account-member-budget", "Budget Member", "bank", "personal", member.user_id, 500_000, "2020-01-01", 0, "active", 1, owner.user_id, now, owner.user_id, now],
@@ -156,7 +156,7 @@ test("Kebutuhan yang terhubung Alokasi Dana hanya menghitung transaksi dari Alok
   try {
     const now = await seed(db);
     const period = todayJakarta().slice(0, 7);
-    const date = `${period}-02`;
+    const date = `${period}-01`;
     const [year, month] = period.split("-").map(Number);
     const periodStart = `${period}-01`;
     const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -195,12 +195,12 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
     const period = todayJakarta().slice(0, 7);
     const previous = periodOffset(period, -1);
     await insertTransaction(db, { id: "income-prev", date: `${previous}-03`, type: "income", amount: 1_000_000, destination: "account-bank", category: "category-salary" });
-    await insertTransaction(db, { id: "expense-current", date: `${period}-02`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food", creator: member.user_id });
+    await insertTransaction(db, { id: "expense-current", date: `${period}-01`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food", creator: member.user_id });
     await db.execute(
       "INSERT INTO accounts(account_id,name,account_type,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       ["account-member-personal", "Tabungan pasangan", "bank", "personal", member.user_id, 750_000, "2020-01-01", 0, "active", 1, owner.user_id, now, owner.user_id, now],
     );
-    await insertTransaction(db, { id: "expense-personal", date: `${period}-03`, type: "expense", amount: 35_000, source: "account-member-personal", category: "category-food", creator: member.user_id });
+    await insertTransaction(db, { id: "expense-personal", date: `${period}-01`, type: "expense", amount: 35_000, source: "account-member-personal", category: "category-food", creator: member.user_id });
 
     await db.execute(
       "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -248,7 +248,7 @@ test("notifikasi aksi penting idempotent untuk budget dan transaksi belum dialok
   try {
     const now = await seed(db);
     const period = todayJakarta().slice(0, 7);
-    await insertTransaction(db, { id: "expense-alert", date: `${period}-02`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food" });
+    await insertTransaction(db, { id: "expense-alert", date: `${period}-01`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food" });
     await db.execute(
       "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       ["budget-alert", period, "category-food", null, "Makan", 100_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
@@ -320,7 +320,7 @@ test("preferensi notifikasi default aktif, per pengguna, row-version guarded, da
       "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       ["budget-preference", period, "category-food", null, "Makan", 100_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
     );
-    await insertTransaction(db, { id: "expense-preference", date: `${period}-02`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food" });
+    await insertTransaction(db, { id: "expense-preference", date: `${period}-01`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food" });
     await queueActionableNotifications(db);
     const budgetRecipients = await db.all("SELECT user_id FROM notification_queue WHERE notification_type='budget_threshold' ORDER BY user_id");
     assert.deepEqual(budgetRecipients.map((item) => item.user_id), [member.user_id], "mute owner tidak boleh mematikan alert pasangan");

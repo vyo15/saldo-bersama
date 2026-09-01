@@ -6,6 +6,7 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import styles from "../../components/common/RequestPanel.module.css";
 
 const statusLabel = (status) => ({ pending: "Menunggu", approved: "Disetujui", rejected: "Ditolak" }[status] || status);
+const statusClass = (status) => ({ pending: styles.statusPending, approved: styles.statusApproved, rejected: styles.statusRejected }[status] || "");
 const displayAccount = (lookup, accountId, fallback) => lookup[accountId] ? accountDisplayLabel(lookup[accountId]) : fallback;
 
 const TransferRequestCard = ({ request, lookup, ownerMode, busyId, onDecision }) => {
@@ -16,7 +17,7 @@ const TransferRequestCard = ({ request, lookup, ownerMode, busyId, onDecision })
   return <article className={styles.item}>
     <div className={styles.top}>
       <div><strong><Money value={Number(payload.amount || 0)} /></strong><small>{request.requester_name || request.requester_email || "Saya"}</small></div>
-      <span className={styles.status}>{statusLabel(request.status)}</span>
+      <span className={`${styles.status} ${statusClass(request.status)}`}>{statusLabel(request.status)}</span>
     </div>
     <div className={styles.meta}>{fromLabel} → {toLabel} · {payload.transaction_date || ""}</div>
     {payload.description ? <small className={styles.meta}>{payload.description}</small> : null}

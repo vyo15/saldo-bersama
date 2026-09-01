@@ -96,6 +96,17 @@ test("komponen memakai semantic foreground dan reduced motion", () => {
   assert.match(componentSource, /:focus-visible/);
 });
 
+test("badge status pengajuan memakai token semantic lintas light dan dark theme", async () => {
+  const requestPanel = await readFile(new URL("../src/components/common/RequestPanel.module.css", import.meta.url), "utf8");
+  assert.match(requestPanel, /\.statusPending[^}]*color:\s*var\(--warning/);
+  assert.match(requestPanel, /\.statusPending[^}]*background:\s*var\(--warning-soft/);
+  assert.match(requestPanel, /\.statusApproved[^}]*color:\s*var\(--positive/);
+  assert.match(requestPanel, /\.statusApproved[^}]*background:\s*var\(--positive-soft/);
+  assert.match(requestPanel, /\.statusRejected[^}]*color:\s*var\(--negative/);
+  assert.match(requestPanel, /\.statusRejected[^}]*background:\s*var\(--negative-soft/);
+  assert.doesNotMatch(requestPanel, /#8a5a00|#166534|#991b1b/i);
+});
+
 test("density mobile memakai token readable dan tidak mengecilkan kontrol pada layar sempit", async () => {
   const [tokens, responsive, reset, pages, dashboard, loginStyles] = await Promise.all([
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),

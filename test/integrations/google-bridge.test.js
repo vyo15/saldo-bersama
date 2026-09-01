@@ -39,7 +39,12 @@ const loadBridge = async () => {
       Charset: { UTF_8: "utf8" },
       computeHmacSha256Signature(message, secret) { return [...crypto.createHmac("sha256", secret).update(message).digest()].map((byte) => byte > 127 ? byte - 256 : byte); },
     },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: (key) => properties.get(key) || "" }) },
+    PropertiesService: {
+      getScriptProperties: () => ({
+        getProperty: (key) => properties.get(key) || "",
+        setProperty: (key, value) => properties.set(key, String(value)),
+      }),
+    },
     CacheService: { getScriptCache: () => ({ get: (key) => cache.get(key) || null, put: (key, value) => cache.set(key, value) }) },
     ScriptApp: { getProjectTriggers: () => [{ getHandlerFunction: () => "runScheduledJobs" }] },
     SpreadsheetApp: {

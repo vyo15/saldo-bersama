@@ -3,8 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 import {
-  buildVerificationFailureReport,
-  sanitizeVerificationOutput,
+  createVerifiedCleanArchive,
 } from "../../scripts/verified-clean-archive.mjs";
 
 import {
@@ -114,15 +113,17 @@ test("zip lokal dan pre-push memakai full verification canonical", async () => {
     readFile(new URL("../../scripts/start-vite-dev.mjs", import.meta.url), "utf8"),
   ]);
   const packageJson = JSON.parse(packageText);
+
   assert.equal(packageJson.scripts.zip, "node scripts/verified-clean-archive.mjs");
   assert.equal(packageJson.scripts.postinstall, "node scripts/install-git-hooks.mjs");
-  assert.match(zipWrapper, /installGitHooks\(\)/);
-  assert.match(zipWrapper, /runVerificationWithCleanup\(/);
-  assert.match(zipWrapper, /createCleanArchive\(args\)/);
-  assert.match(zipWrapper, /saldo-bersama-UNVERIFIED\.zip/);
-  assert.match(zipWrapper, /UNVERIFIED_BUILD_REPORT\.md/);
-  assert.match(zipWrapper, /verified:\s*false/);
+  assert.match(zipWrapper, /installGitHooks/);
+  assert.match(zipWrapper, /runVerificationWithCleanup/);
+  assert.match(zipWrapper, /createCleanArchive/);
+  assert.doesNotMatch(zipWrapper, /saldo-bersama-UNVERIFIED\.zip/);
+  assert.doesNotMatch(zipWrapper, /UNVERIFIED_BUILD_REPORT\.md/);
+  assert.doesNotMatch(zipWrapper, /verified:\s*false/);
   assert.match(zipWrapper, /process\.exitCode/);
+
   assert.match(prePush, /verify = runVerificationWithCleanup/);
   assert.match(prePush, /await verify\(\)/);
   assert.match(prePush, /await releasePreflight\(\)/);
@@ -133,25 +134,52 @@ test("zip lokal dan pre-push memakai full verification canonical", async () => {
   assert.match(devStart, /installGitHooks\(\{ projectRoot \}\)/);
 });
 
-test("ZIP unverified menandai failure dan menyamarkan credential pada laporan staging", () => {
-  process.env.TEST_SESSION_SECRET = "super-secret-session-value";
-  try {
-    const sanitized = sanitizeVerificationOutput("Bearer abc.def token=visible super-secret-session-value");
-    assert.doesNotMatch(sanitized, /abc\.def|visible|super-secret-session-value/);
-    assert.match(sanitized, /\[REDACTED\]|\[REDACTED_ENV\]/);
+test("zip clean-only tidak membuat archive baru ketika verification gagal", async () => {
+  const order = [];
+  let archiveCalls = 0;
+  const verificationError = Object.assign(new Error("lint gagal"), {
+    code: "VERIFY_STEP_FAILED",
+    step: "lint",
+    exitCode: 7,
+  });
 
-    const report = buildVerificationFailureReport({
-      error: Object.assign(new Error("lint gagal"), { code: "VERIFY_STEP_FAILED", step: "lint", exitCode: 1 }),
-      transcript: "eslint: CompactNotice is not defined",
-      archiveName: "saldo-bersama-UNVERIFIED.zip",
-    });
-    assert.match(report, /STATUS: FAILED \/ UNVERIFIED/);
-    assert.match(report, /Verification step: `lint`/);
-    assert.match(report, /CompactNotice is not defined/);
-    assert.match(report, /bukan release\/deployment artifact/);
-  } finally {
-    delete process.env.TEST_SESSION_SECRET;
-  }
+  await assert.rejects(
+    () => createVerifiedCleanArchive(["../saldo-bersama-clean.zip"], {
+      installHooks: async () => { order.push("hooks"); },
+      verify: async () => {
+        order.push("verify");
+        throw verificationError;
+      },
+      createArchive: async () => {
+        archiveCalls += 1;
+        order.push("archive");
+        return { output: "should-not-exist.zip" };
+      },
+    }),
+    (error) => error === verificationError,
+  );
+
+  assert.deepEqual(order, ["hooks", "verify"]);
+  assert.equal(archiveCalls, 0);
+});
+
+test("zip clean-only membuat archive hanya setelah verification PASS", async () => {
+  const order = [];
+
+  const result = await createVerifiedCleanArchive(["../saldo-bersama-clean.zip"], {
+    installHooks: async () => { order.push("hooks"); },
+    verify: async () => { order.push("verify"); },
+    createArchive: async (args) => {
+      order.push("archive");
+      assert.deepEqual(args, ["../saldo-bersama-clean.zip"]);
+      return { output: "../saldo-bersama-clean.zip", stagedFileCount: 123, size: 456 };
+    },
+  });
+
+  assert.deepEqual(order, ["hooks", "verify", "archive"]);
+  assert.equal(result.verified, true);
+  assert.equal(result.verificationError, null);
+  assert.equal(result.output, "../saldo-bersama-clean.zip");
 });
 
 test("build budget memberi warning headroom sebelum route benar-benar melewati batas", async () => {

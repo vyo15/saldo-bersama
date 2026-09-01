@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { todayJakarta } from "../../api/_lib/services/core.js";
 
 const source = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 
@@ -165,11 +166,15 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
     import("../../api/_lib/services/reporting/dashboard.js"),
   ]);
   const actor = { user_id: "u1", role: "owner" };
+  const currentPeriod = todayJakarta().slice(0, 7);
+  const [currentYear, currentMonth] = currentPeriod.split("-").map(Number);
+  const historicalDate = new Date(Date.UTC(currentYear, currentMonth - 2, 1));
+  const historicalPeriod = `${historicalDate.getUTCFullYear()}-${String(historicalDate.getUTCMonth() + 1).padStart(2, "0")}`;
   const transactionRows = Array.from({ length: 20 }, (_, index) => ({
-    transaction_id: `t${index}`, transaction_date: "2026-08-10", transaction_type: "expense",
+    transaction_id: `t${index}`, transaction_date: `${currentPeriod}-01`, transaction_type: "expense",
     source_account_id: "a1", destination_account_id: null, category_id: "c1", amount: 1000,
     description: "", merchant: "", scope: "shared", owner_user_id: null, status: "active",
-    created_by: "u1", created_at: `2026-08-10T00:00:${String(index).padStart(2, "0")}Z`,
+    created_by: "u1", created_at: `${currentPeriod}-01T00:00:${String(index).padStart(2, "0")}Z`,
     recurring_occurrence_id: null, goal_id: null, envelope_period_id: null,
   }));
   let transactionNetworkReads = 0;
@@ -187,7 +192,7 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
       });
     },
   };
-  const result = await listTransactions(transactionDb, { actor, payload: { period: "2026-08", limit: 20, offset: 0 } });
+  const result = await listTransactions(transactionDb, { actor, payload: { period: currentPeriod, limit: 20, offset: 0 } });
   assert.equal(result.items.length, 20);
   assert.equal(transactionNetworkReads, 1, "enam statement transaksi harus dikirim dalam satu batch");
   assert.equal(transactionStatements, 6);
@@ -206,22 +211,22 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
     };
   };
   const dashboardDb = makeDashboardDb();
-  await dashboardOverview(dashboardDb, { actor, payload: { period: "2026-08" } });
+  await dashboardOverview(dashboardDb, { actor, payload: { period: currentPeriod } });
   assert.equal(dashboardDb.metrics.network, 1, "dashboard overview harus satu pipeline batch pada adapter yang mendukung batch");
 
   const initialDb = makeDashboardDb();
-  await appInitialState(initialDb, { actor, payload: { period: "2026-08" } });
+  await appInitialState(initialDb, { actor, payload: { period: currentPeriod } });
   assert.equal(initialDb.metrics.network, 1, "initial state menggabungkan bootstrap dan dashboard ke satu pipeline batch");
   assert.equal(initialDb.metrics.accountBalanceStatements, 2, "current accounts bootstrap direuse; initial state hanya membaca current + opening balance sekali masing-masing");
 
   const historicalInitialDb = makeDashboardDb();
-  await appInitialState(historicalInitialDb, { actor, payload: { period: "2026-07" } });
+  await appInitialState(historicalInitialDb, { actor, payload: { period: historicalPeriod } });
   assert.equal(historicalInitialDb.metrics.network, 1, "initial state historis tetap satu pipeline batch");
   assert.equal(historicalInitialDb.metrics.accountBalanceStatements, 3, "periode historis tetap membaca current bootstrap, cutoff historis, dan opening balance secara terpisah di batch yang sama");
 
   const reportDb = makeDashboardDb();
   const { monthlyReport } = await import("../../api/_lib/services/reporting/dashboard.js");
-  await monthlyReport(reportDb, { actor, payload: { period: "2026-08", trend_months: 12 } });
+  await monthlyReport(reportDb, { actor, payload: { period: currentPeriod, trend_months: 12 } });
   assert.equal(reportDb.metrics.network, 1, "laporan bulanan menggabungkan dashboard, breakdown, dan trend ke satu pipeline batch");
 });
 

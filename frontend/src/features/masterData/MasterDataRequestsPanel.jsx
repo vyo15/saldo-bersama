@@ -5,6 +5,7 @@ import Money from "../../components/common/Money.jsx";
 import styles from "../../components/common/RequestPanel.module.css";
 
 const statusLabel = (status) => ({ pending: "Menunggu", approved: "Disetujui", rejected: "Ditolak" }[status] || status);
+const statusClass = (status) => ({ pending: styles.statusPending, approved: styles.statusApproved, rejected: styles.statusRejected }[status] || "");
 
 const requestTitle = (request) => {
   const payload = request.payload || {};
@@ -27,7 +28,7 @@ const MasterDataRequestsPanel = ({ items = [], ownerMode = false, title, onAppro
   return <section className={styles.panel} aria-labelledby="master-data-requests-title">
     <div className={styles.heading}><div><h2 id="master-data-requests-title">{title || (ownerMode ? "Pengajuan menunggu persetujuan" : "Pengajuan saya")}</h2><p>{ownerMode ? "Periksa sebelum data menjadi aktif dan memengaruhi pilihan aplikasi." : "Pengajuan belum menjadi data aktif sebelum Administrator menyetujuinya."}</p></div></div>
     {visible.length ? <div className={styles.list}>{visible.map((request) => <article className={styles.item} key={request.request_id}>
-      <div className={styles.top}><div><strong>{requestTitle(request)}</strong><small>{request.requester_name || request.requester_email || "Saya"}</small></div><span className={styles.status}>{statusLabel(request.status)}</span></div>
+      <div className={styles.top}><div><strong>{requestTitle(request)}</strong><small>{request.requester_name || request.requester_email || "Saya"}</small></div><span className={`${styles.status} ${statusClass(request.status)}`}>{statusLabel(request.status)}</span></div>
       <div className={styles.meta}>{requestMeta(request)}</div>
       {request.review_reason ? <small className={styles.meta}>Catatan: {request.review_reason}</small> : null}
       {ownerMode && request.status === "pending" ? <div className={styles.actions}><Button type="button" variant="primary" disabled={Boolean(busyId)} loading={busyId === request.request_id} onClick={() => onApprove(request)}>Setujui</Button><Button type="button" disabled={Boolean(busyId)} onClick={() => setRejectTarget(request)}>Tolak</Button></div> : null}

@@ -118,6 +118,16 @@ test("PR template tetap tersedia untuk review opsional tanpa mengganti direct ma
   assert.match(template, /git push origin main/);
 });
 
+test("current status dan QA packaging mengikuti clean-only archive workflow", () => {
+  const projectStatus = read("docs/PROJECT_STATUS.md");
+  const qaChecklist = read("docs/QA_CHECKLIST.md");
+  for (const source of [projectStatus, qaChecklist]) {
+    assert.match(source, /npm run zip/);
+    assert.match(source, /tidak membuat archive baru/i);
+    assert.doesNotMatch(source, /failure boleh menghasilkan `saldo-bersama-UNVERIFIED\.zip`/i);
+  }
+});
+
 test("documentation index exposes product boundaries and guarded delivery workflow", () => {
   const index = read("docs/INDEX.md");
   assert.match(index, /docs\/tasks\/archive\//);

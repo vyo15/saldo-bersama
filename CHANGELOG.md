@@ -1,3 +1,18 @@
+## 1 September 2026 - Audit remediation contract recovery dan clean-only governance
+- Memulihkan `docs/API_CONTRACT.md`, `docs/TEST_PLAN.md`, dan `CHANGELOG.md` dari histori Git lokal setelah source ZIP membawa versi yang terpotong; contract terbaru kemudian di-merge kembali dan divalidasi terhadap registry/policy/test aktual, bukan mengganti behavior runtime dengan dokumentasi lama.
+- Menyelaraskan test harness Google bridge dengan durable Script Properties anti-replay tanpa mengembalikan CacheService sebagai authority nonce.
+- Menegaskan production canonical OAuth entry `/api/auth/google/start` dan menyinkronkan `PROJECT_STATUS`/`QA_CHECKLIST`/`TEST_PLAN` dengan workflow `npm run zip` clean-only yang fail-closed tanpa membuat artifact UNVERIFIED baru.
+- Menambah governance regression agar dokumentasi packaging tidak kembali drift ke workflow UNVERIFIED lama.
+- Membuat CacheService anti-replay benar-benar best-effort setelah durable Script Properties menjadi authority, sehingga gangguan cache tidak mengonsumsi nonce lalu menggagalkan request yang sebenarnya valid; replay tetap ditolak oleh state durable.
+- Menyelaraskan badge status pengajuan dengan token semantic warning/positive/negative agar kontras tetap mengikuti light/dark theme tanpa menjadikan warna sebagai satu-satunya penanda status.
+
+## 1 September 2026 - Audit remediation data-integrity dan replay hardening
+- Menutup crash-window external idempotency tanpa migration schema: state `processing` kini membawa timestamp lease 15 menit di envelope idempotency existing; reservation stale non-recovery-safe berubah fail-closed menjadi `OUTCOME_UNKNOWN`, sedangkan action recovery-safe hanya boleh resume dengan same key/fingerprint.
+- Mempersempit `allowInternalLinks` transaksi agar hanya `recurring_occurrence_id` dan `goal_id` yang boleh masuk jalur internal; `scope`, ownership, idempotency, actor/timestamp, status, cancellation metadata, dan cost-share authority tetap ditolak sebagai reserved field.
+- Mengganti anti-replay Apps Script yang cache-only menjadi durable nonce registry berbasis Script Properties di bawah ScriptLock, dengan HMAC-hashed nonce, retention yang menutupi seluruh signature-skew window, TTL cleanup, capacity guard, dan CacheService hanya sebagai fast rejection.
+- Menghilangkan fixture current-month yang dapat berada di masa depan pada tanggal 1 serta asumsi hardcoded Agustus sebagai current period pada performance contract.
+- Menambah regression behavior untuk stale processing idempotency, reserved internal field, replay setelah cache eviction, serta replay pada edge future-clock-skew; canonical source packager tidak diubah karena sudah mengecualikan/audit `.env.local` dan file forbidden secara fail-closed.
+
 ## 26 Agustus 2026 - Capability authority final, dead-end UX, dan remediation UNVERIFIED
 
 - Menghapus helper authorization Kebutuhan frontend yang stale dan menjadikan capability Alokasi canonical backend dipakai konsisten oleh `envelopes.list` serta Dashboard, termasuk guard assignee untuk setup checklist dan pemilihan Alokasi transaksi/Jadwal Rutin.
