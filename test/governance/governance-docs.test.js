@@ -421,9 +421,10 @@ test("current docs track branded desktop/mobile server OAuth production, runtime
 test("every canonical product requirement is tracked in the implementation matrix", () => {
   const requirements = read("docs/product/PRODUCT_REQUIREMENTS.md");
   const implementationMatrix = read("docs/IMPLEMENTATION_MATRIX.md");
-  const requirementIds = [...new Set(requirements.match(/\bREQ-[A-Z]+-\d{2,3}\b/g) ?? [])].sort();
+  const requirementIds = [...new Set(requirements.match(/\bREQ-[A-Z]+-\d{2,3}[A-Z]?\b/g) ?? [])].sort();
 
   assert.ok(requirementIds.length >= 17, "Canonical product requirement IDs were not found");
+  assert.ok(requirementIds.includes("REQ-PROD-02A"), "Suffixed requirement IDs must be tracked");
   requirementIds.forEach((requirementId) => {
     assert.ok(
       implementationMatrix.includes(`\`${requirementId}\``),
