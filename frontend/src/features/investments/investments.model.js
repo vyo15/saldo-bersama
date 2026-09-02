@@ -30,10 +30,16 @@ const requiredDateError = (value, label, today = todayJakarta()) => {
 };
 
 export const selectInvestmentInstruments = (instruments = [], holdings = [], mode = "buy") => {
-  const heldIds = new Set(holdings.map((item) => item.instrument_id));
+  const holdingsById = new Map(holdings.map((item) => [item.instrument_id, item]));
+  const heldIds = new Set(holdingsById.keys());
   if (mode === "buy") return instruments.filter((item) => item.status === "active");
-  if (mode === "sell") return instruments.filter((item) => heldIds.has(item.instrument_id));
-  if (["price", "reconcile"].includes(mode)) return instruments.filter((item) => item.status === "active" || heldIds.has(item.instrument_id));
+  if (mode === "sell") return instruments.filter((item) => {
+    const holding = holdingsById.get(item.instrument_id);
+    const lotSize = Number(item.lot_size || holding?.lot_size || 100);
+    return holding && Number(holding.shares || 0) >= lotSize;
+  });
+  if (mode === "price") return instruments.filter((item) => heldIds.has(item.instrument_id));
+  if (mode === "reconcile") return instruments.filter((item) => item.status === "active" || heldIds.has(item.instrument_id));
   return instruments;
 };
 

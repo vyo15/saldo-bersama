@@ -1,3 +1,8 @@
+## 2 September 2026 - Audit 100/100 Investasi sebagai pencatatan manual
+- Menegaskan seluruh UX `/investasi` sebagai pencatatan transaksi yang **sudah dilakukan** di Ajaib/broker lain: CTA menjadi Catat beli/Catat jual/Perbarui harga, modal menyatakan Saldo Bersama tidak mengirim order, setup tidak memakai bahasa koneksi akun, dan harga/komposisi diberi label sebagai nilai tercatat bukan market feed live.
+- Menambah regression anti-scope agar UI tidak bergeser menjadi broker client (login/kredensial/API broker, auto-sync, live price, market movers, atau auto-trading) tanpa requirement/ADR baru.
+- Menutup dua temuan audit baru: Member tanpa instrumen aktif tidak lagi mendapat CTA Tambah instrumen yang Administrator-only, dan holding akibat correction yang tidak genap satu lot ditampilkan sebagai lot pecahan alih-alih dibulatkan turun.
+
 ## 2 September 2026 - Redesign Investasi manual modern dan current-state safe
 - Mendesain ulang route `/investasi` dengan hero total nilai, Cash RDN/nilai saham/modal/P&L, quick action capability-driven, holding cards, komposisi current-state, dan recent activity yang lebih mudah dipindai pada desktop/mobile.
 - Mempertahankan seluruh mutation/authorization existing: Beli/Jual/Harga/Cocokkan tetap memakai dialog dan API canonical, Koreksi tetap Administrator-only, dan frontend tidak menjadi authority finansial.

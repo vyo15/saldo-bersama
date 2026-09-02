@@ -8,7 +8,7 @@ import { createInvestmentPortfolio, invalidateInvestmentReads, upsertInvestmentI
 import { validateInvestmentSetup } from "./investments.model.js";
 import styles from "./InvestmentsPage.module.css";
 
-const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, changeBroker }) => <>
+const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, changeBroker, locked }) => <>
   <InvestmentFormField id="investment-broker" label="Broker" required error={fieldErrors.broker}>
     <select value={form.broker} onChange={(event) => changeBroker(event.target.value)}>
       <option value="ajaib">Ajaib</option>
@@ -27,7 +27,7 @@ const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, chan
   {accounts.length === 0 ? (
     <div className={styles.setupHint} role="note">
       <span>Belum ada rekening Investasi aktif yang dapat dipakai sebagai RDN.</span>
-      <Link className={styles.setupLink} to="/rekening">Buka Rekening dan buat RDN</Link>
+      {locked ? <span className={styles.setupLink} aria-disabled="true">Buka Rekening dan buat RDN</span> : <Link className={styles.setupLink} to="/rekening">Buka Rekening dan buat RDN</Link>}
     </div>
   ) : null}
 </>;
@@ -44,12 +44,12 @@ const InstrumentSetupFields = ({ form, fieldErrors, onFieldChange }) => <>
 const SetupFields = ({ kind, setKind, owner, form, accounts, fieldErrors, onFieldChange, changeBroker, clearMessages, disabled }) => <fieldset className={styles.intentFieldset} disabled={disabled}>
   <InvestmentFormField id="investment-setup-kind" label="Yang ingin ditambahkan">
     <select value={kind} onChange={(event) => { setKind(event.target.value); clearMessages(); }}>
-      <option value="portfolio">Portfolio broker</option>
+      <option value="portfolio">Catatan portfolio broker</option>
       {owner ? <option value="instrument">Instrumen saham</option> : null}
     </select>
   </InvestmentFormField>
   {kind === "portfolio"
-    ? <PortfolioSetupFields form={form} accounts={accounts} fieldErrors={fieldErrors} onFieldChange={onFieldChange} changeBroker={changeBroker} />
+    ? <PortfolioSetupFields form={form} accounts={accounts} fieldErrors={fieldErrors} onFieldChange={onFieldChange} changeBroker={changeBroker} locked={disabled} />
     : <InstrumentSetupFields form={form} fieldErrors={fieldErrors} onFieldChange={onFieldChange} />}
 </fieldset>;
 
@@ -75,7 +75,7 @@ const InvestmentSetupDialog = ({ accounts, owner, onClose, onSuccess }) => {
     setError("");
   };
   const changeBroker = (broker) => {
-    setForm((current) => ({ ...current, broker, name: current.name === "Ajaib" || current.name === "Portfolio broker" ? (broker === "ajaib" ? "Ajaib" : "Portfolio broker") : current.name }));
+    setForm((current) => ({ ...current, broker, name: current.name === "Ajaib" || current.name === "Portfolio broker" || current.name === "Catatan portfolio" ? (broker === "ajaib" ? "Ajaib" : "Catatan portfolio") : current.name }));
     setFieldErrors((current) => current.broker ? Object.fromEntries(Object.entries(current).filter(([name]) => name !== "broker")) : current);
   };
   const focusFirstInvalid = () => globalThis.requestAnimationFrame?.(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
@@ -96,7 +96,7 @@ const InvestmentSetupDialog = ({ accounts, owner, onClose, onSuccess }) => {
   };
 
   return (
-    <Modal open title="Siapkan investasi" description="Hubungkan rekening RDN ke portfolio broker atau tambahkan instrumen saham yang akan dicatat manual." onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={<Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!canSubmit}>{outcomeUnknown ? "Coba lagi data yang sama" : "Simpan"}</Button>}>
+    <Modal open title="Siapkan catatan investasi" description="Pilih rekening RDN untuk catatan portfolio Ajaib/broker lain atau tambahkan instrumen saham. Tidak ada koneksi API maupun sinkronisasi broker." onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={<Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!canSubmit}>{outcomeUnknown ? "Coba lagi data yang sama" : "Simpan catatan"}</Button>}>
       <form ref={formRef} id="investment-setup-form" className={styles.form} onSubmit={submit} noValidate>
         {error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{error}</div> : null}
         {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data setup dikunci sementara. Jangan ubah jenis setup, broker, RDN, ticker, atau nilai lain. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa membuat data ganda.</p> : null}

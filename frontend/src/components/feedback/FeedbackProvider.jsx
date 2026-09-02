@@ -60,11 +60,11 @@ const ACTION_UNKNOWN_DETAILS = Object.freeze({
 const ACTION_LABELS = Object.freeze({
   "accounts.requestCreate": ["Mengirim pengajuan rekening...", "Pengajuan rekening dikirim"],
   "categories.requestCreate": ["Mengirim pengajuan kategori...", "Pengajuan kategori dikirim"],
-  "investments.portfolios.create": ["Menyiapkan portfolio investasi...", "Portfolio investasi berhasil disiapkan"],
+  "investments.portfolios.create": ["Menyimpan catatan portfolio investasi...", "Catatan portfolio investasi berhasil disimpan"],
   "investments.instruments.upsert": ["Menyimpan instrumen investasi...", "Instrumen investasi berhasil disimpan"],
   "investments.trades.buy": ["Mencatat pembelian saham...", "Pembelian saham berhasil dicatat"],
   "investments.trades.sell": ["Mencatat penjualan saham...", "Penjualan saham berhasil dicatat"],
-  "investments.valuations.update": ["Memperbarui harga saham...", "Harga saham berhasil diperbarui"],
+  "investments.valuations.update": ["Menyimpan harga manual saham...", "Harga manual saham berhasil disimpan"],
   "investments.reconciliations.create": ["Mencocokkan portfolio...", "Pencocokan portfolio berhasil disimpan"],
   "investments.corrections.create": ["Mencatat koreksi investasi...", "Koreksi investasi berhasil dicatat"],
   "masterDataRequests.review": ["Menyimpan keputusan persetujuan...", "Keputusan persetujuan berhasil disimpan"],

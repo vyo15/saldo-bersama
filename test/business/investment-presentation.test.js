@@ -11,8 +11,11 @@ const holdings = [{ instrument_id: "inactive-held", shares: 100 }];
 test("investment instrument options tidak menutup capability sell/reconcile untuk holding inactive", () => {
   assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "buy").map((item) => item.instrument_id), ["active"]);
   assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "sell").map((item) => item.instrument_id), ["inactive-held"]);
-  assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "price").map((item) => item.instrument_id), ["active", "inactive-held"]);
+  assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "price").map((item) => item.instrument_id), ["inactive-held"]);
   assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "reconcile").map((item) => item.instrument_id), ["active", "inactive-held"]);
+  const oddLotHolding = [{ instrument_id: "inactive-held", shares: 50, lot_size: 100 }];
+  assert.deepEqual(selectInvestmentInstruments(instruments, oddLotHolding, "sell"), []);
+  assert.deepEqual(selectInvestmentInstruments(instruments, oddLotHolding, "price").map((item) => item.instrument_id), ["inactive-held"]);
 });
 
 

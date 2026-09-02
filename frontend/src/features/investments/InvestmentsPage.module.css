@@ -237,8 +237,9 @@
   box-shadow: var(--shadow-primary-control);
 }
 
-.quickActionSecondary {
-  background: var(--surface-soft);
+.advancedActions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .readOnlyNote,
@@ -276,6 +277,11 @@
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
   border-radius: var(--radius-sm);
+}
+
+.setupLink[aria-disabled="true"] {
+  color: var(--text-muted);
+  text-decoration: none;
 }
 
 .composition,
@@ -653,10 +659,12 @@
     padding-inline: var(--space-1);
   }
 
-  .quickActionSecondary {
-    grid-column: 1 / -1;
-    min-height: var(--mobile-control-height);
-    flex-direction: row;
+  .advancedActions {
+    justify-content: stretch;
+  }
+
+  .advancedActions > button {
+    width: 100%;
   }
 
   .actionGuidance,
@@ -740,9 +748,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .quickActionSecondary {
-    grid-column: 1 / -1;
-  }
 
   .holdingMetrics {
     grid-template-columns: 1fr;

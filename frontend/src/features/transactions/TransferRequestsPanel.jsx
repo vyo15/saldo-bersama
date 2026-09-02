@@ -2,6 +2,7 @@ import { useState } from "react";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Money from "../../components/common/Money.jsx";
+import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import styles from "../../components/common/RequestPanel.module.css";
 
@@ -19,7 +20,7 @@ const TransferRequestCard = ({ request, lookup, ownerMode, busyId, locked, onDec
       <div><strong><Money value={Number(payload.amount || 0)} /></strong><small>{request.requester_name || request.requester_email || "Saya"}</small></div>
       <span className={`${styles.status} ${statusClass(request.status)}`}>{statusLabel(request.status)}</span>
     </div>
-    <div className={styles.meta}>{fromLabel} → {toLabel} · {payload.transaction_date || ""}</div>
+    <div className={styles.meta}>{fromLabel} → {toLabel} · {formatDateLongIndonesia(payload.transaction_date) || payload.transaction_date || ""}</div>
     {payload.description ? <small className={styles.meta}>{payload.description}</small> : null}
     {request.review_reason ? <small className={styles.meta}>Catatan: {request.review_reason}</small> : null}
     {showActions ? <div className={styles.actions}>

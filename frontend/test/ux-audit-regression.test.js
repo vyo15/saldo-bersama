@@ -28,6 +28,8 @@ test("form Investasi memakai inline validation, focus error, dan next-step RDN y
   assert.match(setup, /const SetupFields = \(\{[^}]*disabled[^}]*\}\) => <fieldset className=\{styles\.intentFieldset\} disabled=\{disabled\}>/);
   assert.match(setup, /<SetupFields[^>]*disabled=\{outcomeUnknown\}/);
   assert.match(setup, /dismissible=\{!busy && !outcomeUnknown\}/);
+  assert.match(setup, /locked \? <span className=\{styles\.setupLink\} aria-disabled="true">Buka Rekening dan buat RDN<\/span> : <Link/);
+  assert.match(setup, /locked=\{disabled\}/);
   assert.match(setup, /Buka Rekening dan buat RDN/);
   assert.match(setup, /to="\/rekening"/);
   assert.match(field, /aria-invalid/);
@@ -116,3 +118,10 @@ test("tab Planning dan Persetujuan memakai roving focus dan keyboard navigation 
   }
 });
 
+
+
+test("tanggal pengajuan transfer ditampilkan sebagai tanggal Indonesia, bukan raw ISO", async () => {
+  const panel = await read("src/features/transactions/TransferRequestsPanel.jsx");
+  assert.match(panel, /formatDateLongIndonesia/);
+  assert.match(panel, /formatDateLongIndonesia\(payload\.transaction_date\)/);
+});

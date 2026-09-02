@@ -43,15 +43,15 @@ const InvestmentsPage = () => {
       <PageHeader
         eyebrow="Pencatatan manual"
         title="Investasi"
-        description="Pantau RDN, holding saham, beli/jual, harga manual, P/L, dan pencocokan broker tanpa menyimpan credential broker."
-        actions={<Button icon={FiPlus} onClick={() => setSetupOpen(true)}>Siapkan</Button>}
-        help="Investasi memakai rekening jenis Investasi sebagai RDN. Deposit dan penarikan RDN tetap dilakukan melalui Transfer rekening; beli/jual dicatat sebagai histori investasi dan tidak menjadi pemasukan/pengeluaran."
+        description="Catat portfolio yang Anda miliki di Ajaib atau broker lain secara manual. Saldo Bersama tidak terhubung ke broker dan tidak mengirim order beli/jual."
+        actions={<Button icon={FiPlus} onClick={() => setSetupOpen(true)}>Siapkan catatan</Button>}
+        help="Investasi memakai rekening jenis Investasi sebagai RDN. Isi/tarik dana RDN dilakukan melalui Transfer rekening; transaksi saham yang sudah terjadi di broker dicatat di sini dan tidak menjadi pemasukan/pengeluaran biasa."
       />
       {data.portfolios.length === 0 ? (
         <EmptyState
-          title="Belum ada portfolio"
-          description="Buat rekening jenis Investasi untuk RDN, lalu hubungkan sebagai portfolio broker."
-          action={<Button icon={FiPlus} onClick={() => setSetupOpen(true)}>Siapkan portfolio</Button>}
+          title="Belum ada catatan portfolio"
+          description="Saldo Bersama mencatat investasi broker secara manual. Buat rekening jenis Investasi untuk RDN, lalu pasangkan rekening itu dengan catatan portfolio Anda."
+          action={<Button icon={FiPlus} onClick={() => setSetupOpen(true)}>Siapkan catatan portfolio</Button>}
         />
       ) : (
         <InvestmentOverview
@@ -68,7 +68,7 @@ const InvestmentsPage = () => {
             accounts={accounts}
             owner={user?.role === "owner"}
             onClose={() => setSetupOpen(false)}
-            onSuccess={(kind) => notify({ message: kind === "portfolio" ? "Portfolio investasi berhasil disiapkan." : "Instrumen investasi berhasil disimpan.", tone: "success", dedupeKey: `investments:setup:${kind}` })}
+            onSuccess={(kind) => notify({ message: kind === "portfolio" ? "Catatan portfolio investasi berhasil disimpan." : "Instrumen investasi berhasil disimpan.", tone: "success", dedupeKey: `investments:setup:${kind}` })}
           />
         ) : null}
         {dialog ? (
@@ -79,8 +79,8 @@ const InvestmentsPage = () => {
             userRole={user?.role}
             onClose={() => setDialog(null)}
             onSuccess={(mode) => {
-              const messages = { buy: "Pembelian saham berhasil dicatat.", sell: "Penjualan saham berhasil dicatat.", price: "Harga manual saham berhasil diperbarui.", reconcile: "Pencocokan tersimpan tanpa mengubah portfolio otomatis.", correction: "Koreksi investasi berhasil dicatat." };
-              notify({ message: messages[mode] || "Perubahan investasi berhasil disimpan.", tone: "success", dedupeKey: `investments:${mode}` });
+              const messages = { buy: "Pembelian saham berhasil dicatat.", sell: "Penjualan saham berhasil dicatat.", price: "Harga manual saham berhasil disimpan.", reconcile: "Pencocokan tersimpan tanpa mengubah portfolio otomatis.", correction: "Koreksi pencatatan investasi berhasil disimpan." };
+              notify({ message: messages[mode] || "Catatan investasi berhasil disimpan.", tone: "success", dedupeKey: `investments:${mode}` });
             }}
           />
         ) : null}
