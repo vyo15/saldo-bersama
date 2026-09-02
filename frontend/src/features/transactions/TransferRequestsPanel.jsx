@@ -9,7 +9,7 @@ const statusLabel = (status) => ({ pending: "Menunggu", approved: "Disetujui", r
 const statusClass = (status) => ({ pending: styles.statusPending, approved: styles.statusApproved, rejected: styles.statusRejected }[status] || "");
 const displayAccount = (lookup, accountId, fallback) => lookup[accountId] ? accountDisplayLabel(lookup[accountId]) : fallback;
 
-const TransferRequestCard = ({ request, lookup, ownerMode, busyId, onDecision }) => {
+const TransferRequestCard = ({ request, lookup, ownerMode, busyId, locked, onDecision }) => {
   const payload = request.payload || {};
   const fromLabel = displayAccount(lookup, payload.source_account_id, "Rekening Bersama");
   const toLabel = displayAccount(lookup, payload.destination_account_id, "Rekening pribadi");
@@ -23,8 +23,8 @@ const TransferRequestCard = ({ request, lookup, ownerMode, busyId, onDecision })
     {payload.description ? <small className={styles.meta}>{payload.description}</small> : null}
     {request.review_reason ? <small className={styles.meta}>Catatan: {request.review_reason}</small> : null}
     {showActions ? <div className={styles.actions}>
-      <Button type="button" variant="primary" disabled={Boolean(busyId)} onClick={() => onDecision("approve", request)}>Setujui</Button>
-      <Button type="button" disabled={Boolean(busyId)} onClick={() => onDecision("reject", request)}>Tolak</Button>
+      <Button type="button" variant="primary" disabled={Boolean(busyId) || locked} onClick={() => onDecision("approve", request)}>Setujui</Button>
+      <Button type="button" disabled={Boolean(busyId) || locked} onClick={() => onDecision("reject", request)}>Tolak</Button>
     </div> : null}
   </article>;
 };
@@ -37,9 +37,8 @@ const TransferDecisionModal = ({ target, lookup, busyId, onApprove, onReject, on
   const destinationLabel = displayAccount(lookup, payload.destination_account_id, "Rekening pribadi");
   const confirm = async (reason) => {
     if (!request) return;
-    if (approving) await onApprove(request, reason);
-    else await onReject(request, reason);
-    onClose();
+    const outcome = approving ? await onApprove(request, reason) : await onReject(request, reason);
+    if (outcome?.ok || outcome?.outcomeUnknown) onClose();
   };
   return <ConfirmationModal
     open={Boolean(target)}
@@ -54,14 +53,15 @@ const TransferDecisionModal = ({ target, lookup, busyId, onApprove, onReject, on
   >{request ? <div className="notice notice--warning"><span>Nominal <Money value={Number(payload.amount || 0)} /></span></div> : null}</ConfirmationModal>;
 };
 
-const TransferRequestsPanel = ({ items = [], accounts = [], ownerMode = false, busyId = "", onApprove, onReject }) => {
+const TransferRequestsPanel = ({ items = [], accounts = [], ownerMode = false, busyId = "", unresolvedIntent = null, onRetryUnresolved, onApprove, onReject }) => {
   const [decisionTarget, setDecisionTarget] = useState(null);
   const lookup = Object.fromEntries(accounts.map((item) => [item.account_id, item]));
   const visible = ownerMode ? items.filter((item) => item.status === "pending") : items.slice(0, 6);
-  if (!visible.length) return null;
+  if (!visible.length && !unresolvedIntent) return null;
   return <section className={styles.panel} aria-labelledby="transfer-requests-title">
     <div className={styles.heading}><div><h2 id="transfer-requests-title">{ownerMode ? "Transfer menunggu persetujuan" : "Pengajuan transfer saya"}</h2><p>{ownerMode ? "Dana Bersama belum bergerak sebelum pengajuan disetujui." : "Saldo belum berubah sampai Administrator menyetujui pengajuan."}</p></div></div>
-    <div className={styles.list}>{visible.map((request) => <TransferRequestCard key={request.request_id} request={request} lookup={lookup} ownerMode={ownerMode} busyId={busyId} onDecision={(decision, targetRequest) => setDecisionTarget({ decision, request: targetRequest })} />)}</div>
+    {unresolvedIntent ? <div className="notice notice--warning" role="alert"><strong>Hasil keputusan transfer belum pasti.</strong><p>Keputusan dan alasan dikunci. Coba lagi data yang sama agar idempotency key yang sama dapat memastikan hasil tanpa menggandakan transfer.</p><Button type="button" disabled={Boolean(busyId)} loading={busyId === unresolvedIntent.request.request_id} onClick={onRetryUnresolved}>Coba lagi keputusan yang sama</Button></div> : null}
+    <div className={styles.list}>{visible.map((request) => <TransferRequestCard key={request.request_id} request={request} lookup={lookup} ownerMode={ownerMode} busyId={busyId} locked={Boolean(unresolvedIntent)} onDecision={(decision, targetRequest) => setDecisionTarget({ decision, request: targetRequest })} />)}</div>
     <TransferDecisionModal target={decisionTarget} lookup={lookup} busyId={busyId} onApprove={onApprove} onReject={onReject} onClose={() => setDecisionTarget(null)} />
   </section>;
 };

@@ -571,7 +571,9 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(pageStyles, /\.mobileHistoryDifference/);
   assert.doesNotMatch(page, /<details className=\{styles\.helpDetails\}/);
   assert.doesNotMatch(page, /notify\(/, "Pencocokan saldo tidak boleh menampilkan toast kedua setelah result overlay.");
-  assert.match(feedback, /LOCAL_PROCESS_ACTIONS = new Set\(\["reconciliations\.create", "transactions\.create"\]\)/);
+  const localProcessActions = feedback.match(/const LOCAL_PROCESS_ACTIONS = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
+  assert.match(localProcessActions, /"reconciliations\.create"/);
+  assert.match(localProcessActions, /"transactions\.create"/);
   assert.match(feedback, /LOCAL_PROCESS_ACTIONS\.has\(visible\.action\)/);
   assert.match(result, /FinancialSuccessOverlay/);
   assert.match(result, /ReconciliationDifferenceOverlay/);

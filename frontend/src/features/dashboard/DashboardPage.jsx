@@ -1,7 +1,7 @@
 import "./DashboardPage.css";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
-import ErrorState from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -117,10 +117,10 @@ const DashboardPage = () => {
   const displayOverview = { ...overview, accountBalances: dashboardViewModel.accountBalances }; const displayName = String(user?.name || user?.email || "").trim().split(/\s+/)[0] || "Kamu";
   const openMobileTransactionDetail = (transactionId) => { setSelectedTransactionId(transactionId); setMobileTransactionDetailOpen(true); };
   const refreshDashboard = () => { refreshOverview(); investments.reload().catch(() => {}); };
-  const investmentSummary = investments.data?.summary?.portfolio_count ? investments.data.summary : null;
+  const investmentSummary = investments.data?.portfolios?.length ? investments.data.summary : null;
   const surfaces = { mobileLayout, displayOverview, bootstrap, dashboardViewModel, investmentSummary, user, displayName, balanceVisible, setBalanceVisible, refreshOverview: refreshDashboard, isRefreshing: isRefreshing || investments.isRefreshing, openTransactionComposer, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };
   const overlays = { mobileTransactionDetailOpen, setMobileTransactionDetailOpen, dashboardViewModel, balanceVisible, openTransactionComposer };
-  return <div className="dashboard-page"><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
+  return <div className="dashboard-page"><RefreshWarning error={investments.error || investments.refreshError} onRetry={investments.reload} /><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
 };
 
 export default DashboardPage;

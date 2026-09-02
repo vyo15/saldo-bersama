@@ -8,7 +8,24 @@ const MAX_VISIBLE = 3;
 const DEFAULT_DURATION_MS = 4_500;
 const PROCESS_SUCCESS_MS = 1_600;
 const PROCESS_ERROR_MS = 4_500;
-const LOCAL_PROCESS_ACTIONS = new Set(["reconciliations.create", "transactions.create"]);
+const LOCAL_PROCESS_ACTIONS = new Set([
+  "accounts.requestCreate",
+  "categories.requestCreate",
+  "investments.portfolios.create",
+  "investments.instruments.upsert",
+  "investments.trades.buy",
+  "investments.trades.sell",
+  "investments.valuations.update",
+  "investments.reconciliations.create",
+  "investments.corrections.create",
+  "masterDataRequests.review",
+  "reconciliations.create",
+  "reminders.upsert",
+  "reminders.cancel",
+  "transactions.create",
+  "transferRequests.request",
+  "transferRequests.review",
+]);
 
 const safeTone = (tone) => ["success", "info", "warning", "danger"].includes(tone) ? tone : "info";
 
@@ -20,6 +37,8 @@ const ACTION_MODULES = Object.freeze({
   envelopes: "Alokasi Dana",
   goals: "Target",
   integrity: "Integritas",
+  investments: "Investasi",
+  masterDataRequests: "Persetujuan",
   notifications: "Notifikasi",
   periods: "Periode",
   reconciliations: "Cocokkan saldo",
@@ -27,7 +46,9 @@ const ACTION_MODULES = Object.freeze({
   fullReset: "Reset semua data",
   restore: "Pemulihan data",
   recurring: "Jadwal rutin",
+  reminders: "Pengingat",
   transactions: "Transaksi",
+  transferRequests: "Persetujuan transfer",
   users: "Member",
 });
 
@@ -37,6 +58,21 @@ const ACTION_UNKNOWN_DETAILS = Object.freeze({
 });
 
 const ACTION_LABELS = Object.freeze({
+  "accounts.requestCreate": ["Mengirim pengajuan rekening...", "Pengajuan rekening dikirim"],
+  "categories.requestCreate": ["Mengirim pengajuan kategori...", "Pengajuan kategori dikirim"],
+  "investments.portfolios.create": ["Menyiapkan portfolio investasi...", "Portfolio investasi berhasil disiapkan"],
+  "investments.instruments.upsert": ["Menyimpan instrumen investasi...", "Instrumen investasi berhasil disimpan"],
+  "investments.trades.buy": ["Mencatat pembelian saham...", "Pembelian saham berhasil dicatat"],
+  "investments.trades.sell": ["Mencatat penjualan saham...", "Penjualan saham berhasil dicatat"],
+  "investments.valuations.update": ["Memperbarui harga saham...", "Harga saham berhasil diperbarui"],
+  "investments.reconciliations.create": ["Mencocokkan portfolio...", "Pencocokan portfolio berhasil disimpan"],
+  "investments.corrections.create": ["Mencatat koreksi investasi...", "Koreksi investasi berhasil dicatat"],
+  "masterDataRequests.review": ["Menyimpan keputusan persetujuan...", "Keputusan persetujuan berhasil disimpan"],
+  "notifications.updatePreference": ["Menyimpan preferensi notifikasi...", "Preferensi notifikasi tersimpan"],
+  "reminders.upsert": ["Menyimpan pengingat...", "Pengingat manual berhasil dijadwalkan"],
+  "reminders.cancel": ["Membatalkan pengingat...", "Pengingat manual berhasil dibatalkan"],
+  "transferRequests.request": ["Mengirim pengajuan transfer...", "Pengajuan transfer berhasil dikirim"],
+  "transferRequests.review": ["Menyimpan keputusan transfer...", "Keputusan transfer berhasil disimpan"],
   "backup.create": ["Membuat safety backup...", "Safety backup berhasil dibuat"],
   "accounts.create": ["Membuat rekening...", "Rekening berhasil dibuat"],
   "accounts.update": ["Memperbarui rekening...", "Rekening berhasil diperbarui"],
@@ -111,14 +147,15 @@ const GlobalProcessIndicator = () => {
 
   useEffect(() => {
     setVisible(activity);
-    if (activity.status === "idle" || activity.status === "submitting") return undefined;
+    if (["idle", "submitting", "unknown"].includes(activity.status)) return undefined;
     const duration = activity.status === "success" ? PROCESS_SUCCESS_MS : PROCESS_ERROR_MS;
     const timer = setTimeout(() => setVisible((current) => current.revision === activity.revision ? { ...current, status: "idle" } : current), duration);
     return () => clearTimeout(timer);
   }, [activity]);
 
   const presentation = processPresentation(visible);
-  if (!presentation || LOCAL_PROCESS_ACTIONS.has(visible.action)) return null;
+  const localProcessHandled = LOCAL_PROCESS_ACTIONS.has(visible.action) && visible.status !== "unknown";
+  if (!presentation || localProcessHandled) return null;
   const Icon = presentation.icon;
   return (
     <div className={`${styles.process} ${styles[`process_${visible.status}`] || ""}`} role="status" aria-live="polite" aria-atomic="true">

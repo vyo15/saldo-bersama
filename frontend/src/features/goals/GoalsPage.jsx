@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
@@ -22,9 +22,9 @@ import {
 } from "./goals.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
-import ManualReminderModal from "../reminders/ManualReminderModal.jsx";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
-import { GoalConfirmations, GoalCreateModal, GoalEditModal, GoalMovementModal } from "./components/GoalDialogs.jsx";
+
+const GoalDialogLayer = lazy(() => import("./components/GoalDialogLayer.jsx"));
 
 const emptyGoalForm = () => ({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
 const emptyMovement = () => ({ goal: null, movement_type: "deposit", amount: "", source_account_id: "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "" });
@@ -257,11 +257,11 @@ const GoalsPage = () => {
     <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={canCreate && items.length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{setupCreated ? <div><CompactNotice tone="success" title="Penyiapan selesai." role="status">Rekening, kategori, Alokasi Dana, dan Target sudah dapat dipakai bersama alur transaksi.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Mulai catat transaksi</Button></div></div> : null}{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}{workflowPrefill ? <CompactNotice tone="success" title="Dana tersedia siap diarahkan ke Target." role="status">Pilih Target lalu tekan Setor dana. Rekening sumber dan nominal akan diprefill bila masih valid.</CompactNotice> : null}
     <GoalSummary items={items} />
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
-    <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
-    <GoalCreateModal open={creation.open} close={creation.closeCreate} form={creation.form} setForm={creation.setForm} accounts={creationAccounts} createGoal={creation.createGoal} createMutation={creation.createMutation} message={creation.message} />
-    <GoalEditModal editGoal={lifecycle.editGoal} setEditGoal={lifecycle.setEditGoal} editState={lifecycle.editState} saveGoal={lifecycle.saveGoal} />
-    <GoalMovementModal movement={movement.movement} setMovement={movement.setMovement} movementState={movement.movementState} movementMutation={movement.movementMutation} accounts={movement.compatibleMovementAccounts} submitMovement={movement.submitMovement} />
-    <GoalConfirmations reverseTarget={lifecycle.reverseTarget} reverseState={lifecycle.reverseState} setReverseTarget={lifecycle.setReverseTarget} reverseLastMovement={lifecycle.reverseLastMovement} archiveTarget={lifecycle.archiveTarget} archiveState={lifecycle.archiveState} setArchiveTarget={lifecycle.setArchiveTarget} applyGoalLifecycle={lifecycle.applyGoalLifecycle} statusTarget={lifecycle.statusTarget} statusState={lifecycle.statusState} setStatusTarget={lifecycle.setStatusTarget} applyGoalStatus={lifecycle.applyGoalStatus} />
+    {(reminderTarget || creation.open || lifecycle.editGoal || movement.movement.goal || lifecycle.reverseTarget || lifecycle.archiveTarget || lifecycle.statusTarget) ? (
+      <Suspense fallback={null}>
+        <GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} movement={movement} lifecycle={lifecycle} />
+      </Suspense>
+    ) : null}
   </div>;
 };
 

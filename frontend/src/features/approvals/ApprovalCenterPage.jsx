@@ -42,15 +42,30 @@ const ApprovalCenterContent = ({
   accounts,
 }) => {
   const pendingCount = masterItems.length + transferItems.length;
+  const activateTab = (nextTab, { focus = false } = {}) => {
+    setTab(nextTab);
+    if (focus) globalThis.requestAnimationFrame?.(() => document.getElementById(`approval-tab-${nextTab}`)?.focus());
+  };
+  const handleTabKeyDown = (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const currentIndex = Math.max(0, TABS.findIndex((item) => item.key === tab));
+    const nextIndex = event.key === "Home" ? 0
+      : event.key === "End" ? TABS.length - 1
+        : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
+    activateTab(TABS[nextIndex].key, { focus: true });
+  };
   return <OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda">
     <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
     <section className={styles.summary} aria-label="Ringkasan persetujuan"><strong>{pendingCount}</strong><span>pengajuan menunggu keputusan</span></section>
     <div className={styles.tabs} role="tablist" aria-label="Jenis persetujuan">
-      {TABS.map((item) => <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} className={tab === item.key ? styles.tabActive : styles.tab} onClick={() => setTab(item.key)}>{item.label}</button>)}
+      {TABS.map((item) => <button key={item.key} id={`approval-tab-${item.key}`} type="button" role="tab" aria-controls="approval-tabpanel" aria-selected={tab === item.key} tabIndex={tab === item.key ? 0 : -1} className={tab === item.key ? styles.tabActive : styles.tab} onClick={() => activateTab(item.key)} onKeyDown={handleTabKeyDown}>{item.label}</button>)}
     </div>
-    {showMaster ? <MasterDataRequestsPanel items={visibleMasterItems} ownerMode title={tab === "all" ? "Rekening dan kategori" : `Pengajuan ${tab === "account" ? "rekening" : "kategori"}`} busyId={masterReview.busyId} onApprove={(request) => masterReview.reviewRequest(request, "approve")} onReject={(request, reason) => masterReview.reviewRequest(request, "reject", reason)} /> : null}
-    {showTransfer ? <TransferRequestsPanel items={transferItems} accounts={accounts} ownerMode busyId={transferReview.busyId} onApprove={(request, reason) => transferReview.reviewTransferRequest(request, "approve", reason)} onReject={(request, reason) => transferReview.reviewTransferRequest(request, "reject", reason)} /> : null}
-    {!pendingCount ? <p className={styles.empty}>Tidak ada pengajuan yang menunggu persetujuan.</p> : null}
+    <div id="approval-tabpanel" className={styles.tabpanel} role="tabpanel" aria-labelledby={`approval-tab-${tab}`}>
+      {showMaster ? <MasterDataRequestsPanel items={visibleMasterItems} ownerMode title={tab === "all" ? "Rekening dan kategori" : `Pengajuan ${tab === "account" ? "rekening" : "kategori"}`} busyId={masterReview.busyId} unresolvedIntent={masterReview.unresolvedIntent} onRetryUnresolved={masterReview.retryUnresolvedIntent} onApprove={(request) => masterReview.reviewRequest(request, "approve")} onReject={(request, reason) => masterReview.reviewRequest(request, "reject", reason)} /> : null}
+      {showTransfer ? <TransferRequestsPanel items={transferItems} accounts={accounts} ownerMode busyId={transferReview.busyId} unresolvedIntent={transferReview.unresolvedIntent} onRetryUnresolved={transferReview.retryUnresolvedIntent} onApprove={(request, reason) => transferReview.reviewTransferRequest(request, "approve", reason)} onReject={(request, reason) => transferReview.reviewTransferRequest(request, "reject", reason)} /> : null}
+      {!pendingCount ? <p className={styles.empty}>Tidak ada pengajuan yang menunggu persetujuan.</p> : null}
+    </div>
   </OwnerSettingsGuard>;
 };
 
@@ -83,6 +98,7 @@ const ApprovalCenterPage = () => {
     refreshKeys: APPROVAL_REFRESH_KEYS,
     transactionResource: null,
     refreshOverview: refreshAll,
+    notify,
   });
 
   if (ownerMode && (masterRequests.status === "loading" || transferRequests.status === "loading")) return <LoadingScreen label="Memuat persetujuan..." />;
