@@ -56,6 +56,29 @@ const periodLabel = (period) => {
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 };
 
+const dailyDatesForPeriod = (period, endDate) => {
+  const bounds = monthBounds(period);
+  const [startYear, startMonth, startDay] = bounds.start.split("-").map(Number);
+  const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
+  const current = new Date(Date.UTC(startYear, startMonth - 1, startDay));
+  const end = new Date(Date.UTC(endYear, endMonth - 1, endDay));
+  const dates = [];
+  while (current <= end) {
+    dates.push(`${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(2, "0")}-${String(current.getUTCDate()).padStart(2, "0")}`);
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return dates;
+};
+
+const dayLabel = (date) => {
+  const [year, month, day] = String(date).split("-").map(Number);
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+};
+
 export const bootstrapReadStatements = (context) => [
   visibleAccountsStatement(context.actor),
   { sql: "SELECT * FROM categories WHERE status='active' ORDER BY transaction_type,name COLLATE NOCASE", args: [] },
@@ -178,6 +201,91 @@ export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {
     });
   }
   return { periods, statements, accountId };
+};
+
+export const dailyTrendPlan = (actor, period, { accountId = "" } = {}) => {
+  const bounds = monthBounds(period);
+  const currentPeriod = todayJakarta().slice(0, 7);
+  const trendEnd = period === currentPeriod ? todayJakarta() : bounds.end;
+  const dates = dailyDatesForPeriod(period, trendEnd);
+  const ledgerAccess = readableLedgerSql(actor, "t");
+  const accountAccess = readableAccountSql(actor, "a");
+  const cutoffValues = dates.map(() => "(?,?)").join(",");
+  const cutoffArgs = dates.flatMap((date) => [date, date]);
+  const statements = [
+    {
+      sql: `SELECT t.transaction_date AS date_key,
+        COALESCE(SUM(CASE WHEN t.transaction_type='income' THEN t.amount ELSE 0 END),0) AS income,
+        COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
+        COALESCE(SUM(CASE WHEN t.transaction_type='refund' THEN t.amount ELSE 0 END),0) AS refund
+      FROM transactions t
+      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql}
+      GROUP BY t.transaction_date`,
+      args: [bounds.start, trendEnd, ...ledgerAccess.args],
+    },
+    {
+      sql: `WITH cutoffs(date_key,cutoff_date) AS (VALUES ${cutoffValues}),
+        account_balances AS (
+          SELECT c.date_key,a.account_id,
+            CASE WHEN a.initial_balance_date<=c.cutoff_date THEN a.initial_balance ELSE 0 END + COALESCE(SUM(CASE
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='expense' AND t.source_account_id=a.account_id THEN -t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
+              WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
+                AND t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
+              ELSE 0 END),0) AS balance
+          FROM cutoffs c CROSS JOIN accounts a
+          LEFT JOIN transactions t ON (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
+            AND t.status='active' AND t.transaction_date<=c.cutoff_date AND t.transaction_date>=a.initial_balance_date
+          WHERE ${accountAccess.sql}
+          GROUP BY c.date_key,a.account_id,a.initial_balance,a.initial_balance_date
+        )
+        SELECT date_key,COALESCE(SUM(balance),0) AS total_balance FROM account_balances GROUP BY date_key`,
+      args: [...cutoffArgs, ...accountAccess.args],
+    },
+  ];
+  if (accountId) {
+    statements.push({
+      sql: `SELECT t.transaction_date AS date_key,COALESCE(SUM(t.amount),0) AS amount
+        FROM transactions t
+        WHERE t.status='active' AND t.transaction_type='expense' AND t.source_account_id=?
+          AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql}
+        GROUP BY t.transaction_date`,
+      args: [accountId, bounds.start, trendEnd, ...ledgerAccess.args],
+    });
+  }
+  return { dates, statements, accountId };
+};
+
+export const mapDailyTrendRows = (plan, [cashRows = [], balanceRows = [], accountExpenseRows = []]) => {
+  const cashLookup = new Map(cashRows.map((row) => [row.date_key, row]));
+  const balanceLookup = new Map(balanceRows.map((row) => [row.date_key, Number(row.total_balance || 0)]));
+  const accountExpenseLookup = new Map(accountExpenseRows.map((row) => [row.date_key, Number(row.amount || 0)]));
+  return {
+    items: plan.dates.map((date) => {
+      const row = cashLookup.get(date) || {};
+      const income = Number(row.income || 0);
+      const expense = Number(row.expense || 0);
+      const refund = Number(row.refund || 0);
+      return {
+        periodKey: date,
+        label: dayLabel(date),
+        income,
+        expense,
+        refund,
+        net: income + refund - expense,
+        totalBalance: balanceLookup.get(date) || 0,
+      };
+    }),
+    accountExpenseItems: plan.accountId
+      ? plan.dates.map((date) => ({ period: date, value: accountExpenseLookup.get(date) || 0 }))
+      : [],
+  };
 };
 
 export const mapMonthlyTrendRows = (plan, [cashRows = [], balanceRows = [], accountExpenseRows = []]) => {

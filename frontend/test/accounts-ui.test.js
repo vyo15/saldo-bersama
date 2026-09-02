@@ -342,7 +342,7 @@ ${accountEditors}`;
   assert.match(mobileTransfer, /Transfer memerlukan rekening sumber aktif/);
   assert.match(mobileTransfer, /FinancialSuccessOverlay/);
   assert.doesNotMatch(mobileTransfer, /createTransaction|transactions\.create/);
-  assert.match(mobileActivity, /TREND_OPTIONS = Object\.freeze\(\[3, 6, 12\]\)/);
+  assert.match(mobileActivity, /TREND_OPTIONS = Object\.freeze\(\[1, 3, 6, 12\]\)/);
   assert.match(mobileActivity, /useApiResource\("transactions\.list"/);
   assert.match(mobileActivity, /account_id: selectedAccountId \|\| "all"/);
   assert.match(mobileActivity, /enabled: mobileEnabled && activeTab === "history"/);

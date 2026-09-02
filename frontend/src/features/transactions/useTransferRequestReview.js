@@ -14,7 +14,7 @@ export const useTransferRequestReview = ({ transferRequests, invalidate, refresh
       await transferRequests.reload();
       if (!result?.transaction) return;
       invalidate(refreshKeys);
-      await Promise.allSettled([transactionResource.reload(), refreshOverview()]);
+      await Promise.allSettled([transactionResource?.reload?.(), refreshOverview?.()]);
     } finally {
       setBusyId("");
     }

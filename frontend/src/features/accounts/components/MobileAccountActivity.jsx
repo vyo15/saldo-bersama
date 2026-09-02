@@ -24,27 +24,33 @@ import styles from "./MobileAccountActivity.module.css";
 
 const MOBILE_QUERY = "(max-width: 820px)";
 const HISTORY_LIMIT = 6;
-const TREND_OPTIONS = Object.freeze([3, 6, 12]);
+const TREND_OPTIONS = Object.freeze([1, 3, 6, 12]);
 
 const useMobileAccountActivityEnabled = () => useMediaQuery(MOBILE_QUERY, { fallback: true });
 
 const shortPeriodLabel = (period) => {
-  if (!/^\d{4}-\d{2}$/.test(String(period || ""))) return period || "";
-  const [year, month] = period.split("-").map(Number);
+  const value = String(period || "");
+  const match = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
   return new Intl.DateTimeFormat("id-ID", {
+    ...(day ? { day: "numeric" } : {}),
     month: "short",
     timeZone: "Asia/Jakarta",
-  }).format(new Date(Date.UTC(year, month - 1, 1)));
+  }).format(new Date(Date.UTC(Number(year), Number(month) - 1, Number(day || 1))));
 };
 
 const longPeriodLabel = (period) => {
-  if (!/^\d{4}-\d{2}$/.test(String(period || ""))) return period || "";
-  const [year, month] = period.split("-").map(Number);
+  const value = String(period || "");
+  const match = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
   return new Intl.DateTimeFormat("id-ID", {
+    ...(day ? { day: "numeric" } : {}),
     month: "long",
     year: "numeric",
     timeZone: "Asia/Jakarta",
-  }).format(new Date(Date.UTC(year, month - 1, 1)));
+  }).format(new Date(Date.UTC(Number(year), Number(month) - 1, Number(day || 1))));
 };
 
 const buildChartGeometry = (items) => {
@@ -183,12 +189,12 @@ const MobileChartReady = ({ currentPeriod, onViewTransactions, selectedAccount, 
   const lastPoint = chart.points.at(-1) || null;
   return (
     <>
-      <figure className={styles.mobileExpenseChart} aria-label={`Grafik pengeluaran ${selectedAccount.name} selama ${trendMonths} bulan`}>
+      <figure className={styles.mobileExpenseChart} aria-label={`Grafik pengeluaran ${selectedAccount.name} selama ${trendMonths === 1 ? "1 bulan per hari" : `${trendMonths} bulan`}`}>
         <svg viewBox={`0 0 ${chart.width} ${chart.height}`} aria-hidden="true"><line x1="8" y1="38" x2="312" y2="38" /><line x1="8" y1="77" x2="312" y2="77" /><line x1="8" y1={chart.bottom} x2="312" y2={chart.bottom} />{chart.area ? <polygon points={chart.area} className={styles.mobileExpenseArea} /> : null}{chart.line ? <polyline points={chart.line} className={styles.mobileExpenseLine} /> : null}{lastPoint ? <circle cx={lastPoint.x} cy={lastPoint.y} r="4.5" className={styles.mobileExpensePoint} /> : null}</svg>
         <div className={styles.mobileChartLabels} style={{ "--chart-label-count": trendItems.length || 1 }} aria-hidden="true">{trendItems.map((item, index) => { const show = trendItems.length < 12 || index % 2 === 0 || index === trendItems.length - 1; return <span key={item.period}>{show ? shortPeriodLabel(item.period) : ""}</span>; })}</div>
         <figcaption className="sr-only">{trendItems.map((item) => `${longPeriodLabel(item.period)} ${formatCompactRupiah(item.value)}`).join(", ")}</figcaption>
       </figure>
-      <div className={styles.mobileChartStats}><div><small>Rata-rata / bulan</small><strong>{formatCompactRupiah(averageExpense)}</strong></div><div><small>Bulan tertinggi</small><strong>{highestExpense ? `${shortPeriodLabel(highestExpense.period)} · ${formatCompactRupiah(highestExpense.value)}` : "Rp 0"}</strong></div></div>
+      <div className={styles.mobileChartStats}><div><small>{trendMonths === 1 ? "Rata-rata / hari" : "Rata-rata / bulan"}</small><strong>{formatCompactRupiah(averageExpense)}</strong></div><div><small>{trendMonths === 1 ? "Hari tertinggi" : "Bulan tertinggi"}</small><strong>{highestExpense ? `${shortPeriodLabel(highestExpense.period)} · ${formatCompactRupiah(highestExpense.value)}` : "Rp 0"}</strong></div></div>
       <div className={styles.mobileChartNote}><FiInfo aria-hidden="true" /><span>Transfer antar rekening tidak dihitung sebagai pengeluaran. Hanya transaksi expense aktif dari rekening ini yang masuk grafik.</span></div>
       <button type="button" className={styles.mobileChartAction} onClick={() => onViewTransactions(selectedAccount, currentPeriod)}><span>Lihat transaksi bulan berjalan</span><FiArrowUpRight aria-hidden="true" /></button>
     </>
@@ -207,7 +213,7 @@ const MobileChartPanel = ({ currentPeriod, onViewTransactions, selectedAccount, 
   const totalExpense = trendItems.reduce((sum, item) => sum + Number(item.value || 0), 0);
   return (
     <div id="mobile-account-chart-panel" className={styles.mobileActivityPanel} role="tabpanel" aria-labelledby="mobile-account-chart-tab">
-      <div className={styles.mobileChartHeading}><div><small>PENGELUARAN REKENING</small><strong>{trendState.status === "ready" ? <Money value={totalExpense} /> : "Memuat..."}</strong><span>{trendMonths} bulan hingga {longPeriodLabel(currentPeriod)}</span></div><FiBarChart2 aria-hidden="true" /></div>
+      <div className={styles.mobileChartHeading}><div><small>PENGELUARAN REKENING</small><strong>{trendState.status === "ready" ? <Money value={totalExpense} /> : "Memuat..."}</strong><span>{trendMonths === 1 ? `Harian · ${longPeriodLabel(currentPeriod)}` : `${trendMonths} bulan hingga ${longPeriodLabel(currentPeriod)}`}</span></div><FiBarChart2 aria-hidden="true" /></div>
       <div className={styles.mobileTrendControls} aria-label="Rentang grafik">{TREND_OPTIONS.map((months) => <button key={months} type="button" className={trendMonths === months ? styles.mobileTrendControlActive : ""} aria-pressed={trendMonths === months} onClick={() => setTrendMonths(months)}>{months} bln</button>)}</div>
       <MobileChartBody currentPeriod={currentPeriod} onViewTransactions={onViewTransactions} selectedAccount={selectedAccount} setTrendReloadKey={setTrendReloadKey} trendItems={trendItems} trendMonths={trendMonths} trendState={trendState} />
     </div>

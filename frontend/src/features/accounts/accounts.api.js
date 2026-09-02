@@ -23,16 +23,19 @@ const addPeriodMonths = (period, offset) => {
 export const loadAccountExpenseTrend = async ({ accountId, endPeriod, months }, options = {}) => {
   if (!accountId) throw new TypeError("Rekening wajib dipilih.");
   if (!isValidPeriod(endPeriod)) throw new TypeError("Periode akhir tidak valid.");
-  if (![3, 6, 12].includes(months)) throw new RangeError("Rentang grafik harus 3, 6, atau 12 bulan.");
+  if (![1, 3, 6, 12].includes(months)) throw new RangeError("Rentang grafik harus 1, 3, 6, atau 12 bulan.");
   const report = await apiClient.request("reports.monthly", {
     period: endPeriod,
     trend_months: months,
     account_id: accountId,
   }, options);
+  const responseItems = report?.accountExpenseTrend?.items || [];
+  if (months === 1) return { months, granularity: "day", items: responseItems.map((item) => ({ period: item.period, value: Number(item.value || 0) })) };
   const periods = Array.from({ length: months }, (_, index) => addPeriodMonths(endPeriod, index - months + 1));
-  const lookup = new Map((report?.accountExpenseTrend?.items || []).map((item) => [item.period, Number(item.value || 0)]));
+  const lookup = new Map(responseItems.map((item) => [item.period, Number(item.value || 0)]));
   return {
     months,
+    granularity: "month",
     items: periods.map((period) => ({ period, value: lookup.get(period) || 0 })),
   };
 };

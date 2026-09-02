@@ -143,7 +143,7 @@ test("dashboard memakai opening balance bulk, envelope ringan, dan laporan trend
   assert.match(dashboard, /readBatchRows\(db, plan\.statements\)/);
 });
 
-test("grafik pengeluaran rekening memakai satu laporan backend untuk 3 6 atau 12 bulan", async () => {
+test("grafik pengeluaran rekening memakai satu laporan backend untuk 1 3 6 atau 12 bulan", async () => {
   const accountsApi = await source("frontend/src/features/accounts/accounts.api.js");
   assert.match(accountsApi, /apiClient\.request\("reports\.monthly"/);
   assert.match(accountsApi, /trend_months: months/);

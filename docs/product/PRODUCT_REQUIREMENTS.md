@@ -56,7 +56,7 @@ Satu cash movement perlu dapat direpresentasikan sebagai beberapa line item kate
 
 ### `REQ-PROD-03` Kategori kebutuhan — Partial
 
-Kategori memiliki jenis transaksi dan `nature` untuk fixed, variable, unexpected, discretionary, emergency, savings, dan other. Kategori dapat ditambah/diarsipkan.
+Kategori memiliki jenis transaksi dan ikon terkontrol serta dapat ditambah/diarsipkan. Field `nature` existing dipertahankan hanya untuk kompatibilitas data/API legacy dan tidak lagi menjadi input atau presentation aktif user.
 
 **Gap:** parent/subcategory dan taxonomy bertingkat menunggu RFC-0014.
 
@@ -100,7 +100,7 @@ MVP menyediakan **pembagian beban biaya** untuk expense shared dengan mode `unsp
 
 ### `REQ-PROD-11` Pencatatan cepat dan transaksi belum jelas — Partial
 
-Quick entry, pencarian, deteksi duplikat, transaksi belum dialokasikan, review queue transaksi tanpa Alokasi Dana, dan aksi **Pakai lagi** tersedia. `Pakai lagi` hanya melakukan prefill field transaksi yang aman, memakai tanggal hari ini, tidak membawa ID/row-version/idempotency lama, dan tetap memerlukan konfirmasi Simpan sehingga duplicate guard canonical tetap berlaku. Untuk expense baru, rekening sumber Rp0 disembunyikan dari daftar utama kecuali rekening terpilih/`allow_negative`; kategori yang baru dipakai pada rekening yang sama dapat dipilih cepat; dan relasi Kebutuhan `category_id + envelope_rule_id` dipakai untuk menyarankan Alokasi Dana pada rekening/periode yang sama. Satu kandidat valid boleh dipilih otomatis, beberapa kandidat tetap meminta pilihan user, edit existing tidak ditimpa, dan server tetap menjadi guard final. Dashboard/push mengingatkan transaksi expense tanpa Alokasi Dana.
+Quick entry, pencarian, deteksi duplikat, transaksi belum dialokasikan, review queue transaksi tanpa Alokasi Dana, konfirmasi eksplisit sebelum expense tanpa Alokasi Dana disimpan, focus/error summary aksesibel untuk field wajib, dan aksi **Pakai lagi** tersedia. `Pakai lagi` hanya melakukan prefill field transaksi yang aman, memakai tanggal hari ini, tidak membawa ID/row-version/idempotency lama, dan tetap memerlukan konfirmasi Simpan sehingga duplicate guard canonical tetap berlaku. Untuk expense baru, rekening sumber Rp0 disembunyikan dari daftar utama kecuali rekening terpilih/`allow_negative`; kategori yang baru dipakai pada rekening yang sama dapat dipilih cepat; dan relasi Kebutuhan `category_id + envelope_rule_id` dipakai untuk menyarankan Alokasi Dana pada rekening/periode yang sama. Satu kandidat valid boleh dipilih otomatis, beberapa kandidat tetap meminta pilihan user, edit existing tidak ditimpa, dan server tetap menjadi guard final. Dashboard/push mengingatkan transaksi expense tanpa Alokasi Dana.
 
 **Gap:** draft sementara, kategori “belum dikategorikan”, template transaksi tersimpan, dan reminder kelengkapan menunggu RFC-0011.
 
@@ -110,7 +110,7 @@ Harus memisahkan kontrak kewajiban, pencairan, cicilan, settlement, saldo tersis
 
 ### `REQ-PROD-13` Laporan — Partial
 
-Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan, total saldo lintas bulan, kategori, rekening, nature, budget vs actual, aktivitas pencatatan pengguna, dan breakdown pembagian beban biaya shared yang dipisahkan dari recorder activity. Transfer internal tidak dihitung sebagai arus kas. Presentation mobile ≤820px memakai mode `Ringkasan` dan `Per kategori`, navigasi periode, chart tren pengeluaran, KPI utama, perbandingan bulan sebelumnya, alert actionable, serta progressive disclosure untuk breakdown; desktop mempertahankan workspace analitik existing. Seluruh presentation tetap read-only dan memakai contract canonical `reports.monthly`.
+Tersedia cash flow bulanan, saldo awal/akhir, **seri harian untuk pilihan 1 bulan**, tren bulanan 3/6/12 bulan, total saldo lintas periode, kategori, rekening, budget vs actual, aktivitas pencatatan pengguna, dan breakdown pembagian beban biaya shared yang dipisahkan dari recorder activity. Transfer internal tidak dihitung sebagai arus kas. Field breakdown `nature` tetap boleh hadir pada response legacy untuk kompatibilitas tetapi tidak lagi menjadi presentation aktif. Presentation mobile ≤820px memakai mode `Ringkasan` dan `Per kategori`, navigasi periode, chart tren pengeluaran, KPI utama, alert actionable, serta progressive disclosure untuk breakdown aktif; perbandingan bulan sebelumnya hanya digunakan pada granularitas bulanan. Desktop mempertahankan workspace analitik existing. Seluruh presentation tetap read-only dan memakai contract canonical `reports.monthly`.
 
 **Gap:** payer/beneficiary dan kontribusi nyata, debt/receivable, serta target stages menunggu model datanya.
 

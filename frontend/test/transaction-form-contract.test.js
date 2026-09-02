@@ -203,3 +203,21 @@ test("detail Alokasi Dana membuka composer canonical dengan rekening, Alokasi, d
   assert.match(detail, /envelope_period_id: item\.envelope_period_id/);
   assert.doesNotMatch(detail, /createTransaction|updateTransaction|transactions\.api/, "detail Alokasi hanya boleh membuka composer, bukan menyimpan transaksi sendiri");
 });
+
+test("validasi transaksi memfokuskan field wajib dan expense tanpa Alokasi meminta konfirmasi eksplisit", async () => {
+  const [form, fields] = await Promise.all([
+    source(),
+    readFile(new URL("../src/features/transactions/components/TransactionFields.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(form, /focusFirstTransactionError/);
+  assert.match(form, /scrollIntoView\?\.\(\{ block: "center", behavior: "smooth" \}\)/);
+  assert.match(form, /form\.transaction_type === TRANSACTION_TYPES\.EXPENSE && !form\.envelope_period_id && !unallocatedConfirmed/);
+  assert.match(form, /code: "UNALLOCATED_EXPENSE"/);
+  assert.match(form, /Pengeluaran Belum Dialokasikan/);
+  assert.match(fields, /Lengkapi data transaksi yang wajib dipilih/);
+  assert.match(fields, /aria-live="assertive"/);
+  assert.match(fields, /transaction-date-error/);
+  assert.match(fields, /source-account-error/);
+  assert.match(fields, /destination-account-error/);
+  assert.match(fields, /category-error/);
+});

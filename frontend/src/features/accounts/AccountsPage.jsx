@@ -13,7 +13,6 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { useMasterDataRequestReview } from "../../hooks/useMasterDataRequestReview.js";
 import {
   archiveAccount,
   createAccount as requestCreateAccount,
@@ -257,7 +256,7 @@ const accountUserIdentity = (bootstrapUser, databaseUser, authUser) => ({
 
 const AccountsPageContent = ({ page }) => {
   const {
-    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts, requestsResource, requestReview,
+    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts, requestsResource,
     mobileLayout, visibleAccounts, selectedAccount, selectedAccountId, ownershipFilter, setOwnershipFilter, crud, lifecycle, setMobileAccountSheet,
     mobileAccountSheet, bootstrap, editAccount, setEditAccount, accountForm, setAccountForm, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel,
     archiveTarget, setArchiveTarget,
@@ -266,7 +265,7 @@ const AccountsPageContent = ({ page }) => {
     <AccountsPageFeedback accountsResource={accountsResource} usersResource={usersResource} ownerMode={ownerMode} reloadAccounts={reloadAccounts} message={message} />
     {setupCreated ? <div><CompactNotice tone="success" title="Rekening siap." role="status">Lanjutkan penyiapan agar transaksi harian langsung siap digunakan.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/kategori", { state: { setupFlow: true } })}>Lanjut siapkan kategori</Button></div></div> : null}
     <AccountsPageHeading accounts={accounts} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} />
-    {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : <MasterDataRequestsPanel items={requestsResource.data?.items || []} ownerMode={ownerMode} title={ownerMode ? "Pengajuan rekening" : "Pengajuan rekening saya"} busyId={requestReview.busyId} onApprove={(request) => requestReview.reviewRequest(request, "approve")} onReject={(request, reason) => requestReview.reviewRequest(request, "reject", reason)} />}
+    {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : !ownerMode ? <MasterDataRequestsPanel items={requestsResource.data?.items || []} title="Pengajuan rekening saya" /> : null}
     <AccountListSection mobileLayout={mobileLayout} accounts={visibleAccounts} allAccounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} setOwnershipFilter={setOwnershipFilter} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
       navigate={navigate} bootstrap={bootstrap} setSelectedAccountId={page.setSelectedAccountId} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} onTransferSaved={reloadAccounts} />
     {mobileLayout ? <AccountSheets mobileAccountSheet={mobileAccountSheet} setMobileAccountSheet={setMobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
@@ -288,7 +287,7 @@ const AccountsPage = () => {
   const ownerMode = user?.role === "owner";
   const mobileLayout = useMobileAccountsLayout();
   const usersResource = useApiResource("users.list", {}, { enabled: ownerMode });
-  const requestsResource = useApiResource("masterDataRequests.list", { request_type: "account" });
+  const requestsResource = useApiResource("masterDataRequests.list", { request_type: "account" }, { enabled: !ownerMode });
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [message, setMessage] = useState(null);
   const [editAccount, setEditAccount] = useState(null);
@@ -310,9 +309,6 @@ const AccountsPage = () => {
   const { currentDatabaseUser, activeUsers, currentOwnerLabel } = resolvedAccountUsers({
     ownerMode, ownerUserContext, bootstrapUser: bootstrap?.user, authUser: user,
   });
-  const requestReview = useMasterDataRequestReview({
-    requestsResource, reloadApproved: reloadAccounts, notify, entityLabel: "rekening", dedupePrefix: "accounts:request",
-  });
   const currentAccountUser = useMemo(
     () => accountUserIdentity(bootstrap?.user, currentDatabaseUser, user),
     [bootstrap?.user, currentDatabaseUser, user],
@@ -326,7 +322,7 @@ const AccountsPage = () => {
   if (accountsResource.status === "error") return <ErrorState error={accountsResource.error} onRetry={accountsResource.reload} />;
   const selectedAccount = selectedAccountFrom(visibleAccounts, selectedAccountId);
   return <AccountsPageContent page={{
-    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts, requestsResource, requestReview,
+    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts, requestsResource,
     mobileLayout, visibleAccounts, selectedAccount, selectedAccountId, ownershipFilter, setOwnershipFilter, crud, lifecycle, setMobileAccountSheet,
     mobileAccountSheet, bootstrap, setSelectedAccountId, editAccount, setEditAccount, accountForm, setAccountForm, dialogState, activeUsers, currentDatabaseUser,
     currentOwnerLabel, archiveTarget, setArchiveTarget,

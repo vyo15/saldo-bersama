@@ -76,6 +76,25 @@ export const SavingsIcon = (props) => iconSvg(props, [
   }),
 ]);
 
+export const CatIcon = (props) => iconSvg(props, [
+  createElement("path", {
+    key: "head",
+    d: "M5 9 4 4l4 2.4A8 8 0 0 1 12 5c1.5 0 2.8.4 4 1.4L20 4l-1 5v4c0 4-3 7-7 7s-7-3-7-7V9Z",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  }),
+  createElement("path", {
+    key: "face",
+    d: "M9 12h.01M15 12h.01M10 15c1.3 1 2.7 1 4 0",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  }),
+]);
+
 export const TRANSACTION_LABELS = Object.freeze({
   [TRANSACTION_TYPES.EXPENSE]: "Pengeluaran",
   [TRANSACTION_TYPES.INCOME]: "Pemasukan",
@@ -146,6 +165,7 @@ export const CATEGORY_ICON_OPTIONS = Object.freeze([
   { key: "gift", label: "Hadiah", group: "lifestyle", terms: "hadiah kado pemberian", icon: FiGift },
   { key: "family", label: "Keluarga", group: "lifestyle", terms: "keluarga orang tua anak saudara", icon: FiUsers },
   { key: "partner", label: "Pasangan", group: "lifestyle", terms: "pasangan bersama cinta", icon: FiHeart },
+  { key: "cat", label: "Kucing", group: "lifestyle", terms: "kucing cat hewan peliharaan pet", icon: CatIcon },
   { key: "other", label: "Lainnya", group: "lifestyle", terms: "lainnya umum other", icon: FiMoreHorizontal },
 ]);
 

@@ -81,7 +81,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - `available_balance = balance - allocated_remaining`; membuat Alokasi Dana tidak mengubah `balance`, sedangkan pemakaian Alokasi Dana mengurangi `balance` dan `allocated_remaining` bersamaan;
 - `safeToSpend`, `unallocatedFunds`;
 - `progress_percent`, `remaining_amount`, `required_monthly_amount`, `pace_status` target;
-- tren 3/6/12 bulan dan breakdown laporan;
+- seri laporan 1 bulan harian, tren 3/6/12 bulan, dan breakdown laporan;
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
 
 ## Model planned — belum ada di schema v14

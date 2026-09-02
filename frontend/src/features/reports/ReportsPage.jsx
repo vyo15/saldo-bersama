@@ -33,13 +33,13 @@ import FinancialAlertList from "../dashboard/components/FinancialAlertList.jsx";
 import styles from "./ReportsPage.module.css";
 
 const MOBILE_REPORT_QUERY = "(max-width: 820px)";
-const TREND_OPTIONS = [3, 6, 12];
+const TREND_OPTIONS = [1, 3, 6, 12];
 
 const ReportHeader = ({ period, trendMonths, setPeriod, setTrendMonths }) => (
   <PageHeader
     title="Laporan"
     help="Laporan merangkum transaksi sesuai periode. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran total."
-    actions={<div className="report-period-controls"><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><label className="field field--compact"><span>Rentang tren</span><select value={trendMonths} onChange={(event) => setTrendMonths(Number(event.target.value))}><option value="3">3 bulan</option><option value="6">6 bulan</option><option value="12">12 bulan</option></select></label></div>}
+    actions={<div className="report-period-controls"><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><label className="field field--compact"><span>Rentang tren</span><select value={trendMonths} onChange={(event) => setTrendMonths(Number(event.target.value))}><option value="1">1 bulan (harian)</option><option value="3">3 bulan</option><option value="6">6 bulan</option><option value="12">12 bulan</option></select></label></div>}
   />
 );
 
@@ -56,22 +56,21 @@ const ReportAlerts = ({ alerts = [] }) => alerts.length ? <Card className="panel
 
 const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
   <Card className="panel"><div className="panel__header"><h2>Saldo awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>
-  <Card className="panel"><div className="panel__header"><h2>Arus kas {trend.months} bulan</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" description="Tren arus kas muncul setelah tersedia transaksi pada lebih dari satu periode." />}</Card>
+  <Card className="panel"><div className="panel__header"><h2>{trend.granularity === "day" ? "Arus kas harian" : `Arus kas ${trend.months} bulan`}</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" description="Tren arus kas muncul setelah tersedia transaksi pada lebih dari satu periode." />}</Card>
 </>;
 
 const useMobileReportLayout = () => useMediaQuery(MOBILE_REPORT_QUERY);
 
-const ReportDetails = ({ balanceTrend, categoryExpenses, accountExpenses, natureExpenses, creatorExpenses, costShareExpenses, budgets }) => {
+const ReportDetails = ({ balanceTrend, categoryExpenses, accountExpenses, creatorExpenses, costShareExpenses, budgets }) => {
   const compact = useMobileReportLayout();
-  const content = <div className="report-details__content"><Card className="panel"><div className="panel__header"><h2>Tren total saldo</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren total saldo" /> : <EmptyState title="Belum ada tren saldo" description="Tren saldo muncul setelah tersedia riwayat saldo pada lebih dari satu periode." />}</Card><BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} natureExpenses={natureExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} /><BudgetPerformance budgets={budgets} /></div>;
+  const content = <div className="report-details__content"><Card className="panel"><div className="panel__header"><h2>Tren total saldo</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren total saldo" /> : <EmptyState title="Belum ada tren saldo" description="Tren saldo muncul setelah tersedia riwayat saldo pada lebih dari satu periode." />}</Card><BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} /><BudgetPerformance budgets={budgets} /></div>;
   if (!compact) return <div className="report-details report-details--desktop">{content}</div>;
   return <details className="report-details"><summary className="report-details__summary"><span><strong>Rincian laporan</strong><small>Tren saldo, kategori, rekening, jenis, pencatat, dan anggaran</small></span><FiChevronDown aria-hidden="true" /></summary>{content}</details>;
 };
 
-const BreakdownPanels = ({ categoryExpenses, accountExpenses, natureExpenses, creatorExpenses, costShareExpenses }) => <>
+const BreakdownPanels = ({ categoryExpenses, accountExpenses, creatorExpenses, costShareExpenses }) => <>
   <Card className="panel"><div className="panel__header"><h2>Pengeluaran per kategori</h2></div><BarChart data={categoryExpenses} /></Card>
   <Card className="panel"><div className="panel__header"><h2>Pengeluaran per rekening</h2></div>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState title="Belum ada pengeluaran" description="Pengeluaran akan muncul setelah transaksi expense tercatat pada periode ini." />}</Card>
-  <Card className="panel"><div className="panel__header"><h2>Jenis pengeluaran</h2></div>{natureExpenses.length ? <BarChart data={natureExpenses} label="Pengeluaran berdasarkan sifat kategori" /> : <EmptyState title="Belum ada klasifikasi" description="Jenis pengeluaran akan muncul setelah transaksi memiliki kategori yang sesuai." />}</Card>
   <Card className="panel"><div className="panel__header"><div><h2>Aktivitas pencatatan</h2><p className="panel__description">Menunjukkan pencatat, bukan penanggung biaya.</p></div></div>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState title="Belum ada aktivitas" description="Aktivitas pencatatan akan muncul setelah ada pengeluaran pada periode ini." />}</Card>
   <Card className="panel"><div className="panel__header"><div><h2>Pembagian beban biaya</h2><p className="panel__description">Hanya transaksi Bersama yang pembagiannya ditentukan. Ini bukan laporan siapa yang benar-benar membayar.</p></div></div>{costShareExpenses.length ? <BarChart data={costShareExpenses} label="Pembagian beban biaya bersama" /> : <EmptyState title="Belum ada pembagian beban" description="Pembagian beban muncul setelah transaksi Bersama memakai pembagian biaya." />}</Card>
 </>;
@@ -112,14 +111,16 @@ const signedPercent = (value) => value === null ? "Belum ada pembanding" : `${va
 
 const MobileTrendChart = ({ items = [], period }) => {
   const maxExpense = Math.max(1, ...items.map((item) => Number(item.expense || 0)));
-  return <div className={styles.trendChart} role="img" aria-label={`Tren pengeluaran ${items.map((item) => `${item.label} ${formatRupiah(item.expense)}`).join(", ")}`}>
-    {items.map((item) => {
+  const daily = items.some((item) => /^\d{4}-\d{2}-\d{2}$/.test(String(item.periodKey || "")));
+  return <div className={`${styles.trendChart}${daily ? ` ${styles.trendChartDaily}` : ""}`} style={daily ? { "--report-trend-count": items.length } : undefined} role="img" aria-label={`Tren pengeluaran ${items.map((item) => `${item.label} ${formatRupiah(item.expense)}`).join(", ")}`}>
+    {items.map((item, index) => {
       const value = Number(item.expense || 0);
       const height = Math.max(7, Math.round((value / maxExpense) * 100));
-      const active = item.periodKey === period;
+      const active = daily ? index === items.length - 1 : item.periodKey === period;
+      const showDetail = !daily || index === 0 || index === items.length - 1 || index % 5 === 0;
       return <div className={styles.trendColumn} key={item.periodKey} aria-hidden="true">
-        <div className={styles.trendPlot}><span className={styles.trendValue}>{formatCompactRupiah(value)}</span><i className={`${styles.trendBar}${active ? ` ${styles.trendBarActive}` : ""}`} style={{ "--report-bar-height": `${height}%` }} /></div>
-        <span className={`${styles.trendLabel}${active ? ` ${styles.trendLabelActive}` : ""}`}>{item.label}</span>
+        <div className={styles.trendPlot}>{showDetail ? <span className={styles.trendValue}>{formatCompactRupiah(value)}</span> : null}<i className={`${styles.trendBar}${active ? ` ${styles.trendBarActive}` : ""}`} style={{ "--report-bar-height": `${height}%` }} /></div>
+        <span className={`${styles.trendLabel}${active ? ` ${styles.trendLabelActive}` : ""}`}>{showDetail ? item.label : ""}</span>
       </div>;
     })}
   </div>;
@@ -165,11 +166,10 @@ const MobileBudgetList = ({ budgets = [] }) => {
   })}</div>;
 };
 
-const MobileBreakdownDetails = ({ accountExpenses, natureExpenses, creatorExpenses, costShareExpenses }) => <details className={styles.detailsCard}>
-  <summary><span><strong>Rincian lainnya</strong><small>Rekening, jenis pengeluaran, dan aktivitas pencatatan</small></span><FiChevronDown aria-hidden="true" /></summary>
+const MobileBreakdownDetails = ({ accountExpenses, creatorExpenses, costShareExpenses }) => <details className={styles.detailsCard}>
+  <summary><span><strong>Rincian lainnya</strong><small>Rekening, aktivitas pencatatan, dan pembagian beban</small></span><FiChevronDown aria-hidden="true" /></summary>
   <div className={styles.detailsContent}>
     <section><h3>Pengeluaran per rekening</h3>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState variant="inline" title="Belum ada pengeluaran" description="Pengeluaran akan muncul setelah transaksi expense tercatat pada periode ini." />}</section>
-    <section><h3>Jenis pengeluaran</h3>{natureExpenses.length ? <BarChart data={natureExpenses} label="Pengeluaran berdasarkan sifat kategori" /> : <EmptyState variant="inline" title="Belum ada klasifikasi" description="Jenis pengeluaran akan muncul setelah transaksi memiliki kategori yang sesuai." />}</section>
     <section><h3>Aktivitas pencatatan</h3><p>Menunjukkan pencatat, bukan penanggung biaya.</p>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState variant="inline" title="Belum ada aktivitas" description="Aktivitas pencatatan akan muncul setelah ada pengeluaran pada periode ini." />}</section>
     <section><h3>Pembagian beban biaya</h3><p>Hanya transaksi Bersama yang pembagiannya ditentukan. Bukan bukti siapa yang membayar.</p>{costShareExpenses.length ? <BarChart data={costShareExpenses} label="Pembagian beban biaya bersama" /> : <EmptyState variant="inline" title="Belum ada pembagian beban" description="Pembagian beban muncul setelah transaksi Bersama memakai pembagian biaya." />}</section>
   </div>
@@ -200,19 +200,19 @@ const MobileComparison = ({ current, previous }) => {
 };
 
 const mobileReportModel = (data, period, trendMonths) => {
-  const { overview, budgets = [], categoryExpenses = [], accountExpenses = [], creatorExpenses = [], natureExpenses = [], costShareExpenses = [], trend = { months: trendMonths, items: [] } } = data || {};
+  const { overview, budgets = [], categoryExpenses = [], accountExpenses = [], creatorExpenses = [], costShareExpenses = [], trend = { months: trendMonths, granularity: "month", items: [] } } = data || {};
   const trendItems = trend.items || [];
-  const matchedIndex = trendItems.findIndex((item) => item.periodKey === period);
+  const daily = trend.granularity === "day";
+  const matchedIndex = daily ? -1 : trendItems.findIndex((item) => item.periodKey === period);
   const currentIndex = matchedIndex >= 0 ? matchedIndex : trendItems.length - 1;
   const currentTrend = currentIndex >= 0 ? trendItems[currentIndex] : null;
-  const previousTrend = currentIndex > 0 ? trendItems[currentIndex - 1] : null;
+  const previousTrend = !daily && currentIndex > 0 ? trendItems[currentIndex - 1] : null;
   return {
     overview,
     budgets,
     categoryExpenses,
     accountExpenses,
     creatorExpenses,
-    natureExpenses,
     costShareExpenses,
     trendItems,
     currentTrend,
@@ -239,7 +239,7 @@ const MobileReportControls = ({ mode, setMode, period, setPeriod, trendMonths, s
       <button className={styles.periodArrow} type="button" onClick={() => setPeriod(shiftMonth(period, 1))} disabled={!canMoveForward} aria-label="Bulan berikutnya"><FiChevronRight aria-hidden="true" /></button>
     </section>
     <div className={styles.rangeChips} role="group" aria-label="Rentang tren">
-      {TREND_OPTIONS.map((months) => <button type="button" key={months} className={trendMonths === months ? styles.rangeActive : ""} onClick={() => setTrendMonths(months)} aria-pressed={trendMonths === months}>{months} bulan</button>)}
+      {TREND_OPTIONS.map((months) => <button type="button" key={months} className={trendMonths === months ? styles.rangeActive : ""} onClick={() => setTrendMonths(months)} aria-pressed={trendMonths === months}>{months === 1 ? "1 bulan · harian" : `${months} bulan`}</button>)}
     </div>
   </>;
 };
@@ -292,7 +292,7 @@ const MobileCategoryView = ({ model, categoryLookup }) => <>
     <div className={styles.sectionHeading}><div><span>Rencana bulan ini</span><h2>Kebutuhan vs aktual</h2></div><Link to="/anggaran">Lihat anggaran</Link></div>
     <MobileBudgetList budgets={model.budgets} />
   </section>
-  <MobileBreakdownDetails accountExpenses={model.accountExpenses} natureExpenses={model.natureExpenses} creatorExpenses={model.creatorExpenses} costShareExpenses={model.costShareExpenses} />
+  <MobileBreakdownDetails accountExpenses={model.accountExpenses} creatorExpenses={model.creatorExpenses} costShareExpenses={model.costShareExpenses} />
 </>;
 
 const MobileReportsView = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload, categoryLookup }) => {
@@ -309,11 +309,11 @@ const MobileReportsView = ({ data, period, trendMonths, setPeriod, setTrendMonth
 };
 
 const DesktopReportsContent = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload }) => {
-  const { overview, budgets = [], categoryExpenses = [], accountExpenses = [], creatorExpenses = [], natureExpenses = [], costShareExpenses = [], trend = { months: trendMonths, items: [] } } = data || {};
+  const { overview, budgets = [], categoryExpenses = [], accountExpenses = [], creatorExpenses = [], costShareExpenses = [], trend = { months: trendMonths, granularity: "month", items: [] } } = data || {};
   const cashFlowTrend = trend.items.map((item) => ({ label: item.label, value: item.net }));
   const balanceTrend = trend.items.map((item) => ({ label: item.label, value: item.totalBalance }));
   const balanceComparison = [{ label: "Awal periode", value: overview?.openingBalance || 0 }, { label: overview?.isHistoricalPeriod ? "Akhir periode" : "Saat ini", value: overview?.totalBalance || 0 }];
-  return <div className="page-stack reports-page"><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} /><ReportAlerts alerts={overview?.alerts} /><section className="two-column-grid report-chart-grid"><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} natureExpenses={natureExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} budgets={budgets} /></section></div>;
+  return <div className="page-stack reports-page"><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} /><ReportAlerts alerts={overview?.alerts} /><section className="two-column-grid report-chart-grid"><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} budgets={budgets} /></section></div>;
 };
 
 const ReportsContent = (props) => {

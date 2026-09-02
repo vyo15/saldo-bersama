@@ -4,9 +4,11 @@ import { transactionCapabilities } from "../transactionPolicy.js";
 import { buildFinancialAlerts } from "./dashboard/alerts.js";
 import {
   bootstrapReadStatements,
+  dailyTrendPlan,
   dashboardPeriodContext,
   dashboardReadPlan,
   mapBootstrapRows,
+  mapDailyTrendRows,
   mapDashboardReadRows,
   mapMonthlyTrendRows,
   mapReportBreakdowns,
@@ -148,9 +150,9 @@ export const appInitialState = async (db, context) => {
 
 export const monthlyReport = async (db, context) => {
   const period = periodKey(context.payload?.period);
-  const trendMonths = boundedInteger(context.payload?.trend_months, 6, 3, 12, "Rentang tren");
+  const trendMonths = boundedInteger(context.payload?.trend_months, 6, 1, 12, "Rentang tren");
   const accountId = sanitizeText(context.payload?.account_id, 100);
-  if (![3, 6, 12].includes(trendMonths)) throw appError("INVALID_TREND_RANGE", "Rentang tren harus 3, 6, atau 12 bulan.", 400);
+  if (![1, 3, 6, 12].includes(trendMonths)) throw appError("INVALID_TREND_RANGE", "Rentang tren harus 1, 3, 6, atau 12 bulan.", 400);
   const scoped = { ...context, payload: { period } };
   const periodContext = dashboardPeriodContext(scoped, null);
   const dashboardPlan = dashboardReadPlan(scoped, periodContext);
@@ -158,7 +160,7 @@ export const monthlyReport = async (db, context) => {
   const currentPeriod = todayJakarta().slice(0, 7);
   const cutoffDate = period === currentPeriod ? todayJakarta() : bounds.end;
   const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate);
-  const trendPlan = monthlyTrendPlan(context.actor, period, trendMonths, { accountId });
+  const trendPlan = trendMonths === 1 ? dailyTrendPlan(context.actor, period, { accountId }) : monthlyTrendPlan(context.actor, period, trendMonths, { accountId });
   const combinedRows = await readBatchRows(db, [
     ...dashboardPlan.statements,
     ...breakdownStatements,
@@ -170,13 +172,13 @@ export const monthlyReport = async (db, context) => {
   const readState = mapDashboardReadRows(dashboardRows, dashboardPlan, scoped, periodContext, null);
   const overview = dashboardResult(scoped, periodContext, readState);
   const breakdowns = mapReportBreakdowns(combinedRows.slice(dashboardEnd, breakdownEnd));
-  const trend = mapMonthlyTrendRows(trendPlan, combinedRows.slice(breakdownEnd));
+  const trend = trendMonths === 1 ? mapDailyTrendRows(trendPlan, combinedRows.slice(breakdownEnd)) : mapMonthlyTrendRows(trendPlan, combinedRows.slice(breakdownEnd));
   return {
     overview,
     budgets: overview.budgets,
     categoryExpenses: overview.categoryExpenses,
     ...breakdowns,
-    trend: { months: trendMonths, items: trend.items },
-    ...(accountId ? { accountExpenseTrend: { months: trendMonths, items: trend.accountExpenseItems } } : {}),
+    trend: { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.items },
+    ...(accountId ? { accountExpenseTrend: { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.accountExpenseItems } } : {}),
   };
 };

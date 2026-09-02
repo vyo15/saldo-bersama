@@ -48,6 +48,13 @@ test("backend memberi default, menerima katalog icon, dan menolak key icon bebas
     });
     assert.equal(weddingCategory.icon, "wedding_ring");
 
+    const catCategory = await dispatch(db, "categories.create", {
+      name: "Kebutuhan kucing",
+      transaction_type: "expense",
+      icon: "cat",
+    });
+    assert.equal(catCategory.icon, "cat");
+
     const updated = await dispatch(db, "categories.update", {
       category_id: weddingCategory.category_id,
       name: weddingCategory.name,

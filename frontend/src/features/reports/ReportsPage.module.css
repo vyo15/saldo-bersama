@@ -285,6 +285,14 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .trendChartDaily {
+    --report-trend-count: 31;
+    grid-template-columns: repeat(var(--report-trend-count), minmax(28px, 1fr));
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
   .trendColumn {
     min-width: 0;
     display: grid;

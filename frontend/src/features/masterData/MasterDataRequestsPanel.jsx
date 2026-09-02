@@ -16,9 +16,9 @@ const requestMeta = (request) => {
   const payload = request.payload || {};
   if (request.request_type === "account") {
     const owner = payload.owner_scope === "shared" ? "Bersama" : "Pribadi";
-    return <>{owner} · saldo awal <Money value={Number(payload.initial_balance || 0)} /></>;
+    return <>Rekening · {owner} · saldo awal <Money value={Number(payload.initial_balance || 0)} /></>;
   }
-  return <>{payload.transaction_type === "expense" ? "Pengeluaran" : payload.transaction_type === "income" ? "Pemasukan" : "Pengembalian dana"}</>;
+  return <>Kategori · {payload.transaction_type === "expense" ? "Pengeluaran" : payload.transaction_type === "income" ? "Pemasukan" : "Pengembalian dana"}</>;
 };
 
 const MasterDataRequestsPanel = ({ items = [], ownerMode = false, title, onApprove, onReject, busyId = "" }) => {

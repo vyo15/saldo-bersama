@@ -309,20 +309,21 @@ Payload:
 ```json
 {
   "period": "YYYY-MM",
-  "trend_months": 3
+  "trend_months": 1
 }
 ```
 
-`trend_months` hanya menerima 3, 6, atau 12 dan default-nya 6. Response menambah:
+`trend_months` menerima 1, 3, 6, atau 12 dan default-nya 6. Nilai `1` memakai seri **harian** untuk bulan `period` (bulan berjalan hanya sampai hari Jakarta saat ini; bulan historis memuat seluruh tanggal kalender), sedangkan 3/6/12 memakai seri bulanan. Response menambah:
 
-- `trend.items`: income, expense, refund, net, dan totalBalance per bulan;
+- `trend.granularity`: `day` untuk rentang 1 bulan atau `month` untuk 3/6/12 bulan;
+- `trend.items`: income, expense, refund, net, dan totalBalance per hari/bulan sesuai `granularity`;
 - `accountExpenses`: expense menurut rekening sumber;
 - `creatorExpenses`: expense menurut actor pencatat, **bukan** kontribusi/penanggung biaya;
 - `costShareExpenses`: pembagian beban analitis pada expense shared yang memiliki snapshot `equal` atau `percentage`; jumlah ini bukan bukti siapa yang benar-benar membayar;
-- `natureExpenses`: expense menurut `categories.nature`;
+- `natureExpenses`: breakdown legacy menurut `categories.nature` untuk kompatibilitas response; field ini tidak lagi menjadi presentation aktif di UI;
 - `overview.alerts`: peringatan actionable dari Kebutuhan, Alokasi Dana, Jadwal Rutin, Target, transaksi belum dialokasikan, dan rekonsiliasi.
 
-Field tambahan tersebut backward-compatible; transfer internal tetap tidak masuk income/expense/net.
+Field tambahan tersebut backward-compatible; `accountExpenseTrend.granularity` mengikuti `trend.granularity`, dan transfer internal tetap tidak masuk income/expense/net.
 
 ## Version/conflict
 

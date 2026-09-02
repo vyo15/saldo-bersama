@@ -27,7 +27,7 @@ export const CURRENT_EXPENSE_CATEGORY_NATURE_VALUES = Object.freeze([
 export const CATEGORY_ICON_VALUES = Object.freeze([
   "wedding_ring", "savings", "target", "emergency", "money", "account", "salary", "business", "refund",
   "shopping", "food", "transport", "home", "renovation", "bill", "electricity", "internet", "education",
-  "health", "travel", "entertainment", "music", "gift", "family", "partner", "other",
+  "health", "travel", "entertainment", "music", "gift", "family", "partner", "cat", "other",
 ]);
 
 export const DEFAULT_CATEGORY_ICON_BY_TYPE = Object.freeze({

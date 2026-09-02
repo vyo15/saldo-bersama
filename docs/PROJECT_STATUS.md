@@ -80,10 +80,10 @@ Dokumen ini adalah snapshot kondisi project sekarang, bukan jurnal perubahan.
 ## Laporan mobile saat ini
 
 - `/laporan` pada viewport ≤820px memakai hierarchy analitik compact yang terpisah dari workspace desktop, tetapi tetap membaca action canonical `reports.monthly`.
-- Mode `Ringkasan` menampilkan tren pengeluaran 3/6/12 bulan, arus kas bersih, total saldo, saldo aman, perbandingan dengan bulan sebelumnya, kategori pengeluaran terbesar, serta seluruh alert actionable.
-- Mode `Per kategori` menampilkan distribusi kategori memakai ikon kategori canonical, analisis Kebutuhan vs aktual read-only, dan progressive disclosure untuk breakdown rekening, nature, serta aktivitas pencatatan.
-- Navigasi periode mendukung bulan sebelumnya/berikutnya sampai bulan berjalan dan picker bulan native. Perbandingan dihitung dari `trend.items` yang sama, sehingga tidak menambah request, schema, mutation, atau business rule baru.
-- Desktop `/laporan` tetap memakai panel analitik existing. Backend, auth, saldo, ledger, authorization, dan contract API tidak berubah oleh redesign mobile ini.
+- Mode `Ringkasan` menampilkan pilihan **1 bulan harian** atau tren 3/6/12 bulan, arus kas bersih, total saldo, saldo aman, kategori pengeluaran terbesar, serta seluruh alert actionable. Perbandingan bulan sebelumnya hanya ditampilkan saat data bergranularitas bulanan.
+- Mode `Per kategori` menampilkan distribusi kategori memakai ikon kategori canonical, analisis Kebutuhan vs aktual read-only, dan progressive disclosure untuk breakdown rekening serta aktivitas pencatatan. `nature` tetap legacy-compatible di data tetapi tidak lagi menjadi presentation aktif.
+- Navigasi periode mendukung bulan sebelumnya/berikutnya sampai bulan berjalan dan picker bulan native. Seri 1 bulan berasal dari read-model harian server-side `reports.monthly`, bukan agregasi transaction page slice; 3/6/12 tetap bulanan.
+- Desktop `/laporan` tetap memakai panel analitik existing. Perubahan read-model hanya menambah granularitas harian backward-compatible; auth, saldo, ledger, dan authorization tidak berubah.
 - Route `/laporan` kembali buildable setelah import ikon `FiWallet` yang tidak tersedia pada `react-icons/fi` diganti dengan export Feather yang valid. Regression import-symbol dan production build menjadi guard agar route lazy tidak kembali gagal dibuka karena named export invalid.
 
 ## Rekening mobile saat ini

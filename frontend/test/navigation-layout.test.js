@@ -263,7 +263,7 @@ test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kemba
   assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
   assert.match(source, /label: "Kontrol saldo"/);
   assert.match(source, /items: pickNavigation\("\/rekonsiliasi"\)/);
-  assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota"\)/);
+  assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
   assert.doesNotMatch(source, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
   assert.match(source, /pickNavigation\("\/", "\/transaksi", "\/laporan"\)/);

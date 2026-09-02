@@ -243,6 +243,41 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
   }
 });
 
+test("laporan 1 bulan memakai seri harian penuh dan transfer tidak membuat cashflow atau total saldo palsu", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const period = "2024-02";
+    await insertTransaction(db, { id: "daily-income", date: "2024-02-01", type: "income", amount: 100_000, destination: "account-bank", category: "category-salary" });
+    await insertTransaction(db, { id: "daily-expense", date: "2024-02-02", type: "expense", amount: 40_000, source: "account-bank", category: "category-food" });
+    await insertTransaction(db, { id: "daily-transfer", date: "2024-02-03", type: "transfer", amount: 50_000, source: "account-bank", destination: "account-cash" });
+
+    const report = await monthlyReport(db, { actor: owner, payload: { period, trend_months: 1, account_id: "account-bank" } });
+
+    assert.equal(report.trend.months, 1);
+    assert.equal(report.trend.granularity, "day");
+    assert.equal(report.trend.items.length, 29, "Februari leap year harus menghasilkan satu titik untuk setiap hari.");
+    assert.equal(report.trend.items[0].periodKey, "2024-02-01");
+    assert.equal(report.trend.items.at(-1).periodKey, "2024-02-29");
+    assert.deepEqual(
+      report.trend.items.slice(0, 3).map((item) => ({ income: item.income, expense: item.expense, refund: item.refund })),
+      [
+        { income: 100_000, expense: 0, refund: 0 },
+        { income: 0, expense: 40_000, refund: 0 },
+        { income: 0, expense: 0, refund: 0 },
+      ],
+    );
+    assert.equal(report.trend.items[1].totalBalance, 5_560_000);
+    assert.equal(report.trend.items[2].totalBalance, 5_560_000, "Transfer internal tidak boleh mengubah total saldo gabungan.");
+    assert.equal(report.accountExpenseTrend.granularity, "day");
+    assert.equal(report.accountExpenseTrend.items.length, 29);
+    assert.equal(report.accountExpenseTrend.items[1].value, 40_000);
+    assert.equal(report.accountExpenseTrend.items[2].value, 0, "Transfer tidak boleh muncul sebagai expense rekening.");
+  } finally {
+    db.close();
+  }
+});
+
 test("notifikasi aksi penting idempotent untuk budget dan transaksi belum dialokasikan", async () => {
   const db = await createSqliteTestDatabase();
   try {

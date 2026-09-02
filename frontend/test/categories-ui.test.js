@@ -22,9 +22,11 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(navigation, /to: "\/kategori", label: "Kategori"[\s\S]*icon: FiTag/);
   assert.match(page, /title="Kategori"/);
   assert.match(page, /aria-label=\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}/);
-  assert.match(page, /useApiResource\("masterDataRequests\.list", \{ request_type: "category" \}\)/);
+  assert.match(page, /useApiResource\("masterDataRequests\.list", \{ request_type: "category" \}, \{ enabled: !ownerMode \}\)/);
   assert.match(page, /requestCategoryCreation/);
-  assert.match(page, /useMasterDataRequestReview/);
+  assert.doesNotMatch(page, /useMasterDataRequestReview/);
+  assert.match(page, /Pengajuan kategori saya/);
+  assert.match(navigation, /to: "\/persetujuan", label: "Persetujuan"/);
   assert.match(reviewHook, /reviewMasterDataRequest/);
   assert.match(reviewService, /masterDataRequests\.review/);
   assert.match(page, /useApiResource\("categories\.list"\)/);
@@ -78,7 +80,32 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(categoryPresentation, /value: CATEGORY_NATURES\.DISCRETIONARY, label: "Gaya hidup"/);
   assert.match(categoryPresentation, /value: CATEGORY_NATURES\.EMERGENCY, label: "Darurat"/);
   assert.doesNotMatch(categoryPresentation, /label: "Kebutuhan tidak terduga"|label: "Keinginan dan gaya hidup"|label: "Kondisi darurat"/);
-  assert.match(page, /<option value=\{item\.value\} key=\{item\.value\}>\{item\.label\}<\/option>/);
+  assert.doesNotMatch(page, /CATEGORY_NATURE_OPTIONS|name="nature"|Sifat Pengeluaran/);
   assert.doesNotMatch(page, /accounts\.list|AccountFinancialCard/);
   assert.doesNotMatch(accountPage, /categories\.list|create-category-form|Kategori transaksi/);
+});
+
+test("pusat Persetujuan owner mereuse contract review rekening kategori dan transfer tanpa review tersebar", async () => {
+  const [app, navigation, approvals, accounts, categories, transactions] = await Promise.all([
+    read("src/app/App.jsx"),
+    read("src/config/navigation.js"),
+    read("src/features/approvals/ApprovalCenterPage.jsx"),
+    read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/categories/CategoriesPage.jsx"),
+    read("src/features/transactions/TransactionsPage.jsx"),
+  ]);
+  assert.match(app, /path="persetujuan"/);
+  assert.match(navigation, /to: "\/persetujuan", label: "Persetujuan"[\s\S]*ownerOnly: true/);
+  assert.match(approvals, /masterDataRequests\.list/);
+  assert.match(approvals, /transferRequests\.list/);
+  assert.match(approvals, /useMasterDataRequestReview/);
+  assert.match(approvals, /useTransferRequestReview/);
+  assert.match(approvals, /status: "pending"/);
+  assert.match(approvals, /OwnerSettingsGuard/);
+  assert.doesNotMatch(accounts, /useMasterDataRequestReview/);
+  assert.doesNotMatch(categories, /useMasterDataRequestReview/);
+  assert.doesNotMatch(transactions, /useTransferRequestReview/);
+  assert.match(accounts, /enabled: !ownerMode/);
+  assert.match(categories, /enabled: !ownerMode/);
+  assert.match(transactions, /memberTransferRequestsEnabled\(bootstrap\?\.user\?\.role\)/);
 });

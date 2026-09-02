@@ -1,3 +1,10 @@
+## 2 September 2026 - Batch 1–3 governance regression, capability UX, dan laporan harian
+- Memusatkan keputusan pengajuan rekening, kategori, dan transfer Administrator pada route owner-only `/persetujuan` sambil mereuse action review backend existing; halaman domain Member tetap menampilkan pengajuannya sendiri dan tidak ada approval authority baru di frontend.
+- Memperkuat UX transaksi: validation summary aksesibel memfokuskan field wajib pertama, expense tanpa Alokasi Dana membutuhkan konfirmasi eksplisit sebelum mutation, dan idempotency/outcome-unknown canonical tetap dipertahankan.
+- Menambahkan `trend_months=1` sebagai seri harian canonical server-side pada `reports.monthly`, termasuk account expense trend harian; 3/6/12 tetap bulanan dan transfer internal tetap netral terhadap cashflow maupun total saldo lintas rekening.
+- Memensiunkan `nature`/Sifat Pengeluaran dari UX kategori dan laporan tanpa destructive schema migration; field/breakdown existing tetap diterima/dikirim untuk compatibility legacy. Menambahkan ikon kategori Kucing secara parity frontend/backend.
+- Memperbaiki lint regression pada `AccountsPage`, memecah kompleksitas Approval Center/TransactionsPage tanpa menaikkan threshold, serta menambah regression untuk approval centralization, transaction focus/unallocated confirmation, leap-year daily trend, dan transfer-neutrality.
+
 ## 1 September 2026 - Audit remediation contract recovery dan clean-only governance
 - Memulihkan `docs/API_CONTRACT.md`, `docs/TEST_PLAN.md`, dan `CHANGELOG.md` dari histori Git lokal setelah source ZIP membawa versi yang terpotong; contract terbaru kemudian di-merge kembali dan divalidasi terhadap registry/policy/test aktual, bukan mengganti behavior runtime dengan dokumentasi lama.
 - Menyelaraskan test harness Google bridge dengan durable Script Properties anti-replay tanpa mengembalikan CacheService sebagai authority nonce.

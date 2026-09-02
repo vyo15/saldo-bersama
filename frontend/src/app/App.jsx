@@ -13,6 +13,7 @@ const GoalsPage = lazy(() => import("../features/goals/GoalsPage.jsx"));
 const ReportsPage = lazy(() => import("../features/reports/ReportsPage.jsx"));
 const AccountsPage = lazy(() => import("../features/accounts/AccountsPage.jsx"));
 const CategoriesPage = lazy(() => import("../features/categories/CategoriesPage.jsx"));
+const ApprovalCenterPage = lazy(() => import("../features/approvals/ApprovalCenterPage.jsx"));
 const ReconciliationsPage = lazy(() => import("../features/reconciliations/ReconciliationsPage.jsx"));
 const SettingsLayout = lazy(() => import("../features/settings/SettingsLayout.jsx"));
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage.jsx"));
@@ -61,6 +62,7 @@ const App = () => (
         <Route path="rekonsiliasi" element={routeElement(ReconciliationsPage)} />
         <Route path="kategori" element={routeElement(CategoriesPage)} />
         <Route path="anggota" element={routeElement(MembersSettingsPage)} />
+        <Route path="persetujuan" element={routeElement(ApprovalCenterPage)} />
         <Route path="pengaturan" element={routeElement(SettingsLayout)}>
           <Route index element={routeElement(SettingsPage)} />
           <Route path="notifikasi" element={routeElement(DeviceNotificationsPage)} />

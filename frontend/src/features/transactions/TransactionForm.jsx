@@ -24,6 +24,24 @@ import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 
 const emptyForm = () => ({ transaction_type: TRANSACTION_TYPES.EXPENSE, transaction_date: todayInJakarta(), amount: "", source_account_id: "", destination_account_id: "", category_id: "", envelope_period_id: "", payment_method: "", merchant: "", description: "", overspend_reason: "", cost_share_mode: "unspecified", cost_share_percentages: [] });
 const MOBILE_TRANSACTION_QUERY = "(max-width: 820px)";
+const TRANSACTION_ERROR_SELECTORS = Object.freeze([
+  ["amount", "#transaction-amount"],
+  ["transaction_date", "#transaction-date"],
+  ["source_account_id", "#source-account"],
+  ["destination_account_id", "#destination-account"],
+  ["category_id", "#category"],
+  ["description", "#description"],
+]);
+
+const focusFirstTransactionError = (formElement, errors) => {
+  const selector = TRANSACTION_ERROR_SELECTORS.find(([field]) => errors?.[field])?.[1] || '[aria-invalid="true"]';
+  window.requestAnimationFrame(() => {
+    const target = formElement?.querySelector?.(selector) || formElement?.querySelector?.('[aria-invalid="true"]');
+    if (!target) return;
+    target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    target.focus?.({ preventScroll: true });
+  });
+};
 
 const editableTransactionForm = (transaction) => {
   const editable = { ...transaction }; delete editable.scope; delete editable.owner_user_id; delete editable.cost_share_json;
@@ -53,12 +71,12 @@ const initialTransactionForm = ({ initialType, initialSourceAccountId, initialDr
   };
 };
 
-const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, idempotencyKeyRef }) => {
+const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef }) => {
   useEffect(() => {
     if (!open) return;
     setForm(transaction ? editableTransactionForm(transaction) : initialTransactionForm({ initialType, initialSourceAccountId, initialDraft }));
-    setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); setPostSave(null); setForceOverspendNote(false); setAllocationMode(transaction || initialDraft?.envelope_period_id ? "manual" : "auto"); idempotencyKeyRef.current = createIdempotencyKey();
-  }, [initialDraft, initialSourceAccountId, initialType, open, transaction, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, idempotencyKeyRef]);
+    setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); setPostSave(null); setForceOverspendNote(false); setAllocationMode(transaction || initialDraft?.envelope_period_id ? "manual" : "auto"); setUnallocatedConfirmed(false); idempotencyKeyRef.current = createIdempotencyKey();
+  }, [initialDraft, initialSourceAccountId, initialType, open, transaction, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef]);
 };
 
 const useTransactionData = (bootstrap, overview, form) => {
@@ -185,15 +203,26 @@ const finalizeTransactionSave = async ({ saved, transaction, form, refreshOvervi
   return false;
 };
 
-const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, forceOverspendNote, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
+const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault();
+  const formElement = event.currentTarget;
   const submission = prepareTransactionSubmission({ form, transaction, isIncome, confirmation, envelopes, forceOverspendNote });
   if (submission.overspendNoteRequired && !submission.preparedInput.overspend_reason) {
-    setters.setErrors((current) => ({ ...current, description: "Isi Catatan untuk menjelaskan penggunaan di atas dana tersisa pada Alokasi Dana." }));
+    const nextErrors = { description: "Isi Catatan untuk menjelaskan penggunaan di atas dana tersisa pada Alokasi Dana." };
+    setters.setErrors((current) => ({ ...current, ...nextErrors }));
+    focusFirstTransactionError(formElement, nextErrors);
     return;
   }
   const validation = submission.validation;
-  if (!validation.ok) { setters.setErrors(validation.errors); return; }
+  if (!validation.ok) { setters.setErrors(validation.errors); focusFirstTransactionError(formElement, validation.errors); return; }
+  if (form.transaction_type === TRANSACTION_TYPES.EXPENSE && !form.envelope_period_id && !unallocatedConfirmed) {
+    setUnallocatedConfirmed(true);
+    setters.setConfirmation({
+      code: "UNALLOCATED_EXPENSE",
+      message: "Belum memilih Alokasi Dana. Transaksi tetap dapat dicatat, tetapi akan masuk ke Pengeluaran Belum Dialokasikan.",
+    });
+    return;
+  }
   setters.setErrors({}); setters.setSubmitState({ status: "submitting", error: null });
   try {
     if (!transaction && approvalRequired) {
@@ -295,6 +324,20 @@ const anotherTransactionForm = ({ postSave, accounts }) => {
   return next;
 };
 
+const resetForAnotherTransaction = ({ postSave, accounts, setForm, setErrors, setConfirmation, setSubmitState, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, setPostSave, idempotencyKeyRef, amountRef }) => {
+  if (!postSave) return;
+  setForm(anotherTransactionForm({ postSave, accounts }));
+  setErrors({});
+  setConfirmation(null);
+  setSubmitState({ status: "idle", error: null });
+  setForceOverspendNote(false);
+  setAllocationMode("auto");
+  setUnallocatedConfirmed(false);
+  setPostSave(null);
+  idempotencyKeyRef.current = createIdempotencyKey();
+  window.requestAnimationFrame(() => amountRef.current?.focus?.());
+};
+
 const resolveTransactionPresentation = ({
   mobileTransferMode,
   transaction,
@@ -373,10 +416,11 @@ const TransactionForm = ({
   const [postSave, setPostSave] = useState(null);
   const [forceOverspendNote, setForceOverspendNote] = useState(false);
   const [allocationMode, setAllocationMode] = useState("auto");
+  const [unallocatedConfirmed, setUnallocatedConfirmed] = useState(false);
   const idempotencyKeyRef = useRef(createIdempotencyKey());
   const amountRef = useRef(null);
 
-  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, idempotencyKeyRef });
+  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef });
 
   const data = useTransactionData(bootstrap, overview, form);
   const { isIncome, isTransfer } = transactionMode(form);
@@ -394,6 +438,7 @@ const TransactionForm = ({
   const update = (field, value) => {
     if (outcomeUnknown) return;
     setConfirmation(null);
+    setUnallocatedConfirmed(false);
     setSubmitState({ status: "idle", error: null });
     setErrors((current) => clearTransactionFieldErrors(current, field));
     if (["transaction_type", "amount", "envelope_period_id"].includes(field)) setForceOverspendNote(false);
@@ -411,6 +456,7 @@ const TransactionForm = ({
   const onSourceAccountChange = (nextId) => {
     if (outcomeUnknown) return;
     setForceOverspendNote(false);
+    setUnallocatedConfirmed(false);
     if (!transaction) setAllocationMode("auto");
     applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm, setErrors, setConfirmation, setSubmitState });
   };
@@ -418,13 +464,14 @@ const TransactionForm = ({
     if (outcomeUnknown) return;
     setAllocationMode("manual");
     setForceOverspendNote(false);
+    setUnallocatedConfirmed(false);
     setConfirmation(null);
     setSubmitState({ status: "idle", error: null });
     setErrors((current) => clearTransactionFieldErrors(current, "envelope_period_id"));
     setForm((current) => ({ ...current, envelope_period_id: nextId }));
   };
   const setters = { setErrors, setConfirmation, setSubmitState, setForceOverspendNote };
-  const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, approvalRequired, envelopes: data.envelopes, forceOverspendNote, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef });
+  const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, approvalRequired, envelopes: data.envelopes, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef });
   const submitting = submitState.status === "submitting";
 
   useSmartAllocationSelection({ open, transaction, allocationMode, candidates: allocationCandidates, form, setForm, setErrors });
@@ -435,18 +482,7 @@ const TransactionForm = ({
   const fields = { form, setForm, update, errors, amountRef, accounts: data.accounts, accountBalances: data.accountBalances, envelopes: data.envelopes, recentTransactions: data.recentTransactions, visibleCategories: data.visibleCategories, members: data.members, isIncome, isTransfer, compatibleDestinationAccounts, compatibleEnvelopes, allocationCandidates, onEnvelopeChange, setConfirmation, setSubmitState, impact, fundsWarning, confirmation, submitState, lockType, onSourceAccountChange, onCostShareChange, submitting, outcomeUnknown, approvalRequired };
   const modal = resolveTransactionPresentation({ mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown, confirmation, onClose, amountRef, mobileLayout });
 
-  const addAnother = () => {
-    if (!postSave) return;
-    setForm(anotherTransactionForm({ postSave, accounts: data.accounts }));
-    setErrors({});
-    setConfirmation(null);
-    setSubmitState({ status: "idle", error: null });
-    setForceOverspendNote(false);
-    setAllocationMode("auto");
-    setPostSave(null);
-    idempotencyKeyRef.current = createIdempotencyKey();
-    window.requestAnimationFrame(() => amountRef.current?.focus?.());
-  };
+  const addAnother = () => resetForAnotherTransaction({ postSave, accounts: data.accounts, setForm, setErrors, setConfirmation, setSubmitState, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, setPostSave, idempotencyKeyRef, amountRef });
 
   if (postSave) return <TransactionPostSaveModal open={open} postSave={postSave} accounts={data.readableAccounts} onClose={onClose} navigate={navigate} onAddAnother={addAnother} />;
 

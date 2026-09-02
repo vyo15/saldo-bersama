@@ -69,7 +69,7 @@ test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak r
     assert.match(reports, new RegExp(label));
   }
   assert.match(reports, /MOBILE_REPORT_QUERY = "\(max-width: 820px\)"/);
-  assert.match(reports, /TREND_OPTIONS = \[3, 6, 12\]/);
+  assert.match(reports, /TREND_OPTIONS = \[1, 3, 6, 12\]/);
   assert.match(reports, /categoryIcon\(category\?\.icon, "expense"\)/);
   assert.match(reports, /<MobileSummaryAlerts alerts=\{overview\?\.alerts\} \/>/);
   assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
