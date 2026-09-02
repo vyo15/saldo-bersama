@@ -8,6 +8,7 @@ import {
   FiPieChart,
   FiRefreshCw,
   FiTarget,
+  FiTrendingUp,
 } from "react-icons/fi";
 import { Link } from "react-router";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
@@ -127,6 +128,8 @@ const MobileSharedPlan = ({ overview, balanceVisible }) => {
   </section>;
 };
 
+const MobileInvestment = ({ summary, balanceVisible }) => summary ? <section className="mobile-finance-section" aria-labelledby="mobile-investment-title"><div className="mobile-section-heading"><h2 id="mobile-investment-title">Investasi</h2><Link to="/investasi">Buka</Link></div><Link className="mobile-plan-card mobile-plan-card--goal" to="/investasi"><span className="mobile-plan-card__icon"><FiTrendingUp aria-hidden="true" /></span><span className="mobile-plan-card__copy"><strong><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></strong><small>RDN <SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /> · {summary.holding_count || 0} saham</small><small>P/L belum direalisasi <SensitiveMoney visible={balanceVisible} value={summary.unrealized_pl || 0} tone={Number(summary.unrealized_pl || 0) < 0 ? "negative" : "positive"} /></small></span></Link></section> : null;
+
 const MobileAlerts = ({ alerts }) => {
   const [open, setOpen] = useState(false);
   if (!alerts?.length) return null;
@@ -215,9 +218,9 @@ const MobileAllocation = ({ allocationSummary, balanceVisible, unallocatedFunds,
   );
 };
 
-const MobileFinanceDashboard = ({ overview, viewModel, user, displayName, balanceVisible, onToggleBalance, onRefresh, isRefreshing, onOpenTransactionDetail, setupContent }) => {
+const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, displayName, balanceVisible, onToggleBalance, onRefresh, isRefreshing, onOpenTransactionDetail, setupContent }) => {
   const { recentTransactions, categoryLookup, transactionAccountLabel, allocationSummary } = viewModel;
-  return <section className="mobile-finance-dashboard" aria-label="Ringkasan keuangan mobile"><h1 className="sr-only">Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className="mobile-finance-content"><MobileAlerts alerts={overview.alerts} /><MobileQuickActions />{setupContent}<MobileSharedPlan overview={overview} balanceVisible={balanceVisible} /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} unallocatedExpenseAmount={overview.unallocatedExpenseAmount} periodKey={overview.periodKey} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /></div></section>;
+  return <section className="mobile-finance-dashboard" aria-label="Ringkasan keuangan mobile"><h1 className="sr-only">Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className="mobile-finance-content"><MobileAlerts alerts={overview.alerts} /><MobileQuickActions />{setupContent}<MobileSharedPlan overview={overview} balanceVisible={balanceVisible} /><MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} unallocatedExpenseAmount={overview.unallocatedExpenseAmount} periodKey={overview.periodKey} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /></div></section>;
 };
 
 export default MobileFinanceDashboard;

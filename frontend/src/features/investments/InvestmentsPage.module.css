@@ -1,0 +1,36 @@
+.page { display: grid; gap: 1rem; }
+.summaryGrid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: .75rem; }
+.summaryCard { display: grid; gap: .35rem; min-width: 0; }
+.summaryCard span { color: var(--text-muted); font-size: .82rem; }
+.summaryCard strong { font-size: clamp(1rem, 2.2vw, 1.35rem); overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.portfolio { display: grid; gap: 1rem; }
+.portfolioHeader { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.portfolioHeader h2, .holding h3 { margin: 0; }
+.portfolioMeta { margin: .25rem 0 0; color: var(--text-muted); }
+.holdings { display: grid; gap: .65rem; }
+.holding { display: grid; grid-template-columns: minmax(0,1.5fr) repeat(3,minmax(0,1fr)); gap: .75rem; align-items: center; padding: .8rem 0; border-top: 1px solid var(--border); }
+.holding:first-child { border-top: 0; }
+.metric { display: grid; gap: .15rem; min-width: 0; }
+.metric small { color: var(--text-muted); }
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
+.form { display: grid; gap: .85rem; }
+.field { display: grid; gap: .35rem; }
+.field span { font-weight: 600; }
+.field input, .field select, .field textarea { width: 100%; min-height: 2.75rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); color: var(--text); padding: .7rem .8rem; }
+.field textarea { min-height: 5.5rem; resize: vertical; }
+.formRow { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
+.review { display: grid; gap: .85rem; }
+.review h3 { margin: 0 0 .35rem; }
+.reviewGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; margin: 0; }
+.reviewGrid div { display: grid; gap: .2rem; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; }
+.reviewGrid dt { color: var(--text-muted); font-size: .82rem; }
+.reviewGrid dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.notice { margin: 0; }
+.empty { color: var(--text-muted); margin: 0; }
+.activity { display: grid; gap: .5rem; }
+.activityItem { display: flex; justify-content: space-between; gap: .75rem; padding: .55rem 0; border-top: 1px solid var(--border); }
+.activityItem:first-child { border-top: 0; }
+@media (max-width: 860px) { .summaryGrid { grid-template-columns: repeat(2,minmax(0,1fr)); } .holding { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+@media (max-width: 560px) { .summaryGrid, .formRow, .reviewGrid { grid-template-columns: 1fr; } .portfolioHeader { flex-direction: column; } .holding { grid-template-columns: 1fr 1fr; } .actions > * { flex: 1 1 8rem; } }

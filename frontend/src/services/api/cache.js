@@ -7,6 +7,8 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "app.initialState": 30_000,
   "bootstrap.get": 120_000,
   "dashboard.overview": 30_000,
+  "investments.overview": 30_000,
+  "investments.instruments.list": 120_000,
   "system.health": 5_000,
   "accounts.list": 120_000,
   "accounts.previewLifecycle": 0,

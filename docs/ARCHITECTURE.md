@@ -27,7 +27,7 @@ PWA React/Vite
 
 ## Kebijakan environment
 
-Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari Vercel Development. Vercel Production adalah runtime deployment, sedangkan Preview tetap kosong. Infrastruktur live legacy masih dapat memiliki satu Turso database sampai cutover ADR-0007 selesai, tetapi source v14 **tidak lagi mengizinkan sharing tersebut sebagai runtime normal**: Development dan Production harus memakai database/token terpisah dan binding `database_environment` yang sesuai. Selama hanya satu database tersedia, salah satu environment akan fail-closed. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
+Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari Vercel Development. Vercel Production adalah runtime deployment, sedangkan Preview tetap kosong. Infrastruktur live legacy masih dapat memiliki satu Turso database sampai cutover ADR-0007 selesai, tetapi source v15 **tidak lagi mengizinkan sharing tersebut sebagai runtime normal**: Development dan Production harus memakai database/token terpisah dan binding `database_environment` yang sesuai. Selama hanya satu database tersedia, salah satu environment akan fail-closed. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
 
 ## Trust boundaries
 
@@ -67,16 +67,31 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 Saldo dihitung dari:
 
 ```text
-saldo awal + dampak transaksi aktif hingga cutoff date
+saldo awal + seluruh cash-impact event canonical yang valid hingga cutoff date
 ```
 
 - income/refund menambah rekening tujuan;
 - expense mengurangi rekening sumber;
 - transfer mengurangi sumber dan menambah tujuan;
 - adjustment hanya owner dan mengikuti rekening yang divalidasi;
-- cancelled/archived tidak memengaruhi saldo.
+- rekening RDN (`account_type=investment`) juga memasukkan event Buy/Sell/correction dari `investment_account_events`;
+- cancelled/archived tidak memengaruhi saldo dan valuasi portfolio tidak mengubah saldo kas.
 
 `visibleAccounts()` sengaja menghitung aggregate saldo dengan `CASE` SQL untuk menghindari N+1. Subquery transaksi membatasi `status` dan rentang tanggal di `WHERE` agar histori di luar cutoff tidak ikut diagregasi. Validasi point-in-time tetap memakai `transactionImpact()`/`accountBalanceAsOf()`. Kedua implementasi wajib tetap parity dan dijaga oleh regression test di `test/business/business-rules.test.js`.
+
+### Investment/RDN data flow
+
+```text
+Bank/Tunai --Transfer--> RDN canonical
+RDN --Buy--> holding
+holding --Sell--> RDN
+trade/valuation --> portfolio read-model (quantity, cost basis, market value, P/L)
+reconciliation --> compare as-of date --> explicit correction bila mismatch
+```
+
+Buy/Sell bukan income/expense dan tidak boleh dibuat sebagai transaksi sintetis hanya demi laporan. Deposit/withdraw RDN tetap memakai Transfer canonical sehingga perpindahan uang internal netral. Trade, valuation, reconciliation, dan correction authoritative disimpan di Turso; frontend hanya menampilkan `investments.overview`. Harga manual membuat snapshot, sedangkan trade terakhir menjadi fallback harga read-model bila snapshot belum tersedia. Reconciliation tidak auto-adjust, dan correction Administrator-only tetap append-only/audited agar history trade tidak ditulis ulang.
+
+Semua mutation portfolio memakai actor/ownership backend, optimistic `row_version`, transaction existing, dan idempotency dispatcher. Event bertanggal sebelum `initial_balance_date` RDN ditolak agar holding tidak dapat berubah tanpa cash projection yang sesuai.
 
 Alokasi memakai read model account-bound tanpa transaksi sintetis:
 

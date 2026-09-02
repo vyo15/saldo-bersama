@@ -111,9 +111,11 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
         ELSE 0 END)
       FROM transactions t WHERE t.status='active'
         AND t.transaction_date BETWEEN a.initial_balance_date AND ?
-        AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)),0) AS balance
+        AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)),0)
+      + COALESCE((SELECT SUM(e.cash_effect) FROM investment_account_events e
+        WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND ?),0) AS balance
       FROM accounts a WHERE a.status='active'`,
-    args: [today, today],
+    args: [today, today, today],
   });
   return { statements, indexes };
 };

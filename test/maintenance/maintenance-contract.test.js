@@ -104,7 +104,7 @@ test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase s
 
 
 
-test("backup schema v14 menyimpan data canonical termasuk request kolaborasi tanpa session, binding runtime, atau bucket rate limit", async () => {
+test("backup schema v15 menyimpan data canonical termasuk investasi dan request kolaborasi tanpa session, binding runtime, atau bucket rate limit", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
@@ -119,7 +119,7 @@ test("backup schema v14 menyimpan data canonical termasuk request kolaborasi tan
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["tx-cost-v11", "2026-08-09", "expense", "wallet-v8", null, "category-cost-v11", null, null, null, 100, "Shared split", "", "", "", "shared", null, "equal", costShareJson, "active", 1, "backup-cost-v11", "u-pref", now, "u-pref", now, null, null, ""]);
     await db.execute("INSERT INTO rate_limit_buckets(bucket_key,window_started_at_ms,reset_at_ms,request_count,updated_at) VALUES(?,?,?,?,?)", ["backup:test:abcdefghijklmnop", 1, 60_001, 3, now]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 14);
+    assert.equal(snapshot.manifest.schemaVersion, 15);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
     assert.equal(snapshot.manifest.tables.manual_reminders, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
@@ -138,7 +138,7 @@ test("backup schema v14 menyimpan data canonical termasuk request kolaborasi tan
   } finally { db.close(); }
 });
 
-test("backup schema v3-v13 tetap dapat dimuat ke schema v14 dengan field additive canonical", async () => {
+test("backup schema v3-v14 tetap dapat dimuat ke schema v15 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -244,6 +244,16 @@ test("backup schema v3-v13 tetap dapat dimuat ke schema v14 dengan field additiv
     delete v13.manifest.tables.transfer_requests;
     v13.checksum = digest(canonicalJson({ manifest: v13.manifest, tables: v13.tables }));
     assert.equal(validateSnapshot(v13), v13.checksum);
+
+    const v14 = structuredClone(current);
+    v14.manifest.version = 14;
+    v14.manifest.schemaVersion = 14;
+    for (const table of ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
+      delete v14.tables[table];
+      delete v14.manifest.tables[table];
+    }
+    v14.checksum = digest(canonicalJson({ manifest: v14.manifest, tables: v14.tables }));
+    assert.equal(validateSnapshot(v14), v14.checksum);
 
     await targetDb.transaction(async (tx) => {
       await insertRows(tx, "users", legacy.tables.users);

@@ -10,6 +10,7 @@ import {
   FiSettings,
   FiTag,
   FiTarget,
+  FiTrendingUp,
   FiUsers,
 } from "react-icons/fi";
 
@@ -21,6 +22,7 @@ export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/target", label: "Target", description: "Kumpulkan dana ke rekening tujuan dan pantau progres sampai nominal target.", icon: FiTarget },
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
   { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: FiCreditCard },
+  { to: "/investasi", label: "Investasi", description: "Catat RDN, portfolio saham, harga manual, P/L, dan pencocokan broker.", icon: FiTrendingUp },
   { to: "/kategori", label: "Kategori", description: "Atur kategori transaksi yang digunakan.", icon: FiTag },
   { to: "/anggota", label: "Anggota", description: "Kelola anggota yang dapat mengakses Saldo Bersama.", icon: FiUsers, ownerOnly: true },
   { to: "/persetujuan", label: "Persetujuan", description: "Tinjau pengajuan rekening, kategori, dan transfer.", icon: FiCheckSquare, ownerOnly: true },
@@ -50,6 +52,7 @@ export const DESKTOP_NAVIGATION = Object.freeze([
     icon: FiCreditCard,
     items: pickNavigation("/rekening", "/kategori"),
   }),
+  navigationByPath.get("/investasi"),
   navigationByPath.get("/anggota"),
   navigationByPath.get("/persetujuan"),
   navigationByPath.get("/rekonsiliasi"),
@@ -60,6 +63,7 @@ export const MOBILE_PRIMARY_NAVIGATION = Object.freeze(pickNavigation("/", "/tra
 export const MOBILE_SECONDARY_GROUPS = Object.freeze([
   freezeGroup({ id: "planning", label: "Perencanaan", items: pickNavigation("/perencanaan", "/anggaran", "/target") }),
   freezeGroup({ id: "financial-data", label: "Data keuangan", items: pickNavigation("/rekening", "/kategori") }),
+  freezeGroup({ id: "investment", label: "Investasi", items: pickNavigation("/investasi") }),
   freezeGroup({ id: "balance-control", label: "Kontrol saldo", items: pickNavigation("/rekonsiliasi") }),
   freezeGroup({ id: "people", label: "Akses", items: pickNavigation("/anggota", "/persetujuan") }),
   freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/pengaturan") }),

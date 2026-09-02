@@ -4,7 +4,7 @@ Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `VAPID_PRIVATE_KE
 
 ## Boundary saat ini
 
-Source v14 mewajibkan binding environment fail-closed dan tidak mendukung sharing Development/Production sebagai konfigurasi normal. Runbook tetap tidak boleh menganggap live isolation selesai sebelum evidence membuktikan dua database/token berbeda.
+Source v15 mewajibkan binding environment fail-closed dan tidak mendukung sharing Development/Production sebagai konfigurasi normal. Runbook tetap tidak boleh menganggap live isolation selesai sebelum evidence membuktikan dua database/token berbeda.
 
 Konsekuensinya:
 

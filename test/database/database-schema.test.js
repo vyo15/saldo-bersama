@@ -16,6 +16,7 @@ const transactionCostSharingMigrationUrl = new URL("009_transaction_cost_sharing
 const environmentSessionsMigrationUrl = new URL("010_environment_sessions.sql", migrationDirectory);
 const distributedRateLimitsMigrationUrl = new URL("011_distributed_rate_limits.sql", migrationDirectory);
 const memberCollaborationMigrationUrl = new URL("012_member_collaboration.sql", migrationDirectory);
+const investmentTrackingMigrationUrl = new URL("013_investment_tracking.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -105,9 +106,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v14 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v15 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "14");
+  assert.equal(result.schema_version, "15");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -370,4 +371,16 @@ test("migration v14 menambah kolaborasi Member secara additive tanpa mengubah le
     assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_master_data_requests_pending_unique'").get());
     assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_transfer_requests_pending_unique'").get());
   } finally { db.close(); }
+});
+
+test("migration v15 menambah tracking investasi manual tanpa menjadikan buy/sell sebagai transaksi income/expense", async () => {
+  const sql = await readFile(investmentTrackingMigrationUrl, "utf8");
+  for (const table of ["investment_portfolios", "investment_instruments", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
+    assert.match(sql, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
+  }
+  assert.match(sql, /CREATE VIEW IF NOT EXISTS investment_account_events/);
+  assert.match(sql, /trade_type TEXT NOT NULL CHECK \(trade_type IN \('buy','sell'\)\)/);
+  assert.match(sql, /value='15'/);
+  assert.doesNotMatch(sql, /ALTER TABLE transactions/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
 });

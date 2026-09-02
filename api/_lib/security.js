@@ -188,7 +188,7 @@ export const assertAllowedOrigin = (request) => {
 
 export const ACTION_PERMISSIONS = Object.freeze({
   owner: new Set([
-    "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "users.reactivate", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "audit.list", "archive.list", "dashboard.overview",
+    "system.health", "app.initialState", "bootstrap.get", "users.list", "users.upsert", "users.deactivate", "users.reactivate", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "audit.list", "archive.list", "dashboard.overview", "investments.overview", "investments.instruments.list", "investments.portfolios.create", "investments.instruments.upsert", "investments.trades.buy", "investments.trades.sell", "investments.valuations.update", "investments.reconciliations.create", "investments.corrections.create",
     "accounts.list", "accounts.create", "accounts.update", "accounts.previewLifecycle", "accounts.archive", "accounts.restore", "accounts.deleteUnused",
     "categories.list", "categories.create", "categories.update", "categories.previewArchive", "categories.archive", "categories.restore", "categories.deleteUnused",
     "masterDataRequests.list", "masterDataRequests.review", "transferRequests.list", "transferRequests.review",
@@ -201,7 +201,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "notifications.status", "notifications.preferences", "notifications.updatePreference", "notifications.register", "notifications.unregister", "notifications.test", "reminders.get", "reminders.upsert", "reminders.cancel", "backup.create", "import.preview", "import.apply", "restore.preview", "restore.apply", "reset.preview", "reset.status", "reset.apply", "fullReset.preview", "fullReset.status", "fullReset.apply", "integrity.run",
   ]),
   member: new Set([
-    "system.health", "app.initialState", "bootstrap.get", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "dashboard.overview", "accounts.list", "accounts.requestCreate", "categories.list", "categories.requestCreate", "masterDataRequests.list", "transferRequests.list", "transferRequests.request",
+    "system.health", "app.initialState", "bootstrap.get", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "dashboard.overview", "investments.overview", "investments.instruments.list", "investments.portfolios.create", "investments.trades.buy", "investments.trades.sell", "investments.valuations.update", "investments.reconciliations.create", "accounts.list", "accounts.requestCreate", "categories.list", "categories.requestCreate", "masterDataRequests.list", "transferRequests.list", "transferRequests.request",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
     "envelopes.list", "envelopes.create", "envelopes.adjustAllocation", "envelopes.move", "envelopes.reverseMovement", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
     "budgets.list", "budgets.upsert", "goals.list", "goals.create", "goals.update", "goals.move", "goals.reverseMovement", "reports.monthly", "reconciliations.list", "reconciliations.create",

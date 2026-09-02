@@ -143,7 +143,7 @@ test("dashboard memakai opening balance bulk, envelope ringan, dan laporan trend
   assert.match(dashboard, /readBatchRows\(db, plan\.statements\)/);
 });
 
-test("grafik pengeluaran rekening memakai satu laporan backend untuk 1 3 6 atau 12 bulan", async () => {
+test("grafik pengeluaran rekening memakai satu laporan backend untuk 3 6 atau 12 bulan", async () => {
   const accountsApi = await source("frontend/src/features/accounts/accounts.api.js");
   assert.match(accountsApi, /apiClient\.request\("reports\.monthly"/);
   assert.match(accountsApi, /trend_months: months/);
@@ -298,7 +298,7 @@ test("read snapshot tambahan tidak memecah query independen menjadi pipeline ser
   };
   assert.deepEqual(await integrityIssues(integrityDb), []);
   assert.equal(integrityMetrics.network, 1, "integrity check termasuk histori rekening protected harus satu batch");
-  assert.deepEqual(integrityMetrics.statements, [17]);
+  assert.deepEqual(integrityMetrics.statements, [18]);
 });
 
 test("preview lifecycle owner menggabungkan read independen menjadi satu batch snapshot", async () => {
@@ -468,5 +468,5 @@ test("preview tutup periode menggabungkan statistik dan integrity base setelah b
   assert.equal(result.canClose, true);
   assert.equal(metrics.one, 1, "closure blocker tetap dibaca dulu agar closed period fail-fast");
   assert.equal(metrics.batch, 1, "integrity base, unallocated, dan statistik harus satu batch setelah blocker");
-  assert.deepEqual(metrics.statements, [19]);
+  assert.deepEqual(metrics.statements, [20]);
 });

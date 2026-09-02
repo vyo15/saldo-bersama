@@ -27,6 +27,7 @@ const DESKTOP_LOCAL_CREATE_ROUTES = new Set([
   "/perencanaan",
   "/target",
   "/kategori",
+  "/investasi",
 ]);
 
 const desktopTransactionQuickAddAllowed = (pathname, role) => {
@@ -78,7 +79,7 @@ const AppShell = () => {
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
-  const wideContentRoute = dashboardRoute || location.pathname === "/laporan";
+  const wideContentRoute = dashboardRoute || location.pathname === "/laporan" || location.pathname === "/investasi";
   const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();

@@ -7,19 +7,20 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Ledger rekening, transaksi, transfer netral, soft cancel, audit, idempotency, dan conflict.
 - Alokasi Dana lintas periode termasuk add/release dana tersedia ke Alokasi Dana existing, Jadwal Rutin, Target, Kebutuhan, rekonsiliasi, dan laporan bulanan.
 - Filter transaksi berdasarkan rekening, kategori, dan pencatat.
-- Seri 1 bulan harian + tren 3/6/12 bulan, breakdown rekening/pencatat/pembagian beban biaya, target projection, dashboard alerts; `nature` tetap compatibility legacy tetapi dipensiunkan dari presentation aktif.
+- Tren 3/6/12 bulan, breakdown rekening/nature/pencatat/pembagian beban biaya, target projection, dashboard alerts.
 - Push actionable untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, Target, dan transaksi belum dialokasikan.
 - Pengingat manual one-shot actor-scoped untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target melalui scheduler/Web Push existing (RFC-0017).
 - Partner planning shared + own-personal untuk Alokasi/Kebutuhan/Jadwal Rutin dengan guard backend RFC-0016; Target baru tetap shared; destructive lifecycle tetap Administrator-only.
 - Pembagian beban biaya expense shared `equal`/`percentage` melalui schema v11 sebagai MVP RFC-0013; payer/beneficiary/kontribusi aktual tetap deferred.
 - Registry session per perangkat, revoke own/all, PKCE S256, dan session lifecycle server-side (RFC-0018, schema v12).
+- Investment manual schema v15: RDN berbasis rekening canonical, instrument registry, Buy/Sell, weighted cost basis, valuation/P&L, reconciliation no-auto-adjust, explicit correction, Dashboard summary, backup/restore, dan integrity guard tanpa credential broker/live market API.
 - Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
 
 ## Now — verification dan operasi
 
 - Jalankan full Node 24 `npm run verify` setelah patch. Perubahan UI tetap memerlukan pemeriksaan manual pada viewport/perangkat relevan.
 - Verifikasi operasional rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` yang pernah ikut ZIP manual mengikuti `SECRET_ROTATION_RUNBOOK.md`; source tidak dapat membuktikan credential lama sudah direvoke.
-- Migration parity Turso dan real-resource backup/restore drill.
+- Migration parity Turso v15 dan real-resource backup/restore drill, termasuk scenario RDN → multi-buy → partial sell → valuation → reconciliation → restore parity.
 - Aktifkan branch protection/ruleset GitHub dan jadikan workflow **Quality** sebagai required check; source workflow/CONTRIBUTING sudah disiapkan, enforcement tetap setting GitHub. Direct push ke `main` yang masih diterima berarti langkah ini belum selesai.
 - Pisahkan database/token/session secret Development dan Production sesuai exit plan ADR-0007 sebelum data finansial nyata menjadi dependency operasional.
 - Verifikasi Google bridge, Calendar, Web Push, dan notification cadence pada resource nyata.

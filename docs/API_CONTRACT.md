@@ -83,6 +83,15 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `archive.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `audit.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/audit.js` |
 | `dashboard.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
+| `investments.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/investments.js` |
+| `investments.instruments.list` | Ya | Ya | Read | Tidak | `api/_lib/services/investments.js` |
+| `investments.portfolios.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.instruments.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.trades.buy` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.trades.sell` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.valuations.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.reconciliations.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.corrections.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `accounts.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
 | `accounts.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.requestCreate` | Tidak | Ya | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
@@ -223,6 +232,20 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - Kategori expense baru dengan nature legacy `savings` ditolak dengan `SAVINGS_CATEGORY_NOT_ALLOWED`. Data legacy tetap dapat dibaca dan mempertahankan nilai lama sampai owner memilih klasifikasi pengeluaran baru.
 - Memindahkan dana ke rekening tabungan sendiri harus menggunakan Transfer atau Target. Pengeluaran baru dicatat ketika pembayaran aktual kepada pihak luar terjadi.
 
+### Kontrak investasi, RDN, dan portfolio
+
+- RDN memakai rekening canonical `accounts.account_type=investment`; tidak ada saldo RDN mutable kedua. Satu rekening RDN hanya boleh terhubung ke satu `investment_portfolios` aktif dan `allow_negative` wajib `0`. Deposit/withdraw RDN tetap memakai transaksi `transfer` canonical sehingga netral terhadap income/expense.
+- `investments.portfolios.create` menerima `name`, `broker=ajaib|other`, dan `rdn_account_id` yang operable actor. Backend menentukan actor/audit/status/version dan menolak rekening non-investment, saldo-negatif-enabled, tidak aktif, tidak operable, atau RDN yang sudah terhubung.
+- `investments.instruments.upsert` Administrator-only. Ticker unik dinormalisasi uppercase, `lot_size` integer positif, dan status `active|inactive`. Buy baru hanya menerima instrumen aktif; sell holding existing tetap boleh memakai instrumen inactive agar disposal tidak terblokir oleh perubahan registry.
+- `investments.trades.buy` dan `investments.trades.sell` menerima `portfolio_id`, `instrument_id`, `lots`, `price_per_share`, `fee_amount`, dan optional `trade_date`. Rupiah/lot/lembar integer, `share_quantity = lots × lot_size`, `gross_amount = share_quantity × price_per_share`, buy cash = gross + fee, sell cash = gross - fee. Trade tidak membuat row income/expense; cash RDN berasal dari view canonical `investment_account_events`. Buy ditolak bila RDN akan negatif, sell ditolak bila quantity melebihi holding.
+- Tanggal trade/koreksi/harga/rekonsiliasi tidak boleh mendahului `accounts.initial_balance_date` RDN. Trade/koreksi juga tidak boleh future dan activity yang mengubah holding harus tetap kronologis. Mutation portfolio memakai `row_version`; stale write ditolak `CONFLICT`.
+- Cost basis authoritative dihitung backend dari event history dengan weighted-average integer. Buy menambah cost basis sebesar cash keluar termasuk fee beli; partial/full sell mengurangi proportional remaining cost basis dan membentuk realized P/L dari cash masuk setelah fee. Harga terakhir yang diketahui berasal dari event trade atau valuation manual terbaru; valuation tidak mengubah cashflow. Unrealized P/L = market value - remaining cost basis dan tidak menjadi income/expense.
+- `investments.valuations.update` membuat snapshot harga append-only; tidak mengedit trade. Snapshot future atau sebelum awal RDN ditolak. Read-model memilih harga diketahui paling baru berdasarkan tanggal/waktu antara trade dan valuation sehingga holding baru tidak tampil bernilai Rp0 hanya karena belum ada valuation manual.
+- `investments.reconciliations.create` membandingkan cash RDN + holding system **as-of `reconciliation_date`** dengan kondisi broker yang dimasukkan user. Hasil hanya `matched|mismatch`; action ini tidak melakukan auto-adjust dan tidak mengubah trade/holding/cash. Rekonsiliasi future/sebelum awal RDN ditolak.
+- `investments.corrections.create` Administrator-only, membutuhkan alasan, `row_version`, dan delta eksplisit. Koreksi tersimpan append-only dan tidak menulis ulang trade history; hasil holding/cost basis/cash negatif atau tidak konsisten ditolak.
+- `investments.overview` dan Dashboard memakai read-model backend yang sama untuk RDN cash, holdings, remaining cost basis, market value, realized/unrealized P/L. Browser tidak boleh menjadi authority perhitungan. Portfolio personal pasangan tetap readable sesuai transparency policy rekening existing tetapi `can_operate=false`; mutation backend selalu memeriksa ownership lagi.
+- Idempotency key mutation investasi mengikuti dispatcher canonical. Retry intent sama wajib memakai key sama; `OUTCOME_UNKNOWN` tidak boleh menghasilkan trade/correction kedua dengan key baru.
+
 ### Kontrak rekening dan provider visual
 
 - `accounts.create` untuk `account_type=bank` menerima `account_number` wajib. Input boleh memakai angka, spasi, atau tanda hubung; server menyimpan 6–34 digit hasil normalisasi.
@@ -309,21 +332,20 @@ Payload:
 ```json
 {
   "period": "YYYY-MM",
-  "trend_months": 1
+  "trend_months": 3
 }
 ```
 
-`trend_months` menerima 1, 3, 6, atau 12 dan default-nya 6. Nilai `1` memakai seri **harian** untuk bulan `period` (bulan berjalan hanya sampai hari Jakarta saat ini; bulan historis memuat seluruh tanggal kalender), sedangkan 3/6/12 memakai seri bulanan. Response menambah:
+`trend_months` hanya menerima 3, 6, atau 12 dan default-nya 6. Response menambah:
 
-- `trend.granularity`: `day` untuk rentang 1 bulan atau `month` untuk 3/6/12 bulan;
-- `trend.items`: income, expense, refund, net, dan totalBalance per hari/bulan sesuai `granularity`;
+- `trend.items`: income, expense, refund, net, dan totalBalance per bulan;
 - `accountExpenses`: expense menurut rekening sumber;
 - `creatorExpenses`: expense menurut actor pencatat, **bukan** kontribusi/penanggung biaya;
 - `costShareExpenses`: pembagian beban analitis pada expense shared yang memiliki snapshot `equal` atau `percentage`; jumlah ini bukan bukti siapa yang benar-benar membayar;
-- `natureExpenses`: breakdown legacy menurut `categories.nature` untuk kompatibilitas response; field ini tidak lagi menjadi presentation aktif di UI;
+- `natureExpenses`: expense menurut `categories.nature`;
 - `overview.alerts`: peringatan actionable dari Kebutuhan, Alokasi Dana, Jadwal Rutin, Target, transaksi belum dialokasikan, dan rekonsiliasi.
 
-Field tambahan tersebut backward-compatible; `accountExpenseTrend.granularity` mengikuti `trend.granularity`, dan transfer internal tetap tidak masuk income/expense/net.
+Field tambahan tersebut backward-compatible; transfer internal tetap tidak masuk income/expense/net.
 
 ## Version/conflict
 

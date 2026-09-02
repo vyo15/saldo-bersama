@@ -2,6 +2,7 @@ import { monthBounds, publicRow, readableAccountSql, readableLedgerSql, todayJak
 
 export const transactionImpact = (accountId, transaction) => {
   if (transaction.status !== "active") return 0;
+  if (transaction.investment_account_id === accountId) return Number(transaction.investment_cash_effect || 0);
   const amount = Number(transaction.amount || 0);
   if (["income", "refund"].includes(transaction.transaction_type)) return transaction.destination_account_id === accountId ? amount : 0;
   if (transaction.transaction_type === "expense") return transaction.source_account_id === accountId ? -amount : 0;
@@ -29,6 +30,10 @@ export const visibleAccountsStatement = (actor, { includeArchived = false, cutof
         WHERE t.status='active'
           AND t.transaction_date BETWEEN a.initial_balance_date AND ?
           AND (t.source_account_id = a.account_id OR t.destination_account_id = a.account_id)
+      ),0) + COALESCE((
+        SELECT SUM(e.cash_effect)
+        FROM investment_account_events e
+        WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND ?
       ),0) AS balance,
       COALESCE((
         SELECT SUM(CASE
@@ -51,7 +56,7 @@ export const visibleAccountsStatement = (actor, { includeArchived = false, cutof
       LEFT JOIN users u ON u.user_id=a.owner_user_id
       WHERE ${access.sql} ${includeArchived ? "" : "AND a.status = 'active'"}
       ORDER BY a.status, a.name COLLATE NOCASE`,
-    args: [cutoffDate, cutoffDate, cutoffDate, cutoffDate, ...access.args],
+    args: [cutoffDate, cutoffDate, cutoffDate, cutoffDate, cutoffDate, ...access.args],
   };
 };
 
@@ -82,11 +87,16 @@ export const visibleAccounts = async (db, actor, options = {}) => {
 
 export const accountBalanceAsOf = async (db, account, cutoffDate = todayJakarta(), { excludeTransactionId = null, candidate = null } = {}) => {
   if (!account || cutoffDate < account.initial_balance_date) return 0;
-  const rows = await db.all(`SELECT * FROM transactions
+  const rows = await db.all(`SELECT transaction_id,transaction_date,created_at,status,transaction_type,amount,source_account_id,destination_account_id,NULL AS investment_account_id,0 AS investment_cash_effect
+    FROM transactions
     WHERE status='active' AND transaction_date BETWEEN ? AND ?
       AND (source_account_id=? OR destination_account_id=?)
       ${excludeTransactionId ? "AND transaction_id <> ?" : ""}
-    ORDER BY transaction_date, created_at`, [account.initial_balance_date, cutoffDate, account.account_id, account.account_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
+    UNION ALL
+    SELECT event_id AS transaction_id,event_date AS transaction_date,created_at,'active' AS status,'investment' AS transaction_type,0 AS amount,NULL AS source_account_id,NULL AS destination_account_id,account_id AS investment_account_id,cash_effect AS investment_cash_effect
+    FROM investment_account_events
+    WHERE account_id=? AND event_date BETWEEN ? AND ?
+    ORDER BY transaction_date, created_at`, [account.initial_balance_date, cutoffDate, account.account_id, account.account_id, ...(excludeTransactionId ? [excludeTransactionId] : []), account.account_id, account.initial_balance_date, cutoffDate]);
   let total = Number(account.initial_balance || 0);
   for (const row of rows) total += transactionImpact(account.account_id, row);
   if (candidate && candidate.transaction_date >= account.initial_balance_date && candidate.transaction_date <= cutoffDate) total += transactionImpact(account.account_id, { status: "active", ...candidate });
@@ -136,11 +146,16 @@ export const firstNegativeBalanceFromRows = (account, transactionRows = [], { ca
 };
 
 export const firstNegativeBalance = async (db, account, { excludeTransactionId = null, candidate = null, fromDate = account.initial_balance_date } = {}) => {
-  const rows = await db.all(`SELECT * FROM transactions
+  const rows = await db.all(`SELECT event_id AS transaction_id,event_date AS transaction_date,created_at,'active' AS status,'investment' AS transaction_type,0 AS amount,NULL AS source_account_id,NULL AS destination_account_id,account_id AS investment_account_id,cash_effect AS investment_cash_effect
+    FROM investment_account_events
+    WHERE account_id=? AND event_date >= ?
+    UNION ALL
+    SELECT transaction_id,transaction_date,created_at,status,transaction_type,amount,source_account_id,destination_account_id,NULL AS investment_account_id,0 AS investment_cash_effect
+    FROM transactions
     WHERE status='active' AND transaction_date >= ?
       AND (source_account_id=? OR destination_account_id=?)
       ${excludeTransactionId ? "AND transaction_id <> ?" : ""}
-    ORDER BY transaction_date, created_at, transaction_id`, [account.initial_balance_date, account.account_id, account.account_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
+    ORDER BY transaction_date, created_at, transaction_id`, [account.account_id, account.initial_balance_date, account.initial_balance_date, account.account_id, account.account_id, ...(excludeTransactionId ? [excludeTransactionId] : [])]);
   return firstNegativeBalanceFromRows(account, rows, { candidate, fromDate });
 };
 

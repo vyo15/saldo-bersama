@@ -8,7 +8,7 @@
 
 ## Backup
 
-Backup wajib berisi manifest, schema version, created_at/by, table counts, checksum, dan seluruh tabel recovery-safe. Push subscription tidak ikut backup/restore karena merupakan credential perangkat yang harus didaftarkan ulang setelah recovery. Pembuatan manual/before-import/before-restore dicatat di `backup_runs` dan audit. Nama file unik; file existing hanya boleh digunakan ulang bila backup ID dan checksum cocok.
+Backup wajib berisi manifest, schema version, created_at/by, table counts, checksum, dan seluruh tabel recovery-safe. Pada schema v15, enam tabel Investment (`investment_instruments`, `investment_portfolios`, `investment_trades`, `investment_valuations`, `investment_reconciliations`, `investment_corrections`) termasuk authoritative recovery data; holding/market value/P&L summary tidak dipercaya sebagai state bebas karena harus dapat dihitung ulang dari history canonical. Push subscription tidak ikut backup/restore karena merupakan credential perangkat yang harus didaftarkan ulang setelah recovery. Pembuatan manual/before-import/before-restore dicatat di `backup_runs` dan audit. Nama file unik; file existing hanya boleh digunakan ulang bila backup ID dan checksum cocok.
 
 
 ## Import guarded
@@ -29,7 +29,7 @@ Import transaksi maksimal 50 record dan bersifat all-or-nothing. File dianggap i
 10. Perubahan tabel, audit restore, status preview, pembukaan maintenance, dan antrean rebuild commit atomik hanya jika semua lulus.
 11. Rebuild Sheets mirror dan reconcile Calendar melalui outbox.
 
-Jika apply atau integrity gagal, transaction rollback dan maintenance tetap aktif sampai owner menjalankan integrity/recovery yang terverifikasi. Restore menolak backup bila email aktif yang sama memiliki `user_id` berbeda, mempertahankan UID/status/role pengguna yang saat ini diizinkan, dan tidak menghidupkan kembali push credential perangkat. Jangan menyatakan restore berhasil sebelum seluruh verifikasi selesai.
+Jika apply atau integrity gagal, transaction rollback dan maintenance tetap aktif sampai owner menjalankan integrity/recovery yang terverifikasi. Backup v3-v14 dinormalisasi additive ke runtime v15 tanpa mengarang histori Investment; backup v15 wajib membawa tabel Investment canonical sesuai manifest. Restore menolak backup bila email aktif yang sama memiliki `user_id` berbeda, mempertahankan UID/status/role pengguna yang saat ini diizinkan, dan tidak menghidupkan kembali push credential perangkat. Jangan menyatakan restore berhasil sebelum seluruh verifikasi selesai.
 
 
 
@@ -42,6 +42,8 @@ Sebelum aplikasi dipakai untuk data finansial nyata, owner wajib menetapkan dan 
 - **Retention backup:** berapa lama backup harian/mingguan/bulanan dipertahankan.
 
 Source **tidak menetapkan angka secara sepihak** karena nilai tersebut memengaruhi biaya, privacy, kapasitas Drive, dan ekspektasi recovery. Release readiness untuk data nyata dianggap belum lengkap selama tiga nilai itu belum disetujui.
+
+Untuk data Investment, restore baru definitif bila RDN, quantity holding, remaining cost basis, realized P/L, unrealized P/L pada harga snapshot/fallback yang sama, chronology, dan ledger parity dapat dihitung ulang sama dengan backup. Scenario recovery minimal untuk domain ini: deposit RDN → multi-buy → partial sell → valuation → reconciliation → backup → restore pada database terisolasi → compare. Mismatch harus menghentikan success; jangan memperbaiki history dengan SQL manual atau summary overwrite.
 
 Evidence restore drill minimal mencatat: commit/schema, database tujuan terisolasi, backup ID/file name (tanpa resource secret), checksum verification, row counts sebelum/sesudah, saldo per rekening, hasil `PRAGMA foreign_key_check`, business integrity, rebuild Sheets/Calendar, waktu mulai/selesai, serta hasil akhir. Drill tidak boleh menggunakan database Production aktif sebagai target.
 
@@ -59,7 +61,8 @@ Kesalahan pengguna biasa harus ditangani melalui lifecycle per-item:
 - rekening/kategori arsip → action restore dengan alasan dan `row_version`;
 - transaksi cancelled → restore khusus owner bila period, reference, duplicate, dan balance guard lulus;
 - member nonaktif → reaktivasi eksplisit oleh Administrator setelah status/role/row version diverifikasi;
-- periode salah ditutup → buka kembali secara berurutan dengan alasan.
+- periode salah ditutup → buka kembali secara berurutan dengan alasan;
+- mismatch Investment → reconciliation lalu correction eksplisit Administrator; trade/valuation lama tidak diedit atau di-hard-delete sebagai mekanisme koreksi.
 
 Full database restore bukan mekanisme undo harian. Gunakan restore guarded hanya bila kerusakan mencakup banyak data atau lifecycle per-item tidak dapat menjaga konsistensi. Rekening kosong yang dihapus melalui `accounts.deleteUnused` tidak dipulihkan per item; audit tetap tersedia dan rekening baru dapat dibuat kembali tanpa memalsukan histori.
 

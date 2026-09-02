@@ -2,6 +2,7 @@ import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { firstNegativeBalanceFromRows } from "../readModels.js";
 import { canonicalJson, nowIso, todayJakarta, uuid } from "../core.js";
+import { investmentHoldingStateFromEvents } from "../investments.js";
 
 const INTEGRITY_STATIC_STATEMENTS = [
   { sql: "PRAGMA foreign_key_check", args: [] },
@@ -27,13 +28,19 @@ const INTEGRITY_STATIC_STATEMENTS = [
       a.account_id AS protected_account_id,
       a.initial_balance AS protected_initial_balance,
       a.initial_balance_date AS protected_initial_balance_date,
-      t.transaction_id,t.transaction_date,t.transaction_type,t.source_account_id,t.destination_account_id,t.amount,t.created_at,t.status
+      ev.transaction_id,ev.transaction_date,ev.transaction_type,ev.source_account_id,ev.destination_account_id,ev.amount,ev.created_at,ev.status,
+      ev.investment_account_id,ev.investment_cash_effect
     FROM accounts a
-    LEFT JOIN transactions t ON t.status='active'
-      AND t.transaction_date>=a.initial_balance_date
-      AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
+    LEFT JOIN (
+      SELECT transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,amount,created_at,status,NULL AS investment_account_id,0 AS investment_cash_effect
+      FROM transactions WHERE status='active'
+      UNION ALL
+      SELECT event_id,event_date,'investment',NULL,NULL,0,created_at,'active',account_id,cash_effect
+      FROM investment_account_events
+    ) ev ON ev.transaction_date>=a.initial_balance_date
+      AND (ev.source_account_id=a.account_id OR ev.destination_account_id=a.account_id OR ev.investment_account_id=a.account_id)
     WHERE a.allow_negative=0
-    ORDER BY a.account_id,t.transaction_date,t.created_at,t.transaction_id`, args: [] },
+    ORDER BY a.account_id,ev.transaction_date,ev.created_at,ev.transaction_id`, args: [] },
   { sql: "SELECT key,value FROM system_config WHERE key IN ('timezone','currency') ORDER BY key", args: [] },
   { sql: `WITH reminder_state AS (
       SELECT m.reminder_id,m.user_id,m.entity_type,m.entity_id,m.status AS reminder_status,
@@ -122,7 +129,8 @@ const accountAllocationIntegrityStatement = () => ({
           ELSE 0 END)
         FROM transactions t WHERE t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND ?
           AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
-      ),0) ELSE 0 END AS balance,
+      ),0) + COALESCE((SELECT SUM(e.cash_effect) FROM investment_account_events e
+        WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND ?),0) ELSE 0 END AS balance,
       COALESCE((SELECT SUM(CASE WHEN p.allocated_amount - COALESCE((
         SELECT SUM(et.amount) FROM transactions et
         WHERE et.status='active' AND et.transaction_type='expense' AND et.envelope_period_id=p.envelope_period_id AND et.transaction_date<=?
@@ -133,7 +141,7 @@ const accountAllocationIntegrityStatement = () => ({
       FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
       WHERE p.status='active' AND r.status='active' AND r.source_account_id=a.account_id),0) AS allocated_remaining
     FROM accounts a WHERE a.status='active' AND a.allow_negative=0`,
-  args: [todayJakarta(), todayJakarta(), todayJakarta(), todayJakarta()],
+  args: [todayJakarta(), todayJakarta(), todayJakarta(), todayJakarta(), todayJakarta()],
 });
 
 const costShareIntegrityStatement = () => ({
@@ -141,7 +149,31 @@ const costShareIntegrityStatement = () => ({
   args: [],
 });
 
-export const integrityBaseStatements = () => [...INTEGRITY_STATIC_STATEMENTS, accountAllocationIntegrityStatement(), costShareIntegrityStatement()];
+const investmentIntegrityStatement = () => ({
+  sql: `SELECT p.portfolio_id,p.rdn_account_id,a.account_type,a.allow_negative,a.status AS rdn_status,a.initial_balance_date,
+      e.event_date,e.created_at,e.event_kind,e.event_id,e.instrument_id,e.trade_type,e.share_quantity,e.cash_amount,e.share_delta,e.cost_basis_delta,e.arithmetic_invalid
+    FROM investment_portfolios p
+    JOIN accounts a ON a.account_id=p.rdn_account_id
+    LEFT JOIN (
+      SELECT t.trade_date AS event_date,t.created_at,'trade' AS event_kind,t.trade_id AS event_id,t.instrument_id,t.trade_type,t.share_quantity,t.cash_amount,0 AS share_delta,0 AS cost_basis_delta,
+        CASE WHEN t.share_quantity<>(t.lots*i.lot_size)
+          OR t.gross_amount<>(t.share_quantity*t.price_per_share)
+          OR (t.trade_type='buy' AND t.cash_amount<>(t.gross_amount+t.fee_amount))
+          OR (t.trade_type='sell' AND t.cash_amount<>(t.gross_amount-t.fee_amount)) THEN 1 ELSE 0 END AS arithmetic_invalid
+      FROM investment_trades t JOIN investment_instruments i ON i.instrument_id=t.instrument_id
+      UNION ALL
+      SELECT correction_date,created_at,'correction',correction_id,instrument_id,'',0,0,share_delta,cost_basis_delta,0
+      FROM investment_corrections
+    ) e ON e.event_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM investment_trades t WHERE e.event_kind='trade' AND t.trade_id=e.event_id AND t.portfolio_id=p.portfolio_id
+      UNION ALL
+      SELECT 1 FROM investment_corrections c WHERE e.event_kind='correction' AND c.correction_id=e.event_id AND c.portfolio_id=p.portfolio_id
+    )
+    ORDER BY p.portfolio_id,e.event_date,e.created_at,e.event_id`,
+  args: [],
+});
+
+export const integrityBaseStatements = () => [...INTEGRITY_STATIC_STATEMENTS, accountAllocationIntegrityStatement(), costShareIntegrityStatement(), investmentIntegrityStatement()];
 
 const appendSimpleIntegrityIssues = (issues, rows) => {
   const [fk = [], duplicates = [], invalidTransfer = [], brokenOwnership = [], invalidEnvelopeAssignee = [], linkedCancelled = []] = rows;
@@ -201,6 +233,7 @@ const protectedAccountsFromRows = (rows) => {
     if (row.transaction_id) protectedAccounts.get(accountId).transactions.push({
       transaction_id: row.transaction_id, transaction_date: row.transaction_date, transaction_type: row.transaction_type,
       source_account_id: row.source_account_id, destination_account_id: row.destination_account_id, amount: row.amount,
+      investment_account_id: row.investment_account_id, investment_cash_effect: row.investment_cash_effect,
       created_at: row.created_at, status: row.status,
     });
   }
@@ -281,6 +314,28 @@ const appendCostShareIntegrityIssues = (issues, rows) => {
   }
 };
 
+const appendInvestmentIntegrityIssues = (issues, rows) => {
+  const portfolios = new Map();
+  let arithmeticMismatchCount = 0;
+  for (const row of rows || []) {
+    if (!portfolios.has(row.portfolio_id)) portfolios.set(row.portfolio_id, { meta: row, events: [] });
+    if (row.event_id) {
+      portfolios.get(row.portfolio_id).events.push(row);
+      if (Number(row.arithmetic_invalid)) arithmeticMismatchCount += 1;
+    }
+  }
+  if (arithmeticMismatchCount) issues.push({ code: "INVESTMENT_TRADE_ARITHMETIC_MISMATCH", count: arithmeticMismatchCount });
+  for (const [portfolioId, { meta, events }] of portfolios) {
+    if (meta.account_type !== "investment" || meta.rdn_status !== "active" || Number(meta.allow_negative)) {
+      issues.push({ code: "INVESTMENT_RDN_INVALID", portfolioId, accountId: meta.rdn_account_id });
+    }
+    const beforeStart = events.filter((event) => event.event_date < meta.initial_balance_date);
+    if (beforeStart.length) issues.push({ code: "INVESTMENT_EVENT_BEFORE_RDN_START", portfolioId, count: beforeStart.length });
+    try { investmentHoldingStateFromEvents(events); }
+    catch (error) { issues.push({ code: "INVESTMENT_HOLDING_INTEGRITY", portfolioId, detailCode: error?.code || "INVALID_HISTORY" }); }
+  }
+};
+
 export const integrityIssuesFromBaseRows = (baseRows) => {
   const issues = [];
   appendSimpleIntegrityIssues(issues, baseRows.slice(0, 6));
@@ -290,6 +345,7 @@ export const integrityIssuesFromBaseRows = (baseRows) => {
   appendReminderIntegrityIssues(issues, baseRows[11] || []);
   appendAllocationIntegrityIssues(issues, baseRows.slice(12, 16));
   appendCostShareIntegrityIssues(issues, baseRows[16] || []);
+  appendInvestmentIntegrityIssues(issues, baseRows[17] || []);
   return issues;
 };
 

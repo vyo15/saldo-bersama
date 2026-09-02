@@ -18,6 +18,9 @@ import {
   previewRestore, previewTrialDataReset, readFullDataResetStatus, readTrialDataResetStatus,
 } from "../services/maintenance/index.js";
 import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
+import {
+  buyInvestment, correctInvestment, createInvestmentPortfolio, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+} from "../services/investments.js";
 import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
   adjustEnvelopeAllocation, archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createEnvelope, createGoal, createRecurringRule, deleteUnusedBudget,
@@ -92,6 +95,15 @@ const ACTION_HANDLERS = Object.freeze({
   "audit.list": listAudit,
   "archive.list": listArchivedData,
   "dashboard.overview": dashboardOverview,
+  "investments.overview": investmentOverview,
+  "investments.instruments.list": listInvestmentInstruments,
+  "investments.portfolios.create": createInvestmentPortfolio,
+  "investments.instruments.upsert": upsertInvestmentInstrument,
+  "investments.trades.buy": buyInvestment,
+  "investments.trades.sell": sellInvestment,
+  "investments.valuations.update": updateInvestmentValuation,
+  "investments.reconciliations.create": reconcileInvestment,
+  "investments.corrections.create": correctInvestment,
   "accounts.list": listAccounts,
   "accounts.requestCreate": requestAccountCreation,
   "accounts.create": createAccount,

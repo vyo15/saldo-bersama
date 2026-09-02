@@ -12,6 +12,7 @@ const BudgetsPage = lazy(() => import("../features/budgets/BudgetsPage.jsx"));
 const GoalsPage = lazy(() => import("../features/goals/GoalsPage.jsx"));
 const ReportsPage = lazy(() => import("../features/reports/ReportsPage.jsx"));
 const AccountsPage = lazy(() => import("../features/accounts/AccountsPage.jsx"));
+const InvestmentsPage = lazy(() => import("../features/investments/InvestmentsPage.jsx"));
 const CategoriesPage = lazy(() => import("../features/categories/CategoriesPage.jsx"));
 const ApprovalCenterPage = lazy(() => import("../features/approvals/ApprovalCenterPage.jsx"));
 const ReconciliationsPage = lazy(() => import("../features/reconciliations/ReconciliationsPage.jsx"));
@@ -59,6 +60,7 @@ const App = () => (
         <Route path="target" element={routeElement(GoalsPage)} />
         <Route path="laporan" element={routeElement(ReportsPage)} />
         <Route path="rekening" element={routeElement(AccountsPage)} />
+        <Route path="investasi" element={routeElement(InvestmentsPage)} />
         <Route path="rekonsiliasi" element={routeElement(ReconciliationsPage)} />
         <Route path="kategori" element={routeElement(CategoriesPage)} />
         <Route path="anggota" element={routeElement(MembersSettingsPage)} />

@@ -23,6 +23,7 @@ Gunakan tabel ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 |---|---|---|
 | UI/layout/responsive | `UI_DESIGN_SYSTEM.md`, `TEST_PLAN.md` | frontend regression + `npm run lint` + `npm run build` + manual device QA |
 | Rekening/transaksi/saldo/laporan | `API_CONTRACT.md`, `DATA_DICTIONARY.md`, `TEST_PLAN.md` | test business/domain terkait + full `npm run verify` |
+| Investasi/RDN/portfolio | `product/PRODUCT_REQUIREMENTS.md`, `API_CONTRACT.md`, `AUTHORIZATION_MATRIX.md`, `TURSO_SCHEMA.md`, `RECOVERY_RUNBOOK.md`, `adr/0011-manual-investment-rdn-ledger.md` | investment business/integrity/backup regression + full `npm run verify` |
 | Auth/session/role | `SECURITY_MODEL.md`, `AUTHORIZATION_MATRIX.md`, `ENVIRONMENT_VARIABLES.md` | auth/security regression + manual login journey pada device relevan |
 | Schema/database/migration | `TURSO_SCHEMA.md`, `DATA_DICTIONARY.md`, `DATABASE_MIGRATION_POLICY.md` | migration/schema/integrity tests |
 | Backup/restore/import/reset | `DATA_DELETION_AND_RECOVERY_POLICY.md`, `RECOVERY_RUNBOOK.md`, `TEST_PLAN.md` | maintenance/data-lifecycle guards |
@@ -53,6 +54,7 @@ Jika perubahan menyentuh lebih dari satu area, gabungkan contract dan test dari 
 - `rfc/README.md`
 - `rfc/0019-transaction-line-items.md` — proposed contract untuk satu cash movement dengan beberapa kategori/Kebutuhan.
 - `adr/README.md`
+- `adr/0011-manual-investment-rdn-ledger.md` — keputusan canonical RDN, trade/cost basis, reconciliation, dan recovery Investment.
 - `RELEASE_CHECKLIST.md`
 - `ROLLBACK_RUNBOOK.md`
 

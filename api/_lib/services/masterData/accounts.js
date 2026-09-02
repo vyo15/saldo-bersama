@@ -59,8 +59,10 @@ const accountDependencyCounts = async (db, accountId) => numericCounts(await db.
   (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND default_account_id=?) AS active_recurring,
   (SELECT COUNT(*) FROM savings_goals WHERE account_id=?) AS goals,
   (SELECT COUNT(*) FROM savings_goals WHERE status IN ('active','completed') AND account_id=?) AS active_goals,
-  (SELECT COUNT(*) FROM reconciliations WHERE account_id=?) AS reconciliations`, [
-  accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId,
+  (SELECT COUNT(*) FROM reconciliations WHERE account_id=?) AS reconciliations,
+  (SELECT COUNT(*) FROM investment_portfolios WHERE rdn_account_id=?) AS investment_portfolios,
+  (SELECT COUNT(*) FROM investment_portfolios WHERE status='active' AND rdn_account_id=?) AS active_investment_portfolios`, [
+  accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId,
 ]));
 
 const accountLifecycleResult = (current, dependencies, currentBalance) => {
@@ -71,6 +73,7 @@ const accountLifecycleResult = (current, dependencies, currentBalance) => {
   if (dependencies.active_envelopes) archiveBlockers.push("Masih dipakai Alokasi Dana aktif.");
   if (dependencies.active_recurring) archiveBlockers.push("Masih dipakai tagihan rutin aktif.");
   if (dependencies.active_goals) archiveBlockers.push("Masih dipakai target aktif atau selesai.");
+  if (dependencies.active_investment_portfolios) archiveBlockers.push("Masih dipakai sebagai RDN portfolio investasi aktif.");
 
   const deleteBlockers = [];
   if (current.status !== "active") deleteBlockers.push("Hanya rekening aktif yang dapat dihapus sebagai rekening belum dipakai.");
@@ -81,6 +84,7 @@ const accountLifecycleResult = (current, dependencies, currentBalance) => {
   if (dependencies.recurring) deleteBlockers.push("Rekening pernah atau masih dipakai tagihan rutin.");
   if (dependencies.goals) deleteBlockers.push("Rekening pernah atau masih dipakai target.");
   if (dependencies.reconciliations) deleteBlockers.push("Rekening pernah direkonsiliasi.");
+  if (dependencies.investment_portfolios) deleteBlockers.push("Rekening pernah dipakai sebagai RDN portfolio investasi.");
 
   return {
     account: accountAuditRow(current),
@@ -114,8 +118,10 @@ const accountLifecyclePreviewStatements = (accountId, cutoffDate) => [{
     (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND default_account_id=?) AS active_recurring,
     (SELECT COUNT(*) FROM savings_goals WHERE account_id=?) AS goals,
     (SELECT COUNT(*) FROM savings_goals WHERE status IN ('active','completed') AND account_id=?) AS active_goals,
-    (SELECT COUNT(*) FROM reconciliations WHERE account_id=?) AS reconciliations`,
-  args: [accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId],
+    (SELECT COUNT(*) FROM reconciliations WHERE account_id=?) AS reconciliations,
+    (SELECT COUNT(*) FROM investment_portfolios WHERE rdn_account_id=?) AS investment_portfolios,
+    (SELECT COUNT(*) FROM investment_portfolios WHERE status='active' AND rdn_account_id=?) AS active_investment_portfolios`,
+  args: [accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId, accountId],
 }, {
   sql: `SELECT CASE WHEN a.initial_balance_date>? THEN 0 ELSE a.initial_balance + COALESCE(SUM(CASE
       WHEN t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
@@ -123,12 +129,13 @@ const accountLifecyclePreviewStatements = (accountId, cutoffDate) => [{
       WHEN t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
       WHEN t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
       WHEN t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
-      ELSE 0 END),0) END AS balance
+      ELSE 0 END),0) + COALESCE((SELECT SUM(e.cash_effect) FROM investment_account_events e
+        WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND ?),0) END AS balance
     FROM accounts a LEFT JOIN transactions t ON t.status='active'
       AND t.transaction_date BETWEEN a.initial_balance_date AND ?
       AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
     WHERE a.account_id=? GROUP BY a.account_id`,
-  args: [cutoffDate, cutoffDate, accountId],
+  args: [cutoffDate, cutoffDate, cutoffDate, accountId],
 }];
 
 export const listAccounts = async (db, context) => ({ items: await visibleAccounts(db, context.actor) });

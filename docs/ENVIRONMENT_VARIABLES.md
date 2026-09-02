@@ -202,7 +202,7 @@ Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sen
 Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan hanya dari komputer tepercaya setelah backup/integrity evidence tersedia.
 
 1. Buat database Turso **Development** baru.
-2. Terapkan migration canonical sampai schema v14 pada Development, lalu bind dan jalankan integrity check. Command tanpa target membaca `.env.local`:
+2. Terapkan migration canonical sampai schema v15 pada Development, lalu bind dan jalankan integrity check. Command tanpa target membaca `.env.local`:
    ```bash
    npm run db:migrate
    npm run db:bind-environment -- development
@@ -219,7 +219,7 @@ Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan ha
    npm run db:bind-environment -- production
    npm run db:integrity -- production
    ```
-   Profile Production tidak pernah diambil dari `.env.local`; runtime v14 baru boleh menerima traffic setelah langkah ini lulus.
+   Profile Production tidak pernah diambil dari `.env.local`; runtime v15 baru boleh menerima traffic setelah langkah ini lulus.
 7. Jalankan `npm run dev`, lalu `npm run env:check` dan smoke read/write menggunakan data dummy pada Development.
 8. Verifikasi aplikasi Production tetap sehat dan tidak pernah mengakses database Development.
 9. Setelah kedua scope terbukti terpisah, rotasi credential lama sesuai `SECRET_ROTATION_RUNBOOK.md` dan revoke token yang tidak lagi dipakai.

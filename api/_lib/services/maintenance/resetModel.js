@@ -11,6 +11,10 @@ export const TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES = "activity_and_balances";
 export const TRIAL_RESET_SCOPES = new Set([TRIAL_RESET_SCOPE_ACTIVITY, TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES]);
 
 export const RESET_BUSINESS_TABLES = Object.freeze([
+  { table: "investment_reconciliations", key: "reconciliation_id" },
+  { table: "investment_valuations", key: "valuation_id" },
+  { table: "investment_corrections", key: "correction_id" },
+  { table: "investment_trades", key: "trade_id" },
   { table: "goal_movements", key: "goal_movement_id" },
   { table: "budgets", key: "budget_id" },
   { table: "envelope_movements", key: "movement_id" },
@@ -76,14 +80,15 @@ export const accountBalanceResetStatement = (cutoffDate) => ({
       WHEN t.transaction_type='transfer' AND t.source_account_id=a.account_id THEN -t.amount
       WHEN t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
       WHEN t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
-      ELSE 0 END),0) END AS current_balance
+      ELSE 0 END),0) + COALESCE((SELECT SUM(e.cash_effect) FROM investment_account_events e
+        WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND ?),0) END AS current_balance
     FROM accounts a
     LEFT JOIN transactions t ON t.status='active'
       AND t.transaction_date BETWEEN a.initial_balance_date AND ?
       AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
     GROUP BY a.account_id
     ORDER BY a.account_id`,
-  args: [cutoffDate, cutoffDate],
+  args: [cutoffDate, cutoffDate, cutoffDate],
 });
 
 export const normalizedResetScope = (value) => {

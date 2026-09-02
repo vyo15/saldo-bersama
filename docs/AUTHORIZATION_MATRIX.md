@@ -37,6 +37,15 @@
 | `archive.list` | Ya | Tidak |
 | `audit.list` | Ya | Tidak |
 | `dashboard.overview` | Ya | Ya |
+| `investments.overview` | Ya | Ya |
+| `investments.instruments.list` | Ya | Ya |
+| `investments.portfolios.create` | Ya | Ya |
+| `investments.instruments.upsert` | Ya | Tidak |
+| `investments.trades.buy` | Ya | Ya |
+| `investments.trades.sell` | Ya | Ya |
+| `investments.valuations.update` | Ya | Ya |
+| `investments.reconciliations.create` | Ya | Ya |
+| `investments.corrections.create` | Ya | Tidak |
 | `accounts.list` | Ya | Ya |
 | `accounts.create` | Ya | Tidak |
 | `accounts.requestCreate` | Tidak | Ya |
@@ -133,6 +142,15 @@
 | `integrity.run` | Ya | Tidak |
 
 
+## Authorization investasi
+
+- Kedua role boleh membaca `investments.overview` dan registry instrumen. Portfolio mengikuti readability rekening existing; portfolio personal pasangan dapat dibaca karena transparency policy dua pengguna, tetapi backend menandai capability operasional secara terpisah.
+- Administrator dan Member boleh membuat portfolio hanya pada rekening `investment` yang **operable** bagi actor. Member tidak memperoleh capability atas RDN personal pasangan hanya karena mengetahui ID-nya.
+- Buy, sell, valuation, dan reconciliation boleh dilakukan Administrator atau Member hanya bila portfolio/RDN shared atau personal milik actor. Setiap mutation membaca ulang portfolio + ownership backend, memerlukan idempotency, dan memakai `row_version`; frontend `can_operate` hanya affordance UX.
+- Registry instrumen (`investments.instruments.upsert`) dan correction (`investments.corrections.create`) Administrator-only. Correction tidak boleh menjadi backdoor Member untuk menambah holding/cash atau menulis ulang histori.
+- Status instrumen `inactive` melarang buy baru tetapi tidak menghapus hak menjual holding existing yang memang sudah dimiliki actor pada portfolio operable.
+- Rekonsiliasi hanya membandingkan snapshot as-of tanggal yang diminta dan tidak memperluas authorization atau melakukan auto-adjust. Mismatch harus tetap eksplisit sampai Administrator memilih correction yang diaudit.
+
 ## Recurring occurrence dan preferensi notifikasi
 
 - Melewati atau memulihkan satu occurrence (`recurring.cancelOccurrence` / `recurring.restoreOccurrence`) adalah keputusan planning Administrator-only. Aksi ini tidak membuat ledger entry dan tidak mengubah saldo.
@@ -156,7 +174,7 @@
 - Target shared dapat didanai dari rekening shared atau rekening personal actor yang operable. Target personal hanya kompatibel dengan rekening shared atau personal pemilik Target yang sama; backend tetap menentukan capability dan account access.
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
 - Alokasi Dana memiliki dimensi `assignee_user_id` terpisah dari ownership ledger. `NULL` berarti Jatah Bersama. Setiap Alokasi Dana canonical juga terikat pada tepat satu `source_account_id`; transaksi yang memakai Alokasi Dana wajib memakai rekening sumber yang sama dan realokasi baru hanya boleh antar Alokasi Dana dari rekening sumber yang sama. Member hanya boleh memakai atau memindahkan Jatah Bersama dan jatah miliknya sendiri; jatah pengguna lain ditolak backend. Rekening personal hanya boleh menjadi sumber jatah untuk pemilik rekening tersebut.
-- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `accounts.requestCreate`. `categories.create/update/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `categories.requestCreate`. Review master-data request dan transfer request tetap Administrator-only. UI Administrator memusatkan queue keputusan tersebut pada `/persetujuan`, tetapi route ini hanya presentation: action review existing tetap satu-satunya authority dan selalu membaca ulang state backend. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
+- `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `accounts.requestCreate`. `categories.create/update/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `categories.requestCreate`. Review master-data request dan transfer request tetap Administrator-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
 - User management, rekening/kategori master, lifecycle destruktif planning, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix. Member dapat create/update Alokasi Dana dan Jadwal Rutin pada scope `shared` atau `personal` miliknya sendiri; Kebutuhan (`budgets.upsert`) mengikuti batas yang sama. Target baru tetap wajib scope `shared`. Planning personal pengguna lain tetap ditolak backend. Disabled button frontend bukan boundary keamanan.
 - Export lengkap Administrator-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.

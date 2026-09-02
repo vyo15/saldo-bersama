@@ -32,6 +32,12 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `recurring_occurrences` | Kejadian per jatuh tempo dari aturan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `savings_goals` | Target tabungan yang terhubung ke rekening. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `transactions` | Ledger transaksi income, expense, transfer, refund, dan adjustment. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
+| `investment_portfolios` | Portfolio manual yang mengikat satu RDN canonical ke broker context (`ajaib`/`other`), status, dan `row_version`. | Tinggi | Service/API; satu RDN per portfolio; ikut backup/restore |
+| `investment_instruments` | Registry ticker, nama, exchange, lot size, status, dan `row_version`. | Sedang | Administrator mengelola; readable kedua role; ikut backup/restore |
+| `investment_trades` | Histori buy/sell append-only berisi lot, lembar, harga, fee, gross, cash, actor, dan idempotency key. | Tinggi | Financial authority Investment; tidak menjadi income/expense; ikut backup/restore |
+| `investment_valuations` | Snapshot harga manual per portfolio/instrumen/tanggal. | Sedang | Append-only valuation; tidak mengubah saldo; ikut backup/restore |
+| `investment_reconciliations` | Snapshot recorded vs actual cash/holding pada tanggal rekonsiliasi, status match/mismatch, notes, dan diff JSON. | Tinggi | Tidak auto-adjust; ikut backup/restore |
+| `investment_corrections` | Koreksi append-only Administrator-only untuk share/cost-basis/cash delta dengan alasan. | Tinggi | Tidak rewrite trade history; ikut backup/restore |
 | `envelope_movements` | Realokasi atau mutasi Alokasi Dana yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `budgets` | Anggaran kategori per periode. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `goal_movements` | Setoran/penarikan target yang terhubung ke transaksi. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
@@ -63,6 +69,12 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `accounts.bank_template`: template visual kartu bank yang tidak mengubah nama rekening. Enum rekening bank: `generic`, `bca`, `bni`, `btn`, `mandiri`, `permata`; rekening non-bank wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `accounts.ewallet_template`: provider visual E-wallet yang tidak mengubah nama rekening. Enum E-wallet: `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`; rekening non-E-wallet wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
+- `investment_portfolios.rdn_account_id`: FK unik ke rekening `account_type=investment`; runtime mewajibkan rekening aktif, operable saat create, dan `allow_negative=0`. `row_version` portfolio menjadi optimistic-lock token seluruh mutation portfolio.
+- `investment_instruments.lot_size`: integer positif untuk konversi lot → lembar. Ticker unik uppercase; status `inactive` melarang buy baru tetapi tidak memblok sell holding existing.
+- `investment_trades`: `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, `cash_amount` semuanya integer; service/integrity memastikan lembar = lot × lot size, gross = lembar × harga, buy cash = gross + fee, sell cash = gross - fee.
+- `investment_valuations.price_per_share`: integer positif; snapshot harga tidak mengubah cash/ledger. Harga read-model paling baru dapat berasal dari valuation atau trade terakhir.
+- `investment_reconciliations.recorded_*` adalah snapshot state system **as-of `reconciliation_date`** dan `actual_*` adalah input broker user. `difference_json` hanya diagnosis; tidak mengubah data finansial.
+- `investment_corrections.share_delta`, `cost_basis_delta`, `cash_delta`: delta eksplisit dengan alasan; correction tidak boleh menghasilkan holding/cost basis/cash invalid dan hanya Administrator yang dapat membuatnya.
 - `transactions.cost_share_mode`: `unspecified`, `equal`, atau `percentage`. Hanya expense shared yang boleh memiliki mode selain `unspecified`.
 - `transactions.cost_share_json`: JSON snapshot server-side berisi `{user_id,basis_points,share_amount}`. Total `basis_points` wajib 10.000 dan total `share_amount` wajib sama dengan `transactions.amount`; field tidak dipercaya dari client.
 - Transfer wajib source dan destination berbeda.
@@ -76,15 +88,16 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 
 Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 
-- `balance`: saldo fisik rekening dari saldo awal + transaksi aktif hingga cutoff;
+- `balance`: saldo fisik rekening dari saldo awal + cash-impact event canonical hingga cutoff; untuk rekening biasa event berasal dari transaksi aktif, sedangkan RDN juga memasukkan `investment_account_events` dari buy/sell/correction;
 - `allocated_remaining`: total bagian alokasi aktif yang masih tertahan pada rekening sumber. Dana `reserved_amount` tetap bagian dari alokasi dan tidak dibebaskan sebagai dana tersedia; pengeluaran Alokasi Dana hanya mengurangi sisa setelah tanggal transaksi mencapai cutoff;
 - `available_balance = balance - allocated_remaining`; membuat Alokasi Dana tidak mengubah `balance`, sedangkan pemakaian Alokasi Dana mengurangi `balance` dan `allocated_remaining` bersamaan;
 - `safeToSpend`, `unallocatedFunds`;
 - `progress_percent`, `remaining_amount`, `required_monthly_amount`, `pace_status` target;
-- seri laporan 1 bulan harian, tren 3/6/12 bulan, dan breakdown laporan;
+- tren 3/6/12 bulan dan breakdown laporan;
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
+- `investment` holdings, remaining cost basis, average cost, market value, realized P/L, dan unrealized P/L dihitung dari trade/correction history + harga terakhir yang diketahui; tidak disimpan sebagai angka bebas edit.
 
-## Model planned — belum ada di schema v14
+## Model planned — belum ada di schema v15
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
@@ -98,6 +111,6 @@ Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v14
+## Schema v15
 
-Migration canonical terbaru: `012_member_collaboration.sql` pada `database/migrations/`. Migration v14 menambah foto profil Google tepercaya dan lifecycle request kolaborasi Member (`master_data_requests`, `transfer_requests`) tanpa mengubah ledger/saldo. Migration v13 tetap menjadi dasar durable rate-limit bucket dan migration v12 tetap menjadi dasar registry session, binding environment, dan heartbeat scheduler. Runtime v14 menerima backup v3-v13 secara additive; request tables dan `photo_url` hanya diwajibkan pada backup v14.
+Migration canonical terbaru: `013_investment_tracking.sql` pada `database/migrations/`. Migration v15 menambah portfolio/instrument/trade/valuation/reconciliation/correction Investment dan view `investment_account_events` tanpa mengubah histori transaksi existing. RDN tetap rekening canonical, Bank ↔ RDN tetap Transfer, sedangkan buy/sell tidak diklasifikasikan sebagai income/expense. Runtime v15 menerima backup v3-v14 secara additive; enam tabel Investment hanya diwajibkan pada backup v15. Migration v14 tetap menjadi dasar foto profil Google + request kolaborasi Member, v13 durable rate-limit bucket, dan v12 registry session/environment binding.

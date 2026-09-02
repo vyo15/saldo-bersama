@@ -65,7 +65,7 @@ Ikuti `RECOVERY_RUNBOOK.md`. Jangan menyatakan sukses sebelum checksum, restore 
 
 ## Reset data testing
 
-Gunakan hanya pada fase setup/trial sebelum transaksi nyata mulai dicatat dan hanya pada database **Development** yang sudah terikat `development`. Source v14 memisahkan Development dan Production secara fail-closed; reset testing tidak boleh dijalankan terhadap database Production. Operasi ini manual dan tidak pernah dijalankan otomatis di background.
+Gunakan hanya pada fase setup/trial sebelum transaksi nyata mulai dicatat dan hanya pada database **Development** yang sudah terikat `development`. Source v15 memisahkan Development dan Production secara fail-closed; reset testing tidak boleh dijalankan terhadap database Production. Operasi ini manual dan tidak pernah dijalankan otomatis di background.
 
 1. Administrator membuka **Pengaturan → Reset data testing**. Halaman lebih dulu menjalankan `reset.status` dan health check Google Drive. Jika status reset tidak dapat diverifikasi, operasi destructive tetap diblokir.
 2. Pilih preset `Bersihkan aktivitas testing` atau `Bersihkan aktivitas + nolkan saldo`, lalu jalankan preview. Preview harus menunjukkan seluruh data finansial yang akan dibersihkan; untuk preset kedua, preview juga wajib menunjukkan saldo rekening saat ini dan saldo awal yang akan menjadi Rp0.

@@ -28,12 +28,12 @@ Bootstrap, refresh, dan kebijakan environment Development mengikuti `docs/adr/00
 
 ## Approved exit plan (historical)
 
-Plan berikut adalah urutan cutover yang membawa project keluar dari constraint satu-database. Source v14 sekarang menganggap isolasi ini sebagai invariant runtime dan checker menolak profile yang berbagi database/token/session/VAPID. Evidence operasional tetap harus dipertahankan, tetapi ADR ini tidak lagi memberi izin untuk kembali ke satu database.
+Plan berikut adalah urutan cutover yang membawa project keluar dari constraint satu-database. Source v15 sekarang menganggap isolasi ini sebagai invariant runtime dan checker menolak profile yang berbagi database/token/session/VAPID. Evidence operasional tetap harus dipertahankan, tetapi ADR ini tidak lagi memberi izin untuk kembali ke satu database.
 
 Urutan cutover historis:
 
 1. Buat database Turso Development baru tanpa menyalin credential Production ke source/chat/log.
-2. Terapkan seluruh migration canonical sampai schema v14 pada database Development.
+2. Terapkan seluruh migration canonical sampai schema v15 pada database Development.
 3. Bind database tersebut secara eksplisit dengan `npm run db:bind-environment -- development`; rebind silang wajib ditolak.
 4. Verifikasi `timezone=Asia/Jakarta`, `currency=IDR`, foreign key, dan business integrity.
 5. Isi Vercel Development `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, dan `DATABASE_ENVIRONMENT=development` dengan scope Development. Production tetap memakai credential Production dan `DATABASE_ENVIRONMENT=production`.

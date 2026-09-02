@@ -7,6 +7,10 @@ import { digest, quoted } from "./shared.js";
 export const FULL_RESET_CONFIRMATION = "RESET SEMUA DATA SALDO BERSAMA";
 
 export const FULL_RESET_DOMAIN_TABLES = Object.freeze([
+  { table: "investment_reconciliations", orderBy: "reconciliation_id", key: "investmentReconciliations" },
+  { table: "investment_valuations", orderBy: "valuation_id", key: "investmentValuations" },
+  { table: "investment_corrections", orderBy: "correction_id", key: "investmentCorrections" },
+  { table: "investment_trades", orderBy: "trade_id", key: "investmentTrades" },
   { table: "goal_movements", orderBy: "goal_movement_id", key: "goalMovements" },
   { table: "budgets", orderBy: "budget_id", key: "budgets" },
   { table: "envelope_movements", orderBy: "movement_id", key: "allocationMovements" },
@@ -21,6 +25,8 @@ export const FULL_RESET_DOMAIN_TABLES = Object.freeze([
 ]);
 
 export const FULL_RESET_MASTER_TABLES = Object.freeze([
+  { table: "investment_portfolios", orderBy: "portfolio_id", key: "investmentPortfolios" },
+  { table: "investment_instruments", orderBy: "instrument_id", key: "investmentInstruments" },
   { table: "categories", orderBy: "category_id", key: "categories" },
   { table: "accounts", orderBy: "account_id", key: "accounts" },
 ]);
@@ -60,6 +66,10 @@ export const FULL_RESET_DELETE_ORDER = Object.freeze([
   "notification_queue",
   "integration_links",
   "integration_outbox",
+  "investment_reconciliations",
+  "investment_valuations",
+  "investment_corrections",
+  "investment_trades",
   "goal_movements",
   "budgets",
   "envelope_movements",
@@ -75,6 +85,8 @@ export const FULL_RESET_DELETE_ORDER = Object.freeze([
   "push_subscriptions",
   "import_previews",
   "restore_previews",
+  "investment_portfolios",
+  "investment_instruments",
   "categories",
   "accounts",
 ]);

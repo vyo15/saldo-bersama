@@ -5,20 +5,20 @@ import { BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConst
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
 const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
 export const BACKUP_TABLES = [
-  "system_config", "users", "accounts", "categories", "master_data_requests", "transfer_requests", "envelope_rules", "envelope_periods",
-  "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "envelope_movements",
+  "system_config", "users", "accounts", "categories", "investment_instruments", "investment_portfolios", "master_data_requests", "transfer_requests", "envelope_rules", "envelope_periods",
+  "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections", "envelope_movements",
   "budgets", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "manual_reminders", "audit_log", "idempotency_keys",
 ];
 
 export const RESTORE_DELETE_ORDER = [
   "notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces", "rate_limit_buckets", "goal_movements", "budgets", "envelope_movements",
-  "transactions", "recurring_occurrences", "recurring_rules", "envelope_periods", "envelope_rules", "savings_goals",
-  "reconciliations", "period_closures", "transfer_requests", "master_data_requests", "categories", "accounts", "manual_reminders", "notification_preferences", "push_subscriptions", "idempotency_keys",
+  "investment_reconciliations", "investment_valuations", "investment_corrections", "investment_trades", "transactions", "recurring_occurrences", "recurring_rules", "envelope_periods", "envelope_rules", "savings_goals",
+  "reconciliations", "period_closures", "transfer_requests", "master_data_requests", "investment_portfolios", "investment_instruments", "categories", "accounts", "manual_reminders", "notification_preferences", "push_subscriptions", "idempotency_keys",
 ];
 
 const MAX_BACKUP_COMPRESSED_BYTES = 20 * 1024 * 1024;
@@ -178,6 +178,7 @@ const isLegacyOptionalBackupTable = (schemaVersion, table) => (
   (schemaVersion < 7 && table === "notification_preferences")
   || (schemaVersion < 10 && table === "manual_reminders")
   || (schemaVersion < 14 && ["master_data_requests", "transfer_requests"].includes(table))
+  || (schemaVersion < 15 && ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"].includes(table))
 );
 
 export const validateSnapshot = (snapshot) => {

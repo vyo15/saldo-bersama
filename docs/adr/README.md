@@ -27,3 +27,4 @@ Index:
 - `0008-vercel-functions-google-bridge.md`
 - `0009-mantine-css-modules-ui-foundation.md`
 - `0010-vercel-development-environment-bootstrap.md`
+- `0011-manual-investment-rdn-ledger.md`
