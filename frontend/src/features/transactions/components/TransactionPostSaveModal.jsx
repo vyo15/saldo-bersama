@@ -11,22 +11,25 @@ const postSaveAccountLabel = (accounts, accountId, fallback) => {
 
 const investmentTransferContinuation = ({ type, sourceAccount, destinationAccount, onClose, navigate }) => {
   if (type !== TRANSACTION_TYPES.TRANSFER) return null;
-  const fundingRdn = destinationAccount?.account_type === "investment";
-  const investmentAccount = fundingRdn
+  const destinationIsInvestment = destinationAccount?.account_type === "investment";
+  const sourceIsInvestment = sourceAccount?.account_type === "investment";
+  const investmentAccount = destinationIsInvestment
     ? destinationAccount
-    : sourceAccount?.account_type === "investment"
+    : sourceIsInvestment
       ? sourceAccount
       : null;
   if (!investmentAccount) return null;
   return {
-    label: fundingRdn ? "Catat pembelian saham" : "Buka Investasi",
+    label: destinationIsInvestment ? "Catat pembelian" : "Buka investasi",
     onClick: () => {
       onClose();
       navigate("/investasi", {
         state: {
           workflowSource: "transaction-transfer",
-          workflowAction: fundingRdn ? "continue-after-rdn-funding" : "view-investment",
+          workflowAction: destinationIsInvestment ? "continue-after-rdn-funding" : "view-investment",
           rdnAccountId: investmentAccount.account_id,
+          ensureSetup: true,
+          ...(destinationIsInvestment ? { openAction: "buy" } : {}),
         },
       });
     },
@@ -62,7 +65,9 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     : type === TRANSACTION_TYPES.TRANSFER
       ? {
         title: "Transfer berhasil",
-        description: "Dana sudah berhasil dipindahkan ke rekening tujuan dan server telah mengonfirmasi transaksi. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.",
+        description: investmentContinuation
+          ? "Dana sudah berhasil dipindahkan dan server telah mengonfirmasi transaksi. Transfer ke/dari RDN tetap netral terhadap pemasukan dan pengeluaran."
+          : "Dana sudah berhasil dipindahkan ke rekening tujuan dan server telah mengonfirmasi transaksi. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.",
         summaryRows: [
           { label: "Dari rekening", value: sourceLabel },
           { label: "Ke rekening", value: destinationLabel },

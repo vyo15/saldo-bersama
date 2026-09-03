@@ -64,7 +64,7 @@ const TradeReview = ({ mode, form, instruments, portfolio }) => {
     <section className={styles.review} aria-labelledby="investment-trade-review-title">
       <div>
         <h3 id="investment-trade-review-title">Tinjau catatan sebelum disimpan</h3>
-        <p className={styles.notice}>Ini adalah catatan transaksi yang sudah dilakukan di broker, bukan order baru. Backend tetap memvalidasi saldo RDN, holding, lot, tanggal, izin, versi data, dan idempotency saat disimpan.</p>
+        <p className={styles.notice}>Ini adalah catatan transaksi yang sudah dilakukan di aplikasi investasi, bukan order baru. Backend tetap memvalidasi saldo RDN, holding, lot, tanggal, izin, versi data, dan idempotency saat disimpan.</p>
       </div>
       <dl className={styles.reviewGrid}>
         <div><dt>Saham</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
@@ -139,8 +139,8 @@ const dialogTitle = (mode, portfolio) => ({
 })[mode];
 
 const dialogDescription = (mode) => ({
-  buy: "Catat transaksi yang sudah Anda lakukan di broker. Saldo Bersama tidak mengirim order beli ke broker.",
-  sell: "Catat transaksi yang sudah Anda lakukan di broker. Saldo Bersama tidak mengirim order jual ke broker.",
+  buy: "Catat transaksi yang sudah Anda lakukan di aplikasi investasi. Saldo Bersama tidak mengirim order beli.",
+  sell: "Catat transaksi yang sudah Anda lakukan di aplikasi investasi. Saldo Bersama tidak mengirim order jual.",
   price: "Masukkan harga terakhir yang Anda lihat di broker atau sumber pilihan Anda. Harga tidak diperbarui otomatis.",
   reconcile: "Bandingkan kondisi broker dengan catatan Saldo Bersama. Pencocokan tidak menyesuaikan portfolio secara otomatis.",
   correction: "Perbaiki selisih pencatatan secara eksplisit tanpa menulis ulang histori transaksi lama.",
@@ -281,16 +281,17 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, initialInstr
     </Modal>;
   }
   const reviewInstruments = mode === "buy" ? state.activeInstruments : state.sellInstruments;
+  const { busy, outcomeUnknown } = state;
   const body = <InvestmentFields mode={mode} form={state.form} onFieldChange={state.onFieldChange} activeInstruments={state.activeInstruments} sellInstruments={state.sellInstruments} priceInstruments={state.priceInstruments} portfolioInstruments={state.portfolioInstruments} portfolio={portfolio} instruments={instruments} errors={state.fieldErrors} />;
-  const footer = <InvestmentDialogFooter reviewing={state.reviewing} busy={state.busy} outcomeUnknown={state.outcomeUnknown} mode={mode} isTrade={state.isTrade} onEdit={() => { state.setReviewing(false); }} />;
+  const footer = <InvestmentDialogFooter reviewing={state.reviewing} busy={state.busy} outcomeUnknown={outcomeUnknown} mode={mode} isTrade={state.isTrade} onEdit={() => { state.setReviewing(false); }} />;
   return (
-    <Modal open title={dialogTitle(mode, portfolio)} description={dialogDescription(mode)} onClose={state.busy || state.outcomeUnknown ? undefined : onClose} dismissible={!state.busy && !state.outcomeUnknown} footer={footer}>
+    <Modal open title={dialogTitle(mode, portfolio)} description={dialogDescription(mode)} onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={footer}>
       <form ref={state.formRef} id="investment-dialog-form" className={styles.form} onSubmit={state.submit} noValidate>
         {state.fieldErrors._form ? <div className="notice notice--danger" role="alert">{state.fieldErrors._form}</div> : null}
-        {state.error ? <div className={`notice ${state.outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{state.error}</div> : null}
+        {state.error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{state.error}</div> : null}
         <InsufficientRdnGuidance error={state.operationError} portfolio={portfolio} onFundRdn={onFundRdn} />
-        {state.outcomeUnknown ? <p className={styles.intentGuard} role="status">Data dikunci sementara. Jangan ubah saham, nominal, tanggal, atau jumlah lot. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa menggandakan perubahan.</p> : null}
-        {state.reviewing ? <TradeReview mode={mode} form={state.form} instruments={reviewInstruments} portfolio={portfolio} /> : <fieldset className={styles.intentFieldset} disabled={state.outcomeUnknown}>{body}</fieldset>}
+        {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data dikunci sementara. Jangan ubah saham, nominal, tanggal, atau jumlah lot. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa menggandakan perubahan.</p> : null}
+        {state.reviewing ? <TradeReview mode={mode} form={state.form} instruments={reviewInstruments} portfolio={portfolio} /> : <fieldset className={styles.intentFieldset} disabled={outcomeUnknown}>{body}</fieldset>}
       </form>
     </Modal>
   );

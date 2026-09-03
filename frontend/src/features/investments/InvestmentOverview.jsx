@@ -69,8 +69,8 @@ const portfolioActionGuidance = ({ hasBuyInstrument, hasHolding, hasSellableHold
   }
   if (!hasHolding) return "Catat jual dan Perbarui harga tersedia setelah portfolio memiliki holding saham.";
   if (!hasSellableHolding) return owner
-    ? "Holding tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan lot. Gunakan Koreksi bila jumlah lembar memang perlu diperbaiki."
-    : "Holding tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan lot. Hubungi Administrator bila jumlah lembar perlu diperbaiki.";
+    ? "Saham tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan lot. Gunakan Koreksi bila jumlah lembar memang perlu diperbaiki."
+    : "Saham tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan lot. Hubungi Administrator bila jumlah lembar perlu diperbaiki.";
   if (!hasPriceInstrument) return "Belum ada instrumen yang dapat diberi harga manual.";
   return "";
 };
@@ -93,8 +93,8 @@ const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup }) 
         <Button className={styles.quickAction} icon={FiTrendingUp} disabled={!hasPriceInstrument} onClick={() => onAction("price", portfolio)}>Perbarui harga</Button>
         <Button className={styles.quickAction} icon={FiRefreshCw} onClick={() => onAction("reconcile", portfolio)}>Cocokkan</Button>
       </div>
-      {owner ? <div className={styles.advancedActions}><Button icon={FiEdit3} onClick={() => onAction("correction", portfolio)}>Koreksi catatan</Button></div> : null}
-      {guidance ? <div className={styles.actionGuidance} role="note"><span>{guidance}</span>{!hasBuyInstrument && owner ? <Button type="button" onClick={onSetup}>Tambah instrumen</Button> : null}</div> : null}
+      {owner ? <div className={styles.advancedActions}><Button icon={FiEdit3} onClick={() => onAction("correction", portfolio)}>Koreksi pencatatan</Button></div> : null}
+      {guidance ? <div className={styles.actionGuidance} role="note"><span>{guidance}</span>{!hasBuyInstrument && owner ? <Button type="button" onClick={() => onSetup("instrument")}>Tambah instrumen</Button> : null}</div> : null}
     </>
   );
 };
@@ -104,7 +104,7 @@ const RdnActions = ({ portfolio, onTransfer }) => {
   return <section className={styles.composition} aria-label={`Dana RDN ${portfolio.name}`}>
     <div className={styles.sectionHeading}><div>
       <h3>Cash RDN · <Money value={cash} /></h3>
-      <p>Tambah atau tarik dana menggunakan Transfer rekening. Pemindahan ini bukan pemasukan atau pengeluaran.</p>
+      <p>Tambah atau tarik dana menggunakan Transfer rekening. Transfer internal tidak menjadi pemasukan atau pengeluaran.</p>
     </div></div>
     {portfolio.can_operate ? <div className={styles.advancedActions}>
       <Button icon={FiArrowDownLeft} variant={cash <= 0 ? "primary" : undefined} onClick={() => onTransfer("fund", portfolio)}>Tambah dana</Button>
@@ -113,7 +113,7 @@ const RdnActions = ({ portfolio, onTransfer }) => {
   </section>;
 };
 
-const HoldingCard = ({ holding, canOperate, onUpdatePrice }) => {
+const HoldingCard = ({ holding, canOperate, onUpdatePrice, onOpenDetail }) => {
   const lotSize = Number(holding.lot_size || 100);
   const shares = Number(holding.shares || 0);
   const lots = lotSize > 0 ? shares / lotSize : 0;
@@ -129,10 +129,15 @@ const HoldingCard = ({ holding, canOperate, onUpdatePrice }) => {
           <p>{holding.name || "Instrumen investasi"}</p>
         </div>
         </div>
-        {canOperate ? <div className={styles.advancedActions}><Button icon={FiTrendingUp} onClick={() => onUpdatePrice(holding)}>Perbarui harga</Button></div> : null}
+        <div className={styles.advancedActions}>
+          <Button type="button" onClick={() => onOpenDetail(holding)}>Rincian & aktivitas</Button>
+          {canOperate ? <Button icon={FiTrendingUp} onClick={() => onUpdatePrice(holding)}>Perbarui harga</Button> : null}
+        </div>
       </div>
       <dl className={styles.holdingMetrics}>
         <div><dt>Kepemilikan</dt><dd>{lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot · {shares.toLocaleString("id-ID")} lembar</dd></div>
+        <div><dt>Harga rata-rata</dt><dd><Money value={holding.average_cost} /></dd></div>
+        <div><dt>Modal tersisa</dt><dd><Money value={holding.cost_basis} /></dd></div>
         <div><dt>Harga catatan terakhir</dt><dd><Money value={holding.price_per_share} />{holding.valuation_date ? <small>{formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}</small> : null}</dd></div>
         <div><dt>Nilai tercatat</dt><dd><Money value={holding.market_value} /></dd></div>
         <div><dt>P/L</dt><dd className={tone(holding.unrealized_pl)}><Money value={holding.unrealized_pl} /><small>{performanceLabel(holding.unrealized_pl)}{returnPercent != null ? ` · ${percentLabel(returnPercent)}` : ""}</small></dd></div>
@@ -162,7 +167,7 @@ const ActivityItem = ({ activity }) => {
   );
 };
 
-const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTransfer }) => {
+const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTransfer, onHolding }) => {
   const portfolioValue = Number(portfolio.rdn_cash || 0) + Number(portfolio.market_value || 0);
   const unrealizedPercent = investmentReturnPercent(portfolio.unrealized_pl, portfolio.cost_basis);
   const updateHoldingPrice = (holding) => onAction("price", portfolio, { initialInstrumentId: holding.instrument_id });
@@ -170,7 +175,7 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
     <Card as="article" className={styles.portfolioCard}>
       <header className={styles.portfolioHeader}>
         <div className={styles.portfolioTitleBlock}>
-          <span className={styles.portfolioBroker}>{portfolio.broker === "ajaib" ? "Ajaib" : "Broker lain"}</span>
+          <span className={styles.portfolioBroker}>Sumber catatan</span>
           <h2>{portfolio.name}</h2>
           <p>RDN {portfolio.rdn_account_name}</p>
         </div>
@@ -202,11 +207,11 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
 
       <section className={styles.holdingsSection} aria-labelledby={`holdings-${portfolio.portfolio_id}`}>
         <div className={styles.sectionHeading}>
-          <div><h3 id={`holdings-${portfolio.portfolio_id}`}>Holding saham</h3><p>Harga berasal dari catatan harga manual terakhir atau transaksi terakhir; bukan harga pasar live.</p></div>
+          <div><h3 id={`holdings-${portfolio.portfolio_id}`}>Saham yang dimiliki</h3><p>Harga berasal dari catatan harga manual terakhir atau transaksi terakhir; bukan harga pasar live.</p></div>
           <span>{portfolio.holdings.length.toLocaleString("id-ID")} saham</span>
         </div>
         {portfolio.holdings.length
-          ? <div className={styles.holdings}>{portfolio.holdings.map((holding) => <HoldingCard key={holding.instrument_id} holding={holding} canOperate={portfolio.can_operate} onUpdatePrice={updateHoldingPrice} />)}</div>
+          ? <div className={styles.holdings}>{portfolio.holdings.map((holding) => <HoldingCard key={holding.instrument_id} holding={holding} canOperate={portfolio.can_operate} onUpdatePrice={updateHoldingPrice} onOpenDetail={(selected) => onHolding(portfolio, selected)} />)}</div>
           : <p className={styles.inlineEmpty}>Belum ada saham. Tambahkan dana ke RDN bila perlu, lakukan transaksi di broker, lalu catat pembeliannya di sini.</p>}
       </section>
 
@@ -222,11 +227,11 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
   );
 };
 
-const InvestmentOverview = ({ data, owner, onAction, onSetup, onTransfer }) => (
+const InvestmentOverview = ({ data, owner, onAction, onSetup, onTransfer, onHolding }) => (
   <div className={styles.dashboard}>
     <PortfolioHero summary={data.summary || {}} portfolioCount={data.portfolios.length} />
     <div className={styles.portfolioList}>
-      {data.portfolios.map((portfolio) => <PortfolioCard key={portfolio.portfolio_id} portfolio={portfolio} instruments={data.instruments || []} owner={owner} onAction={onAction} onSetup={onSetup} onTransfer={onTransfer} />)}
+      {data.portfolios.map((portfolio) => <PortfolioCard key={portfolio.portfolio_id} portfolio={portfolio} instruments={data.instruments || []} owner={owner} onAction={onAction} onSetup={onSetup} onTransfer={onTransfer} onHolding={onHolding} />)}
     </div>
   </div>
 );
