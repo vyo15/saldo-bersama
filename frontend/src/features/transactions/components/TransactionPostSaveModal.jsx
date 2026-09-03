@@ -2,38 +2,49 @@ import FinancialSuccessOverlay from "../../../components/feedback/FinancialSucce
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 
-const accountFor = (accounts, accountId) => accounts.find((item) => item.account_id === accountId) || null;
+const postSaveAccount = (accounts, accountId) => accounts.find((item) => item.account_id === accountId) || null;
+
 const postSaveAccountLabel = (accounts, accountId, fallback) => {
-  const account = accountFor(accounts, accountId);
+  const account = postSaveAccount(accounts, accountId);
   return account ? accountDisplayLabel(account) : fallback;
 };
 
-const investmentTransferAction = ({ accounts, postSave, onClose, navigate }) => {
-  const source = accountFor(accounts, postSave.sourceAccountId);
-  const destination = accountFor(accounts, postSave.destinationAccountId);
-  const destinationIsInvestment = destination?.account_type === "investment";
-  const sourceIsInvestment = source?.account_type === "investment";
-  if (!destinationIsInvestment && !sourceIsInvestment) return null;
-  const account = destinationIsInvestment ? destination : source;
+const investmentTransferContinuation = ({ type, sourceAccount, destinationAccount, onClose, navigate }) => {
+  if (type !== TRANSACTION_TYPES.TRANSFER) return null;
+  const fundingRdn = destinationAccount?.account_type === "investment";
+  const investmentAccount = fundingRdn
+    ? destinationAccount
+    : sourceAccount?.account_type === "investment"
+      ? sourceAccount
+      : null;
+  if (!investmentAccount) return null;
   return {
-    label: destinationIsInvestment ? "Catat pembelian" : "Buka investasi",
+    label: fundingRdn ? "Catat pembelian saham" : "Buka Investasi",
     onClick: () => {
       onClose();
-      navigate("/investasi", { state: { rdnAccountId: account.account_id, ensureSetup: true, ...(destinationIsInvestment ? { openAction: "buy" } : {}) } });
+      navigate("/investasi", {
+        state: {
+          workflowSource: "transaction-transfer",
+          workflowAction: fundingRdn ? "continue-after-rdn-funding" : "view-investment",
+          rdnAccountId: investmentAccount.account_id,
+        },
+      });
     },
   };
 };
 
 const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate, onAddAnother }) => {
   const type = postSave.transactionType;
+  const sourceAccount = postSaveAccount(accounts, postSave.sourceAccountId);
+  const destinationAccount = postSaveAccount(accounts, postSave.destinationAccountId);
   const sourceLabel = postSaveAccountLabel(accounts, postSave.sourceAccountId, "Rekening sumber");
   const destinationLabel = postSaveAccountLabel(accounts, postSave.destinationAccountId, "Rekening tujuan");
+  const investmentContinuation = investmentTransferContinuation({ type, sourceAccount, destinationAccount, onClose, navigate });
   const allocate = () => {
     const state = { workflowSource: "transaction-income", workflowAction: "fund", sourceAccountId: postSave.destinationAccountId, suggestedAmount: postSave.amount };
     onClose();
     navigate("/perencanaan/kantong", { state });
   };
-  const investmentAction = type === TRANSACTION_TYPES.TRANSFER ? investmentTransferAction({ accounts, postSave, onClose, navigate }) : null;
 
   const presentation = type === TRANSACTION_TYPES.INCOME
     ? {
@@ -51,9 +62,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     : type === TRANSACTION_TYPES.TRANSFER
       ? {
         title: "Transfer berhasil",
-        description: investmentAction
-          ? "Dana sudah berpindah antar rekening. Transfer ke/dari RDN tetap netral terhadap pemasukan dan pengeluaran; lanjutkan ke catatan Investasi bila diperlukan."
-          : "Dana sudah berhasil dipindahkan ke rekening tujuan. Transfer internal tidak dihitung sebagai pemasukan atau pengeluaran.",
+        description: "Dana sudah berhasil dipindahkan ke rekening tujuan dan server telah mengonfirmasi transaksi. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.",
         summaryRows: [
           { label: "Dari rekening", value: sourceLabel },
           { label: "Ke rekening", value: destinationLabel },
@@ -61,7 +70,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
         ],
         secondaryActions: [
           { label: "Tambah lagi", onClick: onAddAnother },
-          ...(investmentAction ? [investmentAction] : []),
+          ...(investmentContinuation ? [investmentContinuation] : []),
         ],
       }
       : type === TRANSACTION_TYPES.REFUND
