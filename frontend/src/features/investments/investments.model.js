@@ -55,6 +55,28 @@ export const investmentTradePreview = (mode, form = {}, instruments = []) => {
   return { instrument, lotSize, lots, shares, pricePerShare, feeAmount, grossAmount, rdnAmount };
 };
 
+
+export const investmentOwnershipLabel = (portfolio = {}) => {
+  if (portfolio.owner_scope !== "personal") return "Bersama";
+  return portfolio.is_owned_by_actor ? "Pribadi" : "Pasangan";
+};
+
+export const investmentPriceSourceLabel = (holding = {}) => holding.price_source === "valuation"
+  ? "Harga manual terakhir"
+  : holding.price_source === "trade"
+    ? "Harga transaksi terakhir"
+    : "Harga terakhir dicatat";
+
+export const investmentProfitLossLabel = (value) => Number(value || 0) > 0
+  ? "Untung"
+  : Number(value || 0) < 0
+    ? "Rugi"
+    : "Impas";
+
+export const investmentActivityForInstrument = (activity = [], instrumentId = "") => activity
+  .filter((item) => item.instrument_id === instrumentId)
+  .slice(0, 20);
+
 export const investmentReturnPercent = (profitLoss, costBasis) => {
   const profit = Number(profitLoss || 0);
   const basis = Number(costBasis || 0);
@@ -186,8 +208,7 @@ export const validateInvestmentOperation = (mode, form = {}, options = {}) => {
 export const validateInvestmentSetup = (kind, form = {}, accounts = []) => {
   const errors = {};
   if (kind === "portfolio") {
-    if (!["ajaib", "other"].includes(form.broker)) errors.broker = "Pilih broker yang tersedia.";
-    if (!String(form.name || "").trim()) errors.name = "Nama portfolio wajib diisi.";
+    if (String(form.source_label || "").trim().length > 100) errors.source_label = "Sumber catatan maksimal 100 karakter.";
     if (!accounts.some((item) => item.account_id === form.rdn_account_id)) errors.rdn_account_id = accounts.length ? "Pilih rekening RDN yang tersedia." : "Buat rekening jenis Investasi terlebih dahulu.";
     return errors;
   }

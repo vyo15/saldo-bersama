@@ -2,9 +2,26 @@ import FinancialSuccessOverlay from "../../../components/feedback/FinancialSucce
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 
+const accountFor = (accounts, accountId) => accounts.find((item) => item.account_id === accountId) || null;
 const postSaveAccountLabel = (accounts, accountId, fallback) => {
-  const account = accounts.find((item) => item.account_id === accountId) || null;
+  const account = accountFor(accounts, accountId);
   return account ? accountDisplayLabel(account) : fallback;
+};
+
+const investmentTransferAction = ({ accounts, postSave, onClose, navigate }) => {
+  const source = accountFor(accounts, postSave.sourceAccountId);
+  const destination = accountFor(accounts, postSave.destinationAccountId);
+  const destinationIsInvestment = destination?.account_type === "investment";
+  const sourceIsInvestment = source?.account_type === "investment";
+  if (!destinationIsInvestment && !sourceIsInvestment) return null;
+  const account = destinationIsInvestment ? destination : source;
+  return {
+    label: destinationIsInvestment ? "Catat pembelian" : "Buka investasi",
+    onClick: () => {
+      onClose();
+      navigate("/investasi", { state: { rdnAccountId: account.account_id, ensureSetup: true, ...(destinationIsInvestment ? { openAction: "buy" } : {}) } });
+    },
+  };
 };
 
 const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate, onAddAnother }) => {
@@ -16,6 +33,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     onClose();
     navigate("/perencanaan/kantong", { state });
   };
+  const investmentAction = type === TRANSACTION_TYPES.TRANSFER ? investmentTransferAction({ accounts, postSave, onClose, navigate }) : null;
 
   const presentation = type === TRANSACTION_TYPES.INCOME
     ? {
@@ -33,13 +51,18 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     : type === TRANSACTION_TYPES.TRANSFER
       ? {
         title: "Transfer berhasil",
-        description: "Dana sudah berhasil dipindahkan ke rekening tujuan dan server telah mengonfirmasi transaksi.",
+        description: investmentAction
+          ? "Dana sudah berpindah antar rekening. Transfer ke/dari RDN tetap netral terhadap pemasukan dan pengeluaran; lanjutkan ke catatan Investasi bila diperlukan."
+          : "Dana sudah berhasil dipindahkan ke rekening tujuan. Transfer internal tidak dihitung sebagai pemasukan atau pengeluaran.",
         summaryRows: [
           { label: "Dari rekening", value: sourceLabel },
           { label: "Ke rekening", value: destinationLabel },
           { label: "Status", value: "Berhasil", tone: "positive" },
         ],
-        secondaryActions: [{ label: "Tambah lagi", onClick: onAddAnother }],
+        secondaryActions: [
+          { label: "Tambah lagi", onClick: onAddAnother },
+          ...(investmentAction ? [investmentAction] : []),
+        ],
       }
       : type === TRANSACTION_TYPES.REFUND
         ? {
@@ -72,6 +95,5 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     footerNote="Riwayat transaksi sudah diperbarui."
   />;
 };
-
 
 export default TransactionPostSaveModal;

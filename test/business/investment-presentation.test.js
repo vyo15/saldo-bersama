@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation, validateInvestmentSetup } from "../../frontend/src/features/investments/investments.model.js";
+import { investmentActivityForInstrument, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation, validateInvestmentSetup } from "../../frontend/src/features/investments/investments.model.js";
 
 const active = { instrument_id: "active", ticker: "BBCA", status: "active" };
 const inactiveHeld = { instrument_id: "inactive-held", ticker: "OLD", status: "inactive" };
@@ -41,6 +41,24 @@ test("persentase return investasi hanya diturunkan dari P/L dan cost basis yang 
 });
 
 
+test("presentasi detail holding membedakan ownership, sumber harga, hasil, dan aktivitas saham", () => {
+  assert.equal(investmentOwnershipLabel({ owner_scope: "shared" }), "Bersama");
+  assert.equal(investmentOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: true }), "Pribadi");
+  assert.equal(investmentOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: false }), "Pasangan");
+  assert.equal(investmentPriceSourceLabel({ price_source: "valuation" }), "Harga manual terakhir");
+  assert.equal(investmentPriceSourceLabel({ price_source: "trade" }), "Harga transaksi terakhir");
+  assert.equal(investmentPriceSourceLabel({}), "Harga terakhir dicatat");
+  assert.equal(investmentProfitLossLabel(1), "Untung");
+  assert.equal(investmentProfitLossLabel(-1), "Rugi");
+  assert.equal(investmentProfitLossLabel(0), "Impas");
+
+  const activity = Array.from({ length: 25 }, (_, index) => ({ instrument_id: index === 24 ? "other" : "active", activity_id: String(index) }));
+  const selected = investmentActivityForInstrument(activity, "active");
+  assert.equal(selected.length, 20);
+  assert.ok(selected.every((item) => item.instrument_id === "active"));
+});
+
+
 test("validasi presentasi Investasi memberi inline error tanpa mengambil alih otoritas backend", () => {
   const portfolio = { holdings: [{ instrument_id: "active", shares: 200, lot_size: 100 }] };
   const options = { instruments: [{ ...active, name: "Bank Central Asia", lot_size: 100 }], portfolio, today: "2026-09-02" };
@@ -69,7 +87,7 @@ test("validasi koreksi menjaga input konsisten sebelum server melakukan validasi
 });
 
 test("validasi setup Investasi mencegah dead-end RDN dan input instrumen invalid", () => {
-  const noRdn = validateInvestmentSetup("portfolio", { broker: "ajaib", name: "Ajaib", rdn_account_id: "" }, []);
+  const noRdn = validateInvestmentSetup("portfolio", { rdn_account_id: "" }, []);
   assert.match(noRdn.rdn_account_id, /Buat rekening jenis Investasi/);
   const instrument = validateInvestmentSetup("instrument", { ticker: "bb ca", exchange: "I", instrument_name: "", lot_size: 0 }, []);
   assert.ok(instrument.ticker);

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -36,7 +36,16 @@ const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((ite
 const samePlanningOwnership = (left, right) => String(left?.scope || "") === String(right?.scope || "")
   && String(left?.owner_user_id || "") === String(right?.owner_user_id || "");
 
-const linkedBudgetForRecurring = (budgets, item) => (budgets || []).find((budget) => budget.category_id === item?.category_id && samePlanningOwnership(budget, item) && (!budget.envelope_source_account_id || budget.envelope_source_account_id === item?.default_account_id)) || null;
+const linkedBudgetCandidatesForRecurring = (budgets, item) => (budgets || []).filter((budget) => budget.envelope_rule_id
+  && budget.envelope_source_account_id
+  && budget.category_id === item?.category_id
+  && samePlanningOwnership(budget, item)
+  && budget.envelope_source_account_id === item?.default_account_id);
+
+const linkedBudgetForRecurring = (budgets, item) => {
+  const candidates = linkedBudgetCandidatesForRecurring(budgets, item);
+  return candidates.length === 1 ? candidates[0] : null;
+};
 
 const recurringBudgetSuggestions = (budgets) => {
   const grouped = new Map();
@@ -47,10 +56,9 @@ const recurringBudgetSuggestions = (budgets) => {
     grouped.set(budget.category_id, values);
   }
   return Object.fromEntries([...grouped.entries()].flatMap(([categoryId, values]) => {
-    const accountIds = new Set(values.map((item) => item.envelope_source_account_id));
-    if (accountIds.size !== 1) return [];
+    if (values.length !== 1) return [];
     const item = values[0];
-    return [[categoryId, { account_id: item.envelope_source_account_id, envelope_name: values.length === 1 ? item.envelope_name : "Alokasi terkait" }]];
+    return [[categoryId, { account_id: item.envelope_source_account_id, envelope_name: item.envelope_name }]];
   }));
 };
 
@@ -79,7 +87,6 @@ const recurringViewData = ({ resource, filter, bootstrap, overview, rules, payme
     budgets: budgetResource.data?.items || [],
   };
 };
-
 
 const recurringRulePlanningData = ({ accounts, budgets, user }) => {
   const memberMode = user?.role === "member";
@@ -128,7 +135,9 @@ const useRecurringEnvelopeSuggestion = ({ payment, setPayment, envelopeResource,
 
 const RecurringPage = ({ embedded = false }) => {
   const { attention, consumeAttention } = useDashboardAttentionState();
+  const location = useLocation();
   const navigate = useNavigate();
+  const workflowHandled = useRef("");
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [filter, setFilter] = useState("all");
   const [kind, setKind] = useState("expense");
@@ -155,6 +164,44 @@ const RecurringPage = ({ embedded = false }) => {
     paymentEnvelopes: view.paymentEnvelopes,
     budgets: view.budgets,
   });
+
+  useEffect(() => {
+    const workflow = location.state;
+    if (resource.status !== "ready" || !workflow?.workflowAction) return;
+    const workflowKey = `${location.key}|${workflow.workflowAction}`;
+    if (workflowHandled.current === workflowKey) return;
+    workflowHandled.current = workflowKey;
+
+    if (workflow.workflowAction === "create-recurring") {
+      const categoryId = String(workflow.categoryId || "");
+      const accountId = String(workflow.defaultAccountId || "");
+      const categoryValid = activeCategories(bootstrap, "expense").some((item) => item.category_id === categoryId);
+      const accountValid = activeAccounts(bootstrap, overview).some((item) => item.account_id === accountId && item.can_transact !== false);
+      rules.setForm((current) => ({
+        ...current,
+        name: String(workflow.name || current.name || "").slice(0, 100),
+        kind: "expense",
+        expected_amount: workflow.expectedAmount ? String(workflow.expectedAmount) : current.expected_amount,
+        category_id: categoryValid ? categoryId : "",
+        default_account_id: accountValid ? accountId : "",
+      }));
+      setKind("expense");
+      rules.openCreate();
+    } else if (["pay-recurring", "view-recurring"].includes(workflow.workflowAction)) {
+      const occurrenceId = String(workflow.occurrenceId || "");
+      const item = (resource.data?.items || []).find((entry) => entry.occurrence_id === occurrenceId) || null;
+      if (item) {
+        setKind(item.kind === "income" ? "income" : "expense");
+        setFilter(workflow.workflowAction === "pay-recurring" ? "open" : "all");
+        setExpandedId(item.occurrence_id);
+        if (workflow.workflowAction === "pay-recurring" && item.can_pay !== false) openPayment(item);
+      } else if (occurrenceId) {
+        notify({ message: "Jadwal yang dipilih tidak tersedia pada periode ini.", tone: "warning", dedupeKey: "recurring:workflow-not-found" });
+      }
+    }
+
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+  }, [bootstrap, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, resource.data?.items, resource.status, rules]);
 
   if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;

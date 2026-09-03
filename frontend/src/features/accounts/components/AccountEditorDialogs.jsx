@@ -4,7 +4,7 @@ import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
 import { AdminIcon, BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, PersonIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { ACCOUNT_TYPES } from "../../../domain/constants.js";
-import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS, accountTypeUsesAutomaticName } from "../../../shared/presentation/account.js";
+import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS, accountTypeUsesAutomaticName, investmentAccountOwnershipLabel } from "../../../shared/presentation/account.js";
 import styles from "./AccountEditorDialogs.module.css";
 
 const ACCOUNT_TYPE_OPTIONS = Object.freeze([
@@ -30,9 +30,25 @@ const ownershipUpdates = (value, fallbackUserId = "") => {
 
 const shortPersonLabel = (value, fallback = "Pengguna") => String(value || fallback).trim().split(/\s+/).filter(Boolean)[0] || fallback;
 
-const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange }) => {
+const accountMatchesOwnership = (account, ownershipValue) => {
+  if (ownershipValue === "shared") return account.owner_scope === "shared";
+  const userId = String(ownershipValue || "").replace(/^user:/, "");
+  return account.owner_scope === "personal" && String(account.owner_user_id || "") === userId;
+};
+
+const existingInvestmentForOwnership = (accounts, ownershipValue) => (accounts || []).find((account) =>
+  account.status === "active"
+  && account.account_type === ACCOUNT_TYPES.INVESTMENT
+  && accountMatchesOwnership(account, ownershipValue));
+
+const selectedInvestmentDuplicate = (accountForm, existingAccounts, defaultOwnerUserId) => {
+  if (accountForm.account_type !== ACCOUNT_TYPES.INVESTMENT) return null;
+  return existingInvestmentForOwnership(existingAccounts, ownershipSelectValue(accountForm, defaultOwnerUserId)) || null;
+};
+
+const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange, existingAccounts = [] }) => {
   const users = activeUsers.length ? activeUsers : defaultOwnerUserId ? [{ user_id: defaultOwnerUserId, name: currentOwnerLabel, role: "owner", is_current: true }] : [];
-  const options = [
+  const baseOptions = [
     { value: "shared", label: "Bersama", icon: SharedIcon },
     ...users.map((member) => ({
       value: `user:${member.user_id}`,
@@ -40,6 +56,11 @@ const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, curren
       icon: member.role === "owner" ? AdminIcon : PersonIcon,
     })),
   ];
+  const options = entity?.account_type === ACCOUNT_TYPES.INVESTMENT
+    ? baseOptions.map((option) => existingInvestmentForOwnership(existingAccounts, option.value)
+      ? { ...option, disabled: true, description: "Sudah ada" }
+      : option)
+    : baseOptions;
   return <VisualChoiceGroup className="form-grid__full" legend="Kepemilikan *" name="account-ownership" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} columns={Math.min(options.length, 3)} mobileColumns={Math.min(options.length, 3)} compact wrapLabels required />;
 };
 
@@ -77,18 +98,19 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm }
         account_number: accountType === "bank" ? current.account_number : "",
         bank_template: accountType === "bank" ? current.bank_template : "generic",
         ewallet_template: accountType === "ewallet" ? current.ewallet_template : "generic",
+        allow_negative: accountType === ACCOUNT_TYPES.INVESTMENT ? false : current.allow_negative,
       }));
     }} options={ACCOUNT_TYPE_OPTIONS} columns={4} mobileColumns={2} compact wrapLabels />
     {accountTypeUsesAutomaticName(accountForm.account_type) ? <div className={`${styles.autoNameGroup} form-grid__full`}>
-      <p className={styles.autoNameNote}>Nama rekening dibuat otomatis dari jenis atau provider. Kepemilikan tetap menentukan apakah rekening Bersama atau Pribadi.</p>
-      <details className={styles.qualifierDisclosure}>
+      <p className={styles.autoNameNote}>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Rekening Investasi tidak memerlukan nama manual. Kartu dibedakan dengan kepemilikan: Pribadi, Pasangan, atau Bersama." : "Nama rekening dibuat otomatis dari jenis atau provider. Kepemilikan tetap menentukan apakah rekening Bersama atau Pribadi."}</p>
+      {accountForm.account_type !== ACCOUNT_TYPES.INVESTMENT ? <details className={styles.qualifierDisclosure}>
         <summary>Butuh lebih dari satu? Tambah nama pembeda</summary>
         <label className="field">
           <span>Nama pembeda (opsional)</span>
           <input maxLength="60" placeholder="Contoh: Rumah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
           <small>Biarkan kosong bila satu rekening jenis ini sudah cukup.</small>
         </label>
-      </details>
+      </details> : null}
     </div> : <label className="field form-grid__full">
       <span>Nama rekening *</span>
       <input required maxLength="100" placeholder="Contoh: Tabungan nikah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
@@ -97,32 +119,50 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm }
   </>
 );
 
-const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, currentOwnerLabel, updateAccountForm }) => (
+const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, currentOwnerLabel, updateAccountForm, existingAccounts }) => (
   <>
-    <AccountOwnershipField entity={accountForm} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} onChange={updateAccountForm} />
+    <AccountOwnershipField entity={accountForm} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} onChange={updateAccountForm} existingAccounts={existingAccounts} />
     {accountForm.account_type === "bank" ? <BankTemplateField showHelper={false} value={accountForm.bank_template} onChange={(bankTemplate) => updateAccountForm({ bank_template: bankTemplate })} /> : null}
     {accountForm.account_type === "ewallet" ? <EwalletProviderField showHelper={false} value={accountForm.ewallet_template} onChange={(ewalletTemplate) => updateAccountForm({ ewallet_template: ewalletTemplate })} /> : null}
     <MoneyInput id="initial-balance" label="Saldo awal" value={accountForm.initial_balance} onChange={(value) => updateAccountForm({ initial_balance: value })} />
     <label className="field"><span>Tanggal saldo awal</span><input type="date" value={accountForm.initial_balance_date} onChange={(event) => updateAccountForm({ initial_balance_date: event.target.value })} /></label>
-    <label className="checkbox-field form-grid__full"><input type="checkbox" checked={accountForm.allow_negative} onChange={(event) => updateAccountForm({ allow_negative: event.target.checked })} /><span>Izinkan saldo negatif</span></label>
+    {accountForm.account_type === ACCOUNT_TYPES.INVESTMENT
+      ? <p className={`${styles.autoNameNote} form-grid__full`}>Rekening Investasi dipakai sebagai RDN dan tidak mengizinkan saldo negatif.</p>
+      : <label className="checkbox-field form-grid__full"><input type="checkbox" checked={accountForm.allow_negative} onChange={(event) => updateAccountForm({ allow_negative: event.target.checked })} /><span>Izinkan saldo negatif</span></label>}
   </>
 );
 
-const CreateAccountForm = (props) => (
-  <form id="create-account-form" className="form-grid" onSubmit={props.onCreateAccount}>
-    <CreateIdentityFields {...props} />
-    <CreateOwnershipFields {...props} />
-    {props.dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{props.dialogState.error.message}</div> : null}
-  </form>
-);
+const InvestmentDuplicateNotice = ({ account }) => {
+  if (!account) return null;
+  const ownership = investmentAccountOwnershipLabel(account);
+  const message = Number(account.allow_negative)
+    ? `Rekening Investasi ${ownership} sudah ada, tetapi belum bisa dipakai sebagai RDN karena izin saldo negatif masih aktif. Edit rekening tersebut dan nonaktifkan saldo negatif, atau pilih kepemilikan lain.`
+    : `Rekening Investasi ${ownership} sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih kepemilikan lain.`;
+  return <div className="notice notice--warning form-grid__full" role="status">{message}</div>;
+};
 
-const CreateAccountModal = ({ open, onClose, submitting, formProps, requestMode }) => (
-  <Modal open={open} onClose={onClose} dismissible={!submitting} title={requestMode ? "Ajukan rekening" : "Tambah rekening"} description={requestMode ? "Rekening menjadi aktif setelah Administrator menyetujui pengajuan." : "Pilih jenis rekening."} size="md" footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting}>{requestMode ? "Kirim pengajuan" : "Simpan rekening"}</Button></>}>
-    <div className={styles.createAccountLayout}>
-      <CreateAccountForm {...formProps} />
-    </div>
-  </Modal>
-);
+const CreateAccountForm = (props) => {
+  const duplicateInvestment = selectedInvestmentDuplicate(props.accountForm, props.existingAccounts, props.defaultOwnerUserId);
+  return (
+    <form id="create-account-form" className="form-grid" onSubmit={props.onCreateAccount}>
+      <CreateIdentityFields {...props} />
+      <CreateOwnershipFields {...props} />
+      <InvestmentDuplicateNotice account={duplicateInvestment} />
+      {props.dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{props.dialogState.error.message}</div> : null}
+    </form>
+  );
+};
+
+const CreateAccountModal = ({ open, onClose, submitting, formProps, requestMode }) => {
+  const duplicateInvestment = selectedInvestmentDuplicate(formProps.accountForm, formProps.existingAccounts, formProps.defaultOwnerUserId);
+  return (
+    <Modal open={open} onClose={onClose} dismissible={!submitting} title={requestMode ? "Ajukan rekening" : "Tambah rekening"} description={requestMode ? "Rekening menjadi aktif setelah Administrator menyetujui pengajuan." : "Pilih jenis rekening."} size="md" footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting} disabled={submitting || Boolean(duplicateInvestment)}>{requestMode ? "Kirim pengajuan" : "Simpan rekening"}</Button></>}>
+      <div className={styles.createAccountLayout}>
+        <CreateAccountForm {...formProps} />
+      </div>
+    </Modal>
+  );
+};
 
 const EditBankFields = ({ editAccount, updateEditAccount }) => {
   if (editAccount?.account_type !== "bank") return null;
@@ -139,11 +179,13 @@ const EditEwalletFields = ({ editAccount, updateEditAccount }) => {
 
 const EditAccountFields = ({ editAccount, updateEditAccount, activeUsers, defaultOwnerUserId, currentOwnerLabel }) => (
   <>
-    <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" value={editAccount?.name || ""} onChange={(event) => updateEditAccount({ name: event.target.value })} /></label>
+    {editAccount?.account_type === ACCOUNT_TYPES.INVESTMENT
+      ? <p className={`${styles.autoNameNote} form-grid__full`}>Rekening Investasi tidak memakai nama manual; kartu ditampilkan sebagai Pribadi, Pasangan, atau Bersama sesuai kepemilikan.</p>
+      : <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" value={editAccount?.name || ""} onChange={(event) => updateEditAccount({ name: event.target.value })} /></label>}
     <EditBankFields editAccount={editAccount} updateEditAccount={updateEditAccount} />
     <EditEwalletFields editAccount={editAccount} updateEditAccount={updateEditAccount} />
     <AccountOwnershipField entity={editAccount} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} onChange={updateEditAccount} />
-    <label className="checkbox-field"><input type="checkbox" checked={Boolean(editAccount?.allow_negative)} onChange={(event) => updateEditAccount({ allow_negative: event.target.checked })} /><span>Izinkan saldo negatif</span></label>
+    {editAccount?.account_type !== ACCOUNT_TYPES.INVESTMENT ? <label className="checkbox-field"><input type="checkbox" checked={Boolean(editAccount?.allow_negative)} onChange={(event) => updateEditAccount({ allow_negative: event.target.checked })} /><span>Izinkan saldo negatif</span></label> : null}
   </>
 );
 
@@ -156,13 +198,13 @@ const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitti
   </Modal>
 );
 
-const AccountEditorDialogs = ({ createDialogOpen, onCloseCreate, accountForm, setAccountForm, onCreateAccount, editAccount, setEditAccount, onSaveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, requestMode = false }) => {
+const AccountEditorDialogs = ({ createDialogOpen, onCloseCreate, accountForm, setAccountForm, onCreateAccount, editAccount, setEditAccount, onSaveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, existingAccounts = [], requestMode = false }) => {
   const submitting = dialogState.status === "submitting";
   const defaultOwnerUserId = currentDatabaseUser?.user_id || "";
   const updateAccountForm = (updates) => setAccountForm((current) => ({ ...current, ...updates }));
   const updateEditAccount = (updates) => setEditAccount((current) => current ? ({ ...current, ...updates }) : current);
   const shared = { activeUsers, defaultOwnerUserId, currentOwnerLabel };
-  return <><CreateAccountModal open={createDialogOpen} onClose={onCloseCreate} submitting={submitting} requestMode={requestMode} formProps={{ accountForm, setAccountForm, updateAccountForm, onCreateAccount, dialogState, ...shared }} /><EditAccountModal editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={onSaveAccount} submitting={submitting} dialogState={dialogState} fieldProps={{ editAccount, setEditAccount, updateEditAccount, ...shared }} /></>;
+  return <><CreateAccountModal open={createDialogOpen} onClose={onCloseCreate} submitting={submitting} requestMode={requestMode} formProps={{ accountForm, setAccountForm, updateAccountForm, onCreateAccount, dialogState, existingAccounts, ...shared }} /><EditAccountModal editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={onSaveAccount} submitting={submitting} dialogState={dialogState} fieldProps={{ editAccount, setEditAccount, updateEditAccount, ...shared }} /></>;
 };
 
 export default AccountEditorDialogs;

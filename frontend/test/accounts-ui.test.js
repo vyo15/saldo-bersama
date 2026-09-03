@@ -12,6 +12,7 @@ import {
   accountProviderLabel,
   accountNumberGroups,
   accountOwnershipLabel,
+  investmentAccountOwnershipLabel,
   filterAccountsByOwnership,
   detectBankTemplate,
   detectEwalletTemplate,
@@ -54,10 +55,12 @@ test("nama rekening otomatis hanya dipakai untuk jenis yang memang tidak perlu n
   assert.equal(accountTypeUsesAutomaticName("cash"), true);
   assert.equal(accountTypeUsesAutomaticName("ewallet"), true);
   assert.equal(accountTypeUsesAutomaticName("emergency_fund"), true);
+  assert.equal(accountTypeUsesAutomaticName("investment"), true);
   assert.equal(accountTypeUsesAutomaticName("bank"), false);
   assert.equal(accountTypeUsesAutomaticName("savings"), false);
   assert.equal(defaultAccountName({ account_type: "cash" }), "Tunai");
   assert.equal(defaultAccountName({ account_type: "emergency_fund" }), "Dana darurat");
+  assert.equal(defaultAccountName({ account_type: "investment" }), "Investasi");
   assert.equal(defaultAccountName({ account_type: "ewallet", ewallet_template: "dana" }), "DANA");
   assert.equal(defaultAccountName({ account_type: "ewallet", ewallet_template: "generic" }), "E-wallet lainnya");
 });
@@ -505,6 +508,15 @@ test("label kepemilikan kartu tetap ringkas dan nama pemilik tersedia terpisah",
   assert.equal(accountCardOwnershipLabel({ owner_scope: "shared" }), "Bersama");
   assert.equal(accountCardOwnershipLabel({ owner_scope: "personal", owner_name: "Fuji Astuti Dwiyanti" }), "Fuji");
   assert.equal(accountCardOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
+});
+
+test("rekening Investasi memakai nama internal otomatis dan kartu cukup membedakan Pribadi Pasangan atau Bersama", () => {
+  assert.equal(investmentAccountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
+  assert.equal(investmentAccountOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: true }), "Pribadi");
+  assert.equal(investmentAccountOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: false }), "Pasangan");
+  assert.equal(accountDisplayLabel({ account_type: "investment", name: "Investasi", owner_scope: "personal", is_owned_by_actor: true }), "Investasi · Pribadi");
+  assert.equal(accountDisplayLabel({ account_type: "investment", name: "Investasi", owner_scope: "personal", is_owned_by_actor: false }), "Investasi · Pasangan");
+  assert.equal(accountDisplayLabel({ account_type: "investment", name: "Investasi", owner_scope: "shared" }), "Investasi · Bersama");
 });
 
 test("semua asset kartu rekening memakai kanvas dan rasio yang sama", async () => {

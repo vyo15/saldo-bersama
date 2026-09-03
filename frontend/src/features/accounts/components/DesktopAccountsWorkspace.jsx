@@ -16,6 +16,7 @@ import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { useMediaQuery } from "../../../hooks/useMediaQuery.js";
 import {
+  accountDisplayLabel,
   accountOwnershipLabel,
   accountProviderLabel,
   formatAccountNumber,
@@ -161,22 +162,24 @@ const AccountCarousel = ({ accounts, account, onSelectAccount }) => {
   );
 };
 
-const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onEditAccount, onArchiveAccount }) => {
+const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onEditAccount, onArchiveAccount, onViewInvestment }) => {
   const canManage = Boolean(account.can_manage ?? ownerMode);
   const readOnly = Boolean(account.read_only);
+  const investment = account.account_type === "investment";
+  const title = investment ? accountDisplayLabel(account) : account.name;
   return (
     <section className={styles.heroPanel} aria-labelledby="desktop-selected-account-title">
       <div className={styles.heroCopy}>
         <div className={styles.heroTitleRow}>
           <div>
             <p className="eyebrow">Rekening terpilih</p>
-            <h2 id="desktop-selected-account-title">{account.name}</h2>
-            <p>{accountProviderLabel(account)} · {accountOwnershipLabel(account)}</p>
+            <h2 id="desktop-selected-account-title">{title}</h2>
+            <p>{investment ? "Cash RDN · detail saham tersedia di catatan Investasi" : `${accountProviderLabel(account)} · ${accountOwnershipLabel(account)}`}</p>
           </div>
           {readOnly ? <div className={styles.heroBadges}><span className={styles.readOnlyBadge}>Hanya lihat</span></div> : null}
         </div>
         <div className={styles.heroBalance}>
-          <span>Saldo rekening</span>
+          <span>{investment ? "Cash RDN" : "Saldo rekening"}</span>
           <strong><Money value={account.balance || 0} tone={balanceTone(account.balance)} /></strong>
         </div>
         <dl className={styles.heroFacts}>
@@ -186,6 +189,7 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>
         <div className={styles.heroActions}>
+          {investment ? <Button variant="primary" icon={FiTrendingUp} onClick={() => onViewInvestment(account)}>Lihat aset & saham</Button> : null}
           {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
           {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Kelola data</Button> : null}
         </div>
@@ -195,18 +199,21 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
   );
 };
 
-const RecentTransactionsPanel = ({ resource, items, categoryLookup, selectedAccount, onViewTransactions }) => (
-  <section className={styles.transactionsPanel} aria-labelledby="desktop-recent-transactions-title">
-    <header className={styles.panelHeading}>
-      <h2 id="desktop-recent-transactions-title">Transaksi terbaru</h2>
-      <button type="button" className={styles.textAction} onClick={() => onViewTransactions(selectedAccount)}>Lihat semua <FiArrowRight aria-hidden="true" /></button>
-    </header>
-    {resource.status === "loading" ? <p className={styles.supportingState}>Memuat transaksi rekening…</p> : null}
-    {resource.status === "error" ? <div className={styles.supportingState} role="status"><span>Transaksi terbaru belum dapat dimuat.</span><button type="button" onClick={resource.reload}>Coba lagi</button></div> : null}
-    {resource.status === "ready" && !items.length ? <p className={styles.supportingState}>Belum ada transaksi untuk rekening ini pada periode berjalan.</p> : null}
-    {items.length ? <ul className={styles.transactionList}>{items.map((item) => <RecentTransactionRow key={item.transaction_id} item={item} category={categoryLookup[item.category_id]} selectedAccountId={selectedAccount.account_id} />)}</ul> : null}
-  </section>
-);
+const RecentTransactionsPanel = ({ resource, items, categoryLookup, selectedAccount, onViewTransactions }) => {
+  const investment = selectedAccount.account_type === "investment";
+  return (
+    <section className={styles.transactionsPanel} aria-labelledby="desktop-recent-transactions-title">
+      <header className={styles.panelHeading}>
+        <h2 id="desktop-recent-transactions-title">{investment ? "Transfer RDN terbaru" : "Transaksi terbaru"}</h2>
+        <button type="button" className={styles.textAction} onClick={() => onViewTransactions(selectedAccount)}>{investment ? "Lihat transfer" : "Lihat semua"} <FiArrowRight aria-hidden="true" /></button>
+      </header>
+      {resource.status === "loading" ? <p className={styles.supportingState}>Memuat transaksi rekening…</p> : null}
+      {resource.status === "error" ? <div className={styles.supportingState} role="status"><span>Transaksi terbaru belum dapat dimuat.</span><button type="button" onClick={resource.reload}>Coba lagi</button></div> : null}
+      {resource.status === "ready" && !items.length ? <p className={styles.supportingState}>{investment ? "Belum ada Transfer Bank ↔ RDN pada periode berjalan. Pembelian/penjualan saham ada di menu Investasi." : "Belum ada transaksi untuk rekening ini pada periode berjalan."}</p> : null}
+      {items.length ? <ul className={styles.transactionList}>{items.map((item) => <RecentTransactionRow key={item.transaction_id} item={item} category={categoryLookup[item.category_id]} selectedAccountId={selectedAccount.account_id} />)}</ul> : null}
+    </section>
+  );
+};
 
 const AccountInsights = ({ accounts, totalBalance, balanceTrend, distribution, reportStatus }) => (
   <aside className={styles.insightColumn} aria-label="Ringkasan seluruh rekening">
@@ -226,7 +233,7 @@ const AccountInsights = ({ accounts, totalBalance, balanceTrend, distribution, r
   </aside>
 );
 
-const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, ownershipFilter, onOwnershipFilterChange, ownerMode, bootstrap, onSelectAccount, onViewTransactions, onEditAccount, onArchiveAccount }) => {
+const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, ownershipFilter, onOwnershipFilterChange, ownerMode, bootstrap, onSelectAccount, onViewTransactions, onViewInvestment, onEditAccount, onArchiveAccount }) => {
   const desktopEnabled = useDesktopWorkspaceEnabled();
   const period = currentMonthInJakarta();
   const selectedId = selectedAccount?.account_id || "";
@@ -253,7 +260,7 @@ const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, owne
       </div>
       <div className={styles.desktopWorkspace}>
         <div className={styles.leftColumn}>
-          <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} />
+          <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} />
           <RecentTransactionsPanel resource={recentTransactionsResource} items={recentTransactionsResource.data?.items || []} categoryLookup={categoryLookup} selectedAccount={selectedAccount} onViewTransactions={onViewTransactions} />
         </div>
         <AccountInsights accounts={insightAccounts} totalBalance={totalBalance} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} />

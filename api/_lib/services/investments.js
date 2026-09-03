@@ -29,13 +29,13 @@ const safeAdd = (a, b, label = "Nominal") => {
 
 const tickerValue = (value) => {
   const ticker = sanitizeText(value, 16).toUpperCase();
-  if (!/^[A-Z0-9.\-]{1,16}$/.test(ticker)) throw appError("INVALID_TICKER", "Ticker hanya boleh berisi huruf besar, angka, titik, atau tanda hubung.", 400);
+  if (!/^[A-Z0-9.-]{1,16}$/.test(ticker)) throw appError("INVALID_TICKER", "Ticker hanya boleh berisi huruf besar, angka, titik, atau tanda hubung.", 400);
   return ticker;
 };
 
 const exchangeValue = (value) => {
   const exchange = sanitizeText(value || "IDX", 16).toUpperCase();
-  if (!/^[A-Z0-9.\-]{2,16}$/.test(exchange)) throw appError("INVALID_EXCHANGE", "Kode bursa tidak valid.", 400);
+  if (!/^[A-Z0-9.-]{2,16}$/.test(exchange)) throw appError("INVALID_EXCHANGE", "Kode bursa tidak valid.", 400);
   return exchange;
 };
 
@@ -84,12 +84,12 @@ const assertTradeAfterReconciliation = async (db, portfolioId, tradeDate) => {
 const normalizeEvents = async (db, portfolioId, cutoffDate = null) => {
   const cutoff = cutoffDate ? " AND trade_date<=?" : "";
   const correctionCutoff = cutoffDate ? " AND correction_date<=?" : "";
-  return db.all(`SELECT trade_date AS event_date,created_at,'trade' AS event_kind,trade_id AS event_id,instrument_id,trade_type,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,0 AS cash_delta
+  return db.all(`SELECT trade_date AS event_date,created_at,'trade' AS event_kind,trade_id AS event_id,instrument_id,trade_type,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,0 AS cash_delta,0 AS event_priority,rowid AS source_order
     FROM investment_trades WHERE portfolio_id=?${cutoff}
     UNION ALL
-    SELECT correction_date AS event_date,created_at,'correction' AS event_kind,correction_id AS event_id,instrument_id,'' AS trade_type,0 AS lots,0 AS share_quantity,0 AS price_per_share,0 AS fee_amount,0 AS gross_amount,0 AS cash_amount,share_delta,cost_basis_delta,cash_delta
+    SELECT correction_date AS event_date,created_at,'correction' AS event_kind,correction_id AS event_id,instrument_id,'' AS trade_type,0 AS lots,0 AS share_quantity,0 AS price_per_share,0 AS fee_amount,0 AS gross_amount,0 AS cash_amount,share_delta,cost_basis_delta,cash_delta,1 AS event_priority,rowid AS source_order
     FROM investment_corrections WHERE portfolio_id=?${correctionCutoff}
-    ORDER BY event_date,created_at,event_id`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId]);
+    ORDER BY event_date,created_at,event_priority,source_order`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId]);
 };
 
 // Harga terakhir yang diketahui boleh berasal dari trade atau snapshot manual. Tanpa fallback
@@ -97,12 +97,12 @@ const normalizeEvents = async (db, portfolioId, cutoffDate = null) => {
 const latestKnownPrices = async (db, portfolioId, cutoffDate = null) => {
   const valuationCutoff = cutoffDate ? " AND valuation_date<=?" : "";
   const tradeCutoff = cutoffDate ? " AND trade_date<=?" : "";
-  const rows = await db.all(`SELECT instrument_id,valuation_date AS price_date,price_per_share,created_at,'valuation' AS price_source
+  const rows = await db.all(`SELECT instrument_id,valuation_date AS price_date,price_per_share,created_at,'valuation' AS price_source,2 AS price_priority,rowid AS source_order
     FROM investment_valuations WHERE portfolio_id=?${valuationCutoff}
     UNION ALL
-    SELECT instrument_id,trade_date AS price_date,price_per_share,created_at,'trade' AS price_source
+    SELECT instrument_id,trade_date AS price_date,price_per_share,created_at,'trade' AS price_source,1 AS price_priority,rowid AS source_order
     FROM investment_trades WHERE portfolio_id=?${tradeCutoff}
-    ORDER BY price_date DESC,created_at DESC,price_source`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId]);
+    ORDER BY price_date DESC,created_at DESC,price_priority DESC,source_order DESC`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId]);
   const latest = new Map();
   for (const row of rows) if (!latest.has(row.instrument_id)) latest.set(row.instrument_id, { ...row, valuation_date: row.price_date });
   return [...latest.values()];
@@ -156,7 +156,15 @@ const holdingStateFromEvents = (events, valuations = []) => {
     marketValue += value;
     costBasis += state.cost_basis;
     unrealizedTotal += unrealized;
-    return { ...state, average_cost: state.shares ? Math.round(state.cost_basis / state.shares) : 0, price_per_share: price, valuation_date: valuation?.valuation_date || "", market_value: value, unrealized_pl: unrealized };
+    return {
+      ...state,
+      average_cost: state.shares ? Math.round(state.cost_basis / state.shares) : 0,
+      price_per_share: price,
+      valuation_date: valuation?.valuation_date || "",
+      price_source: valuation?.price_source || "",
+      market_value: value,
+      unrealized_pl: unrealized,
+    };
   });
   return { holdings, market_value: marketValue, cost_basis: costBasis, realized_pl: realizedTotal, unrealized_pl: unrealizedTotal };
 };
@@ -197,20 +205,35 @@ export const investmentOverview = async (db, context) => {
     const state = await portfolioState(db, portfolio);
     const canOperate = context.actor.role === "owner" || portfolio.owner_scope === "shared" || portfolio.owner_user_id === context.actor.user_id;
     const holdings = state.holdings.map((holding) => ({ ...holding, ...publicRow(instrumentMap.get(holding.instrument_id) || {}) }));
-    const activity = (await db.all(`SELECT 'trade' AS activity_type,trade_id AS activity_id,trade_date AS activity_date,trade_type,instrument_id,cash_amount,fee_amount,created_at FROM investment_trades WHERE portfolio_id=?
-      UNION ALL SELECT 'correction',correction_id,correction_date,'correction',instrument_id,cash_delta,0,created_at FROM investment_corrections WHERE portfolio_id=?
-      ORDER BY activity_date DESC,created_at DESC LIMIT 20`, [portfolio.portfolio_id, portfolio.portfolio_id])).map((row) => ({ ...publicRow(row), ...(instrumentMap.get(row.instrument_id) || {}) }));
+    const activity = (await db.all(`SELECT 'trade' AS activity_type,trade_id AS activity_id,trade_date AS activity_date,trade_type,instrument_id,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,'' AS reason,created_at,1 AS activity_priority,rowid AS source_order FROM investment_trades WHERE portfolio_id=?
+      UNION ALL SELECT 'valuation',valuation_id,valuation_date,'valuation',instrument_id,NULL,NULL,price_per_share,0,0,0,0,0,'',created_at,2,rowid FROM investment_valuations WHERE portfolio_id=?
+      UNION ALL SELECT 'correction',correction_id,correction_date,'correction',instrument_id,NULL,NULL,NULL,0,0,cash_delta,share_delta,cost_basis_delta,reason,created_at,3,rowid FROM investment_corrections WHERE portfolio_id=?
+      ORDER BY activity_date DESC,created_at DESC,activity_priority DESC,source_order DESC LIMIT 30`, [portfolio.portfolio_id, portfolio.portfolio_id, portfolio.portfolio_id])).map((row) => {
+      const { activity_priority: _priority, source_order: _sourceOrder, ...activityRow } = row;
+      return { ...publicRow(activityRow), ...(instrumentMap.get(row.instrument_id) || {}) };
+    });
     totalMarket += state.market_value; totalCost += state.cost_basis; totalCash += state.rdn_cash; totalRealized += state.realized_pl; totalUnrealized += state.unrealized_pl;
-    items.push({ ...publicRow(portfolio, ["allow_negative"]), can_operate: canOperate, rdn_cash: state.rdn_cash, market_value: state.market_value, cost_basis: state.cost_basis, realized_pl: state.realized_pl, unrealized_pl: state.unrealized_pl, holdings, activity });
+    items.push({
+      ...publicRow(portfolio, ["allow_negative"]),
+      can_operate: canOperate,
+      is_owned_by_actor: portfolio.owner_scope === "personal" && portfolio.owner_user_id === context.actor.user_id,
+      rdn_cash: state.rdn_cash,
+      market_value: state.market_value,
+      cost_basis: state.cost_basis,
+      realized_pl: state.realized_pl,
+      unrealized_pl: state.unrealized_pl,
+      holdings,
+      activity,
+    });
   }
   return { portfolios: items, instruments: instruments.map((row) => publicRow(row)), summary: { market_value: totalMarket, cost_basis: totalCost, rdn_cash: totalCash, portfolio_value: totalMarket + totalCash, realized_pl: totalRealized, unrealized_pl: totalUnrealized, holding_count: items.reduce((sum, item) => sum + item.holdings.length, 0) } };
 };
 
 export const createInvestmentPortfolio = async (db, context) => {
   const payload = context.payload || {};
-  const name = sanitizeText(payload.name || "Ajaib", 100);
+  const name = sanitizeText(payload.name || "Catatan investasi", 100);
   if (!name) throw appError("NAME_REQUIRED", "Nama portfolio wajib diisi.", 400);
-  const broker = String(payload.broker || "ajaib").toLowerCase();
+  const broker = String(payload.broker || "other").toLowerCase();
   if (!new Set(["ajaib", "other"]).has(broker)) throw appError("INVALID_BROKER", "Broker investasi tidak didukung.", 400);
   const access = operableAccountSql(context.actor, "a");
   const account = await db.one(`SELECT a.* FROM accounts a WHERE a.account_id=? AND a.status='active' AND a.account_type='investment' AND ${access.sql}`, [String(payload.rdn_account_id || ""), ...access.args]);

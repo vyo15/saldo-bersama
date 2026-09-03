@@ -25,13 +25,15 @@ test("form Investasi memakai inline validation, focus error, dan next-step RDN y
   assert.match(setup, /validateInvestmentSetup/);
   assert.match(setup, /isOutcomeUnknownError/);
   assert.match(setup, /Coba lagi data yang sama/);
-  assert.match(setup, /const SetupFields = \(\{[^}]*disabled[^}]*\}\) => <fieldset className=\{styles\.intentFieldset\} disabled=\{disabled\}>/);
-  assert.match(setup, /<SetupFields[^>]*disabled=\{outcomeUnknown\}/);
+  assert.match(setup, /const SetupFields = \(\{[^}]*mode[^}]*disabled[^}]*\}\) => <fieldset className=\{styles\.intentFieldset\} disabled=\{disabled\}>/);
+  assert.match(setup, /<SetupFields[^>]*mode=\{resolvedMode\}[^>]*disabled=\{outcomeUnknown\}/);
   assert.match(setup, /dismissible=\{!busy && !outcomeUnknown\}/);
-  assert.match(setup, /locked \? <span className=\{styles\.setupLink\} aria-disabled="true">Buka Rekening dan buat RDN<\/span> : <Link/);
+  assert.match(setup, /aria-disabled="true">\{label\}<\/span>/);
+  assert.match(setup, /<Link className=\{styles\.setupLink\} to="\/rekening"/);
   assert.match(setup, /locked=\{disabled\}/);
   assert.match(setup, /Buka Rekening dan buat RDN/);
   assert.match(setup, /to="\/rekening"/);
+  assert.match(setup, /accountPrefill: \{ account_type: "investment" \}/);
   assert.match(field, /aria-invalid/);
   assert.match(field, /aria-describedby/);
   assert.match(model, /tidak boleh di masa depan/);

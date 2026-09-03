@@ -81,11 +81,13 @@ export const accountTypeUsesAutomaticName = (type) => [
   ACCOUNT_TYPES.CASH,
   ACCOUNT_TYPES.EWALLET,
   ACCOUNT_TYPES.EMERGENCY_FUND,
+  ACCOUNT_TYPES.INVESTMENT,
 ].includes(type);
 
 export const defaultAccountName = ({ account_type: type, ewallet_template: ewalletTemplate } = {}) => {
   if (type === ACCOUNT_TYPES.CASH) return ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.CASH];
   if (type === ACCOUNT_TYPES.EMERGENCY_FUND) return ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.EMERGENCY_FUND];
+  if (type === ACCOUNT_TYPES.INVESTMENT) return ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.INVESTMENT];
   if (type === ACCOUNT_TYPES.EWALLET) {
     const provider = EWALLET_LABEL_BY_TEMPLATE.get(String(ewalletTemplate || "generic"));
     return provider || ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.EWALLET];
@@ -103,6 +105,11 @@ export const accountCardOwnershipLabel = (account = {}) => {
   if (account.owner_scope !== "personal") return "Bersama";
   const [firstName = ""] = accountOwnerName(account).split(/\s+/).filter(Boolean);
   return firstName || "Pribadi";
+};
+
+export const investmentAccountOwnershipLabel = (account = {}) => {
+  if (account.owner_scope !== "personal") return "Bersama";
+  return account.is_owned_by_actor === false ? "Pasangan" : "Pribadi";
 };
 
 const normalizedIdentity = (value) => String(value || "").trim().toLocaleLowerCase("id-ID");
@@ -137,6 +144,9 @@ export const accountProviderLabel = (account = {}) => {
 };
 
 export const accountDisplayLabel = (account = {}, { includeOwner = true } = {}) => {
+  if (account.account_type === ACCOUNT_TYPES.INVESTMENT) {
+    return includeOwner ? `${ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.INVESTMENT]} · ${investmentAccountOwnershipLabel(account)}` : ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.INVESTMENT];
+  }
   const name = accountCardholderName(account.account_name || account.name) || "Rekening tanpa nama";
   const provider = accountProviderLabel(account);
   const normalizedProvider = provider.toLocaleLowerCase("id-ID");

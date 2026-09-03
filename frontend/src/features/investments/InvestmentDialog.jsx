@@ -62,7 +62,7 @@ const TradeReview = ({ mode, form, instruments }) => {
     <section className={styles.review} aria-labelledby="investment-trade-review-title">
       <div>
         <h3 id="investment-trade-review-title">Tinjau catatan sebelum disimpan</h3>
-        <p className={styles.notice}>Ini adalah catatan transaksi yang sudah dilakukan di broker, bukan order baru. Backend tetap memvalidasi saldo RDN, holding, lot, tanggal, izin, versi data, dan idempotency saat disimpan.</p>
+        <p className={styles.notice}>Ini adalah catatan transaksi yang sudah dilakukan di aplikasi investasi, bukan order baru. Backend tetap memvalidasi saldo RDN, holding, lot, tanggal, izin, versi data, dan idempotency saat disimpan.</p>
       </div>
       <dl className={styles.reviewGrid}>
         <div><dt>Saham</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
@@ -125,19 +125,19 @@ const CorrectionFields = ({ form, onFieldChange, instruments, errors }) => <>
   <InvestmentFormField id="investment-correction-reason" label="Alasan" required error={errors.reason}><textarea minLength="5" maxLength="500" value={form.reason || ""} onChange={(event) => onFieldChange("reason", event.target.value)} /></InvestmentFormField>
 </>;
 
-const dialogTitle = (mode, portfolio) => ({
+const dialogTitle = (mode) => ({
   buy: "Catat pembelian saham",
   sell: "Catat penjualan saham",
   price: "Perbarui harga manual",
-  reconcile: portfolio.broker === "ajaib" ? "Cocokkan dengan Ajaib" : "Cocokkan dengan broker",
+  reconcile: "Cocokkan catatan",
   correction: "Koreksi pencatatan investasi",
 })[mode];
 
 const dialogDescription = (mode) => ({
-  buy: "Catat transaksi yang sudah Anda lakukan di broker. Saldo Bersama tidak mengirim order beli ke broker.",
-  sell: "Catat transaksi yang sudah Anda lakukan di broker. Saldo Bersama tidak mengirim order jual ke broker.",
-  price: "Masukkan harga terakhir yang Anda lihat di broker atau sumber pilihan Anda. Harga tidak diperbarui otomatis.",
-  reconcile: "Bandingkan kondisi broker dengan catatan Saldo Bersama. Pencocokan tidak menyesuaikan portfolio secara otomatis.",
+  buy: "Catat transaksi yang sudah Anda lakukan di aplikasi investasi. Saldo Bersama tidak mengirim order beli.",
+  sell: "Catat transaksi yang sudah Anda lakukan di aplikasi investasi. Saldo Bersama tidak mengirim order jual.",
+  price: "Masukkan harga terakhir yang Anda lihat di aplikasi investasi atau sumber pilihan Anda. Harga tidak diperbarui otomatis.",
+  reconcile: "Bandingkan kondisi investasi Anda dengan catatan Saldo Bersama. Pencocokan tidak menyesuaikan catatan secara otomatis.",
   correction: "Perbaiki selisih pencatatan secara eksplisit tanpa menulis ulang histori transaksi lama.",
 })[mode];
 
@@ -186,11 +186,19 @@ const InvestmentDialogFooter = ({ reviewing, busy, outcomeUnknown, mode, isTrade
   return <Button variant="primary" type="submit" form="investment-dialog-form" loading={busy}>{retryLabel || defaultLabel}</Button>;
 };
 
-const InvestmentDialog = ({ mode, portfolio, instruments, userRole, onClose, onSuccess }) => {
+
+const InvestmentErrorAction = ({ code, portfolio, onAddFunds, onClose }) => {
+  if (code !== "INSUFFICIENT_RDN" || !onAddFunds) return null;
+  const addFunds = () => { onClose(); onAddFunds(portfolio); };
+  return <div className={styles.errorAction}><span>Tambahkan dana melalui Transfer ke Cash RDN, lalu ulangi Catat beli dengan data transaksi yang sama.</span><Button type="button" onClick={addFunds}>Tambah dana ke RDN</Button></div>;
+};
+
+const InvestmentDialog = ({ mode, portfolio, instruments, userRole, onAddFunds, onClose, onSuccess }) => {
   const formRef = useRef(null);
   const [form, setForm] = useState(() => ({ trade_date: TODAY(), valuation_date: TODAY(), reconciliation_date: TODAY(), correction_date: TODAY(), lots: 1, fee_amount: 0, actual_cash: portfolio?.rdn_cash ?? 0 }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [reviewing, setReviewing] = useState(false);
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
@@ -206,6 +214,7 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, onClose, onS
     setForm((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => current[key] ? Object.fromEntries(Object.entries(current).filter(([name]) => name !== key && name !== "_form")) : current);
     setError("");
+    setErrorCode("");
   };
   const focusFirstInvalid = () => globalThis.requestAnimationFrame?.(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
   const validate = () => {
@@ -215,10 +224,11 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, onClose, onS
     focusFirstInvalid();
     return false;
   };
-  const editReview = () => { setReviewing(false); setError(""); };
+  const editReview = () => { setReviewing(false); setError(""); setErrorCode(""); };
   const submit = async (event) => {
     event.preventDefault();
     setError("");
+    setErrorCode("");
     if (!reviewing && !validate()) return;
     if (isTrade && !reviewing) { setReviewing(true); return; }
     setBusy(true);
@@ -230,6 +240,7 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, onClose, onS
       onClose();
     } catch (caught) {
       setOutcomeUnknown(isOutcomeUnknownError(caught));
+      setErrorCode(String(caught?.code || ""));
       setError(caught?.message || "Catatan investasi belum berhasil disimpan.");
     } finally {
       setBusy(false);
@@ -239,10 +250,11 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, onClose, onS
   const body = <InvestmentFields mode={mode} form={form} onFieldChange={onFieldChange} activeInstruments={activeInstruments} sellInstruments={sellInstruments} priceInstruments={priceInstruments} portfolioInstruments={portfolioInstruments} portfolio={portfolio} instruments={instruments} errors={fieldErrors} />;
 
   return (
-    <Modal open title={dialogTitle(mode, portfolio)} description={dialogDescription(mode)} onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={<InvestmentDialogFooter reviewing={reviewing} busy={busy} outcomeUnknown={outcomeUnknown} mode={mode} isTrade={isTrade} onEdit={editReview} />}>
+    <Modal open title={dialogTitle(mode)} description={dialogDescription(mode)} onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={<InvestmentDialogFooter reviewing={reviewing} busy={busy} outcomeUnknown={outcomeUnknown} mode={mode} isTrade={isTrade} onEdit={editReview} />}>
       <form ref={formRef} id="investment-dialog-form" className={styles.form} onSubmit={submit} noValidate>
         {fieldErrors._form ? <div className="notice notice--danger" role="alert">{fieldErrors._form}</div> : null}
         {error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{error}</div> : null}
+        {!outcomeUnknown ? <InvestmentErrorAction code={errorCode} portfolio={portfolio} onAddFunds={onAddFunds} onClose={onClose} /> : null}
         {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data dikunci sementara. Jangan ubah saham, nominal, tanggal, atau jumlah lot. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa menggandakan perubahan.</p> : null}
         {reviewing ? <TradeReview mode={mode} form={form} instruments={reviewInstruments} /> : <fieldset className={styles.intentFieldset} disabled={outcomeUnknown}>{body}</fieldset>}
       </form>

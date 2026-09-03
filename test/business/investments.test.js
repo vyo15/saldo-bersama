@@ -7,6 +7,7 @@ import {
 import { snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
 import { visibleAccounts } from "../../api/_lib/services/readModels.js";
+import { prepareAccountCreatePayload } from "../../api/_lib/services/masterData/accounts.js";
 
 const NOW = "2026-09-02T01:00:00.000Z";
 const TODAY = "2026-09-02";
@@ -37,6 +38,33 @@ const buy = (db, actor, portfolio, instrument, overrides = {}) => buyInvestment(
   portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, lots: 10, price_per_share: 8_000, fee_amount: 10_000, ...overrides,
 }, { rowVersion: overrides.row_version ?? portfolio.row_version, key: overrides.key || "buy:12345678" }));
 
+test("rekening Investasi memaksa saldo non-negatif dan duplicate ownership memberi arahan RDN", async () => {
+  const db = await seed();
+  try {
+    const prepared = await prepareAccountCreatePayload(db, owner, {
+      name: "Investasi personal", account_type: "investment", owner_scope: "personal", owner_user_id: owner.user_id,
+      initial_balance: 0, initial_balance_date: TODAY, allow_negative: true,
+    }, { today: TODAY });
+    assert.equal(prepared.allow_negative, false);
+    await assert.rejects(
+      () => prepareAccountCreatePayload(db, owner, {
+        name: "RDN Ajaib", account_type: "investment", owner_scope: "shared", initial_balance: 0, initial_balance_date: TODAY,
+      }, { today: TODAY }),
+      (error) => error.code === "DUPLICATE_ACCOUNT" && /Gunakan rekening tersebut sebagai RDN/.test(error.message),
+    );
+  } finally { db.close(); }
+});
+
+test("portfolio manual tanpa input broker memakai metadata generik dan tetap terikat ke RDN", async () => {
+  const db = await seed();
+  try {
+    const portfolio = await createInvestmentPortfolio(db, context(owner, "investments.portfolios.create", { rdn_account_id: "rdn" }, { key: "portfolio:manual:12345678" }));
+    assert.equal(portfolio.name, "Catatan investasi");
+    assert.equal(portfolio.broker, "other");
+    assert.equal(portfolio.rdn_account_id, "rdn");
+  } finally { db.close(); }
+});
+
 test("investment buy memakai cash RDN tanpa membuat income/expense dan valuation membentuk unrealized P/L", async () => {
   const db = await seed();
   try {
@@ -58,6 +86,30 @@ test("investment buy memakai cash RDN tanpa membuat income/expense dan valuation
   } finally { db.close(); }
 });
 
+test("overview investasi menyediakan detail saham aktual beserta sumber harga dan histori manual", async () => {
+  const db = await seed();
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const bought = await buy(db, owner, portfolio, instrument);
+    await updateInvestmentValuation(db, context(owner, "investments.valuations.update", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, valuation_date: TODAY, price_per_share: 9_100,
+    }, { rowVersion: bought.row_version, key: "valuation:detail:12345678" }));
+    await db.execute("UPDATE investment_trades SET created_at='2026-09-02T00:00:00.000Z' WHERE portfolio_id=?", [portfolio.portfolio_id]);
+    await db.execute("UPDATE investment_valuations SET created_at='2026-09-02T00:00:00.000Z' WHERE portfolio_id=?", [portfolio.portfolio_id]);
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    const item = overview.portfolios[0];
+    const holding = item.holdings[0];
+    assert.equal(holding.ticker, "BBCA");
+    assert.equal(holding.shares, 1_000);
+    assert.equal(holding.price_per_share, 9_100);
+    assert.equal(holding.price_source, "valuation");
+    assert.equal(item.activity[0].activity_type, "valuation");
+    assert.equal(item.activity[0].instrument_id, instrument.instrument_id);
+    assert.equal(item.activity[0].price_per_share, 9_100);
+    assert.ok(item.activity.some((entry) => entry.activity_type === "trade" && entry.lots === 10 && entry.share_quantity === 1_000));
+  } finally { db.close(); }
+});
+
 test("weighted-average cost basis tetap konsisten pada multi-buy dan partial sell", async () => {
   const db = await seed({ initialBalance: 30_000_000 });
   try {
@@ -66,6 +118,7 @@ test("weighted-average cost basis tetap konsisten pada multi-buy dan partial sel
     const second = await buyInvestment(db, context(owner, "investments.trades.buy", {
       portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, lots: 10, price_per_share: 10_000, fee_amount: 10_000,
     }, { rowVersion: first.row_version, key: "buy:second:12345678" }));
+    await db.execute("UPDATE investment_trades SET created_at='2026-09-02T00:00:00.000Z' WHERE portfolio_id=?", [portfolio.portfolio_id]);
     const sold = await sellInvestment(db, context(owner, "investments.trades.sell", {
       portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, lots: 5, price_per_share: 11_000, fee_amount: 5_000,
     }, { rowVersion: second.row_version, key: "sell:12345678" }));

@@ -14,6 +14,7 @@ export const emptyBudgetForm = (overrides = {}) => ({
   warning_threshold: 80,
   scope: "shared",
   owner_user_id: "",
+  recording_mode: "flexible",
   ...overrides,
 });
 
@@ -39,6 +40,7 @@ const formFromBudget = (item, envelopeRuleId = item?.envelope_rule_id || "") => 
   warning_threshold: Number(item?.warning_threshold || 80),
   scope: item?.scope || "shared",
   owner_user_id: item?.owner_user_id || "",
+  recording_mode: "flexible",
 });
 
 export const useBudgetFormController = ({ items, period, notify, refresh }) => {
@@ -46,9 +48,11 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [message, setMessage] = useState(null);
   const [saveState, setSaveState] = useState({ status: "idle", error: null });
+  const [scheduleContinuation, setScheduleContinuation] = useState(null);
   const existingBudget = findBudgetForForm(items, form);
 
   const resetSaveState = () => setSaveState({ status: "idle", error: null });
+  const dismissScheduleContinuation = () => setScheduleContinuation(null);
   const selectCategory = (categoryId) => {
     setMessage(null);
     resetSaveState();
@@ -70,6 +74,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     });
   };
   const openBudgetForm = (initial = {}) => {
+    setScheduleContinuation(null);
     setForm(emptyBudgetForm(initial));
     setMessage(null);
     resetSaveState();
@@ -82,6 +87,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     resetSaveState();
   };
   const editBudget = (item, overrides = {}) => {
+    setScheduleContinuation(null);
     setForm({ ...formFromBudget(item), ...overrides });
     setMessage(null);
     resetSaveState();
@@ -92,14 +98,27 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     setSaveState({ status: "submitting", error: null });
     setMessage(null);
     try {
+      const amount = assertPositiveRupiah(form.amount);
+      const { recording_mode: recordingMode, ...budgetForm } = form;
       await upsertBudget({
-        ...form,
+        ...budgetForm,
         period_key: period,
-        amount: assertPositiveRupiah(form.amount),
+        amount,
         envelope_rule_id: form.envelope_rule_id || null,
         owner_user_id: form.scope === "personal" ? form.owner_user_id : null,
         row_version: existingBudget?.row_version,
       }, { rowVersion: existingBudget?.row_version });
+      if (!existingBudget && recordingMode === "scheduled") {
+        setScheduleContinuation({
+          category_id: form.category_id,
+          amount,
+          envelope_rule_id: form.envelope_rule_id || "",
+          scope: form.scope,
+          owner_user_id: form.scope === "personal" ? form.owner_user_id : "",
+        });
+      } else {
+        setScheduleContinuation(null);
+      }
       setForm(emptyBudgetForm());
       setFormOpen(false);
       resetSaveState();
@@ -113,7 +132,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
       setSaveState({ status: "error", error });
     }
   };
-  return { form, setForm, formOpen, setFormOpen, message, setMessage, saveState, existingBudget, selectCategory, selectOwnership, openBudgetForm, closeBudgetForm, editBudget, saveBudget };
+  return { form, setForm, formOpen, setFormOpen, message, setMessage, saveState, scheduleContinuation, dismissScheduleContinuation, existingBudget, selectCategory, selectOwnership, openBudgetForm, closeBudgetForm, editBudget, saveBudget };
 };
 
 export const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen }) => {

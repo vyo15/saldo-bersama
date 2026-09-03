@@ -151,9 +151,11 @@ const buildUpdatedAccount = (current, payload, owned, actorUserId) => {
   const rawAccountNumber = payload.account_number === undefined ? current.account_number : payload.account_number;
   const rawBankTemplate = payload.bank_template === undefined ? current.bank_template : payload.bank_template;
   const rawEwalletTemplate = payload.ewallet_template === undefined ? current.ewallet_template : payload.ewallet_template;
-  const allowNegative = payload.allow_negative === undefined
-    ? current.allow_negative
-    : (strictBoolean(payload.allow_negative) ? 1 : 0);
+  const allowNegative = nextAccountType === "investment"
+    ? 0
+    : payload.allow_negative === undefined
+      ? current.allow_negative
+      : (strictBoolean(payload.allow_negative) ? 1 : 0);
   return {
     ...current,
     name: sanitizeText(rawName, 120),
@@ -174,7 +176,12 @@ const assertAccountUpdateValid = async (db, current, next) => {
   if (!next.name) throw appError("NAME_REQUIRED", "Nama rekening wajib diisi.", 400);
   if (!ACCOUNT_TYPES.has(next.account_type)) throw appError("INVALID_ACCOUNT_TYPE", "Jenis rekening tidak valid.", 400);
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE account_id<>? AND lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [current.account_id, next.name, next.owner_scope, next.owner_user_id]);
-  if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);
+  if (duplicate) {
+    const message = next.account_type === "investment"
+      ? "Rekening Investasi untuk kepemilikan ini sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih kepemilikan lain."
+      : "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.";
+    throw appError("DUPLICATE_ACCOUNT", message, 409);
+  }
   if (Number(current.allow_negative) !== 1 || Number(next.allow_negative) !== 0) return;
   const negative = await firstNegativeBalance(db, current, { fromDate: current.initial_balance_date });
   if (negative) throw appError("ACCOUNT_HAS_NEGATIVE_HISTORY", "Izin saldo minus tidak dapat dimatikan karena histori rekening pernah negatif.", 409, negative);
@@ -188,14 +195,19 @@ export const prepareAccountCreatePayload = async (db, actor, payload = {}, { tod
   const owned = await normalizeOwnedScope(db, actor, { scope: payload.owner_scope || payload.scope, owner_user_id: payload.owner_user_id });
   const initialBalance = Number(payload.initial_balance || 0);
   if (!Number.isSafeInteger(initialBalance)) throw appError("INVALID_AMOUNT", "Saldo awal harus integer Rupiah.", 400);
-  const allowNegative = strictBoolean(payload.allow_negative, false);
+  const allowNegative = type === "investment" ? false : strictBoolean(payload.allow_negative, false);
   if (initialBalance < 0 && !allowNegative) throw appError("NEGATIVE_INITIAL_BALANCE_NOT_ALLOWED", "Saldo awal negatif hanya boleh digunakan jika rekening mengizinkan saldo minus.", 409);
   const initialDate = dateValue(payload.initial_balance_date || today, "Tanggal saldo awal");
   const accountNumber = normalizeAccountNumber(payload.account_number, type, { required: type === "bank" });
   const bankTemplate = normalizeBankTemplate(payload.bank_template, type);
   const ewalletTemplate = normalizeEwalletTemplate(payload.ewallet_template, type);
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [name, owned.scope, owned.owner_user_id]);
-  if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);
+  if (duplicate) {
+    const message = type === "investment"
+      ? "Rekening Investasi untuk kepemilikan ini sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih kepemilikan lain."
+      : "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.";
+    throw appError("DUPLICATE_ACCOUNT", message, 409);
+  }
   return {
     name,
     account_type: type,

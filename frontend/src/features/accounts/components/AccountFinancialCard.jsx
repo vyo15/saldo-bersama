@@ -13,6 +13,7 @@ import {
   FiList,
   FiShield,
   FiSmartphone,
+  FiTrendingUp,
   FiUsers,
   FiWifi,
 } from "react-icons/fi";
@@ -37,10 +38,12 @@ import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import {
   accountCardOwnershipLabel,
+  accountDisplayLabel,
   accountCardholderName,
   accountCardNumberGroups,
   accountOwnershipLabel,
   accountProviderLabel,
+  investmentAccountOwnershipLabel,
   accountTypeLabel,
   detectBankTemplate,
   detectEwalletTemplate,
@@ -85,14 +88,15 @@ const visualModel = (account, templateOverride) => {
     : hasEwalletImage
       ? EWALLET_IMAGES[ewalletTemplate]
       : ACCOUNT_TYPE_IMAGES[account.account_type];
+  const ownershipLabel = account.account_type === "investment" ? investmentAccountOwnershipLabel(account) : accountCardOwnershipLabel(account);
   return {
     template,
     ewalletTemplate,
     image: image || null,
     Icon: ACCOUNT_ICONS[account.account_type] || FiCreditCard,
     numberGroups: isBank ? accountCardNumberGroups(account.account_number) : [],
-    holderName: accountCardholderName(account.name) || "Nama rekening",
-    ownershipLabel: accountCardOwnershipLabel(account),
+    ownershipLabel,
+    holderName: account.account_type === "investment" ? ownershipLabel : accountCardholderName(account.name) || "Nama rekening",
     typeLabel: accountTypeLabel(account.account_type),
     visualKind: isBank ? "bank" : hasEwalletImage ? "ewallet" : image ? account.account_type : "generic",
     isBank,
@@ -113,6 +117,24 @@ const AccountNumberFace = ({ account, numberGroups }) => (
   </div>
 );
 
+const AccountCardArtwork = ({ model, eager }) => model.image
+  ? <img className={styles.cardImage} src={model.image} width="1024" height="645" alt="" aria-hidden="true" loading={eager ? "eager" : "lazy"} decoding="async" />
+  : <div className={styles.genericCard} aria-hidden="true"><model.Icon /></div>;
+
+const AccountCardFace = ({ account, model, carousel }) => {
+  const showCarouselMeta = carousel && !model.hasEwalletImage && account.account_type !== "investment";
+  return (
+    <div className={styles.cardFace}>
+      {showCarouselMeta ? <span className={styles.cardOwnership}>{model.ownershipLabel}</span> : null}
+      {model.hasEwalletImage ? <span className={styles.ewalletOwnership}>{model.ownershipLabel}</span> : null}
+      {model.isBank && model.image ? <FiWifi className={styles.contactless} aria-hidden="true" /> : null}
+      {model.isBank ? <AccountNumberFace account={account} numberGroups={model.numberGroups} /> : <div className={styles.accountType}>{model.typeLabel}</div>}
+      <strong className={styles.holderName}>{model.holderName}</strong>
+      {showCarouselMeta ? <span className={styles.cardTypeLabel}>{model.typeLabel}</span> : null}
+    </div>
+  );
+};
+
 export const AccountVisual = ({ account, templateOverride, detail = false, carousel = false, stack = false }) => {
   const model = visualModel(account, templateOverride);
   const eager = detail || carousel || stack;
@@ -124,15 +146,8 @@ export const AccountVisual = ({ account, templateOverride, detail = false, carou
       data-visual-kind={model.visualKind}
       data-has-image={model.image ? "true" : "false"}
     >
-      {model.image ? <img className={styles.cardImage} src={model.image} width="1024" height="645" alt="" aria-hidden="true" loading={eager ? "eager" : "lazy"} decoding="async" /> : <div className={styles.genericCard} aria-hidden="true"><model.Icon /></div>}
-      <div className={styles.cardFace}>
-        {carousel && !model.hasEwalletImage ? <span className={styles.cardOwnership}>{model.ownershipLabel}</span> : null}
-        {model.hasEwalletImage ? <span className={styles.ewalletOwnership}>{model.ownershipLabel}</span> : null}
-        {model.isBank && model.image ? <FiWifi className={styles.contactless} aria-hidden="true" /> : null}
-        {model.isBank ? <AccountNumberFace account={account} numberGroups={model.numberGroups} /> : <div className={styles.accountType}>{model.typeLabel}</div>}
-        <strong className={styles.holderName}>{model.holderName}</strong>
-        {carousel && !model.hasEwalletImage ? <span className={styles.cardTypeLabel}>{model.typeLabel}</span> : null}
-      </div>
+      <AccountCardArtwork model={model} eager={eager} />
+      <AccountCardFace account={account} model={model} carousel={carousel} />
     </div>
   );
 };
@@ -146,6 +161,7 @@ const MobileDetailRow = ({ icon: Icon, label, children }) => (
 
 const accountCardModel = (account, ownerMode) => ({
     typeLabel: accountTypeLabel(account.account_type),
+    displayLabel: accountDisplayLabel(account),
     ownershipLabel: accountOwnershipLabel(account),
     canManage: Boolean(account.can_manage ?? ownerMode),
     readOnly: Boolean(account.read_only),
@@ -173,12 +189,12 @@ const PreviewCard = ({ account, templateOverride }) => (
 
 const ReadOnlyBadge = () => <span className={styles.readOnlyBadge}><FiEye aria-hidden="true" />Hanya lihat</span>;
 
-const MobileDetailHeading = ({ account, embedded, readOnly }) => (
+const MobileDetailHeading = ({ account, displayLabel, embedded, readOnly }) => (
   embedded ? (
-    <><h2 id={`mobile-account-${account.account_id}`} className="sr-only">{account.name}</h2>{readOnly ? <div className={styles.mobileDetailBadges}><span className={styles.readOnlyBadge}><FiEye aria-hidden="true" />Hanya lihat</span></div> : null}</>
+    <><h2 id={`mobile-account-${account.account_id}`} className="sr-only">{displayLabel}</h2>{readOnly ? <div className={styles.mobileDetailBadges}><span className={styles.readOnlyBadge}><FiEye aria-hidden="true" />Hanya lihat</span></div> : null}</>
   ) : (
     <header className={styles.mobileDetailHeading}>
-      <div><p>Detail rekening</p><h2 id={`mobile-account-${account.account_id}`}>{account.name}</h2></div>
+      <div><p>Detail rekening</p><h2 id={`mobile-account-${account.account_id}`}>{displayLabel}</h2></div>
       <div className={styles.mobileDetailBadges}><StatusBadge status={account.status || "active"} />{readOnly ? <ReadOnlyBadge /> : null}</div>
     </header>
   )
@@ -198,7 +214,7 @@ const MobileDetailData = ({ account, model, copied, onCopy }) => (
     <MobileDetailRow icon={FiList} label="Bank / jenis"><span>{model.bankLabel}</span></MobileDetailRow>
         <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
     <MobileDetailRow icon={FiUsers} label="Kepemilikan"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
-    <MobileDetailRow icon={FiDollarSign} label="Saldo rekening"><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
+    <MobileDetailRow icon={FiDollarSign} label={account.account_type === "investment" ? "Cash RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
     <MobileDetailRow icon={FiDollarSign} label="Dana tersedia"><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong></MobileDetailRow>
     <MobileDetailRow icon={FiDollarSign} label="Dialokasikan"><span><Money value={account.allocated_remaining || 0} /></span></MobileDetailRow>
     <MobileDetailRow icon={FiFlag} label="Saldo awal"><span><Money value={account.initial_balance || 0} /></span></MobileDetailRow>
@@ -206,34 +222,38 @@ const MobileDetailData = ({ account, model, copied, onCopy }) => (
   </dl>
 );
 
-const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTransactions }) => (
-  <>
-    <div className={`${styles.mobileDetailActions} ${!canManage ? styles.mobileDetailActionsSingle : ""}`}>
-      {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEdit?.(account)}>Edit rekening</Button> : null}
-      <Button variant="primary" icon={FiFileText} onClick={() => onViewTransactions?.(account)}>Lihat transaksi</Button>
-    </div>
-    {account.status === "active" && canManage ? (
-      <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
-        <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Kelola data</button>
+const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTransactions, onViewInvestment }) => {
+  const investment = account.account_type === "investment";
+  return (
+    <>
+      <div className={styles.mobileDetailActions}>
+        {investment ? <Button variant="primary" icon={FiTrendingUp} onClick={() => onViewInvestment?.(account)}>Lihat aset & saham</Button> : null}
+        {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEdit?.(account)}>Edit rekening</Button> : null}
+        <Button variant={investment ? "secondary" : "primary"} icon={FiFileText} onClick={() => onViewTransactions?.(account)}>{investment ? "Lihat transfer" : "Lihat transaksi"}</Button>
       </div>
-    ) : null}
-  </>
-);
+      {account.status === "active" && canManage ? (
+        <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
+          <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Kelola data</button>
+        </div>
+      ) : null}
+    </>
+  );
+};
 
-const MobileDetailCard = ({ account, model, embedded, copied, onCopy, onEdit, onArchive, onViewTransactions }) => (
+const MobileDetailCard = ({ account, model, embedded, copied, onCopy, onEdit, onArchive, onViewTransactions, onViewInvestment }) => (
   <section className={styles.mobileDetail} aria-labelledby={`mobile-account-${account.account_id}`} aria-label={`Detail rekening ${account.name}`}>
-    <MobileDetailHeading account={account} embedded={embedded} readOnly={model.readOnly} />
+    <MobileDetailHeading account={account} displayLabel={model.displayLabel} embedded={embedded} readOnly={model.readOnly} />
     <MobileDetailData account={account} model={model} copied={copied} onCopy={onCopy} />
     {model.readOnly ? <p className={styles.readOnlyNotice}>Rekening ini transparan untuk pasangan, tetapi tindakan finansial tetap mengikuti capability dari server.</p> : null}
-    <MobileDetailActions account={account} canManage={model.canManage} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} />
+    <MobileDetailActions account={account} canManage={model.canManage} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} onViewInvestment={onViewInvestment} />
   </section>
 );
 
-const AccountFinancialCard = ({ account, variant = "preview", ownerMode = false, templateOverride, onEdit, onArchive, onViewTransactions, embedded = false }) => {
+const AccountFinancialCard = ({ account, variant = "preview", ownerMode = false, templateOverride, onEdit, onArchive, onViewTransactions, onViewInvestment, embedded = false }) => {
   const model = accountCardModel(account, ownerMode);
   const { copied, copy } = useAccountNumberCopy(account);
   if (variant === "preview") return <PreviewCard account={account} templateOverride={templateOverride} />;
-  if (variant === "mobileDetail") return <MobileDetailCard account={account} model={model} embedded={embedded} copied={copied} onCopy={copy} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} />;
+  if (variant === "mobileDetail") return <MobileDetailCard account={account} model={model} embedded={embedded} copied={copied} onCopy={copy} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} onViewInvestment={onViewInvestment} />;
   return null;
 };
 

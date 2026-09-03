@@ -7,6 +7,7 @@ const MobileAccountSheets = ({
   ownerMode,
   onClose,
   onViewTransactions,
+  onViewInvestment,
   onEditAccount,
   onArchiveAccount,
 }) => {
@@ -27,6 +28,7 @@ const MobileAccountSheets = ({
             embedded
             ownerMode={ownerMode}
             onViewTransactions={onViewTransactions}
+            onViewInvestment={onViewInvestment}
             onEdit={onEditAccount}
             onArchive={onArchiveAccount}
           />

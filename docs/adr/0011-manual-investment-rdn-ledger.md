@@ -5,7 +5,7 @@
 
 ## Context
 
-Saldo Bersama perlu mencatat portfolio broker secara manual tanpa menjadi broker, tanpa menyimpan credential Ajaib, dan tanpa live-market dependency. Domain baru harus menjaga invariant ledger existing: transfer internal bukan income/expense, browser bukan financial authority, saldo harus dapat direkonstruksi, retry tidak boleh menggandakan mutation, serta backup/restore harus mempertahankan history authoritative.
+Saldo Bersama perlu mencatat aset investasi aktual secara manual—rekening RDN, saham yang dimiliki, transaksi beli/jual yang sudah dilakukan, harga manual, dan hasil investasinya—tanpa menjadi broker, tanpa menyimpan credential aplikasi investasi, dan tanpa live-market dependency. Domain baru harus menjaga invariant ledger existing: transfer internal bukan income/expense, browser bukan financial authority, saldo harus dapat direkonstruksi, retry tidak boleh menggandakan mutation, serta backup/restore harus mempertahankan history authoritative.
 
 Menyimpan `holding`, `market_value`, atau saldo RDN sebagai angka mutable independen akan menciptakan dua authority dan berisiko double-count. Mengubah Buy menjadi expense atau Sell menjadi ordinary income juga akan merusak cashflow dan laporan existing.
 
@@ -19,7 +19,8 @@ Menyimpan `holding`, `market_value`, atau saldo RDN sebagai angka mutable indepe
 6. Mutation portfolio memvalidasi actor/ownership, integer Rupiah, lot/share, fee, chronology, available RDN, optimistic `row_version`, dan idempotency dispatcher existing. Event sebelum `accounts.initial_balance_date` RDN ditolak. Trade baru pada/sebelum reconciliation checkpoint terbaru juga ditolak; historical difference setelah checkpoint memakai correction explicit.
 7. Reconciliation membandingkan state canonical **as-of tanggal reconciliation** dan tidak auto-adjust. Mismatch hanya dapat diperbaiki melalui explicit Administrator correction yang audited dan append-only; trade history lama tidak ditulis ulang.
 8. Backup schema v15 menyimpan enam tabel Investment authoritative. Restore v3-v14 tetap additive-compatible tanpa mengarang histori Investment; restore v15 hanya definitive setelah foreign-key dan business-integrity check membuktikan RDN/holding/cost-basis/P&L/ledger parity.
-9. Frontend dan Dashboard hanya memakai backend read-model `investments.overview`; UI tidak menghitung financial authority sendiri.
+9. Frontend dan Dashboard hanya memakai backend read-model `investments.overview`; UI tidak menghitung financial authority sendiri. Rekening Investasi adalah pintu ke Cash RDN dan detail saham aktual, sedangkan detail holding menampilkan quantity, weighted cost basis, harga terakhir tercatat, nilai, realized/unrealized P/L, serta histori trade/valuation/correction yang memang tersimpan.
+10. Field teknis `investment_portfolios.broker` dipertahankan sebagai metadata compatibility dan client canonical memakai `other`. `investment_portfolios.name` boleh menyimpan label sumber catatan opsional seperti `Ajaib`, tetapi bukan identitas koneksi broker; setup tidak meminta pilihan broker atau nama portfolio wajib.
 
 ## Consequences
 
@@ -28,7 +29,7 @@ Menyimpan `holding`, `market_value`, atau saldo RDN sebagai angka mutable indepe
 - Portfolio dapat direkonstruksi dan diaudit dari history canonical.
 - Simultaneous sell/stale edit dapat ditolak lewat transaction + `row_version`; retry intent memakai idempotency key yang sama.
 - Correction lebih verbose daripada overwrite langsung, tetapi menjaga data integrity dan recovery evidence.
-- V1 tetap manual: tidak ada login Ajaib, scraping, broker API, live price, auto-sync, atau auto-trading.
+- V1 tetap manual: tidak ada login aplikasi investasi, scraping, broker API, live price, auto-sync, order execution, atau auto-trading.
 
 ## Alternatives
 
