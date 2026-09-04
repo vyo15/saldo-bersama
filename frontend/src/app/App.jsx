@@ -36,8 +36,6 @@ const routeElement = (Component, { loadingVariant = "content" } = {}) => (
   <Suspense fallback={<LoadingScreen variant={loadingVariant} />}><Component /></Suspense>
 );
 
-const developmentRouteElement = (Component) => import.meta.env.MODE === "development" ? routeElement(Component) : <Navigate to="/404" replace />;
-
 const LegacyPlanningRedirect = ({ to }) => {
   const location = useLocation();
   return <Navigate to={to} replace state={location.state} />;
@@ -75,7 +73,7 @@ const App = () => (
           <Route path="import" element={routeElement(ImportTransactionsPage)} />
           <Route path="backup" element={routeElement(BackupPage)} />
           <Route path="pemulihan" element={routeElement(RecoveryPage)} />
-          <Route path="reset-data" element={developmentRouteElement(ResetDataPage)} />
+          <Route path="reset-data" element={routeElement(ResetDataPage)} />
           <Route path="reset-semua" element={routeElement(FullResetPage)} />
           <Route path="periode" element={routeElement(PeriodControlPage)} />
           <Route path="audit" element={routeElement(AuditPage)} />

@@ -29,7 +29,7 @@ const SETTINGS_NAVIGATION_GROUPS = Object.freeze([
   {
     label: "Reset & Pemeliharaan Data",
     items: [
-      { to: "/pengaturan/reset-data", label: "Reset data testing", icon: FiRefreshCw, ownerOnly: true, developmentOnly: true },
+      { to: "/pengaturan/reset-data", label: "Reset data testing", icon: FiRefreshCw, ownerOnly: true },
       { to: "/pengaturan/reset-semua", label: "Reset semua data", icon: FiTrash2, ownerOnly: true },
     ],
   },
@@ -45,7 +45,6 @@ const SETTINGS_NAVIGATION_GROUPS = Object.freeze([
 const SettingsLayout = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
-  const developmentMode = import.meta.env.MODE === "development";
 
   return (
     <div className="page-stack settings-page">
@@ -54,7 +53,6 @@ const SettingsLayout = () => {
         {SETTINGS_NAVIGATION_GROUPS.map((group) => {
           const visibleItems = group.items.filter((item) => {
             if (item.ownerOnly && !ownerMode) return false;
-            if (item.developmentOnly && !developmentMode) return false;
             return true;
           });
 

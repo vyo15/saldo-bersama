@@ -18,9 +18,12 @@ Menyimpan `holding`, `market_value`, atau saldo RDN sebagai angka mutable indepe
 5. Buy hanya menerima instrument aktif. Holding instrument yang kemudian inactive tetap dapat dijual agar pengguna tidak terjebak pada posisi yang tidak dapat ditutup.
 6. Mutation portfolio memvalidasi actor/ownership, integer Rupiah, lot/share, fee, chronology, available RDN, optimistic `row_version`, dan idempotency dispatcher existing. Event sebelum `accounts.initial_balance_date` RDN ditolak. Trade baru pada/sebelum reconciliation checkpoint terbaru juga ditolak; historical difference setelah checkpoint memakai correction explicit.
 7. Reconciliation membandingkan state canonical **as-of tanggal reconciliation** dan tidak auto-adjust. Mismatch hanya dapat diperbaiki melalui explicit Administrator correction yang audited dan append-only; trade history lama tidak ditulis ulang.
-8. Backup schema v15 menyimpan enam tabel Investment authoritative. Restore v3-v14 tetap additive-compatible tanpa mengarang histori Investment; restore v15 hanya definitive setelah foreign-key dan business-integrity check membuktikan RDN/holding/cost-basis/P&L/ledger parity.
+8. Backup schema v16 menyimpan enam tabel Investment authoritative beserta field additive opening-position/trade notes. Restore v3-v15 tetap additive-compatible tanpa mengarang histori Investment; restore v16 hanya definitive setelah foreign-key dan business-integrity check membuktikan RDN/holding/cost-basis/P&L/ledger parity.
 9. Frontend dan Dashboard hanya memakai backend read-model `investments.overview`; UI tidak menghitung financial authority sendiri. Rekening Investasi adalah pintu ke Cash RDN dan detail saham aktual, sedangkan detail holding menampilkan quantity, weighted cost basis, harga terakhir tercatat, nilai, realized/unrealized P/L, serta histori trade/valuation/correction yang memang tersimpan.
 10. Field teknis `investment_portfolios.broker` dipertahankan sebagai metadata compatibility dan client canonical memakai `other`. `investment_portfolios.name` boleh menyimpan label sumber catatan opsional seperti `Ajaib`, tetapi bukan identitas koneksi broker; setup tidak meminta pilihan broker atau nama portfolio wajib.
+11. Kondisi investasi yang sudah ada sebelum aplikasi dicatat melalui semantic event `opening_position` append-only, bukan fake Buy. Event membawa share quantity, cost basis, reference price, dan delta Cash RDN menuju saldo aktual; fase opening hanya terbuka sebelum aktivitas investasi reguler.
+12. Continuation Investasi memakai satu contract konseptual `{source, action, returnTo, payload}` sambil tetap membaca state legacy. RDN creation dan Transfer kembali ke konteks Investasi; draft Buy dipertahankan ketika perlu funding dan return path dibatasi ke path internal.
+13. Satu portfolio tetap terikat eksplisit ke satu RDN. Multi-RDN dibedakan lewat qualifier presentasional/canonical account name + ownership tanpa membuat ledger baru; setelah Sell, penarikan dari RDN adalah action opsional, bukan continuation wajib.
 
 ## Consequences
 
@@ -41,6 +44,7 @@ Menyimpan `holding`, `market_value`, atau saldo RDN sebagai angka mutable indepe
 ## References
 
 - `database/migrations/013_investment_tracking.sql`
+- `database/migrations/014_investment_opening_position.sql`
 - `api/_lib/services/investments.js`
 - `api/_lib/services/readModels.js`
 - `api/_lib/services/reporting/integrity.js`

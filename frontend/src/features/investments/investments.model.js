@@ -40,6 +40,7 @@ export const selectInvestmentInstruments = (instruments = [], holdings = [], mod
   });
   if (mode === "price") return instruments.filter((item) => heldIds.has(item.instrument_id));
   if (mode === "reconcile") return instruments.filter((item) => item.status === "active" || heldIds.has(item.instrument_id));
+  if (mode === "opening_position") return instruments.filter((item) => item.status === "active" && !heldIds.has(item.instrument_id));
   return instruments;
 };
 
@@ -65,7 +66,9 @@ export const investmentPriceSourceLabel = (holding = {}) => holding.price_source
   ? "Harga manual terakhir"
   : holding.price_source === "trade"
     ? "Harga transaksi terakhir"
-    : "Harga terakhir dicatat";
+    : holding.price_source === "opening_position"
+      ? "Harga referensi posisi awal"
+      : "Harga terakhir dicatat";
 
 export const investmentProfitLossLabel = (value) => Number(value || 0) > 0
   ? "Untung"
@@ -76,6 +79,14 @@ export const investmentProfitLossLabel = (value) => Number(value || 0) > 0
 export const investmentActivityForInstrument = (activity = [], instrumentId = "") => activity
   .filter((item) => item.instrument_id === instrumentId)
   .slice(0, 20);
+
+export const investmentActivityLabel = (activity = {}) => {
+  const ticker = activity.ticker || "saham";
+  if (activity.activity_type === "trade") return `${activity.trade_type === "buy" ? "Pembelian dicatat" : "Penjualan dicatat"} · ${ticker}`;
+  if (activity.activity_type === "valuation") return `Harga manual diperbarui · ${ticker}`;
+  if (activity.activity_type === "opening_position") return `Posisi awal dicatat · ${ticker}`;
+  return `Koreksi dicatat · ${activity.instrument_id ? ticker : "Cash RDN"}`;
+};
 
 export const investmentReturnPercent = (profitLoss, costBasis) => {
   const profit = Number(profitLoss || 0);
@@ -104,6 +115,7 @@ const validateTrade = (mode, form, context) => {
   if (priceError) errors.price_per_share = priceError;
   if (feeError) errors.fee_amount = feeError;
   if (dateError) errors.trade_date = dateError;
+  if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
 
   if (mode !== "sell" || !instrument || lotsError) return errors;
   const holding = (portfolio?.holdings || []).find((item) => item.instrument_id === instrument.instrument_id);
@@ -187,12 +199,31 @@ const validateCorrection = (form, context) => {
   return errors;
 };
 
+const validateOpeningPosition = (form, context) => {
+  const errors = {};
+  const instrument = instrumentForMode("opening_position", form, context.instruments, context.portfolio);
+  if (!instrument) errors.instrument_id = "Pilih saham untuk posisi awal.";
+  const sharesError = positiveIntegerError(form.shares, "Jumlah lembar");
+  const costError = positiveIntegerError(form.cost_basis, "Total modal");
+  const priceError = positiveIntegerError(form.reference_price, "Harga referensi");
+  const cashError = nonNegativeIntegerError(form.actual_cash, "Cash RDN awal");
+  const dateError = requiredDateError(form.position_date, "Tanggal posisi awal", context.today);
+  if (sharesError) errors.shares = sharesError;
+  if (costError) errors.cost_basis = costError;
+  if (priceError) errors.reference_price = priceError;
+  if (cashError) errors.actual_cash = cashError;
+  if (dateError) errors.position_date = dateError;
+  if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
+  return errors;
+};
+
 const operationValidators = {
   buy: (form, context) => validateTrade("buy", form, context),
   sell: (form, context) => validateTrade("sell", form, context),
   price: validatePrice,
   reconcile: validateReconcile,
   correction: validateCorrection,
+  opening_position: validateOpeningPosition,
 };
 
 export const validateInvestmentOperation = (mode, form = {}, options = {}) => {

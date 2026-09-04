@@ -112,6 +112,19 @@ export const investmentAccountOwnershipLabel = (account = {}) => {
   return account.is_owned_by_actor === false ? "Pasangan" : "Pribadi";
 };
 
+export const investmentAccountQualifier = (account = {}) => {
+  const name = String(account.account_name || account.name || "").trim();
+  if (!name) return "";
+  const stripped = name.replace(/^Investasi(?:\s*·\s*)?/i, "").trim();
+  return stripped && stripped.toLocaleLowerCase("id-ID") !== "investasi" ? stripped : "";
+};
+
+export const investmentRdnDisplayLabel = (account = {}, { includeOwner = true } = {}) => {
+  const qualifier = investmentAccountQualifier(account);
+  const base = qualifier || ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.INVESTMENT];
+  return includeOwner ? `${base} · ${investmentAccountOwnershipLabel(account)}` : base;
+};
+
 const normalizedIdentity = (value) => String(value || "").trim().toLocaleLowerCase("id-ID");
 
 const accountBelongsToCurrentUser = (account = {}, currentUser = {}) => {
@@ -144,9 +157,7 @@ export const accountProviderLabel = (account = {}) => {
 };
 
 export const accountDisplayLabel = (account = {}, { includeOwner = true } = {}) => {
-  if (account.account_type === ACCOUNT_TYPES.INVESTMENT) {
-    return includeOwner ? `${ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.INVESTMENT]} · ${investmentAccountOwnershipLabel(account)}` : ACCOUNT_TYPE_LABELS[ACCOUNT_TYPES.INVESTMENT];
-  }
+  if (account.account_type === ACCOUNT_TYPES.INVESTMENT) return investmentRdnDisplayLabel(account, { includeOwner });
   const name = accountCardholderName(account.account_name || account.name) || "Rekening tanpa nama";
   const provider = accountProviderLabel(account);
   const normalizedProvider = provider.toLocaleLowerCase("id-ID");

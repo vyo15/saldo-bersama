@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
+import { investmentRdnDisplayLabel } from "../../shared/presentation/account.js";
+import { investmentRdnAccountSetupState } from "../../shared/workflows/investmentContinuation.js";
 import InvestmentFormField from "./InvestmentFormField.jsx";
 import { createInvestmentPortfolio, invalidateInvestmentReads, upsertInvestmentInstrument } from "./investments.api.js";
 import { validateInvestmentSetup } from "./investments.model.js";
@@ -13,7 +15,7 @@ const INSTRUMENT_DEFAULTS = Object.freeze({ lot_size: 100, exchange: "IDX" });
 
 const RdnSetupLink = ({ locked, needsRepair = false }) => {
   const label = needsRepair ? "Perbaiki rekening RDN" : "Buka Rekening dan buat RDN";
-  const state = needsRepair ? { returnTo: "/investasi" } : { accountPrefill: { account_type: "investment" }, returnTo: "/investasi" };
+  const state = needsRepair ? { returnTo: "/investasi" } : investmentRdnAccountSetupState();
   return locked
     ? <span className={styles.setupLink} aria-disabled="true">{label}</span>
     : <Link className={styles.setupLink} to="/rekening" state={state}>{label}</Link>;
@@ -26,7 +28,7 @@ const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, lock
   <InvestmentFormField id="investment-rdn-account" label="Rekening RDN" required error={fieldErrors.rdn_account_id}>
     <select value={form.rdn_account_id || ""} onChange={(event) => onFieldChange("rdn_account_id", event.target.value)} disabled={!accounts.length}>
       <option value="">Pilih rekening jenis Investasi</option>
-      {accounts.map((item) => <option key={item.account_id} value={item.account_id}>{item.name}</option>)}
+      {accounts.map((item) => <option key={item.account_id} value={item.account_id}>{investmentRdnDisplayLabel(item)}</option>)}
     </select>
   </InvestmentFormField>
   {accounts.length === 0 ? <div className={styles.setupHint} role="note">

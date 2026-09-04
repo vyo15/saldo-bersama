@@ -3,7 +3,7 @@ import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
-import { investmentReturnPercent } from "./investments.model.js";
+import { investmentActivityLabel, investmentReturnPercent } from "./investments.model.js";
 import styles from "./InvestmentsPage.module.css";
 
 const performanceLabel = (value) => Number(value || 0) > 0 ? "Untung" : Number(value || 0) < 0 ? "Rugi" : "Impas";
@@ -16,12 +16,19 @@ const HoldingActivity = ({ portfolio, holding }) => {
     {items.map((item) => {
       const trade = item.activity_type === "trade";
       const buy = trade && item.trade_type === "buy";
-      return <li key={item.activity_id} className={styles.activityItem}>
+      const valuation = item.activity_type === "valuation";
+      const opening = item.activity_type === "opening_position";
+      return <li key={`${item.activity_type}:${item.activity_id}`} className={styles.activityItem}>
         <div className={styles.activityCopy}>
-          <strong>{trade ? `${buy ? "Pembelian" : "Penjualan"} ${holding.ticker || "saham"}` : `Koreksi ${holding.ticker || "saham"}`}</strong>
+          <strong>{investmentActivityLabel({ ...item, ticker: holding.ticker || item.ticker })}</strong>
           <small>{formatDateLongIndonesia(item.activity_date) || item.activity_date}</small>
         </div>
-        <div className={styles.activityValue}>{trade ? <><span>{buy ? "RDN keluar" : "RDN masuk"}</span><Money value={item.cash_amount} /></> : <span>Koreksi tercatat</span>}</div>
+        <div className={styles.activityValue}>
+          {trade ? <><span>{buy ? "Cash RDN keluar" : "Cash RDN masuk"}</span><Money value={item.cash_amount} /></> : null}
+          {valuation ? <><span>Harga referensi</span><Money value={item.price_per_share} /></> : null}
+          {opening ? <><span>Posisi awal</span><strong>{Number(item.share_delta || 0).toLocaleString("id-ID")} lembar</strong></> : null}
+          {!trade && !valuation && !opening ? <span>Koreksi tercatat</span> : null}
+        </div>
       </li>;
     })}
   </ul>;
@@ -37,13 +44,13 @@ const InvestmentHoldingDetail = ({ portfolio, holding, onClose, onAction }) => {
   const footer = <div className="form-actions">
     <Button type="button" onClick={onClose}>Tutup</Button>
     {portfolio.can_operate ? <Button type="button" icon={FiTrendingUp} onClick={() => onAction("price", portfolio, { initialInstrumentId: holding.instrument_id })}>Perbarui harga</Button> : null}
-    {canSell ? <Button type="button" variant="primary" icon={FiDollarSign} onClick={() => onAction("sell", portfolio, { initialInstrumentId: holding.instrument_id })}>Catat jual</Button> : null}
+    {canSell ? <Button type="button" variant="primary" icon={FiDollarSign} onClick={() => onAction("sell", portfolio, { initialInstrumentId: holding.instrument_id })}>Catat penjualan</Button> : null}
   </div>;
   return <Modal open title={`Detail ${holding.ticker || "saham"}`} description="Detail holding aktual dari catatan investasi. Harga berasal dari catatan manual atau transaksi terakhir, bukan harga live." onClose={onClose} footer={footer}>
     <div className={styles.review}>
       <div>
         <h3>{holding.name || "Instrumen investasi"}</h3>
-        <p className={styles.formHint}>RDN {portfolio.rdn_account_name}</p>
+        <p className={styles.formHint}>Cash RDN portfolio ini berasal dari rekening RDN yang terikat pada portfolio.</p>
       </div>
       <dl className={styles.reviewGrid}>
         <div><dt>Kepemilikan</dt><dd>{lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot · {shares.toLocaleString("id-ID")} lembar</dd></div>

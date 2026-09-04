@@ -19,7 +19,7 @@ import {
 } from "../services/maintenance/index.js";
 import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
 import {
-  buyInvestment, correctInvestment, createInvestmentPortfolio, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  buyInvestment, correctInvestment, createInvestmentPortfolio, createOpeningPosition, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../services/investments.js";
 import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
@@ -104,6 +104,7 @@ const ACTION_HANDLERS = Object.freeze({
   "investments.valuations.update": updateInvestmentValuation,
   "investments.reconciliations.create": reconcileInvestment,
   "investments.corrections.create": correctInvestment,
+  "investments.openingPositions.create": createOpeningPosition,
   "accounts.list": listAccounts,
   "accounts.requestCreate": requestAccountCreation,
   "accounts.create": createAccount,

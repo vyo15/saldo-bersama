@@ -14,9 +14,10 @@ import { useMaintenanceRecovery } from "./useMaintenanceRecovery.js";
 import styles from "./Settings.module.css";
 
 const RESET_INVALIDATIONS = Object.freeze([
-  "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "transactions.list",
+  "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "investments.overview", "transactions.list",
   "envelopes.list", "recurring.list", "budgets.list", "goals.list", "reports.monthly",
-  "reconciliations.list", "periods.list", "archive.list", "audit.list", "integrations.status", "reset.status",
+  "reconciliations.list", "periods.list", "archive.list", "audit.list", "masterDataRequests.list", "transferRequests.list",
+  "reminders.get", "notifications.status", "integrations.status", "reset.status",
 ]);
 
 const RESET_SCOPE_ACTIVITY = "activity";
@@ -205,7 +206,7 @@ const useResetApply = ({
       await Promise.allSettled([refreshAll(), integrationsResource.reload(), resetStatusResource.reload()]);
       setResult({
         status: "success",
-        text: `Pembersihan selesai. ${formatCount(data.summary?.totalRows)} baris data testing dihapus${data.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? " dan seluruh saldo rekening pada preview dikembalikan ke Rp0" : ""} setelah backup keamanan dan pemeriksaan konsistensi data. Rekening, kategori, pengguna, audit, dan data pemulihan tetap dipertahankan.`,
+        text: `Pembersihan selesai. ${formatCount(data.summary?.totalRows)} baris data testing dihapus${data.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? " dan seluruh saldo rekening pada preview dikembalikan ke Rp0" : ""} setelah backup keamanan dan pemeriksaan konsistensi data. Rekening, kategori, master investasi, pengguna, audit, dan data pemulihan tetap dipertahankan.`,
         fileLink: data.safetyBackupFileId ? `https://drive.google.com/open?id=${encodeURIComponent(data.safetyBackupFileId)}` : null,
       });
     } catch (error) {
@@ -238,14 +239,64 @@ const previewHasResettableData = (preview) => {
   return Number(preview.balanceReset?.accountsAffected || 0) > 0;
 };
 
+const resetEnvironmentPresentation = (resource) => {
+  const failed = resource.status === "error" || Boolean(resource.refreshError);
+  if (failed) {
+    return {
+      development: false,
+      failed: true,
+      tone: "danger",
+      title: "Lingkungan database belum dapat diverifikasi",
+      text: "Pembersihan tetap diblokir sampai server dapat memastikan database yang sedang digunakan.",
+    };
+  }
+  if (resource.status !== "ready") {
+    return {
+      development: false,
+      failed: false,
+      tone: "info",
+      title: "Memeriksa lingkungan database",
+      text: "Server sedang memastikan bahwa reset testing tidak pernah dijalankan pada database selain Development.",
+    };
+  }
+  if (resource.data?.databaseEnvironment !== "development") {
+    return {
+      development: false,
+      failed: false,
+      tone: "warning",
+      title: "Reset data testing hanya tersedia pada database Development",
+      text: "Database ini bukan Development. Tidak ada operasi reset testing yang dapat dijalankan dari halaman ini.",
+    };
+  }
+  return { development: true, failed: false, tone: "active", title: "", text: "" };
+};
+
+const ResetEnvironmentNotice = ({ environment, resource }) => (
+  <OwnerSettingsGuard>
+    <section className={styles.pageContent} aria-labelledby="reset-data-title">
+      <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}>
+        <h2 id="reset-data-title">Reset data testing</h2>
+        <p>Pembersihan trial hanya boleh dijalankan pada database Development yang sudah terikat.</p>
+      </div>
+      <div className={`notice notice--${environment.tone}`} role={environment.failed ? "alert" : "status"}>
+        <span><strong>{environment.title}.</strong> {environment.text}</span>
+        {environment.failed ? <button className="button button--secondary" type="button" onClick={() => resource.reload()}>Periksa ulang</button> : null}
+      </div>
+    </section>
+  </OwnerSettingsGuard>
+);
+
 const ResetDataPage = () => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
   const { invalidate, refreshAll } = useFinance();
   const [resetScope, setResetScope] = useState(RESET_SCOPE_ACTIVITY);
   const [recoveryToken, setRecoveryToken] = useState(() => readMaintenanceRecoveryToken(RESET_RECOVERY_STORAGE_KEY));
-  const integrationsResource = useApiResource("integrations.status", {}, { enabled: ownerMode });
-  const resetStatusResource = useApiResource("reset.status", recoveryToken ? { idempotencyKey: recoveryToken.idempotencyKey } : {}, { enabled: ownerMode });
+  const environmentResource = useApiResource("system.health", {}, { enabled: ownerMode });
+  const environment = resetEnvironmentPresentation(environmentResource);
+  const developmentDatabase = environment.development;
+  const integrationsResource = useApiResource("integrations.status", {}, { enabled: ownerMode && developmentDatabase });
+  const resetStatusResource = useApiResource("reset.status", recoveryToken ? { idempotencyKey: recoveryToken.idempotencyKey } : {}, { enabled: ownerMode && developmentDatabase });
   const recovery = useResetRecovery({ setRecoveryToken, integrationsResource, resetStatusResource, invalidate, refreshAll });
   const previewState = useResetPreview({ recoveryToken, resetScope, resetStatusResource, integrationsResource, refreshAfterCommittedReset: recovery.refreshAfterCommittedReset, setResult: recovery.setResult });
   const apply = useResetApply({ preview: previewState.preview, setPreview: previewState.setPreview, resetStatusResource, integrationsResource, clearRecovery: recovery.clearRecovery, setRecoveryToken, invalidate, refreshAll, handleCheckedStatus: recovery.handleCheckedStatus, setResult: recovery.setResult });
@@ -254,10 +305,12 @@ const ResetDataPage = () => {
   const resetState = resetStatusState(resetStatusResource);
   const canOpenReset = previewHasResettableData(previewState.preview) && drive.ready && !previewState.previewBusy && !resetState.blocked;
 
+  if (!developmentDatabase) return <ResetEnvironmentNotice environment={environment} resource={environmentResource} />;
+
   return (
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="reset-data-title">
-        <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Reset data testing</h2><p>Pilih apakah hanya riwayat testing yang dibersihkan atau sekaligus mengembalikan nominal saldo rekening ke Rp0. Rekening, kategori, pengguna, audit, dan data pemulihan tetap dipertahankan.</p></div>
+        <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Reset data testing</h2><p>Pilih apakah hanya riwayat testing yang dibersihkan atau sekaligus mengembalikan nominal saldo rekening ke Rp0. Rekening, kategori, master investasi, pengguna, audit, dan data pemulihan tetap dipertahankan.</p></div>
         <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
         <ResetRecoveryPanel status={resetState.status} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
         <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetState.status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />

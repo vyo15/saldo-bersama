@@ -84,10 +84,10 @@ const assertTradeAfterReconciliation = async (db, portfolioId, tradeDate) => {
 const normalizeEvents = async (db, portfolioId, cutoffDate = null) => {
   const cutoff = cutoffDate ? " AND trade_date<=?" : "";
   const correctionCutoff = cutoffDate ? " AND correction_date<=?" : "";
-  return db.all(`SELECT trade_date AS event_date,created_at,'trade' AS event_kind,trade_id AS event_id,instrument_id,trade_type,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,0 AS cash_delta,0 AS event_priority,rowid AS source_order
+  return db.all(`SELECT trade_date AS event_date,created_at,'trade' AS event_kind,trade_type AS event_type,trade_id AS event_id,instrument_id,trade_type,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,0 AS cash_delta,notes,0 AS event_priority,rowid AS source_order
     FROM investment_trades WHERE portfolio_id=?${cutoff}
     UNION ALL
-    SELECT correction_date AS event_date,created_at,'correction' AS event_kind,correction_id AS event_id,instrument_id,'' AS trade_type,0 AS lots,0 AS share_quantity,0 AS price_per_share,0 AS fee_amount,0 AS gross_amount,0 AS cash_amount,share_delta,cost_basis_delta,cash_delta,1 AS event_priority,rowid AS source_order
+    SELECT correction_date AS event_date,created_at,'correction' AS event_kind,correction_type AS event_type,correction_id AS event_id,instrument_id,'' AS trade_type,0 AS lots,0 AS share_quantity,reference_price AS price_per_share,0 AS fee_amount,0 AS gross_amount,0 AS cash_amount,share_delta,cost_basis_delta,cash_delta,notes,1 AS event_priority,rowid AS source_order
     FROM investment_corrections WHERE portfolio_id=?${correctionCutoff}
     ORDER BY event_date,created_at,event_priority,source_order`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId]);
 };
@@ -97,12 +97,16 @@ const normalizeEvents = async (db, portfolioId, cutoffDate = null) => {
 const latestKnownPrices = async (db, portfolioId, cutoffDate = null) => {
   const valuationCutoff = cutoffDate ? " AND valuation_date<=?" : "";
   const tradeCutoff = cutoffDate ? " AND trade_date<=?" : "";
-  const rows = await db.all(`SELECT instrument_id,valuation_date AS price_date,price_per_share,created_at,'valuation' AS price_source,2 AS price_priority,rowid AS source_order
+  const correctionCutoff = cutoffDate ? " AND correction_date<=?" : "";
+  const rows = await db.all(`SELECT instrument_id,valuation_date AS price_date,price_per_share,created_at,'valuation' AS price_source,3 AS price_priority,rowid AS source_order
     FROM investment_valuations WHERE portfolio_id=?${valuationCutoff}
     UNION ALL
-    SELECT instrument_id,trade_date AS price_date,price_per_share,created_at,'trade' AS price_source,1 AS price_priority,rowid AS source_order
+    SELECT instrument_id,trade_date AS price_date,price_per_share,created_at,'trade' AS price_source,2 AS price_priority,rowid AS source_order
     FROM investment_trades WHERE portfolio_id=?${tradeCutoff}
-    ORDER BY price_date DESC,created_at DESC,price_priority DESC,source_order DESC`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId]);
+    UNION ALL
+    SELECT instrument_id,correction_date AS price_date,reference_price AS price_per_share,created_at,'opening_position' AS price_source,1 AS price_priority,rowid AS source_order
+    FROM investment_corrections WHERE portfolio_id=? AND correction_type='opening_position' AND reference_price>0${correctionCutoff}
+    ORDER BY price_date DESC,created_at DESC,price_priority DESC,source_order DESC`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId, portfolioId]);
   const latest = new Map();
   for (const row of rows) if (!latest.has(row.instrument_id)) latest.set(row.instrument_id, { ...row, valuation_date: row.price_date });
   return [...latest.values()];
@@ -205,12 +209,16 @@ export const investmentOverview = async (db, context) => {
     const state = await portfolioState(db, portfolio);
     const canOperate = context.actor.role === "owner" || portfolio.owner_scope === "shared" || portfolio.owner_user_id === context.actor.user_id;
     const holdings = state.holdings.map((holding) => ({ ...holding, ...publicRow(instrumentMap.get(holding.instrument_id) || {}) }));
-    const activity = (await db.all(`SELECT 'trade' AS activity_type,trade_id AS activity_id,trade_date AS activity_date,trade_type,instrument_id,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,'' AS reason,created_at,1 AS activity_priority,rowid AS source_order FROM investment_trades WHERE portfolio_id=?
-      UNION ALL SELECT 'valuation',valuation_id,valuation_date,'valuation',instrument_id,NULL,NULL,price_per_share,0,0,0,0,0,'',created_at,2,rowid FROM investment_valuations WHERE portfolio_id=?
-      UNION ALL SELECT 'correction',correction_id,correction_date,'correction',instrument_id,NULL,NULL,NULL,0,0,cash_delta,share_delta,cost_basis_delta,reason,created_at,3,rowid FROM investment_corrections WHERE portfolio_id=?
+    const activity = (await db.all(`SELECT 'trade' AS activity_type,trade_id AS activity_id,trade_date AS activity_date,trade_type,instrument_id,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,'' AS reason,notes,created_at,1 AS activity_priority,rowid AS source_order FROM investment_trades WHERE portfolio_id=?
+      UNION ALL SELECT 'valuation',valuation_id,valuation_date,'valuation',instrument_id,NULL,NULL,price_per_share,0,0,0,0,0,'','',created_at,2,rowid FROM investment_valuations WHERE portfolio_id=?
+      UNION ALL SELECT correction_type,correction_id,correction_date,correction_type,instrument_id,NULL,NULL,reference_price,0,0,cash_delta,share_delta,cost_basis_delta,reason,notes,created_at,3,rowid FROM investment_corrections WHERE portfolio_id=?
       ORDER BY activity_date DESC,created_at DESC,activity_priority DESC,source_order DESC LIMIT 30`, [portfolio.portfolio_id, portfolio.portfolio_id, portfolio.portfolio_id])).map((row) => {
       const { activity_priority: _priority, source_order: _sourceOrder, ...activityRow } = row;
-      return { ...publicRow(activityRow), ...(instrumentMap.get(row.instrument_id) || {}) };
+      return {
+        ...publicRow(activityRow),
+        event_type: row.activity_type === "trade" ? row.trade_type : row.activity_type,
+        ...(instrumentMap.get(row.instrument_id) || {}),
+      };
     });
     totalMarket += state.market_value; totalCost += state.cost_basis; totalCash += state.rdn_cash; totalRealized += state.realized_pl; totalUnrealized += state.unrealized_pl;
     items.push({
@@ -222,6 +230,7 @@ export const investmentOverview = async (db, context) => {
       cost_basis: state.cost_basis,
       realized_pl: state.realized_pl,
       unrealized_pl: state.unrealized_pl,
+      opening_position_available: await openingPositionAvailable(db, portfolio.portfolio_id),
       holdings,
       activity,
     });
@@ -316,8 +325,8 @@ const createTrade = async (db, context, tradeType) => {
     });
     if (issue && !portfolio.allow_negative) throw appError("INSUFFICIENT_RDN", "Saldo RDN tidak cukup untuk pembelian ini.", 409, { date: issue.date, balance: issue.balance });
   }
-  const record = { trade_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, trade_type: tradeType, trade_date: tradeDate, lots, share_quantity: shares, price_per_share: price, fee_amount: fee, gross_amount: gross, cash_amount: cashAmount, idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
-  await db.execute(`INSERT INTO investment_trades(trade_id,portfolio_id,instrument_id,trade_type,trade_date,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  const record = { trade_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, trade_type: tradeType, trade_date: tradeDate, lots, share_quantity: shares, price_per_share: price, fee_amount: fee, gross_amount: gross, cash_amount: cashAmount, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
+  await db.execute(`INSERT INTO investment_trades(trade_id,portfolio_id,instrument_id,trade_type,trade_date,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   const rowVersion = await bumpPortfolio(db, context, portfolio);
   await appendAudit(db, context, { entityType: "investment_trade", entityId: record.trade_id, next: { ...record, row_version: rowVersion } });
   return { ...publicRow(record), row_version: rowVersion };
@@ -371,14 +380,15 @@ export const reconcileInvestment = async (db, context) => {
   for (const id of actual.keys()) await instrumentRow(db, id);
   const recorded = new Map(state.holdings.map((item) => [item.instrument_id, item.shares]));
   const ids = [...new Set([...recorded.keys(), ...actual.keys()])].sort();
-  const differences = ids.map((instrumentId) => ({ instrument_id: instrumentId, recorded_shares: recorded.get(instrumentId) || 0, actual_shares: actual.get(instrumentId) || 0, difference: (actual.get(instrumentId) || 0) - (recorded.get(instrumentId) || 0) })).filter((item) => item.difference !== 0);
+  const comparisons = ids.map((instrumentId) => ({ instrument_id: instrumentId, recorded_shares: recorded.get(instrumentId) || 0, actual_shares: actual.get(instrumentId) || 0, difference: (actual.get(instrumentId) || 0) - (recorded.get(instrumentId) || 0) }));
+  const differences = comparisons.filter((item) => item.difference !== 0);
   const cashDifference = actualCash - state.rdn_cash;
   const status = cashDifference === 0 && differences.length === 0 ? "matched" : "mismatch";
   const record = { reconciliation_id: uuid(), portfolio_id: portfolio.portfolio_id, reconciliation_date: reconciliationDate, recorded_cash: state.rdn_cash, actual_cash: actualCash, recorded_holdings_json: JSON.stringify([...recorded].map(([instrument_id, shares]) => ({ instrument_id, shares }))), actual_holdings_json: JSON.stringify([...actual].map(([instrument_id, shares]) => ({ instrument_id, shares }))), difference_json: JSON.stringify({ cash_difference: cashDifference, holdings: differences }), status, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
   await db.execute(`INSERT INTO investment_reconciliations(reconciliation_id,portfolio_id,reconciliation_date,recorded_cash,actual_cash,recorded_holdings_json,actual_holdings_json,difference_json,status,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   const rowVersion = await bumpPortfolio(db, context, portfolio);
   await appendAudit(db, context, { entityType: "investment_reconciliation", entityId: record.reconciliation_id, next: { portfolio_id: record.portfolio_id, reconciliation_date: record.reconciliation_date, status, cash_difference: cashDifference, holding_differences: differences, row_version: rowVersion } });
-  return { reconciliation_id: record.reconciliation_id, status, recorded_cash: state.rdn_cash, actual_cash: actualCash, cash_difference: cashDifference, holding_differences: differences, row_version: rowVersion };
+  return { reconciliation_id: record.reconciliation_id, status, recorded_cash: state.rdn_cash, actual_cash: actualCash, cash_difference: cashDifference, holding_comparisons: comparisons, holding_differences: differences, row_version: rowVersion };
 };
 
 const correctionInstrument = async (db, payload, shareDelta, costDelta) => {
@@ -413,6 +423,54 @@ const correctionInput = (payload) => {
   return { shareDelta, costDelta, cashDelta, reason };
 };
 
+const openingPositionAvailable = async (db, portfolioId) => {
+  const row = await db.one(`SELECT (
+    (SELECT COUNT(*) FROM investment_trades WHERE portfolio_id=?)
+    + (SELECT COUNT(*) FROM investment_valuations WHERE portfolio_id=?)
+    + (SELECT COUNT(*) FROM investment_reconciliations WHERE portfolio_id=?)
+    + (SELECT COUNT(*) FROM investment_corrections WHERE portfolio_id=? AND correction_type<>'opening_position')
+  ) AS count`, [portfolioId, portfolioId, portfolioId, portfolioId]);
+  return Number(row?.count || 0) === 0;
+};
+
+const assertOpeningPositionAvailable = async (db, portfolioId) => {
+  if (!(await openingPositionAvailable(db, portfolioId))) throw appError("OPENING_POSITION_CLOSED", "Posisi awal hanya dapat ditambahkan sebelum transaksi, harga manual, rekonsiliasi, atau koreksi reguler dicatat.", 409);
+};
+
+export const createOpeningPosition = async (db, context) => {
+  const payload = context.payload || {};
+  const portfolio = await portfolioRow(db, payload.portfolio_id);
+  assertPortfolioOperable(context, portfolio);
+  assertVersion(portfolio, context.rowVersion ?? payload.row_version);
+  await assertOpeningPositionAvailable(db, portfolio.portfolio_id);
+  const positionDate = dateValue(payload.position_date || context.today || todayJakarta(), "Tanggal posisi awal");
+  if (positionDate > (context.today || todayJakarta())) throw appError("FUTURE_DATE", "Posisi awal tidak boleh bertanggal di masa depan.", 400);
+  assertPortfolioHistoryDate(portfolio, positionDate, "Tanggal posisi awal");
+  await assertChronology(db, portfolio.portfolio_id, positionDate);
+  const instrument = await instrumentRow(db, payload.instrument_id);
+  const duplicate = await db.one("SELECT correction_id FROM investment_corrections WHERE portfolio_id=? AND instrument_id=? AND correction_type='opening_position' LIMIT 1", [portfolio.portfolio_id, instrument.instrument_id]);
+  if (duplicate) throw appError("OPENING_POSITION_DUPLICATE", "Posisi awal saham ini sudah dicatat. Gunakan Koreksi bila jumlah atau modal perlu diperbaiki.", 409);
+  const shares = positiveInteger(payload.shares, "Jumlah lembar");
+  const costBasis = positiveInteger(payload.cost_basis, "Total modal");
+  const referencePrice = positiveInteger(payload.reference_price, "Harga referensi");
+  const state = await portfolioState(db, portfolio);
+  const actualCash = payload.actual_cash === undefined || payload.actual_cash === null || payload.actual_cash === ""
+    ? state.rdn_cash
+    : nonNegativeInteger(payload.actual_cash, "Cash RDN awal");
+  const cashDelta = actualCash - state.rdn_cash;
+  assertCorrectionHolding(state, instrument, shares, costBasis);
+  await assertCorrectionCash(db, portfolio, positionDate, cashDelta);
+  const record = {
+    correction_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, correction_date: positionDate,
+    share_delta: shares, cost_basis_delta: costBasis, cash_delta: cashDelta, reason: "Posisi awal", correction_type: "opening_position",
+    reference_price: referencePrice, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso(),
+  };
+  await db.execute(`INSERT INTO investment_corrections(correction_id,portfolio_id,instrument_id,correction_date,share_delta,cost_basis_delta,cash_delta,reason,correction_type,reference_price,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  const rowVersion = await bumpPortfolio(db, context, portfolio);
+  await appendAudit(db, context, { entityType: "investment_opening_position", entityId: record.correction_id, next: { ...record, actual_cash: actualCash, row_version: rowVersion } });
+  return { ...publicRow(record), actual_cash: actualCash, row_version: rowVersion };
+};
+
 export const correctInvestment = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};
@@ -428,8 +486,8 @@ export const correctInvestment = async (db, context) => {
   const state = await portfolioState(db, portfolio);
   assertCorrectionHolding(state, instrument, shareDelta, costDelta);
   await assertCorrectionCash(db, portfolio, correctionDate, cashDelta);
-  const record = { correction_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument?.instrument_id || null, correction_date: correctionDate, share_delta: shareDelta, cost_basis_delta: costDelta, cash_delta: cashDelta, reason, idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
-  await db.execute(`INSERT INTO investment_corrections(correction_id,portfolio_id,instrument_id,correction_date,share_delta,cost_basis_delta,cash_delta,reason,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  const record = { correction_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument?.instrument_id || null, correction_date: correctionDate, share_delta: shareDelta, cost_basis_delta: costDelta, cash_delta: cashDelta, reason, correction_type: "correction", reference_price: 0, notes: "", idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
+  await db.execute(`INSERT INTO investment_corrections(correction_id,portfolio_id,instrument_id,correction_date,share_delta,cost_basis_delta,cash_delta,reason,correction_type,reference_price,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   const rowVersion = await bumpPortfolio(db, context, portfolio);
   await appendAudit(db, context, { entityType: "investment_correction", entityId: record.correction_id, next: { ...record, row_version: rowVersion } });
   return { ...publicRow(record), row_version: rowVersion };

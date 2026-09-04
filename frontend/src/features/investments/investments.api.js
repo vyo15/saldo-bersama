@@ -9,5 +9,6 @@ export const sellInvestment = (payload, rowVersion, options) => mutate("investme
 export const updateInvestmentValuation = (payload, rowVersion, options) => mutate("investments.valuations.update", payload, rowVersion, options);
 export const reconcileInvestment = (payload, rowVersion, options) => mutate("investments.reconciliations.create", payload, rowVersion, options);
 export const correctInvestment = (payload, rowVersion, options) => mutate("investments.corrections.create", payload, rowVersion, options);
+export const createOpeningPosition = (payload, rowVersion, options) => mutate("investments.openingPositions.create", payload, rowVersion, options);
 
 export const invalidateInvestmentReads = () => apiClient.invalidate(["investments.overview", "accounts.list", "dashboard.overview", "app.initialState"]);

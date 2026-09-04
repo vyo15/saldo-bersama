@@ -178,7 +178,7 @@ const assertAccountUpdateValid = async (db, current, next) => {
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE account_id<>? AND lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [current.account_id, next.name, next.owner_scope, next.owner_user_id]);
   if (duplicate) {
     const message = next.account_type === "investment"
-      ? "Rekening Investasi untuk kepemilikan ini sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih kepemilikan lain."
+      ? "RDN dengan nama pembeda dan kepemilikan yang sama sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih nama pembeda lain."
       : "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.";
     throw appError("DUPLICATE_ACCOUNT", message, 409);
   }
@@ -204,7 +204,7 @@ export const prepareAccountCreatePayload = async (db, actor, payload = {}, { tod
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [name, owned.scope, owned.owner_user_id]);
   if (duplicate) {
     const message = type === "investment"
-      ? "Rekening Investasi untuk kepemilikan ini sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih kepemilikan lain."
+      ? "RDN dengan nama pembeda dan kepemilikan yang sama sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih nama pembeda lain."
       : "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.";
     throw appError("DUPLICATE_ACCOUNT", message, 409);
   }

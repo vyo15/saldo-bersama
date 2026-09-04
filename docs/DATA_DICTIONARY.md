@@ -71,10 +71,10 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
 - `investment_portfolios.rdn_account_id`: FK unik ke rekening `account_type=investment`; runtime mewajibkan rekening aktif, operable saat create, dan `allow_negative=0`. `row_version` portfolio menjadi optimistic-lock token seluruh mutation portfolio.
 - `investment_instruments.lot_size`: integer positif untuk konversi lot → lembar. Ticker unik uppercase; status `inactive` melarang buy baru tetapi tidak memblok sell holding existing.
-- `investment_trades`: `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, `cash_amount` semuanya integer; service/integrity memastikan lembar = lot × lot size, gross = lembar × harga, buy cash = gross + fee, sell cash = gross - fee.
+- `investment_trades`: `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, `cash_amount` semuanya integer; `notes` adalah catatan opsional maks. 500 karakter; service/integrity memastikan lembar = lot × lot size, gross = lembar × harga, buy cash = gross + fee, sell cash = gross - fee.
 - `investment_valuations.price_per_share`: integer positif; snapshot harga tidak mengubah cash/ledger. Harga read-model paling baru dapat berasal dari valuation atau trade terakhir.
 - `investment_reconciliations.recorded_*` adalah snapshot state system **as-of `reconciliation_date`** dan `actual_*` adalah input broker user. `difference_json` hanya diagnosis; tidak mengubah data finansial.
-- `investment_corrections.share_delta`, `cost_basis_delta`, `cash_delta`: delta eksplisit dengan alasan; correction tidak boleh menghasilkan holding/cost basis/cash invalid dan hanya Administrator yang dapat membuatnya.
+- `investment_corrections.share_delta`, `cost_basis_delta`, `cash_delta`: delta eksplisit append-only. `correction_type` membedakan `correction` vs `opening_position`; opening position juga dapat menyimpan `reference_price` dan `notes`. Correction reguler hanya Administrator, sedangkan opening position mengikuti operability portfolio dan hanya tersedia sebelum aktivitas reguler.
 - `transactions.cost_share_mode`: `unspecified`, `equal`, atau `percentage`. Hanya expense shared yang boleh memiliki mode selain `unspecified`.
 - `transactions.cost_share_json`: JSON snapshot server-side berisi `{user_id,basis_points,share_amount}`. Total `basis_points` wajib 10.000 dan total `share_amount` wajib sama dengan `transactions.amount`; field tidak dipercaya dari client.
 - Transfer wajib source dan destination berbeda.
@@ -97,7 +97,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
 - `investment` holdings, remaining cost basis, average cost, market value, realized P/L, dan unrealized P/L dihitung dari trade/correction history + harga terakhir yang diketahui; tidak disimpan sebagai angka bebas edit.
 
-## Model planned — belum ada di schema v15
+## Model planned — belum ada di schema v16
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
@@ -111,6 +111,6 @@ Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v15
+## Schema v16
 
-Migration canonical terbaru: `013_investment_tracking.sql` pada `database/migrations/`. Migration v15 menambah portfolio/instrument/trade/valuation/reconciliation/correction Investment dan view `investment_account_events` tanpa mengubah histori transaksi existing. RDN tetap rekening canonical, Bank ↔ RDN tetap Transfer, sedangkan buy/sell tidak diklasifikasikan sebagai income/expense. Runtime v15 menerima backup v3-v14 secara additive; enam tabel Investment hanya diwajibkan pada backup v15. Migration v14 tetap menjadi dasar foto profil Google + request kolaborasi Member, v13 durable rate-limit bucket, dan v12 registry session/environment binding.
+Migration canonical terbaru: `014_investment_opening_position.sql` pada `database/migrations/`. Migration v16 menambah trade notes dan metadata semantic `opening_position` pada history correction secara additive; tidak membuat fake Buy dan tidak mengubah histori transaksi existing. Migration v15 `013_investment_tracking.sql` tetap menjadi dasar portfolio/instrument/trade/valuation/reconciliation/correction Investment dan view `investment_account_events`. RDN tetap rekening canonical, Bank ↔ RDN tetap Transfer, sedangkan buy/sell tidak diklasifikasikan sebagai income/expense. Runtime v16 menerima backup v3-v15 secara additive; enam tabel Investment diwajibkan pada backup schema ≥15 dan field v16 dinormalisasi saat restore backup lama. Migration v14 tetap menjadi dasar foto profil Google + request kolaborasi Member, v13 durable rate-limit bucket, dan v12 registry session/environment binding.

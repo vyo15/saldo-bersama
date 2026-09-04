@@ -13,11 +13,12 @@ test("Dashboard menampilkan ringkasan Investasi dari contract overview yang bena
 });
 
 test("form Investasi memakai inline validation, focus error, dan next-step RDN yang aksesibel", async () => {
-  const [dialog, setup, field, model] = await Promise.all([
+  const [dialog, setup, field, model, continuation] = await Promise.all([
     read("src/features/investments/InvestmentDialog.jsx"),
     read("src/features/investments/InvestmentSetupDialog.jsx"),
     read("src/features/investments/InvestmentFormField.jsx"),
     read("src/features/investments/investments.model.js"),
+    read("src/shared/workflows/investmentContinuation.js"),
   ]);
   assert.match(dialog, /validateInvestmentOperation/);
   assert.match(dialog, /querySelector\('\[aria-invalid="true"\]'\)/);
@@ -33,7 +34,8 @@ test("form Investasi memakai inline validation, focus error, dan next-step RDN y
   assert.match(setup, /locked=\{disabled\}/);
   assert.match(setup, /Buka Rekening dan buat RDN/);
   assert.match(setup, /to="\/rekening"/);
-  assert.match(setup, /accountPrefill: \{ account_type: "investment" \}/);
+  assert.match(setup, /investmentRdnAccountSetupState/);
+  assert.match(continuation, /accountPrefill: \{ account_type: "investment" \}/);
   assert.match(field, /aria-invalid/);
   assert.match(field, /aria-describedby/);
   assert.match(model, /tidak boleh di masa depan/);

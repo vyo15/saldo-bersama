@@ -65,6 +65,8 @@ export const RESET_COUNT_STATEMENTS = Object.freeze(RESET_STATE_TABLES.map(({ ta
 export const PRESERVED_COUNT_STATEMENTS = Object.freeze([
   { sql: "SELECT COUNT(*) AS count FROM accounts", args: [] },
   { sql: "SELECT COUNT(*) AS count FROM categories", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM investment_portfolios", args: [] },
+  { sql: "SELECT COUNT(*) AS count FROM investment_instruments", args: [] },
   { sql: "SELECT COUNT(*) AS count FROM users", args: [] },
   { sql: "SELECT COUNT(*) AS count FROM audit_log", args: [] },
   { sql: "SELECT COUNT(*) AS count FROM backup_runs", args: [] },
@@ -141,10 +143,12 @@ export const mapResetCountRows = (resultRows) => Object.fromEntries(RESET_STATE_
 ]));
 
 export const mapPreservedCountRows = (resultRows) => {
-  const [accounts, categories, users, audit, backups, pushSubscriptions, notificationPreferences] = resultRows.map((rows) => rows?.[0] || null);
+  const [accounts, categories, investmentPortfolios, investmentInstruments, users, audit, backups, pushSubscriptions, notificationPreferences] = resultRows.map((rows) => rows?.[0] || null);
   return {
     accounts: Number(accounts?.count || 0),
     categories: Number(categories?.count || 0),
+    investmentPortfolios: Number(investmentPortfolios?.count || 0),
+    investmentInstruments: Number(investmentInstruments?.count || 0),
     users: Number(users?.count || 0),
     audit: Number(audit?.count || 0),
     backups: Number(backups?.count || 0),
@@ -183,30 +187,36 @@ export const readResetState = async (db, scope, cutoffDate) => {
   };
 };
 
-const sumCounts = (counts, tables) => tables.reduce((sum, { table }) => sum + Number(counts[table] || 0), 0);
+const countFor = (counts, key) => Number(counts[key] || 0);
+const sumCounts = (counts, tables) => tables.reduce((sum, { table }) => sum + countFor(counts, table), 0);
 
 export const resetSummary = (counts) => {
   const businessRows = sumCounts(counts, RESET_BUSINESS_TABLES);
   const operationalRows = sumCounts(counts, RESET_OPERATIONAL_TABLES);
   return {
-    transactions: Number(counts.transactions || 0),
-    reconciliations: Number(counts.reconciliations || 0),
-    goals: Number(counts.savings_goals || 0),
-    goalMovements: Number(counts.goal_movements || 0),
-    budgets: Number(counts.budgets || 0),
-    allocationRules: Number(counts.envelope_rules || 0),
-    allocationPeriods: Number(counts.envelope_periods || 0),
-    allocationMovements: Number(counts.envelope_movements || 0),
-    recurringRules: Number(counts.recurring_rules || 0),
-    recurringOccurrences: Number(counts.recurring_occurrences || 0),
-    periodClosures: Number(counts.period_closures || 0),
-    notificationDeliveries: Number(counts.notification_deliveries || 0),
-    notificationQueue: Number(counts.notification_queue || 0),
-    integrationLinks: Number(counts.integration_links || 0),
-    integrationOutbox: Number(counts.integration_outbox || 0),
-    importPreviews: Number(counts.import_previews || 0),
-    masterDataRequests: Number(counts.master_data_requests || 0),
-    transferRequests: Number(counts.transfer_requests || 0),
+    transactions: countFor(counts, "transactions"),
+    reconciliations: countFor(counts, "reconciliations"),
+    investmentTrades: countFor(counts, "investment_trades"),
+    investmentCorrections: countFor(counts, "investment_corrections"),
+    investmentValuations: countFor(counts, "investment_valuations"),
+    investmentReconciliations: countFor(counts, "investment_reconciliations"),
+    goals: countFor(counts, "savings_goals"),
+    goalMovements: countFor(counts, "goal_movements"),
+    budgets: countFor(counts, "budgets"),
+    allocationRules: countFor(counts, "envelope_rules"),
+    allocationPeriods: countFor(counts, "envelope_periods"),
+    allocationMovements: countFor(counts, "envelope_movements"),
+    recurringRules: countFor(counts, "recurring_rules"),
+    recurringOccurrences: countFor(counts, "recurring_occurrences"),
+    periodClosures: countFor(counts, "period_closures"),
+    notificationDeliveries: countFor(counts, "notification_deliveries"),
+    manualReminders: countFor(counts, "manual_reminders"),
+    notificationQueue: countFor(counts, "notification_queue"),
+    integrationLinks: countFor(counts, "integration_links"),
+    integrationOutbox: countFor(counts, "integration_outbox"),
+    importPreviews: countFor(counts, "import_previews"),
+    masterDataRequests: countFor(counts, "master_data_requests"),
+    transferRequests: countFor(counts, "transfer_requests"),
     businessRows,
     operationalRows,
     totalRows: businessRows + operationalRows,

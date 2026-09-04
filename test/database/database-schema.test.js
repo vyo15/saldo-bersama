@@ -17,6 +17,7 @@ const environmentSessionsMigrationUrl = new URL("010_environment_sessions.sql", 
 const distributedRateLimitsMigrationUrl = new URL("011_distributed_rate_limits.sql", migrationDirectory);
 const memberCollaborationMigrationUrl = new URL("012_member_collaboration.sql", migrationDirectory);
 const investmentTrackingMigrationUrl = new URL("013_investment_tracking.sql", migrationDirectory);
+const investmentOpeningPositionMigrationUrl = new URL("014_investment_opening_position.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -106,9 +107,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v15 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v16 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "15");
+  assert.equal(result.schema_version, "16");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -383,4 +384,15 @@ test("migration v15 menambah tracking investasi manual tanpa menjadikan buy/sell
   assert.match(sql, /value='15'/);
   assert.doesNotMatch(sql, /ALTER TABLE transactions/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+test("migration v16 menambah semantic opening position dan catatan trade secara additive", async () => {
+  const sql = await readFile(investmentOpeningPositionMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE investment_trades[\s\S]*ADD COLUMN notes/);
+  assert.match(sql, /ALTER TABLE investment_corrections[\s\S]*ADD COLUMN correction_type/);
+  assert.match(sql, /opening_position/);
+  assert.match(sql, /ADD COLUMN reference_price/);
+  assert.match(sql, /value='16'/);
+  assert.doesNotMatch(sql, /ALTER TABLE transactions/);
+  assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN/i);
 });

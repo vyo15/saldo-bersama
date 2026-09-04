@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 import {
-  buyInvestment, correctInvestment, createInvestmentPortfolio, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  buyInvestment, correctInvestment, createInvestmentPortfolio, createOpeningPosition, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../../api/_lib/services/investments.js";
 import { snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
@@ -46,6 +46,11 @@ test("rekening Investasi memaksa saldo non-negatif dan duplicate ownership membe
       initial_balance: 0, initial_balance_date: TODAY, allow_negative: true,
     }, { today: TODAY });
     assert.equal(prepared.allow_negative, false);
+    const secondRdn = await prepareAccountCreatePayload(db, owner, {
+      name: "Investasi · BCA ••••7788", account_type: "investment", owner_scope: "shared",
+      initial_balance: 0, initial_balance_date: TODAY,
+    }, { today: TODAY });
+    assert.equal(secondRdn.name, "Investasi · BCA ••••7788");
     await assert.rejects(
       () => prepareAccountCreatePayload(db, owner, {
         name: "RDN Ajaib", account_type: "investment", owner_scope: "shared", initial_balance: 0, initial_balance_date: TODAY,
@@ -62,6 +67,51 @@ test("portfolio manual tanpa input broker memakai metadata generik dan tetap ter
     assert.equal(portfolio.name, "Catatan investasi");
     assert.equal(portfolio.broker, "other");
     assert.equal(portfolio.rdn_account_id, "rdn");
+  } finally { db.close(); }
+});
+
+test("opening position mencatat kondisi awal tanpa membuat fake buy dan tetap mempertahankan semantic event", async () => {
+  const db = await seed({ initialBalance: 10_000_000 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const opened = await createOpeningPosition(db, context(owner, "investments.openingPositions.create", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, shares: 2_000, cost_basis: 18_000_000,
+      reference_price: 10_000, actual_cash: 1_250_000, position_date: TODAY, notes: "Posisi saat mulai memakai aplikasi",
+    }, { rowVersion: portfolio.row_version, key: "opening:bbca:12345678" }));
+    assert.equal(opened.correction_type, "opening_position");
+    assert.equal(opened.actual_cash, 1_250_000);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM investment_trades").then((row) => Number(row.count)), 0);
+    const row = await db.one("SELECT correction_type,reference_price,notes FROM investment_corrections WHERE correction_id=?", [opened.correction_id]);
+    assert.deepEqual({ ...row }, { correction_type: "opening_position", reference_price: 10_000, notes: "Posisi saat mulai memakai aplikasi" });
+
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    assert.equal(overview.portfolios[0].rdn_cash, 1_250_000);
+    assert.equal(overview.portfolios[0].holdings[0].shares, 2_000);
+    assert.equal(overview.portfolios[0].holdings[0].average_cost, 9_000);
+    assert.equal(overview.portfolios[0].holdings[0].price_per_share, 10_000);
+    assert.equal(overview.portfolios[0].holdings[0].price_source, "opening_position");
+    assert.equal(overview.portfolios[0].activity[0].activity_type, "opening_position");
+    assert.equal(overview.portfolios[0].activity[0].event_type, "opening_position");
+    assert.equal(overview.portfolios[0].opening_position_available, true);
+    assert.equal(overview.summary.market_value, 20_000_000);
+    assert.equal(overview.summary.portfolio_value, 21_250_000);
+
+    await assert.rejects(() => createOpeningPosition(db, context(owner, "investments.openingPositions.create", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, shares: 100, cost_basis: 900_000, reference_price: 10_000, actual_cash: 1_250_000, position_date: TODAY,
+    }, { rowVersion: opened.row_version, key: "opening:duplicate:12345678" })), (error) => error.code === "OPENING_POSITION_DUPLICATE");
+  } finally { db.close(); }
+});
+
+test("opening position ditutup setelah aktivitas investasi reguler dimulai", async () => {
+  const db = await seed({ initialBalance: 20_000_000 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const bought = await buy(db, owner, portfolio, instrument, { key: "buy:closes-opening:12345678" });
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    assert.equal(overview.portfolios[0].opening_position_available, false);
+    await assert.rejects(() => createOpeningPosition(db, context(owner, "investments.openingPositions.create", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, shares: 100, cost_basis: 800_000, reference_price: 8_000, actual_cash: overview.portfolios[0].rdn_cash, position_date: TODAY,
+    }, { rowVersion: bought.row_version, key: "opening:closed:12345678" })), (error) => error.code === "OPENING_POSITION_CLOSED");
   } finally { db.close(); }
 });
 
@@ -106,7 +156,7 @@ test("overview investasi menyediakan detail saham aktual beserta sumber harga da
     assert.equal(item.activity[0].activity_type, "valuation");
     assert.equal(item.activity[0].instrument_id, instrument.instrument_id);
     assert.equal(item.activity[0].price_per_share, 9_100);
-    assert.ok(item.activity.some((entry) => entry.activity_type === "trade" && entry.lots === 10 && entry.share_quantity === 1_000));
+    assert.ok(item.activity.some((entry) => entry.activity_type === "trade" && entry.event_type === "buy" && entry.lots === 10 && entry.share_quantity === 1_000));
   } finally { db.close(); }
 });
 
@@ -173,6 +223,9 @@ test("reconciliation hanya membandingkan kondisi broker dan tidak auto-adjust", 
     }, { rowVersion: bought.row_version, key: "reconcile:12345678" }));
     assert.equal(result.status, "mismatch");
     assert.equal(result.cash_difference, 1_000);
+    assert.equal(result.holding_comparisons.length, 1);
+    assert.equal(result.holding_comparisons[0].recorded_shares, 1_000);
+    assert.equal(result.holding_comparisons[0].actual_shares, 900);
     assert.equal(result.holding_differences[0].difference, -100);
     const after = await investmentOverview(db, context(owner, "investments.overview"));
     assert.equal(after.portfolios[0].rdn_cash, before.portfolios[0].rdn_cash);
@@ -307,7 +360,7 @@ test("backup canonical mencakup authoritative investment history dan integrity c
     const { portfolio, instrument } = await setupPortfolio(db);
     await buy(db, owner, portfolio, instrument);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 15);
+    assert.equal(snapshot.manifest.schemaVersion, 16);
     for (const table of ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
       assert.ok(Array.isArray(snapshot.tables[table]));
     }

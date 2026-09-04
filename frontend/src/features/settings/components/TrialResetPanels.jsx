@@ -11,6 +11,10 @@ import styles from "../Settings.module.css";
 const BUSINESS_SUMMARY_LABELS = Object.freeze([
   ["transactions", "Transaksi"],
   ["reconciliations", "Pencocokan saldo"],
+  ["investmentTrades", "Transaksi saham"],
+  ["investmentCorrections", "Koreksi investasi"],
+  ["investmentValuations", "Harga investasi"],
+  ["investmentReconciliations", "Pencocokan portfolio"],
   ["goals", "Target"],
   ["goalMovements", "Mutasi target"],
   ["budgets", "Kebutuhan"],
@@ -23,7 +27,10 @@ const BUSINESS_SUMMARY_LABELS = Object.freeze([
 ]);
 
 const OPERATIONAL_SUMMARY_LABELS = Object.freeze([
+  ["masterDataRequests", "Pengajuan master data"],
+  ["transferRequests", "Pengajuan transfer"],
   ["notificationDeliveries", "Delivery notifikasi"],
+  ["manualReminders", "Pengingat manual"],
   ["notificationQueue", "Queue notifikasi"],
   ["integrationLinks", "Link integrasi"],
   ["integrationOutbox", "Queue sinkronisasi trial"],
@@ -33,6 +40,8 @@ const OPERATIONAL_SUMMARY_LABELS = Object.freeze([
 const PRESERVED_LABELS = Object.freeze([
   ["accounts", "Rekening"],
   ["categories", "Kategori"],
+  ["investmentPortfolios", "Portfolio investasi"],
+  ["investmentInstruments", "Instrumen investasi"],
   ["users", "Pengguna"],
   ["audit", "Audit log"],
   ["backups", "Riwayat backup"],
@@ -108,7 +117,7 @@ const ResetPreview = ({ preview }) => (
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiDatabase aria-hidden="true" />
-        <div><strong>Aktivitas dan perencanaan</strong><small>Data trial yang memengaruhi tampilan finansial.</small></div>
+        <div><strong>Aktivitas dan perencanaan</strong><small>Data trial finansial, investasi, dan perencanaan yang akan dibersihkan.</small></div>
       </div>
       <SummaryGrid labels={BUSINESS_SUMMARY_LABELS} summary={preview.summary} ariaLabel="Aktivitas dan perencanaan yang akan dibersihkan" />
     </div>
@@ -116,7 +125,7 @@ const ResetPreview = ({ preview }) => (
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiRefreshCw aria-hidden="true" />
-        <div><strong>Sisa proses testing</strong><small>Notifikasi tertunda, data sinkronisasi testing, dan preview sementara ikut dibersihkan. Tugas sinkronisasi baru yang dibuat setelah reset tidak dihitung sebagai data testing.</small></div>
+        <div><strong>Sisa proses testing</strong><small>Pengajuan, pengingat, notifikasi tertunda, data sinkronisasi testing, dan preview sementara ikut dibersihkan. Tugas sinkronisasi baru yang dibuat setelah reset tidak dihitung sebagai data testing.</small></div>
       </div>
       <SummaryGrid labels={OPERATIONAL_SUMMARY_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dibersihkan" />
     </div>
@@ -126,7 +135,7 @@ const ResetPreview = ({ preview }) => (
     <div className={styles.resetPreserved}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiShield aria-hidden="true" />
-        <div><strong>Tetap disimpan</strong><small>Rekening, kategori, pengguna, audit, backup, perangkat notifikasi, dan data pemulihan tetap disimpan.</small></div>
+        <div><strong>Tetap disimpan</strong><small>Rekening, kategori, master investasi, pengguna, audit, backup, perangkat notifikasi, dan data pemulihan tetap disimpan.</small></div>
       </div>
       <div className={styles.resetPreservedGrid}>
         {PRESERVED_LABELS.map(([key, label]) => (
@@ -206,7 +215,7 @@ const ResetScopeSelector = ({ resetScope, activityScope, activityAndBalancesScop
       <label className={resetScope === activityScope ? styles.isSelected : ""}>
         <input type="radio" name="reset-testing-scope" value={activityScope} checked={resetScope === activityScope} onChange={() => selectScope(activityScope)} />
         <span className={styles.resetScopeIcon}><FiRefreshCw aria-hidden="true" /></span>
-        <span><strong>Bersihkan aktivitas testing</strong><small>Hapus riwayat keuangan dan perencanaan testing. Rekening, kategori, dan saldo awal tetap.</small></span>
+        <span><strong>Bersihkan aktivitas testing</strong><small>Hapus riwayat keuangan dan perencanaan testing. Rekening, kategori, master investasi, dan saldo awal tetap.</small></span>
       </label>
       <label className={resetScope === activityAndBalancesScope ? styles.isSelected : ""}>
         <input type="radio" name="reset-testing-scope" value={activityAndBalancesScope} checked={resetScope === activityAndBalancesScope} onChange={() => selectScope(activityAndBalancesScope)} />
@@ -248,6 +257,5 @@ const ResetStepCards = ({ previewState, statusBlocksReset, integrationsResource,
     <ResetApplyStep canOpenReset={canOpenReset} apply={apply} />
   </>
 );
-
 
 export { ResetConfirmationModal, ResetRecoveryPanel, ResetScopeSelector, ResetStatusFailure, ResetStepCards };

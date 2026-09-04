@@ -5,7 +5,7 @@ import { BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConst
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, DATABASE_SCHEMA_VERSION]);
 const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
 const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
@@ -247,6 +247,17 @@ export const normalizeRestoredRows = (table, rows) => {
       assignee_user_id: Object.hasOwn(row, "assignee_user_id")
         ? row.assignee_user_id || null
         : row.scope === "personal" ? row.owner_user_id || null : null,
+    }));
+  }
+  if (table === "investment_trades") {
+    return rows.map((row) => ({ ...row, notes: Object.hasOwn(row, "notes") ? String(row.notes || "") : "" }));
+  }
+  if (table === "investment_corrections") {
+    return rows.map((row) => ({
+      ...row,
+      correction_type: Object.hasOwn(row, "correction_type") ? String(row.correction_type || "correction") : "correction",
+      reference_price: Object.hasOwn(row, "reference_price") ? Number(row.reference_price || 0) : 0,
+      notes: Object.hasOwn(row, "notes") ? String(row.notes || "") : "",
     }));
   }
   if (table !== "accounts") return rows;

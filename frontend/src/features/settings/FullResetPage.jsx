@@ -16,9 +16,9 @@ const FULL_RESET_RECOVERY_STORAGE_KEY = "saldo-bersama:full-reset-recovery";
 
 const FULL_RESET_INVALIDATIONS = Object.freeze([
   "app.initialState", "bootstrap.get", "dashboard.overview", "accounts.list", "categories.list",
-  "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list",
+  "investments.overview", "investments.instruments.list", "transactions.list", "envelopes.list", "recurring.list", "budgets.list", "goals.list",
   "reports.monthly", "reconciliations.list", "periods.list", "archive.list", "audit.list",
-  "notifications.status", "notifications.preferences", "integrations.status", "reset.status",
+  "notifications.status", "notifications.preferences", "reminders.get", "masterDataRequests.list", "transferRequests.list", "integrations.status", "reset.status",
   "fullReset.status", "users.list", "system.health",
 ]);
 

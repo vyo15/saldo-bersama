@@ -10,6 +10,10 @@ import styles from "../Settings.module.css";
 const DOMAIN_LABELS = Object.freeze([
   ["transactions", "Transaksi"],
   ["reconciliations", "Pencocokan saldo"],
+  ["investmentTrades", "Transaksi saham"],
+  ["investmentCorrections", "Koreksi investasi"],
+  ["investmentValuations", "Harga investasi"],
+  ["investmentReconciliations", "Pencocokan portfolio"],
   ["goals", "Target"],
   ["goalMovements", "Mutasi target"],
   ["budgets", "Kebutuhan"],
@@ -24,10 +28,15 @@ const DOMAIN_LABELS = Object.freeze([
 const MASTER_LABELS = Object.freeze([
   ["accounts", "Rekening"],
   ["categories", "Kategori"],
+  ["investmentPortfolios", "Portfolio investasi"],
+  ["investmentInstruments", "Instrumen investasi"],
 ]);
 
 const OPERATIONAL_LABELS = Object.freeze([
+  ["masterDataRequests", "Pengajuan master data"],
+  ["transferRequests", "Pengajuan transfer"],
   ["notificationDeliveries", "Delivery notifikasi"],
+  ["manualReminders", "Pengingat manual"],
   ["notificationQueue", "Queue notifikasi"],
   ["integrationLinks", "Link integrasi"],
   ["integrationOutbox", "Queue sinkronisasi"],
@@ -47,21 +56,21 @@ const FullResetPreview = ({ preview }) => (
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiDatabase aria-hidden="true" />
-        <div><strong>Finansial dan perencanaan</strong><small>Seluruh riwayat keuangan dan perencanaan aplikasi akan dikosongkan.</small></div>
+        <div><strong>Finansial dan perencanaan</strong><small>Seluruh riwayat keuangan, investasi, dan perencanaan aplikasi akan dikosongkan.</small></div>
       </div>
       <SummaryGrid labels={DOMAIN_LABELS} summary={preview.summary} ariaLabel="Data finansial dan perencanaan yang akan dihapus" />
     </div>
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiTrash2 aria-hidden="true" />
-        <div><strong>Master aplikasi</strong><small>Rekening dan kategori ikut dihapus. Setelah reset, aplikasi kembali tanpa master finansial.</small></div>
+        <div><strong>Master aplikasi</strong><small>Rekening, kategori, portfolio, dan instrumen investasi ikut dihapus. Setelah reset, aplikasi kembali tanpa master finansial.</small></div>
       </div>
       <SummaryGrid labels={MASTER_LABELS} summary={preview.summary} ariaLabel="Master data yang akan dihapus" />
     </div>
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiRefreshCw aria-hidden="true" />
-        <div><strong>Data operasional</strong><small>Notifikasi, sinkronisasi, dan preview sementara ikut dibersihkan.</small></div>
+        <div><strong>Data operasional</strong><small>Pengajuan, pengingat, notifikasi, sinkronisasi, dan preview sementara ikut dibersihkan.</small></div>
       </div>
       <SummaryGrid labels={OPERATIONAL_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dihapus" />
     </div>
@@ -87,7 +96,7 @@ const FullResetConfirmation = ({ preview, open, busy, error, onCancel, onConfirm
   <ConfirmationModal
     open={open}
     title="Reset semua data?"
-    description="Rekening, kategori, saldo, transaksi, perencanaan, dan data operasional pada preview akan dihapus setelah safety backup. Pengguna, audit, backup, dan struktur database tetap disimpan."
+    description="Rekening, kategori, portfolio investasi, saldo, transaksi, perencanaan, dan data operasional pada preview akan dihapus setelah safety backup. Pengguna, audit, backup, dan struktur database tetap disimpan."
     confirmLabel="Reset semua data"
     reasonLabel="Alasan full reset"
     reasonPlaceholder="Contoh: Mengembalikan aplikasi ke kondisi awal sebelum mulai digunakan"
@@ -158,6 +167,5 @@ const FullResetSteps = ({ preview, statusBlocked, integrationsResource, driveRea
     <FullResetApplyStep canOpenReset={canOpenReset} apply={apply} />
   </>
 );
-
 
 export { FullResetConfirmation, FullResetStatusPanels, FullResetSteps };

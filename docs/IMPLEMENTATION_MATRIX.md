@@ -37,14 +37,14 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 | `REQ-PROD-17` | Security/anti-error | Implemented | auth/audit/version + reload-persistent guarded mutation metadata + same-key retry + external idempotency reservation + restore reservation replay + server lifecycle preview/delete-unused guard + exact destructive-SQL allowlist + canonical timezone/currency integrity + confirmation/browser-side single-flight | GitHub ruleset, live Dev/Prod DB separation evidence, opsional platform/WAF defense, external alert delivery, dan operational drills tetap perlu evidence/decision |
 
 | `REQ-PROD-18` | Reminder konsistensi pencatatan | Planned | belum ada inactivity/completeness alert type | cadence opt-in/configurable, dedupe, timezone, privacy copy, dan notification contract perlu approval |
-| `REQ-PROD-20` | Investasi manual berbasis RDN | Implemented | schema v15; `services/investments.js`; action policy/registry/security; route `/investasi`; weighted cost basis; valuation; P/L; reconciliation/correction; backup/integrity tests | Production migration + real-resource RDN/broker reconciliation + device smoke tetap guarded |
+| `REQ-PROD-20` | Investasi manual berbasis RDN | Implemented | schema v16; `services/investments.js`; action policy/registry/security; route `/investasi`; continuation RDN; opening position + Cash RDN awal; weighted cost basis; valuation; P/L; reconciliation/correction; multi-RDN labels; backup/integrity tests | Production migration + real-resource RDN/broker reconciliation + device smoke tetap guarded |
 
 ## Infrastruktur dan deployment
 
 | Area | Source | Deployment/verification |
 |---|---|---|
 | Firebase Google auth | Implemented | Desktop/mobile branded login + local Firebase popup; production server OAuth memerlukan callback URI + `GOOGLE_OAUTH_CLIENT_SECRET` Production Sensitive dan real-device smoke |
-| Turso schema v15 | Implemented | v12 session/environment, v13 durable rate-limit, dan v14 collaboration dipertahankan; v15 menambah Investment/RDN history tanpa rewrite transaksi income/expense; runtime v15 menerima backup v3-v14; Production migration tetap guarded oleh verified backup/integrity |
+| Turso schema v16 | Implemented | v12 session/environment, v13 durable rate-limit, v14 collaboration, dan v15 Investment/RDN history dipertahankan; v16 menambah semantic opening position + notes secara additive tanpa fake Buy; runtime v16 menerima backup v3-v15; Production migration tetap guarded oleh verified backup/integrity |
 | Sheets mirror shared-only | Implemented | Requires complete bridge env + resource test |
 | Calendar recurring shared | Implemented | Requires shared-calendar test |
 | XLSX | Implemented | Generator tests; production download smoke |

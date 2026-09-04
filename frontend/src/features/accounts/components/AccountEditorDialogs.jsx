@@ -4,7 +4,7 @@ import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
 import { AdminIcon, BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, PersonIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { ACCOUNT_TYPES } from "../../../domain/constants.js";
-import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS, accountTypeUsesAutomaticName, investmentAccountOwnershipLabel } from "../../../shared/presentation/account.js";
+import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS, accountTypeUsesAutomaticName, defaultAccountName, investmentAccountOwnershipLabel } from "../../../shared/presentation/account.js";
 import styles from "./AccountEditorDialogs.module.css";
 
 const ACCOUNT_TYPE_OPTIONS = Object.freeze([
@@ -36,17 +36,19 @@ const accountMatchesOwnership = (account, ownershipValue) => {
   return account.owner_scope === "personal" && String(account.owner_user_id || "") === userId;
 };
 
-const existingInvestmentForOwnership = (accounts, ownershipValue) => (accounts || []).find((account) =>
-  account.status === "active"
-  && account.account_type === ACCOUNT_TYPES.INVESTMENT
-  && accountMatchesOwnership(account, ownershipValue));
+const investmentNameForForm = (form) => [defaultAccountName(form), String(form?.name || "").trim()].filter(Boolean).join(" · ");
 
 const selectedInvestmentDuplicate = (accountForm, existingAccounts, defaultOwnerUserId) => {
   if (accountForm.account_type !== ACCOUNT_TYPES.INVESTMENT) return null;
-  return existingInvestmentForOwnership(existingAccounts, ownershipSelectValue(accountForm, defaultOwnerUserId)) || null;
+  const ownership = ownershipSelectValue(accountForm, defaultOwnerUserId);
+  const expectedName = investmentNameForForm(accountForm).toLocaleLowerCase("id-ID");
+  return (existingAccounts || []).find((account) => account.status === "active"
+    && account.account_type === ACCOUNT_TYPES.INVESTMENT
+    && accountMatchesOwnership(account, ownership)
+    && String(account.name || account.account_name || "").trim().toLocaleLowerCase("id-ID") === expectedName) || null;
 };
 
-const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange, existingAccounts = [] }) => {
+const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange }) => {
   const users = activeUsers.length ? activeUsers : defaultOwnerUserId ? [{ user_id: defaultOwnerUserId, name: currentOwnerLabel, role: "owner", is_current: true }] : [];
   const baseOptions = [
     { value: "shared", label: "Bersama", icon: SharedIcon },
@@ -56,11 +58,7 @@ const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, curren
       icon: member.role === "owner" ? AdminIcon : PersonIcon,
     })),
   ];
-  const options = entity?.account_type === ACCOUNT_TYPES.INVESTMENT
-    ? baseOptions.map((option) => existingInvestmentForOwnership(existingAccounts, option.value)
-      ? { ...option, disabled: true, description: "Sudah ada" }
-      : option)
-    : baseOptions;
+  const options = baseOptions;
   return <VisualChoiceGroup className="form-grid__full" legend="Kepemilikan *" name="account-ownership" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} columns={Math.min(options.length, 3)} mobileColumns={Math.min(options.length, 3)} compact wrapLabels required />;
 };
 
@@ -102,15 +100,15 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm }
       }));
     }} options={ACCOUNT_TYPE_OPTIONS} columns={4} mobileColumns={2} compact wrapLabels />
     {accountTypeUsesAutomaticName(accountForm.account_type) ? <div className={`${styles.autoNameGroup} form-grid__full`}>
-      <p className={styles.autoNameNote}>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Rekening Investasi tidak memerlukan nama manual. Kartu dibedakan dengan kepemilikan: Pribadi, Pasangan, atau Bersama." : "Nama rekening dibuat otomatis dari jenis atau provider. Kepemilikan tetap menentukan apakah rekening Bersama atau Pribadi."}</p>
-      {accountForm.account_type !== ACCOUNT_TYPES.INVESTMENT ? <details className={styles.qualifierDisclosure}>
-        <summary>Butuh lebih dari satu? Tambah nama pembeda</summary>
+      <p className={styles.autoNameNote}>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Rekening Investasi dipakai sebagai RDN. Tambahkan nama pembeda bila Anda memiliki lebih dari satu RDN dengan kepemilikan yang sama." : "Nama rekening dibuat otomatis dari jenis atau provider. Kepemilikan tetap menentukan apakah rekening Bersama atau Pribadi."}</p>
+      <details className={styles.qualifierDisclosure} open={accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? true : undefined}>
+        <summary>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Nama pembeda RDN" : "Butuh lebih dari satu? Tambah nama pembeda"}</summary>
         <label className="field">
           <span>Nama pembeda (opsional)</span>
-          <input maxLength="60" placeholder="Contoh: Rumah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
-          <small>Biarkan kosong bila satu rekening jenis ini sudah cukup.</small>
+          <input maxLength="60" placeholder={accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Contoh: BCA ••••1234" : "Contoh: Rumah"} value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
+          <small>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Contoh label: BCA ••••1234 · Pribadi. Nama canonical rekening tetap dibuat otomatis sebagai Investasi." : "Biarkan kosong bila satu rekening jenis ini sudah cukup."}</small>
         </label>
-      </details> : null}
+      </details>
     </div> : <label className="field form-grid__full">
       <span>Nama rekening *</span>
       <input required maxLength="100" placeholder="Contoh: Tabungan nikah" value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
@@ -119,9 +117,9 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm }
   </>
 );
 
-const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, currentOwnerLabel, updateAccountForm, existingAccounts }) => (
+const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, currentOwnerLabel, updateAccountForm }) => (
   <>
-    <AccountOwnershipField entity={accountForm} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} onChange={updateAccountForm} existingAccounts={existingAccounts} />
+    <AccountOwnershipField entity={accountForm} activeUsers={activeUsers} defaultOwnerUserId={defaultOwnerUserId} currentOwnerLabel={currentOwnerLabel} onChange={updateAccountForm} />
     {accountForm.account_type === "bank" ? <BankTemplateField showHelper={false} value={accountForm.bank_template} onChange={(bankTemplate) => updateAccountForm({ bank_template: bankTemplate })} /> : null}
     {accountForm.account_type === "ewallet" ? <EwalletProviderField showHelper={false} value={accountForm.ewallet_template} onChange={(ewalletTemplate) => updateAccountForm({ ewallet_template: ewalletTemplate })} /> : null}
     <MoneyInput id="initial-balance" label="Saldo awal" value={accountForm.initial_balance} onChange={(value) => updateAccountForm({ initial_balance: value })} />
@@ -136,8 +134,8 @@ const InvestmentDuplicateNotice = ({ account }) => {
   if (!account) return null;
   const ownership = investmentAccountOwnershipLabel(account);
   const message = Number(account.allow_negative)
-    ? `Rekening Investasi ${ownership} sudah ada, tetapi belum bisa dipakai sebagai RDN karena izin saldo negatif masih aktif. Edit rekening tersebut dan nonaktifkan saldo negatif, atau pilih kepemilikan lain.`
-    : `Rekening Investasi ${ownership} sudah ada. Gunakan rekening tersebut sebagai RDN atau pilih kepemilikan lain.`;
+    ? `RDN ${ownership} dengan nama pembeda yang sama sudah ada, tetapi belum bisa dipakai karena izin saldo negatif masih aktif. Edit rekening tersebut atau gunakan nama pembeda lain.`
+    : `RDN ${ownership} dengan nama pembeda yang sama sudah ada. Gunakan rekening tersebut atau masukkan nama pembeda lain.`;
   return <div className="notice notice--warning form-grid__full" role="status">{message}</div>;
 };
 
@@ -180,7 +178,11 @@ const EditEwalletFields = ({ editAccount, updateEditAccount }) => {
 const EditAccountFields = ({ editAccount, updateEditAccount, activeUsers, defaultOwnerUserId, currentOwnerLabel }) => (
   <>
     {editAccount?.account_type === ACCOUNT_TYPES.INVESTMENT
-      ? <p className={`${styles.autoNameNote} form-grid__full`}>Rekening Investasi tidak memakai nama manual; kartu ditampilkan sebagai Pribadi, Pasangan, atau Bersama sesuai kepemilikan.</p>
+      ? <label className="field form-grid__full">
+        <span>Nama pembeda RDN (opsional)</span>
+        <input maxLength="60" placeholder="Contoh: BCA ••••1234" value={editAccount?.name || ""} onChange={(event) => updateEditAccount({ name: event.target.value })} />
+        <small>Nama canonical tetap Investasi; pembeda ini membantu saat Anda memiliki lebih dari satu RDN dengan kepemilikan yang sama.</small>
+      </label>
       : <label className="field form-grid__full"><span>Nama rekening *</span><input required maxLength="100" value={editAccount?.name || ""} onChange={(event) => updateEditAccount({ name: event.target.value })} /></label>}
     <EditBankFields editAccount={editAccount} updateEditAccount={updateEditAccount} />
     <EditEwalletFields editAccount={editAccount} updateEditAccount={updateEditAccount} />

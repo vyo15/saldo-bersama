@@ -60,6 +60,7 @@ const initialTransactionForm = ({ initialType, initialSourceAccountId, initialDr
   return {
     ...base,
     transaction_type: transactionType,
+    transaction_date: String(source.transaction_date || base.transaction_date),
     amount: source.amount ? String(source.amount) : "",
     source_account_id: source.source_account_id ? String(source.source_account_id) : base.source_account_id,
     destination_account_id: String(source.destination_account_id || ""),
@@ -181,8 +182,8 @@ const prepareTransactionSubmission = ({ form, transaction, isIncome, confirmatio
   };
 };
 
-const finalizeTransactionSave = async ({ saved, transaction, form, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters }) => {
-  invalidate(["transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
+const finalizeTransactionSave = async ({ saved, transaction, form, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters }) => {
+  invalidate(["transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "dashboard.overview", "investments.overview", "app.initialState"]);
   await Promise.allSettled([refreshOverview(), Promise.resolve().then(() => onSaved?.(saved))]);
   setters.setSubmitState({ status: "success", error: null });
   const created = !transaction;
@@ -196,6 +197,7 @@ const finalizeTransactionSave = async ({ saved, transaction, form, refreshOvervi
       amount,
       sourceAccountId: String(saved?.source_account_id || form.source_account_id || ""),
       destinationAccountId: String(saved?.destination_account_id || form.destination_account_id || ""),
+      continuation: continuation && typeof continuation === "object" ? continuation : null,
     });
     return true;
   }
@@ -203,7 +205,7 @@ const finalizeTransactionSave = async ({ saved, transaction, form, refreshOvervi
   return false;
 };
 
-const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
+const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault();
   const formElement = event.currentTarget;
   const submission = prepareTransactionSubmission({ form, transaction, isIncome, confirmation, envelopes, forceOverspendNote });
@@ -234,7 +236,7 @@ const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, appro
     }
     const saveTransaction = transaction ? updateTransaction : createTransaction;
     const saved = await saveTransaction(validation.value, { idempotencyKey: idempotencyKeyRef.current, rowVersion: transaction?.row_version });
-    const keepOpen = await finalizeTransactionSave({ saved, transaction, form, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters });
+    const keepOpen = await finalizeTransactionSave({ saved, transaction, form, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters });
     if (!keepOpen) onClose();
   } catch (error) { handleTransactionError(error, setters); }
 };
@@ -395,6 +397,7 @@ const TransactionForm = ({
   initialType = TRANSACTION_TYPES.EXPENSE,
   initialSourceAccountId = "",
   initialDraft = null,
+  continuation = null,
   lockType = false,
   transaction = null,
   onSaved,
@@ -471,7 +474,7 @@ const TransactionForm = ({
     setForm((current) => ({ ...current, envelope_period_id: nextId }));
   };
   const setters = { setErrors, setConfirmation, setSubmitState, setForceOverspendNote };
-  const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, approvalRequired, envelopes: data.envelopes, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef });
+  const handleSubmit = useTransactionSubmit({ form, transaction, confirmation, isIncome, approvalRequired, envelopes: data.envelopes, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef });
   const submitting = submitState.status === "submitting";
 
   useSmartAllocationSelection({ open, transaction, allocationMode, candidates: allocationCandidates, form, setForm, setErrors });

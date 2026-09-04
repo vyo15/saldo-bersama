@@ -78,7 +78,7 @@ test("quick transfer dapat mengunci jenis, mengisi rekening sumber, dan menyegar
   assert.match(text, /submitLabel/);
   assert.match(text, /submittingLabel/);
   assert.match(text, /notifyOnSuccess = true/);
-  assert.match(text, /"transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly", "dashboard\.overview", "app\.initialState"/);
+  assert.match(text, /"transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly", "dashboard\.overview", "investments\.overview", "app\.initialState"/);
 });
 
 

@@ -34,9 +34,14 @@ const bridgeFailureText = (bridge = {}) => {
   return messages[code] || "Bridge Google sudah dikonfigurasi, tetapi signed health check gagal. Periksa deployment Apps Script, shared secret, dan koneksi server.";
 };
 
-const unavailableIntegration = (configured) => configured
-  ? { ready: true, label: "Siap", tone: "active", text: "Integrasi siap digunakan." }
-  : { ready: false, label: "Belum siap", tone: "warning", text: "Integrasi Google belum aktif pada runtime ini." };
+const unavailableIntegration = (configured) => ({
+  ready: false,
+  label: configured ? "Belum terverifikasi" : "Belum siap",
+  tone: "warning",
+  text: configured
+    ? "Integrasi Google sudah dikonfigurasi, tetapi status Google bridge belum dapat diverifikasi."
+    : "Integrasi Google belum aktif pada runtime ini.",
+});
 
 const providerResourceDescriptor = (provider) => {
   const descriptors = {
@@ -69,13 +74,14 @@ export const integrationProviderPresentation = (integration, provider) => {
   if (!bridge.configured) {
     return { ready: false, label: "Belum siap", tone: "warning", text: "Bridge Google belum dikonfigurasi pada environment server." };
   }
-  if (bridge.checked && !bridge.reachable) {
+  if (!bridge.checked) {
+    return { ready: false, label: "Belum terverifikasi", tone: "warning", text: "Status Google bridge belum selesai diverifikasi. Periksa kembali sebelum menjalankan operasi berisiko." };
+  }
+  if (!bridge.reachable) {
     return { ready: false, label: "Gangguan", tone: "danger", text: bridgeFailureText(bridge), errorCode: bridge.errorCode || bridge.liveness?.errorCode || null };
   }
-  if (bridge.checked) {
-    const blocked = checkedBridgePresentation(bridge, provider);
-    if (blocked) return blocked;
-  }
+  const blocked = checkedBridgePresentation(bridge, provider);
+  if (blocked) return blocked;
   if (!configured) return { ready: false, label: "Belum terverifikasi", tone: "warning", text: "Kesiapan integrasi Google belum dapat diverifikasi." };
   const descriptor = providerResourceDescriptor(provider);
   return {

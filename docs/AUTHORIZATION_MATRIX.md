@@ -41,6 +41,7 @@
 | `investments.instruments.list` | Ya | Ya |
 | `investments.portfolios.create` | Ya | Ya |
 | `investments.instruments.upsert` | Ya | Tidak |
+| `investments.openingPositions.create` | Ya | Ya |
 | `investments.trades.buy` | Ya | Ya |
 | `investments.trades.sell` | Ya | Ya |
 | `investments.valuations.update` | Ya | Ya |
@@ -147,7 +148,7 @@
 - Kedua role boleh membaca `investments.overview` dan registry instrumen. Portfolio mengikuti readability rekening existing; portfolio personal pasangan dapat dibaca karena transparency policy dua pengguna, tetapi backend menandai capability operasional secara terpisah.
 - Administrator dan Member boleh membuat portfolio hanya pada rekening `investment` yang **operable** bagi actor. Member tidak memperoleh capability atas RDN personal pasangan hanya karena mengetahui ID-nya.
 - Buy, sell, valuation, dan reconciliation boleh dilakukan Administrator atau Member hanya bila portfolio/RDN shared atau personal milik actor. Setiap mutation membaca ulang portfolio + ownership backend, memerlukan idempotency, dan memakai `row_version`; frontend `can_operate` hanya affordance UX.
-- Registry instrumen (`investments.instruments.upsert`) dan correction (`investments.corrections.create`) Administrator-only. Correction tidak boleh menjadi backdoor Member untuk menambah holding/cash atau menulis ulang histori.
+- Registry instrumen (`investments.instruments.upsert`) dan correction reguler (`investments.corrections.create`) Administrator-only. `investments.openingPositions.create` tersedia bagi actor yang dapat mengoperasikan portfolio hanya selama fase posisi awal masih terbuka; backend menolak penggunaan opening position sebagai backdoor untuk menulis ulang histori setelah aktivitas reguler. Correction tidak boleh menjadi backdoor Member untuk menambah holding/cash atau menulis ulang histori.
 - Status instrumen `inactive` melarang buy baru tetapi tidak menghapus hak menjual holding existing yang memang sudah dimiliki actor pada portfolio operable.
 - Rekonsiliasi hanya membandingkan snapshot as-of tanggal yang diminta dan tidak memperluas authorization atau melakukan auto-adjust. Mismatch harus tetap eksplisit sampai Administrator memilih correction yang diaudit.
 
