@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FiChevronDown, FiChevronLeft, FiChevronRight, FiFilter, FiSearch, FiX } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiFilter, FiSearch, FiX } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
+import { SelectionControl } from "../../../components/common/SelectionField.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../../domain/dates.js";
 import { formatCompactRupiah } from "../../../domain/money.js";
@@ -158,22 +159,22 @@ export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, s
         </div>
       </section>
       <div className={styles.filterSettings}>
-        <label className={styles.filterSetting}>
+        <div className={styles.filterSetting}>
           <span className={styles.filterSettingCopy}><strong>Alokasi Dana</strong><small>Sumber alokasi transaksi</small></span>
-          <span className={styles.filterSelect}><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))} aria-label="Filter Alokasi Dana"><option value="all">Semua</option><option value="unallocated">Belum dialokasikan</option><option value="allocated">Menggunakan alokasi</option></select><FiChevronDown aria-hidden="true" /></span>
-        </label>
-        <label className={styles.filterSetting}>
+          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.allocation} onChange={(allocation) => setAdvancedDraft((current) => ({ ...current, allocation }))} ariaLabel="Filter Alokasi Dana" options={[{ value: "all", label: "Semua" }, { value: "unallocated", label: "Belum dialokasikan" }, { value: "allocated", label: "Menggunakan alokasi" }]} /></span>
+        </div>
+        <div className={styles.filterSetting}>
           <span className={styles.filterSettingCopy}><strong>Rekening</strong><small>Rekening yang digunakan</small></span>
-          <span className={styles.filterSelect}><select value={advancedDraft.account} onChange={(event) => setAdvancedDraft((current) => ({ ...current, account: event.target.value }))} aria-label="Filter rekening"><option value="all">Semua</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select><FiChevronDown aria-hidden="true" /></span>
-        </label>
-        <label className={styles.filterSetting}>
+          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} ariaLabel="Filter rekening" searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item) }))]} /></span>
+        </div>
+        <div className={styles.filterSetting}>
           <span className={styles.filterSettingCopy}><strong>Kategori</strong><small>Kategori transaksi</small></span>
-          <span className={styles.filterSelect}><select value={advancedDraft.category} onChange={(event) => setAdvancedDraft((current) => ({ ...current, category: event.target.value }))} aria-label="Filter kategori"><option value="all">Semua</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select><FiChevronDown aria-hidden="true" /></span>
-        </label>
-        <label className={styles.filterSetting}>
+          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} ariaLabel="Filter kategori" searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name }))]} /></span>
+        </div>
+        <div className={styles.filterSetting}>
           <span className={styles.filterSettingCopy}><strong>Pencatat</strong><small>Siapa yang mencatat</small></span>
-          <span className={styles.filterSelect}><select value={advancedDraft.creator} onChange={(event) => setAdvancedDraft((current) => ({ ...current, creator: event.target.value }))} aria-label="Filter pencatat"><option value="all">Semua</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select><FiChevronDown aria-hidden="true" /></span>
-        </label>
+          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} ariaLabel="Filter pencatat" searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name }))]} /></span>
+        </div>
       </div>
     </Modal>
   </>;

@@ -9,7 +9,9 @@
 .formHeader h2 { margin: var(--space-2) 0 0; letter-spacing: -.02em; }
 .formHeader p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
 .refreshButton { width: var(--control-height-md); height: var(--control-height-md); padding: 0; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--surface); color: var(--primary); box-shadow: var(--shadow-control); cursor: pointer; transition: border-color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard); }
-.refreshButton:hover:not(:disabled) { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); background: var(--primary-soft); transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) {
+  .refreshButton:hover:not(:disabled) { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); background: var(--primary-soft); transform: translateY(-1px); }
+}
 .refreshButton:focus-visible, .accountSummary:focus-visible, .accountOption:focus-visible, .notesToggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .refreshButton:disabled { cursor: wait; opacity: .58; }
 .refreshButton[aria-busy="true"] svg { animation: reconciliation-spin var(--motion-spinner) linear infinite; }
@@ -17,7 +19,9 @@
 .form { min-width: 0; display: grid; gap: var(--space-3); }
 .accountChooser { min-width: 0; }
 .accountSummary { width: 100%; min-height: 58px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 14px; display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; align-items: center; gap: 9px; color: var(--text); background: var(--input); text-align: left; cursor: pointer; }
-.accountSummary:hover:not(:disabled) { border-color: var(--border-strong); }
+@media (hover: hover) and (pointer: fine) {
+  .accountSummary:hover:not(:disabled) { border-color: var(--border-strong); }
+}
 .accountSummaryIcon { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; color: var(--primary); background: var(--primary-soft); }
 .accountSummaryIcon svg { width: 17px; height: 17px; }
 .accountSummaryCopy { min-width: 0; display: grid; gap: 2px; }
@@ -28,7 +32,9 @@
 .accountOptions { max-height: 15rem; margin-top: 7px; overflow: auto; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); scrollbar-width: thin; }
 .accountOption { width: 100%; min-height: 52px; padding: 8px 2px; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent); display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text); background: transparent; text-align: left; cursor: pointer; }
 .accountOption:last-child { border-bottom: 0; }
-.accountOption:hover:not(:disabled) { background: color-mix(in srgb, var(--surface-soft) 72%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .accountOption:hover:not(:disabled) { background: color-mix(in srgb, var(--surface-soft) 72%, transparent); }
+}
 .accountOption > span { min-width: 0; display: grid; gap: 2px; }
 .accountOption strong { overflow: hidden; font-size: var(--font-size-sm); text-overflow: ellipsis; white-space: nowrap; }
 .accountOption small { color: var(--text-muted); font-size: var(--font-size-xs); }
@@ -77,18 +83,6 @@
   min-width: min(100%, 20rem);
 }
 
-.historyFilter select {
-  width: 100%;
-  min-height: var(--control-height-md);
-  padding: 0 36px 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-control);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
 
 .mobileHistoryList,
 .mobileHistoryCard,
@@ -147,7 +141,17 @@
 @keyframes reconciliation-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 820px) {
-  .differenceFlow :global(input), .notesField textarea, .historyFilter select { font-size: var(--mobile-native-control-font-size); }
+  .differenceFlow :global(input), .notesField textarea { font-size: var(--mobile-native-control-font-size); }
+  .accountOptions {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior: contain;
+  }
+  .accountOptions::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  .accountOption:active { background: var(--surface-soft); }
+  .formPanel,
+  .historyPanel { box-shadow: none; }
+  .historyPanel { margin-top: 2px; }
 }
 
 @media (max-width: 580px) {
@@ -165,7 +169,6 @@
   .historyHeader { align-items: center; flex-direction: row; gap: var(--space-3); }
   .historyHeader h2 { flex: 0 0 auto; }
   .historyFilter { min-width: 0; max-width: 11rem; margin-left: auto; }
-  .historyFilter select { min-height: var(--mobile-control-height); font-size: var(--mobile-native-control-font-size); }
   .mobileHistoryCard { padding: 14px; border-radius: 18px; }
   .mobileHistoryDifference { margin-top: 0; }
 }
@@ -179,4 +182,40 @@
 @media (prefers-reduced-motion: reduce) {
   .refreshButton, .accountSummaryChevron { transition: none; }
   .refreshButton[aria-busy="true"] svg { animation: none; }
+}
+
+.historyDisclosure { min-width: 0; }
+.historyDisclosureButton { display: none; }
+.historyDisclosureContent { min-width: 0; }
+
+@media (max-width: 820px) {
+  .historyDisclosure {
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-2);
+  }
+
+  .historyDisclosureButton {
+    width: 100%;
+    min-height: var(--mobile-control-height);
+    padding: .75rem .25rem;
+    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    touch-action: manipulation;
+  }
+
+  .historyDisclosureButton > span:first-child { min-width: 0; display: grid; gap: .15rem; }
+  .historyDisclosureButton strong { font-size: var(--font-size-sm); }
+  .historyDisclosureButton small { color: var(--text-muted); font-size: var(--font-size-xs); }
+  .historyDisclosureButton > span:last-child { color: var(--primary); font-size: 1.35rem; line-height: 1; }
+  .historyDisclosureButton:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+  .historyDisclosureButton:active { background: var(--surface-soft); }
+
+  .historyDisclosureContent { display: none; padding-top: var(--space-2); }
+  .historyDisclosureContent.isExpanded { display: block; }
 }

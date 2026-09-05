@@ -155,7 +155,8 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(componentCss, /\.loading-screen--content \{[^}]*min-height:\s*clamp\(12rem, 42dvh, 24rem\);/);
   assert.match(componentCss, /\.app-content \.loading-screen--page \.brand-lockup \{ display:\s*none; \}/);
   assert.match(responsiveCss, /\.app-content > \.loading-screen--page,\s*\n\s*\.app-content > \.loading-screen--content \{[^}]*min-height:\s*min\(54dvh, 28rem\);/s);
-  assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page \{[^}]*min-height:\s*calc\(100dvh - var\(--mobile-topbar-height\)/);
+  assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page,[\s\S]*?min-height:\s*calc\(100dvh - var\(--mobile-topbar-height\)/);
+  assert.match(responsiveCss, /\.app-content > \.route-content-enter > \.fatal-error,\s*\n\s*\.app-content > \.route-content-enter > \.centered-page/);
   assert.match(accountCss, /min-height:\s*calc\(100vh - env\(safe-area-inset-top\) - var\(--mobile-navigation-height\)/);
   assert.match(accountCss, /min-height:\s*calc\(100dvh - env\(safe-area-inset-top\) - var\(--mobile-navigation-height\)/);
   assert.match(loginCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);

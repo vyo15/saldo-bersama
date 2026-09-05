@@ -3,6 +3,7 @@ import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import InvestmentFormField from "./InvestmentFormField.jsx";
@@ -34,12 +35,7 @@ const signedShares = (value) => {
 };
 
 const InstrumentField = ({ form, onFieldChange, instruments, error }) => (
-  <InvestmentFormField id="investment-instrument" label="Saham" required error={error}>
-    <select value={form.instrument_id || ""} onChange={(event) => onFieldChange("instrument_id", event.target.value)}>
-      <option value="">Pilih saham</option>
-      {instruments.map((item) => <option key={item.instrument_id} value={item.instrument_id}>{item.ticker} · {item.name}</option>)}
-    </select>
-  </InvestmentFormField>
+  <SelectionField className={formStyles.field} label="Saham" required error={error} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} placeholder="Pilih saham" searchable searchPlaceholder="Cari kode atau nama saham…" options={instruments.map((item) => ({ value: item.instrument_id, label: item.ticker, meta: item.name }))} />
 );
 
 const NotesField = ({ id, label = "Catatan (opsional)", value, onChange, error }) => (
@@ -154,12 +150,7 @@ const CorrectionFields = ({ form, onFieldChange, instruments, errors }) => <>
   <InvestmentFormField id="investment-correction-date" label="Tanggal koreksi" required error={errors.correction_date}>
     <input type="date" max={TODAY()} value={form.correction_date} onChange={(event) => onFieldChange("correction_date", event.target.value)} />
   </InvestmentFormField>
-  <InvestmentFormField id="investment-correction-instrument" label="Saham (kosongkan untuk koreksi cash saja)" error={errors.instrument_id}>
-    <select value={form.instrument_id || ""} onChange={(event) => onFieldChange("instrument_id", event.target.value)}>
-      <option value="">Cash RDN saja</option>
-      {instruments.map((item) => <option key={item.instrument_id} value={item.instrument_id}>{item.ticker}</option>)}
-    </select>
-  </InvestmentFormField>
+  <SelectionField className={formStyles.field} label="Saham (kosongkan untuk koreksi cash saja)" error={errors.instrument_id} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} options={[{ value: "", label: "Cash RDN saja" }, ...instruments.map((item) => ({ value: item.instrument_id, label: item.ticker, meta: item.name }))]} searchable={instruments.length > 8} searchPlaceholder="Cari saham…" />
   <div className={formStyles.formRow}>
     <InvestmentFormField id="investment-share-delta" label="Delta lembar" error={errors.share_delta}><input step="1" type="number" value={form.share_delta || 0} onChange={(event) => onFieldChange("share_delta", event.target.value)} /></InvestmentFormField>
     <InvestmentFormField id="investment-cost-basis-delta" label="Delta cost basis" error={errors.cost_basis_delta}><input step="1" type="number" value={form.cost_basis_delta || 0} onChange={(event) => onFieldChange("cost_basis_delta", event.target.value)} /></InvestmentFormField>

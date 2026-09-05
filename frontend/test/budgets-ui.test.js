@@ -54,7 +54,8 @@ test("form Kebutuhan mempertahankan validasi nominal dan kategori aktif tanpa me
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
   assert.match(page, /item\.status === "active" && item\.transaction_type === "expense"/);
   assert.match(page, /!lockedEnvelope \? <label className="field"><span>Peringatan saat terpakai \(%\)<\/span><input type="number" min="50" max="100"/);
-  assert.match(page, /<span>Kategori \*<\/span>/);
+  assert.match(page, /SelectionField label="Kategori" required/);
+  assert.doesNotMatch(page, /<select\b/);
   assert.match(page, /label="Anggaran"/);
   assert.match(page, /budgetOwnershipUpdates/);
   assert.match(page, /\{ \.\.\.nextForm, amount: "", warning_threshold: 80 \}/);
@@ -96,9 +97,18 @@ test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesu
     read("src/features/allocations/allocationPresentation.js"),
   ]);
 
-  assert.match(dialogs, /Alokasi untuk apa\? \*/);
-  assert.match(dialogs, /label="Dana awal alokasi"/);
+  assert.match(dialogs, /Untuk apa\? \*/);
+  assert.match(dialogs, /label="Ambil dana dari"/);
+  assert.match(dialogs, /legend="Digunakan oleh"/);
+  assert.match(dialogs, /label="Dana awal"/);
   assert.match(dialogs, /id="envelope-default"[\s\S]*required/);
+  assert.match(dialogs, /Tersedia setelah dialokasikan/);
+  assert.match(dialogs, /Dana tersedia kurang/);
+  assert.match(dialogs, /disabled=\{insufficientAmount\}/);
+  assert.ok(dialogs.indexOf("Untuk apa? *") < dialogs.indexOf('label="Ambil dana dari"'));
+  assert.ok(dialogs.indexOf('label="Ambil dana dari"') < dialogs.indexOf('legend="Digunakan oleh"'));
+  assert.ok(dialogs.indexOf('legend="Digunakan oleh"') < dialogs.indexOf('label="Dana awal"'));
+  assert.doesNotMatch(dialogs, /<select\b/);
   assert.match(detail, /Total kebutuhan/);
   assert.match(detail, /Dana alokasi/);
   assert.match(detail, /Dana tidak berubah otomatis/);

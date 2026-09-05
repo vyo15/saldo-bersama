@@ -31,9 +31,7 @@
   border-bottom: 0;
 }
 
-.holdingCard:hover {
-  background: color-mix(in srgb, var(--surface-soft) 74%, transparent);
-}
+@media (hover: hover) and (pointer: fine) { .holdingCard:hover { background: color-mix(in srgb, var(--surface-soft) 74%, transparent); } }
 
 .holdingIdentity {
   display: flex;

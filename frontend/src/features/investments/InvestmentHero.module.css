@@ -175,9 +175,7 @@
   display: none;
 }
 
-.heroDetails > summary:hover {
-  background: var(--primary-soft);
-}
+@media (hover: hover) and (pointer: fine) { .heroDetails > summary:hover { background: var(--primary-soft); } }
 
 .heroDetails > summary:focus-visible {
   outline: 3px solid var(--focus-ring);

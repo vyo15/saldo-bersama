@@ -72,9 +72,11 @@
   font-size: var(--font-size-xs);
 }
 
-.filterButton:hover {
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .filterButton:hover {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    color: var(--text);
+  }
 }
 
 .filterButton:focus-visible {
@@ -134,8 +136,8 @@
   font-size: var(--font-size-xs);
 }
 
-.kindTab:hover {
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .kindTab:hover { color: var(--text); }
 }
 
 .kindTab:focus-visible {
@@ -411,8 +413,10 @@
   transition: border-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing);
 }
 
-.manageButton:hover {
-  border-color: var(--primary); color: var(--primary); background: var(--primary-soft);
+@media (hover: hover) and (pointer: fine) {
+  .manageButton:hover {
+    border-color: var(--primary); color: var(--primary); background: var(--primary-soft);
+  }
 }
 
 .manageButton:focus-visible {
@@ -492,9 +496,19 @@
   }
 
   .scheduleCard {
-    padding: var(--mobile-card-padding);
+    padding: 14px;
+    gap: 10px;
+    border-radius: var(--mobile-card-radius);
     box-shadow: none;
   }
+
+  .amountBlock {
+    padding: 9px 10px;
+    border-radius: 12px;
+  }
+
+  .actions { padding-top: 8px; }
+  .managePanel { padding: 10px; border-radius: 12px; }
 
   .metaGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

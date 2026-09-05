@@ -18,7 +18,9 @@
 .mobile-finance-user__copy span { color: var(--on-hero-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: capitalize; }
 .mobile-finance-hero__actions { display: flex; gap: 6px; flex-shrink: 0; }
 .mobile-hero-button { position: relative; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--glass-surface); color: var(--on-hero); backdrop-filter: blur(10px); cursor: pointer; text-decoration: none; }
-.mobile-hero-button:hover:not(:disabled) { background: var(--glass-hover); }
+@media (hover: hover) and (pointer: fine) {
+  .mobile-hero-button:hover:not(:disabled) { background: var(--glass-hover); }
+}
 .mobile-hero-button:disabled { cursor: wait; opacity: .62; }
 .mobile-hero-button svg { width: 18px; height: 18px; }
 .mobile-hero-button.is-refreshing svg { animation: mobile-finance-spin var(--motion-spinner) linear infinite; }
@@ -27,7 +29,9 @@
 .mobile-finance-balance-label { min-height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mobile-finance-balance-label > span { color: var(--on-hero-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 .mobile-balance-visibility { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; display: grid; place-items: center; background: transparent; color: var(--on-hero-soft); cursor: pointer; }
-.mobile-balance-visibility:hover { background: var(--glass-surface); }
+@media (hover: hover) and (pointer: fine) {
+  .mobile-balance-visibility:hover { background: var(--glass-surface); }
+}
 .mobile-balance-visibility svg { width: 19px; height: 19px; }
 .mobile-finance-balance { min-height: 35px; display: flex; align-items: center; }
 .mobile-finance-balance :global(.money), .mobile-finance-balance > span { color: var(--on-hero); font-size: clamp(27px, 8vw, 32px); line-height: 1.08; letter-spacing: -.045em; font-weight: var(--font-weight-bold); }
@@ -48,9 +52,15 @@
 .mobile-quick-action > span { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; color: var(--primary); background: var(--primary-soft); transition: transform var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard); }
 .mobile-quick-action--recurring > span { color: var(--text-soft); background: var(--surface-strong); }
 .mobile-quick-action--goal > span { color: var(--positive); background: var(--positive-soft); }
-.mobile-quick-action:hover > span { background: color-mix(in srgb, var(--primary-soft) 88%, var(--surface)); }
-.mobile-quick-action--recurring:hover > span { background: color-mix(in srgb, var(--surface-strong) 88%, var(--surface)); }
-.mobile-quick-action--goal:hover > span { background: color-mix(in srgb, var(--positive-soft) 88%, var(--surface)); }
+@media (hover: hover) and (pointer: fine) {
+  .mobile-quick-action:hover > span { background: color-mix(in srgb, var(--primary-soft) 88%, var(--surface)); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .mobile-quick-action--recurring:hover > span { background: color-mix(in srgb, var(--surface-strong) 88%, var(--surface)); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .mobile-quick-action--goal:hover > span { background: color-mix(in srgb, var(--positive-soft) 88%, var(--surface)); }
+}
 .mobile-quick-action:active > span { transform: scale(.94); }
 .mobile-quick-action:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: 12px; }
 .mobile-quick-action svg { width: 20px; height: 20px; }
@@ -69,6 +79,7 @@
 .mobile-next-action[data-severity="warning"] { border-color: color-mix(in srgb, var(--warning) 20%, var(--border)); background: color-mix(in srgb, var(--warning-soft) 46%, var(--surface)); }
 .mobile-next-action[data-severity="danger"] { border-color: color-mix(in srgb, var(--negative) 22%, var(--border)); background: color-mix(in srgb, var(--negative-soft) 46%, var(--surface)); }
 .mobile-next-action:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.mobile-next-action:active { transform: scale(.994); }
 .mobile-next-action__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: var(--info); background: var(--info-soft); }
 .mobile-next-action[data-severity="warning"] .mobile-next-action__icon { color: var(--warning); background: var(--warning-soft); }
 .mobile-next-action[data-severity="danger"] .mobile-next-action__icon { color: var(--negative); background: var(--negative-soft); }
@@ -146,7 +157,8 @@
 .mobile-unallocated-note small { color: var(--warning); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 
 /* Responsive dashboard capability parity */
-.mobile-transaction-item:hover { background: var(--surface-soft); }
+@media (hover: hover) and (pointer: fine) { .mobile-transaction-item:hover { background: var(--surface-soft); } }
+.mobile-transaction-item:active { background: var(--surface-soft); }
 .mobile-transaction-item:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: 12px; }
 .mobile-transaction-copy { min-width: 0; }
 .mobile-transaction-copy strong,
@@ -212,7 +224,7 @@
 .shared-period-pill { padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: var(--font-weight-semibold); }
 .shared-period-pill svg { color: var(--primary); }
 .shared-icon-action { width: 44px; padding: 0; display: grid; place-items: center; cursor: pointer; }
-.shared-icon-action:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+@media (hover: hover) and (pointer: fine) { .shared-icon-action:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); } }
 .shared-icon-action:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 .shared-dashboard__layout { min-width: 0; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(310px, .82fr); align-items: start; gap: 16px; }
@@ -231,9 +243,10 @@
 .shared-widget__heading a { min-height: 44px; display: inline-flex; align-items: center; }
 
 .shared-account-panel { padding: 16px 16px 12px; overflow: hidden; }
-.shared-account-carousel { margin-top: 14px; padding: 2px 2px 12px; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: inline mandatory; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.shared-account-carousel { margin-top: 14px; padding: 2px 2px 12px; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: inline mandatory; scrollbar-width: none; }
+.shared-account-carousel::-webkit-scrollbar { display: none; }
 .shared-account-card { flex: 0 0 clamp(245px, 30%, 310px); min-width: 0; padding: 7px; border: 1px solid var(--border); border-radius: 18px; display: grid; gap: 8px; scroll-snap-align: start; background: var(--surface-soft); color: var(--text); text-align: left; cursor: pointer; transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), background var(--motion-fast); }
-.shared-account-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); background: var(--surface); }
+@media (hover: hover) and (pointer: fine) { .shared-account-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); background: var(--surface); } }
 .shared-account-card.is-selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary-soft) 40%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 13%, transparent), var(--shadow-control); }
 .shared-account-card:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .shared-account-card > div:first-child { border-radius: 13px; box-shadow: 0 10px 24px color-mix(in srgb, var(--shadow-ink) 24%, transparent); }
@@ -260,9 +273,8 @@
 .shared-transaction-tools label { position: relative; min-height: var(--control-height-md); border: 1px solid var(--border); border-radius: 11px; display: flex; align-items: center; gap: 6px; background: var(--surface-soft); color: var(--text-muted); }
 .shared-transaction-tools label:first-child { min-width: 165px; padding: 0 10px; }
 .shared-transaction-tools label:not(:first-child) { min-width: 132px; padding: 0 9px; }
-.shared-transaction-tools input,
-.shared-transaction-tools select { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: var(--font-size-body); }
-.shared-transaction-tools select { appearance: none; padding-right: 14px; cursor: pointer; }
+.shared-transaction-tools input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: var(--font-size-body); }
+.shared-transaction-tools > :global(.field) { min-width: 132px; width: auto; }
 .shared-transaction-tools label > svg { flex: 0 0 auto; width: 14px; height: 14px; }
 .shared-transaction-tools label:not(:first-child) > svg { position: absolute; right: 8px; pointer-events: none; }
 .shared-transaction-tools > a { min-height: var(--control-height-md); padding: 0 6px; display: inline-flex; align-items: center; white-space: nowrap; }
@@ -273,8 +285,8 @@
 .shared-transaction-table td:nth-child(n+4) { text-align: right; }
 .shared-transaction-table td { padding: 10px 12px; border-top: 1px solid var(--border); color: var(--text-soft); vertical-align: middle; }
 .shared-transaction-table tbody tr { cursor: pointer; transition: background var(--motion-fast); }
-.shared-transaction-table tbody tr:hover,
 .shared-transaction-table tbody tr.is-selected { background: color-mix(in srgb, var(--primary-soft) 55%, transparent); }
+@media (hover: hover) and (pointer: fine) { .shared-transaction-table tbody tr:hover { background: color-mix(in srgb, var(--primary-soft) 55%, transparent); } }
 .shared-transaction-table td:first-child strong,
 .shared-transaction-table td:first-child small { display: block; white-space: nowrap; }
 .shared-transaction-table td:first-child strong { color: var(--text); font-size: var(--font-size-xs); }
@@ -494,8 +506,11 @@
 
 .mobile-shared-plan__grid { display: grid; gap: 10px; }
 .mobile-plan-card { display: flex; align-items: flex-start; gap: 11px; padding: 13px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-decoration: none; }
-.mobile-plan-card:hover { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
+@media (hover: hover) and (pointer: fine) {
+  .mobile-plan-card:hover { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
+}
 .mobile-plan-card:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.mobile-plan-card:active { background: var(--surface-soft); transform: scale(.994); }
 .mobile-plan-card__icon { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border-radius: 12px; background: var(--surface-soft); color: var(--primary); }
 .mobile-plan-card__copy { min-width: 0; flex: 1; display: grid; gap: 5px; }
 .mobile-plan-card__copy strong { font-size: 14px; }

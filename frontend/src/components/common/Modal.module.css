@@ -96,10 +96,12 @@
     transform var(--motion-fast) var(--motion-easing);
 }
 
-.closeButton:hover:not(:disabled) {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .closeButton:hover:not(:disabled) {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
 }
 
 .closeButton:disabled {

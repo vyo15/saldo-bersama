@@ -44,9 +44,9 @@ test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog 
   assert.match(transactions, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}, \{ enabled: mobileLayout \}\)/);
   assert.match(mobileHistory, /title="Filter transaksi"/);
   assert.match(mobileHistory, /title="Cari transaksi"/);
-  assert.match(mobileHistory, /aria-label="Filter rekening"/);
-  assert.match(mobileHistory, /aria-label="Filter kategori"/);
-  assert.match(mobileHistory, /aria-label="Filter pencatat"/);
+  assert.match(mobileHistory, /ariaLabel="Filter rekening"/);
+  assert.match(mobileHistory, /ariaLabel="Filter kategori"/);
+  assert.match(mobileHistory, /ariaLabel="Filter pencatat"/);
   assert.match(mobileHistory, /Belum dialokasikan/);
   assert.match(mobileHistory, /Terapkan filter/);
   assert.match(mobileStyles, /\.filterBar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--mobile-control-height\) var\(--mobile-control-height\);/);
@@ -54,7 +54,8 @@ test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog 
   assert.match(mobileStyles, /\.filterTypeGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(mobileStyles, /@media \(max-width: 360px\)[\s\S]*\.filterTypeGrid\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(mobileStyles, /\.filterSetting\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(116px, 44%\);/);
-  assert.match(mobileStyles, /\.filterSelect select\s*\{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(mobileStyles, /\.filterSelect > \* \{[^}]*width:\s*100%;[^}]*min-width:\s*0;/);
+  assert.doesNotMatch(mobileStyles, /\.filterSelect select/);
   assert.match(mobileStyles, /\.activeFilters button \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.match(mobileStyles, /\.rowCopy > small \{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/);
   assert.match(mobileStyles, /\.periodNav button \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);

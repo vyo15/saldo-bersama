@@ -42,9 +42,11 @@
     background-color var(--motion-fast) var(--motion-easing);
 }
 
-.accountPicker:hover:not(:disabled) {
-  border-color: var(--border-strong);
-  background: color-mix(in srgb, var(--surface-strong) 36%, var(--surface));
+@media (hover: hover) and (pointer: fine) {
+  .accountPicker:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background: color-mix(in srgb, var(--surface-strong) 36%, var(--surface));
+  }
 }
 
 .accountPicker:focus-visible {
@@ -139,7 +141,7 @@
     box-shadow var(--motion-fast) var(--motion-easing);
 }
 
-.note:hover { border-color: var(--border-strong); }
+@media (hover: hover) and (pointer: fine) { .note:hover { border-color: var(--border-strong); } }
 .note:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
 
 .amountCard {
@@ -209,7 +211,7 @@
     opacity var(--motion-fast) var(--motion-easing);
 }
 
-.submitButton:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) { .submitButton:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); } }
 .submitButton:active:not(:disabled) { transform: scale(.96); }
 .submitButton:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .submitButton:disabled { cursor: wait; opacity: .5; }

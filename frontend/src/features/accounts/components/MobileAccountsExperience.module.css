@@ -87,10 +87,16 @@
     font-weight: var(--font-weight-semibold);
   }
 
-.mobileStackHeaderButton:hover,
 .mobileStackHeaderButton:focus-visible {
     color: var(--primary);
     background: color-mix(in srgb, var(--on-hero) 7%, transparent);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .mobileStackHeaderButton:hover {
+      color: var(--primary);
+      background: color-mix(in srgb, var(--on-hero) 7%, transparent);
+    }
   }
 
 .mobileStackHeaderButton:focus-visible {
@@ -142,7 +148,7 @@
   }
 
 .mobileStackStage {
-    height: 27rem;
+    height: 29rem;
     position: relative;
     z-index: 2;
     overflow: hidden;
@@ -194,22 +200,22 @@
   }
 
 .mobileStackCard {
-    width: min(78vw, 19.1rem);
+    width: min(88vw, 22rem);
     aspect-ratio: 1.586 / 1;
     padding: 0;
     position: absolute;
     left: 50%;
     top: 50%;
-    overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--on-hero) 14%, transparent);
+    overflow: visible;
+    border: 0;
     border-radius: 1.375rem;
-    background: var(--account-mobile-card-surface);
+    background: transparent;
     color: var(--on-hero);
     text-align: left;
-    box-shadow: 0 1.75rem 3.9rem color-mix(in srgb, var(--shadow-ink) 46%, transparent);
+    box-shadow: none;
     transform-style: preserve-3d;
     backface-visibility: hidden;
-    contain: layout paint;
+    contain: layout;
     touch-action: auto;
     cursor: pointer;
   }
@@ -332,11 +338,18 @@
       color var(--motion-control) var(--ease-standard);
   }
 
-.mobileStackPickerButton:hover,
 .mobileStackPickerButton:focus-visible {
     border-color: color-mix(in srgb, var(--primary) 62%, var(--border));
     background: color-mix(in srgb, var(--on-hero) 9%, transparent);
     color: var(--primary);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .mobileStackPickerButton:hover {
+      border-color: color-mix(in srgb, var(--primary) 62%, var(--border));
+      background: color-mix(in srgb, var(--on-hero) 9%, transparent);
+      color: var(--primary);
+    }
   }
 
 .mobileStackPickerButton:focus-visible {
@@ -411,8 +424,10 @@
     background: var(--surface);
   }
 
-:global(:root[data-theme="light"]) .mobileStackHeaderButton:hover,
 :global(:root[data-theme="light"]) .mobileStackHeaderButton:focus-visible { background: var(--surface-strong); color: var(--primary); }
+@media (hover: hover) and (pointer: fine) {
+  :global(:root[data-theme="light"]) .mobileStackHeaderButton:hover { background: var(--surface-strong); color: var(--primary); }
+}
 
 :global(:root[data-theme="light"]) .mobileStackAmbient::before { background: radial-gradient(circle, color-mix(in srgb, var(--primary-soft) 72%, transparent), transparent 72%); }
 
@@ -429,21 +444,27 @@
     color: var(--text);
   }
 
-:global(:root[data-theme="light"]) .mobileStackPickerButton:hover,
 :global(:root[data-theme="light"]) .mobileStackPickerButton:focus-visible {
     border-color: var(--primary);
     background: var(--primary-soft);
     color: var(--primary);
   }
+@media (hover: hover) and (pointer: fine) {
+  :global(:root[data-theme="light"]) .mobileStackPickerButton:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+}
 }
 
 @media (max-width: 420px) {
 .mobileStackStage {
-    height: 26.5rem;
+    height: 28.5rem;
   }
 
 .mobileStackCard {
-    width: min(80vw, 19rem);
+    width: min(90vw, 21.5rem);
   }
 
 .mobileStackHeaderButton span {

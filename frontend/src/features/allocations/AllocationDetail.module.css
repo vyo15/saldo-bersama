@@ -43,9 +43,8 @@
   cursor: pointer;
 }
 
-.allocation-detail-back:hover {
-  background: var(--primary-soft);
-}
+@media (hover: hover) and (pointer: fine) { .allocation-detail-back:hover { background: var(--primary-soft); } }
+.allocation-detail-back:active { background: var(--primary-soft); }
 
 .allocation-detail-back:focus-visible {
   outline: 3px solid var(--focus-ring);
@@ -484,4 +483,9 @@
   .allocation-limit-row__actions :global(.button) span {
     display: none;
   }
+}
+
+@media (max-width: 820px) {
+  /* Planning owns the mobile app-level title; avoid a second web-page heading inside its tab panel. */
+  .allocation-embedded-header { display: none; }
 }

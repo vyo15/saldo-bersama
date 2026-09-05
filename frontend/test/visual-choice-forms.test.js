@@ -28,7 +28,7 @@ test("money in and money out use the same cash-note language with opposite arrow
   assert.match(source, /M12 9\.4v-6/);
 });
 
-test("fixed-option finance forms use the shared visual selector while dynamic lists stay selects", async () => {
+test("fixed-option finance forms use visual choices and dynamic app-owned lists use SelectionField", async () => {
   const sources = await Promise.all([
     Promise.all([read("features/transactions/TransactionForm.jsx"), read("features/transactions/components/TransactionFields.jsx")]).then((parts) => parts.join("\n")),
     read("features/accounts/components/AccountEditorDialogs.jsx"),
@@ -42,21 +42,29 @@ test("fixed-option finance forms use the shared visual selector while dynamic li
   for (const source of sources) assert.match(source, /VisualChoiceGroup/);
 
   assert.match(sources[0], /legend="Jenis transaksi"/);
-  assert.match(sources[0], /id="payment-method"/);
+  assert.match(sources[0], /SelectionControl/);
   assert.match(sources[1], /legend="Jenis rekening"/);
   assert.match(sources[1], /mobileColumns=\{2\}/);
-  assert.match(sources[1], /description=\{requestMode \? "Rekening menjadi aktif setelah Administrator menyetujui pengajuan\." : "Pilih jenis rekening\."\}/);
-  assert.match(sources[2], /legend="Berlaku untuk"/);
-  assert.match(sources[3], /legend="Sisa saat periode berakhir"/);
-  assert.match(sources[4], /legend="Jenis"/);
-  assert.match(sources[5], /legend="Jenis target"/);
-  assert.match(sources[6], /legend="Dipakai untuk transaksi"/);
-  assert.match(sources[7], /legend="Role"/);
+  assert.match(sources[1], /SelectionField/);
+  assert.match(sources[2], /label="Kategori"/);
+  assert.match(sources[3], /label="Ambil dana dari"/);
+  assert.match(sources[4], /label = "Rekening default"/);
+  assert.match(sources[5], /label="Rekening tujuan"/);
+  assert.match(sources[6], /SelectionField/);
+  assert.match(sources[7], /SelectionField/);
 
-  assert.match(sources[0], /<select id="source-account"/);
-  assert.match(sources[1], /<select value=\{value\}/);
-  assert.match(sources[2], /Kategori \*/);
-  assert.match(sources[3], /Rekening sumber/);
-  assert.match(sources[4], /Pilih rekening/);
-  assert.match(sources[5], /Rekening tujuan/);
+  for (const source of sources) assert.doesNotMatch(source, /<select\b/);
+});
+
+test("SelectionField keeps app-owned selection accessible without native browser dropdowns", async () => {
+  const [source, css] = await Promise.all([
+    read("components/common/SelectionField.jsx"),
+    read("components/common/SelectionField.module.css"),
+  ]);
+  assert.match(source, /aria-expanded=\{open\}/);
+  assert.match(source, /aria-pressed=\{isSelected\}/);
+  assert.match(source, /type="search"/);
+  assert.match(source, /document\.addEventListener\("keydown"/);
+  assert.match(css, /@media \(max-width: 820px\)/);
+  assert.match(css, /min-height: 44px/);
 });

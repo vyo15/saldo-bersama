@@ -206,6 +206,10 @@ const goalPageAccounts = (bootstrap, overview) => {
     .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) }));
 };
 
+const goalHeaderActions = ({ canCreate, itemCount, openCreate }) => (canCreate && itemCount
+  ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target</Button>
+  : null);
+
 const useGoalAttention = ({ attention, attentionGoalId, consumeAttention, items, resourceStatus, openMovement, attentionHandled }) => {
   useEffect(() => {
     if (attentionHandled.current || !attentionGoalId || resourceStatus !== "ready") return;
@@ -252,10 +256,11 @@ const GoalsPage = () => {
   const openReminder = (goal) => setReminderTarget({ entityType: "goal", entityId: goal.goal_id, name: goal.name, suggestedDate: goal.target_date });
   const openMovementWithPrefill = (goal, type) => { movement.openMovement(goal, type, type === "deposit" ? workflowPrefill : null); if (type === "deposit" && workflowPrefill) setWorkflowPrefill(null); };
   const actions = { openMovement: openMovementWithPrefill, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder };
+  const headerActions = goalHeaderActions({ canCreate, itemCount: items.length, openCreate: creation.openCreate });
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={canCreate && items.length ? <Button variant="primary" icon={FiPlus} onClick={creation.openCreate}>Buat target</Button> : null} />{setupCreated ? <div><CompactNotice tone="success" title="Penyiapan selesai." role="status">Rekening, kategori, Alokasi Dana, dan Target sudah dapat dipakai bersama alur transaksi.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Mulai catat transaksi</Button></div></div> : null}{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}{workflowPrefill ? <CompactNotice tone="success" title="Dana tersedia siap diarahkan ke Target." role="status">Pilih Target lalu tekan Setor dana. Rekening sumber dan nominal akan diprefill bila masih valid.</CompactNotice> : null}
-    <GoalSummary items={items} />
+    <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={headerActions} />{setupCreated ? <div><CompactNotice tone="success" title="Penyiapan selesai." role="status">Rekening, kategori, Alokasi Dana, dan Target sudah dapat dipakai bersama alur transaksi.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Mulai catat transaksi</Button></div></div> : null}{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}{workflowPrefill ? <CompactNotice tone="success" title="Dana tersedia siap diarahkan ke Target." role="status">Pilih Target lalu tekan Setor dana. Rekening sumber dan nominal akan diprefill bila masih valid.</CompactNotice> : null}
+    {items.length ? <GoalSummary items={items} /> : null}
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
     {(reminderTarget || creation.open || lifecycle.editGoal || movement.movement.goal || lifecycle.reverseTarget || lifecycle.archiveTarget || lifecycle.statusTarget) ? (
       <Suspense fallback={null}>

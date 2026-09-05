@@ -110,6 +110,16 @@ const recurringDialogOpen = ({ rules, payments, recovery }) => Boolean(
   || recovery.restoreOccurrenceTarget,
 );
 
+const recurringHeaderActions = ({ period, onPeriodChange, canManagePlanning, allItems, rules }) => (
+  <div className={styles.headerActions}>
+    <label className="field field--compact">
+      <span>Periode</span>
+      <input type="month" value={period} onChange={onPeriodChange} />
+    </label>
+    {canManagePlanning && allItems.length ? <Button variant="primary" icon={FiPlus} onClick={rules.openCreate}>Tambah jadwal</Button> : null}
+  </div>
+);
+
 const useRecurringEnvelopeSuggestion = ({ payment, setPayment, envelopeResource, budgetResource, paymentEnvelopes, budgets }) => {
   const autoEnvelopeKey = useRef("");
   const linkedPaymentBudget = linkedBudgetForRecurring(budgets, payment.item);
@@ -211,7 +221,8 @@ const RecurringPage = ({ embedded = false }) => {
   const { memberMode, canManagePlanning, ruleAccounts, budgetSuggestions } = recurringRulePlanningData({ accounts, budgets, user });
   const openReminder = (item) => setReminderTarget({ entityType: "recurring_occurrence", entityId: item.occurrence_id, name: item.name, suggestedDate: item.due_date });
   const actions = { openPayment: payments.openPayment, openReverse: payments.openReverse, openSkip: recovery.openSkip, openRestore: recovery.openRestore, openRuleEditor: rules.openRuleEditor, openArchive: rules.openArchive, openReminder, openCreate: rules.openCreate };
-  const headerActions = <div className={styles.headerActions}><label className="field field--compact"><span>Periode</span><input type="month" value={period} onChange={(event) => { setPeriod(event.target.value); setFilter("all"); setKind("expense"); setExpandedId(null); }} /></label>{canManagePlanning ? <Button variant="primary" icon={FiPlus} onClick={rules.openCreate}>Tambah jadwal</Button> : null}</div>;
+  const handlePeriodChange = (event) => { setPeriod(event.target.value); setFilter("all"); setKind("expense"); setExpandedId(null); };
+  const headerActions = recurringHeaderActions({ period, onPeriodChange: handlePeriodChange, canManagePlanning, allItems, rules });
 
   return (
     <div className="page-stack">

@@ -315,9 +315,11 @@
     background-color var(--motion-fast) var(--motion-easing);
 }
 
-.settingsBackLink:hover {
-  color: var(--primary);
-  background: var(--primary-soft);
+@media (hover: hover) and (pointer: fine) {
+  .settingsBackLink:hover {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
 }
 
 .settingsBackLink:focus-visible {
@@ -461,7 +463,10 @@
 }
 
 .settingsListRow:last-child { border-bottom: 0; }
-.settingsListRow:hover { background: var(--surface-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .settingsListRow:hover { background: var(--surface-soft); }
+}
+.settingsListRow:active { background: var(--surface-soft); }
 .settingsListRow:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 .settingsListIcon {
@@ -613,7 +618,9 @@
 
 /* Child pages keep their semantic h2 for aria-labelledby, while the layout provides the visible route h1. */
 .settingsRouteContent > .pageContent > .pageHeading:first-child > h2,
-.settingsRouteContent > .maintenanceHub > .pageHeading:first-child > h2 {
+.settingsRouteContent > .maintenanceHub > .pageHeading:first-child > h2,
+.settingsRouteContent > :global(.route-content-enter) > .pageContent > .pageHeading:first-child > h2,
+.settingsRouteContent > :global(.route-content-enter) > .maintenanceHub > .pageHeading:first-child > h2 {
   width: 1px;
   height: 1px;
   padding: 0;
@@ -653,7 +660,9 @@
 }
 
 button.serviceTile { cursor: pointer; }
-button.serviceTile:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
+@media (hover: hover) and (pointer: fine) {
+  button.serviceTile:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
+}
 button.serviceTile:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 button.serviceTile:disabled { cursor: default; opacity: 1; }
 
@@ -731,7 +740,10 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   transition: background-color var(--motion-fast) var(--motion-easing);
 }
 .preferenceItem:last-child { border-bottom: 0; }
-.preferenceItem:hover { background: var(--surface-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .preferenceItem:hover { background: var(--surface-soft); }
+}
+.preferenceItem:active { background: var(--surface-soft); }
 .preferenceCopy { min-width: 0; display: grid; gap: .2rem; }
 .preferenceCopy strong { font-size: var(--font-size-sm); }
 .preferenceCopy small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
@@ -960,7 +972,9 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   cursor: pointer;
   transition: border-color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard);
 }
-.resetScopeSelector > label:hover { border-color: var(--border-strong); }
+@media (hover: hover) and (pointer: fine) {
+  .resetScopeSelector > label:hover { border-color: var(--border-strong); }
+}
 .resetScopeSelector > label:focus-within { box-shadow: 0 0 0 3px var(--focus-ring); }
 .resetScopeSelector > label.isSelected {
   border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
@@ -1183,10 +1197,13 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   line-height: 1.25;
 }
 
-.maintenanceTab:hover {
-  background: color-mix(in srgb, var(--surface) 74%, var(--primary-soft) 26%);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .maintenanceTab:hover {
+    background: color-mix(in srgb, var(--surface) 74%, var(--primary-soft) 26%);
+    color: var(--text);
+  }
 }
+.maintenanceTab:active { background: color-mix(in srgb, var(--surface) 74%, var(--primary-soft) 26%); }
 
 .maintenanceTab:focus-visible {
   outline: 3px solid var(--focus-ring);
@@ -1276,11 +1293,14 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
     transform var(--motion-fast) var(--motion-easing);
 }
 
-.dataStorageCard:hover {
-  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
-  background: var(--primary-soft);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .dataStorageCard:hover {
+    border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+    background: var(--primary-soft);
+    transform: translateY(-1px);
+  }
 }
+.dataStorageCard:active { background: var(--primary-soft); }
 
 .dataStorageCard:focus-visible {
   outline: 3px solid var(--focus-ring);

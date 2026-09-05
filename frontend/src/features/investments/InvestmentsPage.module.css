@@ -40,8 +40,8 @@
   cursor: pointer;
 }
 
-.segment button:hover {
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .segment button:hover { color: var(--text); }
 }
 
 .segment button:focus-visible {

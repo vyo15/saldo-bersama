@@ -71,7 +71,6 @@
   --scrollbar-thumb: #afc1bb;
   --shadow-ink: #000000;
   /* Accounts-only visual tokens. Keep this section isolated until another feature genuinely shares the same semantic contract. */
-  --account-card-surface: #0a1016;
   --account-card-overlay: #03080c;
   --account-mobile-bg-start: #101413;
   --account-mobile-bg-mid: #0c1110;

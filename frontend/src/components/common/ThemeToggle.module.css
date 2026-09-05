@@ -20,10 +20,12 @@
     transform var(--motion-fast) var(--motion-easing);
 }
 
-.toggle:hover {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .toggle:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
 }
 
 .toggle:active { transform: scale(0.96); }
@@ -47,8 +49,10 @@
   backdrop-filter: blur(10px);
 }
 
-.hero:hover {
-  border-color: var(--glass-border);
-  background: var(--glass-hover);
-  color: var(--on-hero);
+@media (hover: hover) and (pointer: fine) {
+  .hero:hover {
+    border-color: var(--glass-border);
+    background: var(--glass-hover);
+    color: var(--on-hero);
+  }
 }

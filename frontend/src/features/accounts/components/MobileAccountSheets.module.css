@@ -24,11 +24,11 @@
     box-shadow var(--motion-control) var(--ease-standard);
 }
 
-.pickerItem:hover,
-.pickerItem:focus-visible {
-  border-color: var(--primary);
-  background: var(--surface-soft);
+.pickerItem:focus-visible { border-color: var(--primary); background: var(--surface-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .pickerItem:hover { border-color: var(--primary); background: var(--surface-soft); }
 }
+.pickerItem:active { background: var(--surface-soft); }
 
 .pickerItem:focus-visible {
   outline: 3px solid var(--focus-ring);

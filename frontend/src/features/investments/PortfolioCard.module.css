@@ -128,9 +128,11 @@
   color: var(--negative);
 }
 
-.quickActionSell:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--negative) 42%, var(--border));
-  background: color-mix(in srgb, var(--negative-soft) 82%, var(--surface));
+@media (hover: hover) and (pointer: fine) {
+  .quickActionSell:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--negative) 42%, var(--border));
+    background: color-mix(in srgb, var(--negative-soft) 82%, var(--surface));
+  }
 }
 
 .quickActionMore {
@@ -144,9 +146,11 @@
   transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing);
 }
 
-.quickActionMore:hover {
-  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-  background: var(--primary-soft);
+@media (hover: hover) and (pointer: fine) {
+  .quickActionMore:hover {
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    background: var(--primary-soft);
+  }
 }
 
 .quickActionMore:focus-visible {
@@ -206,9 +210,11 @@
   transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing);
 }
 
-.sheetAction:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
-  background: var(--primary-soft);
+@media (hover: hover) and (pointer: fine) {
+  .sheetAction:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+    background: var(--primary-soft);
+  }
 }
 
 .sheetAction:focus-visible {

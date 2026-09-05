@@ -23,7 +23,7 @@ const AllocationSummary = ({ items }) => {
     remaining: sum.remaining + Number(item.remaining_amount || 0),
   }), { allocated: 0, used: 0, reserved: 0, remaining: 0 });
 
-  if (!items.length) return <Card className={allocationClass("allocation-summary allocation-summary--empty")} aria-labelledby="allocation-summary-title"><div className={allocationClass("allocation-summary__content")}><span className={allocationClass("allocation-summary__eyebrow")} id="allocation-summary-title">Ringkasan Alokasi Dana</span><div className={allocationClass("allocation-summary__amount")}><Money value={0} /></div><p>Belum ada dana yang dialokasikan.</p></div><img className={allocationClass("allocation-summary__art")} src="/login/assets/mobile/wallet.webp" width="797" height="900" alt="" aria-hidden="true" draggable="false" decoding="async" /></Card>;
+  if (!items.length) return null;
 
   const usage = allocationUsage({ allocated_amount: totals.allocated, used_amount: totals.used, reserved_amount: totals.reserved });
   return <Card className={allocationClass("allocation-summary")} aria-labelledby="allocation-summary-title"><div className={allocationClass("allocation-summary__content")}><div className={allocationClass("allocation-summary__top")}><span className={allocationClass("allocation-summary__eyebrow")} id="allocation-summary-title">Ringkasan Alokasi Dana aktif</span><span className={allocationClass(`allocation-summary__status allocation-summary__status--${usage.tone}`)}>{usage.label}</span></div><div className={allocationClass("allocation-summary__amount")}><Money value={totals.remaining} tone={totals.remaining < 0 ? "negative" : "default"} /></div><p>Sisa dari <Money value={totals.allocated} /> yang sudah dialokasikan.</p><div className={allocationClass("allocation-summary__progress")}><ProgressBar value={usage.committed} max={totals.allocated} label="Pemakaian seluruh Alokasi Dana aktif" /></div><div className={allocationClass("allocation-summary__metrics")}><div><span>Terpakai + dipesan</span><strong><Money value={usage.committed} /></strong></div><div><span>Alokasi aktif</span><strong>{items.length} alokasi</strong></div></div></div><img className={allocationClass("allocation-summary__art")} src="/login/assets/mobile/wallet.webp" width="797" height="900" alt="" aria-hidden="true" draggable="false" decoding="async" /></Card>;
@@ -45,11 +45,11 @@ const AllocationCard = ({ item, onOpenActions, onReminder, onAdjust, canAdjust, 
   </Card>;
 };
 
-const AllocationCards = ({ items, totalItems, onOpenActions, onReminder, onAdjust, attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, canAdjustItem, canRemindItem, linkedBudgetsForItem, relatedRecurringForItem, openCreate }) => <section className={allocationClass("allocation-grid")} aria-label="Daftar Alokasi Dana aktif">{items.length ? items.map((item) => {
+const AllocationCards = ({ items, totalItems, onOpenActions, onReminder, onAdjust, attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, canAdjustItem, canRemindItem, linkedBudgetsForItem, relatedRecurringForItem, openCreate, clearFilter }) => <section className={allocationClass("allocation-grid")} aria-label="Daftar Alokasi Dana aktif">{items.length ? items.map((item) => {
   const needs = linkedBudgetsForItem(budgets, item);
   const scheduleCount = relatedRecurringForItem(recurringItems, budgets, item).length;
   return <AllocationCard key={item.envelope_period_id} item={item} onOpenActions={onOpenActions} onReminder={onReminder} onAdjust={onAdjust} canAdjust={canAdjustItem(item)} canRemind={canRemindItem(item)} attention={item.envelope_period_id === attentionEnvelopeId} onOpenDetail={onOpenDetail} needs={needs} scheduleCount={scheduleCount} />;
-}) : <EmptyState className={allocationClass("allocation-empty")} variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Belum ada Alokasi Dana aktif" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Pisahkan dana berdasarkan tujuan agar sisa yang benar-benar tersedia lebih mudah dipantau." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={!totalItems ? canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat Alokasi Dana</Button> : <Link className="button button--primary" to="/rekening">Lihat Rekening</Link> : null} />}</section>;
+}) : <EmptyState className={allocationClass("allocation-empty")} variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Belum ada Alokasi Dana aktif" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Pisahkan dana berdasarkan tujuan agar sisa yang benar-benar tersedia lebih mudah dipantau." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua Alokasi</Button> : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat Alokasi Dana</Button> : <Link className="button button--primary" to="/rekening">Lihat Rekening</Link>} />}</section>;
 
 const AllocationOverviewLayer = ({
   activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder, onAdjust,
@@ -57,16 +57,16 @@ const AllocationOverviewLayer = ({
   openCreate, openMove, reload, canAdjustItem, canRemindItem,
   linkedBudgetsForItem, relatedRecurringForItem,
 }) => <>
-  <AllocationSummary items={activeItems} />
-  <div className={allocationClass(`allocation-header-actions allocation-header-actions--${administratorMode ? "administrator" : "member"}`)}>
+  {activeItems.length ? <AllocationSummary items={activeItems} /> : null}
+  {activeItems.length ? <div className={allocationClass(`allocation-header-actions allocation-header-actions--${administratorMode ? "administrator" : "member"}`)}>
     {canCreate ? <Button className={allocationClass("allocation-header-actions__primary")} variant="primary" icon={FiPlus} onClick={openCreate}>Buat alokasi</Button> : null}
-    <Button icon={FiArrowRight} onClick={openMove} disabled={!canMove} aria-label="Pindahkan dana antar Alokasi Dana">Pindahkan dana</Button>
+    {canMove ? <Button icon={FiArrowRight} onClick={openMove} aria-label="Pindahkan dana antar Alokasi Dana">Pindahkan dana</Button> : null}
     <Button className={allocationClass("allocation-refresh-action")} icon={FiRefreshCw} onClick={reload} aria-label="Muat ulang Alokasi Dana">Muat ulang</Button>
-  </div>
+  </div> : null}
   <section className={allocationClass("allocation-active")} aria-labelledby="allocation-active-title">
     <div className={allocationClass("allocation-section-heading")}><h2 id="allocation-active-title">Alokasi aktif</h2>{activeItems.length ? <span>{filteredActiveItems.length} dari {activeItems.length}</span> : null}</div>
     {activeItems.length ? <div className={allocationClass("allocation-filters")} role="group" aria-label="Filter Alokasi Dana aktif">{ALLOCATION_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationClass(allocationFilter === filter.value ? "is-active" : "")} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}
-    <AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} onReminder={onReminder} onAdjust={onAdjust} attentionEnvelopeId={attentionEnvelopeId} budgets={budgets} recurringItems={recurringItems} onOpenDetail={onOpenDetail} canCreate={canCreate} canAdjustItem={canAdjustItem} canRemindItem={canRemindItem} linkedBudgetsForItem={linkedBudgetsForItem} relatedRecurringForItem={relatedRecurringForItem} openCreate={openCreate} />
+    <AllocationCards items={filteredActiveItems} totalItems={activeItems.length} onOpenActions={setActionTarget} onReminder={onReminder} onAdjust={onAdjust} attentionEnvelopeId={attentionEnvelopeId} budgets={budgets} recurringItems={recurringItems} onOpenDetail={onOpenDetail} canCreate={canCreate} canAdjustItem={canAdjustItem} canRemindItem={canRemindItem} linkedBudgetsForItem={linkedBudgetsForItem} relatedRecurringForItem={relatedRecurringForItem} openCreate={openCreate} clearFilter={() => setAllocationFilter("all")} />
   </section>
 </>;
 

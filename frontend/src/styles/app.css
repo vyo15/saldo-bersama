@@ -394,6 +394,22 @@
 
 .page-stack { display: grid; gap: 24px; }
 
+.route-content-enter {
+  min-width: 0;
+  width: 100%;
+  animation: route-content-enter var(--motion-fast) var(--ease-enter) both;
+  transform-origin: center top;
+}
+
+.route-loading-reserve {
+  min-height: clamp(12rem, 42dvh, 24rem);
+}
+
+@keyframes route-content-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .floating-add {
   position: fixed;
   right: 28px;
@@ -409,10 +425,24 @@
   color: var(--on-primary);
   box-shadow: var(--shadow-md);
   cursor: pointer;
+  touch-action: manipulation;
+  transition: box-shadow var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard);
+}
+
+.floating-add:active:not(:disabled) {
+  box-shadow: var(--shadow-sm);
+  transform: scale(.96);
 }
 
 .floating-add svg { width: 25px; height: 25px; }
 .mobile-navigation { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .route-content-enter { animation: none; }
+  .floating-add:active:not(:disabled),
+  .desktop-module-dock__link:hover,
+  .desktop-module-dock__link:focus-visible { transform: none; }
+}
 
 .app-shell,
 .desktop-app-header,

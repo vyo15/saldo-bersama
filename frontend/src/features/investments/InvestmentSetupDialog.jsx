@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { investmentRdnDisplayLabel } from "../../shared/presentation/account.js";
 import { investmentRdnAccountSetupState } from "../../shared/workflows/investmentContinuation.js";
@@ -26,12 +27,7 @@ const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, lock
   <InvestmentFormField id="investment-portfolio-source" label="Sumber catatan (opsional)" hint="Contoh: Ajaib, Stockbit, Bibit, atau nama aplikasi tempat investasi dicatat. Tidak ada koneksi atau sinkronisasi ke aplikasi investasi." error={fieldErrors.name}>
     <input maxLength="100" value={form.source_label || ""} placeholder="Contoh: Ajaib" onChange={(event) => onFieldChange("source_label", event.target.value)} />
   </InvestmentFormField>
-  <InvestmentFormField id="investment-rdn-account" label="Rekening RDN" required error={fieldErrors.rdn_account_id}>
-    <select value={form.rdn_account_id || ""} onChange={(event) => onFieldChange("rdn_account_id", event.target.value)} disabled={!accounts.length}>
-      <option value="">Pilih rekening jenis Investasi</option>
-      {accounts.map((item) => <option key={item.account_id} value={item.account_id}>{investmentRdnDisplayLabel(item)}</option>)}
-    </select>
-  </InvestmentFormField>
+  <SelectionField className={styles.field} label="Rekening RDN" required error={fieldErrors.rdn_account_id} value={form.rdn_account_id || ""} onChange={(accountId) => onFieldChange("rdn_account_id", accountId)} disabled={!accounts.length} placeholder="Pilih rekening jenis Investasi" searchable={accounts.length > 8} options={accounts.map((item) => ({ value: item.account_id, label: investmentRdnDisplayLabel(item) }))} />
   {accounts.length === 0 ? <div className={styles.setupHint} role="note">
     <span>Belum ada rekening Investasi aktif yang dapat dipakai sebagai RDN.</span>
     <RdnSetupLink locked={locked} needsRepair={needsRepair} />

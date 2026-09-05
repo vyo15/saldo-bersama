@@ -8,6 +8,7 @@ import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -93,7 +94,7 @@ const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, fi
         <div className={styles.searchRow}><label className="search-field"><FiSearch aria-hidden="true" /><input type="search" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari keterangan atau kategori" /><span className="sr-only">Cari transaksi</span></label><Button type="submit">Cari</Button></div>
         <div className={styles.filterRow}>
           <label className="field field--compact"><span className="sr-only">Periode transaksi</span><input type="month" max={currentMonthInJakarta()} value={filters.period} onChange={(event) => updateFilter("period", event.target.value)} aria-label="Periode transaksi" /></label>
-          <select value={filters.type} onChange={(event) => updateFilter("type", event.target.value)} aria-label="Filter jenis transaksi"><option value="all">Semua jenis</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="transfer">Transfer</option><option value="refund">Refund</option><option value="adjustment">Penyesuaian</option></select>
+          <SelectionField label="Filter jenis transaksi" hideLabel compact value={filters.type} onChange={(value) => updateFilter("type", value)} options={[{ value: "all", label: "Semua jenis" }, { value: "expense", label: "Pengeluaran" }, { value: "income", label: "Pemasukan" }, { value: "transfer", label: "Transfer" }, { value: "refund", label: "Refund" }, { value: "adjustment", label: "Penyesuaian" }]} />
           <Button type="button" className={styles.filterMore} icon={FiSliders} onClick={openAdvanced} aria-label={`Buka filter lainnya${activeAdvancedCount ? `, ${activeAdvancedCount} aktif` : ""}`}>
             Filter lainnya{activeAdvancedCount ? <span className={styles.filterCount} aria-hidden="true">{activeAdvancedCount}</span> : null}
           </Button>
@@ -105,10 +106,10 @@ const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, fi
       </form>
       <Modal open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Filter lainnya" description="Gunakan saat Anda perlu menyaring transaksi lebih spesifik." size="sm" footer={<><Button type="button" onClick={resetAdvancedDraft}>Reset pilihan</Button><Button type="button" variant="primary" onClick={applyAdvanced}>Terapkan filter</Button></>}>
         <div className={styles.advancedFilterGrid}>
-          <label className="field"><span>Alokasi Dana</span><select value={advancedDraft.allocation} onChange={(event) => setAdvancedDraft((current) => ({ ...current, allocation: event.target.value }))} aria-label="Filter Alokasi Dana"><option value="all">Semua Alokasi</option><option value="unallocated">Belum masuk Alokasi</option><option value="allocated">Menggunakan Alokasi</option></select></label>
-          <label className="field"><span>Rekening</span><select value={advancedDraft.account} onChange={(event) => setAdvancedDraft((current) => ({ ...current, account: event.target.value }))} aria-label="Filter rekening"><option value="all">Semua rekening</option>{filterOptions.accounts.map((item) => <option key={item.account_id} value={item.account_id}>{accountDisplayLabel(item)}</option>)}</select></label>
-          <label className="field"><span>Kategori</span><select value={advancedDraft.category} onChange={(event) => setAdvancedDraft((current) => ({ ...current, category: event.target.value }))} aria-label="Filter kategori"><option value="all">Semua kategori</option>{filterOptions.categories.map((item) => <option key={item.category_id} value={item.category_id}>{item.name}</option>)}</select></label>
-          <label className="field"><span>Pencatat</span><select value={advancedDraft.creator} onChange={(event) => setAdvancedDraft((current) => ({ ...current, creator: event.target.value }))} aria-label="Filter pencatat"><option value="all">Semua pencatat</option>{filterOptions.creators.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select></label>
+          <SelectionField label="Alokasi Dana" value={advancedDraft.allocation} onChange={(allocation) => setAdvancedDraft((current) => ({ ...current, allocation }))} options={[{ value: "all", label: "Semua Alokasi" }, { value: "unallocated", label: "Belum masuk Alokasi" }, { value: "allocated", label: "Menggunakan Alokasi" }]} />
+          <SelectionField label="Rekening" value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua rekening" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item) }))]} />
+          <SelectionField label="Kategori" value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua kategori" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name }))]} />
+          <SelectionField label="Pencatat" value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua pencatat" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name }))]} />
         </div>
       </Modal>
     </>
@@ -188,14 +189,14 @@ const MemberTransferRequests = ({ role, resource, accounts }) => {
   return <Suspense fallback={null}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>;
 };
 
-const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters }) => {
+const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters, mobileLayout }) => {
   const emptyState = collectionEmptyState({ visibleCount: items.length, totalCount: resource.data?.total, filtersActive });
   const filteredEmpty = emptyState === EMPTY_COLLECTION_STATE.FILTERED;
   return <>
     {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
     {resource.status === "loading" ? <LoadingScreen variant="panel" label="Memuat transaksi..." /> : null}
     {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
-    {resource.status === "ready" && !items.length ? <EmptyState className={`${styles.emptyState} ${filteredEmpty ? styles.emptyStateFiltered : ""}`} title={filteredEmpty ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filteredEmpty ? "Ubah atau reset filter untuk melihat transaksi lain." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filteredEmpty ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
+    {resource.status === "ready" && !items.length ? <EmptyState className={`${styles.emptyState} ${filteredEmpty ? styles.emptyStateFiltered : ""}`} title={filteredEmpty ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filteredEmpty ? "Ubah atau reset filter untuk melihat transaksi lain." : mobileLayout ? "Gunakan tombol + pada navigasi bawah untuk mencatat transaksi pertama." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filteredEmpty ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : mobileLayout ? null : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
   </>;
 };
 
@@ -238,7 +239,7 @@ const TransactionsPage = () => {
   const { accountLookup, categoryLookup, creatorLookup, items, filterOptions } = transactionPageData(bootstrap, resource);
   const filtersActive = transactionFiltersActive(filters);
   const resetFilters = () => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 })); };
-  const showHeaderCreate = resource.status !== "ready" || items.length > 0 || filtersActive;
+  const showHeaderCreate = !mobileLayout && (resource.status !== "ready" || items.length > 0 || filtersActive);
   const { active: attentionFromDashboard, editableTarget: attentionEditableTarget } = dashboardTransactionAttention(attention, filters, items);
 
   const submitSearch = (event) => {
@@ -298,14 +299,14 @@ const TransactionsPage = () => {
           resource={resource}
           pageSize={PAGE_SIZE}
           attentionNotice={<TransactionAttentionNotice active={reviewQueueState.active} editableTarget={attentionEditableTarget} remaining={reviewQueueState.remaining} done={reviewQueueState.done} />}
-          resourceStates={<TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} />}
+          resourceStates={<TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} mobileLayout />}
         />
       </Suspense>
     ) : (
       <>
         <TransactionAttentionNotice active={reviewQueueState.active} editableTarget={attentionEditableTarget} remaining={reviewQueueState.remaining} done={reviewQueueState.done} />
         <TransactionFilters draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} filterOptions={filterOptions} updateFilter={updateFilter} submitSearch={submitSearch} filtersActive={filtersActive} />
-        <TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} />
+        <TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} mobileLayout={false} />
         <TransactionResults {...resultProps} />
       </>
     )}

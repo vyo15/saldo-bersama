@@ -18,8 +18,7 @@
   display: block;
 }
 
-.categorySearch > svg,
-.categoryStatusFilter > svg {
+.categorySearch > svg {
   position: absolute;
   inset-inline-start: var(--space-3);
   top: 50%;
@@ -30,12 +29,13 @@
   transform: translateY(-50%);
 }
 
-.categorySearch input,
-.categoryStatusFilter select {
+.categorySearch input {
   width: 100%;
   min-height: var(--control-height-md);
   padding-inline-start: 2.5rem;
 }
+
+.categoryStatusFilter { width: 100%; }
 
 .categoryPanel {
   display: grid;
@@ -128,7 +128,7 @@
     transform var(--motion-fast) var(--motion-easing);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .categoryItem:hover {
     border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
     background: color-mix(in srgb, var(--surface-soft) 90%, var(--primary-soft));
@@ -226,11 +226,18 @@
   touch-action: manipulation;
 }
 
-.categoryMenuTrigger:hover,
 .categoryMenuTrigger[aria-expanded="true"] {
   border-color: var(--border);
   color: var(--text);
   background: var(--surface);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .categoryMenuTrigger:hover {
+    border-color: var(--border);
+    color: var(--text);
+    background: var(--surface);
+  }
 }
 
 .categoryMenuTrigger:focus-visible,
@@ -274,8 +281,8 @@
   cursor: pointer;
 }
 
-.categoryMenu button:hover {
-  background: var(--surface-soft);
+@media (hover: hover) and (pointer: fine) {
+  .categoryMenu button:hover { background: var(--surface-soft); }
 }
 
 .categoryMenu button svg {
@@ -393,7 +400,7 @@
     background-color var(--motion-fast) var(--motion-easing);
 }
 
-.iconGroupButton:hover,
+.iconGroupButton:focus-visible,
 .iconGroupButton.isActive {
   border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
   color: var(--primary);
@@ -432,11 +439,25 @@
     transform var(--motion-fast) var(--motion-easing);
 }
 
-.iconOption:hover {
+.iconOption:focus-visible {
   border-color: var(--primary);
   color: var(--primary);
   background: var(--primary-soft);
   transform: translateY(-1px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .iconGroupButton:hover {
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
+  .iconOption:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-soft);
+    transform: translateY(-1px);
+  }
 }
 
 .iconOption.isSelected {
@@ -590,9 +611,7 @@
 
 @media (max-width: 36.25rem) {
   .categoryToolbar { grid-template-columns: minmax(0, 1fr) minmax(7.75rem, 0.55fr); }
-  .categorySearch input,
-  .categoryStatusFilter select { min-height: 2.75rem; }
-  .categoryStatusFilter select { padding-inline-end: 1.5rem; }
+  .categorySearch input { min-height: 2.75rem; }
   .categoryGroupTitle h2 { font-size: var(--font-size-body-sm); }
   .categoryGroupTitle svg { width: 1rem; height: 1rem; }
   .categoryList { grid-template-columns: repeat(2, minmax(0, 1fr)); }

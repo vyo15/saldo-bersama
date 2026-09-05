@@ -16,12 +16,12 @@ const RecurringScheduleView = ({
   budgets,
   canCreate,
 }) => <>
-  <ScheduleSummary items={allItems} onAttention={() => {
+  {allItems.length ? <ScheduleSummary items={allItems} onAttention={() => {
     const attentionItem = allItems.find((item) => scheduleMatchesFilter(item, "attention"));
     setFilter("attention");
     if (attentionItem) setKind(attentionItem.kind === "income" ? "income" : "expense");
     setExpandedId(null);
-  }} />
+  }} /> : null}
   <SchedulePeriodSection
     items={filteredItems}
     allItems={allItems}

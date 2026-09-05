@@ -1,4 +1,30 @@
+## 5 September 2026 - Navigation smoothness dan tactile interaction hardening
+
+- Menambahkan content-enter transition ringan untuk route authenticated: shell, header, dan navigation tetap stabil sementara canvas route baru memakai fade + travel vertikal kecil berbasis token `--motion-fast`/`--ease-enter`; tidak ada exit animation yang menahan navigasi.
+- Memusatkan lazy page-route loader di `frontend/src/app/routeModules.js` dan menambahkan same-origin intent-prefetch pada `pointerover`, `focusin`, serta `pointerdown`, sehingga sidebar, bottom navigation, Settings, dan internal link lain dapat menghangatkan chunk sebelum klik tanpa auth bypass atau perubahan route.
+- Menambahkan delayed Suspense content loader untuk mencegah spinner flash pada load cepat; login/AppShell initial loader tetap immediate. Button canonical, icon button, floating add, mobile bottom navigation/FAB, dan mobile menu mendapat pressed feedback konsisten tanpa mengubah hit target, data, mutation, authorization, atau business flow.
+- Menambah regression motion/prefetch/loader/reduced-motion dan menyelaraskan `UI_DESIGN_SYSTEM`, `TEST_PLAN`, `QA_CHECKLIST`, serta `PROJECT_STATUS`.
+
+## 5 September 2026 - App selection canonical dan flow Buat Alokasi
+
+- Memensiunkan seluruh native `<select>` app-owned dari `frontend/src` dan menggantinya dengan `SelectionField`/`SelectionControl` canonical: trigger button, selected check, optional search, Escape/outside dismiss, inline list pada mobile, dan anchored popover pada desktop. Perubahan mencakup Alokasi Dana, Target, Jadwal Rutin, Investasi, Rekening, Kebutuhan, Transaksi, Dashboard, Laporan, Kategori, Anggota, dan riwayat Rekonsiliasi.
+- Mengubah flow `Buat alokasi` menjadi `Untuk apa → Ambil dana dari → Digunakan oleh → Dana awal`. Nominal awal baru muncul setelah rekening dipilih, rekening menampilkan dana tersedia, copy menegaskan dana tidak dipindahkan, dan preview `Tersedia setelah dialokasikan` ditampilkan sebelum submit.
+- Menambah regression guard yang menolak native `<select>` kembali ke source app-owned. Input date/month/checkbox native tetap dipertahankan; business logic, ledger, saldo, authorization, idempotency, schema, dan API contract tidak diubah.
+- Menghapus tombol manual `Sinkronkan data` dari header Dashboard mobile dan desktop. Beranda tetap menampilkan timestamp `Diperbarui` sebagai status freshness; refresh resource tetap berjalan melalui lifecycle/invalidation canonical dan retry kontekstual ketika resource gagal.
+
+## 5 September 2026 - Mobile empty-state dan CTA deduplication
+
+- Menjadikan true-empty state sebagai satu-satunya pemilik primary CTA pada Alokasi Dana, Kebutuhan di detail Alokasi, Jadwal Rutin, Target, Anggaran, dan setup Investasi; summary/hero/toolbar nol tidak lagi dirender bersamaan dengan empty state. Pada `/transaksi` mobile, tombol `+` bottom navigation menjadi satu-satunya create affordance sehingga PageHeader/empty state tidak menggandakan composer.
+- Filtered-empty Alokasi Dana dan Jadwal Rutin sekarang menawarkan aksi reset/tampilkan data yang tersedia, bukan CTA membuat objek baru. Aksi `Pindahkan dana` juga tidak ditampilkan ketika memang belum representable, alih-alih muncul disabled pada keadaan kosong.
+- Menghapus selector `allocation-summary--empty` yang menjadi orphan setelah zero-summary dihapus, menambah regression contract anti-CTA-ganda, dan menyelaraskan status/test/QA docs tanpa mengubah API, ledger, authorization, atau mutation finansial.
+- Saat merge ke baseline terbaru, regression Accounts untuk `mobileTransferHeaderAction` ikut diselaraskan dengan capability gate `@media (hover: hover) and (pointer: fine)` yang sudah menjadi contract mobile; runtime CSS tidak diubah.
+
+## 5 September 2026 - Account card transparent-surface cleanup
+
+- Menghapus matte gelap `--account-card-surface` dari `AccountVisual` berbasis image dan membuat bank artwork memakai bleed canonical di semua consumer, bukan hanya mobile stack. Ini menghilangkan bidang hitam yang terlihat melalui alpha asset pada Dashboard mobile/desktop dan detail Rekening tanpa mengubah asset 1024×645, data rekening, saldo, authorization, atau business flow.
+- Menonaktifkan overlay gelap khusus bank serta menurunkan shadow wrapper agar artwork bank tampil sebagai satu siluet kartu, bukan seperti gambar yang ditempel pada kotak hitam. Regression Accounts mengunci surface transparan dan bleed global.
 ## 5 September 2026 - Desktop sidebar grouping cleanup
+- Membesarkan visual kartu Rekening mobile hingga `min(88vw, 22rem)`, menghapus backing/shadow hitam rectangular pada 3D stack, menonaktifkan overlay gelap khusus stack, dan memberi bleed kecil pada artwork bank 1024×645 agar kartu transparan tidak terlihat seperti menempel pada matte hitam.
 - Merapikan sidebar desktop menjadi enam slot utama agar seluruh menu tetap berada di dalam badan rail SVG tanpa mengubah bentuk asset.
 - Menggabungkan Rekening, Kategori, Investasi, dan Cocokkan saldo ke submenu **Keuangan**.
 - Menggabungkan Anggota dan Persetujuan ke submenu **Kelola** yang hanya tampil untuk Administrator.
@@ -6,6 +32,14 @@
 
 ## 5 September 2026 - Notification Center dan Cocokkan Saldo
 - Menambahkan Notification Center in-app `/notifikasi` dari alert read-model canonical: mobile hero memakai bell + unread badge, Beranda hanya menampilkan satu next action prioritas, desktop menautkan notifikasi aktif ke route yang sama, dan read state lokal tidak mengubah domain state. Flow `Cocokkan Saldo` juga disederhanakan menjadi konfirmasi same/different tanpa memprefill saldo sistem sebagai saldo aktual; mismatch baru meminta saldo bank dan tetap tidak membuat adjustment otomatis. Test regression serta dokumentasi UI/status/matrix diselaraskan.
+
+## 5 September 2026 - Mobile app experience hardening
+
+- Mengubah chrome mobile agar terasa seperti aplikasi: root scrollbar disembunyikan secara visual tanpa mengunci document scroll atau menutupi horizontal overflow bug; desktop tetap memakai thin scrollbar. Horizontal chart/tab/carousel/picker intentional tetap swipeable tetapi tanpa batang scrollbar.
+- Membatasi hover shared/mobile ke fine pointer, menambah pressed state touch pada navigation, Settings, Dashboard, transaction selection, account actions, serta beberapa flow Planning/Investment/Category/Budget; focus-visible dan reduced-motion tetap dipertahankan.
+- Mengubah install PWA dari card lintas route menjadi prompt Dashboard yang dapat ditunda tujuh hari lewat preference localStorage presentasional; offline/update authority dan service worker tidak berubah.
+- Memadatkan Approval request surface mobile, menghilangkan duplicate embedded heading Planning, membuat Jadwal Rutin/Alokasi/Rekonsiliasi lebih task-oriented, dan menempatkan riwayat Rekonsiliasi di disclosure mobile sementara desktop tetap melihat history langsung. Audit Activity tetap di-keep tanpa perubahan source.
+- Memperbarui regression contract dan dokumentasi mobile agar quality gate menguji behavior app-like (scrollability, scrollbar visual, touch-vs-hover, PWA cooldown, swipe surface, Planning/Reconciliation) alih-alih mengunci implementasi web lama.
 
 ## 5 September 2026 - Sinkronisasi quality gate Settings responsif
 - Memperbarui regression Settings agar route canonical dibaca dari `settingsNavigation.js`, sesuai arsitektur metadata navigasi terpusat, bukan dicari ulang sebagai literal di `SettingsPage.jsx`.
@@ -26,7 +60,7 @@
 
 ## 5 September 2026 - Redesign Settings grouped-list dan hub data
 
-- Hardened responsive/accessibility proof: focus ring sekarang opaque dan dikunci contrast ≥3:1, nominal finansial kritis tidak lagi memakai ellipsis, root mobile tidak menyembunyikan overflow/scrollbar, login short-height memiliki fallback scroll, dan `npm run verify` menambahkan rendered browser smoke tanpa auth bypass. Docs/test governance ikut disinkronkan.
+- Hardened responsive/accessibility proof: focus ring sekarang opaque dan dikunci contrast ≥3:1, nominal finansial kritis tidak lagi memakai ellipsis, root mobile tidak menyamarkan overflow horizontal dengan clipping, login short-height memiliki fallback scroll, dan `npm run verify` menambahkan rendered browser smoke tanpa auth bypass. Docs/test governance ikut disinkronkan.
 - Mengubah `/pengaturan` dari kumpulan kartu menu yang selalu tampil menjadi landing page grouped-list **Umum / Data / Sistem** dengan ringkasan akun + health ringan; nested route sekarang fokus pada konten terpilih dan memakai back-link kontekstual + Info route.
 - Menambahkan hub `/pengaturan/data` untuk Export, Import transaksi, Backup, dan Pemulihan tanpa menggabungkan resource/mutation empat workflow; submenu data kembali ke hub tersebut agar navigasi mobile tidak terasa bertumpuk.
 - Mempertahankan Reset Testing dan Reset Semua sebagai dua flow terisolasi di `/pengaturan/pemeliharaan`; route legacy `/pengaturan/reset-data` dan `/pengaturan/reset-semua` kini redirect ke tab yang sesuai sehingga bookmark lama tetap aman tanpa menduplikasi menu.

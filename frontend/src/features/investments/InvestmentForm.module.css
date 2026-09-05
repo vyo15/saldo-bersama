@@ -82,7 +82,6 @@ font-weight: var(--font-weight-semibold);
 }
 
 .field input,
-.field select,
 .field textarea {
 width: 100%;
   min-height: var(--control-height-md);
@@ -95,14 +94,13 @@ width: 100%;
   transition: border-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard);
 }
 
-.field input:hover,
-.field select:hover,
-.field textarea:hover {
-border-color: color-mix(in srgb, var(--primary) 28%, var(--border-strong));
+@media (hover: hover) and (pointer: fine) {
+  .field input:hover, .field textarea:hover {
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border-strong));
+  }
 }
 
 .field input:focus-visible,
-.field select:focus-visible,
 .field textarea:focus-visible {
 outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
@@ -114,7 +112,6 @@ min-height: 5.5rem;
 }
 
 .field input[aria-invalid="true"],
-.field select[aria-invalid="true"],
 .field textarea[aria-invalid="true"] {
 border-color: var(--negative);
 }
@@ -186,7 +183,6 @@ align-items: stretch;
   }
 
   .field input,
-  .field select,
   .field textarea {
 min-height: var(--mobile-control-height);
     font-size: var(--mobile-native-control-font-size);
@@ -202,7 +198,6 @@ grid-template-columns: 1fr;
 
 @media (prefers-reduced-motion: reduce) {
   .field input,
-  .field select,
   .field textarea {
 transition: none;
   }

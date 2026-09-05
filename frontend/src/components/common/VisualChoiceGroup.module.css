@@ -99,9 +99,11 @@
   line-height: 1.35;
 }
 
-.option:hover .card {
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .option:hover .card {
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
 }
 
 .option:active .card { transform: scale(0.985); }

@@ -49,14 +49,16 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
     <label className={styles.periodControl}><span className="sr-only">Periode</span><input type="month" max={currentPeriod} value={period} onChange={(event) => { setPeriod(event.target.value); setActiveFilter("all"); }} /></label>
     <span className={styles.daysBadge}>{periodMeta.isCurrent ? `${periodMeta.daysLeft} hari tersisa` : "Periode selesai"}</span>
   </div>
-  <BudgetTabs activeFilter={activeFilter} setActiveFilter={setActiveFilter} totalCount={items.length} attentionCount={attentionCount} />
-  <CompactNotice tone="info" className={styles.readOnlyNote} role="status">
-    <span>Halaman ini hanya merangkum anggaran. <Link to="/perencanaan/kantong">Kelola Kebutuhan di Alokasi Dana</Link>.</span>
-  </CompactNotice>
-  {unlinkedCount ? <CompactNotice tone="warning" className={styles.readOnlyNote} role="status" title={`${unlinkedCount} kebutuhan lama belum terhubung ke Alokasi Dana.`}>Data tetap dihitung. Hubungkan dari detail Alokasi Dana agar sumber dana dan laporan tetap mudah ditelusuri.</CompactNotice> : null}
-  <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
-  <BudgetListSection activeFilter={activeFilter} setActiveFilter={setActiveFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} />
-  <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme pengeluaran</strong> membandingkan pemakaian setiap kebutuhan dengan posisi hari ini dalam periode.</p><img className={styles.tipArtwork} src={budgetCalendarArtwork} width="620" height="395" alt="" aria-hidden="true" loading="lazy" decoding="async" /></aside>
+  {items.length ? <>
+    <BudgetTabs activeFilter={activeFilter} setActiveFilter={setActiveFilter} totalCount={items.length} attentionCount={attentionCount} />
+    <CompactNotice tone="info" className={styles.readOnlyNote} role="status">
+      <span>Halaman ini hanya merangkum anggaran. <Link to="/perencanaan/kantong">Kelola Kebutuhan di Alokasi Dana</Link>.</span>
+    </CompactNotice>
+    {unlinkedCount ? <CompactNotice tone="warning" className={styles.readOnlyNote} role="status" title={`${unlinkedCount} kebutuhan lama belum terhubung ke Alokasi Dana.`}>Data tetap dihitung. Hubungkan dari detail Alokasi Dana agar sumber dana dan laporan tetap mudah ditelusuri.</CompactNotice> : null}
+    <BudgetHeroCard totals={totals} periodMeta={periodMeta} />
+    <BudgetListSection activeFilter={activeFilter} setActiveFilter={setActiveFilter} visibleItems={visibleItems} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} />
+    <aside className={styles.tipCard}><span className={styles.tipIcon} aria-hidden="true">%</span><p><strong>Ritme pengeluaran</strong> membandingkan pemakaian setiap kebutuhan dengan posisi hari ini dalam periode.</p><img className={styles.tipArtwork} src={budgetCalendarArtwork} width="620" height="395" alt="" aria-hidden="true" loading="lazy" decoding="async" /></aside>
+  </> : <BudgetListSection activeFilter="all" setActiveFilter={setActiveFilter} visibleItems={EMPTY_BUDGET_ITEMS} criticalFirst={criticalFirst} setCriticalFirst={setCriticalFirst} categoryLookup={categoryLookup} periodMeta={periodMeta} />}
 </div>;
 
 const BudgetsPage = () => {

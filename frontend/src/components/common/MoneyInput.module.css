@@ -28,7 +28,9 @@
     box-shadow var(--motion-fast) var(--motion-easing);
 }
 
-.input:hover { border-color: var(--border-strong); }
+@media (hover: hover) and (pointer: fine) {
+  .input:hover { border-color: var(--border-strong); }
+}
 .input:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;

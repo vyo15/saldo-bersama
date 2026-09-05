@@ -14,10 +14,12 @@
   transition: transform var(--motion-fast) var(--motion-easing), box-shadow var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
 }
 
-.budgetCard:hover {
-  border-color: color-mix(in srgb, var(--primary) 16%, var(--border));
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .budgetCard:hover {
+    border-color: color-mix(in srgb, var(--primary) 16%, var(--border));
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
 }
 
 .budgetCard_warning,
@@ -311,9 +313,11 @@
     border-radius: 20px;
   }
 
-  .budgetCard:hover {
-    transform: none;
-    box-shadow: var(--shadow-sm);
+  @media (hover: hover) and (pointer: fine) {
+    .budgetCard:hover {
+      transform: none;
+      box-shadow: var(--shadow-sm);
+    }
   }
 
   .cardHeader {

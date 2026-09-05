@@ -46,8 +46,10 @@
     color: currentColor;
   }
 
-.mobileActivityTabs > button:hover,
 .mobileActivityTabs > button:focus-visible { color: var(--on-hero); }
+@media (hover: hover) and (pointer: fine) {
+  .mobileActivityTabs > button:hover { color: var(--on-hero); }
+}
 
 .mobileActivityTabs > button:focus-visible,
 .mobileTrendControls > button:focus-visible,
@@ -388,7 +390,6 @@
 :global(:root[data-theme="light"]) .mobileChartNote,
 :global(:root[data-theme="light"]) .mobileChartAction { color: var(--text-muted); }
 
-:global(:root[data-theme="light"]) .mobileActivityTabs > button:hover,
 :global(:root[data-theme="light"]) .mobileActivityTabs > button:focus-visible,
 :global(:root[data-theme="light"]) .mobileActivityTabs > .mobileActivityTabActive,
 :global(:root[data-theme="light"]) .mobileActivityHeading strong,
@@ -400,6 +401,10 @@
 :global(:root[data-theme="light"]) .mobileChartHeading > div > strong,
 :global(:root[data-theme="light"]) .mobileChartHeading > div > strong :global(.money),
 :global(:root[data-theme="light"]) .mobileChartStats strong { color: var(--text); }
+
+@media (hover: hover) and (pointer: fine) {
+  :global(:root[data-theme="light"]) .mobileActivityTabs > button:hover { color: var(--text); }
+}
 
 :global(:root[data-theme="light"]) .mobileActivityTabs { border-bottom-color: var(--border); }
 

@@ -51,9 +51,8 @@
   cursor: pointer;
 }
 
-.sectionLink:hover {
-  background: var(--primary-soft);
-}
+@media (hover: hover) and (pointer: fine) { .sectionLink:hover { background: var(--primary-soft); } }
+.sectionLink:active { background: var(--primary-soft); }
 
 .sectionLink:focus-visible {
   outline: 3px solid var(--focus-ring);

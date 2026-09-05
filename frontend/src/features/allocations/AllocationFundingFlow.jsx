@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 
@@ -19,8 +20,8 @@ const initialFundingForm = ({ accounts, items, requestedAccountId, suggestedAmou
 const FundingFields = ({ accounts, envelopes, selectedAccount, form, setForm, changeSource, available, invalidAmount, amountNumber }) => {
   if (!accounts.length) return <div className="notice notice--info form-grid__full" role="status">Belum ada kombinasi rekening dengan dana tersedia dan Alokasi Dana aktif yang dapat ditambah. Buat Alokasi Dana atau periksa rekening sumber terlebih dahulu.</div>;
   return <>
-    <label className="field form-grid__full"><span>Dari rekening *</span><select required value={form.sourceAccountId} onChange={(event) => changeSource(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)} · tersedia {formatRupiah(availableBalance(account))}</option>)}</select></label>
-    <label className="field form-grid__full"><span>Ke Alokasi Dana *</span><select required value={form.envelopePeriodId} onChange={(event) => setForm((current) => ({ ...current, envelopePeriodId: event.target.value }))}><option value="">Pilih Alokasi Dana</option>{envelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{item.name} · sisa {formatRupiah(item.remaining_amount || 0)}</option>)}</select></label>
+    <SelectionField className="form-grid__full" label="Dari rekening" required value={form.sourceAccountId} onChange={changeSource} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(availableBalance(account))}` }))} />
+    <SelectionField className="form-grid__full" label="Ke Alokasi Dana" required value={form.envelopePeriodId} onChange={(envelopePeriodId) => setForm((current) => ({ ...current, envelopePeriodId }))} placeholder="Pilih Alokasi Dana" searchable={envelopes.length > 8} options={envelopes.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: `Sisa ${formatRupiah(item.remaining_amount || 0)}` }))} />
     <MoneyInput id="funding-flow-amount" label="Nominal" required value={form.amount} onChange={(amount) => setForm((current) => ({ ...current, amount }))} />
     {selectedAccount ? <div className={`notice ${invalidAmount && amountNumber > 0 ? "notice--warning" : "notice--info"} form-grid__full`} role="status">Dana tersedia {accountDisplayLabel(selectedAccount)}: {formatRupiah(available)}{invalidAmount && amountNumber > available ? ". Nominal melebihi dana tersedia." : "."}</div> : null}
     <label className="field form-grid__full"><span>Catatan</span><input maxLength="180" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} placeholder="Contoh: bagi pemasukan bulan ini" /></label>

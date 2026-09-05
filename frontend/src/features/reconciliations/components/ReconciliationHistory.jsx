@@ -2,6 +2,7 @@ import { FiDatabase } from "react-icons/fi";
 import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
+import SelectionField from "../../../components/common/SelectionField.jsx";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import styles from "../ReconciliationsPage.module.css";
@@ -42,13 +43,9 @@ const ReconciliationHistory = ({ accounts, items, accountLookup, historyAccountI
   <Card className={`panel ${styles.historyPanel}`}>
     <div className={`panel__header ${styles.historyHeader}`}>
       <h2>Riwayat</h2>
-      <label className={styles.historyFilter}>
-        <span className="sr-only">Filter riwayat berdasarkan rekening</span>
-        <select value={historyAccountId} onChange={(event) => setHistoryAccountId(event.target.value)} aria-label="Filter riwayat rekonsiliasi berdasarkan rekening">
-          <option value="all">Semua rekening</option>
-          {accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}
-        </select>
-      </label>
+      <div className={styles.historyFilter}>
+        <SelectionField label="Filter riwayat berdasarkan rekening" hideLabel compact value={historyAccountId} onChange={setHistoryAccountId} options={[{ value: "all", label: "Semua rekening" }, ...accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account) }))]} />
+      </div>
     </div>
     {items.length ? <HistoryTable items={items} accountLookup={accountLookup} formatReconciledAt={formatReconciledAt} /> : <EmptyState variant="inline" icon={FiDatabase} title="Belum ada hasil pencocokan" description="Belum ada riwayat rekonsiliasi untuk filter ini." headingLevel={3} />}
   </Card>

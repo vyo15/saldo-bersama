@@ -28,11 +28,11 @@ const OWNERSHIP_FILTERS = Object.freeze([
 ]);
 
 const MOBILE_STACK_SLOT_STYLES = Object.freeze({
-  "-2": Object.freeze({ x: 48, y: -192, z: -250, rx: 44, ry: -7, rz: 16, opacity: 0, brightness: 0.66, saturate: 0.72, shadow: 0.08 }),
-  "-1": Object.freeze({ x: 38, y: -104, z: -105, rx: 18, ry: -5, rz: 10, opacity: 0.76, brightness: 0.8, saturate: 0.82, shadow: 0.22 }),
-  0: Object.freeze({ x: 0, y: 0, z: 150, rx: 0, ry: 0, rz: 0, opacity: 1, brightness: 1, saturate: 1, shadow: 0.5 }),
-  1: Object.freeze({ x: 38, y: 108, z: -110, rx: -18, ry: 5, rz: -10, opacity: 0.68, brightness: 0.74, saturate: 0.78, shadow: 0.18 }),
-  2: Object.freeze({ x: 48, y: 196, z: -260, rx: -44, ry: 7, rz: -16, opacity: 0, brightness: 0.64, saturate: 0.7, shadow: 0.06 }),
+  "-2": Object.freeze({ x: 48, y: -192, z: -250, rx: 44, ry: -7, rz: 16, opacity: 0, brightness: 0.66, saturate: 0.72 }),
+  "-1": Object.freeze({ x: 38, y: -104, z: -105, rx: 18, ry: -5, rz: 10, opacity: 0.76, brightness: 0.8, saturate: 0.82 }),
+  0: Object.freeze({ x: 0, y: 0, z: 150, rx: 0, ry: 0, rz: 0, opacity: 1, brightness: 1, saturate: 1 }),
+  1: Object.freeze({ x: 38, y: 108, z: -110, rx: -18, ry: 5, rz: -10, opacity: 0.68, brightness: 0.74, saturate: 0.78 }),
+  2: Object.freeze({ x: 48, y: 196, z: -260, rx: -44, ry: 7, rz: -16, opacity: 0, brightness: 0.64, saturate: 0.7 }),
 });
 
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
@@ -100,7 +100,7 @@ const useMobileStackAnimation = (refs, setSelectedAccountId, reducedMotion) => {
         element.style.transform = "translate(-50%, -50%)";
         element.style.opacity = active ? "1" : "0";
         element.style.filter = "none";
-        element.style.boxShadow = active ? "0 1.75rem 3.9rem rgb(0 0 0 / 0.5)" : "none";
+        element.style.boxShadow = "none";
       } else {
         element.style.transform = [
           "translate(-50%, -50%)", `translate3d(${visual.x}px, ${visual.y}px, ${visual.z}px)`,
@@ -109,7 +109,7 @@ const useMobileStackAnimation = (refs, setSelectedAccountId, reducedMotion) => {
         element.style.opacity = String(visual.opacity);
         if (!moving) {
           element.style.filter = `brightness(${visual.brightness}) saturate(${visual.saturate})`;
-          element.style.boxShadow = `0 1.75rem 3.9rem rgb(0 0 0 / ${visual.shadow})`;
+          element.style.boxShadow = "none";
         }
       }
       element.style.zIndex = String(Math.round(1000 + visual.z));

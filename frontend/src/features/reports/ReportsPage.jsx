@@ -20,6 +20,7 @@ import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import PageInfoButton from "../../components/common/PageInfoButton.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
 import BarChart from "../../components/charts/BarChart.jsx";
 import LineChart from "../../components/charts/LineChart.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
@@ -40,7 +41,7 @@ const ReportHeader = ({ period, trendMonths, setPeriod, setTrendMonths }) => (
   <PageHeader
     title="Laporan"
     help="Laporan merangkum transaksi sesuai periode. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran total."
-    actions={<div className={reportClass("report-period-controls")}><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><label className="field field--compact"><span>Rentang tren</span><select value={trendMonths} onChange={(event) => setTrendMonths(Number(event.target.value))}><option value="1">1 bulan (harian)</option><option value="3">3 bulan</option><option value="6">6 bulan</option><option value="12">12 bulan</option></select></label></div>}
+    actions={<div className={reportClass("report-period-controls")}><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><SelectionField className="field--compact" label="Rentang tren" value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} compact options={[{ value: "1", label: "1 bulan (harian)" }, { value: "3", label: "3 bulan" }, { value: "6", label: "6 bulan" }, { value: "12", label: "12 bulan" }]} /></div>}
   />
 );
 

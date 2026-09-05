@@ -5,6 +5,7 @@ import test from "node:test";
 const tokenSource = await readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8");
 const componentSource = await readFile(new URL("../src/styles/components.css", import.meta.url), "utf8");
 const mainSource = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
+const selectionSource = await readFile(new URL("../src/components/common/SelectionField.module.css", import.meta.url), "utf8");
 
 const collectCssSources = async (directory) => {
   const result = [];
@@ -109,10 +110,10 @@ test("border kuat untuk control dan state memenuhi kontras non-text 3:1", () => 
 test("komponen memakai semantic foreground dan reduced motion", () => {
   assert.match(componentSource, /\.button--primary[^}]*color:\s*var\(--on-primary\)/);
   assert.match(componentSource, /\.button--danger[^}]*color:\s*var\(--on-negative\)/);
-  assert.match(componentSource, /select option,[\s\S]*select optgroup \{[^}]*background-color:\s*var\(--surface-elevated\);[^}]*color:\s*var\(--text\);/);
-  assert.match(componentSource, /select option:checked \{[^}]*background-color:\s*var\(--primary-soft\);[^}]*color:\s*var\(--primary-strong\);/);
-  assert.match(componentSource, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(componentSource, /:focus-visible/);
+  assert.doesNotMatch(componentSource, /(^|[,{\s])select(?:[\s.:#\[]|$)/m);
+  assert.match(selectionSource, /\.selected \{[^}]*color:\s*var\(--primary-strong\);[^}]*background:/s);
+  assert.match(componentSource + selectionSource, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(componentSource + selectionSource, /:focus-visible/);
 });
 
 test("badge status pengajuan memakai token semantic lintas light dan dark theme", async () => {
@@ -368,17 +369,20 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
   ]);
 
   assert.match(tokenSource, /--mobile-native-control-font-size:\s*16px;/);
-  assert.match(components, /\.field input,\s*\n\.field select,\s*\n\.field textarea,\s*\n\.toolbar select,\s*\n\.search-field \{[^}]*font-size:\s*var\(--font-size-body\);/s);
-  assert.match(responsive, /:root body input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\),\s*\n\s*:root body select,\s*\n\s*:root body textarea \{ font-size:\s*var\(--mobile-native-control-font-size\); \}/);
+  assert.match(components, /\.field input,\s*\n\.field textarea,\s*\n\.search-field \{[^}]*font-size:\s*var\(--font-size-body\);/s);
+  assert.match(responsive, /:root body input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\),\s*\n\s*:root body textarea \{ font-size:\s*var\(--mobile-native-control-font-size\); \}/);
   assert.match(accountStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
-  assert.match(transactionFormStyles, /\.fieldControlInput > :global\(input\),\s*\n\s*\.fieldControlInput > :global\(select\) \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
-  assert.match(transactionFormStyles, /\.form :global\(\.field\) > input,\s*\n\s*\.form :global\(\.field\) > select,\s*\n\s*\.form :global\(\.field\) > textarea \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
-  assert.match(mobileHistoryStyles, /\.filterSelect select \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
-  assert.match(reconciliationStyles, /@media \(max-width:\s*820px\) \{[\s\S]*\.differenceFlow :global\(input\), \.notesField textarea, \.historyFilter select \{ font-size:\s*var\(--mobile-native-control-font-size\);/);
-  assert.match(reconciliationStyles, /\.historyFilter select \{[^}]*min-height:\s*var\(--mobile-control-height\);[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(transactionFormStyles, /\.fieldControlInput > :global\(input\) \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(transactionFormStyles, /\.form :global\(\.field\) > input,\s*\n\s*\.form :global\(\.field\) > textarea \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(selectionSource, /\.search input \{[^}]*font-size:\s*16px;/s);
+  assert.match(selectionSource, /@media \(max-width: 820px\)[\s\S]*\.option \{[^}]*min-height:\s*44px;/s);
+  assert.match(mobileHistoryStyles, /\.filterSelect > \* \{[^}]*width:\s*100%;[^}]*min-width:\s*0;/s);
+  assert.match(reconciliationStyles, /@media \(max-width:\s*820px\) \{[\s\S]*\.differenceFlow :global\(input\), \.notesField textarea \{ font-size:\s*var\(--mobile-native-control-font-size\);/);
+  assert.doesNotMatch(components + responsive + transactionFormStyles + mobileHistoryStyles + reconciliationStyles, /(^|[,{\s])select(?:[\s.:#\[]|$)/m);
   assert.match(dashboard, /\.shared-transaction-tools label \{[^}]*min-height:\s*var\(--control-height-md\);/s);
   assert.doesNotMatch(responsive, /html,\s*\n\s*body \{[^}]*overflow-x:\s*(?:hidden|clip)/s);
-  assert.doesNotMatch(responsive, /html,\s*\n\s*body \{[^}]*scrollbar-width:\s*none/s);
+  assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*html,\s*\n\s*body \{[^}]*scrollbar-width:\s*none/s);
+  assert.match(responsive, /html::-webkit-scrollbar,\s*\n\s*body::-webkit-scrollbar \{[^}]*display:\s*none/s);
   assert.doesNotMatch(responsive, /overflow-y:\s*hidden/);
   assert.match(accountStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
   assert.match(accountStyles, /\.mobileStackCard\[aria-pressed="true"\][^{]*\{[^}]*touch-action: pan-x pinch-zoom;/s);

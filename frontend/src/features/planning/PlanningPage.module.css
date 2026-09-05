@@ -29,9 +29,11 @@
   transition: background-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
 }
 
-.tab:hover {
-  background: var(--surface-soft);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .tab:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+  }
 }
 
 .tab:active {
@@ -69,9 +71,12 @@
 
   .tabs {
     position: sticky;
-    top: calc(var(--mobile-topbar-height, 56px) + 8px);
+    top: calc(var(--mobile-topbar-height, 56px) + 6px);
     z-index: 6;
-    border-radius: 15px;
+    padding: 4px;
+    border-radius: 14px;
+    box-shadow: none;
+    backdrop-filter: blur(12px);
   }
 
   .tab {

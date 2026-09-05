@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
+import SelectionField from "../../../components/common/SelectionField.jsx";
 import UserAvatar from "../../../components/common/UserAvatar.jsx";
 import ErrorState, { RefreshWarning } from "../../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../../app/FinanceContext.jsx";
@@ -28,7 +29,7 @@ const transactionCategoryLabel = (item, categoryLookup) => categoryLookup[item.c
 
 const MemberProfile = ({ member, profile }) => <><section className={activityStyles.memberActivityProfile} aria-label={`Profil ${member.name || member.email}`}><UserAvatar user={profile} className={activityStyles.memberActivityAvatar} /><div><h2>{member.name || member.email}</h2><p>{member.email}</p><span className="status-badge status-badge--info">{roleLabel(member.role)}</span></div></section><p className={activityStyles.memberActivityExplanation}>Aktivitas pencatatan menunjukkan siapa yang memasukkan transaksi. Data ini bukan ukuran siapa yang memakai, membayar, atau menanggung biaya.</p></>;
 
-const ActivityFilters = ({ period, setPeriod, type, setType }) => <div className={activityStyles.memberActivityFilters}><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><label className="field field--compact"><span>Jenis transaksi</span><select value={type} onChange={(event) => setType(event.target.value)}><option value="all">Semua jenis</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="transfer">Transfer</option><option value="refund">Refund</option><option value="adjustment">Penyesuaian</option></select></label></div>;
+const ActivityFilters = ({ period, setPeriod, type, setType }) => <div className={activityStyles.memberActivityFilters}><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><SelectionField className="field--compact" label="Jenis transaksi" compact value={type} onChange={setType} options={[{ value: "all", label: "Semua jenis" }, { value: "expense", label: "Pengeluaran" }, { value: "income", label: "Pemasukan" }, { value: "transfer", label: "Transfer" }, { value: "refund", label: "Refund" }, { value: "adjustment", label: "Penyesuaian" }]} /></div>;
 
 const ActivityMetrics = ({ type, transactions, report, expenseSummary }) => <section className={activityStyles.memberActivityMetrics} aria-label="Ringkasan aktivitas"><div><span>{type === "all" ? "Transaksi dicatat" : "Transaksi pada filter"}</span><strong>{transactions.data?.total ?? "—"}</strong><small>Jumlah exact pada periode dan filter terpilih.</small></div><div><span>Pengeluaran yang dicatat</span>{report.data ? <Money value={expenseSummary?.amount || expenseSummary?.value || 0} /> : <strong>—</strong>}<small>Hanya pengeluaran aktif. Transfer internal tidak dihitung.</small></div></section>;
 

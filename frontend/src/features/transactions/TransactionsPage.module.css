@@ -9,11 +9,11 @@
 .filterChip { min-height: var(--control-height-md); max-width: min(100%, 18rem); padding: .25rem .55rem .25rem .7rem; border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border)); border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: .35rem; background: var(--primary-soft); color: var(--primary); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .filterChip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .filterChip svg { width: .85rem; height: .85rem; flex: 0 0 auto; }
-.filterChip:hover { border-color: var(--primary); }
+@media (hover: hover) and (pointer: fine) { .filterChip:hover { border-color: var(--primary); } }
 .filterChip:focus-visible,
 .filterReset:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .filterReset { min-height: var(--control-height-md); padding: 0 .25rem; border: 0; background: transparent; color: var(--text-soft); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; white-space: nowrap; }
-.filterReset:hover { color: var(--primary); }
+@media (hover: hover) and (pointer: fine) { .filterReset:hover { color: var(--primary); } }
 .advancedFilterGrid { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .advancedFilterGrid > * { min-width: 0; }
 .managedNote { display: block; max-width: 150px; color: var(--text-muted); line-height: 1.4; }

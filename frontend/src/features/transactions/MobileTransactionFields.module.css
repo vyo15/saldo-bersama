@@ -218,10 +218,11 @@
   background: color-mix(in srgb, var(--border) 82%, transparent);
 }
 
-.detailRow:hover:not(:disabled),
-.detailRow:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--surface-strong) 34%, transparent);
+.detailRow:focus-visible:not(:disabled) { background: color-mix(in srgb, var(--surface-strong) 34%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .detailRow:hover:not(:disabled) { background: color-mix(in srgb, var(--surface-strong) 34%, transparent); }
 }
+.detailRow:active:not(:disabled) { background: color-mix(in srgb, var(--surface-strong) 34%, transparent); }
 
 .detailRow:focus-visible {
   outline: 2px solid var(--focus-ring);

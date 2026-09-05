@@ -84,3 +84,10 @@
 .incomeSuccessActions {
   display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
 }
+
+@media (max-width: 820px) {
+  /* Planning already labels the active tab. Keep only the recurring actions in the embedded mobile view. */
+  .embeddedHeader > div { display: none; }
+  .embeddedHeader { display: block; }
+  .embeddedHeader .headerActions { width: 100%; }
+}

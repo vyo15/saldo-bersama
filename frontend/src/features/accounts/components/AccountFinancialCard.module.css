@@ -8,8 +8,8 @@
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border-strong) 68%, transparent);
   border-radius: 0.9rem;
-  background: var(--account-card-surface);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--shadow-ink) 30%, transparent);
+  background: transparent;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--shadow-ink) 16%, transparent);
   isolation: isolate;
 }
 
@@ -39,6 +39,22 @@
   inset: 0;
   pointer-events: none;
   background: linear-gradient(180deg, transparent 48%, color-mix(in srgb, var(--account-card-overlay) 4%, transparent) 60%, color-mix(in srgb, var(--account-card-overlay) 66%, transparent) 100%);
+}
+
+
+.visual[data-has-image="true"] {
+  border-color: transparent;
+  background: transparent;
+}
+
+.visual[data-visual-kind="bank"]::after {
+  background: none;
+}
+
+.visual[data-visual-kind="bank"] .cardImage {
+  inset: -3%;
+  width: 106%;
+  height: 106%;
 }
 
 .genericCard {
@@ -282,7 +298,12 @@
   aspect-ratio: auto;
   border: 0;
   border-radius: inherit;
+  background: transparent;
   box-shadow: none;
+}
+
+.stackVisual::after {
+  background: none;
 }
 
 .stackVisual .accountNumber {
@@ -424,10 +445,16 @@
   font: inherit;
 }
 
-.mobileCopyNumber:hover,
 .mobileCopyNumber:focus-visible {
   background: var(--primary-soft);
   color: var(--primary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobileCopyNumber:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
 }
 
 .detailPill {
@@ -510,10 +537,16 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.mobileSecondaryActions button:hover,
 .mobileSecondaryActions button:focus-visible {
   background: var(--surface-soft);
   color: var(--primary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobileSecondaryActions button:hover {
+    background: var(--surface-soft);
+    color: var(--primary);
+  }
 }
 
 .mobileSecondaryActions .mobileDangerAction {

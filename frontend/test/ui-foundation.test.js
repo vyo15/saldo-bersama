@@ -254,7 +254,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     "house.webp",
     "phone-analytics.webp",
   ];
-  const [login, loginStyles, app, main, pages, mobileAuth, authRouting, onboardingPreference, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
+  const [login, loginStyles, app, routeModules, main, pages, mobileAuth, authRouting, onboardingPreference, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
     Promise.all([
       read("src/features/auth/LoginPage.jsx"),
       read("src/features/auth/loginPresentation.js"),
@@ -264,6 +264,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     ]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/auth/LoginPage.module.css"), read("src/features/auth/LoginMobile.module.css")]).then((parts) => parts.join("\n")),
     read("src/app/App.jsx"),
+    read("src/app/routeModules.js"),
     read("src/main.jsx"),
     read("src/styles/pages.css"),
     read("src/services/auth/mobileFirebaseGoogleAuth.js"),
@@ -342,10 +343,11 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
 
   assert.match(login, /import \{ loginStyle \} from "\.\/loginStyles\.js";/);
   assert.match(app, /const AppShell = lazy\(\(\) => import\("\.\.\/layouts\/AppShell\.jsx"\)\);/);
-  assert.match(app, /const LoginPage = lazy\(\(\) => import\("\.\.\/features\/auth\/LoginPage\.jsx"\)\);/);
+  assert.match(app, /const LoginPage = lazy\(loadLoginPage\);/);
+  assert.match(routeModules, /login:\s*\(\) => import\("\.\.\/features\/auth\/LoginPage\.jsx"\)/);
   assert.doesNotMatch(main, /styles\/app\.css/);
   assert.doesNotMatch(main, /styles\/responsive\.css/);
-  assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage, \{ loadingVariant: "page" \}\)\} \/>/);
+  assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage, \{ loadingVariant: "page", delayedLoader: false, motion: false \}\)\} \/>/);
   assert.match(app, /loadingVariant = "content"/);
   assert.doesNotMatch(pages, /\.login-page\b|\.login-mobile-|\.login-desktop-/);
   assert.match(loginStyles, /\.login-desktop-stage \{[\s\S]*height:\s*100dvh;/);

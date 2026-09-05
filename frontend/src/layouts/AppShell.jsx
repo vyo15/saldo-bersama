@@ -15,6 +15,7 @@ import { useTransactionComposer } from "../app/TransactionComposerContext.jsx";
 import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
 import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
 import useMobileTabScrollRestoration from "../hooks/useMobileTabScrollRestoration.js";
+import useRoutePrefetch from "../hooks/useRoutePrefetch.js";
 import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
 import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
 import OfflineBanner from "../components/pwa/OfflineBanner.jsx";
@@ -85,6 +86,7 @@ const AppShell = () => {
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();
   useMobileTabScrollRestoration(location, navigationType);
+  useRoutePrefetch();
 
   const handleLogout = async () => {
     setLogoutError("");
@@ -128,7 +130,7 @@ const AppShell = () => {
           <main className={`app-content ${wideContentRoute ? "app-content--wide" : "app-content--standard"}`}>
             {offline ? <OfflineBanner /> : null}
             {serviceWorkerUpdate.updateAvailable ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} /> : null}
-            <InstallAppCard {...installPrompt} onInstall={installPrompt.install} />
+            {dashboardRoute ? <InstallAppCard {...installPrompt} onInstall={installPrompt.install} onDismiss={installPrompt.dismiss} /> : null}
             {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
             {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
             <Outlet />

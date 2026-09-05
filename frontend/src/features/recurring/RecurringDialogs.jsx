@@ -6,19 +6,20 @@ import { BankTransferIcon, CashIcon, EwalletIcon, MoneyInIcon, MoneyOutIcon } fr
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 import CostShareField from "../transactions/CostShareField.jsx";
 
-const FrequencyField = ({ value, onChange }) => <label className="field"><span>Frekuensi</span><select value={value} onChange={(event) => onChange(event.target.value)}><option value="daily">Harian</option><option value="weekly">Mingguan</option><option value="biweekly">Dua mingguan</option><option value="monthly">Bulanan</option><option value="bimonthly">Dua bulanan</option><option value="quarterly">Tiga bulanan</option><option value="semiannual">Semester</option><option value="annual">Tahunan</option></select></label>;
+const FrequencyField = ({ value, onChange }) => <SelectionField label="Frekuensi" value={value} onChange={onChange} options={[{ value: "daily", label: "Harian" }, { value: "weekly", label: "Mingguan" }, { value: "biweekly", label: "Dua mingguan" }, { value: "monthly", label: "Bulanan" }, { value: "bimonthly", label: "Dua bulanan" }, { value: "quarterly", label: "Tiga bulanan" }, { value: "semiannual", label: "Semester" }, { value: "annual", label: "Tahunan" }]} />;
 const RECURRING_PAYMENT_OPTIONS = Object.freeze([{ value: "transfer", label: "Transfer", icon: BankTransferIcon }, { value: "cash", label: "Tunai", icon: CashIcon }, { value: "ewallet", label: "E-wallet", icon: EwalletIcon }]);
 const PaymentMethodField = ({ value, onChange }) => <VisualChoiceGroup className="form-grid__full" legend="Metode" name="recurring-payment-method" value={value} onChange={onChange} options={RECURRING_PAYMENT_OPTIONS} columns={3} compact />;
 const AccountField = ({ label = "Rekening default", value, accounts, onChange }) => {
   const selected = accounts.find((item) => item.account_id === value) || null;
-  return <label className="field"><span>{label} *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih rekening</option>{accounts.map((item) => <option value={item.account_id} key={item.account_id}>{accountDisplayLabel(item)} · tersedia {formatRupiah(item.available_balance ?? item.balance ?? 0)}</option>)}</select>{selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dialokasikan {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}</label>;
+  return <SelectionField label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}` }))} helper={selected ? `Saldo ${formatRupiah(selected.balance || 0)} · dialokasikan ${formatRupiah(selected.allocated_remaining || 0)} · tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
 };
-const CategoryField = ({ value, categories, onChange }) => <label className="field"><span>Kategori *</span><select required value={value} onChange={(event) => onChange(event.target.value)}><option value="">Pilih kategori</option>{categories.map((item) => <option value={item.category_id} key={item.category_id}>{item.name}</option>)}</select></label>;
+const CategoryField = ({ value, categories, onChange }) => <SelectionField label="Kategori" required value={value} onChange={onChange} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name }))} />;
 
 export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgetSuggestions = {} }) => (
   <Modal open={open} onClose={close} dismissible={!createMutation.busy} title="Tambah jadwal rutin" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Tambah jadwal</Button></>}>
@@ -61,14 +62,7 @@ const recurringEnvelopeOptionLabel = (item) => {
   return `${item.name} · ${assignee} · sisa Rp ${Number(item.remaining_amount || 0).toLocaleString("id-ID")}`;
 };
 
-const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeHint }) => <label className="field form-grid__full">
-  <span>Alokasi dana</span>
-  <select value={payment.envelope_period_id} onChange={(event) => setPayment((current) => ({ ...current, envelope_period_id: event.target.value, overspend_reason: "" }))}>
-    <option value="">Belum dialokasikan</option>
-    {paymentEnvelopes.map((item) => <option key={item.envelope_period_id} value={item.envelope_period_id}>{recurringEnvelopeOptionLabel(item)}</option>)}
-  </select>
-  {envelopeHint ? <small>{envelopeHint}</small> : null}
-</label>;
+const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeHint }) => <SelectionField className="form-grid__full" label="Alokasi dana" value={payment.envelope_period_id} onChange={(envelope_period_id) => setPayment((current) => ({ ...current, envelope_period_id, overspend_reason: "" }))} options={[{ value: "", label: "Belum dialokasikan" }, ...paymentEnvelopes.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: recurringEnvelopeOptionLabel(item).replace(`${item.name} · `, "") }))]} helper={envelopeHint} searchable={paymentEnvelopes.length > 8} />;
 
 const PaymentOverspendFields = ({ payment, setPayment, envelopeState }) => <>
   {envelopeState.blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa alokasi. Kebijakan alokasi ini memblokir overspend. Kurangi nominal atau pilih alokasi lain.</div> : null}

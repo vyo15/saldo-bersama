@@ -17,10 +17,16 @@
     transition: color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing);
   }
 
-  .mobileTransferHeaderAction:hover:not(:disabled),
   .mobileTransferHeaderAction:focus-visible {
     color: var(--primary);
     background: color-mix(in srgb, var(--on-hero) 7%, transparent);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .mobileTransferHeaderAction:hover:not(:disabled) {
+      color: var(--primary);
+      background: color-mix(in srgb, var(--on-hero) 7%, transparent);
+    }
   }
 
   .mobileTransferHeaderAction:focus-visible {
@@ -41,11 +47,18 @@
     color: var(--primary);
   }
 
-  :global(:root[data-theme="light"]) .mobileTransferHeaderAction:hover:not(:disabled),
   :global(:root[data-theme="light"]) .mobileTransferHeaderAction:focus-visible {
     border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
     background: color-mix(in srgb, var(--primary-soft) 72%, var(--surface));
     color: var(--primary-strong);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    :global(:root[data-theme="light"]) .mobileTransferHeaderAction:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+      background: color-mix(in srgb, var(--primary-soft) 72%, var(--surface));
+      color: var(--primary-strong);
+    }
   }
 }
 

@@ -17,7 +17,7 @@
 .group h2 { margin: 0 2px 6px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .055em; text-transform: uppercase; }
 .list { border-top: 1px solid var(--border); }
 .row { position: relative; width: 100%; min-height: 74px; padding: 10px 2px; border: 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 10px; color: var(--text); background: transparent; text-align: left; cursor: pointer; transition: opacity var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard); }
-.row:hover { background: color-mix(in srgb, var(--surface-soft) 62%, transparent); }
+@media (hover: hover) and (pointer: fine) { .row:hover { background: color-mix(in srgb, var(--surface-soft) 62%, transparent); } }
 .row:active { opacity: .72; }
 .row[data-read="false"]::before { content: ""; position: absolute; left: -8px; top: 25px; width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
 .icon { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--info); background: var(--info-soft); }

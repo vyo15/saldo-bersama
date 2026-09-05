@@ -409,11 +409,10 @@
   cursor: pointer;
 }
 
-.memberMenuTrigger:hover {
-  border-color: var(--border);
-  background: var(--surface-soft);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .memberMenuTrigger:hover { border-color: var(--border); background: var(--surface-soft); color: var(--text); }
 }
+.memberMenuTrigger:active { background: var(--surface-soft); }
 
 .memberMenuTrigger:focus-visible {
   outline: 3px solid var(--focus-ring);
@@ -454,9 +453,8 @@
   cursor: pointer;
 }
 
-.memberMenu button:hover {
-  background: var(--surface-soft);
-}
+@media (hover: hover) and (pointer: fine) { .memberMenu button:hover { background: var(--surface-soft); } }
+.memberMenu button:active { background: var(--surface-soft); }
 
 .memberMenu button:focus-visible {
   outline: 3px solid var(--focus-ring);

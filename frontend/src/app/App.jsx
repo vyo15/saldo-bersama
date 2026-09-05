@@ -1,41 +1,89 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
+import DelayedLoadingScreen from "../components/feedback/DelayedLoadingScreen.jsx";
 import LoadingScreen from "../components/feedback/LoadingScreen.jsx";
 import RequireAuth from "../features/auth/RequireAuth.jsx";
+import {
+  loadActiveSessionsPage,
+  loadApprovalCenterPage,
+  loadAccountsPage,
+  loadAuditPage,
+  loadBackupPage,
+  loadBudgetsPage,
+  loadCategoriesPage,
+  loadDashboardPage,
+  loadDataStoragePage,
+  loadDeviceNotificationsPage,
+  loadExportDataPage,
+  loadGoalsPage,
+  loadGoogleIntegrationsPage,
+  loadImportTransactionsPage,
+  loadInvestmentsPage,
+  loadLoginPage,
+  loadMaintenanceDataPage,
+  loadMembersSettingsPage,
+  loadNotFoundPage,
+  loadNotificationsPage,
+  loadPeriodControlPage,
+  loadPlanningPage,
+  loadReconciliationsPage,
+  loadRecoveryPage,
+  loadReportsPage,
+  loadSettingsLayout,
+  loadSettingsPage,
+  loadTransactionsPage,
+} from "./routeModules.js";
 
 const AppShell = lazy(() => import("../layouts/AppShell.jsx"));
-const LoginPage = lazy(() => import("../features/auth/LoginPage.jsx"));
-const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage.jsx"));
-const TransactionsPage = lazy(() => import("../features/transactions/TransactionsPage.jsx"));
-const PlanningPage = lazy(() => import("../features/planning/PlanningPage.jsx"));
-const BudgetsPage = lazy(() => import("../features/budgets/BudgetsPage.jsx"));
-const GoalsPage = lazy(() => import("../features/goals/GoalsPage.jsx"));
-const ReportsPage = lazy(() => import("../features/reports/ReportsPage.jsx"));
-const AccountsPage = lazy(() => import("../features/accounts/AccountsPage.jsx"));
-const InvestmentsPage = lazy(() => import("../features/investments/InvestmentsPage.jsx"));
-const CategoriesPage = lazy(() => import("../features/categories/CategoriesPage.jsx"));
-const ApprovalCenterPage = lazy(() => import("../features/approvals/ApprovalCenterPage.jsx"));
-const ReconciliationsPage = lazy(() => import("../features/reconciliations/ReconciliationsPage.jsx"));
-const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage.jsx"));
-const SettingsLayout = lazy(() => import("../features/settings/SettingsLayout.jsx"));
-const SettingsPage = lazy(() => import("../features/settings/SettingsPage.jsx"));
-const DeviceNotificationsPage = lazy(() => import("../features/settings/DeviceNotificationsPage.jsx"));
-const ActiveSessionsPage = lazy(() => import("../features/settings/ActiveSessionsPage.jsx"));
-const GoogleIntegrationsPage = lazy(() => import("../features/settings/GoogleIntegrationsPage.jsx"));
-const MembersSettingsPage = lazy(() => import("../features/settings/MembersSettingsPage.jsx"));
-const DataStoragePage = lazy(() => import("../features/settings/DataStoragePage.jsx"));
-const ExportDataPage = lazy(() => import("../features/settings/ExportDataPage.jsx"));
-const ImportTransactionsPage = lazy(() => import("../features/settings/ImportTransactionsPage.jsx"));
-const BackupPage = lazy(() => import("../features/settings/BackupPage.jsx"));
-const RecoveryPage = lazy(() => import("../features/settings/RecoveryPage.jsx"));
-const MaintenanceDataPage = lazy(() => import("../features/settings/MaintenanceDataPage.jsx"));
-const PeriodControlPage = lazy(() => import("../features/settings/PeriodControlPage.jsx"));
-const AuditPage = lazy(() => import("../features/settings/AuditPage.jsx"));
-const NotFoundPage = lazy(() => import("../features/settings/NotFoundPage.jsx"));
+const LoginPage = lazy(loadLoginPage);
+const DashboardPage = lazy(loadDashboardPage);
+const TransactionsPage = lazy(loadTransactionsPage);
+const PlanningPage = lazy(loadPlanningPage);
+const BudgetsPage = lazy(loadBudgetsPage);
+const GoalsPage = lazy(loadGoalsPage);
+const ReportsPage = lazy(loadReportsPage);
+const AccountsPage = lazy(loadAccountsPage);
+const InvestmentsPage = lazy(loadInvestmentsPage);
+const CategoriesPage = lazy(loadCategoriesPage);
+const ApprovalCenterPage = lazy(loadApprovalCenterPage);
+const ReconciliationsPage = lazy(loadReconciliationsPage);
+const NotificationsPage = lazy(loadNotificationsPage);
+const SettingsLayout = lazy(loadSettingsLayout);
+const SettingsPage = lazy(loadSettingsPage);
+const DeviceNotificationsPage = lazy(loadDeviceNotificationsPage);
+const ActiveSessionsPage = lazy(loadActiveSessionsPage);
+const GoogleIntegrationsPage = lazy(loadGoogleIntegrationsPage);
+const MembersSettingsPage = lazy(loadMembersSettingsPage);
+const DataStoragePage = lazy(loadDataStoragePage);
+const ExportDataPage = lazy(loadExportDataPage);
+const ImportTransactionsPage = lazy(loadImportTransactionsPage);
+const BackupPage = lazy(loadBackupPage);
+const RecoveryPage = lazy(loadRecoveryPage);
+const MaintenanceDataPage = lazy(loadMaintenanceDataPage);
+const PeriodControlPage = lazy(loadPeriodControlPage);
+const AuditPage = lazy(loadAuditPage);
+const NotFoundPage = lazy(loadNotFoundPage);
 
-const routeElement = (Component, { loadingVariant = "content" } = {}) => (
-  <Suspense fallback={<LoadingScreen variant={loadingVariant} />}><Component /></Suspense>
-);
+const RouteMotion = ({ children }) => {
+  const location = useLocation();
+  return <div key={location.pathname} className="route-content-enter">{children}</div>;
+};
+
+const routeElement = (Component, {
+  loadingVariant = "content",
+  delayedLoader = loadingVariant === "content",
+  motion = true,
+} = {}) => {
+  const fallback = delayedLoader
+    ? <DelayedLoadingScreen variant={loadingVariant} />
+    : <LoadingScreen variant={loadingVariant} />;
+
+  return (
+    <Suspense fallback={fallback}>
+      {motion ? <RouteMotion><Component /></RouteMotion> : <Component />}
+    </Suspense>
+  );
+};
 
 const LegacyPlanningRedirect = ({ to }) => {
   const location = useLocation();
@@ -44,9 +92,9 @@ const LegacyPlanningRedirect = ({ to }) => {
 
 const App = () => (
   <Routes>
-    <Route path="/login" element={routeElement(LoginPage, { loadingVariant: "page" })} />
+    <Route path="/login" element={routeElement(LoginPage, { loadingVariant: "page", delayedLoader: false, motion: false })} />
     <Route element={<RequireAuth />}>
-      <Route element={routeElement(AppShell, { loadingVariant: "page" })}>
+      <Route element={routeElement(AppShell, { loadingVariant: "page", delayedLoader: false, motion: false })}>
         <Route index element={routeElement(DashboardPage)} />
         <Route path="transaksi" element={routeElement(TransactionsPage)} />
         <Route path="perencanaan" element={<Navigate to="/perencanaan/kantong" replace />} />
@@ -65,7 +113,7 @@ const App = () => (
         <Route path="kategori" element={routeElement(CategoriesPage)} />
         <Route path="anggota" element={routeElement(MembersSettingsPage)} />
         <Route path="persetujuan" element={routeElement(ApprovalCenterPage)} />
-        <Route path="pengaturan" element={routeElement(SettingsLayout)}>
+        <Route path="pengaturan" element={routeElement(SettingsLayout, { motion: false })}>
           <Route index element={routeElement(SettingsPage)} />
           <Route path="notifikasi" element={routeElement(DeviceNotificationsPage)} />
           <Route path="perangkat" element={routeElement(ActiveSessionsPage)} />

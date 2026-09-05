@@ -60,3 +60,41 @@ test("motion runtime menghormati reduced-motion dan tidak menghidupkan kembali l
   assert.doesNotMatch(css, /transition\s*:[^;]*(?:width|height)/);
   assert.doesNotMatch(css, /(?:login-money-fall|fatal-error-fly|success-money-fall|success-brand-pulse)[^;]*infinite/);
 });
+
+
+test("route utama memakai prefetch intent, delayed loader, dan entrance motion yang ringan", async () => {
+  const [app, routeModules, prefetchHook, delayedLoader, appCss, responsiveCss, buttonCss, componentsCss, shell] = await Promise.all([
+    read("src/app/App.jsx"),
+    read("src/app/routeModules.js"),
+    read("src/hooks/useRoutePrefetch.js"),
+    read("src/components/feedback/DelayedLoadingScreen.jsx"),
+    read("src/styles/app.css"),
+    read("src/styles/responsive.css"),
+    read("src/components/common/Button.module.css"),
+    read("src/styles/components.css"),
+    read("src/layouts/AppShell.jsx"),
+  ]);
+
+  assert.match(app, /lazy\(loadDashboardPage\)/);
+  assert.match(app, /<DelayedLoadingScreen variant=\{loadingVariant\} \/>/);
+  assert.match(app, /className="route-content-enter"/);
+  assert.match(app, /routeElement\(AppShell, \{ loadingVariant: "page", delayedLoader: false, motion: false \}\)/);
+  assert.match(routeModules, /export const preloadRoute = async/);
+  for (const route of ["/transaksi", "/rekening", "/laporan", "/investasi", "/pengaturan/perangkat"]) {
+    assert.ok(routeModules.includes(`["${route}"`), `route ${route} wajib dapat diprefetch`);
+  }
+  assert.match(prefetchHook, /pointerover/);
+  assert.match(prefetchHook, /pointerdown/);
+  assert.match(prefetchHook, /focusin/);
+  assert.match(prefetchHook, /url\.origin !== window\.location\.origin/);
+  assert.match(delayedLoader, /delay = 120/);
+  assert.match(delayedLoader, /route-loading-reserve/);
+  assert.match(shell, /useRoutePrefetch\(\)/);
+  assert.match(appCss, /\.route-content-enter\s*\{[\s\S]*animation:\s*route-content-enter var\(--motion-fast\) var\(--ease-enter\) both;/);
+  assert.match(appCss, /@keyframes route-content-enter\s*\{[\s\S]*translateY\(5px\)[\s\S]*translateY\(0\)/);
+  assert.match(appCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.route-content-enter \{ animation:\s*none; \}/);
+  assert.match(buttonCss, /\.button:active:not\(:disabled\)\s*\{[\s\S]*translateY\(1px\) scale\(\.985\)/);
+  assert.match(componentsCss, /\.icon-button:active:not\(:disabled\)\s*\{[\s\S]*scale\(\.96\)/);
+  assert.match(responsiveCss, /\.mobile-navigation a:active,[\s\S]*\.mobile-navigation__more:active \{[^}]*scale\(\.97\)/);
+  assert.match(responsiveCss, /\.mobile-navigation__add \{[^}]*transition:[^}]*transform var\(--motion-control\)/);
+});

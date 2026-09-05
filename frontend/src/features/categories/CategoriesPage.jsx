@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router";
-import { FiArchive, FiEdit2, FiFilter, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
+import { FiArchive, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { MoneyInIcon, MoneyOutIcon, RefundIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -134,7 +135,7 @@ const CategoryIconPicker = ({ value, onChange, transactionType, name }) => {
   );
 };
 
-const CategoryToolbar = ({ searchQuery, setSearchQuery, statusFilter, setStatusFilter, ownerMode }) => <div className={styles.categoryToolbar}><label className={styles.categorySearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari kategori</span><input className="search-field" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari kategori" /></label><label className={styles.categoryStatusFilter}><FiFilter aria-hidden="true" /><span className="sr-only">Filter status kategori</span><select className="search-field" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter status kategori"><option value="all">Semua status</option><option value="active">Aktif</option>{ownerMode ? <option value="archived">Arsip</option> : null}</select></label></div>;
+const CategoryToolbar = ({ searchQuery, setSearchQuery, statusFilter, setStatusFilter, ownerMode }) => <div className={styles.categoryToolbar}><label className={styles.categorySearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari kategori</span><input className="search-field" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari kategori" /></label><SelectionField className={styles.categoryStatusFilter} label="Filter status kategori" hideLabel compact value={statusFilter} onChange={setStatusFilter} options={[{ value: "all", label: "Semua status" }, { value: "active", label: "Aktif" }, ...(ownerMode ? [{ value: "archived", label: "Arsip" }] : [])]} /></div>;
 
 const categoryMenuAnchorStyle = (trigger) => {
   if (!trigger || typeof window === "undefined") return undefined;

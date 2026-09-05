@@ -22,15 +22,17 @@
     transform var(--motion-fast) var(--motion-easing);
 }
 
-.button:hover:not(:disabled) {
-  border-color: var(--primary);
-  box-shadow: var(--shadow-control-hover);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled) {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-control-hover);
+    transform: translateY(-1px);
+  }
 }
 
 .button:active:not(:disabled) {
   box-shadow: var(--shadow-control);
-  transform: translateY(0);
+  transform: translateY(1px) scale(.985);
 }
 
 .button:focus-visible {
@@ -55,8 +57,8 @@
   color: var(--text);
 }
 
-.secondary:hover:not(:disabled) {
-  background: var(--surface-soft);
+@media (hover: hover) and (pointer: fine) {
+  .secondary:hover:not(:disabled) { background: var(--surface-soft); }
 }
 
 .primary {
@@ -66,9 +68,11 @@
   box-shadow: var(--shadow-primary-control);
 }
 
-.primary:hover:not(:disabled) {
-  border-color: var(--primary-hover);
-  background: var(--primary-hover);
+@media (hover: hover) and (pointer: fine) {
+  .primary:hover:not(:disabled) {
+    border-color: var(--primary-hover);
+    background: var(--primary-hover);
+  }
 }
 
 .danger {
@@ -77,9 +81,11 @@
   color: var(--on-negative);
 }
 
-.danger:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--negative) 88%, var(--shadow-ink));
-  background: color-mix(in srgb, var(--negative) 88%, var(--shadow-ink));
+@media (hover: hover) and (pointer: fine) {
+  .danger:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--negative) 88%, var(--shadow-ink));
+    background: color-mix(in srgb, var(--negative) 88%, var(--shadow-ink));
+  }
 }
 
 .loading svg {
@@ -92,5 +98,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .button { transition: none; }
+  .button:active:not(:disabled) { transform: none; }
   .loading svg { animation: none; }
 }

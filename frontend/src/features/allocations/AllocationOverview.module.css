@@ -205,19 +205,6 @@
   font-size: inherit;
 }
 
-.allocation-summary--empty {
-  min-height: 10.5rem;
-}
-
-.allocation-summary--empty .allocation-summary__content {
-  align-self: center;
-}
-
-.allocation-summary--empty .allocation-summary__art {
-  width: min(11rem, 23%);
-  opacity: .92;
-}
-
 .allocation-summary__art {
   position: absolute;
   z-index: 1;
@@ -283,9 +270,11 @@
   transition: border-color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
 }
 
-.allocation-filters button:hover {
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .allocation-filters button:hover {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    color: var(--primary);
+  }
 }
 
 .allocation-filters button:active {
@@ -317,8 +306,8 @@
   box-shadow: var(--shadow-sm);
 }
 
-.allocation-card:hover {
-  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+@media (hover: hover) and (pointer: fine) {
+  .allocation-card:hover { border-color: color-mix(in srgb, var(--primary) 24%, var(--border)); }
 }
 
 .allocation-card__header {
@@ -388,9 +377,11 @@
   transition: background-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
 }
 
-.allocation-card__menu:hover {
-  background: var(--surface-soft);
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .allocation-card__menu:hover {
+    background: var(--surface-soft);
+    color: var(--primary);
+  }
 }
 
 .allocation-card__menu:active {
@@ -533,8 +524,8 @@
   touch-action: manipulation;
 }
 
-.allocation-card__expand:hover {
-  background: color-mix(in srgb, var(--primary-soft) 60%, transparent);
+@media (hover: hover) and (pointer: fine) {
+  .allocation-card__expand:hover { background: color-mix(in srgb, var(--primary-soft) 60%, transparent); }
 }
 
 .allocation-card__expand:focus-visible {

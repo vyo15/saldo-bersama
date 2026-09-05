@@ -28,13 +28,13 @@ test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail ta
   const text = await source();
   assert.match(text, /payment_method: ""/);
   assert.match(text, /\{ value: "", label: "Belum dipilih" \}/);
-  assert.match(text, /id="payment-method"[\s\S]*form\.payment_method/);
+  assert.match(text, /SelectionControl id="payment-method"[\s\S]*form\.payment_method/);
   assert.doesNotMatch(text, /Detail tambahan|optional-fields__toggle/);
   assert.match(text, /100_000/);
   assert.match(text, /quickAmountLabel/);
   assert.doesNotMatch(text, /payment_method: "transfer"/);
   assert.doesNotMatch(text, /\{ value: "autodebit", label: "Auto-debit" \}/, "Auto-debit tidak boleh menjadi pilihan transaksi manual baru.");
-  assert.match(text, /form\.payment_method === "autodebit"[\s\S]*hidden>Auto-debit \(data lama\)/, "Nilai Auto-debit lama tetap harus dapat dibaca tanpa menjadi opsi baru.");
+  assert.match(text, /form\.payment_method === "autodebit"[\s\S]*Auto-debit \(data lama\)[\s\S]*disabled: true/, "Nilai Auto-debit lama tetap harus dapat dibaca tanpa menjadi opsi baru.");
   assert.match(text, /accountDisplayLabel/);
   assert.ok((text.match(/accountDisplayLabel\(item\)/g) || []).length >= 2, "Rekening sumber/tujuan harus memakai label kepemilikan canonical pada presentation yang menampilkan daftar.");
   assert.doesNotMatch(text, /includeOwner: false/);

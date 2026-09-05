@@ -89,9 +89,7 @@ button.heroStatus {
   color: var(--warning);
 }
 
-.heroStatus:hover {
-  border-color: currentColor;
-}
+@media (hover: hover) and (pointer: fine) { .heroStatus:hover { border-color: currentColor; } }
 
 .heroStatus:focus-visible {
   outline: 3px solid var(--focus-ring);

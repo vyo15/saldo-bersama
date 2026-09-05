@@ -62,10 +62,8 @@
   cursor: pointer;
 }
 
-.memberActivityClose:hover {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .memberActivityClose:hover { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
 }
 
 .memberActivityClose:focus-visible {

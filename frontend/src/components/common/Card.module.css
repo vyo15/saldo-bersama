@@ -13,7 +13,7 @@
   border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .card[data-interactive="true"]:hover {
     border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
     box-shadow: var(--shadow-md);

@@ -197,7 +197,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories,
   );
 };
 
-const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate }) => (
+const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate, hasAnyItems, onReset }) => (
   <div className={styles.scheduleList}>
     {items.length ? items.map((item) => (
       <ScheduleItem
@@ -211,7 +211,7 @@ const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, ac
         budgets={budgets}
       />
     )) : (
-      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title="Belum ada jadwal" description={emptyText} headingLevel={3} action={canCreate ? <Button variant="primary" icon={FiCalendar} onClick={actions.openCreate}>Buat jadwal rutin</Button> : null} />
+      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title={hasAnyItems ? "Tidak ada jadwal yang sesuai" : "Belum ada jadwal"} description={emptyText} headingLevel={3} action={hasAnyItems ? <Button onClick={onReset}>Tampilkan jadwal tersedia</Button> : canCreate ? <Button variant="primary" icon={FiCalendar} onClick={actions.openCreate}>Buat jadwal rutin</Button> : null} />
     )}
   </div>
 );
@@ -305,11 +305,11 @@ export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, 
       <div className={styles.sectionHeader}>
         <div>
           <h2>Jadwal periode ini</h2>
-          <span>{visibleItems.length} jadwal {typeLabel}</span>
+          {allItems.length ? <span>{visibleItems.length} jadwal {typeLabel}</span> : null}
         </div>
       </div>
-      <ScheduleFilters filter={filter} setFilter={selectFilter} items={allItems} />
-      <ScheduleKindTabs kind={kind} setKind={(next) => { setKind(next); setExpandedId(null); }} items={items} />
+      {allItems.length ? <ScheduleFilters filter={filter} setFilter={selectFilter} items={allItems} /> : null}
+      {allItems.length ? <ScheduleKindTabs kind={kind} setKind={(next) => { setKind(next); setExpandedId(null); }} items={items} /> : null}
       <ScheduleList
         items={visibleItems}
         emptyText={`Belum ada ${typeLabel} rutin pada status ini.`}
@@ -320,6 +320,8 @@ export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, 
         categories={categories}
         budgets={budgets}
         canCreate={canCreate}
+        hasAnyItems={Boolean(allItems.length)}
+        onReset={() => selectFilter("all")}
       />
     </section>
   );

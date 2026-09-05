@@ -209,7 +209,10 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /Boolean\(item\?\.can_adjust\)/);
   assert.match(allocations, /bootstrap\?\.user \|\| user/);
   assert.match(allocations, /hasSameAssignee/);
-  assert.match(allocations, /Pilih siapa yang dapat menggunakan alokasi ini/);
+  assert.match(allocations, /label="Ambil dana dari"/);
+  assert.match(allocations, /legend="Digunakan oleh"/);
+  assert.match(allocations, /compact plainIcons/);
+  assert.match(allocations, /Tersedia setelah dialokasikan/);
   assert.match(allocations, /filteredActiveItems = useMemo/);
   assert.match(allocations, /allocationFilter === "shared"/);
   assert.match(allocations, /allocationFilter === "mine"/);

@@ -290,8 +290,12 @@
     grid-template-columns: repeat(var(--report-trend-count), minmax(28px, 1fr));
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: thin;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
+
+  .trendChartDaily::-webkit-scrollbar { display: none; }
 
   .trendColumn {
     min-width: 0;

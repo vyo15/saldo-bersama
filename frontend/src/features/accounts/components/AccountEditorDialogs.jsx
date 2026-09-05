@@ -1,6 +1,7 @@
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
+import SelectionField from "../../../components/common/SelectionField.jsx";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
 import { AdminIcon, BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, PersonIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { ACCOUNT_TYPES } from "../../../domain/constants.js";
@@ -71,19 +72,11 @@ const BankNumberField = ({ value, onChange, showHelper = true }) => (
 );
 
 const BankTemplateField = ({ value, onChange, compact = false, showHelper = true }) => (
-  <label className="field form-grid__full">
-    <span>Template kartu bank</span>
-    <select value={value} onChange={(event) => onChange(event.target.value)}>{BANK_TEMPLATE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select>
-    {showHelper ? <small>{compact ? "Template tersimpan sebagai tampilan kartu dan tidak mengubah nama rekening." : "Template hanya mengubah tampilan. PIN, CVV, nomor kartu debit, dan masa berlaku tidak disimpan."}</small> : null}
-  </label>
+  <SelectionField className="form-grid__full" label="Template kartu bank" value={value} onChange={onChange} options={BANK_TEMPLATE_OPTIONS} helper={showHelper ? (compact ? "Template tersimpan sebagai tampilan kartu dan tidak mengubah nama rekening." : "Template hanya mengubah tampilan. PIN, CVV, nomor kartu debit, dan masa berlaku tidak disimpan.") : ""} />
 );
 
 const EwalletProviderField = ({ value, onChange, compact = false, showHelper = true }) => (
-  <label className="field form-grid__full">
-    <span>Provider E-wallet</span>
-    <select value={value} onChange={(event) => onChange(event.target.value)}>{EWALLET_PROVIDER_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select>
-    {showHelper ? <small>{compact ? "Provider tersimpan terpisah dari nama rekening dan hanya menentukan identitas visual E-wallet." : "Provider hanya menentukan identitas visual E-wallet."}</small> : null}
-  </label>
+  <SelectionField className="form-grid__full" label="Provider E-wallet" value={value} onChange={onChange} options={EWALLET_PROVIDER_OPTIONS} helper={showHelper ? (compact ? "Provider tersimpan terpisah dari nama rekening dan hanya menentukan identitas visual E-wallet." : "Provider hanya menentukan identitas visual E-wallet.") : ""} />
 );
 
 const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm }) => (

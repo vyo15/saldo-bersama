@@ -126,7 +126,7 @@ const AllocationNeedsPanel = ({
 }) => <Card className={allocationClass("allocation-detail-panel")}>
   <div className={allocationClass("allocation-detail-panel__header")}>
     <div><h3>Kebutuhan</h3><p>Atur kategori dan anggaran yang menggunakan Alokasi Dana ini.</p></div>
-    {canManage ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
+    {canManage && linkedBudgets.length ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
   </div>
   {linkedBudgets.length ? <>
     <AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} />

@@ -15,10 +15,15 @@
   transition: color var(--motion-fast), background-color var(--motion-fast), transform var(--motion-fast);
 }
 
-.trigger:hover,
 .trigger:focus-visible {
   color: var(--primary);
   background: var(--primary-soft);
+}
+@media (hover: hover) and (pointer: fine) {
+  .trigger:hover {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
 }
 
 .trigger:active { transform: scale(.96); }
@@ -26,8 +31,10 @@
 .trigger svg { width: 1.05rem; height: 1.05rem; }
 
 .hero { color: color-mix(in srgb, var(--on-hero) 72%, transparent); }
-.hero:hover,
 .hero:focus-visible { color: var(--account-mobile-accent, var(--primary)); background: color-mix(in srgb, var(--on-hero) 8%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .hero:hover { color: var(--account-mobile-accent, var(--primary)); background: color-mix(in srgb, var(--on-hero) 8%, transparent); }
+}
 .hero:focus-visible { outline-color: var(--account-mobile-accent, var(--focus-ring)); }
 
 .content {
