@@ -4,7 +4,7 @@
 
 1. Buat/konfirmasi database Turso Development dan Production yang berbeda sebelum memindahkan data nyata.
 2. Ambil backup teknis terverifikasi masing-masing database. Development memakai `npm run db:migrate` + `npm run db:bind-environment -- development`; Production memakai `.env.production.local` dan target eksplisit `npm run db:migrate -- production` + `npm run db:bind-environment -- production`. Rebind silang ditolak; jangan mengubah binding database Production menjadi Development atau sebaliknya.
-3. Jalankan integrity Production sampai schema/binding cocok dengan runtime source **sebelum** `git push origin main`. Managed pre-push kini mengecek kondisi ini secara read-only dan menolak deploy bila Production tertinggal.
+3. Untuk release yang mengubah schema/migration, jalankan integrity Production sampai schema/binding cocok dengan runtime source **sebelum** `git push origin main`. Managed pre-push mendeteksi diff database-compatibility, mengecek Production DB secara read-only, dan menolak deploy bila Production tertinggal. Diff non-schema hanya memerlukan core Vercel Production health.
 4. Set `DATABASE_ENVIRONMENT` pada Vercel Development/Production sesuai scope. Preview tidak diberi credential database aktif.
 5. Deploy runtime melalui `git push origin main`. Session v1 tidak kompatibel dengan registry v2 sehingga semua perangkat login ulang satu kali.
 6. Jalankan health, login Administrator/Member, session list/revoke, mutation retry outcome-unknown, scheduler heartbeat, backup/restore drill, lalu baru buka traffic normal.

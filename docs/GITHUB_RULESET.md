@@ -25,6 +25,9 @@ git push origin main
   -> pastikan working tree clean
   -> tolak non-fast-forward/force
   -> npm run verify
+  -> klasifikasikan diff
+     -> database-compatibility: Production DB read-only
+     -> non-schema: core Vercel Production health
   -> PASS baru Git mengirim ref main
 ```
 

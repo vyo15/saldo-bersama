@@ -7,21 +7,47 @@ import test from "node:test";
 import { inspectProductionDatabaseHealth } from "../../scripts/production-database-preflight.mjs";
 import { assertVerifiedProductionBackup } from "../../scripts/production-migration-safety.mjs";
 import { checkProductionReleasePreflight } from "../../scripts/production-release-preflight.mjs";
-import { runPrePushGuard } from "../../scripts/pre-push-verify.mjs";
+import { requiresProductionDatabasePreflight, runPrePushGuard } from "../../scripts/pre-push-verify.mjs";
 import { reportProductionDegradation } from "../../scripts/production-runtime.mjs";
 
 const SHA = "1111111111111111111111111111111111111111";
 const REMOTE_SHA = "2222222222222222222222222222222222222222";
 
-test("pre-push memverifikasi source lalu Production DB read-only sebelum main dikirim", async () => {
+test("pre-push frontend-only memverifikasi source lalu core Production tanpa credential DB lokal", async () => {
   const calls = [];
-  await runPrePushGuard({
+  const result = await runPrePushGuard({
     stdinSource: `refs/heads/main ${SHA} refs/heads/main ${REMOTE_SHA}\n`,
     gitInspector: () => ({ currentBranch: "main", headSha: SHA, workingTree: "", isFastForward: true }),
+    changedPathsInspector: () => ["frontend/src/features/investments/StockLogo.jsx", "frontend/src/features/investments/StockLogo.module.css"],
     verify: async () => { calls.push("verify"); },
     releasePreflight: async () => { calls.push("production-release-preflight"); },
+    runtimePreflight: async () => { calls.push("production-runtime-preflight"); },
+  });
+  assert.deepEqual(calls, ["verify", "production-runtime-preflight"]);
+  assert.equal(result.databasePreflightRequired, false);
+});
+
+test("pre-push schema/migration tetap mewajibkan Production DB read-only sebelum main dikirim", async () => {
+  const calls = [];
+  const result = await runPrePushGuard({
+    stdinSource: `refs/heads/main ${SHA} refs/heads/main ${REMOTE_SHA}\n`,
+    gitInspector: () => ({ currentBranch: "main", headSha: SHA, workingTree: "", isFastForward: true }),
+    changedPathsInspector: () => ["database/migrations/015_example.sql"],
+    verify: async () => { calls.push("verify"); },
+    releasePreflight: async () => { calls.push("production-release-preflight"); },
+    runtimePreflight: async () => { calls.push("production-runtime-preflight"); },
   });
   assert.deepEqual(calls, ["verify", "production-release-preflight"]);
+  assert.equal(result.databasePreflightRequired, true);
+});
+
+test("scope Production DB guard hanya aktif untuk path yang dapat mengubah compatibility database", () => {
+  assert.equal(requiresProductionDatabasePreflight(["frontend/src/App.jsx"]), false);
+  assert.equal(requiresProductionDatabasePreflight(["api/_lib/services/finance.js"]), false);
+  assert.equal(requiresProductionDatabasePreflight(["database/migrations/015_example.sql"]), true);
+  assert.equal(requiresProductionDatabasePreflight(["api/_lib/db/schema.js"]), true);
+  assert.equal(requiresProductionDatabasePreflight(["api/_lib/db/httpClient.js"]), true);
+  assert.equal(requiresProductionDatabasePreflight(["scripts/db-migrate.mjs"]), true);
 });
 
 test("Production release preflight menolak schema tertinggal tanpa memigrasikan database otomatis", async () => {

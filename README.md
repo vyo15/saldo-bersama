@@ -86,7 +86,7 @@ git commit -m "fix: deskripsi perubahan"
 git push origin main
 ```
 
-Managed pre-push hook memverifikasi bahwa branch aktif/ref/SHA yang benar-benar dikirim semuanya `main`, working tree bersih, push fast-forward, menjalankan full `npm run verify`, lalu memastikan Turso Production **secara read-only** sudah memakai schema/binding yang kompatibel dengan source. Jika satu gate gagal, push dibatalkan sebelum ref dikirim; push tidak pernah auto-migrate. GitHub **Quality** tetap berjalan setelah push sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify` atau force push.
+Managed pre-push hook memverifikasi bahwa branch aktif/ref/SHA yang benar-benar dikirim semuanya `main`, working tree bersih, push fast-forward, lalu menjalankan full `npm run verify`. Untuk perubahan yang menyentuh database-compatibility guard (`database/migrations/`, `api/_lib/db/`, dan tooling migration/release terkait), hook tetap mewajibkan Turso Production **secara read-only** agar schema/binding kompatibel sebelum ref dikirim. Untuk perubahan non-schema seperti frontend, hook tidak membutuhkan credential Turso Production lokal dan cukup memverifikasi core Vercel Production melalui health publik. Jika satu gate gagal, push dibatalkan; push tidak pernah auto-migrate. GitHub **Quality** tetap berjalan setelah push sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify` atau force push.
 
 ## Database
 

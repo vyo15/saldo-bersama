@@ -27,7 +27,7 @@ Quality gate canonical tetap:
 npm run verify
 ```
 
-Namun untuk workflow rutin pengguna tidak perlu menjalankannya manual sebelum setiap push karena managed pre-push hook menjalankan full verification lalu Production schema/binding preflight read-only secara otomatis pada:
+Namun untuk workflow rutin pengguna tidak perlu menjalankannya manual sebelum setiap push karena managed pre-push hook menjalankan full verification. Direct Production schema/binding preflight read-only hanya dijalankan bila diff menyentuh database-compatibility guard; perubahan non-schema memakai core Vercel Production health dan tidak memerlukan credential Turso Production lokal pada:
 
 ```bash
 git push origin main

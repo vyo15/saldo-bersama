@@ -29,10 +29,10 @@ git push origin main
 - working tree masih mempunyai perubahan yang belum di-commit;
 - push non-fast-forward/force;
 - full `npm run verify` gagal;
-- profile Production lokal tidak valid;
-- Turso Production tidak reachable, schema source/Production berbeda, atau binding Production tidak siap.
+- untuk diff database-compatibility: profile Production lokal tidak valid, Turso Production tidak reachable, schema source/Production berbeda, atau binding Production tidak siap;
+- untuk diff non-schema: core Vercel Production tidak sehat atau tidak dapat dijangkau.
 
-Pre-push Production check bersifat **read-only** dan dijalankan setelah `npm run verify`. Push tidak pernah memigrasikan database otomatis. Dengan demikian dua kegagalan lama ditutup sekaligus: working tree branch A tidak dapat memvalidasi ref `main` lain, dan runtime schema baru tidak dapat terdeploy saat database Production masih tertinggal.
+Pre-push selalu menjalankan `npm run verify`. Setelah itu, diff diklasifikasikan: perubahan database-compatibility menjalankan Production DB check **read-only**, sedangkan perubahan non-schema menjalankan core Vercel Production health tanpa membutuhkan credential Turso Production lokal. Push tidak pernah memigrasikan database otomatis. Dengan demikian ref yang salah tetap ditolak, runtime schema baru tidak dapat terdeploy saat database Production tertinggal, dan perubahan UI/backend non-schema tidak memaksa setiap laptop menyimpan token database Production.
 
 Setelah pre-push PASS, GitHub workflow **Quality** tetap berjalan pada `main` sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify`, `--force`, atau bypass routine.
 
@@ -61,7 +61,7 @@ Direct push tidak menghapus review discipline. Untuk schema/auth/API/saldo/trans
 4. patch terarah;
 5. targeted regression;
 6. commit;
-7. `git push origin main` menjalankan full verification lalu Production schema/binding preflight read-only sebelum ref dikirim.
+7. `git push origin main` menjalankan full verification, lalu Production DB preflight read-only hanya untuk diff database-compatibility; diff non-schema memakai core Vercel Production health sebelum ref dikirim.
 
 Operasi live yang destructive atau mutation database Production tetap **tidak boleh** diotomatisasi oleh push. Migration/backup/restore tetap mengikuti runbook dan approval canonical.
 

@@ -23,7 +23,7 @@ request
   -> review diff
   -> commit pada main
   -> git push origin main
-  -> pre-push verify + Production schema/binding read-only PASS
+  -> pre-push verify + Production gate sesuai diff PASS
   -> Quality server-side berjalan
   -> clean ZIP bila diperlukan
 ```

@@ -3,8 +3,18 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { runVerificationWithCleanup } from "./verify-project.mjs";
 import { checkProductionReleasePreflight } from "./production-release-preflight.mjs";
+import { checkProductionRuntime } from "./production-runtime.mjs";
 
 const ZERO_SHA = /^0+$/;
+
+const PRODUCTION_DATABASE_GUARD_PATHS = Object.freeze([
+  "database/migrations/",
+  "api/_lib/db/",
+  "scripts/db-migrate.mjs",
+  "scripts/production-database-preflight.mjs",
+  "scripts/production-migration-safety.mjs",
+  "scripts/production-release-preflight.mjs",
+]);
 
 export const parsePrePushUpdates = (source = "") => String(source)
   .split(/\r?\n/)
@@ -62,6 +72,21 @@ export const inspectGitPush = ({ updates } = {}) => {
   return { currentBranch, headSha, workingTree, isFastForward };
 };
 
+export const inspectPushChangedPaths = ({ remoteSha, localSha } = {}) => {
+  if (!localSha) throw new TypeError("localSha wajib diisi.");
+  if (!remoteSha || ZERO_SHA.test(remoteSha)) {
+    return gitOutput(["ls-tree", "-r", "--name-only", localSha]).split(/\r?\n/).filter(Boolean);
+  }
+  return gitOutput(["diff", "--no-renames", "--name-only", remoteSha, localSha]).split(/\r?\n/).filter(Boolean);
+};
+
+export const requiresProductionDatabasePreflight = (changedPaths = []) => changedPaths.some((filePath) => {
+  const normalized = String(filePath || "").replace(/\\/g, "/");
+  return PRODUCTION_DATABASE_GUARD_PATHS.some((guardPath) => guardPath.endsWith("/")
+    ? normalized.startsWith(guardPath)
+    : normalized === guardPath);
+});
+
 const readStdin = async () => {
   let source = "";
   process.stdin.setEncoding("utf8");
@@ -73,20 +98,32 @@ export const runPrePushGuard = async ({
   stdinSource,
   verify = runVerificationWithCleanup,
   releasePreflight = checkProductionReleasePreflight,
+  runtimePreflight = checkProductionRuntime,
   gitInspector = inspectGitPush,
+  changedPathsInspector = inspectPushChangedPaths,
+  databasePreflightScope = requiresProductionDatabasePreflight,
 } = {}) => {
   const source = stdinSource ?? await readStdin();
   const updates = parsePrePushUpdates(source);
   const gitState = gitInspector({ updates });
   const update = assertCanonicalMainPush({ updates, ...gitState });
+  const changedPaths = changedPathsInspector({ remoteSha: update.remoteSha, localSha: update.localSha });
+  const databasePreflightRequired = databasePreflightScope(changedPaths);
 
   console.log("\nSaldo Bersama pre-push Auto Quality Guard...");
   console.log(`Ref terverifikasi: main @ ${update.localSha.slice(0, 7)}`);
   await verify();
-  console.log("\nMemeriksa kompatibilitas Production DB secara read-only sebelum deploy...");
-  await releasePreflight();
+
+  if (databasePreflightRequired) {
+    console.log("\nPerubahan menyentuh database-compatibility guard. Memeriksa kompatibilitas Production DB secara read-only sebelum deploy...");
+    await releasePreflight();
+  } else {
+    console.log("\nTidak ada perubahan database-compatibility. Memeriksa core Vercel Production tanpa credential database lokal...");
+    await runtimePreflight();
+  }
+
   console.log("\nPre-push PASS. `git push origin main` dilanjutkan.");
-  return update;
+  return { ...update, changedPaths, databasePreflightRequired };
 };
 
 const isCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
