@@ -11,7 +11,10 @@ import EmptyState from "../../components/feedback/EmptyState.jsx";
 import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { scheduleMatchesFilter } from "./recurringPresentation.js";
-import styles from "./RecurringPage.module.css";
+import heroStyles from "./RecurringHero.module.css";
+import scheduleStyles from "./RecurringSchedule.module.css";
+
+const styles = Object.freeze({ ...heroStyles, ...scheduleStyles });
 
 const FILTERS = Object.freeze([
   { id: "all", label: "Semua" },

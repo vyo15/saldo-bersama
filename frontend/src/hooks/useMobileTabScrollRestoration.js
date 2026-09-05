@@ -1,12 +1,12 @@
+import { APP_MEDIA } from "../config/layout.js";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
-const MOBILE_QUERY = "(max-width: 820px)";
 const PRIMARY_TAB_PATHS = new Set(["/", "/transaksi", "/laporan"]);
 const primaryTabScrollPositions = new Map();
 const historyEntryScrollPositions = new Map();
 const MAX_HISTORY_POSITIONS = 50;
 
-const isMobileViewport = () => typeof window !== "undefined" && window.matchMedia?.(MOBILE_QUERY)?.matches === true;
+const isMobileViewport = () => typeof window !== "undefined" && window.matchMedia?.(APP_MEDIA.mobile)?.matches === true;
 
 const rememberHistoryPosition = (key, top) => {
   if (!key) return;

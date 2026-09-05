@@ -1,6 +1,6 @@
+import { APP_MEDIA } from "../../config/layout.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const MOBILE_SWIPE_QUERY = "(max-width: 820px)";
 const SWIPE_DIRECTION_LOCK_PX = 8;
 const SWIPE_HORIZONTAL_REJECT_PX = 10;
 const SWIPE_VELOCITY_PX_MS = 0.58;
@@ -13,8 +13,8 @@ const INTERACTIVE_GESTURE_TARGET = "button,a,input,select,textarea,[role='button
 const idleGesture = () => ({ tracking: false, dragging: false, rejected: false, pointerId: null, captureElement: null });
 
 const matchesMedia = (query) => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches;
-const isMobileSwipeViewport = () => matchesMedia(MOBILE_SWIPE_QUERY);
-const prefersReducedMotion = () => matchesMedia("(prefers-reduced-motion: reduce)");
+const isMobileSwipeViewport = () => matchesMedia(APP_MEDIA.mobile);
+const prefersReducedMotion = () => matchesMedia(APP_MEDIA.reducedMotion);
 
 export const useMobileSwipeDismiss = ({ enabled, containerRef, onClose }) => {
   const gestureRef = useRef(idleGesture());

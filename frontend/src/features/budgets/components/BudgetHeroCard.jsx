@@ -1,6 +1,6 @@
 import Money from "../../../components/common/Money.jsx";
 import budgetWalletHero from "../../../assets/budget-illustrations/budget-wallet-hero.webp";
-import styles from "../BudgetsPage.module.css";
+import styles from "./BudgetHeroCard.module.css";
 
 const BudgetHeroArtwork = () => (
   <div className={styles.heroArtwork} aria-hidden="true">

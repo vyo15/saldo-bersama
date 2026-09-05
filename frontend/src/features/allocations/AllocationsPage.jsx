@@ -15,6 +15,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain/dates.js";
 import { filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
+import { allocationClass } from "./allocationStyles.js";
 const AllocationDialogLayer = lazy(() => import("./AllocationDialogLayer.jsx"));
 const AllocationFundingFlow = lazy(() => import("./AllocationFundingFlow.jsx"));
 const AllocationOverviewLayer = lazy(() => import("./AllocationOverviewLayer.jsx"));
@@ -262,7 +263,7 @@ const AllocationResourceState = ({ resource, children }) => {
 };
 
 const AllocationHeading = ({ embedded }) => embedded
-  ? <div className="allocation-embedded-header"><div><h2>Alokasi Dana</h2><p>Pisahkan uang berdasarkan tujuan, lalu atur kebutuhan di dalamnya.</p></div></div>
+  ? <div className={allocationClass("allocation-embedded-header")}><div><h2>Alokasi Dana</h2><p>Pisahkan uang berdasarkan tujuan, lalu atur kebutuhan di dalamnya.</p></div></div>
   : <PageHeader title="Alokasi Dana" description="Pisahkan uang berdasarkan tujuan, lalu atur kebutuhan di dalamnya." help="Alokasi Dana mengelompokkan uang berdasarkan tujuan. Kebutuhan tetap memakai kategori dan anggaran yang sudah ada agar transaksi serta laporan tetap konsisten." />;
 
 const AllocationSetupContinuation = ({ open, onDismiss, onContinue }) => open ? <div><CompactNotice tone="success" title="Alokasi Dana pertama sudah siap." role="status">Lanjutkan ke Target atau selesai jika belum membutuhkannya.</CompactNotice><div className="form-actions"><Button type="button" onClick={onDismiss}>Selesai</Button><Button type="button" variant="primary" onClick={onContinue}>Lanjut buat Target</Button></div></div> : null;
@@ -350,7 +351,7 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const reloadPlanning = () => Promise.allSettled([resource.reload(), budgetResource.reload(), recurringResource.reload()]);
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 
-  return <AllocationResourceState resource={resource}><div className="page-stack allocations-page">
+  return <AllocationResourceState resource={resource}><div className={allocationClass("page-stack allocations-page")}>
     <Suspense fallback={null}><AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={(overview?.goals || []).some((goal) => goal.status === "active")} onDismissReleasedFunds={() => setReleasedFunds(null)} /></Suspense>
     <AllocationHeading embedded={embedded} />
     <AllocationSetupContinuation open={setupCreated} onDismiss={() => setSetupCreated(false)} onContinue={() => navigate("/target", { state: { setupFlow: true } })} />

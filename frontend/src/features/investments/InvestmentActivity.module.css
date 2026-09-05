@@ -1,0 +1,96 @@
+/* Investment activity presentation ownership. */
+
+.activitySection {
+display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.activitySection {
+padding-top: var(--space-1);
+}
+
+.activityList {
+display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activityItem {
+position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) 0;
+}
+
+.activityItem:not(:last-child)::after {
+content: "";
+  position: absolute;
+  left: calc(var(--control-height-md) / 2);
+  top: calc(var(--control-height-md) + var(--space-2));
+  bottom: calc(var(--space-2) * -1);
+  width: 1px;
+  background: var(--border);
+}
+
+.activityIcon {
+position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: var(--control-height-md);
+  height: var(--control-height-md);
+  border: 1px solid color-mix(in srgb, var(--primary) 15%, var(--border));
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.activityIcon svg {
+width: 1.1rem;
+  height: 1.1rem;
+}
+
+.activityCopy,
+.activityValue {
+display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.activityCopy strong {
+overflow-wrap: anywhere;
+}
+
+.activityCopy small,
+.activityValue > span {
+color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.activityValue {
+justify-items: end;
+  text-align: end;
+}
+
+.activityValue > strong,
+.activityValue :global(.money) {
+font-size: var(--font-size-body-sm);
+}
+
+@media (max-width: 620px) {
+  .activityItem {
+grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .activityValue {
+grid-column: 2;
+    justify-items: start;
+    text-align: start;
+  }
+}

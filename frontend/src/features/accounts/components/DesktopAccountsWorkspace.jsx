@@ -1,3 +1,4 @@
+import { APP_MEDIA } from "../../../config/layout.js";
 import { useMemo, useRef } from "react";
 import {
   FiArchive,
@@ -30,7 +31,6 @@ import {
 import { AccountVisual } from "./AccountFinancialCard.jsx";
 import styles from "./DesktopAccountsWorkspace.module.css";
 
-const DESKTOP_QUERY = "(min-width: 821px)";
 const RECENT_TRANSACTION_LIMIT = 6;
 const CAROUSEL_SWIPE_MIN_DISTANCE = 42;
 const OWNERSHIP_FILTERS = Object.freeze([
@@ -40,7 +40,7 @@ const OWNERSHIP_FILTERS = Object.freeze([
   ["shared", "Bersama"],
 ]);
 
-const useDesktopWorkspaceEnabled = () => useMediaQuery(DESKTOP_QUERY, { fallback: true });
+const useDesktopWorkspaceEnabled = () => useMediaQuery(APP_MEDIA.desktop, { fallback: true });
 
 const balanceTone = (value) => Number(value || 0) < 0 ? "negative" : "default";
 

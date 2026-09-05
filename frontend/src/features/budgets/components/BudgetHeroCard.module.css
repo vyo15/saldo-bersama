@@ -1,0 +1,175 @@
+/* Budget hero card presentation. */
+.heroCard {
+  position: relative;
+  min-height: 200px;
+  overflow: hidden;
+  padding: clamp(18px, 3vw, 26px);
+  border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border));
+  border-radius: 26px;
+  background:
+  radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--secondary) 18%, transparent), transparent 34%),
+  linear-gradient(145deg, color-mix(in srgb, var(--surface) 84%, var(--primary-soft)), color-mix(in srgb, var(--surface) 90%, var(--secondary-soft)));
+  box-shadow: var(--shadow-sm);
+}
+
+.heroGlow {
+  position: absolute;
+  right: -46px;
+  top: -48px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--secondary) 17%, transparent), transparent 68%);
+}
+
+.heroCopy {
+  position: relative;
+  z-index: 2;
+  width: min(72%, 620px);
+}
+
+.heroLabel {
+  color: var(--text-soft);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.heroValue {
+  display: block;
+  margin-top: 6px;
+  color: var(--text);
+  font-size: clamp(1.85rem, 1.35rem + 2vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.heroValue :global(.money) {
+  color: inherit;
+}
+
+.heroValue :global(.money--negative) {
+  color: var(--negative);
+}
+
+.heroMeta {
+  margin: var(--space-3) 0 0;
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.heroMeta :global(.money) {
+  color: inherit;
+  font-weight: var(--font-weight-semibold);
+}
+
+.heroProgress {
+  width: min(100%, 520px);
+  height: 9px;
+  margin-top: var(--space-4);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
+}
+
+.heroProgress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: width var(--motion-normal) var(--motion-easing);
+}
+
+.heroProgressMeta {
+  width: min(100%, 520px);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.heroProgressMeta strong {
+  color: var(--primary);
+}
+
+.heroArtwork {
+  position: absolute;
+  right: clamp(20px, 4vw, 48px);
+  top: 50%;
+  z-index: 1;
+  width: clamp(190px, 20vw, 250px);
+  height: auto;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 16px 26px color-mix(in srgb, var(--primary) 16%, transparent));
+}
+
+.heroIllustration {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+}
+
+@media (max-width: 900px) {
+  .heroCopy {
+    width: min(68%, 540px);
+  }
+
+  .heroArtwork {
+    right: 18px;
+    width: clamp(168px, 22vw, 210px);
+  }
+}
+
+@media (max-width: 580px) {
+  .heroCard {
+    min-height: 188px;
+    padding: var(--mobile-card-padding);
+    border-radius: 22px;
+  }
+
+  .heroCopy {
+    width: calc(100% - 120px);
+  }
+
+  .heroArtwork {
+    right: 8px;
+    top: 50%;
+    width: 108px;
+    transform: translateY(-50%);
+  }
+
+  .heroMeta {
+    max-width: 18rem;
+    font-size: var(--font-size-xs);
+  }
+
+  .heroProgress {
+    margin-top: 13px;
+  }
+}
+
+@media (max-width: 390px) {
+  .heroCopy {
+    width: calc(100% - 100px);
+  }
+
+  .heroArtwork {
+    right: 4px;
+    width: 92px;
+    opacity: 0.84;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroProgress > span {
+    transition: none;
+  }
+}

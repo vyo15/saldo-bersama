@@ -1,4 +1,4 @@
-import styles from "../BudgetsPage.module.css";
+import styles from "./BudgetInsightCard.module.css";
 
 const clampPercent = (value) => Math.min(100, Math.max(0, Number(value || 0)));
 

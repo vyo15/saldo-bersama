@@ -1,3 +1,4 @@
+import { APP_MEDIA } from "../../config/layout.js";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
@@ -34,8 +35,7 @@ const MobileAccountsExperience = lazy(() => import("./components/MobileAccountsE
 const DesktopAccountsWorkspace = lazy(() => import("./components/DesktopAccountsWorkspace.jsx"));
 const AccountEditorDialogs = lazy(() => import("./components/AccountEditorDialogs.jsx"));
 
-const MOBILE_ACCOUNTS_QUERY = "(max-width: 820px)";
-const useMobileAccountsLayout = () => useMediaQuery(MOBILE_ACCOUNTS_QUERY);
+const useMobileAccountsLayout = () => useMediaQuery(APP_MEDIA.mobile);
 const EMPTY_ACCOUNTS = Object.freeze([]);
 
 const emptyAccountForm = (overrides = {}) => ({

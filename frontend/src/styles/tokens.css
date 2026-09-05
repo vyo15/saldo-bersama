@@ -43,6 +43,12 @@
   --warning-soft: #fff3d6;
   --info: #0f766e;
   --info-soft: #e5f7f3;
+  --chart-series-1: var(--primary);
+  --chart-series-2: #f59e42;
+  --chart-series-3: #4e8fe8;
+  --chart-series-4: #8b62dc;
+  --chart-series-5: color-mix(in srgb, var(--text-muted) 58%, var(--surface));
+  --login-page-background: var(--page);
   --on-primary: #ffffff;
   --on-negative: #ffffff;
   --on-hero: #f4faf7;
@@ -154,6 +160,12 @@
   --warning-soft: rgba(245, 158, 11, 0.16);
   --info: #2cc295;
   --info-soft: rgba(44, 194, 149, 0.16);
+  --chart-series-1: var(--primary);
+  --chart-series-2: #f6a85a;
+  --chart-series-3: #72a8f0;
+  --chart-series-4: #aa87e8;
+  --chart-series-5: color-mix(in srgb, var(--text-muted) 66%, var(--surface));
+  --login-page-background: #06110f;
   --on-primary: #061412;
   --on-negative: #0b1110;
   --on-hero: #f4faf7;

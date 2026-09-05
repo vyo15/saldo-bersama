@@ -93,19 +93,13 @@ Line count bukan Definition of Done.
 
 Sebelum memindahkan guarded behavior, cari test yang mengunci contract. Tambah characterization test bila behavior penting belum terlindungi.
 
-Sesudah refactor, validasi minimal:
+Sesudah refactor, jalankan gate canonical:
 
 ```bash
-npm run validate:source
-npm run lint
-npm run test
-npm run test:guard
-npm run build
-npm run build:budget
-npm run test:coverage:backend
-npm run check:duplicates
 npm run verify
 ```
+
+`npm run verify` sudah menjalankan source validation, lint/syntax, frontend regression, production build, build budget, serta backend regression + coverage. Alias quality internal yang sudah retired tidak boleh didokumentasikan sebagai command publik terpisah.
 
 `npm run verify`/artifact final hanya valid pada Node canonical yang dinyatakan repository. Jika environment tidak memenuhi runtime canonical, hasil harus disebut candidate/unverified.
 

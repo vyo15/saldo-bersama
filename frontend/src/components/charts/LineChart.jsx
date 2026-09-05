@@ -1,3 +1,4 @@
+import styles from "./LineChart.module.css";
 import { formatRupiah } from "../../domain/money.js";
 
 const LineChart = ({ data, label = "Tren keuangan" }) => {
@@ -13,7 +14,7 @@ const LineChart = ({ data, label = "Tren keuangan" }) => {
     return `${x},${y}`;
   }).join(" ");
   return (
-    <figure className="line-chart" aria-label={label}>
+    <figure className={styles.chart} aria-label={label}>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-hidden="true"><polyline points={points} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       <figcaption>{data.map((item) => `${item.label}: ${formatRupiah(item.value)}`).join(" · ")}</figcaption>
     </figure>

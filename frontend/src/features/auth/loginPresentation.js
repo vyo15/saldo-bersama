@@ -1,5 +1,6 @@
+import { APP_MEDIA } from "../../config/layout.js";
 /** Static login copy/artwork and error presentation only; authentication state stays in LoginPage. */
-export const MOBILE_LOGIN_QUERY = "(max-width: 820px)";
+export const MOBILE_LOGIN_QUERY = APP_MEDIA.mobile;
 export const MOBILE_SLIDE_COUNT = 4;
 export const MOBILE_LOGIN_SLIDE = MOBILE_SLIDE_COUNT - 1;
 export const MOBILE_ASSET_BASE = "/login/assets/mobile";

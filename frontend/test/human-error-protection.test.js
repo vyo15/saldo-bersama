@@ -276,7 +276,7 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
     goalsSource(),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
-    read("src/features/transactions/TransactionForm.jsx"),
+    Promise.all([read("src/features/transactions/TransactionForm.jsx"), read("src/features/transactions/transactionFormController.js")]).then((parts) => parts.join("\n")),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
   ]);
   assert.match(client, /memoryMutationIntents/);
@@ -315,8 +315,8 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
     const source = await readFile(file, "utf8");
     if (/createIdempotencyKey\s*\(/.test(source) && !file.pathname.endsWith("/domain/security.js")) manualKeyUsers.push(file.pathname);
   }
-  assert.equal(manualKeyUsers.length, 1, `hanya TransactionForm boleh mengelola key intent lokal: ${manualKeyUsers.join(", ")}`);
-  assert.match(manualKeyUsers[0], /TransactionForm\.jsx$/);
+  assert.equal(manualKeyUsers.length, 1, `hanya controller transaksi boleh mengelola key intent lokal: ${manualKeyUsers.join(", ")}`);
+  assert.match(manualKeyUsers[0], /transactionFormController\.js$/);
 });
 
 test("jadwal rutin memuat dialog secara lazy dan helper filter tidak mengotori module Fast Refresh", async () => {

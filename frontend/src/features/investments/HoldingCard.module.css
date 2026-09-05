@@ -1,0 +1,218 @@
+/* Investment holding presentation ownership. */
+
+.holdingMetrics {
+display: grid;
+  margin: 0;
+}
+
+.holdingMetrics dt {
+color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.holdingMetrics dd {
+min-width: 0;
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.holdingsSection {
+display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.holdings {
+display: grid;
+  gap: var(--space-2);
+}
+
+.holdingCard {
+display: grid;
+  grid-template-columns: minmax(14rem, 1.25fr) minmax(10rem, .7fr) minmax(18rem, 1.5fr);
+  align-items: center;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-lg) + var(--space-1));
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface-soft) 54%, var(--surface)));
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.holdingCard:hover {
+transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+
+.holdingIdentity {
+display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.tickerMark {
+display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 15%, var(--border));
+  border-radius: 1rem;
+  background: linear-gradient(145deg, var(--primary-soft), color-mix(in srgb, var(--surface) 70%, var(--primary-soft)));
+  color: var(--primary);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -.02em;
+}
+
+.holdingIdentity > div {
+min-width: 0;
+  flex: 1 1 auto;
+}
+
+.holdingNameRow {
+display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.holdingNameRow h4 {
+margin: 0;
+  font-size: 1.05rem;
+}
+
+.holdingNameRow > span {
+flex: 0 0 auto;
+  padding: .15rem .48rem;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.holdingIdentity p {
+margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.holdingValueBlock {
+display: grid;
+  justify-items: end;
+  gap: .15rem;
+  min-width: 0;
+  text-align: end;
+}
+
+.holdingValueBlock > span {
+color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.holdingValueBlock > strong {
+font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.holdingValueBlock > small {
+font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.holdingMetrics {
+grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.holdingMetrics > div {
+display: grid;
+  align-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--border);
+}
+
+.holdingMetrics dd small {
+display: block;
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+@media (max-width: 1180px) {
+  .holdingCard {
+grid-template-columns: minmax(13rem, 1fr) minmax(10rem, .65fr);
+  }
+
+  .holdingMetrics {
+grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .holdingCard {
+grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-4);
+    padding: var(--space-3);
+    border-radius: var(--mobile-card-radius);
+  }
+
+  .holdingValueBlock {
+min-width: 8rem;
+  }
+
+  .holdingMetrics {
+grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .holdingCard {
+grid-template-columns: 1fr;
+  }
+
+  .holdingValueBlock {
+justify-items: start;
+    min-width: 0;
+    text-align: start;
+  }
+
+  .holdingMetrics {
+grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .holdingMetrics > div {
+padding: var(--space-2) 0 0;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .holdingMetrics {
+grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holdingCard {
+transition: none;
+  }
+}
+
+.holdingCardInteractive {
+cursor: pointer;
+}
+
+.holdingCardInteractive:focus-visible {
+outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}

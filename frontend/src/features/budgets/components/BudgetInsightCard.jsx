@@ -7,7 +7,7 @@ import { userRoleLabel } from "../../../shared/presentation/user.js";
 import { budgetSafeDailyAmount, budgetVisualState } from "../budgetPresentation.js";
 import BudgetPacingBar from "./BudgetPacingBar.jsx";
 import BudgetStatusPill from "./BudgetStatusPill.jsx";
-import styles from "../BudgetsPage.module.css";
+import styles from "./BudgetInsightCard.module.css";
 
 const BudgetInsightCard = ({ item, category, periodMeta }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);

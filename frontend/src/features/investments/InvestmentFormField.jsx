@@ -1,5 +1,6 @@
 import { cloneElement, isValidElement } from "react";
-import styles from "./InvestmentsPage.module.css";
+
+import styles from "./InvestmentForm.module.css";
 
 const InvestmentFormField = ({ id, label, error = "", hint = "", required = false, children }) => {
   const describedBy = [hint ? `${id}-hint` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined;

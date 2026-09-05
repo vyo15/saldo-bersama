@@ -297,7 +297,7 @@
 }
 
 :root[data-theme="dark"] .desktop-module-dock {
-  filter: drop-shadow(15px 13px 28px rgba(0, 0, 0, .44));
+  filter: drop-shadow(15px 13px 28px color-mix(in srgb, var(--shadow-ink) 44%, transparent));
 }
 
 :root[data-theme="dark"] .desktop-module-dock__link {
@@ -313,7 +313,7 @@
 :root[data-theme="dark"] .desktop-module-dock__link.is-active {
   color: var(--primary);
   background: var(--surface-elevated);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .34);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--shadow-ink) 34%, transparent);
 }
 
 @media (max-width: 940px) and (min-width: 821px) {

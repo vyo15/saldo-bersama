@@ -124,7 +124,7 @@ Service worker meng-cache app shell dan asset statis non-image sesuai policy run
 
 ## UI architecture
 
-Shared UI primitive memakai CSS Modules dan design tokens project. Feature mengimpor shared wrapper, bukan toolkit secara langsung. Surface responsive yang memiliki implementasi mobile dan desktop terpisah hanya di-mount untuk breakpoint aktif; CSS tidak dipakai sebagai satu-satunya cara menyembunyikan duplikat DOM berat. Mantine telah disetujui sebagai toolkit target untuk perilaku kompleks melalui staged adoption; dependency dan lockfile Mantine tersedia, tetapi runtime adoption tetap bertahap melalui wrapper project. Kontrak lengkap berada di `UI_DESIGN_SYSTEM.md` dan ADR-0009.
+Shared UI primitive memakai CSS Modules dan design tokens project. Feature mengimpor shared wrapper, bukan toolkit secara langsung. Surface responsive yang memiliki implementasi mobile dan desktop terpisah hanya di-mount untuk breakpoint aktif; CSS tidak dipakai sebagai satu-satunya cara menyembunyikan duplikat DOM berat. Mantine telah disetujui sebagai toolkit kandidat untuk perilaku kompleks melalui staged adoption, tetapi dependency tidak dipasang sampai shared wrapper memiliki consumer runtime yang nyata; feature tetap dilarang mengimpor toolkit langsung. Kontrak lengkap berada di `UI_DESIGN_SYSTEM.md` dan ADR-0009.
 
 
 ## Batas privasi mirror

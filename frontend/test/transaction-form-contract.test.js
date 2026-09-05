@@ -4,6 +4,7 @@ import test from "node:test";
 
 const source = () => Promise.all([
   "../src/features/transactions/TransactionForm.jsx",
+  "../src/features/transactions/transactionFormController.js",
   "../src/features/transactions/components/TransactionFields.jsx",
   "../src/features/transactions/components/TransactionImpactPreview.jsx",
   "../src/features/transactions/components/TransactionPostSaveModal.jsx",
@@ -84,7 +85,10 @@ test("quick transfer dapat mengunci jenis, mengisi rekening sumber, dan menyegar
 
 test("quick add memakai composer global dan invalidation transaksi mencakup resource finansial turunan", async () => {
   const [form, page, hook, composer] = await Promise.all([
-    readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/transactions/transactionFormController.js", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
     readFile(new URL("../src/features/transactions/TransactionsPage.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/hooks/useApiResource.js", import.meta.url), "utf8"),
     readFile(new URL("../src/app/TransactionComposerContext.jsx", import.meta.url), "utf8"),
@@ -119,8 +123,8 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   ]);
   assert.match(action, /presentation="mobile-transfer"/);
   assert.match(form, /presentation = "default"/);
-  assert.match(form, /MOBILE_TRANSACTION_QUERY = "\(max-width: 820px\)"/);
-  assert.match(form, /useMediaQuery\(MOBILE_TRANSACTION_QUERY\)/);
+  assert.match(form, /useMediaQuery\(APP_MEDIA\.mobile\)/);
+  assert.match(form, /APP_MEDIA/);
   assert.match(form, /!transaction && isTransfer && \(presentation === "mobile-transfer" \|\| mobileLayout\)/);
   assert.match(form, /mobileSwipeToClose: true/);
   assert.match(form, /const preparedInput = transactionPreparedInput/);
@@ -187,7 +191,7 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   assert.match(form, /earlyFundsWarning/);
   assert.match(form, /Lihat dampak lengkap/);
   assert.match(form, /label: "Tambah lagi"/);
-  assert.match(form, /idempotencyKeyRef\.current = createIdempotencyKey\(\)/);
+  assert.match(form, /idempotencyKeyRef\.current = createTransactionIntentKey\(\)/);
   assert.match(smart, /sourceAccountHasFunds/);
   assert.match(smart, /budget\.category_id !== form\.category_id/);
   assert.match(smart, /envelope\.source_account_id !== form\.source_account_id/);

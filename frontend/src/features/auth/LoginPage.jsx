@@ -12,7 +12,7 @@ import {
 import { MOBILE_LOGIN_QUERY, MOBILE_LOGIN_SLIDE, mobileOAuthErrorFromSearch } from "./loginPresentation.js";
 import { hasSeenMobileOnboarding, markMobileOnboardingSeen } from "./loginOnboardingPreference.js";
 import { useAuth } from "./AuthContext.jsx";
-import "./LoginPage.css";
+import { loginStyle } from "./loginStyles.js";
 
 let localGoogleAuthModulePromise = null;
 const preloadLocalGoogleAuth = () => {
@@ -39,7 +39,7 @@ const useMobileLoginInteraction = () => {
   const resetTrackMotion = () => {
     const track = trackRef.current;
     if (!track) return;
-    track.classList.remove("is-dragging");
+    track.classList.remove(loginStyle("is-dragging"));
     track.style.setProperty("--login-mobile-drag", "0px");
     track.style.setProperty("--login-mobile-parallax-soft", "0px");
     track.style.setProperty("--login-mobile-parallax-medium", "0px");
@@ -76,7 +76,7 @@ const useMobileLoginInteraction = () => {
     const effectiveDelta = deltaX * (edgeDrag ? 0.28 : 1);
     const track = trackRef.current;
     if (!track) return;
-    track.classList.add("is-dragging");
+    track.classList.add(loginStyle("is-dragging"));
     track.style.setProperty("--login-mobile-drag", `${effectiveDelta}px`);
     track.style.setProperty("--login-mobile-parallax-soft", `${effectiveDelta * 0.08}px`);
     track.style.setProperty("--login-mobile-parallax-medium", `${effectiveDelta * 0.12}px`);

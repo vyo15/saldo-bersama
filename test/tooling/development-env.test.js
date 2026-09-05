@@ -321,7 +321,7 @@ test("dependency bootstrap menjalankan npm ci sekali saat dependency belum terse
   let installs = 0;
   const result = await ensureDevelopmentDependencies({
     projectRoot: "/project",
-    probe: () => installed ? [] : ["vite", "@mantine/core"],
+    probe: () => installed ? [] : ["vite", "@fontsource-variable/manrope"],
     installer: async () => { installs += 1; installed = true; },
   });
   assert.equal(result.installed, true);

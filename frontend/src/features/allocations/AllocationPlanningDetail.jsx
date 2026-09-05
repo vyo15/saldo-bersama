@@ -13,6 +13,7 @@ import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { budgetPeriodMeta, budgetVisualState } from "../../shared/presentation/budget.js";
 import { useBudgetFormController, useBudgetLifecycleController } from "../budgets/useBudgetActions.js";
 import { allocationAssigneeLabel, allocationNeedsFundingSummary, allocationPeriodLabel, allocationSourceLabel, allocationUsage } from "./allocationPresentation.js";
+import { allocationClass } from "./allocationStyles.js";
 
 const BudgetDialogLayer = lazy(() => import("../budgets/BudgetDialogLayer.jsx"));
 const COMPLETED_RECURRING_STATUSES = new Set(["paid", "received"]);
@@ -58,10 +59,10 @@ const BudgetLimitRow = ({ budget, periodMeta, schedule, canManage, canLifecycle,
   const status = budgetVisualState(budget, periodMeta);
   const tone = status.key === "danger" ? "is-danger" : ["warning", "pace"].includes(status.key) ? "is-warning" : "";
   const scheduleActionLabel = schedule?.canPay ? "Catat pembayaran" : "Lihat jadwal";
-  return <div className="allocation-limit-row" data-budget-id={budget.budget_id}>
-    <div className="allocation-limit-row__main"><div><strong>{budget.name}</strong><small>Terpakai <Money value={used} /> dari anggaran <Money value={amount} /></small><small>Sisa anggaran <Money value={Math.max(0, amount - used)} /></small><small>{schedule?.label || "Fleksibel · dapat dicatat berkali-kali"}</small></div><span className={tone}>{status.label}</span></div>
+  return <div className={allocationClass("allocation-limit-row")} data-budget-id={budget.budget_id}>
+    <div className={allocationClass("allocation-limit-row__main")}><div><strong>{budget.name}</strong><small>Terpakai <Money value={used} /> dari anggaran <Money value={amount} /></small><small>Sisa anggaran <Money value={Math.max(0, amount - used)} /></small><small>{schedule?.label || "Fleksibel · dapat dicatat berkali-kali"}</small></div><span className={allocationClass(tone)}>{status.label}</span></div>
     <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${Math.round(status.usedPercent)}%`} />
-    {onRecord || schedule || canManage || canLifecycle ? <div className="allocation-limit-row__actions">
+    {onRecord || schedule || canManage || canLifecycle ? <div className={allocationClass("allocation-limit-row__actions")}>
       {schedule ? <Button variant={schedule.canPay ? "primary" : undefined} onClick={() => onOpenSchedule(schedule.item, schedule.canPay)}>{scheduleActionLabel}</Button> : onRecord ? <Button variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat</Button> : null}
       {schedule && onRecord ? <Button icon={FiPlus} onClick={() => onRecord(budget)}>Catat tambahan</Button> : null}
       {canManage ? <><Button icon={FiEdit2} onClick={() => onEdit(budget)}>Edit</Button><Button icon={FiBell} onClick={() => onReminder(budget)}>Pengingat</Button></> : null}
@@ -70,17 +71,17 @@ const BudgetLimitRow = ({ budget, periodMeta, schedule, canManage, canLifecycle,
   </div>;
 };
 
-const RecurringRelatedRow = ({ item }) => <div className="allocation-related-row"><div><strong>{item.name}</strong><small>{formatDateLongIndonesia(item.due_date) || item.due_date}</small></div><div><Money value={item.expected_amount} /><small>{item.status === "paid" || item.status === "received" ? "Selesai" : item.status === "overdue" ? "Terlambat" : item.due_date === todayInJakarta() ? "Menunggu konfirmasi" : "Terjadwal"}</small></div></div>;
+const RecurringRelatedRow = ({ item }) => <div className={allocationClass("allocation-related-row")}><div><strong>{item.name}</strong><small>{formatDateLongIndonesia(item.due_date) || item.due_date}</small></div><div><Money value={item.expected_amount} /><small>{item.status === "paid" || item.status === "received" ? "Selesai" : item.status === "overdue" ? "Terlambat" : item.due_date === todayInJakarta() ? "Menunggu konfirmasi" : "Terjadwal"}</small></div></div>;
 
 const AllocationNeedsFundingSummary = ({ item, linkedBudgets, canAdjustAllocation, onAdjustAllocation }) => {
   const summary = allocationNeedsFundingSummary(item, linkedBudgets);
   return <>
-    <div className="allocation-needs-summary" aria-label="Ringkasan kebutuhan dan dana alokasi">
+    <div className={allocationClass("allocation-needs-summary")} aria-label="Ringkasan kebutuhan dan dana alokasi">
       <div><span>Total kebutuhan</span><strong><Money value={summary.planned} /></strong></div>
       <div><span>Dana alokasi</span><strong><Money value={summary.allocated} /></strong></div>
       <div data-tone={summary.gap > 0 ? "warning" : "neutral"}><span>{summary.gap > 0 ? "Kurang" : "Belum direncanakan"}</span><strong><Money value={summary.gap > 0 ? summary.gap : summary.unplanned} tone={summary.gap > 0 ? "negative" : "default"} /></strong></div>
     </div>
-    {summary.gap > 0 ? <div className="allocation-needs-gap" role="status">
+    {summary.gap > 0 ? <div className={allocationClass("allocation-needs-gap")} role="status">
       <div><strong>Kebutuhan melebihi dana alokasi.</strong><span>Tambahkan <Money value={summary.gap} /> bila Anda memang ingin seluruh Kebutuhan tercakup. Dana tidak berubah otomatis.</span></div>
       {canAdjustAllocation ? <Button variant="primary" icon={FiPlus} onClick={() => onAdjustAllocation(item, summary.gap)}>Tambah <Money value={summary.gap} /> ke alokasi</Button> : null}
     </div> : null}
@@ -122,14 +123,14 @@ const AllocationNeedsPanel = ({
   editBudget,
   budgetLifecycleController,
   onBudgetReminder,
-}) => <Card className="allocation-detail-panel">
-  <div className="allocation-detail-panel__header">
+}) => <Card className={allocationClass("allocation-detail-panel")}>
+  <div className={allocationClass("allocation-detail-panel__header")}>
     <div><h3>Kebutuhan</h3><p>Atur kategori dan anggaran yang menggunakan Alokasi Dana ini.</p></div>
     {canManage ? <Button variant="primary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
   </div>
   {linkedBudgets.length ? <>
     <AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} />
-    <div className="allocation-limit-list">{linkedBudgets.map((budget) => <BudgetLimitRow
+    <div className={allocationClass("allocation-limit-list")}>{linkedBudgets.map((budget) => <BudgetLimitRow
       key={budget.budget_id}
       budget={budget}
       periodMeta={periodMeta}
@@ -150,13 +151,13 @@ const AllocationNeedsPanel = ({
   />}
 </Card>;
 
-const AllocationRecurringPanel = ({ safeRelatedRecurring, onOpenRecurring }) => <Card className="allocation-detail-panel">
-  <div className="allocation-detail-panel__header">
+const AllocationRecurringPanel = ({ safeRelatedRecurring, onOpenRecurring }) => <Card className={allocationClass("allocation-detail-panel")}>
+  <div className={allocationClass("allocation-detail-panel__header")}>
     <div><h3>Jadwal Terkait</h3><p>Jadwal hanya ditautkan otomatis ketika kategori, ownership, dan rekening menunjuk tepat satu Kebutuhan.</p></div>
     <Button onClick={() => onOpenRecurring()}>Lihat semua jadwal</Button>
   </div>
   {safeRelatedRecurring.length
-    ? <div className="allocation-related-list">{safeRelatedRecurring.map((entry) => <RecurringRelatedRow key={entry.occurrence_id} item={entry} />)}</div>
+    ? <div className={allocationClass("allocation-related-list")}>{safeRelatedRecurring.map((entry) => <RecurringRelatedRow key={entry.occurrence_id} item={entry} />)}</div>
     : <EmptyState variant="inline" title="Belum ada jadwal terkait" description="Buat Jadwal Rutin dari Kebutuhan terjadwal, atau pilih Alokasi Dana saat mencatat aktual bila ada lebih dari satu kandidat." />}
 </Card>;
 
@@ -238,17 +239,17 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
 };
 
 const AllocationPlanningDetailView = ({ item, linkedBudgets, canManage, canLifecycle, expenseCategories, users, usersStatus, onBack, onBudgetReminder, onOpenRecurring, canAdjustAllocation, onAdjustAllocation, state }) => <>
-  <div className="allocation-planning-detail">
-    <button type="button" className="allocation-detail-back" onClick={onBack}><FiArrowLeft aria-hidden="true" />Semua Alokasi Dana</button>
-    <Card className="allocation-detail-hero">
+  <div className={allocationClass("allocation-planning-detail")}>
+    <button type="button" className={allocationClass("allocation-detail-back")} onClick={onBack}><FiArrowLeft aria-hidden="true" />Semua Alokasi Dana</button>
+    <Card className={allocationClass("allocation-detail-hero")}>
       <div><span>Alokasi Dana</span><h2>{item.name}</h2><p>{state.sourceLabel} · {state.assigneeLabel} · {state.periodLabel}</p></div>
-      {state.canRecordExpense ? <div className="allocation-detail-hero__action"><Button variant="primary" icon={FiPlus} onClick={() => state.recordExpense()}>Catat pengeluaran</Button></div> : null}
-      <div className="allocation-detail-hero__metrics">
+      {state.canRecordExpense ? <div className={allocationClass("allocation-detail-hero__action")}><Button variant="primary" icon={FiPlus} onClick={() => state.recordExpense()}>Catat pengeluaran</Button></div> : null}
+      <div className={allocationClass("allocation-detail-hero__metrics")}>
         <div><span>Dialokasikan</span><strong><Money value={state.usage.allocated} /></strong></div>
         <div><span>Terpakai</span><strong><Money value={state.usage.used} /></strong></div>
         <div><span>Tersisa</span><strong><Money value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /></strong></div>
       </div>
-      {state.usage.reserved > 0 ? <p className="allocation-detail-reserved-note">Dipesan <Money value={state.usage.reserved} /> untuk transaksi terjadwal. Nilai ini sudah mengurangi dana yang tersisa.</p> : null}
+      {state.usage.reserved > 0 ? <p className={allocationClass("allocation-detail-reserved-note")}>Dipesan <Money value={state.usage.reserved} /> untuk transaksi terjadwal. Nilai ini sudah mengurangi dana yang tersisa.</p> : null}
     </Card>
     <AllocationScheduleContinuation
       continuation={state.scheduleContinuation}
@@ -256,7 +257,7 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, canManage, canLifec
       onDismiss={state.budgetFormController.dismissScheduleContinuation}
       onCreateRecurring={state.createRecurringFromNeed}
     />
-    <div className="allocation-detail-grid">
+    <div className={allocationClass("allocation-detail-grid")}>
       <AllocationNeedsPanel
         item={item}
         linkedBudgets={linkedBudgets}

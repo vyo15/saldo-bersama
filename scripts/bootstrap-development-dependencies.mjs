@@ -6,7 +6,6 @@ import process from "node:process";
 export const DEVELOPMENT_DEPENDENCY_PROBES = Object.freeze([
   "vite",
   "react",
-  "@mantine/core",
   "@fontsource-variable/manrope",
   "@firebase/app",
   "@firebase/auth",

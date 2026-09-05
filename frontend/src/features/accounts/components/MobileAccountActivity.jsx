@@ -1,3 +1,4 @@
+import { APP_MEDIA } from "../../../config/layout.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiActivity,
@@ -22,11 +23,10 @@ import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { loadAccountExpenseTrend } from "../accounts.api.js";
 import styles from "./MobileAccountActivity.module.css";
 
-const MOBILE_QUERY = "(max-width: 820px)";
 const HISTORY_LIMIT = 6;
 const TREND_OPTIONS = Object.freeze([1, 3, 6, 12]);
 
-const useMobileAccountActivityEnabled = () => useMediaQuery(MOBILE_QUERY, { fallback: true });
+const useMobileAccountActivityEnabled = () => useMediaQuery(APP_MEDIA.mobile, { fallback: true });
 
 const shortPeriodLabel = (period) => {
   const value = String(period || "");

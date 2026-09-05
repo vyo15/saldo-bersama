@@ -9,6 +9,7 @@ import { allocationAssigneeLabel } from "./allocationPresentation.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userOptionLabel } from "../../shared/presentation/user.js";
+import { allocationClass } from "./allocationStyles.js";
 
 const envelopeAssigneeOptions = (form, accounts, users) => {
   const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
@@ -52,14 +53,14 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts,
     }));
   };
   return <Modal open={open} onClose={close} dismissible={!createMutation.busy} title="Buat alokasi" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Buat alokasi</Button></>}>
-    <form id="create-envelope-form" className="form-grid allocation-create-form" onSubmit={createEnvelope}>
+    <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
       <label className="field form-grid__full"><span>Alokasi untuk apa? *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Kebutuhan rumah" /></label>
       <MoneyInput id="envelope-default" label="Dana awal alokasi" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} required />
       <label className="field"><span>Rekening sumber *</span><select required value={createForm.source_account_id} onChange={(event) => changeSource(event.target.value)}><option value="">Pilih rekening sumber</option>{accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)} · tersedia {formatRupiah(account.available_balance ?? account.balance ?? 0)}</option>)}</select>{selectedSource ? <small>Saldo {formatRupiah(selectedSource.balance || 0)} · dialokasikan {formatRupiah(selectedSource.allocated_remaining || 0)} · tersedia {formatRupiah(selectedSource.available_balance ?? selectedSource.balance ?? 0)}</small> : <small>Setiap alokasi wajib memiliki satu rekening sumber agar dana tidak dihitung ganda.</small>}</label>
       <VisualChoiceGroup className="form-grid__full" legend="Digunakan oleh" name="allocation-assignee" value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} columns={Math.min(assigneeOptions.length, 3)} disabled={usersStatus === "loading" || assigneeState.locked} helper={assigneeState.locked ? "Alokasi dari rekening personal hanya dapat diberikan kepada pemilik rekening tersebut." : usersStatus === "loading" ? "Memuat pengguna aktif..." : "Pilih siapa yang dapat menggunakan alokasi ini."} />
-      <details className="allocation-advanced form-grid__full">
+      <details className={allocationClass("allocation-advanced form-grid__full")}>
         <summary><span><strong>Periode dan sisa</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
-        <div className="allocation-advanced__content">
+        <div className={allocationClass("allocation-advanced__content")}>
           <VisualChoiceGroup className="form-grid__full" legend="Periode alokasi" name="allocation-period" value={createForm.period_type} onChange={(period_type) => setCreateForm((current) => ({ ...current, period_type }))} options={periodOptions} columns={3} compact />
           <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
           <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>

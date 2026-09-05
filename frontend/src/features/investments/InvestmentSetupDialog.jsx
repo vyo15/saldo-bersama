@@ -8,7 +8,8 @@ import { investmentRdnAccountSetupState } from "../../shared/workflows/investmen
 import InvestmentFormField from "./InvestmentFormField.jsx";
 import { createInvestmentPortfolio, invalidateInvestmentReads, upsertInvestmentInstrument } from "./investments.api.js";
 import { validateInvestmentSetup } from "./investments.model.js";
-import styles from "./InvestmentsPage.module.css";
+
+import styles from "./InvestmentForm.module.css";
 
 const PORTFOLIO_DEFAULTS = Object.freeze({ name: "Catatan investasi", broker: "other" });
 const INSTRUMENT_DEFAULTS = Object.freeze({ lot_size: 100, exchange: "IDX" });

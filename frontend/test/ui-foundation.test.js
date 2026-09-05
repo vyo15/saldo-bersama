@@ -72,7 +72,7 @@ test("compact notice owns lightweight guidance without dashboard stylesheet coup
   const [component, css, dashboardCss, transactions, budgets, allocations, recurring, goals, reconciliations] = await Promise.all([
     read("src/components/common/CompactNotice.jsx"),
     read("src/components/common/CompactNotice.module.css"),
-    read("src/features/dashboard/DashboardPage.css"),
+    read("src/features/dashboard/DashboardPage.module.css"),
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/budgets/BudgetsPage.jsx"),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
@@ -98,6 +98,8 @@ test("contextual page help remains accessible and keeps educational copy out of 
     read("src/components/common/PageInfoButton.jsx"),
     read("src/components/common/PageHeader.jsx"),
     read("src/styles/responsive.css"),
+    read("src/features/dashboard/DashboardPage.module.css"),
+    read("src/features/transactions/TransactionForm.module.css"),
   ]);
 
   assert.match(infoButton, /aria-haspopup="dialog"/);
@@ -112,6 +114,9 @@ test("feature code does not import UI toolkit directly and utility frameworks st
   const packageJson = await read("package.json");
   for (const forbidden of ["tailwindcss", "@tailwind", "shadcn", "@mui/", "antd", "@chakra-ui/"]) {
     assert.equal(packageJson.includes(forbidden), false, `Forbidden UI dependency or marker found: ${forbidden}`);
+  }
+  for (const idleToolkit of ["@mantine/core", "@mantine/hooks"]) {
+    assert.equal(packageJson.includes(idleToolkit), false, `Idle UI toolkit dependency must not be installed without a runtime wrapper consumer: ${idleToolkit}`);
   }
 
   const featureDirectory = new URL("../src/features/", import.meta.url);
@@ -206,7 +211,7 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /MobileTransactionFilters/);
   assert.match(reports, /budget-mobile-list/);
   assert.match(accounts + accountSheets + mobileActivity, /mobileTransactionList/);
-  assert.match(reconciliation, /reconciliation-mobile-list/);
+  assert.match(reconciliation, /styles\.mobileHistoryList/);
   assert.match(settings, /mobile-data-list/);
   assert.match(settings, /audit\.list/);
   assert.match(transactions, /account_id:\s*filters\.account/);
@@ -237,7 +242,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
       read("src/features/auth/components/LoginMobileLayout.jsx"),
       read("src/features/auth/components/LoginFeedback.jsx"),
     ]).then((parts) => parts.join("\n")),
-    read("src/features/auth/LoginPage.css"),
+    Promise.all([read("src/features/auth/LoginPage.module.css"), read("src/features/auth/LoginMobile.module.css")]).then((parts) => parts.join("\n")),
     read("src/app/App.jsx"),
     read("src/main.jsx"),
     read("src/styles/pages.css"),
@@ -251,7 +256,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     ...assetNames.map((name) => readFile(new URL(`../public/login/assets/mobile/${name}`, import.meta.url))),
   ]);
 
-  assert.match(login, /MOBILE_LOGIN_QUERY = "\(max-width: 820px\)"/);
+  assert.match(login, /MOBILE_LOGIN_QUERY = APP_MEDIA\.mobile/);
   assert.match(login, /MOBILE_SLIDE_COUNT = 4/);
   assert.match(login, /MOBILE_ONBOARDING/);
   for (const assetName of assetNames) assert.match(login, new RegExp(assetName.replace(".", "\\.")));
@@ -261,7 +266,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(login, /desktop-dark\.webp/);
   assert.match(login, /MoneyRain compact notes=\{MOBILE_MONEY_NOTES\}/);
   assert.match(login, /aria-roledescription="carousel"/);
-  assert.match(login, /ThemeToggle className="login-mobile-theme-toggle"/);
+  assert.match(login, /ThemeToggle className=\{loginClass\("login-mobile-theme-toggle"\)\}/);
   assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
   assert.match(login, /rel="noopener noreferrer"/);
 
@@ -284,7 +289,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(login, /returnTo: requestedPath/);
   assert.match(login, /mobileOAuthErrorFromSearch/);
   assert.match(login, /googleAuthRef/);
-  assert.match(login, /className="login-mobile-google-button"/);
+  assert.match(login, /className=\{loginClass\("login-mobile-google-button"\)\}/);
   assert.match(login, /active \? <GoogleLoginPanel \{\.\.\.mobileAuthProps\} \/> : null/);
   assert.match(login, /mobileAuthProps=\{googleAuthProps\}/);
   assert.match(login, /\/login\/google-g-logo\.png/);
@@ -315,7 +320,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(mobileAuth, /signOut\(auth\)\.catch/);
   assert.doesNotMatch(mobileAuth, /console\.(?:log|error|warn)\(/);
 
-  assert.match(login, /import "\.\/LoginPage\.css";/);
+  assert.match(login, /import \{ loginStyle \} from "\.\/loginStyles\.js";/);
   assert.match(app, /const AppShell = lazy\(\(\) => import\("\.\.\/layouts\/AppShell\.jsx"\)\);/);
   assert.match(app, /const LoginPage = lazy\(\(\) => import\("\.\.\/features\/auth\/LoginPage\.jsx"\)\);/);
   assert.doesNotMatch(main, /styles\/app\.css/);
@@ -335,7 +340,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(loginStyles, /@keyframes login-google-spin/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-provider/);
   assert.doesNotMatch(loginStyles, /login-provider-spin/);
-  assert.match(login, /className="login-mobile-welcome">Selamat datang<\/p>/);
+  assert.match(login, /className=\{loginClass\("login-mobile-welcome"\)\}>Selamat datang<\/p>/);
   assert.doesNotMatch(login, /login-mobile-progress|login-mobile-back/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-progress|\.login-mobile-back/);
   assert.match(loginStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-mobile-google-button__spinner/);
@@ -366,14 +371,14 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /to: "\/perencanaan\/kantong", label: "Alokasi Dana"/);
   assert.match(mobile, /to: "\/perencanaan\/jadwal", label: "Jadwal Rutin"/);
   assert.match(mobile, /to: "\/target", label: "Target"/);
-  assert.match(mobile, /<Link key=\{to\} to=\{to\} className=\{`mobile-quick-action/);
+  assert.match(mobile, /<Link key=\{to\} to=\{to\} className=\{dashboardClass\(`mobile-quick-action/);
   assert.doesNotMatch(mobile, /TRANSACTION_QUICK_ACTIONS|TRANSACTION_TYPES|onOpenTransaction\(type\)/);
   assert.doesNotMatch(dashboard, /presentation: initialType === TRANSACTION_TYPES\.TRANSFER/);
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/MobileFinanceDashboard\.jsx"\)\)/);
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/DesktopFinanceDashboard\.jsx"\)\)/);
   assert.doesNotMatch(dashboard, /import MobileFinanceDashboard from "\.\/components\/MobileFinanceDashboard\.jsx";/);
   assert.doesNotMatch(dashboard, /import DesktopFinanceDashboard from "\.\/components\/DesktopFinanceDashboard\.jsx";/);
-  assert.match(dashboard, /MOBILE_DASHBOARD_QUERY = "\(max-width: 820px\)"/);
+  assert.match(dashboard, /useMediaQuery\(APP_MEDIA\.mobile\)/);
   assert.match(dashboard, /mobileLayout[\s\S]*\? <MobileFinanceDashboard[\s\S]*: <DesktopFinanceDashboard/);
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
@@ -409,6 +414,24 @@ test("stylesheet global tidak menghidupkan kembali selector legacy tanpa pemilik
     ".progress__track",
     ".account-card",
     ".account-grid",
+    ".brand-lockup--centered",
+    ".segmented-control",
+    ".optional-fields",
+    ".schedule-list",
+    ".settings-section",
+    ".audit-mobile-card",
+    ".allocation-card__details",
+    ".allocation-card__status",
+    ".allocation-detail-hero__amount",
+    ".mobile-finance-insights",
+    ".mobile-section-heading__actions",
+    ".shared-dashboard__eyebrow",
+    ".transaction-scope-note",
+    ".icon-button--danger",
+    ".notice--loading",
+    ".empty-state--page",
+    ".error-state--inline",
+    ".error-state--page",
   ]) {
     assert.equal(source.includes(selector), false, `${selector} harus tetap terhapus sampai memiliki pemilik runtime`);
   }
@@ -456,7 +479,7 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.match(desktop, /other-categories/);
   assert.match(desktop, /shared-transaction-table/);
   assert.match(desktop, /shared-donut/);
-  assert.match(mobile, /type="button" className="mobile-transaction-item"/);
+  assert.match(mobile, /type="button" className=\{dashboardClass\("mobile-transaction-item"\)\}/);
   assert.doesNotMatch(mobile, /mobile-dashboard-filter-button|onOpenFilters/);
   assert.match(mobile, /recentTransactions\.slice\(0, 5\)/);
   assert.match(detail, /<Modal/);

@@ -101,7 +101,7 @@ test("Investasi mengunci intent ketika outcome write belum pasti dan hanya mengi
   assert.match(dialog, /isOutcomeUnknownError/);
   assert.match(dialog, /const \[outcomeUnknown, setOutcomeUnknown\] = useState\(false\)/);
   assert.match(dialog, /Coba lagi data yang sama/);
-  assert.match(dialog, /fieldset className=\{styles\.intentFieldset\} disabled=\{outcomeUnknown\}/);
+  assert.match(dialog, /fieldset className=\{formStyles\.intentFieldset\} disabled=\{outcomeUnknown\}/);
   assert.match(dialog, /dismissible=\{!busy && !outcomeUnknown\}/);
   assert.match(feedback, /visible\.status !== "unknown"/);
   assert.match(feedback, /\["idle", "submitting", "unknown"\]\.includes\(activity\.status\)/);

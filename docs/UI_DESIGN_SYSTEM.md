@@ -7,11 +7,11 @@ Dokumen ini adalah kontrak visual dan implementasi UI Saldo Bersama. Tujuannya m
 - Framework aplikasi tetap React + Vite.
 - Styling canonical menggunakan CSS Modules dan design tokens pada `frontend/src/styles/tokens.css`.
 - Tailwind CSS, utility-class-heavy styling, dan shadcn/ui tidak digunakan.
-- Mantine telah disetujui dan dependency-nya sudah tercatat pada workspace/lockfile, tetapi hanya boleh digunakan melalui shared wrapper component.
+- Mantine disetujui sebagai toolkit kandidat untuk kebutuhan kompleks, tetapi dependency tidak dipasang sampai ada shared wrapper component yang benar-benar menggunakannya.
 - Feature/page tidak boleh mengimpor Mantine secara langsung. Halaman memakai komponen project pada `frontend/src/components/common/` atau komponen domain yang relevan.
 - HTML native dan semantik diprioritaskan. Toolkit digunakan untuk perilaku kompleks seperti dialog, drawer, select, date picker, menu, tooltip, dan notification.
 
-Status source saat dokumen ini diperbarui: shared primitive sudah memakai CSS Modules dan dependency Mantine sudah ada pada `frontend/package.json` serta `package-lock.json`. Adopsi komponen Mantine pada runtime tetap bertahap melalui wrapper dan belum berarti seluruh primitive telah dimigrasikan. Empat stylesheet feature masih transitional dan dilacak eksplisit pada tracker migrasi di bawah agar status source tidak tersamar oleh wording “selama migrasi”.
+Status source saat dokumen ini diperbarui: shared primitive dan stylesheet feature utama sudah memakai CSS Modules dan design token project tanpa dependency Mantine runtime. Jika nanti primitive kompleks membutuhkan Mantine, adopsi harus dimulai melalui shared wrapper dengan consumer nyata dan package/lockfile diperbarui pada patch yang sama. Global CSS dibatasi untuk reset, token, root/base, accessibility/shared primitives, dan shell responsive; layout/state milik feature harus tetap colocated pada CSS Module pemiliknya.
 
 ## Source of truth
 
@@ -22,8 +22,9 @@ Status source saat dokumen ini diperbarui: shared primitive sudah memakai CSS Mo
 | Reset dan semantic global defaults | `frontend/src/styles/reset.css` |
 | Shared UI primitive | `frontend/src/components/common/` |
 | Layout aplikasi | `frontend/src/layouts/` dan `frontend/src/styles/app.css` |
-| Responsive/PWA safe area | `frontend/src/styles/responsive.css` selama migrasi; feature style baru harus colocated |
+| Responsive/PWA safe area | `frontend/src/styles/responsive.css` untuk shell/global safe area; responsive feature tetap colocated |
 | Keputusan toolkit | `docs/adr/0009-mantine-css-modules-ui-foundation.md` |
+| Breakpoint JS canonical | `frontend/src/config/layout.js` (`APP_BREAKPOINTS` / `APP_MEDIA`) |
 
 ## Tipografi canonical
 
@@ -78,21 +79,21 @@ frontend/src/components/
 
 - Helper kecil boleh tetap colocated dengan page. Lakukan review pemecahan ke `components/`/hook terpisah saat file melewati sekitar 400 baris atau memiliki lebih dari 6 sub-komponen/hook lokal substantif. Threshold ini adalah trigger review, bukan aturan mass-refactor.
 - Ekstraksi harus menurunkan coupling, duplication, atau cognitive load. Business rule tetap berada pada domain/service/view model yang canonical.
-- Auth/session adalah guarded area. `LoginPage.jsx` yang besar dicatat sebagai kandidat struktur, tetapi tidak boleh dipecah hanya sebagai cleanup pada patch UI/report karena login production yang stabil lebih penting daripada keseragaman folder.
+- Auth/session adalah guarded area. Presentasi Login sudah dipisah desktop/mobile dan memakai CSS Module, tetapi transport/auth/session authority tetap tidak boleh dipindahkan hanya demi keseragaman struktur.
 - Mobile Transaction History sudah diekstrak ke `features/transactions/components/MobileTransactionHistory.jsx` + CSS Module karena memiliki presentation contract sendiri (periode, tren ringkas, filter mobile, grouped history, dan pager). Presentation mobile dimuat lazy dari route agar penambahan UI tidak kembali mendorong route chunk melewati build budget. Desktop table/filter tetap di `TransactionsPage.jsx`; business rule, lifecycle, dan API tetap canonical di parent/service.
 - Dialog Alokasi dan Anggaran serta presentation Jadwal Rutin yang berat memakai lazy boundary lokal. Tujuannya memberi headroom pada route chunk tanpa memindahkan business rule atau mengubah behavior; build-budget warning >=90% menjadi trigger untuk review boundary serupa.
 - Abstraction shared baru dibuat ketika ada minimal dua consumer nyata dengan semantics yang sama.
 
 ### Tracker migrasi CSS Modules feature
 
-Empat stylesheet berikut masih global/transitional dan merupakan backlog eksplisit ADR-0009:
+Migrasi stylesheet feature yang sebelumnya global/transitional sudah selesai:
 
-- [ ] `frontend/src/features/dashboard/DashboardPage.css`
-- [ ] `frontend/src/features/auth/LoginPage.css`
-- [ ] `frontend/src/features/transactions/TransactionsPage.css` — tersisa untuk desktop filter/table + detail modal; mobile history baru sudah memakai `MobileTransactionHistory.module.css`.
-- [ ] `frontend/src/features/dashboard/components/FinancialAlertList.css`
+- [x] `frontend/src/features/dashboard/DashboardPage.module.css`
+- [x] `frontend/src/features/auth/LoginPage.module.css` + `LoginMobile.module.css`
+- [x] `frontend/src/features/transactions/TransactionsPage.module.css` — desktop filter/table + detail modal; mobile history tetap memiliki `MobileTransactionHistory.module.css`.
+- [x] `frontend/src/features/dashboard/components/FinancialAlertList.module.css`
 
-Migrasi dilakukan satu per satu bersama regression visual/behavior. Jangan menggabungkan migrasi auth, dashboard, transaksi, dan alert dalam satu patch besar.
+File global feature lama telah dihapus setelah usage search dan regression contract memastikan consumer berpindah ke owner baru. Untuk feature baru, styling langsung colocated pada CSS Module; jangan membuat kembali stylesheet feature global.
 
 ## Aturan styling
 
@@ -247,7 +248,7 @@ Elemen non-interaktif tidak boleh diberi click handler untuk menggantikan button
 
 ## Kontrak responsive global
 
-- `frontend/src/styles/responsive.css` memakai satu blok canonical per breakpoint dan diurutkan dari viewport besar ke kecil: 1280, 1100, 940, 820, 767, 680, 580, 420, 370, 340. Breakpoint feature-local tambahan hanya boleh ada bila presentation contract memang membutuhkan dan tidak boleh mengubah authority/business rule.
+- `frontend/src/styles/responsive.css` menjaga breakpoint shell/global dalam urutan viewport besar ke kecil. Boundary aplikasi mobile canonical tetap `<=820px` / desktop `>=821px`, dan JavaScript wajib memakai `APP_MEDIA`/`APP_BREAKPOINTS` dari `frontend/src/config/layout.js` alih-alih menyalin media-query string. Breakpoint feature-local tambahan hanya boleh ada bila presentation contract memang membutuhkan dan tidak boleh mengubah authority/business rule.
 - Selector yang berakhir koma tidak boleh dipisahkan baris kosong. Static test wajib menolak dangling selector.
 - Layout multi-kolom pada mobile harus berubah menjadi satu kolom, bukan disembunyikan. Capability anchor route penting wajib memiliki `width > 0` dan `height > 0` pada browser test mobile.
 - `!important` hanya dipertahankan untuk compatibility yang didokumentasikan. Pengecualian canonical saat ini hanya reduced-motion global dan override parallax Login pada `prefers-reduced-motion`, karena nilai parallax Login disuntikkan sebagai inline custom property saat gesture berjalan.
@@ -268,7 +269,7 @@ Komponen penting harus mempertimbangkan:
 
 Adopsi Mantine harus dilakukan bertahap:
 
-1. Pertahankan versi dependency dan `package-lock.json` dalam perubahan yang sama saat upgrade.
+1. Saat consumer runtime pertama benar-benar membutuhkan Mantine, tambahkan versi dependency dan `package-lock.json` pada perubahan yang sama; upgrade berikutnya juga wajib atomik.
 2. Tambahkan provider/theme bridge tanpa menghapus token project.
 3. Migrasikan wrapper satu per satu, dimulai dari Dialog/Drawer dan form control kompleks.
 4. Jangan memakai `sx`, styling prop, atau direct import di feature untuk layout normal.

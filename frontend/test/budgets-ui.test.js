@@ -70,7 +70,7 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
     read("src/features/allocations/AllocationsPage.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
     read("src/features/planning/PlanningPage.jsx"),
-    read("src/styles/pages.css"),
+    read("src/features/allocations/AllocationDetail.module.css"),
   ]);
 
   assert.match(planning, /Alokasi Dana/);

@@ -61,14 +61,16 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
 });
 
 test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak report", async () => {
-  const [reports, reportStyles] = await Promise.all([
+  const [reports, reportStyles, layout] = await Promise.all([
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/reports/ReportsPage.module.css"),
+    source("src/config/layout.js"),
   ]);
   for (const label of ["Ringkasan", "Per kategori", "Pengeluaran periode ini", "Bandingkan", "Pengeluaran terbesar", "Kebutuhan vs aktual", "Rincian lainnya"]) {
     assert.match(reports, new RegExp(label));
   }
-  assert.match(reports, /MOBILE_REPORT_QUERY = "\(max-width: 820px\)"/);
+  assert.match(reports, /useMediaQuery\(APP_MEDIA\.mobile\)/);
+  assert.match(layout, /mobileMax:\s*820/);
   assert.match(reports, /TREND_OPTIONS = \[1, 3, 6, 12\]/);
   assert.match(reports, /categoryIcon\(category\?\.icon, "expense"\)/);
   assert.match(reports, /<MobileSummaryAlerts alerts=\{overview\?\.alerts\} \/>/);

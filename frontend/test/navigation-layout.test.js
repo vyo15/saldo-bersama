@@ -119,7 +119,7 @@ test("desktop memakai shell full-bleed tanpa gap viewport", async () => {
 
 
 test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus ruang aman navigasi", async () => {
-  const [resetCss, appCss, responsiveCss, accountCss, componentCss, accountDetailCss, loginCss] = await Promise.all([
+  const [resetCss, appCss, responsiveCss, accountCss, componentCss, loginCss] = await Promise.all([
     read("src/styles/reset.css"),
     read("src/styles/app.css"),
     read("src/styles/responsive.css"),
@@ -128,8 +128,7 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
       read("src/features/accounts/components/MobileAccountsExperience.module.css"),
     ]).then((parts) => parts.join("\n")),
     read("src/styles/components.css"),
-    read("src/features/accounts/components/AccountFinancialCard.module.css"),
-    read("src/features/auth/LoginPage.css"),
+    read("src/features/auth/LoginPage.module.css"),
   ]);
 
   assert.match(resetCss, /body \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/);
@@ -145,7 +144,8 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(componentCss, /\.app-content \.loading-screen--page \.brand-lockup \{ display:\s*none; \}/);
   assert.match(responsiveCss, /\.app-content > \.loading-screen--page,\s*\n\s*\.app-content > \.loading-screen--content \{[^}]*min-height:\s*min\(54dvh, 28rem\);/s);
   assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page \{[^}]*min-height:\s*calc\(100dvh - var\(--mobile-topbar-height\)/);
-  assert.match(accountDetailCss, /max-height:\s*calc\(100vh[^;]+;\s*\n\s*max-height:\s*calc\(100dvh/);
+  assert.match(accountCss, /min-height:\s*calc\(100vh - env\(safe-area-inset-top\) - var\(--mobile-navigation-height\)/);
+  assert.match(accountCss, /min-height:\s*calc\(100dvh - env\(safe-area-inset-top\) - var\(--mobile-navigation-height\)/);
   assert.match(loginCss, /\.login-page \{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100svh;/);
 });
 
@@ -201,7 +201,7 @@ test("asset rail light dan dark mempertahankan path organik Saldo Bersama", asyn
 test("layout mobile compact mempertahankan safe area dan target sentuh", async () => {
   const [responsiveCss, dashboardCss] = await Promise.all([
     read("src/styles/responsive.css"),
-    read("src/features/dashboard/DashboardPage.css"),
+    read("src/features/dashboard/DashboardPage.module.css"),
   ]);
 
   assert.match(responsiveCss, /--mobile-navigation-height:\s*72px;/);
@@ -216,7 +216,7 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
   assert.match(responsiveCss, /\.topbar \{[^}]*height:\s*var\(--mobile-topbar-height\);[^}]*padding:\s*env\(safe-area-inset-top\) var\(--mobile-page-gutter\) 0;/);
   assert.match(responsiveCss, /\.mobile-navigation a::before,[\s\S]*\.mobile-navigation__more::before \{[^}]*height:\s*3px;[^}]*opacity:\s*0;/);
   assert.match(responsiveCss, /\.mobile-navigation a\.active::before,[^}]*opacity:\s*1;/);
-  assert.match(dashboardCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero \.theme-toggle \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(dashboardCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero :global\(\.theme-toggle\) \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(dashboardCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
   assert.match(dashboardCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
   assert.match(dashboardCss, /\.mobile-account-scroller \{[^}]*scroll-snap-type:\s*x mandatory;[^}]*touch-action:\s*pan-x pan-y;/);
@@ -271,17 +271,18 @@ test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kemba
 });
 
 test("responsive mobile tidak menyembunyikan two-column-grid dan breakpoint sempit menang", async () => {
-  const source = await read("src/styles/responsive.css");
+  const [source, settings] = await Promise.all([
+    read("src/styles/responsive.css"),
+    read("src/features/settings/SettingsOverview.module.css"),
+  ]);
   assert.doesNotMatch(source, /\.two-column-grid,\s*\n\s*\.app-shell--dashboard \.topbar/);
   assert.doesNotMatch(source, /\.two-column-grid\s*\{[^}]*display:\s*none/);
   const width820 = source.indexOf("@media (max-width: 820px)");
+  const width680 = source.indexOf("@media (max-width: 680px)");
   const width580 = source.indexOf("@media (max-width: 580px)");
-  const width420 = source.indexOf("@media (max-width: 420px)");
-  const width370 = source.indexOf("@media (max-width: 370px)");
   const width340 = source.indexOf("@media (max-width: 340px)");
-  assert.ok(width820 >= 0 && width580 > width820, "Breakpoint 580px harus berada setelah 820px agar override mobile sempit menang.");
-  assert.ok(width420 > width580 && width370 > width420 && width340 > width370, "Breakpoint mobile sempit harus terurut 420px → 370px → 340px.");
-  assert.match(source.slice(width580), /\.settings-card > :last-child \{ grid-column: 1 \/ -1; width: 100%; \}/);
+  assert.ok(width820 >= 0 && width680 > width820 && width580 > width680 && width340 > width580, "Breakpoint global harus terurut 820px → 680px → 580px → 340px.");
+  assert.match(settings, /@media \(max-width: 580px\)[\s\S]*\.settingsCard > :last-child\s*\{[\s\S]*?grid-column:\s*1 \/ -1;[\s\S]*?width:\s*100%;/);
   assert.match(source.slice(width340), /:root \{ --mobile-page-gutter:\s*12px; --mobile-card-padding:\s*14px; \}/);
 });
 

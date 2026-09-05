@@ -1,0 +1,275 @@
+/* Recurring overview hero presentation. */
+.heroCard {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: clamp(1rem, 2vw, 1.4rem);
+  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
+  border-radius: 1.45rem;
+  background:
+  radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--secondary) 14%, transparent), transparent 36%),
+  linear-gradient(145deg, color-mix(in srgb, var(--surface) 88%, var(--primary-soft)), color-mix(in srgb, var(--surface) 94%, var(--secondary-soft)));
+  box-shadow: var(--shadow-sm);
+}
+
+.heroGlow {
+  position: absolute;
+  inset-block-start: -5.5rem;
+  inset-inline-end: -5rem;
+  width: 13rem;
+  height: 13rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 15%, transparent), transparent 69%);
+  pointer-events: none;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 2;
+  width: min(68%, 43rem);
+}
+
+.heroArt {
+  position: absolute;
+  z-index: 1;
+  inset-inline-end: 3%;
+  inset-block-end: -.55rem;
+  width: min(14rem, 28%);
+  max-height: 12rem;
+  object-fit: contain;
+  filter: drop-shadow(0 1.2rem 1.5rem color-mix(in srgb, var(--shadow-ink) 18%, transparent));
+  pointer-events: none;
+  user-select: none;
+}
+
+.heroTop {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.heroEyebrow {
+  color: var(--primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.heroStatus {
+  min-height: 2.75rem;
+  max-width: 12rem;
+  padding: .3rem .65rem;
+  border: 1px solid color-mix(in srgb, var(--positive) 22%, var(--border));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--positive-soft) 70%, var(--surface));
+  color: var(--positive);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  text-align: center;
+}
+
+button.heroStatus {
+  cursor: pointer;
+}
+
+.heroStatusAttention {
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
+  background: color-mix(in srgb, var(--warning-soft) 74%, var(--surface));
+  color: var(--warning);
+}
+
+.heroStatus:hover {
+  border-color: currentColor;
+}
+
+.heroStatus:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.heroStatus svg {
+  width: .85rem;
+  height: .85rem;
+  flex: 0 0 auto;
+}
+
+.heroValue {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--space-3);
+  color: var(--text);
+  font-size: clamp(2rem, 1.45rem + 2vw, 3.1rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: -.055em;
+}
+
+.heroValue :global(.money) {
+  color: inherit;
+}
+
+.heroDescription {
+  position: relative;
+  z-index: 1;
+  margin-top: .4rem;
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.heroProgress {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 34rem);
+  height: .5rem;
+  margin-top: var(--space-4);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
+}
+
+.heroProgress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: width var(--motion-normal) var(--motion-easing);
+}
+
+.heroMetrics {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.heroMetric {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .3rem;
+}
+
+.heroMetric > span {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.heroMetric > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heroMetric :global(.money) {
+  color: inherit;
+  font-size: inherit;
+}
+
+.heroMetricAttention {
+  color: var(--warning);
+}
+
+@media (max-width: 820px) {
+  .heroCard {
+    box-shadow: none;
+  }
+
+  .heroContent {
+    width: 72%;
+  }
+
+  .heroArt {
+    inset-inline-end: -1%;
+    inset-block-end: .1rem;
+    width: min(8.5rem, 31%);
+    max-height: 8.5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .heroCard {
+    min-height: 12rem;
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+  }
+
+  .heroContent {
+    width: 69%;
+  }
+
+  .heroArt {
+    inset-inline-end: -3%;
+    width: min(7.4rem, 30%);
+  }
+
+  .heroTop {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .heroStatus {
+    max-width: 10rem;
+  }
+
+  .heroValue {
+    margin-top: var(--space-3);
+    font-size: clamp(1.8rem, 9vw, 2.35rem);
+  }
+
+  .heroDescription {
+    font-size: var(--font-size-xs);
+  }
+
+  .heroMetrics {
+    gap: var(--space-1);
+  }
+
+  .heroMetric > span {
+    font-size: var(--font-size-xs);
+  }
+
+  .heroMetric > strong {
+    font-size: var(--font-size-xs);
+  }
+}
+
+@media (max-width: 340px) {
+  .heroTop {
+    display: grid;
+  }
+
+  .heroStatus {
+    justify-self: start;
+  }
+
+  .heroMetrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroProgress > span {
+    transition: none;
+  }
+}

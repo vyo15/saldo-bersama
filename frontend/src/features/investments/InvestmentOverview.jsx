@@ -15,13 +15,19 @@ import ProgressBar from "../../components/common/ProgressBar.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { investmentRdnDisplayLabel } from "../../shared/presentation/account.js";
 import { investmentActivityLabel, investmentReturnPercent } from "./investments.model.js";
-import styles from "./InvestmentsPage.module.css";
+
+import layoutStyles from "./InvestmentsPage.module.css";
+import heroStyles from "./InvestmentHero.module.css";
+import portfolioStyles from "./PortfolioCard.module.css";
+import holdingStyles from "./HoldingCard.module.css";
+import activityStyles from "./InvestmentActivity.module.css";
+import sharedStyles from "./InvestmentShared.module.css";
 
 const tone = (value) => Number(value || 0) > 0
-  ? styles.positive
+  ? sharedStyles.positive
   : Number(value || 0) < 0
-    ? styles.negative
-    : styles.neutral;
+    ? sharedStyles.negative
+    : sharedStyles.neutral;
 
 const percentLabel = (value) => value == null
   ? null
@@ -40,34 +46,34 @@ const PortfolioHero = ({ summary, portfolioCount }) => {
   const unrealizedPercent = investmentReturnPercent(summary?.unrealized_pl, summary?.cost_basis);
   const marketShare = marketSharePercent(summary?.market_value, total);
   return (
-    <section className={styles.hero} aria-labelledby="investment-total-value">
-      <div className={styles.heroGlow} aria-hidden="true" />
-      <div className={styles.heroMain}>
-        <div className={styles.heroCopy}>
-          <span className={styles.heroEyebrow}>Ringkasan investasi tercatat</span>
-          <span className={styles.heroLabel}>Total portfolio</span>
-          <strong className={styles.heroValue} id="investment-total-value"><Money value={total} /></strong>
-          <div className={styles.heroReturnRow}>
-            <span className={`${styles.heroReturn} ${tone(summary?.unrealized_pl)}`}><FiTrendingUp aria-hidden="true" /><span>Unrealized <Money value={summary?.unrealized_pl} /></span>{unrealizedPercent != null ? <small>{percentLabel(unrealizedPercent)}</small> : null}</span>
-            <span className={styles.heroMeta}>{portfolioCount.toLocaleString("id-ID")} portfolio · {(summary?.holding_count || 0).toLocaleString("id-ID")} holding</span>
+    <section className={heroStyles.hero} aria-labelledby="investment-total-value">
+      <div className={heroStyles.heroGlow} aria-hidden="true" />
+      <div className={heroStyles.heroMain}>
+        <div className={heroStyles.heroCopy}>
+          <span className={heroStyles.heroEyebrow}>Ringkasan investasi tercatat</span>
+          <span className={heroStyles.heroLabel}>Total portfolio</span>
+          <strong className={heroStyles.heroValue} id="investment-total-value"><Money value={total} /></strong>
+          <div className={heroStyles.heroReturnRow}>
+            <span className={`${heroStyles.heroReturn} ${tone(summary?.unrealized_pl)}`}><FiTrendingUp aria-hidden="true" /><span>Unrealized <Money value={summary?.unrealized_pl} /></span>{unrealizedPercent != null ? <small>{percentLabel(unrealizedPercent)}</small> : null}</span>
+            <span className={heroStyles.heroMeta}>{portfolioCount.toLocaleString("id-ID")} portfolio · {(summary?.holding_count || 0).toLocaleString("id-ID")} holding</span>
           </div>
         </div>
-        <div className={styles.heroAllocation} aria-label="Komposisi total portfolio">
-          <div className={styles.allocationDonut} style={{ "--market-share": `${marketShare}%` }} aria-hidden="true"><span><small>Saham</small><strong>{marketShare.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%</strong></span></div>
-          <div className={styles.allocationLegend}>
-            <div><span className={`${styles.legendDot} ${styles.legendMarket}`} /><p><small>Nilai saham</small><strong><Money value={summary?.market_value} /></strong></p></div>
-            <div><span className={`${styles.legendDot} ${styles.legendCash}`} /><p><small>Cash RDN</small><strong><Money value={summary?.rdn_cash} /></strong></p></div>
-            <span className={styles.allocationCaption}>Total portfolio = nilai saham + Cash RDN.</span>
+        <div className={heroStyles.heroAllocation} aria-label="Komposisi total portfolio">
+          <div className={heroStyles.allocationDonut} style={{ "--market-share": `${marketShare}%` }} aria-hidden="true"><span><small>Saham</small><strong>{marketShare.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%</strong></span></div>
+          <div className={heroStyles.allocationLegend}>
+            <div><span className={`${heroStyles.legendDot} ${heroStyles.legendMarket}`} /><p><small>Nilai saham</small><strong><Money value={summary?.market_value} /></strong></p></div>
+            <div><span className={`${heroStyles.legendDot} ${heroStyles.legendCash}`} /><p><small>Cash RDN</small><strong><Money value={summary?.rdn_cash} /></strong></p></div>
+            <span className={heroStyles.allocationCaption}>Total portfolio = nilai saham + Cash RDN.</span>
           </div>
         </div>
       </div>
-      <dl className={styles.heroMetrics}>
+      <dl className={heroStyles.heroMetrics}>
         <div><dt>Nilai saham</dt><dd><Money value={summary?.market_value} /></dd></div>
         <div><dt>Cash RDN</dt><dd><Money value={summary?.rdn_cash} /></dd></div>
         <div><dt>Realized P/L</dt><dd className={tone(summary?.realized_pl)}><Money value={summary?.realized_pl} /></dd></div>
         <div><dt>Unrealized P/L</dt><dd className={tone(summary?.unrealized_pl)}><Money value={summary?.unrealized_pl} /></dd></div>
       </dl>
-      <p className={styles.heroDisclaimer}>Nilai saham memakai harga manual terakhir atau harga transaksi terakhir yang tercatat; bukan harga pasar live.</p>
+      <p className={heroStyles.heroDisclaimer}>Nilai saham memakai harga manual terakhir atau harga transaksi terakhir yang tercatat; bukan harga pasar live.</p>
     </section>
   );
 };
@@ -98,25 +104,25 @@ const portfolioActionState = ({ portfolio, instruments, owner }) => {
 };
 
 const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup, onTransfer }) => {
-  if (!portfolio.can_operate) return <p className={styles.readOnlyNote}>Portfolio ini dapat dilihat untuk transparansi, tetapi hanya pemilik rekening yang dapat mengubah catatannya.</p>;
+  if (!portfolio.can_operate) return <p className={sharedStyles.readOnlyNote}>Portfolio ini dapat dilihat untuk transparansi, tetapi hanya pemilik rekening yang dapat mengubah catatannya.</p>;
   const state = portfolioActionState({ portfolio, instruments, owner });
   const cash = Number(portfolio.rdn_cash || 0);
-  return <section className={styles.actionArea} aria-label={`Aksi ${portfolio.name}`}>
-    <div className={styles.quickActions}>
-      <Button className={`${styles.quickAction} ${styles.quickActionPrimary}`} icon={FiPlus} variant="primary" disabled={!state.hasBuyInstrument} onClick={() => onAction("buy", portfolio)}>Catat pembelian</Button>
-      <Button className={styles.quickAction} icon={FiDollarSign} disabled={!state.hasSellableHolding} onClick={() => onAction("sell", portfolio)}>Catat penjualan</Button>
-      <Button className={styles.quickAction} icon={FiTrendingUp} disabled={!state.hasPriceInstrument} onClick={() => onAction("price", portfolio)}>Perbarui harga</Button>
-      <Button className={styles.quickAction} icon={FiRefreshCw} onClick={() => onAction("reconcile", portfolio)}>Cocokkan</Button>
+  return <section className={portfolioStyles.actionArea} aria-label={`Aksi ${portfolio.name}`}>
+    <div className={portfolioStyles.quickActions}>
+      <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionPrimary}`} icon={FiPlus} variant="primary" disabled={!state.hasBuyInstrument} onClick={() => onAction("buy", portfolio)}>Catat pembelian</Button>
+      <Button className={portfolioStyles.quickAction} icon={FiDollarSign} disabled={!state.hasSellableHolding} onClick={() => onAction("sell", portfolio)}>Catat penjualan</Button>
+      <Button className={portfolioStyles.quickAction} icon={FiTrendingUp} disabled={!state.hasPriceInstrument} onClick={() => onAction("price", portfolio)}>Perbarui harga</Button>
+      <Button className={portfolioStyles.quickAction} icon={FiRefreshCw} onClick={() => onAction("reconcile", portfolio)}>Cocokkan</Button>
     </div>
-    <div className={styles.actionFooter}>
+    <div className={portfolioStyles.actionFooter}>
       <div className="form-actions">
         <Button type="button" icon={FiArrowDownLeft} onClick={() => onTransfer("fund", portfolio)}>Tambah dana ke RDN</Button>
         <Button type="button" icon={FiArrowUpRight} disabled={cash <= 0} onClick={() => onTransfer("withdraw", portfolio)}>Tarik dana dari RDN</Button>
         {portfolio.opening_position_available ? <Button type="button" onClick={() => onAction("opening_position", portfolio)} disabled={!state.hasBuyInstrument}>Tambah posisi awal</Button> : null}
       </div>
-      {owner ? <Button className={styles.correctionAction} type="button" icon={FiEdit3} onClick={() => onAction("correction", portfolio)}>Koreksi catatan</Button> : null}
+      {owner ? <Button className={portfolioStyles.correctionAction} type="button" icon={FiEdit3} onClick={() => onAction("correction", portfolio)}>Koreksi catatan</Button> : null}
     </div>
-    {state.guidance ? <div className={styles.actionGuidance} role="note"><span>{state.guidance}</span>{!state.hasBuyInstrument && owner ? <Button type="button" onClick={() => onSetup("instrument")}>Tambah instrumen</Button> : null}</div> : null}
+    {state.guidance ? <div className={portfolioStyles.actionGuidance} role="note"><span>{state.guidance}</span>{!state.hasBuyInstrument && owner ? <Button type="button" onClick={() => onSetup("instrument")}>Tambah instrumen</Button> : null}</div> : null}
   </section>;
 };
 
@@ -130,20 +136,20 @@ const HoldingCard = ({ holding, onOpenDetail }) => {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenDetail(); }
   };
   return (
-    <article className={`${styles.holdingCard} ${styles.holdingCardInteractive}`} role="button" tabIndex="0" onClick={onOpenDetail} onKeyDown={openOnKeyboard} aria-label={`Buka rincian ${holding.ticker || "saham"}`}>
-      <div className={styles.holdingIdentity}>
-        <span className={styles.tickerMark} aria-hidden="true">{tickerMark}</span>
+    <article className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`} role="button" tabIndex="0" onClick={onOpenDetail} onKeyDown={openOnKeyboard} aria-label={`Buka rincian ${holding.ticker || "saham"}`}>
+      <div className={holdingStyles.holdingIdentity}>
+        <span className={holdingStyles.tickerMark} aria-hidden="true">{tickerMark}</span>
         <div>
-          <div className={styles.holdingNameRow}><h4>{holding.ticker || "Saham"}</h4><span>{lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot</span></div>
+          <div className={holdingStyles.holdingNameRow}><h4>{holding.ticker || "Saham"}</h4><span>{lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot</span></div>
           <p>{holding.name || "Instrumen investasi"}</p>
         </div>
       </div>
-      <div className={styles.holdingValueBlock}>
+      <div className={holdingStyles.holdingValueBlock}>
         <span>Nilai saham</span>
         <strong><Money value={holding.market_value} /></strong>
         <small className={tone(holding.unrealized_pl)}><Money value={holding.unrealized_pl} />{returnPercent != null ? ` · ${percentLabel(returnPercent)}` : ""}</small>
       </div>
-      <dl className={styles.holdingMetrics}>
+      <dl className={holdingStyles.holdingMetrics}>
         <div><dt>Kepemilikan</dt><dd>{shares.toLocaleString("id-ID")} lembar</dd></div>
         <div><dt>Average cost</dt><dd><Money value={holding.average_cost} /></dd></div>
         <div><dt>Harga terakhir</dt><dd><Money value={holding.price_per_share} />{holding.valuation_date ? <small>{formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}</small> : null}</dd></div>
@@ -163,13 +169,13 @@ const ActivityValue = ({ activity }) => {
 };
 
 const ActivityItem = ({ activity }) => (
-  <li className={styles.activityItem}>
-    <span className={styles.activityIcon} aria-hidden="true"><FiActivity /></span>
-    <div className={styles.activityCopy}>
+  <li className={activityStyles.activityItem}>
+    <span className={activityStyles.activityIcon} aria-hidden="true"><FiActivity /></span>
+    <div className={activityStyles.activityCopy}>
       <strong>{investmentActivityLabel(activity)}</strong>
       <small>{formatDateLongIndonesia(activity.activity_date) || activity.activity_date}</small>
     </div>
-    <div className={styles.activityValue}><ActivityValue activity={activity} /></div>
+    <div className={activityStyles.activityValue}><ActivityValue activity={activity} /></div>
   </li>
 );
 
@@ -177,14 +183,14 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
   const total = portfolioTotal(portfolio);
   const unrealizedPercent = investmentReturnPercent(portfolio.unrealized_pl, portfolio.cost_basis);
   return (
-    <Card as="article" className={styles.portfolioCard}>
-      <header className={styles.portfolioHeader}>
-        <div className={styles.portfolioTitleBlock}>
-          <div className={styles.portfolioIdentityRow}><span className={styles.portfolioBroker}>Sumber catatan</span><span className={styles.rdnChip}>{rdnLabel(portfolio)}</span></div>
+    <Card as="article" className={portfolioStyles.portfolioCard}>
+      <header className={portfolioStyles.portfolioHeader}>
+        <div className={portfolioStyles.portfolioTitleBlock}>
+          <div className={portfolioStyles.portfolioIdentityRow}><span className={portfolioStyles.portfolioBroker}>Sumber catatan</span><span className={portfolioStyles.rdnChip}>{rdnLabel(portfolio)}</span></div>
           <h2>{portfolio.name}</h2>
           <p>Satu portfolio ini selalu menggunakan Cash RDN dari rekening di atas.</p>
         </div>
-        <div className={styles.portfolioValue}>
+        <div className={portfolioStyles.portfolioValue}>
           <span>Total portfolio</span>
           <strong><Money value={total} /></strong>
           <small className={tone(portfolio.unrealized_pl)}>Unrealized <Money value={portfolio.unrealized_pl} />{unrealizedPercent != null ? ` · ${percentLabel(unrealizedPercent)}` : ""}</small>
@@ -193,13 +199,13 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
 
       <PortfolioActions portfolio={portfolio} instruments={instruments} owner={owner} onAction={onAction} onSetup={onSetup} onTransfer={onTransfer} />
 
-      <section className={styles.composition} aria-label={`Komposisi ${portfolio.name}`}>
-        <div className={styles.sectionHeading}>
-          <div><span className={styles.sectionEyebrow}>Komposisi aset</span><h3>Nilai saham dan Cash RDN</h3><p>Total portfolio dihitung dari nilai saham berdasarkan harga catatan terakhir ditambah Cash RDN.</p></div>
+      <section className={portfolioStyles.composition} aria-label={`Komposisi ${portfolio.name}`}>
+        <div className={sharedStyles.sectionHeading}>
+          <div><span className={sharedStyles.sectionEyebrow}>Komposisi aset</span><h3>Nilai saham dan Cash RDN</h3><p>Total portfolio dihitung dari nilai saham berdasarkan harga catatan terakhir ditambah Cash RDN.</p></div>
           <span><Money value={total} /> total</span>
         </div>
         <ProgressBar value={portfolio.market_value} max={total} label="Porsi nilai saham" />
-        <dl className={styles.compositionMetrics}>
+        <dl className={portfolioStyles.compositionMetrics}>
           <div><dt>Nilai saham</dt><dd><Money value={portfolio.market_value} /></dd></div>
           <div><dt>Cash RDN</dt><dd><Money value={portfolio.rdn_cash} /></dd></div>
           <div><dt>Realized P/L</dt><dd className={tone(portfolio.realized_pl)}><Money value={portfolio.realized_pl} /></dd></div>
@@ -207,28 +213,28 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
         </dl>
       </section>
 
-      <section className={styles.holdingsSection} aria-labelledby={`holdings-${portfolio.portfolio_id}`}>
-        <div className={styles.sectionHeading}>
-          <div><span className={styles.sectionEyebrow}>Kepemilikan</span><h3 id={`holdings-${portfolio.portfolio_id}`}>Holding saham</h3><p>Klik holding untuk melihat rincian dan aktivitas saham tersebut.</p></div>
+      <section className={holdingStyles.holdingsSection} aria-labelledby={`holdings-${portfolio.portfolio_id}`}>
+        <div className={sharedStyles.sectionHeading}>
+          <div><span className={sharedStyles.sectionEyebrow}>Kepemilikan</span><h3 id={`holdings-${portfolio.portfolio_id}`}>Holding saham</h3><p>Klik holding untuk melihat rincian dan aktivitas saham tersebut.</p></div>
           <span>{portfolio.holdings.length.toLocaleString("id-ID")} saham</span>
         </div>
         {portfolio.holdings.length
-          ? <div className={styles.holdings}>{portfolio.holdings.map((holding) => <HoldingCard key={holding.instrument_id} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} />)}</div>
-          : <p className={styles.inlineEmpty}>Belum ada saham. Anda dapat mencatat posisi awal yang sudah dimiliki atau mencatat pembelian baru setelah transaksi benar-benar terjadi di aplikasi investasi.</p>}
+          ? <div className={holdingStyles.holdings}>{portfolio.holdings.map((holding) => <HoldingCard key={holding.instrument_id} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} />)}</div>
+          : <p className={sharedStyles.inlineEmpty}>Belum ada saham. Anda dapat mencatat posisi awal yang sudah dimiliki atau mencatat pembelian baru setelah transaksi benar-benar terjadi di aplikasi investasi.</p>}
       </section>
 
-      {portfolio.activity?.length ? <section className={styles.activitySection} aria-labelledby={`activity-${portfolio.portfolio_id}`}>
-        <div className={styles.sectionHeading}><div><span className={styles.sectionEyebrow}>Audit trail</span><h3 id={`activity-${portfolio.portfolio_id}`}>Aktivitas saham terbaru</h3><p>Pembelian, penjualan, harga manual, posisi awal, dan koreksi ditampilkan sebagai event yang eksplisit.</p></div></div>
-        <ul className={styles.activityList}>{portfolio.activity.slice(0, 5).map((activity) => <ActivityItem key={`${activity.activity_type}:${activity.activity_id}`} activity={activity} />)}</ul>
+      {portfolio.activity?.length ? <section className={activityStyles.activitySection} aria-labelledby={`activity-${portfolio.portfolio_id}`}>
+        <div className={sharedStyles.sectionHeading}><div><span className={sharedStyles.sectionEyebrow}>Audit trail</span><h3 id={`activity-${portfolio.portfolio_id}`}>Aktivitas saham terbaru</h3><p>Pembelian, penjualan, harga manual, posisi awal, dan koreksi ditampilkan sebagai event yang eksplisit.</p></div></div>
+        <ul className={activityStyles.activityList}>{portfolio.activity.slice(0, 5).map((activity) => <ActivityItem key={`${activity.activity_type}:${activity.activity_id}`} activity={activity} />)}</ul>
       </section> : null}
     </Card>
   );
 };
 
 const InvestmentOverview = ({ data, owner, onAction, onSetup, onTransfer, onHolding }) => (
-  <div className={styles.dashboard}>
+  <div className={layoutStyles.dashboard}>
     <PortfolioHero summary={data.summary || {}} portfolioCount={data.portfolios.length} />
-    <div className={styles.portfolioList}>
+    <div className={layoutStyles.portfolioList}>
       {data.portfolios.map((portfolio) => <PortfolioCard key={portfolio.portfolio_id} portfolio={portfolio} instruments={data.instruments || []} owner={owner} onAction={onAction} onSetup={onSetup} onTransfer={onTransfer} onHolding={onHolding} />)}
     </div>
   </div>

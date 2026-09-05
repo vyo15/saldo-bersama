@@ -112,9 +112,16 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
     readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/allocations/AllocationOverview.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
+    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/features/auth/LoginPage.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
   ]);
 
   assert.match(tokens, /--font-size-xs:\s*12px;/);
@@ -158,14 +165,21 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   const [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts, loginStyles] = await Promise.all([
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/allocations/AllocationOverview.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
+    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/budgets/BudgetsPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/transactions/TransactionsPage.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionsPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/feedback/FeedbackProvider.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/accounts/components/DesktopAccountsWorkspace.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/features/auth/LoginPage.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
   ]);
 
   assert.match(app, /\.desktop-settings-button \{ width:\s*44px; height:\s*44px;/);
@@ -173,16 +187,16 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(components, /\.icon-button \{ width:\s*44px; height:\s*44px;/);
   assert.match(components, /\.quick-amounts button \{ min-height:\s*44px;/);
   assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
-  assert.match(pages, /\.allocation-filters button \{ min-height:\s*44px;/);
-  assert.match(pages, /\.allocation-card__menu \{ width:\s*44px; min-width:\s*44px; height:\s*44px;/);
-  assert.match(pages, /\.allocation-detail-back \{ width:\s*max-content; min-height:\s*44px;/);
+  assert.match(pages, /\.allocation-filters button\s*\{[^}]*min-height:\s*44px;/);
+  assert.match(pages, /\.allocation-card__menu\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;/);
+  assert.match(pages, /\.allocation-detail-back\s*\{[^}]*width:\s*max-content;[^}]*min-height:\s*44px;/);
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
   assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*7px;[^}]*height:\s*7px;/);
   assert.match(budgets, /\.segment \{\s*min-height:\s*var\(--control-height-md\);/);
   assert.match(budgets, /\.sortButton \{\s*min-height:\s*var\(--control-height-md\);/);
   assert.match(transactionForm, /\.quickAmounts button \{\s*min-height:\s*var\(--control-height-md\);/);
   assert.match(transactionForm, /\.impactDetails summary \{[^}]*min-height:\s*var\(--control-height-md\);/s);
-  assert.match(transactions, /\.transaction-filter-chip \{ min-height:\s*var\(--control-height-md\);/);
+  assert.match(transactions, /\.filterChip\s*\{[^}]*min-height:\s*var\(--control-height-md\);/);
   assert.match(desktopAccounts, /\.ownershipFilter \{[^}]*min-height:\s*2\.75rem;/s);
   assert.match(desktopAccounts, /\.carouselArrow \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
   assert.match(desktopAccounts, /\.carouselDot \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
@@ -215,9 +229,9 @@ test("microtext di bawah 12px hanya tersisa pada facsimile atau dekorasi yang di
     "components/feedback/FinancialSuccessOverlay.module.css:.58rem",
     "features/accounts/components/AccountFinancialCard.module.css:.38rem",
     "features/accounts/components/AccountFinancialCard.module.css:.48rem",
-    "features/auth/LoginPage.css:.43rem",
-    "features/auth/LoginPage.css:.55rem",
-    "features/auth/LoginPage.css:clamp(.74rem, 1.15vw, .98rem)",
+    "features/auth/LoginPage.module.css:.43rem",
+    "features/auth/LoginPage.module.css:.55rem",
+    "features/auth/LoginPage.module.css:clamp(.74rem, 1.15vw, .98rem)",
   ].sort());
 });
 
@@ -267,7 +281,10 @@ test("semua CSS custom property statis terdefinisi dan alias semantic yang salah
 test("gradient avatar dan login menjaga focus, motion preference, dan full-screen shell", async () => {
   const [app, loginStyles, login] = await Promise.all([
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/auth/LoginPage.css", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/features/auth/LoginPage.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
     Promise.all([
       "../src/features/auth/LoginPage.jsx",
       "../src/features/auth/components/LoginDesktopLayout.jsx",
@@ -310,7 +327,7 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
     readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/Modal.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/dashboard/DashboardPage.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/components/MobileTransactionHistory.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/reconciliations/ReconciliationsPage.module.css", import.meta.url), "utf8"),
@@ -350,6 +367,7 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
     planning,
     transactionForm,
     budgets,
+    budgetCard,
     pages,
   ] = await Promise.all([
     readFile(new URL("../src/components/common/VisualChoiceGroup.module.css", import.meta.url), "utf8"),
@@ -357,7 +375,8 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
     readFile(new URL("../src/features/planning/PlanningPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/budgets/BudgetsPage.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/styles/pages.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/budgets/components/BudgetInsightCard.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(visualChoice, /\.label \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
@@ -368,8 +387,9 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.match(transactionForm, /@media \(max-width: 820px\)[\s\S]*?\.categoryQuickChoices > small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.match(transactionForm, /\.form \.notesField textarea \{[\s\S]*?min-height:\s*3\.25rem;/);
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
-  assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.segment,[\s\S]*?\.sortButton,[\s\S]*?\.detailButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap \.button,[\s\S]*?\.allocation-limit-row__actions \.button \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.segment,[\s\S]*?\.sortButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgetCard, /@media \(max-width: 820px\) \{[\s\S]*?\.detailButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-limit-row__actions :global\(\.button\) \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-related-row small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
 });
 
@@ -379,7 +399,7 @@ test("!important hanya tersisa untuk reduced-motion compatibility yang terdokume
   assert.equal(withImportant.length, 2);
 
   const components = withImportant.find((file) => file.path.endsWith("/styles/components.css"))?.source || "";
-  const login = withImportant.find((file) => file.path.endsWith("/features/auth/LoginPage.css"))?.source || "";
+  const login = withImportant.find((file) => file.path.endsWith("/features/auth/LoginMobile.module.css"))?.source || "";
   assert.match(components, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?!important/);
   assert.match(login, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?--login-mobile-parallax-soft:\s*0px !important/);
 });

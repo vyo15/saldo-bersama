@@ -69,8 +69,7 @@
     gap: var(--space-1);
   }
 
-.mobileStackHeaderButton,
-.mobileStackAddButton {
+.mobileStackHeaderButton {
     min-height: 2.75rem;
     border: 0;
     color: var(--on-hero);
@@ -88,33 +87,18 @@
     font-weight: var(--font-weight-semibold);
   }
 
-.mobileStackAddButton {
-    width: 2.75rem;
-    min-width: 2.75rem;
-    padding: 0;
-    border-radius: var(--radius-pill);
-    display: grid;
-    place-items: center;
-    color: var(--primary);
-    background: color-mix(in srgb, var(--on-hero) 6%, transparent);
-  }
-
 .mobileStackHeaderButton:hover,
-.mobileStackHeaderButton:focus-visible,
-.mobileStackAddButton:hover,
-.mobileStackAddButton:focus-visible {
+.mobileStackHeaderButton:focus-visible {
     color: var(--primary);
     background: color-mix(in srgb, var(--on-hero) 7%, transparent);
   }
 
-.mobileStackHeaderButton:focus-visible,
-.mobileStackAddButton:focus-visible {
+.mobileStackHeaderButton:focus-visible {
     outline: 3px solid color-mix(in srgb, var(--account-mobile-accent) 38%, transparent);
     outline-offset: 2px;
   }
 
-.mobileStackHeaderButton svg,
-.mobileStackAddButton svg {
+.mobileStackHeaderButton svg {
     width: 1.1rem;
     height: 1.1rem;
   }
@@ -366,14 +350,6 @@
     white-space: nowrap;
   }
 
-.mobileStackHint {
-    margin: .65rem var(--mobile-page-gutter) 0;
-    color: color-mix(in srgb, var(--on-hero) 52%, transparent);
-    font-size: var(--font-size-xs);
-    line-height: 1.5;
-    text-align: center;
-  }
-
 :global(:root[data-theme="light"]) .mobileAccountExperience,
 :global(:root[data-theme="light"]) .mobileStackPanel {
     color: var(--text);
@@ -401,12 +377,8 @@
     background: var(--surface);
   }
 
-:global(:root[data-theme="light"]) .mobileStackAddButton { background: var(--primary-soft); color: var(--primary); }
-
 :global(:root[data-theme="light"]) .mobileStackHeaderButton:hover,
-:global(:root[data-theme="light"]) .mobileStackHeaderButton:focus-visible,
-:global(:root[data-theme="light"]) .mobileStackAddButton:hover,
-:global(:root[data-theme="light"]) .mobileStackAddButton:focus-visible { background: var(--surface-strong); color: var(--primary); }
+:global(:root[data-theme="light"]) .mobileStackHeaderButton:focus-visible { background: var(--surface-strong); color: var(--primary); }
 
 :global(:root[data-theme="light"]) .mobileStackAmbient::before { background: radial-gradient(circle, color-mix(in srgb, var(--primary-soft) 72%, transparent), transparent 72%); }
 
@@ -415,8 +387,7 @@
 :global(:root[data-theme="light"]) .mobileStackAccountName { color: var(--text); }
 
 :global(:root[data-theme="light"]) .mobileStackAccountMeta,
-:global(:root[data-theme="light"]) .mobileStackOwnerScope,
-:global(:root[data-theme="light"]) .mobileStackHint { color: var(--text-muted); }
+:global(:root[data-theme="light"]) .mobileStackOwnerScope { color: var(--text-muted); }
 }
 
 @media (max-width: 420px) {

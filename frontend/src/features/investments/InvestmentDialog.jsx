@@ -16,7 +16,11 @@ import {
   updateInvestmentValuation,
 } from "./investments.api.js";
 import { investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation } from "./investments.model.js";
-import styles from "./InvestmentsPage.module.css";
+
+import formStyles from "./InvestmentForm.module.css";
+import activityStyles from "./InvestmentActivity.module.css";
+import sharedStyles from "./InvestmentShared.module.css";
+import portfolioStyles from "./PortfolioCard.module.css";
 
 const TODAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 const safeId = (value) => String(value || "item").replace(/[^a-zA-Z0-9_-]/g, "-");
@@ -52,7 +56,7 @@ const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, errors
   const lotSize = Number(instrument?.lot_size || holding?.lot_size || 100);
   return <>
     <InstrumentField form={form} onFieldChange={onFieldChange} instruments={selectable} error={errors.instrument_id} />
-    <div className={styles.formRow}>
+    <div className={formStyles.formRow}>
       <InvestmentFormField id="investment-lots" label="Lot" required error={errors.lots}>
         <input min="1" step="1" type="number" value={form.lots} onChange={(event) => onFieldChange("lots", event.target.value)} />
       </InvestmentFormField>
@@ -63,8 +67,8 @@ const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, errors
     <MoneyInput id="investment-trade-price" label="Harga per saham" required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
     <MoneyInput id="investment-trade-fee" label="Fee" value={form.fee_amount} error={errors.fee_amount} onChange={(value) => onFieldChange("fee_amount", value)} />
     <NotesField id="investment-trade-notes" value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
-    {mode === "buy" ? <small className={styles.formHint}>Cash RDN tercatat saat ini <Money value={portfolio.rdn_cash} />. Saldo Bersama hanya mencatat transaksi yang sudah dilakukan di aplikasi investasi.</small> : null}
-    {mode === "sell" && holding ? <small className={styles.formHint}>Tersedia {formatLotCount(holding.shares, lotSize)} lot ({Number(holding.shares || 0).toLocaleString("id-ID")} lembar).</small> : null}
+    {mode === "buy" ? <small className={formStyles.formHint}>Cash RDN tercatat saat ini <Money value={portfolio.rdn_cash} />. Saldo Bersama hanya mencatat transaksi yang sudah dilakukan di aplikasi investasi.</small> : null}
+    {mode === "sell" && holding ? <small className={formStyles.formHint}>Tersedia {formatLotCount(holding.shares, lotSize)} lot ({Number(holding.shares || 0).toLocaleString("id-ID")} lembar).</small> : null}
   </>;
 };
 
@@ -73,12 +77,12 @@ const TradeReview = ({ mode, form, instruments, portfolio }) => {
   const cashBefore = Number(portfolio?.rdn_cash || 0);
   const cashAfter = mode === "sell" ? cashBefore + preview.rdnAmount : cashBefore - preview.rdnAmount;
   return (
-    <section className={styles.review} aria-labelledby="investment-trade-review-title">
+    <section className={formStyles.review} aria-labelledby="investment-trade-review-title">
       <div>
         <h3 id="investment-trade-review-title">Tinjau catatan sebelum disimpan</h3>
-        <p className={styles.notice}>Ini adalah catatan transaksi yang sudah dilakukan di aplikasi investasi, bukan order baru. Backend tetap memvalidasi saldo RDN, holding, lot, tanggal, izin, versi data, dan idempotency saat disimpan.</p>
+        <p className={formStyles.notice}>Ini adalah catatan transaksi yang sudah dilakukan di aplikasi investasi, bukan order baru. Backend tetap memvalidasi saldo RDN, holding, lot, tanggal, izin, versi data, dan idempotency saat disimpan.</p>
       </div>
-      <dl className={styles.reviewGrid}>
+      <dl className={formStyles.reviewGrid}>
         <div><dt>Saham</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
         <div><dt>Kuantitas</dt><dd>{preview.lots.toLocaleString("id-ID")} lot · {preview.shares.toLocaleString("id-ID")} lembar</dd></div>
         <div><dt>Harga per saham</dt><dd><Money value={preview.pricePerShare} /></dd></div>
@@ -98,9 +102,9 @@ const TradeReview = ({ mode, form, instruments, portfolio }) => {
 const OpeningPositionFields = ({ form, onFieldChange, instruments, portfolio, errors }) => {
   const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
   return <>
-    <p className={styles.notice}>Posisi awal mencatat kondisi yang sudah ada saat Anda mulai memakai Saldo Bersama. Ini bukan transaksi beli dan tidak membuat histori pembelian palsu.</p>
+    <p className={formStyles.notice}>Posisi awal mencatat kondisi yang sudah ada saat Anda mulai memakai Saldo Bersama. Ini bukan transaksi beli dan tidak membuat histori pembelian palsu.</p>
     <InstrumentField form={form} onFieldChange={onFieldChange} instruments={instruments} error={errors.instrument_id} />
-    <div className={styles.formRow}>
+    <div className={formStyles.formRow}>
       <InvestmentFormField id="investment-opening-shares" label="Jumlah lembar" required error={errors.shares}>
         <input min="1" step="1" type="number" value={form.shares || ""} onChange={(event) => onFieldChange("shares", event.target.value)} />
       </InvestmentFormField>
@@ -108,12 +112,12 @@ const OpeningPositionFields = ({ form, onFieldChange, instruments, portfolio, er
         <input type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />
       </InvestmentFormField>
     </div>
-    {instrument && Number(form.shares || 0) > 0 ? <small className={styles.formHint}>{Number(form.shares).toLocaleString("id-ID")} lembar ≈ {formatLotCount(form.shares, instrument.lot_size)} lot berdasarkan lot size {Number(instrument.lot_size || 100).toLocaleString("id-ID")}.</small> : null}
+    {instrument && Number(form.shares || 0) > 0 ? <small className={formStyles.formHint}>{Number(form.shares).toLocaleString("id-ID")} lembar ≈ {formatLotCount(form.shares, instrument.lot_size)} lot berdasarkan lot size {Number(instrument.lot_size || 100).toLocaleString("id-ID")}.</small> : null}
     <MoneyInput id="investment-opening-cost" label="Total modal / cost basis" required value={form.cost_basis || ""} error={errors.cost_basis} onChange={(value) => onFieldChange("cost_basis", value)} />
-    {Number(form.shares || 0) > 0 && Number(form.cost_basis || 0) > 0 ? <small className={styles.formHint}>Average cost tercatat ≈ <Money value={Math.round(Number(form.cost_basis) / Number(form.shares))} /> per lembar.</small> : null}
+    {Number(form.shares || 0) > 0 && Number(form.cost_basis || 0) > 0 ? <small className={formStyles.formHint}>Average cost tercatat ≈ <Money value={Math.round(Number(form.cost_basis) / Number(form.shares))} /> per lembar.</small> : null}
     <MoneyInput id="investment-opening-price" label="Harga referensi saat ini" required value={form.reference_price || ""} error={errors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
     <MoneyInput id="investment-opening-cash" label="Cash RDN awal" required value={form.actual_cash} error={errors.actual_cash} onChange={(value) => onFieldChange("actual_cash", value)} />
-    <small className={styles.formHint}>Isi saldo Cash RDN yang benar pada kondisi awal. Sistem mencatat selisihnya secara append-only; tidak ada transfer atau pemasukan/pengeluaran yang dibuat otomatis. Cash RDN tercatat saat ini <Money value={portfolio.rdn_cash} />.</small>
+    <small className={formStyles.formHint}>Isi saldo Cash RDN yang benar pada kondisi awal. Sistem mencatat selisihnya secara append-only; tidak ada transfer atau pemasukan/pengeluaran yang dibuat otomatis. Cash RDN tercatat saat ini <Money value={portfolio.rdn_cash} />.</small>
     <NotesField id="investment-opening-notes" value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
   </>;
 };
@@ -146,7 +150,7 @@ const ReconcileFields = ({ form, onFieldChange, instruments, portfolio, errors }
 };
 
 const CorrectionFields = ({ form, onFieldChange, instruments, errors }) => <>
-  <p className={styles.notice}>Koreksi tidak menghapus histori lama. Gunakan hanya setelah selisih diverifikasi.</p>
+  <p className={formStyles.notice}>Koreksi tidak menghapus histori lama. Gunakan hanya setelah selisih diverifikasi.</p>
   <InvestmentFormField id="investment-correction-date" label="Tanggal koreksi" required error={errors.correction_date}>
     <input type="date" max={TODAY()} value={form.correction_date} onChange={(event) => onFieldChange("correction_date", event.target.value)} />
   </InvestmentFormField>
@@ -156,7 +160,7 @@ const CorrectionFields = ({ form, onFieldChange, instruments, errors }) => <>
       {instruments.map((item) => <option key={item.instrument_id} value={item.instrument_id}>{item.ticker}</option>)}
     </select>
   </InvestmentFormField>
-  <div className={styles.formRow}>
+  <div className={formStyles.formRow}>
     <InvestmentFormField id="investment-share-delta" label="Delta lembar" error={errors.share_delta}><input step="1" type="number" value={form.share_delta || 0} onChange={(event) => onFieldChange("share_delta", event.target.value)} /></InvestmentFormField>
     <InvestmentFormField id="investment-cost-basis-delta" label="Delta cost basis" error={errors.cost_basis_delta}><input step="1" type="number" value={form.cost_basis_delta || 0} onChange={(event) => onFieldChange("cost_basis_delta", event.target.value)} /></InvestmentFormField>
   </div>
@@ -232,11 +236,11 @@ const ReconciliationNotice = ({ matched }) => <div className={`notice ${matched 
 const ReconciliationHoldings = ({ comparisons, instruments }) => {
   if (!comparisons.length) return null;
   const instrumentMap = new Map((instruments || []).map((item) => [item.instrument_id, item]));
-  return <div className={styles.activitySection}>
+  return <div className={activityStyles.activitySection}>
     <h3>Perbandingan holding</h3>
-    <div className={styles.activityList}>{comparisons.map((item) => {
+    <div className={activityStyles.activityList}>{comparisons.map((item) => {
       const instrument = instrumentMap.get(item.instrument_id);
-      return <div className={styles.readOnlyNote} key={item.instrument_id}>
+      return <div className={sharedStyles.readOnlyNote} key={item.instrument_id}>
         <strong>{instrument?.ticker || instrument?.name || "Saham"}</strong>
         <span>Tercatat {Number(item.recorded_shares || 0).toLocaleString("id-ID")} lembar · aktual {Number(item.actual_shares || 0).toLocaleString("id-ID")} lembar · selisih {signedShares(item.difference)}</span>
       </div>;
@@ -254,9 +258,9 @@ const ReconciliationResult = ({ result, instruments, userRole, onClose, onOpenCo
   const matched = result?.status === "matched";
   const comparisons = result?.holding_comparisons || result?.holding_differences || [];
   const cashTone = Number(result?.cash_difference || 0) === 0 ? "default" : "negative";
-  return <section className={styles.review} aria-live="polite">
+  return <section className={formStyles.review} aria-live="polite">
     <ReconciliationNotice matched={matched} />
-    <dl className={styles.reviewGrid}>
+    <dl className={formStyles.reviewGrid}>
       <div><dt>Cash RDN tercatat</dt><dd><Money value={result?.recorded_cash} /></dd></div>
       <div><dt>Cash RDN aktual</dt><dd><Money value={result?.actual_cash} /></dd></div>
       <div><dt>Selisih cash</dt><dd><Money value={result?.cash_difference} tone={cashTone} /></dd></div>
@@ -280,7 +284,7 @@ const InsufficientRdnGuidance = ({ error, portfolio, form, onFundRdn }) => {
   if (error?.code !== "INSUFFICIENT_RDN" || !onFundRdn) return null;
   const projectedBalance = Number(error?.details?.balance);
   const shortage = Number.isFinite(projectedBalance) && projectedBalance < 0 ? Math.abs(projectedBalance) : 0;
-  return <div className={styles.actionGuidance} role="status">
+  return <div className={portfolioStyles.actionGuidance} role="status">
     <span>{shortage > 0 ? <>Pembelian membutuhkan tambahan <Money value={shortage} /> agar Cash RDN tidak negatif pada tanggal yang divalidasi server.</> : <>Saldo RDN tidak cukup untuk pembelian ini.</>} Draft pembelian akan dipertahankan setelah Transfer selesai.</span>
     <Button type="button" onClick={() => onFundRdn(portfolio, shortage, buyDraft(form))}>Tambah dana</Button>
   </div>;
@@ -361,12 +365,12 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, initialInstr
   const footer = <InvestmentDialogFooter reviewing={state.reviewing} busy={state.busy} outcomeUnknown={outcomeUnknown} mode={mode} isTrade={state.isTrade} onEdit={() => { state.setReviewing(false); }} />;
   return (
     <Modal open title={dialogTitle(mode)} description={dialogDescription(mode)} onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={footer}>
-      <form ref={state.formRef} id="investment-dialog-form" className={styles.form} onSubmit={state.submit} noValidate>
+      <form ref={state.formRef} id="investment-dialog-form" className={formStyles.form} onSubmit={state.submit} noValidate>
         {state.fieldErrors._form ? <div className="notice notice--danger" role="alert">{state.fieldErrors._form}</div> : null}
         {state.error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{state.error}</div> : null}
         {mode === "buy" ? <InsufficientRdnGuidance error={state.operationError} portfolio={portfolio} form={state.form} onFundRdn={onFundRdn} /> : null}
-        {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data dikunci sementara. Jangan ubah saham, nominal, tanggal, atau jumlah. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa menggandakan perubahan.</p> : null}
-        {state.reviewing ? <TradeReview mode={mode} form={state.form} instruments={reviewInstruments} portfolio={portfolio} /> : <fieldset className={styles.intentFieldset} disabled={outcomeUnknown}>{body}</fieldset>}
+        {outcomeUnknown ? <p className={formStyles.intentGuard} role="status">Data dikunci sementara. Jangan ubah saham, nominal, tanggal, atau jumlah. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa menggandakan perubahan.</p> : null}
+        {state.reviewing ? <TradeReview mode={mode} form={state.form} instruments={reviewInstruments} portfolio={portfolio} /> : <fieldset className={formStyles.intentFieldset} disabled={outcomeUnknown}>{body}</fieldset>}
       </form>
     </Modal>
   );

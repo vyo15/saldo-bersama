@@ -5,7 +5,7 @@
 
 @media (max-width: 1100px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .allocation-grid, .goal-grid, .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 }
 
 @media (max-width: 940px) {
@@ -76,9 +76,9 @@
   .app-shell--dashboard .topbar { display: none; }
   .app-shell--accounts {
     --accounts-mobile-background:
-      radial-gradient(circle at 72% 18%, rgb(255 255 255 / .08), transparent 27%),
-      radial-gradient(circle at 8% 88%, rgb(22 199 132 / .12), transparent 30%),
-      linear-gradient(145deg, #101413 0%, #0c1110 48%, #07100e 100%);
+      radial-gradient(circle at 72% 18%, color-mix(in srgb, var(--on-hero) 8%, transparent), transparent 27%),
+      radial-gradient(circle at 8% 88%, color-mix(in srgb, var(--account-mobile-accent) 12%, transparent), transparent 30%),
+      linear-gradient(145deg, var(--account-mobile-bg-start) 0%, var(--account-mobile-bg-mid) 48%, var(--account-mobile-bg-end) 100%);
   }
   :root[data-theme="light"] .app-shell--accounts {
     --accounts-mobile-background:
@@ -119,8 +119,6 @@
     min-height: calc(100dvh - env(safe-area-inset-top) - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
     padding-top: env(safe-area-inset-top);
   }
-  .app-shell--dashboard .dashboard-desktop { display: none; }
-  .app-shell--dashboard .mobile-finance-dashboard { display: block; }
   .page-header { min-width: 0; max-width: 100%; display: grid; gap: 10px; }
   .page-header > *,
   .page-header__actions,
@@ -144,7 +142,6 @@
   .button,
   .icon-button,
   .theme-toggle,
-  .segmented-control span,
   .quick-amounts button { min-height: var(--mobile-control-height); }
   .icon-button,
   .theme-toggle { width: var(--mobile-control-height); height: var(--mobile-control-height); }
@@ -154,10 +151,7 @@
   :root body textarea { font-size: var(--mobile-native-control-font-size); }
 
   .panel,
-  .metric-card,
-  .allocation-card,
-  .goal-card,
-  .settings-card { padding: var(--mobile-card-padding); border-radius: var(--mobile-card-radius); box-shadow: none; }
+  .metric-card{ padding: var(--mobile-card-padding); border-radius: var(--mobile-card-radius); box-shadow: none; }
   .panel__header { gap: 12px; margin-bottom: 14px; }
   .panel__header h2 { font-size: 16px; }
   .panel__header p:not(.eyebrow) { margin-top: 4px; font-size: var(--font-size-body-sm); line-height: 1.45; }
@@ -165,109 +159,16 @@
   .metric-card { min-height: 94px; gap: 6px; }
   .metric-card > span:first-child { font-size: 12px; }
   .metric-card .money { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: clamp(19px, 5.4vw, 24px); }
-  .mobile-allocation-card { margin: 12px 0 0; padding: 13px; border-radius: var(--mobile-card-radius); background: var(--surface-soft); }
-  .mobile-allocation-card__icon { width: 38px; height: 38px; border-radius: 12px; }
-  .mobile-allocation-card h2 { font-size: 13px; }
-  .mobile-allocation-card p,
-  .mobile-allocation-card__footer { font-size: var(--font-size-xs); }
-  .mobile-allocation-card__footer a { min-height: 44px; }
 
   .desktop-data-table { display: none; }
   .mobile-data-list { display: grid; gap: 10px; }
   .mobile-data-card { padding: var(--mobile-card-padding); border: 1px solid var(--border); border-radius: var(--mobile-card-radius); background: var(--surface); }
-
 
   .pagination-bar { align-items: stretch; }
   .pagination-bar > span { width: 100%; }
   .pagination-bar .button-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .pagination-bar .button { width: 100%; }
 
-
-  .goal-summary, .allocation-summary { min-height: 12rem; padding: 15px; border-radius: 20px; box-shadow: none; }
-  .goal-summary__content, .allocation-summary__content { width: 72%; }
-  .goal-summary__amount .money, .allocation-summary__amount .money { font-size: clamp(27px, 8vw, 32px); }
-  .goal-summary__description, .allocation-summary__content > p { max-width: 18rem; font-size: 12px; }
-  .goal-summary__meta, .allocation-summary__metrics { gap: 7px 10px; margin-top: 10px; }
-  .goal-summary__meta { max-width: 18rem; }
-  .goal-summary__art, .allocation-summary__art { right: -1%; bottom: .2rem; width: min(8.5rem, 31%); max-height: 8.5rem; }
-  .allocation-header-actions { width: 100%; display: grid; gap: 8px; }
-  .allocation-header-actions--administrator { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) var(--mobile-control-height); }
-  .allocation-header-actions--member { grid-template-columns: minmax(0, 1fr) var(--mobile-control-height); }
-  .allocation-header-actions__primary { grid-column: auto; }
-  .allocation-header-actions > .button { width: 100%; min-width: 0; padding-inline: 10px; font-size: 12px; }
-  .allocation-header-actions > .allocation-refresh-action { width: var(--mobile-control-height); min-width: var(--mobile-control-height); padding: 0; }
-  .allocation-refresh-action > span { display: none; }
-  .allocation-section-heading h2 { font-size: 14px; }
-  .allocation-filters { margin-inline: calc(var(--mobile-page-gutter) * -1); padding-inline: var(--mobile-page-gutter); scroll-padding-inline: var(--mobile-page-gutter); }
-  .allocation-filters button { min-height: var(--mobile-control-height); font-size: var(--font-size-xs); }
-  .allocation-card { padding: 14px; border-radius: var(--mobile-card-radius); box-shadow: none; }
-  .allocation-card__icon { width: 40px; height: 40px; border-radius: 13px; }
-  .allocation-card__heading h2 { font-size: 13.5px; }
-  .allocation-card__heading p { font-size: var(--font-size-xs); }
-  .allocation-card__menu { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); }
-  .allocation-card__balance { margin-top: 12px; padding: 12px; }
-  .allocation-card__remaining { font-size: clamp(23px, 7vw, 27px); }
-  .allocation-card__quick { gap: 7px; }
-  .allocation-card__expand { min-height: var(--mobile-control-height); }
-  .allocation-advanced__content { grid-template-columns: 1fr; }
-  .goal-card__actions { grid-template-columns: minmax(0, 1fr) auto; }
-  .goal-card__quick-actions { gap: 6px; }
-  .goal-card__quick-actions > .button { min-height: var(--mobile-control-height); padding-inline: 10px; font-size: 12px; }
-  .goal-action-menu > summary { width: var(--mobile-control-height); min-width: var(--mobile-control-height); padding: 0; }
-  .goal-action-menu > summary span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
-
-  .report-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .report-chart-grid { gap: 12px; }
-  .line-chart svg { height: 170px; }
-  .budget-mobile-card { display: grid; gap: 12px; }
-  .budget-mobile-card__header strong { font-size: 14px; }
-  .budget-mobile-card__header .icon-button { flex: 0 0 auto; }
-  .budget-mobile-card__metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .budget-mobile-card__metrics > div { min-width: 0; display: grid; gap: 3px; }
-  .budget-mobile-card__metrics dt { font-size: var(--font-size-xs); }
-  .budget-mobile-card__metrics dd { text-align: left; }
-  .budget-mobile-card__metrics .money { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-  .budget-performance-panel .empty-state { min-height: 144px; padding: 18px 14px; }
-
-  .reconciliation-mobile-card { display: grid; gap: 12px; }
-  .reconciliation-mobile-card dl { padding-top: 10px; border-top: 1px solid var(--border); }
-
-  .settings-grid { gap: 10px; }
-  .settings-card { grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
-  .settings-card > svg { width: 38px; height: 38px; padding: 9px; border-radius: 12px; }
-  .settings-card h2 { font-size: 14px; }
-  .settings-card p { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-  .settings-card > :last-child { grid-column: 2; width: 100%; }
-  .settings-section { gap: 10px; }
-  .settings-section__heading { display: grid; gap: 4px; }
-  .settings-section__heading h2 { font-size: 18px; }
-  .settings-section__heading > p { font-size: 12px; text-align: left; }
-  .audit-mobile-card { display: grid; gap: 8px; }
-  .audit-mobile-card > small { font-size: var(--font-size-xs); }
-  .audit-mobile-card dl { padding-top: 8px; border-top: 1px solid var(--border); }
-  .audit-mobile-card dt,
-  .audit-mobile-card dd { font-size: 12px; }
-
-}
-
-@media (max-width: 767px) {
-  .report-period-controls { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .report-period-controls .field { min-width: 0; }
-  .financial-alert-list--report { grid-template-columns: 1fr; }
-  .report-details { border: 1px solid var(--border); border-radius: var(--mobile-card-radius); background: var(--surface-soft); overflow: hidden; }
-  .report-details__summary { min-height: 52px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
-  .report-details__summary::-webkit-details-marker { display: none; }
-  .report-details__summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
-  .report-details__summary > span { min-width: 0; display: grid; gap: 2px; }
-  .report-details__summary strong { font-size: 13px; }
-  .report-details__summary small { overflow: hidden; color: var(--text-muted); font-size: var(--font-size-xs); text-overflow: ellipsis; white-space: nowrap; }
-  .report-details__summary svg { flex: 0 0 auto; transition: transform var(--motion-fast) var(--motion-easing); }
-  .report-details[open] .report-details__summary { border-bottom: 1px solid var(--border); }
-  .report-details[open] .report-details__summary svg { transform: rotate(180deg); }
-  .report-details__content { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
-  .report-details__content .panel--wide { grid-column: auto; }
-  .report-chart-grid { grid-template-columns: 1fr; }
-  .report-chart-grid .panel--wide { grid-column: auto; }
 }
 
 @media (max-width: 680px) {
@@ -277,39 +178,20 @@
 }
 
 @media (max-width: 580px) {
-  .metric-grid, .allocation-grid, .goal-grid, .settings-grid { grid-template-columns: 1fr; }
+  .metric-grid{ grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; gap: 12px; }
   .form-grid__full { grid-column: auto; }
-  .segmented-control { grid-template-columns: repeat(2, 1fr); }
   .page-header__actions { display: grid; grid-template-columns: 1fr; }
   .page-header__actions .button { width: 100%; }
-  .schedule-item { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .schedule-item__done { display: none; }
-  .settings-card { grid-template-columns: auto minmax(0, 1fr); }
-  .settings-card > :last-child { grid-column: 1 / -1; width: 100%; }
   .brand-wordmark { font-size: 15px; }
 
-  .optional-fields__content { grid-template-columns: 1fr; }
   .refresh-notice { align-items: stretch; flex-direction: column; }
   .refresh-notice .button { width: 100%; }
 
   .form-actions .button { width: 100%; }
 }
 
-@media (max-width: 420px) {
-  .goal-summary__content, .allocation-summary__content { width: 68%; }
-  .goal-summary__art, .allocation-summary__art { right: -3%; width: min(7.2rem, 29%); }
-  .goal-summary__meta, .allocation-summary__metrics { font-size: var(--font-size-xs); }
-
-  .report-period-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 370px) {
-  .budget-mobile-card__metrics { grid-template-columns: 1fr; }
-  .budget-mobile-card__metrics > div { display: flex; }
-}
-
 @media (max-width: 340px) {
   :root { --mobile-page-gutter: 12px; --mobile-card-padding: 14px; }
-  .report-period-controls { grid-template-columns: 1fr; }
+
 }

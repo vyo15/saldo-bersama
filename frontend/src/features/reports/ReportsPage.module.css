@@ -649,9 +649,6 @@
     font-size: var(--font-size-xs);
   }
 
-  .alertCard :global(.financial-alert-list--report) {
-    grid-template-columns: 1fr;
-  }
 
   .detailsCard {
     overflow: hidden;

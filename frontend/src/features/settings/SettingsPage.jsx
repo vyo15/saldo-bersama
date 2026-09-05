@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { backendPresentation, roleLabel } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
+import overviewStyles from "./SettingsOverview.module.css";
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -19,13 +20,13 @@ const SettingsPage = () => {
       <div className={styles.pageHeading}>
         <h2 id="settings-overview-title">Ringkasan</h2>
       </div>
-      <div className="settings-grid">
-        <Card className="settings-card">
+      <div className={overviewStyles.settingsGrid}>
+        <Card className={overviewStyles.settingsCard}>
           <FiShield aria-hidden="true" />
           <div><h2>Akses aplikasi</h2><p>{user?.email} · {roleLabel(user?.role)}</p></div>
           <span className="status-badge status-badge--active">Diizinkan</span>
         </Card>
-        <Card className="settings-card">
+        <Card className={overviewStyles.settingsCard}>
           <FiDatabase aria-hidden="true" />
           <div><h2>Database</h2><p role="status" aria-live="polite">{backend.summary} · {bootstrap?.config?.timezone || healthResource.data?.timezone || "Asia/Jakarta"}</p></div>
           <span className={`status-badge status-badge--${backend.tone}`}>{backend.label}</span>

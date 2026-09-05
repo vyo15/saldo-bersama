@@ -17,7 +17,7 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
   assert.match(modal, /prefers-reduced-motion:[\s\S]*\.swipeEnabled \{ transition:\s*none;/);
   assert.doesNotMatch(modal, /touch-action:\s*none/);
   assert.match(modalSource, /mobileSwipeToClose = true/);
-  assert.match(modalSource, /MOBILE_SWIPE_QUERY = "\(max-width: 820px\)"/);
+  assert.match(modalSource, /APP_MEDIA\.mobile/);
   assert.doesNotMatch(modalSource, /47\.99rem|51\.25rem/);
   assert.match(modalSource, /event\.target\.closest\?\.\(INTERACTIVE_GESTURE_TARGET\)/);
   assert.match(modalSource, /const finalizeClose = useCallback/);
@@ -26,8 +26,7 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
   assert.match(modalSource, /event\.target === event\.currentTarget\) closeModal\(\)/);
   assert.match(modalSource, /onEscape: canDismiss \? closeModal : undefined/);
   assert.match(modal, /\.backdropDismissing \{ opacity:\s*0; \}/);
-  assert.match(components, /\.segmented-control\s*\{[\s\S]*min-inline-size:\s*0;/);
-  assert.match(components, /\.form-grid,[\s\S]*\.segmented-control\s*\{[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
+  assert.match(components, /\.form-grid,[\s\S]*\.stack-form\s*\{[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
   assert.match(components, /input\[type="file"\][\s\S]*max-width:\s*100%;/);
   assert.doesNotMatch(modal + components, /overflow-y:\s*hidden/);
 });
@@ -125,7 +124,7 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
   const [members, activity, styles] = await Promise.all([
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/settings/components/MemberActivityPanel.jsx"),
-    read("src/features/settings/Settings.module.css"),
+    Promise.all([read("src/features/settings/MembersSettings.module.css"), read("src/features/settings/MemberActivity.module.css")]).then((parts) => parts.join("\n")),
   ]);
 
   assert.match(members, /UserAvatar/);
@@ -139,9 +138,9 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
   assert.match(styles, /\.memberFacts\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(styles, /\.memberFacts > div \{[^}]*background:\s*var\(--surface-soft\);/);
   assert.match(styles, /\.memberFacts dd \{[^}]*margin:\s*\.3rem 0 0;/);
-  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberGrid \{ grid-template-columns:\s*1fr;/);
-  assert.match(styles, /@media \(max-width: 26rem\)[\s\S]*\.memberFacts, \.memberActivityMetrics \{ grid-template-columns:\s*1fr;/);
-  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberActivityPanel \{ width:\s*100%; min-width:\s*0; height:\s*100vh; height:\s*100dvh;/);
+  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberGrid\s*\{[\s\S]*?grid-template-columns:\s*1fr;/);
+  assert.match(styles, /@media \(max-width: 26rem\)[\s\S]*\.memberFacts\s*\{[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*@media \(max-width: 26rem\)[\s\S]*\.memberActivityMetrics\s*\{[\s\S]*?grid-template-columns:\s*1fr;/);
+  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberActivityPanel\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?height:\s*100vh;[\s\S]*?height:\s*100dvh;/);
 });
 
 test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provider", async () => {
@@ -193,13 +192,14 @@ test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provi
 
 
 test("mobile finance forms dan planning memakai hierarchy yang compact tanpa teks mikro 9px", async () => {
-  const [transactionStyles, allocations, goals, reports, pages, responsive, budgets] = await Promise.all([
+  const [transactionStyles, allocations, goals, reports, allocationStyles, goalStyles, reportStyles, budgets] = await Promise.all([
     read("src/features/transactions/TransactionForm.module.css"),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationOverviewLayer.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/goals/GoalsPage.jsx"), read("src/features/goals/components/GoalCards.jsx"), read("src/features/goals/components/GoalDialogs.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/reports/ReportsPage.jsx"),
-    read("src/styles/pages.css"),
-    read("src/styles/responsive.css"),
+    Promise.all([read("src/features/allocations/AllocationOverview.module.css"), read("src/features/allocations/AllocationDetail.module.css")]).then((parts) => parts.join("\n")),
+    read("src/features/goals/components/GoalCards.module.css"),
+    read("src/features/reports/ReportsDesktop.module.css"),
     read("src/features/budgets/BudgetsPage.module.css"),
   ]);
 
@@ -210,7 +210,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.modal/);
   assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);
   assert.match(allocations, /allocation-header-actions/);
-  assert.match(allocations, /className="allocation-advanced form-grid__full"/);
+  assert.match(allocations, /allocationClass\("allocation-advanced form-grid__full"\)/);
   assert.match(allocations, /aria-label="Muat ulang Alokasi Dana"/);
   assert.match(allocations, /PageHeader title="Alokasi Dana"/);
   assert.match(allocations, /allocation-summary/);
@@ -218,19 +218,19 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(allocations, /allocation-card__expand/);
   assert.match(allocations, /FiMoreHorizontal/);
   assert.match(allocations, /mobileSwipeToClose/);
-  assert.match(goals, /className="goal-card__primary-action"/);
-  assert.match(goals, /className="goal-action-menu"/);
+  assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
+  assert.match(goals, /goalClass\("goal-action-menu"\)/);
   assert.match(goals, /FiMoreHorizontal/);
-  assert.match(reports, /className="report-details"/);
+  assert.match(reports, /reportClass\("report-details"\)/);
   assert.match(reports, /Rincian laporan/);
-  assert.match(reports, /useMediaQuery\(MOBILE_REPORT_QUERY\)/);
-  assert.match(pages, /\.goal-action-menu__items/);
-  assert.match(pages, /\.goal-action-menu:only-child \{ grid-column:\s*2; \}/);
-  assert.match(responsive, /\.allocation-refresh-action > span \{ display:\s*none; \}/);
-  assert.match(responsive, /\.allocation-header-actions--administrator \{ grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, \.95fr\) var\(--mobile-control-height\); \}/);
-  assert.match(responsive, /\.allocation-filters button \{ min-height:\s*var\(--mobile-control-height\);/);
-  assert.doesNotMatch(pages, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
-  assert.match(responsive, /\.report-details__summary \{[\s\S]*display:\s*flex;/);
+  assert.match(reports, /useMediaQuery\(APP_MEDIA\.mobile\)/);
+  assert.match(goalStyles, /\.goal-action-menu__items/);
+  assert.match(goalStyles, /\.goal-action-menu:only-child\s*\{[\s\S]*?grid-column:\s*2;/);
+  assert.match(allocationStyles, /\.allocation-refresh-action > span\s*\{[^}]*display:\s*none;/);
+  assert.match(allocationStyles, /\.allocation-header-actions--administrator\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, \.95fr\) var\(--mobile-control-height\);/);
+  assert.match(allocationStyles, /\.allocation-filters button\s*\{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.doesNotMatch(allocationStyles, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
+  assert.match(reportStyles, /\.report-details__summary \{[\s\S]*display:\s*flex;/);
   assert.doesNotMatch(budgets, /font-size:\s*9px/);
 
   const [accountStyles, financialSuccessStyles] = await Promise.all([
@@ -251,10 +251,11 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
 });
 
 test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks penting tidak mikro", async () => {
-  const [reports, budgets, dashboard, transactionForm, accountActivity, accountCard, accountTransfer, accountExperience, settings] = await Promise.all([
+  const [reports, budgets, budgetCard, dashboard, transactionForm, accountActivity, accountCard, accountTransfer, accountExperience, settings] = await Promise.all([
     read("src/features/reports/ReportsPage.module.css"),
     read("src/features/budgets/BudgetsPage.module.css"),
-    read("src/features/dashboard/DashboardPage.css"),
+    read("src/features/budgets/components/BudgetInsightCard.module.css"),
+    read("src/features/dashboard/DashboardPage.module.css"),
     read("src/features/transactions/TransactionForm.module.css"),
     read("src/features/accounts/components/MobileAccountActivity.module.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
@@ -267,7 +268,8 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
   assert.match(reports, /\.periodArrow \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.rangeChips button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.sectionHeading > button,[\s\S]*?\.sectionHeading > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(budgets, /@media \(max-width: 820px\)[\s\S]*?\.segment,[\s\S]*?\.sortButton,[\s\S]*?\.detailButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgets, /@media \(max-width: 820px\)[\s\S]*?\.segment,[\s\S]*?\.sortButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgetCard, /@media \(max-width: 820px\)[\s\S]*?\.detailButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
   assert.match(dashboard, /\.mobile-allocation-card__footer a \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(accountActivity, /\.mobileActivityHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);

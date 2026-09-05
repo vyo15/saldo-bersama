@@ -33,9 +33,17 @@ test("aksi Investasi capability-driven, koreksi Administrator-only, dan activity
 });
 
 test("styling Investasi memakai token tema dan kontrak responsive mobile canonical", async () => {
-  const styles = await read("src/features/investments/InvestmentsPage.module.css");
+  const styles = await Promise.all([
+    "InvestmentsPage.module.css",
+    "PortfolioCard.module.css",
+    "InvestmentForm.module.css",
+    "InvestmentHero.module.css",
+    "HoldingCard.module.css",
+    "InvestmentActivity.module.css",
+    "InvestmentShared.module.css",
+  ].map((name) => read(`src/features/investments/${name}`))).then((parts) => parts.join("\n"));
   assert.match(styles, /@media \(max-width: 900px\)/);
-  assert.match(styles, /\.quickAction \{[\s\S]*?min-height:\s*5\.8rem;/);
+  assert.match(styles, /\.quickAction \{[\s\S]*?min-height:\s*6\.6rem;/);
   assert.match(styles, /font-size:\s*var\(--mobile-native-control-font-size\);/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(styles, /#[0-9a-f]{3,8}/i);
@@ -135,7 +143,7 @@ test("Bank ↔ RDN memakai Transfer composer, prefill arah/nominal, lalu kembali
     read("src/features/transactions/components/TransactionPostSaveModal.jsx"),
     read("src/app/TransactionComposerContext.jsx"),
     read("src/shared/workflows/investmentContinuation.js"),
-    read("src/features/transactions/TransactionForm.jsx"),
+    Promise.all([read("src/features/transactions/TransactionForm.jsx"), read("src/features/transactions/transactionFormController.js")]).then((parts) => parts.join("\n")),
   ]);
   assert.match(page, /initialType: TRANSACTION_TYPES\.TRANSFER/);
   assert.match(page, /destination_account_id: deposit \? rdnAccountId : ""/);

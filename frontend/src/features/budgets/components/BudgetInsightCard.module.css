@@ -1,0 +1,396 @@
+/* Budget insight card, status, pacing, and detail presentation. */
+.detailButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.budgetCard {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--motion-fast) var(--motion-easing), box-shadow var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
+}
+
+.budgetCard:hover {
+  border-color: color-mix(in srgb, var(--primary) 16%, var(--border));
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.budgetCard_warning,
+.budgetCard_pace {
+  border-color: color-mix(in srgb, var(--warning) 20%, var(--border));
+}
+
+.budgetCard_danger {
+  border-color: color-mix(in srgb, var(--negative) 24%, var(--border));
+}
+
+.cardHeader {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.categoryIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+}
+
+.categoryIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.cardTitle {
+  min-width: 0;
+}
+
+.cardTitle strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 15px;
+  letter-spacing: -0.015em;
+}
+
+.cardTitle small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.statusPill {
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.statusPill svg {
+  width: 12px;
+  height: 12px;
+}
+
+.statusPill_safe {
+  background: var(--positive-soft);
+  color: var(--positive);
+}
+
+.statusPill_pace,
+.statusPill_warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.statusPill_danger {
+  background: var(--negative-soft);
+  color: var(--negative);
+}
+
+.cardMain {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.74fr) minmax(0, 1.26fr);
+  gap: var(--space-5);
+  align-items: end;
+  margin-top: var(--space-5);
+}
+
+.remainingBlock {
+  min-width: 0;
+}
+
+.remainingBlock strong {
+  color: var(--primary);
+  font-size: clamp(1.15rem, 1rem + 0.45vw, 1.45rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.remainingBlock strong :global(.money) {
+  color: inherit;
+}
+
+.remainingBlock strong :global(.money--negative) {
+  color: var(--negative);
+}
+
+.remainingBlock > span {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.remainingBlock small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.pacing {
+  position: relative;
+  min-width: 0;
+  padding-bottom: 20px;
+}
+
+.pacingTrack {
+  height: 9px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: repeating-linear-gradient(135deg, var(--surface-strong) 0, var(--surface-strong) 4px, color-mix(in srgb, var(--surface-strong) 70%, var(--border)) 4px, color-mix(in srgb, var(--surface-strong) 70%, var(--border)) 7px);
+}
+
+.pacingFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: width var(--motion-normal) var(--motion-easing);
+}
+
+.pacing_pace .pacingFill,
+.pacing_warning .pacingFill {
+  background: linear-gradient(90deg, var(--primary), var(--secondary) 68%, var(--warning));
+}
+
+.pacing_danger .pacingFill {
+  background: linear-gradient(90deg, var(--warning), var(--negative));
+}
+
+.todayMarker {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.todayLabel,
+.periodComplete {
+  position: absolute;
+  top: 13px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.periodComplete {
+  right: 0;
+}
+
+.cardStats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.cardStats > div {
+  min-width: 0;
+}
+
+.cardStats > div + div {
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--border);
+}
+
+.cardStats span {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cardStats strong {
+  display: block;
+  min-width: 0;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailButton {
+  min-height: var(--control-height-md);
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.detailButton svg {
+  width: 15px;
+  height: 15px;
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+
+.detailButtonOpen svg {
+  transform: rotate(90deg);
+}
+
+.cardDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border);
+}
+
+.detailMetric {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.detailMetric span {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.detailMetric strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+}
+
+.detailActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 820px) {
+  .detailButton {
+    min-height: var(--mobile-control-height);
+  }
+}
+
+@media (max-width: 580px) {
+  .budgetCard {
+    padding: var(--mobile-card-padding);
+    border-radius: 20px;
+  }
+
+  .budgetCard:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .cardHeader {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .categoryIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .cardMain {
+    grid-template-columns: minmax(7rem, 0.72fr) minmax(0, 1.28fr);
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .remainingBlock strong {
+    font-size: 1.25rem;
+  }
+
+  .cardStats {
+    gap: 10px;
+  }
+
+  .cardStats > div + div {
+    padding-left: 10px;
+  }
+
+  .detailActions,
+  .detailActions :global(.button) {
+    width: 100%;
+  }
+
+  .detailActions :global(.button) {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 390px) {
+  .cardHeader {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .categoryIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .statusPill {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 25px;
+    margin-top: -2px;
+  }
+
+  .cardMain {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .pacing {
+    margin-top: 2px;
+  }
+
+  .cardStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detailButton {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .budgetCard,
+  .detailButton svg,
+  .pacingFill {
+    transition: none;
+  }
+}

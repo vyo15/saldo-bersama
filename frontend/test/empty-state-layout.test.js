@@ -19,7 +19,7 @@ test("empty state mobile memusatkan true-empty tanpa menjauhkan hasil filter", a
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/categories/CategoriesPage.module.css"),
     read("src/features/transactions/TransactionsPage.jsx"),
-    read("src/features/transactions/TransactionsPage.css"),
+    read("src/features/transactions/TransactionsPage.module.css"),
   ]);
 
   assert.match(accountsPage, /accountSectionInitialEmpty/);
@@ -29,8 +29,8 @@ test("empty state mobile memusatkan true-empty tanpa menjauhkan hasil filter", a
   assert.match(categoriesPage, /emptyPanelInitial/);
   assert.match(categoriesCss, /\.emptyPanelInitial \{ min-height:\s*clamp\(14rem, 38dvh, 22rem\); \}/);
 
-  assert.match(transactionsPage, /transaction-empty-state--filtered/);
-  assert.match(transactionsPage, /transaction-empty-state--initial/);
-  assert.match(transactionsCss, /\.transactions-page \.transaction-empty-state \{[^}]*min-height:\s*clamp\(11rem, 28dvh, 16rem\);/);
-  assert.match(transactionsCss, /\.transactions-page \.transaction-empty-state--filtered \{ min-height:\s*9rem; \}/);
+  assert.match(transactionsPage, /styles\.emptyStateFiltered/);
+  assert.match(transactionsPage, /styles\.emptyState/);
+  assert.match(transactionsCss, /\.page \.emptyState \{[^}]*min-height:\s*clamp\(11rem, 28dvh, 16rem\);/);
+  assert.match(transactionsCss, /\.page \.emptyStateFiltered \{ min-height:\s*9rem; \}/);
 });

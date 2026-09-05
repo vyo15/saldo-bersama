@@ -1,5 +1,5 @@
 import { FiAlertTriangle, FiCheck, FiClock, FiTrendingUp } from "react-icons/fi";
-import styles from "../BudgetsPage.module.css";
+import styles from "./BudgetInsightCard.module.css";
 
 const ICONS = Object.freeze({
   safe: FiCheck,

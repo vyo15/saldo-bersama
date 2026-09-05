@@ -1,4 +1,4 @@
-import "./DashboardPage.css";
+import { APP_MEDIA } from "../../config/layout.js";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -16,8 +16,7 @@ const MobileFinanceDashboard = lazy(() => import("./components/MobileFinanceDash
 const MobileTransactionDetail = lazy(() => import("./components/MobileTransactionDetail.jsx"));
 const FinancialSetupChecklist = lazy(() => import("./FinancialSetupChecklist.jsx"));
 
-const MOBILE_DASHBOARD_QUERY = "(max-width: 820px)";
-const useMobileDashboardLayout = () => useMediaQuery(MOBILE_DASHBOARD_QUERY);
+const useMobileDashboardLayout = () => useMediaQuery(APP_MEDIA.mobile);
 
 const buildLookups = (overview, bootstrap) => {
   const accountBalances = (overview.accountBalances || []).map((item) => ({ ...item, account_name: item.name, name: accountDisplayLabel(item) }));

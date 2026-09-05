@@ -551,7 +551,7 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
     read("src/components/feedback/FinancialSuccessOverlay.jsx"),
     read("src/components/feedback/FinancialSuccessOverlay.module.css"),
     read("src/features/dashboard/components/FinancialAlertList.jsx"),
-    read("src/features/dashboard/components/FinancialAlertList.css"),
+    read("src/features/dashboard/components/FinancialAlertList.module.css"),
   ]);
 
   assert.match(page, /ReconciliationSubmitProgress/);

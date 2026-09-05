@@ -14,12 +14,12 @@ const HistoryTable = ({ items, accountLookup, formatReconciledAt }) => (
         <tbody>{items.map((item) => <tr key={item.reconciliation_id}><td>{formatReconciledAt(item.reconciled_at)}</td><td>{accountLookup[item.account_id] || item.account_name || "Rekening tidak tersedia"}</td><td className="align-right"><Money value={item.system_balance} /></td><td className="align-right"><Money value={item.actual_balance} /></td><td className="align-right"><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody>
       </table>
     </div>
-    <div className={`mobile-data-list reconciliation-mobile-list ${styles.mobileHistoryList}`} aria-label="Riwayat pencocokan saldo">
+    <div className={`mobile-data-list ${styles.mobileHistoryList}`} aria-label="Riwayat pencocokan saldo">
       {items.map((item) => {
         const matched = Number(item.difference || 0) === 0;
         return (
-          <article className={`mobile-data-card reconciliation-mobile-card ${styles.mobileHistoryCard}`} key={item.reconciliation_id}>
-            <div className={`reconciliation-mobile-card__header ${styles.mobileHistoryCardHeader}`}>
+          <article className={`mobile-data-card ${styles.mobileHistoryCard}`} key={item.reconciliation_id}>
+            <div className={styles.mobileHistoryCardHeader}>
               <div><strong>{accountLookup[item.account_id] || item.account_name || "Rekening tidak tersedia"}</strong><small>{formatReconciledAt(item.reconciled_at)}</small></div>
               <StatusBadge status={item.status} />
             </div>

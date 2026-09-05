@@ -1,0 +1,598 @@
+/* Recurring schedule list, filters, cards, and actions. */
+.scheduleSection {
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.sectionHeader {
+  min-width: 0;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-size-heading-sm);
+}
+
+.sectionHeader span {
+  display: block;
+  margin-top: .2rem;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.filterBar {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.filterBar::-webkit-scrollbar {
+  display: none;
+}
+
+.filterButton {
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: background-color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing);
+}
+
+.filterButton small {
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 .35rem;
+  border-radius: var(--radius-pill);
+  display: inline-grid;
+  place-items: center;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.filterButton:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  color: var(--text);
+}
+
+.filterButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.filterActive {
+  border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.filterActive small {
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface));
+  color: var(--primary);
+}
+
+.kindTabs {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface-soft);
+}
+
+.kindTab {
+  min-height: var(--control-height-md);
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.kindTab > span {
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 .35rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-strong);
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.kindTab:hover {
+  color: var(--text);
+}
+
+.kindTab:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.kindTabActive {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-control);
+}
+
+.kindTabActive > span {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.scheduleList {
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.scheduleCard {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  background: var(--surface);
+}
+
+.cardHeading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.dateBadge {
+  width: 3rem;
+  min-height: 3.2rem;
+  padding: .4rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  gap: .15rem;
+}
+
+.dateBadge svg {
+  width: 1rem; height: 1rem;
+}
+
+.dateBadge time {
+  font-size: .95rem; font-weight: var(--font-weight-bold); line-height: 1;
+}
+
+.titleBlock {
+  min-width: 0;
+}
+
+.titleLine {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+}
+
+.titleLine h3 {
+  min-width: 0; font-size: 1rem; overflow-wrap: anywhere;
+}
+
+.titleBlock > p {
+  margin-top: .2rem; color: var(--text-soft); font-size: var(--font-size-body-sm);
+}
+
+.amountBlock {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.amountBlock > span {
+  display: flex;
+  align-items: baseline;
+  gap: .35rem;
+  font-size: var(--font-size-body-sm);
+  color: var(--text-soft);
+}
+
+.amountBlock :global(.money) {
+  color: var(--text);
+  font-size: 1.06rem;
+  font-weight: var(--font-weight-bold);
+}
+
+.amountBlock small {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  text-align: end;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.metaGrid > span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+}
+
+.metaGrid > span > svg {
+  width: 1rem;
+  height: 1rem;
+  margin-top: .1rem;
+  color: var(--primary);
+}
+
+.metaGrid > span > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: .15rem;
+}
+
+.metaGrid strong,
+.metaGrid small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metaGrid strong {
+  font-size: var(--font-size-body-sm);
+}
+
+.metaGrid small {
+  color: var(--muted); font-size: var(--font-size-sm);
+}
+
+.metaGrid small.positive {
+  color: var(--positive);
+}
+
+.metaGrid small.negative {
+  color: var(--negative);
+}
+
+.metaGrid small.warning {
+  color: var(--warning);
+}
+
+.metaGrid small.muted {
+  color: var(--muted);
+}
+
+.accountMeta {
+  min-width: 0;
+}
+
+.accountDot {
+  width: 1rem;
+  height: 1rem;
+  margin-top: .1rem;
+  border: .28rem solid var(--primary-soft);
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.attentionAction {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--warning) 34%, var(--border));
+  border-radius: var(--radius-sm);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  background: color-mix(in srgb, var(--warning-soft) 72%, var(--surface));
+}
+
+.attentionIcon {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: .75rem;
+  display: grid;
+  place-items: center;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.attentionIcon svg {
+  width: 1.05rem; height: 1.05rem;
+}
+
+.attentionCopy {
+  min-width: 0; display: grid; gap: .2rem;
+}
+
+.attentionCopy strong {
+  font-size: var(--font-size-body-sm);
+}
+
+.attentionCopy p {
+  color: var(--text-soft); font-size: var(--font-size-sm); line-height: 1.45;
+}
+
+.attentionCopy p :global(.money) {
+  color: var(--text); font-size: inherit; font-weight: var(--font-weight-bold);
+}
+
+.attentionCopy small {
+  color: var(--warning); font-size: var(--font-size-xs); line-height: 1.4;
+}
+
+.attentionPrimary {
+  white-space: nowrap;
+}
+
+.actions {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.actionPrimary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.completedMark {
+  min-height: var(--control-height-md);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--positive);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.completedMark svg {
+  width: 1rem; height: 1rem;
+}
+
+.manageButton {
+  min-height: var(--control-height-md);
+  margin-inline-start: auto;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  color: var(--text-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: border-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing);
+}
+
+.manageButton:hover {
+  border-color: var(--primary); color: var(--primary); background: var(--primary-soft);
+}
+
+.manageButton:focus-visible {
+  outline: 3px solid var(--focus-ring); outline-offset: 2px;
+}
+
+.manageButton svg {
+  width: 1rem; height: 1rem;
+}
+
+.manageButton svg:last-child {
+  margin-inline-start: .15rem;
+}
+
+.managePanel {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  animation: manage-panel-in var(--motion-normal) var(--motion-easing);
+}
+
+.manageAction {
+  width: 100%;
+}
+
+.emptyState {
+  min-height: 14rem;
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.emptyState > span {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.emptyState svg {
+  width: 1.25rem; height: 1.25rem;
+}
+
+.emptyState strong {
+  color: var(--text);
+}
+
+.emptyState p {
+  max-width: 18rem; font-size: var(--font-size-body-sm); line-height: 1.5;
+}
+
+@keyframes manage-panel-in {
+  from { opacity: 0; transform: translateY(-.25rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 820px) {
+  .filterBar {
+    width: 100%;
+  }
+
+  .filterButton {
+    flex: 0 0 auto;
+  }
+
+  .scheduleCard {
+    padding: var(--mobile-card-padding);
+    box-shadow: none;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .accountMeta {
+    grid-column: 1 / -1;
+  }
+
+  .managePanel {
+    grid-template-columns: 1fr;
+  }
+
+  .emptyState {
+    min-height: 8.5rem;
+    padding: var(--space-4) var(--space-3);
+  }
+}
+
+@media (max-width: 560px) {
+  .sectionHeader h2 {
+    font-size: 1rem;
+  }
+
+  .filterButton {
+    padding-inline: var(--space-3);
+  }
+
+  .kindTab {
+    padding-inline: var(--space-2);
+    font-size: var(--font-size-sm);
+  }
+
+  .cardHeading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .cardHeading > :global(.status-badge) {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .amountBlock {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .amountBlock small {
+    text-align: start;
+  }
+
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .accountMeta {
+    grid-column: auto;
+  }
+
+  .attentionAction {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-2);
+  }
+
+  .attentionPrimary {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .actionPrimary {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .actionPrimary :global(.button),
+  .manageButton {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .manageButton {
+    justify-content: center;
+  }
+
+  .emptyState {
+    min-height: 7.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filterButton,
+  .kindTab,
+  .manageButton {
+    transition: none;
+  }
+
+  .managePanel {
+    animation: none;
+  }
+}

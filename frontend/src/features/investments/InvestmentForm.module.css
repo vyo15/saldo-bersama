@@ -1,0 +1,209 @@
+/* Shared investment dialog/form presentation used by trade, setup, correction, and detail flows. */
+
+.notice,
+.formHint,
+.setupHint {
+margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.55;
+}
+
+.setupHint {
+padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.setupHint {
+display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+}
+
+.setupHint > span {
+min-width: 0;
+}
+
+.setupLink {
+flex: 0 0 auto;
+  color: var(--primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration-thickness: 1px;
+  text-underline-offset: .2em;
+}
+
+.setupLink:focus-visible {
+outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.setupLink[aria-disabled="true"] {
+color: var(--text-muted);
+  text-decoration: none;
+}
+
+.form {
+display: grid;
+  gap: var(--space-4);
+}
+
+.intentFieldset {
+display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.intentGuard {
+margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.5;
+}
+
+.field {
+display: grid;
+  gap: var(--space-2);
+}
+
+.field > span {
+font-weight: var(--font-weight-semibold);
+}
+
+.field input,
+.field select,
+.field textarea {
+width: 100%;
+  min-height: var(--control-height-md);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.field input:hover,
+.field select:hover,
+.field textarea:hover {
+border-color: color-mix(in srgb, var(--primary) 28%, var(--border-strong));
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.field textarea {
+min-height: 5.5rem;
+  resize: vertical;
+}
+
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+border-color: var(--negative);
+}
+
+.fieldHint,
+.fieldError {
+font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: 1.45;
+}
+
+.fieldHint {
+color: var(--text-muted);
+}
+
+.fieldError {
+color: var(--negative);
+}
+
+.formRow,
+.reviewGrid {
+display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.formHint {
+display: block;
+}
+
+.review {
+display: grid;
+  gap: var(--space-4);
+}
+
+.review h3 {
+margin: 0 0 var(--space-2);
+}
+
+.reviewGrid {
+margin: 0;
+}
+
+.reviewGrid > div {
+display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.reviewGrid dt {
+color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.reviewGrid dd {
+margin: 0;
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .setupHint {
+align-items: stretch;
+    flex-direction: column;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+min-height: var(--mobile-control-height);
+    font-size: var(--mobile-native-control-font-size);
+  }
+}
+
+@media (max-width: 620px) {
+  .formRow,
+  .reviewGrid {
+grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field input,
+  .field select,
+  .field textarea {
+transition: none;
+  }
+}
