@@ -93,6 +93,21 @@ test("dialog Investasi dimuat lazy agar route mempunyai headroom build budget", 
   assert.doesNotMatch(page, /import InvestmentSetupDialog from "\.\/InvestmentSetupDialog\.jsx"/);
 });
 
+test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk", async () => {
+  const [allocations, members, transactions] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/settings/MembersSettingsPage.jsx"),
+    read("src/features/transactions/TransactionsPage.jsx"),
+  ]);
+  assert.match(allocations, /const AllocationSetupContinuation = lazy\(\(\) => import\("\.\/AllocationSetupContinuation\.jsx"\)\)/);
+  assert.doesNotMatch(allocations, /import Button from "\.\.\/\.\.\/components\/common\/Button\.jsx"/);
+  assert.doesNotMatch(allocations, /import CompactNotice from "\.\.\/\.\.\/components\/common\/CompactNotice\.jsx"/);
+  assert.match(members, /const MemberActivityPanel = lazy\(\(\) => import\("\.\/components\/MemberActivityPanel\.jsx"\)\)/);
+  assert.doesNotMatch(members, /import MemberActivityPanel from/);
+  assert.match(transactions, /const TransferRequestsPanel = lazy\(\(\) => import\("\.\/TransferRequestsPanel\.jsx"\)\)/);
+  assert.doesNotMatch(transactions, /import TransferRequestsPanel from/);
+});
+
 test("Investasi mengunci intent ketika outcome write belum pasti dan hanya mengizinkan retry payload yang sama", async () => {
   const [dialog, feedback] = await Promise.all([
     read("src/features/investments/InvestmentDialog.jsx"),

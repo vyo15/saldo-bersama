@@ -1,326 +1,304 @@
-/* Investment hero presentation ownership. */
+/* Compact investment summary. Detailed values remain available through progressive disclosure. */
 
 .hero {
-position: relative;
-  isolation: isolate;
+  position: relative;
   overflow: hidden;
   display: grid;
-  gap: clamp(var(--space-5), 3vw, var(--space-8));
-  padding: clamp(var(--space-5), 3.4vw, var(--space-8));
-  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
-  border-radius: calc(var(--radius-lg) + var(--space-3));
+  gap: var(--space-3);
+  min-width: 0;
+  padding: clamp(var(--space-4), 2.2vw, var(--space-5));
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: calc(var(--radius-lg) + var(--space-1));
   background:
-    radial-gradient(circle at 85% 8%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 34%),
-    radial-gradient(circle at 14% 108%, color-mix(in srgb, var(--secondary) 10%, transparent), transparent 38%),
-    linear-gradient(138deg, color-mix(in srgb, var(--surface-strong) 94%, var(--primary-soft)), var(--surface));
-  box-shadow: 0 1.1rem 3.8rem color-mix(in srgb, var(--primary) 9%, transparent), var(--shadow-sm);
-}
-
-.hero::after {
-content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--border) 26%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--border) 26%, transparent) 1px, transparent 1px);
-  background-size: 2.8rem 2.8rem;
-  mask-image: linear-gradient(to bottom right, transparent 15%, var(--text) 90%);
-  opacity: .28;
-  pointer-events: none;
-}
-
-.heroGlow {
-position: absolute;
-  z-index: -1;
-  right: -10rem;
-  top: -13rem;
-  width: 31rem;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--primary) 14%, transparent);
-  filter: blur(18px);
-  pointer-events: none;
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 36%),
+    linear-gradient(138deg, color-mix(in srgb, var(--surface-strong) 74%, var(--surface)), var(--surface));
+  box-shadow: var(--shadow-sm);
 }
 
 .heroMain {
-display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(18rem, .8fr);
-  align-items: center;
-  gap: clamp(var(--space-5), 4vw, var(--space-8));
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, .8fr);
+  align-items: end;
+  gap: clamp(var(--space-4), 3vw, var(--space-6));
   min-width: 0;
 }
 
 .heroCopy {
-display: grid;
-  gap: var(--space-2);
+  display: grid;
+  gap: var(--space-1);
   min-width: 0;
 }
 
-.heroEyebrow {
-color: var(--primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-
 .heroLabel {
-color: var(--text-muted);
+  color: var(--text-muted);
   font-size: var(--font-size-body-sm);
   font-weight: var(--font-weight-semibold);
 }
 
 .heroValue {
-display: block;
+  display: block;
   min-width: 0;
-  margin-top: var(--space-1);
   color: var(--text);
-  font-size: clamp(2.45rem, 5.6vw, 4.8rem);
+  font-size: clamp(2rem, 4.5vw, 3.55rem);
   font-weight: var(--font-weight-bold);
-  line-height: .98;
-  letter-spacing: -.06em;
+  line-height: 1;
+  letter-spacing: -.055em;
   overflow-wrap: anywhere;
 }
 
 .heroValue :global(.money) {
-font-size: inherit;
+  font-size: inherit;
   font-weight: inherit;
 }
 
 .heroReturnRow {
-display: flex;
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
   margin-top: var(--space-2);
 }
 
 .heroReturn {
-display: inline-flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 2.3rem;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid color-mix(in srgb, currentColor 22%, var(--border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  font-size: var(--font-size-body-sm);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
-}
-
-.heroReturn svg {
-width: 1rem;
-  height: 1rem;
-}
-
-.heroReturn small {
-color: inherit;
+  min-height: 2rem;
+  padding: .3rem .65rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, currentColor 9%, transparent);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
 }
 
+.heroReturn svg {
+  width: .95rem;
+  height: .95rem;
+}
+
 .heroMeta {
-margin: 0;
   color: var(--text-muted);
-  font-size: var(--font-size-body-sm);
-  line-height: 1.55;
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
 }
 
-.heroAllocation {
-display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-5);
+.heroMiniMetrics,
+.heroDetailMetrics {
+  display: grid;
+  margin: 0;
+}
+
+.heroMiniMetrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.heroMiniMetrics > div {
   min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
-  border-radius: calc(var(--radius-lg) + var(--space-1));
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface) 72%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 9%, transparent);
-  backdrop-filter: blur(10px);
 }
 
-.allocationDonut {
---market-share: 0%;
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: clamp(7rem, 12vw, 9.5rem);
-  aspect-ratio: 1;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: conic-gradient(var(--primary) 0 var(--market-share), color-mix(in srgb, var(--surface-soft) 86%, var(--border)) var(--market-share) 100%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 48%, transparent);
-}
-
-.allocationDonut::after {
-content: "";
-  position: absolute;
-  inset: 18%;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-strong) 90%, var(--surface));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
-}
-
-.allocationDonut > span {
-position: relative;
-  z-index: 1;
-  display: grid;
-  justify-items: center;
-  gap: .1rem;
-}
-
-.allocationDonut small,
-.allocationLegend small,
-.heroMetrics small {
-color: var(--text-muted);
+.heroMiniMetrics dt,
+.heroDetailMetrics dt {
+  color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
 
-.allocationDonut strong {
-font-size: var(--font-size-heading-sm);
-}
-
-.allocationLegend {
-display: grid;
-  gap: var(--space-3);
+.heroMiniMetrics dd,
+.heroDetailMetrics dd {
   min-width: 0;
-}
-
-.allocationLegend > div {
-display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.allocationLegend p {
-display: grid;
-  gap: .1rem;
-  min-width: 0;
-  margin: 0;
-}
-
-.allocationLegend strong {
-overflow-wrap: anywhere;
-}
-
-.legendDot {
-width: .65rem;
-  height: .65rem;
-  border-radius: 50%;
-}
-
-.legendMarket {
-background: var(--primary);
-}
-
-.legendCash {
-background: color-mix(in srgb, var(--surface-soft) 68%, var(--border-strong));
-}
-
-.allocationCaption {
-color: var(--text-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.45;
-}
-
-.heroMetrics {
-display: grid;
-  margin: 0;
-}
-
-.heroMetrics {
-grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.heroMetrics > div {
-display: grid;
-  gap: var(--space-1);
-  min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--surface) 68%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
-}
-
-.heroMetrics dt {
-color: var(--text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.heroMetrics dd {
-min-width: 0;
-  margin: 0;
+  margin: var(--space-1) 0 0;
   font-weight: var(--font-weight-bold);
   overflow-wrap: anywhere;
 }
 
-.heroMetrics dd {
-font-size: var(--font-size-heading-sm);
+.heroMiniMetrics dd {
+  font-size: var(--font-size-body-sm);
 }
 
-.heroDisclaimer {
-margin: calc(var(--space-2) * -1) 0 0;
+.allocationTrack {
+  width: 100%;
+  height: .35rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface-soft) 72%, var(--border));
+}
+
+.allocationTrack > span {
+  display: block;
+  min-width: .25rem;
+  max-width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.heroFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.heroFooter > p,
+.heroDetailNote {
+  margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
-@media (max-width: 1180px) {
-  .heroMain {
-grid-template-columns: minmax(0, 1.2fr) minmax(17rem, .85fr);
-  }
+.heroDetails {
+  position: relative;
+  flex: 0 0 auto;
+}
 
-  .heroMetrics {
-grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.heroDetails > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2rem;
+  padding: .25rem .45rem;
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  list-style: none;
+}
+
+.heroDetails > summary::-webkit-details-marker {
+  display: none;
+}
+
+.heroDetails > summary:hover {
+  background: var(--primary-soft);
+}
+
+.heroDetails > summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.heroDetails > summary svg {
+  width: .95rem;
+  height: .95rem;
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+
+.heroDetails[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.heroDetailMetrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.heroDetailMetrics > div {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+
+.heroDetailNote {
+  margin-top: var(--space-2);
 }
 
 @media (max-width: 900px) {
   .hero {
-gap: var(--space-5);
-    padding: var(--mobile-card-padding);
-    border-radius: calc(var(--mobile-card-radius) + var(--space-2));
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: calc(var(--mobile-card-radius) + var(--space-1));
+    box-shadow: none;
   }
 
   .heroMain {
-grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, .72fr);
+    gap: var(--space-3);
   }
 
-  .heroAllocation {
-max-width: 36rem;
+  .heroValue {
+    font-size: clamp(1.85rem, 7vw, 2.55rem);
+  }
+
+  .heroMiniMetrics > div {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .heroDetailMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 620px) {
+  .hero {
+    padding: var(--space-3);
+  }
+
+  .heroMain {
+    grid-template-columns: 1fr;
+  }
+
   .heroValue {
-font-size: clamp(2.2rem, 11vw, 3.25rem);
+    font-size: clamp(1.8rem, 9.2vw, 2.25rem);
   }
 
-  .heroAllocation {
-grid-template-columns: 1fr;
-    justify-items: start;
+  .heroReturnRow {
+    margin-top: var(--space-1);
   }
 
-  .allocationDonut {
-width: 7.5rem;
+  .heroMiniMetrics {
+    gap: var(--space-2);
   }
 
-  .heroMetrics {
-grid-template-columns: 1fr;
+  .heroMiniMetrics > div {
+    padding: .55rem .65rem;
+    border-radius: var(--radius-sm);
   }
 
-  .heroMetrics > div {
-grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+  .heroMiniMetrics dd {
+    font-size: var(--font-size-xs);
   }
 
-  .heroMetrics > div small {
-grid-column: 1 / -1;
+  .heroFooter > p {
+    display: none;
+  }
+
+  .heroDetails {
+    width: 100%;
+  }
+
+  .heroDetails > summary {
+    justify-content: flex-end;
+    width: 100%;
+    min-height: var(--mobile-control-height);
+  }
+
+  .heroDetailMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 390px) {
+  .heroMeta {
+    width: 100%;
+  }
+
+  .heroDetailMetrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroDetails > summary svg {
+    transition: none;
   }
 }

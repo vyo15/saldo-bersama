@@ -25,7 +25,7 @@ test("aksi Investasi capability-driven, koreksi Administrator-only, dan activity
     read("src/features/investments/investments.model.js"),
   ]);
   assert.match(overview, /if \(!portfolio\.can_operate\)/);
-  assert.match(overview, /owner \? <Button[^>]*correctionAction[\s\S]*>Koreksi catatan<\/Button>/);
+  assert.match(overview, /owner \? <SheetAction icon=\{FiEdit3\} title="Koreksi catatan"/);
   assert.match(overview, /Cash RDN keluar/);
   assert.match(overview, /Cash RDN masuk/);
   assert.match(overview, /Aktivitas saham terbaru/);
@@ -43,7 +43,9 @@ test("styling Investasi memakai token tema dan kontrak responsive mobile canonic
     "InvestmentShared.module.css",
   ].map((name) => read(`src/features/investments/${name}`))).then((parts) => parts.join("\n"));
   assert.match(styles, /@media \(max-width: 900px\)/);
-  assert.match(styles, /\.quickAction \{[\s\S]*?min-height:\s*6\.6rem;/);
+  assert.match(styles, /\.quickAction \{[\s\S]*?min-height:\s*3\.25rem;/);
+  assert.match(styles, /\.holdingMetrics \{[\s\S]*?display:\s*none;/);
+  assert.match(styles, /\.segment \{[\s\S]*?display:\s*flex;/);
   assert.match(styles, /font-size:\s*var\(--mobile-native-control-font-size\);/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(styles, /#[0-9a-f]{3,8}/i);
@@ -88,8 +90,10 @@ test("Investasi menjelaskan pencatatan manual dan memakai terminologi pencatatan
   assert.match(dialog, /Catat transaksi yang sudah Anda lakukan di aplikasi investasi/);
   assert.match(dialog, /Harga tidak diperbarui otomatis/);
   assert.match(overview, /bukan harga pasar live/);
-  assert.match(overview, />Catat pembelian<\/Button>/);
-  assert.match(overview, />Catat penjualan<\/Button>/);
+  assert.match(overview, /aria-label="Catat pembelian">Catat beli<\/Button>/);
+  assert.match(overview, /aria-label="Catat penjualan">Catat jual<\/Button>/);
+  assert.match(overview, />Lainnya<\/span>/);
+  assert.match(overview, /title="Perbarui harga"/);
   assert.match(detail, />Catat penjualan<\/Button>/);
   assert.doesNotMatch(source, /Login Ajaib|Connect broker|Hubungkan akun broker|Sinkron otomatis|Top Gainers|Top Losers|Market Movers|Auto trading|Place order/i);
 });

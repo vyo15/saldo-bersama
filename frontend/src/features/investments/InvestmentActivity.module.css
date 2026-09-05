@@ -1,17 +1,22 @@
-/* Investment activity presentation ownership. */
+/* Activity is moved into its own tab so portfolio cards stay focused and compact. */
 
 .activitySection {
-display: grid;
-  gap: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
   min-width: 0;
 }
 
-.activitySection {
-padding-top: var(--space-1);
+.activityCard {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-5);
+  border-radius: calc(var(--radius-lg) + var(--space-1));
+  box-shadow: var(--shadow-sm);
 }
 
 .activityList {
-display: grid;
+  display: grid;
   gap: 0;
   margin: 0;
   padding: 0;
@@ -19,77 +24,117 @@ display: grid;
 }
 
 .activityItem {
-position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto);
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-3) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
 }
 
-.activityItem:not(:last-child)::after {
-content: "";
-  position: absolute;
-  left: calc(var(--control-height-md) / 2);
-  top: calc(var(--control-height-md) + var(--space-2));
-  bottom: calc(var(--space-2) * -1);
-  width: 1px;
-  background: var(--border);
+.activityItem:has(.activityIcon) {
+  grid-template-columns: auto minmax(0, 1fr) minmax(7.5rem, auto);
+}
+
+.activityItem:last-child {
+  border-bottom: 0;
 }
 
 .activityIcon {
-position: relative;
-  z-index: 1;
   display: grid;
   place-items: center;
-  width: var(--control-height-md);
-  height: var(--control-height-md);
-  border: 1px solid color-mix(in srgb, var(--primary) 15%, var(--border));
+  width: 2.35rem;
+  height: 2.35rem;
   border-radius: 50%;
   background: var(--primary-soft);
   color: var(--primary);
 }
 
 .activityIcon svg {
-width: 1.1rem;
-  height: 1.1rem;
+  width: 1rem;
+  height: 1rem;
 }
 
 .activityCopy,
 .activityValue {
-display: grid;
-  gap: var(--space-1);
+  display: grid;
+  gap: .15rem;
   min-width: 0;
 }
 
 .activityCopy strong {
-overflow-wrap: anywhere;
+  overflow: hidden;
+  font-size: var(--font-size-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activityCopy small,
 .activityValue > span {
-color: var(--text-muted);
+  color: var(--text-muted);
   font-size: var(--font-size-xs);
+  line-height: 1.35;
 }
 
 .activityValue {
-justify-items: end;
+  justify-items: end;
   text-align: end;
 }
 
 .activityValue > strong,
 .activityValue :global(.money) {
-font-size: var(--font-size-body-sm);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+@media (max-width: 900px) {
+  .activityCard {
+    padding: var(--space-4);
+    border-radius: var(--mobile-card-radius);
+    box-shadow: none;
+  }
 }
 
 @media (max-width: 620px) {
-  .activityItem {
-grid-template-columns: auto minmax(0, 1fr);
+  .activityCard {
+    padding: var(--space-3) var(--space-4);
   }
 
-  .activityValue {
-grid-column: 2;
+  .activityItem {
+    grid-template-columns: minmax(0, 1fr) minmax(6rem, auto);
+    gap: var(--space-2);
+    padding: .7rem 0;
+  }
+
+  .activityItem:has(.activityIcon) {
+    grid-template-columns: auto minmax(0, 1fr) minmax(6rem, auto);
+  }
+
+  .activityIcon {
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+
+  .activityCopy strong,
+  .activityValue > strong,
+  .activityValue :global(.money) {
+    font-size: .78rem;
+  }
+
+  .activityCopy small,
+  .activityValue > span {
+    font-size: .75rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .activityItem:has(.activityIcon) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .activityItem:has(.activityIcon) .activityValue {
+    grid-column: 2;
     justify-items: start;
     text-align: start;
   }

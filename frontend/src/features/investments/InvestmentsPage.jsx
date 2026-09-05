@@ -152,7 +152,7 @@ const InvestmentsPageContent = ({ page }) => {
       eyebrow="Pencatatan manual"
       title="Investasi"
       description="Catat saham yang benar-benar Anda miliki dan transaksi yang sudah dilakukan di aplikasi investasi. Saldo Bersama tidak terhubung ke aplikasi investasi, tidak mengambil harga live, dan tidak mengirim order beli/jual."
-      actions={<Button icon={FiPlus} onClick={() => openSetup("portfolio")}>{accounts.length ? "Siapkan catatan" : "Buat RDN"}</Button>}
+      actions={<Button className={styles.setupAction} icon={FiPlus} onClick={() => openSetup("portfolio")} aria-label={accounts.length ? "Siapkan catatan portfolio" : "Buat rekening RDN"}>{accounts.length ? "Siapkan catatan" : "Buat RDN"}</Button>}
       help="Investasi memakai rekening jenis Investasi sebagai RDN. Isi/tarik dana RDN dilakukan melalui Transfer internal; transaksi saham yang sudah terjadi dicatat di sini dan tidak menjadi pemasukan/pengeluaran biasa."
     />
     <SetupContinuation

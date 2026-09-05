@@ -19,12 +19,12 @@ import { cancelTransaction as requestCancelTransaction, restoreTransaction as re
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
-import TransferRequestsPanel from "./TransferRequestsPanel.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionDisplayTitle, TRANSACTION_LABELS, transactionSign, transactionTone } from "../../shared/presentation/transaction.js";
 
+const TransferRequestsPanel = lazy(() => import("./TransferRequestsPanel.jsx"));
 const MobileTransactionHistory = lazy(() => import("./components/MobileTransactionHistory.jsx"));
 
 const PAGE_SIZE = 50;
@@ -185,7 +185,7 @@ const memberTransferRequestsEnabled = (role) => Boolean(role) && role !== "owner
 
 const MemberTransferRequests = ({ role, resource, accounts }) => {
   if (!memberTransferRequestsEnabled(role)) return null;
-  return <TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} />;
+  return <Suspense fallback={null}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>;
 };
 
 const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters }) => {

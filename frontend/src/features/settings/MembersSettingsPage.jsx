@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch, FiShield, FiUserMinus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
@@ -14,13 +14,14 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { invalidationActionsFor } from "../../services/api/invalidation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
-import MemberActivityPanel from "./components/MemberActivityPanel.jsx";
 import { deactivateUser, reactivateUser, runSettingsAction } from "./settings.api.js";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { roleLabel, userStatusLabel } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 import memberStyles from "./MembersSettings.module.css";
+
+const MemberActivityPanel = lazy(() => import("./components/MemberActivityPanel.jsx"));
 
 const EMPTY_MEMBERS = Object.freeze([]);
 const EMPTY_MEMBER_FORM = Object.freeze({ email: "", name: "", role: "member" });
@@ -202,7 +203,7 @@ const MembersSettingsPage = () => {
 
   const toolbarProps = { searchQuery, setSearchQuery, roleFilter, setRoleFilter };
   const menuProps = { openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId, openAction };
-  return <div className="page-stack"><PageHeader eyebrow="Akses" title="Anggota" description="Kelola siapa yang dapat masuk ke Saldo Bersama dan tinjau aktivitas pencatatannya." help="Anggota mengatur siapa yang boleh memakai aplikasi. Hak akses tetap diverifikasi backend berdasarkan akun dan role yang aktif." /><OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda"><section className={memberStyles.membersStandalonePage} aria-labelledby="members-settings-title"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} />{resource.status === "ready" ? <MembersSummaryHero members={members} /> : null}<div className={memberStyles.membersPageHeader}><div className={styles.pageHeading}><h2 id="members-settings-title"><span className={memberStyles.memberCount}>{members.length}</span> Anggota</h2><p><FiCheckCircle aria-hidden="true" /> Hak akses tetap diverifikasi backend.</p></div><Button variant="primary" icon={FiPlus} type="button" onClick={() => openMemberForm()}>Tambah anggota</Button></div><SettingsNotice result={memberFormOpen ? null : result} /><MembersContent resource={resource} filteredMembers={filteredMembers} toolbarProps={toolbarProps} user={user} menuProps={menuProps} setActivityMember={setActivityMember} /><MemberFormModal open={memberFormOpen} close={closeMemberForm} editingMember={editingMember} memberForm={memberForm} setMemberForm={setMemberForm} saveMember={saveMember} saving={saving} result={result} /><MemberActivityPanel open={Boolean(activityMember)} member={activityMember} currentUser={user} onClose={() => setActivityMember(null)} /><MemberActionModals target={target} actionState={actionState} setTarget={setTarget} confirmUserAction={confirmUserAction} /></section></OwnerSettingsGuard></div>;
+  return <div className="page-stack"><PageHeader eyebrow="Akses" title="Anggota" description="Kelola siapa yang dapat masuk ke Saldo Bersama dan tinjau aktivitas pencatatannya." help="Anggota mengatur siapa yang boleh memakai aplikasi. Hak akses tetap diverifikasi backend berdasarkan akun dan role yang aktif." /><OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda"><section className={memberStyles.membersStandalonePage} aria-labelledby="members-settings-title"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} />{resource.status === "ready" ? <MembersSummaryHero members={members} /> : null}<div className={memberStyles.membersPageHeader}><div className={styles.pageHeading}><h2 id="members-settings-title"><span className={memberStyles.memberCount}>{members.length}</span> Anggota</h2><p><FiCheckCircle aria-hidden="true" /> Hak akses tetap diverifikasi backend.</p></div><Button variant="primary" icon={FiPlus} type="button" onClick={() => openMemberForm()}>Tambah anggota</Button></div><SettingsNotice result={memberFormOpen ? null : result} /><MembersContent resource={resource} filteredMembers={filteredMembers} toolbarProps={toolbarProps} user={user} menuProps={menuProps} setActivityMember={setActivityMember} /><MemberFormModal open={memberFormOpen} close={closeMemberForm} editingMember={editingMember} memberForm={memberForm} setMemberForm={setMemberForm} saveMember={saveMember} saving={saving} result={result} />{activityMember ? <Suspense fallback={null}><MemberActivityPanel open member={activityMember} currentUser={user} onClose={() => setActivityMember(null)} /></Suspense> : null}<MemberActionModals target={target} actionState={actionState} setTarget={setTarget} confirmUserAction={confirmUserAction} /></section></OwnerSettingsGuard></div>;
 };
 
 export default MembersSettingsPage;

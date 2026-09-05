@@ -1,22 +1,148 @@
-/* Route-level investment layout only. Component styling is colocated by presentation responsibility. */
+/* Route-level investment layout and compact portfolio/activity segmentation. */
 
 .page {
-display: grid;
-  gap: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .dashboard,
 .portfolioList {
-display: grid;
-  gap: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
   min-width: 0;
+}
+
+.segment {
+  display: flex;
+  gap: .25rem;
+  width: max-content;
+  max-width: 100%;
+  padding: .25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.segment button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.45rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: calc(var(--radius-md) - .25rem);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.segment button:hover {
+  color: var(--text);
+}
+
+.segment button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.segment button > span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.3rem;
+  min-height: 1.3rem;
+  padding-inline: .3rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-size: .75rem;
+}
+
+.segment .segmentActive {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.setupAction {
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {
   .page,
   .dashboard,
   .portfolioList {
-gap: var(--mobile-section-gap);
+    gap: var(--mobile-section-gap);
+  }
+
+  .page :global(.page-header) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .page :global(.page-header__copy) {
+    flex: 1 1 auto;
+  }
+
+  .page :global(.page-header__actions) {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .page :global(.page-header__actions) > * {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .page :global(.eyebrow) {
+    display: none;
+  }
+
+  .setupAction {
+    width: var(--mobile-control-height);
+    min-width: var(--mobile-control-height);
+    height: var(--mobile-control-height);
+    padding: 0;
+    border-radius: var(--control-radius);
+    box-shadow: none;
+  }
+
+  .setupAction > span {
+    display: none;
+  }
+
+  .segment {
+    width: 100%;
+  }
+
+  .segment button {
+    flex: 1 1 50%;
+    min-width: 0;
+    min-height: var(--mobile-control-height);
+    padding-inline: var(--space-3);
+  }
+}
+
+@media (max-width: 620px) {
+  .page {
+    gap: var(--space-3);
+  }
+
+  .dashboard,
+  .portfolioList {
+    gap: var(--space-3);
+  }
+
+  .segment {
+    border-radius: var(--radius-sm);
+  }
+
+  .segment button {
+    min-height: var(--mobile-control-height);
+    border-radius: .55rem;
+    font-size: .75rem;
   }
 }

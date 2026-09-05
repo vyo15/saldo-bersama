@@ -1,303 +1,459 @@
-/* Investment portfolio presentation ownership. */
-
-.portfolioBroker {
-color: var(--primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-
-.portfolioTitleBlock p {
-margin: 0;
-  color: var(--text-muted);
-  font-size: var(--font-size-body-sm);
-  line-height: 1.55;
-}
-
-.compositionMetrics {
-display: grid;
-  margin: 0;
-}
-
-.compositionMetrics dt {
-color: var(--text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.compositionMetrics dd {
-min-width: 0;
-  margin: 0;
-  font-weight: var(--font-weight-bold);
-  overflow-wrap: anywhere;
-}
+/* Compact portfolio card and progressive action/detail disclosure. */
 
 .portfolioCard {
-display: grid;
-  gap: clamp(var(--space-5), 2.7vw, var(--space-8));
+  display: grid;
+  gap: 0;
   min-width: 0;
-  padding: clamp(var(--space-5), 2.8vw, var(--space-8));
+  overflow: hidden;
+  padding: 0;
   border: 1px solid color-mix(in srgb, var(--primary) 7%, var(--border));
-  border-radius: calc(var(--radius-lg) + var(--space-2));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface) 98%, var(--primary-soft)), var(--surface));
-  box-shadow: 0 .85rem 2.8rem color-mix(in srgb, var(--text) 5%, transparent), var(--shadow-sm);
+  border-radius: calc(var(--radius-lg) + var(--space-1));
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .portfolioHeader {
-display: flex;
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-6);
+  gap: var(--space-4);
   min-width: 0;
+  padding: var(--space-4) var(--space-5) var(--space-3);
 }
 
 .portfolioTitleBlock {
-min-width: 0;
+  min-width: 0;
 }
 
 .portfolioIdentityRow {
-display: flex;
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+  min-width: 0;
+}
+
+.portfolioIdentityRow h2 {
+  min-width: 0;
+  margin: 0;
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
 }
 
 .rdnChip {
-display: inline-flex;
+  display: inline-flex;
   align-items: center;
-  min-height: 1.65rem;
-  padding: .2rem .55rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  min-height: 1.55rem;
+  padding: .15rem .5rem;
+  border-radius: var(--radius-pill);
   background: var(--surface-soft);
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
 }
 
-.portfolioTitleBlock h2 {
-margin: var(--space-2) 0 0;
-  font-size: clamp(1.55rem, 2.6vw, 2.25rem);
-  letter-spacing: -.04em;
-}
-
 .portfolioTitleBlock p {
-margin-top: var(--space-2);
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
 }
 
 .portfolioValue {
-display: grid;
+  display: grid;
   justify-items: end;
-  gap: var(--space-1);
-  min-width: min(18rem, 42%);
+  gap: .15rem;
+  min-width: 9rem;
   text-align: end;
 }
 
 .portfolioValue > span {
-color: var(--text-muted);
+  color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
 
 .portfolioValue > strong {
-font-size: clamp(1.45rem, 2.7vw, 2rem);
-  letter-spacing: -.035em;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
 }
 
 .portfolioValue > small {
-font-size: var(--font-size-xs);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
 }
 
 .actionArea {
-display: grid;
-  gap: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-5) var(--space-4);
 }
 
 .quickActions {
-display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
 .quickAction {
-min-width: 0;
-  min-height: 6.6rem;
-  padding: var(--space-4) var(--space-3);
-  border-radius: var(--radius-lg);
-  flex-direction: column;
-  align-items: flex-start;
+  min-width: 0;
+  min-height: 3.25rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  gap: var(--space-2);
   justify-content: center;
-  gap: var(--space-1);
-  text-align: left;
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
-}
-
-.quickAction:not(:disabled):hover {
-transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  font-size: var(--font-size-body-sm);
+  white-space: nowrap;
 }
 
 .quickAction svg {
-width: 1.3rem;
-  height: 1.3rem;
-  margin-bottom: var(--space-1);
+  flex: 0 0 auto;
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 .quickAction > span {
-display: grid;
-  justify-items: start;
-  gap: .18rem;
-  text-align: left;
-}
-
-.quickAction > span > span {
-font-weight: var(--font-weight-bold);
-}
-
-.quickAction small {
-color: inherit;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-regular);
-  opacity: .72;
+  min-width: 0;
 }
 
 .quickActionPrimary {
-box-shadow: var(--shadow-primary-control);
+  box-shadow: none;
 }
 
-.actionFooter {
-display: flex;
+.quickActionSell {
+  border-color: color-mix(in srgb, var(--negative) 18%, var(--border));
+  background: var(--negative-soft);
+  color: var(--negative);
+}
+
+.quickActionSell:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--negative) 42%, var(--border));
+  background: color-mix(in srgb, var(--negative-soft) 82%, var(--surface));
+}
+
+.quickActionMore {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-
-.correctionAction {
-flex: 0 0 auto;
-}
-
-.actionGuidance {
-padding: var(--space-4);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
   background: var(--surface-soft);
+  color: var(--text);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing);
+}
+
+.quickActionMore:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: var(--primary-soft);
+}
+
+.quickActionMore:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .actionGuidance {
-display: flex;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  flex: 1 1 auto;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
 }
 
 .actionGuidance > span {
-min-width: 0;
-}
-
-.composition {
-display: grid;
-  gap: var(--space-4);
   min-width: 0;
 }
 
-.composition {
-padding: clamp(var(--space-4), 2vw, var(--space-5));
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius-lg) + var(--space-1));
-  background:
-    radial-gradient(circle at 96% -12%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 30%),
-    var(--surface-soft);
+.guidanceAction {
+  flex: 0 0 auto;
+  min-height: var(--control-height-md);
+  padding-inline: var(--space-3);
+  font-size: var(--font-size-xs);
 }
 
-.compositionMetrics {
-grid-template-columns: repeat(4, minmax(0, 1fr));
+.actionSheet {
+  width: min(100%, 31rem);
+}
+
+.sheetActionList {
+  display: grid;
   gap: var(--space-2);
 }
 
-.compositionMetrics > div {
-display: grid;
-  gap: var(--space-1);
-  min-width: 0;
-  padding: var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+.sheetAction {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 4.15rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  background: var(--surface);
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing);
 }
 
-@media (max-width: 1180px) {
-  .compositionMetrics {
-grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.sheetAction:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: var(--primary-soft);
+}
+
+.sheetAction:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.sheetAction:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.sheetActionIcon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.sheetActionIcon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.sheetActionCopy {
+  display: grid;
+  gap: .15rem;
+  min-width: 0;
+}
+
+.sheetActionCopy strong {
+  font-size: var(--font-size-body-sm);
+}
+
+.sheetActionCopy small {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.sheetActionChevron {
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-muted);
+}
+
+.portfolioDetails {
+  border-top: 1px solid var(--border);
+}
+
+.portfolioDetails > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 3.35rem;
+  padding: 0 var(--space-5);
+  color: var(--text-soft);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  list-style: none;
+}
+
+.portfolioDetails > summary::-webkit-details-marker {
+  display: none;
+}
+
+.portfolioDetails > summary:hover {
+  background: var(--surface-soft);
+}
+
+.portfolioDetails > summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.portfolioDetails > summary svg {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+
+.portfolioDetails[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.composition {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+.compositionMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.compositionMetrics > div {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.compositionMetrics dt {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.compositionMetrics dd {
+  min-width: 0;
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.compositionNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
 }
 
 @media (max-width: 900px) {
+  .portfolioCard {
+    border-radius: var(--mobile-card-radius);
+    box-shadow: none;
+  }
+
   .portfolioHeader {
-display: grid;
-    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4) var(--space-2);
+  }
+
+  .portfolioTitleBlock p {
+    display: none;
   }
 
   .portfolioValue {
-justify-items: start;
-    width: 100%;
-    min-width: 0;
-    text-align: start;
+    min-width: 7.5rem;
   }
 
-  .portfolioCard {
-gap: var(--space-5);
-    padding: var(--mobile-card-padding);
-    border-radius: calc(var(--mobile-card-radius) + var(--space-1));
-  }
-
-  .quickActions {
-grid-template-columns: repeat(2, minmax(0, 1fr));
+  .actionArea {
+    padding: 0 var(--space-4) var(--space-3);
   }
 
   .quickAction {
-min-height: 5.8rem;
-  }
-
-  .actionFooter {
-align-items: stretch;
-    flex-direction: column;
-  }
-
-  .correctionAction {
-width: 100%;
-  }
-
-  .actionGuidance {
-align-items: stretch;
-    flex-direction: column;
+    min-height: var(--mobile-control-height);
+    padding-inline: var(--space-2);
   }
 
   .composition {
-padding: var(--space-3);
-    border-radius: var(--mobile-card-radius);
+    padding: 0 var(--space-4) var(--space-4);
+  }
+
+  .compositionMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolioDetails > summary {
+    min-height: var(--mobile-control-height);
+    padding-inline: var(--space-4);
   }
 }
 
 @media (max-width: 620px) {
-  .compositionMetrics {
-grid-template-columns: 1fr;
+  .portfolioHeader {
+    gap: var(--space-2);
   }
-}
 
-@media (max-width: 390px) {
+  .portfolioIdentityRow {
+    gap: var(--space-1);
+  }
+
+  .portfolioIdentityRow h2 {
+    font-size: 1rem;
+  }
+
+  .rdnChip {
+    min-height: 1.4rem;
+    padding-inline: .4rem;
+    font-size: .75rem;
+  }
+
+  .portfolioValue {
+    min-width: 6.6rem;
+  }
+
+  .portfolioValue > strong {
+    font-size: .95rem;
+  }
+
   .quickActions {
-grid-template-columns: 1fr;
+    gap: .4rem;
   }
 
   .quickAction {
-min-height: 5.3rem;
+    min-height: 2.8rem;
+    font-size: .75rem;
+    gap: .35rem;
+  }
+
+  .quickAction svg {
+    width: .95rem;
+    height: .95rem;
+  }
+
+  .actionGuidance {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .guidanceAction {
+    width: 100%;
+  }
+
+  .sheetAction {
+    min-height: 3.9rem;
+  }
+}
+
+@media (max-width: 370px) {
+  .quickAction {
+    padding-inline: .35rem;
+    font-size: .75rem;
+  }
+
+  .quickAction svg {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .quickAction {
-transition: none;
+  .quickActionMore,
+  .sheetAction,
+  .portfolioDetails > summary svg {
+    transition: none;
   }
 }
