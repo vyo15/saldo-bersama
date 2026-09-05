@@ -1,3 +1,8 @@
+## 5 September 2026 - Build-budget headroom Alokasi
+
+- Memindahkan facade mutation `allocations.api.js` dari static route dependency menjadi on-demand dynamic import di `AllocationsPage`, sehingga create/move/adjust/lifecycle/reversal baru memuat facade ketika action dijalankan. Threshold route 8 KiB tidak dinaikkan dan business/API/idempotency contract tetap sama.
+- Menghapus helper/test `allocationGeneratedName` yang sudah orphan setelah flow final kembali mewajibkan `Nama alokasi` dari user. Regression build-budget sekarang mengunci facade Alokasi agar tidak kembali menjadi static dependency route.
+
 ## 5 September 2026 - Merge flow planning, UI consistency, dan lint quality-gate
 
 - Menggabungkan UI consistency sweep dengan flow planning terbaru tanpa menimpa perubahan project terkini: `SelectionField`/`ButtonLink` canonical tetap dipertahankan, sementara Buat Alokasi kembali meminta **Nama alokasi**, memakai **Dana yang disiapkan**, dan menyediakan step `Susun kebutuhan` berbasis Kategori aktif tanpa auto-save Kebutuhan.

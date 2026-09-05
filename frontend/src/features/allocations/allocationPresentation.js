@@ -1,4 +1,3 @@
-import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 
 const MONTH_LABELS = Object.freeze(["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]);
@@ -28,16 +27,6 @@ export const allocationPeriodLabel = (startValue, endValue) => {
   if (start.year === end.year && start.month === end.month) return `${start.day}–${end.day} ${MONTH_LABELS[start.month - 1]} ${start.year}`;
   if (start.year === end.year) return `${start.day} ${MONTH_LABELS[start.month - 1]} – ${end.day} ${MONTH_LABELS[end.month - 1]} ${start.year}`;
   return `${start.day} ${MONTH_LABELS[start.month - 1]} ${start.year} – ${end.day} ${MONTH_LABELS[end.month - 1]} ${end.year}`;
-};
-
-export const allocationGeneratedName = (form = {}, account = {}) => {
-  const period = parseDateParts(form.period_start) && parseDateParts(form.period_end)
-    ? allocationPeriodLabel(form.period_start, form.period_end)
-    : "periode aktif";
-  const source = account?.account_id || account?.account_name || account?.name
-    ? accountDisplayLabel(account, { includeOwner: false })
-    : "";
-  return `Alokasi ${period}${source ? ` · ${source}` : ""}`.slice(0, 100);
 };
 
 export const allocationUsage = (item) => {

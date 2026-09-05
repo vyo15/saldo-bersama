@@ -351,6 +351,7 @@ Regression wajib membuktikan:
 ## Build budget dan route isolation
 
 - Jangan menaikkan limit build budget hanya untuk membuat QA hijau. Cari import sinkron, CSS global, asset legacy, atau dependency besar yang seharusnya lazy-loaded.
+- Route Alokasi harus memuat `allocations.api.js` secara on-demand dari action mutation, bukan static import di `AllocationsPage`; regression mengunci boundary ini karena route pernah melewati batas 8 KiB.
 - Dependency provider yang hanya dibutuhkan pada aksi tertentu, seperti Firebase popup fallback development, harus berada pada lazy chunk terpisah dan tidak membengkakkan `LoginPage` route chunk. Host production canonical tidak boleh mengunduh Firebase browser Auth hanya untuk menyalakan tombol server OAuth.
 - CSS shell terautentikasi tidak boleh dimuat pada route login bila tidak dibutuhkan. Shared brand/loading style tetap berada pada global primitive.
 - Asset publik yang sudah tidak direferensikan source, test, manifest, atau docs wajib dihapus setelah usage scan.

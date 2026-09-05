@@ -7,7 +7,6 @@ import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
-import { adjustEnvelopeAllocation as requestAdjustEnvelopeAllocation, archiveEnvelopeRule as requestArchiveEnvelopeRule, closeEnvelope as requestCloseEnvelope, createEnvelope as requestCreateEnvelope, deleteUnusedEnvelopeRule as requestDeleteUnusedEnvelopeRule, moveEnvelope as requestMoveEnvelope, previewEnvelopeRuleLifecycle, reverseEnvelopeMovement as requestReverseEnvelopeMovement } from "./allocations.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -23,6 +22,7 @@ const AllocationNoticesLayer = lazy(() => import("./AllocationNoticesLayer.jsx")
 const AllocationPlanningDetail = lazy(() => import("./AllocationPlanningDetail.jsx"));
 const AllocationSecondaryLayer = lazy(() => import("./AllocationSecondaryLayer.jsx"));
 const ManualReminderModal = lazy(() => import("../reminders/ManualReminderModal.jsx"));
+const loadAllocationsApi = () => import("./allocations.api.js");
 
 const defaultCreateForm = () => {
   const { start, end } = currentMonthBoundsInJakarta();
@@ -38,6 +38,7 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
       if (!name) throw new Error("Nama alokasi wajib diisi.");
       const amount = assertPositiveRupiah(createForm.default_amount);
       if (!createForm.source_account_id) throw new Error("Rekening sumber wajib dipilih.");
+      const { createEnvelope: requestCreateEnvelope } = await loadAllocationsApi();
       const created = await requestCreateEnvelope({ ...createForm, name, default_amount: amount, allocated_amount: amount }, {});
       setCreateForm(defaultCreateForm());
       onCreated?.(created);
@@ -53,6 +54,7 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
       if (!from || !to) throw new Error("Alokasi sumber dan tujuan wajib dipilih.");
       if (from.envelope_period_id === to.envelope_period_id) throw new Error("Alokasi sumber dan tujuan harus berbeda.");
       if (amount > Number(from.remaining_amount || 0)) throw new Error("Nominal melebihi sisa alokasi sumber.");
+      const { moveEnvelope: requestMoveEnvelope } = await loadAllocationsApi();
       await requestMoveEnvelope({ ...move, amount, from_row_version: from.row_version, to_row_version: to.row_version }, {});
       setMove({ fromEnvelopePeriodId: "", toEnvelopePeriodId: "", amount: "", reason: "" });
       onMoved?.();
@@ -66,6 +68,7 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
 const useAllocationAdjustment = ({ adjustTarget, setAdjustTarget, adjustForm, setAdjustForm, adjustMutation, refreshAfterMutation, notify, setMessage, onReleased }) => {
   const applyAdjustment = async ({ target, direction, amount: rawAmount, reason = "" }) => {
     const amount = assertPositiveRupiah(rawAmount);
+    const { adjustEnvelopeAllocation: requestAdjustEnvelopeAllocation } = await loadAllocationsApi();
     await requestAdjustEnvelopeAllocation({
       envelope_period_id: target.envelope_period_id,
       direction,
@@ -101,6 +104,7 @@ const useAllocationLifecycle = ({ closeTarget, closeReuseNeeds, setCloseTarget, 
     if (!closeTarget) return;
     setCloseState({ status: "submitting", error: null });
     try {
+      const { closeEnvelope: requestCloseEnvelope } = await loadAllocationsApi();
       const result = await requestCloseEnvelope({
         envelope_period_id: closeTarget.envelope_period_id,
         row_version: closeTarget.row_version,
@@ -124,9 +128,9 @@ const useAllocationLifecycle = ({ closeTarget, closeReuseNeeds, setCloseTarget, 
       setCloseState({ status: "error", error });
     }
   };
-  const openRuleLifecycle = async (item) => { setArchiveState({ status: "submitting", error: null }); try { const preview = await previewEnvelopeRuleLifecycle({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version }, { force: true }); setArchiveTarget({ item, preview }); setArchiveState({ status: "idle", error: null }); } catch (error) { setArchiveState({ status: "idle", error: null }); notify({ message: error.message || "Status alokasi gagal diperiksa.", tone: "danger", dedupeKey: "envelopes:lifecycle-preview-error" }); } };
-  const applyRuleLifecycle = async (reason, confirmation) => { if (!archiveTarget) return; const { item, preview } = archiveTarget; setArchiveState({ status: "submitting", error: null }); try { if (preview.canDeleteUnused) { await requestDeleteUnusedEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: item.rule_row_version }); notify({ message: "Alokasi yang belum pernah digunakan berhasil dihapus permanen." }); } else { await requestArchiveEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version }); notify({ message: "Aturan alokasi diarsipkan. Riwayat periode dan mutasi tetap tersimpan." }); } setArchiveTarget(null); setArchiveState({ status: "idle", error: null }); await refreshAfterMutation(); } catch (error) { setArchiveState({ status: "error", error }); } };
-  const reverseMovement = async (reason) => { if (!reverseTarget) return; setReverseState({ status: "submitting", error: null }); try { await requestReverseEnvelopeMovement({ movement_id: reverseTarget.movement_id, row_version: reverseTarget.row_version, from_row_version: reverseTarget.from_row_version, to_row_version: reverseTarget.to_row_version, reason }, { rowVersion: reverseTarget.row_version }); setReverseTarget(null); setReverseState({ status: "idle", error: null }); notify({ message: "Pemindahan dana antar alokasi berhasil dibatalkan tanpa menghapus riwayat audit." }); await refreshAfterMutation(); } catch (error) { setReverseState({ status: "error", error }); } };
+  const openRuleLifecycle = async (item) => { setArchiveState({ status: "submitting", error: null }); try { const { previewEnvelopeRuleLifecycle } = await loadAllocationsApi(); const preview = await previewEnvelopeRuleLifecycle({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version }, { force: true }); setArchiveTarget({ item, preview }); setArchiveState({ status: "idle", error: null }); } catch (error) { setArchiveState({ status: "idle", error: null }); notify({ message: error.message || "Status alokasi gagal diperiksa.", tone: "danger", dedupeKey: "envelopes:lifecycle-preview-error" }); } };
+  const applyRuleLifecycle = async (reason, confirmation) => { if (!archiveTarget) return; const { item, preview } = archiveTarget; setArchiveState({ status: "submitting", error: null }); try { if (preview.canDeleteUnused) { const { deleteUnusedEnvelopeRule: requestDeleteUnusedEnvelopeRule } = await loadAllocationsApi(); await requestDeleteUnusedEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: item.rule_row_version }); notify({ message: "Alokasi yang belum pernah digunakan berhasil dihapus permanen." }); } else { const { archiveEnvelopeRule: requestArchiveEnvelopeRule } = await loadAllocationsApi(); await requestArchiveEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version }); notify({ message: "Aturan alokasi diarsipkan. Riwayat periode dan mutasi tetap tersimpan." }); } setArchiveTarget(null); setArchiveState({ status: "idle", error: null }); await refreshAfterMutation(); } catch (error) { setArchiveState({ status: "error", error }); } };
+  const reverseMovement = async (reason) => { if (!reverseTarget) return; setReverseState({ status: "submitting", error: null }); try { const { reverseEnvelopeMovement: requestReverseEnvelopeMovement } = await loadAllocationsApi(); await requestReverseEnvelopeMovement({ movement_id: reverseTarget.movement_id, row_version: reverseTarget.row_version, from_row_version: reverseTarget.from_row_version, to_row_version: reverseTarget.to_row_version, reason }, { rowVersion: reverseTarget.row_version }); setReverseTarget(null); setReverseState({ status: "idle", error: null }); notify({ message: "Pemindahan dana antar alokasi berhasil dibatalkan tanpa menghapus riwayat audit." }); await refreshAfterMutation(); } catch (error) { setReverseState({ status: "error", error }); } };
   return { closeEnvelope, openRuleLifecycle, applyRuleLifecycle, reverseMovement };
 };
 
