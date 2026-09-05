@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 import {
-  buyInvestment, correctInvestment, createInvestmentPortfolio, createOpeningPosition, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  buyInvestment, correctInvestment, createInvestmentPortfolio, createOpeningPosition, investmentHoldingStateFromEvents, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../../api/_lib/services/investments.js";
 import { snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
@@ -233,7 +233,7 @@ test("reconciliation hanya membandingkan kondisi broker dan tidak auto-adjust", 
   } finally { db.close(); }
 });
 
-test("correction owner-only menjaga histori dan menolak hasil negatif", async () => {
+test("correction hanya Administrator dan correction valid menjaga histori trade", async () => {
   const db = await seed();
   try {
     const { portfolio, instrument } = await setupPortfolio(db);
@@ -249,6 +249,75 @@ test("correction owner-only menjaga histori dan menolak hasil negatif", async ()
     assert.equal(overview.portfolios[0].holdings[0].shares, 900);
     assert.equal(overview.portfolios[0].holdings[0].cost_basis, 7_209_000);
     assert.equal(await db.one("SELECT COUNT(*) AS count FROM investment_trades").then((row) => Number(row.count)), 1);
+  } finally { db.close(); }
+});
+
+test("correction menolak holding negatif atau zero-share dengan cost basis tersisa tanpa side effect", async () => {
+  const db = await seed({ initialBalance: 20_000_000 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const bought = await buy(db, owner, portfolio, instrument);
+    const beforePortfolio = await db.one("SELECT row_version FROM investment_portfolios WHERE portfolio_id=?", [portfolio.portfolio_id]);
+    const beforeCorrections = await db.one("SELECT COUNT(*) AS count FROM investment_corrections WHERE portfolio_id=?", [portfolio.portfolio_id]);
+
+    await assert.rejects(() => correctInvestment(db, context(owner, "investments.corrections.create", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, share_delta: -1_100, cost_basis_delta: -8_811_000, reason: "Koreksi melebihi holding broker",
+    }, { rowVersion: bought.row_version, key: "correction:negative-holding:12345678" })), (error) => error.code === "INVALID_CORRECTION");
+
+    await assert.rejects(() => correctInvestment(db, context(owner, "investments.corrections.create", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, share_delta: -900, cost_basis_delta: -8_100_000, reason: "Koreksi membuat cost basis negatif",
+    }, { rowVersion: bought.row_version, key: "correction:negative-cost:12345678" })), (error) => error.code === "INVALID_CORRECTION");
+
+    await assert.rejects(() => correctInvestment(db, context(owner, "investments.corrections.create", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, share_delta: -1_000, cost_basis_delta: -8_000_000, reason: "Koreksi menyisakan cost basis",
+    }, { rowVersion: bought.row_version, key: "correction:zero-share-cost:12345678" })), (error) => error.code === "INVALID_CORRECTION");
+
+    const afterPortfolio = await db.one("SELECT row_version FROM investment_portfolios WHERE portfolio_id=?", [portfolio.portfolio_id]);
+    const afterCorrections = await db.one("SELECT COUNT(*) AS count FROM investment_corrections WHERE portfolio_id=?", [portfolio.portfolio_id]);
+    assert.equal(Number(afterPortfolio.row_version), Number(beforePortfolio.row_version));
+    assert.equal(Number(afterCorrections.count), Number(beforeCorrections.count));
+  } finally { db.close(); }
+});
+
+test("replay holding fail-closed bila histori correction menghasilkan state mustahil", () => {
+  const buyEvent = {
+    event_kind: "trade", trade_type: "buy", event_id: "buy-1", instrument_id: "bbca", share_quantity: 1_000, cash_amount: 8_010_000,
+  };
+  const negativeHolding = {
+    event_kind: "correction", event_id: "correction-negative", instrument_id: "bbca", share_delta: -1_100, cost_basis_delta: -8_811_000,
+  };
+  const negativeCost = {
+    event_kind: "correction", event_id: "correction-negative-cost", instrument_id: "bbca", share_delta: -900, cost_basis_delta: -8_100_000,
+  };
+  const zeroShareWithCost = {
+    event_kind: "correction", event_id: "correction-zero-share", instrument_id: "bbca", share_delta: -1_000, cost_basis_delta: -8_000_000,
+  };
+
+  assert.throws(
+    () => investmentHoldingStateFromEvents([buyEvent, negativeHolding]),
+    (error) => error.code === "INVESTMENT_INTEGRITY_ERROR" && error.details?.eventId === "correction-negative",
+  );
+  assert.throws(
+    () => investmentHoldingStateFromEvents([buyEvent, negativeCost]),
+    (error) => error.code === "INVESTMENT_INTEGRITY_ERROR" && error.details?.eventId === "correction-negative-cost",
+  );
+  assert.throws(
+    () => investmentHoldingStateFromEvents([buyEvent, zeroShareWithCost]),
+    (error) => error.code === "INVESTMENT_INTEGRITY_ERROR" && error.details?.eventId === "correction-zero-share",
+  );
+});
+
+test("reconciliation menolak Cash RDN aktual non-integer atau di luar safe integer tanpa menulis checkpoint", async () => {
+  const db = await seed();
+  try {
+    const { portfolio } = await setupPortfolio(db);
+    for (const [actualCash, key] of [[1.5, "fraction"], [Number.MAX_SAFE_INTEGER + 1, "unsafe"], [-1, "negative"]]) {
+      await assert.rejects(() => reconcileInvestment(db, context(owner, "investments.reconciliations.create", {
+        portfolio_id: portfolio.portfolio_id, actual_cash: actualCash, holdings: [],
+      }, { rowVersion: portfolio.row_version, key: `reconcile:${key}:12345678` })), (error) => error.code === "INVALID_AMOUNT");
+    }
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM investment_reconciliations").then((row) => Number(row.count)), 0);
+    assert.equal(await db.one("SELECT row_version FROM investment_portfolios WHERE portfolio_id=?", [portfolio.portfolio_id]).then((row) => Number(row.row_version)), portfolio.row_version);
   } finally { db.close(); }
 });
 
