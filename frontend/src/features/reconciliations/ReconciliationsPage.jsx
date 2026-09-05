@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -57,27 +56,65 @@ const useReconciliationData = () => {
   return { accountsResource, historyResource, historyAccountId, setHistoryAccountId, accounts, reconcilableAccounts, accountLookup, historyItems };
 };
 
-const useSystemBalancePrefill = ({ selectedAccountId, actualBalanceEdited, selectedSystemBalance, setForm }) => {
-  useEffect(() => {
-    if (!selectedAccountId || actualBalanceEdited || selectedSystemBalance === null) return;
-    setForm((current) => current.account_id === selectedAccountId && current.actual_balance !== selectedSystemBalance
-      ? { ...current, actual_balance: selectedSystemBalance }
-      : current);
-  }, [actualBalanceEdited, selectedAccountId, selectedSystemBalance, setForm]);
-};
-
-const useDashboardAttentionPrefill = ({ attentionAccountId, resourceStatus, reconcilableAccounts, formAccountId, consumeAttention, setActualBalanceEdited, setForm }) => {
+const useDashboardAttentionPrefill = ({ attentionAccountId, resourceStatus, reconcilableAccounts, formAccountId, consumeAttention, setForm }) => {
   const attentionHandled = useRef(false);
   useEffect(() => {
     if (attentionHandled.current || !attentionAccountId || resourceStatus !== "ready") return;
     attentionHandled.current = true;
     const attentionAccount = reconcilableAccounts.find((account) => account.account_id === attentionAccountId) || null;
-    if (!formAccountId && attentionAccount) {
-      setActualBalanceEdited(false);
-      setForm((current) => ({ ...current, account_id: attentionAccountId, actual_balance: accountSystemBalance(attentionAccount) }));
-    }
+    if (!formAccountId && attentionAccount) setForm({ account_id: attentionAccountId, actual_balance: "", notes: "" });
     consumeAttention();
-  }, [attentionAccountId, consumeAttention, formAccountId, reconcilableAccounts, resourceStatus, setActualBalanceEdited, setForm]);
+  }, [attentionAccountId, consumeAttention, formAccountId, reconcilableAccounts, resourceStatus, setForm]);
+};
+
+const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, refreshAll, invalidate }) => {
+  const [submitState, setSubmitState] = useState({ status: "idle", error: null });
+  const [resultOverlay, setResultOverlay] = useState(null);
+
+  const persistBalance = useCallback(async ({ actualBalance, notes }) => {
+    if (["submitting", "syncing", "completed"].includes(submitState.status)) return;
+    if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat dicocokkan.") }); return; }
+    const accountLabel = accountDisplayLabel(selectedAccount);
+    setSubmitState({ status: "submitting", error: null });
+    try {
+      const result = await createReconciliation({ account_id: selectedAccount.account_id, actual_balance: actualBalance, notes }, {});
+      const difference = Number(result.difference || 0);
+      setForm((current) => ({ ...current, actual_balance: "", notes: "" }));
+      setSubmitState({ status: "syncing", error: null });
+      invalidate(["reconciliations.list", "dashboard.overview", "app.initialState"]);
+      const refreshOutcomes = await Promise.allSettled([data.historyResource.reload(), refreshAll()]);
+      setResultOverlay({
+        matched: difference === 0,
+        accountId: selectedAccount.account_id,
+        accountLabel,
+        actualBalance: Number(result.actual_balance ?? actualBalance),
+        systemBalance: Number(result.system_balance ?? selectedAccount.balance ?? 0),
+        difference,
+        refreshIncomplete: refreshOutcomes.some((outcome) => outcome.status === "rejected"),
+      });
+      setSubmitState({ status: "completed", error: null });
+    } catch (error) {
+      setSubmitState({ status: "error", error });
+    }
+  }, [data.historyResource, invalidate, refreshAll, selectedAccount, setForm, submitState.status]);
+
+  const confirmSystemBalance = useCallback(() => {
+    if (!selectedAccount) return;
+    return persistBalance({ actualBalance: accountSystemBalance(selectedAccount), notes: "" });
+  }, [persistBalance, selectedAccount]);
+
+  const submitDifference = useCallback((event) => {
+    event.preventDefault();
+    if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat dicocokkan.") }); return; }
+    try {
+      const actualBalance = parseActualBalance(form.actual_balance, selectedAccount.allow_negative);
+      return persistBalance({ actualBalance, notes: form.notes });
+    } catch (error) {
+      setSubmitState({ status: "error", error });
+    }
+  }, [form.actual_balance, form.notes, persistBalance, selectedAccount]);
+
+  return { submitState, setSubmitState, resultOverlay, setResultOverlay, confirmSystemBalance, submitDifference };
 };
 
 const ReconciliationsPage = () => {
@@ -86,99 +123,45 @@ const ReconciliationsPage = () => {
   const { refreshAll, invalidate } = useFinance();
   const data = useReconciliationData();
   const [form, setForm] = useState(INITIAL_FORM);
-  const [actualBalanceEdited, setActualBalanceEdited] = useState(false);
-  const [submitState, setSubmitState] = useState({ status: "idle", error: null });
-  const [message, setMessage] = useState(null);
-  const [resultOverlay, setResultOverlay] = useState(null);
   const selectedAccount = data.reconcilableAccounts.find((account) => account.account_id === form.account_id) || null;
-  const selectedAccountId = selectedAccount?.account_id || "";
-  const selectedSystemBalance = selectedAccount ? accountSystemBalance(selectedAccount) : null;
   const preview = useMemo(() => getDifferencePreview(selectedAccount, form.actual_balance), [selectedAccount, form.actual_balance]);
   const attentionAccountId = String(attention?.accountId || "");
+  const submission = useReconciliationSubmission({ selectedAccount, form, setForm, data, refreshAll, invalidate });
 
-  useSystemBalancePrefill({ selectedAccountId, actualBalanceEdited, selectedSystemBalance, setForm });
-  useDashboardAttentionPrefill({
-    attentionAccountId,
-    resourceStatus: data.accountsResource.status,
-    reconcilableAccounts: data.reconcilableAccounts,
-    formAccountId: form.account_id,
-    consumeAttention,
-    setActualBalanceEdited,
-    setForm,
-  });
-
-  const submitReconciliation = async (event) => {
-    event.preventDefault();
-    if (["submitting", "syncing", "completed"].includes(submitState.status)) return;
-    setMessage(null);
-    if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat direkonsiliasi.") }); return; }
-    let actualBalance;
-    try { actualBalance = parseActualBalance(form.actual_balance, selectedAccount.allow_negative); } catch (error) { setSubmitState({ status: "error", error }); return; }
-    const accountLabel = accountDisplayLabel(selectedAccount);
-    setSubmitState({ status: "submitting", error: null });
-    try {
-      const result = await createReconciliation({ account_id: selectedAccount.account_id, actual_balance: actualBalance, notes: form.notes }, {});
-      const difference = Number(result.difference || 0);
-      const matched = difference === 0;
-      if (!matched) {
-        const differenceLabel = `Rp ${Math.abs(difference).toLocaleString("id-ID")}`;
-        setMessage({ type: "warning", text: `Pencocokan tersimpan dengan selisih ${differenceLabel}. Periksa transaksi tertinggal sebelum membuat penyesuaian.`, accountId: selectedAccount.account_id });
-      }
-      setActualBalanceEdited(false);
-      setForm((current) => ({ ...current, actual_balance: Number(result.system_balance ?? selectedAccount.balance ?? 0), notes: "" }));
-      setSubmitState({ status: "syncing", error: null });
-      invalidate(["reconciliations.list", "dashboard.overview", "app.initialState"]);
-      const refreshOutcomes = await Promise.allSettled([data.historyResource.reload(), refreshAll()]);
-      const refreshIncomplete = refreshOutcomes.some((outcome) => outcome.status === "rejected");
-      setResultOverlay({
-        matched,
-        accountId: selectedAccount.account_id,
-        accountLabel,
-        actualBalance: Number(result.actual_balance ?? actualBalance),
-        systemBalance: Number(result.system_balance ?? selectedAccount.balance ?? 0),
-        difference,
-        refreshIncomplete,
-      });
-      setSubmitState({ status: "completed", error: null });
-    } catch (error) {
-      setSubmitState({ status: "error", error });
-    }
-  };
+  useDashboardAttentionPrefill({ attentionAccountId, resourceStatus: data.accountsResource.status, reconcilableAccounts: data.reconcilableAccounts, formAccountId: form.account_id, consumeAttention, setForm });
 
   if (data.accountsResource.status === "loading" || data.historyResource.status === "loading") return <LoadingScreen label="Memuat pencocokan saldo..." />;
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
   if (data.historyResource.status === "error") return <ErrorState error={data.historyResource.error} onRetry={data.historyResource.reload} />;
+
   const attentionFromDashboard = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
   const finishReconciliation = () => navigate("/");
-  const reviewReconciliationTransactions = () => {
-    if (!resultOverlay?.accountId) return finishReconciliation();
-    navigate("/transaksi", { state: { accountId: resultOverlay.accountId, period: currentMonthInJakarta() } });
-  };
+  const reviewReconciliationTransactions = () => submission.resultOverlay?.accountId
+    ? navigate("/transaksi", { state: { accountId: submission.resultOverlay.accountId, period: currentMonthInJakarta() } })
+    : finishReconciliation();
+
   return (
     <div className={`page-stack ${styles.page}`}>
       <RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} />
       <RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} />
-      <PageHeader title="Cocokkan Saldo" help="Bandingkan saldo rekening dengan catatan aplikasi." />
-      {attentionFromDashboard ? <CompactNotice tone="info" title="Periksa saldo aktual." role="status">{selectedAccount?.account_id === attentionAccountId ? "Rekening sudah dipilih otomatis. Sistem membandingkan dengan saldo tercatat." : "Pilih rekening yang ingin diperiksa."}</CompactNotice> : null}
-      {message ? <div className={`notice notice--${message.type}`} role="status"><span>{message.text}</span>{message.accountId ? <div className="form-actions"><Button type="button" onClick={() => navigate("/transaksi", { state: { accountId: message.accountId, period: currentMonthInJakarta() } })}>Lihat transaksi rekening</Button></div> : null}</div> : null}
+      <PageHeader title="Cocokkan Saldo" help="Pastikan catatan aplikasi sama dengan saldo yang benar-benar Anda lihat." />
+      {attentionFromDashboard ? <CompactNotice tone="info" title="Rekening dari pengingat sudah dipilih." role="status">{selectedAccount?.account_id === attentionAccountId ? "Periksa saldo di bank sebelum memilih apakah angkanya sama atau berbeda." : "Pilih rekening yang ingin diperiksa."}</CompactNotice> : null}
       <ReconciliationInputPanel
         accountSystemBalance={accountSystemBalance}
-        getDifferencePreview={getDifferencePreview}
-        parseActualBalance={parseActualBalance}
         accounts={data.reconcilableAccounts}
         selectedAccount={selectedAccount}
         form={form}
         setForm={setForm}
-        submitState={submitState}
-        setSubmitState={setSubmitState}
-        setActualBalanceEdited={setActualBalanceEdited}
-        onSubmit={submitReconciliation}
+        submitState={submission.submitState}
+        setSubmitState={submission.setSubmitState}
+        onConfirmSystemBalance={submission.confirmSystemBalance}
+        onSubmitDifference={submission.submitDifference}
         preview={preview}
         onRefreshAccounts={data.accountsResource.reload}
-        accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submitState.status)}
+        accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submission.submitState.status)}
       />
       <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
-      <ReconciliationResultOverlay result={resultOverlay} onClose={finishReconciliation} onReviewTransactions={reviewReconciliationTransactions} />
+      <ReconciliationResultOverlay result={submission.resultOverlay} onClose={finishReconciliation} onReviewTransactions={reviewReconciliationTransactions} />
     </div>
   );
 };

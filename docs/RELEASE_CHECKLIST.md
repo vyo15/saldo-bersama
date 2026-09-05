@@ -5,7 +5,7 @@
 - [ ] Semua perubahan yang termasuk release sudah disetujui dan validation relevan sudah selesai.
 - [ ] Commit release berada di `main`; `git push origin main` hanya dilanjutkan setelah managed pre-push memverifikasi ref/SHA aktual, full `npm run verify` PASS, dan Production schema/binding preflight read-only PASS. **Quality / check** server-side dipantau setelah push.
 - [ ] `npm run verify` lulus pada Node 24 canonical.
-- [ ] Untuk perubahan frontend/UI, `npm run verify` lulus dan pemeriksaan manual device/viewport relevan sudah dilakukan; tidak ada automated browser gate.
+- [ ] Untuk perubahan frontend/UI, `npm run verify` lulus termasuk rendered browser smoke; pemeriksaan manual device/viewport relevan tetap dilakukan untuk authenticated journey, virtual keyboard, dan real-device behavior yang tidak dicakup anonymous smoke.
 - [ ] Migration/schema impact direview bila relevan.
 - [ ] Untuk schema v16, backup teknis **verified pada schema v15** tersedia sebelum migration Production; `014_investment_opening_position.sql` diterapkan eksplisit setelah `013_investment_tracking.sql`, database di-bind ke environment yang benar, dan integrity lulus (`npm run db:integrity` untuk Development atau `npm run db:integrity -- production` untuk Production) **sebelum runtime schema baru dipush**. Production migration existing fail-closed bila tidak ada backup `verified` pada schema saat ini.
 - [ ] Planning diuji dengan Administrator dan Member: Member dapat mengelola scope Bersama serta planning personal yang bersumber dari rekening pribadinya sendiri; planning personal anggota lain tetap read-only, assignee Alokasi tetap dihormati, sedangkan lifecycle destruktif dan recovery tetap Administrator-only.

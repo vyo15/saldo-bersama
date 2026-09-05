@@ -32,7 +32,8 @@
     "env:clean": "node scripts/clean-local-environment.mjs",
     "clean": "node scripts/clean-generated-artifacts.mjs",
     "clean:dependencies": "node scripts/clean-development-dependencies.mjs",
-    "postinstall": "node scripts/install-git-hooks.mjs"
+    "postinstall": "node scripts/install-git-hooks.mjs",
+    "test:browser": "node scripts/browser-smoke.mjs"
   },
   "workspaces": [
     "frontend"

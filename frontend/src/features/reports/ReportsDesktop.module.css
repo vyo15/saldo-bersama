@@ -120,8 +120,6 @@
 
   .budget-mobile-card__metrics :global(.money) {
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
     font-size: 12px;
   }
 }
@@ -161,7 +159,7 @@
 
   .report-details__summary:focus-visible {
     outline: 3px solid var(--focus-ring);
-    outline-offset: -3px;
+    outline-offset: 2px;
   }
 
   .report-details__summary > span {

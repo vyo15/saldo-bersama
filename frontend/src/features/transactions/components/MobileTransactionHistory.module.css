@@ -100,7 +100,7 @@
 .filterSelect { min-width: 0; position: relative; display: flex; align-items: center; border-radius: 10px; transition: background-color var(--motion-fast) var(--motion-easing); }
 .filterSelect:focus-within { background: var(--surface-soft); }
 .filterSelect select { width: 100%; min-width: 0; min-height: var(--mobile-control-height); padding: 0 26px 0 8px; border: 0; border-radius: 10px; appearance: none; color: var(--text-soft); background: transparent; font: inherit; font-size: var(--mobile-native-control-font-size); text-align: right; text-align-last: right; cursor: pointer; }
-.filterSelect select:focus-visible { outline-offset: -2px; }
+.filterSelect select:focus-visible { outline-offset: 2px; }
 .filterSelect svg { width: 15px; height: 15px; position: absolute; right: 7px; color: var(--text-muted); pointer-events: none; }
 .filterFooterActions { width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; }
 .filterResetButton { min-width: 68px; padding-inline: 8px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-muted); }
@@ -117,7 +117,7 @@
 .row:last-child { border-bottom: 0; }
 .row:hover { background: var(--surface-soft); }
 .row:active { transform: scale(.992); }
-.row:focus-visible { position: relative; z-index: 1; outline-offset: -3px; }
+.row:focus-visible { position: relative; z-index: 1; outline-offset: 2px; }
 .rowCancelled { opacity: .64; }
 .rowCancelled .rowCopy > strong { text-decoration: line-through; text-decoration-thickness: 1px; }
 .rowIcon { width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center; color: var(--primary); background: var(--primary-soft); }

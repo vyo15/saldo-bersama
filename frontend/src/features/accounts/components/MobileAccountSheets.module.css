@@ -49,11 +49,15 @@
 }
 
 .pickerCopy strong,
-.pickerCopy small,
-.pickerValue :global(.money) {
+.pickerCopy small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pickerValue :global(.money) {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .pickerCopy strong {

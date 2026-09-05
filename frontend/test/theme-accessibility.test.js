@@ -76,6 +76,25 @@ test("token light dan dark memenuhi kontras teks serta tombol utama", () => {
   }
 });
 
+test("focus indicator canonical memenuhi kontras non-text 3:1 dan tidak memakai alpha transparan", async () => {
+  const light = blockFor(":root,");
+  const dark = blockFor(':root[data-theme="dark"]');
+  for (const [name, theme] of [["light", light], ["dark", dark]]) {
+    for (const surface of ["--page", "--surface", "--surface-elevated"]) {
+      assert.ok(contrast(token(theme, "--focus-ring"), token(theme, surface)) >= 3, `Kontras focus-ring ${name} gagal pada ${surface}`);
+    }
+  }
+  assert.match(await readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"), /:focus-visible \{ outline:\s*3px solid var\(--focus-ring\);/);
+  const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
+  for (const file of cssFiles) {
+    for (const match of file.source.matchAll(/([^{}]*:focus(?:-visible|-within)?[^{}]*)\{([^{}]*)\}/gs)) {
+      const body = match[2];
+      assert.doesNotMatch(body, /(?:outline(?:-color)?|box-shadow)[^;]*color-mix\([^;]*transparent/i, `Focus translucent dilarang: ${file.path}`);
+      assert.doesNotMatch(body, /(?:outline(?:-color)?|box-shadow)[^;]*rgba\([^)]*,\s*0?\.[0-9]+\)/i, `Focus alpha dilarang: ${file.path}`);
+    }
+  }
+});
+
 test("border kuat untuk control dan state memenuhi kontras non-text 3:1", () => {
   const light = blockFor(":root,");
   const dark = blockFor(':root[data-theme="dark"]');
@@ -172,7 +191,12 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
     ]).then((parts) => parts.join("\n")),
     readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/budgets/BudgetsPage.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/transactions/MobileTransactionFields.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/transactions/MobileTransactionSelectionView.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/transactions/MobileTransferFields.module.css", import.meta.url), "utf8"),
+    ]).then((parts) => parts.join("\n")),
     readFile(new URL("../src/features/transactions/TransactionsPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/feedback/FeedbackProvider.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/accounts/components/DesktopAccountsWorkspace.module.css", import.meta.url), "utf8"),
@@ -194,8 +218,12 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*22px;[^}]*height:\s*7px;[^}]*transform:\s*scaleX\(\.318\)/);
   assert.match(budgets, /\.segment \{\s*min-height:\s*var\(--control-height-md\);/);
   assert.match(budgets, /\.sortButton \{\s*min-height:\s*var\(--control-height-md\);/);
-  assert.match(transactionForm, /\.quickAmounts button \{\s*min-height:\s*var\(--control-height-md\);/);
-  assert.match(transactionForm, /\.impactDetails summary \{[^}]*min-height:\s*var\(--control-height-md\);/s);
+  assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(transactionForm, /\.detailRow \{[^}]*min-height:\s*58px;/s);
+  assert.match(transactionForm, /\.paymentChoices button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(transactionForm, /\.choiceRow \{[^}]*min-height:\s*53px;/s);
+  assert.match(transactionForm, /\.accountPicker \{[^}]*min-height:\s*4rem;/s);
+  assert.doesNotMatch(transactionForm, /impactDetails|Lihat dampak lengkap/);
   assert.match(transactions, /\.filterChip\s*\{[^}]*min-height:\s*var\(--control-height-md\);/);
   assert.match(desktopAccounts, /\.ownershipFilter \{[^}]*min-height:\s*2\.75rem;/s);
   assert.match(desktopAccounts, /\.carouselArrow \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
@@ -346,12 +374,11 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
   assert.match(transactionFormStyles, /\.fieldControlInput > :global\(input\),\s*\n\s*\.fieldControlInput > :global\(select\) \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
   assert.match(transactionFormStyles, /\.form :global\(\.field\) > input,\s*\n\s*\.form :global\(\.field\) > select,\s*\n\s*\.form :global\(\.field\) > textarea \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
   assert.match(mobileHistoryStyles, /\.filterSelect select \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
-  assert.match(reconciliationStyles, /@media \(max-width:\s*820px\) \{[\s\S]*\.accountField \.selectShell select,[\s\S]*font-size:\s*var\(--mobile-native-control-font-size\);/);
+  assert.match(reconciliationStyles, /@media \(max-width:\s*820px\) \{[\s\S]*\.differenceFlow :global\(input\), \.notesField textarea, \.historyFilter select \{ font-size:\s*var\(--mobile-native-control-font-size\);/);
   assert.match(reconciliationStyles, /\.historyFilter select \{[^}]*min-height:\s*var\(--mobile-control-height\);[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
   assert.match(dashboard, /\.shared-transaction-tools label \{[^}]*min-height:\s*var\(--control-height-md\);/s);
-  assert.match(responsive, /scrollbar-width:\s*none;/);
-  assert.match(responsive, /html::-webkit-scrollbar,\s*\n\s*body::-webkit-scrollbar \{[^}]*display:\s*none;/s);
-  assert.match(responsive, /overflow-x:\s*hidden;/);
+  assert.doesNotMatch(responsive, /html,\s*\n\s*body \{[^}]*overflow-x:\s*(?:hidden|clip)/s);
+  assert.doesNotMatch(responsive, /html,\s*\n\s*body \{[^}]*scrollbar-width:\s*none/s);
   assert.doesNotMatch(responsive, /overflow-y:\s*hidden/);
   assert.match(accountStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
   assert.match(accountStyles, /\.mobileStackCard\[aria-pressed="true"\][^{]*\{[^}]*touch-action: pan-x pinch-zoom;/s);

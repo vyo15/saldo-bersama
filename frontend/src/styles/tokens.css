@@ -67,7 +67,7 @@
   --desktop-panel-soft: #12231f;
   --desktop-panel-text: #f4faf7;
   --desktop-panel-muted: #a7b3ae;
-  --focus-ring: rgba(3, 98, 76, 0.3);
+  --focus-ring: #03624c;
   --scrollbar-thumb: #afc1bb;
   --shadow-ink: #000000;
   /* Accounts-only visual tokens. Keep this section isolated until another feature genuinely shares the same semantic contract. */
@@ -206,7 +206,7 @@
   --desktop-panel-soft: #12231f;
   --desktop-panel-text: #f4faf7;
   --desktop-panel-muted: #a7b3ae;
-  --focus-ring: rgba(16, 185, 129, 0.34);
+  --focus-ring: #34d399;
   --scrollbar-thumb: #3c554e;
   --shadow-sm: 0 10px 26px rgba(0, 0, 0, 0.24);
   --shadow-md: 0 26px 70px rgba(0, 0, 0, 0.44);

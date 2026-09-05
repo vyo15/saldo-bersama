@@ -33,10 +33,10 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 ## 4. UI/UX dan accessibility
 
 - [ ] Loading, empty, error, offline/unauthorized/conflict state relevan tersedia.
-- [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa.
+- [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa; focus authored memakai indicator opaque ≥3:1, bukan alpha ring.
 - [ ] Error field form transaksi hilang saat input/dependency sudah diperbaiki tanpa menghapus error lain; perubahan sumber tidak mempertahankan destination transfer yang sudah tidak representable.
 - [ ] Pencocokan definitif berakhir pada state completed; Selesai/X/Escape keluar dari create flow dan mismatch menyediakan jalur review transaksi tanpa membuat intent kedua otomatis.
-- [ ] Pada mobile: native form control efektif 16px, target interaktif ≥44×44px, safe-area top/bottom, metadata finansial penting ~12px+, keyboard virtual, dan horizontal overflow diperiksa pada viewport relevan.
+- [ ] Pada mobile: native form control efektif 16px, target interaktif ≥44×44px, safe-area top/bottom, metadata finansial penting ~12px+, nominal utama tidak ellipsis, keyboard virtual, dan horizontal overflow diperiksa pada viewport relevan; root tidak menyembunyikan overflow horizontal.
 - [ ] Primary-tab scroll restoration, Back/Forward history restoration, dan true-empty vs filtered/subsection-empty diperiksa bila shell/navigation/collection presentation berubah.
 - [ ] Mobile dan desktop tidak drift pada business rule yang sama.
 - [ ] Workflow continuation hanya memberi navigasi/prefill; tidak ada auto-submit finansial, duplicate recovery entry point, atau blocker UI yang melampaui contract backend.
@@ -58,7 +58,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] `npm run build` PASS dan build-budget internal pada `npm run verify` PASS.
 - [ ] Guarded/data/security regression tercakup oleh frontend/backend suite pada `npm run verify`; targeted domain test tambahan dijalankan bila scope memerlukannya.
 - [ ] Trial Reset preview/apply ditolak pada database `production`/`unbound` sebelum side effect; `reset.status` tetap readable untuk recovery.
-- [ ] Untuk frontend/user-flow change, manual device QA dicatat bila diperlukan; tidak ada automated browser gate.
+- [ ] Untuk frontend/user-flow change, rendered browser smoke pada `npm run verify` PASS dan manual device QA tambahan dicatat untuk authenticated/real-device behavior yang tidak dapat direproduksi secara aman oleh anonymous smoke.
 - [ ] Final `npm run verify` PASS pada tree yang sama dengan patch yang akan dikirim.
 
 ## 7. Artifact hygiene dan delivery

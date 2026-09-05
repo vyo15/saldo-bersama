@@ -332,13 +332,22 @@
   border-radius: var(--radius-md);
 }
 
-.form :global(.impact-preview) {
-  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
-  background: color-mix(in srgb, var(--primary-soft) 40%, var(--surface));
-}
-
 .mobileTransferForm {
   min-width: 0;
+  min-height: 100%;
+}
+
+.mobileComposerForm,
+.mobileSelectionForm {
+  min-width: 0;
+  width: 100%;
+}
+
+.mobileComposerForm {
+  min-height: 0;
+}
+
+.mobileSelectionForm {
   min-height: 100%;
 }
 
@@ -518,6 +527,50 @@
     min-height: 3.25rem;
   }
 
+
+  .mobileSelectionModal :global(.modal__header) {
+    min-height: 3.85rem;
+    padding: calc(.65rem + env(safe-area-inset-top)) .875rem .55rem;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+    align-items: center;
+    gap: .45rem;
+    background: color-mix(in srgb, var(--surface-elevated) 96%, transparent);
+  }
+
+  .mobileSelectionModal :global(.modal__header) > div:first-child {
+    grid-column: 2;
+    width: auto;
+    text-align: center;
+  }
+
+  .mobileSelectionModal :global(.modal__header) h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: .95rem;
+    font-weight: var(--font-weight-bold);
+    line-height: 1.25;
+    letter-spacing: -.02em;
+  }
+
+  .mobileSelectionModal :global(.modal__header) > button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    grid-column: 1;
+    grid-row: 1;
+    border-color: transparent;
+    border-radius: .8rem;
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    color: var(--text);
+    box-shadow: none;
+  }
+
+  .mobileSelectionModal :global(.modal__body) {
+    padding: 12px 14px 18px;
+  }
+
   .mobileTransferModal {
     width: 100%;
     height: 100dvh;
@@ -677,32 +730,84 @@
 }
 
 .impactPreview {
-  gap: 0.35rem;
+  padding: .75rem .8rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
+  border-radius: 14px;
+  display: grid;
+  gap: .55rem;
+  background: color-mix(in srgb, var(--primary-soft) 22%, var(--surface));
 }
 
-.impactDetails {
-  margin-top: 0.15rem;
+.impactEyebrow {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
 }
 
-.impactDetails summary {
-  width: fit-content;
-  min-height: var(--control-height-md);
-  display: inline-flex;
+.impactValue {
+  min-width: 0;
+  min-height: 2.4rem;
+  display: flex;
   align-items: center;
-  cursor: pointer;
-  color: var(--primary-strong);
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.impactValueCopy {
+  min-width: 0;
+  display: grid;
+  gap: .1rem;
+}
+
+.impactValueCopy small,
+.impactValueCopy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.impactValueCopy small {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.impactValueCopy strong {
+  color: var(--text);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
-.impactDetails > div {
+.impactDelta {
+  flex: 0 0 auto;
+  color: var(--primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.impactDeltaNegative {
+  color: var(--warning);
+}
+
+.impactTransferRoute {
+  min-width: 0;
   display: grid;
-  gap: 0.25rem;
-  padding-top: 0.35rem;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
 }
 
+.impactTransferRoute .impactValue + .impactValue {
+  padding-left: .75rem;
+  border-left: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+}
+
+.impactFootnote {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
 
 .visualField > label {
   color: var(--text);
@@ -723,7 +828,4 @@
     font-size: var(--font-size-xs);
   }
 
-  .impactDetails summary {
-    min-height: var(--mobile-control-height);
-  }
 }

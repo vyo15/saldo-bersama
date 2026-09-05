@@ -73,7 +73,7 @@
 
 .allocation-advanced > summary:focus-visible {
   outline: 3px solid var(--focus-ring);
-  outline-offset: -3px;
+  outline-offset: 2px;
 }
 
 .allocation-advanced > summary > span {

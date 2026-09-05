@@ -95,9 +95,9 @@ Default full local gate setelah setiap patch:
 npm run verify
 ```
 
-`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, serta seluruh backend regression satu kali dengan coverage. Guard security/governance sudah berada di suite frontend/backend sehingga tidak ada re-run `test:guard` terpisah. Ia tidak menjalankan `npm ci` atau menghapus dependency.
+`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, rendered browser smoke, serta seluruh backend regression satu kali dengan coverage. Guard security/governance sudah berada di suite frontend/backend sehingga tidak ada re-run `test:guard` terpisah. Ia tidak menjalankan `npm ci` atau menghapus dependency.
 
-Browser automation telah dipensiunkan dari quality gate; UI/responsive diperiksa dengan regression frontend dan manual device QA sesuai scope.
+Rendered browser smoke kini kembali menjadi bagian quality gate melalui `scripts/browser-smoke.mjs` tanpa dependency browser-test tambahan. Smoke memakai Chrome/Chromium/Edge lokal (atau `CHROME_PATH`) terhadap production build dan memeriksa login publik pada viewport canonical, page-level overflow, focus rendered, WCAG text-spacing, serta reduced-motion. Authenticated/real-device journey tetap memakai manual device QA; smoke tidak boleh membuat auth bypass atau fixture finansial palsu.
 
 Command `lint`, `test`, dan `build` tetap tersedia untuk diagnosis terarah. Full gate hanya memiliki satu entry point publik, `npm run verify`, supaya contributor tidak perlu memilih antara beberapa alias yang fungsinya bertumpuk. Build + budget dijalankan sebelum backend coverage agar kegagalan bundle/source frontend muncul lebih cepat dan tidak membuang waktu pada coverage yang mahal.
 

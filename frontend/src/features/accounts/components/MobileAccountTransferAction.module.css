@@ -24,7 +24,7 @@
   }
 
   .mobileTransferHeaderAction:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--account-mobile-accent) 38%, transparent);
+    outline: 3px solid var(--account-mobile-accent);
     outline-offset: 2px;
   }
 

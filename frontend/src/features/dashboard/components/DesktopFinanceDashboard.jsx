@@ -1,14 +1,12 @@
-import { useState } from "react";
 import { FiAlertCircle, FiArrowDownLeft, FiArrowUpRight, FiCalendar, FiChevronDown, FiCreditCard, FiEye, FiEyeOff, FiFlag, FiPlus, FiRefreshCw, FiSearch, FiShield, FiTarget, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import { Link } from "react-router";
-import Modal from "../../../components/common/Modal.jsx";
 import PageInfoButton from "../../../components/common/PageInfoButton.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
 import { ACCOUNT_AVAILABLE_BALANCE_HINT } from "../../../shared/presentation/account.js";
 import { formatTransactionDate, transactionCategoryIcon, TRANSACTION_LABELS, transactionTone } from "../../../shared/presentation/transaction.js";
-import { dashboardAlertGuidance, formatPeriod } from "../dashboardPresentation.js";
-import FinancialAlertList from "./FinancialAlertList.jsx";
+import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
+import { formatPeriod } from "../dashboardPresentation.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
@@ -87,23 +85,17 @@ const BudgetWidget = ({ budgets, balanceVisible }) => <article className={dashbo
 const RecurringWidget = ({ items, balanceVisible }) => <article className={dashboardClass("shared-panel shared-widget")}><div className={dashboardClass("shared-widget__heading")}><div><h2>Jadwal terdekat</h2><span>{items.length} perlu dipantau</span></div><Link to="/perencanaan/jadwal">Lihat semua</Link></div><ul className={dashboardClass("shared-due-list")}>{items.length ? items.map((item) => <li key={item.occurrence_id || item.recurring_rule_id}><span className={dashboardClass("shared-due-icon")}><FiCalendar aria-hidden="true" /></span><span><strong>{item.name}</strong><small>{compactDate(item.due_date)} · <SensitiveMoney visible={balanceVisible} value={item.expected_amount || item.amount || 0} /></small></span><em>{dueLabel(item.due_date)}</em></li>) : <li className={dashboardClass("shared-widget-empty")}><span>Belum ada jadwal rutin mendatang.</span><Link to="/perencanaan/jadwal">Buat jadwal rutin</Link></li>}</ul></article>;
 const GoalsWidget = ({ goals, balanceVisible }) => <article className={dashboardClass("shared-panel shared-widget")}><div className={dashboardClass("shared-widget__heading")}><div><h2>Target tabungan</h2><span>{goals.length} target aktif</span></div><Link to="/target">Lihat semua</Link></div><ul className={dashboardClass("shared-progress-list shared-goal-list")}>{goals.length ? goals.map((item) => <li key={item.goal_id}><div><strong><FiTarget aria-hidden="true" />{item.name}</strong><span><SensitiveMoney visible={balanceVisible} value={item.current_amount || 0} /> / <SensitiveMoney visible={balanceVisible} value={item.target_amount || 0} /></span></div><ProgressBar value={item.current_amount || 0} max={item.target_amount || 0} label={`Kemajuan ${item.name}`} /></li>) : <li className={dashboardClass("shared-widget-empty")}><span>Belum ada target tabungan aktif.</span><Link to="/target">Buat target</Link></li>}</ul></article>;
 const InsightWidget = ({ model, overview, balanceVisible }) => {
-  const [alertsOpen, setAlertsOpen] = useState(false);
-  const freeFundsGuidance = dashboardAlertGuidance({ type: "unallocated_funds", id: `unallocated-funds:${overview.periodKey}`, targetPath: "/perencanaan/kantong" });
-  return <>
-    <article className={dashboardClass("shared-panel shared-widget shared-insight-widget")}>
-      <div className={dashboardClass("shared-widget__heading")}><h2>Ringkasan</h2><FiAlertCircle aria-hidden="true" /></div>
-      <dl>
-        <div><dt><FiCreditCard aria-hidden="true" />Rekening aktif</dt><dd>{model.accountBalances.length}</dd></div>
-        <div><dt><FiArrowDownLeft aria-hidden="true" />Transaksi rekening</dt><dd>{model.selectedAccountTransactions.length}</dd></div>
-        <div><dt><FiFlag aria-hidden="true" />Dana belum dialokasikan</dt><dd><Link to={freeFundsGuidance.to} state={freeFundsGuidance.state} aria-label="Atur dana belum dialokasikan"><SensitiveMoney visible={balanceVisible} value={overview.unallocatedFunds || 0} /></Link></dd></div>
-        <div><dt><FiArrowUpRight aria-hidden="true" />Peringatan aktif</dt><dd>{model.alerts.length}</dd></div>
-      </dl>
-      {model.alerts.length ? <button type="button" className={dashboardClass("shared-widget__link-button")} onClick={() => setAlertsOpen(true)}>Lihat peringatan</button> : <Link to="/laporan">Lihat insight detail</Link>}
-    </article>
-    <Modal open={alertsOpen} onClose={() => setAlertsOpen(false)} title="Perlu perhatian" description="Periksa detailnya lalu lanjutkan ke halaman tujuan. Membuka peringatan tidak mengubah data keuangan." size="md">
-      <FinancialAlertList alerts={model.alerts} variant="dashboard" />
-    </Modal>
-  </>;
+  const freeFundsGuidance = financialAlertGuidance({ type: "unallocated_funds", id: `unallocated-funds:${overview.periodKey}`, targetPath: "/perencanaan/kantong" });
+  return <article className={dashboardClass("shared-panel shared-widget shared-insight-widget")}>
+    <div className={dashboardClass("shared-widget__heading")}><h2>Ringkasan</h2><FiAlertCircle aria-hidden="true" /></div>
+    <dl>
+      <div><dt><FiCreditCard aria-hidden="true" />Rekening aktif</dt><dd>{model.accountBalances.length}</dd></div>
+      <div><dt><FiArrowDownLeft aria-hidden="true" />Transaksi rekening</dt><dd>{model.selectedAccountTransactions.length}</dd></div>
+      <div><dt><FiFlag aria-hidden="true" />Dana belum dialokasikan</dt><dd><Link to={freeFundsGuidance.to} state={freeFundsGuidance.state} aria-label="Atur dana belum dialokasikan"><SensitiveMoney visible={balanceVisible} value={overview.unallocatedFunds || 0} /></Link></dd></div>
+      <div><dt><FiArrowUpRight aria-hidden="true" />Notifikasi aktif</dt><dd>{model.alerts.length}</dd></div>
+    </dl>
+    {model.alerts.length ? <Link className={dashboardClass("shared-widget__link-button")} to="/notifikasi">Buka notifikasi</Link> : <Link to="/laporan">Lihat insight detail</Link>}
+  </article>;
 };
 const InvestmentWidget = ({ summary, balanceVisible }) => summary ? <article className={dashboardClass("shared-panel shared-widget")}><div className={dashboardClass("shared-widget__heading")}><div><h2>Investasi</h2><span>{summary.holding_count || 0} saham tercatat</span></div><Link to="/investasi">Buka catatan</Link></div><dl><div><dt>Total aset investasi</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></dd></div><div><dt>Cash RDN</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></dd></div><div><dt>P/L belum direalisasi</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.unrealized_pl || 0} tone={Number(summary.unrealized_pl || 0) < 0 ? "negative" : "positive"} /></dd></div></dl><Link to="/investasi">Buka catatan investasi</Link></article> : null;
 const DashboardWidgets = ({ model, overview, investmentSummary, balanceVisible }) => <section className={dashboardClass("shared-dashboard-widgets")} aria-label="Perencanaan dan ringkasan"><BudgetWidget budgets={model.budgets} balanceVisible={balanceVisible} /><RecurringWidget items={model.recurringItems} balanceVisible={balanceVisible} /><GoalsWidget goals={model.goals} balanceVisible={balanceVisible} /><InvestmentWidget summary={investmentSummary} balanceVisible={balanceVisible} /><InsightWidget model={model} overview={overview} balanceVisible={balanceVisible} /></section>;

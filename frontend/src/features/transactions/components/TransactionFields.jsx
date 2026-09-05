@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { FiAlertTriangle, FiCalendar, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
-import { MoneyInIcon, MoneyOutIcon, RefundIcon, TransferIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { formatRupiah } from "../../../domain/money.js";
@@ -9,24 +8,10 @@ import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { userRoleLabel } from "../../../shared/presentation/user.js";
 import CostShareField from "../CostShareField.jsx";
 import { allocationSelectionHint, frequentCategories, orderedEnvelopeOptions, sourceAccountPicker } from "../transactionFormSmartDefaults.js";
+import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, quickAmountLabel } from "../transactionFormPresentation.js";
 import styles from "../TransactionForm.module.css";
 import TransactionImpactPreview from "./TransactionImpactPreview.jsx";
 
-const QUICK_EXPENSE_AMOUNTS = [20_000, 50_000, 100_000, 200_000, 500_000];
-const quickAmountLabel = (amount) => `${Math.round(amount / 1_000)} rb`;
-const TRANSACTION_TYPE_OPTIONS = Object.freeze([
-  { value: TRANSACTION_TYPES.EXPENSE, label: "Pengeluaran", icon: MoneyOutIcon, tone: "expense" },
-  { value: TRANSACTION_TYPES.INCOME, label: "Pemasukan", icon: MoneyInIcon, tone: "income" },
-  { value: TRANSACTION_TYPES.TRANSFER, label: "Transfer", icon: TransferIcon },
-  { value: TRANSACTION_TYPES.REFUND, label: "Refund", icon: RefundIcon },
-]);
-const PAYMENT_METHOD_OPTIONS = Object.freeze([
-  { value: "", label: "Belum dipilih" },
-  { value: "transfer", label: "Transfer" },
-  { value: "cash", label: "Tunai" },
-  { value: "debit", label: "Kartu debit" },
-  { value: "ewallet", label: "E-wallet" },
-]);
 
 const TypeSelector = ({ form, update }) => <VisualChoiceGroup className={`form-grid__full ${styles.typeSelector}`} legend="Jenis transaksi" name="transaction_type" value={form.transaction_type} onChange={(value) => update("transaction_type", value)} options={TRANSACTION_TYPE_OPTIONS} columns={4} mobileColumns={4} plainIcons />;
 
@@ -52,9 +37,9 @@ const SourceAccountField = ({ form, accounts, recentTransactions, onSourceAccoun
   const selected = accounts.find((item) => item.account_id === form.source_account_id) || null;
   return <div className={`field ${styles.visualField}`}>
     <label htmlFor="source-account">Rekening sumber *</label>
-    <FieldControl icon={FiCreditCard}><select id="source-account" value={form.source_account_id} onChange={(event) => onSourceAccountChange(event.target.value)} aria-invalid={Boolean(errors.source_account_id)} aria-describedby={errors.source_account_id ? "source-account-error" : undefined}><option value="">Pilih rekening</option>{picker.visible.map((item) => <option key={item.account_id} value={item.account_id}>{sourceAccountOptionLabel(item, form.transaction_type)}</option>)}</select></FieldControl>
+    <FieldControl icon={FiCreditCard}><select id="source-account" value={form.source_account_id} onChange={(event) => onSourceAccountChange(event.target.value)} aria-invalid={Boolean(errors.source_account_id)} aria-describedby={errors.source_account_id ? "source-account-error" : undefined}><option value="">Pilih rekening</option>{picker.map((item) => <option key={item.account_id} value={item.account_id}>{sourceAccountOptionLabel(item, form.transaction_type)}</option>)}</select></FieldControl>
     {selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dialokasikan {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}
-    {!selected && picker.visible.length === 0 ? <small>Belum ada rekening sumber dengan dana yang dapat digunakan.</small> : null}
+    {!selected && picker.length === 0 ? <small>Belum ada rekening sumber dengan dana yang dapat digunakan.</small> : null}
     {errors.source_account_id ? <small id="source-account-error" className="field__error">{errors.source_account_id}</small> : null}
   </div>;
 };

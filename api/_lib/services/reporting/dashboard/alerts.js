@@ -57,8 +57,8 @@ const reconciliationAlertsFromRows = (rows, accounts) => {
         id: `reconciliation-stale:${row.account_id}`,
         type: "reconciliation_stale",
         severity: "info",
-        title: row.reconciled_at ? `Saatnya cek saldo ${accountLabel}` : `Saldo ${accountLabel} belum pernah dicek`,
-        message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir dicocokkan." : "Cocokkan saldo aplikasi dengan saldo sebenarnya agar catatan tetap akurat.",
+        title: row.reconciled_at ? `Saatnya cocokkan saldo ${accountLabel}` : `Saldo ${accountLabel} belum pernah dicocokkan`,
+        message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir dicocokkan." : "Pastikan saldo aplikasi sama dengan saldo yang benar-benar Anda lihat di bank atau uang tunai.",
         targetPath: "/rekonsiliasi",
       });
     }

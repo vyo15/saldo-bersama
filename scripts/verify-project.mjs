@@ -18,6 +18,7 @@ export const VERIFY_STEPS = Object.freeze([
   Object.freeze({ id: "frontend-test", label: "Frontend regression", command: "npm", args: ["run", "test", "--workspace", "saldo-bersama-frontend"] }),
   Object.freeze({ id: "build", label: "Production build", command: "npm", args: ["run", "build"] }),
   Object.freeze({ id: "build-budget", label: "Build budget", command: "node", args: ["scripts/check-build-budget.mjs"] }),
+  Object.freeze({ id: "browser-smoke", label: "Rendered browser smoke", command: "node", args: ["scripts/browser-smoke.mjs"] }),
   Object.freeze({ id: "backend-coverage", label: "Backend regression dan coverage", command: "node", args: ["scripts/run-backend-tests.mjs", "--coverage"] }),
 ]);
 

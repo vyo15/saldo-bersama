@@ -1,38 +1,12 @@
-import {
-  FiBell, FiCalendar, FiChevronRight, FiDatabase, FiLock, FiMonitor, FiShield, FiTool,
-} from "react-icons/fi";
+import { FiChevronRight } from "react-icons/fi";
 import { Link } from "react-router";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { MOBILE_SETTINGS_GROUPS } from "./settingsNavigation.js";
 import { backendPresentation, roleLabel } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
-
-const SETTINGS_GROUPS = Object.freeze([
-  {
-    label: "Umum",
-    items: [
-      { to: "/pengaturan/notifikasi", label: "Notifikasi", description: "Pengingat & Web Push perangkat ini", icon: FiBell },
-      { to: "/pengaturan/perangkat", label: "Perangkat & sesi", description: "Kelola perangkat yang masih login", icon: FiMonitor },
-      { to: "/pengaturan/integrasi", label: "Integrasi Google", description: "Sheets, Calendar & Drive", icon: FiCalendar },
-    ],
-  },
-  {
-    label: "Data",
-    items: [
-      { to: "/pengaturan/data", label: "Data & cadangan", description: "Export, import, backup & pemulihan", icon: FiDatabase, ownerOnly: true },
-      { to: "/pengaturan/pemeliharaan", label: "Pemeliharaan data", description: "Reset testing & reset seluruh data", icon: FiTool, ownerOnly: true, maintenanceAware: true },
-    ],
-  },
-  {
-    label: "Sistem",
-    items: [
-      { to: "/pengaturan/periode", label: "Periode & integritas", description: "Kontrol periode dan pemeriksaan data", icon: FiLock, ownerOnly: true },
-      { to: "/pengaturan/audit", label: "Audit aktivitas", description: "Riwayat perubahan penting & keamanan", icon: FiShield, ownerOnly: true },
-    ],
-  },
-]);
 
 const accountInitial = (user) => String(user?.name || user?.email || "S").trim().charAt(0).toUpperCase() || "S";
 
@@ -54,18 +28,10 @@ const SettingsNavigationRow = ({ item, maintenanceMode }) => {
   );
 };
 
-const SettingsPage = () => {
-  const { user } = useAuth();
-  const { bootstrap } = useFinance();
-  const healthResource = useApiResource("system.health");
-  const backend = backendPresentation(healthResource);
+const MobileSettingsOverview = ({ user, backend, timezone, maintenanceMode }) => {
   const ownerMode = user?.role === "owner";
-  const timezone = bootstrap?.config?.timezone || healthResource.data?.timezone || "Asia/Jakarta";
-
   return (
-    <section className={styles.settingsHome} aria-label="Ringkasan dan navigasi pengaturan">
-      <RefreshWarning error={healthResource.refreshError} onRetry={healthResource.reload} />
-
+    <section className={styles.settingsMobileOverview} aria-label="Ringkasan dan navigasi pengaturan mobile">
       <section className={styles.settingsAccountCard} aria-label="Akun dan status sistem">
         <span className={styles.settingsAccountAvatar} aria-hidden="true">{accountInitial(user)}</span>
         <div className={styles.settingsAccountCopy}>
@@ -76,20 +42,69 @@ const SettingsPage = () => {
         <p>{backend.summary}</p>
       </section>
 
-      {SETTINGS_GROUPS.map((group) => {
+      {MOBILE_SETTINGS_GROUPS.map((group) => {
         const visibleItems = group.items.filter((item) => !item.ownerOnly || ownerMode);
         if (!visibleItems.length) return null;
         return (
-          <section className={styles.settingsGroup} key={group.label} aria-labelledby={`settings-group-${group.label.toLowerCase()}`}>
-            <h2 id={`settings-group-${group.label.toLowerCase()}`}>{group.label}</h2>
+          <section className={styles.settingsGroup} key={group.id} aria-labelledby={`settings-group-${group.id}`}>
+            <h2 id={`settings-group-${group.id}`}>{group.label}</h2>
             <div className={styles.settingsList}>
               {visibleItems.map((item) => (
-                <SettingsNavigationRow key={item.to} item={item} maintenanceMode={Boolean(healthResource.data?.maintenanceMode)} />
+                <SettingsNavigationRow key={item.to} item={item} maintenanceMode={maintenanceMode} />
               ))}
             </div>
           </section>
         );
       })}
+    </section>
+  );
+};
+
+const DesktopSettingsOverview = ({ user, backend, timezone, maintenanceMode }) => (
+  <section className={styles.settingsDesktopOverview} aria-labelledby="settings-desktop-overview-title">
+    <div className={styles.settingsDesktopOverviewIntro}>
+      <h2 id="settings-desktop-overview-title">Ringkasan pengaturan</h2>
+      <p>Pilih kategori di kiri lalu submenu yang ingin dikelola. Panel ini hanya merangkum akun dan kondisi aplikasi agar desktop tetap lapang tanpa mengulang seluruh menu mobile.</p>
+    </div>
+    <dl className={styles.settingsDesktopFacts}>
+      <div>
+        <dt>Akun</dt>
+        <dd>{user?.email || "Akun aktif"}</dd>
+      </div>
+      <div>
+        <dt>Akses</dt>
+        <dd>{roleLabel(user?.role)}</dd>
+      </div>
+      <div>
+        <dt>Zona waktu</dt>
+        <dd>{timezone}</dd>
+      </div>
+      <div>
+        <dt>Backend</dt>
+        <dd><span className={`status-badge status-badge--${backend.tone}`} role="status" aria-live="polite">{backend.label}</span></dd>
+      </div>
+      <div>
+        <dt>Mode operasi</dt>
+        <dd>{maintenanceMode ? "Maintenance" : "Normal"}</dd>
+      </div>
+    </dl>
+    <p className={styles.settingsDesktopBackendSummary}>{backend.summary}</p>
+  </section>
+);
+
+const SettingsPage = () => {
+  const { user } = useAuth();
+  const { bootstrap } = useFinance();
+  const healthResource = useApiResource("system.health");
+  const backend = backendPresentation(healthResource);
+  const timezone = bootstrap?.config?.timezone || healthResource.data?.timezone || "Asia/Jakarta";
+  const maintenanceMode = Boolean(healthResource.data?.maintenanceMode);
+
+  return (
+    <section className={styles.settingsHome} aria-label="Ringkasan pengaturan">
+      <RefreshWarning error={healthResource.refreshError} onRetry={healthResource.reload} />
+      <DesktopSettingsOverview user={user} backend={backend} timezone={timezone} maintenanceMode={maintenanceMode} />
+      <MobileSettingsOverview user={user} backend={backend} timezone={timezone} maintenanceMode={maintenanceMode} />
     </section>
   );
 };

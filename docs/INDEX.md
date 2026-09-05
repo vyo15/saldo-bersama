@@ -21,7 +21,7 @@ Gunakan tabel ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 
 | Area perubahan | Wajib dibaca | Test/validation utama |
 |---|---|---|
-| UI/layout/responsive | `UI_DESIGN_SYSTEM.md`, `TEST_PLAN.md` | frontend regression + `npm run lint` + `npm run build` + manual device QA |
+| UI/layout/responsive | `UI_DESIGN_SYSTEM.md`, `TEST_PLAN.md` | frontend regression + rendered browser smoke dalam `npm run verify` + manual authenticated/device QA |
 | Rekening/transaksi/saldo/laporan | `API_CONTRACT.md`, `DATA_DICTIONARY.md`, `TEST_PLAN.md` | test business/domain terkait + full `npm run verify` |
 | Investasi/RDN/portfolio | `product/PRODUCT_REQUIREMENTS.md`, `API_CONTRACT.md`, `AUTHORIZATION_MATRIX.md`, `TURSO_SCHEMA.md`, `RECOVERY_RUNBOOK.md`, `adr/0011-manual-investment-rdn-ledger.md` | investment business/integrity/backup regression + full `npm run verify` |
 | Auth/session/role | `SECURITY_MODEL.md`, `AUTHORIZATION_MATRIX.md`, `ENVIRONMENT_VARIABLES.md` | auth/security regression + manual login journey pada device relevan |

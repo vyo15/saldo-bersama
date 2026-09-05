@@ -1,5 +1,6 @@
 import {
   FiBarChart2,
+  FiBell,
   FiCheckCircle,
   FiCheckSquare,
   FiCreditCard,
@@ -27,6 +28,7 @@ export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/anggota", label: "Anggota", description: "Kelola anggota yang dapat mengakses Saldo Bersama.", icon: FiUsers, ownerOnly: true },
   { to: "/persetujuan", label: "Persetujuan", description: "Tinjau pengajuan rekening, kategori, dan transfer.", icon: FiCheckSquare, ownerOnly: true },
   { to: "/rekonsiliasi", label: "Cocokkan saldo", description: "Periksa apakah saldo aplikasi sama dengan saldo aktual.", icon: FiCheckCircle },
+  { to: "/notifikasi", label: "Notifikasi", description: "Lihat pengingat dan kondisi keuangan aktif yang perlu ditinjau.", icon: FiBell },
   { to: "/pengaturan", label: "Pengaturan", description: "Atur aplikasi dan integrasi.", icon: FiSettings },
 ]);
 
@@ -46,16 +48,20 @@ export const DESKTOP_NAVIGATION = Object.freeze([
   }),
   navigationByPath.get("/laporan"),
   freezeGroup({
-    id: "financial-data",
-    label: "Data keuangan",
-    description: "Rekening dan referensi kategori transaksi.",
+    id: "finance",
+    label: "Keuangan",
+    description: "Rekening, kategori, investasi, dan pencocokan saldo.",
     icon: FiCreditCard,
-    items: pickNavigation("/rekening", "/kategori"),
+    items: pickNavigation("/rekening", "/kategori", "/investasi", "/rekonsiliasi"),
   }),
-  navigationByPath.get("/investasi"),
-  navigationByPath.get("/anggota"),
-  navigationByPath.get("/persetujuan"),
-  navigationByPath.get("/rekonsiliasi"),
+  freezeGroup({
+    id: "management",
+    label: "Kelola",
+    description: "Anggota dan persetujuan Administrator.",
+    icon: FiUsers,
+    ownerOnly: true,
+    items: pickNavigation("/anggota", "/persetujuan"),
+  }),
 ]);
 
 export const MOBILE_PRIMARY_NAVIGATION = Object.freeze(pickNavigation("/", "/transaksi", "/laporan"));
@@ -66,7 +72,7 @@ export const MOBILE_SECONDARY_GROUPS = Object.freeze([
   freezeGroup({ id: "investment", label: "Investasi", items: pickNavigation("/investasi") }),
   freezeGroup({ id: "balance-control", label: "Kontrol saldo", items: pickNavigation("/rekonsiliasi") }),
   freezeGroup({ id: "people", label: "Akses", items: pickNavigation("/anggota", "/persetujuan") }),
-  freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/pengaturan") }),
+  freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/notifikasi", "/pengaturan") }),
 ]);
 
 export const MOBILE_SECONDARY_NAVIGATION = Object.freeze(MOBILE_SECONDARY_GROUPS.flatMap((group) => group.items));

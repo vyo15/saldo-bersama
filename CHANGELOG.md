@@ -1,4 +1,32 @@
+## 5 September 2026 - Desktop sidebar grouping cleanup
+- Merapikan sidebar desktop menjadi enam slot utama agar seluruh menu tetap berada di dalam badan rail SVG tanpa mengubah bentuk asset.
+- Menggabungkan Rekening, Kategori, Investasi, dan Cocokkan saldo ke submenu **Keuangan**.
+- Menggabungkan Anggota dan Persetujuan ke submenu **Kelola** yang hanya tampil untuk Administrator.
+- Route, authorization, navigasi mobile, dan business capability tidak berubah; perubahan hanya mengurangi kepadatan navigasi primer desktop.
+
+## 5 September 2026 - Notification Center dan Cocokkan Saldo
+- Menambahkan Notification Center in-app `/notifikasi` dari alert read-model canonical: mobile hero memakai bell + unread badge, Beranda hanya menampilkan satu next action prioritas, desktop menautkan notifikasi aktif ke route yang sama, dan read state lokal tidak mengubah domain state. Flow `Cocokkan Saldo` juga disederhanakan menjadi konfirmasi same/different tanpa memprefill saldo sistem sebagai saldo aktual; mismatch baru meminta saldo bank dan tetap tidak membuat adjustment otomatis. Test regression serta dokumentasi UI/status/matrix diselaraskan.
+
+## 5 September 2026 - Sinkronisasi quality gate Settings responsif
+- Memperbarui regression Settings agar route canonical dibaca dari `settingsNavigation.js`, sesuai arsitektur metadata navigasi terpusat, bukan dicari ulang sebagai literal di `SettingsPage.jsx`.
+- Mengubah guard responsive Settings agar memverifikasi kontrak hit-target mobile minimal 44px pada breakpoint canonical `<=820px`, bukan mengunci implementasi internal `42rem`/`4.15rem` secara literal. Tidak ada perubahan behavior UI, route, API, role guard, reset/restore, atau Audit Activity.
+
+## 5 September 2026 - Settings desktop workspace dan switch preference
+- Memisahkan presentasi Pengaturan berdasarkan viewport tanpa menduplikasi business flow: mobile tetap memakai grouped-list ringkas, sedangkan desktop memakai workspace tiga panel **Kategori → Menu → Detail** di dalam shell aplikasi. Route, owner guard, API, dan child page existing tetap canonical.
+- Menyatukan metadata navigasi Pengaturan di `settingsNavigation.js`. Desktop memakai kategori Umum, Data, Sistem, Integrasi, serta Sesi & keamanan; mobile mempertahankan kelompok Umum, Data, dan Sistem yang lebih ringkas. Sub-route Export/Import/Backup/Pemulihan tetap ditandai sebagai bagian dari **Data & cadangan**.
+- Mengubah checkbox preference notifikasi menjadi switch visual modern dengan semantic `role="switch"`, focus-visible, reduced-motion, dan state disabled. Checklist acknowledgement pada reset/restore/destructive confirmation tetap checkbox agar makna persetujuan risiko tidak berubah.
+- Halaman root `/pengaturan` pada desktop menampilkan ringkasan akun/backend yang ringan, bukan menyalin grouped-list mobile. `AuditPage` dan kontrak audit tidak diubah pada patch ini.
+- Menambah regression untuk desktop workspace, pemisahan desktop/mobile, route matching, switch semantic, serta larangan nested `main`; menyinkronkan `PROJECT_STATUS`, `UI_DESIGN_SYSTEM`, dan `TEST_PLAN`.
+
+## 5 September 2026 - Composer transaksi mobile clean dan quality-gate hardening
+- Mengubah composer transaksi mobile menjadi grouped metadata surface dengan same-sheet selection untuk rekening, kategori, dan Alokasi Dana; metode pembayaran tetap direct choice, Catatan auto-grow, dan preview finansial memakai `Setelah transaksi` tanpa summary/detail yang berulang.
+- Mempertahankan `MobileTransferFields` sebagai presentation Transfer mobile canonical, smart/frequent category, filter rekening berdasarkan jenis transaksi, smart Alokasi Dana, validation, idempotency, approval, retry `OUTCOME_UNKNOWN`, dan mutation backend tanpa business-rule baru.
+- Menutup blocker quality gate pasca-redesign tanpa menaikkan threshold atau menonaktifkan rule: presentation detail rekening dipisah dari `DetailGroup`, sedangkan state/derived/actions orchestration `TransactionForm` dipecah menjadi helper hook kecil sehingga `complexity` dan `max-lines-per-function` kembali di bawah batas ESLint canonical.
+- Dokumentasi canonical composer tetap diselaraskan melalui `UI_DESIGN_SYSTEM`, `TEST_PLAN`, `PROJECT_STATUS`, dan `IMPLEMENTATION_MATRIX`; entry ini melengkapi changelog yang sebelumnya tertinggal.
+
 ## 5 September 2026 - Redesign Settings grouped-list dan hub data
+
+- Hardened responsive/accessibility proof: focus ring sekarang opaque dan dikunci contrast ≥3:1, nominal finansial kritis tidak lagi memakai ellipsis, root mobile tidak menyembunyikan overflow/scrollbar, login short-height memiliki fallback scroll, dan `npm run verify` menambahkan rendered browser smoke tanpa auth bypass. Docs/test governance ikut disinkronkan.
 - Mengubah `/pengaturan` dari kumpulan kartu menu yang selalu tampil menjadi landing page grouped-list **Umum / Data / Sistem** dengan ringkasan akun + health ringan; nested route sekarang fokus pada konten terpilih dan memakai back-link kontekstual + Info route.
 - Menambahkan hub `/pengaturan/data` untuk Export, Import transaksi, Backup, dan Pemulihan tanpa menggabungkan resource/mutation empat workflow; submenu data kembali ke hub tersebut agar navigasi mobile tidak terasa bertumpuk.
 - Mempertahankan Reset Testing dan Reset Semua sebagai dua flow terisolasi di `/pengaturan/pemeliharaan`; route legacy `/pengaturan/reset-data` dan `/pengaturan/reset-semua` kini redirect ke tab yang sesuai sehingga bookmark lama tetap aman tanpa menduplikasi menu.

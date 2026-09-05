@@ -8,6 +8,6 @@ a { color: inherit; text-decoration: none; }
 img, svg { display: block; max-width: 100%; }
 h1, h2, h3, p, dl, dd, figure { margin: 0; }
 button { color: inherit; }
-:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 62%, white); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 ::selection { background: var(--primary-soft); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

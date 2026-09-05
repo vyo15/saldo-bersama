@@ -4,8 +4,11 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("desktop mempertahankan module dock Saldo Bersama melengkung dengan submenu minimal", async () => {
-  const source = await read("src/components/navigation/SideNavigation.jsx");
+test("desktop mempertahankan module dock Saldo Bersama melengkung dengan enam slot utama dan submenu fungsional", async () => {
+  const [source, navigation] = await Promise.all([
+    read("src/components/navigation/SideNavigation.jsx"),
+    read("src/config/navigation.js"),
+  ]);
 
   assert.match(source, /const visibleNavigation = DESKTOP_NAVIGATION/);
   assert.match(source, /visibleNavigation\.map/);
@@ -23,6 +26,15 @@ test("desktop mempertahankan module dock Saldo Bersama melengkung dengan submenu
   assert.doesNotMatch(source, /childDescription/);
   assert.match(source, /event\.key !== "Escape"/);
   assert.match(source, /data-label=\{label\}/);
+
+  assert.match(navigation, /export const DESKTOP_NAVIGATION = Object\.freeze\(\[[\s\S]*navigationByPath\.get\("\/"\)[\s\S]*navigationByPath\.get\("\/transaksi"\)/);
+  assert.match(navigation, /id: "planning"[\s\S]*items: pickNavigation\("\/perencanaan", "\/anggaran", "\/target"\)/);
+  assert.match(navigation, /id: "finance"[\s\S]*label: "Keuangan"[\s\S]*items: pickNavigation\("\/rekening", "\/kategori", "\/investasi", "\/rekonsiliasi"\)/);
+  assert.match(navigation, /id: "management"[\s\S]*label: "Kelola"[\s\S]*ownerOnly: true[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
+  const desktopBlock = navigation.match(/export const DESKTOP_NAVIGATION = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
+  const topLevelSlots = [...desktopBlock.matchAll(/^  (?:navigationByPath\.get|freezeGroup)\(/gm)];
+  assert.equal(topLevelSlots.length, 6, "dock desktop harus tetap enam slot utama agar seluruh menu berada di badan rail SVG");
+  assert.doesNotMatch(desktopBlock, /^  navigationByPath\.get\("\/(?:investasi|anggota|persetujuan|rekonsiliasi)"\),?$/gm);
 });
 
 test("dock dirender sebagai sibling shell agar fixed tetap mengikuti viewport", async () => {
@@ -165,21 +177,21 @@ test("shell terautentikasi menjadi satu-satunya main landmark untuk route intern
   assert.match(notFound, /<section className="centered-page" aria-labelledby="not-found-title">/);
 });
 
-test("geometri rail Saldo Bersama menyisakan navigasi mobile", async () => {
+test("geometri rail SVG Saldo Bersama menjaga seluruh menu desktop di dalam siluet", async () => {
   const [appCss, responsiveCss, mobileNavigation] = await Promise.all([
     read("src/styles/app.css"),
     read("src/styles/responsive.css"),
     read("src/components/navigation/MobileNavigation.jsx"),
   ]);
 
-  assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*--desktop-dock-width:\s*108px;[\s\S]*width:\s*var\(--desktop-dock-width\);[\s\S]*height:\s*clamp\(480px, 68dvh, 600px\);/);
-  assert.match(appCss, /\.desktop-module-dock__navigation\s*\{[\s\S]*inset-inline-start:\s*var\(--desktop-dock-nav-left\);[\s\S]*top:\s*50%;[\s\S]*gap:\s*12px;[\s\S]*transform:\s*translateY\(-50%\);/);
-  assert.match(appCss, /\.desktop-module-dock__group\s*\{[\s\S]*position:\s*relative;[\s\S]*width:\s*48px;[\s\S]*height:\s*48px;/);
+  assert.match(appCss, /\.desktop-module-dock\s*\{[\s\S]*--desktop-dock-width:\s*92px;[\s\S]*--desktop-dock-nav-left:\s*7px;[\s\S]*width:\s*var\(--desktop-dock-width\);[\s\S]*height:\s*clamp\(580px, 68dvh, 600px\);/);
+  assert.match(appCss, /\.desktop-module-dock__navigation\s*\{[\s\S]*inset-inline-start:\s*var\(--desktop-dock-nav-left\);[\s\S]*top:\s*50%;[\s\S]*width:\s*52px;[\s\S]*gap:\s*3px;[\s\S]*transform:\s*translateY\(-50%\);/);
+  assert.match(appCss, /\.desktop-module-dock__group\s*\{[\s\S]*position:\s*relative;[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
   assert.match(appCss, /\.desktop-module-dock__flyout\s*\{[\s\S]*top:\s*50%;[\s\S]*transform:\s*translateY\(-50%\);/);
   assert.doesNotMatch(appCss, /\.desktop-module-dock__navigation\s*\{[^}]*justify-content:\s*space-between;/);
-  assert.match(appCss, /\.desktop-module-dock__link\s*\{[\s\S]*width:\s*48px;[\s\S]*height:\s*48px;/);
+  assert.match(appCss, /\.desktop-module-dock__link\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
   assert.match(appCss, /\.desktop-module-dock__link\.is-active::after/);
-  assert.match(appCss, /height:\s*26px;/);
+  assert.match(appCss, /\.desktop-module-dock__link\.is-active::after\s*\{[\s\S]*inset-inline-end:\s*0;[\s\S]*height:\s*24px;/);
   assert.match(responsiveCss, /@media \(max-width:\s*820px\)[\s\S]*\.desktop-module-dock \{ display:\s*none; \}/);
   assert.match(responsiveCss, /\.app-shell__main \{[^}]*padding-inline-start:\s*0;/);
   assert.match(mobileNavigation, /MOBILE_PRIMARY_NAVIGATION/);
@@ -253,6 +265,7 @@ test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kemba
   assert.match(source, /FiCheckCircle/);
   assert.match(source, /to: "\/kategori", label: "Kategori"/);
   assert.match(source, /to: "\/rekonsiliasi", label: "Cocokkan saldo"/);
+  assert.match(source, /to: "\/notifikasi", label: "Notifikasi"/);
   assert.match(source, /to: "\/anggota", label: "Anggota"[\s\S]*ownerOnly: true/);
   assert.match(source, /label: "Perencanaan"/);
   assert.match(source, /to: "\/perencanaan", label: "Perencanaan"/);
@@ -264,7 +277,9 @@ test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kemba
   assert.match(source, /label: "Kontrol saldo"/);
   assert.match(source, /items: pickNavigation\("\/rekonsiliasi"\)/);
   assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
-  assert.doesNotMatch(source, /label: "Kelola"/);
+  assert.match(source, /label: "Aplikasi"[\s\S]*items: pickNavigation\("\/notifikasi", "\/pengaturan"\)/);
+  const mobileSecondaryBlock = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
+  assert.doesNotMatch(mobileSecondaryBlock, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
   assert.match(source, /pickNavigation\("\/", "\/transaksi", "\/laporan"\)/);
   assert.doesNotMatch(source, /PRIMARY_NAVIGATION\[\d+\]/);
@@ -282,7 +297,10 @@ test("responsive mobile tidak menyembunyikan two-column-grid dan breakpoint semp
   const width580 = source.indexOf("@media (max-width: 580px)");
   const width340 = source.indexOf("@media (max-width: 340px)");
   assert.ok(width820 >= 0 && width680 > width820 && width580 > width680 && width340 > width580, "Breakpoint global harus terurut 820px → 680px → 580px → 340px.");
-  assert.match(settings, /@media \(max-width: 42rem\)[\s\S]*\.settingsListRow \{[^}]*min-height:\s*4\.15rem;/);
+  const mobileSettingsBlock = settings.match(/@media \(max-width: 820px\) \{([\s\S]*?)\n\}/)?.[1] || "";
+  const settingsRowMinHeight = mobileSettingsBlock.match(/\.settingsListRow \{[^}]*min-height:\s*([0-9.]+)rem;/)?.[1];
+  assert.ok(settingsRowMinHeight, "Breakpoint mobile canonical harus mendefinisikan min-height row Pengaturan.");
+  assert.ok(Number(settingsRowMinHeight) >= 2.75, `Hit target row Pengaturan mobile harus >=44px; aktual ${settingsRowMinHeight}rem.`);
   assert.match(settings, /@media \(max-width: 42rem\)[\s\S]*\.dataStorageGrid \{[^}]*grid-template-columns:\s*1fr;/);
   assert.match(source.slice(width340), /:root \{ --mobile-page-gutter:\s*12px; --mobile-card-padding:\s*14px; \}/);
 });

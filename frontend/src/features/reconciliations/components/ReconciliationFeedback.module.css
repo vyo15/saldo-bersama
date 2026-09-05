@@ -40,7 +40,7 @@
 .resultFooter { width: 100%; margin-top: auto; padding-top: 1.35rem; display: grid; gap: 9px; }
 .resultReview { width: 100%; min-height: 3rem; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface-elevated); color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .resultReview:focus-visible,
-.resultDone:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 40%, transparent); outline-offset: 2px; }
+.resultDone:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .resultDone { width: 100%; min-height: 3rem; border: 0; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, white), var(--primary)); color: var(--on-primary); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-bold); cursor: pointer; box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 16%, transparent); }
 .resultFooter small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
 

@@ -17,29 +17,25 @@ const accounts = [
 
 test("rekening sumber menyembunyikan saldo nol tanpa menghilangkan rekening terpilih", () => {
   const expense = sourceAccountPicker({ accounts, transactionType: TRANSACTION_TYPES.EXPENSE });
-  assert.deepEqual(expense.visible.map((item) => item.account_id), ["a1", "a3", "a4"]);
-  assert.equal(expense.hiddenCount, 1);
+  assert.deepEqual(expense.map((item) => item.account_id), ["a1", "a3", "a4"]);
 
   const selectedZero = sourceAccountPicker({ accounts, transactionType: TRANSACTION_TYPES.EXPENSE, selectedAccountId: "a2" });
-  assert.equal(selectedZero.visible[0].account_id, "a2");
+  assert.equal(selectedZero[0].account_id, "a2");
 
   const transfer = sourceAccountPicker({ accounts, transactionType: TRANSACTION_TYPES.TRANSFER });
-  assert.deepEqual(transfer.visible.map((item) => item.account_id), ["a1", "a4"]);
-  assert.equal(transfer.hiddenCount, 2);
+  assert.deepEqual(transfer.map((item) => item.account_id), ["a1", "a4"]);
 
   const adjustment = sourceAccountPicker({ accounts, transactionType: TRANSACTION_TYPES.ADJUSTMENT });
-  assert.deepEqual(adjustment.visible.map((item) => item.account_id), ["a1", "a2", "a3", "a4"]);
+  assert.deepEqual(adjustment.map((item) => item.account_id), ["a1", "a2", "a3", "a4"]);
 });
 
-test("rekening sumber memprioritaskan rekening yang terakhir dipakai dan mendukung pencarian", () => {
+test("rekening sumber memprioritaskan rekening yang terakhir dipakai tanpa jalur search/show-all terpisah", () => {
   const recentTransactions = [
     { transaction_type: "expense", source_account_id: "a3" },
     { transaction_type: "expense", source_account_id: "a1" },
   ];
   const ranked = sourceAccountPicker({ accounts, transactionType: TRANSACTION_TYPES.EXPENSE, recentTransactions });
-  assert.deepEqual(ranked.visible.map((item) => item.account_id), ["a3", "a1", "a4"]);
-  const searched = sourceAccountPicker({ accounts, transactionType: TRANSACTION_TYPES.EXPENSE, showAll: true, query: "kosong" });
-  assert.deepEqual(searched.visible.map((item) => item.account_id), ["a2"]);
+  assert.deepEqual(ranked.map((item) => item.account_id), ["a3", "a1", "a4"]);
 });
 
 test("kategori sering dipakai hanya memakai histori rekening sumber yang sama", () => {

@@ -43,12 +43,12 @@
   inset-inline-start: 0;
   top: 50%;
   z-index: 80;
-  --desktop-dock-width: 108px;
-  --desktop-dock-nav-left: 17px;
+  --desktop-dock-width: 92px;
+  --desktop-dock-nav-left: 12px;
   --desktop-dock-link-offset: 4px;
   --desktop-dock-flyout-gap: 10px;
   width: var(--desktop-dock-width);
-  height: clamp(480px, 68dvh, 600px);
+  height: clamp(680px, 78dvh, 720px);
   transform: translateY(-50%);
   filter: drop-shadow(14px 12px 26px color-mix(in srgb, var(--primary-deep) 25%, transparent));
   pointer-events: none;
@@ -69,26 +69,26 @@
   inset-inline-start: var(--desktop-dock-nav-left);
   top: 50%;
   bottom: auto;
-  width: 56px;
+  width: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
+  gap: 4px;
   pointer-events: auto;
   transform: translateY(-50%);
 }
 
 .desktop-module-dock__link {
   position: relative;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border-radius: 15px;
+  border-radius: 14px;
   color: var(--on-hero-soft);
   background: transparent;
   transition: color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard);
@@ -96,9 +96,9 @@
 
 .desktop-module-dock__link svg {
   display: block;
-  width: 21px;
-  height: 21px;
-  flex: 0 0 21px;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
 }
 
 .desktop-module-dock__link::before {
@@ -150,10 +150,10 @@
 .desktop-module-dock__link.is-active::after {
   content: "";
   position: absolute;
-  inset-inline-end: -5px;
+  inset-inline-end: 0;
   top: 50%;
   width: 3px;
-  height: 26px;
+  height: 24px;
   border-radius: 999px;
   background: var(--secondary);
   transform: translateY(-50%);
@@ -161,9 +161,9 @@
 
 .desktop-module-dock__group {
   position: relative;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
 }
 
 .desktop-module-dock__group-trigger {
@@ -321,49 +321,25 @@
   .desktop-app-header { padding-inline-start: 108px; }
 
   .desktop-module-dock {
-    --desktop-dock-width: 96px;
-    --desktop-dock-nav-left: 15px;
+    --desktop-dock-width: 92px;
+    --desktop-dock-nav-left: 12px;
     --desktop-dock-link-offset: 4px;
     width: var(--desktop-dock-width);
-    height: clamp(440px, 66dvh, 540px);
-  }
-
-  .desktop-module-dock__navigation {
-    width: 52px;
-    gap: 10px;
-  }
-
-  .desktop-module-dock__link {
-    width: 44px;
-    height: 44px;
-    flex-basis: 44px;
-    border-radius: 14px;
-  }
-
-  .desktop-module-dock__group {
-    width: 44px;
-    height: 44px;
-    flex-basis: 44px;
-  }
-
-  .desktop-module-dock__link svg {
-    width: 20px;
-    height: 20px;
+    height: clamp(660px, 78dvh, 700px);
   }
 }
+
 
 @media (max-height: 720px) and (min-width: 821px) {
   .desktop-module-dock {
-    height: min(460px, calc(100dvh - 88px));
+    height: calc(100dvh - 24px);
   }
 
   .desktop-module-dock__navigation {
-    top: 50%;
-    bottom: auto;
-    gap: 10px;
-    transform: translateY(-50%);
+    gap: 2px;
   }
 }
+
 
 @media (prefers-reduced-motion: reduce) {
   .desktop-module-dock__flyout { animation: none; }

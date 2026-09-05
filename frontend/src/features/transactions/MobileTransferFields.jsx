@@ -1,74 +1,46 @@
-import { FiAlertTriangle, FiArrowRight, FiCalendar, FiChevronDown, FiCreditCard } from "react-icons/fi";
+import { FiAlertTriangle, FiArrowRight, FiCalendar, FiChevronRight, FiCreditCard } from "react-icons/fi";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
-import { accountDisplayLabel, accountProviderLabel } from "../../shared/presentation/account.js";
+import { accountProviderLabel } from "../../shared/presentation/account.js";
 import styles from "./MobileTransferFields.module.css";
 
 const accountBalance = (accountBalances, accountId) => accountBalances.find((item) => item.account_id === accountId) || null;
 
-const accountBalanceLabel = (accountBalances, accountId) => {
+const accountBalanceLabel = (accountBalances, accountId, mode) => {
   const balance = accountBalance(accountBalances, accountId);
   if (!balance) return "Saldo belum tersedia";
-  return `Saldo ${formatRupiah(balance.balance || 0)} · tersedia ${formatRupiah(balance.available_balance ?? balance.balance ?? 0)}`;
+  if (mode === "available") return `Tersedia ${formatRupiah(balance.available_balance ?? balance.balance ?? 0)}`;
+  return `Saldo ${formatRupiah(balance.balance || 0)}`;
 };
 
-const AccountIdentity = ({ account, accountBalances }) => (
+const AccountIdentity = ({ account, accountBalances, balanceMode }) => (
   <span className={styles.accountCopy}>
     <strong>{String(account.account_name || account.name || "Rekening")}</strong>
-    <small>{accountProviderLabel(account)} · {accountBalanceLabel(accountBalances, account.account_id)}</small>
+    <small>{accountProviderLabel(account)} · {accountBalanceLabel(accountBalances, account.account_id, balanceMode)}</small>
   </span>
 );
 
-const SourceAccount = ({ accounts, accountBalances, form, onSourceAccountChange, errors, intentLocked }) => {
-  const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
-  return (
-    <section className={styles.section}>
-      <span className={styles.sectionLabel}>Dari rekening</span>
-      <label className={styles.sourceCard} htmlFor="mobile-transfer-source-account">
-        <span className={styles.accountIcon} aria-hidden="true"><FiCreditCard /></span>
-        {source ? <AccountIdentity account={source} accountBalances={accountBalances} /> : <span className={styles.accountCopy}><strong>Pilih rekening sumber</strong><small>Rekening aktif yang dapat bertransaksi</small></span>}
-        <FiChevronDown className={styles.chevron} aria-hidden="true" />
-        <select
-          id="mobile-transfer-source-account"
-          value={form.source_account_id}
-          onChange={(event) => onSourceAccountChange(event.target.value)}
-          aria-invalid={Boolean(errors.source_account_id)}
-          disabled={intentLocked}
-        >
-          <option value="">Pilih rekening</option>
-          {accounts.map((account) => <option key={account.account_id} value={account.account_id}>{accountDisplayLabel(account)}</option>)}
-        </select>
-      </label>
-      {errors.source_account_id ? <small className={styles.error}>{errors.source_account_id}</small> : null}
-    </section>
-  );
-};
-
-const DestinationAccounts = ({ accounts, accountBalances, form, update, errors, intentLocked }) => (
-  <fieldset className={styles.destinationFieldset} disabled={intentLocked}>
-    <legend className={styles.sectionLabel}>Ke rekening</legend>
-    {accounts.length ? (
-      <div className={styles.destinationScroller}>
-        {accounts.map((account) => (
-          <label className={styles.destinationOption} key={account.account_id}>
-            <input
-              type="radio"
-              name="mobile-transfer-destination"
-              value={account.account_id}
-              checked={form.destination_account_id === account.account_id}
-              onChange={() => update("destination_account_id", account.account_id)}
-            />
-            <span className={styles.destinationCard}>
-              <span className={styles.destinationIcon} aria-hidden="true"><FiCreditCard /></span>
-              <AccountIdentity account={account} accountBalances={accountBalances} />
-            </span>
-          </label>
-        ))}
-      </div>
-    ) : <div className={styles.emptyDestination}>Tidak ada rekening tujuan aktif yang kompatibel untuk transfer ini.</div>}
-    {errors.destination_account_id ? <small className={styles.error}>{errors.destination_account_id}</small> : null}
-  </fieldset>
+const AccountPickerRow = ({ id, label, account, accountBalances, balanceMode, placeholder, helper, onClick, error, disabled }) => (
+  <section className={styles.section}>
+    <span className={styles.sectionLabel}>{label}</span>
+    <button
+      id={id}
+      className={styles.accountPicker}
+      type="button"
+      onClick={onClick}
+      aria-invalid={Boolean(error)}
+      aria-describedby={error ? `${id}-error` : undefined}
+      disabled={disabled}
+    >
+      <span className={styles.accountIcon} aria-hidden="true"><FiCreditCard /></span>
+      {account
+        ? <AccountIdentity account={account} accountBalances={accountBalances} balanceMode={balanceMode} />
+        : <span className={styles.accountCopy}><strong>{placeholder}</strong><small>{helper}</small></span>}
+      <FiChevronRight className={styles.chevron} aria-hidden="true" />
+    </button>
+    {error ? <small id={`${id}-error`} className={styles.error}>{error}</small> : null}
+  </section>
 );
 
 const TransferNote = ({ form, update, intentLocked }) => (
@@ -84,6 +56,10 @@ const TransferNote = ({ form, update, intentLocked }) => (
       maxLength="250"
       value={form.description}
       onChange={(event) => update("description", event.target.value)}
+      onInput={(event) => {
+        event.currentTarget.style.height = "auto";
+        event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 130)}px`;
+      }}
       placeholder="Contoh: Pindah saldo untuk kebutuhan bulanan"
       disabled={intentLocked}
     />
@@ -129,6 +105,7 @@ const TransferDate = ({ form, update, errors, intentLocked }) => (
         <small>Tanggal</small>
         <strong>{formatDateLongIndonesia(form.transaction_date) || "Pilih tanggal"}</strong>
       </span>
+      <FiChevronRight className={styles.chevron} aria-hidden="true" />
       <input
         id="mobile-transfer-date"
         type="date"
@@ -142,20 +119,38 @@ const TransferDate = ({ form, update, errors, intentLocked }) => (
   </section>
 );
 
+const TransferImpactValue = ({ label, value, delta, tone }) => (
+  <span className={styles.impactValue}>
+    <span>
+      <small>{label}</small>
+      <b>{formatRupiah(value)}</b>
+    </span>
+    <strong className={tone === "negative" ? styles.negativeDelta : styles.positiveDelta}>
+      {tone === "negative" ? "−" : "+"}{formatRupiah(Math.abs(delta))}
+    </strong>
+  </span>
+);
+
 const ImpactPreview = ({ impact }) => {
   if (!impact || Number(impact.amount || 0) <= 0 || !impact.source || !impact.destination) return null;
   return (
     <section className={styles.impact} aria-live="polite">
-      <div className={styles.impactHead}>
-        <span>Preview dampak saldo</span>
-        <strong>Total aset tetap</strong>
-      </div>
+      <span className={styles.impactLabel}>Setelah transfer</span>
       <div className={styles.impactRoute}>
-        <span><small>{impact.source.name}</small><b>{formatRupiah(impact.source.balance || 0)} → {formatRupiah(impact.sourceAfter)}</b><small>Dana tersedia {formatRupiah(impact.sourceAvailable)} → {formatRupiah(impact.sourceAvailableAfter)}</small></span>
-        <FiArrowRight aria-hidden="true" />
-        <span><small>{impact.destination.name}</small><b>{formatRupiah(impact.destination.balance || 0)} → {formatRupiah(impact.destinationAfter)}</b><small>Dana tersedia {formatRupiah(impact.destinationAvailable)} → {formatRupiah(impact.destinationAvailableAfter)}</small></span>
+        <TransferImpactValue
+          label={impact.source.name}
+          value={impact.sourceAfter}
+          delta={Number(impact.sourceAfter || 0) - Number(impact.source.balance || 0)}
+          tone="negative"
+        />
+        <TransferImpactValue
+          label={impact.destination.name}
+          value={impact.destinationAfter}
+          delta={Number(impact.destinationAfter || 0) - Number(impact.destination.balance || 0)}
+          tone="positive"
+        />
       </div>
-      <p>Transfer memakai dana yang belum dialokasikan. Dana di dalam alokasi tidak ikut terpakai.</p>
+      <p>Total aset tetap. Transfer memakai dana yang belum dialokasikan dari rekening sumber.</p>
     </section>
   );
 };
@@ -175,23 +170,50 @@ const MobileTransferFields = ({
   accounts,
   accountBalances,
   compatibleDestinationAccounts,
-  onSourceAccountChange,
+  openMobileSelection,
   impact,
   confirmation,
   submitState,
   submitting,
   outcomeUnknown,
-}) => (
-  <div className={styles.composer}>
-    <SourceAccount accounts={accounts} accountBalances={accountBalances} form={form} onSourceAccountChange={onSourceAccountChange} errors={errors} intentLocked={outcomeUnknown} />
-    <DestinationAccounts accounts={compatibleDestinationAccounts} accountBalances={accountBalances} form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
-    <TransferNote form={form} update={update} intentLocked={outcomeUnknown} />
-    <TransferAmount form={form} update={update} errors={errors} amountRef={amountRef} submitting={submitting} confirmation={confirmation} intentLocked={outcomeUnknown} />
-    <TransferDate form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
-    <ImpactPreview impact={impact} />
-    <TransferStatus confirmation={confirmation} submitState={submitState} />
-    <p className={styles.guard}>{outcomeUnknown ? "Data transfer dikunci sementara. Tekan tombol transfer lagi untuk mencoba request yang sama; jangan ubah nominal atau rekening sampai server memberi hasil definitif." : "Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer dan aplikasi menyegarkan data rekening."}</p>
-  </div>
-);
+}) => {
+  const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
+  const destination = compatibleDestinationAccounts.find((item) => item.account_id === form.destination_account_id) || null;
+
+  return (
+    <div className={styles.composer}>
+      <AccountPickerRow
+        id="source-account"
+        label="Dari rekening"
+        account={source}
+        accountBalances={accountBalances}
+        balanceMode="available"
+        placeholder="Pilih rekening sumber"
+        helper="Hanya rekening dengan dana tersedia yang dapat dipakai"
+        onClick={() => openMobileSelection("source-account")}
+        error={errors.source_account_id}
+        disabled={outcomeUnknown}
+      />
+      <AccountPickerRow
+        id="destination-account"
+        label="Ke rekening"
+        account={destination}
+        accountBalances={accountBalances}
+        balanceMode="balance"
+        placeholder="Pilih rekening tujuan"
+        helper={compatibleDestinationAccounts.length ? "Pilih rekening penerima" : "Tidak ada rekening tujuan yang kompatibel"}
+        onClick={() => openMobileSelection("destination-account")}
+        error={errors.destination_account_id}
+        disabled={outcomeUnknown || compatibleDestinationAccounts.length === 0}
+      />
+      <TransferNote form={form} update={update} intentLocked={outcomeUnknown} />
+      <TransferAmount form={form} update={update} errors={errors} amountRef={amountRef} submitting={submitting} confirmation={confirmation} intentLocked={outcomeUnknown} />
+      <TransferDate form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
+      <ImpactPreview impact={impact} />
+      <TransferStatus confirmation={confirmation} submitState={submitState} />
+      <p className={styles.guard}>{outcomeUnknown ? "Data transfer dikunci sementara. Tekan tombol transfer lagi untuk mencoba request yang sama; jangan ubah nominal atau rekening sampai server memberi hasil definitif." : "Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer dan aplikasi menyegarkan data rekening."}</p>
+    </div>
+  );
+};
 
 export default MobileTransferFields;

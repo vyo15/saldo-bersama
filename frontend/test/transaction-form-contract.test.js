@@ -5,7 +5,10 @@ import test from "node:test";
 const source = () => Promise.all([
   "../src/features/transactions/TransactionForm.jsx",
   "../src/features/transactions/transactionFormController.js",
+  "../src/features/transactions/transactionFormPresentation.js",
   "../src/features/transactions/components/TransactionFields.jsx",
+  "../src/features/transactions/MobileTransactionFields.jsx",
+  "../src/features/transactions/MobileTransactionSelectionView.jsx",
   "../src/features/transactions/components/TransactionImpactPreview.jsx",
   "../src/features/transactions/components/TransactionPostSaveModal.jsx",
 ].map((relative) => readFile(new URL(relative, import.meta.url), "utf8"))).then((parts) => parts.join("\n"));
@@ -14,7 +17,8 @@ test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori waji
   const text = await source();
   const expenseOptions = text.match(/\{ value: TRANSACTION_TYPES\.EXPENSE, label: "Pengeluaran"/g) || [];
   assert.equal(expenseOptions.length, 1);
-  assert.equal((text.match(/name="transaction_type"/g) || []).length, 1, "Jenis transaksi harus memiliki satu selector canonical.");
+  assert.equal((text.match(/name="transaction_type"/g) || []).length, 2, "Desktop dan mobile boleh memiliki presentation selector terpisah, tetapi keduanya harus memakai opsi canonical yang sama.");
+  assert.match(text, /TRANSACTION_TYPE_OPTIONS/);
   assert.match(text, /legend="Jenis transaksi"/);
   assert.match(text, /!\[TRANSACTION_TYPES\.TRANSFER, TRANSACTION_TYPES\.ADJUSTMENT\]\.includes\(form\.transaction_type\)/);
   assert.match(text, /form\.transaction_type === "refund" && item\.transaction_type === "expense"/);
@@ -32,7 +36,7 @@ test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail ta
   assert.doesNotMatch(text, /\{ value: "autodebit", label: "Auto-debit" \}/, "Auto-debit tidak boleh menjadi pilihan transaksi manual baru.");
   assert.match(text, /form\.payment_method === "autodebit"[\s\S]*hidden>Auto-debit \(data lama\)/, "Nilai Auto-debit lama tetap harus dapat dibaca tanpa menjadi opsi baru.");
   assert.match(text, /accountDisplayLabel/);
-  assert.equal((text.match(/accountDisplayLabel\(item\)/g) || []).length, 2, "Rekening sumber dan tujuan harus memakai label kepemilikan yang konsisten.");
+  assert.ok((text.match(/accountDisplayLabel\(item\)/g) || []).length >= 2, "Rekening sumber/tujuan harus memakai label kepemilikan canonical pada presentation yang menampilkan daftar.");
   assert.doesNotMatch(text, /includeOwner: false/);
   assert.match(text, /item\.source_account_id === sourceAccount\.account_id && item\.can_record_expense === true/);
   assert.doesNotMatch(text, /filterByAssigneeAccess|canUseAssignedItem/);
@@ -115,9 +119,10 @@ test("pemasukan tetap memakai rekening tujuan tanpa helper gajian permanen", asy
 });
 
 test("presentasi transfer mobile tetap memakai mutation, idempotency, dan validator canonical", async () => {
-  const [form, mobileFields, action, modal] = await Promise.all([
+  const [form, mobileFields, mobileSelection, action, modal] = await Promise.all([
     source(),
     readFile(new URL("../src/features/transactions/MobileTransferFields.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransactionSelectionView.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/features/accounts/components/MobileAccountTransferAction.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/Modal.jsx", import.meta.url), "utf8"),
   ]);
@@ -138,11 +143,45 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(form, /<MobileTransferFields \{\.\.\.fields\} \/>/);
   assert.doesNotMatch(mobileFields, /createTransaction|updateTransaction|createIdempotencyKey|transactions\.api|apiClient/);
   assert.match(mobileFields, /type="submit"/);
+  assert.match(mobileFields, /openMobileSelection\("source-account"\)/);
+  assert.match(mobileFields, /openMobileSelection\("destination-account"\)/);
+  assert.doesNotMatch(mobileFields, /<select|type="radio"/, "transfer mobile tidak boleh kembali ke native dropdown/horizontal radio account picker");
+  assert.match(mobileSelection, /sourceAccountPicker/);
+  assert.match(mobileSelection, /compatibleDestinationAccounts/);
   assert.match(mobileFields, /Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer/);
   assert.match(mobileFields, /Transfer memakai dana yang belum dialokasikan/);
-  assert.match(form, /Dana tersedia \{impact\.source\.name\}/);
+  assert.match(mobileFields, /Setelah transfer/);
+  assert.match(mobileFields, /Total aset tetap\. Transfer memakai dana yang belum dialokasikan/);
   assert.match(modal, /closeIcon: CloseIcon = FiX/);
   assert.match(modal, /closeLabel = "Tutup dialog"/);
+});
+
+
+test("composer mobile memakai grouped metadata dan same-sheet selection tanpa nested dropdown", async () => {
+  const [form, mobile, selection, presentation] = await Promise.all([
+    readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransactionFields.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransactionSelectionView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/transactionFormPresentation.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(form, /MobileTransactionFields/);
+  assert.match(form, /MobileTransactionSelectionView/);
+  assert.match(form, /mobileSelection/);
+  assert.match(form, /requestModalClose = mobileSelection \? closeMobileSelection : onClose/);
+  assert.match(form, /closeIcon: FiChevronLeft/);
+  assert.match(mobile, /styles\.detailGroup/);
+  assert.match(mobile, /openMobileSelection\(p\.isIncome \? "destination-account" : "source-account"\)/);
+  assert.match(mobile, /openMobileSelection\("category"\)/);
+  assert.match(mobile, /openMobileSelection\("envelope"\)/);
+  assert.doesNotMatch(mobile, /<select/, "composer mobile default tidak memakai native select");
+  assert.match(selection, /id="mobile-category-search"/);
+  assert.match(selection, /frequentCategories/);
+  assert.match(selection, /sourceAccountPicker/);
+  assert.doesNotMatch(selection, /showAll|Cari rekening|query:/);
+  assert.match(presentation, /\{ value: "", label: "Belum dipilih" \}/);
+  assert.match(presentation, /Auto-debit \(data lama\)/);
+  assert.match(mobile, /Math\.min\(event\.currentTarget\.scrollHeight, 130\)/);
 });
 
 
@@ -180,7 +219,7 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   ]);
   assert.match(form, /sourceAccountPicker/);
   assert.doesNotMatch(form, /placeholder="Cari rekening"|Cari rekening|Lihat semua/, "Rekening sumber tidak lagi memakai search/show-all yang memenuhi form.");
-  assert.match(form, /picker\.visible\.map/);
+  assert.match(form, /picker\.map/);
   assert.match(form, /Belum ada rekening sumber dengan dana yang dapat digunakan/);
   assert.match(form, /frequentCategories/);
   assert.match(form, /Sering dipakai/);
@@ -189,7 +228,8 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   assert.match(form, /allocationMode !== "auto"/);
   assert.match(smart, /Dipilih dari Kebutuhan/);
   assert.match(form, /earlyFundsWarning/);
-  assert.match(form, /Lihat dampak lengkap/);
+  assert.match(form, /Setelah transaksi/);
+  assert.doesNotMatch(form, /Lihat dampak lengkap/);
   assert.match(form, /label: "Tambah lagi"/);
   assert.match(form, /idempotencyKeyRef\.current = createTransactionIntentKey\(\)/);
   assert.match(smart, /sourceAccountHasFunds/);

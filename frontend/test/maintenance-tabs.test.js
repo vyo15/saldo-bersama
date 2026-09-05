@@ -5,16 +5,16 @@ import test from "node:test";
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("pengaturan menggabungkan reset ke satu menu pemeliharaan dengan dua tab terisolasi", async () => {
-  const [app, layout, maintenance] = await Promise.all([
+  const [app, navigation, maintenance] = await Promise.all([
     read("src/app/App.jsx"),
-    read("src/features/settings/SettingsPage.jsx"),
+    read("src/features/settings/settingsNavigation.js"),
     read("src/features/settings/MaintenanceDataPage.jsx"),
   ]);
 
   assert.match(app, /path="pemeliharaan" element=\{routeElement\(MaintenanceDataPage\)\}/);
-  assert.match(layout, /label: "Pemeliharaan data"/);
-  assert.match(layout, /to: "\/pengaturan\/pemeliharaan"/);
-  assert.doesNotMatch(layout, /to: "\/pengaturan\/reset-data"|to: "\/pengaturan\/reset-semua"/);
+  assert.match(navigation, /label: "Pemeliharaan data"/);
+  assert.match(navigation, /to: "\/pengaturan\/pemeliharaan"/);
+  assert.doesNotMatch(navigation, /to: "\/pengaturan\/reset-data"|to: "\/pengaturan\/reset-semua"/);
   assert.match(app, /path="reset-data" element=\{<Navigate to="\/pengaturan\/pemeliharaan" replace \/>\}/);
   assert.match(app, /path="reset-semua" element=\{<Navigate to="\/pengaturan\/pemeliharaan\?tab=semua" replace \/>\}/);
 
@@ -40,6 +40,7 @@ test("checklist destructive menyimpan nilai checkbox sebelum state updater dan t
   assert.match(modal, /const nextChecked = event\.currentTarget\.checked;/);
   assert.match(modal, /itemIndex === index \? nextChecked : Boolean\(current\[itemIndex\]\)/);
   assert.doesNotMatch(modal, /setCheckedItems\(\(current\)[^\n]*event\.target\.checked/);
+  assert.doesNotMatch(modal, /role="switch"/);
 
   const checkboxRule = componentsCss.match(/\.confirmation-checklist__item input \{[^}]+\}/)?.[0] || "";
   assert.match(checkboxRule, /clip-path: inset\(50%\)/);

@@ -28,7 +28,7 @@
 .hero { color: color-mix(in srgb, var(--on-hero) 72%, transparent); }
 .hero:hover,
 .hero:focus-visible { color: var(--account-mobile-accent, var(--primary)); background: color-mix(in srgb, var(--on-hero) 8%, transparent); }
-.hero:focus-visible { outline-color: color-mix(in srgb, var(--account-mobile-accent, var(--primary)) 42%, transparent); }
+.hero:focus-visible { outline-color: var(--account-mobile-accent, var(--focus-ring)); }
 
 .content {
   display: grid;

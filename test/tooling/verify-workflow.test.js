@@ -29,12 +29,13 @@ test("verify memakai Node 24 canonical", () => {
 
 test("verify menjalankan full gate sekali tanpa alias internal atau backend test ganda", () => {
   assert.deepEqual(VERIFY_STEPS.map((step) => step.id), [
-    "source", "lint", "frontend-test", "build", "build-budget", "backend-coverage",
+    "source", "lint", "frontend-test", "build", "build-budget", "browser-smoke", "backend-coverage",
   ]);
   assert.equal(VERIFY_STEPS.some((step) => step.args.includes("check")), false);
   assert.equal(VERIFY_STEPS.some((step) => step.args.includes("test:guard")), false);
   assert.equal(VERIFY_STEPS.filter((step) => step.args.some((arg) => arg.endsWith("run-backend-tests.mjs"))).length, 1);
   assert.equal(VERIFY_STEPS.find((step) => step.id === "backend-coverage")?.args.includes("--coverage"), true);
+  assert.deepEqual(VERIFY_STEPS.find((step) => step.id === "browser-smoke")?.args, ["scripts/browser-smoke.mjs"]);
 
   const executed = [];
   let dependencyChecks = 0;
@@ -50,6 +51,16 @@ test("verify menjalankan full gate sekali tanpa alias internal atau backend test
   assert.equal(dependencyChecks, 1);
   assert.deepEqual(executed, VERIFY_STEPS.map((step) => step.id));
   assert.match(logs.at(-1), /PASS/);
+});
+
+test("browser smoke memeriksa rendered login tanpa auth bypass atau dependency test tambahan", async () => {
+  const browser = await readFile(new URL("../../scripts/browser-smoke.mjs", import.meta.url), "utf8");
+  for (const viewport of ["[320, 568]", "[390, 844]", "[820, 900]", "[821, 900]", "[940, 900]", "[941, 900]", "[1440, 900]"]) assert.match(browser, new RegExp(viewport.replace(/[\[\]]/g, "\\$&")));
+  assert.match(browser, /scrollWidth - root\.clientWidth/);
+  assert.match(browser, /prefers-reduced-motion/);
+  assert.match(browser, /wcag-text-spacing-smoke/);
+  assert.match(browser, /\/api\/session/);
+  assert.doesNotMatch(browser, /firebaseIdToken|mock(?:ed)?User|testSessionCookie/i);
 });
 
 test("verify berhenti pada step pertama yang gagal", () => {

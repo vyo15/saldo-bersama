@@ -79,12 +79,14 @@ test("history transaksi mobile memakai periode dan grafik compact tanpa judul bo
   assert.doesNotMatch(mobileStyles, /\.overview\s*\{[^}]*border:/);
 });
 
-test("pengaturan memakai route internal dan tidak memuat semua domain pada ringkasan", async () => {
-  const [app, overview, layout, notifications, integrations, members, presentation] = await Promise.all([
+test("pengaturan memakai route internal, desktop workspace khusus, dan mobile grouped-list", async () => {
+  const [app, overview, layout, navigation, notifications, settingsStyles, integrations, members, presentation] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/features/settings/SettingsPage.jsx"),
     read("src/features/settings/SettingsLayout.jsx"),
+    read("src/features/settings/settingsNavigation.js"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
+    read("src/features/settings/Settings.module.css"),
     read("src/features/settings/GoogleIntegrationsPage.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/settings/settingsPresentation.js"),
@@ -96,19 +98,40 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
   assert.match(app, /<Route path="anggota" element=\{<Navigate to="\/anggota" replace \/>\} \/>/);
   assert.match(layout, /SETTINGS_ROUTE_META/);
   assert.match(layout, /SettingsDetailHeader/);
+  assert.match(layout, /SettingsDesktopNavigation/);
+  assert.match(layout, /SettingsDesktopHeader/);
+  assert.match(layout, /desktopSettingsCategoriesForRole/);
+  assert.match(layout, /desktopSettingsCategoryForPath/);
+  assert.match(layout, /settingsItemMatchesPath/);
   assert.match(layout, /useLocation/);
   assert.match(layout, /settingsMetaForPath\(normalizedPath\)/);
   for (const path of ["notifikasi", "perangkat", "integrasi", "data", "export", "import", "backup", "pemulihan", "pemeliharaan", "periode", "audit"]) {
     assert.match(layout, new RegExp(`"/pengaturan/${path}"\\s*:`));
   }
   assert.match(layout, /<PageHeader title=\{meta\.title\} description=\{meta\.description\} help=\{meta\.help\} \/>/);
-  assert.doesNotMatch(layout, /settingsNavigation|ownerOnly/);
+  assert.match(layout, /className=\{styles\.settingsMobileHeader\}/);
+  assert.match(layout, /className=\{styles\.settingsWorkspace\}/);
+  assert.doesNotMatch(layout, /<main\b/);
   assert.doesNotMatch(layout, /pengaturan\/anggota|Akses pengguna/);
+  assert.match(navigation, /MOBILE_SETTINGS_GROUPS/);
+  assert.match(navigation, /DESKTOP_SETTINGS_CATEGORIES/);
+  assert.match(navigation, /label: "Data & cadangan"/);
+  assert.match(navigation, /label: "Pemeliharaan data"/);
+  assert.match(navigation, /label: "Sesi & keamanan"/);
+  assert.match(navigation, /ownerOnly: true/);
+  assert.match(navigation, /DATA_STORAGE_ROUTES/);
   assert.match(overview, /useApiResource\("system\.health"\)/);
+  assert.match(overview, /DesktopSettingsOverview/);
+  assert.match(overview, /MobileSettingsOverview/);
+  assert.match(overview, /MOBILE_SETTINGS_GROUPS/);
   assert.doesNotMatch(overview, /users\.list|audit\.list|archive\.list|periods\.list|integrations\.status/);
-  assert.match(overview, /label: "Data & cadangan"/);
-  assert.match(overview, /label: "Pemeliharaan data"/);
-  assert.match(overview, /ownerOnly: true/);
+  assert.match(settingsStyles, /\.settingsWorkspace\s*\{[\s\S]*grid-template-columns:\s*minmax\(11\.5rem, 13rem\) minmax\(12\.5rem, 14\.5rem\) minmax\(0, 1fr\);/);
+  assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsDesktopCategories,[\s\S]*\.settingsDesktopOverview\s*\{[\s\S]*display:\s*none;/);
+  assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsMobileOverview\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(notifications, /type="checkbox" role="switch"/);
+  assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]\s*\{[\s\S]*appearance:\s*none;[\s\S]*border-radius:\s*var\(--radius-pill\);/);
+  assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]:checked\s*\{[\s\S]*background:\s*var\(--primary\);/);
+  assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]::before/);
   assert.equal((notifications.match(/<h2 id="notification-settings-title">Notifikasi perangkat<\/h2>/g) || []).length, 1);
   assert.equal((integrations.match(/label="Google Sheets"/g) || []).length, 1);
   assert.equal((integrations.match(/label="Google Calendar"/g) || []).length, 1);

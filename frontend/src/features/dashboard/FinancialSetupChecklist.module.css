@@ -7,7 +7,7 @@
 .summary small { color: var(--text-muted); font-size: 12px; }
 .summary > span:last-child { color: var(--text-muted); font-size: 22px; transition: transform var(--motion-control) var(--ease-standard); }
 .details[open] .summary > span:last-child { transform: rotate(90deg); }
-.summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
+.summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .expanded { padding: 0 14px 14px; }
 .expanded > p { margin: 0 0 10px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }

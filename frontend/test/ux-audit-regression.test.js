@@ -1,8 +1,18 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
+
+const collectCssSources = async (directory) => {
+  const result = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
+    if (entry.isDirectory()) result.push(...await collectCssSources(child));
+    else if (entry.isFile() && entry.name.endsWith(".css")) result.push({ path: child.pathname, source: await readFile(child, "utf8") });
+  }
+  return result;
+};
 
 test("Dashboard menampilkan ringkasan Investasi dari contract overview yang benar", async () => {
   const page = await read("src/features/dashboard/DashboardPage.jsx");
@@ -143,4 +153,30 @@ test("tanggal pengajuan transfer ditampilkan sebagai tanggal Indonesia, bukan ra
   const panel = await read("src/features/transactions/TransferRequestsPanel.jsx");
   assert.match(panel, /formatDateLongIndonesia/);
   assert.match(panel, /formatDateLongIndonesia\(payload\.transaction_date\)/);
+});
+
+
+test("root mobile tidak menyembunyikan overflow horizontal atau scrollbar seluruh page", async () => {
+  const responsive = await readFile(new URL("../src/styles/responsive.css", import.meta.url), "utf8");
+  const rootBlock = /html,\s*body\s*\{([^}]*)\}/s.exec(responsive)?.[1] || "";
+  assert.doesNotMatch(rootBlock, /overflow-x:\s*(?:hidden|clip)/);
+  assert.doesNotMatch(rootBlock, /scrollbar-width:\s*none/);
+  assert.doesNotMatch(responsive, /html::?-webkit-scrollbar[\s\S]{0,160}display:\s*none/);
+});
+
+test("nominal finansial kritis tidak memakai ellipsis sebagai fallback responsive", async () => {
+  const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
+  for (const file of cssFiles) {
+    for (const match of file.source.matchAll(/([^{}]*(?:\.money|:global\(\.money\)|masked-money)[^{}]*)\{([^{}]*)\}/gs)) {
+      const selector = match[1];
+      const body = match[2];
+      if (!/(?:\.money|:global\(\.money\)|masked-money)/.test(selector)) continue;
+      assert.doesNotMatch(body, /text-overflow:\s*ellipsis/i, `Nominal tidak boleh ellipsis: ${file.path} ${selector.trim()}`);
+    }
+  }
+});
+
+test("login short-height memiliki fallback scroll vertikal untuk zoom dan viewport pendek", async () => {
+  const mobile = await readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8");
+  assert.match(mobile, /@media \(max-height: 620px\) and \(max-width: 820px\)[\s\S]*\.login-mobile-stage \{[\s\S]*height:\s*auto;[\s\S]*min-height:\s*100dvh;[\s\S]*overflow-y:\s*auto;/);
 });

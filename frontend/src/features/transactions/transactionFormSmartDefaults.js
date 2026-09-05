@@ -2,7 +2,6 @@ import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatRupiah } from "../../domain/money.js";
 
 const asNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
-const normalized = (value) => String(value || "").trim().toLocaleLowerCase("id-ID");
 const periodFromDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value).slice(0, 7) : "";
 const dateInsideEnvelope = (date, item) => !date || (!item.period_start || date >= item.period_start) && (!item.period_end || date <= item.period_end);
 
@@ -22,23 +21,12 @@ const sourceAccountHasFunds = (item, transactionType) => {
   return true;
 };
 
-const accountSearchText = (item) => normalized([
-  item.name,
-  item.account_name,
-  item.account_type,
-  item.owner_name,
-  item.owner_scope,
-].filter(Boolean).join(" "));
-
-export const sourceAccountPicker = ({ accounts = [], transactionType, selectedAccountId = "", showAll = false, query = "", recentTransactions = [] }) => {
+export const sourceAccountPicker = ({ accounts = [], transactionType, selectedAccountId = "", recentTransactions = [] }) => {
   const ranks = accountUsageRank(recentTransactions);
   const baseOrder = new Map(accounts.map((item, index) => [item.account_id, index]));
   const selectedId = String(selectedAccountId || "");
-  const hidden = accounts.filter((item) => item.account_id !== selectedId && !sourceAccountHasFunds(item, transactionType));
-  const normalizedQuery = normalized(query);
-  const visible = accounts
-    .filter((item) => showAll || item.account_id === selectedId || sourceAccountHasFunds(item, transactionType))
-    .filter((item) => item.account_id === selectedId || !normalizedQuery || accountSearchText(item).includes(normalizedQuery))
+  return accounts
+    .filter((item) => item.account_id === selectedId || sourceAccountHasFunds(item, transactionType))
     .sort((left, right) => {
       if (left.account_id === selectedId) return -1;
       if (right.account_id === selectedId) return 1;
@@ -47,7 +35,6 @@ export const sourceAccountPicker = ({ accounts = [], transactionType, selectedAc
       if (leftRank !== rightRank) return leftRank - rightRank;
       return (baseOrder.get(left.account_id) ?? Number.MAX_SAFE_INTEGER) - (baseOrder.get(right.account_id) ?? Number.MAX_SAFE_INTEGER);
     });
-  return { visible, hiddenCount: hidden.length };
 };
 
 export const frequentCategories = ({ recentTransactions = [], sourceAccountId = "", visibleCategories = [], limit = 4 }) => {

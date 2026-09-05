@@ -24,7 +24,7 @@ test("quality workflow menjalankan verify canonical dan verifikasi clean archive
   assert.match(workflow, /git diff --check/);
   assert.match(workflow, /npm ci/);
   assert.match(workflow, /npm run verify/);
-  assert.doesNotMatch(workflow, /npm run (?:check|test:guard|test:browser)/);
+  assert.doesNotMatch(workflow, /npm run (?:check|test:guard)/);
   assert.match(workflow, /npx --yes jscpd@4\.2\.5/);
   assert.match(workflow, /node scripts\/create-clean-archive\.mjs/);
   assert.doesNotMatch(workflow, /npm run zip --/, "CI sudah menjalankan verify sehingga archive tidak boleh mengulang full verification");
@@ -36,6 +36,7 @@ test("tooling kualitas canonical mengekspos command manusia yang ringkas", async
   assert.equal(packageJson.scripts.clean, "node scripts/clean-generated-artifacts.mjs");
   assert.equal(packageJson.scripts["clean:dependencies"], "node scripts/clean-development-dependencies.mjs");
   assert.equal(packageJson.scripts.verify, "node scripts/verify-project.mjs");
+  assert.equal(packageJson.scripts["test:browser"], "node scripts/browser-smoke.mjs");
   assert.equal(packageJson.scripts.zip, "node scripts/verified-clean-archive.mjs");
   assert.equal(packageJson.scripts.postinstall, "node scripts/install-git-hooks.mjs");
   assert.match(packageJson.scripts.lint, /node_modules\/eslint\/bin\/eslint\.js api scripts test/);
@@ -43,7 +44,7 @@ test("tooling kualitas canonical mengekspos command manusia yang ringkas", async
   for (const retired of [
     "check", "test:guard", "validate:source", "build:budget", "lint:backend",
     "audit:production", "audit:all", "check:duplicates", "test:coverage:backend",
-    "env:push:development:settings", "clean:dry-run", "test:browser",
+    "env:push:development:settings", "clean:dry-run",
     "task:check", "task:list", "task:finish",
   ]) assert.equal(packageJson.scripts[retired], undefined, `Script ${retired} harus tetap internal/retired`);
 

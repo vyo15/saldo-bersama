@@ -1,6 +1,6 @@
 import { FiAlertTriangle, FiChevronRight, FiInfo } from "react-icons/fi";
 import { Link } from "react-router";
-import { dashboardAlertGuidance } from "../dashboardPresentation.js";
+import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import styles from "./FinancialAlertList.module.css";
 
 const SeverityIcon = ({ severity }) => severity === "info" ? <FiInfo aria-hidden="true" /> : <FiAlertTriangle aria-hidden="true" />;
@@ -15,7 +15,7 @@ const FinancialAlertList = ({ alerts = [], variant = "default" }) => {
   return (
     <ul className={styles.list} data-variant={variant}>
       {alerts.map((alert) => {
-        const guidance = dashboardAlertGuidance(alert);
+        const guidance = financialAlertGuidance(alert);
         return (
           <li className={styles.item} data-severity={alert.severity} key={alert.id}>
             <span className={styles.icon}><SeverityIcon severity={alert.severity} /></span>
