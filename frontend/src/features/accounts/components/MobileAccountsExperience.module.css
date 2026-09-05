@@ -310,6 +310,40 @@
     backdrop-filter: none;
   }
 
+.mobileStackPickerButton {
+    width: calc(100% - (var(--mobile-page-gutter) * 2));
+    min-height: var(--mobile-control-height);
+    margin: .35rem var(--mobile-page-gutter) .45rem;
+    padding: 0 var(--space-4);
+    position: relative;
+    z-index: 12;
+    border: 1px solid color-mix(in srgb, var(--on-hero) 18%, transparent);
+    border-radius: var(--control-radius);
+    background: color-mix(in srgb, var(--account-mobile-deep-surface) 26%, transparent);
+    color: var(--on-hero);
+    font: inherit;
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition:
+      background-color var(--motion-control) var(--ease-standard),
+      border-color var(--motion-control) var(--ease-standard),
+      color var(--motion-control) var(--ease-standard);
+  }
+
+.mobileStackPickerButton:hover,
+.mobileStackPickerButton:focus-visible {
+    border-color: color-mix(in srgb, var(--primary) 62%, var(--border));
+    background: color-mix(in srgb, var(--on-hero) 9%, transparent);
+    color: var(--primary);
+  }
+
+.mobileStackPickerButton:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--account-mobile-accent) 38%, transparent);
+    outline-offset: 2px;
+  }
+
 .mobileStackIdentity,
 .mobileStackOwner {
     min-width: 0;
@@ -388,6 +422,19 @@
 
 :global(:root[data-theme="light"]) .mobileStackAccountMeta,
 :global(:root[data-theme="light"]) .mobileStackOwnerScope { color: var(--text-muted); }
+
+:global(:root[data-theme="light"]) .mobileStackPickerButton {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+
+:global(:root[data-theme="light"]) .mobileStackPickerButton:hover,
+:global(:root[data-theme="light"]) .mobileStackPickerButton:focus-visible {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
 }
 
 @media (max-width: 420px) {
@@ -405,5 +452,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-.mobileStackCard { scroll-behavior: auto; }
+.mobileStackCard { scroll-behavior: auto; transform-style: flat; }
+.mobileStackPickerButton { transition: none; }
 }

@@ -83,7 +83,7 @@
 }
 
 .loading svg {
-  animation: button-spinner 0.85s linear infinite;
+  animation: button-spinner var(--motion-spinner) linear infinite;
 }
 
 @keyframes button-spinner {
@@ -92,5 +92,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .button { transition: none; }
-  .loading svg { animation-duration: 1.5s; }
+  .loading svg { animation: none; }
 }

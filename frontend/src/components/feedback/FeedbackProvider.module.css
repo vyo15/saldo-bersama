@@ -42,7 +42,7 @@
 }
 
 .processIcon svg { width: 1rem; height: 1rem; }
-.process_submitting .processIcon svg { animation: process-spin 0.85s linear infinite; }
+.process_submitting .processIcon svg { animation: process-spin var(--motion-spinner) linear infinite; }
 .process_success { border-color: color-mix(in srgb, var(--positive) 32%, var(--border)); }
 .process_success .processIcon { background: var(--positive-soft); color: var(--positive); }
 .process_error,
@@ -118,5 +118,5 @@
 @media (prefers-reduced-motion: reduce) {
   .toast,
   .process { animation: none; }
-  .process_submitting .processIcon svg { animation-duration: 1.5s; }
+  .process_submitting .processIcon svg { animation: none; }
 }

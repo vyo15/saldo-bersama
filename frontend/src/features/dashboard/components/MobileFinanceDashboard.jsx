@@ -18,7 +18,7 @@ import Modal from "../../../components/common/Modal.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import ThemeToggle from "../../../components/common/ThemeToggle.jsx";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
-import { accountOwnershipLabel, accountProviderLabel } from "../../../shared/presentation/account.js";
+import { ACCOUNT_AVAILABLE_BALANCE_HINT, accountOwnershipLabel, accountProviderLabel } from "../../../shared/presentation/account.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { dashboardAlertGuidance, formatPeriod } from "../dashboardPresentation.js";
 import FinancialAlertList from "./FinancialAlertList.jsx";
@@ -168,6 +168,7 @@ const MobileAccounts = ({ accounts, balanceVisible }) => (
     <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-accounts-title">Rekening</h2><Link to="/rekening">Lihat semua</Link></div>
     {accounts.length ? (
       <>
+        <p className={dashboardClass("mobile-account-balance-note")}>{ACCOUNT_AVAILABLE_BALANCE_HINT}</p>
         <div className={dashboardClass("mobile-account-scroller")} aria-label="Daftar rekening aktif">
           {accounts.map((account) => <MobileAccountCard key={account.account_id} account={account} balanceVisible={balanceVisible} />)}
         </div>
@@ -221,7 +222,7 @@ const MobileAllocation = ({ allocationSummary, balanceVisible, unallocatedFunds,
 
 const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, displayName, balanceVisible, onToggleBalance, onRefresh, isRefreshing, onOpenTransactionDetail, setupContent }) => {
   const { recentTransactions, categoryLookup, transactionAccountLabel, allocationSummary } = viewModel;
-  return <section className={dashboardClass("mobile-finance-dashboard")} aria-label="Ringkasan keuangan mobile"><h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className={dashboardClass("mobile-finance-content")}><MobileAlerts alerts={overview.alerts} /><MobileQuickActions />{setupContent}<MobileSharedPlan overview={overview} balanceVisible={balanceVisible} /><MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} unallocatedExpenseAmount={overview.unallocatedExpenseAmount} periodKey={overview.periodKey} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /></div></section>;
+  return <section className={dashboardClass("mobile-finance-dashboard")} aria-label="Ringkasan keuangan mobile"><h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1><MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} onRefresh={onRefresh} isRefreshing={isRefreshing} /><div className={dashboardClass("mobile-finance-content")}><MobileAlerts alerts={overview.alerts} />{setupContent}<MobileQuickActions /><MobileSharedPlan overview={overview} balanceVisible={balanceVisible} /><MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} /><MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} /><MobileAllocation allocationSummary={allocationSummary} balanceVisible={balanceVisible} unallocatedFunds={overview.unallocatedFunds} unallocatedCount={overview.unallocatedCount} unallocatedExpenseAmount={overview.unallocatedExpenseAmount} periodKey={overview.periodKey} /><MobileCashFlow cashFlow={overview.cashFlow} balanceVisible={balanceVisible} /><MobileAccounts accounts={overview.accountBalances} balanceVisible={balanceVisible} /></div></section>;
 };
 
 export default MobileFinanceDashboard;

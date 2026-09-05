@@ -1,3 +1,24 @@
+## 5 September 2026 - Redesign Settings grouped-list dan hub data
+- Mengubah `/pengaturan` dari kumpulan kartu menu yang selalu tampil menjadi landing page grouped-list **Umum / Data / Sistem** dengan ringkasan akun + health ringan; nested route sekarang fokus pada konten terpilih dan memakai back-link kontekstual + Info route.
+- Menambahkan hub `/pengaturan/data` untuk Export, Import transaksi, Backup, dan Pemulihan tanpa menggabungkan resource/mutation empat workflow; submenu data kembali ke hub tersebut agar navigasi mobile tidak terasa bertumpuk.
+- Mempertahankan Reset Testing dan Reset Semua sebagai dua flow terisolasi di `/pengaturan/pemeliharaan`; route legacy `/pengaturan/reset-data` dan `/pengaturan/reset-semua` kini redirect ke tab yang sesuai sehingga bookmark lama tetap aman tanpa menduplikasi menu.
+- Memecah kedua panel reset di hub Pemeliharaan dengan `React.lazy` + `Suspense`, sehingga route `/pengaturan/pemeliharaan` tidak lagi memuat Reset Testing dan Reset Semua sekaligus dan kembali memiliki headroom build-budget tanpa menaikkan threshold.
+- Mempertahankan fix checklist destructive yang event-safe/focusable, merapikan CSS Settings lama yang orphan, menambahkan regression untuk IA/responsive baru, dan menyinkronkan `UI_DESIGN_SYSTEM`, `TEST_PLAN`, `PROJECT_STATUS`, `OPERATIONS_RUNBOOK`, serta product requirements.
+
+## 5 September 2026 - Motion accessibility dan interaction hardening
+- Menambahkan alternatif single-pointer `Pilih rekening` pada stack Rekening mobile, mempertahankan swipe + Arrow Up/Down, dan mengubah reduced-motion menjadi selection instan tanpa perjalanan/rotasi 3D.
+- Memusatkan preference motion melalui `useReducedMotion` dan `shared/motion.js`; smooth-scroll JavaScript kini otomatis menjadi `auto` saat reduced-motion aktif.
+- Menstandarkan duration/easing/stagger ke semantic motion token, membuat durasi rAF stack membaca token CSS canonical, memindahkan progress/dot animation dari `width`/`height` ke transform, serta membatasi update gesture rekening ke transform/opacity sementara filter/shadow hanya diselaraskan pada settled state.
+- Mengubah `FinancialSuccessOverlay` agar informasi finansial tampil sejak awal, MoneyRain turun dari 38 infinite note menjadi 10 note one-shot sekitar satu detik, dan decorative Login/fatal-error menjadi finite <5 detik.
+- Menyamakan reduced-motion loading policy menjadi spinner/shimmer statis sambil mempertahankan status teks, lalu memperbarui regression guard, `UI_DESIGN_SYSTEM`, `TEST_PLAN`, dan `PROJECT_STATUS` agar contract baru tidak drift.
+
+## 5 September 2026 - UX hardening first-run, istilah saldo, dan help Pengaturan
+- Membuka checklist penyiapan otomatis hanya saat progres masih 0/4 dan memprioritaskannya sebelum quick actions pada dashboard mobile, sehingga Member baru melihat langkah Rekening tanpa tap disclosure tambahan.
+- Memusatkan copy Saldo rekening/Dana tersedia/Dialokasikan sesuai glossary product dan menampilkan helper dekat nominal pada detail Rekening serta ringkasan Dashboard; Alokasi Dana tetap ditegaskan sebagai bagian dari saldo, bukan sumber uang tambahan.
+- Membuat satu Info trigger di `SettingsLayout` mengikuti nested route aktif untuk Notifikasi, Perangkat & sesi, Integrasi, Export/Import, Backup/Pemulihan, Reset, Periode, dan Audit tanpa menambah header ganda.
+- Menambah regression dan sinkronisasi `UI_DESIGN_SYSTEM`, `TEST_PLAN`, `PROJECT_STATUS`, serta `product/GLOSSARY` untuk mencegah copy/behavior kembali drift.
+- Menghapus kembali `scripts/recover-production-db-profile.mjs` yang orphan; restore/persist operator profile tetap dimiliki `npm run prod` melalui `production-runtime.mjs`, dan regression mencegah standalone script tersebut hidup kembali.
+
 ## 3 September 2026 - Merge UX audit lengkap + detail Rekening Investasi
 - Menggabungkan patch UX audit lengkap dan patch detail Rekening Investasi di atas baseline yang sama tanpa overwrite regresif; konflik diselesaikan secara semantik agar flow RDN, holding aktual, transfer continuation, build-budget lazy boundary, dan safety `OUTCOME_UNKNOWN` tetap utuh.
 - Menambahkan `Sumber catatan (opsional)` seperti `Ajaib` sebagai label manusia pada catatan Investasi. Label ini memakai metadata `investment_portfolios.name`, tidak menjadi koneksi broker, credential, sinkronisasi, market feed, atau order execution.

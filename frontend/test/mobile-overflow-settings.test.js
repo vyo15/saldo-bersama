@@ -89,16 +89,26 @@ test("pengaturan memakai route internal dan tidak memuat semua domain pada ringk
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/settings/settingsPresentation.js"),
   ]);
-  for (const route of ["notifikasi", "integrasi", "export", "import", "backup", "pemulihan", "reset-data", "reset-semua", "periode", "audit"]) {
+  for (const route of ["notifikasi", "integrasi", "data", "export", "import", "backup", "pemulihan", "pemeliharaan", "reset-data", "reset-semua", "periode", "audit"]) {
     assert.match(app, new RegExp(`path="${route}"`));
   }
   assert.match(app, /<Route path="anggota" element=\{routeElement\(MembersSettingsPage\)\} \/>/);
   assert.match(app, /<Route path="anggota" element=\{<Navigate to="\/anggota" replace \/>\} \/>/);
-  assert.match(layout, /SETTINGS_NAVIGATION/);
-  assert.match(layout, /ownerOnly/);
+  assert.match(layout, /SETTINGS_ROUTE_META/);
+  assert.match(layout, /SettingsDetailHeader/);
+  assert.match(layout, /useLocation/);
+  assert.match(layout, /settingsMetaForPath\(normalizedPath\)/);
+  for (const path of ["notifikasi", "perangkat", "integrasi", "data", "export", "import", "backup", "pemulihan", "pemeliharaan", "periode", "audit"]) {
+    assert.match(layout, new RegExp(`"/pengaturan/${path}"\\s*:`));
+  }
+  assert.match(layout, /<PageHeader title=\{meta\.title\} description=\{meta\.description\} help=\{meta\.help\} \/>/);
+  assert.doesNotMatch(layout, /settingsNavigation|ownerOnly/);
   assert.doesNotMatch(layout, /pengaturan\/anggota|Akses pengguna/);
   assert.match(overview, /useApiResource\("system\.health"\)/);
   assert.doesNotMatch(overview, /users\.list|audit\.list|archive\.list|periods\.list|integrations\.status/);
+  assert.match(overview, /label: "Data & cadangan"/);
+  assert.match(overview, /label: "Pemeliharaan data"/);
+  assert.match(overview, /ownerOnly: true/);
   assert.equal((notifications.match(/<h2 id="notification-settings-title">Notifikasi perangkat<\/h2>/g) || []).length, 1);
   assert.equal((integrations.match(/label="Google Sheets"/g) || []).length, 1);
   assert.equal((integrations.match(/label="Google Calendar"/g) || []).length, 1);

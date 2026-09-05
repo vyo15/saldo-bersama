@@ -191,7 +191,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(pages, /\.allocation-card__menu\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;/);
   assert.match(pages, /\.allocation-detail-back\s*\{[^}]*width:\s*max-content;[^}]*min-height:\s*44px;/);
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
-  assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*7px;[^}]*height:\s*7px;/);
+  assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*22px;[^}]*height:\s*7px;[^}]*transform:\s*scaleX\(\.318\)/);
   assert.match(budgets, /\.segment \{\s*min-height:\s*var\(--control-height-md\);/);
   assert.match(budgets, /\.sortButton \{\s*min-height:\s*var\(--control-height-md\);/);
   assert.match(transactionForm, /\.quickAmounts button \{\s*min-height:\s*var\(--control-height-md\);/);
@@ -256,7 +256,10 @@ test("tipografi memakai Manrope canonical, fallback system, dan bobot standar ta
 test("semua CSS custom property statis terdefinisi dan alias semantic yang salah tidak kembali", async () => {
   const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
   const defined = new Set();
-  const runtimeProperties = new Set(["--note-delay", "--note-drift", "--note-duration", "--note-left", "--note-rotation", "--login-mobile-slide"]);
+  const runtimeProperties = new Set([
+    "--note-delay", "--note-drift", "--note-left", "--note-rotation", "--login-mobile-slide",
+    "--budget-progress-scale", "--budget-pacing-scale", "--recurring-progress-scale", "--report-bar-scale", "--report-bar-height",
+  ]);
 
   for (const file of cssFiles) {
     for (const match of file.source.matchAll(/(?<![\w-])(--[A-Za-z0-9_-]+)\s*:/g)) defined.add(match[1]);
@@ -298,6 +301,9 @@ test("gradient avatar dan login menjaga focus, motion preference, dan full-scree
   assert.match(loginStyles, /\.login-mobile-viewport:focus-visible/);
   assert.match(loginStyles, /min-height:\s*100dvh/);
   assert.match(loginStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
+  assert.match(loginStyles, /animation: login-money-fall var\(--motion-decorative\) linear 1 both/);
+  assert.doesNotMatch(loginStyles, /login-money-fall[^;]*infinite/);
+  assert.doesNotMatch(login, /duration:\s*"(?:9|1[0-3]|2[2-9])s"/);
   assert.match(login, /DESKTOP_ARTWORK\[theme\]/);
   assert.doesNotMatch(app, /\.desktop-user-avatar \{[^}]*var\(--secondary\)/s);
   assert.doesNotMatch(app, /\.user-avatar \{[^}]*var\(--secondary\)/s);

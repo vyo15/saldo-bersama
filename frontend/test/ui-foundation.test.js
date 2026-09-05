@@ -93,6 +93,26 @@ test("compact notice owns lightweight guidance without dashboard stylesheet coup
 });
 
 
+test("canonical account terms stay user-facing near balances", async () => {
+  const [accountPresentation, accountsPage, mobileAccounts, desktopAccounts, dashboardMobile, dashboardDesktop] = await Promise.all([
+    read("src/shared/presentation/account.js"),
+    read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/accounts/components/MobileAccountsExperience.jsx"),
+    read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
+    read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+  ]);
+
+  assert.match(accountPresentation, /ACCOUNT_BALANCE_GUIDANCE/);
+  assert.match(accountPresentation, /Dana tersedia adalah bagian saldo yang belum terikat ke Alokasi Dana/);
+  assert.match(accountPresentation, /Dialokasikan adalah bagian saldo yang masih terikat ke Alokasi Dana, bukan uang tambahan/);
+  assert.match(accountsPage, /help=\{ACCOUNT_BALANCE_GUIDANCE\}/);
+  assert.match(mobileAccounts, /\{ACCOUNT_BALANCE_GUIDANCE\}/);
+  assert.match(desktopAccounts, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
+  assert.match(dashboardMobile, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
+  assert.match(dashboardDesktop, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
+});
+
 test("contextual page help remains accessible and keeps educational copy out of persistent mobile chrome", async () => {
   const [infoButton, pageHeader, responsive] = await Promise.all([
     read("src/components/common/PageInfoButton.jsx"),

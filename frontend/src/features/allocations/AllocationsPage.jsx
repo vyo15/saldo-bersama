@@ -14,6 +14,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain/dates.js";
 import { filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
 import { allocationClass } from "./allocationStyles.js";
+import { scrollIntoViewWithMotionPreference, scrollWindowToWithMotionPreference } from "../../shared/motion.js";
 const AllocationDialogLayer = lazy(() => import("./AllocationDialogLayer.jsx"));
 const AllocationSetupContinuation = lazy(() => import("./AllocationSetupContinuation.jsx"));
 const AllocationFundingFlow = lazy(() => import("./AllocationFundingFlow.jsx"));
@@ -239,7 +240,7 @@ const useAllocationAttentionNavigation = ({ attentionHandled, resourceStatus, bu
     if (targetBudget && !targetBudget.envelope_rule_id) setLegacyBudgetAttention(true);
     consumeAttention();
     if (!targetBudget?.budget_id) return undefined;
-    const frame = window.requestAnimationFrame(() => document.querySelector(`[data-budget-id="${CSS.escape(targetBudget.budget_id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    const frame = window.requestAnimationFrame(() => scrollIntoViewWithMotionPreference(document.querySelector(`[data-budget-id="${CSS.escape(targetBudget.budget_id)}"]`), { block: "center" }));
     return () => window.cancelAnimationFrame(frame);
   }, [activeItems, attentionAction, attentionBudgetId, attentionEnvelopeId, attentionHandled, budgetStatus, budgets, consumeAttention, openFunding, resourceStatus, setDetailRuleId, setLegacyBudgetAttention]);
 };
@@ -343,8 +344,8 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const startLifecycle = (item) => { setActionTarget(null); lifecycle.openRuleLifecycle(item); };
   const openReminder = (item) => setReminderTarget({ entityType: "envelope_period", entityId: item.envelope_period_id, name: item.name, suggestedDate: item.period_end });
   const openBudgetReminder = (budget) => setReminderTarget({ entityType: "budget", entityId: budget.budget_id, name: budget.name || "Kebutuhan" });
-  const openDetail = (item) => { setLegacyBudgetAttention(false); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" })); };
-  const closeDetail = () => { setDetailRuleId(""); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" })); };
+  const openDetail = (item) => { setLegacyBudgetAttention(false); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
+  const closeDetail = () => { setDetailRuleId(""); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const reloadPlanning = () => Promise.allSettled([resource.reload(), budgetResource.reload(), recurringResource.reload()]);
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 

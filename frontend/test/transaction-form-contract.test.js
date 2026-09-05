@@ -214,7 +214,8 @@ test("validasi transaksi memfokuskan field wajib dan expense tanpa Alokasi memin
     readFile(new URL("../src/features/transactions/components/TransactionFields.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(form, /focusFirstTransactionError/);
-  assert.match(form, /scrollIntoView\?\.\(\{ block: "center", behavior: "smooth" \}\)/);
+  assert.match(form, /scrollIntoViewWithMotionPreference\(target, \{ block: "center" \}\)/);
+  assert.doesNotMatch(form, /behavior:\s*"smooth"/);
   assert.match(form, /form\.transaction_type === TRANSACTION_TYPES\.EXPENSE && !form\.envelope_period_id && !unallocatedConfirmed/);
   assert.match(form, /code: "UNALLOCATED_EXPENSE"/);
   assert.match(form, /Pengeluaran Belum Dialokasikan/);

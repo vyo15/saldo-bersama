@@ -1,79 +1,149 @@
-import {
-  FiArchive, FiBell, FiCalendar, FiDatabase, FiDownload, FiDownloadCloud,
-  FiLock, FiMonitor, FiRefreshCw, FiShield, FiTrash2, FiUploadCloud,
-} from "react-icons/fi";
-import { NavLink, Outlet } from "react-router";
+import { FiArrowLeft } from "react-icons/fi";
+import { Link, Outlet, useLocation } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
-import { useAuth } from "../auth/AuthContext.jsx";
+import PageInfoButton from "../../components/common/PageInfoButton.jsx";
 import styles from "./Settings.module.css";
 
-const SETTINGS_NAVIGATION_GROUPS = Object.freeze([
-  {
-    label: "Umum",
-    items: [
-      { to: "/pengaturan", end: true, label: "Ringkasan", icon: FiDatabase },
-      { to: "/pengaturan/notifikasi", label: "Notifikasi", icon: FiBell },
-      { to: "/pengaturan/perangkat", label: "Perangkat & sesi", icon: FiMonitor },
-      { to: "/pengaturan/integrasi", label: "Integrasi Google", icon: FiCalendar },
-    ],
+const SETTINGS_ROUTE_META = Object.freeze({
+  "/pengaturan": {
+    title: "Pengaturan",
+    description: "Atur akun, integrasi, data, dan kontrol sistem dari satu tempat.",
+    help: {
+      title: "Tentang Pengaturan",
+      content: "Halaman utama Pengaturan hanya menampilkan kelompok fungsi penting. Buka satu bagian untuk melihat detailnya agar layar tetap ringkas dan mudah dipindai.",
+    },
   },
-  {
-    label: "Data & Penyimpanan",
-    items: [
-      { to: "/pengaturan/export", label: "Export data", icon: FiDownload, ownerOnly: true },
-      { to: "/pengaturan/import", label: "Import data", icon: FiUploadCloud, ownerOnly: true },
-      { to: "/pengaturan/backup", label: "Backup data", icon: FiDownloadCloud, ownerOnly: true },
-      { to: "/pengaturan/pemulihan", label: "Pulihkan data", icon: FiArchive, ownerOnly: true },
-    ],
+  "/pengaturan/notifikasi": {
+    title: "Notifikasi",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Notifikasi",
+      content: "Kelola Web Push untuk perangkat ini serta jenis pengingat yang ingin diterima. Pengaturan satu perangkat tidak otomatis menonaktifkan perangkat lain.",
+    },
   },
-  {
-    label: "Reset & Pemeliharaan Data",
-    items: [
-      { to: "/pengaturan/reset-data", label: "Reset data testing", icon: FiRefreshCw, ownerOnly: true },
-      { to: "/pengaturan/reset-semua", label: "Reset semua data", icon: FiTrash2, ownerOnly: true },
-    ],
+  "/pengaturan/perangkat": {
+    title: "Perangkat & sesi",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Perangkat & sesi",
+      content: "Lihat sesi login yang masih aktif dan cabut perangkat yang tidak lagi digunakan. Mencabut sesi tidak menghapus transaksi, saldo, atau data keuangan.",
+    },
   },
-  {
-    label: "Kontrol Sistem",
-    items: [
-      { to: "/pengaturan/periode", label: "Periode dan integritas", icon: FiLock, ownerOnly: true },
-      { to: "/pengaturan/audit", label: "Audit aktivitas", icon: FiShield, ownerOnly: true },
-    ],
+  "/pengaturan/integrasi": {
+    title: "Integrasi Google",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Integrasi Google",
+      content: "Periksa kesiapan Google Sheets, Calendar, dan Drive. Integrasi membantu sinkronisasi, pengingat, serta safety backup; data keuangan utama tetap berada di database aplikasi.",
+    },
   },
-]);
+  "/pengaturan/data": {
+    title: "Data & cadangan",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Data & cadangan",
+      content: "Export, import, backup, dan pemulihan dikelompokkan di satu hub agar navigasi lebih sederhana. Setiap workflow tetap memakai route, validasi, dan proteksi backend masing-masing.",
+    },
+  },
+  "/pengaturan/export": {
+    title: "Export data",
+    backTo: "/pengaturan/data",
+    backLabel: "Data & cadangan",
+    help: {
+      title: "Tentang Export data",
+      content: "Export membuat salinan data untuk dibaca atau dianalisis. File export bukan mekanisme restore dan tidak menggantikan backup teknis.",
+    },
+  },
+  "/pengaturan/import": {
+    title: "Import transaksi",
+    backTo: "/pengaturan/data",
+    backLabel: "Data & cadangan",
+    help: {
+      title: "Tentang Import transaksi",
+      content: "Import menambahkan transaksi dari JSON atau CSV setelah seluruh file lolos preview. Jika ada data invalid atau konflik, aplikasi tidak melakukan partial import.",
+    },
+  },
+  "/pengaturan/backup": {
+    title: "Backup data",
+    backTo: "/pengaturan/data",
+    backLabel: "Data & cadangan",
+    help: {
+      title: "Tentang Backup data",
+      content: "Backup membuat salinan teknis terverifikasi di Google Drive untuk kebutuhan pemulihan. Gunakan export jika tujuan Anda hanya membaca atau menganalisis data.",
+    },
+  },
+  "/pengaturan/pemulihan": {
+    title: "Pemulihan data",
+    backTo: "/pengaturan/data",
+    backLabel: "Data & cadangan",
+    help: {
+      title: "Tentang Pemulihan data",
+      content: "Pulihkan item arsip secara terbatas bila memungkinkan. Full restore mengganti dataset aktif dan hanya digunakan setelah preview backup terverifikasi.",
+    },
+  },
+  "/pengaturan/pemeliharaan": {
+    title: "Pemeliharaan data",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Pemeliharaan data",
+      content: "Reset testing dan reset seluruh data berada dalam satu halaman bertab, tetapi preview, safety check, konfirmasi, recovery, dan API keduanya tetap terpisah sesuai tingkat risiko.",
+    },
+  },
+  "/pengaturan/periode": {
+    title: "Periode & integritas",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Periode & integritas",
+      content: "Periksa integritas sebelum menutup periode. Periode tertutup mengunci perubahan sampai Administrator membukanya kembali secara eksplisit dan tercatat di audit.",
+    },
+  },
+  "/pengaturan/audit": {
+    title: "Audit aktivitas",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Audit aktivitas",
+      content: "Audit menampilkan aktivitas penting, siapa yang melakukan, data yang terdampak, dan hasil operasi. Gunakan halaman ini untuk menelusuri perubahan serta status maintenance, bukan untuk mengedit data finansial.",
+    },
+  },
+});
+
+const normalizeSettingsPath = (pathname) => pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+const settingsMetaForPath = (pathname) => SETTINGS_ROUTE_META[normalizeSettingsPath(pathname)] || SETTINGS_ROUTE_META["/pengaturan"];
+
+const SettingsDetailHeader = ({ meta }) => (
+  <header className={styles.settingsDetailHeader}>
+    <Link className={styles.settingsBackLink} to={meta.backTo || "/pengaturan"} aria-label={`Kembali ke ${meta.backLabel || "Pengaturan"}`}>
+      <FiArrowLeft aria-hidden="true" />
+      <span>{meta.backLabel || "Pengaturan"}</span>
+    </Link>
+    <div className={styles.settingsDetailTitleRow}>
+      <h1>{meta.title}</h1>
+      <PageInfoButton title={meta.help.title}>{meta.help.content}</PageInfoButton>
+    </div>
+  </header>
+);
 
 const SettingsLayout = () => {
-  const { user } = useAuth();
-  const ownerMode = user?.role === "owner";
+  const location = useLocation();
+  const normalizedPath = normalizeSettingsPath(location.pathname);
+  const overview = normalizedPath === "/pengaturan";
+  const meta = settingsMetaForPath(normalizedPath);
 
   return (
     <div className="page-stack settings-page">
-      <PageHeader title="Pengaturan" help="Kelola notifikasi, integrasi, data, backup, pemulihan, dan administrasi aplikasi. Tindakan berisiko tetap meminta validasi dan konfirmasi tersendiri." />
-      <nav className={styles.settingsNavigation} aria-label="Menu pengaturan">
-        {SETTINGS_NAVIGATION_GROUPS.map((group) => {
-          const visibleItems = group.items.filter((item) => {
-            if (item.ownerOnly && !ownerMode) return false;
-            return true;
-          });
-
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <section key={group.label} className={styles.settingsNavigationGroup} aria-label={group.label}>
-              <h2 className={styles.settingsNavigationGroupTitle}>{group.label}</h2>
-              <div className={styles.settingsNavigationGroupItems}>
-                {visibleItems.map(({ to, end, label, icon: Icon }) => (
-                  <NavLink key={to} to={to} end={end} className={({ isActive }) => `${styles.settingsNavigationLink}${isActive ? ` ${styles.isActive}` : ""}`}>
-                    <span className={styles.settingsNavigationIcon}><Icon aria-hidden="true" /></span>
-                    <span className={styles.settingsNavigationCopy}><strong>{label}</strong></span>
-                  </NavLink>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </nav>
-      <div className={styles.pageContent}><Outlet /></div>
+      {overview ? (
+        <PageHeader title={meta.title} description={meta.description} help={meta.help} />
+      ) : (
+        <SettingsDetailHeader meta={meta} />
+      )}
+      <div className={styles.settingsRouteContent}><Outlet /></div>
     </div>
   );
 };

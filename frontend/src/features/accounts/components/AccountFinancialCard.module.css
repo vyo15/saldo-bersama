@@ -454,6 +454,22 @@
   line-height: 1.45;
 }
 
+.mobileFinancialValue {
+  min-width: 0;
+  display: grid;
+  justify-items: end;
+  gap: .2rem;
+}
+
+.mobileFinancialValue small {
+  max-width: 18rem;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  line-height: 1.35;
+  text-align: right;
+}
+
 .mobileDetailActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

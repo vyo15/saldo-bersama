@@ -100,7 +100,9 @@
 .heroFacts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .heroFacts > div { min-width: 0; padding-top: var(--space-3); display: grid; gap: .35rem; border-top: 1px solid var(--border); }
 .heroFacts dt { color: var(--text-muted); font-size: var(--font-size-sm); }
-.heroFacts dd { min-width: 0; margin: 0; overflow: hidden; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }
+.heroFacts dd { min-width: 0; margin: 0; display: grid; gap: .2rem; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); }
+.heroFacts dd > :global(.money) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heroFacts dd small { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); line-height: 1.35; }
 
 .heroActions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .heroActions :global(.button) { min-width: 0; }
@@ -186,15 +188,17 @@
   background: transparent;
 }
 .carouselDot::before {
-  width: .5rem;
+  width: 1.35rem;
   height: .5rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--text-muted) 48%, transparent);
   content: "";
-  transition: width var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
+  transform: scaleX(.37);
+  transform-origin: center;
+  transition: background-color var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard);
 }
-.carouselDot:hover::before { background: color-mix(in srgb, var(--primary) 68%, var(--text-muted)); transform: scale(1.12); }
-.carouselDot[aria-pressed="true"]::before { width: 1.35rem; background: var(--primary); }
+.carouselDot:hover::before { background: color-mix(in srgb, var(--primary) 68%, var(--text-muted)); transform: scaleX(.42); }
+.carouselDot[aria-pressed="true"]::before { background: var(--primary); transform: scaleX(1); }
 .carouselDot:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 1px; }
 
 .transactionsPanel,

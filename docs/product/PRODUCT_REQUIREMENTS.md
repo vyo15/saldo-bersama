@@ -156,6 +156,6 @@ Sistem dapat memberi nudge actor-scoped bila tidak ada aktivitas pencatatan tran
 
 **Setup usable → uang masuk → opsional dibagi ke Alokasi Dana → digunakan lewat ledger → transaksi tanpa Alokasi Dana direview sampai selesai → dibandingkan dengan Kebutuhan/anggaran → sisa Alokasi Dana dapat diarahkan ke Target → saldo direkonsiliasi → blocker period close diselesaikan sebelum penutupan.**
 
-Continuation UI hanya memberi prefill atau navigasi. Tidak ada workflow baru yang boleh auto-submit mutation finansial, membuat adjustment rekonsiliasi, atau mengubah blocker period-close di luar contract backend canonical. Restore master tetap terpusat di **Pengaturan → Pemulihan data**; feedback global tidak menjadi generic undo/rollback.
+Continuation UI hanya memberi prefill atau navigasi. Tidak ada workflow baru yang boleh auto-submit mutation finansial, membuat adjustment rekonsiliasi, atau mengubah blocker period-close di luar contract backend canonical. Restore master tetap terpusat di **Pengaturan → Data & cadangan → Pemulihan data**; feedback global tidak menjadi generic undo/rollback.
 
 Fitur planned tidak boleh memengaruhi saldo sampai model, migration, authorization, audit, backup/restore, dan test disetujui melalui RFC.

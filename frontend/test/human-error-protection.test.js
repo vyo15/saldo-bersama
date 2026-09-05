@@ -127,8 +127,11 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
 });
 
 test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode per route", async () => {
-  const [layout, notifications, members, recovery, period, audit, reset, fullReset, integrations, confirmationModal, feedbackCss, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi, maintenanceRecovery] = await Promise.all([
+  const [layout, overview, app, maintenance, notifications, members, recovery, period, audit, reset, fullReset, integrations, confirmationModal, feedbackCss, api, accountsApi, categoriesApi, allocationsApi, goalsApi, recurringApi, maintenanceRecovery] = await Promise.all([
     read("src/features/settings/SettingsLayout.jsx"),
+    read("src/features/settings/SettingsPage.jsx"),
+    read("src/app/App.jsx"),
+    read("src/features/settings/MaintenanceDataPage.jsx"),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/settings/RecoveryPage.jsx"),
@@ -147,16 +150,18 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
     read("src/features/recurring/recurring.api.js"),
     read("src/features/settings/useMaintenanceRecovery.js"),
   ]);
-  assert.match(layout, /\/pengaturan\/notifikasi/);
-  assert.doesNotMatch(layout, /\/pengaturan\/anggota/);
-  assert.match(layout, /\/pengaturan\/pemulihan/);
-  assert.match(layout, /\/pengaturan\/periode/);
-  assert.match(layout, /\/pengaturan\/audit/);
-  assert.match(layout, /\/pengaturan\/reset-data/);
-  assert.match(layout, /Reset data testing/);
-  assert.match(layout, /\/pengaturan\/reset-semua/);
-  assert.match(layout, /Reset semua data/);
-  assert.match(layout, /ownerOnly/);
+  assert.match(overview, /\/pengaturan\/notifikasi/);
+  assert.doesNotMatch(overview, /\/pengaturan\/anggota/);
+  assert.match(overview, /\/pengaturan\/data/);
+  assert.match(overview, /\/pengaturan\/pemeliharaan/);
+  assert.match(overview, /\/pengaturan\/periode/);
+  assert.match(overview, /\/pengaturan\/audit/);
+  assert.match(overview, /ownerOnly: true/);
+  assert.match(layout, /backTo: "\/pengaturan\/data"/);
+  assert.match(app, /path="reset-data" element=\{<Navigate to="\/pengaturan\/pemeliharaan" replace \/>\}/);
+  assert.match(app, /path="reset-semua" element=\{<Navigate to="\/pengaturan\/pemeliharaan\?tab=semua" replace \/>\}/);
+  assert.match(maintenance, />Reset Testing</);
+  assert.match(maintenance, />Reset Semua</);
   assert.match(reset, /<OwnerSettingsGuard>/);
   assert.match(reset, /runSettingsAction\("reset\.preview"/);
   assert.match(reset, /runSettingsAction\("reset\.apply"/);

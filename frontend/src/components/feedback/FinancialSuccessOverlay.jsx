@@ -6,7 +6,7 @@ import styles from "./FinancialSuccessOverlay.module.css";
 
 const MONEY_TONES = Object.freeze(["red", "blue", "green", "purple", "gold", "mint"]);
 const MONEY_DENOMINATIONS = Object.freeze(["100000", "50000", "20000", "10000", "5000", "50000"]);
-const MONEY_COUNT = 38;
+const MONEY_COUNT = 10;
 
 const moneyDepth = (index) => {
   if (index % 7 === 0 || index % 11 === 0) return "near";
@@ -27,8 +27,7 @@ const moneyNote = (index) => {
     size: `${2.85 + ((index % 5) * 0.18)}rem`,
     scale: (scaleBase + ((index % 3) * 0.03)).toFixed(2),
     alpha: (alphaBase + ((index % 5) * 0.025)).toFixed(2),
-    duration: `${4.8 + ((index % 7) * 0.34)}s`,
-    delay: `${-2.8 + ((index % 13) * 0.24)}s`,
+    delay: `var(--motion-stagger-${index % 5})`,
     rotation: `${-12 + ((index * 7) % 25)}deg`,
     driftA: `${-34 + ((index * 17) % 68)}px`,
     driftB: `${-26 + ((index * 23) % 58)}px`,
@@ -42,7 +41,6 @@ const moneyStyle = (note) => ({
   "--note-delay": note.delay,
   "--note-drift-a": note.driftA,
   "--note-drift-b": note.driftB,
-  "--note-duration": note.duration,
   "--note-left": note.left,
   "--note-rotation": note.rotation,
   "--note-scale": note.scale,

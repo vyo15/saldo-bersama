@@ -8,7 +8,7 @@
   background: var(--overlay);
   backdrop-filter: blur(10px);
   animation: modal-backdrop-in var(--motion-normal) var(--motion-easing);
-  transition: opacity 180ms ease-in;
+  transition: opacity var(--motion-control) var(--ease-exit);
 }
 
 .backdropDismissing { opacity: 0; }
@@ -169,8 +169,8 @@
     border-left: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     animation-name: mobile-sheet-in;
-    animation-duration: 340ms;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-duration: var(--motion-sheet);
+    animation-timing-function: var(--ease-enter);
   }
 
   .header,
@@ -189,7 +189,7 @@
   }
 
   .swipeEnabled.dismissing {
-    transition-duration: 180ms;
+    transition-duration: var(--motion-control);
     transition-timing-function: ease-in;
   }
 

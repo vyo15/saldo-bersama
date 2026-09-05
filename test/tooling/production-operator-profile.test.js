@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -7,6 +7,16 @@ import test from "node:test";
 import { checkProductionOperatorEnvironment } from "../../scripts/production-runtime.mjs";
 
 const makeRoot = async () => mkdtemp(path.join(os.tmpdir(), "saldo-prod-operator-"));
+
+test("standalone recovery script tidak hidup kembali karena npm run prod sudah menjadi entry point canonical", async () => {
+  await assert.rejects(
+    access(new URL("../../scripts/recover-production-db-profile.mjs", import.meta.url)),
+    (error) => error?.code === "ENOENT",
+  );
+  const runtime = await readFile(new URL("../../scripts/production-runtime.mjs", import.meta.url), "utf8");
+  assert.match(runtime, /restoreProductionOperatorProfile/);
+  assert.match(runtime, /persistProductionOperatorProfile/);
+});
 
 test("npm run prod operator tidak mewajibkan session OAuth atau VAPID lokal untuk preflight read-only", async () => {
   const root = await makeRoot();

@@ -160,11 +160,14 @@
 }
 
 .pacingFill {
+  width: 100%;
   display: block;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--primary), var(--secondary));
-  transition: width var(--motion-normal) var(--motion-easing);
+  transform: scaleX(var(--budget-pacing-scale, 0));
+  transform-origin: left center;
+  transition: transform var(--motion-feedback) var(--ease-standard);
 }
 
 .pacing_pace .pacingFill,

@@ -109,7 +109,7 @@
   height: 100%;
   display: flex;
   transform: translate3d(calc(var(--login-mobile-base-offset) + var(--login-mobile-drag, 0px)), 0, 0);
-  transition: transform .38s var(--motion-easing);
+  transition: transform var(--motion-emphasized) var(--ease-standard);
   will-change: transform;
 }
 
@@ -321,7 +321,7 @@
 .login-mobile-google-button:disabled { cursor: wait; opacity: .72; }
 .login-mobile-google-button__icon { width: 28px; height: 28px; display: grid; place-items: center; }
 .login-mobile-google-button__icon img { width: 20px; height: 20px; object-fit: contain; }
-.login-mobile-google-button__spinner { width: 16px; height: 16px; justify-self: end; border: 2px solid #d8dedb; border-top-color: #1a73e8; border-radius: 50%; animation: login-google-spin .8s linear infinite; }
+.login-mobile-google-button__spinner { width: 16px; height: 16px; justify-self: end; border: 2px solid #d8dedb; border-top-color: #1a73e8; border-radius: 50%; animation: login-google-spin var(--motion-spinner) linear infinite; }
 @keyframes login-google-spin { to { transform: rotate(360deg); } }
 .login-mobile-security { margin-top: 12px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 12px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
 .login-mobile-security span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -334,8 +334,8 @@
 .login-mobile-navigation__spacer { width: 44px; height: 44px; display: block; }
 .login-mobile-pagination { display: flex; align-items: center; justify-content: center; gap: 7px; }
 .login-mobile-dot { width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-pill); display: grid; place-items: center; background: transparent; cursor: pointer; touch-action: manipulation; }
-.login-mobile-dot::before { content: ""; width: 8px; height: 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-muted) 48%, transparent); transition: width var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing); }
-.login-mobile-dot.is-active::before { width: 28px; background: var(--primary); }
+.login-mobile-dot::before { content: ""; width: 28px; height: 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-muted) 48%, transparent); transform: scaleX(.286); transform-origin: center; transition: transform var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard); }
+.login-mobile-dot.is-active::before { background: var(--primary); transform: scaleX(1); }
 .login-mobile-dot:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -5px; }
 .login-mobile-navigation__hint { width: 44px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-align: right; }
 .login-mobile-navigation__replay { width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--primary); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); cursor: pointer; touch-action: manipulation; }
@@ -404,8 +404,6 @@
   .login-mobile-dot::before,
   .login-mobile-track { --login-mobile-parallax-soft: 0px !important; --login-mobile-parallax-medium: 0px !important; --login-mobile-parallax-strong: 0px !important; }
   .login-money-note,
-  .login-spark,
+  .login-spark { display: none; }
   .login-mobile-google-button__spinner { animation: none; }
-  .login-money-note { opacity: .12; transform: rotate(var(--note-rotation)); }
-  .login-mobile-login-slide .login-money-note { opacity: .1; }
 }

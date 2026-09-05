@@ -76,7 +76,7 @@
 }
 
 .loading .icon svg {
-  animation: compact-notice-spin 0.9s linear infinite;
+  animation: compact-notice-spin var(--motion-spinner) linear infinite;
 }
 
 @keyframes compact-notice-spin {
@@ -84,5 +84,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loading .icon svg { animation-duration: 1.6s; }
+  .loading .icon svg { animation: none; }
 }

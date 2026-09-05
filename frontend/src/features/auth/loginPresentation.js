@@ -50,22 +50,22 @@ export const MOBILE_ONBOARDING = Object.freeze([
 ]);
 
 export const MONEY_NOTES = Object.freeze([
-  { denomination: "100000", tone: "red", left: "5%", rotation: "-14deg", duration: "22s", delay: "-15s", drift: "24px" },
-  { denomination: "50000", tone: "blue", left: "22%", rotation: "12deg", duration: "26s", delay: "-7s", drift: "-28px" },
-  { denomination: "20000", tone: "green", left: "43%", rotation: "-8deg", duration: "24s", delay: "-18s", drift: "20px" },
-  { denomination: "10000", tone: "purple", left: "68%", rotation: "15deg", duration: "28s", delay: "-11s", drift: "-22px" },
-  { denomination: "5000", tone: "gold", left: "88%", rotation: "-11deg", duration: "23s", delay: "-4s", drift: "30px" },
-  { denomination: "50000", tone: "blue", left: "-4%", rotation: "16deg", duration: "29s", delay: "-5s", drift: "36px" },
+  { denomination: "100000", tone: "red", left: "5%", rotation: "-14deg", delay: "var(--motion-stagger-0)", drift: "24px" },
+  { denomination: "50000", tone: "blue", left: "22%", rotation: "12deg", delay: "var(--motion-stagger-1)", drift: "-28px" },
+  { denomination: "20000", tone: "green", left: "43%", rotation: "-8deg", delay: "var(--motion-stagger-2)", drift: "20px" },
+  { denomination: "10000", tone: "purple", left: "68%", rotation: "15deg", delay: "var(--motion-stagger-3)", drift: "-22px" },
+  { denomination: "5000", tone: "gold", left: "88%", rotation: "-11deg", delay: "var(--motion-stagger-4)", drift: "30px" },
+  { denomination: "50000", tone: "blue", left: "-4%", rotation: "16deg", delay: "var(--motion-stagger-5)", drift: "36px" },
 ]);
 
 export const MOBILE_MONEY_NOTES = Object.freeze([
-  { denomination: "100000", tone: "red", left: "3%", rotation: "-14deg", duration: "9s", delay: "-5s", drift: "28px" },
-  { denomination: "50000", tone: "blue", left: "20%", rotation: "12deg", duration: "11s", delay: "-2s", drift: "-24px" },
-  { denomination: "20000", tone: "green", left: "40%", rotation: "-9deg", duration: "10s", delay: "-8s", drift: "21px" },
-  { denomination: "10000", tone: "purple", left: "62%", rotation: "15deg", duration: "12s", delay: "-4s", drift: "-27px" },
-  { denomination: "5000", tone: "gold", left: "82%", rotation: "-11deg", duration: "10s", delay: "-1s", drift: "24px" },
-  { denomination: "50000", tone: "mint", left: "53%", rotation: "8deg", duration: "13s", delay: "-9s", drift: "34px" },
-  { denomination: "50000", tone: "blue", left: "9%", rotation: "7deg", duration: "12s", delay: "-10s", drift: "31px" },
+  { denomination: "100000", tone: "red", left: "3%", rotation: "-14deg", delay: "var(--motion-stagger-0)", drift: "28px" },
+  { denomination: "50000", tone: "blue", left: "20%", rotation: "12deg", delay: "var(--motion-stagger-1)", drift: "-24px" },
+  { denomination: "20000", tone: "green", left: "40%", rotation: "-9deg", delay: "var(--motion-stagger-2)", drift: "21px" },
+  { denomination: "10000", tone: "purple", left: "62%", rotation: "15deg", delay: "var(--motion-stagger-3)", drift: "-27px" },
+  { denomination: "5000", tone: "gold", left: "82%", rotation: "-11deg", delay: "var(--motion-stagger-4)", drift: "24px" },
+  { denomination: "50000", tone: "mint", left: "53%", rotation: "8deg", delay: "var(--motion-stagger-5)", drift: "34px" },
+  { denomination: "50000", tone: "blue", left: "9%", rotation: "7deg", delay: "var(--motion-stagger-6)", drift: "31px" },
 ]);
 
 export const MOBILE_PAGE_LABELS = Object.freeze(["Menabung", "Anggaran", "Keuangan bersama", "Login"]);

@@ -25,7 +25,7 @@ import {
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { todayInJakarta } from "../../domain/dates.js";
-import { accountCardholderName, accountTypeUsesAutomaticName, defaultAccountName, detectBankTemplate, detectEwalletTemplate, filterAccountsByOwnership, investmentAccountQualifier } from "../../shared/presentation/account.js";
+import { ACCOUNT_BALANCE_GUIDANCE, accountCardholderName, accountTypeUsesAutomaticName, defaultAccountName, detectBankTemplate, detectEwalletTemplate, filterAccountsByOwnership, investmentAccountQualifier } from "../../shared/presentation/account.js";
 import { investmentContinuationState, readInvestmentContinuation } from "../../shared/workflows/investmentContinuation.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import styles from "./AccountsPage.module.css";
@@ -188,10 +188,11 @@ const AccountListSection = ({ mobileLayout, accounts, allAccounts, selectedAccou
   );
 };
 
-const AccountSheets = ({ mobileAccountSheet, setMobileAccountSheet, selectedAccount, ownerMode, navigate, openEditAccount, openAccountLifecycle }) => {
+const AccountSheets = ({ mobileAccountSheet, setMobileAccountSheet, accounts, selectedAccount, setSelectedAccountId, ownerMode, navigate, openEditAccount, openAccountLifecycle }) => {
   if (!mobileAccountSheet) return null;
-  return <Suspense fallback={null}><MobileAccountSheets sheet={mobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
+  return <Suspense fallback={null}><MobileAccountSheets sheet={mobileAccountSheet} accounts={accounts} selectedAccount={selectedAccount} ownerMode={ownerMode}
     onClose={() => setMobileAccountSheet(null)}
+    onSelectAccount={(item) => setSelectedAccountId(item.account_id)}
     onViewTransactions={(item) => { if (!item) return; setMobileAccountSheet(null); navigate("/transaksi", { state: { accountId: item.account_id } }); }}
     onEditAccount={(item) => { setMobileAccountSheet(null); openEditAccount(item); }} onArchiveAccount={(item) => { setMobileAccountSheet(null); openAccountLifecycle(item); }} /></Suspense>;
 };
@@ -244,7 +245,7 @@ const AccountsPageFeedback = ({ accountsResource, usersResource, ownerMode, relo
 const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
   <div className={styles.desktopPageHeader}><PageHeader title="Rekening"
     description={null}
-    help="Rekening menampilkan saldo, dana yang dialokasikan, dan dana yang masih tersedia. Gunakan Transfer untuk memindahkan dana antar rekening yang valid."
+    help={ACCOUNT_BALANCE_GUIDANCE}
     actions={accounts.length ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog} aria-label={ownerMode ? "Tambah rekening desktop" : "Ajukan rekening desktop"}>{ownerMode ? "Tambah rekening" : "Ajukan rekening"}</Button> : null} />
   </div>
 );
@@ -277,7 +278,7 @@ const AccountsPageContent = ({ page }) => {
     {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : !ownerMode ? <MasterDataRequestsPanel items={requestsResource.data?.items || []} title="Pengajuan rekening saya" /> : null}
     <AccountListSection mobileLayout={mobileLayout} accounts={visibleAccounts} allAccounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} setOwnershipFilter={setOwnershipFilter} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
       navigate={navigate} bootstrap={bootstrap} setSelectedAccountId={page.setSelectedAccountId} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} onTransferSaved={reloadAccounts} />
-    {mobileLayout ? <AccountSheets mobileAccountSheet={mobileAccountSheet} setMobileAccountSheet={setMobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
+    {mobileLayout ? <AccountSheets mobileAccountSheet={mobileAccountSheet} setMobileAccountSheet={setMobileAccountSheet} accounts={visibleAccounts} selectedAccount={selectedAccount} setSelectedAccountId={page.setSelectedAccountId} ownerMode={ownerMode}
       navigate={navigate} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} /> : null}
     <AccountEditors createDialogOpen={crud.createDialogOpen} editAccount={editAccount} closeCreateDialog={crud.closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
       createAccount={crud.createAccount} setEditAccount={setEditAccount} saveAccount={crud.saveAccount} dialogState={dialogState} activeUsers={activeUsers}

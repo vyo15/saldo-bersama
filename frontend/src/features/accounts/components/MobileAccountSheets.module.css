@@ -1,0 +1,89 @@
+.pickerList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pickerItem {
+  width: 100%;
+  min-height: 4rem;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--motion-control) var(--ease-standard),
+    border-color var(--motion-control) var(--ease-standard),
+    box-shadow var(--motion-control) var(--ease-standard);
+}
+
+.pickerItem:hover,
+.pickerItem:focus-visible {
+  border-color: var(--primary);
+  background: var(--surface-soft);
+}
+
+.pickerItem:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.pickerItem[aria-current="true"] {
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+  background: var(--primary-soft);
+  box-shadow: var(--shadow-control);
+}
+
+.pickerCopy,
+.pickerValue {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.pickerCopy strong,
+.pickerCopy small,
+.pickerValue :global(.money) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickerCopy strong {
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pickerCopy small,
+.pickerValue small {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.pickerValue {
+  justify-items: end;
+  text-align: right;
+}
+
+.pickerValue :global(.money) {
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.pickerItem[aria-current="true"] .pickerValue small {
+  color: var(--primary);
+  font-weight: var(--font-weight-bold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pickerItem { transition: none; }
+}

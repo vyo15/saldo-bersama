@@ -64,8 +64,8 @@ const FinancialSetupChecklist = ({ bootstrap, overview, user }) => {
   if (steps.every((step) => step.status === "ready")) return null;
   const completed = steps.filter((step) => step.status === "ready").length;
   return <Card className={styles.card} aria-labelledby="financial-setup-title">
-    <details className={styles.details}>
-      <summary className={styles.summary}><span><strong id="financial-setup-title">Penyiapan awal · {completed}/{steps.length} selesai</strong><small>Lanjutkan penyiapan keuangan</small></span><span aria-hidden="true">›</span></summary>
+    <details className={styles.details} defaultOpen={completed === 0}>
+      <summary className={styles.summary}><span><strong id="financial-setup-title">Penyiapan awal · {completed}/{steps.length} selesai</strong><small>{completed === 0 ? "Mulai dari Rekening agar fitur keuangan siap dipakai" : "Lanjutkan penyiapan keuangan"}</small></span><span aria-hidden="true">›</span></summary>
       <div className={styles.expanded}><p>Lengkapi fondasi yang belum siap. Pengajuan rekening/kategori Member baru aktif setelah disetujui Administrator.</p><div className={styles.steps}>{steps.map((step, index) => <SetupStep key={step.key} step={step} index={index} />)}</div></div>
     </details>
   </Card>;

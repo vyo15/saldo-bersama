@@ -29,14 +29,16 @@ test("reset testing dan full reset menampilkan seluruh kelompok destructive", as
 });
 
 test("reset testing tidak bergantung pada mode build frontend", async () => {
-  const [app, layout, trialPage] = await Promise.all([
+  const [app, layout, trialPage, maintenance] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/features/settings/SettingsLayout.jsx"),
     read("src/features/settings/ResetDataPage.jsx"),
+    read("src/features/settings/MaintenanceDataPage.jsx"),
   ]);
 
   assert.equal(app.includes("developmentRouteElement"), false);
-  assert.equal(app.includes('path="reset-data" element={routeElement(ResetDataPage)}'), true);
+  assert.equal(app.includes('path="reset-data" element={<Navigate to="/pengaturan/pemeliharaan" replace />}'), true);
+  assert.equal(maintenance.includes('<ResetDataPage />'), true);
   assert.equal(layout.includes("developmentOnly"), false);
   assert.equal(layout.includes("import.meta.env.MODE"), false);
   assert.equal(trialPage.includes('useApiResource("system.health"'), true);

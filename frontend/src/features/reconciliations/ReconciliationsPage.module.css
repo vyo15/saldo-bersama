@@ -76,7 +76,7 @@
 }
 
 .refreshButton[aria-busy="true"] svg {
-  animation: reconciliation-spin 850ms linear infinite;
+  animation: reconciliation-spin var(--motion-spinner) linear infinite;
 }
 
 .refreshButton svg {
@@ -701,6 +701,6 @@
   }
 
   .refreshButton[aria-busy="true"] svg {
-    animation-duration: 1.5s;
+    animation: none;
   }
 }

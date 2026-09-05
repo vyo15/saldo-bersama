@@ -59,7 +59,8 @@ Patch continuity wajib mempertahankan kontrak berikut:
 - Rekonsiliasi dengan selisih menawarkan **Lihat transaksi rekening** dan tidak pernah membuat adjustment otomatis.
 - Preview period close memetakan blocker `UNALLOCATED_EXPENSE` ke action koreksi. Issue integritas tidak boleh memaparkan raw error. UI tidak boleh mengubah advisory menjadi blocker jika backend `periods.previewClose` tidak menetapkannya sebagai blocker.
 - Setup checklist menilai usability, bukan sekadar keberadaan row: kategori memerlukan income+expense aktif, Alokasi Dana memerlukan rekening sumber aktif, dan Target memerlukan rekening aktif. Guided continuation hanya muncul pada `setupFlow`, bukan pada create normal harian.
-- Lifecycle master memakai entry CTA netral **Kelola data** sebelum preview server; modal hanya menawarkan hard delete untuk data benar-benar unused atau archive untuk data historis. Restore master tetap melalui **Pengaturan → Pemulihan data** dan tidak diduplikasi oleh generic undo.
+- Setup checklist default terbuka hanya ketika progres `0/4`; setelah ada minimal satu langkah siap, disclosure kembali mengikuti pilihan user. Pada dashboard mobile checklist incomplete muncul setelah `Perlu perhatian` dan sebelum quick actions agar first-run task terlihat sebelum user mulai mencatat transaksi.
+- Lifecycle master memakai entry CTA netral **Kelola data** sebelum preview server; modal hanya menawarkan hard delete untuk data benar-benar unused atau archive untuk data historis. Restore master tetap melalui **Pengaturan → Data & cadangan → Pemulihan data** dan tidak diduplikasi oleh generic undo.
 - Kontrol sentuh dashboard balance visibility, menu Kategori, dan CTA perhatian Jadwal tetap memiliki effective hit target minimal 44×44px.
 
 
@@ -228,11 +229,11 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 ## Rekening, rekonsiliasi, dan kategori — responsive financial card
 
 - Administrator mobile dan desktop melihat aksi `Tambah rekening` pada route Rekening dan `Tambah kategori` pada route Kategori.
-- Manual QA `/rekening` memeriksa stack mobile setelah konten lazy terlihat sebelum menilai `Tambah rekening`, label `Pribadi · <pemilik>`, gesture, atau capability lain.
+- Manual QA `/rekening` memeriksa stack mobile setelah konten lazy terlihat sebelum menilai `Tambah rekening`, label `Pribadi · <pemilik>`, gesture, atau capability lain. Uji juga tombol `Pilih rekening`: satu tap membuka bottom sheet, satu tap item mengganti rekening, focus-visible bekerja, dan flow ini tidak membutuhkan drag.
 - Member dapat melihat rekening/kategori tetapi tidak memperoleh aksi create/edit/archive Administrator.
 - Dialog rekening dan kategori terpisah serta memakai form domain yang sama pada desktop/mobile tanpa tab lintas domain.
-- Stack kartu mobile memakai swipe vertikal pada kartu aktif. Container memakai `touch-action: pan-y pinch-zoom`, kartu aktif memakai `touch-action: pan-x pinch-zoom`, gesture horizontal tidak mengganti rekening, dan area kosong stack tetap menggulir halaman.
-- Tombol `Daftar rekening` harus membuka daftar rekening aktif. Rekening mobile memakai quick action `Transfer` yang membuka form transfer canonical; `Riwayat` dan `Grafik` tetap menjadi tab informasi, sedangkan Jadwal rutin dan Rekonsiliasi berada pada route masing-masing.
+- Stack kartu mobile memakai swipe vertikal pada kartu aktif. Container memakai `touch-action: pan-y pinch-zoom`, kartu aktif memakai `touch-action: pan-x pinch-zoom`, gesture horizontal tidak mengganti rekening, dan area kosong stack tetap menggulir halaman. Dengan `prefers-reduced-motion: reduce`, swipe tidak boleh menjalankan travel/rotate 3D; selection berpindah instan setelah intent terdeteksi dan `Pilih rekening` tetap berfungsi.
+- Tombol `Pilih rekening` harus membuka daftar rekening aktif dan menjadi jalur single-pointer canonical tanpa drag. Rekening mobile memakai quick action `Transfer` yang membuka form transfer canonical; `Riwayat` dan `Grafik` tetap menjadi tab informasi, sedangkan Jadwal rutin dan Rekonsiliasi berada pada route masing-masing.
 - Kartu generic harus flat tanpa gradient; ringkasan rekening dan quick action tidak boleh membentuk card/panel tambahan.
 - Scrollbar visual mobile boleh disembunyikan, tetapi `overflow-y` tidak boleh dikunci dan konten paling bawah harus tetap dapat dicapai.
 - Kontrol form memakai font 16px tanpa menonaktifkan zoom viewport.
@@ -248,7 +249,9 @@ Untuk modal/bottom sheet yang mendukung gesture, regression tambahan wajib menca
 - Setelah create/update/archive rekening atau kategori, daftar aktif dan dashboard diperbarui tanpa refresh manual.
 - Setelah rekonsiliasi, riwayat dan alert/dashboard diperbarui.
 - Submit transaksi baru dan rekonsiliasi wajib tidak menduplikasi GlobalProcessIndicator/toast setelah write sukses. `transactions.create` dan `reconciliations.create` menggunakan feedback lokal; transaction create menampilkan `FinancialSuccessOverlay`, sedangkan rekonsiliasi baru menampilkan overlay setelah fase refresh read-model selesai.
-- `FinancialSuccessOverlay` wajib dipakai untuk Pengeluaran, Pemasukan, Transfer, Refund, dan rekonsiliasi matched. Uji logo aplikasi, badge ceklis animasi, MoneyRain, ringkasan kontekstual, aksi sekunder, tidak adanya tombol X pada success result, focus trap, Escape, safe-area mobile, serta `prefers-reduced-motion`.
+- `FinancialSuccessOverlay` wajib dipakai untuk Pengeluaran, Pemasukan, Transfer, Refund, dan rekonsiliasi matched. Uji logo aplikasi, badge ceklis animasi, MoneyRain finite 8–12 note (canonical saat ini 10), ringkasan kontekstual, aksi sekunder, tidak adanya tombol X pada success result, focus trap, Escape, safe-area mobile, serta `prefers-reduced-motion`. Title/nominal/deskripsi/ringkasan/CTA harus sudah terlihat tanpa menunggu choreography; MoneyRain berhenti setelah one-shot dan hilang sepenuhnya pada reduced-motion.
+- Motion regression wajib memastikan tidak ada JavaScript feature yang memanggil `scrollIntoView`/`scrollTo` dengan `behavior: "smooth"` langsung; gunakan `shared/motion.js` sehingga reduced-motion menghasilkan `auto`. CSS motion baru wajib memakai token semantic dan transition progress menggunakan transform alih-alih `width`/`height` bila visualnya ekuivalen.
+- Login decorative money/spark dan fatal-error illustration harus finite (<5 detik total termasuk delay). Spinner/skeleton boleh infinite hanya saat merepresentasikan loading aktif; reduced-motion menonaktifkan rotation/shimmer tetapi status text/`aria-busy` tetap ada.
 - Rekonsiliasi difference tetap memakai hasil warning tanpa money rain dan boleh menyediakan tombol tutup eksplisit. Refresh read-model yang gagal setelah write success tidak boleh mengubah outcome write menjadi gagal; UI harus menyatakan bahwa server sudah menyimpan tetapi tampilan mungkin perlu dimuat ulang.
 - Viewport 360, 390, 820/821, 940/941, dan 1440 tidak overflow horizontal.
 - Controlled input pada Modal harus dapat menerima beberapa karakter berurutan tanpa fokus berpindah ke tombol tutup; Escape, Tab/Shift+Tab, body scroll lock, dan focus restoration tetap diuji.
@@ -336,6 +339,7 @@ Regression wajib membuktikan:
 - Build budget harus dijalankan setelah production build dan tetap menjadi blocking quality gate.
 - Asset main JS, global CSS, atau route yang mencapai 90% batas menghasilkan warning headroom. Warning adalah trigger review static import/lazy boundary sebelum feature berikutnya, bukan alasan menaikkan threshold.
 - Regression statis menjaga presentation/dialog besar Transaksi serta dialog Alokasi Dana/Kebutuhan/Jadwal Rutin tetap berada di lazy boundary yang sengaja dibuat untuk headroom.
+- Regression `maintenance-tabs` menjaga `ResetDataPage` dan `FullResetPage` tetap di-import dinamis dari `MaintenanceDataPage`; kedua destructive flow tidak boleh kembali menjadi static dependency route Pemeliharaan.
 
 ## Maintainability, artifact hygiene, dan duplicate-report policy
 
@@ -346,6 +350,13 @@ Regression wajib membuktikan:
 - Feedback transient success/info/warning memakai `FeedbackProvider`; error mutation, conflict, maintenance/read-only, backup/restore/import, dan status integrasi yang perlu tetap terlihat memakai notice persisten. Generic hard undo/rollback tidak tersedia; reversal finansial tetap action domain audited.
 - Recurring occurrence mutation wajib enqueue Calendar dengan `recurring_occurrence:<occurrence_id>` dan mirror recurring melalui `<recurring_rule_id>`; pay/reverse/skip/restore harus memakai identitas sinkronisasi yang sama.
 
+### Contextual help dan istilah finansial
+
+- `SettingsLayout` tetap memiliki tepat satu `PageHeader`/Info trigger, tetapi help harus berubah berdasarkan nested route aktif untuk Ringkasan, Notifikasi, Perangkat & sesi, Integrasi, Export, Import, Backup, Pemulihan, Reset data testing, Reset semua data, Periode & integritas, dan Audit.
+- Route Rekening, detail rekening, serta ringkasan rekening Dashboard harus menjelaskan bahwa **Dana tersedia** adalah bagian saldo yang belum terikat ke Alokasi Dana dan **Dialokasikan** adalah bagian saldo yang masih terikat, bukan uang tambahan.
+- Regression menolak copy yang kembali membuat Saldo + Dialokasikan tampak sebagai dua sumber dana terpisah. Copy user-facing harus tetap sinkron dengan `docs/product/GLOSSARY.md`.
+- Manual QA Member baru: mulai dari database/account state tanpa setup, buka Dashboard mobile, pastikan checklist `0/4` terbuka otomatis, langkah Rekening terlihat tanpa tap tambahan, dan quick action tetap reachable setelah checklist.
+
 ## Modal, Kategori, dan route Pengaturan
 
 - Ukur `scrollWidth <= clientWidth + 1` pada dialog dan `.modal__body` untuk Tambah Transaksi, Tambah/Edit Kategori, Rekening, Import, Restore, serta konfirmasi periode pada 320, 360, 390, 414, dan 430px.
@@ -354,7 +365,11 @@ Regression wajib membuktikan:
 - Verifikasi `/transaksi` mobile pada 320/360/390/414/430px: heading route tidak diduplikasi di body; bulan previous/next bekerja sampai bulan berjalan; report-summary failure tidak memblokir ledger; filter common + advanced mempertahankan query canonical; judul tanpa description memakai kategori/merchant/jenis sebagai fallback tanpa `Tanpa keterangan`; metadata nama pencatat lengkap dapat wrap tanpa mendorong nominal keluar viewport; cancelled/managed/unallocated badge tetap stabil; detail modal tetap scrollable dan lifecycle action tetap capability-driven.
 - `categories.create` menormalkan non-pengeluaran tanpa nature eksplisit menjadi `other`, menolak nature pengeluaran pada income/refund, serta menolak kategori expense baru dengan nature `savings`.
 - Data legacy `savings` tetap dapat dibaca dan diubah menuju klasifikasi baru tanpa migration diam-diam.
-- `/pengaturan` hanya memuat `system.health`; setiap nested route memuat resource sendiri dan menampilkan result/error dekat tindakan.
+- `/pengaturan` hanya memuat `system.health`; landing page merender grouped-list **Umum / Data / Sistem** dan tidak memuat resource detail seperti users, audit, archive, periods, atau integrations.
+- Membuka nested route harus menghilangkan daftar menu utama dan menampilkan back-link kontekstual + heading route. Export/Import/Backup/Pemulihan kembali ke `/pengaturan/data`; route lain kembali ke `/pengaturan`.
+- `/pengaturan/data` hanya menjadi hub navigasi ke Export, Import transaksi, Backup, dan Pemulihan; tidak boleh menggabungkan mutation atau memuat seluruh resource empat workflow sekaligus.
+- `/pengaturan/pemeliharaan` menampilkan dua tab terisolasi. Route `/pengaturan/reset-data` harus redirect ke tab Testing dan `/pengaturan/reset-semua` ke `?tab=semua`; route legacy tidak boleh muncul sebagai item menu.
+- Uji mobile 320/360/390/414/430px: grouped-list tetap satu kolom, deskripsi tidak mendorong chevron keluar viewport, Data & cadangan berubah menjadi list satu kolom, dan tab Pemeliharaan tetap dapat dipakai dengan keyboard/touch tanpa horizontal overflow.
 - Administrator-only deep link tetap menampilkan guard frontend dan wajib ditolak backend bila request dipaksakan oleh member.
 
 ## Web Push desktop dan mobile

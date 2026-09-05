@@ -6,7 +6,7 @@ import { DESKTOP_ARTWORK, MOBILE_ASSET_BASE, MONEY_NOTES } from "../loginPresent
 const MoneyRain = ({ notes = MONEY_NOTES }) => (
   <div className={loginClass("login-money-field")} aria-hidden="true">
     {notes.map((note, index) => (
-      <span className={loginClass("login-money-note", `login-money-note--${note.tone}`)} key={`${note.denomination}-${note.left}-${index}`} style={{ "--note-delay": note.delay, "--note-drift": note.drift, "--note-duration": note.duration, "--note-left": note.left, "--note-rotation": note.rotation }}>
+      <span className={loginClass("login-money-note", `login-money-note--${note.tone}`)} key={`${note.denomination}-${note.left}-${index}`} style={{ "--note-delay": note.delay, "--note-drift": note.drift, "--note-left": note.left, "--note-rotation": note.rotation }}>
         <strong>{note.denomination}</strong><small>RUPIAH</small>
       </span>
     ))}

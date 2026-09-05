@@ -37,6 +37,8 @@ import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import {
+  ACCOUNT_ALLOCATED_BALANCE_HINT,
+  ACCOUNT_AVAILABLE_BALANCE_HINT,
   accountCardOwnershipLabel,
   accountDisplayLabel,
   accountCardholderName,
@@ -215,8 +217,8 @@ const MobileDetailData = ({ account, model, copied, onCopy }) => (
         <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
     <MobileDetailRow icon={FiUsers} label="Kepemilikan"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
     <MobileDetailRow icon={FiDollarSign} label={account.account_type === "investment" ? "Cash RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
-    <MobileDetailRow icon={FiDollarSign} label="Dana tersedia"><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong></MobileDetailRow>
-    <MobileDetailRow icon={FiDollarSign} label="Dialokasikan"><span><Money value={account.allocated_remaining || 0} /></span></MobileDetailRow>
+    <MobileDetailRow icon={FiDollarSign} label="Dana tersedia"><span className={styles.mobileFinancialValue}><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></span></MobileDetailRow>
+    <MobileDetailRow icon={FiDollarSign} label="Dialokasikan"><span className={styles.mobileFinancialValue}><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></span></MobileDetailRow>
     <MobileDetailRow icon={FiFlag} label="Saldo awal"><span><Money value={account.initial_balance || 0} /></span></MobileDetailRow>
     <MobileDetailRow icon={FiClock} label="Diperbarui"><span className={styles.mobileUpdatedAt}>{formatUpdatedAt(account.updated_at)}</span></MobileDetailRow>
   </dl>

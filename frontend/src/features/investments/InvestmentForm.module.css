@@ -92,7 +92,7 @@ width: 100%;
   background: var(--input);
   color: var(--text);
   font: inherit;
-  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  transition: border-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard);
 }
 
 .field input:hover,

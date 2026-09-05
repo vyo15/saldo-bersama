@@ -120,7 +120,7 @@ const MobileTrendChart = ({ items = [], period }) => {
       const active = daily ? index === items.length - 1 : item.periodKey === period;
       const showDetail = !daily || index === 0 || index === items.length - 1 || index % 5 === 0;
       return <div className={styles.trendColumn} key={item.periodKey} aria-hidden="true">
-        <div className={styles.trendPlot}>{showDetail ? <span className={styles.trendValue}>{formatCompactRupiah(value)}</span> : null}<i className={`${styles.trendBar}${active ? ` ${styles.trendBarActive}` : ""}`} style={{ "--report-bar-height": `${height}%` }} /></div>
+        <div className={styles.trendPlot}>{showDetail ? <span className={styles.trendValue} style={{ "--report-bar-height": `${height}%` }}>{formatCompactRupiah(value)}</span> : null}<i className={`${styles.trendBar}${active ? ` ${styles.trendBarActive}` : ""}`} style={{ "--report-bar-scale": height / 100 }} /></div>
         <span className={`${styles.trendLabel}${active ? ` ${styles.trendLabelActive}` : ""}`}>{showDetail ? item.label : ""}</span>
       </div>;
     })}

@@ -9,6 +9,7 @@ import { canRepresentAccountTransfer } from "../../domain/ownership.js";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
 import { requestTransferApproval } from "./transferRequests.api.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
+import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 
 export const createTransactionIntentKey = () => createIdempotencyKey();
 
@@ -27,7 +28,7 @@ const focusFirstTransactionError = (formElement, errors) => {
   window.requestAnimationFrame(() => {
     const target = formElement?.querySelector?.(selector) || formElement?.querySelector?.('[aria-invalid="true"]');
     if (!target) return;
-    target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    scrollIntoViewWithMotionPreference(target, { block: "center" });
     target.focus?.({ preventScroll: true });
   });
 };

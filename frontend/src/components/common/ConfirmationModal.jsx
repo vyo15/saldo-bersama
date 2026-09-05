@@ -63,7 +63,13 @@ const AcknowledgementChecklist = ({ items, checkedItems, setCheckedItems }) => {
               <input
                 type="checkbox"
                 checked={checked}
-                onChange={(event) => setCheckedItems((current) => current.map((value, itemIndex) => itemIndex === index ? event.target.checked : value))}
+                onChange={(event) => {
+                  const nextChecked = event.currentTarget.checked;
+                  setCheckedItems((current) => Array.from(
+                    { length: items.length },
+                    (_, itemIndex) => itemIndex === index ? nextChecked : Boolean(current[itemIndex]),
+                  ));
+                }}
               />
               <span className="confirmation-checklist__marker" aria-hidden="true">{checked ? "✓" : index + 1}</span>
               <span>{item}</span>

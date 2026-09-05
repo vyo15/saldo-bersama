@@ -12,7 +12,6 @@ const MoneyRain = ({ compact = false, notes = MONEY_NOTES }) => (
         style={{
           "--note-delay": note.delay,
           "--note-drift": note.drift,
-          "--note-duration": note.duration,
           "--note-left": note.left,
           "--note-rotation": note.rotation,
         }}

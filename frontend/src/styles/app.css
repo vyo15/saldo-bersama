@@ -91,7 +91,7 @@
   border-radius: 15px;
   color: var(--on-hero-soft);
   background: transparent;
-  transition: color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+  transition: color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard);
 }
 
 .desktop-module-dock__link svg {
@@ -120,7 +120,7 @@
   opacity: 0;
   pointer-events: none;
   transform: translate(-5px, -50%);
-  transition: opacity .16s ease, transform .16s ease;
+  transition: opacity var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard);
 }
 
 .desktop-module-dock__link:hover,
@@ -193,7 +193,7 @@
   backdrop-filter: blur(18px);
   pointer-events: auto;
   transform: translateY(-50%);
-  animation: dock-flyout-in .18s var(--motion-easing);
+  animation: dock-flyout-in var(--motion-feedback) var(--ease-enter);
 }
 
 .desktop-module-dock__flyout-heading {
@@ -230,7 +230,7 @@
   color: var(--text);
   font-size: var(--font-size-body-sm);
   font-weight: var(--font-weight-semibold);
-  transition: border-color .18s ease, background-color .18s ease, color .18s ease, transform .18s ease;
+  transition: border-color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard), color var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard);
 }
 
 .desktop-module-dock__flyout-link:hover,
@@ -451,7 +451,7 @@
 .app-shell,
 .desktop-app-header,
 .topbar,
-.app-content { transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.app-content { transition: background-color var(--motion-feedback) var(--ease-standard), border-color var(--motion-feedback) var(--ease-standard), color var(--motion-feedback) var(--ease-standard); }
 
 /* Sync state and shell actions */
 .sync-indicator {
@@ -465,7 +465,7 @@
 }
 
 .sync-indicator.is-active { min-width: max-content; color: var(--primary); }
-.sync-indicator.is-active svg { animation: spin .9s linear infinite; }
+.sync-indicator.is-active svg { animation: spin var(--motion-spinner) linear infinite; }
 .refresh-notice { margin-bottom: 16px; align-items: center; justify-content: space-between; }
 
 :root[data-theme="dark"] .app-shell,

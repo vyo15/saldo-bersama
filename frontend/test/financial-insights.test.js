@@ -241,6 +241,9 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(setupChecklist, /owner \? "Belum ada rekening aktif" : "Ajukan rekening untuk dipakai setelah disetujui"/);
   assert.match(setupChecklist, /owner \? "Kategori pemasukan dan pengeluaran belum siap" : "Ajukan kategori yang masih dibutuhkan"/);
   assert.match(setupChecklist, /Pengajuan rekening\/kategori Member baru aktif setelah disetujui Administrator/);
+  assert.match(setupChecklist, /defaultOpen=\{completed === 0\}/);
+  assert.match(setupChecklist, /Mulai dari Rekening agar fitur keuangan siap dipakai/);
+  assert.match(mobile, /<MobileAlerts alerts=\{overview\.alerts\} \/>\{setupContent\}<MobileQuickActions \/>/);
   assert.match(setupChecklist, /usableEnvelopes = envelopes\.filter\(\(item\) => item\.can_manage_needs === true\)/);
   assert.doesNotMatch(setupChecklist, /usableEnvelopes[\s\S]{0,180}actor\.role === "owner"/);
   assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);

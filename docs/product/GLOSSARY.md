@@ -33,3 +33,9 @@
 | Maintenance mode | Mode read-mostly untuk operasi recovery/integrity. |
 | Administrator | Role administratif tertinggi. Key internal `owner` dipertahankan hanya untuk kompatibilitas backend/data existing. |
 | Member | Role pengguna kedua dengan permission dan ownership terbatas. |
+
+## Sinkronisasi copy user-facing
+
+- Definisi glossary adalah sumber makna product. UI boleh memendekkan kalimat, tetapi tidak boleh mengubah relasi finansialnya.
+- Untuk Rekening, copy canonical frontend berada di `frontend/src/shared/presentation/account.js`: `ACCOUNT_BALANCE_GUIDANCE`, `ACCOUNT_AVAILABLE_BALANCE_HINT`, dan `ACCOUNT_ALLOCATED_BALANCE_HINT`.
+- Page Info Perencanaan/Anggaran serta helper Rekening/Dashboard harus memakai makna yang sama: Alokasi Dana adalah bagian Saldo, Kebutuhan adalah anggaran kategori di dalam Alokasi Dana, dan Anggaran adalah ringkasan read-only seluruh Kebutuhan.

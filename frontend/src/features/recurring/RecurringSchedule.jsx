@@ -260,7 +260,7 @@ export const ScheduleSummary = ({ items, onAttention }) => {
         <div className={styles.heroValue}><Money value={summary.expense} /></div>
         <p className={styles.heroDescription}>Rencana pengeluaran rutin pada periode yang dipilih.</p>
         <div className={styles.heroProgress} aria-label={`${progress}% jadwal periode terselesaikan`}>
-          <span style={{ width: `${progress}%` }} />
+          <span style={{ "--recurring-progress-scale": progress / 100 }} />
         </div>
         <div className={styles.heroMetrics}>
           <div className={styles.heroMetric}><span>Pemasukan</span><strong><Money value={summary.income} /></strong></div>

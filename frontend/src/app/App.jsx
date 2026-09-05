@@ -22,12 +22,12 @@ const DeviceNotificationsPage = lazy(() => import("../features/settings/DeviceNo
 const ActiveSessionsPage = lazy(() => import("../features/settings/ActiveSessionsPage.jsx"));
 const GoogleIntegrationsPage = lazy(() => import("../features/settings/GoogleIntegrationsPage.jsx"));
 const MembersSettingsPage = lazy(() => import("../features/settings/MembersSettingsPage.jsx"));
+const DataStoragePage = lazy(() => import("../features/settings/DataStoragePage.jsx"));
 const ExportDataPage = lazy(() => import("../features/settings/ExportDataPage.jsx"));
 const ImportTransactionsPage = lazy(() => import("../features/settings/ImportTransactionsPage.jsx"));
 const BackupPage = lazy(() => import("../features/settings/BackupPage.jsx"));
 const RecoveryPage = lazy(() => import("../features/settings/RecoveryPage.jsx"));
-const ResetDataPage = lazy(() => import("../features/settings/ResetDataPage.jsx"));
-const FullResetPage = lazy(() => import("../features/settings/FullResetPage.jsx"));
+const MaintenanceDataPage = lazy(() => import("../features/settings/MaintenanceDataPage.jsx"));
 const PeriodControlPage = lazy(() => import("../features/settings/PeriodControlPage.jsx"));
 const AuditPage = lazy(() => import("../features/settings/AuditPage.jsx"));
 const NotFoundPage = lazy(() => import("../features/settings/NotFoundPage.jsx"));
@@ -69,12 +69,14 @@ const App = () => (
           <Route path="perangkat" element={routeElement(ActiveSessionsPage)} />
           <Route path="integrasi" element={routeElement(GoogleIntegrationsPage)} />
           <Route path="anggota" element={<Navigate to="/anggota" replace />} />
+          <Route path="data" element={routeElement(DataStoragePage)} />
           <Route path="export" element={routeElement(ExportDataPage)} />
           <Route path="import" element={routeElement(ImportTransactionsPage)} />
           <Route path="backup" element={routeElement(BackupPage)} />
           <Route path="pemulihan" element={routeElement(RecoveryPage)} />
-          <Route path="reset-data" element={routeElement(ResetDataPage)} />
-          <Route path="reset-semua" element={routeElement(FullResetPage)} />
+          <Route path="pemeliharaan" element={routeElement(MaintenanceDataPage)} />
+          <Route path="reset-data" element={<Navigate to="/pengaturan/pemeliharaan" replace />} />
+          <Route path="reset-semua" element={<Navigate to="/pengaturan/pemeliharaan?tab=semua" replace />} />
           <Route path="periode" element={routeElement(PeriodControlPage)} />
           <Route path="audit" element={routeElement(AuditPage)} />
         </Route>

@@ -17,6 +17,8 @@ import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { useMediaQuery } from "../../../hooks/useMediaQuery.js";
 import {
+  ACCOUNT_ALLOCATED_BALANCE_HINT,
+  ACCOUNT_AVAILABLE_BALANCE_HINT,
   accountDisplayLabel,
   accountOwnershipLabel,
   accountProviderLabel,
@@ -183,8 +185,8 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           <strong><Money value={account.balance || 0} tone={balanceTone(account.balance)} /></strong>
         </div>
         <dl className={styles.heroFacts}>
-          <div><dt>Dana tersedia</dt><dd><Money value={account.available_balance ?? account.balance ?? 0} tone={balanceTone(account.available_balance ?? account.balance)} /></dd></div>
-          <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /></dd></div>
+          <div><dt>Dana tersedia</dt><dd><Money value={account.available_balance ?? account.balance ?? 0} tone={balanceTone(account.available_balance ?? account.balance)} /><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></dd></div>
+          <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></dd></div>
           <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>

@@ -12,7 +12,7 @@ const BudgetPacingBar = ({ usedPercent, elapsedPercent, isCurrent, state, label 
       role="img"
     >
       <div className={styles.pacingTrack} aria-hidden="true">
-        <span className={styles.pacingFill} style={{ width: `${used}%` }} />
+        <span className={styles.pacingFill} style={{ "--budget-pacing-scale": used / 100 }} />
       </div>
       {isCurrent ? <>
         <span className={styles.todayMarker} style={{ left: `calc(${elapsed}% - 1px)` }} aria-hidden="true" />

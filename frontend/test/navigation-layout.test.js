@@ -273,7 +273,7 @@ test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kemba
 test("responsive mobile tidak menyembunyikan two-column-grid dan breakpoint sempit menang", async () => {
   const [source, settings] = await Promise.all([
     read("src/styles/responsive.css"),
-    read("src/features/settings/SettingsOverview.module.css"),
+    read("src/features/settings/Settings.module.css"),
   ]);
   assert.doesNotMatch(source, /\.two-column-grid,\s*\n\s*\.app-shell--dashboard \.topbar/);
   assert.doesNotMatch(source, /\.two-column-grid\s*\{[^}]*display:\s*none/);
@@ -282,7 +282,8 @@ test("responsive mobile tidak menyembunyikan two-column-grid dan breakpoint semp
   const width580 = source.indexOf("@media (max-width: 580px)");
   const width340 = source.indexOf("@media (max-width: 340px)");
   assert.ok(width820 >= 0 && width680 > width820 && width580 > width680 && width340 > width580, "Breakpoint global harus terurut 820px → 680px → 580px → 340px.");
-  assert.match(settings, /@media \(max-width: 580px\)[\s\S]*\.settingsCard > :last-child\s*\{[\s\S]*?grid-column:\s*1 \/ -1;[\s\S]*?width:\s*100%;/);
+  assert.match(settings, /@media \(max-width: 42rem\)[\s\S]*\.settingsListRow \{[^}]*min-height:\s*4\.15rem;/);
+  assert.match(settings, /@media \(max-width: 42rem\)[\s\S]*\.dataStorageGrid \{[^}]*grid-template-columns:\s*1fr;/);
   assert.match(source.slice(width340), /:root \{ --mobile-page-gutter:\s*12px; --mobile-card-padding:\s*14px; \}/);
 });
 

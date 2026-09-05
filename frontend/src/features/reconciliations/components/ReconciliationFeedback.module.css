@@ -1,6 +1,6 @@
 .progressCard { margin-top: var(--space-3); padding: 12px 13px; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); align-items: start; gap: 11px; border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--primary-soft) 62%, var(--surface)); box-shadow: var(--shadow-sm); }
 .progressSpinner { width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 11px; background: color-mix(in srgb, var(--surface) 72%, var(--primary-soft)); color: var(--primary); }
-.progressSpinner svg { width: 1.1rem; height: 1.1rem; animation: reconciliation-feedback-spin .85s linear infinite; }
+.progressSpinner svg { width: 1.1rem; height: 1.1rem; animation: reconciliation-feedback-spin var(--motion-spinner) linear infinite; }
 .progressCopy { min-width: 0; display: grid; gap: 3px; }
 .progressCopy strong { font-size: var(--font-size-body-sm); line-height: 1.35; }
 .progressCopy small { color: var(--text-soft); font-size: var(--font-size-sm); line-height: 1.42; }
@@ -21,9 +21,9 @@
 .resultClose:focus-visible, .resultDone:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .resultClose svg { width: 1.1rem; height: 1.1rem; }
 .resultContent { position: relative; z-index: 3; min-height: 36rem; padding: 4.5rem 2rem 1.5rem; display: flex; flex-direction: column; align-items: center; text-align: center; }
-.resultIcon { width: 4.8rem; height: 4.8rem; display: grid; place-items: center; border-radius: 50%; animation: reconciliation-feedback-check-in .72s .18s var(--motion-easing) both; }
-.resultIcon::before, .resultIcon::after { content: ""; position: absolute; width: 4.8rem; height: 4.8rem; border: 1px solid currentColor; border-radius: 50%; opacity: 0; animation: reconciliation-feedback-ring 1.25s .28s ease-out both; }
-.resultIcon::after { animation-delay: .42s; }
+.resultIcon { width: 4.8rem; height: 4.8rem; display: grid; place-items: center; border-radius: 50%; animation: reconciliation-feedback-check-in var(--motion-emphasized) var(--motion-instant) var(--ease-enter) both; }
+.resultIcon::before, .resultIcon::after { content: ""; position: absolute; width: 4.8rem; height: 4.8rem; border: 1px solid currentColor; border-radius: 50%; opacity: 0; animation: reconciliation-feedback-ring var(--motion-celebration) var(--motion-feedback) var(--ease-enter) both; }
+.resultIcon::after { animation-delay: var(--motion-emphasized); }
 .resultIconDifference { position: relative; color: var(--warning); background: var(--warning-soft); box-shadow: 0 18px 48px color-mix(in srgb, var(--warning) 13%, transparent); }
 .resultIcon svg { width: 2.35rem; height: 2.35rem; stroke-width: 2.8; }
 .resultEyebrow { margin-top: 1.2rem; color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .1em; text-transform: uppercase; }
@@ -64,7 +64,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .progressSpinner svg { animation-duration: 1.5s; }
+  .progressSpinner svg { animation: none; }
   .resultBackdrop, .resultDialog, .resultIcon { animation: none; }
   .resultIcon::before, .resultIcon::after { display: none; }
 }

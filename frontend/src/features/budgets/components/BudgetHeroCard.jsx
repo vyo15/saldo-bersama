@@ -21,7 +21,7 @@ const BudgetHeroCard = ({ totals, periodMeta }) => {
         <strong className={styles.heroValue}><Money value={remaining} tone={remaining < 0 ? "negative" : "default"} /></strong>
         <p className={styles.heroMeta}>Terpakai <Money value={totals.used} /> dari <Money value={totals.amount} /></p>
         <div className={styles.heroProgress} aria-label={`Total pemakaian anggaran ${Math.round(percentage)}%`}>
-          <span style={{ width: `${fill}%` }} />
+          <span style={{ "--budget-progress-scale": fill / 100 }} />
         </div>
         <div className={styles.heroProgressMeta}><span>Keseluruhan</span><strong>{percentage.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</strong></div>
       </div>

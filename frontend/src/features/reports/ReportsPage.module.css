@@ -309,13 +309,13 @@
   }
 
   .trendBar {
-    --report-bar-height: 7%;
     width: clamp(18px, 6vw, 28px);
-    height: var(--report-bar-height);
-    min-height: 7px;
+    height: 100%;
     border-radius: 7px 7px 3px 3px;
     background: color-mix(in srgb, var(--text-muted) 32%, var(--surface-soft));
-    transition: height var(--motion-normal) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing);
+    transform: scaleY(var(--report-bar-scale, .07));
+    transform-origin: center bottom;
+    transition: transform var(--motion-feedback) var(--ease-standard), background-color var(--motion-control) var(--ease-standard);
   }
 
   .trendBarActive {
