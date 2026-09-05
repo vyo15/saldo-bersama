@@ -1,4 +1,5 @@
 import { FiAlertCircle } from "react-icons/fi";
+import Button from "../../../components/common/Button.jsx";
 import { loginClass } from "../loginStyles.js";
 
 const LoginFeedback = ({ configErrors, error, buttonError, status, refreshSession }) => {
@@ -20,9 +21,9 @@ const LoginFeedback = ({ configErrors, error, buttonError, status, refreshSessio
       ) : null}
 
       {status === "error" ? (
-        <button className={loginClass("button", "button--secondary", "button--wide")} type="button" onClick={refreshSession}>
+        <Button className={loginClass("login-feedback__retry")} onClick={refreshSession}>
           Coba periksa sesi lagi
-        </button>
+        </Button>
       ) : null}
     </div>
   );

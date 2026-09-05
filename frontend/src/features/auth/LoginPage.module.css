@@ -333,6 +333,11 @@
   transform: none;
 }
 
+.login-feedback__retry {
+  width: 100%;
+}
+
+
 .login-provider-slot--desktop .login-mobile-google-button {
   min-height: 54px;
   border-radius: 16px;

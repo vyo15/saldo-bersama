@@ -19,10 +19,6 @@ import {
 } from "react-icons/fi";
 import cashCard from "../../../assets/account-cards/cash.webp";
 import savingsCard from "../../../assets/account-cards/savings.webp";
-import emergencyFundCard from "../../../assets/account-cards/emergency_fund.webp";
-import sinkingFundCard from "../../../assets/account-cards/sinking_fund.webp";
-import investmentCard from "../../../assets/account-cards/investment.webp";
-import otherCard from "../../../assets/account-cards/other.webp";
 import bcaCard from "../../../assets/bank-cards/bca.webp";
 import bniCard from "../../../assets/bank-cards/bni.webp";
 import btnCard from "../../../assets/bank-cards/btn.webp";
@@ -55,15 +51,15 @@ import styles from "./AccountFinancialCard.module.css";
 
 const BANK_IMAGES = Object.freeze({ bca: bcaCard, bni: bniCard, btn: btnCard, mandiri: mandiriCard, permata: permataCard });
 const EWALLET_IMAGES = Object.freeze({ shopeepay: shopeepayCard, dana: danaCard, gopay: gopayCard, ovo: ovoCard, linkaja: linkajaCard });
-const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, savings: savingsCard, emergency_fund: emergencyFundCard, sinking_fund: sinkingFundCard, investment: investmentCard, other: otherCard });
+const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, savings: savingsCard });
 const ACCOUNT_ICONS = Object.freeze({
   bank: FiCreditCard,
   cash: FiDollarSign,
   ewallet: FiSmartphone,
   emergency_fund: FiShield,
   savings: FiDollarSign,
-  sinking_fund: FiDollarSign,
-  investment: FiDollarSign,
+  sinking_fund: FiClock,
+  investment: FiTrendingUp,
   other: FiCreditCard,
 });
 
@@ -146,6 +142,7 @@ export const AccountVisual = ({ account, templateOverride, detail = false, carou
       data-bank-template={model.isBank ? model.template : undefined}
       data-ewallet-template={account.account_type === "ewallet" ? model.ewalletTemplate : undefined}
       data-visual-kind={model.visualKind}
+      data-account-type={account.account_type}
       data-has-image={model.image ? "true" : "false"}
     >
       <AccountCardArtwork model={model} eager={eager} />

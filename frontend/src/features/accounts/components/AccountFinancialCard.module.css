@@ -4,7 +4,7 @@
   position: relative;
   width: 100%;
   min-width: 0;
-  aspect-ratio: 1.586 / 1;
+  aspect-ratio: 1024 / 645;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border-strong) 68%, transparent);
   border-radius: 0.9rem;
@@ -26,7 +26,7 @@
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   pointer-events: none;
   user-select: none;
@@ -51,12 +51,6 @@
   background: none;
 }
 
-.visual[data-visual-kind="bank"] .cardImage {
-  inset: -3%;
-  width: 106%;
-  height: 106%;
-}
-
 .genericCard {
   position: absolute;
   inset: 0;
@@ -73,6 +67,19 @@
 
 .visual[data-visual-kind="ewallet"]::after {
   background: linear-gradient(180deg, transparent 52%, color-mix(in srgb, var(--account-card-overlay) 8%, transparent) 62%, color-mix(in srgb, var(--account-card-overlay) 70%, transparent) 100%);
+}
+
+
+.visual[data-has-image="false"][data-account-type="emergency_fund"] .genericCard {
+  background: color-mix(in srgb, var(--primary-deep) 84%, var(--positive) 16%);
+}
+
+.visual[data-has-image="false"][data-account-type="sinking_fund"] .genericCard {
+  background: color-mix(in srgb, var(--primary-deep) 84%, var(--info) 16%);
+}
+
+.visual[data-has-image="false"][data-account-type="investment"] .genericCard {
+  background: color-mix(in srgb, var(--primary-deep) 84%, var(--secondary) 16%);
 }
 
 .genericCard svg {

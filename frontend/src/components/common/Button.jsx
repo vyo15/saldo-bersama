@@ -1,24 +1,10 @@
 import { FiLoader } from "react-icons/fi";
+import { buttonClassName } from "./buttonClassName.js";
 import styles from "./Button.module.css";
-
-const VARIANT_STYLES = Object.freeze({
-  secondary: styles.secondary,
-  primary: styles.primary,
-  danger: styles.danger,
-});
 
 const Button = ({ variant = "secondary", className = "", icon: Icon, children, loading = false, disabled, type = "button", ...props }) => {
   const DisplayIcon = loading ? FiLoader : Icon;
-  const variantStyle = VARIANT_STYLES[variant] || styles.secondary;
-  const classes = [
-    styles.button,
-    variantStyle,
-    loading ? styles.loading : "",
-    "button",
-    `button--${variant}`,
-    loading ? "button--loading" : "",
-    className,
-  ].filter(Boolean).join(" ");
+  const classes = buttonClassName(styles, { variant, loading, className });
 
   return (
     <button

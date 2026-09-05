@@ -4,7 +4,7 @@
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .allocation-embedded-header h2 {
@@ -17,7 +17,7 @@
   max-width: 68ch;
   margin: 4px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.5;
 }
 
@@ -38,7 +38,7 @@
   background: transparent;
   color: var(--primary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   cursor: pointer;
 }
@@ -92,7 +92,7 @@
 .allocation-detail-hero p {
   margin: 5px 0 0;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.5;
 }
 
@@ -110,7 +110,7 @@
   padding: 10px 12px;
   border-radius: 13px;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   background: var(--surface-soft);
 }
 
@@ -148,7 +148,7 @@
 
 .allocation-detail-panel {
   min-width: 0;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .allocation-detail-panel__header {
@@ -156,7 +156,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .allocation-detail-panel__header > div {
@@ -183,7 +183,7 @@
   border-radius: 13px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
   background: var(--surface-soft);
 }
 
@@ -201,7 +201,7 @@
 .allocation-needs-summary strong {
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -222,7 +222,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   background: color-mix(in srgb, var(--warning) 7%, var(--surface));
 }
 
@@ -261,7 +261,7 @@
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .allocation-limit-row:last-child,
@@ -274,7 +274,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .allocation-limit-row__main > div {
@@ -285,7 +285,7 @@
 
 .allocation-limit-row__main strong {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -346,7 +346,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .allocation-related-row > div {
@@ -362,7 +362,7 @@
 
 .allocation-related-row strong {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -373,7 +373,7 @@
 }
 
 .allocation-related-row :global(.money) {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
 }
 

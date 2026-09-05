@@ -1,6 +1,7 @@
 import { Component } from "react";
 import { FiRefreshCw } from "react-icons/fi";
 import Brand from "../common/Brand.jsx";
+import Button from "../common/Button.jsx";
 
 const FatalErrorIllustration = () => (
   <div className="fatal-error__illustration" aria-hidden="true">
@@ -89,10 +90,9 @@ class AppErrorBoundary extends Component {
           <FatalErrorIllustration />
           <h1>Aplikasi gagal ditampilkan</h1>
           <p>Data tidak diubah. Muat ulang halaman untuk mencoba kembali.</p>
-          <button className="button button--primary" type="button" onClick={() => window.location.reload()}>
-            <FiRefreshCw aria-hidden="true" />
+          <Button variant="primary" icon={FiRefreshCw} onClick={() => window.location.reload()}>
             Muat ulang
-          </button>
+          </Button>
         </main>
       );
     }

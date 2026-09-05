@@ -1,3 +1,18 @@
+## 5 September 2026 - Merge flow planning, UI consistency, dan lint quality-gate
+
+- Menggabungkan UI consistency sweep dengan flow planning terbaru tanpa menimpa perubahan project terkini: `SelectionField`/`ButtonLink` canonical tetap dipertahankan, sementara Buat Alokasi kembali meminta **Nama alokasi**, memakai **Dana yang disiapkan**, dan menyediakan step `Susun kebutuhan` berbasis Kategori aktif tanpa auto-save Kebutuhan.
+- Menyederhanakan readiness first-run menjadi **Rekening + Kategori = siap mencatat**; Alokasi Dana, Jadwal Rutin, dan Target tetap perencanaan opsional sehingga user tidak dipaksa menyelesaikan planning sebelum mencatat transaksi.
+- Menutup dua blocker lint pada clean archive: helper class Button dipindahkan dari file komponen ke `buttonClassName.js` agar Fast Refresh tetap canonical, dan `CreateEnvelopeModal` dipecah menjadi helper/sub-komponen kecil agar complexity kembali di bawah quality gate tanpa menonaktifkan rule.
+- Helper kalkulasi estimasi Alokasi dipindahkan ke `allocationNeedEstimateModel.js` agar file komponen hanya mengekspor komponen dan tidak memicu Fast Refresh warning. Business rule, API, authorization, ledger, idempotency, schema, serta mutation finansial tidak berubah.
+
+## 5 September 2026 - UI consistency sweep dan shared control hardening
+
+- Menyeragamkan `SelectionField` ke spacing/typography/radius token canonical dan mengunci effective mobile hit target 44px untuk trigger default/compact/embedded, search, serta option. Notification Center `Tandai dibaca`/filter dan toggle catatan Rekonsiliasi ikut memakai target sentuh mobile canonical tanpa membuat visual menjadi lebih berat.
+- Membersihkan presentation Laporan desktop yang sudah tidak dapat dirender pada breakpoint mobile: branch `ReportDetails` mobile dan `BudgetMobileList` legacy dihapus, `ReportsDesktop.module.css` kembali desktop-only, sedangkan `MobileReportsView` tetap menjadi owner tunggal layout laporan `<=820px`.
+- Menambahkan `ButtonLink` canonical untuk CTA navigasi dan memigrasikan CTA app-owned yang sebelumnya merakit `button button--*` secara lokal. `.button--wide` yang tidak lagi memiliki consumer dihapus; CTA khusus Google Login tetap memakai primitive login miliknya sendiri.
+- Menormalisasi token spacing/typography/radius yang aman pada surface Alokasi tanpa mengubah flow `Untuk apa → Ambil dana dari → Digunakan oleh → Dana awal`, business logic, saldo, ledger, authorization, idempotency, schema, atau API contract.
+- Memperkuat regression guard untuk target sentuh efektif, pemisahan Laporan desktop/mobile, dan pemakaian ButtonLink serta menyelaraskan `UI_DESIGN_SYSTEM`, `PROJECT_STATUS`, `TEST_PLAN`, `QA_CHECKLIST`, dan `IMPLEMENTATION_MATRIX`.
+
 ## 5 September 2026 - Navigation smoothness dan tactile interaction hardening
 
 - Menambahkan content-enter transition ringan untuk route authenticated: shell, header, dan navigation tetap stabil sementara canvas route baru memakai fade + travel vertikal kecil berbasis token `--motion-fast`/`--ease-enter`; tidak ada exit animation yang menahan navigasi.

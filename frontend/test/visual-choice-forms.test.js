@@ -66,5 +66,8 @@ test("SelectionField keeps app-owned selection accessible without native browser
   assert.match(source, /type="search"/);
   assert.match(source, /document\.addEventListener\("keydown"/);
   assert.match(css, /@media \(max-width: 820px\)/);
-  assert.match(css, /min-height: 44px/);
+  assert.match(css, /\.trigger,\s*\n\s*\.compact \.trigger,\s*\n\s*\.embedded \.trigger,\s*\n\s*\.search,\s*\n\s*\.search input \{\s*\n\s*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(css, /\.option \{[^}]*min-height:\s*var\(--control-height-md\);/s);
+  assert.match(css, /\.triggerValue \{[^}]*font-size:\s*var\(--font-size-body-sm\);/s);
+  assert.match(css, /\.optionMeta \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
 });

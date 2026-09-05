@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { FiArrowRight, FiChevronRight } from "react-icons/fi";
+import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Money from "../../../components/common/Money.jsx";
 import { categoryIcon } from "../../../shared/presentation/transaction.js";
 import { userRoleLabel } from "../../../shared/presentation/user.js";
@@ -61,7 +61,7 @@ const BudgetInsightCard = ({ item, category, periodMeta }) => {
       {detailsOpen ? <div className={styles.cardDetails}>
         <div className={styles.detailMetric}><span>Aman / hari</span><strong>{periodMeta.isCurrent ? <Money value={safeDaily} /> : "—"}</strong></div>
         <div className={styles.detailMetric}><span>Peringatan</span><strong>{state.warningThreshold}%</strong></div>
-        {periodMeta.isCurrent ? <div className={styles.detailActions}><Link className="button button--secondary" to="/perencanaan/kantong" state={manageState}>Kelola di Alokasi Dana <FiArrowRight aria-hidden="true" /></Link></div> : null}
+        {periodMeta.isCurrent ? <div className={styles.detailActions}><ButtonLink to="/perencanaan/kantong" state={manageState} icon={FiArrowRight}>Kelola di Alokasi Dana</ButtonLink></div> : null}
       </div> : null}
     </article>
   );

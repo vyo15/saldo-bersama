@@ -256,15 +256,17 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(goals, /goalClass\("goal-action-menu"\)/);
   assert.match(goals, /FiMoreHorizontal/);
   assert.match(reports, /reportClass\("report-details"\)/);
-  assert.match(reports, /Rincian laporan/);
+  assert.match(reports, /const MobileReportsView/);
   assert.match(reports, /useMediaQuery\(APP_MEDIA\.mobile\)/);
+  assert.doesNotMatch(reports, /BudgetMobileList|report-details__summary/);
   assert.match(goalStyles, /\.goal-action-menu__items/);
   assert.match(goalStyles, /\.goal-action-menu:only-child\s*\{[\s\S]*?grid-column:\s*2;/);
   assert.match(allocationStyles, /\.allocation-refresh-action > span\s*\{[^}]*display:\s*none;/);
   assert.match(allocationStyles, /\.allocation-header-actions--administrator\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, \.95fr\) var\(--mobile-control-height\);/);
   assert.match(allocationStyles, /\.allocation-filters button\s*\{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(allocationStyles, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
-  assert.match(reportStyles, /\.report-details__summary \{[\s\S]*display:\s*flex;/);
+  assert.match(reportStyles, /Desktop-only report presentation/);
+  assert.doesNotMatch(reportStyles, /@media\s*\(max-width|budget-mobile-card|report-details__summary/);
   assert.doesNotMatch(budgets, /font-size:\s*9px/);
 
   const [accountStyles, financialSuccessStyles] = await Promise.all([

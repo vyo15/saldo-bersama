@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { allocationNeedsFundingSummary } from "../src/features/allocations/allocationPresentation.js";
+import { allocationGeneratedName, allocationNeedsFundingSummary } from "../src/features/allocations/allocationPresentation.js";
 
 test("ringkasan Kebutuhan membandingkan rencana dengan dana alokasi tanpa memakai sisa setelah transaksi", () => {
   const summary = allocationNeedsFundingSummary(
@@ -42,4 +42,14 @@ test("ringkasan Kebutuhan menormalkan nominal invalid agar tidak membuat suggest
     unplanned: 0,
     status: "needs-funding",
   });
+});
+
+
+test("nama Alokasi otomatis berasal dari periode dan rekening tanpa input nama manual", () => {
+  const name = allocationGeneratedName(
+    { period_start: "2026-09-01", period_end: "2026-09-30" },
+    { account_type: "bank", bank_template: "bni", account_name: "Gajian" },
+  );
+
+  assert.equal(name, "Alokasi 1–30 Sep 2026 · BNI · Gajian");
 });

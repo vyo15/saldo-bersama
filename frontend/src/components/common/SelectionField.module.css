@@ -10,13 +10,13 @@
 
 .trigger {
   width: 100%;
-  min-height: var(--control-height, 44px);
-  padding: 9px 11px;
+  min-height: var(--control-height-md);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--control-radius);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   color: var(--text);
   text-align: left;
   background: var(--input);
@@ -45,14 +45,14 @@
   min-width: 0;
   flex: 1;
   display: grid;
-  gap: 2px;
+  gap: calc(var(--space-1) / 2);
 }
 
 .triggerValue {
   min-width: 0;
   overflow: hidden;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   font-weight: var(--font-weight-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -66,7 +66,7 @@
 .triggerMeta {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -86,28 +86,28 @@
 
 .panel {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + var(--space-2));
   left: 0;
   right: 0;
   min-width: min(100%, 18rem);
   max-height: 20rem;
-  padding: 6px;
+  padding: var(--space-2);
   border: 1px solid var(--border-strong);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   overflow: auto;
   background: var(--surface-elevated);
   box-shadow: var(--shadow-md);
 }
 
 .search {
-  min-height: 42px;
-  margin-bottom: 5px;
-  padding: 0 10px;
+  min-height: var(--control-height-md);
+  margin-bottom: var(--space-1);
+  padding: 0 var(--space-3);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   background: var(--input);
 }
 
@@ -121,7 +121,7 @@
 .search input {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
+  min-height: var(--control-height-md);
   padding: 0;
   border: 0;
   outline: 0;
@@ -136,13 +136,13 @@
 
 .option {
   width: 100%;
-  min-height: 46px;
-  padding: 7px 7px 7px 9px;
+  min-height: var(--control-height-md);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-2);
   color: var(--text);
   text-align: left;
   background: transparent;
@@ -173,19 +173,19 @@
   min-width: 0;
   flex: 1;
   display: grid;
-  gap: 2px;
+  gap: calc(var(--space-1) / 2);
 }
 
 .optionLabel {
   color: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   font-weight: var(--font-weight-semibold);
   line-height: 1.35;
 }
 
 .optionMeta {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.35;
 }
 
@@ -208,15 +208,15 @@
 
 .empty {
   margin: 0;
-  padding: 18px 8px;
+  padding: var(--space-5) var(--space-2);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   text-align: center;
 }
 
 .compact .trigger {
   min-height: 40px;
-  padding-block: 7px;
+  padding-block: var(--space-2);
 }
 
 .embedded .trigger {
@@ -238,13 +238,21 @@
     z-index: 1;
   }
 
+  .trigger,
+  .compact .trigger,
+  .embedded .trigger,
+  .search,
+  .search input {
+    min-height: var(--mobile-control-height);
+  }
+
   .panel,
   .embedded .panel {
     position: static;
     min-width: 0;
     max-height: 17rem;
-    margin-top: 6px;
-    padding: 4px 0;
+    margin-top: var(--space-2);
+    padding: var(--space-1) 0;
     border-inline: 0;
     border-bottom: 0;
     border-radius: 0;
@@ -258,7 +266,7 @@
   }
 
   .search {
-    margin: 5px 8px 7px;
+    margin: var(--space-1) var(--space-2) var(--space-2);
   }
 }
 

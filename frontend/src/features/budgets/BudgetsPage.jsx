@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { FiSliders } from "react-icons/fi";
+import Button from "../../components/common/Button.jsx";
+import ButtonLink from "../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageInfoButton from "../../components/common/PageInfoButton.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
@@ -34,7 +36,7 @@ const BudgetListSection = ({ activeFilter, setActiveFilter, visibleItems, critic
       <h2 id="budget-list-title">{title}</h2>
       {visibleItems.length > 1 ? <button type="button" className={styles.sortButton} onClick={() => setCriticalFirst((current) => !current)} aria-pressed={criticalFirst}><FiSliders aria-hidden="true" />{criticalFirst ? "Paling kritis" : "Urutan awal"}</button> : null}
     </div>
-    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} category={categoryLookup[item.category_id]} periodMeta={periodMeta} />)}</div> : <EmptyState title={emptyTitle} description={emptyDescription} action={activeFilter === "attention" ? <button type="button" className="button button--secondary" onClick={() => setActiveFilter("all")}>Lihat semua Kebutuhan</button> : <Link className="button button--primary" to="/perencanaan/kantong">Kelola Alokasi Dana</Link>} />}
+    {visibleItems.length ? <div className={styles.cardGrid}>{visibleItems.map(({ item }) => <BudgetInsightCard key={item.budget_id} item={item} category={categoryLookup[item.category_id]} periodMeta={periodMeta} />)}</div> : <EmptyState title={emptyTitle} description={emptyDescription} action={activeFilter === "attention" ? <Button onClick={() => setActiveFilter("all")}>Lihat semua Kebutuhan</Button> : <ButtonLink variant="primary" to="/perencanaan/kantong">Kelola Alokasi Dana</ButtonLink>} />}
   </section>;
 };
 

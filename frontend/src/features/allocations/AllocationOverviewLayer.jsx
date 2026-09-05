@@ -1,6 +1,6 @@
 import { FiArrowRight, FiBell, FiMoreHorizontal, FiPieChart, FiPlus, FiRefreshCw } from "react-icons/fi";
-import { Link } from "react-router";
 import Button from "../../components/common/Button.jsx";
+import ButtonLink from "../../components/common/ButtonLink.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
@@ -49,7 +49,7 @@ const AllocationCards = ({ items, totalItems, onOpenActions, onReminder, onAdjus
   const needs = linkedBudgetsForItem(budgets, item);
   const scheduleCount = relatedRecurringForItem(recurringItems, budgets, item).length;
   return <AllocationCard key={item.envelope_period_id} item={item} onOpenActions={onOpenActions} onReminder={onReminder} onAdjust={onAdjust} canAdjust={canAdjustItem(item)} canRemind={canRemindItem(item)} attention={item.envelope_period_id === attentionEnvelopeId} onOpenDetail={onOpenDetail} needs={needs} scheduleCount={scheduleCount} />;
-}) : <EmptyState className={allocationClass("allocation-empty")} variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Belum ada Alokasi Dana aktif" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Pisahkan dana berdasarkan tujuan agar sisa yang benar-benar tersedia lebih mudah dipantau." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua Alokasi</Button> : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat Alokasi Dana</Button> : <Link className="button button--primary" to="/rekening">Lihat Rekening</Link>} />}</section>;
+}) : <EmptyState className={allocationClass("allocation-empty")} variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Belum ada Alokasi Dana aktif" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Pisahkan dana berdasarkan tujuan agar sisa yang benar-benar tersedia lebih mudah dipantau." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua Alokasi</Button> : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat Alokasi Dana</Button> : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>} />}</section>;
 
 const AllocationOverviewLayer = ({
   activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder, onAdjust,

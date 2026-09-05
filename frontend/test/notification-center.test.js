@@ -67,3 +67,17 @@ test("rekonsiliasi tidak menganggap saldo sistem sebagai saldo aktual sebelum ko
   assert.match(form, /Saldo tidak diubah otomatis/);
   assert.doesNotMatch(page, /actual_balance:\s*accountSystemBalance|actual_balance:\s*selectedAccount/);
 });
+
+
+test("notification center dan rekonsiliasi menjaga target sentuh mobile canonical", async () => {
+  const [notificationsCss, reconciliationCss] = await Promise.all([
+    source("src/features/notifications/NotificationsPage.module.css"),
+    source("src/features/reconciliations/ReconciliationsPage.module.css"),
+  ]);
+
+  assert.match(notificationsCss, /\.readAll \{[^}]*min-height:\s*var\(--control-height-md\);/s);
+  assert.match(notificationsCss, /\.filter \{[^}]*min-height:\s*var\(--control-height-md\);/s);
+  assert.match(notificationsCss, /@media \(max-width: 820px\)[\s\S]*\.readAll,\s*\n\s*\.filter \{ min-height:\s*var\(--mobile-control-height\); \}/s);
+  assert.match(notificationsCss, /@media \(max-width: 380px\)[\s\S]*\.back \{ width:\s*var\(--mobile-control-height\); height:\s*var\(--mobile-control-height\); \}/s);
+  assert.match(reconciliationCss, /@media \(max-width: 820px\)[\s\S]*\.notesToggle \{ min-height:\s*var\(--mobile-control-height\); \}/s);
+});

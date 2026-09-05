@@ -34,11 +34,13 @@ const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, create
   const createEnvelope = (event) => {
     event.preventDefault(); setMessage(null);
     return createMutation.run(async () => {
+      const name = String(createForm.name || "").trim();
+      if (!name) throw new Error("Nama alokasi wajib diisi.");
       const amount = assertPositiveRupiah(createForm.default_amount);
       if (!createForm.source_account_id) throw new Error("Rekening sumber wajib dipilih.");
-      await requestCreateEnvelope({ ...createForm, default_amount: amount, allocated_amount: amount }, {});
+      const created = await requestCreateEnvelope({ ...createForm, name, default_amount: amount, allocated_amount: amount }, {});
       setCreateForm(defaultCreateForm());
-      onCreated?.();
+      onCreated?.(created);
       notify({ message: "Alokasi dan periode aktif berhasil dibuat." });
       await refreshAfterMutation();
     }).catch((error) => setMessage({ type: "danger", text: error.message }));
@@ -307,12 +309,12 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   const [releasedFunds, setReleasedFunds] = useState(null);
   const [fundingIntent, setFundingIntent] = useState(null);
   const [fundingError, setFundingError] = useState(null);
-  const [setupCreated, setSetupCreated] = useState(false);
+  const [setupCreated, setSetupCreated] = useState("");
   const allocationActor = bootstrap?.user || user;
   const view = useAllocationViewData({ resource, budgetResource, recurringResource, bootstrap, overview, usersResource, allocationFilter, move, administratorMode, allocationActor });
   const canCreate = view.accounts.length > 0;
   const detailItem = view.activeItems.find((item) => item.envelope_rule_id === detailRuleId) || null;
-  const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup: view.lookup, notify, setMessage, onCreated: () => { setCreateOpen(false); if (location.state?.setupFlow) setSetupCreated(true); }, onMoved: () => setMoveOpen(false) });
+  const createMove = useAllocationCreateMove({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup: view.lookup, notify, setMessage, onCreated: (created) => { setCreateOpen(false); if (location.state?.setupFlow) setSetupCreated(String(created?.rule?.envelope_rule_id || "created")); }, onMoved: () => setMoveOpen(false) });
   const adjustment = useAllocationAdjustment({ adjustTarget, setAdjustTarget, adjustForm, setAdjustForm, adjustMutation, refreshAfterMutation: createMove.refreshAfterMutation, notify, setMessage, onReleased: setReleasedFunds });
   const lifecycle = useAllocationLifecycle({ closeTarget, closeReuseNeeds, setCloseTarget, setCloseReuseNeeds, setCloseState, archiveTarget, setArchiveTarget, setArchiveState, reverseTarget, setReverseTarget, setReverseState, refreshAfterMutation: createMove.refreshAfterMutation, notify, onReleased: setReleasedFunds });
   const attentionAction = String(attention?.attentionAction || "");
@@ -352,10 +354,10 @@ const AllocationsPage = ({ embedded = false, onOpenRecurring = () => {} }) => {
   return <AllocationResourceState resource={resource}><div className={allocationClass("page-stack allocations-page")}>
     <Suspense fallback={null}><AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={(overview?.goals || []).some((goal) => goal.status === "active")} onDismissReleasedFunds={() => setReleasedFunds(null)} /></Suspense>
     <AllocationHeading embedded={embedded} />
-    {setupCreated ? <Suspense fallback={null}><AllocationSetupContinuation onDismiss={() => setSetupCreated(false)} onContinue={() => navigate("/target", { state: { setupFlow: true } })} /></Suspense> : null}
+    {setupCreated ? <Suspense fallback={null}><AllocationSetupContinuation onDismiss={() => setSetupCreated("")} onContinue={() => { const createdItem = view.activeItems.find((item) => item.envelope_rule_id === setupCreated); if (createdItem) openDetail(createdItem); setSetupCreated(""); }} /></Suspense> : null}
     <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, users: view.activeUsers, usersStatus, onBack: closeDetail, onBudgetReminder: openBudgetReminder, onOpenRecurring, canAdjustAllocation: allocationDetailCanAdjust(detailItem), onAdjustAllocation: (item, amount) => openAdjust(item, "fund", amount) }} overviewProps={{ activeItems: view.activeItems, filteredActiveItems: view.filteredActiveItems, allocationFilter, setAllocationFilter, setActionTarget, onReminder: openReminder, onAdjust: openAdjust, attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, onOpenDetail: openDetail, canCreate, administratorMode, canMove: view.canMove, openCreate: () => { setMessage(null); setCreateOpen(true); }, openMove: () => { setMessage(null); setMoveOpen(true); }, reload: reloadPlanning, canAdjustItem: canAdjustAllocation, canRemindItem: canSetAllocationReminder, linkedBudgetsForItem: linkedBudgetsForEnvelope, relatedRecurringForItem: relatedRecurringForEnvelope }} />
     <AllocationOptionalLayers showSecondaryLayer={showSecondaryLayer} secondaryProps={{ historicalItems: view.historicalItems, recentMovements: view.recentMovements, actionTarget, onCloseAction: () => setActionTarget(null), onClosePeriod: startClosePeriod, onLifecycle: startLifecycle, setReverseTarget, setReverseState }} fundingIntent={fundingIntent} fundingProps={{ accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item) && item.source_account_id), initialSourceAccountId: fundingIntent?.sourceAccountId || "", suggestedAmount: fundingIntent?.suggestedAmount || 0, busy: adjustMutation.busy, error: fundingError, onClose: closeFunding, onSubmit: submitFunding }} reminderTarget={reminderTarget} setReminderTarget={setReminderTarget} />
-    <AllocationDialogs createOpen={createOpen} moveOpen={moveOpen} adjustTarget={adjustTarget} closeTarget={closeTarget} archiveTarget={archiveTarget} reverseTarget={reverseTarget} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus: administratorMode ? usersResource.status : "ready", createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} />
+    <AllocationDialogs createOpen={createOpen} moveOpen={moveOpen} adjustTarget={adjustTarget} closeTarget={closeTarget} archiveTarget={archiveTarget} reverseTarget={reverseTarget} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus: administratorMode ? usersResource.status : "ready", expenseCategories: view.expenseCategories, createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} />
   </div></AllocationResourceState>;
 };
 

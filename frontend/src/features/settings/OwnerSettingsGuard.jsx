@@ -1,5 +1,5 @@
 import { FiLock } from "react-icons/fi";
-import { Link } from "react-router";
+import ButtonLink from "../../components/common/ButtonLink.jsx";
 import Card from "../../components/common/Card.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 
@@ -12,7 +12,7 @@ const OwnerSettingsGuard = ({ children, returnTo = "/pengaturan", returnLabel = 
         <div><h2>Hanya Administrator yang dapat membuka bagian ini</h2></div>
         <FiLock aria-hidden="true" />
       </div>
-      <Link className="button button--secondary" to={returnTo}>{returnLabel}</Link>
+      <ButtonLink to={returnTo}>{returnLabel}</ButtonLink>
     </Card>
   );
 };

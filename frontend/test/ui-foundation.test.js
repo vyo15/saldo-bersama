@@ -229,7 +229,8 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /MobileTransactionList/);
   assert.match(transactions, /MobileTransactionOverview/);
   assert.match(transactions, /MobileTransactionFilters/);
-  assert.match(reports, /budget-mobile-list/);
+  assert.match(reports, /const MobileReportsView/);
+  assert.match(reports, /const MobileBudgetList/);
   assert.match(accounts + accountSheets + mobileActivity, /mobileTransactionList/);
   assert.match(reconciliation, /styles\.mobileHistoryList/);
   assert.match(settings, /mobile-data-list/);
@@ -536,4 +537,31 @@ test("pengaturan memakai kontrak system.health aktual dan status notifikasi akse
   assert.doesNotMatch(main, /from "\.\/services\/notifications\.js"/);
   assert.match(presentation, /PUSH_DNS_FAILED/);
   assert.match(audit, /auditDetailLabel\(entry\.detail_code\)/);
+});
+
+
+test("CTA navigasi memakai ButtonLink canonical alih-alih merakit class button sendiri", async () => {
+  const [buttonLink, button, buttonClassName, sourceRoot] = await Promise.all([
+    read("src/components/common/ButtonLink.jsx"),
+    read("src/components/common/Button.jsx"),
+    read("src/components/common/buttonClassName.js"),
+    read("src/styles/components.css"),
+  ]);
+
+  assert.doesNotMatch(button, /export const buttonClassName/);
+  assert.match(buttonClassName, /export const buttonClassName/);
+  assert.match(button, /from "\.\/buttonClassName\.js"/);
+  assert.match(buttonLink, /from "\.\/buttonClassName\.js"/);
+  assert.match(buttonLink, /data-ui="button-link"/);
+  assert.match(buttonLink, /buttonClassName\(styles, \{ variant, className \}\)/);
+  assert.doesNotMatch(sourceRoot, /\.button--wide\s*\{/);
+
+  const names = await readdir(new URL("../src/", import.meta.url), { recursive: true });
+  const offenders = [];
+  for (const relative of names.filter((name) => /\.(?:jsx|js)$/.test(name))) {
+    if (relative.endsWith("components/common/Button.jsx") || relative.endsWith("components/common/ButtonLink.jsx")) continue;
+    const source = await read(`src/${relative}`);
+    if (/className=.*button--(?:primary|secondary|danger)|className="button button--/.test(source)) offenders.push(relative);
+  }
+  assert.deepEqual(offenders, []);
 });

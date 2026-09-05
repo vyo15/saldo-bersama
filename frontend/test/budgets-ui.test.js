@@ -90,24 +90,35 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
 });
 
 test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesuaian dana eksplisit", async () => {
-  const [page, dialogs, detail, presentation] = await Promise.all([
+  const [page, dialogs, estimate, detail, presentation] = await Promise.all([
     read("src/features/allocations/AllocationsPage.jsx"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
+    read("src/features/allocations/AllocationNeedEstimate.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
     read("src/features/allocations/allocationPresentation.js"),
   ]);
 
-  assert.match(dialogs, /Untuk apa\? \*/);
+  assert.match(dialogs, /Nama alokasi \*/);
   assert.match(dialogs, /label="Ambil dana dari"/);
   assert.match(dialogs, /legend="Digunakan oleh"/);
-  assert.match(dialogs, /label="Dana awal"/);
+  assert.match(dialogs, /label="Dana yang disiapkan"/);
   assert.match(dialogs, /id="envelope-default"[\s\S]*required/);
   assert.match(dialogs, /Tersedia setelah dialokasikan/);
   assert.match(dialogs, /Dana tersedia kurang/);
   assert.match(dialogs, /disabled=\{insufficientAmount\}/);
-  assert.ok(dialogs.indexOf("Untuk apa? *") < dialogs.indexOf('label="Ambil dana dari"'));
+  assert.match(dialogs, /Belum tahu nominalnya\?/);
+  assert.match(dialogs, /Susun dari kategori kebutuhan periode ini/);
+  assert.match(dialogs, /AllocationNeedEstimate/);
+  assert.match(dialogs, /expenseCategories/);
+  assert.match(dialogs, /allocation-assignee-summary/);
+  assert.doesNotMatch(dialogs, /Untuk apa\?/);
+  assert.match(estimate, /SelectionField/);
+  assert.match(estimate, /Pilih kategori/);
+  assert.match(estimate, /Perkiraan ini hanya mengisi nominal Alokasi/);
+  assert.doesNotMatch(estimate, /budgets\.upsert|upsertBudget|apiClient|transactions\.create/);
+  assert.ok(dialogs.indexOf("Nama alokasi *") < dialogs.indexOf('label="Ambil dana dari"'));
   assert.ok(dialogs.indexOf('label="Ambil dana dari"') < dialogs.indexOf('legend="Digunakan oleh"'));
-  assert.ok(dialogs.indexOf('legend="Digunakan oleh"') < dialogs.indexOf('label="Dana awal"'));
+  assert.ok(dialogs.indexOf("Periode dan sisa") < dialogs.indexOf('label="Dana yang disiapkan"'));
   assert.doesNotMatch(dialogs, /<select\b/);
   assert.match(detail, /Total kebutuhan/);
   assert.match(detail, /Dana alokasi/);

@@ -200,8 +200,8 @@
   }
 
 .mobileStackCard {
-    width: min(88vw, 22rem);
-    aspect-ratio: 1.586 / 1;
+    width: min(calc(100vw - var(--mobile-page-gutter) - var(--mobile-page-gutter)), 22rem);
+    aspect-ratio: 1024 / 645;
     padding: 0;
     position: absolute;
     left: 50%;

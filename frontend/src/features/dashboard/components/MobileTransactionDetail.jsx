@@ -1,6 +1,6 @@
 import { FiCreditCard, FiExternalLink, FiShield } from "react-icons/fi";
-import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
+import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import { formatTransactionDate, TRANSACTION_LABELS, transactionTone } from "../../../shared/presentation/transaction.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
@@ -27,7 +27,7 @@ const MobileTransactionDetail = ({
     size="sm"
     footer={transaction ? (
       <>
-        <Link className={dashboardClass("button button--secondary mobile-detail-link")} to="/transaksi" onClick={onClose}><FiExternalLink aria-hidden="true" /><span>Lihat semua</span></Link>
+        <ButtonLink className={dashboardClass("mobile-detail-link")} to="/transaksi" onClick={onClose} icon={FiExternalLink}>Lihat semua</ButtonLink>
         <Button variant="primary" icon={FiCreditCard} onClick={onOpenTransaction}>Tambah transaksi</Button>
       </>
     ) : null}

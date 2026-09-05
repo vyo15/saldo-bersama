@@ -89,10 +89,10 @@
 .mobile-next-action__copy small { overflow: hidden; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-overflow: ellipsis; white-space: nowrap; }
 .mobile-next-action__chevron { color: var(--text-muted); }
 
-.mobile-account-scroller { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 1px; scrollbar-width: none; padding: 2px 1px 5px; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
+.mobile-account-scroller { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 0; scrollbar-width: none; padding: 2px 0 5px; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
 .mobile-account-scroller::-webkit-scrollbar { display: none; }
 .mobile-account-balance-note { margin: -3px 0 8px; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
-.mobile-account-preview { flex: 0 0 min(88%, 330px); min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm); scroll-snap-align: start; scroll-snap-stop: always; }
+.mobile-account-preview { flex: 0 0 100%; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm); scroll-snap-align: start; scroll-snap-stop: always; }
 .mobile-account-preview > :first-child { border: 0; border-radius: 17px 17px 0 0; box-shadow: none; }
 .mobile-account-preview__metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); }
 .mobile-account-preview__metrics > div { min-width: 0; padding: 10px 11px; background: var(--surface); }
@@ -243,9 +243,9 @@
 .shared-widget__heading a { min-height: 44px; display: inline-flex; align-items: center; }
 
 .shared-account-panel { padding: 16px 16px 12px; overflow: hidden; }
-.shared-account-carousel { margin-top: 14px; padding: 2px 2px 12px; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: inline mandatory; scrollbar-width: none; }
+.shared-account-carousel { margin-top: 14px; padding: 2px 2px 12px; display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 24px) / 3); gap: 12px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 2px; scrollbar-width: none; }
 .shared-account-carousel::-webkit-scrollbar { display: none; }
-.shared-account-card { flex: 0 0 clamp(245px, 30%, 310px); min-width: 0; padding: 7px; border: 1px solid var(--border); border-radius: 18px; display: grid; gap: 8px; scroll-snap-align: start; background: var(--surface-soft); color: var(--text); text-align: left; cursor: pointer; transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), background var(--motion-fast); }
+.shared-account-card { width: 100%; min-width: 0; padding: 7px; border: 1px solid var(--border); border-radius: 18px; display: grid; gap: 8px; scroll-snap-align: start; background: var(--surface-soft); color: var(--text); text-align: left; cursor: pointer; transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), background var(--motion-fast); }
 @media (hover: hover) and (pointer: fine) { .shared-account-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); background: var(--surface); } }
 .shared-account-card.is-selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary-soft) 40%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 13%, transparent), var(--shadow-control); }
 .shared-account-card:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
@@ -413,7 +413,6 @@
 
 @media (max-width: 1360px) {
   .shared-dashboard__layout { grid-template-columns: minmax(0, 1.48fr) minmax(290px, .8fr); }
-  .shared-account-card { flex-basis: clamp(230px, 31%, 280px); }
   .shared-dashboard-widgets { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .shared-insight-widget { grid-column: span 4; min-height: 120px; }
   .shared-insight-widget dl { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -435,7 +434,7 @@
   .shared-dashboard__side { grid-template-columns: 1fr; }
   .shared-statistics { grid-row: auto; }
   .shared-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .shared-account-card { flex-basis: 265px; }
+  .shared-account-carousel { grid-auto-columns: calc((100% - 12px) / 2); }
   .shared-transactions__header { align-items: flex-start; flex-direction: column; }
   .shared-transaction-tools { width: 100%; justify-content: flex-start; }
   .shared-dashboard-widgets { grid-template-columns: 1fr; }
@@ -473,7 +472,6 @@
   .mobile-section-heading { min-height: 32px; }
   .mobile-section-heading h2 { font-size: 14px; }
   .mobile-section-heading a { min-height: var(--mobile-control-height); font-size: var(--font-size-xs); }
-  .mobile-account-preview { flex-basis: min(88%, 330px); }
   .mobile-transaction-item { min-height: 60px; gap: 9px; }
   .mobile-transaction-icon { width: 36px; height: 36px; border-radius: 12px; }
   .mobile-transaction-item > div strong { font-size: 13px; }

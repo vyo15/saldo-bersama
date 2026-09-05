@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { FiArchive, FiArrowDown, FiArrowUp, FiBell, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
+import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../../components/common/CompactNotice.jsx";
 import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
@@ -87,7 +87,7 @@ const GoalCard = ({ goal, actions }) => (
 const GoalGrid = ({ items, actions, canCreate, openCreate }) => (
   <section className={goalClass("goal-grid")}>
     {items.length ? items.map((goal) => <GoalCard key={goal.goal_id} goal={goal} actions={actions} />) : (
-      <EmptyState className={goalClass("goal-grid__empty")} icon={FiTarget} title={canCreate ? "Belum ada target keuangan" : "Belum ada rekening Bersama yang dapat digunakan"} description={canCreate ? "Buat target untuk memantau progres dana dan kebutuhan bulanan." : "Buat atau aktifkan rekening Bersama terlebih dahulu sebelum membuat Target."} action={canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : <Link className="button button--primary" to="/rekening">Lihat Rekening</Link>} />
+      <EmptyState className={goalClass("goal-grid__empty")} icon={FiTarget} title={canCreate ? "Belum ada target keuangan" : "Belum ada rekening Bersama yang dapat digunakan"} description={canCreate ? "Buat target untuk memantau progres dana dan kebutuhan bulanan." : "Buat atau aktifkan rekening Bersama terlebih dahulu sebelum membuat Target."} action={canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>} />
     )}
   </section>
 );

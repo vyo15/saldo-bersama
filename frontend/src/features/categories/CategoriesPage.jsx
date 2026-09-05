@@ -321,7 +321,7 @@ const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenM
 
 const CategoriesPageContent = ({ page }) => {
   const {
-    resource, actions, archiveEnabled, archiveResource, ownerMode, items, requestsResource, setupCreated, setSetupCreated, navigate,
+    resource, actions, archiveEnabled, archiveResource, ownerMode, items, requestsResource, setupCreated, navigate,
     searchQuery, setSearchQuery, statusFilter, setStatusFilter, archivePending, filteredItems, grouped, filtersActive, clearFilters, menuProps,
   } = page;
   return <div className={`page-stack ${styles.categoryPage}`}>
@@ -330,7 +330,7 @@ const CategoriesPageContent = ({ page }) => {
     {archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}
     <PageHeader title="Kategori" help="Kategori mengelompokkan pemasukan, pengeluaran, dan pengembalian dana tanpa mengubah aturan saldo." actions={items.length ? <Button variant="primary" icon={FiPlus} onClick={actions.openCreate} aria-label={ownerMode ? "Tambah kategori" : "Ajukan kategori"}>{ownerMode ? "Tambah kategori" : "Ajukan kategori"}</Button> : null} />
     {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : !ownerMode ? <MasterDataRequestsPanel items={requestsResource.data?.items || []} title="Pengajuan kategori saya" /> : null}
-    {setupCreated ? <div><CompactNotice tone="success" title="Kategori dasar sudah siap." role="status">Kategori pemasukan dan pengeluaran tersedia.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/perencanaan/kantong", { state: { setupFlow: true } })}>Lanjut buat Alokasi Dana</Button></div></div> : null}
+    {setupCreated ? <div><CompactNotice tone="success" title="Dasar pencatatan siap." role="status">Rekening dan kategori sudah cukup untuk mulai mencatat. Fitur perencanaan dapat ditambahkan kapan saja.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => navigate("/perencanaan/kantong")}>Atur Alokasi Dana</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Mulai catat transaksi</Button></div></div> : null}
     {actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}
     <CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />
     {archivePending ? <LoadingScreen variant="panel" label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}
@@ -384,7 +384,7 @@ const CategoriesPage = () => {
   const menuProps = { openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId };
   const archivePending = archiveEnabled && statusFilter === "archived" && archiveResource.status === "loading" && !archiveResource.data;
   return <CategoriesPageContent page={{
-    resource, actions, archiveEnabled, archiveResource, ownerMode, items, requestsResource, setupCreated, setSetupCreated, navigate,
+    resource, actions, archiveEnabled, archiveResource, ownerMode, items, requestsResource, setupCreated, navigate,
     searchQuery, setSearchQuery, statusFilter, setStatusFilter, archivePending, filteredItems, grouped, filtersActive, clearFilters, menuProps,
   }} />;
 };

@@ -42,6 +42,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] True-empty hanya memiliki satu primary create/setup CTA; summary/hero/toolbar nol dan secondary action yang belum representable tidak tampil bersamaan. Filtered-empty menawarkan reset/tampilkan data tersedia, bukan create entity baru.
 - [ ] Jika shell mobile sudah memiliki global primary action yang identik (quick-add transaksi), route/header/true-empty tidak merender CTA kedua untuk handler yang sama.
 - [ ] App-owned list tidak kembali memakai native `<select>`; `SelectionField`/selection view diperiksa untuk selected state, search bila list panjang, Escape/outside dismiss, focus-visible, target sentuh ≥44px, inline expansion mobile, popover desktop, dan clipping di modal/scroll container.
+- [ ] Effective mobile hit target diverifikasi pada `SelectionField` default/compact/embedded + search, filter/read-all Notification Center, dan aksi link-style Rekonsiliasi; tampilan boleh compact tetapi host interaktif tetap ≥44×44px.
 - [ ] Mobile dan desktop tidak drift pada business rule yang sama.
 - [ ] Workflow continuation hanya memberi navigasi/prefill; tidak ada auto-submit finansial, duplicate recovery entry point, atau blocker UI yang melampaui contract backend.
 - [ ] Device/viewport journey relevan mengikuti skenario manual `TEST_PLAN.md` bila perubahan menyentuh UI/responsive.

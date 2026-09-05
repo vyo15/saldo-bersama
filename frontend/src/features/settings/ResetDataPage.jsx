@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FiShield } from "react-icons/fi";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import Button from "../../components/common/Button.jsx";
 import { createSecureRandomId } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -280,7 +281,7 @@ const ResetEnvironmentNotice = ({ environment, resource }) => (
       </div>
       <div className={`notice notice--${environment.tone}`} role={environment.failed ? "alert" : "status"}>
         <span><strong>{environment.title}.</strong> {environment.text}</span>
-        {environment.failed ? <button className="button button--secondary" type="button" onClick={() => resource.reload()}>Periksa ulang</button> : null}
+        {environment.failed ? <Button onClick={() => resource.reload()}>Periksa ulang</Button> : null}
       </div>
     </section>
   </OwnerSettingsGuard>

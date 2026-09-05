@@ -1,4 +1,5 @@
-import { FiArrowLeft, FiArrowRight, FiChevronDown, FiPlus } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import { FiArrowLeft, FiArrowRight, FiChevronDown, FiList, FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { AdminIcon, BiweeklyIcon, CarryForwardIcon, CustomPeriodIcon, DailyIcon, MonthlyIcon, PaycycleIcon, PersonIcon, ReturnRemainderIcon, SharedIcon, WeeklyIcon } from "../../components/common/FinanceChoiceIcons.jsx";
@@ -6,6 +7,8 @@ import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
+import AllocationNeedEstimate from "./AllocationNeedEstimate.jsx";
+import { allocationEstimateTotal, createInitialAllocationEstimate } from "./allocationNeedEstimateModel.js";
 import { allocationAssigneeLabel } from "./allocationPresentation.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
@@ -26,28 +29,141 @@ const envelopeAssigneeOptions = (form, accounts, users) => {
 
 const assigneeOptionLabel = (item) => item.option_label || userOptionLabel(item);
 
-const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
+const periodOptions = [
+  { value: "daily", label: "Harian", icon: DailyIcon },
+  { value: "weekly", label: "Mingguan", icon: WeeklyIcon },
+  { value: "biweekly", label: "Dua mingguan", icon: BiweeklyIcon },
+  { value: "monthly", label: "Bulanan", icon: MonthlyIcon },
+  { value: "paycycle", label: "Periode gajian", icon: PaycycleIcon },
+  { value: "custom", label: "Khusus", icon: CustomPeriodIcon },
+];
+
+const rolloverOptions = [
+  { value: "unallocated", label: "Kembalikan ke dana tersedia", icon: ReturnRemainderIcon, description: "Sisa dilepas dari alokasi" },
+  { value: "carry", label: "Tetap di alokasi berikutnya", icon: CarryForwardIcon, description: "Sisa dibawa ke periode berikutnya" },
+];
+
+const buildAssigneeOptions = (assigneeState) => [
+  ...(!assigneeState.locked ? [{ value: "", label: "Bersama", icon: SharedIcon, description: "Dana bersama" }] : []),
+  ...assigneeState.options.map((item) => ({
+    value: item.user_id,
+    label: assigneeOptionLabel(item),
+    icon: item.role === "owner" ? AdminIcon : PersonIcon,
+    description: item.role === "owner" ? "Administrator" : "Member",
+  })),
+];
+
+const invalidEstimate = (rows, total, availableAmount) => (
+  total <= 0
+  || total > availableAmount
+  || rows.some((row) => !row.category_id || Number(row.amount || 0) <= 0)
+);
+
+const CreateEnvelopeFooter = ({ estimateOpen, estimateTotal, estimateInvalid, onBackEstimate, onApplyEstimate, close, createMutation, insufficientAmount }) => (
+  estimateOpen
+    ? <>
+      <Button type="button" onClick={onBackEstimate}>Kembali</Button>
+      <Button variant="primary" type="button" disabled={estimateInvalid} onClick={onApplyEstimate}>Gunakan {formatRupiah(estimateTotal)}</Button>
+    </>
+    : <>
+      <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
+      <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy} disabled={insufficientAmount}>Buat alokasi</Button>
+    </>
+);
+
+const CreateEnvelopeForm = ({
+  createForm,
+  setCreateForm,
+  accounts,
+  usersStatus,
+  expenseCategories,
+  assigneeState,
+  assigneeOptions,
+  selectedSource,
+  availableAmount,
+  enteredAmount,
+  insufficientAmount,
+  onChangeSource,
+  onOpenEstimate,
+  message,
+  createEnvelope,
+}) => (
+  <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
+    <label className="field form-grid__full"><span>Nama alokasi *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Belanja Rumah" /></label>
+    <SelectionField
+      className="form-grid__full"
+      label="Ambil dana dari"
+      required
+      value={createForm.source_account_id}
+      onChange={onChangeSource}
+      placeholder="Pilih rekening"
+      searchable={accounts.length > 8}
+      searchPlaceholder="Cari rekening…"
+      options={accounts.map((account) => ({
+        value: account.account_id,
+        label: accountDisplayLabel(account),
+        meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`,
+      }))}
+    />
+    {assigneeState.locked && assigneeOptions[0]
+      ? <div className={allocationClass("allocation-assignee-summary form-grid__full")}>
+        <span className={allocationClass("allocation-assignee-summary__icon")}><PersonIcon aria-hidden="true" /></span>
+        <span><small>Digunakan oleh</small><strong>{assigneeOptions[0].label}</strong></span>
+      </div>
+      : <VisualChoiceGroup
+        className="form-grid__full"
+        legend="Digunakan oleh"
+        name="allocation-assignee"
+        value={createForm.assignee_user_id}
+        onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))}
+        options={assigneeOptions}
+        columns={Math.min(assigneeOptions.length, 3)}
+        mobileColumns={Math.min(assigneeOptions.length, 2)}
+        compact
+        plainIcons
+        disabled={usersStatus === "loading"}
+        helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : ""}
+      />}
+    <details className={allocationClass("allocation-advanced form-grid__full")}>
+      <summary><span><strong>Periode dan sisa</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
+      <div className={allocationClass("allocation-advanced__content")}>
+        <VisualChoiceGroup className="form-grid__full" legend="Periode alokasi" name="allocation-period" value={createForm.period_type} onChange={(period_type) => setCreateForm((current) => ({ ...current, period_type }))} options={periodOptions} columns={3} compact />
+        <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
+        <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
+        <label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
+      </div>
+    </details>
+    {selectedSource ? <MoneyInput id="envelope-default" label="Dana yang disiapkan" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} required /> : null}
+    {selectedSource && availableAmount > 0 && expenseCategories.length ? <button className={allocationClass("allocation-create-assist form-grid__full")} type="button" onClick={onOpenEstimate}>
+      <span className={allocationClass("allocation-create-assist__icon")}><FiList aria-hidden="true" /></span>
+      <span className={allocationClass("allocation-create-assist__copy")}><strong>Belum tahu nominalnya?</strong><small>Susun dari kategori kebutuhan periode ini</small></span>
+      <FiArrowRight aria-hidden="true" />
+    </button> : null}
+    {selectedSource && enteredAmount > 0 ? <div className={allocationClass("allocation-create-impact form-grid__full")} role="status"><span>Tersedia setelah dialokasikan</span><strong>{formatRupiah(Math.max(0, availableAmount - enteredAmount))}</strong></div> : null}
+    {insufficientAmount ? <div className="notice notice--danger form-grid__full" role="alert">Dana tersedia kurang {formatRupiah(enteredAmount - availableAmount)}. Kurangi dana yang disiapkan sebelum membuat alokasi.</div> : null}
+    {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
+  </form>
+);
+
+const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, users, usersStatus, expenseCategories, createEnvelope, createMutation, message }) => {
+  const [estimateOpen, setEstimateOpen] = useState(false);
+  const [estimateRows, setEstimateRows] = useState(createInitialAllocationEstimate);
   const assigneeState = envelopeAssigneeOptions(createForm, accounts, users);
+  const assigneeOptions = buildAssigneeOptions(assigneeState);
   const selectedSource = accounts.find((item) => item.account_id === createForm.source_account_id) || null;
   const availableAmount = Number(selectedSource?.available_balance ?? selectedSource?.balance ?? 0);
   const enteredAmount = Number(String(createForm.default_amount || "").replace(/\D/g, "")) || 0;
   const insufficientAmount = Boolean(selectedSource) && enteredAmount > availableAmount;
-  const assigneeOptions = [
-    ...(!assigneeState.locked ? [{ value: "", label: "Bersama", icon: SharedIcon, description: "Dana bersama" }] : []),
-    ...assigneeState.options.map((item) => ({ value: item.user_id, label: assigneeOptionLabel(item), icon: item.role === "owner" ? AdminIcon : PersonIcon, description: item.role === "owner" ? "Administrator" : "Member" })),
-  ];
-  const periodOptions = [
-    { value: "daily", label: "Harian", icon: DailyIcon },
-    { value: "weekly", label: "Mingguan", icon: WeeklyIcon },
-    { value: "biweekly", label: "Dua mingguan", icon: BiweeklyIcon },
-    { value: "monthly", label: "Bulanan", icon: MonthlyIcon },
-    { value: "paycycle", label: "Periode gajian", icon: PaycycleIcon },
-    { value: "custom", label: "Khusus", icon: CustomPeriodIcon },
-  ];
-  const rolloverOptions = [
-    { value: "unallocated", label: "Kembalikan ke dana tersedia", icon: ReturnRemainderIcon, description: "Sisa dilepas dari alokasi" },
-    { value: "carry", label: "Tetap di alokasi berikutnya", icon: CarryForwardIcon, description: "Sisa dibawa ke periode berikutnya" },
-  ];
+  const estimateTotal = allocationEstimateTotal(estimateRows);
+  const estimateInvalid = invalidEstimate(estimateRows, estimateTotal, availableAmount);
+
+  useEffect(() => {
+    if (!open) {
+      setEstimateOpen(false);
+      setEstimateRows(createInitialAllocationEstimate());
+    }
+  }, [open]);
+
   const changeSource = (sourceAccountId) => {
     const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
     setCreateForm((current) => ({
@@ -55,41 +171,52 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts,
       source_account_id: sourceAccountId,
       assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : current.assignee_user_id,
     }));
+    setEstimateRows(createInitialAllocationEstimate());
   };
-  return <Modal open={open} onClose={close} dismissible={!createMutation.busy} title="Buat alokasi" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy} disabled={insufficientAmount}>Buat alokasi</Button></>}>
-    <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
-      <label className="field form-grid__full"><span>Untuk apa? *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Kebutuhan rumah" /></label>
-      <SelectionField
-        className="form-grid__full"
-        label="Ambil dana dari"
-        required
-        value={createForm.source_account_id}
-        onChange={changeSource}
-        placeholder="Pilih rekening"
-        searchable={accounts.length > 8}
-        searchPlaceholder="Cari rekening…"
-        options={accounts.map((account) => ({
-          value: account.account_id,
-          label: accountDisplayLabel(account),
-          meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`,
-        }))}
-        helper={selectedSource ? "Dana tetap berada di rekening ini; Alokasi Dana hanya memisahkan dana yang dapat digunakan." : "Pilih rekening agar dana tersedia terlihat sebelum menentukan nominal."}
-      />
-      <VisualChoiceGroup className="form-grid__full" legend="Digunakan oleh" name="allocation-assignee" value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} columns={Math.min(assigneeOptions.length, 3)} mobileColumns={Math.min(assigneeOptions.length, 2)} compact plainIcons disabled={usersStatus === "loading" || assigneeState.locked} helper={assigneeState.locked ? "Mengikuti pemilik rekening personal." : usersStatus === "loading" ? "Memuat pengguna aktif..." : ""} />
-      {selectedSource ? <MoneyInput id="envelope-default" label="Dana awal" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} required /> : null}
-      {selectedSource && enteredAmount > 0 ? <div className={allocationClass("allocation-create-impact form-grid__full")} role="status"><span>Tersedia setelah dialokasikan</span><strong>{formatRupiah(Math.max(0, availableAmount - enteredAmount))}</strong></div> : null}
-      {insufficientAmount ? <div className="notice notice--danger form-grid__full" role="alert">Dana tersedia kurang {formatRupiah(enteredAmount - availableAmount)}. Kurangi Dana awal sebelum membuat alokasi.</div> : null}
-      <details className={allocationClass("allocation-advanced form-grid__full")}>
-        <summary><span><strong>Periode dan sisa</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
-        <div className={allocationClass("allocation-advanced__content")}>
-          <VisualChoiceGroup className="form-grid__full" legend="Periode alokasi" name="allocation-period" value={createForm.period_type} onChange={(period_type) => setCreateForm((current) => ({ ...current, period_type }))} options={periodOptions} columns={3} compact />
-          <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
-          <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
-          <label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
-        </div>
-      </details>
-      {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
-    </form>
+
+  const applyEstimate = () => {
+    if (estimateInvalid) return;
+    setCreateForm((current) => ({ ...current, default_amount: estimateTotal }));
+    setEstimateOpen(false);
+  };
+
+  const backEstimate = () => setEstimateOpen(false);
+
+  return <Modal
+    open={open}
+    onClose={close}
+    dismissible={!createMutation.busy}
+    title={estimateOpen ? "Susun kebutuhan" : "Buat alokasi"}
+    footer={<CreateEnvelopeFooter
+      estimateOpen={estimateOpen}
+      estimateTotal={estimateTotal}
+      estimateInvalid={estimateInvalid}
+      onBackEstimate={backEstimate}
+      onApplyEstimate={applyEstimate}
+      close={close}
+      createMutation={createMutation}
+      insufficientAmount={insufficientAmount}
+    />}
+  >
+    {estimateOpen
+      ? <AllocationNeedEstimate categories={expenseCategories} rows={estimateRows} setRows={setEstimateRows} availableAmount={availableAmount} />
+      : <CreateEnvelopeForm
+        createForm={createForm}
+        setCreateForm={setCreateForm}
+        accounts={accounts}
+        usersStatus={usersStatus}
+        expenseCategories={expenseCategories}
+        assigneeState={assigneeState}
+        assigneeOptions={assigneeOptions}
+        selectedSource={selectedSource}
+        availableAmount={availableAmount}
+        enteredAmount={enteredAmount}
+        insufficientAmount={insufficientAmount}
+        onChangeSource={changeSource}
+        onOpenEstimate={() => setEstimateOpen(true)}
+        message={message}
+        createEnvelope={createEnvelope}
+      />}
   </Modal>;
 };
 
@@ -142,13 +269,13 @@ const AllocationModals = (p) => <><ClosePeriodModal {...p} /><ConfirmationModal 
 
 
 const AllocationDialogLayer = ({
-  createOpen, closeCreate, createForm, setCreateForm, accounts, activeUsers, usersStatus, createEnvelope, createMutation, message,
+  createOpen, closeCreate, createForm, setCreateForm, accounts, activeUsers, usersStatus, expenseCategories, createEnvelope, createMutation, message,
   moveOpen, closeMove, move, setMove, movableItems, destinations, submitMove, moveMutation,
   adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment, adjustMutation,
   modalProps,
 }) => (
   <>
-    <CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersStatus} createEnvelope={createEnvelope} createMutation={createMutation} message={message} />
+    <CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersStatus} expenseCategories={expenseCategories} createEnvelope={createEnvelope} createMutation={createMutation} message={message} />
     <MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={submitMove} moveMutation={moveMutation} message={message} />
     <AdjustAllocationModal target={adjustTarget} close={closeAdjust} form={adjustForm} setForm={setAdjustForm} submit={submitAdjustment} mutation={adjustMutation} message={message} />
     <AllocationModals {...modalProps} />

@@ -2,12 +2,10 @@ import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 
 const AllocationSetupContinuation = ({ onDismiss, onContinue }) => <div>
-  <CompactNotice tone="success" title="Alokasi Dana pertama sudah siap." role="status">
-    Lanjutkan ke Target atau selesai jika belum membutuhkannya.
-  </CompactNotice>
+  <CompactNotice tone="success" title="Alokasi Dana sudah siap." role="status">Tambahkan Kebutuhan dari detail Alokasi jika ingin merinci rencana. Target tetap opsional untuk dana yang masih dikumpulkan.</CompactNotice>
   <div className="form-actions">
     <Button type="button" onClick={onDismiss}>Selesai</Button>
-    <Button type="button" variant="primary" onClick={onContinue}>Lanjut buat Target</Button>
+    {onContinue ? <Button type="button" variant="primary" onClick={onContinue}>Buka detail Alokasi</Button> : null}
   </div>
 </div>;
 

@@ -28,11 +28,11 @@ const OWNERSHIP_FILTERS = Object.freeze([
 ]);
 
 const MOBILE_STACK_SLOT_STYLES = Object.freeze({
-  "-2": Object.freeze({ x: 48, y: -192, z: -250, rx: 44, ry: -7, rz: 16, opacity: 0, brightness: 0.66, saturate: 0.72 }),
-  "-1": Object.freeze({ x: 38, y: -104, z: -105, rx: 18, ry: -5, rz: 10, opacity: 0.76, brightness: 0.8, saturate: 0.82 }),
+  "-2": Object.freeze({ x: 12, y: -184, z: -250, rx: 30, ry: -4, rz: 7, opacity: 0, brightness: 0.66, saturate: 0.72 }),
+  "-1": Object.freeze({ x: 8, y: -96, z: -105, rx: 14, ry: -3, rz: 4, opacity: 0.76, brightness: 0.8, saturate: 0.82 }),
   0: Object.freeze({ x: 0, y: 0, z: 150, rx: 0, ry: 0, rz: 0, opacity: 1, brightness: 1, saturate: 1 }),
-  1: Object.freeze({ x: 38, y: 108, z: -110, rx: -18, ry: 5, rz: -10, opacity: 0.68, brightness: 0.74, saturate: 0.78 }),
-  2: Object.freeze({ x: 48, y: 196, z: -260, rx: -44, ry: 7, rz: -16, opacity: 0, brightness: 0.64, saturate: 0.7 }),
+  1: Object.freeze({ x: 8, y: 100, z: -110, rx: -14, ry: 3, rz: -4, opacity: 0.68, brightness: 0.74, saturate: 0.78 }),
+  2: Object.freeze({ x: 12, y: 188, z: -260, rx: -30, ry: 4, rz: -7, opacity: 0, brightness: 0.64, saturate: 0.7 }),
 });
 
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
