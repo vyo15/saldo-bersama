@@ -14,7 +14,6 @@ import { useFocusTrap } from "../../../hooks/useFocusTrap.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionTone } from "../../../shared/presentation/transaction.js";
 import { roleLabel } from "../settingsPresentation.js";
-import styles from "../Settings.module.css";
 import activityStyles from "../MemberActivity.module.css";
 
 const MEMBER_ACTIVITY_LIMIT = 8;

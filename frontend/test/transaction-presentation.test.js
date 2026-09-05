@@ -23,9 +23,9 @@ test("transaksi memakai icon kategori terkontrol dengan fallback jenis transaksi
   assert.match(presentation, /type === "transfer" \|\| type === "adjustment"/);
   assert.doesNotMatch(presentation, /dangerouslySetInnerHTML|eval\(|new Function/);
   assert.match(transactions, /transactionCategoryIcon\(categoryLookup\[item\.category_id\], item\.transaction_type\)/);
-  assert.match(transactions, /transaction-table-primary/);
+  assert.match(transactions, /styles\.tablePrimary/);
   assert.match(transactions, /const PAGE_SIZE = 50/);
-  assert.match(transactions, /MOBILE_TRANSACTIONS_QUERY = "\(max-width: 820px\)"/);
+  assert.match(transactions, /useMediaQuery\(APP_MEDIA\.mobile\)/);
   assert.match(transactions, /MobileTransactionList/);
   assert.match(transactions, /mobileLayout[\s\S]*MobileTransactionOverview/);
   assert.match(transactions, /transactionCategoryIcon\(categoryLookup\[item\.category_id\], item\.transaction_type\)/);
