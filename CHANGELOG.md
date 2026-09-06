@@ -1,3 +1,17 @@
+## 6 September 2026 - Desktop login enriched floating composition
+
+- Meningkatkan layar login desktop dari versi declutter menjadi komposisi yang tetap bersih tetapi tidak lagi terasa hampa: ilustrasi pasangan dipusatkan ulang, panel login didekatkan ke area hero, dan kedua kolom kini punya bobot visual yang lebih seimbang.
+- Menambahkan pemanis yang ringan dan konsisten dengan gaya UI: surface mint lembut, orbit dashed, floating insight card `Langkah kecil, masa depan besar`, bubble ikon keamanan/dompet, serta chrome dots pada card. Tidak ada lagi headline besar di tengah; fokus tetap pada brand, ilustrasi, dan CTA login.
+- Mempertahankan kontrak auth yang sudah benar: hanya Google OAuth, tanpa divider/email palsu, tanpa dekorasi dead-weight, dan tanpa asset baru yang wajib dibersihkan. Runtime tetap memakai `couple-love.webp`, logo brand, dan logo Google yang sudah canonical.
+- Dokumentasi changelog diselaraskan dengan implementasi visual terbaru. API, session, authorization, backend, dan alur login mobile tidak berubah.
+
+## 6 September 2026 - Desktop login declutter final
+
+- Menyederhanakan hero desktop login menjadi komposisi yang lebih proper: topbar brand tetap, satu scene pasangan yang proporsional di kiri, dan floating auth card yang lebih dominan di kanan. Story copy tengah serta badge `Tujuan Bersama` dihapus agar fokus tinggal pada logo, ilustrasi, dan CTA login.
+- Menjaga pemanis visual tetap ringan melalui glow/blob mint dan spark berbasis CSS, tanpa menyalakan kembali sticker, hati duplikat, chart bubble, paper-plane, handwriting accent, atau dekorasi desktop legacy lain. Asset runtime desktop canonical kini hanya `couple-love.webp`.
+- Menutup bug copy `atau masuk dengan email` karena project tidak memiliki auth email/password. Google OAuth production, Firebase popup development, session, role, allowlist/registry, dan backend tidak berubah.
+- Memperbarui regression asset/layout, project status, design system, dan test plan agar dokumentasi mengikuti source canonical terbaru.
+
 ## 6 September 2026 - Kategori transaksi inline dan scalable
 
 - Mengubah pemilih **Kategori** pada composer transaksi mobile dari sub-view `Pilih kategori` menjadi `SelectionControl` embedded yang berkembang inline di grouped metadata surface, sehingga user tetap melihat konteks transaksi dan tidak berpindah layar untuk taxonomy kategori.
@@ -342,6 +356,7 @@
 - Menghapus `MobileDashboardFilters.jsx` dan `transaction-wallet.svg` yang benar-benar orphan serta membersihkan selector Budget tanpa consumer. Regression baru mencakup continuity `unallocated`, `carry` dengan sisa/Rp0, copy Kebutuhan opt-in, target existing, dan parity status Kebutuhan.
 
 # Changelog
+
 - Menyelesaikan konsistensi konsep **Alokasi Dana → Kebutuhan → Transaksi**: halaman Anggaran menjadi overview read-only, lifecycle Kebutuhan memakai identitas periode + kategori + ownership + `envelope_rule_id` termasuk saat restore, copy runtime/test memakai istilah produk terbaru, dan dokumen canonical menjelaskan bahwa nama internal `envelope` serta route `/perencanaan/kantong` tetap dipertahankan untuk compatibility.
 - Menutup gap flow uang masuk sampai perencanaan sebagai satu rangkaian: Dashboard memisahkan dana tersedia yang belum dibagi dari pengeluaran tanpa Kantong, income manual/rutin memberi nudge nonblocking, `envelopes.adjustAllocation` dapat menambah atau melepas alokasi Kantong existing tanpa membuat transaksi ledger, dan first-run checklist mengarahkan Rekening → Kategori → Kantong → Target. Target memberi warning bila belum ada rekening sumber lain yang kompatibel untuk setoran; sisa dana tersedia hanya disarankan ke Target dan tidak pernah dipindah otomatis.
 - Menerapkan RFC-0016 Option 2: Member dapat membuat/mengubah planning `shared` untuk Kantong/alokasi, Batas Pengeluaran, Target, dan Jadwal Rutin dengan scope/ownership guard backend. Rekening/kategori master, planning personal pasangan, lifecycle destruktif, period close/reopen, recovery, import/restore, schema, dan maintenance tetap Administrator-only.

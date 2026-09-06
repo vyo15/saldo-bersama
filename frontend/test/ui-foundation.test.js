@@ -253,12 +253,6 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   ];
   const desktopAssetNames = [
     "couple-love.webp",
-    "paper-plane.webp",
-    "growth-bubble.webp",
-    "goal-badge.svg",
-    "profile-green.webp",
-    "profile-red.webp",
-    "heart.webp",
   ];
   const loaded = await Promise.all([
     Promise.all([
@@ -271,7 +265,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     Promise.all([
       read("src/features/auth/LoginPage.module.css"),
       read("src/features/auth/LoginMobile.module.css"),
-      read("src/features/auth/components/LoginDesktopReference.module.css"),
+      read("src/features/auth/components/LoginDesktopFloating.module.css"),
     ]).then((parts) => parts.join("\n")),
     read("src/app/App.jsx"),
     read("src/app/routeModules.js"),
@@ -280,8 +274,6 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     read("src/services/auth/mobileFirebaseGoogleAuth.js"),
     read("src/services/auth/googleAuthRouting.js"),
     read("src/features/auth/loginOnboardingPreference.js"),
-    readFile(new URL("../public/login/desktop-light.webp", import.meta.url)),
-    readFile(new URL("../public/login/desktop-dark.webp", import.meta.url)),
     readFile(new URL("../public/brand/saldo-bersama-mark.png", import.meta.url)),
     readFile(new URL("../public/login/google-g-logo.png", import.meta.url)),
     ...mobileAssetNames.map((name) => readFile(new URL(`../public/login/assets/mobile/${name}`, import.meta.url))),
@@ -297,8 +289,6 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     mobileAuth,
     authRouting,
     onboardingPreference,
-    desktopLight,
-    desktopDark,
     logo,
     googleLogo,
     ...loadedAssets
@@ -315,9 +305,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(login, /onboarding-keuangan-bersama\.webp/);
   assert.doesNotMatch(login, /mobile-onboarding-saving\.webp|mobile-onboarding-budget\.webp|mobile-login\.webp/);
   assert.match(login, /\/brand\/saldo-bersama-mark\.png/);
-  assert.match(login, /desktop-light\.webp/);
-  assert.match(login, /desktop-dark\.webp/);
-  assert.match(login, /MoneyRain compact notes=\{MOBILE_MONEY_NOTES\}/);
+  assert.match(login, /MoneyRain notes=\{MOBILE_MONEY_NOTES\}/);
   assert.match(login, /aria-roledescription="carousel"/);
   assert.match(login, /ThemeToggle className=\{loginClass\("login-mobile-theme-toggle"\)\}/);
   assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
@@ -331,12 +319,15 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.doesNotMatch(login, /login-mobile-navigation__action|>\s*Kembali\s*<|>\s*Lanjut\s*</);
   assert.doesNotMatch(loginStyles, /\.login-mobile-navigation__action|\.login-mobile-(?:next|progress|back)/);
 
-  // Desktop menjaga proporsi artwork intrinsik, copy kiri compact, dan panel auth tidak dikecilkan wrapper tambahan.
-  assert.match(login, /<h2>Catat keuangan,<strong>tanpa ribet\.<\/strong><\/h2>/);
-  assert.doesNotMatch(login, /<Feature[^>]*>[^<]*<br \/>/);
-  assert.match(loginStyles, /\.couple\s*\{[\s\S]*width:\s*auto;[\s\S]*height:\s*min\(68vh,\s*610px\);/);
-  assert.match(loginStyles, /\.loginCard\s*\{[\s\S]*max-width:\s*500px;[\s\S]*min-height:\s*500px;/);
-  assert.match(loginStyles, /\.features\s*\{[\s\S]*gap:\s*9px;[\s\S]*margin-top:\s*14px;/);
+  // Desktop kini fokus pada logo, scene pasangan yang proporsional, dan floating auth card tanpa story copy di tengah.
+  assert.doesNotMatch(login, /Keuangan bersama,<strong>tetap sederhana\.<\/strong>|goal-badge\.svg|styles\.storyCopy|styles\.eyebrow/);
+  assert.match(login, /Selamat datang kembali/);
+  assert.match(login, /Gunakan akun Google yang telah diberi izin untuk melanjutkan\./);
+  assert.doesNotMatch(login, /atau masuk dengan email|paper-plane\.webp|growth-bubble\.webp|profile-green\.webp|profile-red\.webp|heart\.webp/);
+  assert.match(loginStyles, /\.visualStage\s*\{[\s\S]*min-height:\s*min\(72vh,\s*680px\);[\s\S]*justify-content:\s*flex-end;/);
+  assert.match(loginStyles, /\.couple\s*\{[\s\S]*width:\s*min\(100%,\s*570px\);[\s\S]*height:\s*auto;[\s\S]*max-height:\s*min\(70vh,\s*620px\);/);
+  assert.match(loginStyles, /\.loginCard\s*\{[\s\S]*max-width:\s*480px;[\s\S]*border-radius:\s*30px;[\s\S]*backdrop-filter:\s*blur\(18px\);/);
+  assert.match(loginStyles, /\.trustItem\s*\{[\s\S]*display:\s*flex;[\s\S]*white-space:\s*nowrap;/);
 
   // Desktop dan mobile memakai tombol HTML branded yang sama. Production memakai server OAuth; localhost tetap popup Firebase untuk development.
   assert.doesNotMatch(login, /renderGoogleLoginButton|google-login-button/);
@@ -393,7 +384,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(app, /<Route path="\/login" element=\{routeElement\(LoginPage, \{ loadingVariant: "page", delayedLoader: false, motion: false \}\)\} \/>/);
   assert.match(app, /loadingVariant = "content"/);
   assert.doesNotMatch(pages, /\.login-page\b|\.login-mobile-|\.login-desktop-/);
-  assert.match(loginStyles, /\.login-desktop-stage \{[\s\S]*height:\s*100dvh;/);
+  assert.match(loginStyles, /\.page \{[\s\S]*min-height:\s*100dvh;/);
   assert.match(loginStyles, /\.login-mobile-stage \{[\s\S]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto;/);
   assert.match(loginStyles, /\.login-mobile-stage\.is-login-active \.login-mobile-navigation__row/);
   assert.match(loginStyles, /\.login-mobile-track \{[\s\S]*width:\s*400%;/);
@@ -401,7 +392,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
   assert.match(loginStyles, /\.login-mobile-stage\.is-login-active \.login-mobile-navigation__spacer,[\s\S]*\.login-mobile-stage\.is-login-active \.login-mobile-navigation__replay \{[^}]*width:\s*44px;/);
   assert.match(loginStyles, /\.login-mobile-navigation__replay \{[^}]*min-height:\s*44px;/);
-  assert.match(loginStyles, /\.login-provider-slot--desktop \.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border-radius:\s*16px;/);
+  assert.match(loginStyles, /\.googleSlot button \{[\s\S]*min-height:\s*62px;[\s\S]*border-radius:\s*16px;/);
   assert.match(loginStyles, /\.login-mobile-google-button:disabled \{[^}]*cursor:\s*wait;/);
   assert.match(loginStyles, /@keyframes login-google-spin/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-provider/);
@@ -418,7 +409,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     "money-note.webp",
     "money-stack.webp",
   ]) assert.doesNotMatch(login, new RegExp(staleAsset.replace(".", "\\.")));
-  for (const asset of [desktopLight, desktopDark, logo, googleLogo, ...mobileAssets, ...desktopAssets]) assert.ok(asset.length > 1_000);
+  for (const asset of [logo, googleLogo, ...mobileAssets, ...desktopAssets]) assert.ok(asset.length > 1_000);
   assert.deepEqual({ width: logo.readUInt32BE(16), height: logo.readUInt32BE(20) }, { width: 320, height: 320 });
   assert.ok(logo.length <= 80_000, `Logo project terlalu besar untuk auth shell (${logo.length} byte)`);
   assert.deepEqual({ width: googleLogo.readUInt32BE(16), height: googleLogo.readUInt32BE(20) }, { width: 48, height: 49 });

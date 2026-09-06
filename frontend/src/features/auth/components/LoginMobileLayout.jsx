@@ -1,10 +1,10 @@
 import ThemeToggle from "../../../components/common/ThemeToggle.jsx";
 import { loginClass } from "../loginStyles.js";
 import { GoogleLoginPanel } from "./LoginFeedback.jsx";
-import { MOBILE_LOGIN_SLIDE, MOBILE_MONEY_NOTES, MOBILE_ONBOARDING, MOBILE_PAGE_LABELS, MOBILE_SLIDE_COUNT, MONEY_NOTES } from "../loginPresentation.js";
+import { MOBILE_LOGIN_SLIDE, MOBILE_MONEY_NOTES, MOBILE_ONBOARDING, MOBILE_PAGE_LABELS, MOBILE_SLIDE_COUNT } from "../loginPresentation.js";
 
-const MoneyRain = ({ compact = false, notes = MONEY_NOTES }) => (
-  <div className={loginClass("login-money-field", compact && "login-money-field--compact")} aria-hidden="true">
+const MoneyRain = ({ notes }) => (
+  <div className={loginClass("login-money-field")} aria-hidden="true">
     {notes.map((note, index) => (
       <span
         className={loginClass("login-money-note", `login-money-note--${note.tone}`)}
@@ -26,16 +26,16 @@ const MoneyRain = ({ compact = false, notes = MONEY_NOTES }) => (
   </div>
 );
 
-const CreatorLink = ({ mobile = false, tabIndex = 0 }) => (
+const CreatorLink = ({ tabIndex = 0 }) => (
   <a
-    className={mobile ? loginClass("login-mobile-creator-link") : loginClass("login-artwork-hotspot", "login-desktop-creator-link")}
+    className={loginClass("login-mobile-creator-link")}
     href="https://www.linkedin.com/in/vio-yusup-iskandar/"
     target="_blank"
     rel="noopener noreferrer"
     aria-label="Buka LinkedIn Vio Yusup Iskandar"
     tabIndex={tabIndex}
   >
-    {mobile ? "Created by Vio Yusup Iskandar" : null}
+    Created by Vio Yusup Iskandar
   </a>
 );
 
@@ -71,7 +71,7 @@ const MobileOnboardingSlide = ({ slide, active }) => (
 const MobileLoginSlide = ({ active, mobileAuthProps }) => (
   <article className={loginClass("login-mobile-slide", "login-mobile-login-slide", active && "is-active")} aria-hidden={!active}>
     <div className={loginClass("login-mobile-login-backdrop")} aria-hidden="true" />
-    {active ? <MoneyRain compact notes={MOBILE_MONEY_NOTES} /> : null}
+    {active ? <MoneyRain notes={MOBILE_MONEY_NOTES} /> : null}
     <section className={loginClass("login-mobile-login-content")} aria-label="Masuk ke Saldo Bersama">
       <div className={loginClass("login-mobile-login-logo")}>
         <img src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" aria-hidden="true" draggable="false" decoding="async" />
@@ -85,7 +85,7 @@ const MobileLoginSlide = ({ active, mobileAuthProps }) => (
         <span><i />Data privat</span>
         <span><i />Sinkron perangkat</span>
       </div>
-      <CreatorLink mobile tabIndex={active ? 0 : -1} />
+      <CreatorLink tabIndex={active ? 0 : -1} />
     </section>
   </article>
 );

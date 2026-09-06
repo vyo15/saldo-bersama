@@ -141,6 +141,7 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
     Promise.all([
       readFile(new URL("../src/features/auth/LoginPage.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/auth/components/LoginDesktopFloating.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
   ]);
 
@@ -203,6 +204,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
     Promise.all([
       readFile(new URL("../src/features/auth/LoginPage.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/auth/components/LoginDesktopFloating.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
   ]);
 
@@ -229,7 +231,8 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(desktopAccounts, /\.carouselArrow \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
   assert.match(desktopAccounts, /\.carouselDot \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
   assert.match(desktopAccounts, /\.textAction \{[^}]*min-height:\s*2\.75rem;/s);
-  assert.match(loginStyles, /\.login-desktop-brand small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(loginStyles, /\.brandCopy small \{[^}]*font-size:\s*12px;/s);
+  assert.match(loginStyles, /\.contact \{[^}]*min-height:\s*44px;/s);
 
   const operationalCss = [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts].join("\n");
   const tooSmall = [...operationalCss.matchAll(/font-size:\s*([0-9.]+)px/g)]
@@ -315,6 +318,7 @@ test("gradient avatar dan login menjaga focus, motion preference, dan full-scree
     Promise.all([
       readFile(new URL("../src/features/auth/LoginPage.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/features/auth/components/LoginDesktopFloating.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
     Promise.all([
       "../src/features/auth/LoginPage.jsx",
@@ -325,14 +329,14 @@ test("gradient avatar dan login menjaga focus, motion preference, dan full-scree
   ]);
   assert.match(app, /\.desktop-user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
   assert.match(app, /\.user-avatar \{[^}]*background:\s*linear-gradient\(145deg, var\(--primary\), var\(--primary-strong\)\);/s);
-  assert.match(loginStyles, /\.login-artwork-hotspot:focus-visible/);
+  assert.match(loginStyles, /\.login-mobile-creator-link:focus-visible/);
   assert.match(loginStyles, /\.login-mobile-viewport:focus-visible/);
   assert.match(loginStyles, /min-height:\s*100dvh/);
   assert.match(loginStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.login-money-note/);
   assert.match(loginStyles, /animation: login-money-fall var\(--motion-decorative\) linear 1 both/);
   assert.doesNotMatch(loginStyles, /login-money-fall[^;]*infinite/);
   assert.doesNotMatch(login, /duration:\s*"(?:9|1[0-3]|2[2-9])s"/);
-  assert.match(login, /DESKTOP_ARTWORK\[theme\]/);
+  assert.match(login, /LoginDesktopFloating\.module\.css/);
   assert.doesNotMatch(app, /\.desktop-user-avatar \{[^}]*var\(--secondary\)/s);
   assert.doesNotMatch(app, /\.user-avatar \{[^}]*var\(--secondary\)/s);
 });

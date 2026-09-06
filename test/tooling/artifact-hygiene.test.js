@@ -174,8 +174,11 @@ test("asset login desktop canonical hanya menyimpan format runtime teroptimasi",
   const assetDirectory = path.join(root, "frontend", "public", "login", "assets", "desktop");
   const names = (await readdir(assetDirectory)).sort();
   assert.equal(names.some((name) => name.endsWith(".png")), false, `PNG source duplikat tidak boleh tinggal di ${assetDirectory}: ${names.join(", ")}`);
-  for (const required of ["couple-love.webp", "paper-plane.webp", "growth-bubble.webp", "profile-green.webp", "profile-red.webp", "heart.webp", "goal-badge.svg"]) {
-    assert.ok(names.includes(required), `Asset login desktop canonical hilang: ${required}`);
+  for (const required of ["couple-love.webp"]) {
+    assert.ok(names.includes(required), `Asset login desktop canonical hilang: `);
+  }
+  for (const retired of ["goal-badge.svg", "paper-plane.webp", "growth-bubble.webp", "profile-green.webp", "profile-red.webp", "heart.webp"]) {
+    assert.equal(names.includes(retired), false, `Asset dekoratif desktop yang sudah dipensiunkan kembali: ${retired}`);
   }
 });
 

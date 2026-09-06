@@ -4,11 +4,6 @@ export const MOBILE_LOGIN_QUERY = APP_MEDIA.mobile;
 export const MOBILE_SLIDE_COUNT = 4;
 export const MOBILE_LOGIN_SLIDE = MOBILE_SLIDE_COUNT - 1;
 export const MOBILE_ASSET_BASE = "/login/assets/mobile";
-export const DESKTOP_ARTWORK = Object.freeze({
-  light: "/login/desktop-light.webp",
-  dark: "/login/desktop-dark.webp",
-});
-
 export const MOBILE_ONBOARDING = Object.freeze([
   {
     id: "saving",
@@ -50,15 +45,6 @@ export const MOBILE_ONBOARDING = Object.freeze([
       parallax: "soft",
     },
   },
-]);
-
-export const MONEY_NOTES = Object.freeze([
-  { denomination: "100000", tone: "red", left: "5%", rotation: "-14deg", delay: "var(--motion-stagger-0)", drift: "24px" },
-  { denomination: "50000", tone: "blue", left: "22%", rotation: "12deg", delay: "var(--motion-stagger-1)", drift: "-28px" },
-  { denomination: "20000", tone: "green", left: "43%", rotation: "-8deg", delay: "var(--motion-stagger-2)", drift: "20px" },
-  { denomination: "10000", tone: "purple", left: "68%", rotation: "15deg", delay: "var(--motion-stagger-3)", drift: "-22px" },
-  { denomination: "5000", tone: "gold", left: "88%", rotation: "-11deg", delay: "var(--motion-stagger-4)", drift: "30px" },
-  { denomination: "50000", tone: "blue", left: "-4%", rotation: "16deg", delay: "var(--motion-stagger-5)", drift: "36px" },
 ]);
 
 export const MOBILE_MONEY_NOTES = Object.freeze([

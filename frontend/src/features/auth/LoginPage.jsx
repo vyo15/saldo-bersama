@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router";
-import { useTheme } from "../../app/ThemeContext.jsx";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import {
   isCanonicalProductionGoogleOAuth,
@@ -142,7 +141,6 @@ const useGoogleProvider = ({
 
 const LoginPage = () => {
   const { status, error, configErrors, loginWithFirebaseToken, refreshSession } = useAuth();
-  const { theme } = useTheme();
   const location = useLocation();
   const googleAuthRef = useRef(null);
   const [buttonError, setButtonError] = useState(() => mobileOAuthErrorFromSearch(location.search));
@@ -212,7 +210,7 @@ const LoginPage = () => {
   );
   return (
     <Suspense fallback={null}>
-      <DesktopLoginLayout theme={theme} authProps={googleAuthProps} />
+      <DesktopLoginLayout authProps={googleAuthProps} />
     </Suspense>
   );
 };
