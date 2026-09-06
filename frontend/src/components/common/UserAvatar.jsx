@@ -10,7 +10,7 @@ const initialsFor = (user) => {
 const UserAvatar = ({ user, className = "", size = "md" }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const initials = useMemo(() => initialsFor(user), [user]);
-  const photoUrl = String(user?.photoURL || user?.photoUrl || user?.picture || "").trim();
+  const photoUrl = String(user?.photoURL || user?.photoUrl || user?.photo_url || user?.picture || "").trim();
   const label = user?.name || user?.email || "Pengguna";
 
   useEffect(() => setImageFailed(false), [photoUrl]);

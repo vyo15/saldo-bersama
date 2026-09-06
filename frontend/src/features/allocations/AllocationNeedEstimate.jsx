@@ -2,6 +2,7 @@ import { FiPlus, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
+import { categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatRupiah } from "../../domain/money.js";
 import { allocationClass } from "./allocationStyles.js";
 import {
@@ -31,7 +32,7 @@ const AllocationNeedEstimate = ({ categories, rows, setRows, availableAmount }) 
           placeholder="Pilih kategori"
           searchable={categories.length > 8}
           searchPlaceholder="Cari kategori…"
-          options={availableAllocationCategoryOptions(categories, rows, row.id)}
+          options={availableAllocationCategoryOptions(categories, rows, row.id).map((option) => ({ ...option, ...categoryOptionVisual(categories.find((category) => category.category_id === option.value) || {}) }))}
         />
         <MoneyInput id={`allocation-estimate-${row.id}`} label="Perkiraan" value={row.amount} onChange={(amount) => updateRow(row.id, { amount })} required />
         <Button className={allocationClass("allocation-need-estimate__remove")} type="button" icon={FiTrash2} aria-label={`Hapus kebutuhan ${index + 1}`} onClick={() => removeRow(row.id)} />

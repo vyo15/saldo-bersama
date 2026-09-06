@@ -72,6 +72,9 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(categoryPresentation, /value: CATEGORY_TYPES\.EXPENSE, label: "Uang keluar"/);
   assert.match(categoryPresentation, /value: CATEGORY_TYPES\.INCOME, label: "Uang masuk"/);
   assert.match(categoryPresentation, /value: CATEGORY_TYPES\.REFUND, label: "Pengembalian dana"/);
+  assert.match(page, /legend="Dipakai untuk transaksi"[\s\S]*mobileColumns=\{3\}[\s\S]*denseTiles[\s\S]*plainIcons/);
+  assert.match(page, /tone: item\.value/);
+  assert.match(page, /CATEGORY_TYPE_ICONS = Object\.freeze\(\{ expense: MoneyOutIcon, income: MoneyInIcon, refund: RefundIcon \}\)/);
   assert.doesNotMatch(page, /Transfer antar rekening tidak memakai kategori/);
   assert.doesNotMatch(page, /gunakan Transfer atau Target/);
   assert.match(styles, /\.iconGroups[\s\S]*flex-wrap: wrap/);

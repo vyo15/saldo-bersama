@@ -150,7 +150,7 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(responsiveCss, /--accounts-mobile-background:/);
   assert.match(responsiveCss, /\.app-shell--accounts,\s*\n\s*\.app-shell--accounts \.app-shell__main,\s*\n\s*\.app-shell--accounts \.app-content \{ background:\s*var\(--accounts-mobile-background\); \}/);
   assert.match(responsiveCss, /\.app-shell--accounts \.app-content \{ padding-top:\s*0; color:\s*var\(--on-hero\); \}/);
-  assert.match(accountCss, /background:\s*var\(--accounts-mobile-background, var\(--accounts-mobile-surface\)\);/);
+  assert.match(accountCss, /background:\s*var\(--accounts-mobile-background\);/);
   assert.match(componentCss, /\.loading-screen--page, \.fatal-error \{ min-height:\s*100vh; min-height:\s*100dvh; \}/);
   assert.match(componentCss, /\.loading-screen--content \{[^}]*min-height:\s*clamp\(12rem, 42dvh, 24rem\);/);
   assert.match(componentCss, /\.app-content \.loading-screen--page \.brand-lockup \{ display:\s*none; \}/);
@@ -232,8 +232,8 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
   assert.match(dashboardCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero :global\(\.theme-toggle\) \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(dashboardCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
   assert.match(dashboardCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
-  assert.match(dashboardCss, /\.mobile-account-scroller \{[^}]*scroll-snap-type:\s*x mandatory;[^}]*touch-action:\s*pan-x pan-y;/);
-  assert.match(dashboardCss, /\.mobile-account-preview \{[^}]*scroll-snap-align:\s*start;[^}]*scroll-snap-stop:\s*always;/);
+  assert.match(dashboardCss, /\.mobile-quick-grid \{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.doesNotMatch(dashboardCss, /\.mobile-account-scroller|\.mobile-account-preview/);
   assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*flex; \}/);
   assert.match(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*none; \}/);
 });

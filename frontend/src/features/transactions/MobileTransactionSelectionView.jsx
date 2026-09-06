@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
-import { FiCheck } from "react-icons/fi";
+import { FiCheck, FiLayers } from "react-icons/fi";
+import { SelectionVisual } from "../../components/common/SelectionField.jsx";
+import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
@@ -7,7 +9,7 @@ import { userRoleLabel } from "../../shared/presentation/user.js";
 import { orderedEnvelopeOptions, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
 import styles from "./MobileTransactionSelectionView.module.css";
 
-const SelectionRow = ({ selected, title, meta, onClick, disabled = false }) => (
+const SelectionRow = ({ selected, title, meta, visual, onClick, disabled = false }) => (
   <button
     className={`${styles.choiceRow} ${selected ? styles.selected : ""}`.trim()}
     type="button"
@@ -15,6 +17,7 @@ const SelectionRow = ({ selected, title, meta, onClick, disabled = false }) => (
     onClick={onClick}
     disabled={disabled}
   >
+    {visual ? <SelectionVisual option={visual} /> : null}
     <span className={styles.choiceCopy}>
       <span className={styles.choiceName}>{title}</span>
       {meta ? <span className={styles.choiceMeta}>{meta}</span> : null}
@@ -75,6 +78,7 @@ const AccountSelection = ({ selection, fields, onBack }) => {
             selected={selectedId === item.account_id}
             title={accountDisplayLabel(item)}
             meta={sourceMode ? sourceAccountMeta(item, fields.form.transaction_type) : `Saldo ${formatRupiah(item.balance || 0)}`}
+            visual={accountOptionVisual(item)}
             onClick={() => choose(item.account_id)}
             disabled={fields.outcomeUnknown}
           />
@@ -114,6 +118,7 @@ const EnvelopeSelection = ({ fields, onBack }) => {
           selected={!fields.form.envelope_period_id}
           title="Belum dialokasikan"
           meta="Gunakan dana rekening tanpa mengikat ke Alokasi Dana"
+          visual={{ icon: FiLayers }}
           onClick={() => choose("")}
           disabled={fields.outcomeUnknown}
         />
@@ -123,6 +128,7 @@ const EnvelopeSelection = ({ fields, onBack }) => {
             selected={fields.form.envelope_period_id === item.envelope_period_id}
             title={item.name}
             meta={envelopeMeta(item)}
+            visual={{ icon: FiLayers }}
             onClick={() => choose(item.envelope_period_id)}
             disabled={fields.outcomeUnknown}
           />

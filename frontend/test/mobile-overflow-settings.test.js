@@ -262,7 +262,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(goalStyles, /\.goal-action-menu__items/);
   assert.match(goalStyles, /\.goal-action-menu:only-child\s*\{[\s\S]*?grid-column:\s*2;/);
   assert.match(allocationStyles, /\.allocation-refresh-action > span\s*\{[^}]*display:\s*none;/);
-  assert.match(allocationStyles, /\.allocation-header-actions--administrator\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, \.95fr\) var\(--mobile-control-height\);/);
+  assert.match(allocationStyles, /\.allocation-header-actions--with-move\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, \.95fr\) var\(--mobile-control-height\);/);
   assert.match(allocationStyles, /\.allocation-filters button\s*\{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(allocationStyles, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
   assert.match(reportStyles, /Desktop-only report presentation/);
@@ -279,10 +279,8 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
     read("src/components/feedback/FinancialSuccessOverlay.module.css"),
   ]);
   assert.doesNotMatch(accountStyles, /font-size:\s*\.(?:55|58|62)rem;/);
-  assert.match(accountStyles, /\.mobileStackBalance small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
-  assert.match(accountStyles, /\.mobileStackAccountMeta,\s*\n\.mobileStackOwnerScope \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
-  assert.match(accountStyles, /\.mobileChartLabels \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
-  assert.match(accountStyles, /\.mobileChartStats small \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(accountStyles, /\.mobileBalanceStats span:not\(\.mobilePrivateMoney\) \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(accountStyles, /\.mobileRecentHeading > div > span \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(financialSuccessStyles, /\.summary dt \{[^}]*font-size:\s*var\(--font-size-sm\);/s);
 });
 
@@ -306,10 +304,9 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
   assert.match(reports, /\.sectionHeading > button,[\s\S]*?\.sectionHeading > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.match(budgets, /@media \(max-width: 820px\)[\s\S]*?\.segment,[\s\S]*?\.sortButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
   assert.match(budgetCard, /@media \(max-width: 820px\)[\s\S]*?\.detailButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(dashboard, /\.mobile-allocation-card__footer a \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(dashboard, /\.mobile-quick-action \{[^}]*min-height:\s*64px;/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(accountActivity, /\.mobileActivityHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(accountActivity, /\.mobileTrendControls > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(accountActivity, /\.mobileRecentHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(accountCard, /\.mobileSecondaryActions button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.doesNotMatch(accountActivity + accountTransfer + accountExperience + settings, /font-size:\s*\.(?:5|6)rem;/);
 });

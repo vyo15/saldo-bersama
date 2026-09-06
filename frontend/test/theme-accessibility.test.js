@@ -157,7 +157,7 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-size-xs:\s*12px;[\s\S]*--font-size-sm:\s*12\.5px;[\s\S]*--font-size-body-sm:\s*13px;[\s\S]*--font-size-body:\s*14px;/);
   assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-weight-semibold:\s*550;[\s\S]*--font-weight-bold:\s*650;/);
   assert.match(dashboard, /\.mobile-finance-summary span \{ font-size:\s*var\(--font-size-xs\);/);
-  assert.match(dashboard, /\.mobile-transaction-item > div small \{[^}]*font-size:\s*var\(--font-size-xs\);/);
+  assert.match(dashboard, /\.mobile-transaction-copy small \{[^}]*font-size:\s*var\(--font-size-xs\);/);
   assert.doesNotMatch(pages, /\.premium-/);
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;/);
   assert.doesNotMatch(pages, /\.shared-account-panel \{/);
@@ -374,7 +374,7 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
   assert.match(tokenSource, /--mobile-native-control-font-size:\s*16px;/);
   assert.match(components, /\.field input,\s*\n\.field textarea,\s*\n\.search-field \{[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(responsive, /:root body input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\),\s*\n\s*:root body textarea \{ font-size:\s*var\(--mobile-native-control-font-size\); \}/);
-  assert.match(accountStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.doesNotMatch(accountStyles, /\.mobileHistoryPeriodControl/);
   assert.match(transactionFormStyles, /\.fieldControlInput > :global\(input\) \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
   assert.match(transactionFormStyles, /\.form :global\(\.field\) > input,\s*\n\s*\.form :global\(\.field\) > textarea \{[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
   assert.match(selectionSource, /\.search input \{[^}]*font-size:\s*16px;/s);
@@ -388,7 +388,7 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
   assert.match(responsive, /html::-webkit-scrollbar,\s*\n\s*body::-webkit-scrollbar \{[^}]*display:\s*none/s);
   assert.doesNotMatch(responsive, /overflow-y:\s*hidden/);
   assert.match(accountStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
-  assert.match(accountStyles, /\.mobileStackCard\[aria-pressed="true"\][^{]*\{[^}]*touch-action: pan-x pinch-zoom;/s);
+  assert.match(accountStyles, /\.mobileStackCard[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
   assert.doesNotMatch(accountStyles, /touch-action: none/);
   assert.doesNotMatch(indexHtml, /user-scalable=no|maximum-scale=1/i);
   assert.doesNotMatch(components, /\.modal(?:-backdrop|--lg|__header|__body|__footer|\s*\{)/);
@@ -429,7 +429,7 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
   assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.segment,[\s\S]*?\.sortButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(budgetCard, /@media \(max-width: 820px\) \{[\s\S]*?\.detailButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-limit-row__actions :global\(\.button\) \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-limit-row__actions :global\(\.button\),[\s\S]*?\.allocation-limit-row__more summary,[\s\S]*?\.allocation-limit-row__more-menu button \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-related-row small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
 });
 

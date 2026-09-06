@@ -28,7 +28,7 @@ test("aksi Investasi capability-driven, koreksi Administrator-only, dan activity
   assert.match(overview, /owner \? <SheetAction icon=\{FiEdit3\} title="Koreksi catatan"/);
   assert.match(overview, /Cash RDN keluar/);
   assert.match(overview, /Cash RDN masuk/);
-  assert.match(overview, /Aktivitas saham terbaru/);
+  assert.match(overview, /Riwayat catatan terbaru/);
   for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual diperbarui", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(model, new RegExp(label));
 });
 
@@ -86,16 +86,37 @@ test("Investasi menjelaskan pencatatan manual dan memakai terminologi pencatatan
     read("src/features/investments/InvestmentHoldingDetail.jsx"),
   ]);
   const source = `${page}\n${overview}\n${setup}\n${dialog}\n${detail}`;
-  assert.match(page, /tidak terhubung ke aplikasi investasi, tidak mengambil harga live, dan tidak mengirim order beli\/jual/);
+  assert.match(page, /tidak terhubung ke broker, tidak mengambil harga pasar live, dan tidak mengirim order beli atau jual/);
   assert.match(dialog, /Catat transaksi yang sudah Anda lakukan di aplikasi investasi/);
   assert.match(dialog, /Harga tidak diperbarui otomatis/);
   assert.match(overview, /bukan harga pasar live/);
-  assert.match(overview, /aria-label="Catat pembelian">Catat beli<\/Button>/);
-  assert.match(overview, /aria-label="Catat penjualan">Catat jual<\/Button>/);
+  assert.match(overview, /aria-label="Catat pembelian">Catat pembelian<\/Button>/);
+  assert.match(overview, /aria-label="Catat penjualan">Catat penjualan<\/Button>/);
   assert.match(overview, />Lainnya<\/span>/);
   assert.match(overview, /title="Perbarui harga"/);
   assert.match(detail, />Catat penjualan<\/Button>/);
   assert.doesNotMatch(source, /Login Ajaib|Connect broker|Hubungkan akun broker|Sinkron otomatis|Top Gainers|Top Losers|Market Movers|Auto trading|Place order/i);
+});
+
+test("Tambah saham memakai katalog LQ45 prototype dengan logo dan tanpa form instrumen manual", async () => {
+  const [setup, picker, catalog, visuals, holding, pickerStyles] = await Promise.all([
+    read("src/features/investments/InvestmentSetupDialog.jsx"),
+    read("src/features/investments/InvestmentStockPicker.jsx"),
+    read("src/shared/presentation/investmentStocks.js"),
+    read("src/components/common/selectionOptionVisuals.js"),
+    read("src/features/investments/InvestmentOverview.jsx"),
+    read("src/features/investments/InvestmentStockPicker.module.css"),
+  ]);
+  assert.match(setup, /title: "Tambah saham"/);
+  assert.match(setup, /InvestmentStockPicker/);
+  assert.doesNotMatch(setup, /label="Ticker"|label="Bursa"|label="Nama saham"|label="Lembar per lot"/);
+  assert.match(picker, /Cari saham LQ45/);
+  assert.match(picker, /Daftar dibatasi pada saham LQ45 yang disediakan prototype/);
+  for (const ticker of ["BBCA", "BBRI", "BMRI", "TLKM", "ASII", "ICBP", "ANTM"]) assert.match(catalog, new RegExp(`ticker: "${ticker}"`));
+  assert.match(visuals, /investmentStockLogo\(instrument\.ticker\)/);
+  assert.match(holding, /<StockLogo ticker=\{holding\.ticker\}/);
+  assert.match(pickerStyles, /\.option \{[\s\S]*?min-height:\s*4\.25rem;/);
+  assert.match(pickerStyles, /@media \(max-width: 620px\)[\s\S]*?font-size:\s*var\(--mobile-native-control-font-size\);/);
 });
 
 test("prerequisite Investasi tidak memberi dead-end Member dan lot correction tidak dibulatkan turun", async () => {
@@ -104,8 +125,8 @@ test("prerequisite Investasi tidak memberi dead-end Member dan lot correction ti
     read("src/features/investments/InvestmentDialog.jsx"),
   ]);
   assert.match(overview, /!state\.hasBuyInstrument/);
-  assert.match(overview, />Tambah instrumen<\/Button>/);
-  assert.match(overview, /Instrumen baru dikelola Administrator/);
+  assert.match(overview, />Tambah saham<\/Button>/);
+  assert.match(overview, /Daftar saham baru dikelola Administrator/);
   assert.match(overview, /const lots = lotSize > 0 \? shares \/ lotSize : 0/);
   assert.match(overview, /const hasPriceInstrument = instruments\.some\(\(item\) => heldIds\.has\(item\.instrument_id\)\)/);
   assert.match(overview, /const hasSellableHolding = portfolio\.holdings\.some/);
@@ -128,7 +149,7 @@ test("rekening Investasi menjadi pintu ke holding aktual dan portfolio selalu me
   ]);
   assert.match(page, /InvestmentHoldingDetail = lazy/);
   assert.match(overview, /Sumber catatan/);
-  assert.match(overview, /Satu portfolio ini selalu menggunakan Cash RDN dari rekening di atas/);
+  assert.match(overview, /Satu portofolio ini selalu menggunakan Cash RDN dari rekening di atas/);
   assert.match(overview, /Average cost/);
   assert.match(holdingDetail, /Modal tercatat/);
   assert.match(holdingDetail, /Aktivitas saham terbaru/);
@@ -195,7 +216,7 @@ test("onboarding existing investment memakai opening_position, Cash RDN awal, da
     read("src/features/investments/investments.api.js"),
     read("src/features/investments/investments.model.js"),
   ]);
-  assert.match(page, /Portfolio siap\. Saya mau mulai dari:/);
+  assert.match(page, /Portofolio siap\. Saya mau mulai dari:/);
   assert.match(page, /Mulai mencatat transaksi baru/);
   assert.match(page, /Saya sudah punya saham/);
   assert.match(page, /Tambah posisi awal lain/);

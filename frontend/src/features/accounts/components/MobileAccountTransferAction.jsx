@@ -74,18 +74,20 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
     await onTransferSaved?.(saved);
   };
 
+  const unavailableId = "mobile-transfer-unavailable";
+
   return (
     <>
       <button
         type="button"
-        className={styles.mobileTransferHeaderAction}
+        className={styles.mobileTransferQuickAction}
         onClick={() => setTransferOpen(true)}
         disabled={!canTransfer}
-        aria-describedby={!canTransfer ? "mobile-transfer-unavailable" : undefined}
+        aria-describedby={!canTransfer ? unavailableId : undefined}
       >
         <TransferArrowsIcon /><span>Transfer</span>
       </button>
-      {!canTransfer ? <span id="mobile-transfer-unavailable" className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif yang kompatibel dengan ledger.</span> : null}
+      {!canTransfer ? <span id={unavailableId} className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif yang kompatibel dengan ledger.</span> : null}
 
       {transferOpen ? <Suspense fallback={null}><TransactionForm
         open

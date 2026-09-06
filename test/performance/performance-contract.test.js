@@ -143,13 +143,15 @@ test("dashboard memakai opening balance bulk, envelope ringan, dan laporan trend
   assert.match(dashboard, /readBatchRows\(db, plan\.statements\)/);
 });
 
-test("grafik pengeluaran rekening memakai satu laporan backend untuk 3 6 atau 12 bulan", async () => {
-  const accountsApi = await source("frontend/src/features/accounts/accounts.api.js");
-  assert.match(accountsApi, /apiClient\.request\("reports\.monthly"/);
-  assert.match(accountsApi, /trend_months: months/);
-  assert.match(accountsApi, /account_id: accountId/);
-  assert.match(accountsApi, /accountExpenseTrend/);
-  assert.doesNotMatch(accountsApi, /for \(const period of periods\).*await/s);
+test("rekening mobile tidak membuat request trend tambahan dan analitik tetap dimiliki riwayat transaksi", async () => {
+  const [accountsApi, mobileActivity, transactionsPage] = await Promise.all([
+    source("frontend/src/features/accounts/accounts.api.js"),
+    source("frontend/src/features/accounts/components/MobileAccountActivity.jsx"),
+    source("frontend/src/features/transactions/TransactionsPage.jsx"),
+  ]);
+  assert.doesNotMatch(accountsApi, /reports\.monthly|accountExpenseTrend|trend_months/);
+  assert.doesNotMatch(mobileActivity, /reports\.monthly|loadAccountExpenseTrend|TREND_OPTIONS/);
+  assert.match(transactionsPage, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}, \{ enabled: mobileLayout \}\)/);
 });
 
 test("initial state menanam cache read-model periode tanpa menyamakan bootstrap dengan daftar master manajemen", async () => {

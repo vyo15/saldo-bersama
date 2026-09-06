@@ -3,6 +3,7 @@ import { FiAlertTriangle, FiCalendar, FiCreditCard, FiGrid, FiLayers, FiTag } fr
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { SelectionControl } from "../../../components/common/SelectionField.jsx";
+import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { formatRupiah } from "../../../domain/money.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
@@ -38,21 +39,21 @@ const SourceAccountField = ({ form, accounts, recentTransactions, onSourceAccoun
   const selected = accounts.find((item) => item.account_id === form.source_account_id) || null;
   return <div className={`field ${styles.visualField}`}>
     <label htmlFor="source-account">Rekening sumber *</label>
-    <FieldControl icon={FiCreditCard}><SelectionControl id="source-account" embedded value={form.source_account_id} onChange={onSourceAccountChange} placeholder="Pilih rekening" searchable={picker.length > 8} ariaLabel="Rekening sumber" options={picker.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: sourceAccountOptionLabel(item, form.transaction_type).split(" · ").slice(1).join(" · ") }))} /></FieldControl>
+    <FieldControl icon={FiCreditCard}><SelectionControl id="source-account" embedded value={form.source_account_id} onChange={onSourceAccountChange} placeholder="Pilih rekening" searchable={picker.length > 8} ariaLabel="Rekening sumber" options={picker.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: sourceAccountOptionLabel(item, form.transaction_type).split(" · ").slice(1).join(" · "), ...accountOptionVisual(item) }))} /></FieldControl>
     {selected ? <small>Saldo {formatRupiah(selected.balance || 0)} · dialokasikan {formatRupiah(selected.allocated_remaining || 0)} · tersedia {formatRupiah(selected.available_balance ?? selected.balance ?? 0)}</small> : null}
     {!selected && picker.length === 0 ? <small>Belum ada rekening sumber dengan dana yang dapat digunakan.</small> : null}
     {errors.source_account_id ? <small id="source-account-error" className="field__error">{errors.source_account_id}</small> : null}
   </div>;
 };
 
-const DestinationAccountField = ({ form, accounts, update, errors }) => <label className={`field ${styles.visualField}`}><span>Rekening tujuan *</span><FieldControl icon={FiCreditCard}><SelectionControl id="destination-account" embedded value={form.destination_account_id} onChange={(value) => update("destination_account_id", value)} placeholder="Pilih rekening" searchable={accounts.length > 8} ariaLabel="Rekening tujuan" options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Saldo ${formatRupiah(item.balance || 0)}` }))} /></FieldControl>{errors.destination_account_id ? <small id="destination-account-error" className="field__error">{errors.destination_account_id}</small> : null}</label>;
+const DestinationAccountField = ({ form, accounts, update, errors }) => <label className={`field ${styles.visualField}`}><span>Rekening tujuan *</span><FieldControl icon={FiCreditCard}><SelectionControl id="destination-account" embedded value={form.destination_account_id} onChange={(value) => update("destination_account_id", value)} placeholder="Pilih rekening" searchable={accounts.length > 8} ariaLabel="Rekening tujuan" options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Saldo ${formatRupiah(item.balance || 0)}`, ...accountOptionVisual(item) }))} /></FieldControl>{errors.destination_account_id ? <small id="destination-account-error" className="field__error">{errors.destination_account_id}</small> : null}</label>;
 
 const CategoryField = ({ form, visibleCategories, recentTransactions, update, errors }) => {
   const quickCategories = useMemo(() => frequentCategories({ recentTransactions, sourceAccountId: form.source_account_id, visibleCategories }), [form.source_account_id, recentTransactions, visibleCategories]);
   return <div className={`field ${styles.visualField}`}>
     <label htmlFor="category">Kategori{![TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.ADJUSTMENT].includes(form.transaction_type) ? " *" : ""}</label>
     {quickCategories.length ? <div className={styles.categoryQuickChoices} aria-label="Kategori yang sering dipakai"><small>Sering dipakai</small><div>{quickCategories.map((item) => <button key={item.category_id} type="button" aria-pressed={form.category_id === item.category_id} onClick={() => update("category_id", item.category_id)}>{item.name}</button>)}</div></div> : null}
-    <FieldControl icon={FiTag}><SelectionControl id="category" embedded value={form.category_id} onChange={(value) => update("category_id", value)} placeholder="Pilih kategori" searchable={visibleCategories.length > 8} searchPlaceholder="Cari kategori…" ariaLabel="Kategori" options={visibleCategories.map((item) => ({ value: item.category_id, label: item.name }))} /></FieldControl>
+    <FieldControl icon={FiTag}><SelectionControl id="category" embedded value={form.category_id} onChange={(value) => update("category_id", value)} placeholder="Pilih kategori" searchable={visibleCategories.length > 8} searchPlaceholder="Cari kategori…" ariaLabel="Kategori" options={visibleCategories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item, form.transaction_type) }))} /></FieldControl>
     {errors.category_id ? <small id="category-error" className="field__error">{errors.category_id}</small> : null}
   </div>;
 };
@@ -69,7 +70,7 @@ const EnvelopeField = ({ form, envelopes, candidates, onEnvelopeChange }) => {
   const hint = allocationSelectionHint({ form, candidates, selectedEnvelopeId: form.envelope_period_id });
   return <div className={`field ${styles.visualField}`}>
     <label htmlFor="envelope">Alokasi Dana (opsional)</label>
-    <FieldControl icon={FiLayers}><SelectionControl id="envelope" embedded value={form.envelope_period_id} onChange={onEnvelopeChange} disabled={disabled} placeholder={placeholder} searchable={options.length > 8} ariaLabel="Alokasi Dana" options={[...(!disabled ? [{ value: "", label: "Belum dialokasikan" }] : []), ...options.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: envelopeOptionLabel(item).replace(`${item.name} · `, "") }))]} /></FieldControl>
+    <FieldControl icon={FiLayers}><SelectionControl id="envelope" embedded value={form.envelope_period_id} onChange={onEnvelopeChange} disabled={disabled} placeholder={placeholder} searchable={options.length > 8} ariaLabel="Alokasi Dana" options={[...(!disabled ? [{ value: "", label: "Belum dialokasikan", ...allocationOptionVisual() }] : []), ...options.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: envelopeOptionLabel(item).replace(`${item.name} · `, ""), ...allocationOptionVisual() }))]} /></FieldControl>
     {hint ? <small>{hint}</small> : null}
   </div>;
 };
@@ -86,7 +87,7 @@ const AccountCategoryFields = (p) => {
   </>;
 };
 
-const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`}><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><SelectionControl id="payment-method" embedded value={form.payment_method} onChange={(value) => update("payment_method", value)} ariaLabel="Metode pembayaran" options={[...(form.payment_method === "autodebit" ? [{ value: "autodebit", label: "Auto-debit (data lama)", disabled: true }] : []), ...PAYMENT_METHOD_OPTIONS.map((item) => ({ value: item.value, label: item.label }))]} /></FieldControl></label><label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined} />{errors.description ? <small id="description-error" className="field__error">{errors.description}</small> : null}</label></>;
+const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`}><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><SelectionControl id="payment-method" embedded value={form.payment_method} onChange={(value) => update("payment_method", value)} ariaLabel="Metode pembayaran" options={[...(form.payment_method === "autodebit" ? [{ value: "autodebit", label: "Auto-debit (data lama)", disabled: true }] : []), ...PAYMENT_METHOD_OPTIONS.map((item) => ({ value: item.value, label: item.label, icon: item.icon }))]} /></FieldControl></label><label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined} />{errors.description ? <small id="description-error" className="field__error">{errors.description}</small> : null}</label></>;
 
 const ValidationSummary = ({ errors }) => {
   const messages = Object.values(errors || {}).filter(Boolean);

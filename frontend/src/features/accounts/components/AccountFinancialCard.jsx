@@ -18,17 +18,8 @@ import {
   FiWifi,
 } from "react-icons/fi";
 import cashCard from "../../../assets/account-cards/cash.webp";
+import investmentCard from "../../../assets/account-cards/investment.webp";
 import savingsCard from "../../../assets/account-cards/savings.webp";
-import bcaCard from "../../../assets/bank-cards/bca.webp";
-import bniCard from "../../../assets/bank-cards/bni.webp";
-import btnCard from "../../../assets/bank-cards/btn.webp";
-import mandiriCard from "../../../assets/bank-cards/mandiri.webp";
-import permataCard from "../../../assets/bank-cards/permata.webp";
-import danaCard from "../../../assets/ewallet-cards/dana.webp";
-import gopayCard from "../../../assets/ewallet-cards/gopay.webp";
-import linkajaCard from "../../../assets/ewallet-cards/linkaja.webp";
-import ovoCard from "../../../assets/ewallet-cards/ovo.webp";
-import shopeepayCard from "../../../assets/ewallet-cards/shopeepay.webp";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
@@ -47,11 +38,10 @@ import {
   detectEwalletTemplate,
   formatAccountNumber,
 } from "../../../shared/presentation/account.js";
+import { BANK_BRAND_IMAGES, EWALLET_BRAND_IMAGES } from "../../../shared/presentation/accountBrandAssets.js";
 import styles from "./AccountFinancialCard.module.css";
 
-const BANK_IMAGES = Object.freeze({ bca: bcaCard, bni: bniCard, btn: btnCard, mandiri: mandiriCard, permata: permataCard });
-const EWALLET_IMAGES = Object.freeze({ shopeepay: shopeepayCard, dana: danaCard, gopay: gopayCard, ovo: ovoCard, linkaja: linkajaCard });
-const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, savings: savingsCard });
+const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, investment: investmentCard, savings: savingsCard });
 const ACCOUNT_ICONS = Object.freeze({
   bank: FiCreditCard,
   cash: FiDollarSign,
@@ -80,11 +70,11 @@ const visualModel = (account, templateOverride) => {
   const isEwallet = account.account_type === "ewallet";
   const template = isBank ? templateOverride || detectBankTemplate(account) : "generic";
   const ewalletTemplate = isEwallet ? templateOverride || detectEwalletTemplate(account) : "generic";
-  const hasEwalletImage = isEwallet && Boolean(EWALLET_IMAGES[ewalletTemplate]);
+  const hasEwalletImage = isEwallet && Boolean(EWALLET_BRAND_IMAGES[ewalletTemplate]);
   const image = isBank
-    ? BANK_IMAGES[template]
+    ? BANK_BRAND_IMAGES[template]
     : hasEwalletImage
-      ? EWALLET_IMAGES[ewalletTemplate]
+      ? EWALLET_BRAND_IMAGES[ewalletTemplate]
       : ACCOUNT_TYPE_IMAGES[account.account_type];
   const ownershipLabel = account.account_type === "investment" ? investmentAccountOwnershipLabel(account) : accountCardOwnershipLabel(account);
   return {
@@ -120,18 +110,26 @@ const AccountCardArtwork = ({ model, eager }) => model.image
   : <div className={styles.genericCard} aria-hidden="true"><model.Icon /></div>;
 
 const AccountCardFace = ({ account, model, carousel }) => {
-  const showCarouselMeta = carousel && !model.hasEwalletImage && account.account_type !== "investment";
+  const hasInvestmentArtwork = account.account_type === "investment" && Boolean(model.image);
+  const showCarouselMeta = carousel && !model.hasEwalletImage && !hasInvestmentArtwork;
   return (
     <div className={styles.cardFace}>
       {showCarouselMeta ? <span className={styles.cardOwnership}>{model.ownershipLabel}</span> : null}
       {model.hasEwalletImage ? <span className={styles.ewalletOwnership}>{model.ownershipLabel}</span> : null}
       {model.isBank && model.image ? <FiWifi className={styles.contactless} aria-hidden="true" /> : null}
-      {model.isBank ? <AccountNumberFace account={account} numberGroups={model.numberGroups} /> : <div className={styles.accountType}>{model.typeLabel}</div>}
+      {model.isBank ? <AccountNumberFace account={account} numberGroups={model.numberGroups} /> : hasInvestmentArtwork ? null : <div className={styles.accountType}>{model.typeLabel}</div>}
       <strong className={styles.holderName}>{model.holderName}</strong>
       {showCarouselMeta ? <span className={styles.cardTypeLabel}>{model.typeLabel}</span> : null}
     </div>
   );
 };
+
+const AccountVisualContent = ({ account, model, eager, carousel }) => (
+  <>
+    <AccountCardArtwork model={model} eager={eager} />
+    <AccountCardFace account={account} model={model} carousel={carousel} />
+  </>
+);
 
 export const AccountVisual = ({ account, templateOverride, detail = false, carousel = false, stack = false }) => {
   const model = visualModel(account, templateOverride);
@@ -145,8 +143,13 @@ export const AccountVisual = ({ account, templateOverride, detail = false, carou
       data-account-type={account.account_type}
       data-has-image={model.image ? "true" : "false"}
     >
-      <AccountCardArtwork model={model} eager={eager} />
-      <AccountCardFace account={account} model={model} carousel={carousel} />
+      {stack ? (
+        <div className={styles.stackShadow}>
+          <div className={styles.stackClip}>
+            <AccountVisualContent account={account} model={model} eager={eager} carousel={carousel} />
+          </div>
+        </div>
+      ) : <AccountVisualContent account={account} model={model} eager={eager} carousel={carousel} />}
     </div>
   );
 };

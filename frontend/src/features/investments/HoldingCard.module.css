@@ -40,20 +40,10 @@
   min-width: 0;
 }
 
-.tickerMark {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
+.stockLogo {
   width: 2.75rem;
   height: 2.75rem;
-  padding-inline: .2rem;
-  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
   border-radius: var(--radius-md);
-  background: linear-gradient(145deg, var(--primary-soft), color-mix(in srgb, var(--surface) 58%, var(--primary-soft)));
-  color: var(--primary);
-  font-size: .75rem;
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -.025em;
 }
 
 .holdingIdentity > div {
@@ -209,11 +199,10 @@
     padding: .55rem 0;
   }
 
-  .tickerMark {
+  .stockLogo {
     width: 2.35rem;
     height: 2.35rem;
     border-radius: .75rem;
-    font-size: .75rem;
   }
 
   .holdingIdentity {
@@ -259,7 +248,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(6rem, auto);
   }
 
-  .tickerMark {
+  .stockLogo {
     width: 2.15rem;
     height: 2.15rem;
   }

@@ -48,6 +48,18 @@
   gap: var(--space-2);
 }
 
+.allocation-header-actions__create {
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
+  color: var(--primary);
+  box-shadow: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .allocation-header-actions__create:hover:not(:disabled) {
+    background: var(--primary-soft);
+  }
+}
+
 .allocations-page {
   gap: 18px;
 }
@@ -505,6 +517,41 @@
   white-space: nowrap;
 }
 
+.allocation-card__next-step {
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+}
+
+.allocation-card__next-step > p {
+  margin: 0 2px 9px;
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.allocation-card__next-step > p strong {
+  color: var(--text);
+}
+
+.allocation-card__planning-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.allocation-card__planning-actions > :global(.button) {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 10px;
+  box-shadow: none;
+  font-size: var(--font-size-xs);
+}
+
+.allocation-card__planning-actions > :global(.button:only-child) {
+  grid-column: 1 / -1;
+}
+
 .allocation-card__expand {
   width: 100%;
   min-height: 44px;
@@ -601,15 +648,15 @@
     gap: var(--space-2);
   }
 
-  .allocation-header-actions--administrator {
+  .allocation-header-actions--with-move {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) var(--mobile-control-height);
   }
 
-  .allocation-header-actions--member {
+  .allocation-header-actions--simple {
     grid-template-columns: minmax(0, 1fr) var(--mobile-control-height);
   }
 
-  .allocation-header-actions__primary {
+  .allocation-header-actions__create {
     grid-column: auto;
   }
 
@@ -684,6 +731,10 @@
     gap: 7px;
   }
 
+  .allocation-card__planning-actions > :global(.button) {
+    min-height: var(--mobile-control-height);
+  }
+
   .allocation-card__expand {
     min-height: var(--mobile-control-height);
   }
@@ -692,6 +743,16 @@
 @media (max-width: 580px) {
   .allocation-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .allocation-card__planning-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .allocation-card__planning-actions > :global(.button:only-child) {
+    grid-column: auto;
   }
 }
 

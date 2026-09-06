@@ -3,6 +3,7 @@ import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import SelectionField from "../../../components/common/SelectionField.jsx";
+import { accountOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import styles from "../ReconciliationsPage.module.css";
@@ -44,7 +45,7 @@ const ReconciliationHistory = ({ accounts, items, accountLookup, historyAccountI
     <div className={`panel__header ${styles.historyHeader}`}>
       <h2>Riwayat</h2>
       <div className={styles.historyFilter}>
-        <SelectionField label="Filter riwayat berdasarkan rekening" hideLabel compact value={historyAccountId} onChange={setHistoryAccountId} options={[{ value: "all", label: "Semua rekening" }, ...accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account) }))]} />
+        <SelectionField label="Filter riwayat berdasarkan rekening" hideLabel compact value={historyAccountId} onChange={setHistoryAccountId} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={[{ value: "all", label: "Semua rekening" }, ...accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), ...accountOptionVisual(account) }))]} />
       </div>
     </div>
     {items.length ? <HistoryTable items={items} accountLookup={accountLookup} formatReconciledAt={formatReconciledAt} /> : <EmptyState variant="inline" icon={FiDatabase} title="Belum ada hasil pencocokan" description="Belum ada riwayat rekonsiliasi untuk filter ini." headingLevel={3} />}

@@ -45,8 +45,22 @@ export const allocationUsage = (item) => {
 export const allocationNeedsFundingSummary = (item, budgets = []) => {
   const allocated = nonNegativeNumber(item?.allocated_amount);
   const planned = (budgets || []).reduce((total, budget) => total + nonNegativeNumber(budget?.amount), 0);
+  const used = (budgets || []).reduce((total, budget) => total + nonNegativeNumber(budget?.used_amount), 0);
   const gap = Math.max(0, planned - allocated);
   const unplanned = Math.max(0, allocated - planned);
   const status = gap > 0 ? "needs-funding" : planned > 0 && unplanned === 0 ? "balanced" : "available";
-  return { allocated, planned, gap, unplanned, status };
+  return { allocated, planned, used, gap, unplanned, status };
+};
+
+export const allocationCardActionState = (item, needCount = 0) => {
+  const normalizedNeedCount = Math.max(0, Math.floor(nonNegativeNumber(needCount)));
+  const canManageNeeds = Boolean(item?.can_manage_needs);
+  const canAdjust = Boolean(item?.can_adjust);
+  return {
+    canManageNeeds,
+    canAdjust,
+    needsEmpty: normalizedNeedCount === 0,
+    showPlanningActions: canManageNeeds || canAdjust,
+    addNeedVariant: normalizedNeedCount === 0 ? "primary" : "secondary",
+  };
 };

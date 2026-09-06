@@ -20,6 +20,7 @@ import ProgressBar from "../../components/common/ProgressBar.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { investmentRdnDisplayLabel } from "../../shared/presentation/account.js";
 import { investmentActivityLabel, investmentReturnPercent } from "./investments.model.js";
+import StockLogo from "./StockLogo.jsx";
 
 import layoutStyles from "./InvestmentsPage.module.css";
 import heroStyles from "./InvestmentHero.module.css";
@@ -54,19 +55,19 @@ const PortfolioHero = ({ summary, portfolioCount }) => {
     <section className={heroStyles.hero} aria-labelledby="investment-total-value">
       <div className={heroStyles.heroMain}>
         <div className={heroStyles.heroCopy}>
-          <span className={heroStyles.heroLabel}>Total portfolio</span>
+          <span className={heroStyles.heroLabel}>Total nilai portofolio tercatat</span>
           <strong className={heroStyles.heroValue} id="investment-total-value"><Money value={total} /></strong>
           <div className={heroStyles.heroReturnRow}>
             <span className={`${heroStyles.heroReturn} ${tone(summary?.unrealized_pl)}`}>
               <FiTrendingUp aria-hidden="true" />
               <span><Money value={summary?.unrealized_pl} />{unrealizedPercent != null ? ` · ${percentLabel(unrealizedPercent)}` : ""}</span>
             </span>
-            <span className={heroStyles.heroMeta}>{portfolioCount.toLocaleString("id-ID")} portfolio · {(summary?.holding_count || 0).toLocaleString("id-ID")} saham</span>
+            <span className={heroStyles.heroMeta}>{portfolioCount.toLocaleString("id-ID")} portofolio · {(summary?.holding_count || 0).toLocaleString("id-ID")} saham</span>
           </div>
         </div>
         <dl className={heroStyles.heroMiniMetrics}>
-          <div><dt>Nilai saham</dt><dd><Money value={summary?.market_value} /></dd></div>
-          <div><dt>Cash RDN</dt><dd><Money value={summary?.rdn_cash} /></dd></div>
+          <div><dt>Nilai saham tercatat</dt><dd><Money value={summary?.market_value} /></dd></div>
+          <div><dt>Saldo RDN tercatat</dt><dd><Money value={summary?.rdn_cash} /></dd></div>
         </dl>
       </div>
 
@@ -92,10 +93,10 @@ const PortfolioHero = ({ summary, portfolioCount }) => {
 };
 
 const missingBuyInstrumentGuidance = ({ hasPriceInstrument, owner }) => {
-  if (hasPriceInstrument) return "Belum ada instrumen aktif untuk Catat pembelian. Holding yang ada tetap dapat diperbarui harganya dan dicocokkan.";
+  if (hasPriceInstrument) return "Belum ada saham aktif untuk Catat pembelian. Holding yang ada tetap dapat diperbarui harganya dan dicocokkan.";
   return owner
-    ? "Belum ada instrumen saham aktif. Tambahkan instrumen agar pencatatan pembelian atau posisi awal tersedia."
-    : "Belum ada instrumen saham aktif. Instrumen baru dikelola Administrator.";
+    ? "Belum ada saham yang ditambahkan. Pilih saham dari daftar LQ45 prototype agar pencatatan pembelian atau posisi awal tersedia."
+    : "Belum ada saham yang ditambahkan. Daftar saham baru dikelola Administrator.";
 };
 
 const unsellableHoldingGuidance = (owner) => owner
@@ -110,9 +111,9 @@ const portfolioActionState = ({ portfolio, instruments, owner }) => {
   const hasPriceInstrument = instruments.some((item) => heldIds.has(item.instrument_id));
   let guidance = "";
   if (!hasBuyInstrument) guidance = missingBuyInstrumentGuidance({ hasPriceInstrument, owner });
-  else if (!hasHolding) guidance = "Catat penjualan dan Perbarui harga tersedia setelah portfolio memiliki holding saham.";
+  else if (!hasHolding) guidance = "Catat penjualan dan Perbarui harga tersedia setelah portofolio memiliki holding saham.";
   else if (!hasSellableHolding) guidance = unsellableHoldingGuidance(owner);
-  else if (!hasPriceInstrument) guidance = "Belum ada instrumen yang dapat diberi harga manual.";
+  else if (!hasPriceInstrument) guidance = "Belum ada saham yang dapat diberi harga manual.";
   return { hasBuyInstrument, hasHolding, hasSellableHolding, hasPriceInstrument, guidance };
 };
 
@@ -126,7 +127,7 @@ const SheetAction = ({ icon: Icon, title, description, disabled = false, onClick
 
 const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup, onTransfer }) => {
   const [moreOpen, setMoreOpen] = useState(false);
-  if (!portfolio.can_operate) return <p className={sharedStyles.readOnlyNote}>Portfolio ini dapat dilihat untuk transparansi, tetapi hanya pemilik rekening yang dapat mengubah catatannya.</p>;
+  if (!portfolio.can_operate) return <p className={sharedStyles.readOnlyNote}>Portofolio ini dapat dilihat untuk transparansi, tetapi hanya pemilik rekening yang dapat mengubah catatannya.</p>;
   const state = portfolioActionState({ portfolio, instruments, owner });
   const cash = Number(portfolio.rdn_cash || 0);
   const runMoreAction = (callback) => {
@@ -136,13 +137,13 @@ const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup, on
   return <>
     <section className={portfolioStyles.actionArea} aria-label={`Aksi ${portfolio.name}`}>
       <div className={portfolioStyles.quickActions}>
-        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionPrimary}`} icon={FiPlus} variant="primary" disabled={!state.hasBuyInstrument} onClick={() => onAction("buy", portfolio)} aria-label="Catat pembelian">Catat beli</Button>
-        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionSell}`} icon={FiMinus} disabled={!state.hasSellableHolding} onClick={() => onAction("sell", portfolio)} aria-label="Catat penjualan">Catat jual</Button>
+        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionPrimary}`} icon={FiPlus} variant="primary" disabled={!state.hasBuyInstrument} onClick={() => onAction("buy", portfolio)} aria-label="Catat pembelian">Catat pembelian</Button>
+        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionSell}`} icon={FiMinus} disabled={!state.hasSellableHolding} onClick={() => onAction("sell", portfolio)} aria-label="Catat penjualan">Catat penjualan</Button>
         <button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionMore}`} type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-expanded={moreOpen}>
           <FiMoreHorizontal aria-hidden="true" /><span>Lainnya</span>
         </button>
       </div>
-      {state.guidance ? <div className={portfolioStyles.actionGuidance} role="note"><span>{state.guidance}</span>{!state.hasBuyInstrument && owner ? <Button className={portfolioStyles.guidanceAction} type="button" onClick={() => onSetup("instrument")}>Tambah instrumen</Button> : null}</div> : null}
+      {state.guidance ? <div className={portfolioStyles.actionGuidance} role="note"><span>{state.guidance}</span>{!state.hasBuyInstrument && owner ? <Button className={portfolioStyles.guidanceAction} type="button" onClick={() => onSetup("instrument")}>Tambah saham</Button> : null}</div> : null}
     </section>
 
     <Modal open={moreOpen} title="Aksi lainnya" description={portfolio.name} onClose={() => setMoreOpen(false)} size="sm" className={portfolioStyles.actionSheet}>
@@ -163,14 +164,13 @@ const HoldingCard = ({ holding, onOpenDetail }) => {
   const shares = Number(holding.shares || 0);
   const lots = lotSize > 0 ? shares / lotSize : 0;
   const returnPercent = investmentReturnPercent(holding.unrealized_pl, holding.cost_basis);
-  const tickerMark = String(holding.ticker || "--").slice(0, 4);
   const openOnKeyboard = (event) => {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenDetail(); }
   };
   return (
     <article className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`} role="button" tabIndex="0" onClick={onOpenDetail} onKeyDown={openOnKeyboard} aria-label={`Buka rincian ${holding.ticker || "saham"}`}>
       <div className={holdingStyles.holdingIdentity}>
-        <span className={holdingStyles.tickerMark} aria-hidden="true">{tickerMark}</span>
+        <StockLogo ticker={holding.ticker} className={holdingStyles.stockLogo} />
         <div>
           <div className={holdingStyles.holdingNameRow}><h4>{holding.ticker || "Saham"}</h4><span>{lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot</span></div>
           <p>{holding.name || "Instrumen investasi"}</p>
@@ -226,10 +226,10 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
         <div className={portfolioStyles.portfolioTitleBlock}>
           <span className="sr-only">Sumber catatan</span>
           <div className={portfolioStyles.portfolioIdentityRow}><h2>{portfolio.name}</h2><span className={portfolioStyles.rdnChip}>RDN · {rdnLabel(portfolio)}</span></div>
-          <p>Satu portfolio ini selalu menggunakan Cash RDN dari rekening di atas.</p>
+          <p>Satu portofolio ini selalu menggunakan Cash RDN dari rekening di atas.</p>
         </div>
         <div className={portfolioStyles.portfolioValue}>
-          <span>Nilai saat ini</span>
+          <span>Nilai tercatat</span>
           <strong><Money value={total} /></strong>
           <small className={tone(portfolio.unrealized_pl)}>{unrealizedPercent != null ? percentLabel(unrealizedPercent) : <Money value={portfolio.unrealized_pl} />}</small>
         </div>
@@ -248,7 +248,7 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
       </section>
 
       <details className={portfolioStyles.portfolioDetails}>
-        <summary><span>Rincian portfolio & komposisi</span><FiChevronDown aria-hidden="true" /></summary>
+        <summary><span>Rincian portofolio & komposisi</span><FiChevronDown aria-hidden="true" /></summary>
         <section className={portfolioStyles.composition} aria-label={`Komposisi ${portfolio.name}`}>
           <ProgressBar value={portfolio.market_value} max={total} label="Porsi nilai saham" />
           <dl className={portfolioStyles.compositionMetrics}>
@@ -273,7 +273,7 @@ const InvestmentActivityPanel = ({ portfolios }) => {
   const rows = useMemo(() => activityRowsForPortfolios(portfolios), [portfolios]);
   return <Card className={activityStyles.activityCard}>
     <div className={sharedStyles.sectionHeading}>
-      <div><h3>Aktivitas saham terbaru</h3><p>Pembelian, penjualan, harga manual, posisi awal, dan koreksi tampil sebagai event yang eksplisit.</p></div>
+      <div><h3>Riwayat catatan terbaru</h3><p>Pembelian, penjualan, harga manual, posisi awal, dan koreksi tampil sebagai catatan yang eksplisit.</p></div>
       <span>{rows.length.toLocaleString("id-ID")} terbaru</span>
     </div>
     {rows.length
@@ -300,8 +300,8 @@ const InvestmentOverview = ({ data, owner, onAction, onSetup, onTransfer, onHold
   return <div className={layoutStyles.dashboard}>
     <PortfolioHero summary={data.summary || {}} portfolioCount={data.portfolios.length} />
     <div className={layoutStyles.segment} role="tablist" aria-label="Tampilan investasi">
-      <button ref={portfolioTabRef} id="investment-tab-portfolio" data-tab="portfolio" className={activeTab === "portfolio" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "portfolio"} aria-controls="investment-panel-portfolio" tabIndex={activeTab === "portfolio" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("portfolio")}>Portfolio <span>{data.portfolios.length.toLocaleString("id-ID")}</span></button>
-      <button ref={activityTabRef} id="investment-tab-activity" data-tab="activity" className={activeTab === "activity" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "activity"} aria-controls="investment-panel-activity" tabIndex={activeTab === "activity" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("activity")}>Aktivitas {activityCount ? <span>{Math.min(activityCount, 99).toLocaleString("id-ID")}{activityCount > 99 ? "+" : ""}</span> : null}</button>
+      <button ref={portfolioTabRef} id="investment-tab-portfolio" data-tab="portfolio" className={activeTab === "portfolio" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "portfolio"} aria-controls="investment-panel-portfolio" tabIndex={activeTab === "portfolio" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("portfolio")}>Portofolio <span>{data.portfolios.length.toLocaleString("id-ID")}</span></button>
+      <button ref={activityTabRef} id="investment-tab-activity" data-tab="activity" className={activeTab === "activity" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "activity"} aria-controls="investment-panel-activity" tabIndex={activeTab === "activity" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("activity")}>Riwayat {activityCount ? <span>{Math.min(activityCount, 99).toLocaleString("id-ID")}{activityCount > 99 ? "+" : ""}</span> : null}</button>
     </div>
     {activeTab === "portfolio"
       ? <div id="investment-panel-portfolio" role="tabpanel" aria-labelledby="investment-tab-portfolio"><div className={layoutStyles.portfolioList}>{data.portfolios.map((portfolio) => <PortfolioCard key={portfolio.portfolio_id} portfolio={portfolio} instruments={data.instruments || []} owner={owner} onAction={onAction} onSetup={onSetup} onTransfer={onTransfer} onHolding={onHolding} />)}</div></div>

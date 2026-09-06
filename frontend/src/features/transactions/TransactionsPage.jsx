@@ -9,6 +9,7 @@ import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
+import { accountOptionVisual, categoryOptionVisual, memberOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -107,9 +108,9 @@ const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, fi
       <Modal open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Filter lainnya" description="Gunakan saat Anda perlu menyaring transaksi lebih spesifik." size="sm" footer={<><Button type="button" onClick={resetAdvancedDraft}>Reset pilihan</Button><Button type="button" variant="primary" onClick={applyAdvanced}>Terapkan filter</Button></>}>
         <div className={styles.advancedFilterGrid}>
           <SelectionField label="Alokasi Dana" value={advancedDraft.allocation} onChange={(allocation) => setAdvancedDraft((current) => ({ ...current, allocation }))} options={[{ value: "all", label: "Semua Alokasi" }, { value: "unallocated", label: "Belum masuk Alokasi" }, { value: "allocated", label: "Menggunakan Alokasi" }]} />
-          <SelectionField label="Rekening" value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua rekening" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item) }))]} />
-          <SelectionField label="Kategori" value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua kategori" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name }))]} />
-          <SelectionField label="Pencatat" value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua pencatat" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name }))]} />
+          <SelectionField label="Rekening" value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua rekening" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), ...accountOptionVisual(item) }))]} />
+          <SelectionField label="Kategori" value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua kategori" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))]} />
+          <SelectionField label="Pencatat" value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua pencatat" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name, meta: item.email || "", ...memberOptionVisual(item) }))]} />
         </div>
       </Modal>
     </>

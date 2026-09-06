@@ -78,13 +78,17 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(planning, /Jadwal Rutin/);
   assert.doesNotMatch(planning, /value="kebutuhan"|Kebutuhan<\/button>/);
   assert.match(allocations, /lazy\(\(\) => import\("\.\/AllocationPlanningDetail\.jsx"\)\)/);
-  assert.match(detail, /<h3>Kebutuhan<\/h3>/);
+  assert.match(detail, /<h3 id="allocation-needs-title">Kebutuhan<\/h3>/);
   assert.match(detail, /Tambah kebutuhan/);
   assert.match(detail, /Jadwal Terkait/);
   assert.match(allocations, /linkedBudgetsForEnvelope/);
   assert.match(allocations, /relatedRecurringForEnvelope/);
   assert.match(allocations, /detailRuleId/);
-  assert.match(styles, /allocation-detail-grid/);
+  assert.match(detail, /<Card className=\{allocationClass\("allocation-detail-shell"\)\}>/);
+  assert.doesNotMatch(detail, /allocation-detail-grid|allocation-detail-panel"/);
+  assert.match(styles, /allocation-detail-shell/);
+  assert.match(styles, /allocation-detail-section--needs/);
+  assert.match(styles, /allocation-limit-row__icon/);
   assert.match(styles, /allocation-limit-row/);
   assert.match(styles, /allocation-related-row/);
 });
@@ -122,6 +126,8 @@ test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesu
   assert.doesNotMatch(dialogs, /<select\b/);
   assert.match(detail, /Total kebutuhan/);
   assert.match(detail, /Dana alokasi/);
+  assert.match(detail, /Terpakai kebutuhan/);
+  assert.match(detail, /Jumlah kebutuhan/);
   assert.match(detail, /Dana tidak berubah otomatis/);
   assert.match(detail, /onAdjustAllocation\(item, summary\.gap\)/);
   assert.match(page, /Menyesuaikan dana dengan total Kebutuhan/);

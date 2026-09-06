@@ -1,47 +1,39 @@
 import { useState } from "react";
-import { FiAlertTriangle, FiCheckCircle, FiChevronDown, FiCreditCard, FiRefreshCw, FiShield } from "react-icons/fi";
+import { FiAlertTriangle, FiCheckCircle, FiCreditCard, FiRefreshCw, FiShield } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
+import SelectionField from "../../../components/common/SelectionField.jsx";
+import { accountOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
+import { formatRupiah } from "../../../domain/money.js";
 import { ReconciliationSubmitProgress } from "./ReconciliationFeedback.jsx";
 import styles from "../ReconciliationsPage.module.css";
 
-const AccountPicker = ({ accounts, selectedAccount, disabled, onSelect }) => {
-  const [open, setOpen] = useState(!selectedAccount);
-  return (
-    <section className={styles.accountChooser} aria-labelledby="reconciliation-account-heading">
-      <button type="button" className={styles.accountSummary} disabled={disabled} onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="reconciliation-account-options">
-        <span className={styles.accountSummaryIcon}><FiCreditCard aria-hidden="true" /></span>
-        <span className={styles.accountSummaryCopy}>
-          <small id="reconciliation-account-heading">Rekening</small>
-          <strong>{selectedAccount ? accountDisplayLabel(selectedAccount) : "Pilih rekening"}</strong>
-        </span>
-        <FiChevronDown className={styles.accountSummaryChevron} aria-hidden="true" />
-      </button>
-      {open ? (
-        <div className={styles.accountOptions} id="reconciliation-account-options">
-          {accounts.map((account) => (
-            <button
-              key={account.account_id}
-              type="button"
-              className={styles.accountOption}
-              aria-pressed={selectedAccount?.account_id === account.account_id}
-              onClick={() => { onSelect(account); setOpen(false); }}
-              disabled={disabled}
-            >
-              <span><strong>{accountDisplayLabel(account)}</strong><small>Saldo sistem <Money value={account.balance || 0} /></small></span>
-              {selectedAccount?.account_id === account.account_id ? <FiCheckCircle aria-hidden="true" /> : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </section>
-  );
-};
+const AccountPicker = ({ accounts, selectedAccount, disabled, onSelect }) => (
+  <SelectionField
+    className={styles.accountChooser}
+    label="Rekening"
+    value={selectedAccount?.account_id || ""}
+    onChange={(accountId) => {
+      const account = accounts.find((item) => item.account_id === accountId);
+      if (account) onSelect(account);
+    }}
+    disabled={disabled}
+    placeholder="Pilih rekening"
+    searchable={accounts.length > 8}
+    searchPlaceholder="Cari rekening…"
+    options={accounts.map((account) => ({
+      value: account.account_id,
+      label: accountDisplayLabel(account),
+      meta: `Saldo sistem ${formatRupiah(account.balance || 0)}`,
+      ...accountOptionVisual(account),
+    }))}
+  />
+);
 
 const SystemBalance = ({ selectedAccount, accountSystemBalance }) => {
   if (!selectedAccount) return null;

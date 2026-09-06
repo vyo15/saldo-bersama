@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FiChevronLeft, FiChevronRight, FiFilter, FiSearch, FiX } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import { SelectionControl } from "../../../components/common/SelectionField.jsx";
+import { accountOptionVisual, categoryOptionVisual, memberOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import Modal from "../../../components/common/Modal.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../../domain/dates.js";
 import { formatCompactRupiah } from "../../../domain/money.js";
@@ -165,15 +166,15 @@ export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, s
         </div>
         <div className={styles.filterSetting}>
           <span className={styles.filterSettingCopy}><strong>Rekening</strong><small>Rekening yang digunakan</small></span>
-          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} ariaLabel="Filter rekening" searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item) }))]} /></span>
+          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} ariaLabel="Filter rekening" searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), ...accountOptionVisual(item) }))]} /></span>
         </div>
         <div className={styles.filterSetting}>
           <span className={styles.filterSettingCopy}><strong>Kategori</strong><small>Kategori transaksi</small></span>
-          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} ariaLabel="Filter kategori" searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name }))]} /></span>
+          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} ariaLabel="Filter kategori" searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))]} /></span>
         </div>
         <div className={styles.filterSetting}>
           <span className={styles.filterSettingCopy}><strong>Pencatat</strong><small>Siapa yang mencatat</small></span>
-          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} ariaLabel="Filter pencatat" searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name }))]} /></span>
+          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} ariaLabel="Filter pencatat" searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name, meta: item.email || "", ...memberOptionVisual(item) }))]} /></span>
         </div>
       </div>
     </Modal>

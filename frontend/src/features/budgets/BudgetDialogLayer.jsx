@@ -6,6 +6,7 @@ import { AdminIcon, PersonIcon, SharedIcon } from "../../components/common/Finan
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
+import { categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { userOptionLabel } from "../../shared/presentation/user.js";
 
@@ -28,7 +29,7 @@ const BudgetModal = ({ open, close, existingBudget, saveState, saveBudget, form,
     <form id="budget-form" className="form-grid" onSubmit={saveBudget}>
       {lockedEnvelope ? <CompactNotice className="form-grid__full" tone="info" title={`Alokasi Dana: ${lockedEnvelope.name}`}>Kebutuhan ini memakai kategori yang sudah ada dan hanya menghitung transaksi dari Alokasi Dana tersebut.</CompactNotice> : null}
       {linksLegacyBudget ? <CompactNotice className="form-grid__full" tone="info" title="Kebutuhan lama ditemukan.">Menyimpan akan menghubungkan Kebutuhan lama yang belum memiliki Alokasi Dana ke alokasi ini. Riwayat transaksi tidak dipindahkan atau diubah.</CompactNotice> : null}
-      <SelectionField label="Kategori" required value={form.category_id} onChange={selectCategory} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name }))} />
+      <SelectionField label="Kategori" required value={form.category_id} onChange={selectCategory} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />
       {!lockedEnvelope ? <VisualChoiceGroup className="form-grid__full" legend="Berlaku untuk" name="budget-ownership" value={budgetOwnershipValue(form)} onChange={selectOwnership} options={ownershipOptions} columns={Math.min(ownershipOptions.length, 3)} compact wrapLabels disabled={usersStatus === "loading"} helper="Hubungkan Kebutuhan ke Alokasi Dana agar sumber pemakaiannya jelas." /> : null}
       <MoneyInput id="budget-amount" label="Anggaran" value={form.amount} onChange={(value) => setForm((current) => ({ ...current, amount: value }))} required />
       {!existingBudget ? <VisualChoiceGroup className="form-grid__full" legend="Cara mencatat kebutuhan" name="budget-recording-mode" value={form.recording_mode || "flexible"} onChange={(recording_mode) => setForm((current) => ({ ...current, recording_mode }))} options={RECORDING_MODE_OPTIONS} columns={2} mobileColumns={2} descriptive wrapLabels helperPanel helper="Pilihan ini hanya menentukan langkah berikutnya. Anggaran dan saldo tidak berubah saat Kebutuhan disimpan." /> : null}

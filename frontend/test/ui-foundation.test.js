@@ -109,7 +109,9 @@ test("canonical account terms stay user-facing near balances", async () => {
   assert.match(accountsPage, /help=\{ACCOUNT_BALANCE_GUIDANCE\}/);
   assert.match(mobileAccounts, /\{ACCOUNT_BALANCE_GUIDANCE\}/);
   assert.match(desktopAccounts, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
-  assert.match(dashboardMobile, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
+  assert.doesNotMatch(dashboardMobile, /ACCOUNT_AVAILABLE_BALANCE_HINT|AccountVisual/, "Beranda mobile compact tidak menduplikasi detail saldo rekening.");
+  assert.match(dashboardMobile, /Aman digunakan/);
+  assert.match(dashboardMobile, /sudah dialokasikan/);
   assert.match(dashboardDesktop, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
 });
 
@@ -428,6 +430,7 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /to: "\/perencanaan\/kantong", label: "Alokasi Dana"/);
   assert.match(mobile, /to: "\/perencanaan\/jadwal", label: "Jadwal Rutin"/);
   assert.match(mobile, /to: "\/target", label: "Target"/);
+  assert.match(mobile, /to: "\/rekening", label: "Rekening"/);
   assert.match(mobile, /<Link key=\{to\} to=\{to\} className=\{dashboardClass\(`mobile-quick-action/);
   assert.doesNotMatch(mobile, /TRANSACTION_QUICK_ACTIONS|TRANSACTION_TYPES|onOpenTransaction\(type\)/);
   assert.doesNotMatch(dashboard, /presentation: initialType === TRANSACTION_TYPES\.TRANSFER/);
@@ -440,9 +443,10 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.match(mobile, /ThemeToggle tone="hero"/);
-  const order = ["<MobileNextAction", "<MobileQuickActions", "<MobileSharedPlan", "<MobileTransactions", "<MobileAllocation", "<MobileCashFlow", "<MobileAccounts"].map((marker) => mobile.indexOf(marker));
-  assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile canonical harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan status → perhatian → tindakan → aktivitas → detail.");
+  const order = ["<MobileNextAction", "<MobileQuickActions", "<MobileFinancialInsight", "<MobileBudgetPlan", "<MobileUpcomingSchedule", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
+  assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile ringkas harus tetap ada.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan perhatian → akses cepat → insight → rencana → jadwal → aktivitas → investasi.");
+  assert.doesNotMatch(mobile, /MobileAccounts|MobileAllocation|MobileCashFlow|AccountVisual/, "Dashboard mobile tidak boleh kembali menumpuk detail rekening, alokasi, atau arus kas yang sudah punya route khusus.");
 });
 
 test("stylesheet global tidak menghidupkan kembali selector legacy tanpa pemilik runtime", async () => {
@@ -538,7 +542,7 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.match(desktop, /shared-donut/);
   assert.match(mobile, /type="button" className=\{dashboardClass\("mobile-transaction-item"\)\}/);
   assert.doesNotMatch(mobile, /mobile-dashboard-filter-button|onOpenFilters/);
-  assert.match(mobile, /recentTransactions\.slice\(0, 5\)/);
+  assert.match(mobile, /recentTransactions\.slice\(0, 3\)/);
   assert.match(detail, /<Modal/);
   assert.match(detail, /<dl>/);
   assert.doesNotMatch(responsive, /\.premium-/);

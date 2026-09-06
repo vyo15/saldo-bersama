@@ -182,17 +182,15 @@ test("mobile menyembunyikan chrome scrollbar tanpa mematikan document scroll ata
 });
 
 test("permukaan swipe mobile tidak menampilkan scrollbar browser", async () => {
-  const [reports, approvals, dashboard, reconciliation] = await Promise.all([
+  const [reports, approvals, dashboard] = await Promise.all([
     read("src/features/reports/ReportsPage.module.css"),
     read("src/features/approvals/ApprovalCenterPage.module.css"),
     read("src/features/dashboard/DashboardPage.module.css"),
-    read("src/features/reconciliations/ReconciliationsPage.module.css"),
   ]);
   assert.match(reports, /\.trendChartDaily \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
   assert.match(reports, /\.trendChartDaily::-webkit-scrollbar \{ display:\s*none; \}/);
   assert.match(approvals, /\.tabs \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
   assert.match(dashboard, /\.shared-account-carousel \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
-  assert.match(reconciliation, /@media \(max-width: 820px\)[\s\S]*\.accountOptions \{[^}]*scrollbar-width:\s*none;/s);
 });
 
 test("PWA install prompt mobile dapat ditunda dan tidak menjadi banner permanen lintas route", async () => {
@@ -257,10 +255,32 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
   assert.match(goals, /\{items\.length \? <GoalSummary items=\{items\} \/> : null\}/);
   assert.match(budgets, /\{items\.length \? <>[\s\S]*<BudgetHeroCard totals=\{totals\}/);
   assert.match(budgets, /: <BudgetListSection activeFilter="all"/);
-  assert.match(investments, /actions=\{data\.portfolios\.length \? <Button[^>]*onClick=\{\(\) => openSetup\("portfolio"\)\}/);
+  assert.match(investments, /actions=\{data\.portfolios\.length && user\?\.role === "owner" \? <Button[^>]*onClick=\{\(\) => openSetup\("instrument"\)\}[^>]*aria-label="Tambah saham"/);
   assert.match(transactions, /const showHeaderCreate = !mobileLayout && \(resource\.status !== "ready" \|\| items\.length > 0 \|\| filtersActive\);/);
   assert.match(transactions, /mobileLayout \? "Gunakan tombol \+ pada navigasi bawah untuk mencatat transaksi pertama\."/);
   assert.match(transactions, /action=\{filteredEmpty \? <Button[^>]*>Reset filter<\/Button> : mobileLayout \? null : <Button variant="primary" onClick=\{openTransactionComposer\}>Tambah transaksi<\/Button>\}/);
+});
+
+test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB global", async () => {
+  const [page, overview, detail, styles] = await Promise.all([
+    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationOverviewLayer.jsx"),
+    read("src/features/allocations/AllocationPlanningDetail.jsx"),
+    read("src/features/allocations/AllocationOverview.module.css"),
+  ]);
+
+  assert.match(overview, />Alokasi baru<\/Button>/);
+  assert.match(overview, /allocation-header-actions--\$\{canMove \? "with-move" : "simple"\}/);
+  assert.match(overview, /allocation-card__planning-actions/);
+  assert.match(overview, /variant=\{actionState\.addNeedVariant\}[\s\S]*>Tambah kebutuhan<\/Button>/);
+  assert.match(overview, /FiSliders[\s\S]*>Atur dana<\/Button>/);
+  assert.doesNotMatch(overview, /aria-label=\{`Tambah dana ke alokasi/);
+  assert.match(overview, /allocationCardActionState\(item, needs\.length\)/);
+  assert.match(page, /onAddNeed: \(item\) => openDetail\(item, "add-need"\)/);
+  assert.match(detail, /initialAction !== "add-need"/);
+  assert.match(detail, /if \(canManage\) openBudgetForm\(\)/);
+  assert.match(styles, /\.allocation-card__planning-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.allocation-header-actions__create\s*\{[\s\S]*color:\s*var\(--primary\)/);
 });
 
 test("Planning mobile menghindari judul embedded ganda dan rekonsiliasi memprioritaskan workflow", async () => {

@@ -487,14 +487,14 @@ const transactionListStatements = (request, filters) => [
   { sql: `SELECT COUNT(*) AS total FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${filters.conditions.join(" AND ")}`, args: filters.args },
   { sql: `SELECT t.* FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${filters.conditions.join(" AND ")}
     ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT ? OFFSET ?`, args: [...filters.args, request.limit, request.offset] },
-  { sql: `SELECT DISTINCT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name
+  { sql: `SELECT DISTINCT a.account_id,a.name,a.account_type,a.bank_template,a.ewallet_template,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name
     FROM accounts a JOIN transactions t ON t.source_account_id=a.account_id OR t.destination_account_id=a.account_id
     LEFT JOIN users u ON u.user_id=a.owner_user_id
     WHERE ${filters.baseConditions.join(" AND ")} ORDER BY a.name COLLATE NOCASE`, args: filters.baseArgs },
-  { sql: `SELECT DISTINCT c.category_id,c.name
+  { sql: `SELECT DISTINCT c.category_id,c.name,c.transaction_type,c.icon
     FROM categories c JOIN transactions t ON t.category_id=c.category_id
     WHERE ${filters.baseConditions.join(" AND ")} ORDER BY c.name COLLATE NOCASE`, args: filters.baseArgs },
-  { sql: `SELECT DISTINCT u.user_id,u.name
+  { sql: `SELECT DISTINCT u.user_id,u.name,u.email,u.photo_url,u.role
     FROM users u JOIN transactions t ON t.created_by=u.user_id
     WHERE ${filters.baseConditions.join(" AND ")} ORDER BY u.name COLLATE NOCASE`, args: filters.baseArgs },
   { sql: "SELECT closure_id,period_key FROM period_closures WHERE status='closed' AND period_key >= ? ORDER BY period_key LIMIT 1", args: [request.period] },

@@ -51,6 +51,26 @@
   background: none;
 }
 
+.visual[data-account-type="investment"][data-has-image="true"]::after {
+  background: none;
+}
+
+.visual[data-account-type="investment"][data-has-image="true"] .holderName {
+  right: auto;
+  bottom: 7%;
+  max-width: 34%;
+  padding: .5em .85em;
+  border: 1px solid color-mix(in srgb, var(--on-hero) 32%, transparent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--account-mobile-deep-surface) 30%, transparent);
+  font-family: var(--font-sans);
+  font-size: clamp(.75rem, 2.15vw, .8rem);
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 .2rem .7rem color-mix(in srgb, var(--shadow-ink) 12%, transparent);
+  backdrop-filter: blur(10px);
+}
+
 .genericCard {
   position: absolute;
   inset: 0;
@@ -303,14 +323,56 @@
   width: 100%;
   height: 100%;
   aspect-ratio: auto;
+  overflow: visible;
   border: 0;
-  border-radius: inherit;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
 .stackVisual::after {
   background: none;
+}
+
+.stackVisual[data-visual-kind="ewallet"]::after {
+  background: none;
+}
+
+.stackShadow {
+  width: 100%;
+  height: 100%;
+  border-radius: 1.2rem;
+  filter: drop-shadow(0 .55rem 1rem color-mix(in srgb, var(--shadow-ink) 9%, transparent));
+}
+
+.stackClip {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.2rem;
+  background: transparent;
+  isolation: isolate;
+}
+
+.stackVisual .cardImage {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  object-fit: cover;
+  filter: none;
+  clip-path: none;
+}
+
+.stackVisual[data-visual-kind="ewallet"] .cardImage {
+  inset: -1.25%;
+  width: 102.5%;
+  height: 102.5%;
+}
+
+.stackVisual .cardFace {
+  border-radius: 0;
 }
 
 .stackVisual .accountNumber {
@@ -593,5 +655,12 @@
 
   .mobileDetailActions {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .stackVisual .cardImage {
+    transition: none;
   }
 }

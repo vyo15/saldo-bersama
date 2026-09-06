@@ -49,7 +49,7 @@ const SetupContinuation = ({ continuation, portfolio, data, owner, onDismiss, on
     </div>;
   }
   return <div>
-    <CompactNotice tone="success" title="Portfolio siap. Saya mau mulai dari:" role="status">Pilih apakah Anda akan mencatat transaksi baru atau memasukkan kondisi investasi yang sudah ada. Cash RDN dan posisi awal tidak perlu direkonstruksi sebagai transaksi masa lalu.</CompactNotice>
+    <CompactNotice tone="success" title="Portofolio siap. Saya mau mulai dari:" role="status">Pilih apakah Anda akan mencatat transaksi baru atau memasukkan kondisi investasi yang sudah ada. Cash RDN dan posisi awal tidak perlu direkonstruksi sebagai transaksi masa lalu.</CompactNotice>
     <div className="form-actions">
       <Button type="button" variant="primary" onClick={() => onStartNew(portfolio)}>Mulai mencatat transaksi baru</Button>
       <Button type="button" onClick={() => onStartExisting(portfolio, data, owner)}>Saya sudah punya saham</Button>
@@ -104,6 +104,7 @@ const InvestmentOverlays = ({ page }) => {
   return <Suspense fallback={null}>
     {setupOpen ? <InvestmentSetupDialog
       accounts={accounts}
+      instruments={data.instruments || []}
       owner={user?.role === "owner"}
       mode={setupMode}
       initialRdnAccountId={setupRdnAccountId}
@@ -144,16 +145,15 @@ const InvestmentsPageContent = ({ page }) => {
     ? candidatePortfolio
     : null;
   const emptyAction = accounts.length
-    ? <Button icon={FiPlus} onClick={() => openSetup("portfolio")}>Siapkan catatan portfolio</Button>
+    ? <Button icon={FiPlus} onClick={() => openSetup("portfolio")}>Siapkan catatan portofolio</Button>
     : <Button icon={FiPlus} onClick={openRdnAccountSetup}>Buat rekening RDN</Button>;
   return <div className={`page-stack ${styles.page}`}>
     <RefreshWarning error={overview.refreshError || accountsResource.refreshError} onRetry={() => { overview.reload().catch(() => {}); accountsResource.reload().catch(() => {}); }} />
     <PageHeader
-      eyebrow="Pencatatan manual"
       title="Investasi"
-      description="Catat saham yang benar-benar Anda miliki dan transaksi yang sudah dilakukan di aplikasi investasi. Saldo Bersama tidak terhubung ke aplikasi investasi, tidak mengambil harga live, dan tidak mengirim order beli/jual."
-      actions={data.portfolios.length ? <Button className={styles.setupAction} icon={FiPlus} onClick={() => openSetup("portfolio")} aria-label={accounts.length ? "Siapkan catatan portfolio" : "Buat rekening RDN"}>{accounts.length ? "Siapkan catatan" : "Buat RDN"}</Button> : null}
-      help="Investasi memakai rekening jenis Investasi sebagai RDN. Isi/tarik dana RDN dilakukan melalui Transfer internal; transaksi saham yang sudah terjadi dicatat di sini dan tidak menjadi pemasukan/pengeluaran biasa."
+      description="Catat dan pantau portofolio yang Anda miliki. Pembelian atau penjualan tetap dilakukan di aplikasi investasi Anda."
+      actions={data.portfolios.length && user?.role === "owner" ? <Button className={styles.setupAction} icon={FiPlus} onClick={() => openSetup("instrument")} aria-label="Tambah saham">Tambah saham</Button> : null}
+      help="Investasi adalah fitur pencatatan portofolio manual. Saldo Bersama tidak terhubung ke broker, tidak mengambil harga pasar live, dan tidak mengirim order beli atau jual. Saham baru pada prototype dipilih dari daftar LQ45 yang sudah disediakan."
     />
     <SetupContinuation
       continuation={setupContinuation}
@@ -172,7 +172,7 @@ const InvestmentsPageContent = ({ page }) => {
       onBuyAgain={() => { const continuation = tradeContinuation; setTradeContinuation(null); openAction("buy", continuation?.portfolio); }}
     />
     {data.portfolios.length === 0 ? <EmptyState
-      title={accounts.length ? "Belum ada catatan portfolio" : "Belum ada rekening RDN"}
+      title={accounts.length ? "Belum ada catatan portofolio" : "Belum ada rekening RDN"}
       description={accounts.length ? "Pilih rekening Investasi/RDN yang sudah ada, lalu pasangkan dengan catatan aset Anda." : "Mulai dengan membuat rekening jenis Investasi sebagai RDN. Setelah rekening siap, Anda akan diarahkan kembali untuk menyiapkan catatan investasi."}
       action={emptyAction}
     /> : <Suspense fallback={<LoadingScreen label="Menyiapkan rincian investasi" />}><InvestmentOverview
@@ -239,7 +239,7 @@ const createOpeningPositionAction = ({ data, user, notify, ui, openSetup }) => (
   }
   if (!activeInvestmentInstruments(sourceData).length) {
     if (!owner) {
-      notify({ message: "Belum ada instrumen saham aktif. Instrumen baru dikelola Administrator.", tone: "warning", dedupeKey: "investments:opening-no-instrument" });
+      notify({ message: "Belum ada saham aktif. Daftar saham baru dikelola Administrator.", tone: "warning", dedupeKey: "investments:opening-no-instrument" });
       return;
     }
     ui.setPendingOpeningPortfolioId(portfolio.portfolio_id);
@@ -264,7 +264,7 @@ const createWorkflowActions = ({ data, user, notify, overview, ui, openSetup, op
   };
   const startOpeningPosition = createOpeningPositionAction({ data, user, notify, ui, openSetup });
   const onSetupSuccess = (mode, form, saved) => {
-    notify({ message: mode === "portfolio" ? "Catatan portfolio investasi berhasil disimpan." : "Instrumen investasi berhasil disimpan.", tone: "success", dedupeKey: `investments:setup:${mode}` });
+    notify({ message: mode === "portfolio" ? "Catatan portofolio investasi berhasil disimpan." : "Saham berhasil ditambahkan ke daftar pencatatan.", tone: "success", dedupeKey: `investments:setup:${mode}` });
     if (mode === "portfolio") {
       ui.setSetupContinuation({ stage: "choice", portfolioId: saved?.portfolio_id || "", rdnAccountId: String(saved?.rdn_account_id || form.rdn_account_id || ""), rowVersion: Number(saved?.row_version || 1) });
       overview.reload().catch(() => {});

@@ -1,9 +1,10 @@
 import { FiTag } from "react-icons/fi";
 import { SelectionControl } from "../../components/common/SelectionField.jsx";
+import { categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { frequentCategories } from "./transactionFormSmartDefaults.js";
 import styles from "./MobileTransactionFields.module.css";
 
-const categoryOption = (item) => ({ value: item.category_id, label: item.name });
+const categoryOption = (item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) });
 
 const categoryGroups = ({ recentTransactions, sourceAccountId, visibleCategories }) => {
   const grouped = visibleCategories.length > 6;

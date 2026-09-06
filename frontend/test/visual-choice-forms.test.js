@@ -15,6 +15,7 @@ test("shared visual choice control keeps radio semantics and balanced responsive
   assert.match(source, /mobileColumns/);
   assert.match(source, /safeMobileColumns/);
   assert.match(source, /descriptive/);
+  assert.match(source, /denseTiles/);
   assert.match(source, /helperPanel/);
   assert.match(source, /Icon \? <span className=\{styles\.iconWrap\}/);
   assert.match(css, /--visual-choice-columns/);
@@ -27,6 +28,8 @@ test("shared visual choice control keeps radio semantics and balanced responsive
   assert.match(css, /color-mix\(in srgb, currentColor 42%, var\(--border\)\)/);
   assert.match(css, /\.helperPanel/);
   assert.match(css, /\.compact \.card\.noIcon/);
+  assert.match(css, /\.denseTiles \.card/);
+  assert.match(css, /\.card\.refund/);
 });
 
 test("money in and money out use the same cash-note language with opposite arrows", async () => {
@@ -82,11 +85,23 @@ test("SelectionField keeps app-owned selection accessible without native browser
     read("components/common/SelectionField.jsx"),
     read("components/common/SelectionField.module.css"),
   ]);
+  assert.match(source, /role="combobox"/);
   assert.match(source, /aria-expanded=\{open\}/);
-  assert.match(source, /aria-pressed=\{isSelected\}/);
+  assert.match(source, /role="listbox"/);
+  assert.match(source, /role="option"/);
+  assert.match(source, /aria-selected=\{isSelected\}/);
   assert.match(source, /type="search"/);
+  assert.match(source, /normalize\(option\.keywords\)/);
   assert.match(source, /groups = \[\]/);
   assert.match(source, /SelectionGroups/);
+  assert.match(source, /SelectionVisual/);
+  assert.match(source, /option\.avatar/);
+  assert.match(source, /option\.image/);
+  assert.match(source, /option\.mark/);
+  assert.match(source, /ArrowDown/);
+  assert.match(source, /ArrowUp/);
+  assert.match(source, /Home/);
+  assert.match(source, /End/);
   assert.match(source, /document\.addEventListener\("keydown"/);
   assert.match(css, /@media \(max-width: 820px\)/);
   assert.match(css, /\.trigger,\s*\n\s*\.compact \.trigger,\s*\n\s*\.embedded \.trigger,\s*\n\s*\.search,\s*\n\s*\.search input \{\s*\n\s*min-height:\s*var\(--mobile-control-height\);/s);
@@ -94,5 +109,29 @@ test("SelectionField keeps app-owned selection accessible without native browser
   assert.match(css, /\.triggerValue \{[^}]*font-size:\s*var\(--font-size-body-sm\);/s);
   assert.match(css, /\.optionMeta \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(css, /\.groupLabel \{/);
+  assert.match(css, /\.visual \{/);
+  assert.match(css, /\.imageVisual \{/);
+  assert.match(css, /\.markVisual \{/);
   assert.match(css, /\.search \{[^}]*position:\s*sticky;/s);
+});
+
+test("dynamic finance selectors expose canonical visual identity helpers", async () => {
+  const [visuals, accounts, transactions, reconciliation, investments] = await Promise.all([
+    read("components/common/selectionOptionVisuals.js"),
+    read("features/accounts/components/AccountEditorDialogs.jsx"),
+    read("features/transactions/TransactionsPage.jsx"),
+    read("features/reconciliations/components/ReconciliationForm.jsx"),
+    read("features/investments/InvestmentDialog.jsx"),
+  ]);
+  assert.match(visuals, /accountOptionVisual/);
+  assert.match(visuals, /categoryOptionVisual/);
+  assert.match(visuals, /memberOptionVisual/);
+  assert.match(visuals, /instrumentOptionVisual/);
+  assert.match(visuals, /allocationOptionVisual/);
+  assert.match(accounts, /bankTemplateOptionVisual/);
+  assert.match(accounts, /ewalletTemplateOptionVisual/);
+  assert.match(transactions, /memberOptionVisual/);
+  assert.match(reconciliation, /accountOptionVisual/);
+  assert.match(reconciliation, /searchable=\{accounts\.length > 8\}/);
+  assert.match(investments, /instrumentOptionVisual/);
 });

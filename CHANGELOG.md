@@ -1,3 +1,61 @@
+## 6 September 2026 - Investasi prototype LQ45 dengan logo saham
+
+- Menyederhanakan flow `Tambah instrumen saham` menjadi **Tambah saham**: form Ticker/Bursa/Nama/Lembar per lot tidak lagi diekspos pada UI prototype. Administrator memilih saham dari katalog LQ45 prototype yang sudah disediakan; `IDX` dan `100 lembar/lot` berasal dari catalog payload, sehingga user tidak perlu mengisi master data teknis.
+- Menambahkan katalog prototype BBCA, BBRI, BMRI, TLKM, ASII, ICBP, dan ANTM beserta asset logo WebP transparan. Logo dipakai pada picker Tambah saham, selector saham existing, dan holding list; saham di luar katalog tetap memiliki fallback ticker mark untuk data lama tanpa membuka jalur tambah manual baru.
+- Merapikan copy Investasi menjadi pencatatan-first: header memakai `Tambah saham`, quick action menjadi `Catat pembelian / Catat penjualan`, tab `Portofolio / Riwayat`, dan hero menegaskan nilai portofolio/saham/RDN sebagai nilai tercatat. Saldo Bersama tetap bukan broker dan tidak menambah live price/order execution.
+- Menutup dua quality-gate stale Dashboard: regression mobile kini menguji shortcut Alokasi canonical (`.mobile-quick-action`) dan metadata transaksi canonical (`.mobile-transaction-copy small`), bukan selector UI lama yang sudah tidak dirender.
+- Tidak ada perubahan API, schema, ledger, authorization, weighted cost basis, reconciliation, atau idempotency Investment. Backend instrument registry tetap authoritative; pembatasan katalog adalah presentation scope prototype.
+
+## 6 September 2026 - Dashboard mobile compact dan akses cepat
+
+- Merapikan Beranda mobile menjadi summary-first dashboard: hero menampilkan total saldo, dana yang masih terikat di Alokasi Dana sebagai nominal `sudah dialokasikan`, `Aman digunakan`, dan `Batas aman per hari`, lalu empat shortcut `Alokasi Dana / Jadwal Rutin / Target / Rekening`. Tombol `+` global tetap menjadi satu-satunya quick-add transaksi.
+- Menghapus kartu ATM/`AccountVisual`, detail Alokasi, dan detail arus kas dari Beranda mobile agar tidak menduplikasi route khusus. Rekening tetap dapat dibuka satu tap melalui `/rekening`; carousel/artwork rekening canonical tetap hidup di route tersebut dan Dashboard desktop tidak kehilangan panel rekeningnya.
+- Menambahkan insight keuangan compact, satu Rencana Keuangan prioritas dengan sisa budget, satu Jadwal Terdekat, tiga Aktivitas Terbaru yang tetap membuka detail transaksi existing, serta ringkasan Investasi compact ketika portfolio tersedia. Alert prioritas, setup checklist, privacy nominal, notification bell, dan read model canonical tetap dipertahankan.
+- Temuan audit tambahan: helper label jatuh tempo Dashboard desktop/mobile disatukan pada presentation helper agar copy relatif tidak drift; regression source dan dokumentasi capability/design-system diperbarui mengikuti hierarchy baru. Tidak ada perubahan API, schema, ledger, authorization, atau mutation finansial.
+
+## 6 September 2026 - Detail Alokasi Dana unified card
+
+- Mengubah drill-down detail Alokasi Dana dari beberapa card terpisah menjadi satu **master card**: identitas Alokasi, CTA `Catat pengeluaran`, empat metrik utama, ringkasan Kebutuhan, daftar Kebutuhan, dan Jadwal Terkait sekarang berada dalam satu hierarchy visual dengan separator section. Business mutation, capability backend, ledger, idempotency, dan composer transaksi tetap canonical.
+- Kebutuhan di dalam master card memakai grouped list, ikon kategori canonical, status + progress yang tetap berasal dari presentation contract Anggaran, serta action density yang lebih tenang: `Catat`/jadwal dan `Edit` tetap langsung, sementara `Pengingat`/lifecycle dipindahkan ke disclosure `Lainnya` tanpa menghapus capability existing.
+- Ringkasan Kebutuhan menambahkan `Terpakai kebutuhan` dari agregat `used_amount` budget terkait dan hero menampilkan `Jumlah kebutuhan`; perbandingan total rencana vs dana Alokasi tetap memakai `allocated_amount`, bukan sisa setelah transaksi. Penyesuaian dana tetap eksplisit dan tidak pernah auto-mutation.
+- Mobile memakai 2×2 metric grid, full-width CTA utama/tambah Kebutuhan, grouped rows, target sentuh ≥44px, dan satu container utama agar halaman tidak terasa seperti tumpukan card. Empty Kebutuhan tetap memakai satu primary CTA.
+- Menutup quality-gate stale pada regression carousel Rekening: test kini mengunci ukuran canonical `.mobileStackCard` yang benar (`min(79vw, 21.85rem)`) di `MobileAccountsExperience.module.css`, bukan ukuran lama yang sudah tidak ada. Dokumentasi dan regression planning/accessibility ikut diselaraskan.
+
+## 6 September 2026 - Rekening mobile clean carousel dan informasi terpisah
+- Rekening Investasi kini memakai asset kartu canonical 1024×645 ber-alpha dengan visual pertumbuhan portofolio. Renderer memakai artwork tersebut sebagai card identity, menghindari generic icon card, tidak menggandakan label Investasi pada face, dan mempertahankan kepemilikan sebagai metadata runtime.
+- Rekening mobile: hilangkan overlay gelap residual pada kartu e-wallet di carousel; ShopeePay dan provider lain sekarang memakai warna artwork canonical sampai tepi bawah, sementara test mengikuti kontrak `stackClip` + overscan renderer baru.
+
+- Rekening: refresh lima artwork E-wallet canonical (ShopeePay, DANA, GoPay, OVO, LinkAja) ke WebP 1024×645 dengan rounded silhouette/alpha transparan yang bersih, tanpa matte atau strip gelap, sambil mempertahankan overlay nama rekening/pemilik dari runtime.
+- Merapikan header `/rekening` mobile menjadi `Rekening` + contextual info + `Tambah`, sehingga subtitle panjang tidak terpotong dan CTA `Transfer` tidak lagi diduplikasi di header. Transfer tetap tersedia sebagai quick action rekening aktif dan tetap membuka `TransactionForm` canonical.
+- Mempertahankan carousel horizontal app-like dengan swipe, Arrow Left/Right, dan pagination dots, tetapi membuat kartu tetangga lebih subtle, mengurangi peek, serta mengubah indikator aktif menjadi pill kecil agar fokus tetap pada kartu aktif. Tombol/picker `Pilih rekening` yang sudah tidak diperlukan dihapus beserta logic/CSS dead-code-nya.
+- Memperkeras clipping artwork kartu pada renderer: image dan overlay stack mengikuti rounded silhouette; E-wallet mendapat inset clip tambahan sehingga ShopeePay tidak lagi menampilkan fringe hitam/putih pada sudut bawah walau source image memiliki alpha edge. Shadow tetap diterapkan pada artwork, bukan wrapper rectangular.
+- Memadatkan summary `Dana tersedia / Saldo / Dialokasikan / Tersedia` dan mempertahankan privacy toggle/contextual help. Quick action kembali menjadi `Riwayat / Transfer / Kelola|Detail` dalam tiga kolom compact.
+- Menghapus grafik pengeluaran besar/disclosure dari layar utama Rekening. Layar utama hanya menampilkan transaksi terbaru; analitik dan grafik tetap tersedia melalui `Riwayat`/route Transaksi mobile yang memang memiliki presentation history-first dan chart canonical. Helper trend rekening yang menjadi dead-code ikut dipensiunkan.
+- Motion tetap memakai semantic token dan `prefers-reduced-motion`; drag hanya mengubah transform/opacity dan settled selection tetap diumumkan tanpa membacakan nominal. Regression test lama yang masih mewajibkan picker/grafik header diselaraskan agar quality gate mencerminkan UX baru.
+- Tidak ada perubahan API contract, schema, ledger, authorization, saldo, atau business mutation finansial pada patch Rekening ini.
+
+## 6 September 2026 - Kategori transaction type compact tiga kolom
+
+- Merapikan pilihan `Dipakai untuk transaksi` pada dialog Tambah kategori menjadi tiga tile dense yang tetap sejajar pada mobile dan desktop, sehingga pola 2+1 yang boros ruang tidak lagi muncul. Tile mempertahankan target sentuh yang aman, label tetap terbaca pada viewport sempit, dan selected state dibuat lebih tenang tanpa nested icon card atau shadow berat.
+- Menjaga ikon sesuai arti: Uang keluar dan Uang masuk memakai bahasa visual uang dengan arah berlawanan, sedangkan Pengembalian dana memakai simbol kembali/refund. Tone selected sekarang eksplisit expense, income, dan refund agar pengembalian tidak tampil seperti pemasukan biasa.
+- Menambahkan variant `denseTiles` pada `VisualChoiceGroup` sebagai primitive reusable tanpa mengubah mode compact/descriptive existing. Radio semantics, keyboard focus, reduced-motion, default category icon behavior, API, persistence, authorization, saldo, dan backend contract tidak berubah.
+- Regression serta dokumentasi design system/test plan diselaraskan agar layout tiga kolom dan semantic icon tidak drift pada perubahan berikutnya.
+
+## 6 September 2026 - Hierarki aksi Alokasi dan Kebutuhan
+
+- Merapikan aksi pada overview Alokasi Dana agar `+` tidak lagi mempunyai beberapa arti: toolbar aktif memakai **Alokasi baru** sebagai create action sekunder, sedangkan tombol `+` icon-only untuk tambah dana di header kartu dihapus. Pengingat dan menu kelola tetap icon-only karena konteksnya stabil.
+- Kartu Alokasi sekarang menampilkan **Tambah kebutuhan** sebagai next-step utama ketika belum ada Kebutuhan; setelah Kebutuhan tersedia action tersebut turun menjadi secondary. **Atur dana** menjadi action berlabel yang membuka adjustment existing, sehingga penambahan dana tidak lagi disamarkan sebagai ikon `+`.
+- Dari kartu kosong, `Tambah kebutuhan` membuka detail Alokasi lalu langsung membuka form Kebutuhan canonical yang sudah terkunci ke Alokasi tersebut. Capability `can_manage_needs`/`can_adjust`, Budget controller, authorization, ledger, idempotency, row-version, dan API contract tetap dipakai tanpa mutation baru atau auto-submit. True-empty Alokasi tetap memiliki satu primary CTA `Buat Alokasi Dana`, sedangkan FAB global mobile tetap khusus Tambah transaksi.
+- Temuan audit tambahan: layout toolbar mobile sebelumnya memilih jumlah kolom dari role (`Administrator`/`Member`), padahal Member juga dapat memiliki capability `can_move`. Grid sekarang ditentukan oleh action yang benar-benar tersedia (`with-move`/`simple`), sehingga `Pindahkan dana` tidak jatuh ke baris aneh ketika capability tersebut aktif.
+- Regression dan dokumentasi planning diselaraskan untuk mengunci hierarchy page-level vs card-level tersebut pada desktop/mobile.
+
+## 6 September 2026 - Dashboard rekening tanpa nested card wrapper
+
+- Menghapus surface putih/soft, border, padding, dan selected wrapper dari setiap kartu rekening Dashboard desktop sehingga `AccountVisual` menjadi fokus langsung di dalam panel `Rekening`; panel section, tiga-kartu carousel desktop, pagination, saldo, dana tersedia, dan behavior pemilihan rekening tetap dipertahankan.
+- Menyamakan Dashboard mobile dengan prinsip yang sama: `mobile-account-preview` tidak lagi menjadi card kedua di sekitar artwork. Kartu memakai shadow canonical `AccountVisual`, sedangkan Saldo rekening/Dana tersedia serta metadata kepemilikan/provider tampil langsung di bawahnya tanpa separator panel putih.
+- Hover dan selected state desktop sekarang bekerja pada artwork kartu, bukan membentuk kotak luar; keyboard focus tetap terlihat langsung pada `AccountVisual`. Audit consumer `AccountVisual` lain memastikan workspace Rekening desktop, preview editor, dan stack mobile sudah tidak memerlukan perubahan wrapper tambahan.
+- Menambah regression source untuk melarang nested decorative wrapper Dashboard kembali muncul. API, read model, saldo, privacy nominal, pemilihan rekening, transaksi, authorization, dan backend tidak berubah.
+
 ## 6 September 2026 - Desktop login enriched floating composition
 
 - Meningkatkan layar login desktop dari versi declutter menjadi komposisi yang tetap bersih tetapi tidak lagi terasa hampa: ilustrasi pasangan dipusatkan ulang, panel login didekatkan ke area hero, dan kedua kolom kini punya bobot visual yang lebih seimbang.

@@ -7,6 +7,7 @@ import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
+import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
@@ -17,9 +18,9 @@ const RECURRING_PAYMENT_OPTIONS = Object.freeze([{ value: "transfer", label: "Tr
 const PaymentMethodField = ({ value, onChange }) => <VisualChoiceGroup className="form-grid__full" legend="Metode" name="recurring-payment-method" value={value} onChange={onChange} options={RECURRING_PAYMENT_OPTIONS} columns={3} compact />;
 const AccountField = ({ label = "Rekening default", value, accounts, onChange }) => {
   const selected = accounts.find((item) => item.account_id === value) || null;
-  return <SelectionField label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}` }))} helper={selected ? `Saldo ${formatRupiah(selected.balance || 0)} · dialokasikan ${formatRupiah(selected.allocated_remaining || 0)} · tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
+  return <SelectionField label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`, ...accountOptionVisual(item) }))} helper={selected ? `Saldo ${formatRupiah(selected.balance || 0)} · dialokasikan ${formatRupiah(selected.allocated_remaining || 0)} · tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
 };
-const CategoryField = ({ value, categories, onChange }) => <SelectionField label="Kategori" required value={value} onChange={onChange} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name }))} />;
+const CategoryField = ({ value, categories, onChange }) => <SelectionField label="Kategori" required value={value} onChange={onChange} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />;
 
 export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgetSuggestions = {} }) => (
   <Modal open={open} onClose={close} dismissible={!createMutation.busy} title="Tambah jadwal rutin" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Tambah jadwal</Button></>}>
@@ -62,7 +63,7 @@ const recurringEnvelopeOptionLabel = (item) => {
   return `${item.name} · ${assignee} · sisa Rp ${Number(item.remaining_amount || 0).toLocaleString("id-ID")}`;
 };
 
-const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeHint }) => <SelectionField className="form-grid__full" label="Alokasi dana" value={payment.envelope_period_id} onChange={(envelope_period_id) => setPayment((current) => ({ ...current, envelope_period_id, overspend_reason: "" }))} options={[{ value: "", label: "Belum dialokasikan" }, ...paymentEnvelopes.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: recurringEnvelopeOptionLabel(item).replace(`${item.name} · `, "") }))]} helper={envelopeHint} searchable={paymentEnvelopes.length > 8} />;
+const PaymentEnvelopeField = ({ payment, setPayment, paymentEnvelopes, envelopeHint }) => <SelectionField className="form-grid__full" label="Alokasi dana" value={payment.envelope_period_id} onChange={(envelope_period_id) => setPayment((current) => ({ ...current, envelope_period_id, overspend_reason: "" }))} options={[{ value: "", label: "Belum dialokasikan", ...allocationOptionVisual() }, ...paymentEnvelopes.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: recurringEnvelopeOptionLabel(item).replace(`${item.name} · `, ""), ...allocationOptionVisual() }))]} helper={envelopeHint} searchable={paymentEnvelopes.length > 8} />;
 
 const PaymentOverspendFields = ({ payment, setPayment, envelopeState }) => <>
   {envelopeState.blockedByEnvelope ? <div className="notice notice--warning form-grid__full" role="alert">Nominal aktual melebihi sisa alokasi. Kebijakan alokasi ini memblokir overspend. Kurangi nominal atau pilih alokasi lain.</div> : null}

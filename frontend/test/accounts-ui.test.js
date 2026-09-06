@@ -133,7 +133,7 @@ test("arah transaksi rekening konsisten untuk desktop dan mobile", () => {
   assert.deepEqual(accountTransactionDirection({ transaction_type: "expense", status: "cancelled" }, "acc-1"), { prefix: "", tone: "neutral" });
 });
 
-test("halaman rekening menjaga workspace desktop dan menyediakan riwayat serta grafik pada mobile", async () => {
+test("halaman rekening menjaga workspace desktop dan mobile tetap ringkas dengan analitik di Riwayat", async () => {
   const [page, accountSheets, mobileExperience, mobileActivity, mobileTransfer, accountEditors, desktopWorkspace, desktopStyles, card, accountStyleSources, cardStyles, categoryPage, reconciliationPage, transactionPresentation] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
@@ -190,6 +190,7 @@ ${accountEditors}`;
     combined: pageStyles,
   } = accountStyleSources;
   const accountsApi = await read("src/features/accounts/accounts.api.js");
+  const brandAssets = await read("src/shared/presentation/accountBrandAssets.js");
   const financialSuccessStyles = await read("src/components/feedback/FinancialSuccessOverlay.module.css");
 
   assert.match(accountPageSource, /title="Rekening"/);
@@ -267,7 +268,7 @@ ${accountEditors}`;
   assert.match(desktopWorkspace, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
   assert.match(desktopWorkspace, /ACCOUNT_ALLOCATED_BALANCE_HINT/);
   assert.match(desktopWorkspace, /account\.available_balance \?\? account\.balance/);
-  assert.match(mobileExperience, /<small>Dana tersedia<\/small>/);
+  assert.match(mobileExperience, /<span>Dana tersedia<\/span>/);
   assert.match(mobileExperience, /account\.allocated_remaining/);
   assert.match(card, /label="Dana tersedia"/);
   assert.match(card, /label="Dialokasikan"/);
@@ -319,15 +320,13 @@ ${accountEditors}`;
   assert.match(accountPageSource, /mobileAccountSheet/);
   assert.doesNotMatch(mobileExperience, />Beranda<|FiArrowLeft/);
   assert.match(mobileExperience, /mobileStackHeaderTitle}>Rekening/);
-  assert.match(mobileActivity, /role="tab"/);
-  assert.match(mobileActivity, /tabIndex=\{activeTab === "history" \? 0 : -1\}/);
-  assert.match(mobileActivity, /event\.key === "Home"/);
-  assert.match(mobileActivity, /event\.key === "End"/);
-  assert.match(mobileActivity, /requestAnimationFrame/);
-  assert.match(mobileActivity, /<span>Riwayat<\/span>/);
-  assert.match(mobileActivity, /<span>Grafik<\/span>/);
+  assert.match(mobileActivity, /Transaksi terbaru/);
+  assert.doesNotMatch(mobileActivity, /Grafik pengeluaran|TREND_OPTIONS|chartOpen|loadAccountExpenseTrend/);
+  assert.doesNotMatch(mobileActivity, /role="tab"|tabIndex=\{activeTab/);
   assert.doesNotMatch(mobileActivity, /MobileAccountTransferAction/);
   assert.match(mobileExperience, /MobileAccountTransferAction/);
+  assert.match(mobileExperience, /<MobileAccountTransferAction bootstrap=\{bootstrap\} selectedAccount=\{account\}/);
+  assert.doesNotMatch(mobileExperience, /placement="header"/);
   assert.match(mobileTransfer, /Transfer/);
   assert.match(mobileTransfer, /lazy\(\(\) => import\("\.\.\/\.\.\/transactions\/TransactionForm\.jsx"\)\)/);
   assert.match(mobileTransfer, /TransactionForm/);
@@ -351,50 +350,46 @@ ${accountEditors}`;
   assert.match(mobileTransfer, /Transfer memerlukan rekening sumber aktif/);
   assert.match(mobileTransfer, /FinancialSuccessOverlay/);
   assert.doesNotMatch(mobileTransfer, /createTransaction|transactions\.create/);
-  assert.match(mobileActivity, /TREND_OPTIONS = Object\.freeze\(\[1, 3, 6, 12\]\)/);
   assert.match(mobileActivity, /useApiResource\("transactions\.list"/);
   assert.match(mobileActivity, /account_id: selectedAccountId \|\| "all"/);
-  assert.match(mobileActivity, /enabled: mobileEnabled && activeTab === "history"/);
-  assert.match(mobileActivity, /Transfer antar rekening tidak dihitung sebagai pengeluaran/);
-  assert.match(accountsApi, /loadAccountExpenseTrend/);
-  assert.match(accountsApi, /apiClient\.request\("reports\.monthly"/);
-  assert.match(accountsApi, /period: endPeriod/);
-  assert.match(accountsApi, /trend_months: months/);
-  assert.match(accountsApi, /account_id: accountId/);
-  assert.match(accountsApi, /report\?\.accountExpenseTrend\?\.items/);
-  assert.doesNotMatch(accountsApi, /transaction_type: "expense"|limit: 200|hasMore/);
+  assert.match(mobileActivity, /enabled: mobileEnabled && Boolean\(selectedAccountId\)/);
+  assert.doesNotMatch(accountsApi, /loadAccountExpenseTrend|reports\.monthly|accountExpenseTrend/);
   assert.doesNotMatch(accountPageSource, /paymentHistoryPeriod|paymentHistoryResource|sheet === "history"/);
   assert.match(accountPageSource, /mobileStackCardRefs/);
-  assert.match(accountPageSource, /MOBILE_STACK_SLOT_STYLES/);
+  assert.match(accountPageSource, /carouselStyleAtDifference/);
   assert.match(mobileExperienceStyles, /\.mobileOwnershipFilters[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(mobileExperience, /PageInfoButton tone="hero" title="Tentang Rekening"/);
+  assert.match(mobileExperience, /PageInfoButton title="Tentang Rekening" label="Tentang Rekening"/);
+  assert.match(mobileExperience, /PageInfoButton title="Tentang saldo rekening"/);
+  assert.doesNotMatch(mobileExperience, /Kelola semua rekening Anda/);
   assert.match(accountPageSource, /shortestCircularDifference/);
   assert.match(accountPageSource, /onPointerDown=\{handleMobileStackPointerDown\}/);
   assert.match(accountPageSource, /onPointerMove=\{handleMobileStackPointerMove\}/);
-  assert.match(accountPageSource, /const progress = clamp\(-deltaY \/ 154/);
-  assert.doesNotMatch(accountPageSource, /const progress = clamp\(-deltaX \/ 154/);
-  assert.match(accountPageSource, /velocityY/);
-  assert.doesNotMatch(accountPageSource, /velocityX|handleMobileStackWheel|onWheel=\{/);
-  assert.match(accountPageSource, /event\.key === "ArrowUp"/);
-  assert.match(accountPageSource, /event\.key === "ArrowDown"/);
+  assert.match(accountPageSource, /const progress = clamp\(-deltaX \/ swipeDistance/);
+  assert.match(accountPageSource, /velocityX/);
+  assert.doesNotMatch(accountPageSource, /velocityY|handleMobileStackWheel|onWheel=\{/);
+  assert.match(accountPageSource, /event\.key === "ArrowLeft"/);
+  assert.match(accountPageSource, /event\.key === "ArrowRight"/);
   assert.match(mobileExperience, /useReducedMotion/);
   assert.match(mobileExperience, /semanticMotionDurationMs\("emphasized"\)/);
   assert.doesNotMatch(mobileExperience, /matchMedia\?\.\("\(prefers-reduced-motion: reduce\)"\)/);
-  assert.match(accountPageSource, /Gunakan Pilih rekening, atau geser ke atas dan bawah/);
-  assert.match(accountPageSource, /Gunakan tombol Pilih rekening untuk mengganti rekening tanpa gesture/);
-  assert.match(mobileExperience, /setMobileAccountSheet\("picker"\)/);
-  assert.match(accountSheets, /title="Pilih rekening"/);
-  assert.match(accountSheets, /Ganti rekening aktif dengan satu ketukan tanpa perlu melakukan gesture drag/);
-  assert.match(accountSheets, /onSelectAccount\?\.\(account\)/);
+  assert.match(accountPageSource, /Geser kartu ke kiri atau kanan untuk mengganti rekening/);
+  assert.match(accountPageSource, /gunakan tombol panah kiri dan kanan, atau indikator posisi/);
+  assert.doesNotMatch(mobileExperience, /setMobileAccountSheet\("picker"\)|tombol Pilih rekening/);
+  assert.doesNotMatch(accountSheets, /title="Pilih rekening"|MobileAccountPicker|onSelectAccount/);
   assert.match(mobileExperience, /if \(reducedMotion\) \{[\s\S]*refs\.positionRef\.current = normalizedTarget;[\s\S]*finish\(\);[\s\S]*return;/);
   assert.match(mobileExperience, /willChange = enabled \? "transform, opacity"/);
   assert.doesNotMatch(mobileExperience, /willChange = enabled \? "[^"]*(?:filter|box-shadow)/);
-  assert.match(accountPageSource, /<AccountVisual account=\{account\} stack \/>/);
-  assert.match(mobileExperience, /accountCardOwnershipLabel\(account\)/);
-  assert.match(mobileExperience, /formatAccountNumber\(selectedAccount\.account_number/);
-  assert.match(mobileExperience, /accountOwnerName\(selectedAccount\)/);
+  assert.match(accountPageSource, /<AccountVisual account=\{account\} carousel stack \/>/);
+  assert.match(cardStyles, /\.stackShadow \{[^}]*filter:\s*drop-shadow/s);
+  assert.match(cardStyles, /\.stackClip \{[^}]*overflow:\s*hidden;[^}]*border-radius:\s*1\.2rem;/s);
+  assert.match(cardStyles, /\.stackVisual\[data-visual-kind="ewallet"\] \.cardImage \{[^}]*inset:\s*-1\.25%;[^}]*width:\s*102\.5%;[^}]*height:\s*102\.5%;/s);
+  assert.match(cardStyles, /\.stackVisual\[data-visual-kind="ewallet"\]::after \{[^}]*background:\s*none;/s);
+  assert.match(cardStyles, /\.stackVisual \.cardImage \{[^}]*clip-path:\s*none;/s);
+  assert.match(mobileExperience, /MobileBalanceSummary/);
+  assert.match(mobileExperience, /Sembunyikan nominal rekening/);
+  assert.match(mobileExperience, /<span>Dialokasikan<\/span>/);
   assert.match(mobileExperience, /Filter kepemilikan rekening/);
-  for (const className of ["mobileOwnershipFilters", "mobileOwnershipFilter", "mobileStackIdentity", "mobileStackOwner", "mobileStackAccountName", "mobileStackOwnerName", "mobileStackAccountMeta", "mobileStackOwnerScope"]) {
+  for (const className of ["mobileOwnershipFilters", "mobileOwnershipFilter", "mobileCarouselDots", "mobileBalanceSummary", "mobileBalanceStats", "mobileQuickActions", "mobileQuickAction"]) {
     assert.match(mobileExperience, new RegExp(String.raw`styles\.${className}\b`));
     assert.match(mobileExperienceStyles, new RegExp(String.raw`\.${className}\b`));
   }
@@ -410,7 +405,8 @@ ${accountEditors}`;
   assert.match(accountPageSource, /variant="mobileDetail"/);
   assert.match(accountPageSource, /embedded/);
   assert.doesNotMatch(accountPageSource, /ref=\{mobileDetailRef\}/);
-  assert.doesNotMatch(accountPageSource, /mobilePagination|mobileCarousel|setInterval\(/);
+  assert.doesNotMatch(accountPageSource, /setInterval\(/);
+  assert.match(mobileExperience, /mobileCarouselDots/);
   assert.doesNotMatch(accountPageSource, /aria-label="Baca penjelasan rekonsiliasi"/);
   assert.doesNotMatch(accountPageSource, /title="Tentang rekonsiliasi"/);
   assert.match(reconciliationPage, /PageHeader title="Cocokkan Saldo"/);
@@ -423,21 +419,22 @@ ${accountEditors}`;
   assert.doesNotMatch(pageStyles, /reconciliationInfoButton|reconciliationToggle|reconciliationPanel/);
   assert.match(pageStyles, /mobileStackPanel/);
   assert.match(pageStyles, /mobileAccountActivity/);
-  assert.match(pageStyles, /mobileTransferHeaderAction/);
-  assert.match(pageStyles, /mobileActivityTabs/);
-  assert.match(pageStyles, /mobileActivityTabIcon/);
+  assert.doesNotMatch(pageStyles, /mobileTransferHeaderAction/);
+  assert.match(pageStyles, /mobileTransferQuickAction/);
+  assert.match(pageStyles, /mobileRecentActivity/);
+  assert.doesNotMatch(pageStyles, /mobileChartToggle|mobileExpenseChart|mobileChartPanel/);
   assert.match(financialSuccessStyles, /brandCheckBadge/);
   assert.match(pageStyles, /mobileTransactionList/);
-  assert.match(pageStyles, /mobileExpenseChart/);
-  assert.match(pageStyles, /\.mobileStackSummary \{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s);
+  assert.match(pageStyles, /\.mobileBalanceSummary \{[^}]*border:\s*1px solid[^}]*border-radius:\s*1\.2rem;[^}]*background:/s);
   assert.doesNotMatch(pageStyles, /paymentHistoryList|paymentHistoryItem/);
-  assert.match(pageStyles, /perspective: 93\.75rem/);
+  assert.match(pageStyles, /perspective: 68\.75rem/);
   assert.match(pageStyles, /transform-style: preserve-3d/);
   assert.match(pageStyles, /\.mobileStackStage[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
-  assert.match(pageStyles, /\.mobileStackCard\[aria-pressed="true"\][^{]*\{[^}]*touch-action: pan-x pinch-zoom;/s);
+  assert.match(pageStyles, /\.mobileStackCard[^{]*\{[^}]*touch-action: pan-y pinch-zoom;/s);
   assert.doesNotMatch(pageStyles, /touch-action: none/);
-  assert.match(pageStyles, /width: min\(calc\(100vw - var\(--mobile-page-gutter\) - var\(--mobile-page-gutter\)\), 22rem\)/);
-  assert.doesNotMatch(pageStyles, /mobilePagination|scroll-snap-type/);
+  assert.match(mobileExperienceStyles, /\.mobileStackCard[^{]*\{[^}]*width:\s*min\(79vw, 21\.85rem\);/s);
+  assert.match(pageStyles, /mobileCarouselDot/);
+  assert.doesNotMatch(pageStyles, /scroll-snap-type/);
   const mobileBreakpointCount = (styles) => (styles.match(/@media \(max-width: 820px\)/g) || []).length;
   assert.equal(mobileBreakpointCount(accountsPageStyles), 1, "AccountsPage harus memiliki satu breakpoint mobile canonical 820px.");
   assert.equal(mobileBreakpointCount(accountEditorStyles), 0, "AccountEditorDialogs tidak membutuhkan breakpoint mobile 820px.");
@@ -447,26 +444,24 @@ ${accountEditors}`;
   assert.doesNotMatch(pageStyles, /47\.99rem|51\.25rem/, "CSS rekening tidak boleh kembali ke breakpoint mobile legacy sekitar 768/820px.");
   assert.match(mobileExperienceStyles, /mobileStackPanel/);
   assert.match(mobileActivityStyles, /mobileAccountActivity/);
-  assert.match(mobileActivityStyles, /mobileActivityTabs/);
-  assert.match(mobileActivityStyles, /mobileExpenseChart/);
-  assert.match(mobileTransferStyles, /mobileTransferHeaderAction/);
-  assert.match(mobileExperience, /className=\{styles\.mobileStackHeaderButton\}[\s\S]*aria-label="Tambah rekening"[\s\S]*<span>Tambah<\/span>/);
-  assert.match(mobileTransferStyles, /:global\(:root\[data-theme="light"\]\) \.mobileTransferHeaderAction \{[^}]*background:\s*var\(--primary-soft\);[^}]*color:\s*var\(--primary\);/s);
-  assert.match(mobileTransferStyles, /@media \(hover: hover\) and \(pointer: fine\) \{[\s\S]*:global\(:root\[data-theme="light"\]\) \.mobileTransferHeaderAction:hover:not\(:disabled\) \{[^}]*color:\s*var\(--primary-strong\);[^}]*\}[\s\S]*\}/s);
+  assert.match(mobileActivityStyles, /mobileRecentActivity/);
+  assert.doesNotMatch(mobileActivityStyles, /mobileExpenseChart|mobileChartPanel|mobileChartToggle/);
+  assert.doesNotMatch(mobileTransferStyles, /mobileTransferHeaderAction/);
+  assert.match(mobileTransferStyles, /mobileTransferQuickAction/);
+  assert.match(mobileExperience, /className=\{`\$\{styles\.mobileStackHeaderButton\} \$\{styles\.mobileStackHeaderButtonPrimary\}`\}[\s\S]*aria-label="Tambah rekening"[\s\S]*<span>Tambah<\/span>/);
+  assert.match(mobileTransferStyles, /\.mobileTransferQuickAction \{[^}]*min-height:\s*3\.7rem;[^}]*flex-direction:\s*column;/s);
   assert.match(accountsPageStyles, /impactSummary/);
-  assert.match(pageStyles, /\.mobileHistoryPeriodControl input \{[^}]*padding:\s*0;[^}]*font-size:\s*var\(--mobile-native-control-font-size\);/s);
+  assert.match(pageStyles, /\.mobileRecentHeading h2 \{[^}]*font-size:\s*1\.04rem;/s);
   assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid var\(--border\);[^}]*background:\s*var\(--surface-soft\);/s);
   assert.match(pageStyles, /\.impactSummary strong \{ color:\s*var\(--text\);/);
-  assert.match(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileAccountExperience/);
-  assert.match(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackPanel/);
-  assert.match(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileHistoryPeriodControl input[\s\S]*color-scheme:\s*light/);
-  assert.doesNotMatch(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackCard/);
-  assert.doesNotMatch(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackBalance/);
-  assert.doesNotMatch(pageStyles, /:global\(:root\[data-theme="light"\]\) \.mobileStackOwnership/);
+  assert.match(pageStyles, /mobileAccountExperience[\s\S]*background:/);
+  assert.match(pageStyles, /mobileBalanceSummary[\s\S]*mobileAccountSummarySheen/);
+  assert.doesNotMatch(pageStyles, /mobileStackBalance|mobileStackOwnership/);
   assert.doesNotMatch(pageStyles, /var\(--(?:border-subtle|surface-muted|text-primary)\)/);
 
-  for (const asset of ["bca", "bni", "btn", "mandiri", "permata", "shopeepay", "dana", "gopay", "ovo", "linkaja", "cash", "savings"]) assert.match(card, new RegExp(`${asset}\.webp`));
-  for (const retiredAsset of ["emergency_fund", "sinking_fund", "investment", "other"]) assert.doesNotMatch(card, new RegExp(`${retiredAsset}\.webp`));
+  for (const asset of ["bca", "bni", "btn", "mandiri", "permata", "shopeepay", "dana", "gopay", "ovo", "linkaja"]) assert.match(brandAssets, new RegExp(`${asset}\\.webp`));
+  for (const asset of ["cash", "investment", "savings"]) assert.match(card, new RegExp(`${asset}\\.webp`));
+  for (const retiredAsset of ["emergency_fund", "sinking_fund", "other"]) assert.doesNotMatch(card, new RegExp(`${retiredAsset}\.webp`));
   assert.match(card, /detectEwalletTemplate/);
   assert.match(card, /data-visual-kind/);
   assert.match(card, /ewalletOwnership/);
@@ -506,6 +501,9 @@ ${accountEditors}`;
   assert.doesNotMatch(cardStyles, /106%|inset:\s*-3%/);
   assert.match(card, /data-account-type=\{account\.account_type\}/);
   assert.match(cardStyles, /data-account-type="investment"/);
+  assert.match(card, /investmentCard/);
+  assert.match(card, /hasInvestmentArtwork/);
+  assert.match(cardStyles, /\.visual\[data-account-type="investment"\]\[data-has-image="true"\]::after \{[^}]*background:\s*none;/s);
   assert.doesNotMatch(cardStyles, /--account-card-surface/);
   assert.doesNotMatch(mobileExperience, /boxShadow = `0 1\.75rem 3\.9rem/);
   assert.match(cardStyles, /\.mobileSecondaryActions \.mobileDangerAction \{[^}]*color:\s*var\(--negative\);/s);
@@ -549,7 +547,7 @@ test("semua asset kartu rekening aktif memakai kanvas dan rasio yang sama", asyn
   const assets = [
     ...["bca", "bni", "btn", "mandiri", "permata"].map((name) => ["bank-cards", name]),
     ...["shopeepay", "dana", "gopay", "ovo", "linkaja"].map((name) => ["ewallet-cards", name]),
-    ...["cash", "savings"].map((name) => ["account-cards", name]),
+    ...["cash", "investment", "savings"].map((name) => ["account-cards", name]),
   ];
   for (const [directory, name] of assets) {
     const url = new URL(`../src/assets/${directory}/${name}.webp`, import.meta.url);
@@ -558,23 +556,29 @@ test("semua asset kartu rekening aktif memakai kanvas dan rasio yang sama", asyn
     assert.ok(file, `${name}.webp harus tersedia`);
     assert.ok(info.size <= 100_000, `${name}.webp terlalu besar untuk kartu responsif (${info.size} byte)`);
     assert.deepEqual(dimensions, { width: 1024, height: 645 }, `${name}.webp harus memakai kanvas 1024x645`);
-    if (directory === "bank-cards") assert.equal(await webpHasAlpha(file), true, `${name}.webp harus mempertahankan alpha di luar siluet kartu`);
+    if (["bank-cards", "ewallet-cards"].includes(directory) || name === "investment") assert.equal(await webpHasAlpha(file), true, `${name}.webp harus mempertahankan alpha di luar siluet kartu`);
   }
 });
 
 
-test("dashboard rekening hanya menampilkan kartu utuh pada desktop dan mobile", async () => {
-  const [dashboard, dashboardStyles] = await Promise.all([
+test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile memakai shortcut ringkas", async () => {
+  const [dashboard, mobileDashboard, dashboardStyles] = await Promise.all([
     read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     read("src/features/dashboard/DashboardPage.module.css"),
   ]);
-  assert.match(dashboardStyles, /\.mobile-account-preview \{[^}]*flex:\s*0 0 100%;[^}]*scroll-snap-align:\s*start;[^}]*scroll-snap-stop:\s*always;/s);
   assert.match(dashboardStyles, /\.shared-account-carousel \{[^}]*display:\s*grid;[^}]*grid-auto-flow:\s*column;[^}]*grid-auto-columns:\s*calc\(\(100% - 24px\) \/ 3\);[^}]*overflow-x:\s*auto;/s);
+  assert.match(dashboardStyles, /\.shared-account-card \{[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
+  assert.match(dashboardStyles, /\.shared-account-card\.is-selected\s*>\s*div:first-child \{[^}]*box-shadow:/s);
+  assert.doesNotMatch(dashboardStyles, /\.shared-account-card\.is-selected \{[^}]*background:/s);
   assert.match(dashboardStyles, /@media \(max-width: 940px\) and \(min-width: 821px\)[\s\S]*\.shared-account-carousel \{ grid-auto-columns:\s*calc\(\(100% - 12px\) \/ 2\); \}/);
-  assert.doesNotMatch(dashboardStyles, /\.mobile-account-preview \{[^}]*88%/s);
   assert.doesNotMatch(dashboardStyles, /\.shared-account-card \{[^}]*flex:\s*0 0/s);
+  assert.match(dashboard, /<AccountVisual account=\{cleanAccount\} carousel \/>/);
   assert.match(dashboard, /scrollIntoViewWithMotionPreference/);
   assert.match(dashboard, /inline:\s*"nearest"/);
+  assert.match(mobileDashboard, /\{ to: "\/rekening", label: "Rekening", icon: FiCreditCard, tone: "account" \}/);
+  assert.doesNotMatch(mobileDashboard, /AccountVisual|mobile-account-preview|mobile-account-scroller/);
+  assert.doesNotMatch(dashboardStyles, /\.mobile-account-preview|\.mobile-account-scroller/);
 });
 
 test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celebration tetap aksesibel", async () => {
@@ -615,7 +619,8 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(page, /styles\.mobileHistoryDifference/);
   assert.match(pageStyles, /\.systemBalanceCard\s*\{/);
   assert.match(pageStyles, /\.systemBalanceCard[\s\S]*font-size:\s*clamp\(1\.9rem/);
-  assert.match(pageStyles, /\.accountSummary[\s\S]*min-height:\s*58px/);
+  assert.match(page, /<SelectionField[\s\S]*label="Rekening"/);
+  assert.match(page, /searchable=\{accounts\.length > 8\}/);
   assert.match(pageStyles, /\.differencePreview\[data-state="matched"\]/);
   assert.match(pageStyles, /\.mobileHistoryDifference/);
   assert.doesNotMatch(page, /<details className=\{styles\.helpDetails\}/);

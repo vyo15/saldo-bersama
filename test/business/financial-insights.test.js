@@ -105,9 +105,17 @@ test("filter transaksi mendukung rekening, kategori, dan pencatat tanpa melewati
     });
 
     assert.deepEqual(result.items.map((item) => item.transaction_id), ["expense-member"]);
-    assert.ok(result.filterOptions.accounts.some((item) => item.account_id === "account-bank"));
+    const bankOption = result.filterOptions.accounts.find((item) => item.account_id === "account-bank");
+    const categoryOption = result.filterOptions.categories.find((item) => item.category_id === "category-food");
+    const creatorOption = result.filterOptions.creators.find((item) => item.user_id === member.user_id);
+    assert.equal(bankOption?.account_type, "bank");
+    assert.equal(bankOption?.bank_template, "generic");
     assert.ok(result.filterOptions.accounts.some((item) => item.account_id === "account-cash"));
-    assert.ok(result.filterOptions.creators.some((item) => item.user_id === member.user_id));
+    assert.equal(categoryOption?.transaction_type, "expense");
+    assert.equal(categoryOption?.icon, "");
+    assert.equal(creatorOption?.email, member.email);
+    assert.equal(creatorOption?.role, "member");
+    assert.equal(creatorOption?.photo_url, "");
   } finally {
     db.close();
   }
