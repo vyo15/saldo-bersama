@@ -324,9 +324,9 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(login, /Selamat datang kembali/);
   assert.match(login, /Gunakan akun Google yang telah diberi izin untuk melanjutkan\./);
   assert.doesNotMatch(login, /atau masuk dengan email|paper-plane\.webp|growth-bubble\.webp|profile-green\.webp|profile-red\.webp|heart\.webp/);
-  assert.match(loginStyles, /\.visualStage\s*\{[\s\S]*min-height:\s*min\(72vh,\s*680px\);[\s\S]*justify-content:\s*flex-end;/);
-  assert.match(loginStyles, /\.couple\s*\{[\s\S]*width:\s*min\(100%,\s*570px\);[\s\S]*height:\s*auto;[\s\S]*max-height:\s*min\(70vh,\s*620px\);/);
-  assert.match(loginStyles, /\.loginCard\s*\{[\s\S]*max-width:\s*480px;[\s\S]*border-radius:\s*30px;[\s\S]*backdrop-filter:\s*blur\(18px\);/);
+  assert.match(loginStyles, /\.visualStage\s*\{[\s\S]*min-height:\s*min\(76vh,\s*700px\);[\s\S]*place-items:\s*center;/);
+  assert.match(loginStyles, /\.couple\s*\{[\s\S]*width:\s*min\(100%,\s*610px\);[\s\S]*height:\s*auto;[\s\S]*max-height:\s*min\(72vh,\s*670px\);/);
+  assert.match(loginStyles, /\.loginCard\s*\{[\s\S]*max-width:\s*520px;[\s\S]*border-radius:\s*34px;[\s\S]*backdrop-filter:\s*blur\(18px\);/);
   assert.match(loginStyles, /\.trustItem\s*\{[\s\S]*display:\s*flex;[\s\S]*white-space:\s*nowrap;/);
 
   // Desktop dan mobile memakai tombol HTML branded yang sama. Production memakai server OAuth; localhost tetap popup Firebase untuk development.
@@ -392,7 +392,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
   assert.match(loginStyles, /\.login-mobile-stage\.is-login-active \.login-mobile-navigation__spacer,[\s\S]*\.login-mobile-stage\.is-login-active \.login-mobile-navigation__replay \{[^}]*width:\s*44px;/);
   assert.match(loginStyles, /\.login-mobile-navigation__replay \{[^}]*min-height:\s*44px;/);
-  assert.match(loginStyles, /\.googleSlot button \{[\s\S]*min-height:\s*62px;[\s\S]*border-radius:\s*16px;/);
+  assert.match(loginStyles, /\.googleSlot button \{[\s\S]*min-height:\s*66px;[\s\S]*border-radius:\s*18px;/);
   assert.match(loginStyles, /\.login-mobile-google-button:disabled \{[^}]*cursor:\s*wait;/);
   assert.match(loginStyles, /@keyframes login-google-spin/);
   assert.doesNotMatch(loginStyles, /\.login-mobile-provider/);
