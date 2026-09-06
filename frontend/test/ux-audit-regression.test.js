@@ -104,20 +104,30 @@ test("dialog Investasi dimuat lazy agar route mempunyai headroom build budget", 
 });
 
 test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk", async () => {
-  const [allocations, members, transactions] = await Promise.all([
+  const [allocations, allocationActions, members, transactions, login] = await Promise.all([
     read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/allocationActionRunners.js"),
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/auth/LoginPage.jsx"),
   ]);
   assert.match(allocations, /const AllocationSetupContinuation = lazy\(\(\) => import\("\.\/AllocationSetupContinuation\.jsx"\)\)/);
-  assert.match(allocations, /const loadAllocationsApi = \(\) => import\("\.\/allocations\.api\.js"\)/);
+  assert.match(allocations, /const loadAllocationActionRunners = \(\) => import\("\.\/allocationActionRunners\.js"\)/);
+  assert.doesNotMatch(allocations, /from "\.\/allocationActionRunners\.js"/);
   assert.doesNotMatch(allocations, /from "\.\/allocations\.api\.js"/);
+  assert.match(allocationActions, /from "\.\/allocations\.api\.js"/);
+  assert.match(allocationActions, /runCreateAllocation/);
+  assert.match(allocationActions, /runCloseAllocation/);
   assert.doesNotMatch(allocations, /import Button from "\.\.\/\.\.\/components\/common\/Button\.jsx"/);
   assert.doesNotMatch(allocations, /import CompactNotice from "\.\.\/\.\.\/components\/common\/CompactNotice\.jsx"/);
   assert.match(members, /const MemberActivityPanel = lazy\(\(\) => import\("\.\/components\/MemberActivityPanel\.jsx"\)\)/);
   assert.doesNotMatch(members, /import MemberActivityPanel from/);
   assert.match(transactions, /const TransferRequestsPanel = lazy\(\(\) => import\("\.\/TransferRequestsPanel\.jsx"\)\)/);
   assert.doesNotMatch(transactions, /import TransferRequestsPanel from/);
+  assert.match(login, /const DesktopLoginLayout = lazy\(\(\) => import\("\.\/components\/LoginDesktopLayout\.jsx"\)\)/);
+  assert.match(login, /const MobileLoginLayout = lazy\(\(\) => import\("\.\/components\/LoginMobileLayout\.jsx"\)\)/);
+  assert.doesNotMatch(login, /import DesktopLoginLayout from/);
+  assert.doesNotMatch(login, /import MobileLoginLayout from/);
 });
 
 test("Investasi mengunci intent ketika outcome write belum pasti dan hanya mengizinkan retry payload yang sama", async () => {

@@ -1,10 +1,11 @@
-import { FiAlertTriangle, FiCalendar, FiChevronRight, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
+import { FiAlertTriangle, FiCalendar, FiChevronRight, FiCreditCard, FiGrid, FiLayers } from "react-icons/fi";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
 import CostShareField from "./CostShareField.jsx";
+import MobileTransactionCategoryField from "./MobileTransactionCategoryField.jsx";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, paymentMethodLabel, quickAmountLabel } from "./transactionFormPresentation.js";
 import TransactionImpactPreview from "./components/TransactionImpactPreview.jsx";
 import styles from "./MobileTransactionFields.module.css";
@@ -132,7 +133,6 @@ const accountDetail = ({ isIncome, selectedAccount }) => {
 const DetailGroup = (p) => {
   const selectedSource = p.accounts.find((item) => item.account_id === p.form.source_account_id) || null;
   const selectedDestination = selectedDestinationAccount(p);
-  const selectedCategory = p.visibleCategories.find((item) => item.category_id === p.form.category_id) || null;
   const selectedEnvelope = p.compatibleEnvelopes.find((item) => item.envelope_period_id === p.form.envelope_period_id) || null;
   const envelopeDisabled = !p.form.source_account_id || !p.form.category_id;
   const envelopeHint = compactAllocationHint({ form: p.form, candidates: p.allocationCandidates });
@@ -155,15 +155,14 @@ const DetailGroup = (p) => {
           errorId={p.isIncome ? "destination-account-error" : "source-account-error"}
           onClick={() => p.openMobileSelection(p.isIncome ? "destination-account" : "source-account")}
         />
-        <SelectionRow
-          id="category"
-          icon={FiTag}
-          label="Kategori"
-          value={selectedCategory?.name || "Pilih kategori"}
-          meta={!selectedCategory ? "Kategori menyesuaikan jenis transaksi" : undefined}
-          error={p.errors.category_id}
-          errorId="category-error"
-          onClick={() => p.openMobileSelection("category")}
+        <MobileTransactionCategoryField
+          key={`${p.form.transaction_type}:${p.form.source_account_id}`}
+          form={p.form}
+          update={p.update}
+          visibleCategories={p.visibleCategories}
+          recentTransactions={p.recentTransactions}
+          errors={p.errors}
+          outcomeUnknown={p.outcomeUnknown}
         />
         {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? (
           <SelectionRow

@@ -15,6 +15,22 @@ const filterOptions = (options, query) => {
   ));
 };
 
+const normalizeGroups = (groups = []) => groups
+  .map((group, index) => ({
+    key: String(group.key || group.label || index),
+    label: String(group.label || ""),
+    options: Array.isArray(group.options) ? group.options : [],
+  }))
+  .filter((group) => group.options.length);
+
+const filterGroups = (groups, query) => normalizeGroups(groups)
+  .map((group) => ({ ...group, options: filterOptions(group.options, query) }))
+  .filter((group) => group.options.length);
+
+const flattenSelectionOptions = (options, groups) => groups.length
+  ? groups.flatMap((group) => group.options)
+  : options;
+
 const useSelectionOverlay = ({ open, setOpen, searchable, rootRef, searchRef }) => {
   useEffect(() => {
     if (!open) return undefined;
@@ -40,9 +56,8 @@ const useSelectionOverlay = ({ open, setOpen, searchable, rootRef, searchRef }) 
   }, [open, searchable, searchRef]);
 };
 
-const SelectionOption = ({ option, index, isSelected, onChoose }) => (
+const SelectionOption = ({ option, isSelected, onChoose }) => (
   <button
-    key={optionKey(option, index)}
     type="button"
     className={`${styles.option} ${isSelected ? styles.selected : ""}`.trim()}
     aria-pressed={isSelected}
@@ -57,19 +72,23 @@ const SelectionOption = ({ option, index, isSelected, onChoose }) => (
   </button>
 );
 
-const SelectionOptions = ({ options, value, onChoose }) => {
-  if (!options.length) return <p className={styles.empty}>Tidak ada pilihan yang cocok.</p>;
-  return options.map((option, index) => (
-    <SelectionOption
-      key={optionKey(option, index)}
-      option={option}
-      index={index}
-      isSelected={sameValue(option.value, value)}
-      onChoose={onChoose}
-    />
-  ));
-};
+const SelectionOptions = ({ options, value, onChoose }) => options.map((option, index) => (
+  <SelectionOption
+    key={optionKey(option, index)}
+    option={option}
+    isSelected={sameValue(option.value, value)}
+    onChoose={onChoose}
+  />
+));
 
+const SelectionGroups = ({ groups, value, onChoose }) => groups.map((group) => (
+  <section key={group.key} className={styles.optionGroup} aria-label={group.label || undefined}>
+    {group.label ? <span className={styles.groupLabel}>{group.label}</span> : null}
+    <div className={styles.options}>
+      <SelectionOptions options={group.options} value={value} onChoose={onChoose} />
+    </div>
+  </section>
+));
 
 const findSelectedOption = (options, value) => options.find((option) => sameValue(option.value, value)) ?? null;
 
@@ -125,35 +144,43 @@ const SelectionPanel = ({
   setQuery,
   searchRef,
   options,
+  groups,
   value,
   onChoose,
-}) => (
-  <div id={panelId} className={styles.panel}>
-    {searchable ? (
-      <label className={styles.search}>
-        <FiSearch aria-hidden="true" />
-        <span className="sr-only">{searchPlaceholder}</span>
-        <input
-          ref={searchRef}
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={searchPlaceholder}
-          autoComplete="off"
-        />
-      </label>
-    ) : null}
-    <div className={styles.options}>
-      <SelectionOptions options={options} value={value} onChoose={onChoose} />
+}) => {
+  const hasGroups = groups.length > 0;
+  const hasOptions = hasGroups ? groups.some((group) => group.options.length) : options.length > 0;
+  return (
+    <div id={panelId} className={styles.panel}>
+      {searchable ? (
+        <label className={styles.search}>
+          <FiSearch aria-hidden="true" />
+          <span className="sr-only">{searchPlaceholder}</span>
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={searchPlaceholder}
+            autoComplete="off"
+          />
+        </label>
+      ) : null}
+      {hasOptions ? (
+        hasGroups
+          ? <SelectionGroups groups={groups} value={value} onChoose={onChoose} />
+          : <div className={styles.options}><SelectionOptions options={options} value={value} onChoose={onChoose} /></div>
+      ) : <p className={styles.empty}>Tidak ada pilihan yang cocok.</p>}
     </div>
-  </div>
-);
+  );
+};
 
 export const SelectionControl = ({
   id,
   value,
   onChange,
   options = [],
+  groups = [],
   placeholder = "Pilih",
   disabled = false,
   searchable = false,
@@ -172,8 +199,14 @@ export const SelectionControl = ({
   const searchRef = useRef(null);
   const generatedId = useId();
   const panelId = `selection-${generatedId.replace(/:/g, "")}`;
-  const selected = findSelectedOption(options, value);
+  const normalizedGroups = useMemo(() => normalizeGroups(groups), [groups]);
+  const allOptions = useMemo(
+    () => flattenSelectionOptions(options, normalizedGroups),
+    [normalizedGroups, options],
+  );
+  const selected = findSelectedOption(allOptions, value);
   const filtered = useMemo(() => filterOptions(options, query), [options, query]);
+  const filteredGroups = useMemo(() => filterGroups(normalizedGroups, query), [normalizedGroups, query]);
   const rootClass = buildControlClass({ compact, embedded, open, className });
 
   useSelectionOverlay({ open, setOpen, searchable, rootRef, searchRef });
@@ -212,6 +245,7 @@ export const SelectionControl = ({
           setQuery={setQuery}
           searchRef={searchRef}
           options={filtered}
+          groups={filteredGroups}
           value={value}
           onChoose={choose}
         />
@@ -220,12 +254,19 @@ export const SelectionControl = ({
   );
 };
 
+
+const SelectionFieldLabel = ({ label, hideLabel, required }) => {
+  if (!label) return null;
+  return <span className={hideLabel ? "sr-only" : undefined}>{label}{required ? " *" : ""}</span>;
+};
+
 const SelectionField = ({
   label,
   id,
   value,
   onChange,
   options = [],
+  groups = [],
   placeholder = "Pilih",
   helper = "",
   error = "",
@@ -241,12 +282,13 @@ const SelectionField = ({
   hideLabel = false,
 }) => (
   <div className={`field ${className}`.trim()}>
-    {label ? <span className={hideLabel ? "sr-only" : undefined}>{label}{required ? " *" : ""}</span> : null}
+    <SelectionFieldLabel label={label} hideLabel={hideLabel} required={required} />
     <SelectionControl
       id={id}
       value={value}
       onChange={onChange}
       options={options}
+      groups={groups}
       placeholder={placeholder}
       disabled={disabled}
       searchable={searchable}

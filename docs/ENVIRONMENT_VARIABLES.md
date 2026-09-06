@@ -99,8 +99,13 @@ terminal interaktif
   → preflight Turso reachable + schema/binding Development siap
   → start server
 
-pull/login/link/validasi gagal
-  → pertahankan .env.local lama
+login/link/pull tidak tersedia + cache .env.local lengkap
+  → pertahankan cache Development
+  → lanjut preflight Turso + schema/binding
+  → start hanya bila preflight lolos
+
+hasil pull invalid atau cache tidak lengkap
+  → pertahankan .env.local lama bila ada
   → fail closed; server tidak dijalankan
 
 terminal non-interaktif
@@ -142,7 +147,7 @@ npm run prod
 
 Hanya dua command ini yang perlu diingat untuk penggunaan rutin:
 
-- `npm run dev` hanya mengurus Development: refresh Vercel Development, menulis `.env.local` atomik, memeriksa Turso Development + schema/binding, lalu menjalankan localhost. Command ini tidak menyentuh `.env.production.local`.
+- `npm run dev` hanya mengurus Development: mencoba refresh Vercel Development, menulis `.env.local` atomik bila pull valid, atau memakai cache Development lengkap saat control-plane Vercel sementara tidak tersedia; Turso Development + schema/binding tetap diperiksa sebelum localhost dijalankan. Command ini tidak menyentuh `.env.production.local`.
 - `npm run prod` hanya mengurus jalur Production: memastikan `.env.production.local` tersedia/lengkap, membaca `.env.local` tanpa memodifikasinya untuk validasi isolasi, menyelaraskan **hanya** grup Google bridge pusat bila Production lokal kosong, menguji Turso Production secara read-only, memeriksa health Vercel Production + frontend shell, lalu membuka URL Production. Core readiness memblokir database/schema/binding/maintenance/integrity yang tidak aman; scheduler, integrasi Google, backup, dan notifikasi yang degraded tetap dilaporkan sebagai operational warning tanpa mematikan login/ledger yang core-nya sehat.
 
 `npm run prod` tetap **bukan** localhost dengan credential Production. Production auth canonical bergantung pada HTTPS, Secure HttpOnly cookie, callback OAuth server, dan Vercel Production. Command maintenance lain tetap tersedia untuk operasi khusus tetapi bukan bagian workflow harian.

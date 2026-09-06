@@ -45,7 +45,7 @@ Setiap PC/laptop tepercaya mempunyai dua profile lokal:
 .env.production.local   -> Production  -> saldo-bersama
 ```
 
-`npm run dev` hanya mengurus Development: otomatis refresh Vercel Development, memeriksa Turso Development + schema/binding, lalu menjalankan localhost. Command ini tidak membuat atau mengubah `.env.production.local`.
+`npm run dev` hanya mengurus Development: mencoba refresh Vercel Development, lalu memeriksa Turso Development + schema/binding sebelum menjalankan localhost. Bila control-plane Vercel sementara tidak tersedia, cache `.env.local` Development yang lengkap boleh dipakai; command ini tetap tidak membuat atau mengubah `.env.production.local`.
 
 `npm run prod` tidak menarik atau menulis Development. Command ini memastikan `.env.production.local` tersedia/lengkap, membaca `.env.local` hanya untuk membuktikan isolasi DEV/PROD, boleh menyejajarkan hanya grup Google bridge pusat bila Production lokal kosong, menguji Turso Production secara read-only, memeriksa Vercel Production + frontend shell, lalu membuka Production pada terminal interaktif. Database/schema/binding, maintenance, dan integrity failure tetap blocker; scheduler/integrasi/backup/notifikasi degraded menjadi operational warning dan tidak mematikan login/ledger yang core-nya sehat.
 

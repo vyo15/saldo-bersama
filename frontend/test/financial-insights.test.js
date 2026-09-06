@@ -108,7 +108,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
     ]).then((parts) => parts.join("\n")),
     goalFeatureSource(),
     Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx"), source("src/features/budgets/components/BudgetInsightCard.jsx")]).then((parts) => parts.join("\n")),
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/allocationActionRunners.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
   ]);
   for (const type of ["reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));

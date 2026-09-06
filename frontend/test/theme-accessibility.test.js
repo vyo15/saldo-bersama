@@ -177,7 +177,6 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.doesNotMatch(reportsStyles, /font-size:\s*(?:8(?:\.5)?|9(?:\.5)?|10)px;/);
   assert.match(loginStyles, /\.login-mobile-security \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(loginStyles, /\.login-mobile-eyebrow \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
-  assert.match(loginStyles, /\.login-mobile-hero__kicker \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
   assert.match(loginStyles, /\.login-mobile-description \{[^}]*font-size:\s*var\(--font-size-body-sm\);/s);
 });
 

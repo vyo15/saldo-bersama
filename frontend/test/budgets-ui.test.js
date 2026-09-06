@@ -158,13 +158,14 @@ test("kategori yang sama dapat dipakai pada beberapa Alokasi Dana tanpa mendupli
 
 
 test("penutupan Alokasi Dana menjaga continuity periode dan Kebutuhan tetap opt-in", async () => {
-  const [page, dialogs, detail] = await Promise.all([
+  const [page, actions, dialogs, detail] = await Promise.all([
     read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/allocationActionRunners.js"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
   ]);
-  assert.match(page, /reuse_needs: closeReuseNeeds/);
-  assert.match(page, /released_amount/);
+  assert.match(actions, /reuse_needs: closeReuseNeeds/);
+  assert.match(actions, /released_amount/);
   assert.match(dialogs, /Periode berikutnya tetap disiapkan agar alokasi tidak terputus/);
   assert.match(dialogs, /Pakai lagi \{p\.closeNeedsCount\} kebutuhan di periode berikutnya/);
   assert.match(dialogs, /Transaksi, saldo, serta dana Alokasi tidak ikut dipindahkan/);

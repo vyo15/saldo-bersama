@@ -72,16 +72,16 @@ Alur `npm run dev` pada terminal interaktif:
 3. Membersihkan token OIDC sementara dan key legacy dari `.env.local` bila file sudah ada.
 4. Meminta login Vercel hanya bila sesi belum ada.
 5. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
-6. Menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
+6. Mencoba menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
 7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key Production-only salah ditempatkan pada Development/cache lokal.
 8. Memvalidasi sepuluh key core, `DATABASE_ENVIRONMENT=development`, dan satu grup Web Push lengkap/valid.
-9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi.
-10. Memeriksa Turso Development benar-benar reachable serta schema/binding siap.
+9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi. Jika login/link/pull Vercel sedang tidak tersedia tetapi cache `.env.local` lama sudah lengkap, cache tersebut dipertahankan dan dipakai sementara.
+10. Memeriksa Turso Development benar-benar reachable serta schema/binding siap, termasuk saat memakai cache lokal.
 11. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
 
 `npm run dev` tidak membuat atau mengubah `.env.production.local`; provisioning Production dipicu hanya saat `npm run prod` membutuhkan profile tersebut.
 
-Refresh Development setiap start disengaja agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Bila login, link, pull, atau validasi gagal, `.env.local` lama dipertahankan tetapi server tidak dijalankan. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
+Refresh Development setiap start tetap dicoba agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Jika login/link/pull gagal karena Vercel tidak tersedia sementara `.env.local` lama sudah lengkap, `npm run dev` memakai cache Development tersebut lalu tetap menjalankan preflight Turso/schema/binding. Hasil pull yang berhasil tetapi invalid tetap fail-closed. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
 Jika `npm run dev` berhenti karena **hanya `DATABASE_ENVIRONMENT` yang belum tersedia**, jangan menambahkan `DATABASE_ENVIRONMENT=development` ke konfigurasi yang masih memakai database/token Production. Itu biasanya berarti cutover satu-database ADR-0007 belum selesai. Buat database Turso Development terpisah, arahkan `.env.local` ke URL/token Development, set `DATABASE_ENVIRONMENT=development`, lalu jalankan secara berurutan:
 

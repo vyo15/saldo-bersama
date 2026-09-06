@@ -1,7 +1,45 @@
+## 6 September 2026 - Kategori transaksi inline dan scalable
+
+- Mengubah pemilih **Kategori** pada composer transaksi mobile dari sub-view `Pilih kategori` menjadi `SelectionControl` embedded yang berkembang inline di grouped metadata surface, sehingga user tetap melihat konteks transaksi dan tidak berpindah layar untuk taxonomy kategori.
+- Kategori ≤6 item tetap tampil sederhana tanpa grouping/search. Daftar yang lebih panjang memakai search `Cari kategori…`, grup **Sering dipakai** dari histori rekening sumber canonical, grup **Semua kategori** tanpa duplikasi shortcut, serta panel bounded sekitar 15.5rem dengan internal scroll. Memilih kategori langsung menutup panel dan tetap memicu smart Alokasi existing melalui `update("category_id", ...)`; tidak ada mutation finansial baru.
+- `SelectionField` canonical kini mendukung option groups tanpa native `<select>` dan menjaga search sticky, selected check, Escape/outside dismiss, focus-visible, serta target sentuh mobile 44px. Selection view mobile tetap dipakai untuk rekening dan Alokasi Dana; code category picker lama di `MobileTransactionSelectionView` dibuang karena tidak lagi memiliki consumer.
+- Regression dan dokumentasi composer mobile diselaraskan; API, validator transaksi, authorization, ledger, idempotency, saldo, dan backend contract tidak berubah.
+
+## 6 September 2026 - Visual choice Kebutuhan dan fixed-choice consistency
+
+- Merapikan pilihan `Cara mencatat kebutuhan`: dua tile sejajar dengan tinggi konsisten, icon tile yang lebih tenang, selected check yang eksplisit, microcopy lebih singkat, dan helper note yang tidak lagi terasa seperti paragraf form panjang. `Berlaku untuk` pada form Kebutuhan juga memakai density compact agar modal tidak penuh card besar.
+- Menambahkan mode `descriptive` + `helperPanel` pada `VisualChoiceGroup` sebagai kontrak shared untuk keputusan fixed dua-opsi yang memang memerlukan penjelasan. Mode ini dipakai juga pada `Jenis` Jadwal Rutin dan `Aksi` penyesuaian Alokasi agar pola explanatory choice tidak drift antarfitur.
+- Memperbaiki `VisualChoiceGroup` agar option tanpa icon tetap valid dan memiliki layout compact yang benar; ini menutup edge case `Pembagian beban biaya` tanpa menambah icon dekoratif yang tidak diperlukan. Radio semantics, keyboard focus, reduced-motion, business logic, API, saldo, ledger, authorization, dan schema tidak berubah.
+- Menambah regression untuk descriptive fixed-choice serta menyelaraskan dokumentasi UI/QA agar future screen tidak kembali membuat card pilihan explanatory dengan hierarchy lokal yang berbeda.
+
+## 6 September 2026 - Packaging asset hygiene dan offline-safe Development bootstrap
+
+- Menghapus enam source PNG login desktop yang sudah tidak direferensikan setelah runtime memakai WebP transparan teroptimasi. Guard tooling baru menolak PNG duplikat kembali ke `frontend/public/login/assets/desktop/`, sehingga clean source ZIP kembali berada di bawah batas 5 MiB tanpa menaikkan batas packaging.
+- Memecah layout login desktop/mobile menjadi lazy chunk dari `LoginPage` agar route login tidak lagi berada hanya sekitar seratus byte dari budget 8 KiB; flow OAuth, auth state, onboarding, dan visual layout tidak berubah.
+- `npm run dev` tetap mencoba refresh Vercel Development pada setiap start interaktif, tetapi kini dapat memakai cache `.env.local` Development yang sudah lengkap ketika login/link/pull Vercel sementara tidak tersedia. Turso, schema, dan binding tetap diverifikasi fail-closed sebelum localhost dibuka; cache tidak lengkap atau hasil pull invalid tetap menghentikan startup.
+- Menambah regression untuk fallback control-plane Vercel, asset hygiene login desktop, dan lazy boundary login serta menyelaraskan ADR/setup/environment/test documentation.
+
+## 6 September 2026 - Desktop login exact reference-fit
+
+- Menyamakan presentasi login desktop dengan reference-fit v7 yang disetujui: brand/contact topbar, headline dan tiga manfaat di kiri, komposisi pasangan + ornamen transparan di tengah, card login Google di kanan, serta handwriting accent di kedua sisi.
+- Mengisolasi komposisi desktop ke `LoginDesktopReference.module.css` agar token/global CSS lama tidak menggeser ukuran, font, z-order, dan spacing reference; badge, profile card, heart, chart bubble, dan paper-plane mengikuti urutan layer reference sehingga tidak menimpa wajah karakter.
+- Menggunakan source WebP transparan teroptimasi dari source exact-reference untuk asset desktop utama dan mempertahankan `goal-badge.svg`, logo Saldo Bersama, serta logo Google yang byte-identical dengan preview. Mobile onboarding, halaman login keempat, swipe/pagination, theme toggle mobile, hujan uang, dan auth transport tidak diubah.
+- Menyelaraskan regression asset desktop dan dokumentasi design system tanpa perubahan API, session, authorization, schema, ledger, saldo, atau flow OAuth.
+- Menyempurnakan proporsi hasil visual QA: artwork pasangan sekarang dikunci lewat tinggi + `width:auto` agar rasio asli tidak terasa memanjang ke atas, kolom headline/manfaat diperlebar dan spacing diringkas, sementara panel login diperbesar beserta tombol Google dan trust indicator agar tidak tampak kecil atau seperti card yang dibungkus lagi.
+
+## 5 September 2026 - Redesign onboarding login mobile
+
+- Mengganti tiga scene onboarding login mobile dengan artwork transparan final yang konsisten dengan karakter Saldo Bersama: **Catat keuangan**, **Atur anggaran**, dan **Keuangan bersama**. Asset baru dioptimalkan ke WebP transparan sekitar 145–160 KB per scene dan hanya dimuat saat slide terkait aktif.
+- Menyederhanakan presentasi onboarding dari hero card/panel/badge bertumpuk menjadi satu ilustrasi utama dengan halo lembut, copy HTML ringkas, dan proporsi hero yang stabil pada viewport mobile. CTA `Kembali`/`Lanjut` dihapus agar chrome bawah lebih clean; navigasi tetap lengkap melalui swipe, pagination klik, Keyboard ArrowLeft/ArrowRight, dan `Lewati`.
+- Halaman login keempat tidak dirombak: logo, copy welcome, branded Google button, security labels, creator link, tema, efek uang jatuh, preferensi returning-device, dan transport auth production/local tetap sama. Asset onboarding lama `growth-board.webp` dan `phone-analytics.webp` dihapus karena tidak lagi direferensikan.
+- Merapikan regression setelah redesign: pagination memakai transform alih-alih animasi `width`, microcopy onboarding kembali ke token typography minimum 12px, dan assertion legacy `hero__kicker` dihapus karena elemen tersebut sudah tidak ada di runtime.
+- Menyelaraskan regression `ui-foundation` dan `UI_DESIGN_SYSTEM` dengan kontrak onboarding baru. Tidak ada perubahan API, session, authorization, schema, ledger, saldo, atau flow OAuth.
+
 ## 5 September 2026 - Build-budget headroom Alokasi
 
-- Memindahkan facade mutation `allocations.api.js` dari static route dependency menjadi on-demand dynamic import di `AllocationsPage`, sehingga create/move/adjust/lifecycle/reversal baru memuat facade ketika action dijalankan. Threshold route 8 KiB tidak dinaikkan dan business/API/idempotency contract tetap sama.
-- Menghapus helper/test `allocationGeneratedName` yang sudah orphan setelah flow final kembali mewajibkan `Nama alokasi` dari user. Regression build-budget sekarang mengunci facade Alokasi agar tidak kembali menjadi static dependency route.
+- Memindahkan seluruh orchestration mutation Alokasi (`create`, `move`, penyesuaian dana, close, lifecycle, reversal) ke `allocationActionRunners.js` yang dimuat on-demand saat user benar-benar menjalankan action. Percobaan awal yang hanya membuat `allocations.api.js` dinamis belum cukup karena logic orchestration dan copy mutation masih berada di route chunk; refactor ini memindahkan keduanya dari initial `AllocationsPage` tanpa menaikkan threshold 8 KiB.
+- `allocationActionRunners.js` tetap memakai facade lokal `allocations.api.js`, validator Rupiah canonical, guarded mutation di caller, row-version, idempotency, invalidation, dan feedback yang sama. Tidak ada perubahan ledger, saldo, authorization, schema, atau API contract.
+- Menghapus helper/test `allocationGeneratedName` yang sudah orphan setelah flow final kembali mewajibkan `Nama alokasi` dari user. Regression build-budget sekarang mengunci action runner agar tetap dynamic dan mencegah facade mutation kembali menjadi static dependency route.
 
 ## 5 September 2026 - Merge flow planning, UI consistency, dan lint quality-gate
 

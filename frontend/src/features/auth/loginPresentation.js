@@ -13,39 +13,42 @@ export const MOBILE_ONBOARDING = Object.freeze([
   {
     id: "saving",
     eyebrow: "Catat lebih mudah",
-    title: "Rajin menabung,",
-    accent: "bijak belanja.",
-    description: "Pantau pemasukan dan pengeluaran sehari-hari dengan tampilan yang ringan dan mudah dipahami.",
-    hero: { label: "Catat harian", meta: "Rapi • Cepat", badges: ["Pemasukan", "Pengeluaran"] },
-    assets: [
-      { src: `${MOBILE_ASSET_BASE}/phone-analytics.webp`, width: 559, height: 900, className: "login-mobile-asset--saving-main", priority: true, parallax: "soft" },
-      { src: `${MOBILE_ASSET_BASE}/piggy-bank.webp`, width: 900, height: 873, className: "login-mobile-asset--saving-support", parallax: "medium" },
-    ],
+    title: "Catat keuangan,",
+    accent: "tanpa ribet.",
+    description: "Pemasukan dan pengeluaran dalam satu tempat, mudah dipantau setiap hari.",
+    asset: {
+      src: `${MOBILE_ASSET_BASE}/onboarding-catat-keuangan.webp`,
+      width: 1240,
+      height: 1209,
+      priority: true,
+      parallax: "soft",
+    },
   },
   {
     id: "budget",
     eyebrow: "Lebih terencana",
     title: "Atur anggaran,",
-    accent: "hindari boros.",
-    description: "Pisahkan kebutuhan dan target agar batas belanja selalu terlihat sebelum uang digunakan.",
-    hero: { label: "Atur anggaran", meta: "Bulanan • Terkontrol", badges: ["Budget", "Target"] },
-    assets: [
-      { src: `${MOBILE_ASSET_BASE}/wallet.webp`, width: 797, height: 900, className: "login-mobile-asset--budget-main", parallax: "soft" },
-      { src: `${MOBILE_ASSET_BASE}/growth-board.webp`, width: 900, height: 687, className: "login-mobile-asset--budget-support", parallax: "medium" },
-    ],
+    accent: "tetap terkendali.",
+    description: "Tetapkan batas belanja dan target agar setiap rencana keuangan lebih mudah dijaga.",
+    asset: {
+      src: `${MOBILE_ASSET_BASE}/onboarding-atur-anggaran.webp`,
+      width: 1269,
+      height: 1232,
+      parallax: "soft",
+    },
   },
   {
     id: "shared",
-    eyebrow: "Tetap transparan",
+    eyebrow: "Untuk kalian berdua",
     title: "Keuangan bersama,",
     accent: "tetap jelas.",
-    description: "Kelola catatan pribadi dan bersama dari perangkat berbeda tanpa kehilangan gambaran keuangan kalian.",
-    hero: { label: "Untuk berdua", meta: "Sinkron • Transparan", badges: ["Bersama", "Perangkat"] },
-    assets: [
-      { src: `${MOBILE_ASSET_BASE}/hand-phone-dashboard.webp`, width: 677, height: 900, className: "login-mobile-asset--shared-main", parallax: "soft" },
-      { src: `${MOBILE_ASSET_BASE}/house.webp`, width: 900, height: 778, className: "login-mobile-asset--shared-house", parallax: "medium" },
-      { src: `${MOBILE_ASSET_BASE}/finance-checklist.webp`, width: 900, height: 840, className: "login-mobile-asset--shared-checklist", parallax: "soft" },
-    ],
+    description: "Catatan pribadi dan bersama tetap transparan, sinkron, dan mudah dipahami.",
+    asset: {
+      src: `${MOBILE_ASSET_BASE}/onboarding-keuangan-bersama.webp`,
+      width: 1232,
+      height: 1244,
+      parallax: "soft",
+    },
   },
 ]);
 
@@ -68,7 +71,7 @@ export const MOBILE_MONEY_NOTES = Object.freeze([
   { denomination: "50000", tone: "blue", left: "9%", rotation: "7deg", delay: "var(--motion-stagger-6)", drift: "31px" },
 ]);
 
-export const MOBILE_PAGE_LABELS = Object.freeze(["Menabung", "Anggaran", "Keuangan bersama", "Login"]);
+export const MOBILE_PAGE_LABELS = Object.freeze(["Catat keuangan", "Atur anggaran", "Keuangan bersama", "Login"]);
 
 export const mobileOAuthErrorFromSearch = (search) => {
   const code = new URLSearchParams(search || "").get("authError");

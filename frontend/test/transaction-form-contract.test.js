@@ -8,6 +8,7 @@ const source = () => Promise.all([
   "../src/features/transactions/transactionFormPresentation.js",
   "../src/features/transactions/components/TransactionFields.jsx",
   "../src/features/transactions/MobileTransactionFields.jsx",
+  "../src/features/transactions/MobileTransactionCategoryField.jsx",
   "../src/features/transactions/MobileTransactionSelectionView.jsx",
   "../src/features/transactions/components/TransactionImpactPreview.jsx",
   "../src/features/transactions/components/TransactionPostSaveModal.jsx",
@@ -157,11 +158,13 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
 });
 
 
-test("composer mobile memakai grouped metadata dan same-sheet selection tanpa nested dropdown", async () => {
-  const [form, mobile, selection, presentation] = await Promise.all([
+test("composer mobile menjaga rekening dan Alokasi di same-sheet selection sementara kategori berkembang inline", async () => {
+  const [form, mobile, category, selection, categoryCss, presentation] = await Promise.all([
     readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/MobileTransactionFields.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransactionCategoryField.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/MobileTransactionSelectionView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransactionFields.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/transactionFormPresentation.js", import.meta.url), "utf8"),
   ]);
 
@@ -170,14 +173,25 @@ test("composer mobile memakai grouped metadata dan same-sheet selection tanpa ne
   assert.match(form, /mobileSelection/);
   assert.match(form, /requestModalClose = mobileSelection \? closeMobileSelection : onClose/);
   assert.match(form, /closeIcon: FiChevronLeft/);
+  assert.doesNotMatch(form, /category: "Pilih kategori"/);
   assert.match(mobile, /styles\.detailGroup/);
   assert.match(mobile, /openMobileSelection\(p\.isIncome \? "destination-account" : "source-account"\)/);
-  assert.match(mobile, /openMobileSelection\("category"\)/);
+  assert.doesNotMatch(mobile, /openMobileSelection\("category"\)/);
+  assert.match(mobile, /<MobileTransactionCategoryField/);
   assert.match(mobile, /openMobileSelection\("envelope"\)/);
   assert.doesNotMatch(mobile, /<select/, "composer mobile default tidak memakai native select");
-  assert.match(selection, /id="mobile-category-search"/);
-  assert.match(selection, /frequentCategories/);
+  assert.match(category, /SelectionControl/);
+  assert.match(category, /embedded/);
+  assert.match(category, /frequentCategories/);
+  assert.match(category, /const grouped = visibleCategories\.length > 6/);
+  assert.match(category, /if \(!grouped\) return \[\{ key: "all", label: "", options: visibleCategories\.map\(categoryOption\) \}\]/);
+  assert.match(category, /label: "Sering dipakai"/);
+  assert.match(category, /label: "Semua kategori"/);
+  assert.match(category, /searchable=\{visibleCategories\.length > 6\}/);
+  assert.match(category, /searchPlaceholder="Cari kategori…"/);
+  assert.match(categoryCss, /max-height:\s*15\.5rem/);
   assert.match(selection, /sourceAccountPicker/);
+  assert.doesNotMatch(selection, /mobile-category-search|frequentCategories/);
   assert.doesNotMatch(selection, /showAll|Cari rekening|query:/);
   assert.match(presentation, /\{ value: "", label: "Belum dipilih" \}/);
   assert.match(presentation, /Auto-debit \(data lama\)/);

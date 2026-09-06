@@ -220,7 +220,7 @@ test("bootstrap otomatis login, link, pull Development, sanitasi OIDC, dan menul
   assert.equal(projectChecks, 1);
 }));
 
-test("bootstrap mempertahankan .env.local lama bila pull Development gagal", async () => withTempRoot(async (root) => {
+test("bootstrap memakai cache .env.local lengkap bila refresh Vercel Development tidak tersedia", async () => withTempRoot(async (root) => {
   const envPath = path.join(root, ".env.local");
   const original = completeEnvironment();
   await writeFile(envPath, original);
@@ -236,11 +236,45 @@ test("bootstrap mempertahankan .env.local lama bila pull Development gagal", asy
     return { code: 1 };
   };
 
+  const result = await ensureDevelopmentEnvironment({ projectRoot: root, interactive: true, runner });
+  assert.equal(result.source, "local-cache");
+  assert.equal(result.refreshErrorCode, "VERCEL_DEVELOPMENT_ENV_PULL_FAILED");
+  assert.equal(await readFile(envPath, "utf8"), original);
+}));
+
+test("bootstrap memakai cache .env.local lengkap bila login Vercel gagal karena control-plane tidak tersedia", async () => withTempRoot(async (root) => {
+  const envPath = path.join(root, ".env.local");
+  const original = completeEnvironment();
+  await writeFile(envPath, original);
+  let whoamiCalls = 0;
+  const runner = async ({ args }) => {
+    if (args[0] === "whoami") {
+      whoamiCalls += 1;
+      return { code: 1 };
+    }
+    if (args[0] === "login") return { code: 1 };
+    return { code: 1 };
+  };
+
+  const result = await ensureDevelopmentEnvironment({ projectRoot: root, interactive: true, runner });
+  assert.equal(result.source, "local-cache");
+  assert.equal(result.refreshErrorCode, "VERCEL_LOGIN_FAILED");
+  assert.equal(whoamiCalls, 1);
+  assert.equal(await readFile(envPath, "utf8"), original);
+}));
+
+test("bootstrap tetap fail closed bila login Vercel gagal dan cache Development belum lengkap", async () => withTempRoot(async (root) => {
+  const runner = async ({ args }) => {
+    if (args[0] === "whoami") return { code: 1 };
+    if (args[0] === "login") return { code: 1 };
+    return { code: 1 };
+  };
+
   await assert.rejects(
     ensureDevelopmentEnvironment({ projectRoot: root, interactive: true, runner }),
-    (error) => error.code === "VERCEL_DEVELOPMENT_ENV_PULL_FAILED",
+    (error) => error.code === "VERCEL_LOGIN_FAILED",
   );
-  assert.equal(await readFile(envPath, "utf8"), original);
+  await assert.rejects(readFile(path.join(root, ".env.local"), "utf8"), { code: "ENOENT" });
 }));
 
 test("bootstrap menolak hasil pull Development yang tidak memiliki Web Push tanpa mengganti local lama", async () => withTempRoot(async (root) => {

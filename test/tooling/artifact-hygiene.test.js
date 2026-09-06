@@ -170,6 +170,15 @@ test("local Git hooks tetap di luar clean source policy", async () => {
   assert.equal(policy.isCanonicalSourceFile(".git/hooks/pre-push"), false);
 });
 
+test("asset login desktop canonical hanya menyimpan format runtime teroptimasi", async () => {
+  const assetDirectory = path.join(root, "frontend", "public", "login", "assets", "desktop");
+  const names = (await readdir(assetDirectory)).sort();
+  assert.equal(names.some((name) => name.endsWith(".png")), false, `PNG source duplikat tidak boleh tinggal di ${assetDirectory}: ${names.join(", ")}`);
+  for (const required of ["couple-love.webp", "paper-plane.webp", "growth-bubble.webp", "profile-green.webp", "profile-red.webp", "heart.webp", "goal-badge.svg"]) {
+    assert.ok(names.includes(required), `Asset login desktop canonical hilang: ${required}`);
+  }
+});
+
 test("gitignore dan pin Node menjaga line ending canonical tanpa duplikasi CLI", async () => {
   const [gitignore, nodeVersion] = await Promise.all([
     readFile(path.join(root, ".gitignore"), "utf8"),

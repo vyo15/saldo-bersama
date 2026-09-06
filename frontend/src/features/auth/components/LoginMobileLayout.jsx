@@ -41,7 +41,7 @@ const CreatorLink = ({ mobile = false, tabIndex = 0 }) => (
 
 const MobileAsset = ({ asset }) => (
   <img
-    className={loginClass("login-mobile-asset", asset.className, `login-mobile-asset--parallax-${asset.parallax}`)}
+    className={loginClass("login-mobile-asset", `login-mobile-asset--parallax-${asset.parallax}`)}
     src={asset.src}
     width={asset.width}
     height={asset.height}
@@ -57,20 +57,8 @@ const MobileAsset = ({ asset }) => (
 const MobileOnboardingSlide = ({ slide, active }) => (
   <article className={loginClass("login-mobile-slide", "login-mobile-onboarding-slide", active && "is-active")} aria-hidden={!active}>
     <div className={loginClass("login-mobile-hero", `login-mobile-hero--${slide.id}`)} aria-hidden="true">
-      <div className={loginClass("login-mobile-hero__top")}>
-        <span className={loginClass("login-mobile-hero__kicker")}><i />{slide.hero.label}</span>
-        <span className={loginClass("login-mobile-hero__meta")}>{slide.hero.meta}</span>
-      </div>
-      <div className={loginClass("login-mobile-hero__panel")}>
-        <div className={loginClass("login-mobile-hero__lines")}>
-          <span />
-          <span className={loginClass("is-short")} />
-        </div>
-        <div className={loginClass("login-mobile-hero__badges")}>
-          {slide.hero.badges.map((badge) => <span key={badge}>{badge}</span>)}
-        </div>
-      </div>
-      {active ? slide.assets.map((asset) => <MobileAsset key={asset.src} asset={asset} />) : null}
+      <span className={loginClass("login-mobile-hero__halo")} />
+      {active ? <MobileAsset asset={slide.asset} /> : null}
     </div>
     <section className={loginClass("login-mobile-copy")}>
       <p className={loginClass("login-mobile-eyebrow")}>{slide.eyebrow}</p>
@@ -172,7 +160,9 @@ const MobileLoginLayout = ({
             <MobilePagination mobileSlide={mobileSlide} moveMobileSlide={moveMobileSlide} />
             {loginActive ? (
               <button type="button" className={loginClass("login-mobile-navigation__replay")} onClick={() => moveMobileSlide(0)} aria-label="Lihat pengenalan lagi">Ulang</button>
-            ) : <span className={loginClass("login-mobile-navigation__hint")}>Geser</span>}
+            ) : (
+              <span className={loginClass("login-mobile-navigation__spacer")} aria-hidden="true" />
+            )}
           </div>
         </footer>
         <p className="sr-only" aria-live="polite">Halaman {mobileSlide + 1} dari {MOBILE_SLIDE_COUNT}: {MOBILE_PAGE_LABELS[mobileSlide]}.</p>

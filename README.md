@@ -47,7 +47,7 @@ cd saldo-bersama
 npm run dev
 ```
 
-`npm run dev` adalah mode **Development lokal**: dependency disiapkan bila perlu, Vercel Development ditarik ke `.env.local`, profile wajib `DATABASE_ENVIRONMENT=development`, Turso Development harus reachable + schema/binding siap, lalu frontend dan lima endpoint API lokal dijalankan. Server tidak lagi dibuka bila database Development salah/unreachable.
+`npm run dev` adalah mode **Development lokal**: dependency disiapkan bila perlu, refresh Vercel Development selalu dicoba, profile wajib `DATABASE_ENVIRONMENT=development`, Turso Development harus reachable + schema/binding siap, lalu frontend dan lima endpoint API lokal dijalankan. Jika Vercel login/link/pull sedang tidak tersedia tetapi `.env.local` Development yang ada sudah lengkap, cache tersebut dapat dipakai sementara; database/schema/binding tetap diverifikasi sebelum server dibuka.
 
 Untuk troubleshooting/setup komputer baru tanpa menyalakan server, gunakan `npm run env:pull:development`, lalu `npm run env:status`. Status hanya menampilkan marker, host database, kelengkapan, dan fingerprint publik Web Push—bukan token/private key. Setelah seed Development pusat selesai, komputer tepercaya lain tidak perlu membuat `.env.local` atau VAPID baru secara manual.
 

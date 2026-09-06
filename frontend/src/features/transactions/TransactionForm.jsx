@@ -36,7 +36,6 @@ import {
 } from "./transactionFormController.js";
 
 const mobileSelectionTitle = (selection) => ({
-  category: "Pilih kategori",
   "source-account": "Pilih rekening sumber",
   "destination-account": "Pilih rekening tujuan",
   envelope: "Pilih Alokasi Dana",
@@ -230,7 +229,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outc
   const closeMobileSelection = () => {
     const previousSelection = state.mobileSelection;
     state.setMobileSelection(null);
-    const focusId = { category: "category", "source-account": "source-account", "destination-account": "destination-account", envelope: "envelope" }[previousSelection];
+    const focusId = { "source-account": "source-account", "destination-account": "destination-account", envelope: "envelope" }[previousSelection];
     if (focusId) window.requestAnimationFrame(() => document.getElementById(focusId)?.focus?.({ preventScroll: true }));
   };
   const onCostShareChange = () => state.setErrors((current) => clearTransactionFieldErrors(current, "cost_share_mode"));

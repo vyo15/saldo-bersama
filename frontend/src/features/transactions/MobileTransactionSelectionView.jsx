@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { FiCheck, FiSearch } from "react-icons/fi";
+import { useEffect, useMemo, useRef } from "react";
+import { FiCheck } from "react-icons/fi";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
-import { frequentCategories, orderedEnvelopeOptions, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
+import { orderedEnvelopeOptions, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
 import styles from "./MobileTransactionSelectionView.module.css";
-
-const normalizeSearch = (value) => String(value || "").trim().toLocaleLowerCase("id-ID");
 
 const SelectionRow = ({ selected, title, meta, onClick, disabled = false }) => (
   <button
@@ -24,81 +22,6 @@ const SelectionRow = ({ selected, title, meta, onClick, disabled = false }) => (
     <FiCheck className={styles.choiceCheck} aria-hidden="true" />
   </button>
 );
-
-const CategorySelection = ({ fields, onBack }) => {
-  const [query, setQuery] = useState("");
-  useEffect(() => setQuery(""), [fields.form.transaction_type, fields.form.source_account_id]);
-
-  const quickCategories = useMemo(
-    () => frequentCategories({
-      recentTransactions: fields.recentTransactions,
-      sourceAccountId: fields.form.source_account_id,
-      visibleCategories: fields.visibleCategories,
-    }),
-    [fields.form.source_account_id, fields.recentTransactions, fields.visibleCategories],
-  );
-
-  const filtered = useMemo(() => {
-    const normalized = normalizeSearch(query);
-    if (!normalized) return fields.visibleCategories;
-    return fields.visibleCategories.filter((item) => normalizeSearch(item.name).includes(normalized));
-  }, [fields.visibleCategories, query]);
-
-  const choose = (categoryId) => {
-    fields.update("category_id", categoryId);
-    onBack();
-  };
-
-  return (
-    <div className={styles.selectionContent}>
-      <label className={styles.searchField} htmlFor="mobile-category-search">
-        <FiSearch aria-hidden="true" />
-        <input
-          id="mobile-category-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}
-          placeholder="Cari kategori…"
-          autoComplete="off"
-          disabled={fields.outcomeUnknown}
-        />
-      </label>
-
-      {!query && quickCategories.length ? (
-        <>
-          <span className={styles.groupLabel}>Sering dipakai</span>
-          <div className={styles.frequentRow}>
-            {quickCategories.map((item) => (
-              <button
-                key={item.category_id}
-                type="button"
-                aria-pressed={fields.form.category_id === item.category_id}
-                onClick={() => choose(item.category_id)}
-                disabled={fields.outcomeUnknown}
-              >
-                {item.name}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
-
-      <span className={styles.groupLabel}>{query ? "Hasil pencarian" : "Semua kategori"}</span>
-      <div className={styles.choiceList} aria-label="Kategori transaksi">
-        {filtered.length ? filtered.map((item) => (
-          <SelectionRow
-            key={item.category_id}
-            selected={fields.form.category_id === item.category_id}
-            title={item.name}
-            onClick={() => choose(item.category_id)}
-            disabled={fields.outcomeUnknown}
-          />
-        )) : <p className={styles.empty}>Kategori tidak ditemukan.</p>}
-      </div>
-    </div>
-  );
-};
 
 const sourceAccountMeta = (item, transactionType) => {
   if (transactionType === TRANSACTION_TYPES.TRANSFER) {
@@ -216,7 +139,6 @@ const MobileTransactionSelectionView = ({ selection, fields, onBack }) => {
   }, [selection]);
 
   let content = null;
-  if (selection === "category") content = <CategorySelection fields={fields} onBack={onBack} />;
   if (selection === "source-account" || selection === "destination-account") {
     content = <AccountSelection selection={selection} fields={fields} onBack={onBack} />;
   }

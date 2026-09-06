@@ -246,16 +246,21 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
 });
 
 test("login desktop dan mobile memakai tombol branded dengan server OAuth production serta popup Firebase lokal", async () => {
-  const assetNames = [
-    "hand-phone-dashboard.webp",
-    "piggy-bank.webp",
-    "wallet.webp",
-    "growth-board.webp",
-    "finance-checklist.webp",
-    "house.webp",
-    "phone-analytics.webp",
+  const mobileAssetNames = [
+    "onboarding-catat-keuangan.webp",
+    "onboarding-atur-anggaran.webp",
+    "onboarding-keuangan-bersama.webp",
   ];
-  const [login, loginStyles, app, routeModules, main, pages, mobileAuth, authRouting, onboardingPreference, desktopLight, desktopDark, logo, googleLogo, ...mobileAssets] = await Promise.all([
+  const desktopAssetNames = [
+    "couple-love.webp",
+    "paper-plane.webp",
+    "growth-bubble.webp",
+    "goal-badge.svg",
+    "profile-green.webp",
+    "profile-red.webp",
+    "heart.webp",
+  ];
+  const loaded = await Promise.all([
     Promise.all([
       read("src/features/auth/LoginPage.jsx"),
       read("src/features/auth/loginPresentation.js"),
@@ -263,7 +268,11 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
       read("src/features/auth/components/LoginMobileLayout.jsx"),
       read("src/features/auth/components/LoginFeedback.jsx"),
     ]).then((parts) => parts.join("\n")),
-    Promise.all([read("src/features/auth/LoginPage.module.css"), read("src/features/auth/LoginMobile.module.css")]).then((parts) => parts.join("\n")),
+    Promise.all([
+      read("src/features/auth/LoginPage.module.css"),
+      read("src/features/auth/LoginMobile.module.css"),
+      read("src/features/auth/components/LoginDesktopReference.module.css"),
+    ]).then((parts) => parts.join("\n")),
     read("src/app/App.jsx"),
     read("src/app/routeModules.js"),
     read("src/main.jsx"),
@@ -275,13 +284,35 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     readFile(new URL("../public/login/desktop-dark.webp", import.meta.url)),
     readFile(new URL("../public/brand/saldo-bersama-mark.png", import.meta.url)),
     readFile(new URL("../public/login/google-g-logo.png", import.meta.url)),
-    ...assetNames.map((name) => readFile(new URL(`../public/login/assets/mobile/${name}`, import.meta.url))),
+    ...mobileAssetNames.map((name) => readFile(new URL(`../public/login/assets/mobile/${name}`, import.meta.url))),
+    ...desktopAssetNames.map((name) => readFile(new URL(`../public/login/assets/desktop/${name}`, import.meta.url))),
   ]);
+  const [
+    login,
+    loginStyles,
+    app,
+    routeModules,
+    main,
+    pages,
+    mobileAuth,
+    authRouting,
+    onboardingPreference,
+    desktopLight,
+    desktopDark,
+    logo,
+    googleLogo,
+    ...loadedAssets
+  ] = loaded;
+  const mobileAssets = loadedAssets.slice(0, mobileAssetNames.length);
+  const desktopAssets = loadedAssets.slice(mobileAssetNames.length);
 
   assert.match(login, /MOBILE_LOGIN_QUERY = APP_MEDIA\.mobile/);
   assert.match(login, /MOBILE_SLIDE_COUNT = 4/);
   assert.match(login, /MOBILE_ONBOARDING/);
-  for (const assetName of assetNames) assert.match(login, new RegExp(assetName.replace(".", "\\.")));
+  for (const assetName of [...mobileAssetNames, ...desktopAssetNames]) assert.match(login, new RegExp(assetName.replace(".", "\\.")));
+  assert.match(login, /onboarding-catat-keuangan\.webp/);
+  assert.match(login, /onboarding-atur-anggaran\.webp/);
+  assert.match(login, /onboarding-keuangan-bersama\.webp/);
   assert.doesNotMatch(login, /mobile-onboarding-saving\.webp|mobile-onboarding-budget\.webp|mobile-login\.webp/);
   assert.match(login, /\/brand\/saldo-bersama-mark\.png/);
   assert.match(login, /desktop-light\.webp/);
@@ -292,9 +323,20 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(login, /href="https:\/\/www\.linkedin\.com\/in\/vio-yusup-iskandar\/"/);
   assert.match(login, /rel="noopener noreferrer"/);
 
-  // Onboarding mobile mengandalkan swipe, pagination, dan Lewati; progress, back, serta tombol Lanjut besar sudah dipensiunkan.
-  assert.doesNotMatch(login, /login-mobile-next|nextLabel|FiArrowRight|FiArrowLeft|login-mobile-progress|login-mobile-back/);
-  assert.doesNotMatch(loginStyles, /\.login-mobile-(?:next|progress|back)/);
+  // Onboarding mobile tetap operable tanpa CTA back/next: swipe, pagination, keyboard, dan Lewati menjadi jalur canonical.
+  assert.match(login, /login-mobile-pagination/);
+  assert.match(login, /event\.key === "ArrowRight"/);
+  assert.match(login, /event\.key === "ArrowLeft"/);
+  assert.match(login, />\s*Lewati\s*</);
+  assert.doesNotMatch(login, /login-mobile-navigation__action|>\s*Kembali\s*<|>\s*Lanjut\s*</);
+  assert.doesNotMatch(loginStyles, /\.login-mobile-navigation__action|\.login-mobile-(?:next|progress|back)/);
+
+  // Desktop menjaga proporsi artwork intrinsik, copy kiri compact, dan panel auth tidak dikecilkan wrapper tambahan.
+  assert.match(login, /<h2>Catat keuangan,<strong>tanpa ribet\.<\/strong><\/h2>/);
+  assert.doesNotMatch(login, /<Feature[^>]*>[^<]*<br \/>/);
+  assert.match(loginStyles, /\.couple\s*\{[\s\S]*width:\s*auto;[\s\S]*height:\s*min\(68vh,\s*610px\);/);
+  assert.match(loginStyles, /\.loginCard\s*\{[\s\S]*max-width:\s*500px;[\s\S]*min-height:\s*500px;/);
+  assert.match(loginStyles, /\.features\s*\{[\s\S]*gap:\s*9px;[\s\S]*margin-top:\s*14px;/);
 
   // Desktop dan mobile memakai tombol HTML branded yang sama. Production memakai server OAuth; localhost tetap popup Firebase untuk development.
   assert.doesNotMatch(login, /renderGoogleLoginButton|google-login-button/);
@@ -334,7 +376,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.match(mobileAuth, /auth\/popup-blocked/);
   assert.match(mobileAuth, /auth\/web-storage-unsupported/);
   assert.doesNotMatch(login, /await preloadLocalGoogleAuth\(\)/);
-  assert.match(login, /active \? slide\.assets\.map/);
+  assert.match(login, /active \? <MobileAsset asset=\{slide\.asset\} \/> : null/);
   assert.match(login, /aria-label="Lihat pengenalan lagi"/);
   assert.match(mobileAuth, /initializeAuth/);
   assert.doesNotMatch(mobileAuth, /await setPersistence/);
@@ -353,11 +395,12 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
   assert.doesNotMatch(pages, /\.login-page\b|\.login-mobile-|\.login-desktop-/);
   assert.match(loginStyles, /\.login-desktop-stage \{[\s\S]*height:\s*100dvh;/);
   assert.match(loginStyles, /\.login-mobile-stage \{[\s\S]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto;/);
-  assert.doesNotMatch(loginStyles, /\.login-mobile-stage\.is-login-active/);
+  assert.match(loginStyles, /\.login-mobile-stage\.is-login-active \.login-mobile-navigation__row/);
   assert.match(loginStyles, /\.login-mobile-track \{[\s\S]*width:\s*400%;/);
   assert.match(loginStyles, /\.login-mobile-slide \{[\s\S]*overflow:\s*hidden;/);
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border:\s*1px solid #747775;[^}]*background:\s*#fff;/);
-  assert.match(loginStyles, /\.login-mobile-navigation__replay \{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+  assert.match(loginStyles, /\.login-mobile-stage\.is-login-active \.login-mobile-navigation__spacer,[\s\S]*\.login-mobile-stage\.is-login-active \.login-mobile-navigation__replay \{[^}]*width:\s*44px;/);
+  assert.match(loginStyles, /\.login-mobile-navigation__replay \{[^}]*min-height:\s*44px;/);
   assert.match(loginStyles, /\.login-provider-slot--desktop \.login-mobile-google-button \{[^}]*min-height:\s*54px;[^}]*border-radius:\s*16px;/);
   assert.match(loginStyles, /\.login-mobile-google-button:disabled \{[^}]*cursor:\s*wait;/);
   assert.match(loginStyles, /@keyframes login-google-spin/);
@@ -375,7 +418,7 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
     "money-note.webp",
     "money-stack.webp",
   ]) assert.doesNotMatch(login, new RegExp(staleAsset.replace(".", "\\.")));
-  for (const asset of [desktopLight, desktopDark, logo, googleLogo, ...mobileAssets]) assert.ok(asset.length > 1_000);
+  for (const asset of [desktopLight, desktopDark, logo, googleLogo, ...mobileAssets, ...desktopAssets]) assert.ok(asset.length > 1_000);
   assert.deepEqual({ width: logo.readUInt32BE(16), height: logo.readUInt32BE(20) }, { width: 320, height: 320 });
   assert.ok(logo.length <= 80_000, `Logo project terlalu besar untuk auth shell (${logo.length} byte)`);
   assert.deepEqual({ width: googleLogo.readUInt32BE(16), height: googleLogo.readUInt32BE(20) }, { width: 48, height: 49 });

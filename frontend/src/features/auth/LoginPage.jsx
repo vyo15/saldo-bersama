@@ -1,9 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useTheme } from "../../app/ThemeContext.jsx";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import DesktopLoginLayout from "./components/LoginDesktopLayout.jsx";
-import MobileLoginLayout from "./components/LoginMobileLayout.jsx";
 import {
   isCanonicalProductionGoogleOAuth,
   normalizeAuthReturnTo,
@@ -13,6 +11,9 @@ import { MOBILE_LOGIN_QUERY, MOBILE_LOGIN_SLIDE, mobileOAuthErrorFromSearch } fr
 import { hasSeenMobileOnboarding, markMobileOnboardingSeen } from "./loginOnboardingPreference.js";
 import { useAuth } from "./AuthContext.jsx";
 import { loginStyle } from "./loginStyles.js";
+
+const DesktopLoginLayout = lazy(() => import("./components/LoginDesktopLayout.jsx"));
+const MobileLoginLayout = lazy(() => import("./components/LoginMobileLayout.jsx"));
 
 let localGoogleAuthModulePromise = null;
 const preloadLocalGoogleAuth = () => {
@@ -197,17 +198,23 @@ const LoginPage = () => {
     onLogin: handleGoogleLogin,
   };
   if (mobileLayout) return (
-    <MobileLoginLayout
-      mobileSlide={mobileSlide}
-      moveMobileSlide={moveMobileSlide}
-      beginSwipe={beginSwipe}
-      moveSwipe={moveSwipe}
-      finishSwipe={finishSwipe}
-      trackRef={trackRef}
-      mobileAuthProps={googleAuthProps}
-    />
+    <Suspense fallback={null}>
+      <MobileLoginLayout
+        mobileSlide={mobileSlide}
+        moveMobileSlide={moveMobileSlide}
+        beginSwipe={beginSwipe}
+        moveSwipe={moveSwipe}
+        finishSwipe={finishSwipe}
+        trackRef={trackRef}
+        mobileAuthProps={googleAuthProps}
+      />
+    </Suspense>
   );
-  return <DesktopLoginLayout theme={theme} authProps={googleAuthProps} />;
+  return (
+    <Suspense fallback={null}>
+      <DesktopLoginLayout theme={theme} authProps={googleAuthProps} />
+    </Suspense>
+  );
 };
 
 export default LoginPage;

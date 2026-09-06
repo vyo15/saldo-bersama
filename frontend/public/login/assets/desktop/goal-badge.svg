@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="72" viewBox="0 0 180 72" fill="none">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="180" y2="72" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F4FFFB"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="24" y1="16" x2="52" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#56E3B8"/>
+      <stop offset="1" stop-color="#03A97E"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="180" height="72" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#007B64" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <rect x="6" y="8" width="168" height="52" rx="18" fill="url(#g1)" stroke="#DDEEE8"/>
+    <circle cx="38" cy="34" r="18" fill="url(#g2)"/>
+    <path d="M30 34.5 35.2 39.5 46 28.8" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="64" y="31" fill="#112D2A" font-size="14" font-family="Inter, Arial, sans-serif" font-weight="700">Tujuan</text>
+    <text x="64" y="47" fill="#112D2A" font-size="14" font-family="Inter, Arial, sans-serif" font-weight="700">Bersama</text>
+  </g>
+</svg>

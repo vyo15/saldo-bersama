@@ -12,6 +12,18 @@ import {
 
 export const DEFAULT_VERCEL_PROJECT = "saldo-bersama";
 
+const VERCEL_REFRESH_AVAILABILITY_CODES = new Set([
+  "VERCEL_LOGIN_FAILED",
+  "VERCEL_LOGIN_UNAVAILABLE",
+  "VERCEL_LINK_FAILED",
+  "VERCEL_DEVELOPMENT_ENV_UNAVAILABLE",
+  "VERCEL_DEVELOPMENT_ENV_PULL_FAILED",
+]);
+
+const canUseCompleteLocalFallback = (local, error) => Boolean(
+  local?.complete && VERCEL_REFRESH_AVAILABILITY_CODES.has(error?.code),
+);
+
 export const normalizeVercelGitignore = async (projectRoot) => {
   const gitignorePath = path.join(projectRoot, ".gitignore");
   let source;
@@ -193,9 +205,27 @@ export const ensureDevelopmentEnvironment = async ({
   const temporaryPath = path.join(projectRoot, `.env.local.vercel-${process.pid}-${Date.now()}.tmp`);
 
   try {
-    await ensureVercelLogin({ cwd: projectRoot, runner });
-    await ensureVercelProject({ cwd: projectRoot, projectName, runner });
-    await pullDevelopmentEnvironment({ cwd: projectRoot, target: temporaryPath, runner });
+    try {
+      await ensureVercelLogin({ cwd: projectRoot, runner });
+      await ensureVercelProject({ cwd: projectRoot, projectName, runner });
+      await pullDevelopmentEnvironment({ cwd: projectRoot, target: temporaryPath, runner });
+    } catch (error) {
+      if (!canUseCompleteLocalFallback(local, error)) throw error;
+      console.warn(
+        `Refresh Vercel Development tidak tersedia (${error.code}). Menggunakan cache .env.local Development yang sudah lengkap.`,
+      );
+      console.warn(
+        "Turso Development, schema, dan binding tetap diverifikasi sebelum localhost dibuka.",
+      );
+      return {
+        source: "local-cache",
+        envPath,
+        missing: [],
+        invalid: [],
+        removed: local.removed,
+        refreshErrorCode: error.code,
+      };
+    }
 
     const pulledSource = await readFile(temporaryPath, "utf8");
     const merged = mergeDevelopmentEnvironment({ pulledSource });

@@ -14,10 +14,19 @@ test("shared visual choice control keeps radio semantics and balanced responsive
   assert.match(source, /required=\{required && index === 0\}/);
   assert.match(source, /mobileColumns/);
   assert.match(source, /safeMobileColumns/);
+  assert.match(source, /descriptive/);
+  assert.match(source, /helperPanel/);
+  assert.match(source, /Icon \? <span className=\{styles\.iconWrap\}/);
   assert.match(css, /--visual-choice-columns/);
   assert.match(css, /--visual-choice-mobile-columns/);
   assert.match(css, /focus-visible/);
   assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /\.descriptive \.card/);
+  assert.match(css, /\.selectionMark/);
+  assert.match(css, /color:\s*inherit/);
+  assert.match(css, /color-mix\(in srgb, currentColor 42%, var\(--border\)\)/);
+  assert.match(css, /\.helperPanel/);
+  assert.match(css, /\.compact \.card\.noIcon/);
 });
 
 test("money in and money out use the same cash-note language with opposite arrows", async () => {
@@ -56,6 +65,18 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
   for (const source of sources) assert.doesNotMatch(source, /<select\b/);
 });
 
+test("descriptive fixed choices keep explanatory decisions calm and consistent", async () => {
+  const [budgets, recurring, allocations] = await Promise.all([
+    read("features/budgets/BudgetDialogLayer.jsx"),
+    read("features/recurring/RecurringDialogs.jsx"),
+    read("features/allocations/AllocationDialogLayer.jsx"),
+  ]);
+  assert.match(budgets, /legend="Cara mencatat kebutuhan"[\s\S]*descriptive[\s\S]*helperPanel/);
+  assert.match(budgets, /legend="Berlaku untuk"[\s\S]*compact[\s\S]*wrapLabels/);
+  assert.match(recurring, /legend="Jenis"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
+  assert.match(allocations, /legend="Aksi"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
+});
+
 test("SelectionField keeps app-owned selection accessible without native browser dropdowns", async () => {
   const [source, css] = await Promise.all([
     read("components/common/SelectionField.jsx"),
@@ -64,10 +85,14 @@ test("SelectionField keeps app-owned selection accessible without native browser
   assert.match(source, /aria-expanded=\{open\}/);
   assert.match(source, /aria-pressed=\{isSelected\}/);
   assert.match(source, /type="search"/);
+  assert.match(source, /groups = \[\]/);
+  assert.match(source, /SelectionGroups/);
   assert.match(source, /document\.addEventListener\("keydown"/);
   assert.match(css, /@media \(max-width: 820px\)/);
   assert.match(css, /\.trigger,\s*\n\s*\.compact \.trigger,\s*\n\s*\.embedded \.trigger,\s*\n\s*\.search,\s*\n\s*\.search input \{\s*\n\s*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(css, /\.option \{[^}]*min-height:\s*var\(--control-height-md\);/s);
   assert.match(css, /\.triggerValue \{[^}]*font-size:\s*var\(--font-size-body-sm\);/s);
   assert.match(css, /\.optionMeta \{[^}]*font-size:\s*var\(--font-size-xs\);/s);
+  assert.match(css, /\.groupLabel \{/);
+  assert.match(css, /\.search \{[^}]*position:\s*sticky;/s);
 });
