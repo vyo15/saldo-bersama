@@ -3,7 +3,6 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const ThemeContext = createContext(null);
 const STORAGE_KEY = "saldo-bersama-theme";
 const THEMES = new Set(["light", "dark"]);
-const THEME_COLORS = { light: "#f6fbf9", dark: "#0b1110" };
 
 const systemTheme = () => {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "light";
@@ -27,7 +26,8 @@ const applyTheme = (theme) => {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
   const themeColor = document.querySelector('meta[name="theme-color"]');
-  if (themeColor) themeColor.setAttribute("content", THEME_COLORS[theme]);
+  const pageColor = document.defaultView?.getComputedStyle(document.documentElement).getPropertyValue("--page").trim();
+  if (themeColor && pageColor) themeColor.setAttribute("content", pageColor);
 };
 
 export const initializeTheme = () => {

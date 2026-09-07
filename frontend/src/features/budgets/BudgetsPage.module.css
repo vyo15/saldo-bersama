@@ -293,3 +293,12 @@
     transition: none;
   }
 }
+
+.desktopPageHeader { display: block; }
+@media (min-width: 821px) {
+  .pageHeader { display: none; }
+  .controlsRow { width: fit-content; min-width: min(100%, 22rem); }
+}
+@media (max-width: 820px) {
+  .desktopPageHeader { display: none; }
+}

@@ -4,7 +4,7 @@ import { FiSliders } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
-import PageInfoButton from "../../components/common/PageInfoButton.jsx";
+import PageHeader from "../../components/common/PageHeader.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
@@ -42,9 +42,10 @@ const BudgetListSection = ({ activeFilter, setActiveFilter, visibleItems, critic
 };
 
 const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, activeFilter, setActiveFilter, items, attentionCount, totals, visibleItems, criticalFirst, setCriticalFirst, categoryLookup, unlinkedCount }) => <div className={`page-stack budgets-page ${styles.page}`}>
+  <div className={styles.desktopPageHeader}><PageHeader eyebrow="Perencanaan" title="Anggaran" description={`Pantau pemakaian kebutuhan untuk ${periodMeta.label} dan prioritaskan pos yang perlu perhatian.`} help="Anggaran adalah ringkasan seluruh Kebutuhan dari Alokasi Dana. Pembuatan dan perubahan Kebutuhan tetap dilakukan dari detail Alokasi Dana agar tidak ada fungsi ganda." /></div>
   <header className={styles.pageHeader}>
     <div className={styles.pageHeading}>
-      <div className={styles.pageTitleRow}><h1>Anggaran</h1><PageInfoButton title="Tentang Anggaran">Anggaran adalah ringkasan seluruh Kebutuhan dari Alokasi Dana. Pembuatan dan perubahan Kebutuhan tetap dilakukan dari detail Alokasi Dana agar tidak ada fungsi ganda.</PageInfoButton></div>
+      <div className={styles.pageTitleRow}><h1>Anggaran</h1></div>
       <span>{periodMeta.label}</span>
     </div>
   </header>

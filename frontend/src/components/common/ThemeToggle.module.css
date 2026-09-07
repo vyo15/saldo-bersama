@@ -49,6 +49,8 @@
   backdrop-filter: blur(10px);
 }
 
+.hero:focus-visible { outline-color: var(--on-hero); }
+
 @media (hover: hover) and (pointer: fine) {
   .hero:hover {
     border-color: var(--glass-border);

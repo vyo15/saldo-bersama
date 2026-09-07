@@ -19,6 +19,7 @@ const compactSnapshot = async (db, context, period) => {
     generatedAt: nowIso(),
     totals: {
       totalBalance: overview.totalBalance,
+      nonInvestmentBalance: overview.nonInvestmentBalance,
       liquidBalance: overview.liquidBalance,
       safeToSpend: overview.safeToSpend,
       protectedBalance: overview.protectedBalance,

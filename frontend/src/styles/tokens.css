@@ -34,6 +34,7 @@
   --primary-soft: #e8f5ef;
   --secondary: #2cc295;
   --secondary-soft: #e5f8f1;
+  --on-secondary: #061412;
   /* Status foregrounds are contrast-adjusted variants of the approved accents. */
   --positive: #15803d;
   --positive-soft: #e8f7ee;
@@ -53,7 +54,7 @@
   --on-negative: #ffffff;
   --on-hero: #f4faf7;
   --on-hero-soft: rgba(244, 250, 247, 0.82);
-  --on-hero-muted: rgba(244, 250, 247, 0.7);
+  --on-hero-muted: rgba(244, 250, 247, 0.94);
   --hero-start: #047a5d;
   --hero-mid: #03624c;
   --hero-end: #0f1a18;
@@ -167,15 +168,16 @@
   --border: #1f342f;
   --border-strong: #52776d;
   --primary: #10b981;
-  --primary-strong: #0e9f6e;
+  --primary-strong: #13b77d;
   --primary-hover: #16c784;
   --primary-deep: #087a55;
   --primary-soft: rgba(16, 185, 129, 0.14);
   --secondary: #2cc295;
   --secondary-soft: rgba(44, 194, 149, 0.14);
+  --on-secondary: #061412;
   --positive: #22c55e;
   --positive-soft: rgba(34, 197, 94, 0.16);
-  --negative: #ef4444;
+  --negative: #f2665a;
   --negative-soft: rgba(239, 68, 68, 0.16);
   --warning: #f59e0b;
   --warning-soft: rgba(245, 158, 11, 0.16);
@@ -191,7 +193,7 @@
   --on-negative: #0b1110;
   --on-hero: #f4faf7;
   --on-hero-soft: rgba(244, 250, 247, 0.82);
-  --on-hero-muted: rgba(244, 250, 247, 0.7);
+  --on-hero-muted: rgba(244, 250, 247, 0.94);
   --hero-start: #03624c;
   --hero-mid: #024c3b;
   --hero-end: #0b1110;

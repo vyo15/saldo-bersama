@@ -3,6 +3,13 @@
 | Istilah | Definisi canonical |
 |---|---|
 | Rekening | Wadah saldo dengan saldo awal dan transaksi; dapat `shared` atau `personal`. |
+| Saldo rekening | Jumlah saldo cash rekening readable non-investasi. Ini angka utama Beranda dan berbeda dari Cash RDN/Total investasi. |
+| Cash RDN | Saldo cash pada rekening canonical `account_type=investment`. Cash RDN adalah dana investasi, tidak masuk Aman digunakan atau dana belum dialokasikan, dan ordinary ledger hanya memindahkannya melalui Transfer. |
+| Nilai aset | Nilai tercatat holding investasi pada harga terakhir yang diketahui dari read-model Investasi. |
+| Total investasi tercatat | Nilai aset + Cash RDN dari `investments.overview`; bukan saldo operasional Beranda. |
+| Aman digunakan | Dana operasional non-investasi yang dapat dipakai actor setelah proteksi, Alokasi Dana, dan komitmen Jadwal Rutin operasional. |
+| Total kekayaan tercatat | Snapshot saat ini: Saldo rekening + Total investasi tercatat. Tidak dipakai sebagai historical market-value tanpa histori valuasi authoritative. |
+| Saldo seluruh rekening | Saldo cash seluruh rekening readable termasuk RDN; dipakai untuk tren ledger/report yang secara eksplisit berlabel seluruh rekening. |
 | Saldo | Saldo fisik rekening: saldo awal ditambah dampak seluruh transaksi aktif hingga cutoff. Alokasi tidak membuat saldo baru. |
 | Dana tersedia | Saldo fisik rekening dikurangi seluruh sisa Alokasi Dana aktif yang bersumber dari rekening tersebut. Ini adalah dana yang masih bebas dipakai untuk transaksi tanpa Alokasi Dana atau Transfer. |
 | Dialokasikan | Total sisa Alokasi Dana aktif yang masih terikat pada rekening sumber. Nilai ini merupakan bagian dari Saldo, bukan tambahan di atas Saldo. |
@@ -38,4 +45,4 @@
 
 - Definisi glossary adalah sumber makna product. UI boleh memendekkan kalimat, tetapi tidak boleh mengubah relasi finansialnya.
 - Untuk Rekening, copy canonical frontend berada di `frontend/src/shared/presentation/account.js`: `ACCOUNT_BALANCE_GUIDANCE`, `ACCOUNT_AVAILABLE_BALANCE_HINT`, dan `ACCOUNT_ALLOCATED_BALANCE_HINT`.
-- Page Info Perencanaan/Anggaran serta helper Rekening/Dashboard harus memakai makna yang sama: Alokasi Dana adalah bagian Saldo, Kebutuhan adalah anggaran kategori di dalam Alokasi Dana, dan Anggaran adalah ringkasan read-only seluruh Kebutuhan.
+- Page Info Perencanaan/Anggaran serta helper Rekening/Dashboard harus memakai makna yang sama: Alokasi Dana adalah bagian Saldo rekening non-investasi, Kebutuhan adalah anggaran kategori di dalam Alokasi Dana, Anggaran adalah ringkasan read-only seluruh Kebutuhan, dan Cash RDN tidak menjadi dana operasional.

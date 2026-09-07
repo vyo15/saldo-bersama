@@ -66,23 +66,23 @@ const PortfolioHero = ({ summary, portfolioCount }) => {
     <section className={heroStyles.hero} aria-labelledby="investment-total-value">
       <div className={heroStyles.heroMain}>
         <div className={heroStyles.heroCopy}>
-          <span className={heroStyles.heroLabel}>Total nilai portofolio tercatat</span>
+          <span className={heroStyles.heroLabel}>Total investasi tercatat</span>
           <strong className={heroStyles.heroValue} id="investment-total-value"><Money value={total} /></strong>
           <div className={heroStyles.heroReturnRow}>
-            <span className={`${heroStyles.heroReturn} ${tone(values.unrealized_pl)}`}>
+            {Number(values.cost_basis || 0) > 0 || Number(values.holding_count || 0) > 0 ? <span className={`${heroStyles.heroReturn} ${tone(values.unrealized_pl)}`}>
               <TrendIcon aria-hidden="true" />
               <span><Money value={values.unrealized_pl} />{unrealizedPercent != null ? ` · ${percentLabel(unrealizedPercent)}` : ""}</span>
-            </span>
+            </span> : <span className={heroStyles.heroReturn}>Belum ada aset tercatat</span>}
             <span className={heroStyles.heroMeta}>{portfolioCount.toLocaleString("id-ID")} portofolio · {(values.holding_count || 0).toLocaleString("id-ID")} aset</span>
           </div>
         </div>
         <dl className={heroStyles.heroMiniMetrics}>
           <div><dt>Nilai aset tercatat</dt><dd><Money value={values.market_value} /></dd></div>
-          <div><dt>Saldo RDN tercatat</dt><dd><Money value={values.rdn_cash} /></dd></div>
+          <div><dt>Cash RDN</dt><dd><Money value={values.rdn_cash} /></dd></div>
         </dl>
       </div>
 
-      <div className={heroStyles.allocationTrack} aria-label={`Porsi nilai aset ${marketShare.toLocaleString("id-ID", { maximumFractionDigits: 0 })}% dari total portfolio`}>
+      <div className={heroStyles.allocationTrack} aria-label={`Porsi nilai aset ${marketShare.toLocaleString("id-ID", { maximumFractionDigits: 0 })}% dari total investasi`}>
         <span style={{ width: `${marketShare}%` }} aria-hidden="true" />
       </div>
 
@@ -96,7 +96,7 @@ const PortfolioHero = ({ summary, portfolioCount }) => {
             <div><dt>Realized P/L</dt><dd className={tone(values.realized_pl)}><Money value={values.realized_pl} /></dd></div>
             <div><dt>Unrealized P/L</dt><dd className={tone(values.unrealized_pl)}><Money value={values.unrealized_pl} /></dd></div>
           </dl>
-          <p className={heroStyles.heroDetailNote}>Total portfolio = nilai aset investasi + Cash RDN.</p>
+          <p className={heroStyles.heroDetailNote}>Total investasi = nilai aset tercatat + Cash RDN.</p>
         </details>
       </div>
     </section>
@@ -247,7 +247,7 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
           <p>Satu portofolio ini selalu menggunakan Cash RDN dari rekening di atas.</p>
         </div>
         <div className={portfolioStyles.portfolioValue}>
-          <span>Nilai tercatat</span>
+          <span>Total investasi</span>
           <strong><Money value={total} /></strong>
           <small className={tone(portfolio.unrealized_pl)}>{unrealizedPercent != null ? percentLabel(unrealizedPercent) : <Money value={portfolio.unrealized_pl} />}</small>
         </div>

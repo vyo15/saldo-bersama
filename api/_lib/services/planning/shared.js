@@ -23,6 +23,15 @@ export const accountWithAccess = async (db, actor, accountId, { optional = false
   return row;
 };
 
+export const assertOperationalPlanningAccount = (account, featureLabel = "Perencanaan") => {
+  if (account?.account_type !== "investment") return account;
+  throw appError(
+    "INVESTMENT_ACCOUNT_NOT_OPERATIONAL",
+    `Rekening investasi/RDN tidak dapat digunakan untuk ${featureLabel}. Gunakan Transfer atau menu Investasi.`,
+    409,
+  );
+};
+
 export const ruleScopeFromAccount = (account) => account?.owner_scope === "personal"
   ? { scope:"personal", owner_user_id:account.owner_user_id }
   : { scope:"shared", owner_user_id:null };
@@ -69,13 +78,14 @@ export const canUseEnvelope = (actor, item) => {
 
 export const envelopeCapabilities = (actor, item) => {
   const canUse = canUseEnvelope(actor, item);
+  const operational = item?.source_account_type !== "investment";
   return {
     can_manage: canUse,
-    can_adjust: canUse,
-    can_manage_needs: canUse,
-    can_move: canUse,
+    can_adjust: canUse && operational,
+    can_manage_needs: canUse && operational,
+    can_move: canUse && operational,
     can_set_reminder: canUse,
-    can_record_expense: canUse,
+    can_record_expense: canUse && operational,
     can_close: actor?.role === "owner" && item?.status === "active",
     can_archive_rule: actor?.role === "owner" && item?.status === "active",
   };

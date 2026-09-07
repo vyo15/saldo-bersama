@@ -205,9 +205,12 @@ test("zip clean-only membuat archive hanya setelah verification PASS", async () 
   assert.equal(result.output, "../saldo-bersama-clean.zip");
 });
 
-test("build budget memberi warning headroom sebelum route benar-benar melewati batas", async () => {
+test("build budget memberi warning headroom dan threshold canonical tidak boleh dilonggarkan", async () => {
   const budget = await readFile(new URL("../../scripts/check-build-budget.mjs", import.meta.url), "utf8");
   assert.match(budget, /const warningRatio = 0\.9;/);
+  assert.match(budget, /mainJsGzip:\s*110\s*\*\s*1024/);
+  assert.match(budget, /globalCssGzip:\s*20\s*\*\s*1024/);
+  assert.match(budget, /routeChunkGzip:\s*8\s*\*\s*1024/);
   assert.match(budget, /headroom:/);
   assert.match(budget, /Mendekati batas/);
   assert.match(budget, /Budget terlampaui/);

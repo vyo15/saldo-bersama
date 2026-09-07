@@ -10,6 +10,7 @@ import { createTransaction, updateTransaction } from "./transactions.api.js";
 import { requestTransferApproval } from "./transferRequests.api.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
+import { isInvestmentAccount } from "../../shared/presentation/account.js";
 
 export const createTransactionIntentKey = () => createIdempotencyKey();
 
@@ -77,7 +78,8 @@ export const useTransactionData = (bootstrap, overview, form) => {
     return bootstrap?.accounts?.filter((item) => item.status === "active")
       .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) })) || [];
   }, [accountBalances, bootstrap?.accounts]);
-  const accounts = useMemo(() => readableAccounts.filter((item) => item.can_transact !== false), [readableAccounts]);
+  const accounts = useMemo(() => readableAccounts.filter((item) => item.can_transact !== false
+    && (form.transaction_type === TRANSACTION_TYPES.TRANSFER || !isInvestmentAccount(item))), [form.transaction_type, readableAccounts]);
   const categories = useMemo(() => bootstrap?.categories?.filter((item) => item.status === "active") || [], [bootstrap?.categories]);
   const envelopes = useMemo(() => overview?.envelopes?.filter((item) => item.status === "active") || [], [overview?.envelopes]);
   const budgets = useMemo(() => overview?.budgets?.filter((item) => item.status === "active") || [], [overview?.budgets]);

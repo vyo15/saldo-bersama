@@ -2,7 +2,7 @@ import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForRecurringRule } from "../reminders.js";
-import { accountWithAccess, assertPlanningManageScope, dueDayValue, ruleScopeFromAccount } from "./shared.js";
+import { accountWithAccess, assertOperationalPlanningAccount, assertPlanningManageScope, dueDayValue, ruleScopeFromAccount } from "./shared.js";
 import { archiveRecurringRule as archiveRecurringRuleInternal, previewRecurringRuleLifecycle, recurringRuleLifecycleImpact, restoreRecurringRule } from "./recurringLifecycle.js";
 import {
   RECURRING_FREQUENCIES,
@@ -92,6 +92,7 @@ export const createRecurringRule = async (db, context) => {
   const category = await db.one("SELECT * FROM categories WHERE category_id=? AND status='active'", [p.category_id]);
   if (!category || category.transaction_type !== kind) throw appError("INVALID_CATEGORY", "Kategori jadwal tidak valid.", 400);
   const account = await accountWithAccess(db, context.actor, p.default_account_id);
+  assertOperationalPlanningAccount(account, "Jadwal Rutin");
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const start = dateValue(p.start_date || todayJakarta(), "Tanggal mulai");
@@ -142,6 +143,7 @@ export const updateRecurringRule = async (db, context) => {
     accountWithAccess(db, context.actor, accountId),
     db.one("SELECT * FROM categories WHERE category_id=? AND status='active'", [categoryId]),
   ]);
+  assertOperationalPlanningAccount(account, "Jadwal Rutin");
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const next = buildUpdatedRecurringRule(current, p, account, owned, category, context.actor.user_id);
@@ -163,11 +165,12 @@ export const recurringListStatement = (context) => {
     ? { sql: "1=1", args: [] }
     : { sql: "t.created_by=?", args: [context.actor.user_id] };
   return {
-    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,
+    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,a.account_type AS default_account_type,
       (SELECT t.transaction_id FROM transactions t
         WHERE t.recurring_occurrence_id=o.occurrence_id AND t.status='active' AND ${reverseAccess.sql}
         ORDER BY t.created_at DESC,t.transaction_id DESC LIMIT 1) AS reverse_transaction_id
       FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
+      LEFT JOIN accounts a ON a.account_id=r.default_account_id
       WHERE o.period_key=? AND ${access.sql} ORDER BY o.due_date,r.name`,
     args: [...reverseAccess.args, period, ...access.args],
   };
@@ -193,10 +196,11 @@ const recurringCapabilities = (row, context, status, transactionIds) => {
   const activeRule = row.rule_status === "active";
   const canManageRule = canManageRecurringRule(actor, row);
   const unpaid = Number(row.actual_amount || 0) < Number(row.expected_amount || 0);
+  const operationalAccount = row.default_account_type !== "investment";
   const canSkip = actor.role === "owner" && activeRule && status !== "cancelled"
     && Number(row.actual_amount || 0) === 0 && transactionIds.length === 0;
   return {
-    can_pay: activeRule && canManageRule && status !== "cancelled" && unpaid,
+    can_pay: activeRule && operationalAccount && canManageRule && status !== "cancelled" && unpaid,
     can_reverse: Boolean(row.reverse_transaction_id),
     can_cancel_occurrence: canSkip,
     can_restore_occurrence: actor.role === "owner" && activeRule && status === "cancelled",

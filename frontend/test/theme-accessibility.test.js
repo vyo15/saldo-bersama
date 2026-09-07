@@ -25,23 +25,72 @@ const blockFor = (selector) => {
   return tokenSource.slice(bodyStart, bodyEnd);
 };
 
-const token = (block, name) => {
-  const value = new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`).exec(block)?.[1];
-  assert.ok(value, `Token hex tidak ditemukan: ${name}`);
-  return value;
+const declarations = (block) => Object.fromEntries(
+  [...block.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((match) => [match[1], match[2].trim()]),
+);
+
+const paletteTokens = declarations(blockFor(":root {"));
+const lightTokens = declarations(blockFor(":root,"));
+const themeTokens = (selector) => ({ ...paletteTokens, ...lightTokens, ...(selector === ":root," ? {} : declarations(blockFor(selector))) });
+
+const colorLiteral = (value) => {
+  const hex = /^#([0-9a-fA-F]{6})$/.exec(value);
+  if (hex) return [1, 3, 5].map((offset) => Number.parseInt(value.slice(offset, offset + 2), 16) / 255).concat(1);
+  const rgba = /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/.exec(value);
+  if (rgba) return [Number(rgba[1]) / 255, Number(rgba[2]) / 255, Number(rgba[3]) / 255, rgba[4] == null ? 1 : Number(rgba[4])];
+  if (value === "transparent") return [0, 0, 0, 0];
+  return null;
 };
 
-const luminance = (hex) => {
-  const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
-  const linear = channels.map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+const mixColors = (left, leftWeight, right, rightWeight = 1 - leftWeight) => {
+  const total = leftWeight + rightWeight;
+  return [0, 1, 2, 3].map((index) => ((left[index] * leftWeight) + (right[index] * rightWeight)) / total);
+};
+
+const resolveColor = (values, input, seen = new Set()) => {
+  const raw = String(input).trim();
+  const variable = /^var\((--[\w-]+)\)$/.exec(raw);
+  if (variable) {
+    const name = variable[1];
+    assert.ok(!seen.has(name), `Circular color token: ${name}`);
+    assert.ok(values[name], `Token warna tidak ditemukan: ${name}`);
+    return resolveColor(values, values[name], new Set([...seen, name]));
+  }
+  if (raw.startsWith("--")) return resolveColor(values, `var(${raw})`, seen);
+  const literal = colorLiteral(raw);
+  if (literal) return literal;
+  const mix = /^color-mix\(in srgb,\s*(.+?)\s+([0-9.]+)%,\s*(.+?)(?:\s+([0-9.]+)%)?\)$/.exec(raw);
+  if (mix) {
+    const leftWeight = Number(mix[2]) / 100;
+    const rightWeight = mix[4] == null ? 1 - leftWeight : Number(mix[4]) / 100;
+    return mixColors(resolveColor(values, mix[1], seen), leftWeight, resolveColor(values, mix[3], seen), rightWeight);
+  }
+  assert.fail(`Format warna belum didukung regression contrast: ${raw}`);
+};
+
+const composite = (foreground, background) => {
+  const alpha = foreground[3] + (background[3] * (1 - foreground[3]));
+  if (alpha === 0) return [0, 0, 0, 0];
+  return [0, 1, 2].map((index) => ((foreground[index] * foreground[3]) + (background[index] * background[3] * (1 - foreground[3]))) / alpha).concat(alpha);
+};
+
+const flatten = (color, background) => color[3] < 1 ? composite(color, background) : color;
+const luminance = (color) => {
+  const linear = color.slice(0, 3).map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
   return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
 };
-
 const contrast = (left, right) => {
   const a = luminance(left);
   const b = luminance(right);
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
+const contrastPair = (values, foreground, background, host = "--surface") => {
+  const hostColor = resolveColor(values, host);
+  const backgroundColor = flatten(resolveColor(values, background), hostColor);
+  const foregroundColor = flatten(resolveColor(values, foreground), backgroundColor);
+  return contrast(foregroundColor, backgroundColor);
+};
+const brighten = (color, factor) => color.slice(0, 3).map((channel) => Math.min(1, channel * factor)).concat(color[3]);
 
 test("palette Saldo Bersama yang disetujui tetap menjadi primitive canonical", () => {
   for (const [name, value] of Object.entries({
@@ -56,36 +105,64 @@ test("palette Saldo Bersama yang disetujui tetap menjadi primitive canonical", (
   })) assert.match(tokenSource, new RegExp(`${name}:\\s*${value};`, "i"));
 });
 
-test("token light dan dark memenuhi kontras teks serta tombol utama", () => {
-  const light = blockFor(":root,");
-  const dark = blockFor(':root[data-theme="dark"]');
-  for (const foreground of ["--text", "--text-soft", "--text-muted", "--primary", "--positive", "--negative", "--warning", "--info"]) {
-    assert.ok(contrast(token(light, foreground), token(light, "--surface")) >= 4.5, `Kontras light gagal: ${foreground}`);
-    assert.ok(contrast(token(dark, foreground), token(dark, "--surface")) >= 4.5, `Kontras dark gagal: ${foreground}`);
-  }
-  assert.ok(contrast(token(light, "--on-primary"), token(light, "--primary")) >= 4.5);
-  assert.ok(contrast(token(light, "--on-primary"), token(light, "--primary-strong")) >= 4.5);
-  assert.ok(contrast(token(light, "--on-negative"), token(light, "--negative")) >= 4.5);
-  assert.ok(contrast(token(light, "--negative"), token(light, "--negative-soft")) >= 4.5, "Status danger light harus memenuhi AA pada negative-soft");
-  assert.ok(contrast(token(dark, "--on-primary"), token(dark, "--primary")) >= 4.5);
-  assert.ok(contrast(token(dark, "--on-primary"), token(dark, "--primary-strong")) >= 4.5);
-  assert.ok(contrast(token(dark, "--on-negative"), token(dark, "--negative")) >= 4.5);
-  for (const theme of [light, dark]) {
+test("semantic color contracts memenuhi WCAG AA pada light dan dark termasuk soft surface", () => {
+  const themes = [["light", themeTokens(":root,")], ["dark", themeTokens(':root[data-theme="dark"]')]];
+  const statusPairs = [["--positive", "--positive-soft"], ["--negative", "--negative-soft"], ["--warning", "--warning-soft"], ["--info", "--info-soft"]];
+  for (const [name, values] of themes) {
+    for (const foreground of ["--text", "--text-soft", "--text-muted", "--primary", "--positive", "--negative", "--warning", "--info"]) {
+      assert.ok(contrastPair(values, foreground, "--surface") >= 4.5, `Kontras ${name} gagal: ${foreground}`);
+    }
+    for (const [foreground, soft] of statusPairs) {
+      for (const host of ["--surface", "--surface-elevated"]) {
+        assert.ok(contrastPair(values, foreground, soft, host) >= 4.5, `Kontras ${name} gagal: ${foreground} pada ${soft}/${host}`);
+      }
+    }
+    for (const host of ["--surface", "--surface-elevated"]) {
+      assert.ok(contrastPair(values, "--primary", "--primary-soft", host) >= 4.5, `Primary soft ${name} gagal pada ${host}`);
+      assert.ok(contrastPair(values, "--primary-strong", "--primary-soft", host) >= 4.5, `Selected primary ${name} gagal pada ${host}`);
+    }
+    assert.ok(contrastPair(values, "--on-primary", "--primary") >= 4.5, `Primary button ${name} gagal`);
+    assert.ok(contrastPair(values, "--on-primary", "--primary-strong") >= 4.5, `Primary strong ${name} gagal`);
+    assert.ok(contrastPair(values, "--on-negative", "--negative") >= 4.5, `Danger button ${name} gagal`);
+    assert.ok(contrastPair(values, "--on-secondary", "--secondary") >= 4.5, `Secondary badge ${name} gagal`);
     for (const endpoint of ["--hero-start", "--hero-mid", "--hero-end"]) {
-      assert.ok(contrast(token(theme, "--on-hero"), token(theme, endpoint)) >= 4.5, `Kontras hero gagal: ${endpoint}`);
+      assert.ok(contrastPair(values, "--on-hero", endpoint) >= 4.5, `Kontras hero ${name} gagal: ${endpoint}`);
+      assert.ok(contrastPair(values, "--on-hero-muted", endpoint) >= 4.5, `Kontras hero muted ${name} gagal: ${endpoint}`);
+      assert.ok(contrastPair(values, "--on-hero-soft", endpoint) >= 3, `Kontras ikon hero ${name} gagal: ${endpoint}`);
     }
   }
 });
 
-test("focus indicator canonical memenuhi kontras non-text 3:1 dan tidak memakai alpha transparan", async () => {
-  const light = blockFor(":root,");
-  const dark = blockFor(':root[data-theme="dark"]');
-  for (const [name, theme] of [["light", light], ["dark", dark]]) {
+test("danger hover canonical dan compatibility tetap memenuhi AA", async () => {
+  const buttonModule = await readFile(new URL("../src/components/common/Button.module.css", import.meta.url), "utf8");
+  assert.match(buttonModule, /color-mix\(in srgb, var\(--negative\) 88%, var\(--shadow-ink\)\)/);
+  assert.match(componentSource, /\.button--danger:hover:not\(:disabled\) \{ filter:\s*brightness\(\.92\)/);
+  for (const [name, values] of [["light", themeTokens(":root,")], ["dark", themeTokens(':root[data-theme="dark"]')]]) {
+    const foreground = resolveColor(values, "--on-negative");
+    const negative = resolveColor(values, "--negative");
+    const shadow = resolveColor(values, "--shadow-ink");
+    const canonicalHover = mixColors(negative, 0.88, shadow, 0.12);
+    const compatibilityHover = brighten(negative, 0.92);
+    assert.ok(contrast(foreground, canonicalHover) >= 4.5, `Danger canonical hover ${name} gagal`);
+    assert.ok(contrast(foreground, compatibilityHover) >= 4.5, `Danger compatibility hover ${name} gagal`);
+  }
+});
+
+test("focus indicator canonical dan hero memenuhi kontras non-text 3:1 tanpa alpha ring", async () => {
+  const dashboard = await readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8");
+  const themeToggle = await readFile(new URL("../src/components/common/ThemeToggle.module.css", import.meta.url), "utf8");
+  for (const [name, values] of [["light", themeTokens(":root,")], ["dark", themeTokens(':root[data-theme="dark"]')]]) {
+    assert.equal(resolveColor(values, "--focus-ring")[3], 1, `focus-ring ${name} harus opaque`);
     for (const surface of ["--page", "--surface", "--surface-elevated"]) {
-      assert.ok(contrast(token(theme, "--focus-ring"), token(theme, surface)) >= 3, `Kontras focus-ring ${name} gagal pada ${surface}`);
+      assert.ok(contrastPair(values, "--focus-ring", surface) >= 3, `Kontras focus-ring ${name} gagal pada ${surface}`);
+    }
+    for (const endpoint of ["--hero-start", "--hero-mid", "--hero-end"]) {
+      assert.ok(contrastPair(values, "--on-hero", endpoint) >= 3, `Focus hero ${name} gagal pada ${endpoint}`);
     }
   }
   assert.match(await readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"), /:focus-visible \{ outline:\s*3px solid var\(--focus-ring\);/);
+  assert.match(dashboard, /\.mobile-hero-button:focus-visible, \.mobile-balance-visibility:focus-visible \{ outline:\s*3px solid var\(--on-hero\)/);
+  assert.match(themeToggle, /\.hero:focus-visible \{ outline-color:\s*var\(--on-hero\);/);
   const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
   for (const file of cssFiles) {
     for (const match of file.source.matchAll(/([^{}]*:focus(?:-visible|-within)?[^{}]*)\{([^{}]*)\}/gs)) {
@@ -97,14 +174,37 @@ test("focus indicator canonical memenuhi kontras non-text 3:1 dan tidak memakai 
 });
 
 test("border kuat untuk control dan state memenuhi kontras non-text 3:1", () => {
-  const light = blockFor(":root,");
-  const dark = blockFor(':root[data-theme="dark"]');
-  for (const [name, theme] of [["light", light], ["dark", dark]]) {
+  for (const [name, values] of [["light", themeTokens(":root,")], ["dark", themeTokens(':root[data-theme="dark"]')]]) {
     for (const surface of ["--surface", "--surface-elevated"]) {
-      assert.ok(contrast(token(theme, "--border-strong"), token(theme, surface)) >= 3, `Kontras border-strong ${name} gagal pada ${surface}`);
+      assert.ok(contrastPair(values, "--border-strong", surface) >= 3, `Kontras border-strong ${name} gagal pada ${surface}`);
     }
   }
   assert.match(componentSource, /\.confirmation-checklist__marker[^}]*border:\s*1px solid var\(--border-strong\)/s);
+});
+
+test("theme-color runtime dan fallback PWA mengikuti page token canonical", async () => {
+  const themeContext = await readFile(new URL("../src/app/ThemeContext.jsx", import.meta.url), "utf8");
+  const indexHtml = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const manifest = JSON.parse(await readFile(new URL("../public/site.webmanifest", import.meta.url), "utf8"));
+  const light = themeTokens(":root,");
+  const lightPage = light["--page"];
+  assert.match(themeContext, /getComputedStyle\(document\.documentElement\)\.getPropertyValue\("--page"\)/);
+  assert.doesNotMatch(themeContext, /THEME_COLORS|#f6fbf9|#0b1110/);
+  assert.match(indexHtml, new RegExp(`<meta name="theme-color" content="${lightPage}"`));
+  assert.equal(manifest.background_color, lightPage);
+  assert.equal(manifest.theme_color, lightPage);
+});
+
+test("contextual foreground yang sebelumnya rawan tetap memakai semantic pair aman", async () => {
+  const [dashboard, recurring, app] = await Promise.all([
+    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/recurring/RecurringSchedule.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(dashboard, /\.mobile-notification-badge[^}]*background:\s*var\(--secondary\);[^}]*color:\s*var\(--on-secondary\)/s);
+  assert.match(recurring, /\.kindTab > span[^}]*background:\s*var\(--surface-strong\);[^}]*color:\s*var\(--text-soft\)/s);
+  assert.match(componentSource, /\.brand-wordmark span:first-child \{ color:\s*var\(--primary-strong\); \}/);
+  assert.match(app, /\.desktop-module-dock__link\.is-active \{[^}]*color:\s*var\(--primary-strong\)/s);
 });
 
 test("komponen memakai semantic foreground dan reduced motion", () => {

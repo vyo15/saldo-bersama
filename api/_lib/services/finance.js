@@ -191,6 +191,16 @@ const validateTransactionTypePolicy = (context, payload, current, type) => {
   }
 };
 
+const assertInvestmentTransactionPolicy = (type, source, destination) => {
+  if (type === "transfer") return;
+  if (source?.account_type !== "investment" && destination?.account_type !== "investment") return;
+  throw appError(
+    "INVESTMENT_ACCOUNT_TRANSFER_ONLY",
+    "Rekening investasi hanya dapat digunakan melalui Transfer atau pencatatan Investasi.",
+    409,
+  );
+};
+
 const resolveTransactionAccounts = async (db, context, { type, sourceId, destinationId, transactionDate }, { allowSharedToPersonalRequest = false } = {}) => {
   const source = ["income", "refund"].includes(type) ? null : await activeAccount(db, context.actor, sourceId);
   const destination = ["income", "refund"].includes(type)
@@ -198,6 +208,7 @@ const resolveTransactionAccounts = async (db, context, { type, sourceId, destina
     : type === "transfer"
       ? await activeReadableAccount(db, destinationId)
       : null;
+  assertInvestmentTransactionPolicy(type, source, destination);
   if (type === "transfer") {
     const routeMode = transferRouteMode(context.actor, source, destination);
     if (routeMode === "denied") throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);

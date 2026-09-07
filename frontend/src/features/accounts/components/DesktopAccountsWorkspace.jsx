@@ -14,6 +14,7 @@ import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import LineChart from "../../../components/charts/LineChart.jsx";
 import { currentMonthInJakarta } from "../../../domain/dates.js";
+import { formatRupiah } from "../../../domain/money.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { useMediaQuery } from "../../../hooks/useMediaQuery.js";
 import {
@@ -176,7 +177,7 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           <div>
             <p className="eyebrow">Rekening terpilih</p>
             <h2 id="desktop-selected-account-title">{title}</h2>
-            <p>{investment ? "Cash RDN · detail saham tersedia di catatan Investasi" : `${accountProviderLabel(account)} · ${accountOwnershipLabel(account)}`}</p>
+            <p>{investment ? "Cash RDN · detail aset tersedia di catatan Investasi" : `${accountProviderLabel(account)} · ${accountOwnershipLabel(account)}`}</p>
           </div>
           {readOnly ? <div className={styles.heroBadges}><span className={styles.readOnlyBadge}>Hanya lihat</span></div> : null}
         </div>
@@ -185,13 +186,15 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           <strong><Money value={account.balance || 0} tone={balanceTone(account.balance)} /></strong>
         </div>
         <dl className={styles.heroFacts}>
-          <div><dt>Dana tersedia</dt><dd><Money value={account.available_balance ?? account.balance ?? 0} tone={balanceTone(account.available_balance ?? account.balance)} /><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></dd></div>
-          <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></dd></div>
+          {investment ? <div><dt>Tujuan dana</dt><dd>Investasi</dd></div> : <>
+            <div><dt>Dana tersedia</dt><dd><Money value={account.available_balance ?? account.balance ?? 0} tone={balanceTone(account.available_balance ?? account.balance)} /><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></dd></div>
+            <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></dd></div>
+          </>}
           <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>
         <div className={styles.heroActions}>
-          {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat aset & saham</Button> : null}
+          {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat investasi</Button> : null}
           {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
           {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Kelola data</Button> : null}
         </div>
@@ -217,15 +220,15 @@ const RecentTransactionsPanel = ({ resource, items, categoryLookup, selectedAcco
   );
 };
 
-const AccountInsights = ({ accounts, totalBalance, balanceTrend, distribution, reportStatus }) => (
+const AccountInsights = ({ accounts, totalBalance, investmentCash, balanceTrend, distribution, reportStatus }) => (
   <aside className={styles.insightColumn} aria-label="Ringkasan seluruh rekening">
     <section className={styles.balanceSummary}>
       <span className={styles.summaryIcon}><BalanceIcon aria-hidden="true" /></span>
-      <div><p>Total saldo</p><strong><Money value={totalBalance} tone={balanceTone(totalBalance)} /></strong><small>{accounts.length} rekening aktif</small></div>
+      <div><p>Saldo rekening</p><strong><Money value={totalBalance} tone={balanceTone(totalBalance)} /></strong><small>{accounts.filter((account) => account.account_type !== "investment").length} rekening non-investasi aktif{investmentCash ? ` · Cash RDN ${formatRupiah(investmentCash)}` : ""}</small></div>
     </section>
     <section className={styles.trendPanel} aria-labelledby="desktop-balance-trend-title">
-      <header className={styles.compactHeading}><span><FiTrendingUp aria-hidden="true" /></span><h2 id="desktop-balance-trend-title">Tren saldo</h2></header>
-      {reportStatus === "loading" ? <div className={styles.chartState}>Memuat tren saldo…</div> : reportStatus === "error" ? <div className={styles.chartState}>Tren belum dapat dimuat. Total saldo tetap berasal dari daftar rekening terbaru.</div> : <div className={styles.balanceChart}><LineChart data={balanceTrend} label="Tren total saldo seluruh rekening" /></div>}
+      <header className={styles.compactHeading}><span><FiTrendingUp aria-hidden="true" /></span><h2 id="desktop-balance-trend-title">Tren seluruh rekening</h2></header>
+      {reportStatus === "loading" ? <div className={styles.chartState}>Memuat tren saldo…</div> : reportStatus === "error" ? <div className={styles.chartState}>Tren belum dapat dimuat. Saldo rekening tetap berasal dari daftar rekening terbaru.</div> : <div className={styles.balanceChart}><LineChart data={balanceTrend} label="Tren saldo seluruh rekening termasuk Cash RDN" /></div>}
     </section>
     <section className={styles.distributionPanel} aria-labelledby="desktop-account-distribution-title">
       <header className={styles.compactHeading}><span><FiPieChart aria-hidden="true" /></span><h2 id="desktop-account-distribution-title">Komposisi saldo</h2></header>
@@ -245,7 +248,9 @@ const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, owne
   }, { enabled: desktopEnabled && Boolean(selectedId) });
   const reportResource = useApiResource("reports.monthly", { period, trend_months: 6 }, { enabled: desktopEnabled });
   const insightAccounts = allAccounts?.length ? allAccounts : accounts;
-  const totalBalance = useMemo(() => insightAccounts.reduce((sum, account) => sum + Number(account.balance || 0), 0), [insightAccounts]);
+  const nonInvestmentAccounts = useMemo(() => insightAccounts.filter((account) => account.account_type !== "investment"), [insightAccounts]);
+  const totalBalance = useMemo(() => nonInvestmentAccounts.reduce((sum, account) => sum + Number(account.balance || 0), 0), [nonInvestmentAccounts]);
+  const investmentCash = useMemo(() => insightAccounts.filter((account) => account.account_type === "investment").reduce((sum, account) => sum + Number(account.balance || 0), 0), [insightAccounts]);
   const distributionBase = useMemo(() => insightAccounts.reduce((sum, account) => sum + Math.abs(Number(account.balance || 0)), 0), [insightAccounts]);
   const distribution = useMemo(() => insightAccounts.map((account) => ({ account, percentage: distributionBase > 0 ? Math.round((Math.abs(Number(account.balance || 0)) / distributionBase) * 100) : 0 })), [distributionBase, insightAccounts]);
   const balanceTrend = useMemo(() => {
@@ -265,7 +270,7 @@ const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, owne
           <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} />
           <RecentTransactionsPanel resource={recentTransactionsResource} items={recentTransactionsResource.data?.items || []} categoryLookup={categoryLookup} selectedAccount={selectedAccount} onViewTransactions={onViewTransactions} />
         </div>
-        <AccountInsights accounts={insightAccounts} totalBalance={totalBalance} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} />
+        <AccountInsights accounts={insightAccounts} totalBalance={totalBalance} investmentCash={investmentCash} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} />
       </div>
     </div>
   );

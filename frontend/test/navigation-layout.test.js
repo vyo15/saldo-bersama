@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("desktop mempertahankan module dock Saldo Bersama melengkung dengan enam slot utama dan submenu fungsional", async () => {
+test("desktop mempertahankan module dock Saldo Bersama melengkung dengan entry point lengkap dan submenu fungsional", async () => {
   const [source, navigation] = await Promise.all([
     read("src/components/navigation/SideNavigation.jsx"),
     read("src/config/navigation.js"),
@@ -33,7 +33,9 @@ test("desktop mempertahankan module dock Saldo Bersama melengkung dengan enam sl
   assert.match(navigation, /id: "management"[\s\S]*label: "Kelola"[\s\S]*ownerOnly: true[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
   const desktopBlock = navigation.match(/export const DESKTOP_NAVIGATION = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   const topLevelSlots = [...desktopBlock.matchAll(/^  (?:navigationByPath\.get|freezeGroup)\(/gm)];
-  assert.equal(topLevelSlots.length, 6, "dock desktop harus tetap enam slot utama agar seluruh menu berada di badan rail SVG");
+  assert.equal(topLevelSlots.length, 6, "dock desktop harus mempertahankan enam entry point canonical tanpa menambah Notifikasi atau Pengaturan ke rail");
+  assert.doesNotMatch(desktopBlock, /navigationByPath\.get\("\/notifikasi"\)/);
+  assert.doesNotMatch(desktopBlock, /navigationByPath\.get\("\/pengaturan"\)/);
   assert.doesNotMatch(desktopBlock, /^  navigationByPath\.get\("\/(?:investasi|anggota|persetujuan|rekonsiliasi)"\),?$/gm);
 });
 
@@ -41,19 +43,18 @@ test("dock dirender sebagai sibling shell agar fixed tetap mengikuti viewport", 
   const source = await read("src/layouts/AppShell.jsx");
   const dockIndex = source.indexOf("<SideNavigation />");
   const shellIndex = source.indexOf('<div className={`app-shell');
-  const headerIndex = source.indexOf('<header className="desktop-app-header">');
-  const actionsIndex = source.indexOf('<div className="desktop-app-header__actions">');
+  const headerMountIndex = source.indexOf("<DesktopAppHeader ", shellIndex);
 
   assert.ok(dockIndex >= 0, "dock harus dirender");
   assert.ok(shellIndex > dockIndex, "dock harus menjadi sibling sebelum shell, bukan child dari elemen backdrop-filter");
-  assert.ok(headerIndex > shellIndex, "header tetap berada di dalam shell");
-  assert.ok(actionsIndex > headerIndex, "header tetap memiliki action area");
+  assert.ok(headerMountIndex > shellIndex, "header desktop harus dipasang di dalam shell");
+  assert.match(source, /const DesktopAppHeader[\s\S]*<header className="desktop-app-header">[\s\S]*<div className="desktop-app-header__actions">/);
 });
 
 test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti viewport", async () => {
   const source = await read("src/layouts/AppShell.jsx");
   const shellIndex = source.indexOf('<div className={`app-shell');
-  const shellEndIndex = source.indexOf("\n      </div>\n\n      {desktopTransactionQuickAddVisible");
+  const shellEndIndex = source.indexOf("\n      </div>\n\n      <DesktopFloatingTransactionAdd");
   const mobileNavigationIndex = source.indexOf("<MobileNavigation ");
 
   assert.ok(shellIndex >= 0, "shell aplikasi harus dirender");

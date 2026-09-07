@@ -356,22 +356,28 @@ const PrivateMoney = ({ hidden, value }) => hidden
 
 const MobileBalanceSummary = ({ account }) => {
   const [hidden, setHidden] = useState(false);
+  const investment = account.account_type === "investment";
   const available = account.available_balance ?? account.balance ?? 0;
   return (
     <section key={account.account_id} className={styles.mobileBalanceSummary} aria-label={`Ringkasan saldo ${account.name}`}>
       <div className={styles.mobileBalanceHeading}>
         <div className={styles.mobileBalanceLabel}>
-          <span>Dana tersedia</span>
+          <span>{investment ? "Cash RDN" : "Dana tersedia"}</span>
         </div>
         <button type="button" className={styles.mobilePrivacyButton} onClick={() => setHidden((value) => !value)} aria-label={hidden ? "Tampilkan nominal rekening" : "Sembunyikan nominal rekening"} aria-pressed={hidden}>
           {hidden ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
         </button>
       </div>
-      <strong className={styles.mobileAvailableValue}><PrivateMoney hidden={hidden} value={available} /></strong>
+      <strong className={styles.mobileAvailableValue}><PrivateMoney hidden={hidden} value={investment ? account.balance : available} /></strong>
       <div className={styles.mobileBalanceStats}>
-        <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Saldo</span></div>
-        <div><strong><PrivateMoney hidden={hidden} value={account.allocated_remaining || 0} /></strong><span>Dialokasikan</span></div>
-        <div><strong><PrivateMoney hidden={hidden} value={available} /></strong><span>Tersedia</span></div>
+        {investment ? <>
+          <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Cash RDN</span></div>
+          <div><strong>Investasi</strong><span>Tujuan dana</span></div>
+        </> : <>
+          <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Saldo</span></div>
+          <div><strong><PrivateMoney hidden={hidden} value={account.allocated_remaining || 0} /></strong><span>Dialokasikan</span></div>
+          <div><strong><PrivateMoney hidden={hidden} value={available} /></strong><span>Tersedia</span></div>
+        </>}
       </div>
     </section>
   );

@@ -1338,3 +1338,12 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   font-size: var(--font-size-sm);
   text-align: center;
 }
+
+/* Compact desktop uses a true two-pane workspace instead of squeezing three columns. */
+@media (max-width: 1060px) and (min-width: 821px) {
+  .settingsWorkspace { grid-template-columns: minmax(12.5rem, 15rem) minmax(0, 1fr); }
+  .settingsDesktopCategories { display: none; }
+  .settingsDesktopSubmenu { padding-inline: var(--space-3); }
+  .settingsDesktopContent { padding: clamp(1rem, 2vw, 1.4rem); }
+  .settingsDesktopSubmenuCopy small { display: none; }
+}

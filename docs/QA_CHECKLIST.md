@@ -34,7 +34,9 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 ## 4. UI/UX dan accessibility
 
 - [ ] Loading, empty, error, offline/unauthorized/conflict state relevan tersedia.
-- [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa; focus authored memakai indicator opaque ≥3:1, bukan alpha ring.
+- [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa; focus authored memakai indicator opaque ≥3:1, termasuk setiap endpoint hero/gradient, bukan alpha ring.
+- [ ] Semantic foreground/background baru atau berubah diuji pada light **dan** dark. Untuk `rgba()`/soft background, hitung alpha compositing terhadap host surface sebelum menilai rasio; normal text/status/selected state target ≥4.5:1.
+- [ ] `theme-color` runtime tetap berasal dari computed `--page`; fallback HTML/manifest tidak drift dari light `--page`.
 - [ ] Error field form transaksi hilang saat input/dependency sudah diperbaiki tanpa menghapus error lain; perubahan sumber tidak mempertahankan destination transfer yang sudah tidak representable.
 - [ ] Pencocokan definitif berakhir pada state completed; Selesai/X/Escape keluar dari create flow dan mismatch menyediakan jalur review transaksi tanpa membuat intent kedua otomatis.
 - [ ] Pada mobile: native form control efektif 16px, target interaktif ≥44×44px, safe-area top/bottom, metadata finansial penting ~12px+, nominal utama tidak ellipsis, keyboard virtual, dan horizontal overflow diperiksa pada viewport relevan; root tidak menyembunyikan overflow horizontal, document scroll tetap aktif, visual scrollbar root tidak terlihat, intentional horizontal scroller tidak menampilkan batang scrollbar, dan hover touch tidak sticky.
@@ -83,6 +85,14 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Setelah `npm run verify`, `npm run zip`, atau pre-push selesai baik PASS maupun gagal, generated build/test artifact dibersihkan otomatis; dependency, `.env.local`, `.vercel`, dan repository Git tetap dipertahankan. Cache Vite di `frontend/node_modules/.vite*` boleh dibersihkan karena generated dan akan dibuat ulang.
 - [ ] `git status --short` ditinjau sebelum commit.
 - [ ] Delivery Git memakai `git push origin main` tanpa `--no-verify`; pre-push memverifikasi ref/SHA aktual + full gate, dan **Quality / check** server-side dipantau setelah push.
+
+## Investasi / RDN - pemisahan saldo operasional
+
+- [ ] Hero Dashboard memakai **Saldo rekening** (`nonInvestmentBalance`), sedangkan Cash RDN hanya muncul pada konteks Investasi; privacy masking mencakup keduanya.
+- [ ] `safeToSpend`, `dailySafeToSpend`, dan dana belum dialokasikan tidak berubah naik karena Cash RDN; Bank → RDN menurunkan Saldo rekening tanpa mengubah total kekayaan, RDN → Bank melakukan kebalikannya.
+- [ ] Income/expense/refund/adjustment ordinary tidak dapat memakai rekening Investasi; Transfer Bank ↔ RDN tetap valid, sedangkan Buy/Sell mengubah Cash RDN melalui event Investasi tanpa menjadi income/expense.
+- [ ] Alokasi Dana dan Jadwal Rutin baru tidak menawarkan/menerima RDN sebagai rekening operasional; data legacy tetap readable tanpa mengikat Cash RDN sebagai dana tersedia.
+- [ ] Trend saldo harian/bulanan merekonsiliasi `investment_account_events`, dan snapshot Total kekayaan tidak menjumlahkan `totalBalance + portfolio_value` sehingga Cash RDN tidak double-count.
 
 ## Investasi prototype - Reksa Dana
 

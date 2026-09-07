@@ -22,7 +22,7 @@
 .brand-copy { display: grid; gap: 3px; }
 .brand-copy small { color: var(--muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); letter-spacing: 0; }
 .brand-wordmark { font-size: 16px; line-height: 1; }
-.brand-wordmark span:first-child { color: var(--primary-deep); }
+.brand-wordmark span:first-child { color: var(--primary-strong); }
 .brand-wordmark span:last-child { color: var(--primary); }
 
 .button { min-height: var(--control-height-md); padding: 0 16px; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: var(--font-weight-semibold); cursor: pointer; touch-action: manipulation; transition: background-color var(--motion-control) var(--ease-standard), border-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard), color var(--motion-control) var(--ease-standard), filter var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard); }
@@ -208,6 +208,7 @@ input[type="file"] {
 .theme-toggle svg { width: 19px; height: 19px; }
 .theme-toggle--labeled { width: 100%; min-height: 48px; height: auto; padding: 0 14px; justify-content: flex-start; font-weight: var(--font-weight-semibold); }
 .theme-toggle--hero { border-color: var(--glass-border); background: var(--glass-surface); color: var(--on-hero); backdrop-filter: blur(10px); }
+.theme-toggle--hero:focus-visible { outline-color: var(--on-hero); }
 @media (hover: hover) and (pointer: fine) {
   .theme-toggle--hero:hover { border-color: var(--glass-border); color: var(--on-hero); background: var(--glass-hover); }
 }

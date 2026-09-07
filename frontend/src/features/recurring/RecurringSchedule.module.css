@@ -68,7 +68,7 @@
   display: inline-grid;
   place-items: center;
   background: var(--surface-soft);
-  color: var(--muted);
+  color: var(--text-soft);
   font-size: var(--font-size-xs);
 }
 
@@ -132,7 +132,7 @@
   background: var(--surface-strong);
   display: inline-grid;
   place-items: center;
-  color: var(--muted);
+  color: var(--text-soft);
   font-size: var(--font-size-xs);
 }
 

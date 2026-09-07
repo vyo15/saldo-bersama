@@ -35,7 +35,7 @@ export const visibleAccountsStatement = (actor, { includeArchived = false, cutof
         FROM investment_account_events e
         WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND ?
       ),0) AS balance,
-      COALESCE((
+      CASE WHEN a.account_type='investment' THEN 0 ELSE COALESCE((
         SELECT SUM(CASE
           WHEN p.allocated_amount - COALESCE((
             SELECT SUM(et.amount) FROM transactions et
@@ -51,7 +51,7 @@ export const visibleAccountsStatement = (actor, { includeArchived = false, cutof
         FROM envelope_periods p
         JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
         WHERE p.status='active' AND r.status='active' AND r.source_account_id=a.account_id
-      ),0) AS allocated_remaining
+      ),0) END AS allocated_remaining
       FROM accounts a
       LEFT JOIN users u ON u.user_id=a.owner_user_id
       WHERE ${access.sql} ${includeArchived ? "" : "AND a.status = 'active'"}
@@ -104,6 +104,8 @@ export const accountBalanceAsOf = async (db, account, cutoffDate = todayJakarta(
 };
 
 export const accountAllocatedRemaining = async (db, accountId, { cutoffDate = todayJakarta(), excludePeriodId = null, excludeTransactionId = null, candidate = null } = {}) => {
+  const account = await db.one("SELECT account_type FROM accounts WHERE account_id=?", [accountId]);
+  if (account?.account_type === "investment") return 0;
   const rows = await db.all(`SELECT p.envelope_period_id,p.allocated_amount,p.reserved_amount,
       COALESCE(SUM(CASE WHEN t.transaction_id IS NOT NULL THEN t.amount ELSE 0 END),0) AS used_amount
     FROM envelope_periods p
@@ -206,7 +208,7 @@ export const envelopeItemsStatement = (actor, { period = null, includeClosed = t
   }
   return {
     sql: `SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
-      sa.name AS source_account_name,
+      sa.name AS source_account_name,sa.account_type AS source_account_type,
       COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'') AS assignee_name,au.role AS assignee_role,
       COALESCE(usage.used_amount,0) AS used_amount
       FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id

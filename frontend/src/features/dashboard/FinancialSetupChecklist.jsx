@@ -28,7 +28,7 @@ const categoryStep = ({ categories, owner }) => {
 const setupState = ({ bootstrap, user }) => {
   const actor = bootstrap?.user || user || {};
   const accounts = (bootstrap?.accounts || []).filter((item) => item.status === "active");
-  const operableAccounts = accounts.filter((item) => item.can_transact !== false);
+  const operableAccounts = accounts.filter((item) => item.can_transact !== false && item.account_type !== "investment");
   const categories = (bootstrap?.categories || []).filter((item) => item.status === "active");
   const owner = actor.role === "owner";
   return [accountStep({ operableAccounts, owner }), categoryStep({ categories, owner })];

@@ -43,7 +43,7 @@ const compactSyncLabel = (value) => {
 };
 
 const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
-  const allocated = Math.max(0, Number(overview.allocatedRemaining || 0));
+  const operatingAccountCount = (overview.accountBalances || []).filter((account) => account.account_type !== "investment").length;
   return (
     <header className={dashboardClass("mobile-finance-hero")}>
       <div className={dashboardClass("mobile-finance-hero__bar")}>
@@ -65,16 +65,16 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
 
       <div className={dashboardClass("mobile-finance-identity")}>
         <div className={dashboardClass("mobile-finance-balance-label")}>
-          <span>Total saldo</span>
+          <span>Saldo rekening</span>
           <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}>
             {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
           </button>
         </div>
         <div className={dashboardClass(`mobile-finance-balance${balanceVisible ? "" : " mobile-finance-balance--hidden"}`)} aria-live="polite">
-          <SensitiveMoney visible={balanceVisible} value={overview.totalBalance} />
+          <SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} />
         </div>
         <div className={dashboardClass("mobile-finance-meta")}>
-          <span>{allocated > 0 ? <><SensitiveMoney visible={balanceVisible} value={allocated} />&nbsp;sudah dialokasikan</> : `${(overview.accountBalances || []).length} rekening aktif`}</span>
+          <span>{operatingAccountCount} rekening aktif</span>
           <span aria-live="polite"><i aria-hidden="true" />{compactSyncLabel(overview.lastSyncedAt)}</span>
         </div>
       </div>
@@ -221,11 +221,12 @@ const MobileInvestment = ({ summary, balanceVisible }) => {
   const profit = Number(summary.unrealized_pl || 0);
   const tone = profit < 0 ? "negative" : profit > 0 ? "positive" : "default";
   const returnPercent = investmentReturnPercent(summary);
+  const hasInvestedAssets = Number(summary.market_value || 0) !== 0 || Number(summary.cost_basis || 0) > 0 || Number(summary.holding_count || 0) > 0;
   return <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-investment-title">
     <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-investment-title">Investasi</h2><Link to="/investasi">Buka catatan</Link></div>
     <Link className={dashboardClass("mobile-investment-card")} to="/investasi">
       <span className={dashboardClass("mobile-investment-card__icon")}><InvestmentIcon aria-hidden="true" /></span>
-      <span className={dashboardClass("mobile-investment-card__copy")}><small>Nilai investasi</small><strong><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></strong><em data-tone={tone}>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</em></span>
+      <span className={dashboardClass("mobile-investment-card__copy")}><small>Total investasi tercatat</small><strong><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></strong><em data-tone={tone}>{hasInvestedAssets ? <>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</> : <>Nilai aset <SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /> · Cash RDN <SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></>}</em></span>
       <FiChevronRight className={dashboardClass("mobile-investment-card__chevron")} aria-hidden="true" />
     </Link>
   </section>;
@@ -241,11 +242,11 @@ const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, 
       <MobileNextAction alerts={overview.alerts} />
       {setupContent}
       <MobileQuickActions />
+      <MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} />
       <MobileFinancialInsight overview={overview} balanceVisible={balanceVisible} />
       <MobileBudgetPlan overview={overview} balanceVisible={balanceVisible} />
       <MobileUpcomingSchedule overview={overview} balanceVisible={balanceVisible} />
       <MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />
-      <MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} />
     </div>
   </section>;
 };

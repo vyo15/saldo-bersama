@@ -14,7 +14,8 @@ test("UI Investasi memakai summary canonical dan tidak mengarang discovery atau 
   assert.match(page, /const InvestmentOverview = lazy\(\(\) => import\("\.\/InvestmentOverview\.jsx"\)\)/);
   assert.match(page, /Menyiapkan rincian investasi/);
   for (const field of ["portfolio_value", "rdn_cash", "market_value", "realized_pl", "unrealized_pl"]) assert.match(overview, new RegExp(`(?:summary\\?\\.|values\\.)${field}`));
-  assert.match(overview, /Total portfolio = nilai aset investasi \+ Cash RDN/);
+  assert.match(overview, /Total investasi = nilai aset tercatat \+ Cash RDN/);
+  assert.match(overview, /Total investasi tercatat/);
   assert.match(overview, /ProgressBar/);
   assert.doesNotMatch(`${page}\n${overview}`, /Market Movers|Top Gainers|Top Losers|Popular Investment|market history|market API/i);
 });
@@ -168,9 +169,9 @@ test("rekening Investasi menjadi pintu ke holding aktual dan portfolio selalu me
   assert.match(overview, /Average cost/);
   assert.match(holdingDetail, /Modal tercatat/);
   assert.match(holdingDetail, /Aktivitas investasi terbaru/);
-  assert.match(accountCard, /Lihat aset & saham/);
+  assert.match(accountCard, /Lihat investasi/);
   assert.match(accountCard, /Cash RDN/);
-  assert.match(desktopAccounts, /Lihat aset & saham/);
+  assert.match(desktopAccounts, /Lihat investasi/);
   assert.match(desktopAccounts, /Transfer RDN terbaru/);
   assert.match(setup, /investmentRdnDisplayLabel\(item\)/);
   assert.match(setup, /initialRdnAccountId/);

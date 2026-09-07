@@ -30,7 +30,8 @@ const RecurringScheduleView = lazy(() => import("./RecurringScheduleView.jsx"));
 const activeAccounts = (bootstrap, overview) => {
   const balanceLookup = new Map((overview?.accountBalances || []).map((item) => [item.account_id, item]));
   return bootstrap?.accounts?.filter((item) => item.status === "active")
-    .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) })) || [];
+    .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) }))
+    .filter((item) => item.account_type !== "investment") || [];
 };
 const activeCategories = (bootstrap, kind) => bootstrap?.categories?.filter((item) => item.status === "active" && item.transaction_type === kind) || [];
 

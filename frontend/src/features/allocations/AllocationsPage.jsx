@@ -148,7 +148,7 @@ const activeAllocationAccounts = (bootstrap, overview) => {
   const balanceLookup = new Map((overview?.accountBalances || []).map((item) => [item.account_id, item]));
   return (bootstrap?.accounts || []).filter((item) => item.status === "active")
     .map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) }))
-    .filter((item) => item.can_transact !== false);
+    .filter((item) => item.can_transact !== false && item.account_type !== "investment");
 };
 const activeAllocationUsers = (resource, actor, administratorMode) => administratorMode
   ? (resource.data?.items || []).filter((item) => item.status === "active")

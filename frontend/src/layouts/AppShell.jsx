@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { FiLogOut, FiPlus, FiRefreshCw, FiSettings } from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
+import { FiBell, FiChevronDown, FiLogOut, FiPlus, FiRefreshCw, FiSettings } from "react-icons/fi";
 import { NavLink, Outlet, useLocation, useNavigationType } from "react-router";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import SideNavigation from "../components/navigation/SideNavigation.jsx";
@@ -10,6 +10,7 @@ import Button from "../components/common/Button.jsx";
 import ThemeToggle from "../components/common/ThemeToggle.jsx";
 import UserAvatar from "../components/common/UserAvatar.jsx";
 import { MOBILE_SECONDARY_GROUPS } from "../config/navigation.js";
+import { useFinancialNotificationReadState } from "../shared/workflows/financialNotifications.js";
 import { useFinance } from "../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../app/TransactionComposerContext.jsx";
 import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
@@ -67,9 +68,70 @@ const MobileMoreMenu = ({ open, user, initialFocusRef, onClose, onLogout }) => (
   </Modal>
 );
 
+const DesktopAccountMenu = ({ user, onLogout }) => {
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
+  const accountMenuTriggerRef = useRef(null);
+  const location = useLocation();
+
+  useEffect(() => setAccountMenuOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (!accountMenuOpen) return undefined;
+    const dismiss = (event) => {
+      if (!accountMenuRef.current?.contains(event.target)) setAccountMenuOpen(false);
+    };
+    const keyboard = (event) => {
+      if (event.key !== "Escape") return;
+      setAccountMenuOpen(false);
+      window.requestAnimationFrame(() => accountMenuTriggerRef.current?.focus());
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", keyboard);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", keyboard);
+    };
+  }, [accountMenuOpen]);
+
+  return (
+    <div ref={accountMenuRef} className="desktop-account-menu">
+      <button ref={accountMenuTriggerRef} type="button" className="desktop-account-trigger" aria-haspopup="menu" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((current) => !current)}>
+        <UserAvatar user={user} className="desktop-user-avatar" />
+        <span className="desktop-account-copy"><strong>{user?.name || "Pengguna"}</strong><small>{user?.role === "owner" ? "Administrator" : "Anggota"}</small></span>
+        <FiChevronDown aria-hidden="true" />
+      </button>
+      {accountMenuOpen ? <div className="desktop-account-popover" role="menu" aria-label="Menu akun">
+        <NavLink role="menuitem" to="/pengaturan"><FiSettings aria-hidden="true" /><span>Pengaturan</span></NavLink>
+        <button role="menuitem" type="button" onClick={onLogout}><FiLogOut aria-hidden="true" /><span>Keluar</span></button>
+      </div> : null}
+    </div>
+  );
+};
+
+const DesktopAppHeader = ({ isRefreshing, notificationState, user, onLogout }) => (
+  <header className="desktop-app-header">
+    <Brand />
+    <div className="desktop-app-header__actions">
+      <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
+        {isRefreshing ? <><FiRefreshCw aria-hidden="true" /><span>Memperbarui</span></> : <span className="sr-only">Data siap</span>}
+      </div>
+      <NavLink className="desktop-header-action desktop-notification-button" to="/notifikasi" aria-label={notificationState.unreadCount ? `Buka notifikasi, ${notificationState.unreadCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
+        <FiBell aria-hidden="true" />
+        {notificationState.unreadCount ? <span className="desktop-notification-badge" aria-hidden="true">{Math.min(notificationState.unreadCount, 99)}</span> : null}
+      </NavLink>
+      <ThemeToggle />
+      <DesktopAccountMenu user={user} onLogout={onLogout} />
+    </div>
+  </header>
+);
+
+const DesktopFloatingTransactionAdd = ({ visible, offline, onClick }) => visible ? (
+  <button type="button" className="floating-add" disabled={offline} onClick={onClick} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button>
+) : null;
+
 const AppShell = () => {
   const { user, logout } = useAuth();
-  const { isRefreshing, refreshError, refreshAll } = useFinance();
+  const { isRefreshing, refreshError, refreshAll, overview } = useFinance();
   const { openTransactionComposer } = useTransactionComposer();
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -85,6 +147,7 @@ const AppShell = () => {
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const serviceWorkerUpdate = useServiceWorkerUpdate();
+  const notificationState = useFinancialNotificationReadState({ alerts: overview?.alerts || [], scope: user?.uid || user?.email || "anonymous" });
   useMobileTabScrollRestoration(location, navigationType);
   useRoutePrefetch();
 
@@ -104,20 +167,7 @@ const AppShell = () => {
       <SideNavigation />
 
       <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}${accountsRoute ? " app-shell--accounts" : ""}`}>
-        <header className="desktop-app-header">
-          <Brand />
-          <div className="desktop-app-header__actions">
-            <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
-              {isRefreshing ? <><FiRefreshCw aria-hidden="true" /><span>Memperbarui</span></> : <span className="sr-only">Data siap</span>}
-            </div>
-            <ThemeToggle />
-            <NavLink className="desktop-settings-button" to="/pengaturan" aria-label="Buka pengaturan" title="Pengaturan">
-              <FiSettings aria-hidden="true" />
-            </NavLink>
-            <UserAvatar user={user} className="desktop-user-avatar" />
-            <button type="button" className="icon-button desktop-logout-button" aria-label="Keluar" onClick={handleLogout}><FiLogOut aria-hidden="true" /></button>
-          </div>
-        </header>
+        <DesktopAppHeader isRefreshing={isRefreshing} notificationState={notificationState} user={user} onLogout={handleLogout} />
 
         <div className="app-shell__main">
           <header className="topbar">
@@ -138,7 +188,7 @@ const AppShell = () => {
         </div>
       </div>
 
-      {desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute ? <button type="button" className="floating-add" disabled={offline} onClick={openTransactionComposer} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button> : null}
+      <DesktopFloatingTransactionAdd visible={desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute} offline={offline} onClick={openTransactionComposer} />
       <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
 
       <MobileMoreMenu

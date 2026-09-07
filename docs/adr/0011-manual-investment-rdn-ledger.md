@@ -24,6 +24,10 @@ Menyimpan `holding`, `market_value`, atau saldo RDN sebagai angka mutable indepe
 11. Kondisi investasi yang sudah ada sebelum aplikasi dicatat melalui semantic event `opening_position` append-only, bukan fake Buy. Event membawa share quantity, cost basis, reference price, dan delta Cash RDN menuju saldo aktual; fase opening hanya terbuka sebelum aktivitas investasi reguler.
 12. Continuation Investasi memakai satu contract konseptual `{source, action, returnTo, payload}` sambil tetap membaca state legacy. RDN creation dan Transfer kembali ke konteks Investasi; draft Buy dipertahankan ketika perlu funding dan return path dibatasi ke path internal.
 13. Satu portfolio tetap terikat eksplisit ke satu RDN. Multi-RDN dibedakan lewat qualifier presentasional/canonical account name + ownership tanpa membuat ledger baru; setelah Sell, penarikan dari RDN adalah action opsional, bukan continuation wajib.
+14. RDN bersifat transfer-only pada ledger transaksi biasa: income/expense/refund/adjustment baru tidak boleh menunjuk RDN; Buy/Sell/Koreksi tetap memakai event Investasi canonical.
+15. Dashboard memisahkan cash operasional dan investasi. `totalBalance` tetap all-readable untuk compatibility, `nonInvestmentBalance` menjadi **Saldo rekening**, sedangkan safe-to-spend/daily-safe/unallocated/reserved recurring mengecualikan RDN.
+16. Alokasi Dana dan Jadwal Rutin baru tidak boleh memakai RDN. Data legacy tetap readable/archivable tetapi tidak boleh mengikat Cash RDN atau menjalankan capability operasional/pembayaran.
+17. Laporan boleh menampilkan snapshot **Total kekayaan tercatat · saat ini** sebagai `nonInvestmentBalance + portfolio_value`. Historical market-value tidak disintesis dari valuation saat ini; tren saldo cash seluruh rekening tetap memasukkan `investment_account_events`.
 
 ## Consequences
 

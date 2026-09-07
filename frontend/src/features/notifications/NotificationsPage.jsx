@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { FiBell, FiCalendar, FiCheckCircle, FiChevronLeft, FiChevronRight, FiInfo, FiPieChart, FiRefreshCw, FiTarget } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import PageHeader from "../../components/common/PageHeader.jsx";
+import Button from "../../components/common/Button.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
@@ -86,9 +88,22 @@ const NotificationsPage = () => {
     navigate(guidance.to, { state: { ...guidance.state, notificationSource: "notification-center" } });
   };
 
+  const actionCount = notifications.alerts.filter(notificationRequiresAction).length;
+  const reminderCount = notifications.alerts.length - actionCount;
+  const filterCounts = { all: notifications.alerts.length, action: actionCount, reminder: reminderCount };
+
   return (
     <div className={styles.page}>
       <RefreshWarning error={refreshError} onRetry={refreshOverview} />
+      <div className={styles.desktopHeader}>
+        <PageHeader
+          eyebrow="Pusat perhatian"
+          title="Notifikasi"
+          description={notifications.unreadCount ? `${notifications.unreadCount} item belum dibaca. Prioritaskan kondisi yang membutuhkan tindakan.` : "Semua kondisi aktif sudah ditinjau."}
+          help="Notifikasi berasal dari kondisi keuangan aktif. Item akan hilang otomatis ketika kondisi sumbernya selesai."
+          actions={<Button variant="secondary" onClick={notifications.markAllRead} disabled={!notifications.unreadCount}>Tandai semua dibaca</Button>}
+        />
+      </div>
       <header className={styles.header}>
         <button type="button" className={styles.back} onClick={() => navigate(-1)} aria-label="Kembali"><FiChevronLeft aria-hidden="true" /></button>
         <div className={styles.heading}><h1>Notifikasi</h1><p>{notifications.unreadCount ? `${notifications.unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
@@ -96,13 +111,13 @@ const NotificationsPage = () => {
       </header>
 
       <div className={styles.filters} aria-label="Filter notifikasi">
-        {FILTERS.map((item) => <button key={item.id} type="button" className={styles.filter} data-active={filter === item.id ? "true" : "false"} onClick={() => setFilter(item.id)}>{item.label}</button>)}
+        {FILTERS.map((item) => <button key={item.id} type="button" className={styles.filter} data-active={filter === item.id ? "true" : "false"} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{item.label}<span>{filterCounts[item.id]}</span></button>)}
       </div>
 
-      <main className={styles.content}>
+      <div className={styles.content}>
         <NotificationContent alerts={notifications.alerts} filter={filter} isRead={notifications.isRead} onOpen={openNotification} />
         {notifications.alerts.length ? <p className={styles.note}><FiBell aria-hidden="true" />Notifikasi di sini berasal dari kondisi keuangan aktif. Setelah kondisinya selesai, item akan hilang otomatis dari daftar.</p> : null}
-      </main>
+      </div>
     </div>
   );
 };

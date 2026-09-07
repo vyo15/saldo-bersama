@@ -1,9 +1,9 @@
 import { ACCOUNT_TYPES, BANK_TEMPLATES, EWALLET_TEMPLATES } from "../../domain/constants.js";
 
-export const ACCOUNT_BALANCE_GUIDANCE = "Saldo rekening adalah seluruh saldo fisik. Dana tersedia adalah bagian saldo yang belum terikat ke Alokasi Dana. Dialokasikan adalah bagian saldo yang masih terikat ke Alokasi Dana, bukan uang tambahan. Gunakan Transfer untuk memindahkan dana antar rekening yang valid.";
+export const ACCOUNT_BALANCE_GUIDANCE = "Saldo rekening operasional dipisahkan dari Cash RDN. Dana tersedia adalah bagian saldo rekening non-investasi yang belum terikat ke Alokasi Dana. Rekening investasi hanya bergerak lewat Transfer atau pencatatan Investasi.";
 
-export const ACCOUNT_AVAILABLE_BALANCE_HINT = "Bagian saldo yang belum terikat ke Alokasi Dana.";
-export const ACCOUNT_ALLOCATED_BALANCE_HINT = "Bagian saldo yang masih terikat ke Alokasi Dana.";
+export const ACCOUNT_AVAILABLE_BALANCE_HINT = "Bagian saldo rekening non-investasi yang belum terikat ke Alokasi Dana.";
+export const ACCOUNT_ALLOCATED_BALANCE_HINT = "Bagian saldo rekening non-investasi yang masih terikat ke Alokasi Dana.";
 
 export const BANK_TEMPLATE_OPTIONS = Object.freeze([
   { value: BANK_TEMPLATES.GENERIC, label: "Bank lainnya" },
@@ -38,6 +38,8 @@ export const ACCOUNT_SCOPE_LABELS = Object.freeze({
   shared: "Bersama",
   personal: "Pribadi",
 });
+
+export const isInvestmentAccount = (account = {}) => account.account_type === ACCOUNT_TYPES.INVESTMENT;
 
 const TEMPLATE_MATCHERS = Object.freeze([
   ["bca", /\b(?:bca|bank central asia)\b/i],

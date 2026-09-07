@@ -4,7 +4,7 @@ import { envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
-import { accountWithAccess, assertEnvelopeAssigneeAccess, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
+import { accountWithAccess, assertEnvelopeAssigneeAccess, assertOperationalPlanningAccount, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
 import { assertAllocationAvailable, envelopeRuleLifecycleImpact } from "./envelopeLifecycle.js";
 
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
@@ -62,6 +62,7 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
   const sourceAccountId = sanitizeText(payload.source_account_id, 100);
   if (!sourceAccountId) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Rekening sumber wajib dipilih agar dana alokasi memiliki asal yang jelas.", 400);
   const account = await accountWithAccess(db, context.actor, sourceAccountId);
+  assertOperationalPlanningAccount(account, "Alokasi Dana");
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
   const legacyAssignee = owned.scope === "personal" ? owned.owner_user_id : null;
@@ -100,6 +101,7 @@ export const createEnvelopePeriod = async (db, context, payload = context.payloa
   if (start > end) throw appError("INVALID_PERIOD_RANGE", "Tanggal akhir harus setelah tanggal mulai.", 400);
   const amount = positiveInteger(payload.allocated_amount ?? rule.default_amount, "Nominal alokasi");
   const source = rule.source_account_id ? await accountWithAccess(db, context.actor, rule.source_account_id) : null;
+  assertOperationalPlanningAccount(source, "Alokasi Dana");
   await assertAllocationAvailable(db, source, amount);
   const duplicate = await db.one("SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=? AND period_start=? AND period_end=?", [rule.envelope_rule_id, start, end]);
   if (duplicate) throw appError("DUPLICATE_ENVELOPE_PERIOD", "Periode alokasi yang sama sudah ada.", 409);

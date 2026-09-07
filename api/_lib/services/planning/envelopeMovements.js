@@ -1,7 +1,7 @@
 import { appendAudit } from "../audit.js";
 import { appError, assertVersion, nowIso, positiveInteger, publicRow, sanitizeText, uuid } from "../core.js";
 import { nextVersionStamp } from "../versioning.js";
-import { accountWithAccess, assertOwnedAccess, assertPlanningManageScope } from "./shared.js";
+import { accountWithAccess, assertOperationalPlanningAccount, assertOwnedAccess, assertPlanningManageScope } from "./shared.js";
 import { assertAllocationAvailable } from "./envelopeLifecycle.js";
 import { assertEnvelopeAssigneeAccess, hasSameEnvelopeAssignee } from "./shared.js";
 
@@ -24,6 +24,8 @@ const resolveEnvelopeMove = async (db, context) => {
   if (from.scope !== to.scope || String(from.owner_user_id || "") !== String(to.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Dana hanya dapat dipindahkan antar alokasi dengan kepemilikan ledger yang sama.", 409);
   if (!from.source_account_id || !to.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Pemindahan dana memerlukan rekening sumber yang jelas pada kedua alokasi.", 409);
   if (from.source_account_id !== to.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_MISMATCH", "Dana hanya dapat dipindahkan antar alokasi dari rekening sumber yang sama. Gunakan Transfer untuk memindahkan uang antar rekening.", 409);
+  const source = await accountWithAccess(db, context.actor, from.source_account_id);
+  assertOperationalPlanningAccount(source, "Alokasi Dana");
   if (context.actor.role !== "owner" && !hasSameEnvelopeAssignee(from, to)) throw appError("ENVELOPE_ASSIGNEE_MISMATCH", "Member hanya dapat memindahkan dana antar alokasi dengan pengguna yang sama.", 409);
   return { payload, fromId, toId, from, to };
 };
@@ -77,6 +79,7 @@ export const adjustEnvelopeAllocation = async (db, context) => {
   assertEnvelopeAssigneeAccess(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const source = await accountWithAccess(db, context.actor, current.source_account_id);
+  assertOperationalPlanningAccount(source, "Alokasi Dana");
   if (direction === "fund") {
     await assertAllocationAvailable(db, source, amount);
   } else {

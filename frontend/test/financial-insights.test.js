@@ -271,7 +271,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /\{ to: "\/rekening", label: "Rekening"/);
   assert.match(mobile, /Jadwal Terdekat/);
   assert.match(mobile, /Aktivitas Terbaru/);
-  assert.match(mobile, /Nilai investasi/);
+  assert.match(mobile, /Total investasi tercatat/);
   assert.match(desktop, /SensitiveMoney/);
   assert.match(desktop, /Transaksi rekening/);
   assert.match(desktop, /data-dashboard-account/);
@@ -292,13 +292,13 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
   assert.match(mobile, /Batas aman per hari/);
-  assert.match(mobile, /sudah dialokasikan/);
+  assert.match(mobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
   assert.match(mobile, /dashboardInsightState/);
   assert.doesNotMatch(mobile, /mobile-accounts-title|MobileAccounts|AccountVisual/);
   assert.doesNotMatch(mobile, /onOpenFilters|mobile-dashboard-filter-button|FiSliders/);
   assert.match(mobile, /recentTransactions\.slice\(0, 3\)/);
   assert.match(mobile, /Sisa <SensitiveMoney/);
-  assert.match(mobile, /overview\.allocatedRemaining/, "Nominal hero harus memakai dana yang masih terikat, bukan alokasi historis yang sudah terpakai.");
+  assert.doesNotMatch(mobile, /sudah dialokasikan/, "Hero harus fokus pada Saldo rekening; status alokasi tetap berada di bagian perencanaan.");
   assert.doesNotMatch(mobile, /allocationSummary/, "Beranda mobile tidak perlu menghitung ulang ringkasan alokasi untuk hero.");
   assert.match(mobile, /onOpenTransactionDetail/);
   assert.match(detail, /Detail transaksi/);

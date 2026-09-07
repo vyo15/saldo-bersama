@@ -105,14 +105,15 @@ test("canonical account terms stay user-facing near balances", async () => {
   ]);
 
   assert.match(accountPresentation, /ACCOUNT_BALANCE_GUIDANCE/);
-  assert.match(accountPresentation, /Dana tersedia adalah bagian saldo yang belum terikat ke Alokasi Dana/);
-  assert.match(accountPresentation, /Dialokasikan adalah bagian saldo yang masih terikat ke Alokasi Dana, bukan uang tambahan/);
+  assert.match(accountPresentation, /Saldo rekening operasional dipisahkan dari Cash RDN/);
+  assert.match(accountPresentation, /Rekening investasi hanya bergerak lewat Transfer atau pencatatan Investasi/);
   assert.match(accountsPage, /help=\{ACCOUNT_BALANCE_GUIDANCE\}/);
   assert.match(mobileAccounts, /\{ACCOUNT_BALANCE_GUIDANCE\}/);
   assert.match(desktopAccounts, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
   assert.doesNotMatch(dashboardMobile, /ACCOUNT_AVAILABLE_BALANCE_HINT|AccountVisual/, "Beranda mobile compact tidak menduplikasi detail saldo rekening.");
+  assert.match(dashboardMobile, /Saldo rekening/);
+  assert.match(dashboardMobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
   assert.match(dashboardMobile, /Aman digunakan/);
-  assert.match(dashboardMobile, /sudah dialokasikan/);
   assert.match(dashboardDesktop, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
 });
 
@@ -470,9 +471,9 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.match(mobile, /ThemeToggle tone="hero"/);
-  const order = ["<MobileNextAction", "<MobileQuickActions", "<MobileFinancialInsight", "<MobileBudgetPlan", "<MobileUpcomingSchedule", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
+  const order = ["<MobileNextAction", "<MobileQuickActions", "<MobileInvestment", "<MobileFinancialInsight", "<MobileBudgetPlan", "<MobileUpcomingSchedule", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile ringkas harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan perhatian → akses cepat → insight → rencana → jadwal → aktivitas → investasi.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan perhatian → akses cepat → investasi → insight → rencana → jadwal → aktivitas.");
   assert.doesNotMatch(mobile, /MobileAccounts|MobileAllocation|MobileCashFlow|AccountVisual/, "Dashboard mobile tidak boleh kembali menumpuk detail rekening, alokasi, atau arus kas yang sudah punya route khusus.");
 });
 

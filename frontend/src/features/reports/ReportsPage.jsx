@@ -46,19 +46,20 @@ const ReportHeader = ({ period, trendMonths, setPeriod, setTrendMonths }) => (
   />
 );
 
-const OverviewMetrics = ({ overview }) => (
+const OverviewMetrics = ({ overview, currentWealth }) => (
   <section className={reportClass("metric-grid")}>
     <Card className="metric-card"><span>Arus kas bersih</span><Money value={overview?.cashFlow?.net || 0} tone={(overview?.cashFlow?.net || 0) >= 0 ? "positive" : "negative"} /></Card>
-    <Card className="metric-card"><span>Total saldo</span><Money value={overview?.totalBalance || 0} /></Card>
+    <Card className="metric-card"><span>Saldo rekening</span><Money value={overview?.nonInvestmentBalance ?? overview?.totalBalance ?? 0} /></Card>
+    {currentWealth != null ? <Card className="metric-card"><span>Total kekayaan tercatat · saat ini</span><Money value={currentWealth} /></Card> : null}
     <Card className="metric-card"><span>Kewajiban tersisa</span><Money value={overview?.reservedBills || 0} /></Card>
-    <Card className="metric-card"><span>Saldo aman akun ini</span><Money value={overview?.safeToSpend || 0} /></Card>
+    <Card className="metric-card"><span>Aman digunakan</span><Money value={overview?.safeToSpend || 0} /></Card>
   </section>
 );
 
 const ReportAlerts = ({ alerts = [] }) => alerts.length ? <Card className={reportClass("panel report-alert-panel")}><div className="panel__header"><div><h2>Perlu perhatian</h2><p className="panel__description">{alerts.length} item aktif. Buka tindakan terkait untuk menyelesaikannya tanpa mengubah data langsung dari laporan.</p></div></div><FinancialAlertList alerts={alerts} variant="report" /></Card> : null;
 
 const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
-  <Card className="panel"><div className="panel__header"><h2>Saldo awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>
+  <Card className="panel"><div className="panel__header"><h2>Saldo seluruh rekening awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>
   <Card className="panel"><div className="panel__header"><h2>{trend.granularity === "day" ? "Arus kas harian" : `Arus kas ${trend.months} bulan`}</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" description="Tren arus kas muncul setelah tersedia transaksi pada lebih dari satu periode." />}</Card>
 </>;
 
@@ -67,7 +68,7 @@ const useMobileReportLayout = () => useMediaQuery(APP_MEDIA.mobile);
 const ReportDetails = ({ balanceTrend, categoryExpenses, accountExpenses, creatorExpenses, costShareExpenses, budgets }) => (
   <div className={reportClass("report-details")}>
     <div className={reportClass("report-details__content")}>
-      <Card className="panel"><div className="panel__header"><h2>Tren total saldo</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren total saldo" /> : <EmptyState title="Belum ada tren saldo" description="Tren saldo muncul setelah tersedia riwayat saldo pada lebih dari satu periode." />}</Card>
+      <Card className="panel"><div className="panel__header"><h2>Tren saldo seluruh rekening</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren saldo seluruh rekening termasuk Cash RDN" /> : <EmptyState title="Belum ada tren saldo" description="Tren saldo muncul setelah tersedia riwayat saldo pada lebih dari satu periode." />}</Card>
       <BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} />
       <BudgetPerformance budgets={budgets} />
     </div>
@@ -182,7 +183,7 @@ const MobileComparison = ({ current, previous }) => {
   const netChange = percentChange(current?.net, previous.net);
   const rows = [
     { label: "Pengeluaran", current: current?.expense, previous: previous.expense, change: expenseChange, goodWhenDown: true },
-    { label: "Total saldo", current: current?.totalBalance, previous: previous.totalBalance, change: balanceChange },
+    { label: "Saldo seluruh rekening", current: current?.totalBalance, previous: previous.totalBalance, change: balanceChange },
     { label: "Arus kas bersih", current: current?.net, previous: previous.net, change: netChange },
   ];
   return <section className={styles.comparisonCard}>
@@ -264,7 +265,7 @@ const MobileSummaryAlerts = ({ alerts = [] }) => {
   return <section className={styles.alertCard}><div className={styles.sectionHeading}><div><span>Kontrol</span><h2>Perlu perhatian</h2></div><strong>{alerts.length}</strong></div><FinancialAlertList alerts={alerts} variant="report" /></section>;
 };
 
-const MobileSummaryView = ({ model, period, categoryLookup, setMode }) => {
+const MobileSummaryView = ({ model, period, categoryLookup, setMode, currentWealth }) => {
   const { overview, categoryExpenses, currentTrend, previousTrend } = model;
   const net = Number(overview?.cashFlow?.net || 0);
   const NetIcon = net > 0 ? FiArrowUpRight : net < 0 ? FiArrowDownRight : FiMinus;
@@ -272,7 +273,8 @@ const MobileSummaryView = ({ model, period, categoryLookup, setMode }) => {
     <MobileSummaryHero model={model} period={period} />
     <section className={styles.metricsGrid} aria-label="Ringkasan keuangan">
       <MobileMetricCard icon={NetIcon} label="Arus kas bersih" value={net} tone={net >= 0 ? "positive" : "negative"} />
-      <MobileMetricCard icon={BalanceIcon} label="Total saldo" value={overview?.totalBalance || 0} />
+      <MobileMetricCard icon={BalanceIcon} label="Saldo rekening" value={overview?.nonInvestmentBalance ?? overview?.totalBalance ?? 0} />
+      {currentWealth != null ? <MobileMetricCard icon={BalanceIcon} label="Total kekayaan tercatat · saat ini" value={currentWealth} /> : null}
       <MobileMetricCard icon={FiShield} label="Aman digunakan" value={overview?.safeToSpend || 0} />
     </section>
     <MobileComparison current={currentTrend} previous={previousTrend} />
@@ -296,41 +298,45 @@ const MobileCategoryView = ({ model, categoryLookup }) => <>
   <MobileBreakdownDetails accountExpenses={model.accountExpenses} creatorExpenses={model.creatorExpenses} costShareExpenses={model.costShareExpenses} />
 </>;
 
-const MobileReportsView = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload, categoryLookup }) => {
+const MobileReportsView = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload, categoryLookup, currentWealth }) => {
   const [mode, setMode] = useState("summary");
   const model = mobileReportModel(data, period, trendMonths);
   return <div className={styles.mobilePage}>
     <RefreshWarning error={refreshError} onRetry={reload} />
     <MobileReportControls mode={mode} setMode={setMode} period={period} setPeriod={setPeriod} trendMonths={trendMonths} setTrendMonths={setTrendMonths} historical={model.overview?.isHistoricalPeriod} />
     {mode === "summary"
-      ? <MobileSummaryView model={model} period={period} categoryLookup={categoryLookup} setMode={setMode} />
+      ? <MobileSummaryView model={model} period={period} categoryLookup={categoryLookup} setMode={setMode} currentWealth={currentWealth} />
       : <MobileCategoryView model={model} categoryLookup={categoryLookup} />}
     <p className={styles.dataNote}><FiLayers aria-hidden="true" /> Laporan hanya membaca ledger yang dapat Anda lihat. Tidak ada data yang diubah dari halaman ini.</p>
   </div>;
 };
 
-const DesktopReportsContent = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload }) => {
+const DesktopReportsContent = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload, currentWealth }) => {
   const { overview, budgets = [], categoryExpenses = [], accountExpenses = [], creatorExpenses = [], costShareExpenses = [], trend = { months: trendMonths, granularity: "month", items: [] } } = data || {};
   const cashFlowTrend = trend.items.map((item) => ({ label: item.label, value: item.net }));
   const balanceTrend = trend.items.map((item) => ({ label: item.label, value: item.totalBalance }));
   const balanceComparison = [{ label: "Awal periode", value: overview?.openingBalance || 0 }, { label: overview?.isHistoricalPeriod ? "Akhir periode" : "Saat ini", value: overview?.totalBalance || 0 }];
-  return <div className={reportClass("page-stack reports-page")}><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} /><ReportAlerts alerts={overview?.alerts} /><section className={reportClass("two-column-grid")}><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} budgets={budgets} /></section></div>;
+  return <div className={reportClass("page-stack reports-page")}><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} currentWealth={currentWealth} /><ReportAlerts alerts={overview?.alerts} /><section className={reportClass("two-column-grid")}><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} budgets={budgets} /></section></div>;
 };
 
 const ReportsContent = (props) => {
   const mobile = useMobileReportLayout();
-  const { bootstrap } = useFinance();
+  const { bootstrap, overview: currentOverview } = useFinance();
   const categoryLookup = useMemo(() => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])), [bootstrap?.categories]);
-  return mobile ? <MobileReportsView {...props} categoryLookup={categoryLookup} /> : <DesktopReportsContent {...props} />;
+  const currentWealth = props.investmentSummary && currentOverview
+    ? Number(currentOverview.nonInvestmentBalance ?? currentOverview.totalBalance ?? 0) + Number(props.investmentSummary.portfolio_value || 0)
+    : null;
+  return mobile ? <MobileReportsView {...props} categoryLookup={categoryLookup} currentWealth={currentWealth} /> : <DesktopReportsContent {...props} currentWealth={currentWealth} />;
 };
 
 const ReportsPage = () => {
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [trendMonths, setTrendMonths] = useState(6);
   const resource = useApiResource("reports.monthly", { period, trend_months: trendMonths });
+  const investments = useApiResource("investments.overview");
   if (resource.status === "loading") return <LoadingScreen label="Menyusun laporan..." />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
-  return <ReportsContent data={resource.data} period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} refreshError={resource.refreshError} reload={resource.reload} />;
+  return <ReportsContent data={resource.data} period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} refreshError={resource.refreshError} reload={resource.reload} investmentSummary={investments.status === "ready" ? investments.data?.summary : null} />;
 };
 
 export default ReportsPage;

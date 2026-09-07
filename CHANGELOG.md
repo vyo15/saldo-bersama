@@ -1,3 +1,27 @@
+## 2026-09-07 — Merge pemisahan saldo operasional dan Investasi/RDN
+
+- Menggabungkan patch pemisahan saldo Investasi ke source terbaru tanpa meregresi desktop refinement, curved sidebar, breakpoint desktop, atau kontrak UI terbaru. Dashboard kini memakai **Saldo rekening** dari `nonInvestmentBalance`; `totalBalance` tetap backward-compatible sebagai total seluruh rekening readable termasuk Cash RDN.
+- Mengecualikan rekening `account_type=investment` dari `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, reserved recurring operasional, Alokasi Dana, dan Jadwal Rutin baru. Transaksi ordinary income/expense/refund/adjustment menolak RDN; Bank ↔ RDN tetap melalui Transfer, sedangkan Buy/Sell/Correction tetap melalui ledger Investasi canonical. Data planning legacy terkait RDN tetap readable tetapi fail-closed untuk operasi baru.
+- Menyelaraskan trend harian/bulanan dengan `investment_account_events`, UI Rekening mobile/desktop, Investment Overview, Laporan, wording Saham/Reksa Dana, privacy state, dan snapshot **Total kekayaan tercatat · saat ini** tanpa double-count Cash RDN.
+- Menambah regression `investment-operational-separation.test.js` dan memperbarui frontend regression terkait. Saat merge ditemukan bug adapter pada `accountAllocatedRemaining` yang memakai API database non-existent `db.get`; diperbaiki ke `db.one`. Backend business suite 133/133 dan frontend Node regression 275/275 lulus pada source test harness; full dependency-backed `npm run verify`/build tetap memerlukan dependency install normal.
+- API contract, data dictionary, ADR Investasi, product requirements, glossary, UI design system, project status, authorization matrix, implementation matrix, test plan, dan QA checklist disinkronkan pada patch yang sama.
+
+## 2026-09-07 — Desktop refinement pass
+
+- Menambahkan breakpoint desktop semantic (compact/standard/wide/ultra-wide) tanpa mengubah boundary mobile 820/821px.
+- Memperjelas shell desktop: header lebih ringkas, Notification Center global dengan unread badge, serta account menu untuk Pengaturan/logout; curved rail icon-only canonical dipertahankan tanpa label permanen atau slot Notifikasi/Pengaturan tambahan.
+- Menata ulang hierarchy Dashboard desktop dengan empat KPI primer dan attention banner sebelum workspace rekening/transaksi.
+- Mendesain ulang Notification Center desktop agar memakai PageHeader, grouped surfaces, dan filter ber-count; presentation mobile tetap terpisah.
+- Mengubah Settings compact desktop menjadi dua pane, menyeragamkan header Anggaran, dan memadatkan hero Rekening desktop.
+- Memperbarui kontrak UI desktop, breakpoint, dan regression expectation di dokumentasi/test.
+
+## 7 September 2026 - Semantic contrast, hero focus, dan theme-color governance hardening
+
+- Menutup gap WCAG AA yang lolos dari regression hex-only: dark `--negative` dinaikkan ke `#f2665a`, dark `--primary-strong` disesuaikan untuk selected `primary-soft`, `--on-hero-muted` diperkuat pada seluruh endpoint gradient, badge notifikasi memakai `--on-secondary`, counter Jadwal Rutin memakai `--text-soft`, serta wordmark/dock active tidak lagi memakai foreground dark yang terlalu rendah kontras.
+- Focus control di hero Dashboard/ThemeToggle memakai `--on-hero` opaque sehingga tidak hilang ketika global `--focus-ring` bertemu `--hero-mid`; danger hover canonical dan compatibility ikut dikunci AA.
+- Regression contrast sekarang memahami `rgba()`/alpha compositing, `var()` dan `color-mix()` yang dibutuhkan semantic contract, lalu menguji status soft-surface pada light/dark dan surface/elevated. Runtime `theme-color` membaca `--page` dari computed style; fallback HTML/manifest diselaraskan dengan light `--page`.
+- Threshold build budget canonical dikunci regression (`main JS 110 KiB gzip`, `global CSS 20 KiB`, `route 8 KiB`, warning 90%) agar quality gate tidak dapat dilonggarkan sebagai shortcut. Tidak ada perubahan schema, API, ledger, authorization, atau dependency.
+
 ## 7 September 2026 - Merge temporal picker, logo-first account picker, dan Windows quality-gate hardening
 
 - Menggabungkan patch Temporal Picker dan Account Picker Logo ke tree terbaru tanpa menimpa hardening runtime Node 22.15+/24.x, semantic icon registry, Reksa Dana, microcopy governance, atau unified Alokasi Dana yang sudah ada. Kandidat account-picker yang masih mengimpor `accountTypeIcon` dari `FinanceChoiceIcons.jsx` tidak dipakai mentah; resolver tetap berasal dari `financeChoiceIconRegistry.js`.

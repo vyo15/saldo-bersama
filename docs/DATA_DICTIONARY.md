@@ -79,6 +79,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `transactions.cost_share_json`: JSON snapshot server-side berisi `{user_id,basis_points,share_amount}`. Total `basis_points` wajib 10.000 dan total `share_amount` wajib sama dengan `transactions.amount`; field tidak dipercaya dari client.
 - Transfer wajib source dan destination berbeda.
 - Expense yang memiliki `envelope_period_id` wajib memakai `source_account_id` yang sama dengan `envelope_rules.source_account_id`; expense tanpa Alokasi Dana dan Transfer tidak boleh memakai dana yang masih berada dalam `allocated_remaining` pada rekening non-`allow_negative`.
+- Rekening `account_type=investment` hanya boleh dipakai oleh transaksi biasa jenis `transfer`; ordinary income/expense/refund/adjustment ditolak. Alokasi Dana/Jadwal Rutin baru juga tidak boleh menunjuk RDN. Data legacy tetap tersimpan/readable tetapi tidak menjadi binding operasional.
 - `transactions.status` menentukan dampak saldo; cancelled/archived tidak dihitung.
 - `owner_scope`/`scope`: `shared` atau `personal`.
 - `created_by`, `updated_by`, cancellation/reversal actor: server canonical.
@@ -89,9 +90,10 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 
 - `balance`: saldo fisik rekening dari saldo awal + cash-impact event canonical hingga cutoff; untuk rekening biasa event berasal dari transaksi aktif, sedangkan RDN juga memasukkan `investment_account_events` dari buy/sell/correction;
-- `allocated_remaining`: total bagian alokasi aktif yang masih tertahan pada rekening sumber. Dana `reserved_amount` tetap bagian dari alokasi dan tidak dibebaskan sebagai dana tersedia; pengeluaran Alokasi Dana hanya mengurangi sisa setelah tanggal transaksi mencapai cutoff;
-- `available_balance = balance - allocated_remaining`; membuat Alokasi Dana tidak mengubah `balance`, sedangkan pemakaian Alokasi Dana mengurangi `balance` dan `allocated_remaining` bersamaan;
-- `safeToSpend`, `unallocatedFunds`;
+- `allocated_remaining`: total bagian alokasi aktif yang masih tertahan pada rekening sumber non-investasi. Untuk `account_type=investment`, alokasi legacy diperlakukan non-operasional dan read-model mengembalikan `0`; Dana `reserved_amount` pada rekening operasional tetap bagian dari alokasi dan tidak dibebaskan sebagai dana tersedia; pengeluaran Alokasi Dana hanya mengurangi sisa setelah tanggal transaksi mencapai cutoff;
+- `available_balance = balance - allocated_remaining`; membuat Alokasi Dana tidak mengubah `balance`, sedangkan pemakaian Alokasi Dana mengurangi `balance` dan `allocated_remaining` bersamaan; pada RDN nilai ini sama dengan Cash RDN karena alokasi legacy tidak mengikatnya;
+- `nonInvestmentBalance`: jumlah saldo rekening readable non-investasi; `totalBalance` tetap seluruh rekening readable termasuk RDN;
+- `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, `allocatedRemaining`, dan reserved recurring operasional mengecualikan RDN dan mengikuti capability actor;
 - `progress_percent`, `remaining_amount`, `required_monthly_amount`, `pace_status` target;
 - tren 3/6/12 bulan dan breakdown laporan;
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.

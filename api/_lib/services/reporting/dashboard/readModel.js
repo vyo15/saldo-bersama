@@ -179,7 +179,9 @@ export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {
                 AND t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
               WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
                 AND t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
-              ELSE 0 END),0) AS balance
+              ELSE 0 END),0)
+            + COALESCE((SELECT SUM(e.cash_effect) FROM investment_account_events e
+                WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND c.cutoff_date),0) AS balance
           FROM cutoffs c CROSS JOIN accounts a
           LEFT JOIN transactions t ON (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
             AND t.status='active' AND t.transaction_date<=c.cutoff_date AND t.transaction_date>=a.initial_balance_date
@@ -238,7 +240,9 @@ export const dailyTrendPlan = (actor, period, { accountId = "" } = {}) => {
                 AND t.transaction_type='transfer' AND t.destination_account_id=a.account_id THEN t.amount
               WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
                 AND t.transaction_type='adjustment' AND t.source_account_id=a.account_id THEN t.amount
-              ELSE 0 END),0) AS balance
+              ELSE 0 END),0)
+            + COALESCE((SELECT SUM(e.cash_effect) FROM investment_account_events e
+                WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND c.cutoff_date),0) AS balance
           FROM cutoffs c CROSS JOIN accounts a
           LEFT JOIN transactions t ON (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
             AND t.status='active' AND t.transaction_date<=c.cutoff_date AND t.transaction_date>=a.initial_balance_date

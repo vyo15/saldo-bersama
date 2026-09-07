@@ -131,7 +131,7 @@ const accountAllocationIntegrityStatement = () => ({
           AND (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
       ),0) + COALESCE((SELECT SUM(e.cash_effect) FROM investment_account_events e
         WHERE e.account_id=a.account_id AND e.event_date BETWEEN a.initial_balance_date AND ?),0) ELSE 0 END AS balance,
-      COALESCE((SELECT SUM(CASE WHEN p.allocated_amount - COALESCE((
+      CASE WHEN a.account_type='investment' THEN 0 ELSE COALESCE((SELECT SUM(CASE WHEN p.allocated_amount - COALESCE((
         SELECT SUM(et.amount) FROM transactions et
         WHERE et.status='active' AND et.transaction_type='expense' AND et.envelope_period_id=p.envelope_period_id AND et.transaction_date<=?
       ),0)>0 THEN p.allocated_amount - COALESCE((
@@ -139,7 +139,7 @@ const accountAllocationIntegrityStatement = () => ({
         WHERE et.status='active' AND et.transaction_type='expense' AND et.envelope_period_id=p.envelope_period_id AND et.transaction_date<=?
       ),0) ELSE 0 END)
       FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id
-      WHERE p.status='active' AND r.status='active' AND r.source_account_id=a.account_id),0) AS allocated_remaining
+      WHERE p.status='active' AND r.status='active' AND r.source_account_id=a.account_id),0) END AS allocated_remaining
     FROM accounts a WHERE a.status='active' AND a.allow_negative=0`,
   args: [todayJakarta(), todayJakarta(), todayJakarta(), todayJakarta(), todayJakarta()],
 });

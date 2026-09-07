@@ -142,7 +142,7 @@
 }
 
 .desktop-module-dock__link.is-active {
-  color: var(--primary-deep);
+  color: var(--primary-strong);
   background: var(--surface);
   box-shadow: 0 10px 22px color-mix(in srgb, var(--primary-deep) 32%, transparent);
 }
@@ -489,3 +489,147 @@
 .user-avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .desktop-app-header__actions .icon-button,
 .desktop-settings-button { width: 44px; height: 44px; border-radius: 12px; }
+
+/* Desktop refinement 2026-09: clearer shell hierarchy and account utilities; the canonical curved icon dock stays unchanged. */
+@media (min-width: 821px) {
+  .desktop-app-header {
+    min-height: 64px;
+    padding-block: 8px;
+    padding-inline-end: clamp(16px, 2vw, 28px);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(16px);
+  }
+
+  .app-content {
+    padding-top: clamp(22px, 2vw, 32px);
+    padding-bottom: 80px;
+  }
+
+  .page-stack { gap: clamp(20px, 2vw, 28px); }
+  .page-header { align-items: flex-start; gap: 20px; }
+  .page-header h1 { letter-spacing: -.035em; }
+  .page-header__description { max-width: 46rem; line-height: 1.55; }
+
+  .desktop-header-action,
+  .desktop-account-trigger {
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text-soft);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .desktop-header-action {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+  }
+
+  .desktop-header-action:hover,
+  .desktop-header-action:focus-visible,
+  .desktop-account-trigger:hover,
+  .desktop-account-trigger:focus-visible {
+    border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+    color: var(--primary-strong);
+    background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface));
+  }
+
+  .desktop-header-action:focus-visible,
+  .desktop-account-trigger:focus-visible,
+  .desktop-account-popover a:focus-visible,
+  .desktop-account-popover button:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .desktop-notification-button svg { width: 18px; height: 18px; }
+  .desktop-notification-badge {
+    position: absolute;
+    inset-inline-end: -4px;
+    top: -5px;
+    min-width: 19px;
+    height: 19px;
+    padding-inline: 5px;
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--surface);
+    border-radius: var(--radius-pill);
+    color: var(--on-primary);
+    background: var(--negative);
+    font-size: 12px;
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
+  }
+
+  .desktop-account-menu { position: relative; }
+  .desktop-account-trigger {
+    max-width: 15rem;
+    padding: 3px 10px 3px 4px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .desktop-account-trigger .desktop-user-avatar { width: 36px; height: 36px; box-shadow: none; }
+  .desktop-account-copy { min-width: 0; display: grid; gap: 1px; }
+  .desktop-account-copy strong,
+  .desktop-account-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .desktop-account-copy strong { color: var(--text); font-size: var(--font-size-xs); }
+  .desktop-account-copy small { color: var(--text-muted); font-size: 12px; font-weight: var(--font-weight-semibold); }
+  .desktop-account-trigger > svg { width: 15px; height: 15px; color: var(--text-muted); }
+
+  .desktop-account-popover {
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + 8px);
+    z-index: 90;
+    width: 13.5rem;
+    padding: 6px;
+    display: grid;
+    gap: 2px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-md);
+  }
+
+  .desktop-account-popover a,
+  .desktop-account-popover button {
+    min-height: 42px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text-soft);
+    background: transparent;
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+  }
+  .desktop-account-popover a:hover,
+  .desktop-account-popover button:hover { color: var(--text); background: var(--surface-soft); }
+  .desktop-account-popover svg { width: 16px; height: 16px; }
+
+}
+
+@media (min-width: 1600px) {
+  .app-content--standard { max-width: 1320px; }
+  .app-content--wide { max-width: min(var(--content-max), 1580px); }
+}
+
+@media (max-width: 1023px) and (min-width: 821px) {
+  .desktop-account-copy { display: none; }
+  .desktop-account-trigger { width: 44px; padding: 3px; grid-template-columns: 1fr; place-items: center; }
+  .desktop-account-trigger > svg { display: none; }
+  .desktop-account-popover { inset-inline-end: 0; }
+}

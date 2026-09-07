@@ -38,18 +38,30 @@ const allocationSummary = (accounts, items) => {
 
 const dashboardBalanceMetrics = (accounts, openingAccounts, recurring) => {
   const protectedTypes = new Set(["emergency_fund", "savings", "sinking_fund"]);
-  const operableAccounts = accounts.filter((account) => account.can_transact !== false);
+  const isInvestment = (account) => account.account_type === "investment";
+  const nonInvestmentAccounts = accounts.filter((account) => !isInvestment(account));
+  const openingNonInvestmentAccounts = openingAccounts.filter((account) => !isInvestment(account));
+  const operableAccounts = nonInvestmentAccounts.filter((account) => account.can_transact !== false);
+  const operatingLiquidAccounts = operableAccounts.filter((account) => !protectedTypes.has(account.account_type));
+  const operatingAccountIds = new Set(operatingLiquidAccounts.map((account) => account.account_id));
   const openingBalance = openingAccounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
+  const nonInvestmentOpeningBalance = openingNonInvestmentAccounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
   const totalBalance = accounts.reduce((sum, row) => sum + Number(row.balance || 0), 0);
-  const emergencyBalance = accounts.filter((row) => row.account_type === "emergency_fund").reduce((sum, row) => sum + Number(row.balance || 0), 0);
-  const protectedBalance = accounts.filter((row) => protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
-  const liquidBalance = accounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
-  const operableLiquidAvailable = operableAccounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Math.max(0, Number(row.available_balance ?? row.balance ?? 0)), 0);
-  const reservedBills = recurring.filter((row) => row.kind === "expense" && !["paid", "cancelled"].includes(row.status)).reduce((sum, row) => sum + Math.max(0, Number(row.expected_amount) - Number(row.actual_amount)), 0);
+  const nonInvestmentBalance = nonInvestmentAccounts.reduce((sum, row) => sum + Number(row.balance || 0), 0);
+  const emergencyBalance = nonInvestmentAccounts.filter((row) => row.account_type === "emergency_fund").reduce((sum, row) => sum + Number(row.balance || 0), 0);
+  const protectedBalance = nonInvestmentAccounts.filter((row) => protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
+  const liquidBalance = nonInvestmentAccounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
+  const operableLiquidAvailable = operatingLiquidAccounts.reduce((sum, row) => sum + Math.max(0, Number(row.available_balance ?? row.balance ?? 0)), 0);
+  const reservedBills = recurring.filter((row) => row.kind === "expense"
+    && operatingAccountIds.has(row.default_account_id)
+    && !["paid", "cancelled"].includes(row.status))
+    .reduce((sum, row) => sum + Math.max(0, Number(row.expected_amount) - Number(row.actual_amount)), 0);
   return {
     operableAccounts,
     openingBalance,
+    nonInvestmentOpeningBalance,
     totalBalance,
+    nonInvestmentBalance,
     emergencyBalance,
     protectedBalance,
     liquidBalance,
@@ -100,8 +112,11 @@ const dashboardResult = (context, periodContext, readState) => {
     isHistoricalPeriod: historical,
     accountBalances: accounts,
     totalBalance: balance.totalBalance,
+    nonInvestmentBalance: balance.nonInvestmentBalance,
     openingBalance: balance.openingBalance,
+    nonInvestmentOpeningBalance: balance.nonInvestmentOpeningBalance,
     balanceChange: balance.totalBalance - balance.openingBalance,
+    nonInvestmentBalanceChange: balance.nonInvestmentBalance - balance.nonInvestmentOpeningBalance,
     liquidBalance: balance.liquidBalance,
     safeToSpend,
     dailySafeToSpend: daysRemaining ? Math.floor(safeToSpend / daysRemaining) : 0,

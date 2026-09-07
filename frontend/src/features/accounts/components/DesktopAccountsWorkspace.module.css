@@ -320,3 +320,11 @@
   .carouselArrow:hover:not(:disabled),
   .carouselDot:hover { transform: none; }
 }
+
+/* Denser desktop hero keeps account facts and activity above the fold. */
+@media (min-width: 821px) {
+  .heroPanel { min-height: 21rem; padding: clamp(1.15rem, 1.8vw, 1.7rem); }
+  .heroCopy { gap: var(--space-4); }
+  .heroBalance > strong,
+  .heroBalance > strong :global(.money) { font-size: clamp(2rem, 3vw, 3rem); }
+}
