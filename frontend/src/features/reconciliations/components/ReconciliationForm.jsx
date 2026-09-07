@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FiAlertTriangle, FiCheckCircle, FiCreditCard, FiRefreshCw, FiShield } from "react-icons/fi";
+import { FiAlertTriangle, FiCheckCircle, FiRefreshCw, FiShield } from "react-icons/fi";
+import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import Button from "../../../components/common/Button.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Card from "../../../components/common/Card.jsx";
@@ -137,7 +138,7 @@ const ReconciliationInputPanel = ({ onRefreshAccounts, accountsRefreshing, selec
       </div>
       {props.accounts.length
         ? <ReconciliationForm key={selectedAccount?.account_id || "no-account"} selectedAccount={selectedAccount} {...props} />
-        : <EmptyState className={styles.emptyAction} variant="inline" icon={FiCreditCard} title="Tidak ada rekening yang tersedia" description="Tambahkan atau aktifkan rekening yang mendukung pencocokan saldo terlebih dahulu." headingLevel={3} action={<ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>} />}
+        : <EmptyState className={styles.emptyAction} variant="inline" icon={AccountIcon} title="Tidak ada rekening yang tersedia" description="Tambahkan atau aktifkan rekening yang mendukung pencocokan saldo terlebih dahulu." headingLevel={3} action={<ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>} />}
     </Card>
   </div>
 );

@@ -106,7 +106,7 @@ const ApprovalCenterPage = () => {
   if (ownerMode && transferRequests.status === "error") return <ErrorState error={transferRequests.error} onRetry={transferRequests.reload} />;
 
   return <div className="page-stack">
-    <PageHeader title="Persetujuan" description="Tinjau pengajuan rekening, kategori, dan transfer di satu tempat." help="Backend tetap memvalidasi role, rekening, status, versi record, idempotency, dan seluruh aturan finansial saat keputusan dikirim." />
+    <PageHeader title="Persetujuan" description="Tinjau pengajuan rekening, kategori, dan transfer di satu tempat." help="Keputusan tetap mengikuti hak akses, status pengajuan, dan aturan keuangan yang berlaku." />
     <ApprovalCenterContent
       tab={tab}
       setTab={setTab}

@@ -18,7 +18,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 
 ## Now — verification dan operasi
 
-- Jalankan full Node 24 `npm run verify` setelah patch. Perubahan UI tetap memerlukan pemeriksaan manual pada viewport/perangkat relevan.
+- Jalankan full `npm run verify` pada runtime Node yang didukung setelah patch. Perubahan UI tetap memerlukan pemeriksaan manual pada viewport/perangkat relevan.
 - Verifikasi operasional rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` yang pernah ikut ZIP manual mengikuti `SECRET_ROTATION_RUNBOOK.md`; source tidak dapat membuktikan credential lama sudah direvoke.
 - Migration parity Turso v16 dan real-resource backup/restore drill, termasuk scenario RDN → multi-buy → partial sell → valuation → reconciliation → restore parity.
 - Aktifkan branch protection/ruleset GitHub dan jadikan workflow **Quality** sebagai required check; source workflow/CONTRIBUTING sudah disiapkan, enforcement tetap setting GitHub. Direct push ke `main` yang masih diterima berarti langkah ini belum selesai.

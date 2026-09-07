@@ -58,7 +58,7 @@ const SETTINGS_ROUTE_META = Object.freeze({
     backLabel: "Pengaturan",
     help: {
       title: "Tentang Data & cadangan",
-      content: "Export, import, backup, dan pemulihan dikelompokkan di satu hub agar navigasi lebih sederhana. Setiap workflow tetap memakai route, validasi, dan proteksi backend masing-masing.",
+      content: "Export, import, backup, dan pemulihan dikelompokkan di satu hub agar navigasi lebih sederhana. Setiap workflow tetap memiliki langkah validasi dan pengaman masing-masing.",
     },
   },
   "/pengaturan/export": {

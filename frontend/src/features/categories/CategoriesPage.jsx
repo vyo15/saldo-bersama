@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router";
-import { FiArchive, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
+import { FiArchive, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -47,8 +47,8 @@ const categoryIconToneClass = (type) => type === "income"
 
 const CATEGORY_SECTION_ORDER = Object.freeze(["expense", "income", "refund"]);
 const CATEGORY_SECTION_META = Object.freeze({
-  expense: { label: "Pengeluaran", icon: FiTrendingDown, className: styles.categoryGroupExpense },
-  income: { label: "Pemasukan", icon: FiTrendingUp, className: styles.categoryGroupIncome },
+  expense: { label: "Pengeluaran", icon: MoneyOutIcon, className: styles.categoryGroupExpense },
+  income: { label: "Pemasukan", icon: MoneyInIcon, className: styles.categoryGroupIncome },
   refund: { label: "Pengembalian dana", icon: FiRotateCcw, className: styles.categoryGroupRefund },
 });
 

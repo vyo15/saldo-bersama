@@ -56,7 +56,7 @@
   gap: var(--space-2);
 }
 
-.periodControl input {
+.periodControl [data-temporal-picker="month"] {
   width: 100%;
   min-height: var(--control-height-md);
   border: 1px solid var(--border);
@@ -67,7 +67,7 @@
   box-shadow: var(--shadow-control);
 }
 
-.periodControl input:focus-visible {
+.periodControl [data-temporal-picker="month"]:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
 }

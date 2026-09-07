@@ -83,7 +83,7 @@ export const investmentActivityForInstrument = (activity = [], instrumentId = ""
 export const investmentActivityLabel = (activity = {}) => {
   const ticker = activity.ticker || "saham";
   if (activity.activity_type === "trade") return `${activity.trade_type === "buy" ? "Pembelian dicatat" : "Penjualan dicatat"} · ${ticker}`;
-  if (activity.activity_type === "valuation") return `Harga manual diperbarui · ${ticker}`;
+  if (activity.activity_type === "valuation") return `${activity.asset_type === "mutual_fund" ? "Nilai manual diperbarui" : "Harga manual diperbarui"} · ${ticker}`;
   if (activity.activity_type === "opening_position") return `Posisi awal dicatat · ${ticker}`;
   return `Koreksi dicatat · ${activity.instrument_id ? ticker : "Cash RDN"}`;
 };

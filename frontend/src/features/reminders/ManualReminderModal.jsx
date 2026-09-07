@@ -8,6 +8,7 @@ import { formatDateTimeJakarta, todayInJakarta } from "../../domain/dates.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { cancelManualReminder, getManualReminder, getPushNotificationState, saveManualReminder } from "../../services/notifications.js";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const addLocalDays = (dateValue, days) => {
   const parsed = new Date(`${dateValue}T00:00:00+07:00`);
   parsed.setUTCDate(parsed.getUTCDate() + days);
@@ -117,11 +118,11 @@ const ReminderNotices = ({ current, activeLabel, dispatch, pushNotice, loadState
 const ReminderFields = ({ form, setForm, maxDate, minTime, busy, ready }) => <>
   <label className="field">
     <span>Tanggal *</span>
-    <input required type="date" min={todayInJakarta()} max={maxDate} value={form.date} onChange={(event) => setForm((value) => ({ ...value, date: event.target.value }))} disabled={busy || !ready} />
+    <TemporalInput required type="date" min={todayInJakarta()} max={maxDate} value={form.date} onChange={(event) => setForm((value) => ({ ...value, date: event.target.value }))} disabled={busy || !ready} />
   </label>
   <label className="field">
     <span>Waktu *</span>
-    <input required type="time" min={minTime} value={form.time} onChange={(event) => setForm((value) => ({ ...value, time: event.target.value }))} disabled={busy || !ready} />
+    <TemporalInput required type="time" min={minTime} value={form.time} onChange={(event) => setForm((value) => ({ ...value, time: event.target.value }))} disabled={busy || !ready} />
   </label>
   <p className="field-hint form-grid__full">Asia/Jakarta · notifikasi dapat terlambat beberapa menit.</p>
 </>;

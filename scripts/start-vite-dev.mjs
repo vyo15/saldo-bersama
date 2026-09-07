@@ -6,9 +6,16 @@ import { ensureDevelopmentDependencies } from "./bootstrap-development-dependenc
 import { ensureDevelopmentEnvironment } from "./bootstrap-development-env.mjs";
 import { installGitHooks } from "./install-git-hooks.mjs";
 import { validateWebPushEnvironment } from "./runtime-environment.mjs";
+import { assertCanonicalNode } from "./verify-project.mjs";
 
 const main = async () => {
   const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  try {
+    assertCanonicalNode();
+  } catch (error) {
+    console.error(`Development lokal memerlukan runtime Node yang didukung. ${error?.message || "Runtime Node tidak sesuai."}`);
+    return 1;
+  }
   await installGitHooks({ projectRoot });
   await ensureDevelopmentDependencies({ projectRoot });
   await ensureDevelopmentEnvironment({ projectRoot });

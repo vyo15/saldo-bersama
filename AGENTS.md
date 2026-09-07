@@ -36,7 +36,7 @@ BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, A
 9. Setiap bug/regression wajib memperbarui atau menambah test yang memverifikasi **behavior/contract**, bukan nama variabel lokal atau bentuk JSX internal. Source-text test hanya untuk guard arsitektur, dependency, route, forbidden pattern, dan contract statis yang memang harus tetap literal.
 10. Jangan mass-format/refactor di luar scope.
 11. Jalankan targeted regression lebih dulu, lalu validation penuh dari tree **setelah patch final**; jangan mengklaim PASS dari tree versi sebelumnya.
-12. Artifact patch tidak boleh disebut **final/ready/PASS** sebelum `npm run verify` atau `npm run zip` benar-benar PASS pada Node canonical `24.18.1`. Bila environment agent tidak dapat menjalankan Node canonical/build native, artifact hanya boleh disebut **candidate/unverified**, dan limitation wajib ditulis jelas.
+12. Artifact patch tidak boleh disebut **final/ready/PASS** sebelum `npm run verify` atau `npm run zip` benar-benar PASS pada runtime Node yang didukung (`22.15.0+` pada 22.x atau `24.x`). Bila environment agent tidak dapat menjalankan runtime yang didukung/build native, artifact hanya boleh disebut **candidate/unverified**, dan limitation wajib ditulis jelas.
 13. Setelah validation PASS, delivery canonical adalah commit pada `main` lalu `git push origin main`; managed pre-push wajib memverifikasi ref/SHA aktual + working tree clean + fast-forward dan menjalankan `npm run verify`. Direct Turso Production read-only hanya wajib bila diff menyentuh database-compatibility guard; perubahan non-schema wajib melewati core Vercel Production health tanpa membutuhkan credential database Production lokal. Push tidak pernah auto-migrate. Jangan memakai `--no-verify` atau force push.
 14. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
 15. **Deletion integrity wajib diverifikasi.** Jika patch menghapus/merename file, jangan mengandalkan overlay changed-files-only ZIP karena file lama dapat tertinggal di working tree penerima. Sebelum delivery, verifikasi path lama benar-benar tidak ada pada final tree dan artifact hasil. Untuk handoff yang memuat deletion, utamakan full-source ZIP terbaru atau sertakan instruksi deletion eksplisit yang tidak dapat terlewat.
@@ -230,7 +230,7 @@ Review teknis resmi menggunakan urutan berikut:
   - limitation environment;
   - status commit/push;
   - apakah docs perlu update.
-- Hanya boleh menyebut artifact **final/ready/PASS** jika `npm run verify` benar-benar lulus pada Node canonical `24.18.1`. Selain itu gunakan **candidate/unverified**.
+- Hanya boleh menyebut artifact **final/ready/PASS** jika `npm run verify` benar-benar lulus pada runtime Node yang didukung (`22.15.0+` pada 22.x atau `24.x`). Selain itu gunakan **candidate/unverified**.
 
 ## Cleanup/legacy
 

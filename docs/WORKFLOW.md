@@ -54,7 +54,7 @@ Artifact historical bernama `saldo-bersama-UNVERIFIED.zip` adalah **input diagno
 4. jangan berhenti hanya karena nama artifact mengandung `UNVERIFIED`, jangan meminta user menjalankan ulang pekerjaan yang masih feasible di environment agent, dan jangan sekadar menyalin status laporan lama;
 5. `docs/UNVERIFIED_BUILD_REPORT.md` adalah staging-only dari workflow lama dan tidak boleh dipertahankan sebagai canonical source/report final setelah remediation;
 6. jalankan targeted regression dan full `npm run verify` pada tree final. Jika PASS, gunakan workflow clean verified. Jika gate masih terblokir oleh environment non-canonical, selesaikan semua patch/static/targeted validation yang masih feasible lalu laporkan limitation berdasarkan evidence baru;
-7. artifact yang dikirim harus berasal dari tree terbaru setelah remediation. Jangan mengirim ulang ZIP UNVERIFIED lama atau memberi label `verified` tanpa `npm run verify` PASS pada Node canonical;
+7. artifact yang dikirim harus berasal dari tree terbaru setelah remediation. Jangan mengirim ulang ZIP UNVERIFIED lama atau memberi label `verified` tanpa `npm run verify` PASS pada runtime Node yang didukung;
 8. bila remediation mencakup penghapusan/rename file, verifikasi path lama benar-benar **absent** pada final tree dan artifact. Overlay changed-files-only tidak dianggap cukup untuk deletion karena file lama dapat tertinggal di folder penerima; gunakan full-source ZIP terbaru atau deletion handoff eksplisit, lalu ulangi regression dari tree setelah deletion diterapkan.
 
 Workflow `npm run zip` saat ini **tidak lagi membuat artifact UNVERIFIED baru**. Verification yang gagal harus berhenti fail-closed tanpa membuat ZIP baru.
@@ -87,7 +87,7 @@ Urutan validation patch:
 2. jalankan lint/build relevan;
 3. setelah seluruh edit dan docs final, jalankan full gate dari tree yang sama;
 4. bila edit dilakukan lagi setelah PASS, PASS lama gugur dan gate relevan harus diulang;
-5. handoff patch hanya boleh diberi status final bila full gate tree final PASS pada Node `24.18.1`; environment non-canonical hanya boleh menghasilkan candidate yang diberi label unverified.
+5. handoff patch hanya boleh diberi status final bila full gate tree final PASS pada Node `22.15.0+` (22.x) atau `24.x`; environment di luar rentang dukungan hanya boleh menghasilkan candidate yang diberi label unverified.
 
 Default full local gate setelah setiap patch:
 
@@ -95,7 +95,7 @@ Default full local gate setelah setiap patch:
 npm run verify
 ```
 
-`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, rendered browser smoke, serta seluruh backend regression satu kali dengan coverage. Guard security/governance sudah berada di suite frontend/backend sehingga tidak ada re-run `test:guard` terpisah. Ia tidak menjalankan `npm ci` atau menghapus dependency.
+`npm run verify` melakukan preflight runtime Node yang didukung dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, rendered browser smoke, serta seluruh backend regression satu kali dengan coverage. Guard security/governance sudah berada di suite frontend/backend sehingga tidak ada re-run `test:guard` terpisah. Ia tidak menjalankan `npm ci` atau menghapus dependency.
 
 Rendered browser smoke kini kembali menjadi bagian quality gate melalui `scripts/browser-smoke.mjs` tanpa dependency browser-test tambahan. Smoke memakai Chrome/Chromium/Edge lokal (atau `CHROME_PATH`) terhadap production build dan memeriksa login publik pada viewport canonical, page-level overflow, focus rendered, WCAG text-spacing, serta reduced-motion. Authenticated/real-device journey tetap memakai manual device QA; smoke tidak boleh membuat auth bypass atau fixture finansial palsu.
 

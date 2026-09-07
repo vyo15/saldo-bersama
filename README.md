@@ -39,7 +39,7 @@ Repository/source aktual selalu lebih tinggi prioritasnya daripada memory atau p
 
 ## Menjalankan lokal
 
-Gunakan Node 24.x dan npm 10+. `.node-version` memin Node 24.18.1.
+Gunakan Node **22.15.0 atau lebih baru pada lini 22.x**, atau Node **24.x**, dengan npm 10+. `.node-version` memin **22.15.0** agar PC kantor yang masih memakai Node 22.15 dapat langsung menjalankan project. Frontend memakai `react-router` 7.18.2 agar baseline Node 22 tetap didukung.
 
 ```bash
 git clone <repository-url>
@@ -47,7 +47,7 @@ cd saldo-bersama
 npm run dev
 ```
 
-`npm run dev` adalah mode **Development lokal**: dependency disiapkan bila perlu, refresh Vercel Development selalu dicoba, profile wajib `DATABASE_ENVIRONMENT=development`, Turso Development harus reachable + schema/binding siap, lalu frontend dan lima endpoint API lokal dijalankan. Jika Vercel login/link/pull sedang tidak tersedia tetapi `.env.local` Development yang ada sudah lengkap, cache tersebut dapat dipakai sementara; database/schema/binding tetap diverifikasi sebelum server dibuka.
+`npm run dev` adalah mode **Development lokal**: runtime aktif harus Node 22.15.0+ pada lini 22.x atau Node 24.x; versi di luar rentang itu berhenti sebelum dependency/environment/database disentuh. Setelah runtime valid, dependency disiapkan bila perlu, refresh Vercel Development selalu dicoba, profile wajib `DATABASE_ENVIRONMENT=development`, Turso Development harus reachable + schema/binding siap, lalu frontend dan lima endpoint API lokal dijalankan. Jika Vercel login/link/pull sedang tidak tersedia tetapi `.env.local` Development yang ada sudah lengkap, cache tersebut dapat dipakai sementara; database/schema/binding tetap diverifikasi sebelum server dibuka.
 
 Untuk troubleshooting/setup komputer baru tanpa menyalakan server, gunakan `npm run env:pull:development`, lalu `npm run env:status`. Status hanya menampilkan marker, host database, kelengkapan, dan fingerprint publik Web Push—bukan token/private key. Setelah seed Development pusat selesai, komputer tepercaya lain tidak perlu membuat `.env.local` atau VAPID baru secara manual.
 
@@ -63,7 +63,7 @@ Untuk validasi lokal setelah setiap patch, gunakan satu command canonical:
 npm run verify
 ```
 
-`npm run verify` melakukan preflight Node 24 dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, serta seluruh backend regression dengan coverage. Guard security/governance ikut tercakup oleh suite frontend/backend sehingga tidak dijalankan dua kali. Command ini **tidak menjalankan `npm ci`** dan tidak menghapus `node_modules`.
+`npm run verify` melakukan preflight runtime Node yang didukung dan dependency yang sudah terpasang, lalu menjalankan source validation, lint/syntax, frontend regression, production build, build budget, serta seluruh backend regression dengan coverage. Guard security/governance ikut tercakup oleh suite frontend/backend sehingga tidak dijalankan dua kali. Command ini **tidak menjalankan `npm ci`** dan tidak menghapus `node_modules`.
 
 Command harian sengaja dibuat ringkas:
 

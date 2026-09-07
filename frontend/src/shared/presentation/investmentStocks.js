@@ -19,5 +19,4 @@ export const INVESTMENT_PROTOTYPE_CATALOG = Object.freeze([
 const STOCK_BY_TICKER = new Map(INVESTMENT_PROTOTYPE_CATALOG.map((item) => [item.ticker, item]));
 
 export const investmentStockByTicker = (ticker) => STOCK_BY_TICKER.get(String(ticker || "").trim().toUpperCase()) || null;
-export const investmentStockLogo = (ticker) => investmentStockByTicker(ticker)?.logo || "";
 export const investmentStockKeywords = (item = {}) => [item.ticker, item.name, item.exchange, item.sector].filter(Boolean).join(" ");

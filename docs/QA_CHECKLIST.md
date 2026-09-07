@@ -16,6 +16,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Test behavior tidak mengunci nama variabel lokal, urutan helper internal, atau bentuk JSX yang bukan contract.
 - [ ] Static/source-text assertion hanya digunakan untuk invariant literal: route/dependency/forbidden API/security/architecture.
 - [ ] Targeted regression dijalankan setelah implementasi final dan PASS.
+- [ ] Test yang membandingkan path/file source menormalkan separator (`\` vs `/`) agar quality gate tidak berbeda antara Windows/Git Bash dan POSIX.
 - [ ] Tidak ada production code yang diubah hanya untuk memuaskan assertion stale.
 
 ## 3. Data integrity dan security
@@ -43,12 +44,16 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Jika shell mobile sudah memiliki global primary action yang identik (quick-add transaksi), route/header/true-empty tidak merender CTA kedua untuk handler yang sama.
 - [ ] Ikon `+` tidak dipakai untuk beberapa mutation berbeda pada surface yang sama. Aksi domain yang bukan create-global (mis. adjustment dana) memakai label eksplisit; page-level create, card next-step, dan global FAB memiliki hierarchy yang berbeda dan capability-gated.
 - [ ] Detail object yang berisi sub-item erat (khususnya Alokasi Dana → Kebutuhan/Jadwal) tidak berubah menjadi tumpukan card setara: satu master surface memiliki section hierarchy, grouped rows, progress/status yang dapat dipindai, dan secondary lifecycle action tidak bersaing dengan CTA utama.
+- [ ] Ikon finansial mengikuti taxonomy semantic canonical: tidak ada `FiDollarSign` di `frontend/src`, `FiCreditCard` hanya untuk Metode pembayaran, rekening memakai `AccountIcon`/ikon tipe canonical, arus transaksi memakai `MoneyInIcon`/`MoneyOutIcon`/`TransferIcon`, dan trend Up/Down/Minus mengikuti nilai aktual.
 - [ ] App-owned list tidak kembali memakai native `<select>`; `SelectionField`/selection view diperiksa untuk semantics `combobox/listbox/option` + `aria-selected`, selected state, search bila list panjang (`label/meta/keywords`), Arrow Up/Down + Home/End, Escape/outside dismiss, focus-visible, target sentuh ≥44px, inline expansion mobile, popover desktop, dan clipping di modal/scroll container.
+- [ ] App-owned date/month/time tidak kembali memakai native browser picker; gunakan `TemporalInput`/`TemporalPickerField`, dan picker yang dibuka dari modal harus tetap berada pada same-modal subview tanpa menumpuk dialog.
 - [ ] Dynamic option yang punya identitas nyata memakai visual recognition canonical tanpa mengganti label: rekening/provider = logo/ikon tipe, kategori = ikon kategori, pencatat = avatar/inisial, Alokasi Dana = ikon lapisan, saham = logo katalog bila tersedia, fallback ticker mark. Secondary `meta` tetap ringkas dan fallback tanpa visual tidak menggeser alignment.
 - [ ] Effective mobile hit target diverifikasi pada `SelectionField` default/compact/embedded + search, filter/read-all Notification Center, dan aksi link-style Rekonsiliasi; tampilan boleh compact tetapi host interaktif tetap ≥44×44px.
 - [ ] Fixed explanatory choice (terutama `Cara mencatat kebutuhan`, Jenis Jadwal Rutin, dan Aksi penyesuaian Alokasi) memakai `VisualChoiceGroup descriptive`: tile sejajar/equal-height, icon badge konsisten, selected check jelas, label tidak terpotong, description maksimal dua baris, dan helper tidak berubah menjadi card/paragraf bertumpuk.
 - [ ] Mobile dan desktop tidak drift pada business rule yang sama.
 - [ ] Workflow continuation hanya memberi navigasi/prefill; tidak ada auto-submit finansial, duplicate recovery entry point, atau blocker UI yang melampaui contract backend.
+- [ ] Pada setiap page/modal/sheet, satu fakta edukatif tidak diulang antara description, helper field, caption list, notice, dan tombol Info; helper hanya memberi konteks baru. Warning/error/destructive/recovery/outcome-unknown tetap terlihat persisten.
+- [ ] Satu surface mobile tidak menampilkan beberapa trigger Info untuk topik edukatif yang dapat digabungkan; aksesibilitas, target sentuh, focus management, dan isi bantuan tetap memakai primitive canonical.
 - [ ] Device/viewport journey relevan mengikuti skenario manual `TEST_PLAN.md` bila perubahan menyentuh UI/responsive.
 
 ## 5. Dokumentasi
@@ -78,3 +83,11 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Setelah `npm run verify`, `npm run zip`, atau pre-push selesai baik PASS maupun gagal, generated build/test artifact dibersihkan otomatis; dependency, `.env.local`, `.vercel`, dan repository Git tetap dipertahankan. Cache Vite di `frontend/node_modules/.vite*` boleh dibersihkan karena generated dan akan dibuat ulang.
 - [ ] `git status --short` ditinjau sebelum commit.
 - [ ] Delivery Git memakai `git push origin main` tanpa `--no-verify`; pre-push memverifikasi ref/SHA aktual + full gate, dan **Quality / check** server-side dipantau setelah push.
+
+## Investasi prototype - Reksa Dana
+
+- [ ] `Tambah aset` menampilkan switch `Saham LQ45` dan `Reksa Dana`; tidak ada form tambah instrumen manual.
+- [ ] Reksa Dana Haji Syariah (IHAJJ) dan Capital Fixed Income Fund (CAPFIX) menampilkan logo yang benar.
+- [ ] Reksa dana memakai `unit` dan `nilai per unit`; saham tetap memakai `lot/lembar` dan `harga per saham`.
+- [ ] Catat pembelian/penjualan reksa dana tetap manual tracking dan mengubah Cash RDN melalui ledger Investasi existing tanpa membuat income/expense.
+- [ ] Tidak ada copy/flow yang memberi kesan marketplace, NAV live, koneksi broker, atau order execution.

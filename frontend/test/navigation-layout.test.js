@@ -261,7 +261,8 @@ test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kemba
   const source = await read("src/config/navigation.js");
   assert.match(source, /FiList/);
   assert.match(source, /FiPieChart/);
-  assert.match(source, /FiCreditCard/);
+  assert.match(source, /AccountIcon/);
+  assert.match(source, /InvestmentIcon/);
   assert.match(source, /FiTag/);
   assert.match(source, /FiCheckCircle/);
   assert.match(source, /to: "\/kategori", label: "Kategori"/);

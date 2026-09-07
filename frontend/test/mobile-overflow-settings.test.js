@@ -23,8 +23,9 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
   assert.match(modalSource, /const finalizeClose = useCallback/);
   assert.match(modalSource, /if \(!enabled \|\| !isMobileSwipeViewport\(\) \|\| prefersReducedMotion\(\)\) \{ finalizeClose\(\); return; \}/);
   assert.match(modalSource, /dismissTimerRef\.current = window\.setTimeout\(finalizeClose, SWIPE_DISMISS_DURATION_MS\)/);
-  assert.match(modalSource, /event\.target === event\.currentTarget\) closeModal\(\)/);
-  assert.match(modalSource, /onEscape: canDismiss \? closeModal : undefined/);
+  assert.match(modalSource, /if \(event\.target !== event\.currentTarget\) return;/);
+  assert.match(modalSource, /if \(subview\) closeSubview\(\);/);
+  assert.match(modalSource, /onEscape: subview \? closeSubview : \(canDismiss \? closeModal : undefined\)/);
   assert.match(modal, /\.backdropDismissing \{ opacity:\s*0; \}/);
   assert.match(components, /\.form-grid,[\s\S]*\.stack-form\s*\{[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
   assert.match(components, /input\[type="file"\][\s\S]*max-width:\s*100%;/);

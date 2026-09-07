@@ -27,9 +27,9 @@ const portfolioForRdn = (portfolios, rdnAccountId) => portfolios.find((item) => 
 const portfolioForId = (portfolios, portfolioId) => portfolios.find((item) => item.portfolio_id === String(portfolioId || "")) || null;
 
 const investmentSuccessMessage = (mode) => ({
-  buy: "Pembelian saham berhasil dicatat.",
-  sell: "Penjualan saham berhasil dicatat.",
-  price: "Harga manual saham berhasil diperbarui.",
+  buy: "Pembelian investasi berhasil dicatat.",
+  sell: "Penjualan investasi berhasil dicatat.",
+  price: "Nilai manual investasi berhasil diperbarui.",
   correction: "Koreksi investasi berhasil dicatat.",
   opening_position: "Posisi awal berhasil dicatat.",
 })[mode] || "Catatan investasi berhasil disimpan.";
@@ -41,7 +41,7 @@ const SetupContinuation = ({ continuation, portfolio, data, owner, onDismiss, on
   }
   if (continuation.stage === "opening") {
     return <div>
-      <CompactNotice tone="success" title="Posisi awal dicatat." role="status">Kondisi awal portfolio tersimpan sebagai event posisi awal, bukan transaksi pembelian palsu. Anda dapat menambahkan saham lain selama fase posisi awal masih terbuka.</CompactNotice>
+      <CompactNotice tone="success" title="Posisi awal dicatat." role="status">Kondisi awal portfolio tersimpan sebagai event posisi awal, bukan transaksi pembelian palsu. Anda dapat menambahkan aset lain selama fase posisi awal masih terbuka.</CompactNotice>
       <div className="form-actions">
         <Button type="button" variant="primary" onClick={onDismiss}>Selesai</Button>
         {portfolio?.opening_position_available !== false ? <Button type="button" onClick={() => onAddOpening(portfolio)}>Tambah posisi awal lain</Button> : null}
@@ -52,14 +52,14 @@ const SetupContinuation = ({ continuation, portfolio, data, owner, onDismiss, on
     <CompactNotice tone="success" title="Portofolio siap. Saya mau mulai dari:" role="status">Pilih apakah Anda akan mencatat transaksi baru atau memasukkan kondisi investasi yang sudah ada. Cash RDN dan posisi awal tidak perlu direkonstruksi sebagai transaksi masa lalu.</CompactNotice>
     <div className="form-actions">
       <Button type="button" variant="primary" onClick={() => onStartNew(portfolio)}>Mulai mencatat transaksi baru</Button>
-      <Button type="button" onClick={() => onStartExisting(portfolio, data, owner)}>Saya sudah punya saham</Button>
+      <Button type="button" onClick={() => onStartExisting(portfolio, data, owner)}>Saya sudah punya investasi</Button>
       <Button type="button" onClick={onDismiss}>Nanti</Button>
     </div>
   </div>;
 };
 
 const SellContinuation = ({ continuation, onDismiss, onWithdraw, onBuyAgain }) => continuation ? <div>
-  <CompactNotice tone="success" title="Penjualan saham selesai dicatat." role="status"><Money value={continuation.amount} /> sudah menjadi Cash RDN. Dana tetap berada di aset internal; penarikan ke rekening tidak dilakukan otomatis.</CompactNotice>
+  <CompactNotice tone="success" title="Penjualan investasi selesai dicatat." role="status"><Money value={continuation.amount} /> sudah menjadi Cash RDN. Dana tetap berada di aset internal; penarikan ke rekening tidak dilakukan otomatis.</CompactNotice>
   <div className="form-actions">
     <Button type="button" variant="primary" onClick={onDismiss}>Selesai</Button>
     <Button type="button" onClick={onWithdraw}>Tarik ke rekening</Button>

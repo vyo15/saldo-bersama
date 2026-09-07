@@ -9,6 +9,7 @@ import { ACCOUNT_TYPES } from "../../../domain/constants.js";
 import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS, accountTypeUsesAutomaticName, defaultAccountName, investmentAccountOwnershipLabel } from "../../../shared/presentation/account.js";
 import styles from "./AccountEditorDialogs.module.css";
 
+import TemporalInput from "../../../components/common/TemporalInput.jsx";
 const ACCOUNT_TYPE_OPTIONS = Object.freeze([
   [ACCOUNT_TYPES.BANK, BankIcon],
   [ACCOUNT_TYPES.CASH, CashIcon],
@@ -117,9 +118,9 @@ const CreateOwnershipFields = ({ accountForm, activeUsers, defaultOwnerUserId, c
     {accountForm.account_type === "bank" ? <BankTemplateField showHelper={false} value={accountForm.bank_template} onChange={(bankTemplate) => updateAccountForm({ bank_template: bankTemplate })} /> : null}
     {accountForm.account_type === "ewallet" ? <EwalletProviderField showHelper={false} value={accountForm.ewallet_template} onChange={(ewalletTemplate) => updateAccountForm({ ewallet_template: ewalletTemplate })} /> : null}
     <MoneyInput id="initial-balance" label="Saldo awal" value={accountForm.initial_balance} onChange={(value) => updateAccountForm({ initial_balance: value })} />
-    <label className="field"><span>Tanggal saldo awal</span><input type="date" value={accountForm.initial_balance_date} onChange={(event) => updateAccountForm({ initial_balance_date: event.target.value })} /></label>
+    <label className="field"><span>Tanggal saldo awal</span><TemporalInput type="date" value={accountForm.initial_balance_date} onChange={(event) => updateAccountForm({ initial_balance_date: event.target.value })} /></label>
     {accountForm.account_type === ACCOUNT_TYPES.INVESTMENT
-      ? <p className={`${styles.autoNameNote} form-grid__full`}>Rekening Investasi dipakai sebagai RDN dan tidak mengizinkan saldo negatif.</p>
+      ? <p className={`${styles.autoNameNote} form-grid__full`}>Saldo negatif tidak tersedia untuk rekening RDN.</p>
       : <label className="checkbox-field form-grid__full"><input type="checkbox" checked={accountForm.allow_negative} onChange={(event) => updateAccountForm({ allow_negative: event.target.checked })} /><span>Izinkan saldo negatif</span></label>}
   </>
 );

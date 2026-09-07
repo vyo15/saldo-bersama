@@ -3,15 +3,15 @@ import {
   FiBell,
   FiCalendar,
   FiChevronRight,
-  FiCreditCard,
   FiEye,
   FiEyeOff,
   FiInfo,
+  FiList,
   FiPieChart,
   FiTarget,
-  FiTrendingUp,
 } from "react-icons/fi";
 import { Link } from "react-router";
+import { AccountIcon, InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import UserAvatar from "../../../components/common/UserAvatar.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import ThemeToggle from "../../../components/common/ThemeToggle.jsx";
@@ -27,7 +27,7 @@ const FEATURE_QUICK_ACTIONS = Object.freeze([
   { to: "/perencanaan/kantong", label: "Alokasi Dana", icon: FiPieChart, tone: "allocation" },
   { to: "/perencanaan/jadwal", label: "Jadwal Rutin", icon: FiCalendar, tone: "recurring" },
   { to: "/target", label: "Target", icon: FiTarget, tone: "goal" },
-  { to: "/rekening", label: "Rekening", icon: FiCreditCard, tone: "account" },
+  { to: "/rekening", label: "Rekening", icon: AccountIcon, tone: "account" },
 ]);
 
 const compactSyncLabel = (value) => {
@@ -203,7 +203,7 @@ const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, 
 const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAccountLabel, balanceVisible, onOpenTransactionDetail }) => (
   <section className={dashboardClass("mobile-finance-section")} aria-labelledby="recent-transactions-title">
     <div className={dashboardClass("mobile-section-heading")}><h2 id="recent-transactions-title">Aktivitas Terbaru</h2><Link to="/transaksi">Lihat semua</Link></div>
-    {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <Link className={dashboardClass("mobile-compact-empty")} to="/transaksi"><span><FiTrendingUp aria-hidden="true" /></span><span><strong>Belum ada aktivitas bulan ini</strong><small>Gunakan tombol + di navigasi bawah untuk mencatat transaksi pertama.</small></span><FiChevronRight aria-hidden="true" /></Link>}
+    {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <Link className={dashboardClass("mobile-compact-empty")} to="/transaksi"><span><FiList aria-hidden="true" /></span><span><strong>Belum ada aktivitas bulan ini</strong><small>Gunakan tombol + di navigasi bawah untuk mencatat transaksi pertama.</small></span><FiChevronRight aria-hidden="true" /></Link>}
   </section>
 );
 
@@ -224,7 +224,7 @@ const MobileInvestment = ({ summary, balanceVisible }) => {
   return <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-investment-title">
     <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-investment-title">Investasi</h2><Link to="/investasi">Buka catatan</Link></div>
     <Link className={dashboardClass("mobile-investment-card")} to="/investasi">
-      <span className={dashboardClass("mobile-investment-card__icon")}><FiTrendingUp aria-hidden="true" /></span>
+      <span className={dashboardClass("mobile-investment-card__icon")}><InvestmentIcon aria-hidden="true" /></span>
       <span className={dashboardClass("mobile-investment-card__copy")}><small>Nilai investasi</small><strong><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></strong><em data-tone={tone}>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</em></span>
       <FiChevronRight className={dashboardClass("mobile-investment-card__chevron")} aria-hidden="true" />
     </Link>

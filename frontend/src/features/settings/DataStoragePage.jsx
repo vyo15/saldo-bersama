@@ -39,7 +39,7 @@ const DataStoragePage = () => (
     <section className={`${styles.pageContent} ${styles.dataStorageHub}`} aria-labelledby="data-storage-title">
       <div className={styles.pageHeading}>
         <h2 id="data-storage-title">Data & cadangan</h2>
-        <p>Empat workflow data dikelompokkan di satu tempat tanpa mencampur validasi, mutation, atau proteksi backend masing-masing.</p>
+        <p>Export, import, backup, dan pemulihan tersedia di satu tempat dengan langkah pengaman masing-masing.</p>
       </div>
       <div className={styles.dataStorageGrid}>
         {DATA_ACTIONS.map(({ to, label, description, meta, icon: Icon }) => (

@@ -26,6 +26,7 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionDisplayTitle, TRANSACTION_LABELS, transactionSign, transactionTone } from "../../shared/presentation/transaction.js";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const TransferRequestsPanel = lazy(() => import("./TransferRequestsPanel.jsx"));
 const MobileTransactionHistory = lazy(() => import("./components/MobileTransactionHistory.jsx"));
 
@@ -94,7 +95,7 @@ const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, fi
       <form className={`toolbar ${styles.toolbar}`} aria-label="Filter transaksi" onSubmit={submitSearch}>
         <div className={styles.searchRow}><label className="search-field"><FiSearch aria-hidden="true" /><input type="search" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari keterangan atau kategori" /><span className="sr-only">Cari transaksi</span></label><Button type="submit">Cari</Button></div>
         <div className={styles.filterRow}>
-          <label className="field field--compact"><span className="sr-only">Periode transaksi</span><input type="month" max={currentMonthInJakarta()} value={filters.period} onChange={(event) => updateFilter("period", event.target.value)} aria-label="Periode transaksi" /></label>
+          <label className="field field--compact"><span className="sr-only">Periode transaksi</span><TemporalInput type="month" max={currentMonthInJakarta()} value={filters.period} onChange={(event) => updateFilter("period", event.target.value)} aria-label="Periode transaksi" /></label>
           <SelectionField label="Filter jenis transaksi" hideLabel compact value={filters.type} onChange={(value) => updateFilter("type", value)} options={[{ value: "all", label: "Semua jenis" }, { value: "expense", label: "Pengeluaran" }, { value: "income", label: "Pemasukan" }, { value: "transfer", label: "Transfer" }, { value: "refund", label: "Refund" }, { value: "adjustment", label: "Penyesuaian" }]} />
           <Button type="button" className={styles.filterMore} icon={FiSliders} onClick={openAdvanced} aria-label={`Buka filter lainnya${activeAdvancedCount ? `, ${activeAdvancedCount} aktif` : ""}`}>
             Filter lainnya{activeAdvancedCount ? <span className={styles.filterCount} aria-hidden="true">{activeAdvancedCount}</span> : null}

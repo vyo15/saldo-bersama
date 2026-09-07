@@ -9,6 +9,8 @@ import {
 import {
   REQUIRED_NODE_MAJOR,
   REQUIRED_NODE_VERSION,
+  SUPPORTED_NODE_RANGE,
+  isSupportedNode,
   VERIFY_STEPS,
   assertCanonicalNode,
   dependencyRecoveryMessage,
@@ -17,12 +19,18 @@ import {
   verifyInstalledDependencies,
 } from "../../scripts/verify-project.mjs";
 
-test("verify memakai Node 24 canonical", () => {
-  assert.equal(REQUIRED_NODE_MAJOR, 24);
-  assert.equal(REQUIRED_NODE_VERSION, "24.18.1");
+test("verify mendukung Node kantor 22.15+ dan Node 24", () => {
+  assert.equal(REQUIRED_NODE_MAJOR, 22);
+  assert.equal(REQUIRED_NODE_VERSION, "22.15.0");
+  assert.match(SUPPORTED_NODE_RANGE, /22\.15\.0\+/);
+  assert.equal(isSupportedNode("v22.15.0"), true);
+  assert.equal(isSupportedNode("v22.16.0"), true);
+  assert.equal(isSupportedNode("v24.18.1"), true);
+  assert.equal(isSupportedNode("v22.14.9"), false);
+  assert.equal(assertCanonicalNode("v22.15.0"), "22.15.0");
   assert.equal(assertCanonicalNode("v24.18.1"), "24.18.1");
   assert.throws(
-    () => assertCanonicalNode("v24.17.0"),
+    () => assertCanonicalNode("v22.14.9"),
     (error) => error.code === "VERIFY_NODE_VERSION" && /fnm use/.test(error.message),
   );
 });
@@ -42,7 +50,7 @@ test("verify menjalankan full gate sekali tanpa alias internal atau backend test
   const logs = [];
 
   assert.equal(runVerification({
-    nodeVersion: "v24.18.1",
+    nodeVersion: "v22.15.0",
     dependencyCheck: () => { dependencyChecks += 1; },
     runStep: (step) => { executed.push(step.id); return { status: 0 }; },
     logger: { log: (message) => logs.push(message) },
@@ -67,7 +75,7 @@ test("verify berhenti pada step pertama yang gagal", () => {
   const executed = [];
   assert.throws(
     () => runVerification({
-      nodeVersion: "24.18.1",
+      nodeVersion: "22.15.0",
       dependencyCheck: () => {},
       runStep: (step) => {
         executed.push(step.id);
@@ -98,7 +106,7 @@ test("dependency preflight fail closed dengan recovery Windows yang eksplisit", 
 test("verification wrapper selalu membersihkan generated artifact setelah PASS maupun gagal", async () => {
   const cleanupLogs = [];
   assert.equal(await runVerificationWithCleanup({
-    nodeVersion: "v24.18.1",
+    nodeVersion: "v22.15.0",
     dependencyCheck: () => {},
     runStep: () => ({ status: 0 }),
     logger: { log: () => {} },
@@ -107,7 +115,7 @@ test("verification wrapper selalu membersihkan generated artifact setelah PASS m
   assert.ok(cleanupLogs.length >= 1);
 
   await assert.rejects(() => runVerificationWithCleanup({
-    nodeVersion: "v24.18.1",
+    nodeVersion: "v22.15.0",
     dependencyCheck: () => {},
     runStep: (step) => ({ status: step.id === "source" ? 3 : 0 }),
     logger: { log: () => {} },
@@ -142,7 +150,11 @@ test("zip lokal dan pre-push memakai full verification canonical", async () => {
   assert.match(prePush, /parsePrePushUpdates/);
   assert.match(hookInstaller, /pre-push/);
   assert.match(hookInstaller, /saldo-bersama-managed-pre-push/);
+  assert.match(devStart, /assertCanonicalNode\(\)/);
   assert.match(devStart, /installGitHooks\(\{ projectRoot \}\)/);
+  assert.ok(devStart.indexOf("assertCanonicalNode()") < devStart.indexOf("installGitHooks({ projectRoot })"));
+  assert.ok(devStart.indexOf("assertCanonicalNode()") < devStart.indexOf("ensureDevelopmentDependencies({ projectRoot })"));
+  assert.ok(devStart.indexOf("assertCanonicalNode()") < devStart.indexOf("ensureDevelopmentEnvironment({ projectRoot })"));
 });
 
 test("zip clean-only tidak membuat archive baru ketika verification gagal", async () => {

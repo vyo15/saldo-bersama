@@ -6,16 +6,17 @@ import SelectionField from "../../components/common/SelectionField.jsx";
 import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { investmentRdnDisplayLabel } from "../../shared/presentation/account.js";
+import { MUTUAL_FUND_EXCHANGE } from "../../shared/presentation/investmentAssets.js";
 import { investmentRdnAccountSetupState } from "../../shared/workflows/investmentContinuation.js";
 import InvestmentFormField from "./InvestmentFormField.jsx";
-import InvestmentStockPicker from "./InvestmentStockPicker.jsx";
+import InvestmentAssetPicker from "./InvestmentAssetPicker.jsx";
 import { createInvestmentPortfolio, invalidateInvestmentReads, upsertInvestmentInstrument } from "./investments.api.js";
 import { validateInvestmentSetup } from "./investments.model.js";
 
 import styles from "./InvestmentForm.module.css";
 
 const PORTFOLIO_DEFAULTS = Object.freeze({ name: "Catatan investasi", broker: "other" });
-const INSTRUMENT_DEFAULTS = Object.freeze({ lot_size: 100, exchange: "IDX" });
+const INSTRUMENT_DEFAULTS = Object.freeze({ lot_size: 100, exchange: "IDX", asset_type: "stock" });
 
 const RdnSetupLink = ({ locked, needsRepair = false }) => {
   const label = needsRepair ? "Perbaiki rekening RDN" : "Buka Rekening dan buat RDN";
@@ -36,17 +37,18 @@ const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, lock
   </div> : null}
 </>;
 
-const InstrumentSetupFields = ({ form, existingInstruments, disabled, onStockSelect }) => <InvestmentStockPicker
+const InstrumentSetupFields = ({ form, existingInstruments, disabled, onAssetSelect, onAssetKindChange }) => <InvestmentAssetPicker
   value={form.ticker || ""}
   existingInstruments={existingInstruments}
   disabled={disabled}
-  onSelect={onStockSelect}
+  onSelect={onAssetSelect}
+  onKindChange={onAssetKindChange}
 />;
 
-const SetupFields = ({ mode, form, accounts, existingInstruments, fieldErrors, onFieldChange, onStockSelect, disabled, needsRepair }) => <fieldset className={styles.intentFieldset} disabled={disabled}>
+const SetupFields = ({ mode, form, accounts, existingInstruments, fieldErrors, onFieldChange, onAssetSelect, onAssetKindChange, disabled, needsRepair }) => <fieldset className={styles.intentFieldset} disabled={disabled}>
   {mode === "portfolio"
     ? <PortfolioSetupFields form={form} accounts={accounts} fieldErrors={fieldErrors} onFieldChange={onFieldChange} locked={disabled} needsRepair={needsRepair} />
-    : <InstrumentSetupFields form={form} existingInstruments={existingInstruments} disabled={disabled} onStockSelect={onStockSelect} />}
+    : <InstrumentSetupFields form={form} existingInstruments={existingInstruments} disabled={disabled} onAssetSelect={onAssetSelect} onAssetKindChange={onAssetKindChange} />}
 </fieldset>;
 
 const canonicalPortfolioName = (form) => String(form.source_label || "").trim() || PORTFOLIO_DEFAULTS.name;
@@ -58,8 +60,15 @@ const createSetupPayload = (mode, form) => mode === "portfolio"
 const persistSetup = (mode, payload) => mode === "portfolio" ? createInvestmentPortfolio(payload) : upsertInvestmentInstrument(payload);
 
 const dialogCopy = (mode) => mode === "instrument"
-  ? { title: "Tambah saham", description: "Pilih saham dari daftar LQ45 yang disediakan prototype. Menambahkan saham hanya menyiapkan instrumen pencatatan dan tidak melakukan pembelian." }
+  ? { title: "Tambah aset investasi", description: "Pilih aset untuk dicatat; tindakan ini tidak membeli aset." }
   : { title: "Siapkan catatan RDN", description: "Pilih rekening Investasi yang dipakai sebagai RDN untuk catatan aset investasi manual." };
+
+const setupCanSubmit = (mode, form, accounts) => mode === "instrument" ? Boolean(form.ticker) : accounts.length > 0;
+const setupSubmitLabel = (mode, form, outcomeUnknown) => {
+  if (outcomeUnknown) return "Coba lagi data yang sama";
+  if (mode !== "instrument") return "Simpan catatan";
+  return form.asset_type === "mutual_fund" ? "Tambah reksa dana" : "Tambah saham";
+};
 
 const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "portfolio", initialRdnAccountId = "", needsRdnRepair = false, onClose, onSuccess }) => {
   const formRef = useRef(null);
@@ -69,7 +78,7 @@ const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "port
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
-  const canSubmit = resolvedMode === "instrument" ? Boolean(form.ticker) : accounts.length > 0;
+  const canSubmit = setupCanSubmit(resolvedMode, form, accounts);
   const needsRepair = resolvedMode === "portfolio" && !accounts.length && (needsRdnRepair || Boolean(initialRdnAccountId));
   const copy = dialogCopy(resolvedMode);
   const onFieldChange = (key, value) => {
@@ -80,14 +89,28 @@ const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "port
     });
     setError("");
   };
-  const onStockSelect = (stock) => {
+  const onAssetSelect = (asset) => {
     if (outcomeUnknown) return;
     setForm((current) => ({
       ...current,
-      ticker: stock.ticker,
-      instrument_name: stock.name,
-      exchange: stock.exchange,
-      lot_size: stock.lot_size,
+      ticker: asset.ticker,
+      instrument_name: asset.name,
+      exchange: asset.exchange,
+      lot_size: asset.lot_size,
+      asset_type: asset.asset_type || "stock",
+    }));
+    setFieldErrors({});
+    setError("");
+  };
+  const onAssetKindChange = (assetType) => {
+    if (outcomeUnknown) return;
+    setForm((current) => ({
+      ...current,
+      ticker: "",
+      instrument_name: "",
+      exchange: assetType === "mutual_fund" ? MUTUAL_FUND_EXCHANGE : "IDX",
+      lot_size: assetType === "mutual_fund" ? 1 : 100,
+      asset_type: assetType,
     }));
     setFieldErrors({});
     setError("");
@@ -111,11 +134,11 @@ const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "port
   };
 
   return (
-    <Modal open title={copy.title} description={copy.description} onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={<Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!canSubmit}>{outcomeUnknown ? "Coba lagi data yang sama" : resolvedMode === "instrument" ? "Tambah saham" : "Simpan catatan"}</Button>}>
+    <Modal open title={copy.title} description={copy.description} onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={<Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!canSubmit}>{setupSubmitLabel(resolvedMode, form, outcomeUnknown)}</Button>}>
       <form ref={formRef} id="investment-setup-form" className={styles.form} onSubmit={submit} noValidate>
         {error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{error}</div> : null}
-        {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data setup dikunci sementara. Jangan ubah RDN, saham, atau nilai lain. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa membuat data ganda.</p> : null}
-        <SetupFields mode={resolvedMode} form={form} accounts={accounts} existingInstruments={instruments} fieldErrors={fieldErrors} onFieldChange={onFieldChange} onStockSelect={onStockSelect} disabled={outcomeUnknown} needsRepair={needsRepair} />
+        {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data setup dikunci sementara. Jangan ubah RDN, aset investasi, atau nilai lain. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa membuat data ganda.</p> : null}
+        <SetupFields mode={resolvedMode} form={form} accounts={accounts} existingInstruments={instruments} fieldErrors={fieldErrors} onFieldChange={onFieldChange} onAssetSelect={onAssetSelect} onAssetKindChange={onAssetKindChange} disabled={outcomeUnknown} needsRepair={needsRepair} />
       </form>
     </Modal>
   );

@@ -7,14 +7,13 @@ import {
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
-  FiCreditCard,
-  FiDollarSign,
   FiLayers,
+  FiMinus,
   FiShield,
-  FiTrendingUp,
 } from "react-icons/fi";
 import { Link } from "react-router";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import { BalanceIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -36,13 +35,14 @@ import FinancialAlertList from "../dashboard/components/FinancialAlertList.jsx";
 import styles from "./ReportsPage.module.css";
 import { reportClass } from "./reportStyles.js";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const TREND_OPTIONS = [1, 3, 6, 12];
 
 const ReportHeader = ({ period, trendMonths, setPeriod, setTrendMonths }) => (
   <PageHeader
     title="Laporan"
     help="Laporan merangkum transaksi sesuai periode. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran total."
-    actions={<div className={reportClass("report-period-controls")}><label className="field field--compact"><span>Periode</span><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><SelectionField className="field--compact" label="Rentang tren" value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} compact options={[{ value: "1", label: "1 bulan (harian)" }, { value: "3", label: "3 bulan" }, { value: "6", label: "6 bulan" }, { value: "12", label: "12 bulan" }]} /></div>}
+    actions={<div className={reportClass("report-period-controls")}><label className="field field--compact"><span>Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><SelectionField className="field--compact" label="Rentang tren" value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} compact options={[{ value: "1", label: "1 bulan (harian)" }, { value: "3", label: "3 bulan" }, { value: "6", label: "6 bulan" }, { value: "12", label: "12 bulan" }]} /></div>}
   />
 );
 
@@ -227,7 +227,7 @@ const MobileReportControls = ({ mode, setMode, period, setPeriod, trendMonths, s
   return <>
     <header className={styles.mobileHeader}>
       <div className={styles.mobileTitle}><p>Analitik keuangan</p><div className={styles.mobileTitleRow}><h1>Laporan</h1><PageInfoButton title="Tentang Laporan">Laporan merangkum transaksi sesuai periode. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran total.</PageInfoButton></div></div>
-      <label className={styles.calendarControl} aria-label="Pilih periode laporan"><FiCalendar aria-hidden="true" /><input type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label>
+      <label className={styles.calendarControl} aria-label="Pilih periode laporan"><FiCalendar aria-hidden="true" /><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label>
     </header>
     <div className={styles.segmentedControl} role="group" aria-label="Tampilan laporan">
       <button type="button" className={mode === "summary" ? styles.segmentActive : ""} onClick={() => setMode("summary")} aria-pressed={mode === "summary"}>Ringkasan</button>
@@ -267,11 +267,12 @@ const MobileSummaryAlerts = ({ alerts = [] }) => {
 const MobileSummaryView = ({ model, period, categoryLookup, setMode }) => {
   const { overview, categoryExpenses, currentTrend, previousTrend } = model;
   const net = Number(overview?.cashFlow?.net || 0);
+  const NetIcon = net > 0 ? FiArrowUpRight : net < 0 ? FiArrowDownRight : FiMinus;
   return <>
     <MobileSummaryHero model={model} period={period} />
     <section className={styles.metricsGrid} aria-label="Ringkasan keuangan">
-      <MobileMetricCard icon={FiTrendingUp} label="Arus kas bersih" value={net} tone={net >= 0 ? "positive" : "negative"} />
-      <MobileMetricCard icon={FiDollarSign} label="Total saldo" value={overview?.totalBalance || 0} />
+      <MobileMetricCard icon={NetIcon} label="Arus kas bersih" value={net} tone={net >= 0 ? "positive" : "negative"} />
+      <MobileMetricCard icon={BalanceIcon} label="Total saldo" value={overview?.totalBalance || 0} />
       <MobileMetricCard icon={FiShield} label="Aman digunakan" value={overview?.safeToSpend || 0} />
     </section>
     <MobileComparison current={currentTrend} previous={previousTrend} />
@@ -304,7 +305,7 @@ const MobileReportsView = ({ data, period, trendMonths, setPeriod, setTrendMonth
     {mode === "summary"
       ? <MobileSummaryView model={model} period={period} categoryLookup={categoryLookup} setMode={setMode} />
       : <MobileCategoryView model={model} categoryLookup={categoryLookup} />}
-    <p className={styles.dataNote}><FiCreditCard aria-hidden="true" /> Laporan hanya membaca ledger yang dapat Anda lihat. Tidak ada data yang diubah dari halaman ini.</p>
+    <p className={styles.dataNote}><FiLayers aria-hidden="true" /> Laporan hanya membaca ledger yang dapat Anda lihat. Tidak ada data yang diubah dari halaman ini.</p>
   </div>;
 };
 

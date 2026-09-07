@@ -13,6 +13,7 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 import CostShareField from "../transactions/CostShareField.jsx";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const FrequencyField = ({ value, onChange }) => <SelectionField label="Frekuensi" value={value} onChange={onChange} options={[{ value: "daily", label: "Harian" }, { value: "weekly", label: "Mingguan" }, { value: "biweekly", label: "Dua mingguan" }, { value: "monthly", label: "Bulanan" }, { value: "bimonthly", label: "Dua bulanan" }, { value: "quarterly", label: "Tiga bulanan" }, { value: "semiannual", label: "Semester" }, { value: "annual", label: "Tahunan" }]} />;
 const RECURRING_PAYMENT_OPTIONS = Object.freeze([{ value: "transfer", label: "Transfer", icon: BankTransferIcon }, { value: "cash", label: "Tunai", icon: CashIcon }, { value: "ewallet", label: "E-wallet", icon: EwalletIcon }]);
 const PaymentMethodField = ({ value, onChange }) => <VisualChoiceGroup className="form-grid__full" legend="Metode" name="recurring-payment-method" value={value} onChange={onChange} options={RECURRING_PAYMENT_OPTIONS} columns={3} compact />;
@@ -34,7 +35,7 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
       <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => ({ ...current, default_account_id }))} />
       {form.kind === "expense" && budgetSuggestions[form.category_id]?.account_id === form.default_account_id ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {budgetSuggestions[form.category_id].envelope_name}. Rekening sumber dipilih otomatis dari Alokasi Dana tersebut.</CompactNotice> : null}
       <PaymentMethodField value={form.payment_method} onChange={(payment_method) => setForm((current) => ({ ...current, payment_method }))} /><CompactNotice className="form-grid__full" tone="info">Saat tanggal jadwal tiba, sistem menunggu konfirmasi aktual. Saldo tidak berubah sebelum aktual disimpan.</CompactNotice>
-      <label className="field"><span>Tanggal mulai *</span><input required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
+      <label className="field"><span>Tanggal mulai *</span><TemporalInput required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
   </Modal>
@@ -77,7 +78,7 @@ const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, payme
   return <form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}>
     <MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(amount) => setPayment((current) => ({ ...current, amount }))} required />
     <AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }))} />
-    <label className="field"><span>Tanggal aktual *</span><input required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }))} /></label>
+    <label className="field"><span>Tanggal aktual *</span><TemporalInput required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }))} /></label>
     {showEnvelope ? <PaymentEnvelopeField payment={payment} setPayment={setPayment} paymentEnvelopes={paymentEnvelopes} envelopeHint={paymentEnvelopeHint(envelopeStatus, paymentEnvelopes)} /> : null}
     <CostShareField visible={showEnvelope && payment.item?.scope === "shared"} form={payment} members={members} setForm={setPayment} errors={paymentState.fieldErrors || {}} />
     <PaymentOverspendFields payment={payment} setPayment={setPayment} envelopeState={envelopeState} />
@@ -123,8 +124,8 @@ const EditRulePlanningFields = ({ editRule, setEditRule, editCategories, account
 
 const EditRuleDateFields = ({ editRule, setEditRule }) => <>
   <CompactNotice className="form-grid__full" tone="info">Saat tanggal jadwal tiba, sistem menunggu konfirmasi aktual. Saldo tidak berubah sebelum aktual disimpan.</CompactNotice>
-  <label className="field"><span>Tanggal mulai *</span><input required type="date" value={editRule?.start_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, start_date: event.target.value }))} /></label>
-  <label className="field"><span>Tanggal akhir</span><input type="date" value={editRule?.end_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, end_date: event.target.value }))} /></label>
+  <label className="field"><span>Tanggal mulai *</span><TemporalInput required type="date" value={editRule?.start_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, start_date: event.target.value }))} /></label>
+  <label className="field"><span>Tanggal akhir</span><TemporalInput type="date" value={editRule?.end_date || ""} onChange={(event) => setEditRule((current) => ({ ...current, end_date: event.target.value }))} /></label>
 </>;
 
 const EditRuleFields = (props) => <>

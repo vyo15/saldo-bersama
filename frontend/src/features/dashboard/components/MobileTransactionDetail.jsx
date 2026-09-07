@@ -1,4 +1,4 @@
-import { FiCreditCard, FiExternalLink, FiShield } from "react-icons/fi";
+import { FiCheckCircle, FiExternalLink, FiPlus } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Modal from "../../../components/common/Modal.jsx";
@@ -28,7 +28,7 @@ const MobileTransactionDetail = ({
     footer={transaction ? (
       <>
         <ButtonLink className={dashboardClass("mobile-detail-link")} to="/transaksi" onClick={onClose} icon={FiExternalLink}>Lihat semua</ButtonLink>
-        <Button variant="primary" icon={FiCreditCard} onClick={onOpenTransaction}>Tambah transaksi</Button>
+        <Button variant="primary" icon={FiPlus} onClick={onOpenTransaction}>Tambah transaksi</Button>
       </>
     ) : null}
   >
@@ -39,7 +39,7 @@ const MobileTransactionDetail = ({
             <span>Nominal</span>
             <SensitiveMoney visible={balanceVisible} value={transaction.amount} tone={transactionTone(transaction.transaction_type)} />
           </div>
-          <span className={dashboardClass("status-badge status-badge--active")}><FiShield aria-hidden="true" /> {transaction.status || "active"}</span>
+          <span className={dashboardClass("status-badge status-badge--active")}><FiCheckCircle aria-hidden="true" /> {transaction.status || "active"}</span>
         </header>
         <dl>
           <div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[transaction.transaction_type] || transaction.transaction_type}</dd></div>

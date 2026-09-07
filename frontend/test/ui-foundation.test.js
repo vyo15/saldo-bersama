@@ -16,6 +16,7 @@ const moduleBackedComponents = [
   "ProgressBar",
   "StatusBadge",
   "ThemeToggle",
+  "TemporalPickerField",
 ];
 
 test("shared UI primitives use colocated CSS Modules and preserve project compatibility classes", async () => {
@@ -171,6 +172,32 @@ test("setiap referensi CSS Module frontend memiliki class lokal yang dideklarasi
       }
     }
   }
+});
+
+test("named FinanceChoiceIcons imports resolve to canonical exports", async () => {
+  const sourceRoot = new URL("../src/", import.meta.url);
+  const sourceNames = await readdir(sourceRoot, { recursive: true });
+  const sourceFiles = sourceNames.filter((name) => /\.(?:js|jsx)$/.test(name));
+  const financeIcons = await read("src/components/common/FinanceChoiceIcons.jsx");
+  const exportedNames = new Set([...financeIcons.matchAll(/export\s+const\s+([A-Za-z_$][\w$]*)/g)].map((match) => match[1]));
+  const importPattern = /import\s*\{([^}]*)\}\s*from\s*["']([^"']*FinanceChoiceIcons\.jsx)["'];/g;
+
+  for (const relative of sourceFiles) {
+    const source = await read(`src/${relative}`);
+    for (const match of source.matchAll(importPattern)) {
+      const importedNames = match[1]
+        .split(",")
+        .map((entry) => entry.trim().split(/\s+as\s+/)[0])
+        .filter(Boolean);
+      for (const name of importedNames) {
+        assert.equal(exportedNames.has(name), true, `Unknown FinanceChoiceIcons export ${name} in ${relative}`);
+      }
+    }
+  }
+
+  const optionVisuals = await read("src/components/common/selectionOptionVisuals.js");
+  assert.match(optionVisuals, /import\s*\{\s*accountTypeIcon\s*\}\s*from\s*["']\.\/financeChoiceIconRegistry\.js["']/);
+  assert.doesNotMatch(optionVisuals, /import\s*\{[^}]*accountTypeIcon[^}]*\}\s*from\s*["']\.\/FinanceChoiceIcons\.jsx["']/);
 });
 
 test("named react-icons imports resolve to real exports", async () => {

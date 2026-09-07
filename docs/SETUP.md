@@ -2,7 +2,7 @@
 
 ## 1. Runtime
 
-Gunakan Node 24.x dan npm 10+. Versi project dipin pada `.node-version` ke Node 24.18.1. `npm run dev` dapat menjalankan `npm ci` otomatis ketika dependency workspace belum tersedia. Untuk validasi lokal setelah patch, command canonical adalah `npm run verify`; command ini memakai dependency yang sudah terpasang dan tidak menjalankan `npm ci`. `npm ci` tetap canonical untuk clean CI, clone/bootstrap baru, perubahan package/lockfile, atau reinstall dependency.
+Gunakan Node **22.15.0+ pada lini 22.x** atau Node **24.x** dan npm 10+. Versi preferensi project dipin pada `.node-version` ke **22.15.0** agar PC kantor yang belum dapat memakai Node 24 tetap menjadi environment first-class. `npm run dev` fail-closed hanya bila runtime berada di luar rentang yang didukung. Frontend memakai `react-router` 7.18.2, yang kompatibel dengan baseline Node 22. `npm run dev` dapat menjalankan `npm ci` otomatis ketika dependency workspace belum tersedia. Untuk validasi lokal setelah patch, command canonical adalah `npm run verify`; command ini memakai dependency yang sudah terpasang dan tidak menjalankan `npm ci`. `npm ci` tetap canonical untuk clean CI, clone/bootstrap baru, perubahan package/lockfile, atau reinstall dependency.
 
 ### Windows Git Bash
 
@@ -12,15 +12,24 @@ Gunakan `fnm` agar Node project tidak bertabrakan dengan instalasi Node global W
 winget install -e --id Schniz.fnm
 grep -qxF 'eval "$(fnm env --use-on-cd --shell bash)"' ~/.bashrc || echo 'eval "$(fnm env --use-on-cd --shell bash)"' >> ~/.bashrc
 source ~/.bashrc
-fnm install 24.18.1
-fnm default 24.18.1
+fnm install 22.15.0
+fnm default 22.15.0
 fnm use
 hash -r
 node -v
 npm -v
 ```
 
-Hasil `node -v` harus `v24.18.1`. `fnm env --use-on-cd` membaca `.node-version` setiap kali Git Bash masuk ke repository.
+Hasil `node -v` minimal `v22.15.0` pada lini 22.x, atau boleh memakai Node 24.x. `fnm env --use-on-cd` membaca `.node-version` setiap kali Git Bash masuk ke repository.
+
+Jika `fnm use` pada shell yang sudah terlanjur terbuka menampilkan `We can't find the necessary environment variables`, aktifkan environment pada shell tersebut lalu ulangi:
+
+```bash
+eval "$(fnm env --use-on-cd --shell bash)"
+fnm use
+hash -r
+node -v
+```
 
 ### Windows: `npm ci` gagal `EPERM` pada Rollup/esbuild/native module
 
@@ -47,7 +56,7 @@ Setelah dependency berhasil terpasang, jangan mengulang `npm ci` untuk setiap pe
 npm run verify
 ```
 
-`npm run verify` memeriksa Node 24 dan kesehatan dependency secara read-only melalui npm, lalu menjalankan check dan guard regression. Bila dependency tidak sinkron, verify berhenti dengan instruksi recovery tanpa menghapus `node_modules` secara otomatis.
+`npm run verify` memeriksa runtime Node yang didukung dan kesehatan dependency secara read-only melalui npm, lalu menjalankan check dan guard regression. Bila dependency tidak sinkron, verify berhenti dengan instruksi recovery tanpa menghapus `node_modules` secara otomatis.
 
 Validator source menampilkan jumlah endpoint Vercel yang benar-benar aktif dan batas maksimum secara terpisah. Baseline saat ini adalah **5 Vercel Functions canonical** (`gateway`, `export`, `health`, `jobs`, `session`) dengan **batas maksimum 12**. Angka 12 bukan target jumlah function.
 
@@ -67,17 +76,18 @@ npm run dev
 
 Alur `npm run dev` pada terminal interaktif:
 
-1. Memeriksa dependency runtime utama (`vite`, `react`, `@fontsource-variable/manrope`, dan Firebase modular) dari workspace frontend.
-2. Menjalankan `npm ci` hanya bila dependency tersebut belum tersedia.
-3. Membersihkan token OIDC sementara dan key legacy dari `.env.local` bila file sudah ada.
-4. Meminta login Vercel hanya bila sesi belum ada.
-5. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
-6. Mencoba menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
-7. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key Production-only salah ditempatkan pada Development/cache lokal.
-8. Memvalidasi sepuluh key core, `DATABASE_ENVIRONMENT=development`, dan satu grup Web Push lengkap/valid.
-9. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi. Jika login/link/pull Vercel sedang tidak tersedia tetapi cache `.env.local` lama sudah lengkap, cache tersebut dipertahankan dan dipakai sementara.
-10. Memeriksa Turso Development benar-benar reachable serta schema/binding siap, termasuk saat memakai cache lokal.
-11. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
+1. Memastikan runtime aktif adalah Node `22.15.0+` pada lini 22.x atau Node `24.x`; PC kantor dengan Node `22.15.0` tidak memerlukan `fnm use` hanya untuk menjalankan project.
+2. Memeriksa dependency runtime utama (`vite`, `react`, `@fontsource-variable/manrope`, dan Firebase modular) dari workspace frontend.
+3. Menjalankan `npm ci` hanya bila dependency tersebut belum tersedia.
+4. Membersihkan token OIDC sementara dan key legacy dari `.env.local` bila file sudah ada.
+5. Meminta login Vercel hanya bila sesi belum ada.
+6. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
+7. Mencoba menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
+8. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key Production-only salah ditempatkan pada Development/cache lokal.
+9. Memvalidasi sepuluh key core, `DATABASE_ENVIRONMENT=development`, dan satu grup Web Push lengkap/valid.
+10. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi. Jika login/link/pull Vercel sedang tidak tersedia tetapi cache `.env.local` lama sudah lengkap, cache tersebut dipertahankan dan dipakai sementara.
+11. Memeriksa Turso Development benar-benar reachable serta schema/binding siap, termasuk saat memakai cache lokal.
+12. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
 
 `npm run dev` tidak membuat atau mengubah `.env.production.local`; provisioning Production dipicu hanya saat `npm run prod` membutuhkan profile tersebut.
 

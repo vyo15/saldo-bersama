@@ -19,7 +19,7 @@ import {
   formatAccountNumber,
   normalizeAccountNumber,
 } from "../src/shared/presentation/account.js";
-import { accountTransactionDirection } from "../src/shared/presentation/transaction.js";
+import { accountTransactionDirection } from "../src/shared/presentation/transactionCore.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -257,7 +257,7 @@ ${accountEditors}`;
   assert.match(desktopWorkspace, /enabled: desktopEnabled && Boolean\(selectedId\)/);
   assert.match(desktopWorkspace, /if \(!desktopEnabled \|\| !selectedAccount\) return null;/);
   assert.match(desktopWorkspace, /<AccountVisual account=\{account\} carousel \/>/);
-  assert.match(transactionPresentation, /export const accountTransactionDirection/);
+  assert.match(transactionPresentation, /accountTransactionDirection,[\s\S]*from "\.\/transactionCore\.js"/);
   assert.match(desktopWorkspace, /accountTransactionDirection\(item, selectedAccountId\)/);
   assert.match(mobileActivity, /accountTransactionDirection\(item, selectedAccountId\)/);
   assert.doesNotMatch(desktopWorkspace, /const transactionDirection/);
@@ -359,7 +359,8 @@ ${accountEditors}`;
   assert.match(accountPageSource, /carouselStyleAtDifference/);
   assert.match(mobileExperienceStyles, /\.mobileOwnershipFilters[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(mobileExperience, /PageInfoButton title="Tentang Rekening" label="Tentang Rekening"/);
-  assert.match(mobileExperience, /PageInfoButton title="Tentang saldo rekening"/);
+  assert.equal((mobileExperience.match(/<PageInfoButton/g) || []).length, 1, "Satu surface mobile Rekening hanya boleh memiliki satu trigger bantuan edukatif.");
+  assert.doesNotMatch(mobileExperience, /PageInfoButton title="Tentang saldo rekening"/);
   assert.doesNotMatch(mobileExperience, /Kelola semua rekening Anda/);
   assert.match(accountPageSource, /shortestCircularDifference/);
   assert.match(accountPageSource, /onPointerDown=\{handleMobileStackPointerDown\}/);
@@ -561,6 +562,29 @@ test("semua asset kartu rekening aktif memakai kanvas dan rasio yang sama", asyn
 });
 
 
+test("logo compact rekening bank dan e-wallet memakai asset persegi transparan terpisah dari artwork kartu", async () => {
+  const assets = [
+    ...["bca", "bni", "btn", "mandiri", "permata"].map((name) => ["bank-logos", name]),
+    ...["shopeepay", "dana", "gopay", "ovo", "linkaja"].map((name) => ["ewallet-logos", name]),
+  ];
+  for (const [directory, name] of assets) {
+    const url = new URL(`../src/assets/${directory}/${name}.webp`, import.meta.url);
+    const file = await access(url).then(() => url);
+    const [info, dimensions] = await Promise.all([stat(file), webpSize(file)]);
+    assert.ok(file, `${name}.webp harus tersedia`);
+    assert.ok(info.size <= 30_000, `${name}.webp terlalu besar untuk logo compact (${info.size} byte)`);
+    assert.deepEqual(dimensions, { width: 256, height: 256 }, `${name}.webp harus persegi 256x256`);
+    assert.equal(await webpHasAlpha(file), true, `${name}.webp harus mempertahankan background transparan`);
+  }
+
+  const assetsSource = await read("src/shared/presentation/accountBrandAssets.js");
+  assert.match(assetsSource, /BANK_BRAND_LOGOS/);
+  assert.match(assetsSource, /EWALLET_BRAND_LOGOS/);
+  assert.match(assetsSource, /accountBrandLogo/);
+  assert.match(assetsSource, /bank-cards\/bca\.webp/);
+  assert.match(assetsSource, /bank-logos\/bca\.webp/);
+});
+
 test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile memakai shortcut ringkas", async () => {
   const [dashboard, mobileDashboard, dashboardStyles] = await Promise.all([
     read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
@@ -576,7 +600,7 @@ test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile 
   assert.match(dashboard, /<AccountVisual account=\{cleanAccount\} carousel \/>/);
   assert.match(dashboard, /scrollIntoViewWithMotionPreference/);
   assert.match(dashboard, /inline:\s*"nearest"/);
-  assert.match(mobileDashboard, /\{ to: "\/rekening", label: "Rekening", icon: FiCreditCard, tone: "account" \}/);
+  assert.match(mobileDashboard, /\{ to: "\/rekening", label: "Rekening", icon: AccountIcon, tone: "account" \}/);
   assert.doesNotMatch(mobileDashboard, /AccountVisual|mobile-account-preview|mobile-account-scroller/);
   assert.doesNotMatch(dashboardStyles, /\.mobile-account-preview|\.mobile-account-scroller/);
 });

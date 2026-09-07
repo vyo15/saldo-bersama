@@ -26,3 +26,14 @@ test("app-owned interaction does not fall back to native select browser UI", asy
   }
   assert.deepEqual(offenders, []);
 });
+
+
+test("app-owned temporal controls do not fall back to native date month or time pickers", async () => {
+  const files = await walk(srcRoot);
+  const offenders = [];
+  for (const file of files) {
+    const source = await readFile(file, "utf8");
+    if (/<input\b[^>]*\btype=["'](?:date|month|time)["']/s.test(source)) offenders.push(path.relative(srcRoot, file));
+  }
+  assert.deepEqual(offenders, []);
+});

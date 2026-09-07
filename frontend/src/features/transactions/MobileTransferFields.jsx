@@ -1,10 +1,12 @@
-import { FiAlertTriangle, FiArrowRight, FiCalendar, FiChevronRight, FiCreditCard } from "react-icons/fi";
+import { FiAlertTriangle, FiArrowRight, FiCalendar, FiChevronRight } from "react-icons/fi";
+import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountProviderLabel } from "../../shared/presentation/account.js";
 import styles from "./MobileTransferFields.module.css";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const accountBalance = (accountBalances, accountId) => accountBalances.find((item) => item.account_id === accountId) || null;
 
 const accountBalanceLabel = (accountBalances, accountId, mode) => {
@@ -33,7 +35,7 @@ const AccountPickerRow = ({ id, label, account, accountBalances, balanceMode, pl
       aria-describedby={error ? `${id}-error` : undefined}
       disabled={disabled}
     >
-      <span className={styles.accountIcon} aria-hidden="true"><FiCreditCard /></span>
+      <span className={styles.accountIcon} aria-hidden="true"><AccountIcon /></span>
       {account
         ? <AccountIdentity account={account} accountBalances={accountBalances} balanceMode={balanceMode} />
         : <span className={styles.accountCopy}><strong>{placeholder}</strong><small>{helper}</small></span>}
@@ -106,7 +108,7 @@ const TransferDate = ({ form, update, errors, intentLocked }) => (
         <strong>{formatDateLongIndonesia(form.transaction_date) || "Pilih tanggal"}</strong>
       </span>
       <FiChevronRight className={styles.chevron} aria-hidden="true" />
-      <input
+      <TemporalInput
         id="mobile-transfer-date"
         type="date"
         value={form.transaction_date}

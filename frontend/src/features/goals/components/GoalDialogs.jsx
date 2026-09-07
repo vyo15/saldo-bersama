@@ -13,6 +13,7 @@ import { formatRupiah } from "../../../domain/money.js";
 import { canRepresentAccountTransfer } from "../../../domain/ownership.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 
+import TemporalInput from "../../../components/common/TemporalInput.jsx";
 const accountFundsLabel = (account) => `${accountDisplayLabel(account)} · tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`;
 
 const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, createMutation, message }) => {
@@ -29,7 +30,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Jenis target" name="goal-type" value={form.goal_type} onChange={(goal_type) => setForm((current) => ({ ...current, goal_type }))} options={[{ value: "savings", label: "Tabungan tujuan", icon: TargetIcon, description: "Target nominal" }, { value: "emergency_fund", label: "Dana darurat", icon: EmergencyFundIcon, description: "Cadangan kebutuhan mendadak" }, { value: "sinking_fund", label: "Dana berkala", icon: SinkingFundIcon, description: "Kebutuhan periodik" }]} columns={3} />
       <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
-      <label className="field"><span>Tanggal target</span><input required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
+      <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
       <SelectionField label="Rekening tujuan" required value={form.account_id} onChange={(account_id) => setForm((current) => ({ ...current, account_id }))} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((account) => ({ value: account.account_id, label: accountFundsLabel(account), ...accountOptionVisual(account) }))} />
       {targetAccount && !compatibleSource ? <CompactNotice className="form-grid__full" tone="info" title="Target dapat dibuat, tetapi belum dapat disetor">Tambahkan rekening sumber lain yang dapat dioperasikan. Setoran target selalu berupa transfer antar rekening yang berbeda.</CompactNotice> : null}
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
@@ -42,7 +43,7 @@ const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => (
     <form id="goal-edit-form" className="form-grid" onSubmit={saveGoal}>
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={editGoal?.name || ""} onChange={(event) => setEditGoal((current) => ({ ...current, name: event.target.value }))} /></label>
       <MoneyInput id="goal-edit-target" label="Target nominal" value={editGoal?.target_amount || ""} onChange={(value) => setEditGoal((current) => ({ ...current, target_amount: value }))} />
-      <label className="field"><span>Tanggal target</span><input required type="date" value={editGoal?.target_date || ""} onChange={(event) => setEditGoal((current) => ({ ...current, target_date: event.target.value }))} /></label>
+      <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={editGoal?.target_date || ""} onChange={(event) => setEditGoal((current) => ({ ...current, target_date: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Prioritas" name="goal-priority" value={editGoal?.priority || "normal"} onChange={(priority) => setEditGoal((current) => ({ ...current, priority }))} options={[{ value: "low", label: "Rendah", icon: PriorityLowIcon }, { value: "normal", label: "Normal", icon: PriorityNormalIcon }, { value: "high", label: "Tinggi", icon: PriorityHighIcon }]} columns={3} compact />
       {editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}
     </form>
@@ -63,7 +64,7 @@ const GoalMovementModal = ({ movement, setMovement, movementState, movementMutat
       <MoneyInput id="goal-movement-amount" label="Nominal" value={movement.amount} onChange={(value) => setMovement((current) => ({ ...current, amount: value }))} />
       <MovementAccountField label="Rekening sumber" value={movement.source_account_id} accounts={accounts} onChange={(source_account_id) => setMovement((current) => ({ ...current, source_account_id }))} />
       <MovementAccountField label="Rekening tujuan" value={movement.destination_account_id} accounts={accounts} onChange={(destination_account_id) => setMovement((current) => ({ ...current, destination_account_id }))} />
-      <label className="field"><span>Tanggal *</span><input required type="date" value={movement.transaction_date} onChange={(event) => setMovement((current) => ({ ...current, transaction_date: event.target.value }))} /></label>
+      <label className="field"><span>Tanggal *</span><TemporalInput required type="date" value={movement.transaction_date} onChange={(event) => setMovement((current) => ({ ...current, transaction_date: event.target.value }))} /></label>
       <label className="field form-grid__full"><span>Alasan *</span><input required maxLength="180" value={movement.reason} onChange={(event) => setMovement((current) => ({ ...current, reason: event.target.value }))} /></label>
       {movementState.error ? <div className="notice notice--danger form-grid__full" role="alert">{movementState.error.message}</div> : null}
     </form>

@@ -3,7 +3,6 @@ import {
   FiBell,
   FiCheckCircle,
   FiCheckSquare,
-  FiCreditCard,
   FiHome,
   FiList,
   FiLayers,
@@ -11,9 +10,9 @@ import {
   FiSettings,
   FiTag,
   FiTarget,
-  FiTrendingUp,
   FiUsers,
 } from "react-icons/fi";
+import { AccountIcon, InvestmentIcon } from "../components/common/FinanceChoiceIcons.jsx";
 
 export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/", label: "Beranda", icon: FiHome, end: true },
@@ -22,8 +21,8 @@ export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/anggaran", label: "Anggaran", description: "Ringkasan seluruh Kebutuhan dari Alokasi Dana untuk periode yang dipilih.", icon: FiLayers },
   { to: "/target", label: "Target", description: "Kumpulkan dana ke rekening tujuan dan pantau progres sampai nominal target.", icon: FiTarget },
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
-  { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: FiCreditCard },
-  { to: "/investasi", label: "Investasi", description: "Catat Cash RDN, saham yang dimiliki, harga manual, P/L, dan pencocokan catatan.", icon: FiTrendingUp },
+  { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: AccountIcon },
+  { to: "/investasi", label: "Investasi", description: "Catat Cash RDN, saham yang dimiliki, harga manual, P/L, dan pencocokan catatan.", icon: InvestmentIcon },
   { to: "/kategori", label: "Kategori", description: "Atur kategori transaksi yang digunakan.", icon: FiTag },
   { to: "/anggota", label: "Anggota", description: "Kelola anggota yang dapat mengakses Saldo Bersama.", icon: FiUsers, ownerOnly: true },
   { to: "/persetujuan", label: "Persetujuan", description: "Tinjau pengajuan rekening, kategori, dan transfer.", icon: FiCheckSquare, ownerOnly: true },
@@ -51,7 +50,7 @@ export const DESKTOP_NAVIGATION = Object.freeze([
     id: "finance",
     label: "Keuangan",
     description: "Rekening, kategori, investasi, dan pencocokan saldo.",
-    icon: FiCreditCard,
+    icon: AccountIcon,
     items: pickNavigation("/rekening", "/kategori", "/investasi", "/rekonsiliasi"),
   }),
   freezeGroup({

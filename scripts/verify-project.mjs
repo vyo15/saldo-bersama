@@ -9,6 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const REQUIRED_NODE_VERSION = readFileSync(path.join(root, ".node-version"), "utf8").trim();
 export const REQUIRED_NODE_MAJOR = Number.parseInt(REQUIRED_NODE_VERSION.split(".")[0], 10);
+export const SUPPORTED_NODE_RANGE = "Node 22.15.0+ (22.x) atau Node 24.x";
 
 // Satu full gate canonical tanpa alias npm internal. Frontend test dijalankan sekali,
 // sedangkan seluruh backend test dijalankan sekali dengan coverage agar tidak diduplikasi.
@@ -70,17 +71,37 @@ const spawnStep = (step, { cwd = root, stdio = "inherit" } = {}) => {
 
 export const executeVerificationStep = (step, options = {}) => spawnStep(step, options);
 
-const nodeMajor = (version) => Number.parseInt(String(version || "").replace(/^v/, "").split(".")[0], 10);
+const parseNodeVersion = (version) => {
+  const normalized = String(version || "").replace(/^v/, "").trim();
+  const [major = NaN, minor = NaN, patch = NaN] = normalized.split(".").map((part) => Number.parseInt(part, 10));
+  return { normalized, major, minor, patch };
+};
+
+const atLeast = (value, minimum) => {
+  if (value.major !== minimum.major) return value.major > minimum.major;
+  if (value.minor !== minimum.minor) return value.minor > minimum.minor;
+  return value.patch >= minimum.patch;
+};
+
+const nodeMajor = (version) => parseNodeVersion(version).major;
+
+export const isSupportedNode = (version = process.version) => {
+  const parsed = parseNodeVersion(version);
+  if (![parsed.major, parsed.minor, parsed.patch].every(Number.isInteger)) return false;
+  if (parsed.major === 22) return atLeast(parsed, { major: 22, minor: 15, patch: 0 });
+  return parsed.major === 24;
+};
 
 export const assertCanonicalNode = (version = process.version) => {
-  const normalized = String(version || "").replace(/^v/, "");
-  if (normalized === REQUIRED_NODE_VERSION) return REQUIRED_NODE_VERSION;
+  const parsed = parseNodeVersion(version);
+  if (isSupportedNode(version)) return parsed.normalized;
   throw Object.assign(
     new Error(
-      `Node ${REQUIRED_NODE_VERSION} wajib untuk quality gate. Runtime aktif: ${version}. `
-      + "Jalankan `fnm use` dari root project lalu ulangi `npm run verify`.",
+      `${SUPPORTED_NODE_RANGE} didukung untuk runtime project dan quality gate. Runtime aktif: ${version}. `
+      + `Versi preferensi repository adalah Node ${REQUIRED_NODE_VERSION}. `
+      + "Jika perlu mengganti versi dengan fnm, jalankan `eval \"$(fnm env --use-on-cd --shell bash)\"` lalu `fnm use`.",
     ),
-    { code: "VERIFY_NODE_VERSION", expectedVersion: REQUIRED_NODE_VERSION, actualVersion: normalized, actualMajor: nodeMajor(version) },
+    { code: "VERIFY_NODE_VERSION", expectedVersion: REQUIRED_NODE_VERSION, supportedRange: SUPPORTED_NODE_RANGE, actualVersion: parsed.normalized, actualMajor: nodeMajor(version) },
   );
 };
 

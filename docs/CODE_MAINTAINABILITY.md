@@ -101,7 +101,7 @@ npm run verify
 
 `npm run verify` sudah menjalankan source validation, lint/syntax, frontend regression, production build, build budget, serta backend regression + coverage. Alias quality internal yang sudah retired tidak boleh didokumentasikan sebagai command publik terpisah.
 
-`npm run verify`/artifact final hanya valid pada Node canonical yang dinyatakan repository. Jika environment tidak memenuhi runtime canonical, hasil harus disebut candidate/unverified.
+`npm run verify`/artifact final hanya valid pada runtime Node yang didukung repository. Jika environment tidak memenuhi runtime yang didukung, hasil harus disebut candidate/unverified.
 
 ## Review checklist
 

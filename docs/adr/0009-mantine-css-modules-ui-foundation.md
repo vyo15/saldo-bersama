@@ -17,7 +17,7 @@ Mengganti seluruh UI sekaligus berisiko merusak responsive behavior, accessibili
 4. HTML native tetap diprioritaskan untuk kontrol sederhana dan struktur semantik.
 5. Tailwind CSS, shadcn/ui, utility-class-heavy styling, serta styling layout melalui `sx`/style props tidak digunakan.
 6. Adopsi dilakukan bertahap. Tahap pertama memperkuat wrapper existing dan memindahkan primitive styling ke CSS Modules tanpa mengubah business logic.
-7. Dependency Mantine tidak disimpan sebagai dependency idle. Saat wrapper pertama benar-benar mengadopsinya, package dan lockfile harus diperbarui atomik dan full quality gate wajib PASS pada Node 24.
+7. Dependency Mantine tidak disimpan sebagai dependency idle. Saat wrapper pertama benar-benar mengadopsinya, package dan lockfile harus diperbarui atomik dan full quality gate wajib PASS pada runtime Node yang didukung.
 
 ## Consequences
 

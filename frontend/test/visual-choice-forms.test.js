@@ -111,6 +111,7 @@ test("SelectionField keeps app-owned selection accessible without native browser
   assert.match(css, /\.groupLabel \{/);
   assert.match(css, /\.visual \{/);
   assert.match(css, /\.imageVisual \{/);
+  assert.match(css, /\.brandLogoVisual \{/);
   assert.match(css, /\.markVisual \{/);
   assert.match(css, /\.search \{[^}]*position:\s*sticky;/s);
 });
@@ -124,6 +125,8 @@ test("dynamic finance selectors expose canonical visual identity helpers", async
     read("features/investments/InvestmentDialog.jsx"),
   ]);
   assert.match(visuals, /accountOptionVisual/);
+  assert.match(visuals, /accountBrandLogo/);
+  assert.match(visuals, /imageKind: "brand-logo"/);
   assert.match(visuals, /categoryOptionVisual/);
   assert.match(visuals, /memberOptionVisual/);
   assert.match(visuals, /instrumentOptionVisual/);

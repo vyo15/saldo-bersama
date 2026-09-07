@@ -3,23 +3,20 @@ import {
   FiArchive,
   FiClock,
   FiCopy,
-  FiCreditCard,
-  FiDollarSign,
   FiEdit2,
   FiEye,
   FiFileText,
   FiFlag,
   FiHash,
   FiList,
-  FiShield,
-  FiSmartphone,
-  FiTrendingUp,
   FiUsers,
   FiWifi,
 } from "react-icons/fi";
 import cashCard from "../../../assets/account-cards/cash.webp";
 import investmentCard from "../../../assets/account-cards/investment.webp";
 import savingsCard from "../../../assets/account-cards/savings.webp";
+import { BalanceIcon, InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
+import { accountTypeIcon } from "../../../components/common/financeChoiceIconRegistry.js";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
@@ -42,16 +39,7 @@ import { BANK_BRAND_IMAGES, EWALLET_BRAND_IMAGES } from "../../../shared/present
 import styles from "./AccountFinancialCard.module.css";
 
 const ACCOUNT_TYPE_IMAGES = Object.freeze({ cash: cashCard, investment: investmentCard, savings: savingsCard });
-const ACCOUNT_ICONS = Object.freeze({
-  bank: FiCreditCard,
-  cash: FiDollarSign,
-  ewallet: FiSmartphone,
-  emergency_fund: FiShield,
-  savings: FiDollarSign,
-  sinking_fund: FiClock,
-  investment: FiTrendingUp,
-  other: FiCreditCard,
-});
+
 
 const formatUpdatedAt = (value) => {
   if (!value) return "Belum tersedia";
@@ -81,7 +69,7 @@ const visualModel = (account, templateOverride) => {
     template,
     ewalletTemplate,
     image: image || null,
-    Icon: ACCOUNT_ICONS[account.account_type] || FiCreditCard,
+    Icon: accountTypeIcon(account.account_type),
     numberGroups: isBank ? accountCardNumberGroups(account.account_number) : [],
     ownershipLabel,
     holderName: account.account_type === "investment" ? ownershipLabel : accountCardholderName(account.name) || "Nama rekening",
@@ -216,9 +204,9 @@ const MobileDetailData = ({ account, model, copied, onCopy }) => (
     <MobileDetailRow icon={FiList} label="Bank / jenis"><span>{model.bankLabel}</span></MobileDetailRow>
         <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
     <MobileDetailRow icon={FiUsers} label="Kepemilikan"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
-    <MobileDetailRow icon={FiDollarSign} label={account.account_type === "investment" ? "Cash RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
-    <MobileDetailRow icon={FiDollarSign} label="Dana tersedia"><span className={styles.mobileFinancialValue}><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></span></MobileDetailRow>
-    <MobileDetailRow icon={FiDollarSign} label="Dialokasikan"><span className={styles.mobileFinancialValue}><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></span></MobileDetailRow>
+    <MobileDetailRow icon={BalanceIcon} label={account.account_type === "investment" ? "Cash RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
+    <MobileDetailRow icon={BalanceIcon} label="Dana tersedia"><span className={styles.mobileFinancialValue}><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></span></MobileDetailRow>
+    <MobileDetailRow icon={BalanceIcon} label="Dialokasikan"><span className={styles.mobileFinancialValue}><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></span></MobileDetailRow>
     <MobileDetailRow icon={FiFlag} label="Saldo awal"><span><Money value={account.initial_balance || 0} /></span></MobileDetailRow>
     <MobileDetailRow icon={FiClock} label="Diperbarui"><span className={styles.mobileUpdatedAt}>{formatUpdatedAt(account.updated_at)}</span></MobileDetailRow>
   </dl>
@@ -229,7 +217,7 @@ const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTran
   return (
     <>
       <div className={styles.mobileDetailActions}>
-        {investment ? <Button variant="primary" icon={FiTrendingUp} onClick={() => onViewInvestment?.(account)}>Lihat aset & saham</Button> : null}
+        {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment?.(account)}>Lihat aset & saham</Button> : null}
         {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEdit?.(account)}>Edit rekening</Button> : null}
         <Button variant={investment ? "secondary" : "primary"} icon={FiFileText} onClick={() => onViewTransactions?.(account)}>{investment ? "Lihat transfer" : "Lihat transaksi"}</Button>
       </div>

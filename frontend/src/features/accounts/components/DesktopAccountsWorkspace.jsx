@@ -5,11 +5,11 @@ import {
   FiArrowRight,
   FiChevronLeft,
   FiChevronRight,
-  FiCreditCard,
   FiEdit2,
   FiPieChart,
   FiTrendingUp,
 } from "react-icons/fi";
+import { BalanceIcon, InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
 import LineChart from "../../../components/charts/LineChart.jsx";
@@ -191,7 +191,7 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
         </dl>
         <div className={styles.heroActions}>
-          {investment ? <Button variant="primary" icon={FiTrendingUp} onClick={() => onViewInvestment(account)}>Lihat aset & saham</Button> : null}
+          {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat aset & saham</Button> : null}
           {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
           {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Kelola data</Button> : null}
         </div>
@@ -220,7 +220,7 @@ const RecentTransactionsPanel = ({ resource, items, categoryLookup, selectedAcco
 const AccountInsights = ({ accounts, totalBalance, balanceTrend, distribution, reportStatus }) => (
   <aside className={styles.insightColumn} aria-label="Ringkasan seluruh rekening">
     <section className={styles.balanceSummary}>
-      <span className={styles.summaryIcon}><FiCreditCard aria-hidden="true" /></span>
+      <span className={styles.summaryIcon}><BalanceIcon aria-hidden="true" /></span>
       <div><p>Total saldo</p><strong><Money value={totalBalance} tone={balanceTone(totalBalance)} /></strong><small>{accounts.length} rekening aktif</small></div>
     </section>
     <section className={styles.trendPanel} aria-labelledby="desktop-balance-trend-title">

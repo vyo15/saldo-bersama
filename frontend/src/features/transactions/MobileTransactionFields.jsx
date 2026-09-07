@@ -1,4 +1,5 @@
-import { FiAlertTriangle, FiCalendar, FiChevronRight, FiCreditCard, FiGrid, FiLayers } from "react-icons/fi";
+import { FiAlertTriangle, FiCalendar, FiChevronRight, FiGrid, FiLayers } from "react-icons/fi";
+import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
@@ -10,6 +11,7 @@ import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS
 import TransactionImpactPreview from "./components/TransactionImpactPreview.jsx";
 import styles from "./MobileTransactionFields.module.css";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const TypeSelector = ({ form, update, lockType }) => lockType ? null : (
   <VisualChoiceGroup
     className={styles.typeSelector}
@@ -74,7 +76,7 @@ const DateRow = ({ form, update, errors }) => (
       errorId="transaction-date-error"
     />
     <FiChevronRight className={styles.chevron} aria-hidden="true" />
-    <input
+    <TemporalInput
       id="transaction-date"
       className={styles.nativeOverlay}
       type="date"
@@ -147,7 +149,7 @@ const DetailGroup = (p) => {
         <DateRow form={p.form} update={p.update} errors={p.errors} />
         <SelectionRow
           id={p.isIncome ? "destination-account" : "source-account"}
-          icon={FiCreditCard}
+          icon={AccountIcon}
           label={accountLabel}
           value={accountValue}
           meta={accountMeta}

@@ -17,6 +17,7 @@ import BudgetInsightCard from "./components/BudgetInsightCard.jsx";
 import budgetCalendarArtwork from "../../assets/budget-illustrations/budget-calendar.webp";
 import styles from "./BudgetsPage.module.css";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const EMPTY_BUDGET_ITEMS = Object.freeze([]);
 
 const BudgetTabs = ({ activeFilter, setActiveFilter, totalCount, attentionCount }) => <div className={styles.segmented} role="group" aria-label="Filter kebutuhan anggaran">
@@ -48,7 +49,7 @@ const BudgetLoadedView = ({ period, setPeriod, currentPeriod, periodMeta, active
     </div>
   </header>
   <div className={styles.controlsRow}>
-    <label className={styles.periodControl}><span className="sr-only">Periode</span><input type="month" max={currentPeriod} value={period} onChange={(event) => { setPeriod(event.target.value); setActiveFilter("all"); }} /></label>
+    <label className={styles.periodControl}><span className="sr-only">Periode</span><TemporalInput type="month" max={currentPeriod} value={period} onChange={(event) => { setPeriod(event.target.value); setActiveFilter("all"); }} /></label>
     <span className={styles.daysBadge}>{periodMeta.isCurrent ? `${periodMeta.daysLeft} hari tersisa` : "Periode selesai"}</span>
   </div>
   {items.length ? <>

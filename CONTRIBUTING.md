@@ -41,6 +41,6 @@ git commit -m "type: deskripsi perubahan"
 git push origin main
 ```
 
-Push hanya dilanjutkan bila ref `main` yang akan dikirim sama dengan `HEAD`, working tree bersih, push fast-forward, dan full verification PASS pada Node `24.18.1`. Jangan memakai `--no-verify` atau force push.
+Push hanya dilanjutkan bila ref `main` yang akan dikirim sama dengan `HEAD`, working tree bersih, push fast-forward, dan full verification PASS pada Node `22.15.0+` (22.x) atau Node `24.x`. Jangan memakai `--no-verify` atau force push.
 
 `npm ci` hanya untuk bootstrap/reinstall dependency atau clean CI, bukan sebelum setiap validation. Test domain tambahan tetap wajib bila perubahan menyentuh auth, saldo, transfer, idempotency, import, backup/restore, notifikasi, atau security. UI/responsive tetap diverifikasi manual pada perangkat yang relevan.

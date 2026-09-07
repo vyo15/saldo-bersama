@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { transactionDisplayTitle, transactionListMetadata } from "../src/shared/presentation/transaction.js";
+import { transactionDisplayTitle, transactionListMetadata } from "../src/shared/presentation/transactionCore.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
+
+test("helper presentasi transaksi yang dieksekusi Node tetap bebas dependency JSX", async () => {
+  const [core, facade] = await Promise.all([
+    read("src/shared/presentation/transactionCore.js"),
+    read("src/shared/presentation/transaction.js"),
+  ]);
+
+  assert.doesNotMatch(core, /from ["'][^"']+\.jsx["']/);
+  assert.doesNotMatch(core, /from ["']react["']|react-icons/);
+  assert.match(facade, /from "\.\/transactionCore\.js"/);
+});
 
 test("transaksi memakai icon kategori terkontrol dengan fallback jenis transaksi", async () => {
   const [presentation, transactions, dashboard, mobileDashboard, desktopDashboard] = await Promise.all([

@@ -84,6 +84,19 @@
   object-fit: cover;
 }
 
+.brandLogoVisual {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+  border-color: transparent;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.brandLogoVisual img {
+  object-fit: contain;
+}
+
 .markVisual {
   color: var(--primary-strong);
   background: color-mix(in srgb, var(--primary-soft) 62%, var(--surface));
@@ -362,6 +375,12 @@
   .imageVisual.optionVisual {
     width: 34px;
     height: 24px;
+    flex-basis: 34px;
+  }
+
+  .brandLogoVisual.optionVisual {
+    width: 34px;
+    height: 34px;
     flex-basis: 34px;
   }
 

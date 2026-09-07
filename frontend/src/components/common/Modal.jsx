@@ -1,14 +1,36 @@
-import { useId, useRef } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiX } from "react-icons/fi";
+import { FiArrowLeft, FiX } from "react-icons/fi";
 import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import { useMobileSwipeDismiss } from "./useMobileSwipeDismiss.js";
+import { ModalSubviewContext } from "./ModalSubviewContext.js";
 import styles from "./Modal.module.css";
 
 const SIZE_STYLES = Object.freeze({
   sm: styles.small,
   md: styles.medium,
   lg: styles.large,
+});
+
+
+const modalCanDismiss = (dismissible, onClose) => Boolean(dismissible && typeof onClose === "function");
+const modalSizeStyle = (size) => SIZE_STYLES[size] || styles.medium;
+const modalPresentation = ({ subview, title, description, CloseIcon, closeLabel, canDismiss, closeModal, closeSubview }) => ({
+  title: subview?.title || title,
+  description: subview?.description || description,
+  closeModal: subview ? closeSubview : closeModal,
+  canDismiss: subview ? true : canDismiss,
+  CloseIcon: subview ? FiArrowLeft : CloseIcon,
+  closeLabel: subview ? "Kembali" : closeLabel,
+  footerVisible: !subview,
+});
+
+const modalRuntimeState = ({ subview, initialFocusRef, canDismiss, closeRef, closeModal, closeSubview, swipeEnabled, dragY }) => ({
+  initialFocusRef: initialFocusRef || (canDismiss ? closeRef : undefined),
+  onEscape: subview ? closeSubview : (canDismiss ? closeModal : undefined),
+  dismissibleAttr: canDismiss ? "true" : "false",
+  swipeAttr: swipeEnabled ? "true" : undefined,
+  style: swipeEnabled ? { "--modal-drag-y": `${dragY}px` } : undefined,
 });
 
 const modalClassName = ({ sizeStyle, swipeEnabled, dragging, dismissing, size, className }) => [
@@ -46,26 +68,36 @@ const Modal = ({
 }) => {
   const containerRef = useRef(null);
   const closeRef = useRef(null);
+  const [subview, setSubview] = useState(null);
   const titleId = useId();
   const descriptionId = useId();
-  const canDismiss = dismissible && typeof onClose === "function";
-  const requestClose = () => { if (canDismiss) onClose(); };
-  const swipeEnabled = mobileSwipeToClose && canDismiss;
+  const canDismiss = modalCanDismiss(dismissible, onClose);
+  const requestClose = () => onClose?.();
+  const closeSubview = () => setSubview(null);
+  const subviewApi = useMemo(() => ({ openSubview: setSubview, closeSubview }), []);
+  useEffect(() => { if (!open) setSubview(null); }, [open]);
+  const swipeEnabled = Boolean(mobileSwipeToClose && canDismiss && !subview);
   const { closeModal, dragY, dragging, dismissing, swipeHandlers } = useMobileSwipeDismiss({ enabled: swipeEnabled, containerRef, onClose: requestClose });
 
+  const runtime = modalRuntimeState({ subview, initialFocusRef, canDismiss, closeRef, closeModal, closeSubview, swipeEnabled, dragY });
   useFocusTrap({
     open,
     containerRef,
-    initialFocusRef: initialFocusRef || (canDismiss ? closeRef : undefined),
-    onEscape: canDismiss ? closeModal : undefined,
+    initialFocusRef: runtime.initialFocusRef,
+    onEscape: runtime.onEscape,
     bodyClassName: "modal-open",
   });
 
   if (!open) return null;
 
-  const sizeStyle = SIZE_STYLES[size] || styles.medium;
+  const sizeStyle = modalSizeStyle(size);
   const dialogClassName = modalClassName({ sizeStyle, swipeEnabled, dragging, dismissing, size, className });
-  const handleBackdropPointerDown = (event) => { if (canDismiss && event.target === event.currentTarget) closeModal(); };
+  const presentation = modalPresentation({ subview, title, description, CloseIcon, closeLabel, canDismiss, closeModal, closeSubview });
+  const handleBackdropPointerDown = (event) => {
+    if (event.target !== event.currentTarget) return;
+    if (subview) closeSubview();
+    else if (canDismiss) closeModal();
+  };
   return createPortal(
     <div
       className={`${styles.backdrop} ${dismissing ? styles.backdropDismissing : ""} modal-backdrop`.trim()}
@@ -77,18 +109,32 @@ const Modal = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={description ? descriptionId : undefined}
+        aria-describedby={presentation.description ? descriptionId : undefined}
         ref={containerRef}
         tabIndex={-1}
         data-ui="dialog"
         data-size={size}
-        data-dismissible={canDismiss ? "true" : "false"}
-        data-mobile-swipe-to-close={swipeEnabled ? "true" : undefined}
-        style={swipeEnabled ? { "--modal-drag-y": `${dragY}px` } : undefined}
+        data-dismissible={runtime.dismissibleAttr}
+        data-mobile-swipe-to-close={runtime.swipeAttr}
+        style={runtime.style}
       >
-        <ModalHeader swipeEnabled={swipeEnabled} swipeHandlers={swipeHandlers} titleId={titleId} title={title} descriptionId={descriptionId} description={description} closeRef={closeRef} closeModal={closeModal} canDismiss={canDismiss} CloseIcon={CloseIcon} closeLabel={closeLabel} />
-        <div className={`${styles.body} modal__body`}>{children}</div>
-        {footer ? <footer className={`${styles.footer} modal__footer`}>{footer}</footer> : null}
+        <ModalHeader
+          swipeEnabled={swipeEnabled}
+          swipeHandlers={swipeHandlers}
+          titleId={titleId}
+          title={presentation.title}
+          descriptionId={descriptionId}
+          description={presentation.description}
+          closeRef={closeRef}
+          closeModal={presentation.closeModal}
+          canDismiss={presentation.canDismiss}
+          CloseIcon={presentation.CloseIcon}
+          closeLabel={presentation.closeLabel}
+        />
+        <ModalSubviewContext.Provider value={subviewApi}>
+          <div className={`${styles.body} modal__body`}>{subview?.content ?? children}</div>
+        </ModalSubviewContext.Provider>
+        {presentation.footerVisible && footer ? <footer className={`${styles.footer} modal__footer`}>{footer}</footer> : null}
       </section>
     </div>,
     document.body,

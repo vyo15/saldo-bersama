@@ -38,7 +38,8 @@ test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail ta
   assert.match(text, /form\.payment_method === "autodebit"[\s\S]*Auto-debit \(data lama\)[\s\S]*disabled: true/, "Nilai Auto-debit lama tetap harus dapat dibaca tanpa menjadi opsi baru.");
   assert.match(text, /accountDisplayLabel/);
   assert.ok((text.match(/accountDisplayLabel\(item\)/g) || []).length >= 2, "Rekening sumber/tujuan harus memakai label kepemilikan canonical pada presentation yang menampilkan daftar.");
-  assert.doesNotMatch(text, /includeOwner: false/);
+  assert.match(text, /accountDisplayLabel\(item, \{ includeOwner: false \}\)/, "Picker mobile memisahkan owner ke metadata agar headline rekening tetap ringkas.");
+  assert.match(text, /accountOwnershipLabel\(item\)/);
   assert.match(text, /item\.source_account_id === sourceAccount\.account_id && item\.can_record_expense === true/);
   assert.doesNotMatch(text, /filterByAssigneeAccess|canUseAssignedItem/);
   assert.match(text, /transferRouteFor\(data\.transferRoutes, sourceAccount\.account_id, account\.account_id\)/);

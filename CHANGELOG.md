@@ -1,3 +1,53 @@
+## 7 September 2026 - Merge temporal picker, logo-first account picker, dan Windows quality-gate hardening
+
+- Menggabungkan patch Temporal Picker dan Account Picker Logo ke tree terbaru tanpa menimpa hardening runtime Node 22.15+/24.x, semantic icon registry, Reksa Dana, microcopy governance, atau unified Alokasi Dana yang sudah ada. Kandidat account-picker yang masih mengimpor `accountTypeIcon` dari `FinanceChoiceIcons.jsx` tidak dipakai mentah; resolver tetap berasal dari `financeChoiceIconRegistry.js`.
+- Seluruh 27 field tanggal/bulan/waktu feature sekarang memakai `TemporalInput`/`TemporalPickerField` canonical: kalender app-owned, grid bulan, TimePicker 24 jam `00:00–23:59`, batas min/max, shortcut, serta same-modal subview melalui `ModalSubviewContext` agar modal tidak bertumpuk.
+- Picker rekening transaksi menjadi logo-first dengan 10 asset compact transparan terpisah dari artwork kartu; hierarchy mobile memisahkan nama rekening, kepemilikan, dan nominal serta memberi selected surface + circular check tanpa mengubah saldo/ledger.
+- Menutup regression lintas-OS pada `icon-semantics.test.js`: hasil `path.relative()` dinormalisasi ke separator `/`, sehingga quality gate yang lulus di Linux tidak gagal hanya karena Windows/Git Bash memakai `\`.
+- Regression, design system, project status, implementation matrix, test plan, dan QA checklist diselaraskan. Tidak ada perubahan schema, API contract, ledger, authorization, idempotency, atau dependency pada merge ini.
+
+## 7 September 2026 - Runtime preflight dan module-export regression hardening
+
+- Menjadikan PC kantor Node 22.15.0 sebagai runtime yang didukung tanpa memaksa upgrade ke Node 24: `.node-version` kini 22.15.0, engine menerima Node 22.15.0+ (22.x) dan Node 24.x, serta `verify/dev/zip` memakai range guard yang sama.
+- Mengembalikan frontend ke `react-router` 7.18.2 agar kompatibel dengan Node 22.15 sambil mempertahankan React 19.2.8; lockfile, import source, regression governance, CI, setup, deployment, dan dokumentasi operasional diselaraskan atomik.
+
+- Memperbaiki crash frontend setelah login: `selectionOptionVisuals.js` sekarang mengambil `accountTypeIcon` dari `financeChoiceIconRegistry.js`, bukan meminta named export yang tidak pernah dimiliki `FinanceChoiceIcons.jsx`. Backend/session/investment read sebelumnya tetap sukses; kegagalan berada pada dependency graph frontend.
+- Menambahkan regression dependency boundary yang memeriksa seluruh named import ke `FinanceChoiceIcons.jsx` terhadap export aktual tanpa mencoba mengimpor JSX melalui Node native, serta mengunci bahwa resolver tipe rekening berasal dari registry canonical.
+- `npm run dev` tetap fail-closed sebelum memasang dependency, menarik Vercel Development, atau menyentuh database, tetapi guard runtime kini menerima Node 22.15.0+ (22.x) dan Node 24.x. Pesan recovery `fnm env`/`fnm use` hanya relevan bila runtime berada di luar rentang dukungan.
+- Membersihkan helper `investmentStockLogo` yang hanya dipakai komponen saham legacy; empat file picker/logo saham lama tetap menjadi deletion handoff eksplisit karena changed-files-only ZIP tidak dapat menghapus file penerima secara aman.
+- Tidak ada perubahan schema, API contract, ledger, authorization, atau idempotency; perubahan dependency hanya menurunkan `react-router` ke 7.18.2 untuk kompatibilitas Node 22.15.
+
+## 7 September 2026 - Fresh-clone cumulative UI patch dan quality-gate hardening
+
+- Menyatukan prerequisite patch UX terbaru ke satu change-set kumulatif agar overlay pada clone `main` tidak lagi menghasilkan import yang mengacu ke export/file yang belum ikut terbawa. `FinanceChoiceIcons` kini benar-benar menyediakan ikon semantic yang dipakai consumer, registry tipe rekening dipisahkan ke `financeChoiceIconRegistry.js`, dan helper presentasi transaksi Node-safe tetap bebas import JSX.
+- Melengkapi katalog **Tambah aset** dengan source `investmentAssets.js`, picker/logo/CSS Reksa Dana, dua asset katalog prototype, serta integrasi holding/overview. File picker/logo saham lama yang tidak lagi memiliki consumer dihapus; CSS logo diganti nama menjadi `InvestmentAssetLogo.module.css` agar canonical untuk saham maupun Reksa Dana.
+- Menambahkan regression `icon-semantics.test.js`: `FiDollarSign` dilarang di seluruh `frontend/src`, `FiCreditCard` dibatasi ke Metode pembayaran, account-type icon hanya berasal dari registry canonical, arus masuk/keluar/transfer memakai ikon finansial canonical, dan trend Up/Down/Minus wajib mengikuti nilai aktual.
+- Pada patch ini gate sempat dikunci ke Node **24.18.1** dan recovery `fnm env` diperjelas. Kebijakan exact-version tersebut kemudian **disupersede** oleh entry runtime kantor di atas: Node 22.15.0+ (22.x) dan Node 24.x sekarang sama-sama didukung.
+- Tidak ada perubahan schema, API contract, ledger, authorization, idempotency, atau dependency.
+
+## 6 September 2026 - Microcopy governance dan Node-safe presentation regression
+
+- Merapikan explanatory copy Investasi agar satu fakta tidak diulang di description modal, helper field, review, dan list. Picker aset sekarang hanya menampilkan jumlah katalog yang tersedia; detail LQ45/reksa dana tetap terlihat pada row, sedangkan guard bahwa Saldo Bersama tidak mengirim order broker dipusatkan pada tahap review sebelum simpan. Posisi awal dan helper RDN juga dihilangkan pengulangannya tanpa menyembunyikan warning finansial atau outcome-unknown guard.
+- Menyatukan bantuan edukatif mobile Rekening menjadi satu `PageInfoButton` di header yang juga menjelaskan dana tersedia, dan menghapus reassurance hak akses yang terduplikasi di halaman Anggota. Design system, QA checklist, dan test plan kini mengunci prinsip satu fakta edukatif per surface serta membedakannya dari warning/error/destructive guidance yang wajib persisten.
+- Memisahkan helper tekstual/arah transaksi yang diuji langsung oleh Node ke `transactionCore.js` yang bebas JSX. Facade presentasi visual tetap mengekspor contract lama untuk consumer React, sementara regression Node tidak lagi mencoba memuat `FinanceChoiceIcons.jsx` melalui ESM native.
+- Tidak ada perubahan schema, API contract, ledger, saldo, authorization, idempotency, atau dependency.
+
+## 6 September 2026 - Reksa Dana prototype di portofolio Investasi
+
+- Menambahkan dua reksa dana dari referensi user ke katalog Investasi prototype: **Reksa Dana Haji Syariah** (`IHAJJ`) dan **Capital Fixed Income Fund** (`CAPFIX`), masing-masing dengan asset logo WebP transparan. Tidak ada marketplace, pencarian produk pasar, atau tambah reksa dana manual.
+- Header Investasi menjadi **Tambah aset**. Dialog menampilkan switch **Saham LQ45 / Reksa Dana**; saham tetap memakai katalog LQ45 fixed, sedangkan reksa dana hanya menampilkan dua produk prototype tersebut.
+- Reksa dana memakai ledger Investasi existing tanpa schema baru: `exchange=REKSADANA` dan `lot_size=1` menjadi marker kompatibilitas; UI menampilkan kuantitas sebagai **unit** dan valuasi sebagai **Nilai per unit**, bukan lot/lembar atau harga saham. Pencatatan tetap manual dan bukan transaksi broker.
+- Overview portofolio memisahkan section **Kepemilikan saham** dan **Reksa Dana**, tetapi total nilai, Cash RDN, realized/unrealized P/L, reconciliation, correction, idempotency, dan authorization tetap memakai authority backend yang sama.
+- Menambah regression presentation/backend untuk unit reksa dana, nilai per unit, logo katalog, dan trade/valuation melalui ledger existing.
+
+## 6 September 2026 - Normalisasi semantic icon system
+
+- Menyatukan icon taxonomy finansial melalui `FinanceChoiceIcons.jsx`: menambahkan `AccountIcon`, `BalanceIcon`, `FoodIcon`, dan `TransportIcon`; mapping tipe rekening dipusatkan pada `financeChoiceIconRegistry.js` melalui resolver `accountTypeIcon()`; fallback E-wallet dibuat eksplisit sebagai perangkat digital sehingga tidak identik dengan rekening generik.
+- Menormalkan Pemasukan/Pengeluaran/Transfer ke `MoneyInIcon`/`MoneyOutIcon`/`TransferIcon`, rekening ke ikon tipe aktual, saldo ke ikon netral tanpa simbol dolar, serta kategori Dana Darurat/Makanan/Transportasi/Hiburan/Usaha ke simbol yang lebih literal.
+- Menghapus `FiDollarSign` dari seluruh source UI dan membatasi `FiCreditCard` hanya untuk Metode pembayaran. Dashboard, Laporan, dan Investasi kini memakai Up/Down/Minus secara dinamis untuk data trend; aksi Perbarui nilai memakai edit, aksi penjualan memakai simbol jual/arus masuk sesuai konteks, status aktif memakai check, dan warning budget memakai alert.
+- Menyelaraskan Dashboard, Transaksi, Rekening, Investasi, Kategori, Laporan, Target, Rekonsiliasi, Anggaran, serta Pengaturan/Integrasi Google. Tidak ada perubahan API, schema, ledger, authorization, atau mutation finansial.
+- Menambahkan regression `icon-semantics.test.js` dan memperbarui contract test lama serta `UI_DESIGN_SYSTEM`, `TEST_PLAN`, dan `PROJECT_STATUS` agar semantic icon mapping tidak drift pada patch berikutnya.
+
 ## 6 September 2026 - Investasi prototype LQ45 dengan logo saham
 
 - Menyederhanakan flow `Tambah instrumen saham` menjadi **Tambah saham**: form Ticker/Bursa/Nama/Lembar per lot tidak lagi diekspos pada UI prototype. Administrator memilih saham dari katalog LQ45 prototype yang sudah disediakan; `IDX` dan `100 lembar/lot` berasal dari catalog payload, sehingga user tidak perlu mengisi master data teknis.

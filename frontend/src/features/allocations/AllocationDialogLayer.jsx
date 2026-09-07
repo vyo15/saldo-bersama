@@ -16,6 +16,7 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userOptionLabel } from "../../shared/presentation/user.js";
 import { allocationClass } from "./allocationStyles.js";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const envelopeAssigneeOptions = (form, accounts, users) => {
   const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
   if (source?.owner_scope !== "personal") return { options: users, locked: false };
@@ -131,8 +132,8 @@ const CreateEnvelopeForm = ({
       <div className={allocationClass("allocation-advanced__content")}>
         <VisualChoiceGroup className="form-grid__full" legend="Periode alokasi" name="allocation-period" value={createForm.period_type} onChange={(period_type) => setCreateForm((current) => ({ ...current, period_type }))} options={periodOptions} columns={3} compact />
         <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
-        <label className="field"><span>Mulai periode</span><input type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
-        <label className="field"><span>Akhir periode</span><input type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
+        <label className="field"><span>Mulai periode</span><TemporalInput type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
+        <label className="field"><span>Akhir periode</span><TemporalInput type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
       </div>
     </details>
     {selectedSource ? <MoneyInput id="envelope-default" label="Dana yang disiapkan" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} required /> : null}

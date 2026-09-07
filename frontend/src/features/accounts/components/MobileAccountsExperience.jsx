@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { FiEye, FiEyeOff, FiFileText, FiPlus, FiSettings } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiList, FiPlus, FiSettings } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
 import PageInfoButton from "../../../components/common/PageInfoButton.jsx";
@@ -362,7 +362,6 @@ const MobileBalanceSummary = ({ account }) => {
       <div className={styles.mobileBalanceHeading}>
         <div className={styles.mobileBalanceLabel}>
           <span>Dana tersedia</span>
-          <PageInfoButton title="Tentang saldo rekening">{ACCOUNT_BALANCE_GUIDANCE}</PageInfoButton>
         </div>
         <button type="button" className={styles.mobilePrivacyButton} onClick={() => setHidden((value) => !value)} aria-label={hidden ? "Tampilkan nominal rekening" : "Sembunyikan nominal rekening"} aria-pressed={hidden}>
           {hidden ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
@@ -380,7 +379,7 @@ const MobileBalanceSummary = ({ account }) => {
 
 const MobileQuickActions = ({ account, bootstrap, ownerMode, onTransferSaved, onViewTransactions, setMobileAccountSheet }) => (
   <div key={account.account_id} className={styles.mobileQuickActions} aria-label={`Aksi cepat rekening ${account.name}`}>
-    <button type="button" className={styles.mobileQuickAction} onClick={() => onViewTransactions(account)}><FiFileText aria-hidden="true" /><span>Riwayat</span></button>
+    <button type="button" className={styles.mobileQuickAction} onClick={() => onViewTransactions(account)}><FiList aria-hidden="true" /><span>Riwayat</span></button>
     <Suspense fallback={<span className={styles.mobileQuickActionPlaceholder} aria-hidden="true" />}>
       <MobileAccountTransferAction bootstrap={bootstrap} selectedAccount={account} onTransferSaved={onTransferSaved} onViewTransactions={onViewTransactions} />
     </Suspense>

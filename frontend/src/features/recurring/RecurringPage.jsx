@@ -23,6 +23,7 @@ import {
 import { scheduleMatchesFilter } from "./recurringPresentation.js";
 import styles from "./RecurringPage.module.css";
 
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 const RecurringDialogLayer = lazy(() => import("./RecurringDialogLayer.jsx"));
 const RecurringScheduleView = lazy(() => import("./RecurringScheduleView.jsx"));
 
@@ -114,7 +115,7 @@ const recurringHeaderActions = ({ period, onPeriodChange, canManagePlanning, all
   <div className={styles.headerActions}>
     <label className="field field--compact">
       <span>Periode</span>
-      <input type="month" value={period} onChange={onPeriodChange} />
+      <TemporalInput type="month" value={period} onChange={onPeriodChange} />
     </label>
     {canManagePlanning && allItems.length ? <Button variant="primary" icon={FiPlus} onClick={rules.openCreate}>Tambah jadwal</Button> : null}
   </div>

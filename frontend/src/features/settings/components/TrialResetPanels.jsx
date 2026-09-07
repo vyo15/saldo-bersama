@@ -1,4 +1,5 @@
-import { FiAlertTriangle, FiCheckCircle, FiDatabase, FiDollarSign, FiHardDrive, FiRefreshCw, FiShield, FiTrash2 } from "react-icons/fi";
+import { FiAlertTriangle, FiCheckCircle, FiDatabase, FiHardDrive, FiRefreshCw, FiShield, FiTrash2 } from "react-icons/fi";
+import { BalanceIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import Card from "../../../components/common/Card.jsx";
@@ -82,7 +83,7 @@ const BalanceResetPreview = ({ balanceReset }) => {
   return (
     <div className={styles.resetBalancePreview}>
       <div className={styles.resetPreviewSectionHeading}>
-        <FiDollarSign aria-hidden="true" />
+        <BalanceIcon aria-hidden="true" />
         <div>
           <strong>Saldo rekening akan menjadi Rp0</strong>
           <small>Riwayat testing dibersihkan. Saldo awal rekening yang masih bernilai juga dinolkan.</small>
@@ -219,7 +220,7 @@ const ResetScopeSelector = ({ resetScope, activityScope, activityAndBalancesScop
       </label>
       <label className={resetScope === activityAndBalancesScope ? styles.isSelected : ""}>
         <input type="radio" name="reset-testing-scope" value={activityAndBalancesScope} checked={resetScope === activityAndBalancesScope} onChange={() => selectScope(activityAndBalancesScope)} />
-        <span className={styles.resetScopeIcon}><FiDollarSign aria-hidden="true" /></span>
+        <span className={styles.resetScopeIcon}><BalanceIcon aria-hidden="true" /></span>
         <span><strong>Bersihkan aktivitas + nolkan saldo</strong><small>Hapus seluruh riwayat testing dan kembalikan saldo seluruh rekening pada preview menjadi Rp0.</small></span>
       </label>
     </fieldset>

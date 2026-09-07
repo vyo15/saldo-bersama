@@ -4,12 +4,12 @@ import { SelectionVisual } from "../../components/common/SelectionField.jsx";
 import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatRupiah } from "../../domain/money.js";
-import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import { accountDisplayLabel, accountOwnershipLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 import { orderedEnvelopeOptions, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
 import styles from "./MobileTransactionSelectionView.module.css";
 
-const SelectionRow = ({ selected, title, meta, visual, onClick, disabled = false }) => (
+const SelectionRow = ({ selected, title, meta, detail, visual, onClick, disabled = false }) => (
   <button
     className={`${styles.choiceRow} ${selected ? styles.selected : ""}`.trim()}
     type="button"
@@ -17,23 +17,28 @@ const SelectionRow = ({ selected, title, meta, visual, onClick, disabled = false
     onClick={onClick}
     disabled={disabled}
   >
-    {visual ? <SelectionVisual option={visual} /> : null}
+    {visual ? <span className={styles.choiceVisual}><SelectionVisual option={visual} /></span> : null}
     <span className={styles.choiceCopy}>
       <span className={styles.choiceName}>{title}</span>
       {meta ? <span className={styles.choiceMeta}>{meta}</span> : null}
+      {detail ? <span className={styles.choiceDetail}>{detail}</span> : null}
     </span>
-    <FiCheck className={styles.choiceCheck} aria-hidden="true" />
+    <span className={styles.choiceCheck} aria-hidden="true"><FiCheck /></span>
   </button>
 );
 
-const sourceAccountMeta = (item, transactionType) => {
-  if (transactionType === TRANSACTION_TYPES.TRANSFER) {
-    return `Dana tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`;
+const sourceAccountDetail = (item, transactionType) => {
+  if ([TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.EXPENSE].includes(transactionType)) {
+    return `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`;
   }
-  if (transactionType === TRANSACTION_TYPES.EXPENSE) {
-    return `Dana tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`;
-  }
-  return `Saldo ${formatRupiah(item.balance || 0)}`;
+  return formatRupiah(item.balance || 0);
+};
+
+const accountSelectionHint = (sourceMode, transactionType) => {
+  if (!sourceMode) return "Pilih rekening yang menerima dana.";
+  if (transactionType === TRANSACTION_TYPES.EXPENSE) return "Pilih rekening yang akan dipakai untuk pengeluaran.";
+  if (transactionType === TRANSACTION_TYPES.TRANSFER) return "Pilih rekening asal dana transfer.";
+  return "Pilih rekening yang akan digunakan.";
 };
 
 const AccountSelection = ({ selection, fields, onBack }) => {
@@ -64,20 +69,15 @@ const AccountSelection = ({ selection, fields, onBack }) => {
 
   return (
     <div className={styles.selectionContent}>
-      <span className={styles.groupLabel}>
-        {sourceMode
-          ? fields.form.transaction_type === TRANSACTION_TYPES.EXPENSE
-            ? "Rekening yang dapat dipakai"
-            : "Rekening sumber"
-          : "Rekening tujuan"}
-      </span>
+      <p className={styles.selectionHint}>{accountSelectionHint(sourceMode, fields.form.transaction_type)}</p>
       <div className={styles.choiceList} aria-label={sourceMode ? "Rekening sumber" : "Rekening tujuan"}>
         {accounts.length ? accounts.map((item) => (
           <SelectionRow
             key={item.account_id}
             selected={selectedId === item.account_id}
-            title={accountDisplayLabel(item)}
-            meta={sourceMode ? sourceAccountMeta(item, fields.form.transaction_type) : `Saldo ${formatRupiah(item.balance || 0)}`}
+            title={accountDisplayLabel(item, { includeOwner: false })}
+            meta={accountOwnershipLabel(item)}
+            detail={sourceMode ? sourceAccountDetail(item, fields.form.transaction_type) : formatRupiah(item.balance || 0)}
             visual={accountOptionVisual(item)}
             onClick={() => choose(item.account_id)}
             disabled={fields.outcomeUnknown}

@@ -41,6 +41,10 @@ const useGoalCreation = ({ resource, refreshOverview, invalidate, notify, onCrea
   const createGoal = (event) => {
     event.preventDefault();
     setMessage(null);
+    if (!form.target_date) {
+      setMessage({ type: "danger", text: "Tanggal target wajib dipilih." });
+      return undefined;
+    }
     return createMutation.run(async () => {
       await requestCreateGoal({ ...form, target_amount: assertPositiveRupiah(form.target_amount) }, {});
       setForm(emptyGoalForm());

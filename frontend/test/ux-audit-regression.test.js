@@ -193,6 +193,23 @@ test("permukaan swipe mobile tidak menampilkan scrollbar browser", async () => {
   assert.match(dashboard, /\.shared-account-carousel \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
 });
 
+test("picker rekening mobile memakai hierarchy logo-first dan selected state yang terlihat", async () => {
+  const [source, css] = await Promise.all([
+    read("src/features/transactions/MobileTransactionSelectionView.jsx"),
+    read("src/features/transactions/MobileTransactionSelectionView.module.css"),
+  ]);
+  assert.match(source, /accountDisplayLabel\(item, \{ includeOwner: false \}\)/);
+  assert.match(source, /meta=\{accountOwnershipLabel\(item\)\}/);
+  assert.match(source, /detail=\{sourceMode/);
+  assert.match(source, /Pilih rekening yang menerima dana\./);
+  assert.match(source, /<p className=\{styles\.selectionHint\}>/);
+  assert.doesNotMatch(source, /<span className=\{styles\.groupLabel\}>Rekening tujuan<\/span>/, "judul modal tidak boleh diulang sebagai group label");
+  assert.match(css, /\.choiceRow \{[^}]*min-height:\s*66px;/s);
+  assert.match(css, /\.choiceVisual \{[^}]*width:\s*40px;[^}]*height:\s*40px;/s);
+  assert.match(css, /\.selected \{[^}]*border-color:[^}]*background:[^}]*box-shadow:/s);
+  assert.match(css, /\.choiceCheck \{[^}]*border-radius:\s*50%;/s);
+});
+
 test("PWA install prompt mobile dapat ditunda dan tidak menjadi banner permanen lintas route", async () => {
   const [shell, hook, card] = await Promise.all([
     read("src/layouts/AppShell.jsx"),

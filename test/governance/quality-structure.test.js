@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -51,9 +51,35 @@ test("tooling kualitas canonical mengekspos command manusia yang ringkas", async
   assert.equal(frontendPackage.scripts.dev, undefined);
   assert.equal(frontendPackage.scripts.preview, undefined);
   assert.deepEqual(Object.keys(frontendPackage.scripts).sort(), ["build", "lint", "test"]);
-  assert.equal(packageJson.engines.node, "24.x");
-  assert.equal((await source(".node-version")).trim(), "24.18.1");
+  assert.equal(packageJson.engines.node, "^22.15.0 || 24.x");
+  assert.equal((await source(".node-version")).trim(), "22.15.0");
   for (const retired of ["scripts/finish-task.mjs", "scripts/validate-task.mjs", "scripts/list-tasks.mjs"]) assert.equal(await exists(retired), false);
+});
+
+test("runtime kantor dan router tetap kompatibel dengan Node 22.15", async () => {
+  const packageJson = JSON.parse(await source("package.json"));
+  const frontendPackage = JSON.parse(await source("frontend/package.json"));
+  const lock = JSON.parse(await source("package-lock.json"));
+  assert.equal(packageJson.engines.node, "^22.15.0 || 24.x");
+  assert.equal((await source(".node-version")).trim(), "22.15.0");
+  assert.equal(frontendPackage.dependencies["react-router"], "7.18.2");
+  assert.equal(frontendPackage.dependencies["react-router-dom"], undefined);
+  assert.equal(lock.packages["node_modules/react-router"]?.version, "7.18.2");
+  assert.equal(lock.packages["node_modules/react-router"]?.engines?.node, ">=20.0.0");
+
+  const files = [];
+  const walk = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (/\.(?:js|jsx)$/.test(entry.name)) files.push(full);
+    }
+  };
+  await walk(path.join(root, "frontend", "src"));
+  for (const file of files) {
+    const text = await readFile(file, "utf8");
+    assert.doesNotMatch(text, /from ["']react-router-dom["']/, `Package kompatibilitas router kembali di ${path.relative(root, file)}`);
+  }
 });
 
 test("dependency audit dan Dependabot menjaga dependency source serta GitHub Actions", async () => {

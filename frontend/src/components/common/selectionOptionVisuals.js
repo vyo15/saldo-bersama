@@ -1,34 +1,15 @@
 import { FiLayers } from "react-icons/fi";
-import {
-  BankIcon,
-  CashIcon,
-  EmergencyFundIcon,
-  EwalletIcon,
-  InvestmentIcon,
-  OtherIcon,
-  SavingsIcon,
-  SinkingFundIcon,
-} from "./FinanceChoiceIcons.jsx";
-import { ACCOUNT_TYPES } from "../../domain/constants.js";
-import { accountBrandImage, bankBrandImage, ewalletBrandImage } from "../../shared/presentation/accountBrandAssets.js";
+import { BankIcon, EwalletIcon } from "./FinanceChoiceIcons.jsx";
+import { accountTypeIcon } from "./financeChoiceIconRegistry.js";
+import { accountBrandLogo, bankBrandImage, ewalletBrandImage } from "../../shared/presentation/accountBrandAssets.js";
 import { categoryIcon } from "../../shared/presentation/transaction.js";
-import { investmentStockLogo } from "../../shared/presentation/investmentStocks.js";
+import { investmentAssetLogo } from "../../shared/presentation/investmentAssets.js";
 
-const ACCOUNT_TYPE_ICONS = Object.freeze({
-  [ACCOUNT_TYPES.BANK]: BankIcon,
-  [ACCOUNT_TYPES.CASH]: CashIcon,
-  [ACCOUNT_TYPES.EWALLET]: EwalletIcon,
-  [ACCOUNT_TYPES.SAVINGS]: SavingsIcon,
-  [ACCOUNT_TYPES.EMERGENCY_FUND]: EmergencyFundIcon,
-  [ACCOUNT_TYPES.SINKING_FUND]: SinkingFundIcon,
-  [ACCOUNT_TYPES.INVESTMENT]: InvestmentIcon,
-  [ACCOUNT_TYPES.OTHER]: OtherIcon,
-});
 
 export const accountOptionVisual = (account = {}) => {
-  const image = accountBrandImage(account);
-  if (image) return { image, visualLabel: "Identitas rekening" };
-  return { icon: ACCOUNT_TYPE_ICONS[account.account_type] || OtherIcon };
+  const image = accountBrandLogo(account);
+  if (image) return { image, imageKind: "brand-logo", visualLabel: "Logo rekening" };
+  return { icon: accountTypeIcon(account.account_type) };
 };
 
 export const bankTemplateOptionVisual = (template) => {
@@ -54,7 +35,7 @@ export const memberOptionVisual = (member = {}) => ({
 });
 
 export const instrumentOptionVisual = (instrument = {}) => {
-  const image = investmentStockLogo(instrument.ticker);
+  const image = investmentAssetLogo(instrument.ticker);
   if (image) return { image, visualLabel: `Logo ${String(instrument.ticker || "saham").toUpperCase()}` };
   return { mark: String(instrument.ticker || instrument.name || "S").trim().slice(0, 4).toUpperCase() };
 };

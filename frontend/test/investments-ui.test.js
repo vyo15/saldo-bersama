@@ -13,8 +13,8 @@ test("UI Investasi memakai summary canonical dan tidak mengarang discovery atau 
   assert.match(page, /useApiResource\("investments\.overview"\)/);
   assert.match(page, /const InvestmentOverview = lazy\(\(\) => import\("\.\/InvestmentOverview\.jsx"\)\)/);
   assert.match(page, /Menyiapkan rincian investasi/);
-  for (const field of ["portfolio_value", "rdn_cash", "market_value", "realized_pl", "unrealized_pl"]) assert.match(overview, new RegExp(`summary\\?\\.${field}`));
-  assert.match(overview, /Total portfolio = nilai saham \+ Cash RDN/);
+  for (const field of ["portfolio_value", "rdn_cash", "market_value", "realized_pl", "unrealized_pl"]) assert.match(overview, new RegExp(`(?:summary\\?\\.|values\\.)${field}`));
+  assert.match(overview, /Total portfolio = nilai aset investasi \+ Cash RDN/);
   assert.match(overview, /ProgressBar/);
   assert.doesNotMatch(`${page}\n${overview}`, /Market Movers|Top Gainers|Top Losers|Popular Investment|market history|market API/i);
 });
@@ -29,7 +29,7 @@ test("aksi Investasi capability-driven, koreksi Administrator-only, dan activity
   assert.match(overview, /Cash RDN keluar/);
   assert.match(overview, /Cash RDN masuk/);
   assert.match(overview, /Riwayat catatan terbaru/);
-  for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual diperbarui", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(model, new RegExp(label));
+  for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual", "Nilai manual", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(model, new RegExp(label));
 });
 
 test("styling Investasi memakai token tema dan kontrak responsive mobile canonical", async () => {
@@ -87,36 +87,51 @@ test("Investasi menjelaskan pencatatan manual dan memakai terminologi pencatatan
   ]);
   const source = `${page}\n${overview}\n${setup}\n${dialog}\n${detail}`;
   assert.match(page, /tidak terhubung ke broker, tidak mengambil harga pasar live, dan tidak mengirim order beli atau jual/);
-  assert.match(dialog, /Catat transaksi yang sudah Anda lakukan di aplikasi investasi/);
-  assert.match(dialog, /Harga tidak diperbarui otomatis/);
+  assert.match(dialog, /Catat pembelian yang sudah dilakukan di aplikasi investasi/);
+  assert.match(dialog, /Catat penjualan yang sudah dilakukan di aplikasi investasi/);
+  assert.match(dialog, /Ini hanya pencatatan; Saldo Bersama tidak mengirim order broker/);
+  assert.doesNotMatch(dialog, /Saldo Bersama hanya mencatat transaksi yang sudah dilakukan di aplikasi investasi/);
+  assert.match(dialog, /Nilai tidak diperbarui otomatis/);
   assert.match(overview, /bukan harga pasar live/);
   assert.match(overview, /aria-label="Catat pembelian">Catat pembelian<\/Button>/);
   assert.match(overview, /aria-label="Catat penjualan">Catat penjualan<\/Button>/);
   assert.match(overview, />Lainnya<\/span>/);
-  assert.match(overview, /title="Perbarui harga"/);
+  assert.match(overview, /title="Perbarui nilai"/);
   assert.match(detail, />Catat penjualan<\/Button>/);
   assert.doesNotMatch(source, /Login Ajaib|Connect broker|Hubungkan akun broker|Sinkron otomatis|Top Gainers|Top Losers|Market Movers|Auto trading|Place order/i);
 });
 
-test("Tambah saham memakai katalog LQ45 prototype dengan logo dan tanpa form instrumen manual", async () => {
-  const [setup, picker, catalog, visuals, holding, pickerStyles] = await Promise.all([
+test("Tambah aset memakai katalog prototype saham LQ45 dan reksa dana dengan logo tanpa form manual", async () => {
+  const [setup, picker, stockCatalog, assetCatalog, visuals, holding, pickerStyles] = await Promise.all([
     read("src/features/investments/InvestmentSetupDialog.jsx"),
-    read("src/features/investments/InvestmentStockPicker.jsx"),
+    read("src/features/investments/InvestmentAssetPicker.jsx"),
     read("src/shared/presentation/investmentStocks.js"),
+    read("src/shared/presentation/investmentAssets.js"),
     read("src/components/common/selectionOptionVisuals.js"),
     read("src/features/investments/InvestmentOverview.jsx"),
-    read("src/features/investments/InvestmentStockPicker.module.css"),
+    read("src/features/investments/InvestmentAssetPicker.module.css"),
   ]);
-  assert.match(setup, /title: "Tambah saham"/);
-  assert.match(setup, /InvestmentStockPicker/);
+  assert.match(setup, /title: "Tambah aset investasi"/);
+  assert.match(setup, /InvestmentAssetPicker/);
   assert.doesNotMatch(setup, /label="Ticker"|label="Bursa"|label="Nama saham"|label="Lembar per lot"/);
-  assert.match(picker, /Cari saham LQ45/);
-  assert.match(picker, /Daftar dibatasi pada saham LQ45 yang disediakan prototype/);
-  for (const ticker of ["BBCA", "BBRI", "BMRI", "TLKM", "ASII", "ICBP", "ANTM"]) assert.match(catalog, new RegExp(`ticker: "${ticker}"`));
-  assert.match(visuals, /investmentStockLogo\(instrument\.ticker\)/);
-  assert.match(holding, /<StockLogo ticker=\{holding\.ticker\}/);
+  assert.match(picker, /Saham LQ45/);
+  assert.match(picker, /Reksa Dana/);
+  assert.match(picker, /onKindChange\?\.\(nextKind\)/);
+  assert.match(setup, /const onAssetKindChange = \(assetType\) =>/);
+  assert.match(picker, /saham LQ45 tersedia di katalog/);
+  assert.match(picker, /reksa dana tersedia di katalog/);
+  assert.doesNotMatch(picker, /Daftar saham dibatasi pada LQ45 yang disediakan prototype/);
+  assert.doesNotMatch(picker, /Prototype menyediakan dua reksa dana/);
+  assert.match(setup, /Pilih aset untuk dicatat; tindakan ini tidak membeli aset/);
+  for (const ticker of ["BBCA", "BBRI", "BMRI", "TLKM", "ASII", "ICBP", "ANTM"]) assert.match(stockCatalog, new RegExp(`ticker: "${ticker}"`));
+  for (const ticker of ["IHAJJ", "CAPFIX"]) assert.match(assetCatalog, new RegExp(`ticker: "${ticker}"`));
+  assert.match(assetCatalog, /exchange: MUTUAL_FUND_EXCHANGE/);
+  assert.match(assetCatalog, /lot_size: 1/);
+  assert.match(assetCatalog, /asset_type: "mutual_fund"/);
+  assert.match(visuals, /investmentAssetLogo\(instrument\.ticker\)/);
+  assert.match(holding, /<InvestmentAssetLogo ticker=\{holding\.ticker\}/);
   assert.match(pickerStyles, /\.option \{[\s\S]*?min-height:\s*4\.25rem;/);
-  assert.match(pickerStyles, /@media \(max-width: 620px\)[\s\S]*?font-size:\s*var\(--mobile-native-control-font-size\);/);
+  assert.match(pickerStyles, /\.kindSwitch button \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
 });
 
 test("prerequisite Investasi tidak memberi dead-end Member dan lot correction tidak dibulatkan turun", async () => {
@@ -125,8 +140,8 @@ test("prerequisite Investasi tidak memberi dead-end Member dan lot correction ti
     read("src/features/investments/InvestmentDialog.jsx"),
   ]);
   assert.match(overview, /!state\.hasBuyInstrument/);
-  assert.match(overview, />Tambah saham<\/Button>/);
-  assert.match(overview, /Daftar saham baru dikelola Administrator/);
+  assert.match(overview, />Tambah aset<\/Button>/);
+  assert.match(overview, /Daftar aset baru dikelola Administrator/);
   assert.match(overview, /const lots = lotSize > 0 \? shares \/ lotSize : 0/);
   assert.match(overview, /const hasPriceInstrument = instruments\.some\(\(item\) => heldIds\.has\(item\.instrument_id\)\)/);
   assert.match(overview, /const hasSellableHolding = portfolio\.holdings\.some/);
@@ -152,7 +167,7 @@ test("rekening Investasi menjadi pintu ke holding aktual dan portfolio selalu me
   assert.match(overview, /Satu portofolio ini selalu menggunakan Cash RDN dari rekening di atas/);
   assert.match(overview, /Average cost/);
   assert.match(holdingDetail, /Modal tercatat/);
-  assert.match(holdingDetail, /Aktivitas saham terbaru/);
+  assert.match(holdingDetail, /Aktivitas investasi terbaru/);
   assert.match(accountCard, /Lihat aset & saham/);
   assert.match(accountCard, /Cash RDN/);
   assert.match(desktopAccounts, /Lihat aset & saham/);
@@ -218,7 +233,7 @@ test("onboarding existing investment memakai opening_position, Cash RDN awal, da
   ]);
   assert.match(page, /Portofolio siap\. Saya mau mulai dari:/);
   assert.match(page, /Mulai mencatat transaksi baru/);
-  assert.match(page, /Saya sudah punya saham/);
+  assert.match(page, /Saya sudah punya investasi/);
   assert.match(page, /Tambah posisi awal lain/);
   assert.match(dialog, /opening_position: createOpeningPosition/);
   assert.match(dialog, /Jumlah lembar/);
@@ -229,6 +244,8 @@ test("onboarding existing investment memakai opening_position, Cash RDN awal, da
   assert.match(dialog, /tidak ada transfer atau pemasukan\/pengeluaran yang dibuat otomatis/);
   assert.match(api, /investments\.openingPositions\.create/);
   assert.match(model, /opening_position/);
+  assert.match(dialog, /Catat aset investasi dan Cash RDN yang sudah dimiliki saat mulai menggunakan Saldo Bersama/);
+  assert.doesNotMatch(dialog, /Posisi awal mencatat kondisi yang sudah ada saat Anda mulai memakai Saldo Bersama/);
 });
 
 test("penjualan selesai di Cash RDN; rekonsiliasi menampilkan semua perbandingan dan koreksi tetap eksplisit", async () => {
@@ -236,7 +253,7 @@ test("penjualan selesai di Cash RDN; rekonsiliasi menampilkan semua perbandingan
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/investments/InvestmentDialog.jsx"),
   ]);
-  assert.match(page, /Penjualan saham selesai dicatat/);
+  assert.match(page, /Penjualan investasi selesai dicatat/);
   assert.match(page, /sudah menjadi Cash RDN/);
   assert.match(page, /<Button type="button" variant="primary" onClick=\{onDismiss\}>Selesai<\/Button>/);
   assert.match(page, />Tarik ke rekening<\/Button>/);

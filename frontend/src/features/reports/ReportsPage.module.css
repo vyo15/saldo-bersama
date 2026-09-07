@@ -76,7 +76,7 @@
     pointer-events: none;
   }
 
-  .calendarControl input {
+  .calendarControl [data-temporal-picker="month"] {
     position: absolute;
     inset: 0;
     width: 100%;

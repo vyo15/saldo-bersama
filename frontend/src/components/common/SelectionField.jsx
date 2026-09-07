@@ -73,7 +73,10 @@ const useSelectionOverlay = ({ open, setOpen, searchable, rootRef, searchRef, tr
 const selectionVisualContent = (option = {}) => {
   if (option.visual) return option.visual;
   if (option.avatar) return <UserAvatar user={option.avatar} />;
-  if (option.image) return <img src={option.image} alt="" width="42" height="27" loading="lazy" decoding="async" />;
+  if (option.image) {
+    const logo = option.imageKind === "brand-logo";
+    return <img src={option.image} alt="" width={logo ? 40 : 42} height={logo ? 40 : 27} loading="lazy" decoding="async" />;
+  }
   if (option.icon) {
     const Icon = option.icon;
     return <Icon />;
@@ -84,7 +87,13 @@ const selectionVisualContent = (option = {}) => {
 
 export const SelectionVisual = ({ option, trigger = false }) => {
   if (!hasOptionVisual(option)) return null;
-  const className = [styles.visual, trigger ? styles.triggerVisual : styles.optionVisual, option.image ? styles.imageVisual : "", option.mark ? styles.markVisual : ""].filter(Boolean).join(" ");
+  const className = [
+    styles.visual,
+    trigger ? styles.triggerVisual : styles.optionVisual,
+    option.image ? styles.imageVisual : "",
+    option.imageKind === "brand-logo" ? styles.brandLogoVisual : "",
+    option.mark ? styles.markVisual : "",
+  ].filter(Boolean).join(" ");
   return <span className={className} aria-hidden="true" title={option.visualLabel || undefined}>{selectionVisualContent(option)}</span>;
 };
 

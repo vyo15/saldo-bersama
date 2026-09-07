@@ -50,8 +50,8 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /SelectionField className=\{styles\.categoryStatusFilter\} label="Filter status kategori"/);
   assert.match(page, /value: "archived", label: "Arsip"/);
   assert.doesNotMatch(page, /<select\b/);
-  assert.match(page, /label: "Pengeluaran", icon: FiTrendingDown/);
-  assert.match(page, /label: "Pemasukan", icon: FiTrendingUp/);
+  assert.match(page, /label: "Pengeluaran", icon: MoneyOutIcon/);
+  assert.match(page, /label: "Pemasukan", icon: MoneyInIcon/);
   assert.match(page, /FiMoreHorizontal/);
   assert.match(page, /createPortal/);
   assert.match(page, /document\.body/);

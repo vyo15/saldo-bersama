@@ -10,6 +10,12 @@
 6. Jalankan health, login Administrator/Member, session list/revoke, mutation retry outcome-unknown, scheduler heartbeat, backup/restore drill, lalu baru buka traffic normal.
 
 
+## Runtime Node
+
+- Production Vercel boleh tetap memakai Node 24.x.
+- Development/quality gate lokal juga mendukung Node 22.15.0+ pada lini 22.x, sehingga PC kantor dengan Node 22.15.0 tidak perlu dipaksa upgrade ke Node 24.
+- Dependency frontend dikunci ke `react-router` 7.18.2 untuk menjaga kompatibilitas Node 22 dan Node 24 dari source yang sama.
+
 ## 1. Environment canonical
 
 Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variable. Scope **Development** dipakai untuk bootstrap lokal terjaga, scope **Production** dipakai deployment, dan Preview tetap kosong. Nama key yang sama pada Development dan Production adalah pemisahan scope yang disengaja, bukan duplikasi konflik.

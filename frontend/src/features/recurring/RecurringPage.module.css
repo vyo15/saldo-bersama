@@ -13,7 +13,7 @@
   max-width: 100%;
 }
 
-.headerActions :global(input[type="month"]) {
+.headerActions :global([data-temporal-picker="month"]) {
   min-width: 0;
   max-width: 100%;
 }

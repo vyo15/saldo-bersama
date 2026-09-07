@@ -188,7 +188,7 @@ test("gitignore dan pin Node menjaga line ending canonical tanpa duplikasi CLI",
     readFile(path.join(root, ".node-version"), "utf8"),
   ]);
   assert.equal(gitignore.includes("\r"), false);
-  assert.equal(nodeVersion, "24.18.1\n");
+  assert.equal(nodeVersion, "22.15.0\n");
   assert.equal((gitignore.match(/^\.vercel\/$/gm) || []).length, 1);
   assert.equal((gitignore.match(/^\.env$/gm) || []).length, 1);
   assert.equal((gitignore.match(/^\.env\.\*$/gm) || []).length, 1);
