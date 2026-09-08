@@ -248,6 +248,12 @@ const GoalsPage = () => {
   const attentionGoalId = String(attention?.attentionGoalId || "");
   useGoalAttention({ attention, attentionGoalId, consumeAttention, items, resourceStatus: resource.status, openMovement, attentionHandled });
   useEffect(() => {
+    if (resource.status !== "ready" || location.state?.workflowAction !== "create-goal") return;
+    if (canCreate) creation.openCreate();
+    else notify({ message: "Siapkan rekening Bersama aktif sebelum membuat Target.", tone: "warning", dedupeKey: "goal:dashboard-create-unavailable" });
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+  }, [canCreate, creation, location.hash, location.pathname, location.search, location.state, navigate, notify, resource.status]);
+  useEffect(() => {
     if (resource.status !== "ready" || location.state?.workflowAction !== "goal-deposit") return;
     const nextPrefill = { sourceAccountId: String(location.state.sourceAccountId || ""), suggestedAmount: Number(location.state.suggestedAmount || 0) };
     setWorkflowPrefill(nextPrefill);

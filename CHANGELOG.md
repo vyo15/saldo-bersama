@@ -1,3 +1,17 @@
+## 8 September 2026 - UI duplicate-function cleanup
+
+- Menjadikan **satu fungsi = satu pintu utama** pada mobile: quick action Rekening hanya `Riwayat / Transfer` karena tap kartu aktif sudah membuka detail, summary tidak lagi mengulang nominal utama `Dana tersedia`/`Saldo RDN`, dan Dashboard tidak lagi mengulang Alokasi Dana/Jadwal Rutin yang sudah memiliki section sendiri.
+- Mengubah akses cepat Dashboard menjadi `Rekening / Target / Kategori / Cocokkan Saldo`, serta membedakan menu Pengaturan sebagai **Notifikasi perangkat** agar tidak tertukar dengan Notification Center.
+- Menjadikan rekonsiliasi RDN hanya melalui **Cocokkan Investasi**; rekening `account_type=investment` tidak lagi ditawarkan di Cocokkan Saldo generic. Aksi maintenance Investasi tetap tersedia dari satu tombol kelola compact, sementara CTA utama tetap `Beli / Jual`.
+- Menghilangkan CTA Investasi `Tambah aset` yang ganda pada state tanpa instrumen: guidance menjadi satu-satunya entry point setup pertama, sedangkan action header baru tampil setelah katalog aktif sudah tersedia.
+- Menyatukan penyesuaian gap Kebutuhan Alokasi ke label **Atur dana** dengan suggested amount. CTA `Atur dana` kedua di Pengaturan alokasi disembunyikan saat gap aktif, dan `Catat pengeluaran` global hanya muncul sebelum Kebutuhan dibuat; setelah itu pencatatan dilakukan dari Kebutuhan masing-masing.
+
+## 8 September 2026 - Dashboard empty-action dan direct create flow
+
+- Mengubah empty state Beranda yang sebelumnya menyerupai record finansial menjadi **empty-action** yang jelas berbeda secara visual: border dashed, ikon `+`, judul berupa aksi, helper satu baris, dan seluruh area dapat diklik. Rencana Keuangan, Jadwal Terdekat, Aktivitas Terbaru mobile serta Kebutuhan/Jadwal/Target desktop mengikuti pola yang sama.
+- Empty action bersifat capability-aware dan tidak membuat data otomatis tanpa konfirmasi. Jika tepat satu Alokasi Dana dapat dikelola, `Tambah kebutuhan` langsung membuka detail Alokasi dan dialog Kebutuhan; jika ada beberapa Alokasi, user diminta memilih; jika belum ada Alokasi tetapi rekening operasional tersedia, `Buat Alokasi Dana` langsung membuka dialog create. `Tambah jadwal rutin` dan `Buat target` juga langsung membuka form canonical, sedangkan `Catat transaksi` memakai Transaction Composer global.
+- Menambahkan regression untuk decision helper, contextual workflow state, CSS empty-action, serta sinkronisasi dokumentasi Dashboard. Tidak ada schema, API, ledger, authorization, atau asset baru.
+
 ## 8 September 2026 - Production trial reset untuk seluruh Administrator
 
 - Mengizinkan `reset.preview` dan `reset.apply` pada database canonical yang terikat `development` **atau** `production`, sehingga flow **Reset Testing** dapat dipakai seluruh Administrator aktif pada fase awal termasuk setelah membuka Vercel Production melalui `npm run prod`. Environment `unbound`/asing tetap fail-closed.

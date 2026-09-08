@@ -97,7 +97,7 @@ test("Investasi menjelaskan pencatatan manual dan memakai terminologi pencatatan
   assert.match(overview, /bukan harga pasar live/);
   assert.match(overview, /aria-label="Beli investasi">Beli<\/Button>/);
   assert.match(overview, /aria-label="Jual investasi">Jual<\/Button>/);
-  assert.match(overview, />Lainnya<\/span>/);
+  assert.match(overview, /title="Kelola investasi"/);
   assert.match(overview, /title="Perbarui nilai"/);
   assert.match(detail, />Catat penjualan<\/Button>/);
   assert.doesNotMatch(source, /Login Ajaib|Connect broker|Hubungkan akun broker|Sinkron otomatis|Top Gainers|Top Losers|Market Movers|Auto trading|Place order/i);
@@ -143,6 +143,9 @@ test("prerequisite Investasi tidak memberi dead-end Member dan lot correction ti
   ]);
   assert.match(overview, /!state\.hasBuyInstrument/);
   assert.match(overview, />Tambah aset<\/Button>/);
+  assert.match(overview, /aria-label=\{`Kelola investasi \$\{portfolio\.name\}`\}/);
+  assert.match(overview, /title="Kelola investasi"/);
+  assert.doesNotMatch(overview, /desktopMaintenanceAction|>Lainnya<\/span>/);
   assert.match(overview, /Daftar aset baru dikelola Administrator/);
   assert.match(overview, /const lots = lotSize > 0 \? shares \/ lotSize : 0/);
   assert.match(overview, /const hasPriceInstrument = instruments\.some\(\(item\) => heldIds\.has\(item\.instrument_id\)\)/);

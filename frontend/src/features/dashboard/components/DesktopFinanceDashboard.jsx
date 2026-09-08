@@ -29,7 +29,7 @@ import {
 import { scrollIntoViewWithMotionPreference } from "../../../shared/motion.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
-import { dashboardDueLabel, formatPeriod } from "../dashboardPresentation.js";
+import { dashboardDueLabel, dashboardGoalEmptyAction, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
@@ -207,6 +207,7 @@ const buildDesktopModel = ({
     || accountTransactions[0]
     || null;
   return {
+    overview,
     accountBalances,
     categoryLookup,
     expenseByCategory,
@@ -637,7 +638,15 @@ const InvestmentWidget = ({ summary, balanceVisible }) => {
   );
 };
 
-const BudgetWidget = ({ budgets, balanceVisible }) => (
+const DesktopEmptyAction = ({ action }) => {
+  const ActionIcon = action.to === "/rekening" ? AccountIcon : FiPlus;
+  return <Link className={dashboardClass("shared-widget-empty-action")} to={action.to} state={action.state || undefined}>
+    <span className={dashboardClass("shared-widget-empty-action__icon")}><ActionIcon aria-hidden="true" /></span>
+    <span className={dashboardClass("shared-widget-empty-action__copy")}><strong>{action.label}</strong><small>{action.description}</small></span>
+  </Link>;
+};
+
+const BudgetWidget = ({ budgets, overview, balanceVisible }) => (
   <article className={dashboardClass("shared-panel shared-widget")}>
     <div className={dashboardClass("shared-widget__heading")}>
       <div><h2>Kebutuhan</h2><span>{budgets.length} kebutuhan aktif</span></div>
@@ -654,15 +663,14 @@ const BudgetWidget = ({ budgets, balanceVisible }) => (
         </li>
       )) : (
         <li className={dashboardClass("shared-widget-empty")}>
-          <span>Belum ada kebutuhan aktif.</span>
-          <Link to="/perencanaan/kantong">Atur kebutuhan</Link>
+          <DesktopEmptyAction action={dashboardNeedEmptyAction(overview)} />
         </li>
       )}
     </ul>
   </article>
 );
 
-const RecurringWidget = ({ items, balanceVisible }) => (
+const RecurringWidget = ({ items, overview, balanceVisible }) => (
   <article className={dashboardClass("shared-panel shared-widget")}>
     <div className={dashboardClass("shared-widget__heading")}>
       <div><h2>Jadwal rutin</h2><span>{items.length} jadwal mendatang</span></div>
@@ -680,15 +688,14 @@ const RecurringWidget = ({ items, balanceVisible }) => (
         </li>
       )) : (
         <li className={dashboardClass("shared-widget-empty")}>
-          <span>Belum ada jadwal rutin mendatang.</span>
-          <Link to="/perencanaan/jadwal">Buat jadwal rutin</Link>
+          <DesktopEmptyAction action={dashboardRecurringEmptyAction(overview)} />
         </li>
       )}
     </ul>
   </article>
 );
 
-const GoalsWidget = ({ goals, balanceVisible }) => (
+const GoalsWidget = ({ goals, overview, balanceVisible }) => (
   <article className={dashboardClass("shared-panel shared-widget")}>
     <div className={dashboardClass("shared-widget__heading")}>
       <div><h2>Target tabungan</h2><span>{goals.length} target aktif</span></div>
@@ -705,8 +712,7 @@ const GoalsWidget = ({ goals, balanceVisible }) => (
         </li>
       )) : (
         <li className={dashboardClass("shared-widget-empty")}>
-          <span>Belum ada target tabungan aktif.</span>
-          <Link to="/target">Buat target</Link>
+          <DesktopEmptyAction action={dashboardGoalEmptyAction(overview)} />
         </li>
       )}
     </ul>
@@ -722,9 +728,9 @@ const DashboardPlanning = ({ model, balanceVisible }) => (
       </div>
     </div>
     <div className={dashboardClass("shared-dashboard-widgets")}>
-      <BudgetWidget budgets={model.budgets} balanceVisible={balanceVisible} />
-      <RecurringWidget items={model.recurringItems} balanceVisible={balanceVisible} />
-      <GoalsWidget goals={model.goals} balanceVisible={balanceVisible} />
+      <BudgetWidget budgets={model.budgets} overview={model.overview} balanceVisible={balanceVisible} />
+      <RecurringWidget items={model.recurringItems} overview={model.overview} balanceVisible={balanceVisible} />
+      <GoalsWidget goals={model.goals} overview={model.overview} balanceVisible={balanceVisible} />
     </div>
   </section>
 );

@@ -283,7 +283,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(desktop, /Kebutuhan/);
   assert.match(desktop, /Jadwal rutin/);
   assert.doesNotMatch(desktop, /Tagihan terdekat/);
-  assert.match(desktop, /to="\/perencanaan\/kantong">Atur kebutuhan/);
+  assert.match(desktop, /dashboardNeedEmptyAction\(overview\)/);
   assert.match(desktop, /Target tabungan/);
   assert.match(desktop, /Perlu dilakukan/);
   assert.match(desktop, /to="\/notifikasi">Lihat semua perhatian/);
@@ -348,4 +348,53 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
   assert.match(setup, /Rekening dan kategori cukup untuk mulai mencatat/);
   assert.doesNotMatch(setup, /label: "Alokasi Dana"/);
   assert.doesNotMatch(setup, /label: "Target"/);
+});
+
+test("dashboard empty state tampil sebagai aksi tambah dan membuka workflow canonical", async () => {
+  const [mobile, desktop, page, allocations, recurring, goals, css] = await Promise.all([
+    source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    source("src/features/dashboard/DashboardPage.jsx"),
+    source("src/features/allocations/AllocationsPage.jsx"),
+    source("src/features/recurring/RecurringPage.jsx"),
+    source("src/features/goals/GoalsPage.jsx"),
+    source("src/features/dashboard/DashboardPage.module.css"),
+  ]);
+  const presentation = await import("../src/features/dashboard/dashboardPresentation.js");
+
+  assert.deepEqual(presentation.dashboardNeedEmptyAction({
+    accountBalances: [{ account_id: "acc-1", can_transact: true }],
+    envelopes: [{ envelope_rule_id: "env-1", can_manage_needs: true }],
+  }), {
+    label: "Tambah kebutuhan",
+    description: "Atur rencana bulan ini",
+    to: "/perencanaan/kantong",
+    state: { workflowSource: "dashboard-empty-action", workflowAction: "add-need", envelopeRuleId: "env-1" },
+  });
+  assert.equal(presentation.dashboardNeedEmptyAction({
+    accountBalances: [{ account_id: "acc-1", can_transact: true }],
+    envelopes: [
+      { envelope_rule_id: "env-1", can_manage_needs: true },
+      { envelope_rule_id: "env-2", can_manage_needs: true },
+    ],
+  }).state.workflowAction, "choose-need-allocation");
+  assert.equal(presentation.dashboardNeedEmptyAction({ accountBalances: [{ account_id: "acc-1", can_transact: true }], envelopes: [] }).state.workflowAction, "create-allocation");
+  assert.equal(presentation.dashboardNeedEmptyAction({ accountBalances: [], envelopes: [] }).to, "/rekening");
+  assert.equal(presentation.dashboardRecurringEmptyAction({ accountBalances: [{ account_id: "acc-1", can_transact: true }] }).state.workflowAction, "create-recurring");
+  assert.equal(presentation.dashboardGoalEmptyAction({ accountBalances: [{ account_id: "acc-1", owner_scope: "shared", can_transact: true }] }).state.workflowAction, "create-goal");
+
+  assert.match(mobile, /const MobileEmptyAction/);
+  assert.match(mobile, /dashboardNeedEmptyAction\(overview\)/);
+  assert.match(mobile, /dashboardRecurringEmptyAction\(overview\)/);
+  assert.match(mobile, /Catat transaksi/);
+  assert.doesNotMatch(mobile, /mobile-compact-empty|Belum ada kebutuhan aktif|Belum ada jadwal mendatang|Belum ada aktivitas bulan ini/);
+  assert.match(page, /onOpenTransaction=\{openTransactionComposer\}/);
+  assert.match(desktop, /shared-widget-empty-action/);
+  assert.match(desktop, /dashboardGoalEmptyAction\(overview\)/);
+  assert.match(allocations, /"create-allocation", "add-need", "choose-need-allocation"/);
+  assert.match(allocations, /setDetailAction\("add-need"\)/);
+  assert.match(recurring, /workflowAction === "create-recurring"/);
+  assert.match(goals, /workflowAction !== "create-goal"/);
+  assert.match(css, /\.mobile-empty-action \{[^}]*border:\s*1px dashed var\(--border-strong\)/s);
+  assert.match(css, /\.shared-widget-empty-action \{[^}]*border:\s*1px dashed var\(--border-strong\)/s);
 });

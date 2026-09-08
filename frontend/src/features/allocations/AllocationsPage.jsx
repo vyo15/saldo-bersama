@@ -244,6 +244,31 @@ const AllocationSetupLayer = ({ setupCreated, activeItems, onOpenDetail, onDismi
 
 const allocationDetailCanAdjust = (detailItem) => detailItem ? canAdjustAllocation(detailItem) : false;
 
+const useAllocationDashboardCreateWorkflow = ({ canCreate, location, navigate, notify, resourceStatus, activeItems, setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId }) => {
+  useEffect(() => {
+    const workflowAction = String(location.state?.workflowAction || "");
+    if (resourceStatus !== "ready" || !["create-allocation", "add-need", "choose-need-allocation"].includes(workflowAction)) return;
+    const showNeedSelection = () => {
+      setAllocationFilter("all");
+      notify({ message: "Pilih Alokasi Dana yang ingin diberi kebutuhan.", tone: "info", dedupeKey: "allocation:dashboard-need-select" });
+    };
+    if (workflowAction === "create-allocation") {
+      if (canCreate) { setMessage(null); setCreateOpen(true); }
+      else notify({ message: "Siapkan rekening yang dapat digunakan sebelum membuat Alokasi Dana.", tone: "warning", dedupeKey: "allocation:dashboard-create-unavailable" });
+    } else if (workflowAction === "add-need") {
+      const envelopeRuleId = String(location.state?.envelopeRuleId || "");
+      const item = activeItems.find((entry) => entry.envelope_rule_id === envelopeRuleId && entry.can_manage_needs) || null;
+      if (item) {
+        setLegacyBudgetAttention(false);
+        setDetailAction("add-need");
+        setDetailRuleId(item.envelope_rule_id);
+        window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 }));
+      } else showNeedSelection();
+    } else showNeedSelection();
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+  }, [activeItems, canCreate, location, navigate, notify, resourceStatus, setAllocationFilter, setCreateOpen, setDetailAction, setDetailRuleId, setLegacyBudgetAttention, setMessage]);
+};
+
 const AllocationsPage = ({ embedded = false }) => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const location = useLocation();
@@ -304,6 +329,7 @@ const AllocationsPage = ({ embedded = false }) => {
   const openFunding = useCallback(({ sourceAccountId = "", suggestedAmount = 0 } = {}) => { setFundingError(null); setFundingIntent({ sourceAccountId, suggestedAmount: Number(suggestedAmount || 0) }); }, []);
   useAllocationAttentionNavigation({ attentionHandled, resourceStatus: resource.status, budgetStatus: budgetResource.status, attentionAction, attentionEnvelopeId, attentionBudgetId, activeItems: view.activeItems, budgets: view.budgets, consumeAttention, setDetailRuleId, setLegacyBudgetAttention, openFunding });
   useEffect(() => { if (detailRuleId && resource.status === "ready" && !detailItem) setDetailRuleId(""); }, [detailItem, detailRuleId, resource.status]);
+  useAllocationDashboardCreateWorkflow({ canCreate, location, navigate, notify, resourceStatus: resource.status, activeItems: view.activeItems, setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId });
   useEffect(() => {
     if (resource.status !== "ready" || location.state?.workflowAction !== "fund") return;
     openFunding({ sourceAccountId: String(location.state.sourceAccountId || ""), suggestedAmount: Number(location.state.suggestedAmount || 0) });

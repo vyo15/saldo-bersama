@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { FiEye, FiEyeOff, FiList, FiPlus, FiSettings } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiList, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
 import PageInfoButton from "../../../components/common/PageInfoButton.jsx";
@@ -370,26 +370,21 @@ const MobileBalanceSummary = ({ account }) => {
       </div>
       <strong className={styles.mobileAvailableValue}><PrivateMoney hidden={hidden} value={investment ? account.balance : available} /></strong>
       <div className={styles.mobileBalanceStats}>
-        {investment ? <>
-          <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Saldo RDN</span></div>
-          <div><strong>Investasi</strong><span>Tujuan dana</span></div>
-        </> : <>
+        {investment ? <div><strong>Investasi</strong><span>Tujuan dana</span></div> : <>
           <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Saldo</span></div>
           <div><strong><PrivateMoney hidden={hidden} value={account.allocated_remaining || 0} /></strong><span>Dialokasikan</span></div>
-          <div><strong><PrivateMoney hidden={hidden} value={available} /></strong><span>Tersedia</span></div>
         </>}
       </div>
     </section>
   );
 };
 
-const MobileQuickActions = ({ account, bootstrap, ownerMode, onTransferSaved, onViewTransactions, setMobileAccountSheet }) => (
+const MobileQuickActions = ({ account, bootstrap, onTransferSaved, onViewTransactions }) => (
   <div key={account.account_id} className={styles.mobileQuickActions} aria-label={`Aksi cepat rekening ${account.name}`}>
     <button type="button" className={styles.mobileQuickAction} onClick={() => onViewTransactions(account)}><FiList aria-hidden="true" /><span>Riwayat</span></button>
     <Suspense fallback={<span className={styles.mobileQuickActionPlaceholder} aria-hidden="true" />}>
       <MobileAccountTransferAction bootstrap={bootstrap} selectedAccount={account} onTransferSaved={onTransferSaved} onViewTransactions={onViewTransactions} />
     </Suspense>
-    <button type="button" className={styles.mobileQuickAction} onClick={() => setMobileAccountSheet("detail")}><FiSettings aria-hidden="true" /><span>{ownerMode ? "Kelola" : "Detail"}</span></button>
   </div>
 );
 
@@ -438,7 +433,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
 
       {selectedAccount ? <>
         <MobileBalanceSummary account={selectedAccount} />
-        <MobileQuickActions account={selectedAccount} bootstrap={bootstrap} ownerMode={ownerMode} onTransferSaved={onTransferSaved} onViewTransactions={onViewTransactions} setMobileAccountSheet={setMobileAccountSheet} />
+        <MobileQuickActions account={selectedAccount} bootstrap={bootstrap} onTransferSaved={onTransferSaved} onViewTransactions={onViewTransactions} />
       </> : null}
 
       <p id="mobile-account-stack-hint" className="sr-only">Geser kartu aktif ke kiri atau kanan, gunakan tombol panah kiri dan kanan, atau indikator posisi. Tekan kartu aktif untuk membuka detail.</p>

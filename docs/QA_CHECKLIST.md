@@ -86,6 +86,13 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] `git status --short` ditinjau sebelum commit.
 - [ ] Delivery Git memakai `git push origin main` tanpa `--no-verify`; pre-push memverifikasi ref/SHA aktual + full gate, dan **Quality / check** server-side dipantau setelah push.
 
+## Dashboard empty-action
+
+- [ ] Rencana Keuangan/Jadwal Terdekat/Aktivitas Terbaru mobile yang kosong terlihat sebagai aksi tambah (dashed + `+` + helper singkat), bukan sebagai record finansial palsu.
+- [ ] Klik empty-action tidak langsung membuat data: form canonical terbuka otomatis hanya bila capability/prerequisite cukup dan tetap menunggu input serta Simpan user.
+- [ ] Kebutuhan dengan tepat satu Alokasi Dana manageable langsung membuka dialog Kebutuhan; beberapa Alokasi meminta user memilih; tanpa Alokasi tetapi rekening operasional tersedia membuka dialog Buat Alokasi Dana.
+- [ ] Jadwal kosong membuka create Jadwal Rutin; Aktivitas kosong membuka Transaction Composer global; planning desktop Kebutuhan/Jadwal/Target mengikuti semantic empty-action yang sama.
+
 ## Investasi / RDN - pemisahan saldo operasional
 
 - [ ] Hero Dashboard memakai **Saldo rekening** (`nonInvestmentBalance`), sedangkan Saldo RDN hanya muncul pada konteks Investasi; privacy masking mencakup keduanya.

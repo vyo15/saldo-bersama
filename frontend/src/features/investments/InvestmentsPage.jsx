@@ -150,6 +150,12 @@ const InvestmentOverlays = ({ page }) => {
   </Suspense>;
 };
 
+const canShowInstrumentSetupAction = (data, user) => Boolean(
+  data.portfolios.length
+  && data.instruments?.some((item) => item.status === "active")
+  && user?.role === "owner"
+);
+
 const InvestmentsPageContent = ({ page }) => {
   const {
     user, overview, accountsResource, accounts, data, setupContinuation, setSetupContinuation, tradeContinuation, setTradeContinuation,
@@ -167,7 +173,7 @@ const InvestmentsPageContent = ({ page }) => {
     <PageHeader
       title="Investasi"
       description="Catat dan pantau portofolio yang Anda miliki. Pembelian atau penjualan tetap dilakukan di aplikasi investasi Anda."
-      actions={data.portfolios.length && user?.role === "owner" ? <Button className={styles.setupAction} icon={FiPlus} onClick={() => openSetup("instrument")} aria-label="Tambah saham">Tambah saham</Button> : null}
+      actions={canShowInstrumentSetupAction(data, user) ? <Button className={styles.setupAction} icon={FiPlus} onClick={() => openSetup("instrument")} aria-label="Tambah aset">Tambah aset</Button> : null}
       help="Investasi adalah fitur pencatatan portofolio manual. Saldo Bersama tidak terhubung ke broker, tidak mengambil harga pasar live, dan tidak mengirim order beli atau jual. Saham baru pada prototype dipilih dari daftar LQ45 yang sudah disediakan."
     />
     <SetupContinuation

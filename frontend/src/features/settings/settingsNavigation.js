@@ -22,7 +22,7 @@ export const MOBILE_SETTINGS_GROUPS = Object.freeze([
     id: "umum",
     label: "Umum",
     items: [
-      { to: "/pengaturan/notifikasi", label: "Notifikasi", description: "Pengingat & Web Push perangkat ini", icon: FiBell },
+      { to: "/pengaturan/notifikasi", label: "Notifikasi perangkat", description: "Pengingat & Web Push perangkat ini", icon: FiBell },
       { to: "/pengaturan/perangkat", label: "Perangkat & sesi", description: "Kelola perangkat yang masih login", icon: FiMonitor },
       { to: "/pengaturan/integrasi", label: "Integrasi Google", description: "Sheets, Calendar & Drive", icon: FiCalendar },
     ],
@@ -52,7 +52,7 @@ export const DESKTOP_SETTINGS_CATEGORIES = Object.freeze([
     description: "Preferensi harian",
     icon: FiSettings,
     items: [
-      { to: "/pengaturan/notifikasi", label: "Notifikasi", description: "Push dan jenis pengingat", icon: FiBell },
+      { to: "/pengaturan/notifikasi", label: "Notifikasi perangkat", description: "Push dan jenis pengingat", icon: FiBell },
     ],
   },
   {

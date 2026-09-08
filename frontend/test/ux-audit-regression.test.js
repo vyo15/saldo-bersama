@@ -271,7 +271,8 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
   assert.match(goals, /\{items\.length \? <GoalSummary items=\{items\} \/> : null\}/);
   assert.match(budgets, /Saya punya jadwal pembayaran/);
   assert.match(budgets, /Jadwal dibuat bersama Kebutuhan/);
-  assert.match(investments, /actions=\{data\.portfolios\.length && user\?\.role === "owner" \? <Button[^>]*onClick=\{\(\) => openSetup\("instrument"\)\}[^>]*aria-label="Tambah saham"/);
+  assert.match(investments, /const canShowInstrumentSetupAction =/);
+  assert.match(investments, /aria-label="Tambah aset">Tambah aset<\/Button>/);
   assert.match(transactions, /const showHeaderCreate = !mobileLayout && \(resource\.status !== "ready" \|\| items\.length > 0 \|\| filtersActive\);/);
   assert.match(transactions, /mobileLayout \? "Gunakan tombol \+ pada navigasi bawah untuk mencatat transaksi pertama\."/);
   assert.match(transactions, /action=\{filteredEmpty \? <Button[^>]*>Reset filter<\/Button> : mobileLayout \? null : <Button variant="primary" onClick=\{openTransactionComposer\}>Tambah transaksi<\/Button>\}/);

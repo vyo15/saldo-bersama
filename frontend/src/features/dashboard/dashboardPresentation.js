@@ -44,3 +44,62 @@ export const dashboardInsightState = (overview = {}) => {
   if (net < 0) return { kind: "cashflow", tone: "warning", title: "Pengeluaran perlu dipantau" };
   return { kind: "safe", tone: "positive", title: "Kondisi keuangan masih aman" };
 };
+
+const operablePlanningAccounts = (overview = {}) => (overview.accountBalances || [])
+  .filter((item) => item.account_type !== "investment" && item.can_transact !== false);
+
+export const dashboardNeedEmptyAction = (overview = {}) => {
+  const manageable = (overview.envelopes || []).filter((item) => item.can_manage_needs);
+  if (manageable.length === 1) return {
+    label: "Tambah kebutuhan",
+    description: "Atur rencana bulan ini",
+    to: "/perencanaan/kantong",
+    state: { workflowSource: "dashboard-empty-action", workflowAction: "add-need", envelopeRuleId: manageable[0].envelope_rule_id },
+  };
+  if (manageable.length > 1) return {
+    label: "Tambah kebutuhan",
+    description: "Pilih Alokasi Dana yang akan dipakai",
+    to: "/perencanaan/kantong",
+    state: { workflowSource: "dashboard-empty-action", workflowAction: "choose-need-allocation" },
+  };
+  if (operablePlanningAccounts(overview).length) return {
+    label: "Buat Alokasi Dana",
+    description: "Siapkan dana untuk kebutuhan bulan ini",
+    to: "/perencanaan/kantong",
+    state: { workflowSource: "dashboard-empty-action", workflowAction: "create-allocation" },
+  };
+  return {
+    label: "Siapkan rekening",
+    description: "Aktifkan rekening sebelum membuat rencana",
+    to: "/rekening",
+    state: null,
+  };
+};
+
+export const dashboardRecurringEmptyAction = (overview = {}) => operablePlanningAccounts(overview).length
+  ? {
+      label: "Tambah jadwal rutin",
+      description: "Catat pemasukan atau pengeluaran berulang",
+      to: "/perencanaan/jadwal",
+      state: { workflowSource: "dashboard-empty-action", workflowAction: "create-recurring" },
+    }
+  : {
+      label: "Siapkan rekening",
+      description: "Aktifkan rekening sebelum membuat jadwal",
+      to: "/rekening",
+      state: null,
+    };
+
+export const dashboardGoalEmptyAction = (overview = {}) => operablePlanningAccounts(overview).some((item) => item.owner_scope === "shared")
+  ? {
+      label: "Buat target",
+      description: "Mulai pantau progres tujuan keuangan",
+      to: "/target",
+      state: { workflowSource: "dashboard-empty-action", workflowAction: "create-goal" },
+    }
+  : {
+      label: "Siapkan rekening Bersama",
+      description: "Target membutuhkan rekening Bersama aktif",
+      to: "/rekening",
+      state: null,
+    };

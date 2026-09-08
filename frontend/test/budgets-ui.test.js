@@ -92,6 +92,9 @@ test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesu
   assert.match(detail, /Dialokasikan/);
   assert.match(detail, /Pengaturan alokasi/);
   assert.match(detail, /Atur dana/);
+  assert.match(detail, /onAdjustAllocation\(item, summary\.gap\)/);
+  assert.match(detail, /showGlobalExpenseAction\(state\.canRecordExpense, linkedBudgets\)/);
+  assert.match(detail, /showStandardAdjustAction\(canAdjustAllocation, item, linkedBudgets\)/);
   assert.match(detail, /Pindahkan dana/);
   assert.match(page, /openAdjust\(item, "fund", amount\)/);
   assert.match(presentation, /allocationNeedsFundingSummary/);

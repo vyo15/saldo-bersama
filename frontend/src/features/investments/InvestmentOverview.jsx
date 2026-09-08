@@ -136,17 +136,20 @@ const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup }) 
   };
   return <>
     <section className={portfolioStyles.actionArea} aria-label={`Aksi ${portfolio.name}`}>
+      <div className={portfolioStyles.actionHeading}>
+        <span>Aksi investasi</span>
+        <button className={portfolioStyles.maintenanceTrigger} type="button" onClick={() => setMoreOpen(true)} aria-label={`Kelola investasi ${portfolio.name}`} title="Kelola investasi" aria-haspopup="dialog" aria-expanded={moreOpen}>
+          <FiMoreHorizontal aria-hidden="true" />
+        </button>
+      </div>
       <div className={portfolioStyles.quickActions}>
         <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionPrimary}`} icon={FiPlus} variant="primary" disabled={!state.hasBuyInstrument || !state.hasRdnBalance} onClick={() => onAction("buy", portfolio)} aria-label="Beli investasi">Beli</Button>
         <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionSell}`} icon={FiMinus} disabled={!state.hasSellableHolding} onClick={() => onAction("sell", portfolio)} aria-label="Jual investasi">Jual</Button>
-        <button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionMore} ${portfolioStyles.desktopMaintenanceAction}`} type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-expanded={moreOpen}>
-          <FiMoreHorizontal aria-hidden="true" /><span>Lainnya</span>
-        </button>
       </div>
       {state.guidance ? <div className={portfolioStyles.actionGuidance} role="note"><span>{state.guidance}</span>{!state.hasBuyInstrument && owner ? <Button className={portfolioStyles.guidanceAction} type="button" onClick={() => onSetup("instrument")}>Tambah aset</Button> : null}</div> : null}
     </section>
 
-    <Modal open={moreOpen} title="Aksi lainnya" description={portfolio.name} onClose={() => setMoreOpen(false)} size="sm" className={portfolioStyles.actionSheet}>
+    <Modal open={moreOpen} title="Kelola investasi" description={portfolio.name} onClose={() => setMoreOpen(false)} size="sm" className={portfolioStyles.actionSheet}>
       <div className={portfolioStyles.sheetActionList}>
         <SheetAction icon={FiEdit3} title="Perbarui nilai" description="Perbarui nilai referensi manual" disabled={!state.hasPriceInstrument} onClick={() => runMoreAction(() => onAction("price", portfolio))} />
         <SheetAction icon={FiRefreshCw} title="Cocokkan" description="Verifikasi Saldo RDN dan holding aktual" onClick={() => runMoreAction(() => onAction("reconcile", portfolio))} />

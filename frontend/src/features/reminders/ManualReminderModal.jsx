@@ -58,7 +58,7 @@ const pushAvailabilityNotice = (state) => {
   if (!state) return null;
   if (state.enabled) return { tone: "success", title: "Notifikasi aktif di perangkat ini", message: null };
   if (state.reason === "server_status_unavailable") {
-    return { tone: "warning", title: "Status Web Push belum terverifikasi", message: "Pengingat tetap disimpan. Periksa Notifikasi di Pengaturan." };
+    return { tone: "warning", title: "Status Web Push belum terverifikasi", message: "Pengingat tetap disimpan. Periksa Notifikasi perangkat di Pengaturan." };
   }
   if (Number(state.activeDeviceCount || 0) > 0) {
     return { tone: "warning", title: "Notifikasi perangkat ini belum aktif", message: `Pengingat tetap dapat dikirim ke ${Number(state.activeDeviceCount)} perangkat aktif lain.` };

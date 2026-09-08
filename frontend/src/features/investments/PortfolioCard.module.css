@@ -130,9 +130,53 @@
   padding: 0 var(--space-5) var(--space-4);
 }
 
+.actionHeading {
+  min-height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.actionHeading > span {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.maintenanceTrigger {
+  width: var(--mobile-control-height);
+  height: var(--mobile-control-height);
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing);
+}
+
+.maintenanceTrigger svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.maintenanceTrigger:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .maintenanceTrigger:hover {
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    background: var(--primary-soft);
+  }
+}
+
 .quickActions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -174,28 +218,6 @@
   }
 }
 
-.quickActionMore {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--border);
-  background: var(--surface-soft);
-  color: var(--text);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .quickActionMore:hover {
-    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-    background: var(--primary-soft);
-  }
-}
-
-.quickActionMore:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
 
 .actionGuidance {
   display: flex;
@@ -334,9 +356,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .desktopMaintenanceAction {
-    display: none;
-  }
 
   .quickAction {
     min-height: var(--mobile-control-height);
@@ -424,7 +443,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .quickActionMore,
+  .maintenanceTrigger,
   .sheetAction {
     transition: none;
   }
