@@ -75,9 +75,36 @@ test("descriptive fixed choices keep explanatory decisions calm and consistent",
     read("features/allocations/AllocationDialogLayer.jsx"),
   ]);
   assert.match(budgets, /legend="Cara mencatat kebutuhan"[\s\S]*descriptive[\s\S]*helperPanel/);
-  assert.match(budgets, /legend="Berlaku untuk"[\s\S]*compact[\s\S]*wrapLabels/);
+  assert.match(budgets, /<InlineOwnershipPicker[\s\S]*legend="Berlaku untuk"/);
   assert.match(recurring, /legend="Jenis"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
   assert.match(allocations, /legend="Aksi"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
+});
+
+
+
+test("ownership identity picker stays compact until expanded inline", async () => {
+  const [source, css, allocation, budgets] = await Promise.all([
+    read("components/common/InlineOwnershipPicker.jsx"),
+    read("components/common/InlineOwnershipPicker.module.css"),
+    read("features/allocations/AllocationDialogLayer.jsx"),
+    read("features/budgets/BudgetDialogLayer.jsx"),
+  ]);
+
+  assert.match(source, /aria-expanded=\{expanded\}/);
+  assert.match(source, /aria-controls=\{listId\}/);
+  assert.match(source, /setExpanded\(false\)/);
+  assert.match(source, /alternatives = safeOptions\.filter/);
+  assert.match(source, /<UserAvatar user=\{option\.user\}/);
+  assert.match(source, /role="listbox"/);
+  assert.match(source, /role="option"/);
+  assert.match(css, /grid-template-rows:\s*0fr/);
+  assert.match(css, /grid-template-rows:\s*1fr/);
+  assert.match(css, /@media \(max-width: 520px\)/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(allocation, /<InlineOwnershipPicker[\s\S]*legend="Digunakan oleh"/);
+  assert.match(allocation, /badge: item\.role/);
+  assert.match(budgets, /<InlineOwnershipPicker[\s\S]*legend="Berlaku untuk"/);
+  assert.doesNotMatch(allocation, /mobileColumns=\{Math\.min\(assigneeOptions\.length, 2\)\}/);
 });
 
 test("SelectionField keeps app-owned selection accessible without native browser dropdowns", async () => {

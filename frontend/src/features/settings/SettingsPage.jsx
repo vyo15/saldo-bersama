@@ -1,5 +1,6 @@
 import { FiChevronRight } from "react-icons/fi";
 import { Link } from "react-router";
+import UserAvatar from "../../components/common/UserAvatar.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
@@ -8,7 +9,6 @@ import { MOBILE_SETTINGS_GROUPS } from "./settingsNavigation.js";
 import { backendPresentation, roleLabel } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
-const accountInitial = (user) => String(user?.name || user?.email || "S").trim().charAt(0).toUpperCase() || "S";
 
 const SettingsNavigationRow = ({ item, maintenanceMode }) => {
   const Icon = item.icon;
@@ -30,16 +30,26 @@ const SettingsNavigationRow = ({ item, maintenanceMode }) => {
 
 const MobileSettingsOverview = ({ user, backend, timezone, maintenanceMode }) => {
   const ownerMode = user?.role === "owner";
+  const displayName = String(user?.name || "").trim();
+  const email = String(user?.email || "").trim();
+  const primaryIdentity = displayName || email || "Akun aktif";
+  const showEmail = Boolean(displayName && email && displayName !== email);
+
   return (
     <section className={styles.settingsMobileOverview} aria-label="Ringkasan dan navigasi pengaturan mobile">
       <section className={styles.settingsAccountCard} aria-label="Akun dan status sistem">
-        <span className={styles.settingsAccountAvatar} aria-hidden="true">{accountInitial(user)}</span>
-        <div className={styles.settingsAccountCopy}>
-          <strong>{user?.email || "Akun aktif"}</strong>
-          <span>{roleLabel(user?.role)} · {timezone}</span>
+        <div className={styles.settingsAccountIdentity}>
+          <UserAvatar user={user} className={styles.settingsAccountAvatar} />
+          <div className={styles.settingsAccountCopy}>
+            <strong>{primaryIdentity}</strong>
+            {showEmail ? <small>{email}</small> : null}
+            <span>{roleLabel(user?.role)} · {timezone}</span>
+          </div>
         </div>
-        <span className={`status-badge status-badge--${backend.tone}`} role="status" aria-live="polite">{backend.label}</span>
-        <p>{backend.summary}</p>
+        <div className={styles.settingsAccountStatus}>
+          <span className={`status-badge status-badge--${backend.tone}`} role="status" aria-live="polite">{backend.label}</span>
+          <p>{backend.summary}</p>
+        </div>
       </section>
 
       {MOBILE_SETTINGS_GROUPS.map((group) => {

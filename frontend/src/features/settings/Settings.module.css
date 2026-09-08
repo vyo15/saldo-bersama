@@ -349,76 +349,105 @@
   overflow: hidden;
   padding: var(--space-4);
   position: relative;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
   border-radius: var(--radius-lg);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
   gap: var(--space-3);
-  background: var(--surface);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--primary-soft) 34%, var(--surface) 66%), var(--surface) 58%),
+    var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
 .settingsAccountCard::after {
   content: "";
-  width: 9rem;
-  height: 9rem;
+  width: 10rem;
+  height: 10rem;
   position: absolute;
-  inset-block-start: -4.5rem;
-  inset-inline-end: -3.5rem;
+  inset-block-start: -6.4rem;
+  inset-inline-end: -4.2rem;
   border-radius: 50%;
-  background: var(--primary-soft);
-  opacity: .72;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
   pointer-events: none;
 }
 
-.settingsAccountAvatar {
-  width: 3rem;
-  height: 3rem;
+.settingsAccountIdentity {
+  min-width: 0;
   position: relative;
   z-index: 1;
-  border-radius: .9rem;
   display: grid;
-  place-items: center;
-  color: var(--on-primary);
-  background: var(--primary);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.settingsAccountAvatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 28%, var(--border)),
+    0 8px 18px color-mix(in srgb, var(--primary) 15%, transparent);
+  font-size: var(--font-size-sm);
 }
 
 .settingsAccountCopy {
   min-width: 0;
-  position: relative;
-  z-index: 1;
   display: grid;
-  gap: .18rem;
+  gap: .16rem;
 }
 
-.settingsAccountCopy strong {
+.settingsAccountCopy strong,
+.settingsAccountCopy small,
+.settingsAccountCopy span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--font-size-sm);
+}
+
+.settingsAccountCopy strong {
+  font-size: var(--font-size-body);
+  line-height: 1.25;
+  letter-spacing: -.01em;
+}
+
+.settingsAccountCopy small {
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
 }
 
 .settingsAccountCopy span {
   color: var(--text-muted);
   font-size: var(--font-size-xs);
+  line-height: 1.35;
 }
 
-.settingsAccountCard > :global(.status-badge) {
+.settingsAccountStatus {
+  min-width: 0;
   position: relative;
   z-index: 1;
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .55rem;
 }
 
-.settingsAccountCard > p {
+.settingsAccountStatus > :global(.status-badge) {
+  min-width: max-content;
+}
+
+.settingsAccountStatus > p {
   min-width: 0;
   margin: 0;
-  grid-column: 2 / -1;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.45;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .settingsGroup {
@@ -564,17 +593,18 @@
   }
 
   .settingsAccountCard {
-    padding: var(--space-3);
+    padding: .9rem;
     border-radius: var(--mobile-card-radius);
     box-shadow: none;
   }
 
-  .settingsAccountCard > :global(.status-badge) {
-    display: none;
+  .settingsAccountAvatar {
+    width: 3.35rem;
+    height: 3.35rem;
   }
 
-  .settingsAccountCard > p {
-    grid-column: 2;
+  .settingsAccountStatus > :global(.status-badge) {
+    display: inline-flex;
   }
 
   .settingsList {
@@ -596,12 +626,9 @@
 }
 
 @media (max-width: 24rem) {
-  .settingsAccountCard {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .settingsAccountCard > p {
-    grid-column: 1 / -1;
+  .settingsAccountStatus {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 
   .settingsListCopy small {

@@ -2,13 +2,14 @@ import { FiBell, FiCalendar, FiEdit3, FiMoreHorizontal, FiPlus } from "react-ico
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
-import { AdminIcon, PersonIcon, SharedIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { SharedIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import InlineOwnershipPicker from "../../components/common/InlineOwnershipPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import { categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
-import { userOptionLabel } from "../../shared/presentation/user.js";
+import { userRoleLabel } from "../../shared/presentation/user.js";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 
 const budgetOwnershipValue = (form) => form.scope === "personal" && form.owner_user_id ? `user:${form.owner_user_id}` : "shared";
@@ -65,8 +66,15 @@ const ExistingBudgetActions = ({ existingBudget, canLifecycle, onReminder, onLif
 };
 
 const budgetOwnershipOptions = (users) => [
-  { value: "shared", label: "Bersama", icon: SharedIcon, description: "Kebutuhan bersama" },
-  ...users.map((item) => ({ value: `user:${item.user_id}`, label: userOptionLabel(item), icon: item.role === "owner" ? AdminIcon : PersonIcon, description: "Kebutuhan personal" })),
+  { value: "shared", label: "Bersama", icon: SharedIcon, description: "Berlaku untuk semua anggota" },
+  ...users.map((item) => ({
+    value: `user:${item.user_id}`,
+    label: String(item.name || item.email || "Pengguna").trim(),
+    user: item,
+    badge: `${userRoleLabel(item.role)}${item.is_current ? " · saya" : ""}`,
+    badgeTone: item.role === "owner" ? "primary" : "neutral",
+    description: item.is_current ? "Berlaku untuk saya" : "Berlaku untuk anggota ini",
+  })),
 ];
 
 const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, saveBudget, form, setForm, categories, users, usersStatus, selectCategory, selectOwnership, lockedEnvelope, canLifecycle, onLifecycle, onReminder }) => {
@@ -79,7 +87,7 @@ const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, 
     <form id="budget-form" className="form-grid" onSubmit={saveBudget}>
       <BudgetModalNotices pendingSchedule={pendingSchedule} lockedEnvelope={lockedEnvelope} linksLegacyBudget={linksLegacyBudget} />
       <SelectionField label="Kategori" required value={form.category_id} onChange={selectCategory} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />
-      {!lockedEnvelope ? <VisualChoiceGroup className="form-grid__full" legend="Berlaku untuk" name="budget-ownership" value={budgetOwnershipValue(form)} onChange={selectOwnership} options={ownershipOptions} columns={Math.min(ownershipOptions.length, 3)} compact wrapLabels disabled={usersStatus === "loading"} helper="Hubungkan Kebutuhan ke Alokasi Dana agar sumber pemakaiannya jelas." /> : null}
+      {!lockedEnvelope ? <InlineOwnershipPicker className="form-grid__full" legend="Berlaku untuk" required value={budgetOwnershipValue(form)} onChange={selectOwnership} options={ownershipOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : ""} /> : null}
       <MoneyInput id="budget-amount" label="Nominal kebutuhan" value={form.amount} onChange={(value) => setForm((current) => ({ ...current, amount: value }))} required />
       {!existingBudget ? <VisualChoiceGroup className="form-grid__full" legend="Cara mencatat kebutuhan" name="budget-recording-mode" value={form.recording_mode || "flexible"} onChange={(recording_mode) => setForm((current) => ({ ...current, recording_mode }))} options={RECORDING_MODE_OPTIONS} columns={2} mobileColumns={2} descriptive wrapLabels helperPanel helper="Pilihan ini hanya menentukan langkah berikutnya. Nominal Kebutuhan dan saldo tidak berubah saat Kebutuhan disimpan." /> : null}
       {showSchedule ? <BudgetScheduleFields form={form} setForm={setForm} /> : null}

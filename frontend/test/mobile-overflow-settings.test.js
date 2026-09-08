@@ -126,10 +126,16 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(overview, /DesktopSettingsOverview/);
   assert.match(overview, /MobileSettingsOverview/);
   assert.match(overview, /MOBILE_SETTINGS_GROUPS/);
+  assert.match(overview, /import UserAvatar from "\.\.\/\.\.\/components\/common\/UserAvatar\.jsx"/);
+  assert.match(overview, /<UserAvatar user=\{user\} className=\{styles\.settingsAccountAvatar\} \/>/);
+  assert.match(overview, /settingsAccountStatus/);
+  assert.doesNotMatch(overview, /accountInitial/);
   assert.doesNotMatch(overview, /users\.list|audit\.list|archive\.list|periods\.list|integrations\.status/);
   assert.match(settingsStyles, /\.settingsWorkspace\s*\{[\s\S]*grid-template-columns:\s*minmax\(11\.5rem, 13rem\) minmax\(12\.5rem, 14\.5rem\) minmax\(0, 1fr\);/);
   assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsDesktopCategories,[\s\S]*\.settingsDesktopOverview\s*\{[\s\S]*display:\s*none;/);
   assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsMobileOverview\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(settingsStyles, /\.settingsAccountAvatar\s*\{[\s\S]*border-color:[\s\S]*box-shadow:/);
+  assert.match(settingsStyles, /\.settingsAccountStatus\s*\{[\s\S]*border-top:[\s\S]*grid-template-columns:/);
   assert.match(notifications, /type="checkbox" role="switch"/);
   assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]\s*\{[\s\S]*appearance:\s*none;[\s\S]*border-radius:\s*var\(--radius-pill\);/);
   assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]:checked\s*\{[\s\S]*background:\s*var\(--primary\);/);

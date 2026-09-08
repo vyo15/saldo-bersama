@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { FiArrowLeft, FiArrowRight, FiChevronDown, FiList, FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
-import { AdminIcon, BiweeklyIcon, CarryForwardIcon, CustomPeriodIcon, DailyIcon, MonthlyIcon, PaycycleIcon, PersonIcon, ReturnRemainderIcon, SharedIcon, WeeklyIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { BiweeklyIcon, CarryForwardIcon, CustomPeriodIcon, DailyIcon, MonthlyIcon, PaycycleIcon, ReturnRemainderIcon, SharedIcon, WeeklyIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import InlineOwnershipPicker from "../../components/common/InlineOwnershipPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import { accountOptionVisual, allocationOptionVisual } from "../../components/common/selectionOptionVisuals.js";
@@ -13,7 +14,7 @@ import { allocationEstimateTotal, createInitialAllocationEstimate } from "./allo
 import { allocationAssigneeLabel } from "./allocationPresentation.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
-import { userOptionLabel } from "../../shared/presentation/user.js";
+import { userRoleLabel } from "../../shared/presentation/user.js";
 import { allocationClass } from "./allocationStyles.js";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
@@ -29,8 +30,6 @@ const envelopeAssigneeOptions = (form, accounts, users) => {
   return { options: fallback.user_id ? [fallback] : [], locked: true };
 };
 
-const assigneeOptionLabel = (item) => item.option_label || userOptionLabel(item);
-
 const periodOptions = [
   { value: "daily", label: "Harian", icon: DailyIcon },
   { value: "weekly", label: "Mingguan", icon: WeeklyIcon },
@@ -45,13 +44,24 @@ const rolloverOptions = [
   { value: "carry", label: "Tetap di alokasi berikutnya", icon: CarryForwardIcon, description: "Sisa dibawa ke periode berikutnya" },
 ];
 
+const assigneeDisplayName = (item) => String(item?.name || item?.email || "Pengguna").trim();
+
 const buildAssigneeOptions = (assigneeState) => [
-  ...(!assigneeState.locked ? [{ value: "", label: "Bersama", icon: SharedIcon, description: "Dana bersama" }] : []),
+  ...(!assigneeState.locked ? [{
+    value: "",
+    label: "Bersama",
+    icon: SharedIcon,
+    description: "Digunakan oleh semua anggota",
+  }] : []),
   ...assigneeState.options.map((item) => ({
     value: item.user_id,
-    label: assigneeOptionLabel(item),
-    icon: item.role === "owner" ? AdminIcon : PersonIcon,
-    description: item.role === "owner" ? "Administrator" : "Member",
+    label: assigneeDisplayName(item),
+    user: item,
+    badge: item.role ? `${userRoleLabel(item.role)}${item.is_current ? " · saya" : ""}` : "",
+    badgeTone: item.role === "owner" ? "primary" : "neutral",
+    description: assigneeState.locked
+      ? "Mengikuti pemilik rekening sumber"
+      : item.is_current ? "Digunakan oleh saya" : "Digunakan oleh anggota ini",
   })),
 ];
 
@@ -108,25 +118,17 @@ const CreateEnvelopeForm = ({
         ...accountOptionVisual(account),
       }))}
     />
-    {assigneeState.locked && assigneeOptions[0]
-      ? <div className={allocationClass("allocation-assignee-summary form-grid__full")}>
-        <span className={allocationClass("allocation-assignee-summary__icon")}><PersonIcon aria-hidden="true" /></span>
-        <span><small>Digunakan oleh</small><strong>{assigneeOptions[0].label}</strong></span>
-      </div>
-      : <VisualChoiceGroup
-        className="form-grid__full"
-        legend="Digunakan oleh"
-        name="allocation-assignee"
-        value={createForm.assignee_user_id}
-        onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))}
-        options={assigneeOptions}
-        columns={Math.min(assigneeOptions.length, 3)}
-        mobileColumns={Math.min(assigneeOptions.length, 2)}
-        compact
-        plainIcons
-        disabled={usersStatus === "loading"}
-        helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : ""}
-      />}
+    <InlineOwnershipPicker
+      className="form-grid__full"
+      legend="Digunakan oleh"
+      required
+      value={createForm.assignee_user_id}
+      onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))}
+      options={assigneeOptions}
+      locked={assigneeState.locked}
+      disabled={usersStatus === "loading"}
+      helper={assigneeState.locked ? "Pemilik mengikuti rekening sumber dan tidak dapat diubah." : usersStatus === "loading" ? "Memuat pengguna aktif..." : ""}
+    />
     <details className={allocationClass("allocation-advanced form-grid__full")}>
       <summary><span><strong>Periode dan sisa</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
       <div className={allocationClass("allocation-advanced__content")}>

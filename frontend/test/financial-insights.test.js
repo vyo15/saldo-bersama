@@ -50,7 +50,8 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(budgets, /requestArchiveBudget/);
   assert.match(budgets, /Berlaku untuk/);
   assert.match(budgets, /scope: "personal"/);
-  assert.match(budgets, /userOptionLabel/);
+  assert.match(budgets, /InlineOwnershipPicker/);
+  assert.match(budgets, /userRoleLabel/);
   assert.match(budgets, /envelope_rule_id/);
   assert.match(desktop, /overview\.alerts/);
   assert.doesNotMatch(desktop, /shared-alert-count-button/);
@@ -213,8 +214,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /bootstrap\?\.user \|\| user/);
   assert.match(allocations, /hasSameAssignee/);
   assert.match(allocations, /label="Ambil dana dari"/);
-  assert.match(allocations, /legend="Digunakan oleh"/);
-  assert.match(allocations, /compact[\s\S]{0,120}plainIcons/);
+  assert.match(allocations, /<InlineOwnershipPicker[\s\S]{0,220}legend="Digunakan oleh"/);
+  assert.match(allocations, /description: "Digunakan oleh semua anggota"/);
   assert.match(allocations, /Tersedia setelah dialokasikan/);
   assert.match(allocations, /filteredActiveItems = useMemo/);
   assert.match(allocations, /allocationFilter === "shared"/);

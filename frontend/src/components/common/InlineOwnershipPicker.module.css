@@ -1,0 +1,226 @@
+.group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group > legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.shell {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+  transition: border-color var(--motion-fast) var(--motion-easing), box-shadow var(--motion-fast) var(--motion-easing);
+}
+
+.shell.expanded {
+  border-color: color-mix(in srgb, var(--primary) 68%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent), var(--shadow-control);
+}
+
+.shell.locked {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 54%, var(--surface));
+}
+
+.selected,
+.option {
+  width: 100%;
+  min-width: 0;
+  min-height: 62px;
+  padding: 9px 11px;
+  border: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  color: var(--text);
+  text-align: start;
+  background: transparent;
+}
+
+button.selected,
+.option {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button.selected {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary-soft) 70%, transparent), transparent 82%);
+}
+
+button.selected:focus-visible,
+.option:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.avatar > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.userAvatar {
+  overflow: visible;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.userAvatar :global(.user-avatar) {
+  width: 42px;
+  height: 42px;
+  box-shadow: none;
+}
+
+.copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.titleRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+.titleRow strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.copy small {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--surface-soft);
+}
+
+.badgePrimary {
+  color: var(--primary-strong);
+  background: color-mix(in srgb, var(--primary-soft) 82%, var(--surface));
+}
+
+.chevron {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--text-muted);
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.list {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion-fast) var(--motion-easing);
+}
+
+.listOpen {
+  grid-template-rows: 1fr;
+}
+
+.listInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.option {
+  border-top: 1px solid var(--border);
+}
+
+.option:active {
+  background: var(--primary-soft);
+}
+
+.radio {
+  width: 24px;
+  height: 24px;
+  border: 2px solid color-mix(in srgb, var(--text-muted) 70%, var(--border));
+  border-radius: 50%;
+}
+
+.helper {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.selected:hover,
+  .option:hover {
+    background: color-mix(in srgb, var(--primary-soft) 52%, var(--surface));
+  }
+}
+
+@media (max-width: 520px) {
+  .selected,
+  .option {
+    min-height: 60px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 9px 10px;
+  }
+
+  .avatar,
+  .userAvatar :global(.user-avatar) {
+    width: 40px;
+    height: 40px;
+  }
+
+  .badge {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell,
+  .chevron,
+  .list {
+    transition: none;
+  }
+}

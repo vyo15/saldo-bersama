@@ -1,3 +1,15 @@
+## 8 September 2026 - Inline ownership picker mobile
+
+- Merapikan pilihan identitas pada **Buat Alokasi**: field `Digunakan oleh` sekarang hanya menampilkan pilihan aktif ketika tertutup, lalu daftar pengguna berkembang **inline ke bawah pada modal yang sama** saat ditekan. Pemilihan user otomatis menutup daftar kembali agar form tetap ringkas tanpa nested sheet/modal.
+- Menggunakan foto profil `UserAvatar` canonical, badge role, copy `saya/member`, target sentuh mobile 44px+, focus-visible, reduced-motion, dan layout nama panjang yang wrap aman. Rekening personal tetap mengunci pemilik mengikuti rekening sumber.
+- Menerapkan primitive ownership yang sama pada `Berlaku untuk` di form Kebutuhan agar pilihan user tidak kembali menjadi grid card yang mudah berantakan pada layar sempit. Business contract `scope/owner_user_id/assignee_user_id`, authorization, ledger, dan API tidak berubah.
+
+## 8 September 2026 - Mobile Settings profile card refinement
+
+- Mengganti avatar inisial manual pada landing Pengaturan mobile dengan komponen `UserAvatar` canonical sehingga foto profil Google (`photoURL`/alias kompatibel) tampil otomatis dan tetap fallback ke inisial bila foto tidak tersedia/gagal dimuat.
+- Merapikan kartu akun mobile menjadi profile card: identitas utama, email sekunder bila nama tersedia, role + zona waktu, serta status backend dipisahkan ke baris status tersendiri agar hierarchy lebih jelas tanpa menambah menu atau business logic baru.
+- Menjaga grouped-list Umum/Data/Sistem, route, authorization, dan behavior desktop tetap sama; perubahan hanya presentation mobile + regression/documentation.
+
 ## 8 September 2026 - UI duplicate-function cleanup
 
 - Menjadikan **satu fungsi = satu pintu utama** pada mobile: quick action Rekening hanya `Riwayat / Transfer` karena tap kartu aktif sudah membuka detail, summary tidak lagi mengulang nominal utama `Dana tersedia`/`Saldo RDN`, dan Dashboard tidak lagi mengulang Alokasi Dana/Jadwal Rutin yang sudah memiliki section sendiri.
