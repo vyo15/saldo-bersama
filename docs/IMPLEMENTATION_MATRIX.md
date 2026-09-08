@@ -58,4 +58,4 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 
 | Area | Status source | Bukti utama | Verification |
 |---|---|---|---|
-| Reset data testing & full reset | Implemented | Trial Reset backend fail-closed hanya pada database Development terikat; preset aktivitas, optional saldo Rp0 + row_version, full data reset guarded, verified safety backup, reconciliation status, integrity/audit | Restore drill nyata setelah full reset pada salinan terisolasi |
+| Reset data testing & full reset | Implemented | Trial Reset Administrator-only pada database Development/Production terikat; unbound tetap fail-closed; preset aktivitas, optional saldo Rp0 + row_version, full data reset guarded, verified safety backup, reconciliation status, integrity/audit | Restore drill nyata setelah full reset pada salinan terisolasi |

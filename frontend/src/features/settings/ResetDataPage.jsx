@@ -240,11 +240,13 @@ const previewHasResettableData = (preview) => {
   return Number(preview.balanceReset?.accountsAffected || 0) > 0;
 };
 
+const RESET_ALLOWED_DATABASE_ENVIRONMENTS = new Set(["development", "production"]);
+
 const resetEnvironmentPresentation = (resource) => {
   const failed = resource.status === "error" || Boolean(resource.refreshError);
   if (failed) {
     return {
-      development: false,
+      allowed: false,
       failed: true,
       tone: "danger",
       title: "Lingkungan database belum dapat diverifikasi",
@@ -253,23 +255,24 @@ const resetEnvironmentPresentation = (resource) => {
   }
   if (resource.status !== "ready") {
     return {
-      development: false,
+      allowed: false,
       failed: false,
       tone: "info",
       title: "Memeriksa lingkungan database",
-      text: "Server sedang memastikan bahwa reset testing tidak pernah dijalankan pada database selain Development.",
+      text: "Server sedang memastikan database terikat sebagai Development atau Production sebelum reset diaktifkan.",
     };
   }
-  if (resource.data?.databaseEnvironment !== "development") {
+  const databaseEnvironment = String(resource.data?.databaseEnvironment || "unbound").trim().toLowerCase();
+  if (!RESET_ALLOWED_DATABASE_ENVIRONMENTS.has(databaseEnvironment)) {
     return {
-      development: false,
+      allowed: false,
       failed: false,
       tone: "warning",
-      title: "Reset data testing hanya tersedia pada database Development",
-      text: "Database ini bukan Development. Tidak ada operasi reset testing yang dapat dijalankan dari halaman ini.",
+      title: "Reset data membutuhkan database yang sudah terikat",
+      text: "Database harus terikat sebagai Development atau Production. Environment unbound/asing tetap diblokir.",
     };
   }
-  return { development: true, failed: false, tone: "active", title: "", text: "" };
+  return { allowed: true, failed: false, tone: "active", title: "", text: "", databaseEnvironment };
 };
 
 const ResetEnvironmentNotice = ({ environment, resource }) => (
@@ -277,7 +280,7 @@ const ResetEnvironmentNotice = ({ environment, resource }) => (
     <section className={styles.pageContent} aria-labelledby="reset-data-title">
       <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}>
         <h2 id="reset-data-title">Reset data testing</h2>
-        <p>Pembersihan trial hanya boleh dijalankan pada database Development yang sudah terikat.</p>
+        <p>Pembersihan hanya tersedia untuk Administrator pada database Development atau Production yang sudah terikat.</p>
       </div>
       <div className={`notice notice--${environment.tone}`} role={environment.failed ? "alert" : "status"}>
         <span><strong>{environment.title}.</strong> {environment.text}</span>
@@ -295,9 +298,9 @@ const ResetDataPage = () => {
   const [recoveryToken, setRecoveryToken] = useState(() => readMaintenanceRecoveryToken(RESET_RECOVERY_STORAGE_KEY));
   const environmentResource = useApiResource("system.health", {}, { enabled: ownerMode });
   const environment = resetEnvironmentPresentation(environmentResource);
-  const developmentDatabase = environment.development;
-  const integrationsResource = useApiResource("integrations.status", {}, { enabled: ownerMode && developmentDatabase });
-  const resetStatusResource = useApiResource("reset.status", recoveryToken ? { idempotencyKey: recoveryToken.idempotencyKey } : {}, { enabled: ownerMode && developmentDatabase });
+  const resetEnvironmentAllowed = environment.allowed;
+  const integrationsResource = useApiResource("integrations.status", {}, { enabled: ownerMode && resetEnvironmentAllowed });
+  const resetStatusResource = useApiResource("reset.status", recoveryToken ? { idempotencyKey: recoveryToken.idempotencyKey } : {}, { enabled: ownerMode && resetEnvironmentAllowed });
   const recovery = useResetRecovery({ setRecoveryToken, integrationsResource, resetStatusResource, invalidate, refreshAll });
   const previewState = useResetPreview({ recoveryToken, resetScope, resetStatusResource, integrationsResource, refreshAfterCommittedReset: recovery.refreshAfterCommittedReset, setResult: recovery.setResult });
   const apply = useResetApply({ preview: previewState.preview, setPreview: previewState.setPreview, resetStatusResource, integrationsResource, clearRecovery: recovery.clearRecovery, setRecoveryToken, invalidate, refreshAll, handleCheckedStatus: recovery.handleCheckedStatus, setResult: recovery.setResult });
@@ -306,7 +309,7 @@ const ResetDataPage = () => {
   const resetState = resetStatusState(resetStatusResource);
   const canOpenReset = previewHasResettableData(previewState.preview) && drive.ready && !previewState.previewBusy && !resetState.blocked;
 
-  if (!developmentDatabase) return <ResetEnvironmentNotice environment={environment} resource={environmentResource} />;
+  if (!resetEnvironmentAllowed) return <ResetEnvironmentNotice environment={environment} resource={environmentResource} />;
 
   return (
     <OwnerSettingsGuard>
@@ -316,7 +319,7 @@ const ResetDataPage = () => {
         <ResetRecoveryPanel status={resetState.status} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
         <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetState.status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
         <ResetStatusFailure resource={resetStatusResource} status={resetState.status} onCheck={recovery.checkResetStatus} />
-        <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode sebelum data nyata.</strong> Gunakan hanya ketika seluruh data keuangan masih berupa data testing. Setelah transaksi nyata digunakan, jangan gunakan pembersihan massal.</span></div>
+        <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode awal/testing.</strong> Administrator dapat memakai reset pada Development maupun Production yang terikat selama data masih dalam fase setup/trial. Setelah transaksi nyata digunakan, jangan gunakan pembersihan massal.</span></div>
         <ResetScopeSelector resetScope={resetScope} activityScope={RESET_SCOPE_ACTIVITY} activityAndBalancesScope={RESET_SCOPE_ACTIVITY_AND_BALANCES} setResetScope={setResetScope} setPreview={previewState.setPreview} setResult={recovery.setResult} />
         <ResetStepCards previewState={previewState} statusBlocksReset={resetState.blocked} integrationsResource={integrationsResource} driveReadiness={drive.readiness} driveReady={drive.ready} canOpenReset={canOpenReset} apply={apply} />
         <ResetConfirmationModal preview={previewState.preview} resetBalances={previewState.preview?.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES} acknowledgementItems={previewState.preview?.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? RESET_BALANCE_ACKNOWLEDGEMENTS : RESET_ACKNOWLEDGEMENTS} open={apply.confirmationOpen} busy={apply.applyBusy} error={apply.applyError} onCancel={() => { if (!apply.applyBusy) { apply.setConfirmationOpen(false); apply.setApplyError(null); } }} onConfirm={apply.applyReset} />

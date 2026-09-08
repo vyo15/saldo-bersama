@@ -42,8 +42,9 @@ test("reset testing tidak bergantung pada mode build frontend", async () => {
   assert.equal(layout.includes("developmentOnly"), false);
   assert.equal(layout.includes("import.meta.env.MODE"), false);
   assert.equal(trialPage.includes('useApiResource("system.health"'), true);
-  assert.equal(trialPage.includes('databaseEnvironment !== "development"'), true);
-  assert.equal(trialPage.includes("Reset data testing hanya tersedia pada database Development"), true);
+  assert.equal(trialPage.includes('new Set(["development", "production"])'), true);
+  assert.equal(trialPage.includes('databaseEnvironment || "unbound"'), true);
+  assert.equal(trialPage.includes("Development atau Production"), true);
 });
 
 test("reset membuang cache domain yang terdampak", async () => {

@@ -73,7 +73,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] `npm run test` PASS.
 - [ ] `npm run build` PASS dan build-budget internal pada `npm run verify` PASS.
 - [ ] Guarded/data/security regression tercakup oleh frontend/backend suite pada `npm run verify`; targeted domain test tambahan dijalankan bila scope memerlukannya.
-- [ ] Trial Reset preview/apply ditolak pada database `production`/`unbound` sebelum side effect; `reset.status` tetap readable untuk recovery.
+- [ ] Trial Reset preview/apply tersedia untuk setiap Administrator pada database terikat `development`/`production`, tetapi `unbound`/marker asing ditolak sebelum side effect; `reset.status` tetap readable untuk recovery.
 - [ ] Untuk frontend/user-flow change, rendered browser smoke pada `npm run verify` PASS dan manual device QA tambahan dicatat untuk authenticated/real-device behavior yang tidak dapat direproduksi secara aman oleh anonymous smoke.
 - [ ] Final `npm run verify` PASS pada tree yang sama dengan patch yang akan dikirim.
 

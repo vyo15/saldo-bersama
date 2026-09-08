@@ -15,6 +15,7 @@ const owner = {
   name: "Reset Owner", role: "owner", status: "active", row_version: 1,
 };
 const member = { ...owner, user_id: "reset-member", firebase_uid: "firebase-reset-member", email: "reset-member@example.com", role: "member" };
+const secondAdministrator = { ...owner, user_id: "reset-owner-2", firebase_uid: "firebase-reset-owner-2", email: "reset-owner-2@example.com", name: "Reset Owner 2" };
 
 const context = (actor, action, payload = {}) => ({
   actor,
@@ -65,34 +66,40 @@ const withBridgeStub = async (fn) => {
   }
 };
 
-test("reset preview/apply fail closed di luar database Development sementara status tetap dapat dibaca", async () => {
+test("reset preview/apply tersedia pada Production terikat untuk setiap Administrator dan tetap fail closed pada environment unbound", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
-    await db.execute("UPDATE system_config SET value='production' WHERE key='database_environment'");
-    await assert.rejects(
-      () => previewTrialDataReset(db, context(owner, "reset.preview")),
-      (error) => error.code === "TRIAL_RESET_DEVELOPMENT_ONLY",
+    const now = nowIso();
+    await db.execute(
+      "INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+      [secondAdministrator.user_id, secondAdministrator.firebase_uid, secondAdministrator.email, secondAdministrator.name, secondAdministrator.role, secondAdministrator.status, 1, now, now],
     );
-    await assert.rejects(
-      () => applyTrialDataReset(db, context(owner, "reset.apply", {
-        previewFingerprint: "must-not-be-read",
+    await db.execute("UPDATE system_config SET value='production' WHERE key='database_environment'");
+
+    const preview = await previewTrialDataReset(db, context(secondAdministrator, "reset.preview"));
+    assert.equal(preview.summary.transactions, 1, "Administrator kedua harus dapat preview reset pada Production yang terikat.");
+
+    await withBridgeStub(async () => {
+      const result = await applyTrialDataReset(db, context(secondAdministrator, "reset.apply", {
+        previewFingerprint: preview.previewFingerprint,
+        resetScope: preview.resetScope,
         confirmation: TRIAL_RESET_CONFIRMATION,
         acknowledged: true,
-        reason: "Tidak boleh menyentuh production",
-      })),
-      (error) => error.code === "TRIAL_RESET_DEVELOPMENT_ONLY",
-    );
-    assert.equal((await db.one("SELECT COUNT(*) AS count FROM backup_runs")).count, 0, "Guard environment harus berjalan sebelum safety backup.");
-    assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 1, "Guard environment tidak boleh mengubah data bisnis.");
-    const status = await readTrialDataResetStatus(db, context(owner, "reset.status"));
-    assert.equal(status.currentSummary.transactions, 1, "Status tetap tersedia untuk recovery/outcome reconciliation.");
+        reason: "Bersihkan data trial Production",
+      }));
+      assert.equal(result.reset, true);
+    });
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM transactions")).count, 0, "Reset Production oleh Administrator harus membersihkan scope trial.");
+    const audit = await db.one("SELECT actor_id FROM audit_log WHERE action='reset.apply' AND result='success' ORDER BY timestamp DESC LIMIT 1");
+    assert.equal(audit.actor_id, secondAdministrator.user_id, "Audit harus mencatat Administrator yang benar-benar menjalankan reset.");
 
     await db.execute("UPDATE system_config SET value='unbound' WHERE key='database_environment'");
     await assert.rejects(
       () => previewTrialDataReset(db, context(owner, "reset.preview")),
-      (error) => error.code === "TRIAL_RESET_DEVELOPMENT_ONLY",
+      (error) => error.code === "TRIAL_RESET_BOUND_ENVIRONMENT_REQUIRED",
     );
+    assert.equal((await db.one("SELECT COUNT(*) AS count FROM backup_runs")).count, 1, "Environment unbound harus ditolak sebelum membuat safety backup baru.");
   } finally {
     db.close();
   }

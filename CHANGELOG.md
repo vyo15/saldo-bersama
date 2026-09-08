@@ -1,3 +1,9 @@
+## 8 September 2026 - Production trial reset untuk seluruh Administrator
+
+- Mengizinkan `reset.preview` dan `reset.apply` pada database canonical yang terikat `development` **atau** `production`, sehingga flow **Reset Testing** dapat dipakai seluruh Administrator aktif pada fase awal termasuk setelah membuka Vercel Production melalui `npm run prod`. Environment `unbound`/asing tetap fail-closed.
+- Tidak membuka akses untuk Member dan tidak melemahkan destructive guard: preview fingerprint, typed confirmation, acknowledgement, verified Google Drive safety backup, maintenance lock, integrity check, idempotency recovery/status, audit actor, dan rebuild integrasi tetap wajib.
+- Menambah regression bahwa Administrator kedua dapat preview/apply di Production dan audit mencatat actor yang benar, serta menyelaraskan API contract, authorization matrix, policy penghapusan, runbook, QA/test plan, project status, implementation matrix, dan ADR environment.
+
 ## 8 September 2026 - Mobile Investasi dan Alokasi Dana simplification
 
 - Menyederhanakan Investasi mobile menjadi flow operasional lot-only untuk Saham: CTA utama Beli/Jual, Saldo RDN terpisah dengan Isi/Tarik RDN, pre-check kekurangan RDN sebelum pembelian, fee disembunyikan dari UI dan tetap disimpan `0` untuk kompatibilitas, accordion rincian dihapus, serta odd-lot legacy tetap terbaca akurat melalui pecahan lot pada flow administratif.

@@ -39,16 +39,19 @@ export { TRIAL_RESET_CONFIRMATION, TRIAL_RESET_SCOPE_ACTIVITY, TRIAL_RESET_SCOPE
 
 const TRIAL_RESET_ENVIRONMENT_STATEMENT = { sql: "SELECT value FROM system_config WHERE key='database_environment'" };
 
-const assertTrialResetDevelopmentValue = (row) => {
+const TRIAL_RESET_ALLOWED_DATABASE_ENVIRONMENTS = new Set(["development", "production"]);
+
+const assertTrialResetBoundEnvironmentValue = (row) => {
   const environment = String(row?.value || "unbound").trim().toLowerCase();
-  if (environment !== "development") {
-    throw appError("TRIAL_RESET_DEVELOPMENT_ONLY", "Reset data testing hanya tersedia pada database Development yang sudah terikat.", 403);
+  if (!TRIAL_RESET_ALLOWED_DATABASE_ENVIRONMENTS.has(environment)) {
+    throw appError("TRIAL_RESET_BOUND_ENVIRONMENT_REQUIRED", "Reset data testing hanya tersedia pada database Development atau Production yang sudah terikat.", 403);
   }
+  return environment;
 };
 
-const assertTrialResetDevelopmentDatabase = async (db) => {
+const assertTrialResetBoundDatabase = async (db) => {
   const row = await db.one(TRIAL_RESET_ENVIRONMENT_STATEMENT.sql);
-  assertTrialResetDevelopmentValue(row);
+  return assertTrialResetBoundEnvironmentValue(row);
 };
 
 // Canonical confirmation phrase: "BERSIHKAN DATA TESTING" (defined in resetModel.js).
@@ -65,7 +68,7 @@ export const previewTrialDataReset = async (db, context) => {
     ...(withBalances ? [accountBalanceResetStatement(context.today)] : []),
   ];
   const [environmentRows, ...resultRows] = await readBatchRows(db, [TRIAL_RESET_ENVIRONMENT_STATEMENT, ...statements]);
-  assertTrialResetDevelopmentValue(environmentRows?.[0]);
+  assertTrialResetBoundEnvironmentValue(environmentRows?.[0]);
   const stateRows = resultRows.slice(0, RESET_STATE_STATEMENTS.length);
   const preservedStart = RESET_STATE_STATEMENTS.length;
   const preservedEnd = preservedStart + PRESERVED_COUNT_STATEMENTS.length;
@@ -216,7 +219,7 @@ export const readTrialDataResetStatus = async (db, context) => {
 
 export const applyTrialDataReset = async (db, context) => {
   assertOwner(context.actor);
-  await assertTrialResetDevelopmentDatabase(db);
+  await assertTrialResetBoundDatabase(db);
   const { reason, previewFingerprint, resetScope } = assertResetRequest(context);
   const preBackupState = await assertPreviewUnchanged(db, previewFingerprint, resetScope, context.today);
   const summary = resetSummary(preBackupState.counts);
