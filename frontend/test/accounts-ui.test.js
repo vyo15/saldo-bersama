@@ -630,7 +630,7 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(page, /ReconciliationResultOverlay/);
   assert.match(page, /status: "syncing"/);
   assert.match(page, /status: "completed"/);
-  assert.match(page, /finishReconciliation = \(\) => navigate\("\/"\)/);
+  assert.match(page, /finishReconciliation = \(\) => navigate\(attentionFromNotification \? "\/notifikasi" : "\/"\)/);
   assert.match(page, /reviewReconciliationTransactions/);
   assert.match(page, /onReviewTransactions/);
   assert.match(page, /refreshOutcomes = await Promise\.allSettled/);
@@ -640,9 +640,9 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(page, /Ya, saldonya sama/);
   assert.match(page, /Tidak, berbeda/);
   assert.match(page, /Saldo tercatat di aplikasi/);
-  assert.match(page, /Saldo sebenarnya di bank/);
+  assert.match(page, /Saldo aktual di bank/);
   assert.match(page, /Pastikan catatan aplikasi sama dengan saldo yang benar-benar Anda lihat\./);
-  assert.match(page, /Rekening dari pengingat sudah dipilih/);
+  assert.match(page, /Dipilih otomatis/);
   assert.match(page, /styles\.differencePreview/);
   assert.match(page, /styles\.mobileHistoryDifference/);
   assert.match(pageStyles, /\.systemBalanceCard\s*\{/);

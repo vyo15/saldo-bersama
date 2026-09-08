@@ -28,16 +28,26 @@ test("shell desktop memberi notification entry point dan account menu aksesibel"
   assert.match(shell, /accountMenuTriggerRef\.current\?\.focus\(\)/);
 });
 
-test("dashboard desktop memprioritaskan financial pulse dan attention sebelum workspace detail", async () => {
-  const dashboard = await read("src/features/dashboard/components/DesktopFinanceDashboard.jsx");
+test("dashboard desktop memprioritaskan saldo, attention, aktivitas, lalu perencanaan tanpa menyentuh curved sidebar", async () => {
+  const [dashboard, styles] = await Promise.all([
+    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    read("src/features/dashboard/DashboardPage.module.css"),
+  ]);
   const header = dashboard.indexOf("<DashboardHeader");
   const metrics = dashboard.indexOf("<PrimaryMetrics");
   const attention = dashboard.indexOf("<DashboardAttention");
+  const accounts = dashboard.indexOf("<AccountSelector");
   const workspace = dashboard.indexOf('shared-dashboard__layout');
-  assert.ok(header >= 0 && metrics > header && attention > metrics && workspace > attention);
-  for (const label of ["Saldo rekening", "Aman digunakan", "Arus kas bersih", "Sisa anggaran"]) assert.match(dashboard, new RegExp(label));
+  const planning = dashboard.indexOf("<DashboardPlanning");
+  assert.ok(header >= 0 && metrics > header && attention > metrics && accounts > attention && workspace > accounts && planning > workspace);
+  for (const label of ["Saldo rekening", "Aman digunakan", "Batas aman per hari", "Arus kas bersih", "Sisa anggaran", "Transaksi terbaru", "Perencanaan keuangan"]) assert.match(dashboard, new RegExp(label));
+  assert.match(dashboard, /shared-investment-widget/);
   assert.match(dashboard, /Kondisi keuangan terkendali/);
   assert.match(dashboard, /Tinjau sekarang/);
+  assert.doesNotMatch(dashboard, /const InsightWidget/);
+  assert.match(styles, /\.desktop-overview-grid \{/);
+  assert.match(styles, /\.shared-dashboard-widgets \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(styles, /desktop-module-dock/, "Dashboard module tidak boleh mengubah sidebar/dock shell canonical.");
 });
 
 test("notification center dan settings mempunyai presentation desktop khusus", async () => {

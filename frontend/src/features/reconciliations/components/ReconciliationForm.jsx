@@ -36,6 +36,27 @@ const AccountPicker = ({ accounts, selectedAccount, disabled, onSelect }) => (
   />
 );
 
+const balanceCopy = (account = {}) => {
+  if (account.account_type === "bank") return { question: "Apakah saldo yang Anda lihat di bank juga", input: "Saldo aktual di bank", hint: "Lihat saldo terbaru di bank, lalu pilih sesuai kondisi sebenarnya.", metric: "Saldo di bank" };
+  if (account.account_type === "ewallet") return { question: "Apakah saldo yang Anda lihat di e-wallet juga", input: "Saldo aktual di e-wallet", hint: "Lihat saldo terbaru di aplikasi e-wallet, lalu pilih sesuai kondisi sebenarnya.", metric: "Saldo e-wallet" };
+  if (account.account_type === "cash") return { question: "Apakah uang tunai yang Anda pegang juga", input: "Jumlah uang tunai aktual", hint: "Hitung uang tunai yang Anda pegang, lalu pilih sesuai kondisi sebenarnya.", metric: "Tunai aktual" };
+  if (account.account_type === "investment") return { question: "Apakah Cash RDN yang Anda lihat juga", input: "Cash RDN aktual", hint: "Untuk portfolio aktif gunakan Cocokkan Investasi agar Cash RDN dan holding diverifikasi bersama.", metric: "Cash RDN aktual" };
+  return { question: "Apakah saldo aktual juga", input: "Saldo aktual", hint: "Periksa saldo terbaru pada sumber aslinya, lalu pilih sesuai kondisi sebenarnya.", metric: "Saldo aktual" };
+};
+
+const ContextAccount = ({ account }) => {
+  if (!account) return null;
+  const visual = accountOptionVisual(account);
+  const Icon = visual.icon || AccountIcon;
+  return (
+    <div className={styles.contextAccount} aria-label={`Rekening terpilih ${accountDisplayLabel(account)}`}>
+      <span className={styles.contextAccountVisual}>{visual.image ? <img src={visual.image} alt="" width="38" height="38" decoding="async" /> : <Icon aria-hidden="true" />}</span>
+      <span className={styles.contextAccountCopy}><strong>{accountDisplayLabel(account)}</strong><small>Dipilih otomatis</small></span>
+      <span className={styles.contextAccountState}>Terpilih</span>
+    </div>
+  );
+};
+
 const SystemBalance = ({ selectedAccount, accountSystemBalance }) => {
   if (!selectedAccount) return null;
   return (
@@ -47,9 +68,10 @@ const SystemBalance = ({ selectedAccount, accountSystemBalance }) => {
   );
 };
 
-const DifferencePreview = ({ preview }) => {
+const DifferencePreview = ({ preview, selectedAccount }) => {
   if (!preview) return null;
   const matched = preview.difference === 0;
+  const copy = balanceCopy(selectedAccount);
   return (
     <section className={styles.differencePreview} data-state={matched ? "matched" : "difference"} aria-live="polite">
       <div className={styles.differencePreviewTitle}>
@@ -58,7 +80,7 @@ const DifferencePreview = ({ preview }) => {
       </div>
       <dl>
         <div><dt>Saldo aplikasi</dt><dd><Money value={preview.system} /></dd></div>
-        <div><dt>Saldo di bank</dt><dd><Money value={preview.actual} /></dd></div>
+        <div><dt>{copy.metric}</dt><dd><Money value={preview.actual} /></dd></div>
         <div><dt>Selisih</dt><dd><Money value={preview.difference} tone={matched ? "positive" : "negative"} /></dd></div>
       </dl>
     </section>
@@ -67,12 +89,13 @@ const DifferencePreview = ({ preview }) => {
 
 const ActualBalanceField = ({ selectedAccount, form, setForm, setSubmitState, disabled }) => {
   if (!selectedAccount) return null;
+  const copy = balanceCopy(selectedAccount);
   if (!selectedAccount.allow_negative) {
-    return <MoneyInput id="reconciliation-actual-balance" label="Saldo sebenarnya di bank" required disabled={disabled} value={form.actual_balance} onChange={(value) => { setForm((current) => ({ ...current, actual_balance: value })); setSubmitState({ status: "idle", error: null }); }} />;
+    return <MoneyInput id="reconciliation-actual-balance" label={copy.input} required disabled={disabled} value={form.actual_balance} onChange={(value) => { setForm((current) => ({ ...current, actual_balance: value })); setSubmitState({ status: "idle", error: null }); }} />;
   }
   return (
     <label className="field" htmlFor="reconciliation-actual-balance">
-      <span>Saldo sebenarnya di bank *</span>
+      <span>{copy.input} *</span>
       <input id="reconciliation-actual-balance" inputMode="numeric" required disabled={disabled} value={form.actual_balance} onChange={(event) => { setForm((current) => ({ ...current, actual_balance: event.target.value.replace(/[^0-9-]/g, "").replace(/(?!^)-/g, "") })); setSubmitState({ status: "idle", error: null }); }} aria-describedby="reconciliation-negative-help" />
       <small id="reconciliation-negative-help">Rekening ini mengizinkan saldo negatif; gunakan tanda minus bila diperlukan.</small>
     </label>
@@ -87,7 +110,7 @@ const DifferentBalanceFlow = ({ selectedAccount, form, setForm, submitState, set
   return (
     <form className={styles.differenceFlow} onSubmit={onSubmit} noValidate>
       <ActualBalanceField selectedAccount={selectedAccount} form={form} setForm={setForm} setSubmitState={setSubmitState} disabled={busy} />
-      <DifferencePreview preview={preview} />
+      <DifferencePreview preview={preview} selectedAccount={selectedAccount} />
       <button type="button" className={styles.notesToggle} onClick={() => setNotesOpen((current) => !current)} aria-expanded={notesOpen}>{notesOpen ? "Sembunyikan catatan" : "+ Tambahkan catatan"}</button>
       {notesOpen ? <label className={`field ${styles.notesField}`} htmlFor="reconciliation-notes"><span className={styles.notesLabel}><span>Catatan</span><small>{form.notes.length}/250</small></span><textarea id="reconciliation-notes" rows="2" maxLength="250" value={form.notes} disabled={busy} placeholder="Opsional" onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label> : null}
       <div className={styles.guardLine}><FiShield aria-hidden="true" /><span>Pencocokan hanya menyimpan hasil perbandingan. <strong>Saldo tidak diubah otomatis.</strong></span></div>
@@ -98,9 +121,10 @@ const DifferentBalanceFlow = ({ selectedAccount, form, setForm, submitState, set
   );
 };
 
-const ReconciliationForm = ({ accounts, selectedAccount, form, setForm, submitState, setSubmitState, onConfirmSystemBalance, onSubmitDifference, preview, accountSystemBalance }) => {
+const ReconciliationForm = ({ accounts, selectedAccount, form, setForm, submitState, setSubmitState, onConfirmSystemBalance, onSubmitDifference, preview, accountSystemBalance, contextLocked = false }) => {
   const [different, setDifferent] = useState(false);
   const busy = ["submitting", "syncing", "completed"].includes(submitState.status);
+  const copy = balanceCopy(selectedAccount);
   const selectAccount = (account) => {
     setDifferent(false);
     setForm({ account_id: account.account_id, actual_balance: "", notes: "" });
@@ -109,12 +133,12 @@ const ReconciliationForm = ({ accounts, selectedAccount, form, setForm, submitSt
 
   return (
     <div className={styles.form}>
-      <AccountPicker accounts={accounts} selectedAccount={selectedAccount} disabled={busy} onSelect={selectAccount} />
+      {contextLocked && selectedAccount ? <ContextAccount account={selectedAccount} /> : <AccountPicker accounts={accounts} selectedAccount={selectedAccount} disabled={busy} onSelect={selectAccount} />}
       <SystemBalance selectedAccount={selectedAccount} accountSystemBalance={accountSystemBalance} />
       {selectedAccount && !different ? (
         <section className={styles.matchQuestion}>
-          <h3>Apakah saldo di bank juga <Money value={accountSystemBalance(selectedAccount)} />?</h3>
-          <p>Lihat saldo rekening Anda di bank atau uang tunai, lalu pilih sesuai kondisi sebenarnya.</p>
+          <h3>{copy.question} <Money value={accountSystemBalance(selectedAccount)} />?</h3>
+          <p>{copy.hint}</p>
           <div className={styles.matchActions}>
             <Button variant="primary" icon={FiCheckCircle} type="button" loading={busy} disabled={busy} onClick={onConfirmSystemBalance}>Ya, saldonya sama</Button>
             <Button type="button" disabled={busy} onClick={() => { setForm((current) => ({ ...current, actual_balance: "", notes: "" })); setSubmitState({ status: "idle", error: null }); setDifferent(true); }}>Tidak, berbeda</Button>
@@ -133,7 +157,7 @@ const ReconciliationInputPanel = ({ onRefreshAccounts, accountsRefreshing, selec
     <Card className={`panel ${styles.formPanel}`}>
       <span className={styles.cardAccent} aria-hidden="true" />
       <div className={`panel__header ${styles.formHeader}`}>
-        <div><h2>Cocokkan saldo</h2><p>Pastikan catatan aplikasi sama dengan saldo yang benar-benar Anda lihat.</p></div>
+        <div><h2>Periksa saldo</h2><p>Konfirmasi jika sama; masukkan nominal hanya saat berbeda.</p></div>
         <button className={styles.refreshButton} type="button" onClick={onRefreshAccounts} disabled={accountsRefreshing} aria-label="Muat ulang saldo sistem" aria-busy={accountsRefreshing || undefined} title="Muat ulang saldo sistem"><FiRefreshCw aria-hidden="true" /></button>
       </div>
       {props.accounts.length

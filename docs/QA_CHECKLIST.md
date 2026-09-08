@@ -101,3 +101,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Reksa dana memakai `unit` dan `nilai per unit`; saham tetap memakai `lot/lembar` dan `harga per saham`.
 - [ ] Catat pembelian/penjualan reksa dana tetap manual tracking dan mengubah Cash RDN melalui ledger Investasi existing tanpa membuat income/expense.
 - [ ] Tidak ada copy/flow yang memberi kesan marketplace, NAV live, koneksi broker, atau order execution.
+
+- [ ] Notification Center mobile tampil sebagai task inbox ringkas: back icon 44px tanpa card berat, `Baca semua` aksesibel, dan seluruh tipe utama (rekonsiliasi, jadwal, anggaran, Alokasi Dana, Target, unallocated expense) hanya menampilkan aksi + entitas + satu fakta + chevron; contextual entry tidak meminta entity yang sama dipilih ulang.
+- [ ] Attention Investasi yang menunjuk portfolio yang sudah tidak tersedia memberi feedback informatif dan tidak membuka dialog dengan entity stale.
+- [ ] Alert RDN/Investasi membuka reconciliation portfolio Investasi; generic `reconciliations.create` menolak account Investasi dan account read model tidak mengekspos `can_reconcile` untuk RDN.

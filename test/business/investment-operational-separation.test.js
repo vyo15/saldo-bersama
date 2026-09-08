@@ -5,7 +5,9 @@ import { createTransaction } from "../../api/_lib/services/finance.js";
 import { createEnvelope, listEnvelopes } from "../../api/_lib/services/planning/envelopes.js";
 import { createRecurringRule, listRecurring } from "../../api/_lib/services/planning/recurring.js";
 import { dashboardOverview, monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
-import { buyInvestment, createInvestmentPortfolio, investmentOverview, upsertInvestmentInstrument } from "../../api/_lib/services/investments.js";
+import { createReconciliation } from "../../api/_lib/services/reporting/reconciliations.js";
+import { visibleAccounts } from "../../api/_lib/services/readModels.js";
+import { buyInvestment, createInvestmentPortfolio, investmentOverview, reconcileInvestment, upsertInvestmentInstrument } from "../../api/_lib/services/investments.js";
 import { monthBounds, todayJakarta } from "../../api/_lib/services/core.js";
 
 const owner = { user_id: "owner", firebase_uid: "uid-owner", email: "owner@example.com", name: "Owner", role: "owner", status: "active" };
@@ -156,6 +158,44 @@ test("ordinary transaction, Alokasi Dana, dan Jadwal Rutin menolak RDN sementara
     assert.equal(overview.totalBalance, 35_000_000);
     assert.equal(overview.nonInvestmentBalance, 15_000_000);
     assert.equal(overview.safeToSpend, 15_000_000);
+  } finally {
+    db.close();
+  }
+});
+
+
+test("RDN memakai reconciliation Investasi dan alert selesai dari checkpoint portfolio", async () => {
+  const db = await seed();
+  try {
+    const accounts = await visibleAccounts(db, owner);
+    const rdn = accounts.find((item) => item.account_id === "rdn");
+    assert.equal(rdn.can_reconcile, false, "RDN tidak boleh ditawarkan ke generic account reconciliation.");
+
+    await assert.rejects(
+      () => createReconciliation(db, context("reconciliations.create", { account_id: "rdn", actual_balance: 15_000_000 })),
+      (error) => error.code === "INVESTMENT_RECONCILIATION_REQUIRED",
+    );
+
+    const beforeSetup = await dashboardOverview(db, context("dashboard.overview", { period }));
+    assert.equal(beforeSetup.alerts.some((item) => item.type.startsWith("investment_reconciliation_")), false, "RDN tanpa portfolio tidak boleh diarahkan ke workflow yang belum tersedia.");
+
+    const portfolio = await createInvestmentPortfolio(db, context("investments.portfolios.create", { name: "Ajaib", broker: "ajaib", rdn_account_id: "rdn" }));
+    const withPortfolio = await dashboardOverview(db, context("dashboard.overview", { period }));
+    const alert = withPortfolio.alerts.find((item) => item.type === "investment_reconciliation_stale");
+    assert.equal(alert?.targetPath, "/investasi");
+    assert.match(alert?.title || "", /Investasi|investasi/);
+
+    const result = await reconcileInvestment(db, context("investments.reconciliations.create", {
+      portfolio_id: portfolio.portfolio_id,
+      reconciliation_date: today,
+      actual_cash: 15_000_000,
+      holdings: [],
+      notes: "Cocok",
+    }, { rowVersion: portfolio.row_version }));
+    assert.equal(result.status, "matched");
+
+    const afterReconciliation = await dashboardOverview(db, context("dashboard.overview", { period }));
+    assert.equal(afterReconciliation.alerts.some((item) => item.type.startsWith("investment_reconciliation_")), false, "Checkpoint Investasi hari ini harus menyelesaikan alert RDN.");
   } finally {
     db.close();
   }

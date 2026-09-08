@@ -74,7 +74,7 @@ export const mapVisibleAccountRows = (rows, actor) => rows.map((row) => {
     owner_name: item.owner_scope === "personal" ? item.owner_name : "",
     is_owned_by_actor: actorOwnsAccount,
     can_transact: canOperate,
-    can_reconcile: canOperate,
+    can_reconcile: canOperate && item.account_type !== "investment",
     can_manage: actor.role === "owner",
     read_only: !canOperate && actor.role !== "owner",
   };

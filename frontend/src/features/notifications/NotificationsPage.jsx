@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FiBell, FiCalendar, FiCheckCircle, FiChevronLeft, FiChevronRight, FiInfo, FiPieChart, FiRefreshCw, FiTarget } from "react-icons/fi";
+import { FiCalendar, FiCheckCircle, FiChevronLeft, FiChevronRight, FiInfo, FiPieChart, FiRefreshCw, FiTarget } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -9,17 +9,23 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { financialAlertGuidance } from "../../shared/workflows/financialAlerts.js";
-import { financialNotificationCategory, financialNotificationTitle, notificationRequiresAction, useFinancialNotificationReadState } from "../../shared/workflows/financialNotifications.js";
+import {
+  financialNotificationEntity,
+  financialNotificationFact,
+  financialNotificationTitle,
+  notificationRequiresAction,
+  useFinancialNotificationReadState,
+} from "../../shared/workflows/financialNotifications.js";
 import styles from "./NotificationsPage.module.css";
 
 const FILTERS = Object.freeze([
   { id: "all", label: "Semua" },
-  { id: "action", label: "Perlu tindakan" },
+  { id: "action", label: "Tindakan" },
   { id: "reminder", label: "Pengingat" },
 ]);
 
 const notificationIcon = (type) => {
-  if (["reconciliation_stale", "reconciliation_difference"].includes(type)) return FiRefreshCw;
+  if (["reconciliation_stale", "reconciliation_difference", "investment_reconciliation_stale", "investment_reconciliation_difference"].includes(type)) return FiRefreshCw;
   if (["recurring_due", "recurring_overdue"].includes(type)) return FiCalendar;
   if (type === "goal_behind") return FiTarget;
   if (["budget_threshold", "envelope_threshold", "unallocated_expense", "unallocated_funds"].includes(type)) return FiPieChart;
@@ -37,27 +43,27 @@ const matchesFilter = (alert, filter) => filter === "all" || (filter === "action
 const NotificationRow = ({ alert, read, onOpen }) => {
   const Icon = notificationIcon(alert.type);
   const tone = notificationTone(alert);
+  const entity = financialNotificationEntity(alert);
+  const fact = financialNotificationFact(alert);
   return (
     <button type="button" className={styles.row} data-read={read ? "true" : "false"} data-tone={tone} onClick={() => onOpen(alert)}>
       <span className={styles.icon}><Icon aria-hidden="true" /></span>
       <span className={styles.copy}>
         <strong>{financialNotificationTitle(alert)}</strong>
-        <span>{alert.message}</span>
-        <small>{financialNotificationCategory(alert.type)}</small>
+        {entity ? <span className={styles.entity}>{entity}</span> : null}
+        {fact ? <small>{fact}</small> : null}
       </span>
-      <span className={styles.trailing}>
-        {!read ? <i aria-label="Belum dibaca" /> : null}
-        <FiChevronRight aria-hidden="true" />
-      </span>
+      <span className={styles.trailing}><FiChevronRight aria-hidden="true" /></span>
     </button>
   );
 };
 
-const NotificationGroup = ({ title, alerts, isRead, onOpen }) => {
+const NotificationGroup = ({ title, accessibleLabel, alerts, isRead, onOpen }) => {
   if (!alerts.length) return null;
+  const headingId = title ? `notification-group-${title.replace(/\s+/g, "-").toLowerCase()}` : undefined;
   return (
-    <section className={styles.group} aria-labelledby={`notification-group-${title.replace(/\s+/g, "-").toLowerCase()}`}>
-      <h2 id={`notification-group-${title.replace(/\s+/g, "-").toLowerCase()}`}>{title}</h2>
+    <section className={styles.group} aria-labelledby={headingId} aria-label={title ? undefined : accessibleLabel}>
+      {title ? <h2 id={headingId}>{title}</h2> : null}
       <div className={styles.list}>{alerts.map((alert) => <NotificationRow key={alert.id} alert={alert} read={isRead(alert.id)} onOpen={onOpen} />)}</div>
     </section>
   );
@@ -67,8 +73,12 @@ const NotificationContent = ({ alerts, filter, isRead, onOpen }) => {
   const visible = useMemo(() => alerts.filter((alert) => matchesFilter(alert, filter)), [alerts, filter]);
   const actionAlerts = visible.filter(notificationRequiresAction);
   const reminders = visible.filter((alert) => !notificationRequiresAction(alert));
-  if (!visible.length) return <EmptyState icon={FiCheckCircle} title="Tidak ada notifikasi di sini" description={filter === "all" ? "Belum ada pengingat atau tindakan aktif." : "Tidak ada item yang cocok dengan filter ini."} />;
-  return <><NotificationGroup title="Perlu tindakan" alerts={actionAlerts} isRead={isRead} onOpen={onOpen} /><NotificationGroup title="Pengingat" alerts={reminders} isRead={isRead} onOpen={onOpen} /></>;
+  if (!visible.length) return <EmptyState icon={FiCheckCircle} title="Tidak ada notifikasi di sini" description={filter === "all" ? "Tidak ada kondisi aktif yang perlu ditinjau." : "Tidak ada item yang cocok dengan filter ini."} />;
+  const splitGroups = filter === "all" && actionAlerts.length > 0 && reminders.length > 0;
+  return <>
+    <NotificationGroup title={splitGroups ? "Perlu tindakan" : ""} accessibleLabel="Notifikasi yang perlu tindakan" alerts={actionAlerts} isRead={isRead} onOpen={onOpen} />
+    <NotificationGroup title={splitGroups ? "Pengingat" : ""} accessibleLabel="Pengingat" alerts={reminders} isRead={isRead} onOpen={onOpen} />
+  </>;
 };
 
 const NotificationsPage = () => {
@@ -85,7 +95,7 @@ const NotificationsPage = () => {
   const openNotification = (alert) => {
     notifications.markRead(alert.id);
     const guidance = financialAlertGuidance(alert, { source: "notification-center" });
-    navigate(guidance.to, { state: { ...guidance.state, notificationSource: "notification-center" } });
+    navigate(guidance.to, { state: guidance.state });
   };
 
   const actionCount = notifications.alerts.filter(notificationRequiresAction).length;
@@ -99,24 +109,23 @@ const NotificationsPage = () => {
         <PageHeader
           eyebrow="Pusat perhatian"
           title="Notifikasi"
-          description={notifications.unreadCount ? `${notifications.unreadCount} item belum dibaca. Prioritaskan kondisi yang membutuhkan tindakan.` : "Semua kondisi aktif sudah ditinjau."}
-          help="Notifikasi berasal dari kondisi keuangan aktif. Item akan hilang otomatis ketika kondisi sumbernya selesai."
+          description={notifications.unreadCount ? `${notifications.unreadCount} item belum dibaca.` : "Semua kondisi aktif sudah ditinjau."}
+          help="Status dibaca hanya mengubah tampilan. Item aktif akan hilang setelah kondisi keuangannya benar-benar selesai."
           actions={<Button variant="secondary" onClick={notifications.markAllRead} disabled={!notifications.unreadCount}>Tandai semua dibaca</Button>}
         />
       </div>
       <header className={styles.header}>
         <button type="button" className={styles.back} onClick={() => navigate(-1)} aria-label="Kembali"><FiChevronLeft aria-hidden="true" /></button>
         <div className={styles.heading}><h1>Notifikasi</h1><p>{notifications.unreadCount ? `${notifications.unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
-        <button type="button" className={styles.readAll} onClick={notifications.markAllRead} disabled={!notifications.unreadCount}>Tandai dibaca</button>
+        <button type="button" className={styles.readAll} onClick={notifications.markAllRead} disabled={!notifications.unreadCount} aria-label="Tandai semua dibaca" title="Tandai semua dibaca"><FiCheckCircle aria-hidden="true" /></button>
       </header>
 
       <div className={styles.filters} aria-label="Filter notifikasi">
-        {FILTERS.map((item) => <button key={item.id} type="button" className={styles.filter} data-active={filter === item.id ? "true" : "false"} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{item.label}<span>{filterCounts[item.id]}</span></button>)}
+        {FILTERS.map((item) => <button key={item.id} type="button" className={styles.filter} data-active={filter === item.id ? "true" : "false"} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}><span className={styles.filterLabel}>{item.label}</span><span className={styles.filterCount}>{filterCounts[item.id]}</span></button>)}
       </div>
 
       <div className={styles.content}>
         <NotificationContent alerts={notifications.alerts} filter={filter} isRead={notifications.isRead} onOpen={openNotification} />
-        {notifications.alerts.length ? <p className={styles.note}><FiBell aria-hidden="true" />Notifikasi di sini berasal dari kondisi keuangan aktif. Setelah kondisinya selesai, item akan hilang otomatis dari daftar.</p> : null}
       </div>
     </div>
   );

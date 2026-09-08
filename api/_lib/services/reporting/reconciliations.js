@@ -23,6 +23,7 @@ export const createReconciliation = async (db, context) => {
   const access = operableAccountSql(context.actor, "a");
   const account = await db.one(`SELECT a.* FROM accounts a WHERE a.account_id=? AND a.status='active' AND ${access.sql}`, [p.account_id, ...access.args]);
   if (!account) throw appError("INVALID_ACCOUNT", "Rekening tidak ditemukan atau tidak dapat diakses.", 404);
+  if (account.account_type === "investment") throw appError("INVESTMENT_RECONCILIATION_REQUIRED", "Rekening Investasi harus dicocokkan dari fitur Investasi agar Cash RDN dan holding diverifikasi bersama.", 409);
   const actual = Number(p.actual_balance);
   if (!Number.isSafeInteger(actual)) throw appError("INVALID_AMOUNT", "Saldo aktual harus berupa bilangan bulat Rupiah.", 400);
   if (!Boolean(account.allow_negative) && actual < 0) throw appError("INVALID_AMOUNT", "Saldo aktual rekening ini tidak boleh negatif.", 400);

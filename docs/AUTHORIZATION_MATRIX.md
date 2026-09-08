@@ -112,6 +112,8 @@
 | `reports.monthly` | Ya | Ya |
 | `reconciliations.list` | Ya | Ya |
 | `reconciliations.create` | Ya | Ya |
+
+Catatan rekonsiliasi: `reconciliations.create` tetap dapat dipanggil Administrator/Member untuk rekening non-Investasi yang operable. RDN/Investasi tidak memiliki capability generic tersebut dan wajib memakai `investments.reconciliations.create`, dengan ownership/capability portfolio diperiksa kembali di backend.
 | `periods.list` | Ya | Tidak |
 | `periods.previewClose` | Ya | Tidak |
 | `periods.close` | Ya | Tidak |

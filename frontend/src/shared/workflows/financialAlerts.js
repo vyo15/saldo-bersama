@@ -1,4 +1,6 @@
 const ALERT_TARGETS = Object.freeze({
+  investment_reconciliation_difference: { prefix: "investment-reconciliation-difference", fallbackPath: "/investasi" },
+  investment_reconciliation_stale: { prefix: "investment-reconciliation-stale", fallbackPath: "/investasi" },
   reconciliation_difference: { prefix: "reconciliation-difference", fallbackPath: "/rekonsiliasi" },
   reconciliation_stale: { prefix: "reconciliation-stale", fallbackPath: "/rekonsiliasi" },
   unallocated_expense: { prefix: "unallocated", fallbackPath: "/transaksi" },
@@ -39,6 +41,20 @@ const guidance = ({ instruction, actionLabel, to, baseState, state = {} }) => ({
 const entityState = (key, value) => (value ? { [key]: value } : {});
 
 const ALERT_GUIDANCE_BUILDERS = Object.freeze({
+  investment_reconciliation_difference: ({ to, baseState, entityId }) => guidance({
+    instruction: "Portfolio akan dipilih otomatis. Cocokkan Cash RDN dan holding aktual dari aplikasi investasi Anda.",
+    actionLabel: "Cocokkan investasi",
+    to,
+    baseState,
+    state: entityState("attentionRdnAccountId", entityId),
+  }),
+  investment_reconciliation_stale: ({ to, baseState, entityId }) => guidance({
+    instruction: "Portfolio akan dipilih otomatis. Verifikasi Cash RDN dan holding aktual dari aplikasi investasi Anda.",
+    actionLabel: "Cocokkan investasi",
+    to,
+    baseState,
+    state: entityState("attentionRdnAccountId", entityId),
+  }),
   reconciliation_difference: ({ to, baseState, entityId }) => guidance({
     instruction: "Rekening akan dipilih otomatis. Bandingkan saldo aplikasi dengan saldo di bank, lalu konfirmasi apakah sama atau masukkan angka yang berbeda.",
     actionLabel: "Cocokkan saldo",

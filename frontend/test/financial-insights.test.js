@@ -54,8 +54,9 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(budgets, /envelope_rule_id/);
   assert.match(desktop, /overview\.alerts/);
   assert.doesNotMatch(desktop, /shared-alert-count-button/);
-  assert.match(desktop, /Notifikasi aktif<\/dt><dd>\{model\.alerts\.length\}<\/dd>/);
-  assert.match(desktop, /to="\/notifikasi">Buka notifikasi<\/Link>/);
+  assert.match(desktop, /Perlu dilakukan/);
+  assert.match(desktop, /\{alerts\.length\} tugas/);
+  assert.match(desktop, /to="\/notifikasi">Lihat semua perhatian<\/Link>/);
   assert.doesNotMatch(desktop, /FinancialAlertList|title="Perlu perhatian"/);
   assert.match(mobile, /overview\.alerts/);
   assert.match(mobile, /MobileNextAction alerts=\{overview\.alerts\}/);
@@ -110,7 +111,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
     Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx"), source("src/features/budgets/components/BudgetInsightCard.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/allocationActionRunners.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
   ]);
-  for (const type of ["reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
+  for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));
   }
   for (const label of ["Cocokkan saldo", "Atur Alokasi Dana", "Pilih Alokasi Dana", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
@@ -120,6 +121,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(alertWorkflow, /value === fallbackPath/);
   assert.match(alertWorkflow, /attentionSource: source/);
   assert.match(attentionHook, /stripDashboardAttentionState/);
+  assert.match(attentionHook, /"notification-center"/);
   assert.match(attentionHook, /replace: true/);
   assert.match(attentionHook, /consumedRef\.current/);
   assert.doesNotMatch(attentionHook, /delete next\.accountId|delete next\.period|delete next\.allocation/);
@@ -128,7 +130,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(transactions, /setEditingTransaction\(attentionEditableTarget\)/);
   assert.match(transactions, /consumeAttention\(\)/);
   assert.match(reconciliation, /accountId/);
-  assert.match(reconciliation, /Rekening dari pengingat sudah dipilih/);
+  assert.match(reconciliation, /contextLocked/);
   assert.match(reconciliation, /consumeAttention\(\)/);
   assert.match(recurring, /attentionOccurrenceId/);
   assert.match(recurringActions, /openPayment\(item\)/);
@@ -273,16 +275,16 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /Aktivitas Terbaru/);
   assert.match(mobile, /Total investasi tercatat/);
   assert.match(desktop, /SensitiveMoney/);
-  assert.match(desktop, /Transaksi rekening/);
+  assert.match(desktop, /Transaksi terbaru/);
   assert.match(desktop, /data-dashboard-account/);
   assert.match(desktop, /<h2 id="dashboard-statistics-title">Pengeluaran<\/h2>/);
   assert.match(desktop, /Kebutuhan/);
-  assert.match(desktop, /Jadwal terdekat/);
+  assert.match(desktop, /Jadwal rutin/);
   assert.doesNotMatch(desktop, /Tagihan terdekat/);
   assert.match(desktop, /to="\/perencanaan\/kantong">Atur kebutuhan/);
   assert.match(desktop, /Target tabungan/);
-  assert.match(desktop, /Notifikasi aktif/);
-  assert.match(desktop, /to="\/notifikasi">Buka notifikasi/);
+  assert.match(desktop, /Perlu dilakukan/);
+  assert.match(desktop, /to="\/notifikasi">Lihat semua perhatian/);
   assert.doesNotMatch(desktop, /<FinancialAlertList|title="Perlu perhatian"/);
   assert.doesNotMatch(desktop, /Aksi cepat/);
   assert.doesNotMatch(desktop, /shared-quick-actions/);

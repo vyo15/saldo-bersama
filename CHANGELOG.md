@@ -1,3 +1,17 @@
+## 7 September 2026 - Notification Center task inbox dan contextual reconciliation
+- Merapikan `/notifikasi` menjadi task inbox ringkas: mobile back icon tanpa card berat, `Baca semua` icon-only aksesibel, segmented filter, serta row yang hanya memprioritaskan aksi, entitas, satu fakta berguna, dan chevron. Presentation ringkas berlaku konsisten untuk rekonsiliasi, jadwal rutin, anggaran, Alokasi Dana, Target, dan pengeluaran belum dialokasikan; helper edukatif permanen, category label duplikat, serta state `notificationSource` yang tidak dipakai dihapus.
+- Menggeneralisasi attention context untuk Dashboard dan Notification Center. Rekonsiliasi rekening dari alert otomatis memilih/mengunci rekening, tidak memprefill saldo aktual, mempertahankan jalur `Ya, saldonya sama / Tidak, berbeda`, memakai copy sesuai jenis rekening, mengganti `+ / −` riwayat dengan chevron, dan kembali ke Notification Center bila berasal dari sana. Entry manual tetap memakai picker. Attention Investasi yang sudah stale karena portfolio tidak lagi tersedia sekarang memberi feedback informatif alih-alih gagal diam-diam.
+- Menutup overlap RDN: rekening Investasi tidak lagi `can_reconcile` lewat generic account reconciliation dan backend `reconciliations.create` menolak RDN. Alert RDN membaca checkpoint `investment_reconciliations`, membuka `/investasi`, memilih portfolio terkait, dan langsung membuka workflow Cocokkan Investasi untuk Cash RDN + holding.
+- Menambah regression Notification Center/contextual flow/RDN routing dan menyelaraskan UI design system, test plan, QA checklist, project status, implementation matrix, serta requirement traceability `REQ-FIN-003A`.
+
+## 2026-09-07 — Dashboard desktop workspace refinement
+
+- Merapikan canvas Beranda desktop tanpa mengubah curved sidebar/dock canonical. Header halaman dipadatkan menjadi greeting + periode, sedangkan kontrol privacy dan Tambah transaksi tetap berada di sisi kanan.
+- Menggabungkan Saldo rekening, Aman digunakan, Batas aman per hari, Arus kas bersih, dan Sisa anggaran ke satu hero finansial yang jelas; `Perlu dilakukan` menjadi attention card sejajar dan tetap menyediakan jalur ke Notification Center.
+- Mempertahankan carousel Rekening sebagai konteks transaksi, memadatkan empty state Transaksi terbaru, memindahkan Investasi menjadi secondary column utama bersama analitik Pengeluaran, serta mengelompokkan Kebutuhan/Jadwal Rutin/Target ke section `Perencanaan keuangan`. Card `Ringkasan` terpisah yang membuat grid menggantung tidak lagi dirender.
+- Menambahkan regression desktop canvas dan menyelaraskan UI Design System/Project Status/Test Plan. Tidak ada perubahan sidebar, schema, API, ledger, authorization, idempotency, atau asset.
+
+
 ## 2026-09-07 — Merge pemisahan saldo operasional dan Investasi/RDN
 
 - Menggabungkan patch pemisahan saldo Investasi ke source terbaru tanpa meregresi desktop refinement, curved sidebar, breakpoint desktop, atau kontrak UI terbaru. Dashboard kini memakai **Saldo rekening** dari `nonInvestmentBalance`; `totalBalance` tetap backward-compatible sebagai total seluruh rekening readable termasuk Cash RDN.

@@ -16,7 +16,16 @@ const usageThreshold = (percentage, custom = 75) => {
 export const reconciliationAlertStatement = (actor) => {
   const access = readableAccountSql(actor, "a");
   return {
-    sql: `SELECT a.account_id,a.name,r.reconciled_at,r.difference
+    sql: `SELECT a.account_id,a.name,a.account_type,a.initial_balance,
+      p.portfolio_id,
+      CASE WHEN a.account_type='investment' AND p.portfolio_id IS NOT NULL THEN ir.reconciliation_date ELSE r.reconciled_at END AS reconciled_at,
+      CASE WHEN a.account_type='investment' AND p.portfolio_id IS NOT NULL THEN CASE WHEN ir.status='mismatch' THEN 1 ELSE 0 END ELSE r.difference END AS difference,
+      CASE WHEN a.account_type='investment' AND p.portfolio_id IS NOT NULL THEN (
+        CASE WHEN a.initial_balance<>0
+          OR EXISTS(SELECT 1 FROM investment_trades it WHERE it.portfolio_id=p.portfolio_id)
+          OR EXISTS(SELECT 1 FROM investment_corrections ic WHERE ic.portfolio_id=p.portfolio_id)
+        THEN 1 ELSE 0 END
+      ) ELSE 0 END AS has_investment_activity
       FROM accounts a
       LEFT JOIN (
         SELECT account_id,reconciled_at,difference FROM (
@@ -24,6 +33,13 @@ export const reconciliationAlertStatement = (actor) => {
           FROM reconciliations
         ) latest WHERE latest.rn=1
       ) r ON r.account_id=a.account_id
+      LEFT JOIN investment_portfolios p ON p.rdn_account_id=a.account_id AND p.status='active'
+      LEFT JOIN (
+        SELECT portfolio_id,reconciliation_date,status FROM (
+          SELECT portfolio_id,reconciliation_date,status,ROW_NUMBER() OVER (PARTITION BY portfolio_id ORDER BY reconciliation_date DESC,created_at DESC) AS rn
+          FROM investment_reconciliations
+        ) latest WHERE latest.rn=1
+      ) ir ON ir.portfolio_id=p.portfolio_id
       WHERE a.status='active' AND ${access.sql}
       ORDER BY a.name COLLATE NOCASE`,
     args: access.args,
@@ -40,28 +56,51 @@ const reconciliationAlertsFromRows = (rows, accounts) => {
   const alerts = [];
   for (const row of rows) {
     const accountLabel = accountLabelLookup.get(row.account_id) || row.name;
+    const investment = row.account_type === "investment";
+    if (investment && !row.portfolio_id) continue;
+    const alertBase = row.reconciled_at ? { lastReconciledAt: String(row.reconciled_at).slice(0, 10) } : {};
     if (Number(row.difference || 0) !== 0) {
-      alerts.push({
+      alerts.push(investment ? {
+        id: `investment-reconciliation-difference:${row.account_id}`,
+        type: "investment_reconciliation_difference",
+        severity: "danger",
+        title: `Catatan investasi ${accountLabel} berbeda`,
+        message: "Cash RDN atau holding terakhir berbeda dari catatan investasi.",
+        targetPath: "/investasi",
+        ...alertBase,
+      } : {
         id: `reconciliation-difference:${row.account_id}`,
         type: "reconciliation_difference",
         severity: "danger",
         title: `Saldo ${accountLabel} berbeda`,
         message: "Saldo yang terakhir Anda cek berbeda dari catatan aplikasi.",
         targetPath: "/rekonsiliasi",
+        ...alertBase,
       });
       continue;
     }
     const age = row.reconciled_at ? dayDifference(String(row.reconciled_at).slice(0, 10), today) : Number.POSITIVE_INFINITY;
-    if (balanceLookup.get(row.account_id) !== 0 && age > 30) {
-      alerts.push({
-        id: `reconciliation-stale:${row.account_id}`,
-        type: "reconciliation_stale",
-        severity: "info",
-        title: row.reconciled_at ? `Saatnya cocokkan saldo ${accountLabel}` : `Saldo ${accountLabel} belum pernah dicocokkan`,
-        message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir dicocokkan." : "Pastikan saldo aplikasi sama dengan saldo yang benar-benar Anda lihat di bank atau uang tunai.",
-        targetPath: "/rekonsiliasi",
-      });
-    }
+    const shouldPrompt = investment
+      ? Boolean(row.has_investment_activity) && age > 30
+      : balanceLookup.get(row.account_id) !== 0 && age > 30;
+    if (!shouldPrompt) continue;
+    alerts.push(investment ? {
+      id: `investment-reconciliation-stale:${row.account_id}`,
+      type: "investment_reconciliation_stale",
+      severity: "info",
+      title: row.reconciled_at ? `Saatnya cocokkan investasi ${accountLabel}` : `Investasi ${accountLabel} belum pernah dicocokkan`,
+      message: "Verifikasi Cash RDN dan holding aktual di aplikasi investasi Anda.",
+      targetPath: "/investasi",
+      ...alertBase,
+    } : {
+      id: `reconciliation-stale:${row.account_id}`,
+      type: "reconciliation_stale",
+      severity: "info",
+      title: row.reconciled_at ? `Saatnya cocokkan saldo ${accountLabel}` : `Saldo ${accountLabel} belum pernah dicocokkan`,
+      message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir dicocokkan." : "Pastikan saldo aplikasi sama dengan saldo yang benar-benar Anda lihat.",
+      targetPath: "/rekonsiliasi",
+      ...alertBase,
+    });
   }
   return alerts;
 };

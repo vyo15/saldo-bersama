@@ -117,7 +117,7 @@ Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan, saldo cash selu
 
 ### `REQ-PROD-14` Rekonsiliasi saldo — Implemented
 
-Menyimpan saldo sistem, saldo aktual, selisih, status, catatan, dan actor. Dashboard memberi peringatan selisih atau rekonsiliasi lebih dari 30 hari. Jika hasil pencocokan masih berbeda, UI menawarkan pemeriksaan transaksi rekening terkait tanpa membuat adjustment otomatis.
+Menyimpan saldo sistem, saldo aktual, selisih, status, catatan, dan actor untuk rekening non-Investasi. Dashboard dan Notification Center memberi peringatan selisih atau rekonsiliasi lebih dari 30 hari; contextual entry membawa rekening yang sudah diketahui sehingga user tidak memilih ulang, sedangkan entry manual tetap memakai picker. Jika hasil pencocokan masih berbeda, UI menawarkan pemeriksaan transaksi rekening terkait tanpa membuat adjustment otomatis. Rekening Investasi/RDN memakai `investments.reconciliations.create` karena Cash RDN dan holding harus diverifikasi bersama.
 
 ### `REQ-PROD-15` Hak akses dan privasi — Partial
 

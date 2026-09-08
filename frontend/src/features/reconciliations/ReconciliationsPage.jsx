@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FiChevronDown } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -135,8 +136,10 @@ const ReconciliationsPage = () => {
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
   if (data.historyResource.status === "error") return <ErrorState error={data.historyResource.error} onRetry={data.historyResource.reload} />;
 
-  const attentionFromDashboard = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
-  const finishReconciliation = () => navigate("/");
+  const reconciliationAttention = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
+  const contextLocked = reconciliationAttention && Boolean(selectedAccount?.account_id) && selectedAccount.account_id === attentionAccountId;
+  const attentionFromNotification = attention?.attentionSource === "notification-center";
+  const finishReconciliation = () => navigate(attentionFromNotification ? "/notifikasi" : "/");
   const reviewReconciliationTransactions = () => submission.resultOverlay?.accountId
     ? navigate("/transaksi", { state: { accountId: submission.resultOverlay.accountId, period: currentMonthInJakarta() } })
     : finishReconciliation();
@@ -146,9 +149,10 @@ const ReconciliationsPage = () => {
       <RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} />
       <RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} />
       <PageHeader title="Cocokkan Saldo" help="Pastikan catatan aplikasi sama dengan saldo yang benar-benar Anda lihat." />
-      {attentionFromDashboard ? <CompactNotice tone="info" title="Rekening dari pengingat sudah dipilih." role="status">{selectedAccount?.account_id === attentionAccountId ? "Periksa saldo di bank sebelum memilih apakah angkanya sama atau berbeda." : "Pilih rekening yang ingin diperiksa."}</CompactNotice> : null}
+      {reconciliationAttention && !contextLocked ? <CompactNotice tone="warning" title="Rekening pengingat tidak tersedia." role="status">Pilih rekening yang masih aktif dan dapat Anda cocokkan.</CompactNotice> : null}
       <ReconciliationInputPanel
         accountSystemBalance={accountSystemBalance}
+        contextLocked={contextLocked}
         accounts={data.reconcilableAccounts}
         selectedAccount={selectedAccount}
         form={form}
@@ -170,7 +174,7 @@ const ReconciliationsPage = () => {
           onClick={() => setHistoryExpanded((current) => !current)}
         >
           <span><strong>Riwayat pencocokan</strong><small>{data.historyItems.length} hasil pada filter saat ini</small></span>
-          <span aria-hidden="true">{historyExpanded ? "−" : "+"}</span>
+          <FiChevronDown className={styles.historyDisclosureChevron} data-expanded={historyExpanded ? "true" : "false"} aria-hidden="true" />
         </button>
         <div id="reconciliation-history-content" className={`${styles.historyDisclosureContent}${historyExpanded ? ` ${styles.isExpanded}` : ""}`}>
           <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />

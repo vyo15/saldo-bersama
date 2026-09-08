@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
@@ -12,6 +12,7 @@ import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { investmentContinuationState, investmentRdnAccountSetupState, readInvestmentContinuation } from "../../shared/workflows/investmentContinuation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import styles from "./InvestmentsPage.module.css";
@@ -96,7 +97,21 @@ const useInvestmentRouteContinuation = ({ location, navigate, overview, accounts
   }, [accountsResource.data, accountsResource.isRefreshing, location.pathname, location.state, navigate, overview.data, overview.isRefreshing, portfolios, setDialog, setHoldingDetail, setSetupMode, setSetupOpen, setSetupRdnAccountId]);
 };
 
+const useInvestmentAttentionReconciliation = ({ attention, consumeAttention, overview, accountsResource, portfolios, setDialog, notify }) => {
+  const handledRef = useRef(false);
+  useEffect(() => {
+    if (handledRef.current || !attention || !["investment_reconciliation_stale", "investment_reconciliation_difference"].includes(attention.attentionType)) return;
+    if (!overview.data || !accountsResource.data || overview.isRefreshing || accountsResource.isRefreshing) return;
+    handledRef.current = true;
+    const portfolio = portfolioForRdn(portfolios, attention.attentionRdnAccountId);
+    if (portfolio) setDialog({ mode: "reconcile", portfolio, returnTo: attention.attentionSource === "notification-center" ? "/notifikasi" : "" });
+    else notify({ message: "Portfolio investasi pada notifikasi sudah tidak tersedia. Daftar investasi terbaru tetap ditampilkan.", tone: "info", dedupeKey: "investments:attention-portfolio-missing" });
+    consumeAttention();
+  }, [accountsResource.data, accountsResource.isRefreshing, attention, consumeAttention, notify, overview.data, overview.isRefreshing, portfolios, setDialog]);
+};
+
 const InvestmentOverlays = ({ page }) => {
+  const navigate = useNavigate();
   const {
     accounts, needsRdnRepair, data, dialog, setDialog, setupOpen, setupMode, setupRdnAccountId, setSetupOpen, setSetupRdnAccountId,
     holdingDetail, setHoldingDetail, user, onSetupSuccess, onInvestmentSuccess, fundRdnForPortfolio, openAction, onReviewHistory,
@@ -126,9 +141,9 @@ const InvestmentOverlays = ({ page }) => {
       userRole={user?.role}
       initialInstrumentId={dialog.initialInstrumentId || ""}
       initialDraft={dialog.initialDraft || null}
-      onClose={() => setDialog(null)}
+      onClose={() => { const returnTo = dialog.returnTo; setDialog(null); if (returnTo) navigate(returnTo); }}
       onSuccess={onInvestmentSuccess}
-      onOpenCorrection={(portfolio) => setDialog({ mode: "correction", portfolio })}
+      onOpenCorrection={(portfolio) => setDialog({ mode: "correction", portfolio, returnTo: dialog.returnTo || "" })}
       onReviewHistory={onReviewHistory}
       onFundRdn={fundRdnForPortfolio}
     /> : null}
@@ -299,6 +314,7 @@ const createWorkflowActions = ({ data, user, notify, overview, ui, openSetup, op
 };
 
 const InvestmentsPage = () => {
+  const { attention, consumeAttention } = useDashboardAttentionState();
   const { user } = useAuth();
   const { notify } = useFeedback();
   const { openTransactionComposer } = useTransactionComposer();
@@ -315,6 +331,7 @@ const InvestmentsPage = () => {
   const workflow = createWorkflowActions({ data, user, notify, overview, ui, openSetup: navigation.openSetup, openRdnTransfer: navigation.openRdnTransfer });
 
   useInvestmentRouteContinuation({ location, navigate, overview, accountsResource, portfolios, setSetupMode: ui.setSetupMode, setSetupRdnAccountId: ui.setSetupRdnAccountId, setSetupOpen: ui.setSetupOpen, setDialog: ui.setDialog, setHoldingDetail: ui.setHoldingDetail });
+  useInvestmentAttentionReconciliation({ attention, consumeAttention, overview, accountsResource, portfolios, setDialog: ui.setDialog, notify });
 
   if (overview.status === "loading" || accountsResource.status === "loading") return <LoadingScreen label="Memuat investasi..." />;
   if (overview.status === "error") return <ErrorState error={overview.error} onRetry={overview.reload} />;
