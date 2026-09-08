@@ -6,7 +6,7 @@ import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import { instrumentOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
-import { investmentAssetByTicker, isMutualFundInstrument, investmentQuantityUnit } from "../../shared/presentation/investmentAssets.js";
+import { investmentAssetByTicker, isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import InvestmentFormField from "./InvestmentFormField.jsx";
 import {
@@ -28,13 +28,28 @@ import portfolioStyles from "./PortfolioCard.module.css";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 const TODAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 const safeId = (value) => String(value || "item").replace(/[^a-zA-Z0-9_-]/g, "-");
-const formatLotCount = (shares, lotSize) => {
-  const lots = Number(lotSize) > 0 ? Number(shares || 0) / Number(lotSize) : 0;
-  return lots.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+const lotFractionDigits = (lotSize) => {
+  const size = Math.max(1, Number(lotSize || 100));
+  return Math.min(6, Math.max(2, Math.ceil(Math.log10(size))));
 };
+const lotStep = (lotSize) => 1 / Math.max(1, Number(lotSize || 100));
+const formatLotCount = (shares, lotSize) => {
+  const size = Math.max(1, Number(lotSize || 100));
+  const lots = Number(shares || 0) / size;
+  return lots.toLocaleString("id-ID", { maximumFractionDigits: lotFractionDigits(size) });
+};
+const quantityFromShares = (shares, instrument = {}) => isMutualFundInstrument(instrument)
+  ? Number(shares || 0)
+  : Number(shares || 0) / Number(instrument.lot_size || 100);
+const sharesFromQuantity = (quantity, instrument = {}) => isMutualFundInstrument(instrument)
+  ? Number(quantity || 0)
+  : Number(quantity || 0) * Number(instrument.lot_size || 100);
+const quantityLabel = (shares, instrument = {}) => isMutualFundInstrument(instrument)
+  ? `${Number(shares || 0).toLocaleString("id-ID")} unit`
+  : `${formatLotCount(shares, instrument.lot_size || 100)} lot`;
 const signedQuantity = (value, instrument = {}) => {
-  const number = Number(value || 0);
-  return `${number > 0 ? "+" : ""}${number.toLocaleString("id-ID")} ${investmentQuantityUnit(instrument)}`;
+  const quantity = quantityFromShares(value, instrument);
+  return `${quantity > 0 ? "+" : ""}${quantity.toLocaleString("id-ID", { maximumFractionDigits: isMutualFundInstrument(instrument) ? 0 : lotFractionDigits(instrument.lot_size) })} ${isMutualFundInstrument(instrument) ? "unit" : "lot"}`;
 };
 
 const instrumentSelectionOption = (item = {}) => {
@@ -72,7 +87,7 @@ const SellAvailabilityHint = ({ holding, instrument }) => {
   if (!holding) return null;
   if (isMutualFundInstrument(instrument || holding)) return <small className={formStyles.formHint}>Tersedia {Number(holding.shares || 0).toLocaleString("id-ID")} unit.</small>;
   const lotSize = Number(instrument?.lot_size || holding?.lot_size || 100);
-  return <small className={formStyles.formHint}>Tersedia {formatLotCount(holding.shares, lotSize)} lot ({Number(holding.shares || 0).toLocaleString("id-ID")} lembar).</small>;
+  return <small className={formStyles.formHint}>Tersedia {formatLotCount(holding.shares, lotSize)} lot.</small>;
 };
 
 const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, errors }) => {
@@ -91,9 +106,8 @@ const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, errors
       </InvestmentFormField>
     </div>
     <MoneyInput id="investment-trade-price" label={labels.price} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
-    <MoneyInput id="investment-trade-fee" label="Fee" value={form.fee_amount} error={errors.fee_amount} onChange={(value) => onFieldChange("fee_amount", value)} />
     <NotesField id="investment-trade-notes" value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
-    {mode === "buy" ? <small className={formStyles.formHint}>Cash RDN tercatat saat ini <Money value={portfolio.rdn_cash} />.</small> : null}
+    {mode === "buy" ? <small className={formStyles.formHint}>Saldo RDN tercatat saat ini <Money value={portfolio.rdn_cash} />.</small> : null}
     {mode === "sell" ? <SellAvailabilityHint holding={holding} instrument={instrument} /> : null}
   </>;
 };
@@ -111,17 +125,16 @@ const TradeReview = ({ mode, form, instruments, portfolio }) => {
       </div>
       <dl className={formStyles.reviewGrid}>
         <div><dt>Aset</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
-        <div><dt>Kuantitas</dt><dd>{mutualFund ? `${preview.lots.toLocaleString("id-ID")} unit` : `${preview.lots.toLocaleString("id-ID")} lot · ${preview.shares.toLocaleString("id-ID")} lembar`}</dd></div>
+        <div><dt>Kuantitas</dt><dd>{mutualFund ? `${preview.lots.toLocaleString("id-ID")} unit` : `${preview.lots.toLocaleString("id-ID")} lot`}</dd></div>
         <div><dt>{mutualFund ? "Nilai per unit" : "Harga per saham"}</dt><dd><Money value={preview.pricePerShare} /></dd></div>
         <div><dt>Nilai bruto</dt><dd><Money value={preview.grossAmount} /></dd></div>
-        <div><dt>Fee</dt><dd><Money value={preview.feeAmount} /></dd></div>
         <div><dt>{mode === "buy" ? "Estimasi dana RDN keluar" : "Estimasi dana RDN masuk"}</dt><dd><Money value={preview.rdnAmount} /></dd></div>
-        <div><dt>Cash RDN sebelum</dt><dd><Money value={cashBefore} /></dd></div>
-        <div><dt>Estimasi Cash RDN setelah</dt><dd><Money value={cashAfter} tone={cashAfter < 0 ? "negative" : "default"} /></dd></div>
+        <div><dt>Saldo RDN sebelum</dt><dd><Money value={cashBefore} /></dd></div>
+        <div><dt>Estimasi Saldo RDN setelah</dt><dd><Money value={cashAfter} tone={cashAfter < 0 ? "negative" : "default"} /></dd></div>
         <div><dt>Tanggal</dt><dd>{formatDateLongIndonesia(form.trade_date) || form.trade_date}</dd></div>
         {form.notes ? <div><dt>Catatan</dt><dd>{form.notes}</dd></div> : null}
       </dl>
-      {cashAfter < 0 ? <p className="notice notice--warning" role="status">Cash RDN tercatat tidak cukup untuk pembelian ini. Tambahkan dana melalui Transfer terlebih dahulu atau periksa nominal transaksi.</p> : null}
+      {cashAfter < 0 ? <p className="notice notice--warning" role="status">Saldo RDN tercatat tidak cukup untuk pembelian ini. Tambahkan dana melalui Transfer terlebih dahulu atau periksa nominal transaksi.</p> : null}
     </section>
   );
 };
@@ -129,23 +142,22 @@ const TradeReview = ({ mode, form, instruments, portfolio }) => {
 const OpeningPositionFields = ({ form, onFieldChange, instruments, portfolio, errors }) => {
   const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
   const mutualFund = isMutualFundInstrument(instrument || {});
-  const quantityUnit = investmentQuantityUnit(instrument || {});
+  const openingShares = sharesFromQuantity(form.opening_quantity, instrument || {});
   return <>
     <InstrumentField form={form} onFieldChange={onFieldChange} instruments={instruments} error={errors.instrument_id} />
     <div className={formStyles.formRow}>
-      <InvestmentFormField id="investment-opening-shares" label={mutualFund ? "Jumlah unit" : "Jumlah lembar"} required error={errors.shares}>
-        <input min="1" step="1" type="number" value={form.shares || ""} onChange={(event) => onFieldChange("shares", event.target.value)} />
+      <InvestmentFormField id="investment-opening-quantity" label={mutualFund ? "Jumlah unit" : "Jumlah lot"} required error={errors.opening_quantity}>
+        <input min={mutualFund ? "1" : lotStep(instrument?.lot_size)} step={mutualFund ? "1" : lotStep(instrument?.lot_size)} type="number" value={form.opening_quantity || ""} onChange={(event) => onFieldChange("opening_quantity", event.target.value)} />
       </InvestmentFormField>
       <InvestmentFormField id="investment-opening-date" label="Tanggal posisi awal" required error={errors.position_date}>
         <TemporalInput type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />
       </InvestmentFormField>
     </div>
-    {instrument && Number(form.shares || 0) > 0 ? <small className={formStyles.formHint}>{mutualFund ? `${Number(form.shares).toLocaleString("id-ID")} unit reksa dana tercatat.` : <>{Number(form.shares).toLocaleString("id-ID")} lembar ≈ {formatLotCount(form.shares, instrument.lot_size)} lot berdasarkan lot size {Number(instrument.lot_size || 100).toLocaleString("id-ID")}.</>}</small> : null}
     <MoneyInput id="investment-opening-cost" label="Total modal / cost basis" required value={form.cost_basis || ""} error={errors.cost_basis} onChange={(value) => onFieldChange("cost_basis", value)} />
-    {Number(form.shares || 0) > 0 && Number(form.cost_basis || 0) > 0 ? <small className={formStyles.formHint}>Average cost tercatat ≈ <Money value={Math.round(Number(form.cost_basis) / Number(form.shares))} /> per {quantityUnit}.</small> : null}
+    {openingShares > 0 && Number(form.cost_basis || 0) > 0 ? <small className={formStyles.formHint}>Average cost tercatat ≈ <Money value={Math.round(Number(form.cost_basis) / openingShares)} /> per {mutualFund ? "unit" : "saham"}.</small> : null}
     <MoneyInput id="investment-opening-price" label={mutualFund ? "Nilai referensi per unit" : "Harga referensi saat ini"} required value={form.reference_price || ""} error={errors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
-    <MoneyInput id="investment-opening-cash" label="Cash RDN awal" required value={form.actual_cash} error={errors.actual_cash} onChange={(value) => onFieldChange("actual_cash", value)} />
-    <small className={formStyles.formHint}>Isi saldo Cash RDN yang benar pada kondisi awal. Sistem mencatat selisihnya secara append-only; tidak ada transfer atau pemasukan/pengeluaran yang dibuat otomatis. Cash RDN tercatat saat ini <Money value={portfolio.rdn_cash} />.</small>
+    <MoneyInput id="investment-opening-cash" label="Saldo RDN awal" required value={form.actual_cash} error={errors.actual_cash} onChange={(value) => onFieldChange("actual_cash", value)} />
+    <small className={formStyles.formHint}>Isi Saldo RDN yang benar pada kondisi awal. Sistem mencatat selisihnya secara append-only; tidak ada transfer atau pemasukan/pengeluaran yang dibuat otomatis. Saldo RDN tercatat saat ini <Money value={portfolio.rdn_cash} />.</small>
     <NotesField id="investment-opening-notes" value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
   </>;
 };
@@ -165,15 +177,16 @@ const PriceFields = ({ form, onFieldChange, instruments, errors }) => {
 const ReconcileFields = ({ form, onFieldChange, instruments, portfolio, errors }) => {
   const current = new Map((portfolio.holdings || []).map((item) => [item.instrument_id, item.shares]));
   return <>
-    <MoneyInput id="investment-actual-cash" label="Cash RDN aktual" required value={form.actual_cash} error={errors.actual_cash} onChange={(value) => onFieldChange("actual_cash", value)} />
+    <MoneyInput id="investment-actual-cash" label="Saldo RDN aktual" required value={form.actual_cash} error={errors.actual_cash} onChange={(value) => onFieldChange("actual_cash", value)} />
     <InvestmentFormField id="investment-reconciliation-date" label="Tanggal pencocokan" required error={errors.reconciliation_date}>
       <TemporalInput type="date" max={TODAY()} value={form.reconciliation_date} onChange={(event) => onFieldChange("reconciliation_date", event.target.value)} />
     </InvestmentFormField>
     {instruments.map((item) => {
-      const key = `shares:${item.instrument_id}`;
+      const key = `quantity:${item.instrument_id}`;
+      const currentQuantity = quantityFromShares(current.get(item.instrument_id) ?? 0, item);
       return (
-        <InvestmentFormField key={item.instrument_id} id={`investment-shares-${safeId(item.instrument_id)}`} label={`${isMutualFundInstrument(item) ? item.name : item.ticker} · ${investmentQuantityUnit(item)} aktual`} error={errors[key]}>
-          <input min="0" step="1" type="number" value={form[key] ?? current.get(item.instrument_id) ?? 0} onChange={(event) => onFieldChange(key, event.target.value)} />
+        <InvestmentFormField key={item.instrument_id} id={`investment-quantity-${safeId(item.instrument_id)}`} label={`${isMutualFundInstrument(item) ? item.name : item.ticker} · ${isMutualFundInstrument(item) ? "unit" : "lot"} aktual`} error={errors[key]}>
+          <input min="0" step={isMutualFundInstrument(item) ? "1" : lotStep(item.lot_size)} type="number" value={form[key] ?? currentQuantity} onChange={(event) => onFieldChange(key, event.target.value)} />
         </InvestmentFormField>
       );
     })}
@@ -181,19 +194,22 @@ const ReconcileFields = ({ form, onFieldChange, instruments, portfolio, errors }
   </>;
 };
 
-const CorrectionFields = ({ form, onFieldChange, instruments, errors }) => <>
+const CorrectionFields = ({ form, onFieldChange, instruments, errors }) => {
+  const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
+  return <>
   <p className={formStyles.notice}>Koreksi tidak menghapus histori lama. Gunakan hanya setelah selisih diverifikasi.</p>
   <InvestmentFormField id="investment-correction-date" label="Tanggal koreksi" required error={errors.correction_date}>
     <TemporalInput type="date" max={TODAY()} value={form.correction_date} onChange={(event) => onFieldChange("correction_date", event.target.value)} />
   </InvestmentFormField>
-  <SelectionField className={formStyles.field} label="Aset investasi (kosongkan untuk koreksi cash saja)" error={errors.instrument_id} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} options={[{ value: "", label: "Cash RDN saja" }, ...instruments.map(instrumentSelectionOption)]} searchable={instruments.length > 8} searchPlaceholder="Cari aset investasi…" />
+  <SelectionField className={formStyles.field} label="Aset investasi (kosongkan untuk koreksi cash saja)" error={errors.instrument_id} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} options={[{ value: "", label: "Saldo RDN saja" }, ...instruments.map(instrumentSelectionOption)]} searchable={instruments.length > 8} searchPlaceholder="Cari aset investasi…" />
   <div className={formStyles.formRow}>
-    <InvestmentFormField id="investment-share-delta" label="Delta unit/lembar" error={errors.share_delta}><input step="1" type="number" value={form.share_delta || 0} onChange={(event) => onFieldChange("share_delta", event.target.value)} /></InvestmentFormField>
+    <InvestmentFormField id="investment-quantity-delta" label={`Delta ${isMutualFundInstrument(instrument || {}) ? "unit" : "lot"}`} error={errors.quantity_delta}><input step={isMutualFundInstrument(instrument || {}) ? "1" : lotStep(instrument?.lot_size)} type="number" value={form.quantity_delta || 0} onChange={(event) => onFieldChange("quantity_delta", event.target.value)} /></InvestmentFormField>
     <InvestmentFormField id="investment-cost-basis-delta" label="Delta cost basis" error={errors.cost_basis_delta}><input step="1" type="number" value={form.cost_basis_delta || 0} onChange={(event) => onFieldChange("cost_basis_delta", event.target.value)} /></InvestmentFormField>
   </div>
-  <InvestmentFormField id="investment-cash-delta" label="Delta cash RDN" error={errors.cash_delta}><input step="1" type="number" value={form.cash_delta || 0} onChange={(event) => onFieldChange("cash_delta", event.target.value)} /></InvestmentFormField>
+  <InvestmentFormField id="investment-cash-delta" label="Delta saldo RDN" error={errors.cash_delta}><input step="1" type="number" value={form.cash_delta || 0} onChange={(event) => onFieldChange("cash_delta", event.target.value)} /></InvestmentFormField>
   <InvestmentFormField id="investment-correction-reason" label="Alasan" required error={errors.reason}><textarea minLength="5" maxLength="500" value={form.reason || ""} onChange={(event) => onFieldChange("reason", event.target.value)} /></InvestmentFormField>
 </>;
+};
 
 const dialogTitle = (mode) => ({
   buy: "Catat pembelian investasi",
@@ -210,26 +226,31 @@ const dialogDescription = (mode) => ({
   price: "Masukkan nilai atau harga referensi terakhir dari sumber pilihan Anda. Nilai tidak diperbarui otomatis.",
   reconcile: "Bandingkan kondisi aktual dengan catatan Saldo Bersama. Pencocokan tidak menyesuaikan portfolio secara otomatis.",
   correction: "Perbaiki selisih pencatatan secara eksplisit tanpa menulis ulang histori transaksi lama.",
-  opening_position: "Catat aset investasi dan Cash RDN yang sudah dimiliki saat mulai menggunakan Saldo Bersama.",
+  opening_position: "Catat aset investasi dan Saldo RDN yang sudah dimiliki saat mulai menggunakan Saldo Bersama.",
 })[mode];
 
 const buildHoldingsPayload = (form, portfolio, instruments) => {
   const current = new Map((portfolio.holdings || []).map((item) => [item.instrument_id, item.shares]));
   return instruments
-    .map((item) => ({ instrument_id: item.instrument_id, shares: Number(form[`shares:${item.instrument_id}`] ?? current.get(item.instrument_id) ?? 0) }))
+    .map((item) => {
+      const currentShares = Number(current.get(item.instrument_id) ?? 0);
+      const currentQuantity = quantityFromShares(currentShares, item);
+      return { instrument_id: item.instrument_id, shares: sharesFromQuantity(form[`quantity:${item.instrument_id}`] ?? currentQuantity, item) };
+    })
     .filter((item) => item.shares > 0 || current.has(item.instrument_id));
 };
 
 const runInvestmentAction = ({ mode, form, portfolio, portfolioInstruments }) => {
   const base = { portfolio_id: portfolio.portfolio_id };
   const rowVersion = portfolio.row_version;
+  const selectedInstrument = portfolioInstruments.find((item) => item.instrument_id === form.instrument_id) || null;
   const payloads = {
-    buy: { ...base, instrument_id: form.instrument_id, lots: Number(form.lots), price_per_share: Number(form.price_per_share), fee_amount: Number(form.fee_amount || 0), trade_date: form.trade_date, notes: form.notes || "" },
-    sell: { ...base, instrument_id: form.instrument_id, lots: Number(form.lots), price_per_share: Number(form.price_per_share), fee_amount: Number(form.fee_amount || 0), trade_date: form.trade_date, notes: form.notes || "" },
+    buy: { ...base, instrument_id: form.instrument_id, lots: Number(form.lots), price_per_share: Number(form.price_per_share), fee_amount: 0, trade_date: form.trade_date, notes: form.notes || "" },
+    sell: { ...base, instrument_id: form.instrument_id, lots: Number(form.lots), price_per_share: Number(form.price_per_share), fee_amount: 0, trade_date: form.trade_date, notes: form.notes || "" },
     price: { ...base, instrument_id: form.instrument_id, price_per_share: Number(form.price_per_share), valuation_date: form.valuation_date },
     reconcile: { ...base, actual_cash: Number(form.actual_cash), holdings: buildHoldingsPayload(form, portfolio, portfolioInstruments), reconciliation_date: form.reconciliation_date, notes: form.notes || "" },
-    correction: { ...base, instrument_id: form.instrument_id || undefined, share_delta: Number(form.share_delta || 0), cost_basis_delta: Number(form.cost_basis_delta || 0), cash_delta: Number(form.cash_delta || 0), correction_date: form.correction_date, reason: form.reason || "" },
-    opening_position: { ...base, instrument_id: form.instrument_id, shares: Number(form.shares), cost_basis: Number(form.cost_basis), reference_price: Number(form.reference_price), actual_cash: Number(form.actual_cash), position_date: form.position_date, notes: form.notes || "" },
+    correction: { ...base, instrument_id: form.instrument_id || undefined, share_delta: selectedInstrument ? sharesFromQuantity(form.quantity_delta || 0, selectedInstrument) : 0, cost_basis_delta: Number(form.cost_basis_delta || 0), cash_delta: Number(form.cash_delta || 0), correction_date: form.correction_date, reason: form.reason || "" },
+    opening_position: { ...base, instrument_id: form.instrument_id, shares: selectedInstrument ? sharesFromQuantity(form.opening_quantity, selectedInstrument) : Number(form.opening_quantity), cost_basis: Number(form.cost_basis), reference_price: Number(form.reference_price), actual_cash: Number(form.actual_cash), position_date: form.position_date, notes: form.notes || "" },
   };
   const actions = { buy: buyInvestment, sell: sellInvestment, price: updateInvestmentValuation, reconcile: reconcileInvestment, correction: correctInvestment, opening_position: createOpeningPosition };
   return actions[mode](payloads[mode], rowVersion);
@@ -257,7 +278,7 @@ const InvestmentDialogFooter = ({ reviewing, busy, outcomeUnknown, mode, isTrade
 
 const ReconciliationNotice = ({ matched }) => <div className={`notice ${matched ? "notice--success" : "notice--warning"}`} role="status">
   <strong>{matched ? "Catatan cocok dengan kondisi aktual." : "Ada perbedaan dengan kondisi aktual."}</strong>
-  <span>{matched ? "Tidak ada perubahan yang diperlukan." : "Pencocokan hanya menyimpan hasil perbandingan dan tidak mengubah Cash RDN atau holding secara otomatis."}</span>
+  <span>{matched ? "Tidak ada perubahan yang diperlukan." : "Pencocokan hanya menyimpan hasil perbandingan dan tidak mengubah Saldo RDN atau holding secara otomatis."}</span>
 </div>;
 
 const ReconciliationHoldings = ({ comparisons, instruments }) => {
@@ -269,7 +290,7 @@ const ReconciliationHoldings = ({ comparisons, instruments }) => {
       const instrument = instrumentMap.get(item.instrument_id);
       return <div className={sharedStyles.readOnlyNote} key={item.instrument_id}>
         <strong>{instrument?.ticker || instrument?.name || "Aset investasi"}</strong>
-        <span>Tercatat {Number(item.recorded_shares || 0).toLocaleString("id-ID")} {investmentQuantityUnit(instrument)} · aktual {Number(item.actual_shares || 0).toLocaleString("id-ID")} {investmentQuantityUnit(instrument)} · selisih {signedQuantity(item.difference, instrument)}</span>
+        <span>Tercatat {quantityLabel(item.recorded_shares, instrument)} · aktual {quantityLabel(item.actual_shares, instrument)} · selisih {signedQuantity(item.difference, instrument)}</span>
       </div>;
     })}</div>
   </div>;
@@ -288,8 +309,8 @@ const ReconciliationResult = ({ result, instruments, userRole, onClose, onOpenCo
   return <section className={formStyles.review} aria-live="polite">
     <ReconciliationNotice matched={matched} />
     <dl className={formStyles.reviewGrid}>
-      <div><dt>Cash RDN tercatat</dt><dd><Money value={result?.recorded_cash} /></dd></div>
-      <div><dt>Cash RDN aktual</dt><dd><Money value={result?.actual_cash} /></dd></div>
+      <div><dt>Saldo RDN tercatat</dt><dd><Money value={result?.recorded_cash} /></dd></div>
+      <div><dt>Saldo RDN aktual</dt><dd><Money value={result?.actual_cash} /></dd></div>
       <div><dt>Selisih cash</dt><dd><Money value={result?.cash_difference} tone={cashTone} /></dd></div>
       <div><dt>Status</dt><dd>{matched ? "Cocok" : "Perlu diperiksa"}</dd></div>
     </dl>
@@ -302,7 +323,6 @@ const buyDraft = (form) => ({
   instrument_id: String(form.instrument_id || ""),
   lots: form.lots,
   price_per_share: form.price_per_share,
-  fee_amount: form.fee_amount,
   trade_date: form.trade_date,
   notes: form.notes || "",
 });
@@ -312,7 +332,7 @@ const InsufficientRdnGuidance = ({ error, portfolio, form, onFundRdn }) => {
   const projectedBalance = Number(error?.details?.balance);
   const shortage = Number.isFinite(projectedBalance) && projectedBalance < 0 ? Math.abs(projectedBalance) : 0;
   return <div className={portfolioStyles.actionGuidance} role="status">
-    <span>{shortage > 0 ? <>Pembelian membutuhkan tambahan <Money value={shortage} /> agar Cash RDN tidak negatif pada tanggal yang divalidasi server.</> : <>Saldo RDN tidak cukup untuk pembelian ini.</>} Draft pembelian akan dipertahankan setelah Transfer selesai.</span>
+    <span>{shortage > 0 ? <>Pembelian membutuhkan tambahan <Money value={shortage} /> agar Saldo RDN tidak negatif pada tanggal yang divalidasi server.</> : <>Saldo RDN tidak cukup untuk pembelian ini.</>} Draft pembelian akan dipertahankan setelah Transfer selesai.</span>
     <Button type="button" onClick={() => onFundRdn(portfolio, shortage, buyDraft(form))}>Tambah dana</Button>
   </div>;
 };
@@ -320,16 +340,16 @@ const InsufficientRdnGuidance = ({ error, portfolio, form, onFundRdn }) => {
 const initialInvestmentForm = ({ portfolio, initialInstrumentId, initialDraft }) => {
   const base = {
     trade_date: TODAY(), valuation_date: TODAY(), reconciliation_date: TODAY(), correction_date: TODAY(), position_date: TODAY(),
-    lots: 1, fee_amount: 0, actual_cash: portfolio?.rdn_cash ?? 0, instrument_id: initialInstrumentId || "", notes: "",
-    shares: "", cost_basis: "", reference_price: "", share_delta: 0, cost_basis_delta: 0, cash_delta: 0, reason: "",
+    lots: 1, actual_cash: portfolio?.rdn_cash ?? 0, instrument_id: initialInstrumentId || "", notes: "",
+    opening_quantity: "", cost_basis: "", reference_price: "", quantity_delta: 0, cost_basis_delta: 0, cash_delta: 0, reason: "",
   };
   const source = initialDraft && typeof initialDraft === "object" ? initialDraft : {};
-  const allowed = ["instrument_id", "lots", "price_per_share", "fee_amount", "trade_date", "notes", "shares", "cost_basis", "reference_price", "actual_cash", "position_date"];
+  const allowed = ["instrument_id", "lots", "price_per_share", "trade_date", "notes", "opening_quantity", "cost_basis", "reference_price", "actual_cash", "position_date"];
   for (const key of allowed) if (Object.hasOwn(source, key)) base[key] = source[key];
   return base;
 };
 
-const useInvestmentDialogState = ({ mode, portfolio, instruments, userRole, initialInstrumentId, initialDraft, onClose, onSuccess }) => {
+const useInvestmentDialogState = ({ mode, portfolio, instruments, userRole, initialInstrumentId, initialDraft, onClose, onSuccess, onFundRdn }) => {
   const formRef = useRef(null);
   const [form, setForm] = useState(() => initialInvestmentForm({ portfolio, initialInstrumentId, initialDraft }));
   const [busy, setBusy] = useState(false);
@@ -361,7 +381,18 @@ const useInvestmentDialogState = ({ mode, portfolio, instruments, userRole, init
   const submit = async (event) => {
     event.preventDefault(); setError(""); setOperationError(null);
     if (!reviewing && !validate()) return;
-    if (isTrade && !reviewing) { setReviewing(true); return; }
+    if (isTrade && !reviewing) {
+      if (mode === "buy") {
+        const preview = investmentTradePreview("buy", form, activeInstruments);
+        const shortage = Math.max(0, preview.rdnAmount - Number(portfolio.rdn_cash || 0));
+        if (shortage > 0) {
+          if (onFundRdn) onFundRdn(portfolio, shortage, buyDraft(form));
+          else setError("Saldo RDN belum cukup untuk pembelian ini. Isi RDN terlebih dahulu.");
+          return;
+        }
+      }
+      setReviewing(true); return;
+    }
     setBusy(true);
     try {
       const result = await runInvestmentAction({ mode, form, portfolio, portfolioInstruments });
@@ -379,7 +410,7 @@ const useInvestmentDialogState = ({ mode, portfolio, instruments, userRole, init
 
 const InvestmentDialog = ({ mode, portfolio, instruments, userRole, initialInstrumentId = "", initialDraft = null, onClose, onSuccess, onOpenCorrection, onReviewHistory, onFundRdn }) => {
   const safePortfolio = portfolio || { holdings: [], rdn_cash: 0 };
-  const state = useInvestmentDialogState({ mode, portfolio: safePortfolio, instruments, userRole, initialInstrumentId, initialDraft, onClose, onSuccess });
+  const state = useInvestmentDialogState({ mode, portfolio: safePortfolio, instruments, userRole, initialInstrumentId, initialDraft, onClose, onSuccess, onFundRdn });
   if (!mode || !portfolio) return null;
   if (state.reconciliationResult) {
     return <Modal open title={dialogTitle(mode)} description={dialogDescription(mode)} onClose={onClose} footer={null}>

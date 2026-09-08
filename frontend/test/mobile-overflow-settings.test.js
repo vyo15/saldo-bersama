@@ -235,7 +235,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
     Promise.all([read("src/features/allocations/AllocationOverview.module.css"), read("src/features/allocations/AllocationDetail.module.css")]).then((parts) => parts.join("\n")),
     read("src/features/goals/components/GoalCards.module.css"),
     read("src/features/reports/ReportsDesktop.module.css"),
-    read("src/features/budgets/BudgetsPage.module.css"),
+    read("src/features/allocations/AllocationDetail.module.css"),
   ]);
 
   assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.form\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
@@ -246,12 +246,12 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);
   assert.match(allocations, /allocation-header-actions/);
   assert.match(allocations, /allocationClass\("allocation-advanced form-grid__full"\)/);
-  assert.match(allocations, /aria-label="Muat ulang Alokasi Dana"/);
+  assert.doesNotMatch(allocations, /aria-label="Muat ulang Alokasi Dana"/);
   assert.match(allocations, /PageHeader title="Alokasi Dana"/);
   assert.match(allocations, /allocation-summary/);
   assert.match(allocations, /allocation-filters/);
   assert.match(allocations, /allocation-card__expand/);
-  assert.match(allocations, /FiMoreHorizontal/);
+  assert.doesNotMatch(allocations, /FiMoreHorizontal/);
   assert.match(allocations, /mobileSwipeToClose/);
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
   assert.match(goals, /goalClass\("goal-action-menu"\)/);
@@ -262,8 +262,8 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(reports, /BudgetMobileList|report-details__summary/);
   assert.match(goalStyles, /\.goal-action-menu__items/);
   assert.match(goalStyles, /\.goal-action-menu:only-child\s*\{[\s\S]*?grid-column:\s*2;/);
-  assert.match(allocationStyles, /\.allocation-refresh-action > span\s*\{[^}]*display:\s*none;/);
-  assert.match(allocationStyles, /\.allocation-header-actions--with-move\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, \.95fr\) var\(--mobile-control-height\);/);
+  assert.doesNotMatch(allocationStyles, /allocation-refresh-action/);
+  assert.doesNotMatch(allocationStyles, /allocation-header-actions--with-move|allocation-move-action/);
   assert.match(allocationStyles, /\.allocation-filters button\s*\{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(allocationStyles, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
   assert.match(reportStyles, /Desktop-only report presentation/);
@@ -288,8 +288,8 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
 test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks penting tidak mikro", async () => {
   const [reports, budgets, budgetCard, dashboard, transactionForm, accountActivity, accountCard, accountTransfer, accountExperience, settings] = await Promise.all([
     read("src/features/reports/ReportsPage.module.css"),
-    read("src/features/budgets/BudgetsPage.module.css"),
-    read("src/features/budgets/components/BudgetInsightCard.module.css"),
+    read("src/features/allocations/AllocationDetail.module.css"),
+    read("src/features/allocations/AllocationOverview.module.css"),
     read("src/features/dashboard/DashboardPage.module.css"),
     read("src/features/transactions/TransactionForm.module.css"),
     read("src/features/accounts/components/MobileAccountActivity.module.css"),
@@ -303,8 +303,8 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
   assert.match(reports, /\.periodArrow \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.rangeChips button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.sectionHeading > button,[\s\S]*?\.sectionHeading > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(budgets, /@media \(max-width: 820px\)[\s\S]*?\.segment,[\s\S]*?\.sortButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(budgetCard, /@media \(max-width: 820px\)[\s\S]*?\.detailButton \{\s*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgets, /\.allocation-detail-back \{[^}]*min-height:\s*44px;/s);
+  assert.match(budgetCard, /@media \(max-width: 820px\)[\s\S]*?\.allocation-card__expand \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.match(dashboard, /\.mobile-quick-action \{[^}]*min-height:\s*64px;/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(accountActivity, /\.mobileRecentHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);

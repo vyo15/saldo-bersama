@@ -36,7 +36,7 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(reports, /Pengeluaran per rekening/);
   assert.match(reports, /Aktivitas pencatatan/);
   assert.match(reports, /Menunjukkan pencatat, bukan penanggung biaya/);
-  assert.match(reports, /to="\/anggaran"/);
+  assert.match(reports, /to="\/perencanaan\/kantong"/);
   assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
   assert.doesNotMatch(reports, /alerts\.slice\(0,\s*8\)/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
@@ -89,7 +89,7 @@ test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak r
   assert.match(reports, /categoryIcon\(category\?\.icon, "expense"\)/);
   assert.match(reports, /<MobileSummaryAlerts alerts=\{overview\?\.alerts\} \/>/);
   assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
-  assert.match(reports, /to="\/anggaran"/);
+  assert.match(reports, /to="\/perencanaan\/kantong"/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|transactions\.create/);
   assert.match(reportStyles, /@media \(max-width: 820px\)/);
   assert.match(reportStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
@@ -108,7 +108,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
       source("src/features/recurring/RecurringDialogs.jsx"),
     ]).then((parts) => parts.join("\n")),
     goalFeatureSource(),
-    Promise.all([source("src/features/budgets/BudgetsPage.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx"), source("src/features/budgets/components/BudgetInsightCard.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/allocationActionRunners.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
   ]);
   for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
@@ -141,7 +141,8 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(goals, /const openMovement = useCallback/);
   assert.match(goals, /consumeAttention\(\)/);
   assert.match(budgets, /attentionBudgetId/);
-  assert.match(budgets, /Kelola di Alokasi Dana/);
+  assert.match(budgets, /attentionBudgetId/);
+  assert.match(budgets, /Kebutuhan/);
   assert.match(allocations, /attentionEnvelopeId/);
   assert.match(allocations, /consumeAttention\(\)/);
   assert.match(allocations, /Dana kembali tersedia/);
@@ -221,7 +222,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /allocationFilter === "unused"/);
   assert.match(allocations, /Dana terlampaui/);
   assert.match(allocations, /Kebutuhan/);
-  assert.match(allocations, /Jadwal Terkait/);
+  assert.match(allocations, /recurringScheduleForBudget/);
+  assert.doesNotMatch(allocations, /Jadwal Terkait/);
   assert.match(allocations, /<AllocationSummary items=\{activeItems\}/);
   assert.match(allocations, /items=\{filteredActiveItems\}/);
   assert.match(recurring, /envelope_period_id/);

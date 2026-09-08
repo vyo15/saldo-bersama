@@ -13,10 +13,11 @@ test("UI Investasi memakai summary canonical dan tidak mengarang discovery atau 
   assert.match(page, /useApiResource\("investments\.overview"\)/);
   assert.match(page, /const InvestmentOverview = lazy\(\(\) => import\("\.\/InvestmentOverview\.jsx"\)\)/);
   assert.match(page, /Menyiapkan rincian investasi/);
-  for (const field of ["portfolio_value", "rdn_cash", "market_value", "realized_pl", "unrealized_pl"]) assert.match(overview, new RegExp(`(?:summary\\?\\.|values\\.)${field}`));
-  assert.match(overview, /Total investasi = nilai aset tercatat \+ Cash RDN/);
+  for (const field of ["portfolio_value", "rdn_cash", "market_value", "unrealized_pl"]) assert.match(overview, new RegExp(`(?:summary\\?\\.|values\\.)${field}`));
+  assert.match(overview, /Nilai aset tercatat/);
+  assert.match(overview, /Saldo RDN/);
   assert.match(overview, /Total investasi tercatat/);
-  assert.match(overview, /ProgressBar/);
+  assert.match(overview, /allocationTrack/);
   assert.doesNotMatch(`${page}\n${overview}`, /Market Movers|Top Gainers|Top Losers|Popular Investment|market history|market API/i);
 });
 
@@ -27,8 +28,8 @@ test("aksi Investasi capability-driven, koreksi Administrator-only, dan activity
   ]);
   assert.match(overview, /if \(!portfolio\.can_operate\)/);
   assert.match(overview, /owner \? <SheetAction icon=\{FiEdit3\} title="Koreksi catatan"/);
-  assert.match(overview, /Cash RDN keluar/);
-  assert.match(overview, /Cash RDN masuk/);
+  assert.match(overview, /Saldo RDN keluar/);
+  assert.match(overview, /Saldo RDN masuk/);
   assert.match(overview, /Riwayat catatan terbaru/);
   for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual", "Nilai manual", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(model, new RegExp(label));
 });
@@ -94,8 +95,8 @@ test("Investasi menjelaskan pencatatan manual dan memakai terminologi pencatatan
   assert.doesNotMatch(dialog, /Saldo Bersama hanya mencatat transaksi yang sudah dilakukan di aplikasi investasi/);
   assert.match(dialog, /Nilai tidak diperbarui otomatis/);
   assert.match(overview, /bukan harga pasar live/);
-  assert.match(overview, /aria-label="Catat pembelian">Catat pembelian<\/Button>/);
-  assert.match(overview, /aria-label="Catat penjualan">Catat penjualan<\/Button>/);
+  assert.match(overview, /aria-label="Beli investasi">Beli<\/Button>/);
+  assert.match(overview, /aria-label="Jual investasi">Jual<\/Button>/);
   assert.match(overview, />Lainnya<\/span>/);
   assert.match(overview, /title="Perbarui nilai"/);
   assert.match(detail, />Catat penjualan<\/Button>/);
@@ -154,7 +155,7 @@ test("prerequisite Investasi tidak memberi dead-end Member dan lot correction ti
   assert.doesNotMatch(dialog, /Math\.floor\(holding\.shares \/ lotSize\)/);
 });
 
-test("rekening Investasi menjadi pintu ke holding aktual dan portfolio selalu menyebut Cash RDN yang terikat", async () => {
+test("rekening Investasi menjadi pintu ke holding aktual dan portfolio selalu menyebut Saldo RDN yang terikat", async () => {
   const [page, overview, holdingDetail, accountCard, desktopAccounts, setup] = await Promise.all([
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/investments/InvestmentOverview.jsx"),
@@ -165,12 +166,12 @@ test("rekening Investasi menjadi pintu ke holding aktual dan portfolio selalu me
   ]);
   assert.match(page, /InvestmentHoldingDetail = lazy/);
   assert.match(overview, /Sumber catatan/);
-  assert.match(overview, /Satu portofolio ini selalu menggunakan Cash RDN dari rekening di atas/);
+  assert.match(overview, /Satu portofolio ini selalu menggunakan Saldo RDN dari rekening di atas/);
   assert.match(overview, /Average cost/);
   assert.match(holdingDetail, /Modal tercatat/);
   assert.match(holdingDetail, /Aktivitas investasi terbaru/);
   assert.match(accountCard, /Lihat investasi/);
-  assert.match(accountCard, /Cash RDN/);
+  assert.match(accountCard, /Saldo RDN/);
   assert.match(desktopAccounts, /Lihat investasi/);
   assert.match(desktopAccounts, /Transfer RDN terbaru/);
   assert.match(setup, /investmentRdnDisplayLabel\(item\)/);
@@ -192,8 +193,8 @@ test("Bank ↔ RDN memakai Transfer composer, prefill arah/nominal, lalu kembali
   assert.match(page, /amount: suggestedAmount > 0 \? String\(suggestedAmount\) : ""/);
   assert.match(page, /transaction_date: suggestedDate/);
   assert.match(page, /draft\?\.trade_date/);
-  assert.match(overview, /Tambah dana ke RDN/);
-  assert.match(overview, /Tarik dana dari RDN/);
+  assert.match(overview, /Isi RDN/);
+  assert.match(overview, />Tarik<\/Button>/);
   assert.match(composer, /continuation/);
   assert.match(postSave, /Kembali ke pembelian/);
   assert.match(postSave, /doneLabel/);
@@ -205,7 +206,7 @@ test("Bank ↔ RDN memakai Transfer composer, prefill arah/nominal, lalu kembali
   assert.match(continuation, /payload/);
 });
 
-test("draft pembelian dipertahankan saat Cash RDN kurang dan dipulihkan setelah transfer", async () => {
+test("draft pembelian dipertahankan saat Saldo RDN kurang dan dipulihkan setelah transfer", async () => {
   const [dialog, page, continuation] = await Promise.all([
     read("src/features/investments/InvestmentDialog.jsx"),
     read("src/features/investments/InvestmentsPage.jsx"),
@@ -216,7 +217,8 @@ test("draft pembelian dipertahankan saat Cash RDN kurang dan dipulihkan setelah 
   assert.match(dialog, /instrument_id: form\.instrument_id/);
   assert.match(dialog, /lots: form\.lots/);
   assert.match(dialog, /price_per_share: form\.price_per_share/);
-  assert.match(dialog, /fee_amount: form\.fee_amount/);
+  assert.doesNotMatch(dialog, /fee_amount: form\.fee_amount/);
+  assert.match(dialog, /fee_amount: 0/);
   assert.match(dialog, /trade_date: form\.trade_date/);
   assert.match(dialog, /notes: form\.notes/);
   assert.match(page, /initialDraft: continuation\.payload\.draft \|\| null/);
@@ -225,7 +227,7 @@ test("draft pembelian dipertahankan saat Cash RDN kurang dan dipulihkan setelah 
   assert.match(continuation, /continue-after-rdn-funding/);
 });
 
-test("onboarding existing investment memakai opening_position, Cash RDN awal, dan bukan fake buy", async () => {
+test("onboarding existing investment memakai opening_position, Saldo RDN awal, dan bukan fake buy", async () => {
   const [page, dialog, api, model] = await Promise.all([
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/investments/InvestmentDialog.jsx"),
@@ -237,25 +239,26 @@ test("onboarding existing investment memakai opening_position, Cash RDN awal, da
   assert.match(page, /Saya sudah punya investasi/);
   assert.match(page, /Tambah posisi awal lain/);
   assert.match(dialog, /opening_position: createOpeningPosition/);
-  assert.match(dialog, /Jumlah lembar/);
+  assert.match(dialog, /Jumlah lot/);
+  assert.doesNotMatch(dialog, /Jumlah lembar/);
   assert.match(dialog, /Total modal \/ cost basis/);
   assert.match(dialog, /Average cost tercatat/);
   assert.match(dialog, /Harga referensi saat ini/);
-  assert.match(dialog, /Cash RDN awal/);
+  assert.match(dialog, /Saldo RDN awal/);
   assert.match(dialog, /tidak ada transfer atau pemasukan\/pengeluaran yang dibuat otomatis/);
   assert.match(api, /investments\.openingPositions\.create/);
   assert.match(model, /opening_position/);
-  assert.match(dialog, /Catat aset investasi dan Cash RDN yang sudah dimiliki saat mulai menggunakan Saldo Bersama/);
+  assert.match(dialog, /Catat aset investasi dan Saldo RDN yang sudah dimiliki saat mulai menggunakan Saldo Bersama/);
   assert.doesNotMatch(dialog, /Posisi awal mencatat kondisi yang sudah ada saat Anda mulai memakai Saldo Bersama/);
 });
 
-test("penjualan selesai di Cash RDN; rekonsiliasi menampilkan semua perbandingan dan koreksi tetap eksplisit", async () => {
+test("penjualan selesai di Saldo RDN; rekonsiliasi menampilkan semua perbandingan dan koreksi tetap eksplisit", async () => {
   const [page, dialog] = await Promise.all([
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/investments/InvestmentDialog.jsx"),
   ]);
   assert.match(page, /Penjualan investasi selesai dicatat/);
-  assert.match(page, /sudah menjadi Cash RDN/);
+  assert.match(page, /sudah menjadi Saldo RDN/);
   assert.match(page, /<Button type="button" variant="primary" onClick=\{onDismiss\}>Selesai<\/Button>/);
   assert.match(page, />Tarik ke rekening<\/Button>/);
   assert.match(page, />Catat pembelian lain<\/Button>/);

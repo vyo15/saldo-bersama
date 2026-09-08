@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { allocationCardActionState, allocationNeedsFundingSummary } from "../src/features/allocations/allocationPresentation.js";
+import { allocationNeedsFundingSummary } from "../src/features/allocations/allocationPresentation.js";
 
 test("ringkasan Kebutuhan membandingkan rencana dengan dana alokasi tanpa memakai sisa setelah transaksi", () => {
   const summary = allocationNeedsFundingSummary(
@@ -44,32 +44,5 @@ test("ringkasan Kebutuhan menormalkan nominal invalid agar tidak membuat suggest
     gap: 250_000,
     unplanned: 0,
     status: "needs-funding",
-  });
-});
-
-
-test("aksi kartu Alokasi menonjolkan Kebutuhan pertama dan menjaga adjustment capability-gated", () => {
-  assert.deepEqual(allocationCardActionState({ can_manage_needs: true, can_adjust: true }, 0), {
-    canManageNeeds: true,
-    canAdjust: true,
-    needsEmpty: true,
-    showPlanningActions: true,
-    addNeedVariant: "primary",
-  });
-
-  assert.deepEqual(allocationCardActionState({ can_manage_needs: true, can_adjust: true }, 2), {
-    canManageNeeds: true,
-    canAdjust: true,
-    needsEmpty: false,
-    showPlanningActions: true,
-    addNeedVariant: "secondary",
-  });
-
-  assert.deepEqual(allocationCardActionState({ can_manage_needs: false, can_adjust: true }, 0), {
-    canManageNeeds: false,
-    canAdjust: true,
-    needsEmpty: true,
-    showPlanningActions: true,
-    addNeedVariant: "primary",
   });
 });

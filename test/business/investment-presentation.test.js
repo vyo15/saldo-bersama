@@ -26,8 +26,10 @@ test("trade preview hanya menghitung estimasi dari input dan lot size instrumen"
   const sell = investmentTradePreview("sell", form, [{ ...active, name: "Bank Central Asia", lot_size: 100 }]);
   assert.equal(buy.shares, 200);
   assert.equal(buy.grossAmount, 1_820_000);
-  assert.equal(buy.rdnAmount, 1_822_500);
-  assert.equal(sell.rdnAmount, 1_817_500);
+  assert.equal(buy.rdnAmount, 1_820_000);
+  assert.equal(sell.rdnAmount, 1_820_000);
+  assert.equal(buy.feeAmount, 0);
+  assert.equal(sell.feeAmount, 0);
   assert.equal(buy.instrument.ticker, "BBCA");
 });
 
@@ -57,7 +59,7 @@ test("presentasi detail holding membedakan ownership, sumber harga, hasil, dan a
   assert.equal(investmentActivityLabel({ activity_type: "valuation", ticker: "BBCA" }), "Harga manual diperbarui · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "opening_position", ticker: "BBCA" }), "Posisi awal dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "correction", instrument_id: "active", ticker: "BBCA" }), "Koreksi dicatat · BBCA");
-  assert.equal(investmentActivityLabel({ activity_type: "correction" }), "Koreksi dicatat · Cash RDN");
+  assert.equal(investmentActivityLabel({ activity_type: "correction" }), "Koreksi dicatat · Saldo RDN");
 
   const activity = Array.from({ length: 25 }, (_, index) => ({ instrument_id: index === 24 ? "other" : "active", activity_id: String(index) }));
   const selected = investmentActivityForInstrument(activity, "active");
@@ -73,7 +75,7 @@ test("validasi presentasi Investasi memberi inline error tanpa mengambil alih ot
   assert.equal(missing.instrument_id, "Pilih saham yang tersedia.");
   assert.match(missing.lots, /lebih dari 0/);
   assert.match(missing.price_per_share, /lebih dari 0/);
-  assert.match(missing.fee_amount, /0 atau lebih/);
+  assert.equal(missing.fee_amount, undefined);
   assert.match(missing.trade_date, /masa depan/);
 
   const sell = validateInvestmentOperation("sell", { instrument_id: "active", lots: 3, price_per_share: 9000, fee_amount: 0, trade_date: "2026-09-02" }, options);
@@ -97,24 +99,24 @@ test("validasi harga, rekonsiliasi, dan opening position menutup field finansial
   assert.match(priceErrors.valuation_date, /masa depan/);
 
   assert.deepEqual(validateInvestmentOperation("reconcile", {
-    actual_cash: 0, reconciliation_date: "2026-09-02", "shares:active": 1_000, "shares:bmri": 0, "shares:goto": 25,
+    actual_cash: 0, reconciliation_date: "2026-09-02", "quantity:active": 10, "quantity:bmri": 0, "quantity:goto": 0.25,
   }, options), {});
   const reconcileErrors = validateInvestmentOperation("reconcile", {
-    actual_cash: -1, reconciliation_date: "2026-09-03", "shares:active": -1, "shares:bmri": 0, "shares:goto": "invalid",
+    actual_cash: -1, reconciliation_date: "2026-09-03", "quantity:active": -1, "quantity:bmri": 0, "quantity:goto": "invalid",
   }, options);
   assert.match(reconcileErrors.actual_cash, /0 atau lebih/);
   assert.match(reconcileErrors.reconciliation_date, /masa depan/);
-  assert.match(reconcileErrors["shares:active"], /0 atau lebih/);
-  assert.match(reconcileErrors["shares:goto"], /0 atau lebih/);
+  assert.match(reconcileErrors["quantity:active"], /lot aktual tidak valid/);
+  assert.match(reconcileErrors["quantity:goto"], /lot aktual tidak valid/);
 
   assert.deepEqual(validateInvestmentOperation("opening_position", {
-    instrument_id: "bmri", shares: 100, cost_basis: 1_000_000, reference_price: 10_000, actual_cash: 500_000, position_date: "2026-09-02", notes: "Posisi awal dari broker",
+    instrument_id: "bmri", opening_quantity: 1, cost_basis: 1_000_000, reference_price: 10_000, actual_cash: 500_000, position_date: "2026-09-02", notes: "Posisi awal dari broker",
   }, options), {});
   const openingErrors = validateInvestmentOperation("opening_position", {
-    instrument_id: "active", shares: 0, cost_basis: 0, reference_price: 0, actual_cash: -1, position_date: "2026-09-03", notes: "x".repeat(501),
+    instrument_id: "active", opening_quantity: 0, cost_basis: 0, reference_price: 0, actual_cash: -1, position_date: "2026-09-03", notes: "x".repeat(501),
   }, options);
   assert.equal(openingErrors.instrument_id, "Pilih saham untuk posisi awal.");
-  assert.match(openingErrors.shares, /lebih dari 0/);
+  assert.match(openingErrors.opening_quantity, /lebih dari 0/);
   assert.match(openingErrors.cost_basis, /lebih dari 0/);
   assert.match(openingErrors.reference_price, /lebih dari 0/);
   assert.match(openingErrors.actual_cash, /0 atau lebih/);
@@ -127,8 +129,8 @@ test("validasi koreksi menjaga input konsisten sebelum server melakukan validasi
   const empty = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", share_delta: 0, cost_basis_delta: 0, cash_delta: 0 }, base);
   assert.match(empty._form, /harus mengubah/);
 
-  const mismatch = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", instrument_id: "active", share_delta: 100, cost_basis_delta: -1000, cash_delta: 0 }, base);
-  assert.match(mismatch.share_delta, /searah/);
+  const mismatch = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", instrument_id: "active", quantity_delta: 1, cost_basis_delta: -1000, cash_delta: 0 }, base);
+  assert.match(mismatch.quantity_delta, /searah/);
   assert.match(mismatch.cost_basis_delta, /searah/);
 
   const member = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", cash_delta: 1 }, { ...base, userRole: "member" });

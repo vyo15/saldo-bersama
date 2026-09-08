@@ -4,7 +4,7 @@ import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
-import { isMutualFundInstrument, investmentQuantityUnit } from "../../shared/presentation/investmentAssets.js";
+import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import { investmentActivityLabel, investmentReturnPercent } from "./investments.model.js";
 
 import formStyles from "./InvestmentForm.module.css";
@@ -13,6 +13,9 @@ import sharedStyles from "./InvestmentShared.module.css";
 
 const performanceLabel = (value) => Number(value || 0) > 0 ? "Untung" : Number(value || 0) < 0 ? "Rugi" : "Impas";
 const percentLabel = (value) => value == null ? "" : `${value >= 0 ? "+" : ""}${value.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
+const holdingQuantityLabel = (shares, holding) => isMutualFundInstrument(holding)
+  ? `${Number(shares || 0).toLocaleString("id-ID")} unit`
+  : `${(Number(shares || 0) / Number(holding?.lot_size || 100)).toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
 
 const HoldingActivity = ({ portfolio, holding }) => {
   const items = (portfolio.activity || []).filter((item) => item.instrument_id === holding.instrument_id).slice(0, 10);
@@ -29,9 +32,9 @@ const HoldingActivity = ({ portfolio, holding }) => {
           <small>{formatDateLongIndonesia(item.activity_date) || item.activity_date}</small>
         </div>
         <div className={activityStyles.activityValue}>
-          {trade ? <><span>{buy ? "Cash RDN keluar" : "Cash RDN masuk"}</span><Money value={item.cash_amount} /></> : null}
+          {trade ? <><span>{buy ? "Saldo RDN keluar" : "Saldo RDN masuk"}</span><Money value={item.cash_amount} /></> : null}
           {valuation ? <><span>Harga referensi</span><Money value={item.price_per_share} /></> : null}
-          {opening ? <><span>Posisi awal</span><strong>{Number(item.share_delta || 0).toLocaleString("id-ID")} {investmentQuantityUnit(holding)}</strong></> : null}
+          {opening ? <><span>Posisi awal</span><strong>{holdingQuantityLabel(item.share_delta, holding)}</strong></> : null}
           {!trade && !valuation && !opening ? <span>Koreksi tercatat</span> : null}
         </div>
       </li>;
@@ -45,7 +48,7 @@ const InvestmentHoldingDetail = ({ portfolio, holding, onClose, onAction }) => {
   const shares = Number(holding.shares || 0);
   const lots = lotSize > 0 ? shares / lotSize : 0;
   const mutualFund = isMutualFundInstrument(holding);
-  const quantityLabel = mutualFund ? `${shares.toLocaleString("id-ID")} unit` : `${lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot · ${shares.toLocaleString("id-ID")} lembar`;
+  const quantityLabel = mutualFund ? `${shares.toLocaleString("id-ID")} unit` : `${lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
   const returnPercent = investmentReturnPercent(holding.unrealized_pl, holding.cost_basis);
   const canSell = portfolio.can_operate && shares >= lotSize;
   const footer = <div className="form-actions">
@@ -57,7 +60,7 @@ const InvestmentHoldingDetail = ({ portfolio, holding, onClose, onAction }) => {
     <div className={formStyles.review}>
       <div>
         <h3>{holding.name || "Instrumen investasi"}</h3>
-        <p className={formStyles.formHint}>Cash RDN portfolio ini berasal dari rekening RDN yang terikat pada portfolio.</p>
+        <p className={formStyles.formHint}>Saldo RDN portfolio ini berasal dari rekening RDN yang terikat pada portfolio.</p>
       </div>
       <dl className={formStyles.reviewGrid}>
         <div><dt>Kepemilikan</dt><dd>{quantityLabel}</dd></div>

@@ -42,14 +42,14 @@ const entityState = (key, value) => (value ? { [key]: value } : {});
 
 const ALERT_GUIDANCE_BUILDERS = Object.freeze({
   investment_reconciliation_difference: ({ to, baseState, entityId }) => guidance({
-    instruction: "Portfolio akan dipilih otomatis. Cocokkan Cash RDN dan holding aktual dari aplikasi investasi Anda.",
+    instruction: "Portfolio akan dipilih otomatis. Cocokkan Saldo RDN dan holding aktual dari aplikasi investasi Anda.",
     actionLabel: "Cocokkan investasi",
     to,
     baseState,
     state: entityState("attentionRdnAccountId", entityId),
   }),
   investment_reconciliation_stale: ({ to, baseState, entityId }) => guidance({
-    instruction: "Portfolio akan dipilih otomatis. Verifikasi Cash RDN dan holding aktual dari aplikasi investasi Anda.",
+    instruction: "Portfolio akan dipilih otomatis. Verifikasi Saldo RDN dan holding aktual dari aplikasi investasi Anda.",
     actionLabel: "Cocokkan investasi",
     to,
     baseState,

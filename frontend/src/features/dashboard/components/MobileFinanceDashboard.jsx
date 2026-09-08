@@ -126,8 +126,8 @@ const MobileBudgetPlan = ({ overview, balanceVisible }) => {
   const budget = priorityBudget(overview);
   if (!budget) return (
     <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-budget-plan-title">
-      <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-budget-plan-title">Rencana Keuangan</h2><Link to="/anggaran">Lihat anggaran</Link></div>
-      <Link className={dashboardClass("mobile-compact-empty")} to="/anggaran"><span><FiPieChart aria-hidden="true" /></span><span><strong>Belum ada kebutuhan aktif</strong><small>Siapkan anggaran agar pemakaian bulan ini lebih mudah dipantau.</small></span><FiChevronRight aria-hidden="true" /></Link>
+      <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-budget-plan-title">Rencana Keuangan</h2><Link to="/perencanaan">Lihat alokasi</Link></div>
+      <Link className={dashboardClass("mobile-compact-empty")} to="/perencanaan"><span><FiPieChart aria-hidden="true" /></span><span><strong>Belum ada kebutuhan aktif</strong><small>Tambahkan kebutuhan dari Alokasi Dana agar rencana bulan ini mudah dipantau.</small></span><FiChevronRight aria-hidden="true" /></Link>
     </section>
   );
 
@@ -138,8 +138,8 @@ const MobileBudgetPlan = ({ overview, balanceVisible }) => {
   const note = used <= 0 ? "Belum ada pemakaian bulan ini" : percentage >= 100 ? "Batas kebutuhan sudah tercapai" : "Masih tersedia untuk bulan ini";
   return (
     <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-budget-plan-title">
-      <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-budget-plan-title">Rencana Keuangan</h2><Link to="/anggaran">Lihat anggaran</Link></div>
-      <Link className={dashboardClass("mobile-budget-card")} to="/anggaran">
+      <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-budget-plan-title">Rencana Keuangan</h2><Link to="/perencanaan">Lihat alokasi</Link></div>
+      <Link className={dashboardClass("mobile-budget-card")} to="/perencanaan">
         <span className={dashboardClass("mobile-budget-card__icon")}><FiPieChart aria-hidden="true" /></span>
         <div className={dashboardClass("mobile-budget-card__copy")}>
           <strong>{budget.name || "Kebutuhan"}</strong>
@@ -226,7 +226,7 @@ const MobileInvestment = ({ summary, balanceVisible }) => {
     <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-investment-title">Investasi</h2><Link to="/investasi">Buka catatan</Link></div>
     <Link className={dashboardClass("mobile-investment-card")} to="/investasi">
       <span className={dashboardClass("mobile-investment-card__icon")}><InvestmentIcon aria-hidden="true" /></span>
-      <span className={dashboardClass("mobile-investment-card__copy")}><small>Total investasi tercatat</small><strong><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></strong><em data-tone={tone}>{hasInvestedAssets ? <>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</> : <>Nilai aset <SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /> · Cash RDN <SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></>}</em></span>
+      <span className={dashboardClass("mobile-investment-card__copy")}><small>Total investasi tercatat</small><strong><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></strong><em data-tone={tone}>{hasInvestedAssets ? <>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</> : <>Nilai aset <SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /> · Saldo RDN <SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></>}</em></span>
       <FiChevronRight className={dashboardClass("mobile-investment-card__chevron")} aria-hidden="true" />
     </Link>
   </section>;

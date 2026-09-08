@@ -167,7 +167,7 @@ export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {
     {
       sql: `WITH cutoffs(period_key,cutoff_date) AS (VALUES ${cutoffValues}),
         account_balances AS (
-          SELECT c.period_key,a.account_id,
+          SELECT c.period_key,a.account_id,a.account_type,
             CASE WHEN a.initial_balance_date<=c.cutoff_date THEN a.initial_balance ELSE 0 END + COALESCE(SUM(CASE
               WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
                 AND t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
@@ -186,9 +186,12 @@ export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {
           LEFT JOIN transactions t ON (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
             AND t.status='active' AND t.transaction_date<=c.cutoff_date AND t.transaction_date>=a.initial_balance_date
           WHERE ${accountAccess.sql}
-          GROUP BY c.period_key,a.account_id,a.initial_balance,a.initial_balance_date
+          GROUP BY c.period_key,a.account_id,a.account_type,a.initial_balance,a.initial_balance_date
         )
-        SELECT period_key,COALESCE(SUM(balance),0) AS total_balance FROM account_balances GROUP BY period_key`,
+        SELECT period_key,
+          COALESCE(SUM(balance),0) AS total_balance,
+          COALESCE(SUM(CASE WHEN account_type<>'investment' THEN balance ELSE 0 END),0) AS non_investment_balance
+        FROM account_balances GROUP BY period_key`,
       args: [...cutoffArgs, ...accountAccess.args],
     },
   ];
@@ -228,7 +231,7 @@ export const dailyTrendPlan = (actor, period, { accountId = "" } = {}) => {
     {
       sql: `WITH cutoffs(date_key,cutoff_date) AS (VALUES ${cutoffValues}),
         account_balances AS (
-          SELECT c.date_key,a.account_id,
+          SELECT c.date_key,a.account_id,a.account_type,
             CASE WHEN a.initial_balance_date<=c.cutoff_date THEN a.initial_balance ELSE 0 END + COALESCE(SUM(CASE
               WHEN t.status='active' AND t.transaction_date BETWEEN a.initial_balance_date AND c.cutoff_date
                 AND t.transaction_type IN ('income','refund') AND t.destination_account_id=a.account_id THEN t.amount
@@ -247,9 +250,12 @@ export const dailyTrendPlan = (actor, period, { accountId = "" } = {}) => {
           LEFT JOIN transactions t ON (t.source_account_id=a.account_id OR t.destination_account_id=a.account_id)
             AND t.status='active' AND t.transaction_date<=c.cutoff_date AND t.transaction_date>=a.initial_balance_date
           WHERE ${accountAccess.sql}
-          GROUP BY c.date_key,a.account_id,a.initial_balance,a.initial_balance_date
+          GROUP BY c.date_key,a.account_id,a.account_type,a.initial_balance,a.initial_balance_date
         )
-        SELECT date_key,COALESCE(SUM(balance),0) AS total_balance FROM account_balances GROUP BY date_key`,
+        SELECT date_key,
+          COALESCE(SUM(balance),0) AS total_balance,
+          COALESCE(SUM(CASE WHEN account_type<>'investment' THEN balance ELSE 0 END),0) AS non_investment_balance
+        FROM account_balances GROUP BY date_key`,
       args: [...cutoffArgs, ...accountAccess.args],
     },
   ];
@@ -268,7 +274,10 @@ export const dailyTrendPlan = (actor, period, { accountId = "" } = {}) => {
 
 export const mapDailyTrendRows = (plan, [cashRows = [], balanceRows = [], accountExpenseRows = []]) => {
   const cashLookup = new Map(cashRows.map((row) => [row.date_key, row]));
-  const balanceLookup = new Map(balanceRows.map((row) => [row.date_key, Number(row.total_balance || 0)]));
+  const balanceLookup = new Map(balanceRows.map((row) => [row.date_key, {
+    total: Number(row.total_balance || 0),
+    nonInvestment: Number(row.non_investment_balance || 0),
+  }]));
   const accountExpenseLookup = new Map(accountExpenseRows.map((row) => [row.date_key, Number(row.amount || 0)]));
   return {
     items: plan.dates.map((date) => {
@@ -283,7 +292,8 @@ export const mapDailyTrendRows = (plan, [cashRows = [], balanceRows = [], accoun
         expense,
         refund,
         net: income + refund - expense,
-        totalBalance: balanceLookup.get(date) || 0,
+        totalBalance: balanceLookup.get(date)?.total || 0,
+        nonInvestmentBalance: balanceLookup.get(date)?.nonInvestment || 0,
       };
     }),
     accountExpenseItems: plan.accountId
@@ -294,7 +304,10 @@ export const mapDailyTrendRows = (plan, [cashRows = [], balanceRows = [], accoun
 
 export const mapMonthlyTrendRows = (plan, [cashRows = [], balanceRows = [], accountExpenseRows = []]) => {
   const cashLookup = new Map(cashRows.map((row) => [row.period_key, row]));
-  const balanceLookup = new Map(balanceRows.map((row) => [row.period_key, Number(row.total_balance || 0)]));
+  const balanceLookup = new Map(balanceRows.map((row) => [row.period_key, {
+    total: Number(row.total_balance || 0),
+    nonInvestment: Number(row.non_investment_balance || 0),
+  }]));
   const accountExpenseLookup = new Map(accountExpenseRows.map((row) => [row.period_key, Number(row.amount || 0)]));
   return {
     items: plan.periods.map((period) => {
@@ -309,7 +322,8 @@ export const mapMonthlyTrendRows = (plan, [cashRows = [], balanceRows = [], acco
         expense,
         refund,
         net: income + refund - expense,
-        totalBalance: balanceLookup.get(period) || 0,
+        totalBalance: balanceLookup.get(period)?.total || 0,
+        nonInvestmentBalance: balanceLookup.get(period)?.nonInvestment || 0,
       };
     }),
     accountExpenseItems: plan.accountId

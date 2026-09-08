@@ -88,18 +88,18 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 
 ## Investasi / RDN - pemisahan saldo operasional
 
-- [ ] Hero Dashboard memakai **Saldo rekening** (`nonInvestmentBalance`), sedangkan Cash RDN hanya muncul pada konteks Investasi; privacy masking mencakup keduanya.
-- [ ] `safeToSpend`, `dailySafeToSpend`, dan dana belum dialokasikan tidak berubah naik karena Cash RDN; Bank → RDN menurunkan Saldo rekening tanpa mengubah total kekayaan, RDN → Bank melakukan kebalikannya.
-- [ ] Income/expense/refund/adjustment ordinary tidak dapat memakai rekening Investasi; Transfer Bank ↔ RDN tetap valid, sedangkan Buy/Sell mengubah Cash RDN melalui event Investasi tanpa menjadi income/expense.
-- [ ] Alokasi Dana dan Jadwal Rutin baru tidak menawarkan/menerima RDN sebagai rekening operasional; data legacy tetap readable tanpa mengikat Cash RDN sebagai dana tersedia.
-- [ ] Trend saldo harian/bulanan merekonsiliasi `investment_account_events`, dan snapshot Total kekayaan tidak menjumlahkan `totalBalance + portfolio_value` sehingga Cash RDN tidak double-count.
+- [ ] Hero Dashboard memakai **Saldo rekening** (`nonInvestmentBalance`), sedangkan Saldo RDN hanya muncul pada konteks Investasi; privacy masking mencakup keduanya.
+- [ ] `safeToSpend`, `dailySafeToSpend`, dan dana belum dialokasikan tidak berubah naik karena Saldo RDN; Bank → RDN menurunkan Saldo rekening tanpa mengubah total kekayaan, RDN → Bank melakukan kebalikannya.
+- [ ] Income/expense/refund/adjustment ordinary tidak dapat memakai rekening Investasi; Transfer Bank ↔ RDN tetap valid, sedangkan Buy/Sell mengubah Saldo RDN melalui event Investasi tanpa menjadi income/expense.
+- [ ] Alokasi Dana dan Jadwal Rutin baru tidak menawarkan/menerima RDN sebagai rekening operasional; data legacy tetap readable tanpa mengikat Saldo RDN sebagai dana tersedia.
+- [ ] Trend saldo harian/bulanan merekonsiliasi `investment_account_events`, dan snapshot Total kekayaan tidak menjumlahkan `totalBalance + portfolio_value` sehingga Saldo RDN tidak double-count.
 
 ## Investasi prototype - Reksa Dana
 
 - [ ] `Tambah aset` menampilkan switch `Saham LQ45` dan `Reksa Dana`; tidak ada form tambah instrumen manual.
 - [ ] Reksa Dana Haji Syariah (IHAJJ) dan Capital Fixed Income Fund (CAPFIX) menampilkan logo yang benar.
-- [ ] Reksa dana memakai `unit` dan `nilai per unit`; saham tetap memakai `lot/lembar` dan `harga per saham`.
-- [ ] Catat pembelian/penjualan reksa dana tetap manual tracking dan mengubah Cash RDN melalui ledger Investasi existing tanpa membuat income/expense.
+- [ ] Reksa dana memakai `unit` dan `nilai per unit`; saham memakai **lot-only pada UI** dan `harga per saham`, sementara konversi share quantity tetap internal/backend.
+- [ ] Catat pembelian/penjualan reksa dana tetap manual tracking dan mengubah Saldo RDN melalui ledger Investasi existing tanpa membuat income/expense.
 - [ ] Tidak ada copy/flow yang memberi kesan marketplace, NAV live, koneksi broker, atau order execution.
 
 - [ ] Notification Center mobile tampil sebagai task inbox ringkas: back icon 44px tanpa card berat, `Baca semua` aksesibel, dan seluruh tipe utama (rekonsiliasi, jadwal, anggaran, Alokasi Dana, Target, unallocated expense) hanya menampilkan aksi + entitas + satu fakta + chevron; contextual entry tidak meminta entity yang sama dipilih ulang.

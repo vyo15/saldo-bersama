@@ -1,6 +1,6 @@
 import { ACCOUNT_TYPES, BANK_TEMPLATES, EWALLET_TEMPLATES } from "../../domain/constants.js";
 
-export const ACCOUNT_BALANCE_GUIDANCE = "Saldo rekening operasional dipisahkan dari Cash RDN. Dana tersedia adalah bagian saldo rekening non-investasi yang belum terikat ke Alokasi Dana. Rekening investasi hanya bergerak lewat Transfer atau pencatatan Investasi.";
+export const ACCOUNT_BALANCE_GUIDANCE = "Saldo rekening operasional dipisahkan dari Saldo RDN. Dana tersedia adalah bagian saldo rekening non-investasi yang belum terikat ke Alokasi Dana. Rekening investasi hanya bergerak lewat Transfer atau pencatatan Investasi.";
 
 export const ACCOUNT_AVAILABLE_BALANCE_HINT = "Bagian saldo rekening non-investasi yang belum terikat ke Alokasi Dana.";
 export const ACCOUNT_ALLOCATED_BALANCE_HINT = "Bagian saldo rekening non-investasi yang masih terikat ke Alokasi Dana.";

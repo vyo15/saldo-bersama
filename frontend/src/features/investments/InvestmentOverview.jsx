@@ -3,7 +3,6 @@ import {
   FiActivity,
   FiArrowDownLeft,
   FiArrowUpRight,
-  FiChevronDown,
   FiChevronRight,
   FiEdit3,
   FiMinus,
@@ -17,10 +16,9 @@ import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
-import ProgressBar from "../../components/common/ProgressBar.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { investmentRdnDisplayLabel } from "../../shared/presentation/account.js";
-import { isMutualFundInstrument, investmentQuantityUnit } from "../../shared/presentation/investmentAssets.js";
+import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import { investmentActivityLabel, investmentReturnPercent } from "./investments.model.js";
 import InvestmentAssetLogo from "./InvestmentAssetLogo.jsx";
 
@@ -78,7 +76,7 @@ const PortfolioHero = ({ summary, portfolioCount }) => {
         </div>
         <dl className={heroStyles.heroMiniMetrics}>
           <div><dt>Nilai aset tercatat</dt><dd><Money value={values.market_value} /></dd></div>
-          <div><dt>Cash RDN</dt><dd><Money value={values.rdn_cash} /></dd></div>
+          <div><dt>Saldo RDN</dt><dd><Money value={values.rdn_cash} /></dd></div>
         </dl>
       </div>
 
@@ -88,16 +86,6 @@ const PortfolioHero = ({ summary, portfolioCount }) => {
 
       <div className={heroStyles.heroFooter}>
         <p>Harga memakai catatan manual terakhir, bukan harga pasar live.</p>
-        <details className={heroStyles.heroDetails}>
-          <summary>Rincian nilai <FiChevronDown aria-hidden="true" /></summary>
-          <dl className={heroStyles.heroDetailMetrics}>
-            <div><dt>Nilai aset</dt><dd><Money value={values.market_value} /></dd></div>
-            <div><dt>Cash RDN</dt><dd><Money value={values.rdn_cash} /></dd></div>
-            <div><dt>Realized P/L</dt><dd className={tone(values.realized_pl)}><Money value={values.realized_pl} /></dd></div>
-            <div><dt>Unrealized P/L</dt><dd className={tone(values.unrealized_pl)}><Money value={values.unrealized_pl} /></dd></div>
-          </dl>
-          <p className={heroStyles.heroDetailNote}>Total investasi = nilai aset tercatat + Cash RDN.</p>
-        </details>
       </div>
     </section>
   );
@@ -111,21 +99,23 @@ const missingBuyInstrumentGuidance = ({ hasPriceInstrument, owner }) => {
 };
 
 const unsellableHoldingGuidance = (owner) => owner
-  ? "Holding tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan lot. Gunakan Koreksi bila jumlah lembar memang perlu diperbaiki."
-  : "Holding tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan lot. Hubungi Administrator bila jumlah lembar perlu diperbaiki.";
+  ? "Holding tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan. Gunakan Koreksi bila jumlah lot memang perlu diperbaiki."
+  : "Holding tercatat kurang dari 1 lot sehingga belum dapat dicatat sebagai penjualan. Hubungi Administrator bila jumlah lot perlu diperbaiki.";
 
 const portfolioActionState = ({ portfolio, instruments, owner }) => {
   const heldIds = new Set(portfolio.holdings.map((item) => item.instrument_id));
   const hasBuyInstrument = instruments.some((item) => item.status === "active");
+  const hasRdnBalance = Number(portfolio.rdn_cash || 0) > 0;
   const hasHolding = portfolio.holdings.length > 0;
   const hasSellableHolding = portfolio.holdings.some((item) => Number(item.shares || 0) >= Number(item.lot_size || 100));
   const hasPriceInstrument = instruments.some((item) => heldIds.has(item.instrument_id));
   let guidance = "";
   if (!hasBuyInstrument) guidance = missingBuyInstrumentGuidance({ hasPriceInstrument, owner });
+  else if (!hasRdnBalance) guidance = "Isi Saldo RDN terlebih dahulu sebelum mencatat pembelian investasi.";
   else if (!hasHolding) guidance = "Catat penjualan dan Perbarui harga tersedia setelah portofolio memiliki holding saham.";
   else if (!hasSellableHolding) guidance = unsellableHoldingGuidance(owner);
   else if (!hasPriceInstrument) guidance = "Belum ada aset yang dapat diberi nilai manual.";
-  return { hasBuyInstrument, hasHolding, hasSellableHolding, hasPriceInstrument, guidance };
+  return { hasBuyInstrument, hasRdnBalance, hasHolding, hasSellableHolding, hasPriceInstrument, guidance };
 };
 
 const SheetAction = ({ icon: Icon, title, description, disabled = false, onClick }) => (
@@ -136,11 +126,10 @@ const SheetAction = ({ icon: Icon, title, description, disabled = false, onClick
   </button>
 );
 
-const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup, onTransfer }) => {
+const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup }) => {
   const [moreOpen, setMoreOpen] = useState(false);
   if (!portfolio.can_operate) return <p className={sharedStyles.readOnlyNote}>Portofolio ini dapat dilihat untuk transparansi, tetapi hanya pemilik rekening yang dapat mengubah catatannya.</p>;
   const state = portfolioActionState({ portfolio, instruments, owner });
-  const cash = Number(portfolio.rdn_cash || 0);
   const runMoreAction = (callback) => {
     setMoreOpen(false);
     callback();
@@ -148,9 +137,9 @@ const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup, on
   return <>
     <section className={portfolioStyles.actionArea} aria-label={`Aksi ${portfolio.name}`}>
       <div className={portfolioStyles.quickActions}>
-        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionPrimary}`} icon={FiPlus} variant="primary" disabled={!state.hasBuyInstrument} onClick={() => onAction("buy", portfolio)} aria-label="Catat pembelian">Catat pembelian</Button>
-        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionSell}`} icon={FiMinus} disabled={!state.hasSellableHolding} onClick={() => onAction("sell", portfolio)} aria-label="Catat penjualan">Catat penjualan</Button>
-        <button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionMore}`} type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-expanded={moreOpen}>
+        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionPrimary}`} icon={FiPlus} variant="primary" disabled={!state.hasBuyInstrument || !state.hasRdnBalance} onClick={() => onAction("buy", portfolio)} aria-label="Beli investasi">Beli</Button>
+        <Button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionSell}`} icon={FiMinus} disabled={!state.hasSellableHolding} onClick={() => onAction("sell", portfolio)} aria-label="Jual investasi">Jual</Button>
+        <button className={`${portfolioStyles.quickAction} ${portfolioStyles.quickActionMore} ${portfolioStyles.desktopMaintenanceAction}`} type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-expanded={moreOpen}>
           <FiMoreHorizontal aria-hidden="true" /><span>Lainnya</span>
         </button>
       </div>
@@ -160,14 +149,23 @@ const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup, on
     <Modal open={moreOpen} title="Aksi lainnya" description={portfolio.name} onClose={() => setMoreOpen(false)} size="sm" className={portfolioStyles.actionSheet}>
       <div className={portfolioStyles.sheetActionList}>
         <SheetAction icon={FiEdit3} title="Perbarui nilai" description="Perbarui nilai referensi manual" disabled={!state.hasPriceInstrument} onClick={() => runMoreAction(() => onAction("price", portfolio))} />
-        <SheetAction icon={FiRefreshCw} title="Cocokkan" description="Verifikasi Cash RDN dan holding aktual" onClick={() => runMoreAction(() => onAction("reconcile", portfolio))} />
-        <SheetAction icon={FiArrowDownLeft} title="Tambah dana ke RDN" description="Transfer internal ke rekening RDN" onClick={() => runMoreAction(() => onTransfer("fund", portfolio))} />
-        <SheetAction icon={FiArrowUpRight} title="Tarik dana dari RDN" description="Transfer Cash RDN kembali ke rekening" disabled={cash <= 0} onClick={() => runMoreAction(() => onTransfer("withdraw", portfolio))} />
+        <SheetAction icon={FiRefreshCw} title="Cocokkan" description="Verifikasi Saldo RDN dan holding aktual" onClick={() => runMoreAction(() => onAction("reconcile", portfolio))} />
         {portfolio.opening_position_available ? <SheetAction icon={FiPlus} title="Posisi awal" description="Catat aset yang sudah dimiliki" disabled={!state.hasBuyInstrument} onClick={() => runMoreAction(() => onAction("opening_position", portfolio))} /> : null}
         {owner ? <SheetAction icon={FiEdit3} title="Koreksi catatan" description="Perbaiki selisih yang sudah diverifikasi" onClick={() => runMoreAction(() => onAction("correction", portfolio))} /> : null}
       </div>
     </Modal>
   </>;
+};
+
+const RdnPanel = ({ portfolio, onTransfer }) => {
+  const cash = Number(portfolio.rdn_cash || 0);
+  return <section className={portfolioStyles.rdnPanel} aria-label={`Saldo RDN ${portfolio.name}`}>
+    <div className={portfolioStyles.rdnPanelBalance}><span>Saldo RDN</span><strong><Money value={cash} /></strong><small>{rdnLabel(portfolio)}</small></div>
+    {portfolio.can_operate ? <div className={portfolioStyles.rdnPanelActions}>
+      <Button icon={FiArrowDownLeft} onClick={() => onTransfer("fund", portfolio)}>Isi RDN</Button>
+      <Button icon={FiArrowUpRight} disabled={cash <= 0} onClick={() => onTransfer("withdraw", portfolio)}>Tarik</Button>
+    </div> : null}
+  </section>;
 };
 
 const HoldingCard = ({ holding, onOpenDetail }) => {
@@ -200,7 +198,7 @@ const HoldingCard = ({ holding, onOpenDetail }) => {
         <FiChevronRight className={holdingStyles.holdingChevron} aria-hidden="true" />
       </div>
       <dl className={holdingStyles.holdingMetrics}>
-        <div><dt>Kepemilikan</dt><dd>{shares.toLocaleString("id-ID")} {investmentQuantityUnit(holding)}</dd></div>
+        <div><dt>Kepemilikan</dt><dd>{quantity}</dd></div>
         <div><dt>Average cost</dt><dd><Money value={holding.average_cost} /></dd></div>
         <div><dt>{mutualFund ? "Nilai per unit" : "Harga terakhir"}</dt><dd><Money value={holding.price_per_share} />{holding.valuation_date ? <small>{formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}</small> : null}</dd></div>
       </dl>
@@ -210,11 +208,16 @@ const HoldingCard = ({ holding, onOpenDetail }) => {
 
 const ActivityValue = ({ activity }) => {
   const cash = Number(activity.cash_amount || 0);
-  if (activity.activity_type === "trade") return <><span>{activity.trade_type === "buy" ? "Cash RDN keluar" : "Cash RDN masuk"}</span><Money value={cash} /></>;
+  const mutualFund = isMutualFundInstrument(activity);
+  const lotSize = Number(activity.lot_size || 100);
+  const quantity = (shares) => mutualFund
+    ? `${Number(shares || 0).toLocaleString("id-ID")} unit`
+    : `${(Number(shares || 0) / lotSize).toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
+  if (activity.activity_type === "trade") return <><span>{activity.trade_type === "buy" ? "Saldo RDN keluar" : "Saldo RDN masuk"}</span><Money value={cash} /></>;
   if (activity.activity_type === "valuation") return <><span>Harga referensi</span><Money value={activity.price_per_share} /></>;
-  if (activity.activity_type === "opening_position") return <><span>Posisi awal</span><strong>{Number(activity.share_delta || 0).toLocaleString("id-ID")} lembar</strong></>;
-  if (cash !== 0) return <><span>Delta Cash RDN</span><Money value={cash} /></>;
-  if (Number(activity.share_delta || 0) !== 0) return <><span>Delta holding</span><strong>{Number(activity.share_delta || 0) > 0 ? "+" : ""}{Number(activity.share_delta || 0).toLocaleString("id-ID")} lembar</strong></>;
+  if (activity.activity_type === "opening_position") return <><span>Posisi awal</span><strong>{quantity(activity.share_delta)}</strong></>;
+  if (cash !== 0) return <><span>Delta Saldo RDN</span><Money value={cash} /></>;
+  if (Number(activity.share_delta || 0) !== 0) return <><span>Delta holding</span><strong>{Number(activity.share_delta || 0) > 0 ? "+" : ""}{quantity(activity.share_delta)}</strong></>;
   return <span>Koreksi tercatat</span>;
 };
 
@@ -244,7 +247,7 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
         <div className={portfolioStyles.portfolioTitleBlock}>
           <span className="sr-only">Sumber catatan</span>
           <div className={portfolioStyles.portfolioIdentityRow}><h2>{portfolio.name}</h2><span className={portfolioStyles.rdnChip}>RDN · {rdnLabel(portfolio)}</span></div>
-          <p>Satu portofolio ini selalu menggunakan Cash RDN dari rekening di atas.</p>
+          <p>Satu portofolio ini selalu menggunakan Saldo RDN dari rekening di atas.</p>
         </div>
         <div className={portfolioStyles.portfolioValue}>
           <span>Total investasi</span>
@@ -253,7 +256,8 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
         </div>
       </header>
 
-      <PortfolioActions portfolio={portfolio} instruments={instruments} owner={owner} onAction={onAction} onSetup={onSetup} onTransfer={onTransfer} />
+      <RdnPanel portfolio={portfolio} onTransfer={onTransfer} />
+      <PortfolioActions portfolio={portfolio} instruments={instruments} owner={owner} onAction={onAction} onSetup={onSetup} />
 
       <section className={holdingStyles.holdingsSection} aria-labelledby={`holdings-${portfolio.portfolio_id}`}>
         <div className={sharedStyles.sectionHeading}>
@@ -271,19 +275,6 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
         {!portfolio.holdings.length ? <p className={sharedStyles.inlineEmpty}>Belum ada aset. Catat posisi awal yang sudah dimiliki atau pembelian yang sudah benar-benar terjadi di aplikasi investasi.</p> : null}
       </section>
 
-      <details className={portfolioStyles.portfolioDetails}>
-        <summary><span>Rincian portofolio & komposisi</span><FiChevronDown aria-hidden="true" /></summary>
-        <section className={portfolioStyles.composition} aria-label={`Komposisi ${portfolio.name}`}>
-          <ProgressBar value={portfolio.market_value} max={total} label="Porsi nilai aset" />
-          <dl className={portfolioStyles.compositionMetrics}>
-            <div><dt>Nilai aset</dt><dd><Money value={portfolio.market_value} /></dd></div>
-            <div><dt>Cash RDN</dt><dd><Money value={portfolio.rdn_cash} /></dd></div>
-            <div><dt>Realized P/L</dt><dd className={tone(portfolio.realized_pl)}><Money value={portfolio.realized_pl} /></dd></div>
-            <div><dt>Unrealized P/L</dt><dd className={tone(portfolio.unrealized_pl)}><Money value={portfolio.unrealized_pl} /></dd></div>
-          </dl>
-          <p className={portfolioStyles.compositionNote}>Nilai aset memakai nilai manual atau transaksi terakhir yang tercatat.</p>
-        </section>
-      </details>
     </Card>
   );
 };

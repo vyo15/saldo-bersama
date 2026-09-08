@@ -44,7 +44,7 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
   const sources = await Promise.all([
     Promise.all([read("features/transactions/TransactionForm.jsx"), read("features/transactions/components/TransactionFields.jsx")]).then((parts) => parts.join("\n")),
     read("features/accounts/components/AccountEditorDialogs.jsx"),
-    Promise.all([read("features/budgets/BudgetsPage.jsx"), read("features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    read("features/budgets/BudgetDialogLayer.jsx"),
     Promise.all([read("features/allocations/AllocationsPage.jsx"), read("features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("features/recurring/RecurringDialogs.jsx"),
     Promise.all([read("features/goals/GoalsPage.jsx"), read("features/goals/components/GoalDialogs.jsx")]).then((parts) => parts.join("\n")),

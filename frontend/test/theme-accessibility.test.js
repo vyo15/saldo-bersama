@@ -291,7 +291,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
       readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
     readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/budgets/BudgetsPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
     Promise.all([
       readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/transactions/MobileTransactionFields.module.css", import.meta.url), "utf8"),
@@ -314,12 +314,11 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(components, /\.quick-amounts button \{ min-height:\s*44px;/);
   assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
   assert.match(pages, /\.allocation-filters button\s*\{[^}]*min-height:\s*44px;/);
-  assert.match(pages, /\.allocation-card__menu\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;/);
+  assert.match(pages, /\.allocation-card__expand\s*\{[^}]*min-height:\s*44px;/);
   assert.match(pages, /\.allocation-detail-back\s*\{[^}]*width:\s*max-content;[^}]*min-height:\s*44px;/);
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
   assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*22px;[^}]*height:\s*7px;[^}]*transform:\s*scaleX\(\.318\)/);
-  assert.match(budgets, /\.segment \{\s*min-height:\s*var\(--control-height-md\);/);
-  assert.match(budgets, /\.sortButton \{\s*min-height:\s*var\(--control-height-md\);/);
+  assert.match(budgets, /\.allocation-detail-back \{[^}]*min-height:\s*44px;/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(transactionForm, /\.detailRow \{[^}]*min-height:\s*58px;/s);
   assert.match(transactionForm, /\.paymentChoices button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
@@ -514,8 +513,8 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
     readFile(new URL("../src/features/categories/CategoriesPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/planning/PlanningPage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/budgets/BudgetsPage.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/budgets/components/BudgetInsightCard.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/allocations/AllocationOverview.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
   ]);
 
@@ -527,8 +526,8 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.match(transactionForm, /@media \(max-width: 820px\)[\s\S]*?\.categoryQuickChoices > small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.match(transactionForm, /\.form \.notesField textarea \{[\s\S]*?min-height:\s*3\.25rem;/);
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
-  assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.segment,[\s\S]*?\.sortButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(budgetCard, /@media \(max-width: 820px\) \{[\s\S]*?\.detailButton \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgetCard, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-card__expand \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-limit-row__actions :global\(\.button\),[\s\S]*?\.allocation-limit-row__more summary,[\s\S]*?\.allocation-limit-row__more-menu button \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-related-row small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
 });

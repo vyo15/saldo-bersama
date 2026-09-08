@@ -28,7 +28,7 @@ test("desktop mempertahankan module dock Saldo Bersama melengkung dengan entry p
   assert.match(source, /data-label=\{label\}/);
 
   assert.match(navigation, /export const DESKTOP_NAVIGATION = Object\.freeze\(\[[\s\S]*navigationByPath\.get\("\/"\)[\s\S]*navigationByPath\.get\("\/transaksi"\)/);
-  assert.match(navigation, /id: "planning"[\s\S]*items: pickNavigation\("\/perencanaan", "\/anggaran", "\/target"\)/);
+  assert.match(navigation, /id: "planning"[\s\S]*items: pickNavigation\("\/perencanaan", "\/target"\)/);
   assert.match(navigation, /id: "finance"[\s\S]*label: "Keuangan"[\s\S]*items: pickNavigation\("\/rekening", "\/kategori", "\/investasi", "\/rekonsiliasi"\)/);
   assert.match(navigation, /id: "management"[\s\S]*label: "Kelola"[\s\S]*ownerOnly: true[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
   const desktopBlock = navigation.match(/export const DESKTOP_NAVIGATION = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
@@ -258,7 +258,7 @@ test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoin
   assert.match(mobileNavigation, /mobile-navigation__more\$\{moreActive \? " active"/);
 });
 
-test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kembali route legacy", async () => {
+test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan duplikasi Anggaran", async () => {
   const source = await read("src/config/navigation.js");
   assert.match(source, /FiList/);
   assert.match(source, /FiPieChart/);
@@ -272,15 +272,17 @@ test("navigasi Perencanaan mengekspos Anggaran overview tanpa menghidupkan kemba
   assert.match(source, /to: "\/anggota", label: "Anggota"[\s\S]*ownerOnly: true/);
   assert.match(source, /label: "Perencanaan"/);
   assert.match(source, /to: "\/perencanaan", label: "Perencanaan"/);
-  assert.match(source, /to: "\/anggaran", label: "Anggaran"/);
+  assert.doesNotMatch(source, /to: "\/anggaran", label: "Anggaran"/);
   assert.doesNotMatch(source, /to: "\/(?:alokasi|tagihan)"/);
-  assert.match(source, /items: pickNavigation\("\/perencanaan", "\/anggaran", "\/target"\)/);
+  assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target"\)/);
   assert.match(source, /label: "Data keuangan"/);
   assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
   assert.match(source, /label: "Kontrol saldo"/);
   assert.match(source, /items: pickNavigation\("\/rekonsiliasi"\)/);
   assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
-  assert.match(source, /label: "Aplikasi"[\s\S]*items: pickNavigation\("\/notifikasi", "\/pengaturan"\)/);
+  assert.match(source, /label: "Aplikasi"[\s\S]*items: pickNavigation\("\/pengaturan"\)/);
+  const secondary = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
+  assert.doesNotMatch(secondary, /to: "\/notifikasi"/);
   const mobileSecondaryBlock = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   assert.doesNotMatch(mobileSecondaryBlock, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);

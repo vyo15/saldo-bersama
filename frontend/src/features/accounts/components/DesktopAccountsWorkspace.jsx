@@ -177,12 +177,12 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
           <div>
             <p className="eyebrow">Rekening terpilih</p>
             <h2 id="desktop-selected-account-title">{title}</h2>
-            <p>{investment ? "Cash RDN · detail aset tersedia di catatan Investasi" : `${accountProviderLabel(account)} · ${accountOwnershipLabel(account)}`}</p>
+            <p>{investment ? "Saldo RDN · detail aset tersedia di catatan Investasi" : `${accountProviderLabel(account)} · ${accountOwnershipLabel(account)}`}</p>
           </div>
           {readOnly ? <div className={styles.heroBadges}><span className={styles.readOnlyBadge}>Hanya lihat</span></div> : null}
         </div>
         <div className={styles.heroBalance}>
-          <span>{investment ? "Cash RDN" : "Saldo rekening"}</span>
+          <span>{investment ? "Saldo RDN" : "Saldo rekening"}</span>
           <strong><Money value={account.balance || 0} tone={balanceTone(account.balance)} /></strong>
         </div>
         <dl className={styles.heroFacts}>
@@ -224,11 +224,11 @@ const AccountInsights = ({ accounts, totalBalance, investmentCash, balanceTrend,
   <aside className={styles.insightColumn} aria-label="Ringkasan seluruh rekening">
     <section className={styles.balanceSummary}>
       <span className={styles.summaryIcon}><BalanceIcon aria-hidden="true" /></span>
-      <div><p>Saldo rekening</p><strong><Money value={totalBalance} tone={balanceTone(totalBalance)} /></strong><small>{accounts.filter((account) => account.account_type !== "investment").length} rekening non-investasi aktif{investmentCash ? ` · Cash RDN ${formatRupiah(investmentCash)}` : ""}</small></div>
+      <div><p>Saldo rekening</p><strong><Money value={totalBalance} tone={balanceTone(totalBalance)} /></strong><small>{accounts.filter((account) => account.account_type !== "investment").length} rekening non-investasi aktif{investmentCash ? ` · Saldo RDN ${formatRupiah(investmentCash)}` : ""}</small></div>
     </section>
     <section className={styles.trendPanel} aria-labelledby="desktop-balance-trend-title">
-      <header className={styles.compactHeading}><span><FiTrendingUp aria-hidden="true" /></span><h2 id="desktop-balance-trend-title">Tren seluruh rekening</h2></header>
-      {reportStatus === "loading" ? <div className={styles.chartState}>Memuat tren saldo…</div> : reportStatus === "error" ? <div className={styles.chartState}>Tren belum dapat dimuat. Saldo rekening tetap berasal dari daftar rekening terbaru.</div> : <div className={styles.balanceChart}><LineChart data={balanceTrend} label="Tren saldo seluruh rekening termasuk Cash RDN" /></div>}
+      <header className={styles.compactHeading}><span><FiTrendingUp aria-hidden="true" /></span><h2 id="desktop-balance-trend-title">Tren saldo utama</h2></header>
+      {reportStatus === "loading" ? <div className={styles.chartState}>Memuat tren saldo…</div> : reportStatus === "error" ? <div className={styles.chartState}>Tren belum dapat dimuat. Saldo rekening tetap berasal dari daftar rekening terbaru.</div> : <div className={styles.balanceChart}><LineChart data={balanceTrend} label="Tren saldo utama" /></div>}
     </section>
     <section className={styles.distributionPanel} aria-labelledby="desktop-account-distribution-title">
       <header className={styles.compactHeading}><span><FiPieChart aria-hidden="true" /></span><h2 id="desktop-account-distribution-title">Komposisi saldo</h2></header>
@@ -255,7 +255,7 @@ const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, owne
   const distribution = useMemo(() => insightAccounts.map((account) => ({ account, percentage: distributionBase > 0 ? Math.round((Math.abs(Number(account.balance || 0)) / distributionBase) * 100) : 0 })), [distributionBase, insightAccounts]);
   const balanceTrend = useMemo(() => {
     const items = reportResource.data?.trend?.items || [];
-    return items.length ? items.map((item) => ({ label: item.label, value: item.totalBalance })) : [{ label: "Saat ini", value: totalBalance }];
+    return items.length ? items.map((item) => ({ label: item.label, value: item.nonInvestmentBalance ?? item.totalBalance ?? 0 })) : [{ label: "Saat ini", value: totalBalance }];
   }, [reportResource.data, totalBalance]);
   const categoryLookup = useMemo(() => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])), [bootstrap?.categories]);
   if (!desktopEnabled || !selectedAccount) return null;

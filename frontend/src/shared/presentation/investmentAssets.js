@@ -51,8 +51,6 @@ export const isMutualFundInstrument = (instrument = {}) => {
     || Boolean(investmentMutualFundByTicker(ticker));
 };
 
-export const investmentQuantityUnit = (instrument = {}) => isMutualFundInstrument(instrument) ? "unit" : "lembar";
-
 export const INVESTMENT_ASSET_CATALOG = Object.freeze([
   ...INVESTMENT_PROTOTYPE_CATALOG.map((item) => Object.freeze({ ...item, asset_type: "stock" })),
   ...INVESTMENT_MUTUAL_FUND_CATALOG,

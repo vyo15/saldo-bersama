@@ -362,7 +362,7 @@ const MobileBalanceSummary = ({ account }) => {
     <section key={account.account_id} className={styles.mobileBalanceSummary} aria-label={`Ringkasan saldo ${account.name}`}>
       <div className={styles.mobileBalanceHeading}>
         <div className={styles.mobileBalanceLabel}>
-          <span>{investment ? "Cash RDN" : "Dana tersedia"}</span>
+          <span>{investment ? "Saldo RDN" : "Dana tersedia"}</span>
         </div>
         <button type="button" className={styles.mobilePrivacyButton} onClick={() => setHidden((value) => !value)} aria-label={hidden ? "Tampilkan nominal rekening" : "Sembunyikan nominal rekening"} aria-pressed={hidden}>
           {hidden ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
@@ -371,7 +371,7 @@ const MobileBalanceSummary = ({ account }) => {
       <strong className={styles.mobileAvailableValue}><PrivateMoney hidden={hidden} value={investment ? account.balance : available} /></strong>
       <div className={styles.mobileBalanceStats}>
         {investment ? <>
-          <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Cash RDN</span></div>
+          <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Saldo RDN</span></div>
           <div><strong>Investasi</strong><span>Tujuan dana</span></div>
         </> : <>
           <div><strong><PrivateMoney hidden={hidden} value={account.balance || 0} /></strong><span>Saldo</span></div>

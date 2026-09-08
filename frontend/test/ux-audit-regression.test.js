@@ -247,17 +247,16 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
     read("src/features/recurring/RecurringScheduleView.jsx"),
     read("src/features/recurring/RecurringSchedule.jsx"),
     read("src/features/goals/GoalsPage.jsx"),
-    read("src/features/budgets/BudgetsPage.jsx"),
+    read("src/features/budgets/BudgetDialogLayer.jsx"),
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/transactions/TransactionsPage.jsx"),
   ]);
 
   assert.match(allocation, /if \(!items\.length\) return null;/);
   assert.match(allocation, /\{activeItems\.length \? <AllocationSummary items=\{activeItems\} \/> : null\}/);
-  assert.match(allocation, /\{activeItems\.length \? <div className=\{allocationClass\(`allocation-header-actions/);
+  assert.match(allocation, /activeItems\.length && canCreate \? <div className=\{allocationClass\("allocation-header-actions allocation-header-actions--simple"\)\}/);
   assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Tampilkan semua Alokasi<\/Button> : canCreate \?/);
-  assert.match(allocation, /\{canMove \? <Button icon=\{FiArrowRight\}/);
-  assert.doesNotMatch(allocation, /disabled=\{!canMove\}/);
+  assert.doesNotMatch(allocation, /canMove|openMove|allocation-move-action/);
 
   assert.match(allocationDetail, /canManage && linkedBudgets\.length \? <Button[^>]*onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button>/);
   assert.match(allocationDetail, /title="Belum ada kebutuhan"[\s\S]*action=\{canManage \? <Button[^>]*onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button>/);
@@ -270,8 +269,8 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
   assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleKindTabs/);
 
   assert.match(goals, /\{items\.length \? <GoalSummary items=\{items\} \/> : null\}/);
-  assert.match(budgets, /\{items\.length \? <>[\s\S]*<BudgetHeroCard totals=\{totals\}/);
-  assert.match(budgets, /: <BudgetListSection activeFilter="all"/);
+  assert.match(budgets, /Saya punya jadwal pembayaran/);
+  assert.match(budgets, /Jadwal dibuat bersama Kebutuhan/);
   assert.match(investments, /actions=\{data\.portfolios\.length && user\?\.role === "owner" \? <Button[^>]*onClick=\{\(\) => openSetup\("instrument"\)\}[^>]*aria-label="Tambah saham"/);
   assert.match(transactions, /const showHeaderCreate = !mobileLayout && \(resource\.status !== "ready" \|\| items\.length > 0 \|\| filtersActive\);/);
   assert.match(transactions, /mobileLayout \? "Gunakan tombol \+ pada navigasi bawah untuk mencatat transaksi pertama\."/);
@@ -287,16 +286,19 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
   ]);
 
   assert.match(overview, />Alokasi baru<\/Button>/);
-  assert.match(overview, /allocation-header-actions--\$\{canMove \? "with-move" : "simple"\}/);
-  assert.match(overview, /allocation-card__planning-actions/);
-  assert.match(overview, /variant=\{actionState\.addNeedVariant\}[\s\S]*>Tambah kebutuhan<\/Button>/);
-  assert.match(overview, /FiSliders[\s\S]*>Atur dana<\/Button>/);
-  assert.doesNotMatch(overview, /aria-label=\{`Tambah dana ke alokasi/);
-  assert.match(overview, /allocationCardActionState\(item, needs\.length\)/);
+  assert.match(overview, /allocation-header-actions allocation-header-actions--simple/);
+  assert.doesNotMatch(overview, /allocation-header-actions--with-move|allocation-move-action/);
+  assert.match(overview, /Belum ada kebutuhan/);
+  assert.match(overview, />Tambah kebutuhan<\/Button>/);
+  assert.match(overview, /allocation-card__expand/);
+  assert.match(overview, />Buka alokasi/);
+  assert.doesNotMatch(overview, /FiSliders|allocation-card__planning-actions|allocationCardActionState/);
+  assert.match(detail, /FiSliders[\s\S]*>Atur dana<\/Button>/);
   assert.match(page, /onAddNeed: \(item\) => openDetail\(item, "add-need"\)/);
   assert.match(detail, /initialAction !== "add-need"/);
   assert.match(detail, /if \(canManage\) openBudgetForm\(\)/);
-  assert.match(styles, /\.allocation-card__planning-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(styles, /allocation-card__planning-actions/);
+  assert.match(styles, /\.allocation-card__expand\s*\{/);
   assert.match(styles, /\.allocation-header-actions__create\s*\{[\s\S]*color:\s*var\(--primary\)/);
 });
 

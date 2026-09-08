@@ -92,7 +92,7 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
     read("src/features/recurring/recurring.api.js"),
     goalsSource(),
     read("src/features/goals/goals.api.js"),
-    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
   ]);
   for (const [page, api, previewAction, deleteAction] of [
@@ -245,7 +245,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
     transactionForm, budgets, allocations, goals, recurring, categories, accountDialogs, members,
   ] = await Promise.all([
     read("src/features/transactions/TransactionForm.jsx"),
-    Promise.all([read("src/features/budgets/BudgetsPage.jsx"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     goalsSource(),
     read("src/features/recurring/RecurringDialogs.jsx"),

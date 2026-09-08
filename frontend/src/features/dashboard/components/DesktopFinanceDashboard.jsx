@@ -288,7 +288,7 @@ const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
           />
         </div>
         <div>
-          <span><FiPieChart aria-hidden="true" />Sisa anggaran</span>
+          <span><FiPieChart aria-hidden="true" />Sisa kebutuhan</span>
           <SensitiveMoney visible={balanceVisible} value={model.remainingBudget} />
         </div>
       </div>
@@ -377,7 +377,7 @@ const AccountSelector = ({ accountBalances, selectedAccount, onSelectAccount, ba
                 <AccountVisual account={cleanAccount} carousel />
                 <span className={dashboardClass("shared-account-card__summary")}>
                   <span>
-                    <small>{account.account_type === "investment" ? "Cash RDN" : "Saldo"}</small>
+                    <small>{account.account_type === "investment" ? "Saldo RDN" : "Saldo"}</small>
                     <SensitiveMoney visible={balanceVisible} value={account.balance} />
                   </span>
                   {account.account_type === "investment" ? null : (
@@ -616,7 +616,7 @@ const InvestmentWidget = ({ summary, balanceVisible }) => {
       </div>
       <dl>
         <div><dt>Nilai aset</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /></dd></div>
-        <div><dt>Cash RDN</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></dd></div>
+        <div><dt>Saldo RDN</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></dd></div>
       </dl>
       {hasAssets ? (
         <div className={dashboardClass("shared-investment-widget__pl")}>
@@ -630,7 +630,7 @@ const InvestmentWidget = ({ summary, balanceVisible }) => {
       ) : (
         <div className={dashboardClass("shared-investment-widget__notice")}>
           <FiAlertCircle aria-hidden="true" />
-          <span><strong>Belum ada aset tercatat</strong><small>Dana saat ini berada di Cash RDN.</small></span>
+          <span><strong>Belum ada aset tercatat</strong><small>Dana saat ini berada di Saldo RDN.</small></span>
         </div>
       )}
     </article>
@@ -641,7 +641,7 @@ const BudgetWidget = ({ budgets, balanceVisible }) => (
   <article className={dashboardClass("shared-panel shared-widget")}>
     <div className={dashboardClass("shared-widget__heading")}>
       <div><h2>Kebutuhan</h2><span>{budgets.length} kebutuhan aktif</span></div>
-      <Link to="/anggaran">Lihat</Link>
+      <Link to="/perencanaan/kantong">Lihat</Link>
     </div>
     <ul className={dashboardClass("shared-progress-list")}>
       {budgets.length ? budgets.slice(0, 3).map((item) => (

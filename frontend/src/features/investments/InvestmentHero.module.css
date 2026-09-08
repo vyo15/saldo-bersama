@@ -1,4 +1,4 @@
-/* Compact investment summary. Detailed values remain available through progressive disclosure. */
+/* Compact investment summary with primary values visible without nested disclosure. */
 
 .hero {
   position: relative;
@@ -82,8 +82,7 @@
   line-height: 1.4;
 }
 
-.heroMiniMetrics,
-.heroDetailMetrics {
+.heroMiniMetrics {
   display: grid;
   margin: 0;
 }
@@ -101,14 +100,12 @@
   background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
-.heroMiniMetrics dt,
-.heroDetailMetrics dt {
+.heroMiniMetrics dt {
   color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
 
-.heroMiniMetrics dd,
-.heroDetailMetrics dd {
+.heroMiniMetrics dd {
   min-width: 0;
   margin: var(--space-1) 0 0;
   font-weight: var(--font-weight-bold);
@@ -144,71 +141,13 @@
   min-width: 0;
 }
 
-.heroFooter > p,
-.heroDetailNote {
+.heroFooter > p {
   margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
-.heroDetails {
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.heroDetails > summary {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: 2rem;
-  padding: .25rem .45rem;
-  border-radius: var(--radius-sm);
-  color: var(--primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  list-style: none;
-}
-
-.heroDetails > summary::-webkit-details-marker {
-  display: none;
-}
-
-@media (hover: hover) and (pointer: fine) { .heroDetails > summary:hover { background: var(--primary-soft); } }
-
-.heroDetails > summary:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.heroDetails > summary svg {
-  width: .95rem;
-  height: .95rem;
-  transition: transform var(--motion-fast) var(--motion-easing);
-}
-
-.heroDetails[open] > summary svg {
-  transform: rotate(180deg);
-}
-
-.heroDetailMetrics {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.heroDetailMetrics > div {
-  min-width: 0;
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-}
-
-.heroDetailNote {
-  margin-top: var(--space-2);
-}
 
 @media (max-width: 900px) {
   .hero {
@@ -231,9 +170,6 @@
     padding: var(--space-2) var(--space-3);
   }
 
-  .heroDetailMetrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 620px) {
@@ -270,19 +206,7 @@
     display: none;
   }
 
-  .heroDetails {
-    width: 100%;
-  }
 
-  .heroDetails > summary {
-    justify-content: flex-end;
-    width: 100%;
-    min-height: var(--mobile-control-height);
-  }
-
-  .heroDetailMetrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 390px) {
@@ -290,13 +214,5 @@
     width: 100%;
   }
 
-  .heroDetailMetrics {
-    grid-template-columns: 1fr;
-  }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .heroDetails > summary svg {
-    transition: none;
-  }
-}

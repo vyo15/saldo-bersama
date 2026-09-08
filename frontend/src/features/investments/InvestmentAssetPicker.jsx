@@ -18,7 +18,7 @@ const CATALOGS = Object.freeze({
 
 const metaLabel = (item) => item.asset_type === "mutual_fund"
   ? `Reksa Dana · ${item.category}`
-  : `${item.exchange} · ${item.lot_size.toLocaleString("id-ID")} lembar/lot`;
+  : `${item.exchange} · lot size ${item.lot_size.toLocaleString("id-ID")}`;
 
 const trailingLabel = (item) => item.asset_type === "mutual_fund" ? "Reksa Dana" : item.sector;
 

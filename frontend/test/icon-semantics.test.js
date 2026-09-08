@@ -66,11 +66,10 @@ test("source UI tidak memakai simbol dolar dan CreditCard dibatasi ke metode pem
 });
 
 test("trend icon hanya mewakili arah data sedangkan aksi dan status memakai semantic action", async () => {
-  const [overview, dashboard, holdingDetail, budgetStatus] = await Promise.all([
+  const [overview, dashboard, holdingDetail] = await Promise.all([
     read("src/features/investments/InvestmentOverview.jsx"),
     read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     read("src/features/investments/InvestmentHoldingDetail.jsx"),
-    read("src/features/budgets/components/BudgetStatusPill.jsx"),
   ]);
 
   assert.match(overview, /if \(amount > 0\) return FiTrendingUp;/);
@@ -79,5 +78,4 @@ test("trend icon hanya mewakili arah data sedangkan aksi dan status memakai sema
   assert.match(overview, /SheetAction icon=\{FiEdit3\} title="Perbarui nilai"/);
   assert.match(dashboard, /NetCashFlowIcon = netCashFlow > 0 \? FiTrendingUp : netCashFlow < 0 \? FiTrendingDown : FiMinus/);
   assert.doesNotMatch(holdingDetail, /FiTrendingUp|FiTrendingDown|FiDollarSign/);
-  assert.match(budgetStatus, /warning: FiAlertTriangle/);
 });

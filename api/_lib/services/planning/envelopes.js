@@ -1,7 +1,7 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
-import { appError, assertOwner, assertVersion, dateValue, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
+import { appError, assertOwner, assertVersion, dateValue, nonNegativeInteger, nowIso, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
 import { accountWithAccess, assertEnvelopeAssigneeAccess, assertOperationalPlanningAccount, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
@@ -11,6 +11,7 @@ const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycl
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
 const OVERSPEND_POLICIES = new Set(["block", "confirm", "allow"]);
 
+const envelopeLegacyAssignee = (owned) => owned.scope === "personal" ? owned.owner_user_id : null;
 
 // Stable envelope facade. Creation/list orchestration stays here; lifecycle and
 // allocation movements are isolated without changing action/public imports.
@@ -65,13 +66,13 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
   assertOperationalPlanningAccount(account, "Alokasi Dana");
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
-  const legacyAssignee = owned.scope === "personal" ? owned.owner_user_id : null;
+  const legacyAssignee = envelopeLegacyAssignee(owned);
   const requestedAssignee = Object.hasOwn(payload, "assignee_user_id") ? payload.assignee_user_id : legacyAssignee;
   const assignee = await resolveEnvelopeAssignee(db, requestedAssignee);
   if (owned.scope === "personal" && assignee?.user_id !== owned.owner_user_id) {
     throw appError("ENVELOPE_ASSIGNEE_SCOPE_MISMATCH", "Alokasi Dana dari rekening personal hanya dapat digunakan oleh pemilik rekening tersebut.", 409);
   }
-  const amount = positiveInteger(payload.default_amount, "Nominal alokasi");
+  const amount = nonNegativeInteger(payload.default_amount ?? 0, "Nominal alokasi");
   const timestamp = nowIso();
   const record = {
     envelope_rule_id: uuid(),
@@ -99,7 +100,7 @@ export const createEnvelopePeriod = async (db, context, payload = context.payloa
   const start = dateValue(payload.period_start, "Tanggal mulai alokasi");
   const end = dateValue(payload.period_end, "Tanggal akhir alokasi");
   if (start > end) throw appError("INVALID_PERIOD_RANGE", "Tanggal akhir harus setelah tanggal mulai.", 400);
-  const amount = positiveInteger(payload.allocated_amount ?? rule.default_amount, "Nominal alokasi");
+  const amount = nonNegativeInteger(payload.allocated_amount ?? rule.default_amount ?? 0, "Nominal alokasi");
   const source = rule.source_account_id ? await accountWithAccess(db, context.actor, rule.source_account_id) : null;
   assertOperationalPlanningAccount(source, "Alokasi Dana");
   await assertAllocationAvailable(db, source, amount);

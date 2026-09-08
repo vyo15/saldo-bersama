@@ -38,7 +38,7 @@ const investmentSuccessMessage = (mode) => ({
 const SetupContinuation = ({ continuation, portfolio, data, owner, onDismiss, onStartNew, onStartExisting, onAddOpening }) => {
   if (!continuation) return null;
   if (!portfolio) {
-    return <CompactNotice tone="info" title="Catatan tersimpan." role="status">Menyinkronkan Cash RDN dan holding terbaru sebelum langkah berikutnya tersedia.</CompactNotice>;
+    return <CompactNotice tone="info" title="Catatan tersimpan." role="status">Menyinkronkan Saldo RDN dan holding terbaru sebelum langkah berikutnya tersedia.</CompactNotice>;
   }
   if (continuation.stage === "opening") {
     return <div>
@@ -50,7 +50,7 @@ const SetupContinuation = ({ continuation, portfolio, data, owner, onDismiss, on
     </div>;
   }
   return <div>
-    <CompactNotice tone="success" title="Portofolio siap. Saya mau mulai dari:" role="status">Pilih apakah Anda akan mencatat transaksi baru atau memasukkan kondisi investasi yang sudah ada. Cash RDN dan posisi awal tidak perlu direkonstruksi sebagai transaksi masa lalu.</CompactNotice>
+    <CompactNotice tone="success" title="Portofolio siap. Saya mau mulai dari:" role="status">Pilih apakah Anda akan mencatat transaksi baru atau memasukkan kondisi investasi yang sudah ada. Saldo RDN dan posisi awal tidak perlu direkonstruksi sebagai transaksi masa lalu.</CompactNotice>
     <div className="form-actions">
       <Button type="button" variant="primary" onClick={() => onStartNew(portfolio)}>Mulai mencatat transaksi baru</Button>
       <Button type="button" onClick={() => onStartExisting(portfolio, data, owner)}>Saya sudah punya investasi</Button>
@@ -60,7 +60,7 @@ const SetupContinuation = ({ continuation, portfolio, data, owner, onDismiss, on
 };
 
 const SellContinuation = ({ continuation, onDismiss, onWithdraw, onBuyAgain }) => continuation ? <div>
-  <CompactNotice tone="success" title="Penjualan investasi selesai dicatat." role="status"><Money value={continuation.amount} /> sudah menjadi Cash RDN. Dana tetap berada di aset internal; penarikan ke rekening tidak dilakukan otomatis.</CompactNotice>
+  <CompactNotice tone="success" title="Penjualan investasi selesai dicatat." role="status"><Money value={continuation.amount} /> sudah menjadi Saldo RDN. Dana tetap berada di aset internal; penarikan ke rekening tidak dilakukan otomatis.</CompactNotice>
   <div className="form-actions">
     <Button type="button" variant="primary" onClick={onDismiss}>Selesai</Button>
     <Button type="button" onClick={onWithdraw}>Tarik ke rekening</Button>

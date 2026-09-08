@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { assertPositiveRupiah } from "../../domain/money.js";
+import { todayInJakarta } from "../../domain/dates.js";
+import { createPlanningPaymentSchedule } from "../../shared/workflows/planningSchedules.js";
 import {
   archiveBudget as requestArchiveBudget,
   deleteUnusedBudget as requestDeleteUnusedBudget,
@@ -15,6 +17,10 @@ export const emptyBudgetForm = (overrides = {}) => ({
   scope: "shared",
   owner_user_id: "",
   recording_mode: "flexible",
+  schedule_frequency: "monthly",
+  schedule_due_day: 20,
+  schedule_start_date: todayInJakarta(),
+  schedule_payment_method: "transfer",
   ...overrides,
 });
 
@@ -41,18 +47,76 @@ const formFromBudget = (item, envelopeRuleId = item?.envelope_rule_id || "") => 
   scope: item?.scope || "shared",
   owner_user_id: item?.owner_user_id || "",
   recording_mode: "flexible",
+  schedule_frequency: "monthly",
+  schedule_due_day: 20,
+  schedule_start_date: todayInJakarta(),
+  schedule_payment_method: "transfer",
 });
 
-export const useBudgetFormController = ({ items, period, notify, refresh }) => {
+const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule }) => {
+  const completingSchedule = Boolean(pendingSchedule);
+  const amount = pendingSchedule?.amount ?? assertPositiveRupiah(form.amount);
+  const recordingMode = pendingSchedule ? "scheduled" : form.recording_mode;
+  if (!pendingSchedule) {
+    await upsertBudget({
+      category_id: form.category_id,
+      warning_threshold: form.warning_threshold,
+      scope: form.scope,
+      period_key: period,
+      amount,
+      envelope_rule_id: form.envelope_rule_id || null,
+      owner_user_id: form.scope === "personal" ? form.owner_user_id : null,
+      row_version: existingBudget?.row_version,
+    }, { rowVersion: existingBudget?.row_version });
+  }
+  return { completingSchedule, amount, recordingMode };
+};
+
+const budgetScheduleFromForm = (form, amount) => ({
+  amount,
+  category_id: form.category_id,
+  frequency: form.schedule_frequency || "monthly",
+  due_day: Number(form.schedule_due_day || 20),
+  start_date: form.schedule_start_date || todayInJakarta(),
+  payment_method: form.schedule_payment_method || "transfer",
+});
+
+const shouldCreateBudgetSchedule = ({ pendingSchedule, existingBudget, recordingMode }) => Boolean(pendingSchedule || !existingBudget) && recordingMode === "scheduled";
+
+const createBudgetSchedule = async ({ schedule, categories, scheduleAccountId }) => {
+  if (!scheduleAccountId) throw new Error("Rekening sumber Alokasi Dana belum tersedia untuk membuat jadwal.");
+  const category = categories.find((item) => item.category_id === schedule.category_id);
+  await createPlanningPaymentSchedule({
+    name: category?.name || "Pembayaran rutin",
+    kind: "expense",
+    expected_amount: schedule.amount,
+    due_day: schedule.due_day,
+    category_id: schedule.category_id,
+    default_account_id: scheduleAccountId,
+    payment_method: schedule.payment_method,
+    frequency: schedule.frequency,
+    start_date: schedule.start_date,
+    auto_debit: false,
+  }, {});
+};
+
+const budgetSaveFeedback = ({ completingSchedule, existingBudget, recordingMode }) => {
+  if (completingSchedule || (!existingBudget && recordingMode === "scheduled")) {
+    return { message: "Kebutuhan dan jadwal pembayaran berhasil dibuat.", dedupeKey: "budgets:create-scheduled" };
+  }
+  if (existingBudget) return { message: "Kebutuhan berhasil diperbarui.", dedupeKey: "budgets:update" };
+  return { message: "Kebutuhan berhasil dibuat.", dedupeKey: "budgets:create" };
+};
+
+export const useBudgetFormController = ({ items, period, notify, refresh, categories = [], scheduleAccountId = "" }) => {
   const [form, setForm] = useState(emptyBudgetForm);
   const [formOpen, setFormOpen] = useState(false);
   const [message, setMessage] = useState(null);
   const [saveState, setSaveState] = useState({ status: "idle", error: null });
-  const [scheduleContinuation, setScheduleContinuation] = useState(null);
+  const [pendingSchedule, setPendingSchedule] = useState(null);
   const existingBudget = findBudgetForForm(items, form);
 
   const resetSaveState = () => setSaveState({ status: "idle", error: null });
-  const dismissScheduleContinuation = () => setScheduleContinuation(null);
   const selectCategory = (categoryId) => {
     setMessage(null);
     resetSaveState();
@@ -74,7 +138,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     });
   };
   const openBudgetForm = (initial = {}) => {
-    setScheduleContinuation(null);
+    setPendingSchedule(null);
     setForm(emptyBudgetForm(initial));
     setMessage(null);
     resetSaveState();
@@ -84,10 +148,11 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     if (saveState.status === "submitting") return;
     setFormOpen(false);
     setForm(emptyBudgetForm());
+    setPendingSchedule(null);
     resetSaveState();
   };
   const editBudget = (item, overrides = {}) => {
-    setScheduleContinuation(null);
+    setPendingSchedule(null);
     setForm({ ...formFromBudget(item), ...overrides });
     setMessage(null);
     resetSaveState();
@@ -98,41 +163,29 @@ export const useBudgetFormController = ({ items, period, notify, refresh }) => {
     setSaveState({ status: "submitting", error: null });
     setMessage(null);
     try {
-      const amount = assertPositiveRupiah(form.amount);
-      const { recording_mode: recordingMode, ...budgetForm } = form;
-      await upsertBudget({
-        ...budgetForm,
-        period_key: period,
-        amount,
-        envelope_rule_id: form.envelope_rule_id || null,
-        owner_user_id: form.scope === "personal" ? form.owner_user_id : null,
-        row_version: existingBudget?.row_version,
-      }, { rowVersion: existingBudget?.row_version });
-      if (!existingBudget && recordingMode === "scheduled") {
-        setScheduleContinuation({
-          category_id: form.category_id,
-          amount,
-          envelope_rule_id: form.envelope_rule_id || "",
-          scope: form.scope,
-          owner_user_id: form.scope === "personal" ? form.owner_user_id : "",
-        });
-      } else {
-        setScheduleContinuation(null);
+      const saveContext = await budgetSaveContext({ form, period, existingBudget, pendingSchedule });
+      if (shouldCreateBudgetSchedule({ pendingSchedule, existingBudget, recordingMode: saveContext.recordingMode })) {
+        const schedule = pendingSchedule || budgetScheduleFromForm(form, saveContext.amount);
+        try {
+          await createBudgetSchedule({ schedule, categories, scheduleAccountId });
+          setPendingSchedule(null);
+        } catch (scheduleError) {
+          setPendingSchedule(schedule);
+          setSaveState({ status: "error", error: new Error(`Kebutuhan sudah tersimpan, tetapi jadwal belum berhasil dibuat. ${scheduleError.message || "Coba simpan jadwal lagi."}`) });
+          await refresh();
+          return;
+        }
       }
       setForm(emptyBudgetForm());
       setFormOpen(false);
       resetSaveState();
-      notify({
-        message: existingBudget ? "Kebutuhan berhasil diperbarui." : "Kebutuhan berhasil dibuat.",
-        tone: "success",
-        dedupeKey: existingBudget ? "budgets:update" : "budgets:create",
-      });
+      notify({ ...budgetSaveFeedback({ ...saveContext, existingBudget }), tone: "success" });
       await refresh();
     } catch (error) {
       setSaveState({ status: "error", error });
     }
   };
-  return { form, setForm, formOpen, setFormOpen, message, setMessage, saveState, scheduleContinuation, dismissScheduleContinuation, existingBudget, selectCategory, selectOwnership, openBudgetForm, closeBudgetForm, editBudget, saveBudget };
+  return { form, setForm, formOpen, setFormOpen, message, setMessage, saveState, pendingSchedule, existingBudget, selectCategory, selectOwnership, openBudgetForm, closeBudgetForm, editBudget, saveBudget };
 };
 
 export const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen }) => {

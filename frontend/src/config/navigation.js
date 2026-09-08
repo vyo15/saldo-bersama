@@ -5,7 +5,6 @@ import {
   FiCheckSquare,
   FiHome,
   FiList,
-  FiLayers,
   FiPieChart,
   FiSettings,
   FiTag,
@@ -18,11 +17,10 @@ export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/", label: "Beranda", icon: FiHome, end: true },
   { to: "/transaksi", label: "Transaksi", icon: FiList },
   { to: "/perencanaan", label: "Perencanaan", description: "Kelola Alokasi Dana, kebutuhan, dan Jadwal Rutin dalam satu tempat.", icon: FiPieChart },
-  { to: "/anggaran", label: "Anggaran", description: "Ringkasan seluruh Kebutuhan dari Alokasi Dana untuk periode yang dipilih.", icon: FiLayers },
   { to: "/target", label: "Target", description: "Kumpulkan dana ke rekening tujuan dan pantau progres sampai nominal target.", icon: FiTarget },
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
   { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: AccountIcon },
-  { to: "/investasi", label: "Investasi", description: "Catat Cash RDN, saham yang dimiliki, harga manual, P/L, dan pencocokan catatan.", icon: InvestmentIcon },
+  { to: "/investasi", label: "Investasi", description: "Kelola Saldo RDN, posisi saham per lot, reksa dana, dan hasil investasi yang dicatat manual.", icon: InvestmentIcon },
   { to: "/kategori", label: "Kategori", description: "Atur kategori transaksi yang digunakan.", icon: FiTag },
   { to: "/anggota", label: "Anggota", description: "Kelola anggota yang dapat mengakses Saldo Bersama.", icon: FiUsers, ownerOnly: true },
   { to: "/persetujuan", label: "Persetujuan", description: "Tinjau pengajuan rekening, kategori, dan transfer.", icon: FiCheckSquare, ownerOnly: true },
@@ -41,9 +39,9 @@ export const DESKTOP_NAVIGATION = Object.freeze([
   freezeGroup({
     id: "planning",
     label: "Perencanaan",
-    description: "Alokasi Dana, Anggaran, Jadwal Rutin, dan target keuangan.",
+    description: "Alokasi Dana, Jadwal Rutin, dan target keuangan.",
     icon: FiPieChart,
-    items: pickNavigation("/perencanaan", "/anggaran", "/target"),
+    items: pickNavigation("/perencanaan", "/target"),
   }),
   navigationByPath.get("/laporan"),
   freezeGroup({
@@ -66,12 +64,12 @@ export const DESKTOP_NAVIGATION = Object.freeze([
 export const MOBILE_PRIMARY_NAVIGATION = Object.freeze(pickNavigation("/", "/transaksi", "/laporan"));
 
 export const MOBILE_SECONDARY_GROUPS = Object.freeze([
-  freezeGroup({ id: "planning", label: "Perencanaan", items: pickNavigation("/perencanaan", "/anggaran", "/target") }),
+  freezeGroup({ id: "planning", label: "Perencanaan", items: pickNavigation("/perencanaan", "/target") }),
   freezeGroup({ id: "financial-data", label: "Data keuangan", items: pickNavigation("/rekening", "/kategori") }),
   freezeGroup({ id: "investment", label: "Investasi", items: pickNavigation("/investasi") }),
   freezeGroup({ id: "balance-control", label: "Kontrol saldo", items: pickNavigation("/rekonsiliasi") }),
   freezeGroup({ id: "people", label: "Akses", items: pickNavigation("/anggota", "/persetujuan") }),
-  freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/notifikasi", "/pengaturan") }),
+  freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/pengaturan") }),
 ]);
 
 export const MOBILE_SECONDARY_NAVIGATION = Object.freeze(MOBILE_SECONDARY_GROUPS.flatMap((group) => group.items));

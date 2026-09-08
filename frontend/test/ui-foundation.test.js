@@ -75,7 +75,7 @@ test("compact notice owns lightweight guidance without dashboard stylesheet coup
     read("src/components/common/CompactNotice.module.css"),
     read("src/features/dashboard/DashboardPage.module.css"),
     read("src/features/transactions/TransactionsPage.jsx"),
-    read("src/features/budgets/BudgetsPage.jsx"),
+    read("src/features/budgets/BudgetDialogLayer.jsx"),
     Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/RecurringPage.jsx"),
     read("src/features/goals/GoalsPage.jsx"),
@@ -105,7 +105,7 @@ test("canonical account terms stay user-facing near balances", async () => {
   ]);
 
   assert.match(accountPresentation, /ACCOUNT_BALANCE_GUIDANCE/);
-  assert.match(accountPresentation, /Saldo rekening operasional dipisahkan dari Cash RDN/);
+  assert.match(accountPresentation, /Saldo rekening operasional dipisahkan dari Saldo RDN/);
   assert.match(accountPresentation, /Rekening investasi hanya bergerak lewat Transfer atau pencatatan Investasi/);
   assert.match(accountsPage, /help=\{ACCOUNT_BALANCE_GUIDANCE\}/);
   assert.match(mobileAccounts, /\{ACCOUNT_BALANCE_GUIDANCE\}/);

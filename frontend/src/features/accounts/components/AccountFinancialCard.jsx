@@ -204,7 +204,7 @@ const MobileDetailData = ({ account, model, copied, onCopy }) => (
     <MobileDetailRow icon={FiList} label="Bank / jenis"><span>{model.bankLabel}</span></MobileDetailRow>
         <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
     <MobileDetailRow icon={FiUsers} label="Kepemilikan"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
-    <MobileDetailRow icon={BalanceIcon} label={account.account_type === "investment" ? "Cash RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
+    <MobileDetailRow icon={BalanceIcon} label={account.account_type === "investment" ? "Saldo RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
     {account.account_type === "investment" ? <MobileDetailRow icon={InvestmentIcon} label="Tujuan dana"><span>Investasi</span></MobileDetailRow> : <>
       <MobileDetailRow icon={BalanceIcon} label="Dana tersedia"><span className={styles.mobileFinancialValue}><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></span></MobileDetailRow>
       <MobileDetailRow icon={BalanceIcon} label="Dialokasikan"><span className={styles.mobileFinancialValue}><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></span></MobileDetailRow>

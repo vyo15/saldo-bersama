@@ -9,7 +9,6 @@ import {
   loadAccountsPage,
   loadAuditPage,
   loadBackupPage,
-  loadBudgetsPage,
   loadCategoriesPage,
   loadDashboardPage,
   loadDataStoragePage,
@@ -39,7 +38,6 @@ const LoginPage = lazy(loadLoginPage);
 const DashboardPage = lazy(loadDashboardPage);
 const TransactionsPage = lazy(loadTransactionsPage);
 const PlanningPage = lazy(loadPlanningPage);
-const BudgetsPage = lazy(loadBudgetsPage);
 const GoalsPage = lazy(loadGoalsPage);
 const ReportsPage = lazy(loadReportsPage);
 const AccountsPage = lazy(loadAccountsPage);
@@ -100,8 +98,8 @@ const App = () => (
         <Route path="perencanaan" element={<Navigate to="/perencanaan/kantong" replace />} />
         <Route path="perencanaan/kantong" element={routeElement(PlanningPage)} />
         <Route path="perencanaan/jadwal" element={routeElement(PlanningPage)} />
-        <Route path="anggaran" element={routeElement(BudgetsPage)} />
-        <Route path="perencanaan/kebutuhan" element={<Navigate to="/anggaran" replace />} />
+        <Route path="anggaran" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
+        <Route path="perencanaan/kebutuhan" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
         <Route path="alokasi" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
         <Route path="tagihan" element={<LegacyPlanningRedirect to="/perencanaan/jadwal" />} />
         <Route path="target" element={routeElement(GoalsPage)} />

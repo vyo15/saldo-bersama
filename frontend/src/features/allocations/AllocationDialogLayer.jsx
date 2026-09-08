@@ -136,7 +136,7 @@ const CreateEnvelopeForm = ({
         <label className="field"><span>Akhir periode</span><TemporalInput type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
       </div>
     </details>
-    {selectedSource ? <MoneyInput id="envelope-default" label="Dana yang disiapkan" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} required /> : null}
+    {selectedSource ? <MoneyInput id="envelope-default" label="Dana yang disiapkan (opsional)" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} helper="Boleh dikosongkan. Alokasi dapat dibuat tanpa memindahkan dana, lalu didanai saat dibutuhkan." /> : null}
     {selectedSource && availableAmount > 0 && expenseCategories.length ? <button className={allocationClass("allocation-create-assist form-grid__full")} type="button" onClick={onOpenEstimate}>
       <span className={allocationClass("allocation-create-assist__icon")}><FiList aria-hidden="true" /></span>
       <span className={allocationClass("allocation-create-assist__copy")}><strong>Belum tahu nominalnya?</strong><small>Susun dari kategori kebutuhan periode ini</small></span>

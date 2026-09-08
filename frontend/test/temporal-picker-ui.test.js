@@ -42,7 +42,7 @@ test("semua temporal field feature memakai adapter canonical", async () => {
     "src/features/recurring/RecurringDialogs.jsx",
     "src/features/reminders/ManualReminderModal.jsx",
     "src/features/reports/ReportsPage.jsx",
-    "src/features/budgets/BudgetsPage.jsx",
+    "src/features/budgets/BudgetDialogLayer.jsx",
     "src/features/allocations/AllocationDialogLayer.jsx",
     "src/features/goals/components/GoalDialogs.jsx",
     "src/features/accounts/components/AccountEditorDialogs.jsx",

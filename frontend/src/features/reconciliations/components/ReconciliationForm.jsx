@@ -40,7 +40,7 @@ const balanceCopy = (account = {}) => {
   if (account.account_type === "bank") return { question: "Apakah saldo yang Anda lihat di bank juga", input: "Saldo aktual di bank", hint: "Lihat saldo terbaru di bank, lalu pilih sesuai kondisi sebenarnya.", metric: "Saldo di bank" };
   if (account.account_type === "ewallet") return { question: "Apakah saldo yang Anda lihat di e-wallet juga", input: "Saldo aktual di e-wallet", hint: "Lihat saldo terbaru di aplikasi e-wallet, lalu pilih sesuai kondisi sebenarnya.", metric: "Saldo e-wallet" };
   if (account.account_type === "cash") return { question: "Apakah uang tunai yang Anda pegang juga", input: "Jumlah uang tunai aktual", hint: "Hitung uang tunai yang Anda pegang, lalu pilih sesuai kondisi sebenarnya.", metric: "Tunai aktual" };
-  if (account.account_type === "investment") return { question: "Apakah Cash RDN yang Anda lihat juga", input: "Cash RDN aktual", hint: "Untuk portfolio aktif gunakan Cocokkan Investasi agar Cash RDN dan holding diverifikasi bersama.", metric: "Cash RDN aktual" };
+  if (account.account_type === "investment") return { question: "Apakah Saldo RDN yang Anda lihat juga", input: "Saldo RDN aktual", hint: "Untuk portfolio aktif gunakan Cocokkan Investasi agar Saldo RDN dan holding diverifikasi bersama.", metric: "Saldo RDN aktual" };
   return { question: "Apakah saldo aktual juga", input: "Saldo aktual", hint: "Periksa saldo terbaru pada sumber aslinya, lalu pilih sesuai kondisi sebenarnya.", metric: "Saldo aktual" };
 };
 

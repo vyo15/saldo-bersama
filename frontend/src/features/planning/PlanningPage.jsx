@@ -28,7 +28,7 @@ const PlanningPage = () => {
     <PageHeader
       title="Perencanaan"
       description="Atur Alokasi Dana dan transaksi rutin dalam satu tempat."
-      help="Alokasi Dana memisahkan dana berdasarkan tujuan. Kebutuhan di dalamnya memakai kategori untuk mengatur anggaran. Halaman Anggaran hanya merangkum seluruh Kebutuhan. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Saldo hanya berubah setelah transaksi aktual disimpan."
+      help="Alokasi Dana memisahkan dana berdasarkan tujuan. Kebutuhan dan jadwal pembayaran diatur langsung di dalam setiap Alokasi. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Saldo hanya berubah setelah transaksi aktual disimpan."
     />
     <div className={styles.tabs} role="tablist" aria-label="Perencanaan keuangan">
       <button id="planning-tab-allocation" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "allocation"} tabIndex={activeTab === "allocation" ? 0 : -1} className={`${styles.tab}${activeTab === "allocation" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("allocation")} onKeyDown={handleTabKeyDown}>

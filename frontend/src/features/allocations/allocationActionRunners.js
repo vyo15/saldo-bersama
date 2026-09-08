@@ -1,4 +1,4 @@
-import { assertPositiveRupiah } from "../../domain/money.js";
+import { assertNonNegativeRupiah, assertPositiveRupiah } from "../../domain/money.js";
 import {
   adjustEnvelopeAllocation,
   archiveEnvelopeRule,
@@ -13,7 +13,7 @@ import {
 export const runCreateAllocation = async ({ createForm, resetForm, setCreateForm, onCreated, notify, refreshAfterMutation }) => {
   const name = String(createForm.name || "").trim();
   if (!name) throw new Error("Nama alokasi wajib diisi.");
-  const amount = assertPositiveRupiah(createForm.default_amount);
+  const amount = assertNonNegativeRupiah(createForm.default_amount);
   if (!createForm.source_account_id) throw new Error("Rekening sumber wajib dipilih.");
   const created = await createEnvelope({ ...createForm, name, default_amount: amount, allocated_amount: amount }, {});
   setCreateForm(resetForm());

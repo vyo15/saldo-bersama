@@ -367,48 +367,7 @@
   white-space: nowrap;
 }
 
-.allocation-card__header-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
 
-.allocation-card__menu {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  color: var(--text-soft);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: background-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .allocation-card__menu:hover {
-    background: var(--surface-soft);
-    color: var(--primary);
-  }
-}
-
-.allocation-card__menu:active {
-  transform: scale(.96);
-}
-
-.allocation-card__menu:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.allocation-card__menu svg {
-  width: 20px;
-  height: 20px;
-}
 
 .allocation-card__balance {
   margin-top: 14px;
@@ -534,23 +493,6 @@
   color: var(--text);
 }
 
-.allocation-card__planning-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.allocation-card__planning-actions > :global(.button) {
-  width: 100%;
-  min-width: 0;
-  padding-inline: 10px;
-  box-shadow: none;
-  font-size: var(--font-size-xs);
-}
-
-.allocation-card__planning-actions > :global(.button:only-child) {
-  grid-column: 1 / -1;
-}
 
 .allocation-card__expand {
   width: 100%;
@@ -648,12 +590,9 @@
     gap: var(--space-2);
   }
 
-  .allocation-header-actions--with-move {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) var(--mobile-control-height);
-  }
 
   .allocation-header-actions--simple {
-    grid-template-columns: minmax(0, 1fr) var(--mobile-control-height);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .allocation-header-actions__create {
@@ -667,15 +606,6 @@
     font-size: var(--font-size-xs);
   }
 
-  .allocation-header-actions > .allocation-refresh-action {
-    width: var(--mobile-control-height);
-    min-width: var(--mobile-control-height);
-    padding: 0;
-  }
-
-  .allocation-refresh-action > span {
-    display: none;
-  }
 
   .allocation-section-heading h2 {
     font-size: 14px;
@@ -712,11 +642,6 @@
     font-size: var(--font-size-xs);
   }
 
-  .allocation-card__menu {
-    width: var(--mobile-control-height);
-    min-width: var(--mobile-control-height);
-    height: var(--mobile-control-height);
-  }
 
   .allocation-card__balance {
     margin-top: 12px;
@@ -731,9 +656,6 @@
     gap: 7px;
   }
 
-  .allocation-card__planning-actions > :global(.button) {
-    min-height: var(--mobile-control-height);
-  }
 
   .allocation-card__expand {
     min-height: var(--mobile-control-height);
@@ -746,15 +668,6 @@
   }
 }
 
-@media (max-width: 360px) {
-  .allocation-card__planning-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .allocation-card__planning-actions > :global(.button:only-child) {
-    grid-column: auto;
-  }
-}
 
 @media (max-width: 420px) {
   .allocation-summary__content {
