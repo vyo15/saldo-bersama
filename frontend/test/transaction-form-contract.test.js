@@ -106,8 +106,11 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   assert.match(page, /<TransactionForm open=\{Boolean\(editingTransaction\)\} transaction=\{editingTransaction\}/, "form lokal hanya untuk edit transaksi");
   assert.match(page, /"budgets\.list"/, "cancel/restore transaksi juga harus menginvalidasi pemakaian anggaran");
   assert.match(hook, /subscribeToInvalidation\(action/);
-  assert.match(composer, /lazy\(\(\) => import\("\.\.\/features\/transactions\/TransactionForm\.jsx"\)\)/, "composer global tidak boleh memaksa form transaksi masuk main bundle");
-  assert.match(composer, /composer\.open \? <Suspense fallback=\{<LazyActionFallback label="Menyiapkan form transaksi\.\.\." \/>\}>/);
+  assert.match(composer, /const TransactionForm = lazy\(\(\) => loadActionModule\("transaction"\)\)/, "composer global tetap memuat form transaksi sebagai action chunk lazy");
+  assert.match(composer, /composer\.open \? <Suspense fallback=\{<LazyActionFallback surface="modal" title="Tambah transaksi" label="Menyiapkan form transaksi\.\.\." \/>\}>/);
+  assert.match(composer, /compose/);
+  assert.match(composer, /beforeunload/);
+  assert.match(composer, /onDirtyChange=\{setComposerDirty\}/);
 });
 
 
@@ -172,7 +175,8 @@ test("composer mobile menjaga rekening dan Alokasi di same-sheet selection semen
   assert.match(form, /MobileTransactionFields/);
   assert.match(form, /MobileTransactionSelectionView/);
   assert.match(form, /mobileSelection/);
-  assert.match(form, /requestModalClose = mobileSelection \? closeMobileSelection : onClose/);
+  assert.match(form, /transactionModalCloseHandler\(\{ mobileSelection, closeMobileSelection, requestDraftClose: draftGuard\.requestClose \}\)/);
+  assert.match(form, /if \(mobileSelection\) \{[\s\S]*closeMobileSelection\(\);[\s\S]*return false;/);
   assert.match(form, /closeIcon: FiChevronLeft/);
   assert.doesNotMatch(form, /category: "Pilih kategori"/);
   assert.match(mobile, /styles\.detailGroup/);

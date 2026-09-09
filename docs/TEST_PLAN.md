@@ -385,6 +385,20 @@ Regression wajib membuktikan:
 - Lazy layer yang muncul setelah aksi user diuji memiliki fallback status yang terlihat; dynamic import workflow Alokasi wajib menangani rejection agar deep-link/dashboard action tidak berhenti diam-diam.
 - Regression `maintenance-tabs` menjaga `ResetDataPage` dan `FullResetPage` tetap di-import dinamis dari `MaintenanceDataPage`; kedua destructive flow tidak boleh kembali menjadi static dependency route Pemeliharaan.
 
+
+## Native-feel loading, motion, dan PWA continuity
+
+- Initial load Dashboard/Rekening/Transaksi/Alokasi/Jadwal/Target/Laporan/Investasi/Rekonsiliasi/Kategori/Notifikasi/Persetujuan/Anggota harus memakai `NativePageSkeleton` atau layout reservation yang relevan; tidak boleh kembali ke generic spinner-first. Full `LoadingScreen` tetap valid untuk auth/session verification.
+- Delayed route loader mempertahankan anti-flicker ±120ms. Bila loading berlanjut, shell/navigation tetap mounted dan skeleton route menampilkan progress tipis; warm route/prefetch tidak boleh mem-flash loader. Reduced-motion membuat shimmer/progress static tanpa menghilangkan `aria-busy`/status text.
+- Lazy financial action wajib punya visible shell/fallback, focus trap, title, dan safe-area sebelum chunk selesai. Test source menolak `fallback={null}` pada user action. Intent prefetch (`pointerover`, `pointerdown`, `focusin`) dan idle prefetch harus fail-safe serta skip idle prefetch pada Save-Data/2G. Registry action tidak boleh menciptakan circular dependency.
+- Transaction composer shortcut `/transaksi?compose=1` harus membuka composer satu kali lalu membersihkan query dengan `replace`. Draft yang sudah berubah memasang `beforeunload` guard; update service worker tidak boleh restart ketika composer/modal/mutation aktif.
+- Modal history: Back/edge-back menutup overlay lebih dulu. Saat `dismissible=false`/mutation aktif, Back tidak menutup modal dan history guard dipulihkan. Nested modal/subview tetap mengikuti close/back canonical tanpa route jump.
+- Resume: setelah app hidden >2 menit dan kembali visible, read refresh boleh berjalan sekali bila authenticated dan tidak ada mutation aktif. Reconnect offline→online menaikkan recovery revision, menampilkan status recovering singkat, lalu refresh read model tanpa menghapus data existing.
+- Offline/session verification tidak boleh menganggap cached shell sebagai session authority. Jika session tidak dapat diverifikasi, branded `SessionGateState` tampil dan Retry tersedia; `/api` tetap network-only dan tidak ada financial mutation/cached API response baru di service worker.
+- PWA v11: install cache menyimpan static shell + entry JS/CSS yang direferensikan HTML, fetch `/api` selalu dilewatkan network-only, old cache dibersihkan saat activate, update notice compact, dan manifest hanya mengiklankan display mode yang benar-benar didukung.
+- App Badge API adalah progressive enhancement: unread >0 memakai `setAppBadge`, nol memakai `clearAppBadge`, dan rejection tidak boleh memengaruhi UI. Keyboard mobile diuji dengan `visualViewport`, 320/375/412/430px, portrait/landscape, dan CTA form tetap reachable.
+- Manual slow-network matrix minimal: cold cache Fast 4G, Slow 4G, offline launch, reconnect, background/resume, waiting service-worker update saat modal terbuka, reduced-motion, serta installed PWA Android/iOS. Perceived response setiap tap harus langsung memiliki pressed state/shell feedback walaupun chunk/data belum siap.
+
 ## Maintainability, artifact hygiene, dan duplicate-report policy
 
 - `npm-audit-YYYYMMDD.json` adalah diagnostic lokal: boleh berada sementara di working directory, wajib di-ignore Git/source validator, dan **tidak boleh** masuk clean ZIP. Validator dan packager memakai policy local-only yang sama.

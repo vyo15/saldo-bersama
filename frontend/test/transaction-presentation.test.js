@@ -48,7 +48,7 @@ test("transaksi memakai icon kategori terkontrol dengan fallback jenis transaksi
 test("presentasi history mobile transaksi tetap lazy agar route utama punya headroom bundle", async () => {
   const page = await read("src/features/transactions/TransactionsPage.jsx");
   assert.match(page, /const MobileTransactionHistory = lazy\(\(\) => import\("\.\/components\/MobileTransactionHistory\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{<LoadingScreen variant="panel" label="Menyiapkan riwayat transaksi\.\.\." \/>\}>[\s\S]*<MobileTransactionHistory/);
+  assert.match(page, /<Suspense fallback=\{<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan riwayat transaksi…" \/>\}>[\s\S]*<MobileTransactionHistory/);
   assert.doesNotMatch(page, /import\s*\{[^}]*MobileTransactionOverview[^}]*\}\s*from\s*"\.\/components\/MobileTransactionHistory\.jsx"/s);
 });
 

@@ -2,7 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { useLocation, useNavigate } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
+import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
@@ -12,11 +13,11 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain/dates.js";
 import { filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
 import { allocationClass } from "./allocationStyles.js";
+import AllocationNoticesLayer from "./AllocationNoticesLayer.jsx";
 import { scrollWindowToWithMotionPreference } from "../../shared/motion.js";
 const AllocationSetupLayer = lazy(() => import("./AllocationSetupLayer.jsx"));
 const AllocationOverlayLayer = lazy(() => import("./AllocationOverlayLayer.jsx"));
 const AllocationOverviewLayer = lazy(() => import("./AllocationOverviewLayer.jsx"));
-const AllocationNoticesLayer = lazy(() => import("./AllocationNoticesLayer.jsx"));
 const AllocationPlanningDetail = lazy(() => import("./AllocationPlanningDetail.jsx"));
 const loadAllocationActionRunners = () => import("./allocationActionRunners.js");
 
@@ -210,12 +211,12 @@ const useAllocationAttentionNavigation = ({ resourceStatus, budgetStatus, attent
 };
 
 const AllocationMainContent = ({ detailItem, detailProps, overviewProps }) => {
-  if (detailItem) return <Suspense fallback={<div className="notice notice--info" role="status">Memuat detail Alokasi Dana...</div>}><AllocationPlanningDetail item={detailItem} {...detailProps} /></Suspense>;
-  return <Suspense fallback={<div className="notice notice--info" role="status">Memuat Alokasi Dana...</div>}><AllocationOverviewLayer {...overviewProps} /></Suspense>;
+  if (detailItem) return <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat detail Alokasi Dana…" />}><AllocationPlanningDetail item={detailItem} {...detailProps} /></Suspense>;
+  return <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat Alokasi Dana…" />}><AllocationOverviewLayer {...overviewProps} /></Suspense>;
 };
 
 const AllocationResourceState = ({ resource, children }) => {
-  if (resource.status === "loading") return <LoadingScreen label="Memuat Alokasi Dana..." />;
+  if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat Alokasi Dana…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   return children;
 };
@@ -367,11 +368,11 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 
   return <AllocationResourceState resource={resource}><div className={allocationClass("page-stack allocations-page")}>
-    <Suspense fallback={null}><AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={hasActiveGoal} onDismissReleasedFunds={() => setReleasedFunds(null)} /></Suspense>
+    <AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={hasActiveGoal} onDismissReleasedFunds={() => setReleasedFunds(null)} />
     <AllocationHeading embedded={embedded} />
-    {setupCreated ? <Suspense fallback={<div className="notice notice--info" role="status">Menyiapkan langkah berikutnya...</div>}><AllocationSetupLayer setupCreated={setupCreated} activeItems={view.activeItems} onOpenDetail={openDetail} onDismiss={() => setSetupCreated("")} /></Suspense> : null}
+    {setupCreated ? <Suspense fallback={<LazyActionFallback label="Menyiapkan langkah berikutnya..." />}><AllocationSetupLayer setupCreated={setupCreated} activeItems={view.activeItems} onOpenDetail={openDetail} onDismiss={() => setSetupCreated("")} /></Suspense> : null}
     <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, users: view.activeUsers, usersStatus, initialAction: detailAction, onInitialActionConsumed: () => setDetailAction(""), onBack: closeDetail, onBudgetReminder: openBudgetReminder, onAllocationReminder: openReminder, onOpenAllocationActions: setActionTarget, canAdjustAllocation: allocationDetailCanAdjust(detailItem), onAdjustAllocation: (item, amount) => openAdjust(item, "fund", amount), canMoveAllocation: detailCanMove, onMoveAllocation: openMoveForItem }} overviewProps={{ activeItems: view.activeItems, filteredActiveItems: view.filteredActiveItems, allocationFilter, setAllocationFilter, onAddNeed: (item) => openDetail(item, "add-need"), attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, onOpenDetail: openDetail, canCreate, openCreate: () => { setMessage(null); setCreateOpen(true); }, linkedBudgetsForItem: linkedBudgetsForEnvelope, relatedRecurringForItem: relatedRecurringForEnvelope }} />
-    {(showSecondaryLayer || fundingIntent || reminderTarget || createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget) ? <Suspense fallback={<div className="notice notice--info" role="status">Menyiapkan aksi Alokasi Dana...</div>}><AllocationOverlayLayer dialogsOpen={Boolean(createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget)} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus, expenseCategories: view.expenseCategories, createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} showSecondaryLayer={showSecondaryLayer} secondaryProps={{ historicalItems: view.historicalItems, recentMovements: view.recentMovements, actionTarget, onCloseAction: () => setActionTarget(null), onClosePeriod: startClosePeriod, onLifecycle: startLifecycle, setReverseTarget, setReverseState }} fundingIntent={fundingIntent} fundingProps={{ accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item) && item.source_account_id), initialSourceAccountId: fundingInitialState.sourceAccountId, initialEnvelopePeriodId: fundingInitialState.envelopePeriodId, suggestedAmount: fundingInitialState.suggestedAmount, busy: adjustMutation.busy, error: fundingError, onClose: closeFunding, onSubmit: submitFunding }} reminderTarget={reminderTarget} onCloseReminder={() => setReminderTarget(null)} /></Suspense> : null}
+    {(showSecondaryLayer || fundingIntent || reminderTarget || createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget) ? <Suspense fallback={<LazyActionFallback surface="modal" title="Alokasi Dana" label="Menyiapkan aksi Alokasi Dana..." />}><AllocationOverlayLayer dialogsOpen={Boolean(createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget)} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus, expenseCategories: view.expenseCategories, createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} showSecondaryLayer={showSecondaryLayer} secondaryProps={{ historicalItems: view.historicalItems, recentMovements: view.recentMovements, actionTarget, onCloseAction: () => setActionTarget(null), onClosePeriod: startClosePeriod, onLifecycle: startLifecycle, setReverseTarget, setReverseState }} fundingIntent={fundingIntent} fundingProps={{ accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item) && item.source_account_id), initialSourceAccountId: fundingInitialState.sourceAccountId, initialEnvelopePeriodId: fundingInitialState.envelopePeriodId, suggestedAmount: fundingInitialState.suggestedAmount, busy: adjustMutation.busy, error: fundingError, onClose: closeFunding, onSubmit: submitFunding }} reminderTarget={reminderTarget} onCloseReminder={() => setReminderTarget(null)} /></Suspense> : null}
   </div></AllocationResourceState>;
 };
 

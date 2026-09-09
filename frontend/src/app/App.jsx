@@ -64,7 +64,8 @@ const NotFoundPage = lazy(loadNotFoundPage);
 
 const RouteMotion = ({ children }) => {
   const location = useLocation();
-  return <div key={location.pathname} className="route-content-enter">{children}</div>;
+  const subtle = location.pathname.startsWith("/perencanaan/") || location.pathname.startsWith("/pengaturan/");
+  return <div key={location.pathname} className={`route-content-enter${subtle ? " route-content-enter--subtle" : ""}`}>{children}</div>;
 };
 
 const routeElement = (Component, {

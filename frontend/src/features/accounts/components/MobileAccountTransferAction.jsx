@@ -90,7 +90,7 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
       </button>
       {!canTransfer ? <span id={unavailableId} className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif yang kompatibel dengan ledger.</span> : null}
 
-      {transferOpen ? <Suspense fallback={<LazyActionFallback label="Menyiapkan transfer..." />}><TransactionForm
+      {transferOpen ? <Suspense fallback={<LazyActionFallback surface="modal" title="Transfer" label="Menyiapkan transfer..." />}><TransactionForm
         open
         onClose={closeTransfer}
         initialType={TRANSACTION_TYPES.TRANSFER}

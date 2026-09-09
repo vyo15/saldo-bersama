@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { FiBell, FiChevronDown, FiLogOut, FiPlus, FiRefreshCw, FiSettings } from "react-icons/fi";
 import { NavLink, Outlet, useLocation, useNavigationType } from "react-router";
 import { useAuth } from "../features/auth/AuthContext.jsx";
@@ -17,7 +17,11 @@ import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
 import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
 import useMobileTabScrollRestoration from "../hooks/useMobileTabScrollRestoration.js";
 import useRoutePrefetch from "../hooks/useRoutePrefetch.js";
+import useActionPrefetch from "../hooks/useActionPrefetch.js";
+import useVisualViewportInsets from "../hooks/useVisualViewportInsets.js";
+import useModalActivity from "../hooks/useModalActivity.js";
 import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
+import { getMutationActivitySnapshot, subscribeToMutationActivity } from "../services/api/client.js";
 import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
 import OfflineBanner from "../components/pwa/OfflineBanner.jsx";
 import UpdateAvailableNotice from "../components/pwa/UpdateAvailableNotice.jsx";
@@ -126,13 +130,56 @@ const DesktopAppHeader = ({ isRefreshing, notificationState, user, onLogout }) =
 );
 
 const DesktopFloatingTransactionAdd = ({ visible, offline, onClick }) => visible ? (
-  <button type="button" className="floating-add" disabled={offline} onClick={onClick} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button>
+  <button type="button" className="floating-add" data-preload-action="transaction" disabled={offline} onClick={onClick} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button>
 ) : null;
+
+const AppContentNotices = ({ dashboardRoute, installPrompt, logoutError, refreshError, refreshAll }) => (
+  <>
+    {dashboardRoute ? <InstallAppCard {...installPrompt} onInstall={installPrompt.install} onDismiss={installPrompt.dismiss} /> : null}
+    {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
+    {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
+  </>
+);
+
+const PwaStatusStack = ({ offline, recovering, serviceWorkerUpdate }) => {
+  const showNetworkStatus = offline || recovering;
+  const showUpdate = serviceWorkerUpdate.updateAvailable;
+  if (!showNetworkStatus && !showUpdate) return null;
+  return (
+    <div className="pwa-status-stack">
+      {showNetworkStatus ? <OfflineBanner recovering={recovering && !offline} /> : null}
+      {showUpdate ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} blocked={serviceWorkerUpdate.updateBlocked} /> : null}
+    </div>
+  );
+};
+
+const useAppShellRuntime = ({ overview, user, composerOpen, refreshAll }) => {
+  const network = useNetworkStatus();
+  const installPrompt = useInstallPrompt();
+  const mutationActivity = useSyncExternalStore(subscribeToMutationActivity, getMutationActivitySnapshot, getMutationActivitySnapshot);
+  const modalActivity = useModalActivity();
+  const serviceWorkerUpdate = useServiceWorkerUpdate({ blocked: composerOpen || modalActivity.modalOpen || mutationActivity.activeCount > 0 });
+  const notificationState = useFinancialNotificationReadState({ alerts: overview?.alerts || [], scope: user?.uid || user?.email || "anonymous" });
+
+  useEffect(() => {
+    if (!network.recoveryRevision || mutationActivity.activeCount > 0) return;
+    refreshAll().catch(() => {});
+  }, [mutationActivity.activeCount, network.recoveryRevision, refreshAll]);
+
+  useEffect(() => {
+    const unreadCount = Number(notificationState.unreadCount || 0);
+    if (typeof navigator.setAppBadge !== "function") return;
+    if (unreadCount > 0) navigator.setAppBadge(Math.min(unreadCount, 99)).catch?.(() => {});
+    else navigator.clearAppBadge?.().catch?.(() => {});
+  }, [notificationState.unreadCount]);
+
+  return { installPrompt, network, notificationState, serviceWorkerUpdate };
+};
 
 const AppShell = () => {
   const { user, logout } = useAuth();
   const { isRefreshing, refreshError, refreshAll, overview } = useFinance();
-  const { openTransactionComposer } = useTransactionComposer();
+  const { openTransactionComposer, composerOpen } = useTransactionComposer();
   const location = useLocation();
   const navigationType = useNavigationType();
   const [mobileMenuRoute, setMobileMenuRoute] = useState("");
@@ -144,12 +191,12 @@ const AppShell = () => {
   const transactionsRoute = location.pathname === "/transaksi";
   const wideContentRoute = dashboardRoute || ["/laporan", "/investasi", "/notifikasi"].includes(location.pathname);
   const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
-  const { offline } = useNetworkStatus();
-  const installPrompt = useInstallPrompt();
-  const serviceWorkerUpdate = useServiceWorkerUpdate();
-  const notificationState = useFinancialNotificationReadState({ alerts: overview?.alerts || [], scope: user?.uid || user?.email || "anonymous" });
+  const { installPrompt, network, notificationState, serviceWorkerUpdate } = useAppShellRuntime({ overview, user, composerOpen, refreshAll });
+  const { offline, recovering } = network;
   useMobileTabScrollRestoration(location, navigationType);
   useRoutePrefetch();
+  useActionPrefetch();
+  useVisualViewportInsets();
 
   const handleLogout = async () => {
     setLogoutError("");
@@ -171,15 +218,13 @@ const AppShell = () => {
 
         <div className="app-shell__main">
           <main className={`app-content ${wideContentRoute ? "app-content--wide" : "app-content--standard"}`}>
-            {offline ? <OfflineBanner /> : null}
-            {serviceWorkerUpdate.updateAvailable ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} /> : null}
-            {dashboardRoute ? <InstallAppCard {...installPrompt} onInstall={installPrompt.install} onDismiss={installPrompt.dismiss} /> : null}
-            {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
-            {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
+            <AppContentNotices dashboardRoute={dashboardRoute} installPrompt={installPrompt} logoutError={logoutError} refreshError={refreshError} refreshAll={refreshAll} />
             <Outlet />
           </main>
         </div>
       </div>
+
+      <PwaStatusStack offline={offline} recovering={recovering} serviceWorkerUpdate={serviceWorkerUpdate} />
 
       <DesktopFloatingTransactionAdd visible={desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute} offline={offline} onClick={openTransactionComposer} />
       <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />

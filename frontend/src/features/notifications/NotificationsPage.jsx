@@ -6,7 +6,7 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import Button from "../../components/common/Button.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { financialAlertGuidance } from "../../shared/workflows/financialAlerts.js";
 import {
@@ -89,7 +89,7 @@ const NotificationsPage = () => {
   const scope = user?.uid || user?.email || "anonymous";
   const notifications = useFinancialNotificationReadState({ alerts: overview?.alerts || [], scope });
 
-  if (["idle", "loading"].includes(status) && !overview) return <LoadingScreen label="Memuat notifikasi..." />;
+  if (["idle", "loading"].includes(status) && !overview) return <NativePageSkeleton kind="notifications" label="Memuat notifikasi…" />;
   if (status === "error" && !overview) return <ErrorState error={error} onRetry={refreshOverview} />;
 
   const openNotification = (alert) => {

@@ -1,8 +1,10 @@
 /** Lazy UI composer only; transaction validation and persistence remain in canonical form/API paths. */
 import LazyActionFallback from "../components/feedback/LazyActionFallback.jsx";
-import { createContext, lazy, Suspense, useContext, useMemo, useState } from "react";
+import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { loadActionModule, preloadAction } from "./actionModules.js";
 import { TRANSACTION_TYPES } from "../domain/constants.js";
-const TransactionForm = lazy(() => import("../features/transactions/TransactionForm.jsx"));
+const TransactionForm = lazy(() => loadActionModule("transaction"));
 
 const TransactionComposerContext = createContext(null);
 
@@ -44,20 +46,47 @@ export const useTransactionComposer = () => {
 
 export const TransactionComposerProvider = ({ children }) => {
   const [composer, setComposer] = useState(DEFAULT_COMPOSER_STATE);
+  const [composerDirty, setComposerDirty] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
   const value = useMemo(() => ({
     openTransactionComposer: (options) => {
+      void preloadAction("transaction");
       const next = normalizeComposerOptions(options);
+      setComposerDirty(false);
       setComposer({ open: true, ...next });
     },
-    closeTransactionComposer: () => setComposer((current) => ({ ...current, open: false })),
-  }), []);
+    closeTransactionComposer: () => { setComposerDirty(false); setComposer((current) => ({ ...current, open: false })); },
+    composerOpen: composer.open,
+    composerDirty,
+    preloadTransactionComposer: () => preloadAction("transaction"),
+  }), [composer.open, composerDirty]);
 
-  const closeComposer = () => setComposer((current) => ({ ...current, open: false }));
+  useEffect(() => {
+    if (location.pathname !== "/transaksi") return;
+    const params = new URLSearchParams(location.search);
+    if (params.get("compose") !== "1") return;
+    void preloadAction("transaction");
+    setComposerDirty(false);
+    setComposer((current) => current.open ? current : { ...DEFAULT_COMPOSER_STATE, open: true });
+    params.delete("compose");
+    const nextSearch = params.toString();
+    navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true, state: location.state });
+  }, [location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
+    if (!composer.open || !composerDirty) return undefined;
+    const protectDraft = (event) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", protectDraft);
+    return () => window.removeEventListener("beforeunload", protectDraft);
+  }, [composer.open, composerDirty]);
+
+  const closeComposer = () => { setComposerDirty(false); setComposer((current) => ({ ...current, open: false })); };
 
   return (
     <TransactionComposerContext.Provider value={value}>
       {children}
-      {composer.open ? <Suspense fallback={<LazyActionFallback label="Menyiapkan form transaksi..." />}><TransactionForm
+      {composer.open ? <Suspense fallback={<LazyActionFallback surface="modal" title="Tambah transaksi" label="Menyiapkan form transaksi..." />}><TransactionForm
         open
         onClose={closeComposer}
         initialType={composer.initialType}
@@ -65,6 +94,7 @@ export const TransactionComposerProvider = ({ children }) => {
         presentation={composer.presentation}
         initialDraft={composer.initialDraft}
         continuation={composer.continuation}
+        onDirtyChange={setComposerDirty}
       /></Suspense> : null}
     </TransactionComposerContext.Provider>
   );

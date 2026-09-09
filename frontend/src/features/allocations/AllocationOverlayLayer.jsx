@@ -18,22 +18,22 @@ const AllocationOverlayLayer = ({
 }) => (
   <>
     {dialogsOpen ? (
-      <Suspense fallback={<LazyActionFallback label="Menyiapkan form Alokasi Dana..." />}>
+      <Suspense fallback={<LazyActionFallback surface="modal" title="Alokasi Dana" label="Menyiapkan form Alokasi Dana..." />}>
         <AllocationDialogLayer {...dialogProps} />
       </Suspense>
     ) : null}
     {showSecondaryLayer ? (
-      <Suspense fallback={<LazyActionFallback label="Menyiapkan aktivitas Alokasi Dana..." />}>
+      <Suspense fallback={<LazyActionFallback surface="modal" title="Alokasi Dana" label="Menyiapkan aktivitas Alokasi Dana..." />}>
         <AllocationSecondaryLayer {...secondaryProps} />
       </Suspense>
     ) : null}
     {fundingIntent ? (
-      <Suspense fallback={<LazyActionFallback label="Menyiapkan pembagian dana..." />}>
+      <Suspense fallback={<LazyActionFallback surface="modal" title="Bagi dana tersedia" label="Menyiapkan pembagian dana..." />}>
         <AllocationFundingFlow open {...fundingProps} />
       </Suspense>
     ) : null}
     {reminderTarget ? (
-      <Suspense fallback={<LazyActionFallback label="Menyiapkan pengingat..." />}>
+      <Suspense fallback={<LazyActionFallback surface="modal" title="Pengingat manual" label="Menyiapkan pengingat..." />}>
         <ManualReminderModal target={reminderTarget} onClose={onCloseReminder} />
       </Suspense>
     ) : null}

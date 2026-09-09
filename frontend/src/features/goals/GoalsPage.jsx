@@ -6,7 +6,7 @@ import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
@@ -212,7 +212,7 @@ const goalPageAccounts = (bootstrap, overview) => {
 };
 
 const goalHeaderActions = ({ canCreate, itemCount, openCreate }) => (canCreate && itemCount
-  ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target</Button>
+  ? <Button variant="primary" icon={FiPlus} data-preload-action="goalDialog" onClick={openCreate}>Buat target</Button>
   : null);
 
 const useGoalAttention = ({ attention, attentionGoalId, consumeAttention, items, resourceStatus, openMovement, attentionHandled }) => {
@@ -262,7 +262,7 @@ const GoalsPage = () => {
     if (eligible.length === 1) openMovement(eligible[0], "deposit", nextPrefill);
     navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
   }, [items, location.hash, location.pathname, location.search, location.state, navigate, openMovement, resource.status]);
-  if (resource.status === "loading") return <LoadingScreen label="Memuat target keuangan..." />;
+  if (resource.status === "loading") return <NativePageSkeleton kind="goals" label="Memuat target keuangan…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const openReminder = (goal) => setReminderTarget({ entityType: "goal", entityId: goal.goal_id, name: goal.name, suggestedDate: goal.target_date });
   const openMovementWithPrefill = (goal, type) => { movement.openMovement(goal, type, type === "deposit" ? workflowPrefill : null); if (type === "deposit" && workflowPrefill) setWorkflowPrefill(null); };
@@ -274,7 +274,7 @@ const GoalsPage = () => {
     {items.length ? <GoalSummary items={items} /> : null}
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
     {(reminderTarget || creation.open || lifecycle.editGoal || movement.movement.goal || lifecycle.reverseTarget || lifecycle.archiveTarget || lifecycle.statusTarget) ? (
-      <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi target..." />}>
+      <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan aksi target..." />}>
         <GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} movement={movement} lifecycle={lifecycle} />
       </Suspense>
     ) : null}

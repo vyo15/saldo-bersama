@@ -3,7 +3,7 @@
  * only coordinates snapshots, refreshes, cache seeding, and stale-request protection.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { apiClient } from "../services/api/client.js";
+import { apiClient, getMutationActivitySnapshot } from "../services/api/client.js";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import { beginFinanceRequest, createFinanceRequestEpoch, finishFinanceResource, hasPendingFinanceRequest, invalidateFinanceSession, requestOwnsAnyFinanceResource, requestOwnsFinanceResource } from "./financeRequestEpoch.js";
 
@@ -182,8 +182,11 @@ const useFinanceRefreshers = (authStatus, user, controls, loadInitialState) => {
 export const FinanceProvider = ({ children }) => {
   const { status: authStatus, user } = useAuth();
   const { bootstrap, overview, state, controls, clearFinanceState } = useFinanceStore();
+  const backgroundedAtRef = useRef(0);
+  const lastResumeRefreshRef = useRef(0);
   const loadInitialState = useInitialFinanceLoad(authStatus, user, controls);
   const refreshers = useFinanceRefreshers(authStatus, user, controls, loadInitialState);
+  const { refreshAll } = refreshers;
 
   useEffect(() => {
     if (!authenticated(authStatus, user)) {
@@ -192,6 +195,34 @@ export const FinanceProvider = ({ children }) => {
     }
     loadInitialState({ force: false }).catch(() => {});
   }, [authStatus, clearFinanceState, loadInitialState, user]);
+
+  useEffect(() => {
+    if (!authenticated(authStatus, user)) return undefined;
+    const RESUME_STALE_MS = 2 * 60 * 1000;
+    const refreshAfterResume = () => {
+      if (document.visibilityState !== "visible") return;
+      const backgroundedAt = backgroundedAtRef.current;
+      if (!backgroundedAt || Date.now() - backgroundedAt < RESUME_STALE_MS) return;
+      if (Date.now() - lastResumeRefreshRef.current < 15_000) return;
+      if (getMutationActivitySnapshot().activeCount > 0) return;
+      lastResumeRefreshRef.current = Date.now();
+      backgroundedAtRef.current = 0;
+      refreshAll().catch(() => {});
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") backgroundedAtRef.current = Date.now();
+      else refreshAfterResume();
+    };
+    const onPageShow = (event) => {
+      if (event.persisted) refreshAfterResume();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [authStatus, refreshAll, user]);
 
   const value = useMemo(() => ({
     bootstrap,

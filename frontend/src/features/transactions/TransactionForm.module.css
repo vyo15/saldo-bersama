@@ -254,7 +254,6 @@
   box-shadow: none;
 }
 
-.quickAmounts button:hover,
 .quickAmounts button:focus-visible,
 .quickAmounts button[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--primary) 46%, var(--border));
@@ -286,7 +285,6 @@
     box-shadow var(--motion-fast) var(--motion-easing);
 }
 
-.fieldControl:hover { border-color: var(--border-strong); }
 .fieldControl:focus-within {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--focus-ring);
@@ -347,6 +345,23 @@
 
 .mobileSelectionForm {
   min-height: 100%;
+}
+
+
+@media (hover: hover) and (pointer: fine) {
+  .quickAmounts button:hover {
+    border-color: color-mix(in srgb, var(--primary) 46%, var(--border));
+    background: color-mix(in srgb, var(--primary-soft) 42%, transparent);
+    color: var(--primary-strong);
+    transform: none;
+    box-shadow: none;
+  }
+  .fieldControl:hover { border-color: var(--border-strong); }
+  .categoryQuickChoices button:hover {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    background: color-mix(in srgb, var(--primary-soft) 45%, var(--surface));
+    color: var(--primary-strong);
+  }
 }
 
 @media (max-width: 820px) {
@@ -693,7 +708,6 @@
   font-weight: var(--font-weight-medium);
 }
 
-.categoryQuickChoices button:hover,
 .categoryQuickChoices button:focus-visible,
 .categoryQuickChoices button[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--primary) 45%, var(--border));

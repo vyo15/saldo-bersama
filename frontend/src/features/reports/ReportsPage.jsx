@@ -25,7 +25,7 @@ import BarChart from "../../components/charts/BarChart.jsx";
 import LineChart from "../../components/charts/LineChart.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { formatCompactRupiah, formatRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
@@ -325,7 +325,7 @@ const ReportsPage = () => {
   const [trendMonths, setTrendMonths] = useState(6);
   const resource = useApiResource("reports.monthly", { period, trend_months: trendMonths });
   const investments = useApiResource("investments.overview");
-  if (resource.status === "loading") return <LoadingScreen label="Menyusun laporan..." />;
+  if (resource.status === "loading") return <NativePageSkeleton kind="reports" label="Menyusun laporan…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   return <ReportsContent data={resource.data} period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} refreshError={resource.refreshError} reload={resource.reload} investmentSummary={investments.status === "ready" ? investments.data?.summary : null} />;
 };

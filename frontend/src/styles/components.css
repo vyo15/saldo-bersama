@@ -343,3 +343,28 @@ input[type="file"] {
   }
   .install-app-card__dismiss:active { background: var(--surface-soft); }
 }
+
+.pwa-status-stack {
+  position: fixed;
+  z-index: calc(var(--layer-modal) + 1);
+  left: 50%;
+  bottom: max(1rem, calc(var(--mobile-navigation-height, 0px) + env(safe-area-inset-bottom) + .75rem));
+  width: min(42rem, calc(100vw - 2rem));
+  display: grid;
+  gap: .65rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.pwa-status-stack .pwa-banner--floating {
+  margin: 0;
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
+  animation: pwa-status-enter var(--motion-normal) var(--ease-enter) both;
+}
+.pwa-banner--recovering { border-color: color-mix(in srgb, var(--positive) 42%, var(--border)); background: color-mix(in srgb, var(--positive) 10%, var(--surface)); }
+.pwa-banner--recovering > svg { color: var(--positive); }
+@keyframes pwa-status-enter { from { opacity: 0; transform: translateY(.5rem); } to { opacity: 1; transform: none; } }
+@media (min-width: 821px) { .pwa-status-stack { bottom: 1.25rem; } }
+@media (prefers-reduced-motion: reduce) { .pwa-status-stack .pwa-banner--floating { animation: none; } }
+

@@ -1,5 +1,5 @@
-const STATIC_CACHE = "saldo-bersama-static-v10";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v10";
+const STATIC_CACHE = "saldo-bersama-static-v11";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v11";
 const STATIC_ASSETS = [
   "/",
   "/site.webmanifest",
@@ -51,8 +51,18 @@ const NOTIFICATION_COPY = Object.freeze({
 const notificationCopy = (payload) => NOTIFICATION_COPY[String(payload.notificationType || "")]
   || { title: "Saldo Bersama", body: "Ada pengingat keuangan yang perlu diperiksa di aplikasi." };
 
+const cacheAppShellAssets = async () => {
+  const cache = await caches.open(STATIC_CACHE);
+  await cache.addAll(STATIC_ASSETS);
+  const shell = await cache.match("/");
+  if (!shell) return;
+  const html = await shell.clone().text();
+  const assetPaths = [...html.matchAll(/(?:src|href)=["'](\/assets\/[^"']+\.(?:js|css))["']/g)].map((match) => match[1]);
+  if (assetPaths.length) await Promise.allSettled(assetPaths.map((asset) => cache.add(asset)));
+};
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));
+  event.waitUntil(cacheAppShellAssets());
 });
 
 self.addEventListener("message", (event) => {

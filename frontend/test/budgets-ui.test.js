@@ -107,9 +107,9 @@ test("detail Alokasi Dana dan dialog Kebutuhan tetap lazy agar route planning me
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
   ]);
   assert.match(page, /const AllocationPlanningDetail = lazy\(\(\) => import\("\.\/AllocationPlanningDetail\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{<div className="notice notice--info" role="status">Memuat detail Alokasi Dana\.\.\.<\/div>\}>/);
+  assert.match(page, /<Suspense fallback=\{<NativePageSkeleton kind="planning" variant="panel" label="Memuat detail Alokasi Dana…" \/>\}>/);
   assert.match(detail, /const BudgetDialogLayer = lazy\(\(\) => import\("\.\.\/budgets\/BudgetDialogLayer\.jsx"\)\)/);
-  assert.match(detail, /<Suspense fallback=\{<LazyActionFallback label="Menyiapkan form Kebutuhan\.\.\." \/>\}>[\s\S]*<BudgetDialogLayer/);
+  assert.match(detail, /<Suspense fallback=\{<LazyActionFallback surface="modal" title="Kebutuhan" label="Menyiapkan form Kebutuhan\.\.\." \/>\}>[\s\S]*<BudgetDialogLayer/);
 });
 
 

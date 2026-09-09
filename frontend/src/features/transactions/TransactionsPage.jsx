@@ -13,7 +13,7 @@ import { accountOptionVisual, categoryOptionVisual, memberOptionVisual } from ".
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
@@ -188,7 +188,7 @@ const memberTransferRequestsEnabled = (role) => Boolean(role) && role !== "owner
 
 const MemberTransferRequests = ({ role, resource, accounts }) => {
   if (!memberTransferRequestsEnabled(role)) return null;
-  return <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan pengajuan transfer..." />}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>;
+  return <Suspense fallback={<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan pengajuan transfer…" />}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>;
 };
 
 const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters, mobileLayout }) => {
@@ -196,7 +196,7 @@ const TransactionResourceStates = ({ resource, items, filtersActive, openTransac
   const filteredEmpty = emptyState === EMPTY_COLLECTION_STATE.FILTERED;
   return <>
     {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
-    {resource.status === "loading" ? <LoadingScreen variant="panel" label="Memuat transaksi..." /> : null}
+    {resource.status === "loading" ? <NativePageSkeleton kind="transactions" variant="panel" label="Memuat transaksi…" /> : null}
     {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
     {resource.status === "ready" && !items.length ? <EmptyState className={`${styles.emptyState} ${filteredEmpty ? styles.emptyStateFiltered : ""}`} title={filteredEmpty ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filteredEmpty ? "Ubah atau reset filter untuk melihat transaksi lain." : mobileLayout ? "Gunakan tombol + pada navigasi bawah untuk mencatat transaksi pertama." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filteredEmpty ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : mobileLayout ? null : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
   </>;
@@ -279,7 +279,7 @@ const TransactionsPage = () => {
     <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} help="Catat pemasukan, pengeluaran, dan transfer di sini. Perubahan saldo baru dianggap selesai setelah server mengonfirmasi transaksi." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button> : null} />
     <MemberTransferRequests role={bootstrap?.user?.role} resource={transferRequests} accounts={bootstrap?.accounts} />
     {mobileLayout ? (
-      <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan riwayat transaksi..." />}>
+      <Suspense fallback={<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan riwayat transaksi…" />}>
         <MobileTransactionHistory
           period={filters.period}
           periodLocked={Boolean(resource.data?.periodLocked)}

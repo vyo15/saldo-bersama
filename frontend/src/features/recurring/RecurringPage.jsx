@@ -6,7 +6,7 @@ import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
@@ -119,7 +119,7 @@ const recurringHeaderActions = ({ period, onPeriodChange, canManagePlanning, all
       <span>Periode</span>
       <TemporalInput type="month" value={period} onChange={onPeriodChange} />
     </label>
-    {canManagePlanning && allItems.length ? <Button variant="primary" icon={FiPlus} onClick={rules.openCreate}>Tambah jadwal</Button> : null}
+    {canManagePlanning && allItems.length ? <Button variant="primary" icon={FiPlus} data-preload-action="recurringDialog" onClick={rules.openCreate}>Tambah jadwal</Button> : null}
   </div>
 );
 
@@ -216,7 +216,7 @@ const RecurringPage = ({ embedded = false }) => {
     navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
   }, [bootstrap, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, resource.data?.items, resource.status, rules]);
 
-  if (resource.status === "loading") return <LoadingScreen label="Memuat jadwal rutin..." />;
+  if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat jadwal rutin…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
   const { allItems, filteredItems, accounts, categories, editCategories, paymentAccounts, paymentEnvelopes, budgets } = view;
@@ -239,7 +239,7 @@ const RecurringPage = ({ embedded = false }) => {
       </Suspense>
       <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
       {recurringDialogOpen({ rules, payments, recovery }) ? (
-        <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi jadwal rutin..." />}>
+        <Suspense fallback={<LazyActionFallback surface="modal" title="Jadwal rutin" label="Menyiapkan aksi jadwal rutin..." />}>
           <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgetSuggestions={budgetSuggestions} members={members} />
         </Suspense>
       ) : null}

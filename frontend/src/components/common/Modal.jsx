@@ -13,6 +13,67 @@ const SIZE_STYLES = Object.freeze({
 });
 
 
+
+const useModalHistoryDismiss = ({ open, onClose, dismissible }) => {
+  const tokenRef = useRef("");
+  const onCloseRef = useRef(onClose);
+  const dismissibleRef = useRef(dismissible);
+  onCloseRef.current = onClose;
+  dismissibleRef.current = dismissible;
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined" || typeof onCloseRef.current !== "function") return undefined;
+    const token = `modal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    let activated = false;
+    tokenRef.current = token;
+    const pushModalHistory = () => {
+      if (tokenRef.current !== token) return;
+      const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.pushState({ ...currentState, __saldoModalId: token }, "", window.location.href);
+      activated = true;
+    };
+    // StrictMode runs effect setup/cleanup twice in development. Deferring the
+    // history entry by one task prevents the disposable setup from polluting Back.
+    const activationTimer = window.setTimeout(pushModalHistory, 0);
+    const restoreModalHistory = () => {
+      if (tokenRef.current !== token) return;
+      const state = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.pushState({ ...state, __saldoModalId: token }, "", window.location.href);
+      activated = true;
+    };
+    const onPopState = () => {
+      if (window.history.state?.__saldoModalId === token) return;
+      if (!dismissibleRef.current) {
+        restoreModalHistory();
+        return;
+      }
+      const accepted = onCloseRef.current?.();
+      if (accepted === false) {
+        restoreModalHistory();
+        return;
+      }
+      tokenRef.current = "";
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.clearTimeout(activationTimer);
+      window.removeEventListener("popstate", onPopState);
+      if (tokenRef.current !== token) return;
+      tokenRef.current = "";
+      if (activated && window.history.state?.__saldoModalId === token) window.history.back();
+    };
+  }, [open]);
+
+  return () => {
+    const token = tokenRef.current;
+    if (token && window.history.state?.__saldoModalId === token) {
+      window.history.back();
+      return;
+    }
+    onCloseRef.current?.();
+  };
+};
+
 const modalCanDismiss = (dismissible, onClose) => Boolean(dismissible && typeof onClose === "function");
 const modalSizeStyle = (size) => SIZE_STYLES[size] || styles.medium;
 const modalPresentation = ({ subview, title, description, CloseIcon, closeLabel, canDismiss, closeModal, closeSubview }) => ({
@@ -72,10 +133,17 @@ const Modal = ({
   const titleId = useId();
   const descriptionId = useId();
   const canDismiss = modalCanDismiss(dismissible, onClose);
-  const requestClose = () => onClose?.();
+  const historyClose = subview ? () => { setSubview(null); return false; } : onClose;
+  const requestHistoryClose = useModalHistoryDismiss({ open, onClose: historyClose, dismissible: Boolean(subview || canDismiss) });
+  const requestClose = () => requestHistoryClose();
   const closeSubview = () => setSubview(null);
   const subviewApi = useMemo(() => ({ openSubview: setSubview, closeSubview }), []);
   useEffect(() => { if (!open) setSubview(null); }, [open]);
+  useEffect(() => {
+    if (!open) return undefined;
+    window.dispatchEvent(new CustomEvent("saldo-bersama:modal-activity", { detail: { delta: 1 } }));
+    return () => window.dispatchEvent(new CustomEvent("saldo-bersama:modal-activity", { detail: { delta: -1 } }));
+  }, [open]);
   const swipeEnabled = Boolean(mobileSwipeToClose && canDismiss && !subview);
   const { closeModal, dragY, dragging, dismissing, swipeHandlers } = useMobileSwipeDismiss({ enabled: swipeEnabled, containerRef, onClose: requestClose });
 

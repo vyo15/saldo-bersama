@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { currentMonthInJakarta, formatDateTimeJakarta } from "../../domain/dates.js";
 import { parseRupiah } from "../../domain/money.js";
@@ -136,7 +136,7 @@ const ReconciliationsPage = () => {
 
   useDashboardAttentionPrefill({ attentionAccountId, resourceStatus: data.accountsResource.status, reconcilableAccounts: data.reconcilableAccounts, formAccountId: form.account_id, consumeAttention, setForm });
 
-  if (data.accountsResource.status === "loading" || data.historyResource.status === "loading") return <LoadingScreen label="Memuat pencocokan saldo..." />;
+  if (data.accountsResource.status === "loading" || data.historyResource.status === "loading") return <NativePageSkeleton kind="reconciliations" label="Memuat pencocokan saldo…" />;
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
   if (data.historyResource.status === "error") return <ErrorState error={data.historyResource.error} onRetry={data.historyResource.reload} />;
 

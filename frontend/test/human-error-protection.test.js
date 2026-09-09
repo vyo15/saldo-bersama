@@ -254,7 +254,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
     read("src/features/settings/MembersSettingsPage.jsx"),
   ]);
 
-  assert.match(transactionForm, /dismissible=\{!submitting && !outcomeUnknown\}/);
+  assert.match(transactionForm, /dismissible=\{draftGuard\.discardPrompt \|\| \(!submitting && !outcomeUnknown\)\}/);
   assert.doesNotMatch(transactionForm, /onClose=\{submitting \? \(\) => \{\} : onClose\}/);
 
   assert.match(budgets, /dismissible=\{saveState\.status !== "submitting"\}/);
@@ -582,7 +582,7 @@ test("route dan lapisan Alokasi dimuat lazy agar planning punya headroom bundle"
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
   ]);
   assert.match(route, /const AllocationsWorkspace = lazy\(\(\) => import\("\.\/AllocationsWorkspace\.jsx"\)\)/);
-  assert.match(route, /<LoadingScreen label="Memuat Alokasi Dana\.\.\." \/>/);
+  assert.match(route, /<NativePageSkeleton kind="planning" label="Memuat Alokasi Dana…" \/>/);
   assert.match(workspace, /const AllocationOverlayLayer = lazy\(\(\) => import\("\.\/AllocationOverlayLayer\.jsx"\)\)/);
   assert.match(workspace, /const AllocationOverviewLayer = lazy\(\(\) => import\("\.\/AllocationOverviewLayer\.jsx"\)\)/);
   assert.match(overlay, /const AllocationDialogLayer = lazy\(\(\) => import\("\.\/AllocationDialogLayer\.jsx"\)\)/);
@@ -617,7 +617,7 @@ test("form transaksi mengunci field setelah outcome unknown dan hanya menawarkan
   assert.match(form, /submitState\.status === "unknown"/);
   assert.match(form, /disabled=\{fields\.outcomeUnknown\}/);
   assert.match(form, /Coba lagi data yang sama/);
-  assert.match(form, /dismissible=\{!submitting && !outcomeUnknown\}/);
+  assert.match(form, /dismissible=\{draftGuard\.discardPrompt \|\| \(!submitting && !outcomeUnknown\)\}/);
   assert.match(transfer, /intentLocked=\{outcomeUnknown\}/);
   assert.match(transfer, /Data transfer dikunci sementara/);
   assert.match(money, /disabled=\{disabled\}/);

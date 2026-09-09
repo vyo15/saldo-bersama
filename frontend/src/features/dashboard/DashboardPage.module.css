@@ -1010,3 +1010,5 @@
   .desktop-overview-grid,
   .desktop-planning-section { display: none; }
 }
+
+:global(.dashboard-deferred-card) { min-height: 5.5rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-soft); opacity: .7; }

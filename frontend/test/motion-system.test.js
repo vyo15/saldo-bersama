@@ -77,7 +77,8 @@ test("route utama memakai prefetch intent, delayed loader, dan entrance motion y
 
   assert.match(app, /lazy\(loadDashboardPage\)/);
   assert.match(app, /<DelayedLoadingScreen variant=\{loadingVariant\} \/>/);
-  assert.match(app, /className="route-content-enter"/);
+  assert.match(app, /route-content-enter/);
+  assert.match(app, /route-content-enter--subtle/);
   assert.match(app, /routeElement\(AppShell, \{ loadingVariant: "page", delayedLoader: false, motion: false \}\)/);
   assert.match(routeModules, /export const preloadRoute = async/);
   for (const route of ["/transaksi", "/rekening", "/laporan", "/investasi", "/pengaturan/perangkat"]) {
@@ -89,6 +90,8 @@ test("route utama memakai prefetch intent, delayed loader, dan entrance motion y
   assert.match(prefetchHook, /url\.origin !== window\.location\.origin/);
   assert.match(delayedLoader, /delay = 120/);
   assert.match(delayedLoader, /route-loading-reserve/);
+  assert.match(delayedLoader, /NativePageSkeleton/);
+  assert.match(delayedLoader, /route/);
   assert.match(shell, /useRoutePrefetch\(\)/);
   assert.match(appCss, /\.route-content-enter\s*\{[\s\S]*animation:\s*route-content-enter var\(--motion-fast\) var\(--ease-enter\) both;/);
   assert.match(appCss, /@keyframes route-content-enter\s*\{[\s\S]*translateY\(5px\)[\s\S]*translateY\(0\)/);

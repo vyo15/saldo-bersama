@@ -205,7 +205,8 @@ test("PWA iOS/Android memiliki manifest standalone, offline guard, update prompt
   const manifest = JSON.parse(manifestText);
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "/");
-  assert.equal(manifest.shortcuts[0].url, "/transaksi");
+  assert.equal(manifest.shortcuts[0].url, "/transaksi?compose=1");
+  assert.deepEqual(manifest.display_override, ["standalone", "minimal-ui"]);
   assert.match(client, /code: "OFFLINE"/);
   assert.doesNotMatch(client, /pendingWrites|offlineQueue/);
   assert.match(client, /MUTATION_INTENT_STORAGE_PREFIX/);

@@ -57,6 +57,12 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Pada setiap page/modal/sheet, satu fakta edukatif tidak diulang antara description, helper field, caption list, notice, dan tombol Info; helper hanya memberi konteks baru. Warning/error/destructive/recovery/outcome-unknown tetap terlihat persisten.
 - [ ] Satu surface mobile tidak menampilkan beberapa trigger Info untuk topik edukatif yang dapat digabungkan; aksesibilitas, target sentuh, focus management, dan isi bantuan tetap memakai primitive canonical.
 - [ ] Device/viewport journey relevan mengikuti skenario manual `TEST_PLAN.md` bila perubahan menyentuh UI/responsive.
+- [ ] Initial loading feature memakai skeleton/layout reservation; spinner full-screen hanya untuk auth/session/blocking state dan background refresh tidak menghapus data lama.
+- [ ] User-triggered lazy modal/sheet menampilkan shell/fallback segera; tidak ada `Suspense fallback={null}` atau klik yang tampak tidak merespons.
+- [ ] Slow chunk/network: route >120ms memberi progress/skeleton tanpa mengganti shell; warm/prefetched route tidak mem-flash loader.
+- [ ] Reconnect dan resume stale melakukan read refresh tanpa mutation aktif; offline/session gate tetap jujur dan tidak membuka offline financial write/cache.
+- [ ] PWA update tidak restart selama modal/composer/mutation aktif; shortcut Tambah transaksi membuka composer; App Badge failure tidak memengaruhi Notification Center.
+- [ ] Browser Back menutup modal lebih dulu dan modal non-dismissible tidak dapat dilewati saat proses submit. Keyboard mobile tidak menutupi input/CTA dan reduced-motion meniadakan shimmer/travel non-esensial.
 
 ## 5. Dokumentasi
 

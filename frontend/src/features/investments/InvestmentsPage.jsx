@@ -9,7 +9,7 @@ import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
@@ -107,7 +107,7 @@ const InvestmentOverlays = ({ page }) => {
     accounts, data, dialog, setDialog, setupOpen, setupMode, setupRdnAccountId, setSetupOpen, setSetupRdnAccountId,
     holdingDetail, setHoldingDetail, user, onSetupSuccess, onInvestmentSuccess, fundRdnForPortfolio, openAction, onReviewHistory,
   } = page;
-  return <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi Investasi..." />}>
+  return <Suspense fallback={<LazyActionFallback surface="modal" title="Investasi" label="Menyiapkan aksi Investasi..." />}>
     {setupOpen ? <InvestmentSetupDialog
       accounts={accounts}
       instruments={data.instruments || []}
@@ -155,13 +155,13 @@ const InvestmentsPageContent = ({ page }) => {
   const continuationPortfolio = candidatePortfolio && (!setupContinuation?.rowVersion || Number(candidatePortfolio.row_version || 0) >= Number(setupContinuation.rowVersion))
     ? candidatePortfolio
     : null;
-  const emptyAction = <Button icon={FiPlus} onClick={() => openSetup("portfolio")}>Tambah investasi</Button>;
+  const emptyAction = <Button icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup("portfolio")}>Tambah investasi</Button>;
   return <div className={`page-stack ${styles.page}`}>
     <RefreshWarning error={overview.refreshError || accountsResource.refreshError} onRetry={() => { overview.reload().catch(() => {}); accountsResource.reload().catch(() => {}); }} />
     <PageHeader
       title="Investasi"
       description="Catat dan pantau portofolio yang Anda miliki. Pembelian atau penjualan tetap dilakukan di aplikasi investasi Anda."
-      actions={canShowInstrumentSetupAction(data, user) ? <Button className={styles.setupAction} icon={FiPlus} onClick={() => openSetup("instrument")} aria-label="Tambah aset">Tambah aset</Button> : null}
+      actions={canShowInstrumentSetupAction(data, user) ? <Button className={styles.setupAction} icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup("instrument")} aria-label="Tambah aset">Tambah aset</Button> : null}
       help="Investasi adalah fitur pencatatan portofolio manual. Saldo Bersama tidak terhubung ke broker, tidak mengambil harga pasar live, dan tidak mengirim order beli atau jual. Saham baru pada prototype dipilih dari daftar LQ45 yang sudah disediakan."
     />
     <OpeningPositionContinuation
@@ -180,7 +180,7 @@ const InvestmentsPageContent = ({ page }) => {
       title="Belum ada investasi"
       description="Mulai dari posisi yang sudah Anda punya atau mulai mencatat transaksi baru. Anda tidak perlu mengisi RDN lebih dulu; bila belum ada, RDN dibuat otomatis dengan saldo Rp0."
       action={emptyAction}
-    /> : <Suspense fallback={<LoadingScreen label="Menyiapkan rincian investasi" />}><InvestmentOverview
+    /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}><InvestmentOverview
       data={data}
       owner={user?.role === "owner"}
       onAction={openAction}
@@ -335,7 +335,7 @@ const InvestmentsPage = () => {
   useInvestmentRouteContinuation({ location, navigate, overview, accountsResource, portfolios, setSetupMode: ui.setSetupMode, setSetupRdnAccountId: ui.setSetupRdnAccountId, setSetupOpen: ui.setSetupOpen, setDialog: ui.setDialog, setHoldingDetail: ui.setHoldingDetail });
   useInvestmentAttentionReconciliation({ attention, consumeAttention, overview, accountsResource, portfolios, setDialog: ui.setDialog, notify });
 
-  if (overview.status === "loading" || accountsResource.status === "loading") return <LoadingScreen label="Memuat investasi..." />;
+  if (overview.status === "loading" || accountsResource.status === "loading") return <NativePageSkeleton kind="investments" label="Memuat investasi…" />;
   if (overview.status === "error") return <ErrorState error={overview.error} onRetry={overview.reload} />;
   if (accountsResource.status === "error") return <ErrorState error={accountsResource.error} onRetry={accountsResource.reload} />;
 

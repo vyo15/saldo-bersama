@@ -87,7 +87,7 @@ test("dialog Target dipisah lazy agar route mempunyai headroom bundle yang sehat
     read("src/features/goals/components/GoalDialogLayer.jsx"),
   ]);
   assert.match(page, /const GoalDialogLayer = lazy\(\(\) => import\("\.\/components\/GoalDialogLayer\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{<LazyActionFallback label="Menyiapkan aksi target\.\.\." \/>\}>/);
+  assert.match(page, /<Suspense fallback=\{<LazyActionFallback surface="modal" title="Target" label="Menyiapkan aksi target\.\.\." \/>\}>/);
   assert.doesNotMatch(page, /from "\.\/components\/GoalDialogs\.jsx"/);
   assert.doesNotMatch(page, /from "\.\.\/reminders\/ManualReminderModal\.jsx"/);
   assert.match(layer, /GoalConfirmations/);
@@ -98,7 +98,7 @@ test("dialog Investasi dimuat lazy agar route mempunyai headroom build budget", 
   const page = await read("src/features/investments/InvestmentsPage.jsx");
   assert.match(page, /const InvestmentDialog = lazy\(\(\) => import\("\.\/InvestmentDialog\.jsx"\)\)/);
   assert.match(page, /const InvestmentSetupDialog = lazy\(\(\) => import\("\.\/InvestmentSetupDialog\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{<LazyActionFallback label="Menyiapkan aksi Investasi\.\.\." \/>\}>/);
+  assert.match(page, /<Suspense fallback=\{<LazyActionFallback surface="modal" title="Investasi" label="Menyiapkan aksi Investasi\.\.\." \/>\}>/);
   assert.doesNotMatch(page, /import InvestmentDialog from "\.\/InvestmentDialog\.jsx"/);
   assert.doesNotMatch(page, /import InvestmentSetupDialog from "\.\/InvestmentSetupDialog\.jsx"/);
 });

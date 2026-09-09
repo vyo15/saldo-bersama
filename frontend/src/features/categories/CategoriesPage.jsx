@@ -14,7 +14,7 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -333,7 +333,7 @@ const CategoriesPageContent = ({ page }) => {
     {setupCreated ? <div><CompactNotice tone="success" title="Dasar pencatatan siap." role="status">Rekening dan kategori sudah cukup untuk mulai mencatat. Fitur perencanaan dapat ditambahkan kapan saja.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => navigate("/perencanaan/kantong")}>Atur Alokasi Dana</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Mulai catat transaksi</Button></div></div> : null}
     {actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}
     <CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />
-    {archivePending ? <LoadingScreen variant="panel" label="Memuat arsip kategori..." /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}
+    {archivePending ? <NativePageSkeleton kind="categories" variant="panel" label="Memuat arsip kategori…" /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}
     <CreateCategoryModal open={actions.createOpen} close={actions.closeCreate} form={actions.form} setForm={actions.setForm} createCategory={actions.createCategory} dialogState={actions.dialogState} requestMode={!ownerMode} />
     <EditCategoryModal editCategory={actions.editCategory} setEditCategory={actions.setEditCategory} saveCategory={actions.saveCategory} dialogState={actions.dialogState} />
     <ArchiveCategoryModal archiveTarget={actions.archiveTarget} dialogState={actions.dialogState} setArchiveTarget={actions.setArchiveTarget} applyCategoryLifecycle={actions.applyCategoryLifecycle} />
@@ -376,7 +376,7 @@ const CategoriesPage = () => {
   const grouped = useMemo(() => groupCategories(filteredItems), [filteredItems]);
   useCategoryMenuDismiss({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId });
 
-  if (resource.status === "loading") return <LoadingScreen label="Memuat kategori transaksi..." />;
+  if (resource.status === "loading") return <NativePageSkeleton kind="categories" label="Memuat kategori transaksi…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
   const filtersActive = Boolean(searchQuery.trim()) || statusFilter !== "active";

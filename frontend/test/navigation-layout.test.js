@@ -54,12 +54,12 @@ test("dock dirender sebagai sibling shell agar fixed tetap mengikuti viewport", 
 test("navigasi mobile dirender sebagai sibling shell agar fixed tetap mengikuti viewport", async () => {
   const source = await read("src/layouts/AppShell.jsx");
   const shellIndex = source.indexOf('<div className={`app-shell');
-  const shellEndIndex = source.indexOf("\n      </div>\n\n      <DesktopFloatingTransactionAdd");
+  const pwaStatusIndex = source.indexOf('<PwaStatusStack ', shellIndex);
   const mobileNavigationIndex = source.indexOf("<MobileNavigation ");
 
   assert.ok(shellIndex >= 0, "shell aplikasi harus dirender");
-  assert.ok(shellEndIndex > shellIndex, "shell harus ditutup sebelum kontrol fixed viewport");
-  assert.ok(mobileNavigationIndex > shellEndIndex, "navigasi mobile harus menjadi sibling shell, bukan child dari backdrop-filter");
+  assert.ok(pwaStatusIndex > shellIndex, "status PWA harus menjadi sibling setelah shell, bukan child dari backdrop-filter");
+  assert.ok(mobileNavigationIndex > pwaStatusIndex, "navigasi mobile harus menjadi sibling shell setelah status PWA");
 });
 
 test("tab utama mobile memulihkan scroll per tab, route sekunder mulai dari atas, dan browser Back memulihkan entry sebelumnya", async () => {

@@ -144,7 +144,7 @@ const AllocationNeedsPanel = ({
 
 const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleController, canManage, canLifecycle, expenseCategories, users, usersStatus, item, onBudgetReminder }) => {
   if (!budgetFormController.formOpen && !budgetLifecycleController.archiveTarget) return null;
-  return <Suspense fallback={<LazyActionFallback label="Menyiapkan form Kebutuhan..." />}><BudgetDialogLayer
+  return <Suspense fallback={<LazyActionFallback surface="modal" title="Kebutuhan" label="Menyiapkan form Kebutuhan..." />}><BudgetDialogLayer
     canManage={canManage}
     canLifecycle={canLifecycle}
     categories={expenseCategories}

@@ -182,7 +182,8 @@ const useTransactionDerived = ({ bootstrap, overview, form, transaction, present
   return { data, isIncome, isTransfer, mobileTransferMode, approvalRequired, allocationCandidates, impact, fundsWarning, outcomeUnknown: submitState.status === "unknown", ...derived };
 };
 
-const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outcomeUnknown, transaction }) => {
+const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outcomeUnknown, transaction, markDirty }) => {
+  const setDirtyForm = (updater) => { markDirty(); state.setForm(updater); };
   const update = (field, value) => {
     if (outcomeUnknown) return;
     if (field === "transaction_type") state.setMobileSelection(null);
@@ -192,7 +193,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outc
     state.setErrors((current) => clearTransactionFieldErrors(current, field));
     if (["transaction_type", "amount", "envelope_period_id"].includes(field)) state.setForceOverspendNote(false);
     if (!transaction && ["transaction_type", "category_id", "transaction_date"].includes(field)) state.setAllocationMode("auto");
-    state.setForm((current) => {
+    setDirtyForm((current) => {
       const next = { ...current, [field]: value };
       if (field === "transaction_type" && value !== TRANSACTION_TYPES.EXPENSE) {
         next.envelope_period_id = "";
@@ -208,7 +209,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outc
     state.setForceOverspendNote(false);
     state.setUnallocatedConfirmed(false);
     if (!transaction) state.setAllocationMode("auto");
-    applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState });
+    applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm: setDirtyForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState });
   };
 
   const onEnvelopeChange = (nextId) => {
@@ -219,7 +220,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outc
     state.setConfirmation(null);
     state.setSubmitState({ status: "idle", error: null });
     state.setErrors((current) => clearTransactionFieldErrors(current, "envelope_period_id"));
-    state.setForm((current) => ({ ...current, envelope_period_id: nextId }));
+    setDirtyForm((current) => ({ ...current, envelope_period_id: nextId }));
   };
 
   const openMobileSelection = (selection) => {
@@ -232,13 +233,65 @@ const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outc
     const focusId = { "source-account": "source-account", "destination-account": "destination-account", envelope: "envelope" }[previousSelection];
     if (focusId) window.requestAnimationFrame(() => document.getElementById(focusId)?.focus?.({ preventScroll: true }));
   };
-  const onCostShareChange = () => state.setErrors((current) => clearTransactionFieldErrors(current, "cost_share_mode"));
-  return { update, onSourceAccountChange, onEnvelopeChange, openMobileSelection, closeMobileSelection, onCostShareChange };
+  const onCostShareChange = () => { markDirty(); state.setErrors((current) => clearTransactionFieldErrors(current, "cost_share_mode")); };
+  return { update, setDirtyForm, onSourceAccountChange, onEnvelopeChange, openMobileSelection, closeMobileSelection, onCostShareChange };
 };
+
+
+const useTransactionDraftGuard = ({ open, postSave, onClose, onDirtyChange }) => {
+  const [draftDirty, setDraftDirty] = useState(false);
+  const [discardPrompt, setDiscardPrompt] = useState(false);
+
+  useEffect(() => {
+    if (!open || postSave) {
+      setDraftDirty(false);
+      setDiscardPrompt(false);
+      onDirtyChange?.(false);
+    }
+  }, [onDirtyChange, open, postSave]);
+
+  const markDirty = () => {
+    setDraftDirty(true);
+    onDirtyChange?.(true);
+  };
+  const requestClose = () => {
+    if (discardPrompt) {
+      setDiscardPrompt(false);
+      return false;
+    }
+    if (draftDirty) {
+      setDiscardPrompt(true);
+      return false;
+    }
+    onClose?.();
+    return true;
+  };
+  const cancelDiscard = () => {
+    setDiscardPrompt(false);
+    return false;
+  };
+  const confirmDiscard = () => {
+    setDiscardPrompt(false);
+    setDraftDirty(false);
+    onDirtyChange?.(false);
+    onClose?.();
+  };
+
+  return { discardPrompt, markDirty, requestClose, cancelDiscard, confirmDiscard };
+};
+
+const transactionModalCloseHandler = ({ mobileSelection, closeMobileSelection, requestDraftClose }) => () => {
+  if (mobileSelection) {
+    closeMobileSelection();
+    return false;
+  }
+  return requestDraftClose();
+};
+
 
 const transactionFields = ({ state, derived, actions, lockType, submitting }) => ({
   form: state.form,
-  setForm: state.setForm,
+  setForm: actions.setDirtyForm,
   update: actions.update,
   errors: state.errors,
   amountRef: state.amountRef,
@@ -269,6 +322,49 @@ const transactionFields = ({ state, derived, actions, lockType, submitting }) =>
   approvalRequired: derived.approvalRequired,
 });
 
+const TransactionEditorModal = ({
+  open, modal, draftGuard, submitting, outcomeUnknown, handleSubmit, mobileLayout,
+  mobileTransferMode, mobileSelection, closeMobileSelection, fields, requestModalClose,
+}) => {
+  const discardFooter = draftGuard.discardPrompt ? (
+    <>
+      <Button type="button" onClick={draftGuard.cancelDiscard}>Lanjut mengisi</Button>
+      <Button type="button" variant="danger" onClick={draftGuard.confirmDiscard}>Buang perubahan</Button>
+    </>
+  ) : modal.modalFooter;
+
+  return (
+    <Modal
+      open={open}
+      onClose={requestModalClose}
+      dismissible={draftGuard.discardPrompt || (!submitting && !outcomeUnknown)}
+      title={draftGuard.discardPrompt ? "Buang perubahan transaksi?" : modal.modalTitle}
+      description={draftGuard.discardPrompt ? "Perubahan yang belum disimpan akan hilang dari form ini." : modal.modalDescription}
+      size="lg"
+      initialFocusRef={draftGuard.discardPrompt ? undefined : modal.initialFocusRef}
+      className={modal.modalClassName}
+      footer={discardFooter}
+      closeIcon={draftGuard.discardPrompt ? FiChevronLeft : modal.closeIcon}
+      closeLabel={draftGuard.discardPrompt ? "Kembali ke form" : modal.closeLabel}
+      mobileSwipeToClose={draftGuard.discardPrompt ? false : modal.mobileSwipeToClose}
+    >
+      {draftGuard.discardPrompt ? (
+        <div className="notice notice--warning" role="status">Data transaksi belum dikirim. Pilih Lanjut mengisi untuk mempertahankan perubahan atau Buang perubahan untuk menutup form.</div>
+      ) : (
+        <form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} onChangeCapture={draftGuard.markDirty} noValidate>
+          <TransactionFormBody
+            mobileLayout={mobileLayout}
+            mobileTransferMode={mobileTransferMode}
+            mobileSelection={mobileSelection}
+            closeMobileSelection={closeMobileSelection}
+            fields={fields}
+          />
+        </form>
+      )}
+    </Modal>
+  );
+};
+
 const TransactionForm = ({
   open,
   onClose,
@@ -285,6 +381,7 @@ const TransactionForm = ({
   submittingLabel,
   notifyOnSuccess = true,
   presentation = "default",
+  onDirtyChange,
 }) => {
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
   const { notify } = useFeedback();
@@ -292,7 +389,8 @@ const TransactionForm = ({
   const mobileLayout = useMediaQuery(APP_MEDIA.mobile);
   const state = useTransactionFormState({ open, transaction, initialType, initialSourceAccountId, initialDraft });
   const derived = useTransactionDerived({ bootstrap, overview, form: state.form, transaction, presentation, mobileLayout, submitState: state.submitState });
-  const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, mobileLayout, outcomeUnknown: derived.outcomeUnknown, transaction });
+  const draftGuard = useTransactionDraftGuard({ open, postSave: state.postSave, onClose, onDirtyChange });
+  const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, mobileLayout, outcomeUnknown: derived.outcomeUnknown, transaction, markDirty: draftGuard.markDirty });
   const setters = { setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote };
   const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, approvalRequired: derived.approvalRequired, envelopes: derived.data.envelopes, forceOverspendNote: state.forceOverspendNote, unallocatedConfirmed: state.unallocatedConfirmed, setUnallocatedConfirmed: state.setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
   const submitting = state.submitState.status === "submitting";
@@ -304,8 +402,8 @@ const TransactionForm = ({
   const fields = transactionFields({ state, derived, actions, lockType, submitting });
   const mobileSelection = state.mobileSelection;
   const closeMobileSelection = actions.closeMobileSelection;
-  const requestModalClose = mobileSelection ? closeMobileSelection : onClose;
-  const modal = resolveTransactionPresentation({ mobileSelection, mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose, amountRef: state.amountRef, mobileLayout });
+  const requestModalClose = transactionModalCloseHandler({ mobileSelection, closeMobileSelection, requestDraftClose: draftGuard.requestClose });
+  const modal = resolveTransactionPresentation({ mobileSelection, mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout });
   const addAnother = () => resetForAnotherTransaction({ postSave: state.postSave, accounts: derived.data.accounts, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote, setAllocationMode: state.setAllocationMode, setUnallocatedConfirmed: state.setUnallocatedConfirmed, setPostSave: state.setPostSave, idempotencyKeyRef: state.idempotencyKeyRef, amountRef: state.amountRef });
 
   if (state.postSave) {
@@ -313,30 +411,20 @@ const TransactionForm = ({
   }
 
   return (
-    <Modal
+    <TransactionEditorModal
       open={open}
-      onClose={requestModalClose}
-      dismissible={!submitting && !outcomeUnknown}
-      title={modal.modalTitle}
-      description={modal.modalDescription}
-      size="lg"
-      initialFocusRef={modal.initialFocusRef}
-      className={modal.modalClassName}
-      footer={modal.modalFooter}
-      closeIcon={modal.closeIcon}
-      closeLabel={modal.closeLabel}
-      mobileSwipeToClose={modal.mobileSwipeToClose}
-    >
-      <form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} noValidate>
-        <TransactionFormBody
-          mobileLayout={mobileLayout}
-          mobileTransferMode={derived.mobileTransferMode}
-          mobileSelection={mobileSelection}
-          closeMobileSelection={closeMobileSelection}
-          fields={fields}
-        />
-      </form>
-    </Modal>
+      modal={modal}
+      draftGuard={draftGuard}
+      submitting={submitting}
+      outcomeUnknown={outcomeUnknown}
+      handleSubmit={handleSubmit}
+      mobileLayout={mobileLayout}
+      mobileTransferMode={derived.mobileTransferMode}
+      mobileSelection={mobileSelection}
+      closeMobileSelection={closeMobileSelection}
+      fields={fields}
+      requestModalClose={requestModalClose}
+    />
   );
 };
 

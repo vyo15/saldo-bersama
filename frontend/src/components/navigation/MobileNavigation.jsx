@@ -12,7 +12,7 @@ const MobileNavigation = ({ onQuickAdd, onMore, moreOpen = false, quickAddDisabl
       {MOBILE_PRIMARY_NAVIGATION.slice(0, 2).map(({ to, label, icon: Icon, end }) => (
         <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : undefined}><Icon aria-hidden="true" /><span>{label}</span></NavLink>
       ))}
-      <button type="button" className="mobile-navigation__add" onClick={onQuickAdd} aria-label="Tambah transaksi" title="Tambah transaksi" disabled={quickAddDisabled}><FiPlus aria-hidden="true" /></button>
+      <button type="button" className="mobile-navigation__add" data-preload-action="transaction" onClick={onQuickAdd} aria-label="Tambah transaksi" title="Tambah transaksi" disabled={quickAddDisabled}><FiPlus aria-hidden="true" /></button>
       {MOBILE_PRIMARY_NAVIGATION.slice(2).map(({ to, label, icon: Icon, end }) => (
         <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : undefined}><Icon aria-hidden="true" /><span>{label}</span></NavLink>
       ))}

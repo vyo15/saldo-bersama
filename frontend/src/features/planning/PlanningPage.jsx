@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { useLocation, useNavigate } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 const AllocationsPage = lazy(() => import("../allocations/AllocationsPage.jsx"));
 const RecurringPage = lazy(() => import("../recurring/RecurringPage.jsx"));
 import styles from "./PlanningPage.module.css";
@@ -39,7 +40,7 @@ const PlanningPage = () => {
       </button>
     </div>
     <section id="planning-tabpanel" role="tabpanel" aria-labelledby={`planning-tab-${activeTab}`}>
-      <Suspense fallback={<div className="notice notice--info" role="status">Memuat perencanaan...</div>}>
+      <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat perencanaan…" />}>
         {activeTab === "allocation" ? <AllocationsPage embedded onOpenRecurring={() => selectTab("jadwal")} /> : <RecurringPage embedded />}
       </Suspense>
     </section>

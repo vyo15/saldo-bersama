@@ -10,6 +10,7 @@ import { MOBILE_LOGIN_QUERY, MOBILE_LOGIN_SLIDE, mobileOAuthErrorFromSearch } fr
 import { hasSeenMobileOnboarding, markMobileOnboardingSeen } from "./loginOnboardingPreference.js";
 import { useAuth } from "./AuthContext.jsx";
 import { loginStyle } from "./loginStyles.js";
+import LoginLaunchShell from "../../components/feedback/LoginLaunchShell.jsx";
 
 const DesktopLoginLayout = lazy(() => import("./components/LoginDesktopLayout.jsx"));
 const MobileLoginLayout = lazy(() => import("./components/LoginMobileLayout.jsx"));
@@ -196,7 +197,7 @@ const LoginPage = () => {
     onLogin: handleGoogleLogin,
   };
   if (mobileLayout) return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<LoginLaunchShell />}>
       <MobileLoginLayout
         mobileSlide={mobileSlide}
         moveMobileSlide={moveMobileSlide}
@@ -209,7 +210,7 @@ const LoginPage = () => {
     </Suspense>
   );
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<LoginLaunchShell />}>
       <DesktopLoginLayout authProps={googleAuthProps} />
     </Suspense>
   );

@@ -10,7 +10,8 @@ import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
+import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
@@ -175,22 +176,22 @@ const AccountListSection = ({ mobileLayout, accounts, allAccounts, selectedAccou
     <section aria-labelledby="account-list-title" className={`${styles.accountSection}${initialEmpty ? ` ${styles.accountSectionInitialEmpty}` : ""}`}>
       <h2 id="account-list-title" className="sr-only">Rekening aktif</h2>
       {accounts.length ? (mobileLayout
-        ? <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan rekening..." />}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode}
+        ? <Suspense fallback={<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" />}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode}
             openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} /></Suspense>
-        : <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan rekening..." />}><DesktopAccountsWorkspace accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode} bootstrap={bootstrap}
+        : <Suspense fallback={<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" />}><DesktopAccountsWorkspace accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode} bootstrap={bootstrap}
             onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
             onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>)
         : <EmptyState className={`${styles.emptyPanel}${initialEmpty ? ` ${styles.emptyPanelInitial}` : ""}`}
             title={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? "Tidak ada rekening di filter ini" : "Belum ada rekening"}
             description={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? "Pilih filter lain untuk menampilkan rekening yang tersedia." : ownerMode ? "Tambahkan rekening pertama untuk mulai mencatat saldo dan transaksi." : "Ajukan rekening baru kepada Administrator untuk mulai menggunakannya setelah disetujui."}
-            action={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? <Button onClick={() => setOwnershipFilter("all")}>Tampilkan semua</Button> : <Button variant="primary" icon={FiPlus} onClick={openCreateDialog}>{ownerMode ? "Tambah rekening" : "Ajukan rekening"}</Button>} />}
+            action={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? <Button onClick={() => setOwnershipFilter("all")}>Tampilkan semua</Button> : <Button variant="primary" icon={FiPlus} data-preload-action="accountEditor" onClick={openCreateDialog}>{ownerMode ? "Tambah rekening" : "Ajukan rekening"}</Button>} />}
     </section>
   );
 };
 
 const AccountSheets = ({ mobileAccountSheet, setMobileAccountSheet, selectedAccount, ownerMode, navigate, openEditAccount, openAccountLifecycle }) => {
   if (!mobileAccountSheet) return null;
-  return <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan detail rekening..." />}><MobileAccountSheets sheet={mobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
+  return <Suspense fallback={<LazyActionFallback surface="modal" title="Detail rekening" label="Menyiapkan detail rekening..." />}><MobileAccountSheets sheet={mobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
     onClose={() => setMobileAccountSheet(null)}
     onViewTransactions={(item) => { if (!item) return; setMobileAccountSheet(null); navigate("/transaksi", { state: { accountId: item.account_id } }); }}
     onEditAccount={(item) => { setMobileAccountSheet(null); openEditAccount(item); }} onArchiveAccount={(item) => { setMobileAccountSheet(null); openAccountLifecycle(item); }} /></Suspense>;
@@ -198,7 +199,7 @@ const AccountSheets = ({ mobileAccountSheet, setMobileAccountSheet, selectedAcco
 
 const AccountEditors = ({ createDialogOpen, editAccount, closeCreateDialog, accountForm, setAccountForm, createAccount, setEditAccount, saveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, existingAccounts, requestMode }) => (
   (createDialogOpen || editAccount) ? (
-    <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan form rekening..." />}><AccountEditorDialogs createDialogOpen={createDialogOpen} onCloseCreate={closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
+    <Suspense fallback={<LazyActionFallback surface="modal" title="Rekening" label="Menyiapkan form rekening..." />}><AccountEditorDialogs createDialogOpen={createDialogOpen} onCloseCreate={closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
       onCreateAccount={createAccount} editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={saveAccount} dialogState={dialogState}
       activeUsers={activeUsers} currentDatabaseUser={currentDatabaseUser} currentOwnerLabel={currentOwnerLabel} existingAccounts={existingAccounts} requestMode={requestMode} /></Suspense>
   ) : null
@@ -245,7 +246,7 @@ const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
   <div className={styles.desktopPageHeader}><PageHeader title="Rekening"
     description={null}
     help={ACCOUNT_BALANCE_GUIDANCE}
-    actions={accounts.length ? <Button variant="primary" icon={FiPlus} onClick={openCreateDialog} aria-label={ownerMode ? "Tambah rekening desktop" : "Ajukan rekening desktop"}>{ownerMode ? "Tambah rekening" : "Ajukan rekening"}</Button> : null} />
+    actions={accounts.length ? <Button variant="primary" icon={FiPlus} data-preload-action="accountEditor" onClick={openCreateDialog} aria-label={ownerMode ? "Tambah rekening desktop" : "Ajukan rekening desktop"}>{ownerMode ? "Tambah rekening" : "Ajukan rekening"}</Button> : null} />
   </div>
 );
 
@@ -341,7 +342,7 @@ const AccountsPage = () => {
     if (!visibleAccounts.length) { setSelectedAccountId(""); setMobileAccountSheet(null); return; }
     if (!visibleAccounts.some((account) => account.account_id === selectedAccountId)) setSelectedAccountId(visibleAccounts[0].account_id);
   }, [selectedAccountId, visibleAccounts]);
-  if (accountsResource.status === "loading") return <LoadingScreen variant="content" label="Memuat rekening..." />;
+  if (accountsResource.status === "loading") return <NativePageSkeleton kind="accounts" label="Memuat rekening…" />;
   if (accountsResource.status === "error") return <ErrorState error={accountsResource.error} onRetry={accountsResource.reload} />;
   const selectedAccount = selectedAccountFrom(visibleAccounts, selectedAccountId);
   return <AccountsPageContent page={{

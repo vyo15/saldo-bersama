@@ -100,6 +100,14 @@ Line count bukan Definition of Done.
 
 - Route kompleks yang mendekati budget harus memakai shell tipis + lazy workspace bila itu memberi boundary yang jelas; Alokasi memakai `AllocationsPage` → `AllocationsWorkspace`, lalu overlay/dialog tetap dipisahkan lagi agar jalur normal tidak menarik interaction code.
 
+## Native-feel loading dan lifecycle boundary
+
+- Page feature tidak boleh kembali ke spinner-first bila struktur halaman sudah diketahui. Initial resource memakai skeleton; refresh dengan data existing mempertahankan konten lama; full-screen loader hanya untuk auth/session/blocking state.
+- Lazy action yang dipicu user wajib membuka shell/fallback aksesibel segera. Registry prefetch hanya boleh memuat leaf module yang tidak menciptakan cycle dari `app/` kembali ke consumer feature; source-architecture regression tetap authority.
+- Prefetch idle harus menghormati `Save-Data`/2G dan failure harus silent. Prefetch tidak boleh menjalankan API mutation, membuat state finansial, atau menjadi dependency agar action berhasil.
+- Modal/history/update lifecycle harus fail-safe: Back tidak boleh melewati modal non-dismissible, service-worker update tidak boleh reload selama modal/composer/mutation aktif, dan browser `beforeunload` guard hanya melindungi draft in-memory tanpa menyimpan payload finansial baru ke persistent storage.
+- Resume/reconnect refresh hanya melakukan read refresh dan wajib menahan diri saat mutation aktif. Tidak ada offline financial write atau cached API response baru; ADR-0006 tetap berlaku.
+
 ## Testing sebelum dan sesudah refactor
 
 Sebelum memindahkan guarded behavior, cari test yang mengunci contract. Tambah characterization test bila behavior penting belum terlindungi.

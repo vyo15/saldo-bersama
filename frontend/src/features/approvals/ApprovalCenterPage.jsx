@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
-import LoadingScreen from "../../components/feedback/LoadingScreen.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -101,7 +101,7 @@ const ApprovalCenterPage = () => {
     notify,
   });
 
-  if (ownerMode && (masterRequests.status === "loading" || transferRequests.status === "loading")) return <LoadingScreen label="Memuat persetujuan..." />;
+  if (ownerMode && (masterRequests.status === "loading" || transferRequests.status === "loading")) return <NativePageSkeleton kind="approvals" label="Memuat persetujuan…" />;
   if (ownerMode && masterRequests.status === "error") return <ErrorState error={masterRequests.error} onRetry={masterRequests.reload} />;
   if (ownerMode && transferRequests.status === "error") return <ErrorState error={transferRequests.error} onRetry={transferRequests.reload} />;
 

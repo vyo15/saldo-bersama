@@ -240,7 +240,7 @@ ${accountEditors}`;
   assert.match(page, /DesktopAccountsWorkspace/);
   assert.match(page, /import \{ APP_MEDIA \} from "\.\.\/\.\.\/config\/layout\.js";/);
   assert.match(page, /useMobileAccountsLayout = \(\) => useMediaQuery\(APP_MEDIA\.mobile\)/);
-  assert.match(page, /mobileLayout[\s\S]*\? <Suspense fallback=\{<LoadingScreen variant="panel" label="Menyiapkan rekening\.\.\." \/>\}><MobileAccountsExperience[\s\S]*: <Suspense fallback=\{<LoadingScreen variant="panel" label="Menyiapkan rekening\.\.\." \/>\}><DesktopAccountsWorkspace/);
+  assert.match(page, /mobileLayout[\s\S]*\? <Suspense fallback=\{<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" \/>\}><MobileAccountsExperience[\s\S]*: <Suspense fallback=\{<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" \/>\}><DesktopAccountsWorkspace/);
   assert.match(page, /mobileLayout \? <AccountSheets/);
   assert.match(page, /selectedAccount=\{selectedAccount\}/);
   assert.match(page, /onSelectAccount=\{setSelectedAccountId\}/);

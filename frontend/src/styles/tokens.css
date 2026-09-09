@@ -149,6 +149,7 @@
   --mobile-card-padding: 16px;
   --mobile-card-radius: 16px;
   --mobile-control-height: 44px;
+  --keyboard-inset: 0px;
   --mobile-native-control-font-size: 16px;
   --mobile-financial-meta-size: 12px;
 }

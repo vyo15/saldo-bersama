@@ -394,6 +394,8 @@
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.route-content-enter--subtle { animation-name: route-content-fade; }
+@keyframes route-content-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .floating-add {
   position: fixed;

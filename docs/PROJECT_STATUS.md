@@ -6,6 +6,14 @@
 - Rekening mobile dipoles ulang: header sekarang `Rekening` + contextual info + `Tambah`, CTA `Transfer` tunggal berada di quick actions `Riwayat / Transfer`; tap kartu aktif menjadi entry point detail/kelola, picker lama dipensiunkan, dan renderer meng-clip ShopeePay/E-wallet agar sudut rounded menyatu tanpa fringe gelap.
 # Project Status
 
+## Native-feel application continuity — 9 September 2026
+
+- Feature-page initial load sekarang memakai skeleton yang menjaga struktur konten; spinner/full-screen loader dibatasi ke verifikasi session/auth dan blocking state. Route cepat tetap anti-flicker, sedangkan route yang benar-benar menunggu chunk/data dapat menunjukkan progress tipis tanpa mengganti shell/sidebar/navigation.
+- Lazy action user-facing memakai modal/panel shell yang langsung terlihat dan action prefetch berbasis intent/idle. Quick-add transaksi dapat diprefetch setelah app idle bila koneksi tidak Save-Data/2G; contextual prefetch tetap dibatasi pada chunk yang tidak membuat dependency cycle.
+- AppShell mempertahankan data lama saat refresh, melakukan refresh silent setelah reconnect dan resume dari background yang stale, menampilkan offline/recovering sebagai status compact, dan memakai `visualViewport` untuk keyboard inset mobile. Notification unread count dapat diteruskan ke App Badge API bila platform mendukung.
+- Installed PWA shortcut **Tambah transaksi** membuka `/transaksi?compose=1`, lalu composer dibuka dan query dibersihkan dengan replace. Update service worker v11 tidak dapat melakukan restart saat modal/composer/mutation aktif. Cold offline/session verification gagal aman melalui branded session gate tanpa menyimpan credential atau financial snapshot baru di storage.
+- Modal canonical memasang history entry sementara sehingga Back menutup overlay sebelum route; state non-dismissible/mutation tetap fail-closed terhadap Back. PWA manifest tidak lagi mengiklankan `window-controls-overlay` sebelum titlebar custom benar-benar tersedia.
+
 ## Financial flow regression hardening — 9 September 2026
 
 - Pembelian Investasi menampilkan weighted average sebelum/sesudah pembelian otomatis dari holding canonical; user tetap memasukkan lot/unit dan harga per lembar/unit, bukan average manual. Rekonsiliasi portfolio tetap manual dan tidak menghasilkan reminder otomatis.
