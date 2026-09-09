@@ -240,10 +240,12 @@ const useMobileStackGestures = ({ refs, animation, reducedMotion }) => {
       if (Math.abs(deltaX) < 8 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.15) return;
       gesture.dragging = true;
       gesture.suppressClick = true;
+      if (event.cancelable) event.preventDefault();
       refs.stageRef.current?.classList.add(styles.mobileStackDragging);
       gesture.captureElement?.setPointerCapture(event.pointerId);
       animation.setMobileStackWillChange(true);
     }
+    if (event.cancelable) event.preventDefault();
     const now = performance.now();
     const elapsed = Math.max(1, now - gesture.lastTime);
     gesture.velocityX = (event.clientX - gesture.lastX) / elapsed;
@@ -267,8 +269,8 @@ const useMobileStackGestures = ({ refs, animation, reducedMotion }) => {
     if (gesture.captureElement?.hasPointerCapture(event.pointerId)) gesture.captureElement.releasePointerCapture(event.pointerId);
     armMobileStackClickGuard();
     resetMobileStackGesture();
-    const fastSwipe = Math.abs(gesture.velocityX) > 0.46 || Math.abs(averageVelocity) > 0.4;
-    const passedThreshold = reducedMotion ? Math.abs(totalDeltaX) >= 44 : Math.abs(progress) >= 0.24;
+    const fastSwipe = Math.abs(gesture.velocityX) > 0.34 || Math.abs(averageVelocity) > 0.3;
+    const passedThreshold = reducedMotion ? Math.abs(totalDeltaX) >= 32 : Math.abs(progress) >= 0.16;
     const direction = progress !== 0 ? Math.sign(progress) : (totalDeltaX < 0 ? 1 : -1);
     animation.animateMobileStackTo(refs.settledIndexRef.current + (fastSwipe || passedThreshold ? direction : 0), { announce: fastSwipe || passedThreshold });
   }, [animation, armMobileStackClickGuard, reducedMotion, refs.gestureRef, refs.positionRef, refs.settledIndexRef, resetMobileStackGesture]);
@@ -316,10 +318,13 @@ const useMobileStackController = ({ accounts, selectedAccountId, setSelectedAcco
     if (gesture.captureElement?.hasPointerCapture(event.pointerId)) gesture.captureElement.releasePointerCapture(event.pointerId);
     const wasDragging = gesture.dragging;
     const shouldSuppressClick = gesture.suppressClick;
+    const progress = refs.positionRef.current - refs.settledIndexRef.current;
+    const cancelledForward = Math.abs(progress) >= 0.12;
+    const direction = progress === 0 ? 0 : Math.sign(progress);
     if (shouldSuppressClick) gestures.armMobileStackClickGuard();
     gestures.resetMobileStackGesture();
-    if (wasDragging) animation.animateMobileStackTo(refs.settledIndexRef.current, { announce: false });
-  }, [animation, gestures, refs.gestureRef, refs.settledIndexRef]);
+    if (wasDragging) animation.animateMobileStackTo(refs.settledIndexRef.current + (cancelledForward ? direction : 0), { announce: cancelledForward });
+  }, [animation, gestures, refs.gestureRef, refs.positionRef, refs.settledIndexRef]);
 
   useLayoutEffect(() => {
     refs.accountsRef.current = accounts;

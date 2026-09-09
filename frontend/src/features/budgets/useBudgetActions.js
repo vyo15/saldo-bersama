@@ -72,14 +72,18 @@ const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule
   return { completingSchedule, amount, recordingMode };
 };
 
-const budgetScheduleFromForm = (form, amount) => ({
-  amount,
-  category_id: form.category_id,
-  frequency: form.schedule_frequency || "monthly",
-  due_day: Number(form.schedule_due_day || 20),
-  start_date: form.schedule_start_date || todayInJakarta(),
-  payment_method: form.schedule_payment_method || "transfer",
-});
+const budgetScheduleFromForm = (form, amount) => {
+  const dueDay = Number(form.schedule_due_day);
+  if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) throw new Error("Tanggal jatuh tempo harus antara 1–31.");
+  return {
+    amount,
+    category_id: form.category_id,
+    frequency: form.schedule_frequency || "monthly",
+    due_day: dueDay,
+    start_date: form.schedule_start_date || todayInJakarta(),
+    payment_method: form.schedule_payment_method || "transfer",
+  };
+};
 
 const shouldCreateBudgetSchedule = ({ pendingSchedule, existingBudget, recordingMode }) => Boolean(pendingSchedule || !existingBudget) && recordingMode === "scheduled";
 

@@ -52,7 +52,7 @@ const BudgetModalNotices = ({ pendingSchedule, lockedEnvelope, linksLegacyBudget
 const BudgetScheduleFields = ({ form, setForm }) => <>
   <div className="form-grid__full"><CompactNotice tone="info" title="Jadwal pembayaran">Jadwal dibuat bersama Kebutuhan. Saldo baru berubah setelah pembayaran aktual dikonfirmasi.</CompactNotice></div>
   <SelectionField label="Frekuensi" required value={form.schedule_frequency || "monthly"} onChange={(schedule_frequency) => setForm((current) => ({ ...current, schedule_frequency }))} options={SCHEDULE_FREQUENCY_OPTIONS} />
-  <label className="field"><span>Tanggal jatuh tempo *</span><input required type="number" min="1" max="31" value={form.schedule_due_day || 20} onChange={(event) => setForm((current) => ({ ...current, schedule_due_day: Number(event.target.value) }))} /></label>
+  <label className="field"><span>Tanggal jatuh tempo *</span><input required type="number" min="1" max="31" value={form.schedule_due_day ?? ""} onChange={(event) => setForm((current) => ({ ...current, schedule_due_day: event.target.value }))} /></label>
   <label className="field"><span>Tanggal mulai *</span><TemporalInput required type="date" value={form.schedule_start_date || ""} onChange={(event) => setForm((current) => ({ ...current, schedule_start_date: event.target.value }))} /></label>
   <SelectionField label="Metode pembayaran" required value={form.schedule_payment_method || "transfer"} onChange={(schedule_payment_method) => setForm((current) => ({ ...current, schedule_payment_method }))} options={PAYMENT_METHOD_OPTIONS} />
 </>;

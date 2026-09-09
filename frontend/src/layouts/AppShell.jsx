@@ -142,7 +142,7 @@ const AppShell = () => {
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
-  const wideContentRoute = dashboardRoute || location.pathname === "/laporan" || location.pathname === "/investasi";
+  const wideContentRoute = dashboardRoute || ["/laporan", "/investasi", "/notifikasi"].includes(location.pathname);
   const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
   const { offline } = useNetworkStatus();
   const installPrompt = useInstallPrompt();
@@ -170,13 +170,6 @@ const AppShell = () => {
         <DesktopAppHeader isRefreshing={isRefreshing} notificationState={notificationState} user={user} onLogout={handleLogout} />
 
         <div className="app-shell__main">
-          <header className="topbar">
-            <Brand compact />
-            <div className="topbar__actions">
-              <ThemeToggle />
-            </div>
-          </header>
-
           <main className={`app-content ${wideContentRoute ? "app-content--wide" : "app-content--standard"}`}>
             {offline ? <OfflineBanner /> : null}
             {serviceWorkerUpdate.updateAvailable ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} /> : null}

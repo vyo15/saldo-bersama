@@ -23,11 +23,10 @@ test("halaman transaksi mengekspos filter rekening, kategori, dan pencatat", asy
 });
 
 test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan actionable", async () => {
-  const [reports, desktop, mobile, alertList, notifications, notificationState, app] = await Promise.all([
+  const [reports, desktop, mobile, notifications, notificationState, app] = await Promise.all([
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
-    source("src/features/dashboard/components/FinancialAlertList.jsx"),
     source("src/features/notifications/NotificationsPage.jsx"),
     source("src/shared/workflows/financialNotifications.js"),
     source("src/app/App.jsx"),
@@ -37,7 +36,7 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(reports, /Aktivitas pencatatan/);
   assert.match(reports, /Menunjukkan pencatat, bukan penanggung biaya/);
   assert.match(reports, /to="\/perencanaan\/kantong"/);
-  assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
+  assert.doesNotMatch(reports, /FinancialAlertList|MobileSummaryAlerts|ReportAlerts|overview\?\.alerts/);
   assert.doesNotMatch(reports, /alerts\.slice\(0,\s*8\)/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
   const budgets = await Promise.all([
@@ -70,9 +69,6 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(notificationState, /READ_TTL_MS/);
   assert.match(notificationState, /financialNotificationTitle/);
   assert.match(app, /path="notifikasi"/);
-  assert.match(alertList, /Yang perlu dilakukan/);
-  assert.match(alertList, /financialAlertGuidance/);
-  assert.match(alertList, /state=\{guidance\.state\}/);
 });
 
 test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak report", async () => {
@@ -88,8 +84,7 @@ test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak r
   assert.match(layout, /mobileMax:\s*820/);
   assert.match(reports, /TREND_OPTIONS = \[1, 3, 6, 12\]/);
   assert.match(reports, /categoryIcon\(category\?\.icon, "expense"\)/);
-  assert.match(reports, /<MobileSummaryAlerts alerts=\{overview\?\.alerts\} \/>/);
-  assert.match(reports, /FinancialAlertList alerts=\{alerts\} variant="report"/);
+  assert.doesNotMatch(reports, /FinancialAlertList|MobileSummaryAlerts|ReportAlerts|overview\?\.alerts/);
   assert.match(reports, /to="\/perencanaan\/kantong"/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|transactions\.create/);
   assert.match(reportStyles, /@media \(max-width: 820px\)/);
@@ -115,7 +110,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));
   }
-  for (const label of ["Cocokkan saldo", "Atur Alokasi Dana", "Pilih Alokasi Dana", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
+  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Pilih Alokasi Dana", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
     assert.match(alertWorkflow, new RegExp(label));
   }
   assert.match(alertWorkflow, /safeTargetPath/);
@@ -124,7 +119,9 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(attentionHook, /stripDashboardAttentionState/);
   assert.match(attentionHook, /"notification-center"/);
   assert.match(attentionHook, /replace: true/);
-  assert.match(attentionHook, /consumedRef\.current/);
+  assert.doesNotMatch(attentionHook, /consumedRef|initialAttentionRef|useRef/);
+  assert.match(attentionHook, /location\.state/);
+  assert.match(attentionHook, /stripFinancialAttentionState/);
   assert.doesNotMatch(attentionHook, /delete next\.accountId|delete next\.period|delete next\.allocation/);
   assert.match(transactions, /allocation: \["allocated", "unallocated"\]\.includes\(state\?\.allocation\)/);
   assert.match(transactions, /attentionEditableTarget/);
@@ -356,7 +353,7 @@ test("dashboard empty state tampil sebagai aksi tambah dan membuka workflow cano
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     source("src/features/dashboard/DashboardPage.jsx"),
-    source("src/features/allocations/AllocationsPage.jsx"),
+    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/allocationDashboardWorkflow.js")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringPage.jsx"),
     source("src/features/goals/GoalsPage.jsx"),
     source("src/features/dashboard/DashboardPage.module.css"),

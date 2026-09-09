@@ -27,6 +27,9 @@ test("notification center memakai alert dashboard canonical tanpa membuat mutati
   assert.match(state, /localStorage/);
   assert.match(state, /READ_TTL_MS = 14 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(state, /STORAGE_PREFIX = "saldo-bersama:notification-center-read:v1:"/);
+  assert.match(state, /READ_STATE_EVENT = "saldo-bersama:notification-read-state"/);
+  assert.match(state, /window\.addEventListener\(READ_STATE_EVENT, sync\)/);
+  assert.match(state, /readMapRef\.current = next/);
   assert.match(presentation, /attentionSource: source/);
   assert.doesNotMatch(page, /apiClient|notification_queue|createTransaction|adjustment|updateBalance/);
 });
@@ -61,7 +64,8 @@ test("rekonsiliasi tidak menganggap saldo sistem sebagai saldo aktual sebelum ko
 
   assert.match(page, /actual_balance: "", notes: ""/);
   assert.match(page, /contextLocked/);
-  assert.match(page, /attentionFromNotification/);
+  assert.match(page, /attentionReturnPathRef/);
+  assert.match(page, /attention\?\.attentionSource === "notification-center"/);
   assert.match(form, /Saldo tercatat di aplikasi/);
   assert.match(form, /Apakah saldo yang Anda lihat di bank juga/);
   assert.match(form, /Ya, saldonya sama/);
@@ -81,6 +85,7 @@ test("presentation notifikasi ringkas memakai aksi entitas dan satu fakta untuk 
     [{ type: "recurring_due", title: "Internet segera jatuh tempo", message: "Jatuh tempo 2026-09-09." }, ["Jadwal segera jatuh tempo", "Internet", "Jatuh tempo 9 September 2026"]],
     [{ type: "goal_behind", title: "Dana Darurat tertinggal dari rencana", message: "Perkiraan kebutuhan setoran bulanan Rp 750.000." }, ["Target tertinggal", "Dana Darurat", "Butuh sekitar Rp 750.000/bulan"]],
     [{ type: "unallocated_expense", title: "3 pengeluaran belum masuk Alokasi Dana", message: "Pilih Alokasi Dana agar akurat." }, ["Alokasikan pengeluaran", "3 pengeluaran", "Belum masuk Alokasi Dana"]],
+    [{ type: "unallocated_funds", title: "Belanja kekurangan dana", message: "Total kebutuhan Rp 1.000.000 melebihi dana alokasi Rp 250.000. Tambahkan Rp 750.000 agar kebutuhan tercakup.", fundingGap: 750000 }, ["Dana alokasi belum cukup", "Belanja", "Kurang Rp 750.000"]],
   ];
   for (const [alert, expected] of cases) {
     assert.deepEqual([

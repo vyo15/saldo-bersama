@@ -18,7 +18,7 @@ import {
   sellInvestment,
   updateInvestmentValuation,
 } from "./investments.api.js";
-import { investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation } from "./investments.model.js";
+import { investmentProjectedAverage, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation } from "./investments.model.js";
 
 import formStyles from "./InvestmentForm.module.css";
 import activityStyles from "./InvestmentActivity.module.css";
@@ -106,6 +106,11 @@ const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, errors
       </InvestmentFormField>
     </div>
     <MoneyInput id="investment-trade-price" label={labels.price} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
+    {mode === "buy" && instrument ? (() => {
+      const average = investmentProjectedAverage(form, instruments, portfolio);
+      const label = isMutualFundInstrument(instrument) ? "Average nilai/unit" : "Average harga/lembar";
+      return <div className={formStyles.averagePreview} role="status"><span>{label}</span><strong><Money value={average.nextAverage} /></strong><small>{average.currentShares > 0 ? <>Sebelum pembelian <Money value={average.currentAverage} /></> : "Posisi baru"}</small></div>;
+    })() : null}
     <NotesField id="investment-trade-notes" value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
     {mode === "buy" ? <small className={formStyles.formHint}>Saldo RDN tercatat saat ini <Money value={portfolio.rdn_cash} />.</small> : null}
     {mode === "sell" ? <SellAvailabilityHint holding={holding} instrument={instrument} /> : null}
@@ -128,6 +133,7 @@ const TradeReview = ({ mode, form, instruments, portfolio }) => {
         <div><dt>Kuantitas</dt><dd>{mutualFund ? `${preview.lots.toLocaleString("id-ID")} unit` : `${preview.lots.toLocaleString("id-ID")} lot`}</dd></div>
         <div><dt>{mutualFund ? "Nilai per unit" : "Harga per saham"}</dt><dd><Money value={preview.pricePerShare} /></dd></div>
         <div><dt>Nilai bruto</dt><dd><Money value={preview.grossAmount} /></dd></div>
+        {mode === "buy" ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div><dt>{mutualFund ? "Average nilai/unit setelah beli" : "Average harga/lembar setelah beli"}</dt><dd><Money value={average.nextAverage} /></dd></div>; })() : null}
         <div><dt>{mode === "buy" ? "Estimasi dana RDN keluar" : "Estimasi dana RDN masuk"}</dt><dd><Money value={preview.rdnAmount} /></dd></div>
         <div><dt>Saldo RDN sebelum</dt><dd><Money value={cashBefore} /></dd></div>
         <div><dt>Estimasi Saldo RDN setelah</dt><dd><Money value={cashAfter} tone={cashAfter < 0 ? "negative" : "default"} /></dd></div>

@@ -165,39 +165,59 @@ const AccountCarousel = ({ accounts, account, onSelectAccount }) => {
   );
 };
 
+const SelectedAccountHeroHeading = ({ account, investment, readOnly }) => (
+  <div className={styles.heroTitleRow}>
+    <div>
+      <p className="eyebrow">Rekening terpilih</p>
+      <h2 id="desktop-selected-account-title">{investment ? accountDisplayLabel(account) : account.name}</h2>
+      <p>{investment ? "Saldo RDN · detail aset tersedia di catatan Investasi" : `${accountProviderLabel(account)} · ${accountOwnershipLabel(account)}`}</p>
+    </div>
+    {readOnly ? <div className={styles.heroBadges}><span className={styles.readOnlyBadge}>Hanya lihat</span></div> : null}
+  </div>
+);
+
+const SelectedAccountHeroBalance = ({ account, investment }) => {
+  const availableBalance = account.available_balance ?? account.balance ?? 0;
+  const balance = investment ? (account.balance || 0) : availableBalance;
+  return (
+    <div className={styles.heroBalance}>
+      <span>{investment ? "Saldo RDN" : "Dana tersedia"}</span>
+      <strong><Money value={balance} tone={balanceTone(balance)} /></strong>
+      {!investment ? <small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small> : null}
+    </div>
+  );
+};
+
+const SelectedAccountHeroFacts = ({ account, investment }) => (
+  <dl className={styles.heroFacts}>
+    {investment ? <div><dt>Tujuan dana</dt><dd>Investasi</dd></div> : <>
+      <div><dt>Saldo rekening</dt><dd><Money value={account.balance || 0} tone={balanceTone(account.balance)} /><small>Saldo aktual yang tercatat di rekening.</small></dd></div>
+      <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></dd></div>
+    </>}
+    <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
+    <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
+  </dl>
+);
+
+const SelectedAccountHeroActions = ({ account, investment, canManage, onEditAccount, onArchiveAccount, onViewInvestment }) => (
+  <div className={styles.heroActions}>
+    {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat investasi</Button> : null}
+    {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
+    {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Kelola data</Button> : null}
+  </div>
+);
+
 const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onEditAccount, onArchiveAccount, onViewInvestment }) => {
   const canManage = Boolean(account.can_manage ?? ownerMode);
   const readOnly = Boolean(account.read_only);
   const investment = account.account_type === "investment";
-  const title = investment ? accountDisplayLabel(account) : account.name;
   return (
     <section className={styles.heroPanel} aria-labelledby="desktop-selected-account-title">
       <div className={styles.heroCopy}>
-        <div className={styles.heroTitleRow}>
-          <div>
-            <p className="eyebrow">Rekening terpilih</p>
-            <h2 id="desktop-selected-account-title">{title}</h2>
-            <p>{investment ? "Saldo RDN · detail aset tersedia di catatan Investasi" : `${accountProviderLabel(account)} · ${accountOwnershipLabel(account)}`}</p>
-          </div>
-          {readOnly ? <div className={styles.heroBadges}><span className={styles.readOnlyBadge}>Hanya lihat</span></div> : null}
-        </div>
-        <div className={styles.heroBalance}>
-          <span>{investment ? "Saldo RDN" : "Saldo rekening"}</span>
-          <strong><Money value={account.balance || 0} tone={balanceTone(account.balance)} /></strong>
-        </div>
-        <dl className={styles.heroFacts}>
-          {investment ? <div><dt>Tujuan dana</dt><dd>Investasi</dd></div> : <>
-            <div><dt>Dana tersedia</dt><dd><Money value={account.available_balance ?? account.balance ?? 0} tone={balanceTone(account.available_balance ?? account.balance)} /><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></dd></div>
-            <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></dd></div>
-          </>}
-          <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
-          <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
-        </dl>
-        <div className={styles.heroActions}>
-          {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat investasi</Button> : null}
-          {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
-          {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Kelola data</Button> : null}
-        </div>
+        <SelectedAccountHeroHeading account={account} investment={investment} readOnly={readOnly} />
+        <SelectedAccountHeroBalance account={account} investment={investment} />
+        <SelectedAccountHeroFacts account={account} investment={investment} />
+        <SelectedAccountHeroActions account={account} investment={investment} canManage={canManage} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} />
       </div>
       <AccountCarousel accounts={accounts} account={account} onSelectAccount={onSelectAccount} />
     </section>

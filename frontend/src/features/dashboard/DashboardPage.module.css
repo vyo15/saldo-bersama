@@ -445,8 +445,7 @@
   .mobile-finance-user__copy strong { font-size: 13px; }
   .mobile-finance-user__copy span { font-size: var(--font-size-xs); }
   .mobile-finance-hero__actions { gap: 6px; }
-  .mobile-hero-button,
-  .mobile-finance-hero :global(.theme-toggle) { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); min-height: var(--mobile-control-height); border-radius: 12px; }
+  .mobile-hero-button { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); min-height: var(--mobile-control-height); border-radius: 12px; }
   .mobile-finance-identity { margin-top: 12px; }
   .mobile-finance-balance { min-height: 31px; }
   .mobile-finance-balance :global(.money),
@@ -485,8 +484,7 @@
   .mobile-finance-balance > span { font-size: 26px; }
   .mobile-finance-content { padding-inline: var(--mobile-page-gutter); }
   .mobile-quick-action > span { width: 44px; height: 44px; }
-  .mobile-hero-button,
-  .mobile-finance-hero :global(.theme-toggle) { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); min-height: var(--mobile-control-height); }
+  .mobile-hero-button { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); min-height: var(--mobile-control-height); }
 }
 
 

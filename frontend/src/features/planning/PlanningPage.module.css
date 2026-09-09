@@ -71,7 +71,7 @@
 
   .tabs {
     position: sticky;
-    top: calc(var(--mobile-topbar-height, 56px) + 6px);
+    top: calc(env(safe-area-inset-top) + 6px);
     z-index: 6;
     padding: 4px;
     border-radius: 14px;

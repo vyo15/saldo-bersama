@@ -2,20 +2,18 @@ import { FiPlus } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import CompactNotice from "../../../components/common/CompactNotice.jsx";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
-import { EmergencyFundIcon, PriorityHighIcon, PriorityLowIcon, PriorityNormalIcon, SinkingFundIcon, TargetIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
+import { AccountIcon, EmergencyFundIcon, PriorityHighIcon, PriorityLowIcon, PriorityNormalIcon, SinkingFundIcon, TargetIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import ConfirmationModal from "../../../components/common/ConfirmationModal.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import Money from "../../../components/common/Money.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
-import SelectionField from "../../../components/common/SelectionField.jsx";
+import InlineSelectionPicker from "../../../components/common/InlineSelectionPicker.jsx";
 import { accountOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import { formatRupiah } from "../../../domain/money.js";
 import { canRepresentAccountTransfer } from "../../../domain/ownership.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 
 import TemporalInput from "../../../components/common/TemporalInput.jsx";
-const accountFundsLabel = (account) => `${accountDisplayLabel(account)} · tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`;
-
 const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, createMutation, message }) => {
   const targetAccount = accounts.find((item) => item.account_id === form.account_id) || null;
   const compatibleSource = targetAccount ? accounts.some((item) => item.account_id !== targetAccount.account_id && canRepresentAccountTransfer(item, targetAccount)) : true;
@@ -31,7 +29,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, createGoal, cre
       <VisualChoiceGroup className="form-grid__full" legend="Jenis target" name="goal-type" value={form.goal_type} onChange={(goal_type) => setForm((current) => ({ ...current, goal_type }))} options={[{ value: "savings", label: "Tabungan tujuan", icon: TargetIcon, description: "Target nominal" }, { value: "emergency_fund", label: "Dana darurat", icon: EmergencyFundIcon, description: "Cadangan kebutuhan mendadak" }, { value: "sinking_fund", label: "Dana berkala", icon: SinkingFundIcon, description: "Kebutuhan periodik" }]} columns={3} />
       <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
       <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
-      <SelectionField label="Rekening tujuan" required value={form.account_id} onChange={(account_id) => setForm((current) => ({ ...current, account_id }))} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((account) => ({ value: account.account_id, label: accountFundsLabel(account), ...accountOptionVisual(account) }))} />
+      <InlineSelectionPicker label="Rekening tujuan" required value={form.account_id} onChange={(account_id) => setForm((current) => ({ ...current, account_id }))} placeholder="Pilih rekening" placeholderMeta="Pilih rekening penyimpanan target" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
       {targetAccount && !compatibleSource ? <CompactNotice className="form-grid__full" tone="info" title="Target dapat dibuat, tetapi belum dapat disetor">Tambahkan rekening sumber lain yang dapat dioperasikan. Setoran target selalu berupa transfer antar rekening yang berbeda.</CompactNotice> : null}
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
@@ -52,7 +50,7 @@ const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => (
 
 const MovementAccountField = ({ label, value, accounts, onChange }) => {
   const selected = accounts.find((account) => account.account_id === value) || null;
-  return <SelectionField label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((account) => ({ value: account.account_id, label: accountFundsLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} helper={selected ? `Saldo ${formatRupiah(selected.balance || 0)} · dialokasikan ${formatRupiah(selected.allocated_remaining || 0)} · tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
+  return <InlineSelectionPicker label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" placeholderMeta="Pilih rekening untuk transfer target" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} helper={selected ? `Saldo ${formatRupiah(selected.balance || 0)} · dialokasikan ${formatRupiah(selected.allocated_remaining || 0)} · tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
 };
 
 const GoalMovementModal = ({ movement, setMovement, movementState, movementMutation, accounts, submitMovement }) => {

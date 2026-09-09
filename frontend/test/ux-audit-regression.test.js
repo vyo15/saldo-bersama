@@ -111,7 +111,7 @@ test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/auth/LoginPage.jsx"),
   ]);
-  assert.match(allocations, /const AllocationSetupContinuation = lazy\(\(\) => import\("\.\/AllocationSetupContinuation\.jsx"\)\)/);
+  assert.match(allocations, /const AllocationSetupLayer = lazy\(\(\) => import\("\.\/AllocationSetupLayer\.jsx"\)\)/);
   assert.match(allocations, /const loadAllocationActionRunners = \(\) => import\("\.\/allocationActionRunners\.js"\)/);
   assert.doesNotMatch(allocations, /from "\.\/allocationActionRunners\.js"/);
   assert.doesNotMatch(allocations, /from "\.\/allocations\.api\.js"/);

@@ -1,7 +1,7 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
-import { appError, assertOwner, assertVersion, dateValue, nonNegativeInteger, nowIso, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
+import { appError, assertOwner, assertVersion, dateValue, nonNegativeInteger, nowIso, parseJson, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
 import { accountWithAccess, assertEnvelopeAssigneeAccess, assertOperationalPlanningAccount, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
@@ -29,7 +29,18 @@ export const listEnvelopes = async (db, context) => {
       ORDER BY m.created_at DESC LIMIT 20`,
     args: access.args,
   };
-  const statements = [itemStatement, movementStatement];
+  const adjustmentAccess = visibleScopeSql(context.actor, "ar");
+  const adjustmentStatement = {
+    sql: `SELECT a.audit_id AS movement_id,a.timestamp AS created_at,a.actor_id AS created_by,a.new_value,
+      p.envelope_period_id,p.name AS envelope_name,ar.scope,ar.owner_user_id
+      FROM audit_log a
+      JOIN envelope_periods p ON p.envelope_period_id=a.entity_id
+      JOIN envelope_rules ar ON ar.envelope_rule_id=p.envelope_rule_id
+      WHERE a.action='envelopes.adjustAllocation' AND a.entity_type='envelope_period' AND a.result='success' AND ${adjustmentAccess.sql}
+      ORDER BY a.timestamp DESC LIMIT 20`,
+    args: adjustmentAccess.args,
+  };
+  const statements = [itemStatement, movementStatement, adjustmentStatement];
   const archivedIndex = context.actor.role === "owner" ? statements.push({
     sql: `SELECT r.*,COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'') AS assignee_name,au.role AS assignee_role
       FROM envelope_rules r LEFT JOIN users au ON au.user_id=r.assignee_user_id
@@ -39,16 +50,36 @@ export const listEnvelopes = async (db, context) => {
   const resultRows = await readBatchRows(db, statements);
   const items = mapEnvelopeItemRows(resultRows[0] || []);
   const recentMovements = resultRows[1] || [];
+  const allocationAdjustments = (resultRows[2] || []).flatMap((row) => {
+    const payload = parseJson(row.new_value, {});
+    const adjustment = payload?.allocation_adjustment;
+    if (!adjustment || !["fund", "release"].includes(adjustment.direction)) return [];
+    return [{
+      movement_id: row.movement_id,
+      movement_type: adjustment.direction,
+      envelope_period_id: row.envelope_period_id,
+      envelope_name: row.envelope_name,
+      amount: Number(adjustment.amount || 0),
+      reason: sanitizeText(adjustment.reason, 180),
+      created_at: row.created_at,
+      created_by: row.created_by,
+      can_reverse: false,
+    }];
+  });
+  const visibleMovements = [
+    ...recentMovements.map((movement) => ({
+      ...publicRow(movement),
+      can_reverse: context.actor.role === "owner" || movement.created_by === context.actor.user_id,
+    })),
+    ...allocationAdjustments,
+  ].sort((left, right) => String(right.created_at || "").localeCompare(String(left.created_at || ""))).slice(0, 20);
   const archivedRules = archivedIndex >= 0 ? resultRows[archivedIndex] || [] : [];
   return {
     items: items.map((item) => ({
       ...item,
       ...envelopeCapabilities(context.actor, item),
     })),
-    recentMovements: recentMovements.map((movement) => ({
-      ...publicRow(movement),
-      can_reverse: context.actor.role === "owner" || movement.created_by === context.actor.user_id,
-    })),
+    recentMovements: visibleMovements,
     archivedRules: archivedRules.map((row) => publicRow(row)),
   };
 };

@@ -58,10 +58,8 @@ const useReconciliationData = () => {
 };
 
 const useDashboardAttentionPrefill = ({ attentionAccountId, resourceStatus, reconcilableAccounts, formAccountId, consumeAttention, setForm }) => {
-  const attentionHandled = useRef(false);
   useEffect(() => {
-    if (attentionHandled.current || !attentionAccountId || resourceStatus !== "ready") return;
-    attentionHandled.current = true;
+    if (!attentionAccountId || resourceStatus !== "ready") return;
     const attentionAccount = reconcilableAccounts.find((account) => account.account_id === attentionAccountId) || null;
     if (!formAccountId && attentionAccount) setForm({ account_id: attentionAccountId, actual_balance: "", notes: "" });
     consumeAttention();
@@ -121,6 +119,7 @@ const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, ref
 const ReconciliationsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const navigate = useNavigate();
+  const attentionReturnPathRef = useRef(attention?.attentionSource === "notification-center" ? "/notifikasi" : "/");
   const { refreshAll, invalidate } = useFinance();
   const data = useReconciliationData();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -130,6 +129,11 @@ const ReconciliationsPage = () => {
   const attentionAccountId = String(attention?.accountId || "");
   const submission = useReconciliationSubmission({ selectedAccount, form, setForm, data, refreshAll, invalidate });
 
+  useEffect(() => {
+    if (attention?.attentionSource === "notification-center") attentionReturnPathRef.current = "/notifikasi";
+    else if (attention?.attentionSource === "dashboard") attentionReturnPathRef.current = "/";
+  }, [attention?.attentionSource]);
+
   useDashboardAttentionPrefill({ attentionAccountId, resourceStatus: data.accountsResource.status, reconcilableAccounts: data.reconcilableAccounts, formAccountId: form.account_id, consumeAttention, setForm });
 
   if (data.accountsResource.status === "loading" || data.historyResource.status === "loading") return <LoadingScreen label="Memuat pencocokan saldo..." />;
@@ -138,8 +142,7 @@ const ReconciliationsPage = () => {
 
   const reconciliationAttention = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
   const contextLocked = reconciliationAttention && Boolean(selectedAccount?.account_id) && selectedAccount.account_id === attentionAccountId;
-  const attentionFromNotification = attention?.attentionSource === "notification-center";
-  const finishReconciliation = () => navigate(attentionFromNotification ? "/notifikasi" : "/");
+  const finishReconciliation = () => navigate(attentionReturnPathRef.current);
   const reviewReconciliationTransactions = () => submission.resultOverlay?.accountId
     ? navigate("/transaksi", { state: { accountId: submission.resultOverlay.accountId, period: currentMonthInJakarta() } })
     : finishReconciliation();

@@ -22,9 +22,10 @@ export const ewalletTemplateOptionVisual = (template) => {
   return image ? { image, visualLabel: "Provider e-wallet" } : { icon: EwalletIcon };
 };
 
-export const categoryOptionVisual = (category = {}, transactionType = "expense") => ({
-  icon: categoryIcon(category.icon, category.transaction_type || transactionType),
-});
+export const categoryOptionVisual = (category = {}, transactionType = "expense") => {
+  const tone = category.transaction_type || transactionType;
+  return { icon: categoryIcon(category.icon, tone), tone };
+};
 
 export const memberOptionVisual = (member = {}) => ({
   avatar: {

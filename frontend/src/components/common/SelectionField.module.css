@@ -61,6 +61,22 @@
   height: 17px;
 }
 
+.visual[data-tone="expense"] {
+  color: var(--negative);
+  background: var(--negative-soft);
+}
+
+.visual[data-tone="income"] {
+  color: var(--positive);
+  background: var(--positive-soft);
+}
+
+.visual[data-tone="refund"] {
+  color: var(--info);
+  background: var(--info-soft);
+}
+
+
 .visual :global(.user-avatar) {
   width: 28px;
   height: 28px;

@@ -1,4 +1,4 @@
-.page { min-width: 0; max-width: 52rem; margin: 0 auto; }
+.page { width: 100%; min-width: 0; max-width: none; margin: 0; }
 .header { min-height: 62px; display: grid; grid-template-columns: var(--mobile-control-height) minmax(0, 1fr) var(--mobile-control-height); align-items: center; gap: var(--space-2); border-bottom: 1px solid var(--border); }
 .back, .readAll { width: var(--mobile-control-height); height: var(--mobile-control-height); min-height: var(--mobile-control-height); padding: 0; border: 0; border-radius: 12px; display: grid; place-items: center; background: transparent; }
 .back { color: var(--text-soft); }
@@ -34,9 +34,9 @@
 .row[data-tone="danger"] .icon { color: var(--negative); background: var(--negative-soft); }
 .icon svg { width: 17px; height: 17px; }
 .copy { min-width: 0; display: grid; gap: 2px; }
-.copy strong { overflow: hidden; color: var(--text); font-size: var(--font-size-sm); line-height: 1.32; text-overflow: ellipsis; white-space: nowrap; }
-.entity { overflow: hidden; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.copy small { overflow: hidden; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.copy strong { color: var(--text); font-size: var(--font-size-sm); line-height: 1.35; overflow-wrap: anywhere; }
+.entity { color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); line-height: 1.45; overflow-wrap: anywhere; }
+.copy small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.5; overflow-wrap: anywhere; }
 .trailing { min-height: 36px; display: grid; place-items: center; color: var(--text-muted); }
 .trailing svg { width: 16px; height: 16px; }
 
@@ -64,13 +64,13 @@
 
 /* Desktop notification center stays scannable without turning every item into a card. */
 @media (min-width: 821px) {
-  .page { max-width: 66rem; }
+  .page { width: 100%; max-width: none; }
   .header { display: none; }
   .filters { width: fit-content; min-width: 28rem; margin-top: 0; }
   .filter { min-height: 40px; }
   .group { margin-top: var(--space-5); }
   .list { overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-sm); }
-  .row { min-height: 82px; padding: 14px 16px; grid-template-columns: 38px minmax(0, 1fr) 32px; gap: 12px; }
+  .row { min-height: 88px; padding: 16px 18px; grid-template-columns: 40px minmax(0, 1fr) 32px; gap: 14px; }
   .row:first-child { border-top: 0; }
   .row:last-child { border-bottom: 0; }
   .row[data-read="false"]::before { left: 5px; top: 39px; }

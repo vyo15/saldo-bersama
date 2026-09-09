@@ -16,7 +16,6 @@ import { Link } from "react-router";
 import { AccountIcon, InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import UserAvatar from "../../../components/common/UserAvatar.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
-import ThemeToggle from "../../../components/common/ThemeToggle.jsx";
 import { formatDateLongIndonesia } from "../../../domain/dates.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
@@ -57,7 +56,6 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
           </div>
         </div>
         <div className={dashboardClass("mobile-finance-hero__actions")}>
-          <ThemeToggle tone="hero" className={dashboardClass("mobile-hero-button")} />
           <Link to="/notifikasi" className={dashboardClass("mobile-hero-button mobile-notification-button")} aria-label={notificationCount ? `Buka notifikasi, ${notificationCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
             <FiBell aria-hidden="true" />
             {notificationCount ? <span className={dashboardClass("mobile-notification-badge")}>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}

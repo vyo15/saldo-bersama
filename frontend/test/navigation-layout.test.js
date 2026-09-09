@@ -156,7 +156,7 @@ test("root, shell, dan route rekening memenuhi dynamic viewport tanpa menghapus 
   assert.match(componentCss, /\.loading-screen--content \{[^}]*min-height:\s*clamp\(12rem, 42dvh, 24rem\);/);
   assert.match(componentCss, /\.app-content \.loading-screen--page \.brand-lockup \{ display:\s*none; \}/);
   assert.match(responsiveCss, /\.app-content > \.loading-screen--page,\s*\n\s*\.app-content > \.loading-screen--content \{[^}]*min-height:\s*min\(54dvh, 28rem\);/s);
-  assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page,[\s\S]*?min-height:\s*calc\(100dvh - var\(--mobile-topbar-height\)/);
+  assert.match(responsiveCss, /\.app-content > \.fatal-error,\s*\n\s*\.app-content > \.centered-page,[\s\S]*?min-height:\s*calc\(100dvh - 16px - var\(--mobile-navigation-height\)/);
   assert.match(responsiveCss, /\.app-content > \.route-content-enter > \.fatal-error,\s*\n\s*\.app-content > \.route-content-enter > \.centered-page/);
   assert.match(accountCss, /min-height:\s*calc\(100vh - env\(safe-area-inset-top\) - var\(--mobile-navigation-height\)/);
   assert.match(accountCss, /min-height:\s*calc\(100dvh - env\(safe-area-inset-top\) - var\(--mobile-navigation-height\)/);
@@ -226,17 +226,17 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
   assert.match(responsiveCss, /--mobile-navigation-add-lift:\s*26px;/);
   assert.match(responsiveCss, /\.mobile-navigation \{[^}]*grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\);/);
   assert.match(responsiveCss, /\.mobile-navigation__add \{[^}]*margin-top:\s*calc\(var\(--mobile-navigation-add-lift\) \* -1\);/);
-  assert.match(responsiveCss, /--mobile-topbar-height:\s*calc\(var\(--mobile-topbar-content-height\) \+ env\(safe-area-inset-top\)\);/);
-  assert.match(responsiveCss, /\.topbar \{[^}]*height:\s*var\(--mobile-topbar-height\);[^}]*padding:\s*env\(safe-area-inset-top\) var\(--mobile-page-gutter\) 0;/);
+  assert.doesNotMatch(responsiveCss, /--mobile-topbar|\.topbar\s*\{/);
+  assert.match(responsiveCss, /overscroll-behavior-x:\s*none;/);
   assert.match(responsiveCss, /\.mobile-navigation a::before,[\s\S]*\.mobile-navigation__more::before \{[^}]*height:\s*3px;[^}]*opacity:\s*0;/);
   assert.match(responsiveCss, /\.mobile-navigation a\.active::before,[^}]*opacity:\s*1;/);
-  assert.match(dashboardCss, /\.mobile-hero-button,\s*\n\s*\.mobile-finance-hero :global\(\.theme-toggle\) \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(dashboardCss, /\.mobile-hero-button \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.doesNotMatch(dashboardCss, /mobile-finance-hero :global\(\.theme-toggle\)/);
   assert.doesNotMatch(dashboardCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
   assert.match(dashboardCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
   assert.match(dashboardCss, /\.mobile-quick-grid \{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
   assert.doesNotMatch(dashboardCss, /\.mobile-account-scroller|\.mobile-account-preview/);
-  assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*flex; \}/);
-  assert.match(responsiveCss, /\.app-shell--dashboard \.topbar \{ display:\s*none; \}/);
+  assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar/);
 });
 
 test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoint 820/821/940/941", async () => {

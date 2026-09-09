@@ -36,6 +36,8 @@ Repository/source aktual selalu lebih tinggi prioritasnya daripada memory atau p
 - Google Sheets tidak menulis balik ke Turso.
 - Excel bukan backup recovery.
 - Write offline ditolak; browser tidak mengantre transaksi finansial.
+- Dana yang dipisahkan ke Alokasi Dana tidak membuat transaksi bank palsu: saldo rekening tetap aktual, sedangkan `Dana tersedia` mengurangi bagian yang sudah terikat; Tambah/Kembalikan dana tetap tercatat sebagai aktivitas Alokasi.
+- Rekonsiliasi Investasi bersifat manual. Notification Center memprioritaskan kondisi operasional aktif; rekonsiliasi saldo yang baru dikonfirmasi menjadi checkpoint sehingga selisih tetap berada di histori tanpa terus menjadi notifikasi aktif.
 
 ## Menjalankan lokal
 

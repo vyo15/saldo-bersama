@@ -370,9 +370,6 @@
 
 .desktop-logout-button { box-shadow: var(--shadow-sm); }
 
-.topbar { display: none; }
-.topbar__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-
 .app-content {
   width: 100%;
   max-width: none;
@@ -446,7 +443,6 @@
 
 .app-shell,
 .desktop-app-header,
-.topbar,
 .app-content { transition: background-color var(--motion-feedback) var(--ease-standard), border-color var(--motion-feedback) var(--ease-standard), color var(--motion-feedback) var(--ease-standard); }
 
 /* Sync state and shell actions */
@@ -465,8 +461,7 @@
 .refresh-notice { margin-bottom: 16px; align-items: center; justify-content: space-between; }
 
 :root[data-theme="dark"] .app-shell,
-:root[data-theme="dark"] .desktop-app-header,
-:root[data-theme="dark"] .topbar {
+:root[data-theme="dark"] .desktop-app-header {
   background: color-mix(in srgb, var(--surface) 97%, transparent);
 }
 

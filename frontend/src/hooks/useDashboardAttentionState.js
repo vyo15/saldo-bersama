@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 const ATTENTION_SOURCES = new Set(["dashboard", "notification-center"]);
@@ -12,6 +12,7 @@ const ATTENTION_KEYS = Object.freeze([
   "attentionGoalId",
   "attentionOccurrenceId",
   "attentionRdnAccountId",
+  "attentionSuggestedAmount",
 ]);
 
 export const isFinancialAttentionState = (state) => Boolean(state && ATTENTION_SOURCES.has(state.attentionSource));
@@ -29,12 +30,9 @@ export const stripDashboardAttentionState = stripFinancialAttentionState;
 export const useDashboardAttentionState = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const initialAttentionRef = useRef(isFinancialAttentionState(location.state) ? { ...location.state } : null);
-  const consumedRef = useRef(false);
-  const attention = initialAttentionRef.current;
+  const attention = useMemo(() => isFinancialAttentionState(location.state) ? { ...location.state } : null, [location.state]);
   const consumeAttention = useCallback(() => {
-    if (!attention || consumedRef.current) return;
-    consumedRef.current = true;
+    if (!attention) return;
     navigate(`${location.pathname}${location.search}${location.hash}`, {
       replace: true,
       state: stripFinancialAttentionState(location.state),

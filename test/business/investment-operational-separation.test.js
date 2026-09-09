@@ -164,7 +164,7 @@ test("ordinary transaction, Alokasi Dana, dan Jadwal Rutin menolak RDN sementara
 });
 
 
-test("RDN memakai reconciliation Investasi dan alert selesai dari checkpoint portfolio", async () => {
+test("RDN memakai reconciliation Investasi manual tanpa reminder otomatis", async () => {
   const db = await seed();
   try {
     const accounts = await visibleAccounts(db, owner);
@@ -181,9 +181,7 @@ test("RDN memakai reconciliation Investasi dan alert selesai dari checkpoint por
 
     const portfolio = await createInvestmentPortfolio(db, context("investments.portfolios.create", { name: "Ajaib", broker: "ajaib", rdn_account_id: "rdn" }));
     const withPortfolio = await dashboardOverview(db, context("dashboard.overview", { period }));
-    const alert = withPortfolio.alerts.find((item) => item.type === "investment_reconciliation_stale");
-    assert.equal(alert?.targetPath, "/investasi");
-    assert.match(alert?.title || "", /Investasi|investasi/);
+    assert.equal(withPortfolio.alerts.some((item) => item.type.startsWith("investment_reconciliation_")), false, "Portfolio Investasi tidak boleh membuat reminder rekonsiliasi otomatis.");
 
     const result = await reconcileInvestment(db, context("investments.reconciliations.create", {
       portfolio_id: portfolio.portfolio_id,
@@ -195,7 +193,7 @@ test("RDN memakai reconciliation Investasi dan alert selesai dari checkpoint por
     assert.equal(result.status, "matched");
 
     const afterReconciliation = await dashboardOverview(db, context("dashboard.overview", { period }));
-    assert.equal(afterReconciliation.alerts.some((item) => item.type.startsWith("investment_reconciliation_")), false, "Checkpoint Investasi hari ini harus menyelesaikan alert RDN.");
+    assert.equal(afterReconciliation.alerts.some((item) => item.type.startsWith("investment_reconciliation_")), false, "Checkpoint Investasi tetap tidak boleh membuat reminder otomatis.");
   } finally {
     db.close();
   }

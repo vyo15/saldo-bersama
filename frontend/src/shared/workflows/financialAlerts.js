@@ -79,16 +79,18 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
       state: { allocation: "unallocated", ...entityState("period", period) },
     });
   },
-  unallocated_funds: ({ alert, to, baseState }) => {
-    const period = alertPeriod(alert);
-    return guidance({
-      instruction: "Dana ini masih tersedia di rekening dan belum dibagi ke Alokasi Dana. Tambahkan hanya jumlah yang memang ingin dialokasikan; saldo rekening tidak berubah.",
-      actionLabel: "Atur Alokasi Dana",
-      to,
-      baseState,
-      state: { attentionAction: "fund", ...entityState("period", period) },
-    });
-  },
+  unallocated_funds: ({ alert, to, baseState, entityId }) => guidance({
+    instruction: "Kebutuhan pada Alokasi Dana ini lebih besar dari dana yang sudah dipisahkan. Tambahkan dana sesuai kekurangan bila memang ingin seluruh kebutuhan tercakup; saldo bank fisik tidak berubah sampai transaksi nyata dicatat.",
+    actionLabel: "Tambahkan dana alokasi",
+    to,
+    baseState,
+    state: {
+      attentionAction: "fund",
+      ...entityState("attentionEnvelopeId", alert.envelopePeriodId || entityId),
+      attentionSuggestedAmount: Number(alert.fundingGap || 0),
+      ...entityState("period", alert.period || ""),
+    },
+  }),
   budget_threshold: ({ alert, to, baseState, entityId }) => guidance({
     instruction: alert.severity === "danger"
       ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah anggaran kebutuhan hanya jika rencana memang berubah."

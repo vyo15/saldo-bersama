@@ -3,6 +3,7 @@ import test from "node:test";
 import { cancelTransaction, createTransaction } from "../../api/_lib/services/finance.js";
 import { visibleAccounts } from "../../api/_lib/services/readModels.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
+import { adjustEnvelopeAllocation, listEnvelopes } from "../../api/_lib/services/planning/envelopes.js";
 import { addDays, monthBounds, todayJakarta } from "../../api/_lib/services/core.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
@@ -100,6 +101,36 @@ test("Alokasi Dana membagi saldo menjadi dana tersedia dan dana dialokasikan tan
     account = await accountSnapshot(db);
     assert.equal(account.allocated_remaining, 1_500_000, "Dana yang dipesan di dalam Alokasi Dana tetap harus ditahan dari dana bebas.");
     assert.equal(account.available_balance, 3_500_000);
+  } finally {
+    db.close();
+  }
+});
+
+
+test("Tambah dan kembalikan dana alokasi muncul di aktivitas dana tanpa transaksi bank palsu", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const envelope = await insertEnvelope(db, { id: "aktivitas", name: "Aktivitas", amount: 1_000_000, sourceAccountId: "account-a" });
+
+    await adjustEnvelopeAllocation(db, context("envelopes.adjustAllocation", {
+      envelope_period_id: envelope.periodId, direction: "fund", amount: 250_000, row_version: 1, reason: "Tambah dana test",
+    }));
+    await adjustEnvelopeAllocation(db, context("envelopes.adjustAllocation", {
+      envelope_period_id: envelope.periodId, direction: "release", amount: 100_000, row_version: 2, reason: "Kembalikan dana test",
+    }));
+
+    const snapshot = await listEnvelopes(db, context("envelopes.list"));
+    const activities = snapshot.recentMovements.filter((item) => item.envelope_period_id === envelope.periodId);
+    assert.deepEqual(activities.map((item) => item.movement_type).sort(), ["fund", "release"]);
+    assert.equal(activities.find((item) => item.movement_type === "fund")?.amount, 250_000);
+    assert.equal(activities.find((item) => item.movement_type === "release")?.amount, 100_000);
+    assert.equal(activities.every((item) => item.can_reverse === false), true);
+
+    const account = await accountSnapshot(db);
+    assert.equal(account.balance, 5_000_000, "Pendanaan alokasi tidak boleh membuat transaksi bank fiktif.");
+    assert.equal(account.allocated_remaining, 1_150_000);
+    assert.equal(account.available_balance, 3_850_000);
   } finally {
     db.close();
   }

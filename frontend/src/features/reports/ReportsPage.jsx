@@ -31,7 +31,6 @@ import { formatCompactRupiah, formatRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { categoryIcon } from "../../shared/presentation/transaction.js";
-import FinancialAlertList from "../dashboard/components/FinancialAlertList.jsx";
 import styles from "./ReportsPage.module.css";
 import { reportClass } from "./reportStyles.js";
 
@@ -55,8 +54,6 @@ const OverviewMetrics = ({ overview, currentWealth }) => (
     <Card className="metric-card"><span>Aman digunakan</span><Money value={overview?.safeToSpend || 0} /></Card>
   </section>
 );
-
-const ReportAlerts = ({ alerts = [] }) => alerts.length ? <Card className={reportClass("panel report-alert-panel")}><div className="panel__header"><div><h2>Perlu perhatian</h2><p className="panel__description">{alerts.length} item aktif. Buka tindakan terkait untuk menyelesaikannya tanpa mengubah data langsung dari laporan.</p></div></div><FinancialAlertList alerts={alerts} variant="report" /></Card> : null;
 
 const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
   <Card className="panel"><div className="panel__header"><h2>Saldo utama awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>
@@ -260,11 +257,6 @@ const MobileSummaryHero = ({ model, period }) => {
   </section>;
 };
 
-const MobileSummaryAlerts = ({ alerts = [] }) => {
-  if (!alerts.length) return null;
-  return <section className={styles.alertCard}><div className={styles.sectionHeading}><div><span>Kontrol</span><h2>Perlu perhatian</h2></div><strong>{alerts.length}</strong></div><FinancialAlertList alerts={alerts} variant="report" /></section>;
-};
-
 const MobileSummaryView = ({ model, period, categoryLookup, setMode, currentWealth }) => {
   const { overview, categoryExpenses, currentTrend, previousTrend } = model;
   const net = Number(overview?.cashFlow?.net || 0);
@@ -282,7 +274,6 @@ const MobileSummaryView = ({ model, period, categoryLookup, setMode, currentWeal
       <div className={styles.sectionHeading}><div><span>Distribusi</span><h2>Pengeluaran terbesar</h2></div>{categoryExpenses.length > 4 ? <button type="button" onClick={() => setMode("category")}>Lihat semua</button> : null}</div>
       <MobileCategoryList items={categoryExpenses} categoryLookup={categoryLookup} limit={4} />
     </section>
-    <MobileSummaryAlerts alerts={overview?.alerts} />
   </>;
 };
 
@@ -316,7 +307,7 @@ const DesktopReportsContent = ({ data, period, trendMonths, setPeriod, setTrendM
   const cashFlowTrend = trend.items.map((item) => ({ label: item.label, value: item.net }));
   const balanceTrend = trend.items.map((item) => ({ label: item.label, value: item.nonInvestmentBalance ?? item.totalBalance }));
   const balanceComparison = [{ label: "Awal periode", value: overview?.nonInvestmentOpeningBalance ?? overview?.openingBalance ?? 0 }, { label: overview?.isHistoricalPeriod ? "Akhir periode" : "Saat ini", value: overview?.nonInvestmentBalance ?? overview?.totalBalance ?? 0 }];
-  return <div className={reportClass("page-stack reports-page")}><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} currentWealth={currentWealth} /><ReportAlerts alerts={overview?.alerts} /><section className={reportClass("two-column-grid")}><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} budgets={budgets} /></section></div>;
+  return <div className={reportClass("page-stack reports-page")}><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} currentWealth={currentWealth} /><section className={reportClass("two-column-grid")}><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} costShareExpenses={costShareExpenses} budgets={budgets} /></section></div>;
 };
 
 const ReportsContent = (props) => {

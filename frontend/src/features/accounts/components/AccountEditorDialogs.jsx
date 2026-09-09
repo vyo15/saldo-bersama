@@ -1,12 +1,14 @@
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
+import InlineOwnershipPicker from "../../../components/common/InlineOwnershipPicker.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import SelectionField from "../../../components/common/SelectionField.jsx";
 import { bankTemplateOptionVisual, ewalletTemplateOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
-import { AdminIcon, BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, PersonIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
+import { BankIcon, CashIcon, EmergencyFundIcon, EwalletIcon, InvestmentIcon, OtherIcon, SavingsIcon, SharedIcon, SinkingFundIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { ACCOUNT_TYPES } from "../../../domain/constants.js";
 import { ACCOUNT_TYPE_LABELS, BANK_TEMPLATE_OPTIONS, EWALLET_PROVIDER_OPTIONS, accountTypeUsesAutomaticName, defaultAccountName, investmentAccountOwnershipLabel } from "../../../shared/presentation/account.js";
+import { userRoleLabel } from "../../../shared/presentation/user.js";
 import styles from "./AccountEditorDialogs.module.css";
 
 import TemporalInput from "../../../components/common/TemporalInput.jsx";
@@ -31,8 +33,6 @@ const ownershipUpdates = (value, fallbackUserId = "") => {
   return { owner_scope: "personal", owner_user_id: userId };
 };
 
-const shortPersonLabel = (value, fallback = "Pengguna") => String(value || fallback).trim().split(/\s+/).filter(Boolean)[0] || fallback;
-
 const accountMatchesOwnership = (account, ownershipValue) => {
   if (ownershipValue === "shared") return account.owner_scope === "shared";
   const userId = String(ownershipValue || "").replace(/^user:/, "");
@@ -53,16 +53,18 @@ const selectedInvestmentDuplicate = (accountForm, existingAccounts, defaultOwner
 
 const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange }) => {
   const users = activeUsers.length ? activeUsers : defaultOwnerUserId ? [{ user_id: defaultOwnerUserId, name: currentOwnerLabel, role: "owner", is_current: true }] : [];
-  const baseOptions = [
-    { value: "shared", label: "Bersama", icon: SharedIcon },
+  const options = [
+    { value: "shared", label: "Bersama", icon: SharedIcon, description: "Rekening dapat digunakan bersama" },
     ...users.map((member) => ({
       value: `user:${member.user_id}`,
-      label: member.is_current ? "Saya" : shortPersonLabel(member.name || member.email),
-      icon: member.role === "owner" ? AdminIcon : PersonIcon,
+      label: String(member.name || member.email || "Pengguna").trim(),
+      user: member,
+      badge: `${userRoleLabel(member.role)}${member.is_current ? " · saya" : ""}`,
+      badgeTone: member.role === "owner" ? "primary" : "neutral",
+      description: member.is_current ? "Milik saya" : "Milik anggota ini",
     })),
   ];
-  const options = baseOptions;
-  return <VisualChoiceGroup className="form-grid__full" legend="Kepemilikan *" name="account-ownership" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} columns={Math.min(options.length, 3)} mobileColumns={Math.min(options.length, 3)} compact wrapLabels required />;
+  return <InlineOwnershipPicker className="form-grid__full" legend="Kepemilikan" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} required />;
 };
 
 const BankNumberField = ({ value, onChange, showHelper = true }) => (

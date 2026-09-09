@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { FiArrowLeft, FiArrowRight, FiChevronDown, FiList, FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
-import { BiweeklyIcon, CarryForwardIcon, CustomPeriodIcon, DailyIcon, MonthlyIcon, PaycycleIcon, ReturnRemainderIcon, SharedIcon, WeeklyIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { AccountIcon, BiweeklyIcon, CarryForwardIcon, CustomPeriodIcon, DailyIcon, MonthlyIcon, PaycycleIcon, ReturnRemainderIcon, SharedIcon, WeeklyIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import InlineOwnershipPicker from "../../components/common/InlineOwnershipPicker.jsx";
+import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import { accountOptionVisual, allocationOptionVisual } from "../../components/common/selectionOptionVisuals.js";
@@ -102,13 +103,15 @@ const CreateEnvelopeForm = ({
 }) => (
   <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
     <label className="field form-grid__full"><span>Nama alokasi *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Belanja Rumah" /></label>
-    <SelectionField
+    <InlineSelectionPicker
       className="form-grid__full"
       label="Ambil dana dari"
       required
       value={createForm.source_account_id}
       onChange={onChangeSource}
       placeholder="Pilih rekening"
+      placeholderMeta="Pilih rekening sumber dana"
+      placeholderOption={{ icon: AccountIcon }}
       searchable={accounts.length > 8}
       searchPlaceholder="Cari rekening…"
       options={accounts.map((account) => ({

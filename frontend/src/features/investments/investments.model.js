@@ -79,6 +79,18 @@ export const investmentTradePreview = (mode, form = {}, instruments = []) => {
   return { instrument, lotSize, lots, shares, pricePerShare, feeAmount, grossAmount, rdnAmount };
 };
 
+export const investmentProjectedAverage = (form = {}, instruments = [], portfolio = {}) => {
+  const preview = investmentTradePreview("buy", form, instruments);
+  const holding = (portfolio?.holdings || []).find((item) => item.instrument_id === preview.instrument?.instrument_id) || null;
+  const currentShares = Number(holding?.shares || 0);
+  const currentCostBasis = Number(holding?.cost_basis || 0);
+  const currentAverage = currentShares > 0 ? Math.round(currentCostBasis / currentShares) : 0;
+  const nextShares = currentShares + Number(preview.shares || 0);
+  const nextCostBasis = currentCostBasis + Number(preview.grossAmount || 0);
+  const nextAverage = nextShares > 0 ? Math.round(nextCostBasis / nextShares) : 0;
+  return { currentAverage, nextAverage, currentShares, nextShares, holding, ...preview };
+};
+
 
 export const investmentOwnershipLabel = (portfolio = {}) => {
   if (portfolio.owner_scope !== "personal") return "Bersama";

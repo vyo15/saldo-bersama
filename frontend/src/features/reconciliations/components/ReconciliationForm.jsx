@@ -6,7 +6,7 @@ import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
-import SelectionField from "../../../components/common/SelectionField.jsx";
+import InlineSelectionPicker from "../../../components/common/InlineSelectionPicker.jsx";
 import { accountOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
@@ -15,7 +15,7 @@ import { ReconciliationSubmitProgress } from "./ReconciliationFeedback.jsx";
 import styles from "../ReconciliationsPage.module.css";
 
 const AccountPicker = ({ accounts, selectedAccount, disabled, onSelect }) => (
-  <SelectionField
+  <InlineSelectionPicker
     className={styles.accountChooser}
     label="Rekening"
     value={selectedAccount?.account_id || ""}
@@ -25,6 +25,8 @@ const AccountPicker = ({ accounts, selectedAccount, disabled, onSelect }) => (
     }}
     disabled={disabled}
     placeholder="Pilih rekening"
+    placeholderMeta="Pilih rekening yang akan dicocokkan"
+    placeholderOption={{ icon: AccountIcon }}
     searchable={accounts.length > 8}
     searchPlaceholder="Cari rekening…"
     options={accounts.map((account) => ({

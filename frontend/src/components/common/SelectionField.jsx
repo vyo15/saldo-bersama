@@ -94,7 +94,7 @@ export const SelectionVisual = ({ option, trigger = false }) => {
     option.imageKind === "brand-logo" ? styles.brandLogoVisual : "",
     option.mark ? styles.markVisual : "",
   ].filter(Boolean).join(" ");
-  return <span className={className} aria-hidden="true" title={option.visualLabel || undefined}>{selectionVisualContent(option)}</span>;
+  return <span className={className} data-tone={option.tone || undefined} aria-hidden="true" title={option.visualLabel || undefined}>{selectionVisualContent(option)}</span>;
 };
 
 const SelectionOption = ({ option, isSelected, onChoose, reserveVisual }) => (

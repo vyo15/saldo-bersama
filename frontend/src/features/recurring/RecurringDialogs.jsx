@@ -2,10 +2,11 @@ import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
-import { BankTransferIcon, CashIcon, EwalletIcon, MoneyInIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { AccountIcon, BankTransferIcon, CashIcon, EwalletIcon, MoneyInIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatRupiah } from "../../domain/money.js";
@@ -19,7 +20,7 @@ const RECURRING_PAYMENT_OPTIONS = Object.freeze([{ value: "transfer", label: "Tr
 const PaymentMethodField = ({ value, onChange }) => <VisualChoiceGroup className="form-grid__full" legend="Metode" name="recurring-payment-method" value={value} onChange={onChange} options={RECURRING_PAYMENT_OPTIONS} columns={3} compact />;
 const AccountField = ({ label = "Rekening default", value, accounts, onChange }) => {
   const selected = accounts.find((item) => item.account_id === value) || null;
-  return <SelectionField label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" searchable={accounts.length > 8} options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`, ...accountOptionVisual(item) }))} helper={selected ? `Saldo ${formatRupiah(selected.balance || 0)} · dialokasikan ${formatRupiah(selected.allocated_remaining || 0)} · tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
+  return <InlineSelectionPicker label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" placeholderMeta="Pilih rekening yang digunakan jadwal" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`, ...accountOptionVisual(item) }))} helper={selected ? `Saldo ${formatRupiah(selected.balance || 0)} · dialokasikan ${formatRupiah(selected.allocated_remaining || 0)} · tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
 };
 const CategoryField = ({ value, categories, onChange }) => <SelectionField label="Kategori" required value={value} onChange={onChange} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />;
 
@@ -30,7 +31,7 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
       <VisualChoiceGroup className="form-grid__full" legend="Jenis" name="recurring-kind" value={form.kind} onChange={(kind) => setForm((current) => ({ ...current, kind, category_id: "" }))} options={[{ value: "expense", label: "Pengeluaran tetap", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar rutin" }, { value: "income", label: "Pemasukan tetap", icon: MoneyInIcon, tone: "income", description: "Uang masuk rutin" }]} columns={2} descriptive wrapLabels />
       <MoneyInput id="recurring-amount" label="Nominal perkiraan" value={form.expected_amount} onChange={(value) => setForm((current) => ({ ...current, expected_amount: value }))} required />
       <FrequencyField value={form.frequency} onChange={(frequency) => setForm((current) => ({ ...current, frequency }))} />
-      <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: Number(event.target.value) }))} /></label>
+      <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={form.due_day ?? ""} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>
       <CategoryField value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => ({ ...current, category_id, default_account_id: current.kind === "expense" && budgetSuggestions[category_id]?.account_id ? budgetSuggestions[category_id].account_id : current.default_account_id }))} />
       <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => ({ ...current, default_account_id }))} />
       {form.kind === "expense" && budgetSuggestions[form.category_id]?.account_id === form.default_account_id ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {budgetSuggestions[form.category_id].envelope_name}. Rekening sumber dipilih otomatis dari Alokasi Dana tersebut.</CompactNotice> : null}
@@ -101,7 +102,7 @@ const EditRuleIdentityFields = ({ editRule, setEditRule }) => <>
   <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={editRule?.name || ""} onChange={(event) => setEditRule((current) => ({ ...current, name: event.target.value }))} /></label>
   <MoneyInput id="edit-recurring-amount" label="Nominal perkiraan" value={editRule?.expected_amount || ""} onChange={(expected_amount) => setEditRule((current) => ({ ...current, expected_amount }))} required />
   <FrequencyField value={editRule?.frequency || "monthly"} onChange={(frequency) => setEditRule((current) => ({ ...current, frequency }))} />
-  <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={editRule?.due_day || 1} onChange={(event) => setEditRule((current) => ({ ...current, due_day: Number(event.target.value) }))} /></label>
+  <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={editRule?.due_day ?? ""} onChange={(event) => setEditRule((current) => ({ ...current, due_day: event.target.value }))} /></label>
 </>;
 
 const EditRulePlanningFields = ({ editRule, setEditRule, editCategories, accounts, budgetSuggestions }) => {

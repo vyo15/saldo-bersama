@@ -26,8 +26,6 @@
     --mobile-navigation-icon-size: 24px;
     --mobile-navigation-add-size: 52px;
     --mobile-navigation-add-lift: 26px;
-    --mobile-topbar-content-height: 56px;
-    --mobile-topbar-height: calc(var(--mobile-topbar-content-height) + env(safe-area-inset-top));
     --font-size-xs: 12px;
     --font-size-sm: 12.5px;
     --font-size-body-sm: 13px;
@@ -41,7 +39,9 @@
     min-height: 100dvh;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    overscroll-behavior-x: none;
     overscroll-behavior-y: contain;
+    touch-action: pan-y pinch-zoom;
   }
   html::-webkit-scrollbar,
   body::-webkit-scrollbar {
@@ -54,8 +54,6 @@
   .app-shell__main { width: 100%; min-height: 0; flex: 1 1 auto; padding-inline-start: 0; }
   .desktop-module-dock { display: none; }
   .desktop-app-header { display: none; }
-  .topbar { height: var(--mobile-topbar-height); min-height: var(--mobile-topbar-height); position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: env(safe-area-inset-top) var(--mobile-page-gutter) 0; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: 0 5px 18px color-mix(in srgb, var(--text) 7%, transparent); backdrop-filter: blur(16px); }
-  .topbar .brand-lockup { display: flex; }
   .app-content,
   .app-content--standard,
   .app-content--wide { width: 100%; max-width: none; margin-inline: 0; min-height: 0; flex: 1 1 auto; padding: 16px var(--mobile-page-gutter) calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom) + var(--mobile-navigation-content-gap)); }
@@ -76,7 +74,6 @@
   .mobile-navigation__add { width: var(--mobile-navigation-add-size); height: var(--mobile-navigation-add-size); min-height: var(--mobile-navigation-add-size); justify-self: center; align-self: start; margin-top: calc(var(--mobile-navigation-add-lift) * -1); border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 28%, transparent); touch-action: manipulation; transition: box-shadow var(--motion-control) var(--motion-easing), transform var(--motion-control) var(--motion-easing); }
   .mobile-navigation__add svg { width: var(--mobile-navigation-icon-size); height: var(--mobile-navigation-icon-size); }
 
-  .app-shell--dashboard .topbar { display: none; }
   .app-shell--accounts {
     --accounts-mobile-background:
       radial-gradient(circle at 72% 18%, color-mix(in srgb, var(--on-hero) 8%, transparent), transparent 27%),
@@ -89,7 +86,6 @@
       radial-gradient(circle at 6% 84%, color-mix(in srgb, var(--secondary-soft) 68%, transparent), transparent 34%),
       var(--page);
   }
-  .app-shell--accounts .topbar { display: none; }
   .app-shell--dashboard .app-content { width: 100%; max-width: none; padding: 0 0 calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom) + var(--mobile-navigation-content-gap)); }
   .app-shell--accounts,
   .app-shell--accounts .app-shell__main,
@@ -113,8 +109,8 @@
   .app-content > .centered-page,
   .app-content > .route-content-enter > .fatal-error,
   .app-content > .route-content-enter > .centered-page {
-    min-height: calc(100vh - var(--mobile-topbar-height) - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
-    min-height: calc(100dvh - var(--mobile-topbar-height) - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
+    min-height: calc(100vh - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
+    min-height: calc(100dvh - 16px - var(--mobile-navigation-height) - env(safe-area-inset-bottom) - var(--mobile-navigation-content-gap));
   }
   .app-shell--dashboard .app-content > .fatal-error,
   .app-shell--dashboard .app-content > .centered-page,
@@ -136,9 +132,6 @@
   .panel--wide { grid-column: auto; }
   .toolbar { grid-template-columns: 1fr; }
 
-  .topbar .brand-mark { width: 32px; height: 32px; }
-  .topbar .brand-wordmark { font-size: 14px; }
-  .topbar__actions { margin-left: auto; }
   .page-stack { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); gap: var(--mobile-section-gap); }
   .page-stack > * { min-width: 0; max-width: 100%; }
   .page-header h1 { font-size: clamp(22px, 6.4vw, 27px); letter-spacing: -.03em; }

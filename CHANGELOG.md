@@ -1,3 +1,21 @@
+## 9 September 2026 - Financial flow regression hardening
+
+- Memperbaiki input jatuh tempo Jadwal Rutin dan Kebutuhan agar dapat dikosongkan sementara saat diedit tanpa memantul ke nilai default; validasi 1–31 tetap dilakukan saat data disimpan.
+- Menambahkan preview **average harga/unit setelah pembelian** pada Investasi dari weighted cost basis canonical. Rekonsiliasi Investasi tetap tersedia manual tetapi tidak lagi menghasilkan reminder otomatis yang mengganggu.
+- Menjadikan rekonsiliasi saldo eksplisit sebagai checkpoint notifikasi: mismatch tetap tersimpan di histori tanpa terus membuat alert difference aktif. Attention route tidak lagi membeku setelah deep-link dikonsumsi.
+- Menyinkronkan status baca Notification Center pada hook dalam tab yang sama, memperluas layout `/notifikasi`, dan menambahkan alert funding-gap ketika total Kebutuhan melebihi dana Alokasi Dana. Aksi alert membuka funding flow tepat pada Alokasi terkait dengan nominal kekurangan ter-prefill.
+- Menambahkan aktivitas **Tambah dana / Kembalikan dana** ke riwayat Alokasi dari audit canonical. Pembagian dana tetap tidak membuat transaksi bank palsu: saldo fisik tetap aktual, `Dana tersedia` berkurang ketika dana diikat, dan pengeluaran nyata tetap menjadi satu-satunya pengurang ledger.
+- Memperbaiki carousel Rekening mobile agar `pointercancel` tidak selalu snap-back, menurunkan threshold swipe, dan menahan overscroll horizontal aplikasi untuk mengurangi konflik gesture back/forward browser.
+- Menghapus topbar mobile global Saldo Bersama/Theme toggle, menghapus alert operasional dari Laporan, serta memberi semantic tone berbeda untuk kategori Pengeluaran/Pemasukan/Refund. Desktop Rekening kini memprioritaskan `Dana tersedia` dan menampilkan `Saldo rekening` sebagai rincian.
+- Menambah regression khusus untuk funding-gap, checkpoint rekonsiliasi, average Investasi, jatuh tempo editable, notification read-state, report cleanup, gesture rekening, allocation activity, attention state, dan semantic category color.
+
+## 9 September 2026 - Inline account picker dan ownership consistency
+
+- Menyamakan pola pilihan rekening utama pada **Buat Alokasi**, **Bagi dana tersedia**, **Target**, **Jadwal Rutin**, **setup RDN Investasi**, dan **Rekonsiliasi** dengan ownership picker: field tertutup hanya menampilkan pilihan aktif/placeholder, tap membuka opsi **inline ke bawah dalam modal yang sama**, lalu otomatis collapse setelah rekening dipilih. Daftar panjang tetap searchable dan bounded tanpa nested sheet/modal.
+- Memigrasikan **Rekening → Kepemilikan** dari grid card responsive lama ke `InlineOwnershipPicker`, sehingga nama anggota panjang, foto profil, badge role, dan state `saya/member` mengikuti pola Alokasi/Kebutuhan yang sudah canonical. Contract `owner_scope/owner_user_id`, saldo, authorization, dan API tidak berubah.
+- Menambahkan primitive `InlineSelectionPicker` untuk single-select entity yang perlu tetap ringkas tetapi kaya metadata. `InlineOwnershipPicker` sekarang memakai primitive yang sama sehingga daftar user panjang ikut bounded/searchable. Filter, taxonomy, dan flow transaksi yang sudah memiliki `SelectionField`/selection view canonical sengaja tidak dipaksa memakai pola ini.
+- Menambah regression accessibility/responsive untuk `aria-expanded`, listbox/option, Escape + keyboard navigation, search daftar panjang, bounded scroll, reduced-motion, dan konsistensi consumer.
+
 ## 8 September 2026 - Inline ownership picker mobile
 
 - Merapikan pilihan identitas pada **Buat Alokasi**: field `Digunakan oleh` sekarang hanya menampilkan pilihan aktif ketika tertutup, lalu daftar pengguna berkembang **inline ke bawah pada modal yang sama** saat ditekan. Pemilihan user otomatis menutup daftar kembali agar form tetap ringkas tanpa nested sheet/modal.

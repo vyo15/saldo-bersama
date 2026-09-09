@@ -472,7 +472,7 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(dashboard, /mobileLayout[\s\S]*\? <MobileFinanceDashboard[\s\S]*: <DesktopFinanceDashboard/);
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
-  assert.match(mobile, /ThemeToggle tone="hero"/);
+  assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
   const order = ["<MobileNextAction", "<MobileQuickActions", "<MobileInvestment", "<MobileFinancialInsight", "<MobileBudgetPlan", "<MobileUpcomingSchedule", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile ringkas harus tetap ada.");
   assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan perhatian → akses cepat → investasi → insight → rencana → jadwal → aktivitas.");

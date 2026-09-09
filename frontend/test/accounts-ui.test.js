@@ -227,11 +227,12 @@ ${accountEditors}`;
   assert.match(accountPageSource, /<span>No rekening \*<\/span>/);
   assert.match(accountPageSource, /useApiResource\("users\.list"/);
   assert.match(accountPageSource, /owner_user_id/);
-  assert.match(accountPageSource, /legend="Kepemilikan \*"/);
-  assert.match(accountPageSource, /name="account-ownership"/);
+  assert.match(accountPageSource, /<InlineOwnershipPicker[\s\S]*legend="Kepemilikan"/);
   assert.match(accountPageSource, /options=\{options\}[\s\S]*required/);
-  assert.doesNotMatch(accountPageSource, /userOptionLabel/);
-  assert.match(accountPageSource, /member\.is_current \? "Saya"/);
+  assert.match(accountPageSource, /user: member/);
+  assert.match(accountPageSource, /member\.is_current \? "Milik saya"/);
+  assert.match(accountPageSource, /userRoleLabel\(member\.role\)/);
+  assert.doesNotMatch(accountPageSource, /name="account-ownership"/);
   assert.doesNotMatch(accountPageSource, /<span>Pemilik rekening \*<\/span>/);
   assert.match(accountPageSource, /Promise\.allSettled\(\[accountsResource\.reload\(\), refreshAll\(\)\]\)/);
   assert.doesNotMatch(accountPageSource, /accountsResult\.status === "rejected"/);
@@ -616,7 +617,7 @@ test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile 
 });
 
 test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celebration tetap aksesibel", async () => {
-  const [page, pageStyles, feedback, result, resultStyles, successOverlay, successStyles, alertList, alertStyles] = await Promise.all([
+  const [page, pageStyles, feedback, result, resultStyles, successOverlay, successStyles] = await Promise.all([
     Promise.all([
       read("src/features/reconciliations/ReconciliationsPage.jsx"),
       read("src/features/reconciliations/components/ReconciliationForm.jsx"),
@@ -628,15 +629,13 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
     read("src/features/reconciliations/components/ReconciliationFeedback.module.css"),
     read("src/components/feedback/FinancialSuccessOverlay.jsx"),
     read("src/components/feedback/FinancialSuccessOverlay.module.css"),
-    read("src/features/dashboard/components/FinancialAlertList.jsx"),
-    read("src/features/dashboard/components/FinancialAlertList.module.css"),
   ]);
 
   assert.match(page, /ReconciliationSubmitProgress/);
   assert.match(page, /ReconciliationResultOverlay/);
   assert.match(page, /status: "syncing"/);
   assert.match(page, /status: "completed"/);
-  assert.match(page, /finishReconciliation = \(\) => navigate\(attentionFromNotification \? "\/notifikasi" : "\/"\)/);
+  assert.match(page, /finishReconciliation = \(\) => navigate\(attentionReturnPathRef\.current\)/);
   assert.match(page, /reviewReconciliationTransactions/);
   assert.match(page, /onReviewTransactions/);
   assert.match(page, /refreshOutcomes = await Promise\.allSettled/);
@@ -653,7 +652,7 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(page, /styles\.mobileHistoryDifference/);
   assert.match(pageStyles, /\.systemBalanceCard\s*\{/);
   assert.match(pageStyles, /\.systemBalanceCard[\s\S]*font-size:\s*clamp\(1\.9rem/);
-  assert.match(page, /<SelectionField[\s\S]*label="Rekening"/);
+  assert.match(page, /<InlineSelectionPicker[\s\S]*label="Rekening"/);
   assert.match(page, /searchable=\{accounts\.length > 8\}/);
   assert.match(pageStyles, /\.differencePreview\[data-state="matched"\]/);
   assert.match(pageStyles, /\.mobileHistoryDifference/);
@@ -684,7 +683,4 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(resultStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(pageStyles, /guidePanel|guideLead|snapshotBadge|eyebrowPill|actualBalanceCard|editBalanceButton|previewDifferenceBox/, "Style rekonsiliasi lama yang tidak terpakai harus dibersihkan.");
   assert.match(pageStyles, /grid-template-columns: minmax\(0, 1fr\)/);
-  assert.match(alertList, /className=\{styles\.mobileGuidance\}/);
-  assert.doesNotMatch(alertList, /mobile-attention-instruction/);
-  assert.match(alertStyles, /\.mobileGuidance\s*\{/);
 });

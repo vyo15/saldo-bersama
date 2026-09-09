@@ -222,7 +222,6 @@
   .heroCard,
   .contentCard,
   .comparisonCard,
-  .alertCard,
   .detailsCard {
     min-width: 0;
     border: 1px solid var(--border);
@@ -402,8 +401,7 @@
   }
 
   .contentCard,
-  .comparisonCard,
-  .alertCard {
+  .comparisonCard {
     padding: 14px;
   }
 

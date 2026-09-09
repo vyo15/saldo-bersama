@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 
 const READ_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const STORAGE_PREFIX = "saldo-bersama:notification-center-read:v1:";
+const READ_STATE_EVENT = "saldo-bersama:notification-read-state";
 
 const safeStorage = () => {
   try { return typeof window !== "undefined" ? window.localStorage : null; } catch { return null; }
@@ -22,6 +23,9 @@ const readStoredMap = (scope) => {
 
 const persistReadMap = (scope, value) => {
   try { safeStorage()?.setItem(storageKey(scope), JSON.stringify(value)); } catch { /* local storage is optional UI state */ }
+  try {
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(READ_STATE_EVENT, { detail: { scope: String(scope || "anonymous") } }));
+  } catch { /* same-tab synchronization is best effort */ }
 };
 
 const isRecentRead = (timestamp) => Number(timestamp || 0) >= Date.now() - READ_TTL_MS;
@@ -74,7 +78,7 @@ export const financialNotificationTitle = (alert = {}) => {
   if (alert.type === "budget_threshold") return "Periksa anggaran";
   if (alert.type === "envelope_threshold") return "Periksa Alokasi Dana";
   if (alert.type === "unallocated_expense") return "Alokasikan pengeluaran";
-  if (alert.type === "unallocated_funds") return "Atur dana tersedia";
+  if (alert.type === "unallocated_funds") return "Dana alokasi belum cukup";
   return String(alert.title || "Notifikasi");
 };
 
@@ -87,6 +91,7 @@ const ENTITY_READERS = Object.freeze({
   recurring_due: (alert) => entityFromPattern(alert, /^(.*)\s+segera jatuh tempo$/i),
   goal_behind: (alert) => entityFromPattern(alert, /^(.*)\s+tertinggal dari rencana$/i),
   unallocated_expense: (alert) => entityFromPattern(alert, /^(\d+\s+pengeluaran)\b/i),
+  unallocated_funds: (alert) => entityFromPattern(alert, /^(.*)\s+kekurangan dana$/i),
 });
 
 const reconciliationFact = (alert) => {
@@ -112,7 +117,7 @@ const FACT_READERS = Object.freeze({
   recurring_overdue: recurringFact,
   goal_behind: (alert) => compactMonthlyAmount(alert.message),
   unallocated_expense: () => "Belum masuk Alokasi Dana",
-  unallocated_funds: () => "Belum dibagi ke Alokasi Dana",
+  unallocated_funds: (alert) => Number(alert.fundingGap || 0) > 0 ? `Kurang Rp ${Number(alert.fundingGap).toLocaleString("id-ID")}` : "Dana alokasi belum mencukupi kebutuhan",
 });
 
 export const financialNotificationEntity = (alert = {}) => {
@@ -129,20 +134,45 @@ export const notificationRequiresAction = (alert = {}) => ACTION_TYPES.has(alert
 
 export const useFinancialNotificationReadState = ({ alerts = [], scope = "anonymous" }) => {
   const [readMap, setReadMap] = useState(() => readStoredMap(scope));
+  const readMapRef = useRef(readMap);
   const activeAlerts = useMemo(() => Array.isArray(alerts) ? alerts.filter((alert) => alert?.id) : [], [alerts]);
   const isRead = useCallback((id) => isRecentRead(readMap[id]), [readMap]);
   const unreadCount = useMemo(() => activeAlerts.filter((alert) => !isRecentRead(readMap[alert.id])).length, [activeAlerts, readMap]);
 
   useEffect(() => {
-    setReadMap(readStoredMap(scope));
+    const next = readStoredMap(scope);
+    readMapRef.current = next;
+    setReadMap(next);
+  }, [scope]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const sync = (event) => {
+      const eventScope = event?.detail?.scope;
+      if (eventScope && eventScope !== String(scope || "anonymous")) return;
+      const next = readStoredMap(scope);
+      readMapRef.current = next;
+      setReadMap(next);
+    };
+    const syncStorage = (event) => {
+      if (event.key !== storageKey(scope)) return;
+      const next = readStoredMap(scope);
+      readMapRef.current = next;
+      setReadMap(next);
+    };
+    window.addEventListener(READ_STATE_EVENT, sync);
+    window.addEventListener("storage", syncStorage);
+    return () => {
+      window.removeEventListener(READ_STATE_EVENT, sync);
+      window.removeEventListener("storage", syncStorage);
+    };
   }, [scope]);
 
   const updateReadMap = useCallback((updater) => {
-    setReadMap((current) => {
-      const next = updater(current);
-      persistReadMap(scope, next);
-      return next;
-    });
+    const next = updater(readMapRef.current);
+    readMapRef.current = next;
+    setReadMap(next);
+    persistReadMap(scope, next);
   }, [scope]);
 
   const markRead = useCallback((id) => {

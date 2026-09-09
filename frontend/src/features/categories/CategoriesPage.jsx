@@ -43,7 +43,7 @@ const emptyCategoryForm = () => ({
 
 const categoryIconToneClass = (type) => type === "income"
   ? styles.categoryIconIncome
-  : type === "refund" ? styles.categoryIconRefund : "";
+  : type === "refund" ? styles.categoryIconRefund : styles.categoryIconExpense;
 
 const CATEGORY_SECTION_ORDER = Object.freeze(["expense", "income", "refund"]);
 const CATEGORY_SECTION_META = Object.freeze({
